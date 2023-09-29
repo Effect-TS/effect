@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Equal from "./Equal"
 import * as Dual from "./Function"
@@ -16,13 +16,13 @@ import * as RBT from "./RedBlackTree"
 const TypeId: unique symbol = Symbol.for("effect/SortedMap")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal.Equal, Pipeable, Inspectable {
@@ -66,7 +66,7 @@ const makeImpl = <K, V>(tree: RBT.RedBlackTree<K, V>): SortedMap<K, V> => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isSortedMap: {
@@ -75,20 +75,20 @@ export const isSortedMap: {
 } = (u: unknown): u is SortedMap<unknown, unknown> => isObject(u) && TypeId in u
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty = <K, V = never>(ord: Order<K>): SortedMap<K, V> => makeImpl<K, V>(RBT.empty<K, V>(ord))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable = <K>(ord: Order<K>) => <V>(iterable: Iterable<readonly [K, V]>): SortedMap<K, V> =>
   makeImpl(RBT.fromIterable<K, V>(ord)(iterable))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make =
@@ -99,25 +99,25 @@ export const make =
   > => fromIterable(ord)(entries)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category predicates
  */
 export const isEmpty = <K, V>(self: SortedMap<K, V>): boolean => size(self) === 0
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category predicates
  */
 export const isNonEmpty = <K, V>(self: SortedMap<K, V>): boolean => size(self) > 0
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const entries = <K, V>(self: SortedMap<K, V>): Iterator<readonly [K, V]> => self[Symbol.iterator]()
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const get: {
@@ -131,13 +131,13 @@ export const get: {
 /**
  * Gets the `Order<K>` that the `SortedMap<K, V>` is using.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const getOrder = <K, V>(self: SortedMap<K, V>): Order<K> => RBT.getOrder(self.tree)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const has: {
@@ -149,13 +149,13 @@ export const has: {
 >(2, (self, key) => Option.isSome(get(self, key)))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const headOption = <K, V>(self: SortedMap<K, V>): Option.Option<readonly [K, V]> => RBT.first(self.tree)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -172,13 +172,13 @@ export const map: {
   ))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const keys = <K, V>(self: SortedMap<K, V>): IterableIterator<K> => RBT.keys(self.tree)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduce: {
@@ -190,7 +190,7 @@ export const reduce: {
 >(3, (self, zero, f) => RBT.reduce(self.tree, zero, f))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const remove: {
@@ -202,7 +202,7 @@ export const remove: {
 >(2, (self, key) => makeImpl(RBT.removeFirst(self.tree, key)))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const set: {
@@ -217,13 +217,13 @@ export const set: {
     : makeImpl(RBT.insert(self.tree, key, value)))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size = <K, V>(self: SortedMap<K, V>): number => RBT.size(self.tree)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const values = <K, V>(self: SortedMap<K, V>): IterableIterator<V> => RBT.values(self.tree)

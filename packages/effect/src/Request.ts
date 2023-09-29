@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as _Cache from "./Cache"
 import type * as Data from "./Data"
@@ -16,13 +16,13 @@ import * as internal from "./internal/request"
 import type * as Option from "./Option"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const RequestTypeId: unique symbol = internal.RequestTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type RequestTypeId = typeof RequestTypeId
@@ -31,17 +31,17 @@ export type RequestTypeId = typeof RequestTypeId
  * A `Request<E, A>` is a request from a data source for a value of type `A`
  * that may fail with an `E`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Request<E, A> extends Request.Variance<E, A>, Data.Case {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Request {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<E, A> {
@@ -52,7 +52,7 @@ export declare namespace Request {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Constructor<R extends Request<any, any>, T extends keyof R = never> {
@@ -62,7 +62,7 @@ export declare namespace Request {
   /**
    * A utility type to extract the error type from a `Request`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category type-level
    */
   export type Error<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _E : never
@@ -70,7 +70,7 @@ export declare namespace Request {
   /**
    * A utility type to extract the value type from a `Request`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category type-level
    */
   export type Success<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _A : never
@@ -78,7 +78,7 @@ export declare namespace Request {
   /**
    * A utility type to extract the result type from a `Request`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category type-level
    */
   export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit.Exit<E, A> : never
@@ -86,7 +86,7 @@ export declare namespace Request {
   /**
    * A utility type to extract the optional result type from a `Request`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category type-level
    */
   export type OptionalResult<T extends Request<any, any>> = T extends Request<infer E, infer A>
@@ -97,7 +97,7 @@ export declare namespace Request {
 /**
  * Returns `true` if the specified value is a `Request`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isRequest: (u: unknown) => u is Request<unknown, unknown> = internal.isRequest
@@ -105,7 +105,7 @@ export const isRequest: (u: unknown) => u is Request<unknown, unknown> = interna
 /**
  * Constructs a new `Request`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const of: <R extends Request<any, any>>() => Request.Constructor<R> = internal.of
@@ -113,7 +113,7 @@ export const of: <R extends Request<any, any>>() => Request.Constructor<R> = int
 /**
  * Constructs a new `Request`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const tagged: <R extends Request<any, any> & { _tag: string }>(
@@ -123,7 +123,7 @@ export const tagged: <R extends Request<any, any> & { _tag: string }>(
 /**
  * Complete a `Request` with the specified result.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category request completion
  */
 export const complete: {
@@ -134,7 +134,7 @@ export const complete: {
 /**
  * Interrupts the child effect when requests are no longer needed
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category request completion
  */
 export const interruptWhenPossible: {
@@ -147,7 +147,7 @@ export const interruptWhenPossible: {
  * request with the error from the effect workflow if it fails, and completing
  * the request with the value of the effect workflow if it succeeds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category request completion
  */
 export const completeEffect: {
@@ -163,7 +163,7 @@ export const completeEffect: {
 /**
  * Complete a `Request` with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category request completion
  */
 export const fail: {
@@ -174,7 +174,7 @@ export const fail: {
 /**
  * Complete a `Request` with the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category request completion
  */
 export const succeed: {
@@ -184,7 +184,7 @@ export const succeed: {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Listeners {
   count: number
@@ -197,7 +197,7 @@ export interface Listeners {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Cache extends
   _Cache.ConsumerCache<Request<any, any>, never, {
@@ -207,7 +207,7 @@ export interface Cache extends
 {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export const makeCache = (
@@ -222,13 +222,13 @@ export const makeCache = (
   })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const EntryTypeId = Symbol.for("effect/RequestBlock.Entry")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type EntryTypeId = typeof EntryTypeId
@@ -240,7 +240,7 @@ export type EntryTypeId = typeof EntryTypeId
  * return different result types for different requests while guaranteeing that
  * results will be of the type requested.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Entry<R> extends Entry.Variance<R> {
@@ -257,12 +257,12 @@ export interface Entry<R> extends Entry.Variance<R> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export declare namespace Entry {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<R> {
@@ -273,13 +273,13 @@ export declare namespace Entry {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isEntry = _RequestBlock.isEntry
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeEntry = _RequestBlock.makeEntry

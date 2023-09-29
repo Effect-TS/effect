@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type { Effect } from "./Effect"
@@ -11,13 +11,13 @@ import * as core from "./internal/core"
 import * as timeout from "./internal/timeout"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type Task = () => void
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Scheduler {
@@ -26,16 +26,16 @@ export interface Scheduler {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export class PriorityBuckets<T = Task> {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   public buckets: Array<[number, Array<T>]> = []
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   scheduleTask(task: T, priority: number) {
     let bucket: [number, Array<T>] | undefined = undefined
@@ -64,28 +64,28 @@ export class PriorityBuckets<T = Task> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export class MixedScheduler implements Scheduler {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   running = false
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   tasks = new PriorityBuckets()
 
   constructor(
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      */
     readonly maxNextTickBeforeTimer: number
   ) {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   private starveInternal(depth: number) {
     const tasks = this.tasks.buckets
@@ -103,7 +103,7 @@ export class MixedScheduler implements Scheduler {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   private starve(depth = 0) {
     if (depth >= this.maxNextTickBeforeTimer) {
@@ -114,7 +114,7 @@ export class MixedScheduler implements Scheduler {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false {
     return fiber.currentOpCount > fiber.getFiberRef(core.currentMaxOpsBeforeYield)
@@ -123,7 +123,7 @@ export class MixedScheduler implements Scheduler {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   scheduleTask(task: Task, priority: number) {
     this.tasks.scheduleTask(task, priority)
@@ -135,7 +135,7 @@ export class MixedScheduler implements Scheduler {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category schedulers
  */
 export const defaultScheduler: Scheduler = globalValue(
@@ -144,22 +144,22 @@ export const defaultScheduler: Scheduler = globalValue(
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export class SyncScheduler implements Scheduler {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   tasks = new PriorityBuckets()
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   deferred = false
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   scheduleTask(task: Task, priority: number) {
     if (this.deferred) {
@@ -170,7 +170,7 @@ export class SyncScheduler implements Scheduler {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false {
     return fiber.currentOpCount > fiber.getFiberRef(core.currentMaxOpsBeforeYield)
@@ -179,7 +179,7 @@ export class SyncScheduler implements Scheduler {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   flush() {
     while (this.tasks.buckets.length > 0) {
@@ -196,22 +196,22 @@ export class SyncScheduler implements Scheduler {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export class ControlledScheduler implements Scheduler {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   tasks = new PriorityBuckets()
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   deferred = false
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   scheduleTask(task: Task, priority: number) {
     if (this.deferred) {
@@ -222,7 +222,7 @@ export class ControlledScheduler implements Scheduler {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false {
     return fiber.currentOpCount > fiber.getFiberRef(core.currentMaxOpsBeforeYield)
@@ -231,7 +231,7 @@ export class ControlledScheduler implements Scheduler {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   step() {
     const tasks = this.tasks.buckets
@@ -245,7 +245,7 @@ export class ControlledScheduler implements Scheduler {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeMatrix = (...record: Array<[number, Scheduler]>): Scheduler => {
@@ -275,7 +275,7 @@ export const makeMatrix = (...record: Array<[number, Scheduler]>): Scheduler => 
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utilities
  */
 export const defaultShouldYield: Scheduler["shouldYield"] = (fiber) => {
@@ -285,7 +285,7 @@ export const defaultShouldYield: Scheduler["shouldYield"] = (fiber) => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make = (
@@ -297,7 +297,7 @@ export const make = (
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeBatched = (
@@ -333,14 +333,14 @@ export const makeBatched = (
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const timer = (ms: number, shouldYield: Scheduler["shouldYield"] = defaultShouldYield) =>
   make((task) => timeout.set(task, ms), shouldYield)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const timerBatched = (ms: number, shouldYield: Scheduler["shouldYield"] = defaultShouldYield) =>

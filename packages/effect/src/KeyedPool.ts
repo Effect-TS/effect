@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Duration from "./Duration"
 import type * as Effect from "./Effect"
@@ -8,13 +8,13 @@ import type { Pipeable } from "./Pipeable"
 import type * as Scope from "./Scope"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const KeyedPoolTypeId: unique symbol = internal.KeyedPoolTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type KeyedPoolTypeId = typeof KeyedPoolTypeId
@@ -23,7 +23,7 @@ export type KeyedPoolTypeId = typeof KeyedPoolTypeId
  * A `KeyedPool<K, E, A>` is a pool of `Pool`s of items of type `A`. Each pool
  * in the `KeyedPool` is associated with a key of type `K`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface KeyedPool<K, E, A> extends KeyedPool.Variance<K, E, A>, Pipeable {
@@ -44,11 +44,11 @@ export interface KeyedPool<K, E, A> extends KeyedPool.Variance<K, E, A>, Pipeabl
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace KeyedPool {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<K, E, A> {
@@ -66,7 +66,7 @@ export declare namespace KeyedPool {
  * because the `Scope` is closed, the individual items allocated by the pool
  * will be released in some unspecified order.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <K, R, E, A>(
@@ -81,7 +81,7 @@ export const make: <K, R, E, A>(
  *
  * The size of the underlying pools can be configured per key.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeWith: <K, R, E, A>(
@@ -98,7 +98,7 @@ export const makeWith: <K, R, E, A>(
  *
  * The size of the underlying pools can be configured per key.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeWithTTL: <K, R, E, A>(
@@ -120,7 +120,7 @@ export const makeWithTTL: <K, R, E, A>(
  *
  * The size of the underlying pools can be configured per key.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeWithTTLBy: <K, R, E, A>(
@@ -138,7 +138,7 @@ export const makeWithTTLBy: <K, R, E, A>(
  * for that same reason. Retrying a failed acquisition attempt will repeat the
  * acquisition attempt.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const get: {
@@ -151,7 +151,7 @@ export const get: {
  * reallocate the item, although this reallocation may occur lazily rather
  * than eagerly.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const invalidate: {

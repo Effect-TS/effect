@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as HashSet from "./HashSet"
 import * as internal from "./internal/stm/tSet"
@@ -9,13 +9,13 @@ import type * as STM from "./STM"
 import type * as TMap from "./TMap"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TSetTypeId: unique symbol = internal.TSetTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TSetTypeId = typeof TSetTypeId
@@ -23,13 +23,13 @@ export type TSetTypeId = typeof TSetTypeId
 /**
  * Transactional set implemented on top of `TMap`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TSet<A> extends TSet.Variance<A> {}
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TSet<A> {
   /** @internal */
@@ -37,11 +37,11 @@ export interface TSet<A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace TSet {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -54,7 +54,7 @@ export declare namespace TSet {
 /**
  * Stores new element in the set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const add: {
@@ -66,7 +66,7 @@ export const add: {
  * Atomically transforms the set into the difference of itself and the
  * provided set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const difference: {
@@ -77,7 +77,7 @@ export const difference: {
 /**
  * Makes an empty `TSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: <A>() => STM.STM<never, never, TSet<A>> = internal.empty
@@ -85,7 +85,7 @@ export const empty: <A>() => STM.STM<never, never, TSet<A>> = internal.empty
 /**
  * Atomically performs transactional-effect for each element in set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const forEach: {
@@ -96,7 +96,7 @@ export const forEach: {
 /**
  * Makes a new `TSet` initialized with provided iterable.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, TSet<A>> = internal.fromIterable
@@ -104,7 +104,7 @@ export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, T
 /**
  * Tests whether or not set contains an element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const has: {
@@ -116,7 +116,7 @@ export const has: {
  * Atomically transforms the set into the intersection of itself and the
  * provided set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const intersection: {
@@ -127,7 +127,7 @@ export const intersection: {
 /**
  * Tests if the set is empty or not
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isEmpty: <A>(self: TSet<A>) => STM.STM<never, never, boolean> = internal.isEmpty
@@ -135,7 +135,7 @@ export const isEmpty: <A>(self: TSet<A>) => STM.STM<never, never, boolean> = int
 /**
  * Makes a new `TSet` that is initialized with specified values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Elements extends Array<any>>(
@@ -145,7 +145,7 @@ export const make: <Elements extends Array<any>>(
 /**
  * Atomically folds using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduce: {
@@ -156,7 +156,7 @@ export const reduce: {
 /**
  * Atomically folds using a transactional function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduceSTM: {
@@ -167,7 +167,7 @@ export const reduceSTM: {
 /**
  * Removes a single element from the set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const remove: {
@@ -178,7 +178,7 @@ export const remove: {
 /**
  * Removes elements from the set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const removeAll: {
@@ -189,7 +189,7 @@ export const removeAll: {
 /**
  * Removes bindings matching predicate and returns the removed entries.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const removeIf: {
@@ -200,7 +200,7 @@ export const removeIf: {
 /**
  * Removes elements matching predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const removeIfDiscard: {
@@ -211,7 +211,7 @@ export const removeIfDiscard: {
 /**
  * Retains bindings matching predicate and returns removed bindings.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const retainIf: {
@@ -222,7 +222,7 @@ export const retainIf: {
 /**
  * Retains elements matching predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const retainIfDiscard: {
@@ -233,7 +233,7 @@ export const retainIfDiscard: {
 /**
  * Returns the set's cardinality.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: <A>(self: TSet<A>) => STM.STM<never, never, number> = internal.size
@@ -241,7 +241,7 @@ export const size: <A>(self: TSet<A>) => STM.STM<never, never, number> = interna
 /**
  * Takes the first matching value, or retries until there is one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeFirst: {
@@ -252,7 +252,7 @@ export const takeFirst: {
 /**
  * Takes the first matching value, or retries until there is one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeFirstSTM: {
@@ -263,7 +263,7 @@ export const takeFirstSTM: {
 /**
  * Takes all matching values, or retries until there is at least one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeSome: {
@@ -274,7 +274,7 @@ export const takeSome: {
 /**
  * Takes all matching values, or retries until there is at least one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeSomeSTM: {
@@ -285,7 +285,7 @@ export const takeSomeSTM: {
 /**
  * Collects all elements into a `Chunk`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Array<A>> = internal.toChunk
@@ -293,7 +293,7 @@ export const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Array<A>> = in
 /**
  * Collects all elements into a `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.HashSet<A>> = internal.toHashSet
@@ -301,7 +301,7 @@ export const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.Hash
 /**
  * Collects all elements into a `ReadonlyArray`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toReadonlyArray: <A>(self: TSet<A>) => STM.STM<never, never, ReadonlyArray<A>> = internal.toReadonlyArray
@@ -309,7 +309,7 @@ export const toReadonlyArray: <A>(self: TSet<A>) => STM.STM<never, never, Readon
 /**
  * Collects all elements into a `ReadonlySet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toReadonlySet: <A>(self: TSet<A>) => STM.STM<never, never, ReadonlySet<A>> = internal.toReadonlySet
@@ -317,7 +317,7 @@ export const toReadonlySet: <A>(self: TSet<A>) => STM.STM<never, never, Readonly
 /**
  * Atomically updates all elements using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const transform: {
@@ -328,7 +328,7 @@ export const transform: {
 /**
  * Atomically updates all elements using a transactional function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const transformSTM: {
@@ -340,7 +340,7 @@ export const transformSTM: {
  * Atomically transforms the set into the union of itself and the provided
  * set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const union: {

@@ -108,7 +108,7 @@ class GaugeKeyType implements MetricKeyType.MetricKeyType.Gauge {
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export class HistogramKeyType implements MetricKeyType.MetricKeyType.Histogram {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
@@ -160,25 +160,25 @@ class SummaryKeyType implements MetricKeyType.MetricKeyType.Summary {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const counter: MetricKeyType.MetricKeyType.Counter = new CounterKeyType()
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const frequency: MetricKeyType.MetricKeyType.Frequency = new FrequencyKeyType()
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const gauge: MetricKeyType.MetricKeyType.Gauge = new GaugeKeyType()
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const histogram = (boundaries: MetricBoundaries.MetricBoundaries): MetricKeyType.MetricKeyType.Histogram => {
@@ -186,7 +186,7 @@ export const histogram = (boundaries: MetricBoundaries.MetricBoundaries): Metric
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const summary = (
@@ -201,7 +201,7 @@ export const summary = (
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isMetricKeyType = (u: unknown): u is MetricKeyType.MetricKeyType<unknown, unknown> => {
@@ -209,7 +209,7 @@ export const isMetricKeyType = (u: unknown): u is MetricKeyType.MetricKeyType<un
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Counter => {
@@ -217,7 +217,7 @@ export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Count
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Frequency => {
@@ -225,7 +225,7 @@ export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Fre
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge => {
@@ -233,7 +233,7 @@ export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge =
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isHistogramKey = (u: unknown): u is MetricKeyType.MetricKeyType.Histogram => {
@@ -241,7 +241,7 @@ export const isHistogramKey = (u: unknown): u is MetricKeyType.MetricKeyType.His
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isSummaryKey = (u: unknown): u is MetricKeyType.MetricKeyType.Summary => {

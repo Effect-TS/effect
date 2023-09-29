@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Equal from "./Equal"
 import * as Dual from "./Function"
@@ -10,13 +10,13 @@ import { pipeArguments } from "./Pipeable"
 const TypeId: unique symbol = Symbol.for("effect/MutableRef") as TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MutableRef<T> extends Pipeable, Inspectable {
@@ -46,7 +46,7 @@ const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make = <T>(value: T): MutableRef<T> => {
@@ -56,7 +56,7 @@ export const make = <T>(value: T): MutableRef<T> => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const compareAndSet: {
@@ -74,37 +74,37 @@ export const compareAndSet: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category numeric
  */
 export const decrement = (self: MutableRef<number>): MutableRef<number> => update(self, (n) => n - 1)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category numeric
  */
 export const decrementAndGet = (self: MutableRef<number>): number => updateAndGet(self, (n) => n - 1)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const get = <T>(self: MutableRef<T>): T => self.current
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category numeric
  */
 export const getAndDecrement = (self: MutableRef<number>): number => getAndUpdate(self, (n) => n - 1)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category numeric
  */
 export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdate(self, (n) => n + 1)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const getAndSet: {
@@ -120,7 +120,7 @@ export const getAndSet: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const getAndUpdate: {
@@ -132,19 +132,19 @@ export const getAndUpdate: {
 >(2, (self, f) => getAndSet(self, f(get(self))))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category numeric
  */
 export const increment = (self: MutableRef<number>): MutableRef<number> => update(self, (n) => n + 1)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category numeric
  */
 export const incrementAndGet = (self: MutableRef<number>): number => updateAndGet(self, (n) => n + 1)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const set: {
@@ -159,7 +159,7 @@ export const set: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const setAndGet: {
@@ -174,7 +174,7 @@ export const setAndGet: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const update: {
@@ -186,7 +186,7 @@ export const update: {
 >(2, (self, f) => set(self, f(get(self))))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category general
  */
 export const updateAndGet: {
@@ -198,7 +198,7 @@ export const updateAndGet: {
 >(2, (self, f) => setAndGet(self, f(get(self))))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category boolean
  */
 export const toggle = (self: MutableRef<boolean>): MutableRef<boolean> => update(self, (_) => !_)

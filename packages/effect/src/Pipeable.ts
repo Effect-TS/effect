@@ -1,9 +1,9 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Pipeable {
@@ -285,7 +285,7 @@ export interface Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const pipeArguments = <A>(self: A, args: IArguments): unknown => {
   switch (args.length) {

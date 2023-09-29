@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type * as HashSet from "./HashSet"
@@ -11,25 +11,25 @@ import type * as TQueue from "./TQueue"
 import type * as TRef from "./TRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const THubTypeId: unique symbol = internal.THubTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type THubTypeId = typeof THubTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface THub<A> extends TQueue.TEnqueue<A> {}
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface THub<A> {
   readonly [THubTypeId]: THubTypeId
@@ -54,7 +54,7 @@ export interface THub<A> {
  * not resume until the queue has been shutdown. If the hub is already
  * shutdown, the `STM` will resume right away.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const awaitShutdown: <A>(self: THub<A>) => STM.STM<never, never, void> = internal.awaitShutdown
@@ -64,7 +64,7 @@ export const awaitShutdown: <A>(self: THub<A>) => STM.STM<never, never, void> = 
  * messages until they have been taken by all subscribers, applying back
  * pressure to publishers if the hub is at capacity.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, THub<A>> = internal.bounded
@@ -72,7 +72,7 @@ export const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TH
 /**
  * Returns the number of elements the hub can hold.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const capacity: <A>(self: THub<A>) => number = internal.capacity
@@ -81,7 +81,7 @@ export const capacity: <A>(self: THub<A>) => number = internal.capacity
  * Creates a bounded hub with the dropping strategy. The hub will drop new
  * messages if the hub is at capacity.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, THub<A>> = internal.dropping
@@ -89,7 +89,7 @@ export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, T
 /**
  * Returns `true` if the `THub` contains zero elements, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isEmpty: <A>(self: THub<A>) => STM.STM<never, never, boolean> = internal.isEmpty
@@ -98,7 +98,7 @@ export const isEmpty: <A>(self: THub<A>) => STM.STM<never, never, boolean> = int
  * Returns `true` if the `THub` contains at least one element, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isFull: <A>(self: THub<A>) => STM.STM<never, never, boolean> = internal.isFull
@@ -106,7 +106,7 @@ export const isFull: <A>(self: THub<A>) => STM.STM<never, never, boolean> = inte
 /**
  * Returns `true` if `shutdown` has been called, otherwise returns `false`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isShutdown: <A>(self: THub<A>) => STM.STM<never, never, boolean> = internal.isShutdown
@@ -115,7 +115,7 @@ export const isShutdown: <A>(self: THub<A>) => STM.STM<never, never, boolean> = 
  * Publishes a message to the hub, returning whether the message was published
  * to the hub.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const publish: {
@@ -127,7 +127,7 @@ export const publish: {
  * Publishes all of the specified messages to the hub, returning whether they
  * were published to the hub.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const publishAll: {
@@ -140,7 +140,7 @@ export const publishAll: {
  * in the hub. This may be negative if fibers are suspended waiting for
  * elements to be added to the hub.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: <A>(self: THub<A>) => STM.STM<never, never, number> = internal.size
@@ -151,7 +151,7 @@ export const size: <A>(self: THub<A>) => STM.STM<never, never, number> = interna
  *
  * For best performance use capacities that are powers of two.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, THub<A>> = internal.sliding
@@ -162,7 +162,7 @@ export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TH
  * caller is responsible for unsubscribing from the hub by shutting down the
  * queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const subscribe: <A>(self: THub<A>) => STM.STM<never, never, TQueue.TDequeue<A>> = internal.subscribe
@@ -172,7 +172,7 @@ export const subscribe: <A>(self: THub<A>) => STM.STM<never, never, TQueue.TDequ
  * be evaluated multiple times within the scope to take a message from the hub
  * each time.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const subscribeScoped: <A>(self: THub<A>) => Effect.Effect<Scope.Scope, never, TQueue.TDequeue<A>> =
@@ -181,7 +181,7 @@ export const subscribeScoped: <A>(self: THub<A>) => Effect.Effect<Scope.Scope, n
 /**
  * Creates an unbounded hub.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unbounded: <A>() => STM.STM<never, never, THub<A>> = internal.unbounded

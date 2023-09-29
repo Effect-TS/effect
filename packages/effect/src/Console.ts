@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { Effect } from "./Effect"
 import * as internal from "./internal/console"
@@ -8,19 +8,19 @@ import type * as Layer from "./Layer"
 import type { Scope } from "./Scope"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category type ids
  */
 export const TypeId: unique symbol = defaultConsole.TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category type ids
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface Console {
@@ -50,7 +50,7 @@ export interface Console {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface UnsafeConsole {
@@ -78,7 +78,7 @@ export interface UnsafeConsole {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category default services
  */
 export const withConsole: {
@@ -87,67 +87,67 @@ export const withConsole: {
 } = internal.withConsole
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category default services
  */
 export const setConsole: <A extends Console>(console: A) => Layer.Layer<never, never, never> = internal.setConsole
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const consoleWith: <R, E, A>(f: (console: Console) => Effect<R, E, A>) => Effect<R, E, A> = internal.consoleWith
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const assert: (condition: boolean, ...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.assert
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const clear: Effect<never, never, void> = internal.clear
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const count: (label?: string) => Effect<never, never, void> = internal.count
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const countReset: (label?: string) => Effect<never, never, void> = internal.countReset
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const debug: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.debug
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const dir: (item: any, options?: any) => Effect<never, never, void> = internal.dir
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const dirxml: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.dirxml
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const error: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.error
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const group: (
@@ -155,50 +155,50 @@ export const group: (
 ) => Effect<Scope, never, void> = internal.group
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const info: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.info
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const log: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.log
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const table: (tabularData: any, properties?: ReadonlyArray<string>) => Effect<never, never, void> =
   internal.table
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const time: (label?: string) => Effect<Scope, never, void> = internal.time
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const timeLog: (label?: string, ...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.timeLog
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const trace: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.trace
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const warn: (...args: ReadonlyArray<any>) => Effect<never, never, void> = internal.warn
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const withGroup: {
@@ -213,7 +213,7 @@ export const withGroup: {
 } = internal.withGroup
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category accessor
  */
 export const withTime: {

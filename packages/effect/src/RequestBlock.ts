@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Context from "./Context"
 import type { FiberRef } from "./FiberRef"
@@ -16,18 +16,18 @@ import type * as RequestResolver from "./RequestResolver"
  * parallel, allowing for maximum possible batching and pipelining while
  * preserving ordering guarantees.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export declare namespace RequestBlock {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Reducer<R, Z> {
@@ -42,7 +42,7 @@ export declare namespace RequestBlock {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Empty {
@@ -50,7 +50,7 @@ export interface Empty {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Par<R> {
@@ -60,7 +60,7 @@ export interface Par<R> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Seq<R> {
@@ -70,7 +70,7 @@ export interface Seq<R> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Single<R> {
@@ -80,7 +80,7 @@ export interface Single<R> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const single: <R, A>(
@@ -89,13 +89,13 @@ export const single: <R, A>(
 ) => RequestBlock<R> = _RequestBlock.single
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: RequestBlock<never> = _RequestBlock.empty
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const mapRequestResolvers: <R, A, R2>(
@@ -104,20 +104,20 @@ export const mapRequestResolvers: <R, A, R2>(
 ) => RequestBlock<R | R2> = _RequestBlock.mapRequestResolvers
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const parallel: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2> =
   _RequestBlock.par
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const reduce: <R, Z>(self: RequestBlock<R>, reducer: RequestBlock.Reducer<R, Z>) => Z = _RequestBlock.reduce
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sequential: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2> =
@@ -126,7 +126,7 @@ export const sequential: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) 
 /**
  * Provides each data source with part of its required environment.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInputContext = <R0, R>(
@@ -150,7 +150,7 @@ const MapInputContextReducer = <R0, R>(
 /**
  * Provides each data source with a fiber ref value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const locally: <R, A>(self: RequestBlock<R>, ref: FiberRef<A>, value: A) => RequestBlock<R> =

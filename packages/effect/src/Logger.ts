@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type { Effect } from "./Effect"
@@ -20,19 +20,19 @@ import type { Pipeable } from "./Pipeable"
 import type { Scope } from "./Scope"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const LoggerTypeId: unique symbol = internal.LoggerTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type LoggerTypeId = typeof LoggerTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
@@ -51,11 +51,11 @@ export interface Logger<Message, Output> extends Logger.Variance<Message, Output
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Logger {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<Message, Output> {
@@ -67,14 +67,14 @@ export declare namespace Logger {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type AnnotationValue = string | number | boolean
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make: <Message, Output>(
   log: (
@@ -92,20 +92,20 @@ export const make: <Message, Output>(
 ) => Logger<Message, Output> = internal.makeLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const add: <B>(logger: Logger<unknown, B>) => Layer.Layer<never, never, never> = circular.addLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const addEffect: <R, E, A>(effect: Effect<R, E, Logger<unknown, A>>) => Layer.Layer<R, E, never> =
   circular.addLoggerEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const addScoped: <R, E, A>(
@@ -113,7 +113,7 @@ export const addScoped: <R, E, A>(
 ) => Layer.Layer<Exclude<R, Scope>, E, never> = circular.addLoggerScoped
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapInput: {
@@ -130,7 +130,7 @@ export const mapInput: {
  * Returns a version of this logger that only logs messages when the log level
  * satisfies the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterLogLevel: {
@@ -144,7 +144,7 @@ export const filterLogLevel: {
 } = internal.filterLogLevel
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -160,19 +160,19 @@ export const map: {
 /**
  * A logger that does nothing in response to logging events.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const none: Logger<unknown, void> = internal.none
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const remove: <A>(logger: Logger<unknown, A>) => Layer.Layer<never, never, never> = circular.removeLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const replace: {
@@ -181,7 +181,7 @@ export const replace: {
 } = circular.replaceLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const replaceEffect: {
@@ -190,7 +190,7 @@ export const replaceEffect: {
 } = circular.replaceLoggerEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const replaceScoped: {
@@ -204,25 +204,25 @@ export const replaceScoped: {
 } = circular.replaceLoggerScoped
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const simple: <A, B>(log: (a: A) => B) => Logger<A, B> = internal.simple
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: <A>(value: A) => Logger<unknown, A> = internal.succeed
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: <A>(evaluate: LazyArg<A>) => Logger<unknown, A> = internal.sync
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const test: {
@@ -231,7 +231,7 @@ export const test: {
 } = internalCircular.test
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const withMinimumLogLevel: {
@@ -243,7 +243,7 @@ export const withMinimumLogLevel: {
  * Combines this logger with the specified logger to produce a new logger that
  * logs to both this logger and that logger.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zip: {
@@ -257,7 +257,7 @@ export const zip: {
 } = internal.zip
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipLeft: {
@@ -271,7 +271,7 @@ export const zipLeft: {
 } = internal.zipLeft
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipRight: {
@@ -285,37 +285,37 @@ export const zipRight: {
 } = internal.zipRight
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const defaultLogger: Logger<unknown, void> = fiberRuntime.defaultLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const logfmtLogger: Logger<unknown, string> = internal.logfmtLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const stringLogger: Logger<unknown, string> = internal.stringLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const tracerLogger: Logger<unknown, void> = fiberRuntime.tracerLogger
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const logFmt: Layer.Layer<never, never, never> = replace(fiberRuntime.defaultLogger, fiberRuntime.logFmtLogger)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const minimumLogLevel: (level: LogLevel.LogLevel) => Layer.Layer<never, never, never> = circular.minimumLogLevel

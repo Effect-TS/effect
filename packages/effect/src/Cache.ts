@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Duration from "./Duration"
 import type * as Effect from "./Effect"
@@ -9,13 +9,13 @@ import * as internal from "./internal/cache"
 import type * as Option from "./Option"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const CacheTypeId: unique symbol = internal.CacheTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type CacheTypeId = typeof CacheTypeId
@@ -38,7 +38,7 @@ export type CacheTypeId = typeof CacheTypeId
  * the same key the lookup function will only be computed once and the result
  * will be returned to all fibers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Value> {
@@ -78,7 +78,7 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
  *
  * It can be used safely to give over control for request management without leaking writer side details.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Error, Value> {
@@ -147,11 +147,11 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Cache {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<Key, Error, Value> {
@@ -167,7 +167,7 @@ export declare namespace Cache {
  * Constructs a new cache with the specified capacity, time to live, and
  * lookup function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Key, Environment, Error, Value>(
@@ -183,7 +183,7 @@ export const make: <Key, Environment, Error, Value>(
  * lookup function, where the time to live can depend on the `Exit` value
  * returned by the lookup function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeWith: <Key, Environment, Error, Value>(
@@ -198,7 +198,7 @@ export const makeWith: <Key, Environment, Error, Value>(
  * `CacheStats` represents a snapshot of statistics for the cache as of a
  * point in time.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface CacheStats {
@@ -210,7 +210,7 @@ export interface CacheStats {
 /**
  * Constructs a new `CacheStats` from the specified values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeCacheStats: (
@@ -224,7 +224,7 @@ export const makeCacheStats: (
 /**
  * Represents a snapshot of statistics for an entry in the cache.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface EntryStats {
@@ -234,7 +234,7 @@ export interface EntryStats {
 /**
  * Constructs a new `EntryStats` from the specified values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeEntryStats: (loadedMillis: number) => EntryStats = internal.makeEntryStats
@@ -244,7 +244,7 @@ export const makeEntryStats: (loadedMillis: number) => EntryStats = internal.mak
  * return an effect that will either produce a value of type `Value` or fail
  * with an error of type `Error` using an environment of type `Environment`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect.Effect<Environment, Error, Value>

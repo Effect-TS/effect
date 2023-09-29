@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Cause from "./Cause"
 import * as Chunk from "./Chunk"
@@ -17,13 +17,13 @@ import type { Predicate, Refinement } from "./Predicate"
 import type * as Unify from "./Unify"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const STMTypeId: unique symbol = core.STMTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type STMTypeId = typeof STMTypeId
@@ -62,7 +62,7 @@ export type STMTypeId = typeof STMTypeId
  * no race conditions from multiple threads STM provides greater benefits for
  * synchronization of Fibers and transactional data-types can be quite useful.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
@@ -72,7 +72,7 @@ export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E,
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface STMUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
@@ -81,7 +81,7 @@ export interface STMUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface STMUnifyBlacklist extends Effect.EffectUnifyBlacklist {
   Effect?: true
@@ -89,14 +89,14 @@ export interface STMUnifyBlacklist extends Effect.EffectUnifyBlacklist {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface STMTypeLambda extends TypeLambda {
   readonly type: STM<this["Out2"], this["Out1"], this["Target"]>
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 declare module "./Context" {
@@ -104,7 +104,7 @@ declare module "./Context" {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 declare module "./Either" {
@@ -117,7 +117,7 @@ declare module "./Either" {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 declare module "./Option" {
@@ -130,11 +130,11 @@ declare module "./Option" {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace STM {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<R, E, A> {
@@ -148,7 +148,7 @@ export declare namespace STM {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface STMGen<R, E, A> {
   readonly _R: () => R
@@ -161,7 +161,7 @@ export interface STMGen<R, E, A> {
 /**
  * Returns `true` if the provided value is an `STM`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isSTM: (u: unknown) => u is STM<unknown, unknown, unknown> = core.isSTM
@@ -172,7 +172,7 @@ export const isSTM: (u: unknown) => u is STM<unknown, unknown, unknown> = core.i
  * is a success and is committed the specified `release` workflow will be
  * executed uninterruptibly as soon as the `use` workflow completes execution.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const acquireUseRelease: {
@@ -190,7 +190,7 @@ export const acquireUseRelease: {
 } = stm.acquireUseRelease
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export declare namespace All {
@@ -223,7 +223,7 @@ export declare namespace All {
   >
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category utils
    */
   export type Options = { readonly discard?: boolean }
@@ -231,7 +231,7 @@ export declare namespace All {
   type Narrow<A> = (A extends [] ? [] : never) | A
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category utils
    */
   export interface Signature {
@@ -252,7 +252,7 @@ export declare namespace All {
  * Supports multiple arguments, a single argument tuple / array or record /
  * struct.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const all: All.Signature = stm.all
@@ -260,7 +260,7 @@ export const all: All.Signature = stm.all
 /**
  * Maps the success value of this effect to the specified constant value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const as: {
@@ -271,7 +271,7 @@ export const as: {
 /**
  * Maps the success value of this effect to an optional value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>> = stm.asSome
@@ -279,7 +279,7 @@ export const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>
 /**
  * Maps the error value of this effect to an optional value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const asSomeError: <R, E, A>(self: STM<R, E, A>) => STM<R, Option.Option<E>, A> = stm.asSomeError
@@ -289,7 +289,7 @@ export const asSomeError: <R, E, A>(self: STM<R, E, A>) => STM<R, Option.Option<
  * `STM` succeeds, the returned `STM` will also succeed. If the original `STM`
  * fails, the returned `STM` will fail with the same error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const asUnit: <R, E, A>(self: STM<R, E, A>) => STM<R, E, void> = stm.asUnit
@@ -297,7 +297,7 @@ export const asUnit: <R, E, A>(self: STM<R, E, A>) => STM<R, E, void> = stm.asUn
 /**
  * Creates an `STM` value from a partial (but pure) function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const attempt: <A>(evaluate: LazyArg<A>) => STM<never, unknown, A> = stm.attempt
@@ -305,7 +305,7 @@ export const attempt: <A>(evaluate: LazyArg<A>) => STM<never, unknown, A> = stm.
 /**
  * Recovers from all errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchAll: {
@@ -316,7 +316,7 @@ export const catchAll: {
 /**
  * Recovers from some or all of the error cases.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchSome: {
@@ -334,7 +334,7 @@ export const catchSome: {
 /**
  * Recovers from the specified tagged error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchTag: {
@@ -352,7 +352,7 @@ export const catchTag: {
 /**
  * Recovers from multiple tagged errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchTags: {
@@ -392,7 +392,7 @@ export const catchTags: {
 /**
  * Checks the condition, and if it's true, returns unit, otherwise, retries.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const check: (predicate: LazyArg<boolean>) => STM<never, never, void> = stm.check
@@ -400,7 +400,7 @@ export const check: (predicate: LazyArg<boolean>) => STM<never, never, void> = s
 /**
  * Simultaneously filters and maps the value produced by this effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const collect: {
@@ -411,7 +411,7 @@ export const collect: {
 /**
  * Simultaneously filters and maps the value produced by this effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const collectSTM: {
@@ -422,7 +422,7 @@ export const collectSTM: {
 /**
  * Commits this transaction atomically.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = core.commit
@@ -431,7 +431,7 @@ export const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = c
  * Commits this transaction atomically, regardless of whether the transaction
  * is a success or a failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = stm.commitEither
@@ -440,7 +440,7 @@ export const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, 
  * Similar to Either.cond, evaluate the predicate, return the given A as
  * success if predicate returns true, and the given E as error otherwise
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const cond: <E, A>(predicate: LazyArg<boolean>, error: LazyArg<E>, result: LazyArg<A>) => STM<never, E, A> =
@@ -449,7 +449,7 @@ export const cond: <E, A>(predicate: LazyArg<boolean>, error: LazyArg<E>, result
 /**
  * Retrieves the environment inside an stm.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const context: <R>() => STM<R, never, Context.Context<R>> = core.context
@@ -457,7 +457,7 @@ export const context: <R>() => STM<R, never, Context.Context<R>> = core.context
 /**
  * Accesses the environment of the transaction to perform a transaction.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) => STM<R0, never, R> = core.contextWith
@@ -465,7 +465,7 @@ export const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) =>
 /**
  * Accesses the environment of the transaction to perform a transaction.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const contextWithSTM: <R0, R, E, A>(
@@ -476,7 +476,7 @@ export const contextWithSTM: <R0, R, E, A>(
  * Transforms the environment being provided to this effect with the specified
  * function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const mapInputContext: {
@@ -487,7 +487,7 @@ export const mapInputContext: {
 /**
  * Fails the transactional effect with the specified defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const die: (defect: unknown) => STM<never, never, never> = core.die
@@ -496,7 +496,7 @@ export const die: (defect: unknown) => STM<never, never, never> = core.die
  * Kills the fiber running the effect with a `Cause.RuntimeException` that
  * contains the specified message.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieMessage: (message: string) => STM<never, never, never> = core.dieMessage
@@ -504,7 +504,7 @@ export const dieMessage: (message: string) => STM<never, never, never> = core.di
 /**
  * Fails the transactional effect with the specified lazily evaluated defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieSync: (evaluate: LazyArg<unknown>) => STM<never, never, never> = core.dieSync
@@ -512,7 +512,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => STM<never, never, never> =
 /**
  * Converts the failure channel into an `Either`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either.Either<E, A>> = stm.either
@@ -522,7 +522,7 @@ export const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either.Eithe
  * succeeds. Note that as with all STM transactions, if the full transaction
  * fails, everything will be rolled back.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category finalization
  */
 export const ensuring: {
@@ -534,7 +534,7 @@ export const ensuring: {
  * Returns an effect that ignores errors and runs repeatedly until it
  * eventually succeeds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const eventually: <R, E, A>(self: STM<R, E, A>) => STM<R, E, A> = stm.eventually
@@ -543,7 +543,7 @@ export const eventually: <R, E, A>(self: STM<R, E, A>) => STM<R, E, A> = stm.eve
  * Determines whether all elements of the `Iterable<A>` satisfy the effectual
  * predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const every: {
@@ -555,7 +555,7 @@ export const every: {
  * Determines whether any element of the `Iterable[A]` satisfies the effectual
  * predicate `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const exists: {
@@ -566,7 +566,7 @@ export const exists: {
 /**
  * Fails the transactional effect with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fail: <E>(error: E) => STM<never, E, never> = core.fail
@@ -574,7 +574,7 @@ export const fail: <E>(error: E) => STM<never, E, never> = core.fail
 /**
  * Fails the transactional effect with the specified lazily evaluated error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failSync: <E>(evaluate: LazyArg<E>) => STM<never, E, never> = core.failSync
@@ -582,7 +582,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => STM<never, E, never> = core.
 /**
  * Returns the fiber id of the fiber committing the transaction.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fiberId: STM<never, never, FiberId.FiberId> = stm.fiberId
@@ -590,7 +590,7 @@ export const fiberId: STM<never, never, FiberId.FiberId> = stm.fiberId
 /**
  * Filters the collection using the specified effectual predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const filter: {
@@ -602,7 +602,7 @@ export const filter: {
  * Filters the collection using the specified effectual predicate, removing
  * all elements that satisfy the predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const filterNot: {
@@ -613,7 +613,7 @@ export const filterNot: {
 /**
  * Dies with specified defect if the predicate fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterOrDie: {
@@ -627,7 +627,7 @@ export const filterOrDie: {
  * Dies with a `Cause.RuntimeException` having the specified  message if the
  * predicate fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterOrDieMessage: {
@@ -640,7 +640,7 @@ export const filterOrDieMessage: {
 /**
  * Supplies `orElse` if the predicate fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterOrElse: {
@@ -667,7 +667,7 @@ export const filterOrElse: {
 /**
  * Fails with the specified error if the predicate fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterOrFail: {
@@ -695,7 +695,7 @@ export const filterOrFail: {
  * Feeds the value produced by this effect to the specified function, and then
  * runs the returned effect as well to produce its results.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -706,7 +706,7 @@ export const flatMap: {
 /**
  * Flattens out a nested `STM` effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatten: <R, E, R2, E2, A>(self: STM<R, E, STM<R2, E2, A>>) => STM<R | R2, E | E2, A> = stm.flatten
@@ -716,7 +716,7 @@ export const flatten: <R, E, R2, E2, A>(self: STM<R, E, STM<R2, E2, A>>) => STM<
  * allows you to use all methods on the error channel, possibly before
  * flipping back.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const flip: <R, E, A>(self: STM<R, E, A>) => STM<R, A, E> = stm.flip
@@ -725,7 +725,7 @@ export const flip: <R, E, A>(self: STM<R, E, A>) => STM<R, A, E> = stm.flip
  * Swaps the error/value parameters, applies the function `f` and flips the
  * parameters back
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const flipWith: {
@@ -737,7 +737,7 @@ export const flipWith: {
  * Folds over the `STM` effect, handling both failure and success, but not
  * retry.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const match: {
@@ -759,7 +759,7 @@ export const match: {
 /**
  * Effectfully folds over the `STM` effect, handling both failure and success.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const matchSTM: {
@@ -782,7 +782,7 @@ export const matchSTM: {
  * Applies the function `f` to each element of the `Iterable<A>` and returns
  * a transactional effect that produces a new `Chunk<A2>`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category traversing
  */
 export const forEach: {
@@ -805,7 +805,7 @@ export const forEach: {
 /**
  * Lifts an `Either` into a `STM`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEither: <E, A>(either: Either.Either<E, A>) => STM<never, E, A> = stm.fromEither
@@ -813,13 +813,13 @@ export const fromEither: <E, A>(either: Either.Either<E, A>) => STM<never, E, A>
 /**
  * Lifts an `Option` into a `STM`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromOption: <A>(option: Option.Option<A>) => STM<never, Option.Option<never>, A> = stm.fromOption
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Adapter {
@@ -1085,7 +1085,7 @@ export interface Adapter {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const gen: <Eff extends STMGen<any, any, any>, AEff>(
@@ -1100,7 +1100,7 @@ export const gen: <Eff extends STMGen<any, any, any>, AEff>(
  * Returns a successful effect with the head of the list if the list is
  * non-empty or fails with the error `None` if the list is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const head: <R, E, A>(self: STM<R, E, Iterable<A>>) => STM<R, Option.Option<E>, A> = stm.head
@@ -1132,7 +1132,7 @@ export {
   /**
    * Runs `onTrue` if the result of `b` is `true` and `onFalse` otherwise.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category mutations
    */
   if_ as if
@@ -1141,7 +1141,7 @@ export {
 /**
  * Returns a new effect that ignores the success or failure of this effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const ignore: <R, E, A>(self: STM<R, E, A>) => STM<R, never, void> = stm.ignore
@@ -1149,7 +1149,7 @@ export const ignore: <R, E, A>(self: STM<R, E, A>) => STM<R, never, void> = stm.
 /**
  * Interrupts the fiber running the effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const interrupt: STM<never, never, never> = core.interrupt
@@ -1157,7 +1157,7 @@ export const interrupt: STM<never, never, never> = core.interrupt
 /**
  * Interrupts the fiber running the effect with the specified `FiberId`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const interruptAs: (fiberId: FiberId.FiberId) => STM<never, never, never> = core.interruptAs
@@ -1165,7 +1165,7 @@ export const interruptAs: (fiberId: FiberId.FiberId) => STM<never, never, never>
 /**
  * Returns whether this transactional effect is a failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isFailure: <R, E, A>(self: STM<R, E, A>) => STM<R, never, boolean> = stm.isFailure
@@ -1173,7 +1173,7 @@ export const isFailure: <R, E, A>(self: STM<R, E, A>) => STM<R, never, boolean> 
 /**
  * Returns whether this transactional effect is a success.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isSuccess: <R, E, A>(self: STM<R, E, A>) => STM<R, never, boolean> = stm.isSuccess
@@ -1192,7 +1192,7 @@ export const isSuccess: <R, E, A>(self: STM<R, E, A>) => STM<R, never, boolean> 
  * return s
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const iterate: <R, E, Z>(
@@ -1219,7 +1219,7 @@ export const iterate: <R, E, Z>(
  * return as
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const loop: {
@@ -1246,7 +1246,7 @@ export const loop: {
 /**
  * Maps the value produced by the effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -1259,7 +1259,7 @@ export const map: {
  * throw exceptions but is otherwise pure, translating any thrown exceptions
  * into typed failed effects.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapAttempt: {
@@ -1271,7 +1271,7 @@ export const mapAttempt: {
  * Returns an `STM` effect whose failure and success channels have been mapped
  * by the specified pair of functions, `f` and `g`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapBoth: {
@@ -1293,7 +1293,7 @@ export const mapBoth: {
 /**
  * Maps from one error type to another.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapError: {
@@ -1305,7 +1305,7 @@ export const mapError: {
  * Returns a new effect where the error channel has been merged into the
  * success channel to their common combined type.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const merge: <R, E, A>(self: STM<R, E, A>) => STM<R, never, E | A> = stm.merge
@@ -1313,7 +1313,7 @@ export const merge: <R, E, A>(self: STM<R, E, A>) => STM<R, never, E | A> = stm.
 /**
  * Merges an `Iterable<STM>` to a single `STM`, working sequentially.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const mergeAll: {
@@ -1324,7 +1324,7 @@ export const mergeAll: {
 /**
  * Returns a new effect where boolean value of this effect is negated.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const negate: <R, E>(self: STM<R, E, boolean>) => STM<R, E, boolean> = stm.negate
@@ -1332,7 +1332,7 @@ export const negate: <R, E>(self: STM<R, E, boolean>) => STM<R, E, boolean> = st
 /**
  * Requires the option produced by this value to be `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const none: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, void> = stm.none
@@ -1340,7 +1340,7 @@ export const none: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option
 /**
  * Converts the failure channel into an `Option`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const option: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Option.Option<A>> = stm.option
@@ -1349,7 +1349,7 @@ export const option: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Option.Optio
  * Translates `STM` effect failure into death of the fiber, making all
  * failures unchecked and not a part of the type of the effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orDie: <R, E, A>(self: STM<R, E, A>) => STM<R, never, A> = stm.orDie
@@ -1358,7 +1358,7 @@ export const orDie: <R, E, A>(self: STM<R, E, A>) => STM<R, never, A> = stm.orDi
  * Keeps none of the errors, and terminates the fiber running the `STM` effect
  * with them, using the specified function to convert the `E` into a defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orDieWith: {
@@ -1370,7 +1370,7 @@ export const orDieWith: {
  * Tries this effect first, and if it fails or retries, tries the other
  * effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElse: {
@@ -1383,7 +1383,7 @@ export const orElse: {
  * in left side, unless it fails or retries, in which case, it will produce
  * the value of the specified effect in right side.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseEither: {
@@ -1395,7 +1395,7 @@ export const orElseEither: {
  * Tries this effect first, and if it fails or retries, fails with the
  * specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseFail: {
@@ -1408,7 +1408,7 @@ export const orElseFail: {
  * fails with the `None` value, in which case it will produce the value of the
  * specified effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseOptional: {
@@ -1427,7 +1427,7 @@ export const orElseOptional: {
  * Tries this effect first, and if it fails or retries, succeeds with the
  * specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseSucceed: {
@@ -1439,7 +1439,7 @@ export const orElseSucceed: {
  * Tries this effect first, and if it enters retry, then it tries the other
  * effect. This is an equivalent of Haskell's orElse.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orTry: {
@@ -1451,7 +1451,7 @@ export const orTry: {
  * Feeds elements of type `A` to a function `f` that returns an effect.
  * Collects all successes and failures in a tupled fashion.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category traversing
  */
 export const partition: {
@@ -1463,7 +1463,7 @@ export const partition: {
  * Provides the transaction its required environment, which eliminates its
  * dependency on `R`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideContext: {
@@ -1475,7 +1475,7 @@ export const provideContext: {
  * Splits the context into two parts, providing one part using the
  * specified layer and leaving the remainder `R0`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideSomeContext: {
@@ -1487,7 +1487,7 @@ export const provideSomeContext: {
  * Provides the effect with the single service it requires. If the transactional
  * effect requires more than one service use `provideEnvironment` instead.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideService: {
@@ -1506,7 +1506,7 @@ export const provideService: {
  * Provides the effect with the single service it requires. If the transactional
  * effect requires more than one service use `provideEnvironment` instead.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideServiceSTM: {
@@ -1525,7 +1525,7 @@ export const provideServiceSTM: {
  * Folds an `Iterable<A>` using an effectual function f, working sequentially
  * from left to right.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const reduce: {
@@ -1536,7 +1536,7 @@ export const reduce: {
 /**
  * Reduces an `Iterable<STM>` to a single `STM`, working sequentially.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const reduceAll: {
@@ -1557,7 +1557,7 @@ export const reduceAll: {
  * Folds an `Iterable<A>` using an effectual function f, working sequentially
  * from right to left.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const reduceRight: {
@@ -1568,7 +1568,7 @@ export const reduceRight: {
 /**
  * Keeps some of the errors, and terminates the fiber with the rest.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const refineOrDie: {
@@ -1580,7 +1580,7 @@ export const refineOrDie: {
  * Keeps some of the errors, and terminates the fiber with the rest, using the
  * specified function to convert the `E` into a `Throwable`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const refineOrDieWith: {
@@ -1592,7 +1592,7 @@ export const refineOrDieWith: {
  * Fail with the returned value if the `PartialFunction` matches, otherwise
  * continue with our held value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const reject: {
@@ -1605,7 +1605,7 @@ export const reject: {
  * matches, translating the successful match into a failure, otherwise continue
  * with our held value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const rejectSTM: {
@@ -1625,7 +1625,7 @@ export const rejectSTM: {
  *     state for repeats.
  *   - Ensure repeating the STM effect will eventually satisfy the predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const repeatUntil: {
@@ -1646,7 +1646,7 @@ export const repeatUntil: {
  *   - Ensure repeating the STM effect will eventually not satisfy the
  *     predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const repeatWhile: {
@@ -1658,7 +1658,7 @@ export const repeatWhile: {
  * Replicates the given effect n times. If 0 or negative numbers are given, an
  * empty `Chunk` will be returned.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const replicate: {
@@ -1670,7 +1670,7 @@ export const replicate: {
  * Performs this transaction the specified number of times and collects the
  * results.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const replicateSTM: {
@@ -1682,7 +1682,7 @@ export const replicateSTM: {
  * Performs this transaction the specified number of times, discarding the
  * results.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const replicateSTMDiscard: {
@@ -1694,7 +1694,7 @@ export const replicateSTMDiscard: {
  * Abort and retry the whole transaction when any of the underlying
  * transactional variables have changed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const retry: STM<never, never, never> = core.retry
@@ -1703,7 +1703,7 @@ export const retry: STM<never, never, never> = core.retry
  * Filters the value produced by this effect, retrying the transaction until
  * the predicate returns `true` for the value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const retryUntil: {
@@ -1715,7 +1715,7 @@ export const retryUntil: {
  * Filters the value produced by this effect, retrying the transaction while
  * the predicate returns `true` for the value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const retryWhile: {
@@ -1726,7 +1726,7 @@ export const retryWhile: {
 /**
  * Converts an option on values into an option on errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const some: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, A> = stm.some
@@ -1734,7 +1734,7 @@ export const some: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option
 /**
  * Returns an `STM` effect that succeeds with the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: <A>(value: A) => STM<never, never, A> = core.succeed
@@ -1742,7 +1742,7 @@ export const succeed: <A>(value: A) => STM<never, never, A> = core.succeed
 /**
  * Returns an effect with the empty value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeedNone: STM<never, never, Option.Option<never>> = stm.succeedNone
@@ -1750,7 +1750,7 @@ export const succeedNone: STM<never, never, Option.Option<never>> = stm.succeedN
 /**
  * Returns an effect with the optional value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeedSome: <A>(value: A) => STM<never, never, Option.Option<A>> = stm.succeedSome
@@ -1760,7 +1760,7 @@ export const succeedSome: <A>(value: A) => STM<never, never, Option.Option<A>> =
  * execution, and then combining the values to produce a summary, together
  * with the result of execution.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const summarized: {
@@ -1780,7 +1780,7 @@ export const summarized: {
 /**
  * Suspends creation of the specified transaction lazily.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const suspend: <R, E, A>(evaluate: LazyArg<STM<R, E, A>>) => STM<R, E, A> = stm.suspend
@@ -1789,7 +1789,7 @@ export const suspend: <R, E, A>(evaluate: LazyArg<STM<R, E, A>>) => STM<R, E, A>
  * Returns an `STM` effect that succeeds with the specified lazily evaluated
  * value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: <A>(evaluate: () => A) => STM<never, never, A> = core.sync
@@ -1797,7 +1797,7 @@ export const sync: <A>(evaluate: () => A) => STM<never, never, A> = core.sync
 /**
  * "Peeks" at the success of transactional effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tap: {
@@ -1808,7 +1808,7 @@ export const tap: {
 /**
  * "Peeks" at both sides of an transactional effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tapBoth: {
@@ -1824,7 +1824,7 @@ export const tapBoth: {
 /**
  * "Peeks" at the error of the transactional effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tapError: {
@@ -1844,7 +1844,7 @@ export {
    * Imports a synchronous side-effect into a pure value, translating any thrown
    * exceptions into typed failed effects.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category constructors
    */
   try_ as try
@@ -1853,7 +1853,7 @@ export {
 /**
  * The moral equivalent of `if (!p) exp`
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const unless: {
@@ -1864,7 +1864,7 @@ export const unless: {
 /**
  * The moral equivalent of `if (!p) exp` when `p` has side-effects
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const unlessSTM: {
@@ -1875,7 +1875,7 @@ export const unlessSTM: {
 /**
  * Converts an option on errors into an option on values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const unsome: <R, E, A>(self: STM<R, Option.Option<E>, A>) => STM<R, E, Option.Option<A>> = stm.unsome
@@ -1883,7 +1883,7 @@ export const unsome: <R, E, A>(self: STM<R, Option.Option<E>, A>) => STM<R, E, O
 /**
  * Returns an `STM` effect that succeeds with `Unit`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unit: STM<never, never, void> = stm.unit
@@ -1895,7 +1895,7 @@ export const unit: STM<never, never, void> = stm.unit
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost. To retain all information please use `STM.partition`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const validateAll: {
@@ -1907,7 +1907,7 @@ export const validateAll: {
  * Feeds elements of type `A` to `f` until it succeeds. Returns first success
  * or the accumulation of all errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const validateFirst: {
@@ -1918,7 +1918,7 @@ export const validateFirst: {
 /**
  * The moral equivalent of `if (p) exp`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const when: {
@@ -1929,7 +1929,7 @@ export const when: {
 /**
  * The moral equivalent of `if (p) exp` when `p` has side-effects.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const whenSTM: {
@@ -1940,7 +1940,7 @@ export const whenSTM: {
 /**
  * Sequentially zips this value with the specified one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zip: {
@@ -1952,7 +1952,7 @@ export const zip: {
  * Sequentially zips this value with the specified one, discarding the second
  * element of the tuple.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipLeft: {
@@ -1964,7 +1964,7 @@ export const zipLeft: {
  * Sequentially zips this value with the specified one, discarding the first
  * element of the tuple.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipRight: {
@@ -1976,7 +1976,7 @@ export const zipRight: {
  * Sequentially zips this value with the specified one, combining the values
  * using the specified combiner function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWith: {
@@ -2009,7 +2009,7 @@ export const zipWith: {
  * `STM` value in the iterable, or a failed `STM` value if all of the
  * `STM` values in the iterable fail.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const firstSuccessOf = <R, E, A>(effects: Iterable<STM<R, E, A>>): STM<R, E, A> =>
@@ -2027,13 +2027,13 @@ export const firstSuccessOf = <R, E, A>(effects: Iterable<STM<R, E, A>>): STM<R,
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Do: STM<never, never, {}> = succeed({})
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const bind: {
   <N extends string, K, R2, E2, A>(
@@ -2061,14 +2061,14 @@ const let_: {
 export {
   /**
    * @category do notation
-   * @since 1.0.0
+   * @since 2.0.0
    */
   let_ as let
 }
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const bindTo: {
   <N extends string>(tag: N): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Record<N, A>>

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Clock from "./Clock"
 import type * as ConfigProvider from "./ConfigProvider"
@@ -11,7 +11,7 @@ import type * as Random from "./Random"
 import type * as Tracer from "./Tracer"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type DefaultServices =
@@ -22,13 +22,13 @@ export type DefaultServices =
   | Tracer.Tracer
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const liveServices: Context.Context<DefaultServices> = internal.liveServices
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category fiberRefs
  */
 export const currentServices: FiberRef.FiberRef<Context.Context<DefaultServices>> = internal.currentServices

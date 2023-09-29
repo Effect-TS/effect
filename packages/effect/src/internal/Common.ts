@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { NonEmptyReadonlyArray } from "../ReadonlyArray"
 
@@ -43,7 +43,7 @@ export const has = Object.prototype.hasOwnProperty
 
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type NonEmptyArray<A> = [A, ...Array<A>]
 

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { Chunk } from "./Chunk"
 import type { Context } from "./Context"
@@ -16,13 +16,13 @@ import * as HashSetPatch from "./internal/Differ/HashSetPatch"
 import * as OrPatch from "./internal/Differ/OrPatch"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export const TypeId: unique symbol = D.DifferTypeId as TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
@@ -43,7 +43,7 @@ export type TypeId = typeof TypeId
  * using the `orElseEither` and `zip` operators. This allows creating `Differ`
  * values for arbitrarily complex data types compositionally.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Differ<Value, Patch> {
@@ -64,15 +64,15 @@ const HashSetPatchTypeId: unique symbol = HashSetPatch.HashSetPatchTypeId as Dif
 const OrPatchTypeId: unique symbol = OrPatch.OrPatchTypeId as Differ.Or.TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Differ {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export namespace Context {
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      * @category symbol
      */
     export type TypeId = typeof ContextPatchTypeId
@@ -81,7 +81,7 @@ export declare namespace Differ {
      * to a `Env<Output>` as a data structure. This allows combining updates to
      * different services in the environment in a compositional way.
      *
-     * @since 1.0.0
+     * @since 2.0.0
      * @category models
      */
     export interface Patch<Input, Output> extends Equal {
@@ -93,18 +93,18 @@ export declare namespace Differ {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export namespace Chunk {
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      * @category symbol
      */
     export type TypeId = typeof ChunkPatchTypeId
     /**
      * A patch which describes updates to a chunk of values.
      *
-     * @since 1.0.0
+     * @since 2.0.0
      * @category models
      */
     export interface Patch<Value, Patch> extends Equal {
@@ -116,18 +116,18 @@ export declare namespace Differ {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export namespace HashMap {
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      * @category symbol
      */
     export type TypeId = typeof HashMapPatchTypeId
     /**
      * A patch which describes updates to a map of keys and values.
      *
-     * @since 1.0.0
+     * @since 2.0.0
      * @category models
      */
     export interface Patch<Key, Value, Patch> extends Equal {
@@ -140,18 +140,18 @@ export declare namespace Differ {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export namespace HashSet {
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      * @category symbol
      */
     export type TypeId = typeof HashSetPatchTypeId
     /**
      * A patch which describes updates to a set of values.
      *
-     * @since 1.0.0
+     * @since 2.0.0
      * @category models
      */
     export interface Patch<Value> extends Equal {
@@ -162,18 +162,18 @@ export declare namespace Differ {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export namespace Or {
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      * @category symbol
      */
     export type TypeId = typeof OrPatchTypeId
     /**
      * A patch which describes updates to either one value or another.
      *
-     * @since 1.0.0
+     * @since 2.0.0
      * @category models
      */
     export interface Patch<Value, Value2, Patch, Patch2> extends Equal {
@@ -190,7 +190,7 @@ export declare namespace Differ {
 /**
  * An empty patch that describes no changes.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category patch
  */
 export const empty: <Value, Patch>(self: Differ<Value, Patch>) => Patch = (
@@ -198,7 +198,7 @@ export const empty: <Value, Patch>(self: Differ<Value, Patch>) => Patch = (
 ) => self.empty
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category patch
  */
 export const diff: {
@@ -226,7 +226,7 @@ export const diff: {
  * commutative then joining multiple fibers concurrently will result in
  * deterministic `FiberRef` values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category patch
  */
 export const combine: {
@@ -251,7 +251,7 @@ export const combine: {
  * Applies a patch to an old value to produce a new value that is equal to the
  * old value with the updates described by the patch.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category patch
  */
 export const patch: {
@@ -275,7 +275,7 @@ export const patch: {
 /**
  * Constructs a new `Differ`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Value, Patch>(params: {
@@ -288,7 +288,7 @@ export const make: <Value, Patch>(params: {
 /**
  * Constructs a differ that knows how to diff `Env` values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const environment: <A>() => Differ<
@@ -300,7 +300,7 @@ export const environment: <A>() => Differ<
  * Constructs a differ that knows how to diff a `Chunk` of values given a
  * differ that knows how to diff the values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const chunk: <Value, Patch>(
@@ -311,7 +311,7 @@ export const chunk: <Value, Patch>(
  * Constructs a differ that knows how to diff a `HashMap` of keys and values given
  * a differ that knows how to diff the values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const hashMap: <Key, Value, Patch>(
@@ -321,7 +321,7 @@ export const hashMap: <Key, Value, Patch>(
 /**
  * Constructs a differ that knows how to diff a `HashSet` of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const hashSet: <Value>() => Differ<
@@ -333,7 +333,7 @@ export const hashSet: <Value>() => Differ<
  * Combines this differ and the specified differ to produce a differ that
  * knows how to diff the sum of their values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const orElseEither: {
   <Value2, Patch2>(that: Differ<Value2, Patch2>): <Value, Patch>(
@@ -355,7 +355,7 @@ export const orElseEither: {
  * Transforms the type of values that this differ knows how to differ using
  * the specified functions that map the new and old value types to each other.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const transform: {
   <Value, Value2>(options: {
@@ -377,7 +377,7 @@ export const transform: {
  * multiple updates to the value compositionally and should only be used when
  * there is no compositional way to update them.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const update: <A>() => Differ<A, (a: A) => A> = D.update
 
@@ -385,7 +385,7 @@ export const update: <A>() => Differ<A, (a: A) => A> = D.update
  * A variant of `update` that allows specifying the function that will be used
  * to combine old values with new values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const updateWith: <A>(f: (x: A, y: A) => A) => Differ<A, (a: A) => A> = D.updateWith
 
@@ -393,7 +393,7 @@ export const updateWith: <A>(f: (x: A, y: A) => A) => Differ<A, (a: A) => A> = D
  * Combines this differ and the specified differ to produce a new differ that
  * knows how to diff the product of their values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const zip: {
   <Value2, Patch2>(that: Differ<Value2, Patch2>): <Value, Patch>(

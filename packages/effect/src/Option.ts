@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Data from "./Data"
 import type { Either } from "./Either"
@@ -21,25 +21,25 @@ import * as Gen from "./Utils"
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Option<A> = None<A> | Some<A>
 
 /**
  * @category symbols
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TypeId = Symbol.for("effect/Option")
 
 /**
  * @category symbols
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TypeId = typeof TypeId
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface None<A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "None"
@@ -54,7 +54,7 @@ export interface None<A> extends Data.Case, Pipeable, Inspectable {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Some<A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Some"
@@ -70,7 +70,7 @@ export interface Some<A> extends Data.Case, Pipeable, Inspectable {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
   Option?: () => A[Unify.typeSymbol] extends Option<infer A0> | infer _ ? Option<A0> : never
@@ -78,13 +78,13 @@ export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface OptionUnifyBlacklist {}
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface OptionTypeLambda extends TypeLambda {
   readonly type: Option<this["Target"]>
@@ -94,7 +94,7 @@ export interface OptionTypeLambda extends TypeLambda {
  * Creates a new `Option` that represents the absence of a value.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const none = <A = never>(): Option<A> => option.none
 
@@ -104,7 +104,7 @@ export const none = <A = never>(): Option<A> => option.none
  * @param value - The value to wrap.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const some: <A>(value: A) => Option<A> = option.some
 
@@ -121,7 +121,7 @@ export const some: <A>(value: A) => Option<A> = option.some
  * assert.deepStrictEqual(isOption({}), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isOption: (input: unknown) => input is Option<unknown> = option.isOption
 
@@ -137,7 +137,7 @@ export const isOption: (input: unknown) => input is Option<unknown> = option.isO
  * assert.deepStrictEqual(isNone(none()), true)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
 
@@ -153,7 +153,7 @@ export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
  * assert.deepStrictEqual(isSome(none()), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isSome: <A>(self: Option<A>) => self is Some<A> = option.isSome
 
@@ -180,7 +180,7 @@ export const isSome: <A>(self: Option<A>) => self is Some<A> = option.isSome
  * )
  *
  * @category pattern matching
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const match: {
   <B, A, C = B>(options: {
@@ -215,7 +215,7 @@ export const match: {
  * assert.deepStrictEqual(isPositive(-1), false)
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toRefinement = <A, B extends A>(f: (a: A) => Option<B>): (a: A) => a is B => (a: A): a is B => isSome(f(a))
 
@@ -232,7 +232,7 @@ export const toRefinement = <A, B extends A>(f: (a: A) => Option<B>): (a: A) => 
  * assert.deepStrictEqual(fromIterable([]), none())
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
   for (const a of collection) {
@@ -254,7 +254,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  * assert.deepStrictEqual(O.getRight(E.left('err')), O.none())
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
 
@@ -269,7 +269,7 @@ export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
  * assert.deepStrictEqual(O.getLeft(E.left("a")), O.some("a"))
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
 
@@ -287,7 +287,7 @@ export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
  * assert.deepStrictEqual(pipe(none(), getOrElse(() => 0)), 0)
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrElse: {
   <B>(onNone: LazyArg<B>): <A>(self: Option<A>) => B | A
@@ -337,7 +337,7 @@ export const getOrElse: {
  * )
  *
  * @category error handling
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const orElse: {
   <B>(that: LazyArg<Option<B>>): <A>(self: Option<A>) => Option<B | A>
@@ -357,7 +357,7 @@ export const orElse: {
  * @param that - The second `Option` to be considered if the first `Option` is `None`.
  *
  * @category error handling
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const orElseEither: {
   <B>(that: LazyArg<Option<B>>): <A>(self: Option<A>) => Option<Either<A, B>>
@@ -379,7 +379,7 @@ export const orElseEither: {
  * assert.deepStrictEqual(O.firstSomeOf([O.none(), O.some(1), O.some(2)]), O.some(1))
  *
  * @category error handling
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const firstSomeOf = <A>(collection: Iterable<Option<A>>): Option<A> => {
   let out: Option<A> = none()
@@ -405,7 +405,7 @@ export const firstSomeOf = <A>(collection: Iterable<Option<A>>): Option<A> => {
  * assert.deepStrictEqual(O.fromNullable(1), O.some(1))
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromNullable = <A>(
   nullableValue: A
@@ -430,7 +430,7 @@ export const fromNullable = <A>(
  * assert.deepStrictEqual(parseOption('not a number'), O.none())
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const liftNullable = <A extends ReadonlyArray<unknown>, B>(
   f: (...a: A) => B | null | undefined
@@ -449,7 +449,7 @@ export const liftNullable = <A extends ReadonlyArray<unknown>, B>(
  * assert.deepStrictEqual(O.getOrNull(O.none()), null)
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrNull: <A>(self: Option<A>) => A | null = getOrElse(constNull)
 
@@ -465,7 +465,7 @@ export const getOrNull: <A>(self: Option<A>) => A | null = getOrElse(constNull)
  * assert.deepStrictEqual(O.getOrUndefined(O.none()), undefined)
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrUndefined: <A>(self: Option<A>) => A | undefined = getOrElse(constUndefined)
 
@@ -486,7 +486,7 @@ export const getOrUndefined: <A>(self: Option<A>) => A | undefined = getOrElse(c
  * assert.deepStrictEqual(parse(""), O.none())
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
   f: (...a: A) => B
@@ -517,7 +517,7 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  * assert.throws(() => O.getOrThrowWith(O.none(), () => new Error('Unexpected None')))
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrThrowWith: {
   (onNone: () => unknown): <A>(self: Option<A>) => A
@@ -544,7 +544,7 @@ export const getOrThrowWith: {
  * assert.throws(() => O.getOrThrow(O.none()))
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrThrow: <A>(self: Option<A>) => A = getOrThrowWith(() => new Error("getOrThrow called on a None"))
 
@@ -555,7 +555,7 @@ export const getOrThrow: <A>(self: Option<A>) => A = getOrThrowWith(() => new Er
  * @param f - The function to map over the value of the `Option`
  *
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const map: {
   <A, B>(f: (a: A) => B): (self: Option<A>) => Option<B>
@@ -569,7 +569,7 @@ export const map: {
  * Maps the `Some` value of this `Option` to the specified constant value.
  *
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const as: {
   <B>(b: B): <_>(self: Option<_>) => Option<B>
@@ -581,12 +581,12 @@ export const as: {
  * This is useful when the value of the `Option` is not needed, but the presence or absence of the value is important.
  *
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const asUnit: <_>(self: Option<_>) => Option<void> = as(undefined)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const unit: Option<void> = some(undefined)
 
@@ -594,7 +594,7 @@ export const unit: Option<void> = some(undefined)
  * Applies a function to the value of an `Option` and flattens the result, if the input is `Some`.
  *
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const flatMap: {
   <A, B>(f: (a: A) => Option<B>): (self: Option<A>) => Option<B>
@@ -642,7 +642,7 @@ export const flatMap: {
  * )
  *
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const flatMapNullable: {
   <A, B>(f: (a: A) => B | null | undefined): (self: Option<A>) => Option<NonNullable<B>>
@@ -655,13 +655,13 @@ export const flatMapNullable: {
 
 /**
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const flatten: <A>(self: Option<Option<A>>) => Option<A> = flatMap(identity)
 
 /**
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const zipRight: {
   <B>(that: Option<B>): <_>(self: Option<_>) => Option<B>
@@ -670,7 +670,7 @@ export const zipRight: {
 
 /**
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const composeK: {
   <B, C>(bfc: (b: B) => Option<C>): <A>(afb: (a: A) => Option<B>) => (a: A) => Option<C>
@@ -686,7 +686,7 @@ export const composeK: {
  * @param self - The `Option` we care about
  *
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const zipLeft: {
   <_>(that: Option<_>): <A>(self: Option<A>) => Option<A>
@@ -712,7 +712,7 @@ export const zipLeft: {
  * assert.deepStrictEqual(O.tap(O.some(1.14), getInteger), O.none())
  *
  * @category transforming
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const tap: {
   <A, _>(f: (a: A) => Option<_>): (self: Option<A>) => Option<A>
@@ -721,14 +721,14 @@ export const tap: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const product = <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]> =>
   isSome(self) && isSome(that) ? some([self.value, that.value]) : none()
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const productMany = <A>(
   self: Option<A>,
@@ -764,7 +764,7 @@ export const productMany = <A>(
  * assert.deepStrictEqual(O.all({ a: O.some(1), b: O.none() }), O.none())
  *
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 // @ts-expect-error
 export const all: <const I extends Iterable<Option<any>> | Record<string, Option<any>>>(
@@ -820,7 +820,7 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
  * assert.deepStrictEqual(O.zipWith(O.some(1), complex)(O.some(2)), O.some([2, 1]))
  *
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const zipWith: {
   <B, A, C>(that: Option<B>, f: (a: A, b: B) => C): (self: Option<A>) => Option<C>
@@ -833,7 +833,7 @@ export const zipWith: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const ap: {
   <A>(that: Option<A>): <B>(self: Option<(a: A) => B>) => Option<B>
@@ -855,7 +855,7 @@ export const ap: {
  * assert.deepStrictEqual(pipe(iterable, reduceCompact(0, (b, a) => b + a)), 3)
  *
  * @category folding
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const reduceCompact: {
   <B, A>(b: B, f: (b: B, a: A) => B): (self: Iterable<Option<A>>) => B
@@ -887,13 +887,13 @@ export const reduceCompact: {
  * assert.deepStrictEqual(O.toArray(O.none()), [])
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [self.value]
 
 /**
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const partitionMap: {
   <A, B, C>(f: (a: A) => Either<B, C>): (self: Option<A>) => [Option<B>, Option<C>]
@@ -927,7 +927,7 @@ export const partitionMap: {
  * assert.deepStrictEqual(O.filterMap(O.some(2), evenNumber), O.some(2))
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const filterMap: {
   <A, B>(f: (a: A) => Option<B>): (self: Option<A>) => Option<B>
@@ -963,7 +963,7 @@ export const filterMap: {
  * assert.deepStrictEqual(O.filter(O.some(2), isNumber), O.some(2))
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const filter: {
   <C extends A, B extends A, A = C>(refinement: (a: A) => a is B): (self: Option<C>) => Option<B>
@@ -989,7 +989,7 @@ export const filter: {
  * assert.deepStrictEqual(isEquivalent(some(1), some(1)), true)
  *
  * @category equivalence
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Option<A>> =>
   Equivalence.make((x, y) => x === y || (isNone(x) ? isNone(y) : isNone(y) ? false : isEquivalent(x.value, y.value)))
@@ -1014,7 +1014,7 @@ export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equ
  * assert.deepStrictEqual(O(some(1), some(1)), 0)
  *
  * @category sorting
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrder = <A>(O: Order<A>): Order<Option<A>> =>
   order.make((self, that) => isSome(self) ? (isSome(that) ? O(self.value, that.value) : 1) : -1)
@@ -1025,7 +1025,7 @@ export const getOrder = <A>(O: Order<A>): Order<Option<A>> =>
  * @param f - The function to lift.
  *
  * @category lifting
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
   (that: Option<B>): (self: Option<A>) => Option<C>
@@ -1047,7 +1047,7 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  * assert.deepStrictEqual(getOption(1), O.some(1))
  *
  * @category lifting
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const liftPredicate: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (c: C) => Option<B>
@@ -1071,7 +1071,7 @@ export const liftPredicate: {
  * assert.deepStrictEqual(pipe(none(), containsWith(Equivalence)(2)), false)
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
   (a: A): (self: Option<A>) => boolean
@@ -1084,7 +1084,7 @@ const _equivalence = Equal.equivalence()
  * Returns a function that checks if an `Option` contains a given value using the default `Equivalence`.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const contains: {
   <A>(a: A): (self: Option<A>) => boolean
@@ -1107,7 +1107,7 @@ export const contains: {
  * assert.deepStrictEqual(pipe(some(1), exists(isEven)), false)
  * assert.deepStrictEqual(pipe(none(), exists(isEven)), false)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const exists: {
   <A>(predicate: Predicate<A>): (self: Option<A>) => boolean
@@ -1123,7 +1123,7 @@ export const exists: {
 
 /**
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sum: {
   (self: Option<number>, that: Option<number>): Option<number>
@@ -1132,7 +1132,7 @@ export const sum: {
 
 /**
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const multiply: {
   (self: Option<number>, that: Option<number>): Option<number>
@@ -1141,7 +1141,7 @@ export const multiply: {
 
 /**
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const subtract: {
   (self: Option<number>, that: Option<number>): Option<number>
@@ -1150,7 +1150,7 @@ export const subtract: {
 
 /**
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const divide: {
   (self: Option<number>, that: Option<number>): Option<number>
@@ -1169,7 +1169,7 @@ export const divide: {
  * assert.deepStrictEqual(sumCompact(iterable), 5)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sumCompact = (self: Iterable<Option<number>>): number => {
   let out = 0
@@ -1193,7 +1193,7 @@ export const sumCompact = (self: Iterable<Option<number>>): number => {
  * assert.deepStrictEqual(multiplyCompact(iterable), 6)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const multiplyCompact = (self: Iterable<Option<number>>): number => {
   let out = 1
@@ -1215,7 +1215,7 @@ export const multiplyCompact = (self: Iterable<Option<number>>): number => {
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const bindTo: {
   <N extends string>(name: N): <A>(self: Option<A>) => Option<{ [K in N]: A }>
@@ -1245,14 +1245,14 @@ const let_: {
 export {
   /**
    * @category do notation
-   * @since 1.0.0
+   * @since 2.0.0
    */
   let_ as let
 }
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const bind: {
   <N extends string, A extends object, B>(
@@ -1273,7 +1273,7 @@ export const bind: {
 
 /**
  * @category do notation
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Do: Option<{}> = some({})
 
@@ -1281,7 +1281,7 @@ const adapter = Gen.adapter<OptionTypeLambda>()
 
 /**
  * @category generators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f) => {
   const iterator = f(adapter)

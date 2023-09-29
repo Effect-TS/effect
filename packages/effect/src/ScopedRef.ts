@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type { LazyArg } from "./Function"
@@ -9,13 +9,13 @@ import type * as Scope from "./Scope"
 import type * as Synchronized from "./SynchronizedRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ScopedRefTypeId: unique symbol = internal.ScopedRefTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ScopedRefTypeId = typeof ScopedRefTypeId
@@ -27,7 +27,7 @@ export type ScopedRefTypeId = typeof ScopedRefTypeId
  * resources). The reference itself takes care of properly releasing resources
  * for the old value whenever a new value is obtained.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
@@ -36,11 +36,11 @@ export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace ScopedRef {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -54,7 +54,7 @@ export declare namespace ScopedRef {
  * Creates a new `ScopedRef` from an effect that resourcefully produces a
  * value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromAcquire: <R, E, A>(
@@ -64,7 +64,7 @@ export const fromAcquire: <R, E, A>(
 /**
  * Retrieves the current value of the scoped reference.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: <A>(self: ScopedRef<A>) => Effect.Effect<never, never, A> = internal.get
@@ -73,7 +73,7 @@ export const get: <A>(self: ScopedRef<A>) => Effect.Effect<never, never, A> = in
  * Creates a new `ScopedRef` from the specified value. This method should
  * not be used for values whose creation require the acquisition of resources.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never, ScopedRef<A>> = internal.make
@@ -86,7 +86,7 @@ export const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never
  * changed to the new value, with old resources released, or until the attempt
  * to acquire a new value fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const set: {

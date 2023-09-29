@@ -1,7 +1,7 @@
 /**
  * This module provides utility functions for working with tuples in TypeScript.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Equivalence from "./Equivalence"
 import { dual } from "./Function"
@@ -10,7 +10,7 @@ import * as order from "./Order"
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TupleTypeLambda extends TypeLambda {
   readonly type: [this["Out1"], this["Target"]]
@@ -27,7 +27,7 @@ export interface TupleTypeLambda extends TypeLambda {
  * assert.deepStrictEqual(tuple(1, 'hello', true), [1, 'hello', true])
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const tuple = <A extends ReadonlyArray<any>>(...elements: A): A => elements
 
@@ -42,7 +42,7 @@ export const tuple = <A extends ReadonlyArray<any>>(...elements: A): A => elemen
  * assert.deepStrictEqual(getFirst(["hello", 42]), "hello")
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getFirst = <L, R>(self: readonly [L, R]): L => self[0]
 
@@ -57,7 +57,7 @@ export const getFirst = <L, R>(self: readonly [L, R]): L => self[0]
  * assert.deepStrictEqual(getSecond(["hello", 42]), 42)
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
 
@@ -77,7 +77,7 @@ export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
  * )
  *
  * @category mapping
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapBoth: {
   <L1, L2, R1, R2>(options: {
@@ -114,7 +114,7 @@ export const mapBoth: {
  * )
  *
  * @category mapping
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapFirst: {
   <L1, L2>(f: (left: L1) => L2): <R>(self: readonly [L1, R]) => [L2, R]
@@ -136,7 +136,7 @@ export const mapFirst: {
  * )
  *
  * @category mapping
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapSecond: {
   <R1, R2>(f: (right: R1) => R2): <L>(self: readonly [L, R1]) => [L, R2]
@@ -153,7 +153,7 @@ export const mapSecond: {
  *
  * assert.deepStrictEqual(swap(["hello", 42]), [42, "hello"])
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const swap = <L, R>(self: readonly [L, R]): [R, L] => [self[1], self[0]]
 
@@ -162,7 +162,7 @@ export const swap = <L, R>(self: readonly [L, R]): [R, L] => [self[1], self[0]]
  * by applying each `Equivalence` to the corresponding element of the tuple.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getEquivalence: <T extends ReadonlyArray<Equivalence.Equivalence<any>>>(
   ...isEquivalents: T
@@ -177,7 +177,7 @@ export const getEquivalence: <T extends ReadonlyArray<Equivalence.Equivalence<an
  * of the tuple.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrder: <T extends ReadonlyArray<order.Order<any>>>(
   ...elements: T
@@ -187,7 +187,7 @@ export const getOrder: <T extends ReadonlyArray<order.Order<any>>>(
  * Appends an element to the end of a tuple.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const appendElement: {
   <B>(that: B): <A extends ReadonlyArray<unknown>>(self: A) => [...A, B]

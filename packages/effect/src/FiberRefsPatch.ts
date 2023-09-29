@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as FiberId from "./FiberId"
 import type * as FiberRef from "./FiberRef"
@@ -12,13 +12,13 @@ import * as internal from "./internal/fiberRefs/patch"
  * without inheriting all the `FiberRef` values of the fiber that executed the
  * workflow.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type FiberRefsPatch = Empty | Add | Remove | Update | AndThen
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Empty {
@@ -26,7 +26,7 @@ export interface Empty {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Add {
@@ -36,7 +36,7 @@ export interface Add {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Remove {
@@ -45,7 +45,7 @@ export interface Remove {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Update {
@@ -55,7 +55,7 @@ export interface Update {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface AndThen {
@@ -65,7 +65,7 @@ export interface AndThen {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: FiberRefsPatch = internal.empty
@@ -74,7 +74,7 @@ export const empty: FiberRefsPatch = internal.empty
  * Constructs a patch that describes the changes between the specified
  * collections of `FiberRef`
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const diff: (oldValue: FiberRefs.FiberRefs, newValue: FiberRefs.FiberRefs) => FiberRefsPatch = internal.diff
@@ -84,7 +84,7 @@ export const diff: (oldValue: FiberRefs.FiberRefs, newValue: FiberRefs.FiberRefs
  * describes applying the changes from this patch and the specified patch
  * sequentially.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const combine: {
@@ -96,7 +96,7 @@ export const combine: {
  * Applies the changes described by this patch to the specified collection
  * of `FiberRef` values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const patch: {

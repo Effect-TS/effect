@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import { pipe } from "./Function"
 import { globalValue } from "./GlobalValue"
@@ -17,13 +17,13 @@ const pcgr = globalValue(
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const symbol: unique symbol = Symbol.for("effect/Hash")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Hash {
@@ -31,7 +31,7 @@ export interface Hash {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const hash: <A>(self: A) => number = <A>(self: A) => {
@@ -72,7 +72,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const random: <A extends object>(self: A) => number = (self) => {
@@ -83,25 +83,25 @@ export const random: <A extends object>(self: A) => number = (self) => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const combine: (b: number) => (self: number) => number = (b) => (self) => (self * 53) ^ b
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0x40000000)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isHash = (u: unknown): u is Hash => typeof u === "object" && u !== null && symbol in u
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const number = (n: number) => {
@@ -119,7 +119,7 @@ export const number = (n: number) => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const string = (str: string) => {
@@ -131,7 +131,7 @@ export const string = (str: string) => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const structureKeys = <A extends object>(o: A, keys: ReadonlyArray<keyof A>) => {
@@ -143,14 +143,14 @@ export const structureKeys = <A extends object>(o: A, keys: ReadonlyArray<keyof 
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const structure = <A extends object>(o: A) =>
   structureKeys(o, Object.keys(o) as unknown as ReadonlyArray<keyof A>)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category hashing
  */
 export const array = <A>(arr: ReadonlyArray<A>) => {

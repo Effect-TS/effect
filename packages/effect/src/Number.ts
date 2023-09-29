@@ -3,7 +3,7 @@
  * It includes functions for basic arithmetic operations, as well as type class instances for
  * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as equivalence from "./Equivalence"
 import { dual } from "./Function"
@@ -23,7 +23,7 @@ import * as predicate from "./Predicate"
  * assert.deepStrictEqual(isNumber("2"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNumber: (input: unknown) => input is number = predicate.isNumber
 
@@ -39,7 +39,7 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
  * assert.deepStrictEqual(sum(2, 3), 5)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sum: {
   (that: number): (self: number) => number
@@ -58,7 +58,7 @@ export const sum: {
  * assert.deepStrictEqual(multiply(2, 3), 6)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const multiply: {
   (that: number): (self: number) => number
@@ -77,7 +77,7 @@ export const multiply: {
  * assert.deepStrictEqual(subtract(2, 3), -1)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const subtract: {
   (that: number): (self: number) => number
@@ -96,7 +96,7 @@ export const subtract: {
  * assert.deepStrictEqual(divide(6, 3), 2)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const divide: {
   (that: number): (self: number) => number
@@ -114,7 +114,7 @@ export const divide: {
  * assert.deepStrictEqual(increment(2), 3)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const increment = (n: number): number => n + 1
 
@@ -129,19 +129,19 @@ export const increment = (n: number): number => n + 1
  * assert.deepStrictEqual(decrement(3), 2)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const decrement = (n: number): number => n - 1
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Equivalence: equivalence.Equivalence<number> = equivalence.number
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Order: order.Order<number> = order.number
 
@@ -159,7 +159,7 @@ export const Order: order.Order<number> = order.number
  * assert.deepStrictEqual(lessThan(4, 3), false)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lessThan: {
   (that: number): (self: number) => boolean
@@ -180,7 +180,7 @@ export const lessThan: {
  * assert.deepStrictEqual(lessThanOrEqualTo(4, 3), false)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lessThanOrEqualTo: {
   (that: number): (self: number) => boolean
@@ -201,7 +201,7 @@ export const lessThanOrEqualTo: {
  * assert.deepStrictEqual(greaterThan(4, 3), true)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const greaterThan: {
   (that: number): (self: number) => boolean
@@ -222,7 +222,7 @@ export const greaterThan: {
  * assert.deepStrictEqual(greaterThanOrEqualTo(4, 3), true)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const greaterThanOrEqualTo: {
   (that: number): (self: number) => boolean
@@ -244,7 +244,7 @@ export const greaterThanOrEqualTo: {
  * assert.deepStrictEqual(between(0, 5)(6), false)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const between: {
   (minimum: number, maximum: number): (self: number) => boolean
@@ -269,7 +269,7 @@ export const between: {
  * assert.deepStrictEqual(clamp(0, 5)(-1), 0)
  * assert.deepStrictEqual(clamp(0, 5)(6), 5)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const clamp: {
   (minimum: number, maximum: number): (self: number) => number
@@ -287,7 +287,7 @@ export const clamp: {
  *
  * assert.deepStrictEqual(min(2, 3), 2)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const min: {
   (that: number): (self: number) => number
@@ -305,7 +305,7 @@ export const min: {
  *
  * assert.deepStrictEqual(max(2, 3), 3)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const max: {
   (that: number): (self: number) => number
@@ -325,7 +325,7 @@ export const max: {
  * assert.deepStrictEqual(sign(5), 1)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sign = (n: number): Ordering => Order(n, 0)
 
@@ -340,7 +340,7 @@ export const sign = (n: number): Ordering => Order(n, 0)
  * assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sumAll = (collection: Iterable<number>): number => {
   let out = 0
@@ -361,7 +361,7 @@ export const sumAll = (collection: Iterable<number>): number => {
  * assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const multiplyAll = (collection: Iterable<number>): number => {
   let out = 1
@@ -390,7 +390,7 @@ export const multiplyAll = (collection: Iterable<number>): number => {
  * assert.deepStrictEqual(remainder(-4, 2), -0)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const remainder: {
   (divisor: number): (self: number) => number

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type * as Channel from "./Channel"
@@ -32,13 +32,13 @@ import type * as Tracer from "./Tracer"
 import type * as Unify from "./Unify"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const StreamTypeId: unique symbol = internal.StreamTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type StreamTypeId = typeof StreamTypeId
@@ -60,7 +60,7 @@ export type StreamTypeId = typeof StreamTypeId
  * some adjustments for the multiple-valued nature of `Stream`). These aspects
  * allow for rich and expressive composition of streams.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Stream<R, E, A> extends Stream.Variance<R, E, A>, Pipeable {
@@ -70,7 +70,7 @@ export interface Stream<R, E, A> extends Stream.Variance<R, E, A>, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface StreamUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
@@ -79,14 +79,14 @@ export interface StreamUnify<A extends { [Unify.typeSymbol]?: any }> extends Eff
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface StreamUnifyBlacklist extends Effect.EffectUnifyBlacklist {
   Effect?: true
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 declare module "./Effect" {
@@ -98,18 +98,18 @@ declare module "./Effect" {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface StreamTypeLambda extends TypeLambda {
   readonly type: Stream<this["Out2"], this["Out1"], this["Target"]>
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Stream {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<R, E, A> {
@@ -121,14 +121,14 @@ export declare namespace Stream {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type DynamicTuple<T, N extends number> = N extends N ? number extends N ? Array<T> : DynamicTupleOf<T, N, []>
     : never
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type DynamicTupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R
@@ -139,7 +139,7 @@ export declare namespace Stream {
  * The default chunk size used by the various combinators and constructors of
  * `Stream`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constants
  */
 export const DefaultChunkSize: number = internal.DefaultChunkSize
@@ -148,7 +148,7 @@ export const DefaultChunkSize: number = internal.DefaultChunkSize
  * Creates a stream from a single value that will get cleaned up after the
  * stream is consumed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const acquireRelease: <R, E, A, R2, _>(
@@ -169,7 +169,7 @@ export const acquireRelease: <R, E, A, R2, _>(
  * Any sink can be used here, but see `Sink.foldWeightedEffect` and
  * `Sink.foldUntilEffect` for sinks that cover the common usecases.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const aggregate: {
@@ -182,7 +182,7 @@ export const aggregate: {
  *
  * @param sink A `Sink` used to perform the aggregation.
  * @param schedule A `Schedule` used to signal when to stop the aggregation.
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const aggregateWithin: {
@@ -211,7 +211,7 @@ export const aggregateWithin: {
  *
  * @param sink A `Sink` used to perform the aggregation.
  * @param schedule A `Schedule` used to signal when to stop the aggregation.
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const aggregateWithinEither: {
@@ -229,7 +229,7 @@ export const aggregateWithinEither: {
 /**
  * Maps the success values of this stream to the specified constant value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const as: {
@@ -245,7 +245,7 @@ export {
    * times. The optionality of the error type `E` can be used to signal the end
    * of the stream, by setting it to `None`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category constructors
    */
   _async as async
@@ -257,7 +257,7 @@ export {
  * optionality of the error type `E` can be used to signal the end of the
  * stream, by setting it to `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const asyncEffect: <R, E, A>(
@@ -271,7 +271,7 @@ export const asyncEffect: <R, E, A>(
  * synchronously returns a stream. The optionality of the error type `E` can
  * be used to signal the end of the stream, by setting it to `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const asyncInterrupt: <R, E, A>(
@@ -285,7 +285,7 @@ export const asyncInterrupt: <R, E, A>(
  * synchronously. The optionality of the error type `E` can be used to signal
  * the end of the stream, by setting it to `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const asyncOption: <R, E, A>(
@@ -299,7 +299,7 @@ export const asyncOption: <R, E, A>(
  * resource. The optionality of the error type `E` can be used to signal the
  * end of the stream, by setting it to `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const asyncScoped: <R, E, A>(
@@ -312,7 +312,7 @@ export const asyncScoped: <R, E, A>(
  * and then creates a new `Stream` using the specified function, and sends all
  * the following elements through that.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const branchAfter: {
@@ -332,7 +332,7 @@ export const branchAfter: {
  * as this stream. The driver stream will only ever advance the `maximumLag`
  * chunks before the slowest downstream stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const broadcast: {
@@ -354,7 +354,7 @@ export const broadcast: {
  * same elements as this stream. The driver stream will only ever advance the
  * `maximumLag` chunks before the slowest downstream stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const broadcastDynamic: {
@@ -369,7 +369,7 @@ export const broadcastDynamic: {
  *
  * Queues can unsubscribe from upstream by shutting down.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const broadcastedQueues: {
@@ -393,7 +393,7 @@ export const broadcastedQueues: {
  *
  * Queues can unsubscribe from upstream by shutting down.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const broadcastedQueuesDynamic: {
@@ -415,7 +415,7 @@ export const broadcastedQueuesDynamic: {
  * @note This combinator destroys the chunking structure. It's recommended to
  *       use rechunk afterwards. Additionally, prefer capacities that are powers
  *       of 2 for better performance.
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const buffer: {
@@ -439,7 +439,7 @@ export const buffer: {
  * buffering up to `capacity` chunks in a queue.
  *
  * @note Prefer capacities that are powers of 2 for better performance.
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const bufferChunks: {
@@ -462,7 +462,7 @@ export const bufferChunks: {
  * Switches over to the stream produced by the provided function in case this
  * one fails with a typed error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchAll: {
@@ -475,7 +475,7 @@ export const catchAll: {
  * one fails. Allows recovery from all causes of failure, including
  * interruption if the stream is uninterruptible.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchAllCause: {
@@ -492,7 +492,7 @@ export const catchAllCause: {
  * Switches over to the stream produced by the provided function in case this
  * one fails with some typed error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchSome: {
@@ -509,7 +509,7 @@ export const catchSome: {
  * Switches over to the stream produced by the provided function in case this
  * one fails with an error matching the given `_tag`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchTag: {
@@ -528,7 +528,7 @@ export const catchTag: {
  * Switches over to the stream produced by one of the provided functions, in
  * case this one fails with an error matching one of the given `_tag`'s.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchTags: {
@@ -588,7 +588,7 @@ export const catchTags: {
  * one fails with some errors. Allows recovery from all causes of failure,
  * including interruption if the stream is uninterruptible.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchSomeCause: {
@@ -606,7 +606,7 @@ export const catchSomeCause: {
  * previous element emitted, using natural equality to determine whether two
  * elements are equal.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const changes: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> = internal.changes
@@ -616,7 +616,7 @@ export const changes: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> = inte
  * previous element emitted, using the specified function to determine whether
  * two elements are equal.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const changesWith: {
@@ -629,7 +629,7 @@ export const changesWith: {
  * previous element emitted, using the specified effectual function to
  * determine whether two elements are equal.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const changesWithEffect: {
@@ -643,7 +643,7 @@ export const changesWithEffect: {
  * Exposes the underlying chunks of the stream as a stream of chunks of
  * elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const chunks: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, Chunk.Chunk<A>> = internal.chunks
@@ -652,7 +652,7 @@ export const chunks: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, Chunk.Chun
  * Performs the specified stream transformation with the chunk structure of
  * the stream exposed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const chunksWith: <R, E, A, R2, E2, A2>(
@@ -669,7 +669,7 @@ export const chunksWith: <R, E, A, R2, E2, A2>(
  * Where possible, prefer `Stream.combineChunks` for a more efficient
  * implementation.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const combine: {
@@ -701,7 +701,7 @@ export const combine: {
  * internal state to control the combining process, with the initial state
  * being specified by `s`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const combineChunks: {
@@ -731,7 +731,7 @@ export const combineChunks: {
  * that emits the elements from this stream and then the elements from the
  * specified stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const concat: {
@@ -742,7 +742,7 @@ export const concat: {
 /**
  * Concatenates all of the streams in the chunk to one stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const concatAll: <R, E, A>(streams: Chunk.Chunk<Stream<R, E, A>>) => Stream<R, E, A> = internal.concatAll
@@ -754,7 +754,7 @@ export const concatAll: <R, E, A>(streams: Chunk.Chunk<Stream<R, E, A>>) => Stre
  *
  * See also `Stream.zip` for the more common point-wise variant.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const cross: {
@@ -769,7 +769,7 @@ export const cross: {
  *
  * See also `Stream.zipLeft` for the more common point-wise variant.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const crossLeft: {
@@ -785,7 +785,7 @@ export const crossLeft: {
  *
  * See also `Stream.zipRight` for the more common point-wise variant.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const crossRight: {
@@ -800,7 +800,7 @@ export const crossRight: {
  *
  * See also `Stream.zipWith` for the more common point-wise variant.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const crossWith: {
@@ -826,7 +826,7 @@ export const crossWith: {
  * example, a search engine may only want to initiate a search after a user
  * has paused typing so as to not prematurely recommend results.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const debounce: {
@@ -837,7 +837,7 @@ export const debounce: {
 /**
  * The stream that dies with the specified defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const die: (defect: unknown) => Stream<never, never, never> = internal.die
@@ -845,7 +845,7 @@ export const die: (defect: unknown) => Stream<never, never, never> = internal.di
 /**
  * The stream that dies with the specified lazily evaluated defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieSync: (evaluate: LazyArg<unknown>) => Stream<never, never, never> = internal.dieSync
@@ -853,7 +853,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Stream<never, never, never
 /**
  * The stream that dies with an exception described by `message`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieMessage: (message: string) => Stream<never, never, never> = internal.dieMessage
@@ -863,7 +863,7 @@ export const dieMessage: (message: string) => Stream<never, never, never> = inte
  * that determines what queues should receive which elements. The decide
  * function will receive the indices of the queues in the resulting list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const distributedWith: {
@@ -894,7 +894,7 @@ export const distributedWith: {
  * Downstream users can also shutdown queues manually. In this case the driver
  * will continue but no longer backpressure on them.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const distributedWithDynamic: {
@@ -927,7 +927,7 @@ export const distributedWithDynamic: {
  * Converts this stream to a stream that executes its effects but emits no
  * elements. Useful for sequencing effects using streams:
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const drain: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, never> = internal.drain
@@ -937,7 +937,7 @@ export const drain: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, never> = in
  * running. If this stream ends before `other`, `other` will be interrupted.
  * If `other` fails, this stream will fail with that error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const drainFork: {
@@ -948,7 +948,7 @@ export const drainFork: {
 /**
  * Drops the specified number of elements from this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const drop: {
@@ -961,7 +961,7 @@ export const drop: {
  *
  * @note This combinator keeps `n` elements in memory. Be careful with big
  *       numbers.
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const dropRight: {
@@ -973,7 +973,7 @@ export const dropRight: {
  * Drops all elements of the stream until the specified predicate evaluates to
  * `true`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const dropUntil: {
@@ -985,7 +985,7 @@ export const dropUntil: {
  * Drops all elements of the stream until the specified effectful predicate
  * evaluates to `true`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const dropUntilEffect: {
@@ -1002,7 +1002,7 @@ export const dropUntilEffect: {
  * Drops all elements of the stream for as long as the specified predicate
  * evaluates to `true`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const dropWhile: {
@@ -1014,7 +1014,7 @@ export const dropWhile: {
  * Drops all elements of the stream for as long as the specified predicate
  * produces an effect that evalutates to `true`
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const dropWhileEffect: {
@@ -1034,7 +1034,7 @@ export const dropWhileEffect: {
  *
  * @note The stream will end as soon as the first error occurs.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const either: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, Either.Either<E, A>> = internal.either
@@ -1042,7 +1042,7 @@ export const either: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, Either
 /**
  * The empty stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: Stream<never, never, never> = internal.empty
@@ -1050,7 +1050,7 @@ export const empty: Stream<never, never, never> = internal.empty
 /**
  * Executes the provided finalizer after this stream's finalizers run.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const ensuring: {
@@ -1061,7 +1061,7 @@ export const ensuring: {
 /**
  * Executes the provided finalizer after this stream's finalizers run.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const ensuringWith: {
@@ -1077,7 +1077,7 @@ export const ensuringWith: {
 /**
  * Accesses the whole context of the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const context: <R>() => Stream<R, never, Context.Context<R>> = internal.context
@@ -1085,7 +1085,7 @@ export const context: <R>() => Stream<R, never, Context.Context<R>> = internal.c
 /**
  * Accesses the context of the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const contextWith: <R, A>(f: (env: Context.Context<R>) => A) => Stream<R, never, A> = internal.contextWith
@@ -1093,7 +1093,7 @@ export const contextWith: <R, A>(f: (env: Context.Context<R>) => A) => Stream<R,
 /**
  * Accesses the context of the stream in the context of an effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const contextWithEffect: <R0, R, E, A>(
@@ -1103,7 +1103,7 @@ export const contextWithEffect: <R0, R, E, A>(
 /**
  * Accesses the context of the stream in the context of a stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const contextWithStream: <R0, R, E, A>(
@@ -1113,7 +1113,7 @@ export const contextWithStream: <R0, R, E, A>(
 /**
  * Creates a stream that executes the specified effect but emits no elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const execute: <R, E, _>(effect: Effect.Effect<R, E, _>) => Stream<R, E, never> = internal.execute
@@ -1121,7 +1121,7 @@ export const execute: <R, E, _>(effect: Effect.Effect<R, E, _>) => Stream<R, E, 
 /**
  * Terminates with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fail: <E>(error: E) => Stream<never, E, never> = internal.fail
@@ -1129,7 +1129,7 @@ export const fail: <E>(error: E) => Stream<never, E, never> = internal.fail
 /**
  * Terminates with the specified lazily evaluated error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failSync: <E>(evaluate: LazyArg<E>) => Stream<never, E, never> = internal.failSync
@@ -1137,7 +1137,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => Stream<never, E, never> = in
 /**
  * The stream that always fails with the specified `Cause`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCause: <E>(cause: Cause.Cause<E>) => Stream<never, E, never> = internal.failCause
@@ -1145,7 +1145,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Stream<never, E, never> = 
 /**
  * The stream that always fails with the specified lazily evaluated `Cause`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<never, E, never> = internal.failCauseSync
@@ -1153,7 +1153,7 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<nev
 /**
  * Filters the elements emitted by this stream using the provided function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filter: {
@@ -1166,7 +1166,7 @@ export const filter: {
 /**
  * Effectfully filters the elements emitted by this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterEffect: {
@@ -1182,7 +1182,7 @@ export const filterEffect: {
 /**
  * Performs a filter and map in a single step.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const filterMap: {
@@ -1193,7 +1193,7 @@ export const filterMap: {
 /**
  * Performs an effectful filter and map in a single step.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const filterMapEffect: {
@@ -1210,7 +1210,7 @@ export const filterMapEffect: {
  * Transforms all elements of the stream for as long as the specified partial
  * function is defined.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const filterMapWhile: {
@@ -1222,7 +1222,7 @@ export const filterMapWhile: {
  * Effectfully transforms all elements of the stream for as long as the
  * specified partial function is defined.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const filterMapWhileEffect: {
@@ -1239,7 +1239,7 @@ export const filterMapWhileEffect: {
  * Creates a one-element stream that never fails and executes the finalizer
  * when it ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const finalizer: <R, _>(finalizer: Effect.Effect<R, never, _>) => Stream<R, never, void> = internal.finalizer
@@ -1248,7 +1248,7 @@ export const finalizer: <R, _>(finalizer: Effect.Effect<R, never, _>) => Stream<
  * Finds the first element emitted by this stream that satisfies the provided
  * predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const find: {
@@ -1262,7 +1262,7 @@ export const find: {
  * Finds the first element emitted by this stream that satisfies the provided
  * effectful predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findEffect: {
@@ -1279,7 +1279,7 @@ export const findEffect: {
  * Returns a stream made of the concatenation in strict order of all the
  * streams produced by passing each element of this stream to `f0`
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -1298,7 +1298,7 @@ export const flatMap: {
  * Flattens this stream-of-streams into a stream made of the concatenation in
  * strict order of all the streams.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatten: {
@@ -1321,7 +1321,7 @@ export const flatten: {
  * Submerges the chunks carried by this stream into the stream's structure,
  * while still preserving them.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flattenChunks: <R, E, A>(self: Stream<R, E, Chunk.Chunk<A>>) => Stream<R, E, A> = internal.flattenChunks
@@ -1330,7 +1330,7 @@ export const flattenChunks: <R, E, A>(self: Stream<R, E, Chunk.Chunk<A>>) => Str
  * Flattens `Effect` values into the stream's structure, preserving all
  * information about the effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flattenEffect: {
@@ -1358,7 +1358,7 @@ export const flattenEffect: {
  * stream.mapZIO(ZIO.done(_))
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flattenExitOption: <R, E, E2, A>(
@@ -1369,7 +1369,7 @@ export const flattenExitOption: <R, E, E2, A>(
  * Submerges the iterables carried by this stream into the stream's structure,
  * while still preserving them.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flattenIterables: <R, E, A>(self: Stream<R, E, Iterable<A>>) => Stream<R, E, A> = internal.flattenIterables
@@ -1378,7 +1378,7 @@ export const flattenIterables: <R, E, A>(self: Stream<R, E, Iterable<A>>) => Str
  * Unwraps `Exit` values and flatten chunks that also signify end-of-stream
  * by failing with `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flattenTake: <R, E, E2, A>(
@@ -1388,7 +1388,7 @@ export const flattenTake: <R, E, E2, A>(
 /**
  * Repeats this stream forever.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const forever: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> = internal.forever
@@ -1396,7 +1396,7 @@ export const forever: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A> = inte
 /**
  * Creates a stream from an `AsyncIterable`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromAsyncIterable: <E, A>(
@@ -1407,7 +1407,7 @@ export const fromAsyncIterable: <E, A>(
 /**
  * Creates a stream from a `Channel`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromChannel: <R, E, A>(
@@ -1417,7 +1417,7 @@ export const fromChannel: <R, E, A>(
 /**
  * Creates a channel from a `Stream`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const toChannel: <R, E, A>(
@@ -1427,7 +1427,7 @@ export const toChannel: <R, E, A>(
 /**
  * Creates a stream from a `Chunk` of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<never, never, A> = internal.fromChunk
@@ -1436,7 +1436,7 @@ export const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<never, never, A> = 
  * Creates a stream from a subscription to a `Hub`.
  *
  * @param shutdown If `true`, the hub will be shutdown after the stream is evaluated (defaults to `false`)
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromChunkHub: {
@@ -1454,7 +1454,7 @@ export const fromChunkHub: {
  * Creates a stream from a `Queue` of values.
  *
  * @param shutdown If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromChunkQueue: <A>(
@@ -1465,7 +1465,7 @@ export const fromChunkQueue: <A>(
 /**
  * Creates a stream from an arbitrary number of chunks.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromChunks: <A>(...chunks: Array<Chunk.Chunk<A>>) => Stream<never, never, A> = internal.fromChunks
@@ -1474,7 +1474,7 @@ export const fromChunks: <A>(...chunks: Array<Chunk.Chunk<A>>) => Stream<never, 
  * Either emits the success value of this effect or terminates the stream
  * with the failure value of this effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R, E, A> = internal.fromEffect
@@ -1483,7 +1483,7 @@ export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R, 
  * Creates a stream from an effect producing a value of type `A` or an empty
  * `Stream`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<E>, A>) => Stream<R, E, A> =
@@ -1493,7 +1493,7 @@ export const fromEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<
  * Creates a stream from a subscription to a `Hub`.
  *
  * @param shutdown If `true`, the hub will be shutdown after the stream is evaluated (defaults to `false`)
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromHub: {
@@ -1510,7 +1510,7 @@ export const fromHub: {
 /**
  * Creates a stream from an `Iterable` collection of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable: <A>(iterable: Iterable<A>) => Stream<never, never, A> = internal.fromIterable
@@ -1518,7 +1518,7 @@ export const fromIterable: <A>(iterable: Iterable<A>) => Stream<never, never, A>
 /**
  * Creates a stream from an effect producing a value of type `Iterable<A>`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterableEffect: <R, E, A>(effect: Effect.Effect<R, E, Iterable<A>>) => Stream<R, E, A> =
@@ -1527,7 +1527,7 @@ export const fromIterableEffect: <R, E, A>(effect: Effect.Effect<R, E, Iterable<
 /**
  * Creates a stream from an iterator
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIteratorSucceed: <A>(iterator: IterableIterator<A>, maxChunkSize?: number) => Stream<never, never, A> =
@@ -1538,7 +1538,7 @@ export const fromIteratorSucceed: <A>(iterator: IterableIterator<A>, maxChunkSiz
  *
  * See `Stream.toPull` for reference.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromPull: <R, R2, E, A>(
@@ -1550,7 +1550,7 @@ export const fromPull: <R, R2, E, A>(
  *
  * @param maxChunkSize The maximum number of queued elements to put in one chunk in the stream
  * @param shutdown If `true`, the queue will be shutdown after the stream is evaluated (defaults to `false`)
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromQueue: <A>(
@@ -1563,7 +1563,7 @@ export const fromQueue: <A>(
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromReadableStream: <A, E>(
@@ -1577,7 +1577,7 @@ export const fromReadableStream: <A, E>(
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStreamBYOBReader.
  *
  * @param allocSize Controls the size of the underlying `ArrayBuffer` (defaults to `4096`).
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromReadableStreamByob: <E>(
@@ -1591,7 +1591,7 @@ export const fromReadableStreamByob: <E>(
  * input. The stream will emit an element for each value output from the
  * schedule, continuing for as long as the schedule continues.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromSchedule: <R, A>(schedule: Schedule.Schedule<R, unknown, A>) => Stream<R, never, A> =
@@ -1601,7 +1601,7 @@ export const fromSchedule: <R, A>(schedule: Schedule.Schedule<R, unknown, A>) =>
  * Creates a pipeline that groups on adjacent keys, calculated by the
  * specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category grouping
  */
 export const groupAdjacentBy: {
@@ -1612,7 +1612,7 @@ export const groupAdjacentBy: {
 /**
  * More powerful version of `Stream.groupByKey`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category grouping
  */
 export const groupBy: {
@@ -1661,7 +1661,7 @@ export const groupBy: {
  * )
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const groupByKey: {
@@ -1679,7 +1679,7 @@ export const groupByKey: {
 /**
  * Partitions the stream with specified `chunkSize`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const grouped: {
@@ -1691,7 +1691,7 @@ export const grouped: {
  * Partitions the stream with the specified `chunkSize` or until the specified
  * `duration` has passed, whichever is satisfied first.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const groupedWithin: {
@@ -1709,7 +1709,7 @@ export const groupedWithin: {
  * An element in the process of being pulled will not be interrupted when the
  * given duration completes. See `interruptAfter` for this behavior.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const haltAfter: {
@@ -1727,7 +1727,7 @@ export const haltAfter: {
  *
  * If the effect completes with a failure, the stream will emit that failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const haltWhen: {
@@ -1740,7 +1740,7 @@ export const haltWhen: {
  *
  * If the promise completes with a failure, the stream will emit that failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const haltWhenDeferred: {
@@ -1751,7 +1751,7 @@ export const haltWhenDeferred: {
 /**
  * The identity pipeline, which does not modify streams in any way.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const identity: <R, E, A>() => Stream<R, E, A> = internal.identityStream
@@ -1762,7 +1762,7 @@ export const identity: <R, E, A>() => Stream<R, E, A> = internal.identityStream
  * one stream is exhausted all remaining values in the other stream will be
  * pulled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interleave: {
@@ -1779,7 +1779,7 @@ export const interleave: {
  * stream are exhausted further requests for values from that stream will be
  * ignored.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interleaveWith: {
@@ -1797,7 +1797,7 @@ export const interleaveWith: {
 /**
  * Intersperse stream with provided `element`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const intersperse: {
@@ -1808,7 +1808,7 @@ export const intersperse: {
 /**
  * Intersperse the specified element, also adding a prefix and a suffix.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const intersperseAffixes: {
@@ -1825,7 +1825,7 @@ export const intersperseAffixes: {
  * Specialized version of `Stream.interruptWhen` which interrupts the
  * evaluation of this stream after the given `Duration`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interruptAfter: {
@@ -1842,7 +1842,7 @@ export const interruptAfter: {
  * If the effect completes with a failure before the stream completes, the
  * returned stream will emit that failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interruptWhen: {
@@ -1857,7 +1857,7 @@ export const interruptWhen: {
  *
  * If the promise completes with a failure, the stream will emit that failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interruptWhenDeferred: {
@@ -1869,7 +1869,7 @@ export const interruptWhenDeferred: {
  * The infinite stream of iterative function application: a, f(a), f(f(a)),
  * f(f(f(a))), ...
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const iterate: <A>(value: A, next: (value: A) => A) => Stream<never, never, A> = internal.iterate
@@ -1877,7 +1877,7 @@ export const iterate: <A>(value: A, next: (value: A) => A) => Stream<never, neve
 /**
  * Creates a stream from an sequence of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <As extends Array<any>>(...as: As) => Stream<never, never, As[number]> = internal.make
@@ -1885,7 +1885,7 @@ export const make: <As extends Array<any>>(...as: As) => Stream<never, never, As
 /**
  * Transforms the elements of this stream using the supplied function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -1896,7 +1896,7 @@ export const map: {
 /**
  * Statefully maps over the elements of this stream to produce new elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapAccum: {
@@ -1908,7 +1908,7 @@ export const mapAccum: {
  * Statefully and effectfully maps over the elements of this stream to produce
  * new elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapAccumEffect: {
@@ -1927,7 +1927,7 @@ export const mapAccumEffect: {
  * Returns a stream whose failure and success channels have been mapped by the
  * specified `onFailure` and `onSuccess` functions.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapBoth: {
@@ -1943,7 +1943,7 @@ export const mapBoth: {
 /**
  * Transforms the chunks emitted by this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapChunks: {
@@ -1954,7 +1954,7 @@ export const mapChunks: {
 /**
  * Effectfully transforms the chunks emitted by this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapChunksEffect: {
@@ -1971,7 +1971,7 @@ export const mapChunksEffect: {
  * Maps each element to an iterable, and flattens the iterables into the
  * output of this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapConcat: {
@@ -1983,7 +1983,7 @@ export const mapConcat: {
  * Maps each element to a chunk, and flattens the chunks into the output of
  * this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapConcatChunk: {
@@ -1995,7 +1995,7 @@ export const mapConcatChunk: {
  * Effectfully maps each element to a chunk, and flattens the chunks into the
  * output of this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapConcatChunkEffect: {
@@ -2012,7 +2012,7 @@ export const mapConcatChunkEffect: {
  * Effectfully maps each element to an iterable, and flattens the iterables
  * into the output of this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapConcatEffect: {
@@ -2028,7 +2028,7 @@ export const mapConcatEffect: {
 /**
  * Maps over elements of the stream with the specified effectful function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapEffect: {
@@ -2067,7 +2067,7 @@ export const mapEffect: {
 /**
  * Transforms the errors emitted by this stream using `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapError: {
@@ -2078,7 +2078,7 @@ export const mapError: {
 /**
  * Transforms the full causes of failures emitted by this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapErrorCause: {
@@ -2092,7 +2092,7 @@ export const mapErrorCause: {
  * New produced stream will terminate when both specified stream terminate if
  * no termination strategy is specified.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const merge: {
@@ -2112,7 +2112,7 @@ export const merge: {
  * streams may be consumed in parallel and up to `outputBuffer` chunks may be
  * buffered by this operator.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeAll: {
@@ -2138,7 +2138,7 @@ export const mergeAll: {
  * New produced stream will terminate when both specified stream terminate if
  * no termination strategy is specified.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeWith: {
@@ -2165,7 +2165,7 @@ export const mergeWith: {
  * Merges this stream and the specified stream together to produce a stream of
  * eithers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeEither: {
@@ -2179,7 +2179,7 @@ export const mergeEither: {
  * Merges this stream and the specified stream together, discarding the values
  * from the right stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeLeft: {
@@ -2191,7 +2191,7 @@ export const mergeLeft: {
  * Merges this stream and the specified stream together, discarding the values
  * from the left stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeRight: {
@@ -2203,7 +2203,7 @@ export const mergeRight: {
  * Returns a combined string resulting from concatenating each of the values
  * from the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mkString: <R, E>(self: Stream<R, E, string>) => Effect.Effect<R, E, string> = internal.mkString
@@ -2211,7 +2211,7 @@ export const mkString: <R, E>(self: Stream<R, E, string>) => Effect.Effect<R, E,
 /**
  * The stream that never produces any value or fails with any error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const never: Stream<never, never, never> = internal.never
@@ -2223,7 +2223,7 @@ export const never: Stream<never, never, never> = internal.never
  * Note: Unlike `Effect.onError` there is no guarantee that the provided
  * effect will not be interrupted.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const onError: {
@@ -2239,7 +2239,7 @@ export const onError: {
 /**
  * Runs the specified effect if this stream ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const onDone: {
@@ -2251,7 +2251,7 @@ export const onDone: {
  * Translates any failure into a stream termination, making the stream
  * infallible and all failures unchecked.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orDie: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, A> = internal.orDie
@@ -2260,7 +2260,7 @@ export const orDie: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, A> = in
  * Keeps none of the errors, and terminates the stream with them, using the
  * specified function to convert the `E` into a defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orDieWith: {
@@ -2273,7 +2273,7 @@ export const orDieWith: {
  *
  * See also `Stream.catchAll`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElse: {
@@ -2286,7 +2286,7 @@ export const orElse: {
  *
  * See also `Stream.catchAll`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseEither: {
@@ -2304,7 +2304,7 @@ export const orElseEither: {
  *
  * See also `Stream.catchAll`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseFail: {
@@ -2315,7 +2315,7 @@ export const orElseFail: {
 /**
  * Produces the specified element if this stream is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseIfEmpty: {
@@ -2326,7 +2326,7 @@ export const orElseIfEmpty: {
 /**
  * Produces the specified chunk if this stream is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseIfEmptyChunk: {
@@ -2337,7 +2337,7 @@ export const orElseIfEmptyChunk: {
 /**
  * Switches to the provided stream in case this one is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseIfEmptyStream: {
@@ -2348,7 +2348,7 @@ export const orElseIfEmptyStream: {
 /**
  * Succeeds with the specified value if this one fails with a typed error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElseSucceed: {
@@ -2361,7 +2361,7 @@ export const orElseSucceed: {
  * than the unfolding of the state. This is useful for embedding paginated
  * APIs, hence the name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option.Option<S>]) => Stream<never, never, A> =
@@ -2372,7 +2372,7 @@ export const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option.Option<S>])
  * further than the unfolding of the state. This is useful for embedding
  * paginated APIs, hence the name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const paginateChunk: <S, A>(
@@ -2385,7 +2385,7 @@ export const paginateChunk: <S, A>(
  * further than the unfolding of the state. This is useful for embedding
  * paginated APIs, hence the name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const paginateChunkEffect: <S, R, E, A>(
@@ -2398,7 +2398,7 @@ export const paginateChunkEffect: <S, R, E, A>(
  * further than the unfolding of the state. This is useful for embedding
  * paginated APIs, hence the name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const paginateEffect: <S, R, E, A>(
@@ -2412,7 +2412,7 @@ export const paginateEffect: <S, R, E, A>(
  * evaluated to false. The faster stream may advance by up to buffer elements
  * further than the slower one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const partition: {
@@ -2433,7 +2433,7 @@ export const partition: {
  * Split a stream by an effectful predicate. The faster stream may advance by
  * up to buffer elements further than the slower one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const partitionEither: {
@@ -2456,7 +2456,7 @@ export const partitionEither: {
  * `Stream` in a scope. Like all scoped values, the provided stream is
  * valid only within the scope.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const peel: {
@@ -2474,7 +2474,7 @@ export const peel: {
  *
  * See also `Stream.transduce`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const pipeThrough: {
@@ -2485,7 +2485,7 @@ export const pipeThrough: {
 /**
  * Pipes all the values from this stream through the provided channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const pipeThroughChannel: {
@@ -2502,7 +2502,7 @@ export const pipeThroughChannel: {
  * Pipes all values from this stream through the provided channel, passing
  * through any error emitted by this stream unchanged.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const pipeThroughChannelOrFail: {
@@ -2518,7 +2518,7 @@ export const pipeThroughChannelOrFail: {
 /**
  * Emits the provided chunk before emitting any other value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const prepend: {
@@ -2530,7 +2530,7 @@ export const prepend: {
  * Provides the stream with its required context, which eliminates its
  * dependency on `R`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideContext: {
@@ -2541,7 +2541,7 @@ export const provideContext: {
 /**
  * Provides a `Layer` to the stream, which translates it to another level.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideLayer: {
@@ -2553,7 +2553,7 @@ export const provideLayer: {
  * Provides the stream with the single service it requires. If the stream
  * requires more than one service use `Stream.provideContext` instead.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideService: {
@@ -2572,7 +2572,7 @@ export const provideService: {
  * Provides the stream with the single service it requires. If the stream
  * requires more than one service use `Stream.provideContext` instead.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideServiceEffect: {
@@ -2591,7 +2591,7 @@ export const provideServiceEffect: {
  * Provides the stream with the single service it requires. If the stream
  * requires more than one service use `Stream.provideContext` instead.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideServiceStream: {
@@ -2610,7 +2610,7 @@ export const provideServiceStream: {
  * Transforms the context being provided to the stream with the specified
  * function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const mapInputContext: {
@@ -2622,7 +2622,7 @@ export const mapInputContext: {
  * Splits the context into two parts, providing one part using the
  * specified layer and leaving the remainder `R0`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideSomeLayer: {
@@ -2638,7 +2638,7 @@ export const provideSomeLayer: {
 /**
  * Constructs a stream from a range of integers, including both endpoints.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const range: (min: number, max: number, chunkSize?: number) => Stream<never, never, number> = internal.range
@@ -2647,7 +2647,7 @@ export const range: (min: number, max: number, chunkSize?: number) => Stream<nev
  * Re-chunks the elements of the stream into chunks of `n` elements each. The
  * last chunk might contain less than `n` elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const rechunk: {
@@ -2658,7 +2658,7 @@ export const rechunk: {
 /**
  * Keeps some of the errors, and terminates the fiber with the rest
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const refineOrDie: {
@@ -2670,7 +2670,7 @@ export const refineOrDie: {
  * Keeps some of the errors, and terminates the fiber with the rest, using the
  * specified function to convert the `E` into a defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const refineOrDieWith: {
@@ -2685,7 +2685,7 @@ export const refineOrDieWith: {
  * Repeats the entire stream using the specified schedule. The stream will
  * execute normally, and then repeat again according to the provided schedule.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const repeat: {
@@ -2697,7 +2697,7 @@ export const repeat: {
  * Creates a stream from an effect producing a value of type `A` which repeats
  * forever.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const repeatEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R, E, A> = internal.repeatEffect
@@ -2706,7 +2706,7 @@ export const repeatEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R
  * Creates a stream from an effect producing chunks of `A` values which
  * repeats forever.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const repeatEffectChunk: <R, E, A>(effect: Effect.Effect<R, E, Chunk.Chunk<A>>) => Stream<R, E, A> =
@@ -2716,7 +2716,7 @@ export const repeatEffectChunk: <R, E, A>(effect: Effect.Effect<R, E, Chunk.Chun
  * Creates a stream from an effect producing chunks of `A` values until it
  * fails with `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const repeatEffectChunkOption: <R, E, A>(
@@ -2727,7 +2727,7 @@ export const repeatEffectChunkOption: <R, E, A>(
  * Creates a stream from an effect producing values of type `A` until it fails
  * with `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const repeatEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<E>, A>) => Stream<R, E, A> =
@@ -2737,7 +2737,7 @@ export const repeatEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Optio
  * Creates a stream from an effect producing a value of type `A`, which is
  * repeated using the specified schedule.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const repeatEffectWithSchedule: <R, E, A, A0 extends A, R2, _>(
@@ -2750,7 +2750,7 @@ export const repeatEffectWithSchedule: <R, E, A, A0 extends A, R2, _>(
  * execute normally, and then repeat again according to the provided schedule.
  * The schedule output will be emitted at the end of each repetition.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const repeatEither: {
@@ -2770,7 +2770,7 @@ export const repeatEither: {
  * additional recurrence, for a total of two repetitions of each value in the
  * stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const repeatElements: {
@@ -2790,7 +2790,7 @@ export const repeatElements: {
  * this stream and the output of the provided schedule to be unified into a
  * single type. For example, `Either` or similar data type.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const repeatElementsWith: {
@@ -2808,7 +2808,7 @@ export const repeatElementsWith: {
 /**
  * Repeats the provided value infinitely.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const repeatValue: <A>(value: A) => Stream<never, never, A> = internal.repeatValue
@@ -2819,7 +2819,7 @@ export const repeatValue: <A>(value: A) => Stream<never, never, A> = internal.re
  * The schedule output will be emitted at the end of each repetition and can
  * be unified with the stream elements using the provided functions.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const repeatWith: {
@@ -2844,7 +2844,7 @@ export const repeatWith: {
  * stream again.
  *
  * @param schedule A `Schedule` receiving as input the errors of the stream.
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const retry: {
@@ -2857,7 +2857,7 @@ export const retry: {
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const run: {
@@ -2870,7 +2870,7 @@ export const run: {
 /**
  * Runs the stream and collects all of its elements to a chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runCollect: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Chunk.Chunk<A>> = internal.runCollect
@@ -2878,7 +2878,7 @@ export const runCollect: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E,
 /**
  * Runs the stream and emits the number of elements processed
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runCount: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, number> = internal.runCount
@@ -2886,7 +2886,7 @@ export const runCount: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, n
 /**
  * Runs the stream only for its effects. The emitted elements are discarded.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runDrain: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, void> = internal.runDrain
@@ -2895,7 +2895,7 @@ export const runDrain: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, v
  * Executes a pure fold over the stream of values - reduces all elements in
  * the stream to a value of type `S`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFold: {
@@ -2906,7 +2906,7 @@ export const runFold: {
 /**
  * Executes an effectful fold over the stream of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFoldEffect: {
@@ -2925,7 +2925,7 @@ export const runFoldEffect: {
  * Executes a pure fold over the stream of values. Returns a scoped value that
  * represents the scope of the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFoldScoped: {
@@ -2937,7 +2937,7 @@ export const runFoldScoped: {
  * Executes an effectful fold over the stream of values. Returns a scoped
  * value that represents the scope of the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFoldScopedEffect: {
@@ -2956,7 +2956,7 @@ export const runFoldScopedEffect: {
  * Reduces the elements in the stream to a value of type `S`. Stops the fold
  * early when the condition is not fulfilled. Example:
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFoldWhile: {
@@ -2968,7 +2968,7 @@ export const runFoldWhile: {
  * Executes an effectful fold over the stream of values. Stops the fold early
  * when the condition is not fulfilled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFoldWhileEffect: {
@@ -2990,7 +2990,7 @@ export const runFoldWhileEffect: {
  * represents the scope of the stream. Stops the fold early when the condition
  * is not fulfilled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFoldWhileScoped: {
@@ -3012,7 +3012,7 @@ export const runFoldWhileScoped: {
  * value that represents the scope of the stream. Stops the fold early when
  * the condition is not fulfilled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runFoldWhileScopedEffect: {
@@ -3033,7 +3033,7 @@ export const runFoldWhileScopedEffect: {
  * Consumes all elements of the stream, passing them to the specified
  * callback.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runForEach: {
@@ -3050,7 +3050,7 @@ export const runForEach: {
  * Consumes all elements of the stream, passing them to the specified
  * callback.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runForEachChunk: {
@@ -3067,7 +3067,7 @@ export const runForEachChunk: {
  * Like `Stream.runForEachChunk`, but returns a scoped effect so the
  * finalization order can be controlled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runForEachChunkScoped: {
@@ -3084,7 +3084,7 @@ export const runForEachChunkScoped: {
  * Like `Stream.forEach`, but returns a scoped effect so the finalization
  * order can be controlled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runForEachScoped: {
@@ -3101,7 +3101,7 @@ export const runForEachScoped: {
  * Consumes elements of the stream, passing them to the specified callback,
  * and terminating consumption when the callback returns `false`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runForEachWhile: {
@@ -3118,7 +3118,7 @@ export const runForEachWhile: {
  * Like `Stream.runForEachWhile`, but returns a scoped effect so the
  * finalization order can be controlled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runForEachWhileScoped: {
@@ -3135,7 +3135,7 @@ export const runForEachWhileScoped: {
  * Runs the stream to completion and yields the first value emitted by it,
  * discarding the rest of the elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Option.Option<A>> = internal.runHead
@@ -3144,7 +3144,7 @@ export const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Op
  * Publishes elements of this stream to a hub. Stream failure and ending will
  * also be signalled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runIntoHub: {
@@ -3156,7 +3156,7 @@ export const runIntoHub: {
  * Like `Stream.runIntoHub`, but provides the result as a scoped effect to
  * allow for scope composition.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runIntoHubScoped: {
@@ -3168,7 +3168,7 @@ export const runIntoHubScoped: {
  * Enqueues elements of this stream into a queue. Stream failure and ending
  * will also be signalled.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runIntoQueue: {
@@ -3180,7 +3180,7 @@ export const runIntoQueue: {
  * Like `Stream.runIntoQueue`, but provides the result as a scoped [[ZIO]]
  * to allow for scope composition.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runIntoQueueElementsScoped: {
@@ -3197,7 +3197,7 @@ export const runIntoQueueElementsScoped: {
  * Like `Stream.runIntoQueue`, but provides the result as a scoped effect
  * to allow for scope composition.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runIntoQueueScoped: {
@@ -3211,13 +3211,13 @@ export const runIntoQueueScoped: {
  * Runs the stream to completion and yields the last value emitted by it,
  * discarding the rest of the elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Option.Option<A>> = internal.runLast
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runScoped: {
@@ -3233,7 +3233,7 @@ export const runScoped: {
 /**
  * Runs the stream to a sink which sums elements, provided they are Numeric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runSum: <R, E>(self: Stream<R, E, number>) => Effect.Effect<R, E, number> = internal.runSum
@@ -3242,7 +3242,7 @@ export const runSum: <R, E>(self: Stream<R, E, number>) => Effect.Effect<R, E, n
  * Statefully maps over the elements of this stream to produce all
  * intermediate results of type `S` given an initial S.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const scan: {
@@ -3254,7 +3254,7 @@ export const scan: {
  * Statefully and effectfully maps over the elements of this stream to produce
  * all intermediate results of type `S` given an initial S.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const scanEffect: {
@@ -3275,7 +3275,7 @@ export const scanEffect: {
  *
  * See also `Stream.scan`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const scanReduce: {
@@ -3289,7 +3289,7 @@ export const scanReduce: {
  *
  * See also `Stream.scanEffect`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const scanReduceEffect: <A2, A, R2, E2>(
@@ -3299,7 +3299,7 @@ export const scanReduceEffect: <A2, A, R2, E2>(
 /**
  * Schedules the output of the stream using the provided `schedule`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const schedule: {
@@ -3314,7 +3314,7 @@ export const schedule: {
  * its output at the end (if `schedule` is finite). Uses the provided function
  * to align the stream and schedule outputs on the same type.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const scheduleWith: {
@@ -3332,7 +3332,7 @@ export const scheduleWith: {
 /**
  * Creates a single-valued stream from a scoped resource.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const scoped: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<Exclude<R, Scope.Scope>, E, A> =
@@ -3353,7 +3353,7 @@ export const scoped: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<Exclude
  * // => Chunk(Chunk(1, 2), Chunk(2, 3), Chunk(3, 4))
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const sliding: {
@@ -3364,7 +3364,7 @@ export const sliding: {
 /**
  * Like `sliding`, but with a configurable `stepSize` parameter.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const slidingSize: {
@@ -3375,7 +3375,7 @@ export const slidingSize: {
 /**
  * Converts an option on values into an option on errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const some: <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, Option.Option<E>, A> = internal.some
@@ -3383,7 +3383,7 @@ export const some: <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, 
 /**
  * Extracts the optional value, or returns the given 'default'.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const someOrElse: {
@@ -3394,7 +3394,7 @@ export const someOrElse: {
 /**
  * Extracts the optional value, or fails with the given error 'e'.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const someOrFail: {
@@ -3417,7 +3417,7 @@ export const someOrFail: {
  * // => Chunk(Chunk(1, 2, 3), Chunk(5, 6, 7), Chunk(9))
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const split: {
@@ -3428,7 +3428,7 @@ export const split: {
 /**
  * Splits elements on a delimiter and transforms the splits into desired output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const splitOnChunk: {
@@ -3440,7 +3440,7 @@ export const splitOnChunk: {
  * Splits strings on newlines. Handles both Windows newlines (`\r\n`) and UNIX
  * newlines (`\n`).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const splitLines: <R, E>(self: Stream<R, E, string>) => Stream<R, E, string> = internal.splitLines
@@ -3448,7 +3448,7 @@ export const splitLines: <R, E>(self: Stream<R, E, string>) => Stream<R, E, stri
 /**
  * Creates a single-valued pure stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: <A>(value: A) => Stream<never, never, A> = internal.succeed
@@ -3456,7 +3456,7 @@ export const succeed: <A>(value: A) => Stream<never, never, A> = internal.succee
 /**
  * Creates a single-valued pure stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: <A>(evaluate: LazyArg<A>) => Stream<never, never, A> = internal.sync
@@ -3464,7 +3464,7 @@ export const sync: <A>(evaluate: LazyArg<A>) => Stream<never, never, A> = intern
 /**
  * Returns a lazily constructed stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const suspend: <R, E, A>(stream: LazyArg<Stream<R, E, A>>) => Stream<R, E, A> = internal.suspend
@@ -3472,7 +3472,7 @@ export const suspend: <R, E, A>(stream: LazyArg<Stream<R, E, A>>) => Stream<R, E
 /**
  * Takes the specified number of elements from this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const take: {
@@ -3483,7 +3483,7 @@ export const take: {
 /**
  * Takes the last specified number of elements from this stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const takeRight: {
@@ -3495,7 +3495,7 @@ export const takeRight: {
  * Takes all elements of the stream until the specified predicate evaluates to
  * `true`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const takeUntil: {
@@ -3507,7 +3507,7 @@ export const takeUntil: {
  * Takes all elements of the stream until the specified effectual predicate
  * evaluates to `true`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const takeUntilEffect: {
@@ -3524,7 +3524,7 @@ export const takeUntilEffect: {
  * Takes all elements of the stream for as long as the specified predicate
  * evaluates to `true`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const takeWhile: {
@@ -3535,7 +3535,7 @@ export const takeWhile: {
 /**
  * Adds an effect to consumption of every element of the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tap: {
@@ -3552,7 +3552,7 @@ export const tap: {
  * Returns a stream that effectfully "peeks" at the failure or success of
  * the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tapBoth: {
@@ -3574,7 +3574,7 @@ export const tapBoth: {
 /**
  * Returns a stream that effectfully "peeks" at the failure of the stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tapError: {
@@ -3591,7 +3591,7 @@ export const tapError: {
  * Returns a stream that effectfully "peeks" at the cause of failure of the
  * stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const tapErrorCause: {
@@ -3608,7 +3608,7 @@ export const tapErrorCause: {
  * Sends all elements emitted by this stream to the specified sink in addition
  * to emitting them.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tapSink: {
@@ -3629,7 +3629,7 @@ export const tapSink: {
  *
  * Defaults to the "shape" strategy.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const throttle: {
@@ -3667,7 +3667,7 @@ export const throttle: {
  *
  * Defaults to the "shape" strategy.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const throttleEffect: {
@@ -3695,7 +3695,7 @@ export const throttleEffect: {
 /**
  * A stream that emits Unit values spaced by the specified duration.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const tick: (interval: Duration.DurationInput) => Stream<never, never, void> = internal.tick
@@ -3703,7 +3703,7 @@ export const tick: (interval: Duration.DurationInput) => Stream<never, never, vo
 /**
  * Ends the stream if it does not produce a value after the specified duration.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const timeout: {
@@ -3715,7 +3715,7 @@ export const timeout: {
  * Fails the stream with given error if it does not produce a value after d
  * duration.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const timeoutFail: {
@@ -3727,7 +3727,7 @@ export const timeoutFail: {
  * Fails the stream with given cause if it does not produce a value after d
  * duration.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const timeoutFailCause: {
@@ -3746,7 +3746,7 @@ export const timeoutFailCause: {
  * Switches the stream if it does not produce a value after the specified
  * duration.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const timeoutTo: {
@@ -3765,7 +3765,7 @@ export const timeoutTo: {
  * Converts the stream to a scoped hub of chunks. After the scope is closed,
  * the hub will never again produce values and should be discarded.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toHub: {
@@ -3781,7 +3781,7 @@ export const toHub: {
  * finished, or with Some error if it fails, otherwise it returns a chunk of
  * the stream's output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toPull: <R, E, A>(
@@ -3794,7 +3794,7 @@ export const toPull: <R, E, A>(
  *
  * Defaults to the "suspend" back pressure strategy with a capacity of 2.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toQueue: {
@@ -3817,7 +3817,7 @@ export const toQueue: {
  *
  * Defaults to a capacity of 2.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toQueueOfElements: {
@@ -3837,7 +3837,7 @@ export const toQueueOfElements: {
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toReadableStream: <E, A>(source: Stream<never, E, A>) => ReadableStream<A> = internal.toReadableStream
@@ -3845,7 +3845,7 @@ export const toReadableStream: <E, A>(source: Stream<never, E, A>) => ReadableSt
 /**
  * Applies the transducer to the stream and emits its outputs.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const transduce: {
@@ -3856,7 +3856,7 @@ export const transduce: {
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unfold: <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>) => Stream<never, never, A> =
@@ -3865,7 +3865,7 @@ export const unfold: <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>) =
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unfoldChunk: <S, A>(
@@ -3877,7 +3877,7 @@ export const unfoldChunk: <S, A>(
  * Creates a stream by effectfully peeling off the "layers" of a value of type
  * `S`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unfoldChunkEffect: <R, E, A, S>(
@@ -3889,7 +3889,7 @@ export const unfoldChunkEffect: <R, E, A, S>(
  * Creates a stream by effectfully peeling off the "layers" of a value of type
  * `S`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unfoldEffect: <S, R, E, A>(
@@ -3900,7 +3900,7 @@ export const unfoldEffect: <S, R, E, A>(
 /**
  * A stream that contains a single `Unit` value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unit: Stream<never, never, void> = internal.unit
@@ -3908,7 +3908,7 @@ export const unit: Stream<never, never, void> = internal.unit
 /**
  * Creates a stream produced from an `Effect`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unwrap: <R, E, R2, E2, A>(effect: Effect.Effect<R, E, Stream<R2, E2, A>>) => Stream<R | R2, E | E2, A> =
@@ -3917,7 +3917,7 @@ export const unwrap: <R, E, R2, E2, A>(effect: Effect.Effect<R, E, Stream<R2, E2
 /**
  * Creates a stream produced from a scoped `Effect`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unwrapScoped: <R, E, R2, E2, A>(
@@ -3927,7 +3927,7 @@ export const unwrapScoped: <R, E, R2, E2, A>(
 /**
  * Updates the specified service within the context of the `Stream`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const updateService = internal.updateService
@@ -3936,7 +3936,7 @@ export const updateService = internal.updateService
  * Returns the specified stream if the given condition is satisfied, otherwise
  * returns an empty stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const when: {
@@ -3948,7 +3948,7 @@ export const when: {
  * Returns the resulting stream when the given `PartialFunction` is defined
  * for the given value, otherwise returns an empty stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const whenCase: <A, R, E, A2>(
@@ -3960,7 +3960,7 @@ export const whenCase: <A, R, E, A2>(
  * Returns the stream when the given partial function is defined for the given
  * effectful value, otherwise returns an empty stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const whenCaseEffect: {
@@ -3977,7 +3977,7 @@ export const whenCaseEffect: {
  * Returns the stream if the given effectful condition is satisfied, otherwise
  * returns an empty stream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const whenEffect: {
@@ -3988,7 +3988,7 @@ export const whenEffect: {
 /**
  * Wraps the stream with a new span for tracing.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category tracing
  */
 export const withSpan: {
@@ -4021,7 +4021,7 @@ export const withSpan: {
  *
  * The new stream will end when one of the sides ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zip: {
@@ -4035,7 +4035,7 @@ export const zip: {
  *
  * The new stream will end when one of the sides ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipFlatten: {
@@ -4055,7 +4055,7 @@ export const zipFlatten: {
  * The defaults `defaultLeft` and `defaultRight` will be used if the streams
  * have different lengths and one of the streams has ended before the other.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAll: {
@@ -4075,7 +4075,7 @@ export const zipAll: {
  * The provided default value will be used if the other stream ends before
  * this one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAllLeft: {
@@ -4090,7 +4090,7 @@ export const zipAllLeft: {
  * The provided default value will be used if this stream ends before the
  * other one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAllRight: {
@@ -4112,7 +4112,7 @@ export const zipAllRight: {
  * constant space but the caller is responsible for ensuring that the
  * streams are sorted by distinct keys.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAllSortedByKey: {
@@ -4145,7 +4145,7 @@ export const zipAllSortedByKey: {
  * constant space but the caller is responsible for ensuring that the
  * streams are sorted by distinct keys.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAllSortedByKeyLeft: {
@@ -4176,7 +4176,7 @@ export const zipAllSortedByKeyLeft: {
  * constant space but the caller is responsible for ensuring that the
  * streams are sorted by distinct keys.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAllSortedByKeyRight: {
@@ -4208,7 +4208,7 @@ export const zipAllSortedByKeyRight: {
  * constant space but the caller is responsible for ensuring that the
  * streams are sorted by distinct keys.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAllSortedByKeyWith: {
@@ -4240,7 +4240,7 @@ export const zipAllSortedByKeyWith: {
  * The functions `left` and `right` will be used if the streams have different
  * lengths and one of the streams has ended before the other.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipAllWith: {
@@ -4272,7 +4272,7 @@ export const zipAllWith: {
  * that emitted elements that are not the last value in chunks will never be
  * used for zipping.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipLatest: {
@@ -4289,7 +4289,7 @@ export const zipLatest: {
  * that emitted elements that are not the last value in chunks will never be
  * used for zipping.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipLatestWith: {
@@ -4310,7 +4310,7 @@ export const zipLatestWith: {
  *
  * The new stream will end when one of the sides ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipLeft: {
@@ -4324,7 +4324,7 @@ export const zipLeft: {
  *
  * The new stream will end when one of the sides ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipRight: {
@@ -4338,7 +4338,7 @@ export const zipRight: {
  *
  * The new stream will end when one of the sides ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWith: {
@@ -4359,7 +4359,7 @@ export const zipWith: {
  *
  * The new stream will end when one of the sides ends.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWithChunks: {
@@ -4383,7 +4383,7 @@ export const zipWithChunks: {
 /**
  * Zips each element with the next element if present.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option.Option<A>]> =
@@ -4393,7 +4393,7 @@ export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, reado
  * Zips each element with the previous element. Initially accompanied by
  * `None`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option.Option<A>, A]> =
@@ -4402,7 +4402,7 @@ export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, r
 /**
  * Zips each element with both the previous and next element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWithPreviousAndNext: <R, E, A>(
@@ -4412,7 +4412,7 @@ export const zipWithPreviousAndNext: <R, E, A>(
 /**
  * Zips this stream together with the index of elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWithIndex: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, number]> =
@@ -4423,7 +4423,7 @@ export const zipWithIndex: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, read
 // -------------------------------------------------------------------------------------
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category do notation
  */
 export const Do: Stream<never, never, {}> = internal.Do
@@ -4431,7 +4431,7 @@ export const Do: Stream<never, never, {}> = internal.Do
 /**
  * Binds a value from a stream in a `do` scope
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category do notation
  */
 export const bind: {
@@ -4457,7 +4457,7 @@ export const bind: {
 /**
  * Binds an effectful value in a `do` scope
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category do notation
  */
 export const bindEffect: {
@@ -4481,7 +4481,7 @@ export const bindEffect: {
 } = _groupBy.bindEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category do notation
  */
 export const bindTo: {
@@ -4505,7 +4505,7 @@ export {
   /**
    * Bind a value in a `do` scope
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category do notation
    */
   let_ as let
@@ -4518,7 +4518,7 @@ export {
 /**
  * Decode Uint8Array chunks into a stream of strings using the specified encoding.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category encoding
  */
 export const decodeText: {
@@ -4529,7 +4529,7 @@ export const decodeText: {
 /**
  * Encode a stream of strings into a stream of Uint8Array chunks using the specified encoding.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category encoding
  */
 export const encodeText: <R, E>(self: Stream<R, E, string>) => Stream<R, E, Uint8Array> = internal.encodeText

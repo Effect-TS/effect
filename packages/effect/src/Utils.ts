@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import { identity } from "./Function"
 import type { Kind, TypeLambda } from "./HKT"
@@ -14,26 +14,26 @@ import type { Kind, TypeLambda } from "./HKT"
  *
  * forked from https://github.com/frptools
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import { isNullable } from "./Predicate"
 
 /**
  * @category symbols
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const GenKindTypeId = Symbol.for("effect/Gen/GenKind")
 
 /**
  * @category symbols
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type GenKindTypeId = typeof GenKindTypeId
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface GenKind<F extends TypeLambda, R, O, E, A> extends Variance<F, R, O, E> {
   readonly value: Kind<F, R, O, E, A>
@@ -43,51 +43,51 @@ export interface GenKind<F extends TypeLambda, R, O, E, A> extends Variance<F, R
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export class GenKindImpl<F extends TypeLambda, R, O, E, A> implements GenKind<F, R, O, E, A> {
   constructor(
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      */
     readonly value: Kind<F, R, O, E, A>
   ) {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   get _F() {
     return identity
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   get _R() {
     return (_: R) => _
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   get _O() {
     return (_: never): O => _
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   get _E() {
     return (_: never): E => _
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   readonly [GenKindTypeId]: typeof GenKindTypeId = GenKindTypeId;
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A> {
     return new SingleShotGen<GenKind<F, R, O, E, A>, A>(this as any)
@@ -96,7 +96,7 @@ export class GenKindImpl<F extends TypeLambda, R, O, E, A> implements GenKind<F,
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export class SingleShotGen<T, A> implements Generator<T, A> {
   private called = false
@@ -104,7 +104,7 @@ export class SingleShotGen<T, A> implements Generator<T, A> {
   constructor(readonly self: T) {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   next(a: A): IteratorResult<T, A> {
     return this.called ?
@@ -120,7 +120,7 @@ export class SingleShotGen<T, A> implements Generator<T, A> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   return(a: A): IteratorResult<T, A> {
     return ({
@@ -130,14 +130,14 @@ export class SingleShotGen<T, A> implements Generator<T, A> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   throw(e: unknown): IteratorResult<T, A> {
     throw e
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   [Symbol.iterator](): Generator<T, A> {
     return new SingleShotGen<T, A>(this.self)
@@ -146,7 +146,7 @@ export class SingleShotGen<T, A> implements Generator<T, A> {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const makeGenKind = <F extends TypeLambda, R, O, E, A>(
   kind: Kind<F, R, O, E, A>
@@ -154,7 +154,7 @@ export const makeGenKind = <F extends TypeLambda, R, O, E, A>(
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Variance<F extends TypeLambda, R, O, E> {
   readonly [GenKindTypeId]: GenKindTypeId
@@ -166,7 +166,7 @@ export interface Variance<F extends TypeLambda, R, O, E> {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Gen<F extends TypeLambda, Z> {
   <K extends Variance<F, any, any, any>, A>(
@@ -182,7 +182,7 @@ export interface Gen<F extends TypeLambda, Z> {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Adapter<Z extends TypeLambda> {
   <_R, _O, _E, _A>(
@@ -455,7 +455,7 @@ export interface Adapter<Z extends TypeLambda> {
 
 /**
  * @category adapters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const adapter: <F extends TypeLambda>() => Adapter<F> = () =>
   // @ts-expect-error
@@ -476,13 +476,13 @@ const BIT_27 = 134217728.0
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type PCGRandomState = [number, number, number, number]
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type OptionalNumber = number | null | undefined
 
@@ -492,7 +492,7 @@ export type OptionalNumber = number | null | undefined
  * hard to predict.
  *
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export class PCGRandom {
   private _state!: Int32Array
@@ -570,7 +570,7 @@ export class PCGRandom {
    * JavaScript Array.
    *
    * @category getters
-   * @since 1.0.0
+   * @since 2.0.0
    */
   getState(): PCGRandomState {
     return [this._state[0]!, this._state[1]!, this._state[2]!, this._state[3]!]
@@ -579,7 +579,7 @@ export class PCGRandom {
   /**
    * Restore state previously retrieved using `getState()`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    */
   setState(state: PCGRandomState) {
     this._state[0] = state[0]
@@ -592,7 +592,7 @@ export class PCGRandom {
    * Get a uniformly distributed 32 bit integer between [0, max).
    *
    * @category getter
-   * @since 1.0.0
+   * @since 2.0.0
    */
   integer(max: number) {
     if (!max) {
@@ -617,7 +617,7 @@ export class PCGRandom {
    * 53 bits of precision (every bit of the mantissa is randomized).
    *
    * @category getters
-   * @since 1.0.0
+   * @since 2.0.0
    */
   number() {
     const hi = (this._next() & 0x03ffffff) * 1.0

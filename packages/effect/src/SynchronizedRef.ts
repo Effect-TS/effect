@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import * as circular from "./internal/effect/circular"
@@ -9,19 +9,19 @@ import type * as Option from "./Option"
 import type * as Ref from "./Ref"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const SynchronizedRefTypeId: unique symbol = circular.SynchronizedTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref.Ref<A> {
@@ -29,11 +29,11 @@ export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref.Ref
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace SynchronizedRef {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -44,19 +44,19 @@ export declare namespace SynchronizedRef {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <A>(value: A) => Effect.Effect<never, never, SynchronizedRef<A>> = circular.makeSynchronized
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: <A>(self: SynchronizedRef<A>) => Effect.Effect<never, never, A> = ref.get
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndSet: {
@@ -65,7 +65,7 @@ export const getAndSet: {
 } = ref.getAndSet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdate: {
@@ -74,7 +74,7 @@ export const getAndUpdate: {
 } = ref.getAndUpdate
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdateEffect: {
@@ -83,7 +83,7 @@ export const getAndUpdateEffect: {
 } = internal.getAndUpdateEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdateSome: {
@@ -92,7 +92,7 @@ export const getAndUpdateSome: {
 } = ref.getAndUpdateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdateSomeEffect: {
@@ -101,7 +101,7 @@ export const getAndUpdateSomeEffect: {
 } = internal.getAndUpdateSomeEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modify: {
@@ -110,7 +110,7 @@ export const modify: {
 } = internal.modify
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modifyEffect: {
@@ -119,7 +119,7 @@ export const modifyEffect: {
 } = internal.modifyEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modifySome: {
@@ -135,7 +135,7 @@ export const modifySome: {
 } = ref.modifySome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modifySomeEffect: {
@@ -151,7 +151,7 @@ export const modifySomeEffect: {
 } = internal.modifySomeEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const set: {
@@ -160,7 +160,7 @@ export const set: {
 } = ref.set
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const setAndGet: {
@@ -169,7 +169,7 @@ export const setAndGet: {
 } = ref.setAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const update: {
@@ -178,7 +178,7 @@ export const update: {
 } = ref.update
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateEffect: {
@@ -187,7 +187,7 @@ export const updateEffect: {
 } = internal.updateEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateAndGet: {
@@ -196,7 +196,7 @@ export const updateAndGet: {
 } = ref.updateAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateAndGetEffect: {
@@ -205,7 +205,7 @@ export const updateAndGetEffect: {
 } = internal.updateAndGetEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSome: {
@@ -214,7 +214,7 @@ export const updateSome: {
 } = ref.updateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSomeEffect: {
@@ -225,7 +225,7 @@ export const updateSomeEffect: {
 } = internal.updateSomeEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSomeAndGet: {
@@ -234,7 +234,7 @@ export const updateSomeAndGet: {
 } = ref.updateSomeAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSomeAndGetEffect: {
@@ -243,7 +243,7 @@ export const updateSomeAndGetEffect: {
 } = circular.updateSomeAndGetEffectSynchronized
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeMake: <A>(value: A) => SynchronizedRef<A> = circular.unsafeMakeSynchronized

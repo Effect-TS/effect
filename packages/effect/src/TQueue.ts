@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as internal from "./internal/stm/tQueue"
 import type * as Option from "./Option"
@@ -7,37 +7,37 @@ import type { Predicate } from "./Predicate"
 import type * as STM from "./STM"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TDequeueTypeId: unique symbol = internal.TDequeueTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TDequeueTypeId = typeof TDequeueTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TEnqueueTypeId: unique symbol = internal.TEnqueueTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TEnqueueTypeId = typeof TEnqueueTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
@@ -65,7 +65,7 @@ export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
@@ -102,7 +102,7 @@ export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
 /**
  * The base interface that all `TQueue`s must implement.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface BaseTQueue {
@@ -149,11 +149,11 @@ export interface BaseTQueue {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace TQueue {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface TEnqueueVariance<A> {
@@ -163,7 +163,7 @@ export declare namespace TQueue {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface TDequeueVariance<A> {
@@ -176,7 +176,7 @@ export declare namespace TQueue {
 /**
  * Returns `true` if the specified value is a `TQueue`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isTQueue: (u: unknown) => u is TQueue<unknown> = internal.isTQueue
@@ -184,7 +184,7 @@ export const isTQueue: (u: unknown) => u is TQueue<unknown> = internal.isTQueue
 /**
  * Returns `true` if the specified value is a `TDequeue`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isTDequeue: (u: unknown) => u is TDequeue<unknown> = internal.isTDequeue
@@ -192,7 +192,7 @@ export const isTDequeue: (u: unknown) => u is TDequeue<unknown> = internal.isTDe
 /**
  * Returns `true` if the specified value is a `TEnqueue`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isTEnqueue: (u: unknown) => u is TEnqueue<unknown> = internal.isTEnqueue
@@ -202,7 +202,7 @@ export const isTEnqueue: (u: unknown) => u is TEnqueue<unknown> = internal.isTEn
  * not resume until the queue has been shutdown. If the queue is already
  * shutdown, the `STM` will resume right away.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> = internal.awaitShutdown
@@ -214,7 +214,7 @@ export const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> 
  *
  * For best performance use capacities that are powers of two.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>> = internal.bounded
@@ -222,7 +222,7 @@ export const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TQ
 /**
  * Returns the number of elements the queue can hold.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const capacity: <A>(self: TQueue<A>) => number = internal.capacity
@@ -233,7 +233,7 @@ export const capacity: <A>(self: TQueue<A>) => number = internal.capacity
  *
  * For best performance use capacities that are powers of two.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>> = internal.dropping
@@ -241,7 +241,7 @@ export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, T
 /**
  * Returns `true` if the `TQueue` contains zero elements, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isEmpty: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = internal.isEmpty
@@ -250,7 +250,7 @@ export const isEmpty: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = i
  * Returns `true` if the `TQueue` contains at least one element, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isFull: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = internal.isFull
@@ -258,7 +258,7 @@ export const isFull: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = in
 /**
  * Returns `true` if `shutdown` has been called, otherwise returns `false`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> = internal.isShutdown
@@ -266,7 +266,7 @@ export const isShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, boolean> 
 /**
  * Places one value in the queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const offer: {
@@ -289,7 +289,7 @@ export const offer: {
  * For Dropping TQueue: uses `Dropping` Strategy, It places the values in the
  * queue but if there is no room it will not enqueue them and return false.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const offerAll: {
@@ -301,7 +301,7 @@ export const offerAll: {
  * Views the next element in the queue without removing it, retrying if the
  * queue is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const peek: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal.peek
@@ -310,7 +310,7 @@ export const peek: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal
  * Views the next element in the queue without removing it, returning `None`
  * if the queue is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>> = internal.peekOption
@@ -319,7 +319,7 @@ export const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.
  * Takes a single element from the queue, returning `None` if the queue is
  * empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>> = internal.poll
@@ -329,7 +329,7 @@ export const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option
  * taking and returning the first element that does satisfy the predicate.
  * Retries if no elements satisfy the predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const seek: {
@@ -341,7 +341,7 @@ export const seek: {
  * Interrupts any fibers that are suspended on `offer` or `take`. Future calls
  * to `offer*` and `take*` will be interrupted immediately.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const shutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> = internal.shutdown
@@ -351,7 +351,7 @@ export const shutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void> = int
  * in the queue. This may be negative if fibers are suspended waiting for
  * elements to be added to the queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: <A>(self: TQueue<A>) => STM.STM<never, never, number> = internal.size
@@ -362,7 +362,7 @@ export const size: <A>(self: TQueue<A>) => STM.STM<never, never, number> = inter
  *
  * For best performance use capacities that are powers of two.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>> = internal.sliding
@@ -371,7 +371,7 @@ export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TQ
  * Takes the oldest value in the queue. If the queue is empty, this will return
  * a computation that resumes when an item has been added to the queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const take: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal.take
@@ -380,7 +380,7 @@ export const take: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal
  * Takes all the values in the queue and returns the values. If the queue is
  * empty returns an empty collection.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeAll: <A>(self: TDequeue<A>) => STM.STM<never, never, Array<A>> = internal.takeAll
@@ -390,7 +390,7 @@ export const takeAll: <A>(self: TDequeue<A>) => STM.STM<never, never, Array<A>> 
  * maximum. If there are fewer than the minimum number of elements available,
  * retries until at least the minimum number of elements have been collected.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeBetween: {
@@ -403,7 +403,7 @@ export const takeBetween: {
  * than the specified number of elements available, it retries until they
  * become available.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeN: {
@@ -414,7 +414,7 @@ export const takeN: {
 /**
  * Takes up to max number of values from the queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeUpTo: {
@@ -425,7 +425,7 @@ export const takeUpTo: {
 /**
  * Creates an unbounded queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unbounded: <A>() => STM.STM<never, never, TQueue<A>> = internal.unbounded

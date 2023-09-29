@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { LazyArg } from "./Function"
 import * as internal from "./internal/executionStrategy"
@@ -11,7 +11,7 @@ import * as internal from "./internal/executionStrategy"
  * There are 3 possible execution strategies: `Sequential`, `Parallel`,
  * `ParallelN`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type ExecutionStrategy = Sequential | Parallel | ParallelN
@@ -19,7 +19,7 @@ export type ExecutionStrategy = Sequential | Parallel | ParallelN
 /**
  * Execute effects sequentially.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Sequential {
@@ -29,7 +29,7 @@ export interface Sequential {
 /**
  * Execute effects in parallel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Parallel {
@@ -39,7 +39,7 @@ export interface Parallel {
 /**
  * Execute effects in parallel, up to the specified number of concurrent fibers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ParallelN {
@@ -50,7 +50,7 @@ export interface ParallelN {
 /**
  * Execute effects sequentially.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sequential: ExecutionStrategy = internal.sequential
@@ -58,7 +58,7 @@ export const sequential: ExecutionStrategy = internal.sequential
 /**
  * Execute effects in parallel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const parallel: ExecutionStrategy = internal.parallel
@@ -66,7 +66,7 @@ export const parallel: ExecutionStrategy = internal.parallel
 /**
  * Execute effects in parallel, up to the specified number of concurrent fibers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const parallelN: (parallelism: number) => ExecutionStrategy = internal.parallelN
@@ -75,7 +75,7 @@ export const parallelN: (parallelism: number) => ExecutionStrategy = internal.pa
  * Returns `true` if the specified `ExecutionStrategy` is an instance of
  * `Sequential`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isSequential: (self: ExecutionStrategy) => self is Sequential = internal.isSequential
@@ -84,7 +84,7 @@ export const isSequential: (self: ExecutionStrategy) => self is Sequential = int
  * Returns `true` if the specified `ExecutionStrategy` is an instance of
  * `Sequential`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isParallel: (self: ExecutionStrategy) => self is Parallel = internal.isParallel
@@ -93,7 +93,7 @@ export const isParallel: (self: ExecutionStrategy) => self is Parallel = interna
  * Returns `true` if the specified `ExecutionStrategy` is an instance of
  * `Sequential`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isParallelN: (self: ExecutionStrategy) => self is ParallelN = internal.isParallelN
@@ -102,7 +102,7 @@ export const isParallelN: (self: ExecutionStrategy) => self is ParallelN = inter
  * Folds over the specified `ExecutionStrategy` using the provided case
  * functions.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const match: {

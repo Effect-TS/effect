@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type * as Journal from "./internal/stm/stm/journal"
@@ -10,13 +10,13 @@ import type * as Option from "./Option"
 import type * as STM from "./STM"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TRefTypeId: unique symbol = internal.TRefTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TRefTypeId = typeof TRefTypeId
@@ -30,7 +30,7 @@ export type TRefTypeId = typeof TRefTypeId
  * NOTE: While `TRef<A>` provides the transactional equivalent of a mutable
  * reference, the value inside the `TRef` should be immutable.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TRef<A> extends TRef.Variance<A> {
@@ -41,7 +41,7 @@ export interface TRef<A> extends TRef.Variance<A> {
 }
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TRef<A> {
   /** @internal */
@@ -51,11 +51,11 @@ export interface TRef<A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export namespace TRef {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export interface Variance<A> {
     readonly [TRefTypeId]: {
@@ -65,13 +65,13 @@ export namespace TRef {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const get: <A>(self: TRef<A>) => STM.STM<never, never, A> = internal.get
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const getAndSet: {
@@ -80,7 +80,7 @@ export const getAndSet: {
 } = internal.getAndSet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const getAndUpdate: {
@@ -89,7 +89,7 @@ export const getAndUpdate: {
 } = internal.getAndUpdate
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const getAndUpdateSome: {
@@ -98,13 +98,13 @@ export const getAndUpdateSome: {
 } = internal.getAndUpdateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <A>(value: A) => STM.STM<never, never, TRef<A>> = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const modify: {
@@ -113,7 +113,7 @@ export const modify: {
 } = internal.modify
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const modifySome: {
@@ -122,7 +122,7 @@ export const modifySome: {
 } = internal.modifySome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const set: {
@@ -131,7 +131,7 @@ export const set: {
 } = internal.set
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const setAndGet: {
@@ -140,7 +140,7 @@ export const setAndGet: {
 } = internal.setAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const update: {
@@ -149,7 +149,7 @@ export const update: {
 } = internal.update
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const updateAndGet: {
@@ -158,7 +158,7 @@ export const updateAndGet: {
 } = internal.updateAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const updateSome: {
@@ -167,7 +167,7 @@ export const updateSome: {
 } = internal.updateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const updateSomeAndGet: {

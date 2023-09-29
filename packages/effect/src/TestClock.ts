@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Chunk from "./Chunk"
 import type * as Clock from "./Clock"
@@ -73,7 +73,7 @@ import * as Live from "./TestLive"
  * being tested, then adjust the clock time, and finally verify that the
  * expected effects have been performed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TestClock extends Clock.Clock {
   adjust(duration: Duration.DurationInput): Effect.Effect<never, never, void>
@@ -86,7 +86,7 @@ export interface TestClock extends Clock.Clock {
 /**
  * `Data` represents the state of the `TestClock`, including the clock time.
  *
- * @since 1.0.1
+ * @since 2.0.1
  */
 export interface Data {
   readonly instant: number
@@ -94,7 +94,7 @@ export interface Data {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const makeData = (
   instant: number,
@@ -105,7 +105,7 @@ export const makeData = (
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestClock: Context.Tag<TestClock, TestClock> = Context.Tag<TestClock>(
   Symbol.for("effect/TestClock")
@@ -429,7 +429,7 @@ export class TestClockImpl implements TestClock {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const live = (data: Data): Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
   layer.scoped(
@@ -450,7 +450,7 @@ export const live = (data: Data): Layer.Layer<Annotations.TestAnnotations | Live
   )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> = live(
   makeData(new Date(0).getTime(), Chunk.empty())
@@ -461,7 +461,7 @@ export const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.Te
  * by the specified duration, running any actions scheduled for on or before
  * the new time in order.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<never, never, void> => {
   const duration = Duration.decode(durationInput)
@@ -469,7 +469,7 @@ export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<nev
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const adjustWith = dual<
   (duration: Duration.DurationInput) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
@@ -484,7 +484,7 @@ export const adjustWith = dual<
  * state in an effect which, when run, will restore the `TestClock` to the
  * saved state.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const save = (): Effect.Effect<never, never, Effect.Effect<never, never, void>> =>
   testClockWith((testClock) => testClock.save())
@@ -494,7 +494,7 @@ export const save = (): Effect.Effect<never, never, Effect.Effect<never, never, 
  * to the specified `Instant`, running any actions scheduled for on or before
  * the new time in order.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const setTime = (instant: number): Effect.Effect<never, never, void> =>
   testClockWith((testClock) => testClock.setTime(instant))
@@ -504,7 +504,7 @@ export const setTime = (instant: number): Effect.Effect<never, never, void> =>
  * greater than the specified duration. Once the clock time is adjusted to
  * on or after the duration, the fiber will automatically be resumed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<never, never, void> => {
   const duration = Duration.decode(durationInput)
@@ -515,7 +515,7 @@ export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<neve
  * Accesses a `TestClock` instance in the context and returns a list of
  * times that effects are scheduled to run.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sleeps = (): Effect.Effect<never, never, Chunk.Chunk<number>> =>
   testClockWith(
@@ -525,7 +525,7 @@ export const sleeps = (): Effect.Effect<never, never, Chunk.Chunk<number>> =>
 /**
  * Retrieves the `TestClock` service for this test.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const testClock = (): Effect.Effect<never, never, TestClock> => testClockWith(core.succeed)
 
@@ -533,7 +533,7 @@ export const testClock = (): Effect.Effect<never, never, TestClock> => testClock
  * Retrieves the `TestClock` service for this test and uses it to run the
  * specified workflow.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
   core.fiberRefGetWith(
@@ -545,7 +545,7 @@ export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effec
  * Accesses the current time of a `TestClock` instance in the context in
  * milliseconds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const currentTimeMillis: Effect.Effect<never, never, number> = testClockWith((testClock) =>
   testClock.currentTimeMillis

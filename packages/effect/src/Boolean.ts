@@ -3,7 +3,7 @@
  * It includes functions for basic boolean operations, as well as type class instances for
  * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as equivalence from "./Equivalence"
 import type { LazyArg } from "./Function"
@@ -23,7 +23,7 @@ import * as predicate from "./Predicate"
  * assert.deepStrictEqual(isBoolean("true"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isBoolean: (input: unknown) => input is boolean = predicate.isBoolean
 
@@ -41,7 +41,7 @@ export const isBoolean: (input: unknown) => input is boolean = predicate.isBoole
  * assert.deepStrictEqual(B.match(true, { onFalse: () => "It's false!", onTrue: () => "It's true!" }), "It's true!")
  *
  * @category pattern matching
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const match: {
   <A, B = A>(options: {
@@ -59,13 +59,13 @@ export const match: {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Equivalence: equivalence.Equivalence<boolean> = equivalence.boolean
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Order: order.Order<boolean> = order.boolean
 
@@ -79,7 +79,7 @@ export const Order: order.Order<boolean> = order.boolean
  * assert.deepStrictEqual(not(false), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const not = (self: boolean): boolean => !self
 
@@ -95,7 +95,7 @@ export const not = (self: boolean): boolean => !self
  * assert.deepStrictEqual(and(false, false), false)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const and: {
   (that: boolean): (self: boolean) => boolean
@@ -114,7 +114,7 @@ export const and: {
  * assert.deepStrictEqual(nand(false, false), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const nand: {
   (that: boolean): (self: boolean) => boolean
@@ -133,7 +133,7 @@ export const nand: {
  * assert.deepStrictEqual(or(false, false), false)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const or: {
   (that: boolean): (self: boolean) => boolean
@@ -152,7 +152,7 @@ export const or: {
  * assert.deepStrictEqual(nor(false, false), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const nor: {
   (that: boolean): (self: boolean) => boolean
@@ -171,7 +171,7 @@ export const nor: {
  * assert.deepStrictEqual(xor(false, false), false)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const xor: {
   (that: boolean): (self: boolean) => boolean
@@ -190,7 +190,7 @@ export const xor: {
  * assert.deepStrictEqual(eqv(false, false), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const eqv: {
   (that: boolean): (self: boolean) => boolean
@@ -209,7 +209,7 @@ export const eqv: {
  * assert.deepStrictEqual(implies(false, false), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const implies: {
   (that: boolean): (self: boolean) => boolean
@@ -227,7 +227,7 @@ export const implies: {
  * assert.deepStrictEqual(every([true, true, true]), true)
  * assert.deepStrictEqual(every([true, false, true]), false)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const every = (collection: Iterable<boolean>): boolean => {
   for (const b of collection) {
@@ -249,7 +249,7 @@ export const every = (collection: Iterable<boolean>): boolean => {
  * assert.deepStrictEqual(some([true, false, true]), true)
  * assert.deepStrictEqual(some([false, false, false]), false)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const some = (collection: Iterable<boolean>): boolean => {
   for (const b of collection) {

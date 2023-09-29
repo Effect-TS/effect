@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Context from "./Context"
 
@@ -10,7 +10,7 @@ import * as Context from "./Context"
  * number of samples to check from a random variable, and the maximum number of
  * shrinkings to minimize large failures.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TestConfig {
   /**
@@ -32,14 +32,14 @@ export interface TestConfig {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestConfig: Context.Tag<TestConfig, TestConfig> = Context.Tag<TestConfig>(
   Symbol.for("effect/TestConfig")
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = (params: {
   readonly repeats: number

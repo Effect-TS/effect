@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Dual from "./Function"
 import { NodeInspectSymbol, toJSON, toString } from "./Inspectable"
@@ -10,13 +10,13 @@ import { pipeArguments } from "./Pipeable"
 const TypeId: unique symbol = Symbol.for("effect/MutableList") as TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface MutableList<A> extends Iterable<A>, Pipeable, Inspectable {
@@ -86,7 +86,7 @@ class LinkedListNode<T> {
 /**
  * Creates an empty `MutableList`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty = <A>(): MutableList<A> => {
@@ -100,7 +100,7 @@ export const empty = <A>(): MutableList<A> => {
 /**
  * Creates a new `MutableList` from an `Iterable`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable = <A>(iterable: Iterable<A>): MutableList<A> => {
@@ -114,7 +114,7 @@ export const fromIterable = <A>(iterable: Iterable<A>): MutableList<A> => {
 /**
  * Creates a new `MutableList` from the specified elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make = <A>(...elements: ReadonlyArray<A>): MutableList<A> => fromIterable(elements)
@@ -122,7 +122,7 @@ export const make = <A>(...elements: ReadonlyArray<A>): MutableList<A> => fromIt
 /**
  * Returns `true` if the list contains zero elements, `false`, otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isEmpty = <A>(self: MutableList<A>): boolean => length(self) === 0
@@ -130,7 +130,7 @@ export const isEmpty = <A>(self: MutableList<A>): boolean => length(self) === 0
 /**
  * Returns the length of the list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const length = <A>(self: MutableList<A>): number => (self as MutableListImpl<A>)._length
@@ -138,7 +138,7 @@ export const length = <A>(self: MutableList<A>): number => (self as MutableListI
 /**
  * Returns the last element of the list, if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const tail = <A>(self: MutableList<A>): A | undefined => self.tail === undefined ? undefined : self.tail.value
@@ -146,7 +146,7 @@ export const tail = <A>(self: MutableList<A>): A | undefined => self.tail === un
 /**
  * Returns the first element of the list, if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const head = <A>(self: MutableList<A>): A | undefined => self.head === undefined ? undefined : self.head.value
@@ -154,7 +154,7 @@ export const head = <A>(self: MutableList<A>): A | undefined => self.head === un
 /**
  * Executes the specified function `f` for each element in the list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category traversing
  */
 export const forEach: {
@@ -174,7 +174,7 @@ export const forEach: {
 /**
  * Removes all elements from the doubly-linked list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const reset = <A>(self: MutableList<A>): MutableList<A> => {
   ;(self as MutableListImpl<A>)._length = 0
@@ -187,7 +187,7 @@ export const reset = <A>(self: MutableList<A>): MutableList<A> => {
  * Appends the specified element to the end of the `MutableList`.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const append: {
   <A>(value: A): (self: MutableList<A>) => MutableList<A>
@@ -243,7 +243,7 @@ export const pop = <A>(self: MutableList<A>): A | undefined => {
  * Prepends the specified value to the beginning of the list.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prepend: {
   <A>(value: A): (self: MutableList<A>) => MutableList<A>

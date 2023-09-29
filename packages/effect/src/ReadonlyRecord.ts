@@ -1,7 +1,7 @@
 /**
  * This module provides utility functions for working with records in TypeScript.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type { Either } from "./Either"
@@ -17,7 +17,7 @@ import * as O from "./Option"
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface ReadonlyRecord<A> {
   readonly [x: string]: A
@@ -25,7 +25,7 @@ export interface ReadonlyRecord<A> {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface ReadonlyRecordTypeLambda extends TypeLambda {
   readonly type: ReadonlyRecord<this["Target"]>
@@ -39,7 +39,7 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
  * Creates a new, empty record.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const empty = <A>(): Record<string, A> => ({})
 
@@ -59,7 +59,7 @@ export const empty = <A>(): Record<string, A> => ({})
  * assert.deepStrictEqual(isEmptyRecord({ a: 3 }), false);
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isEmptyRecord = <A>(self: Record<string, A>): self is Record<string, never> => {
   for (const k in self) {
@@ -82,7 +82,7 @@ export const isEmptyRecord = <A>(self: Record<string, A>): self is Record<string
  * assert.deepStrictEqual(isEmptyReadonlyRecord({ a: 3 }), false);
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isEmptyReadonlyRecord: <A>(self: ReadonlyRecord<A>) => self is ReadonlyRecord<never> = isEmptyRecord
 
@@ -108,7 +108,7 @@ export const isEmptyReadonlyRecord: <A>(self: ReadonlyRecord<A>) => self is Read
  * )
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromIterable: {
   <A, B>(f: (a: A) => readonly [string, B]): (self: Iterable<A>) => Record<string, B>
@@ -138,7 +138,7 @@ export const fromIterable: {
  * assert.deepStrictEqual(fromEntries(input), { a: 1, b: 2 })
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromEntries: <A>(self: Iterable<readonly [string, A]>) => Record<string, A> = fromIterable(identity)
 
@@ -155,7 +155,7 @@ export const fromEntries: <A>(self: Iterable<readonly [string, A]>) => Record<st
  * assert.deepStrictEqual(collect(x, (key, n) => [key, n]), [["a", 1], ["b", 2], ["c", 3]])
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const collect: {
   <K extends string, A, B>(f: (key: K, a: A) => B): (self: Record<K, A>) => Array<B>
@@ -183,7 +183,7 @@ export const collect: {
  * assert.deepStrictEqual(toEntries(x), [["a", 1], ["b", 2], ["c", 3]])
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toEntries: <K extends string, A>(self: Record<K, A>) => Array<[K, A]> = collect((
   key,
@@ -204,7 +204,7 @@ export const toEntries: <K extends string, A>(self: Record<K, A>) => Array<[K, A
  * assert.deepStrictEqual(toArray(x), [["a", 1], ["b", 2], ["c", 3]])
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toArray: <K extends string, A>(self: Record<K, A>) => Array<[K, A]> = toEntries
 
@@ -222,7 +222,7 @@ export const toArray: <K extends string, A>(self: Record<K, A>) => Array<[K, A]>
  *
  * assert.deepStrictEqual(size({ a: "a", b: 1, c: true }), 3);
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const size = <A>(self: ReadonlyRecord<A>): number => Object.keys(self).length
 
@@ -238,7 +238,7 @@ export const size = <A>(self: ReadonlyRecord<A>): number => Object.keys(self).le
  * assert.deepStrictEqual(has({ a: 1, b: 2 }, "a"), true);
  * assert.deepStrictEqual(has({ a: 1, b: 2 }, "c"), false);
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const has: {
   (key: string): <A>(self: ReadonlyRecord<A>) => boolean
@@ -263,7 +263,7 @@ export const has: {
  * assert.deepStrictEqual(get(person, "name"), some("John Doe"))
  * assert.deepStrictEqual(get(person, "email"), none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const get: {
   (key: string): <A>(self: ReadonlyRecord<A>) => Option<A>
@@ -296,7 +296,7 @@ export const get: {
  *  none()
  * )
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const modifyOption: {
   <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option<Record<string, A | B>>
@@ -330,7 +330,7 @@ export const modifyOption: {
  * )
  * assert.deepStrictEqual(replaceOption({}, 'a', 10), none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const replaceOption: {
   <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option<Record<string, B | A>>
@@ -351,7 +351,7 @@ export const replaceOption: {
  *
  * assert.deepStrictEqual(remove({ a: 1, b: 2 }, "a"), { b: 2 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const remove: {
   (key: string): <A>(self: ReadonlyRecord<A>) => Record<string, A>
@@ -378,7 +378,7 @@ export const remove: {
  * assert.deepStrictEqual(pop({ a: 1, b: 2 }, "c"), none())
  *
  * @category record
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const pop: {
   (key: string): <A>(self: ReadonlyRecord<A>) => Option<readonly [A, ReadonlyRecord<A>]>
@@ -405,7 +405,7 @@ export const pop: {
  *
  * assert.deepStrictEqual(map({ a: 3, b: 5 }, g), { a: "A-3", b: "B-5" })
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const map: {
   <K extends string, A, B>(f: (a: A, key: K) => B): (self: Record<K, A>) => Record<K, B>
@@ -436,7 +436,7 @@ export const map: {
  * const f = (a: number, key: string) => a > 2 ? some(a * 2) : none()
  * assert.deepStrictEqual(filterMap(x, f), { c: 6 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const filterMap: {
   <K extends string, A, B>(f: (a: A, key: K) => Option<B>): (self: Record<K, A>) => Record<string, B>
@@ -468,7 +468,7 @@ export const filterMap: {
  * assert.deepStrictEqual(filter(x, (n) => n > 2), { c: 3, d: 4 })
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const filter: {
   <K extends string, C extends A, B extends A, A = C>(
@@ -516,7 +516,7 @@ export const filter: {
  * )
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const compact: <A>(self: ReadonlyRecord<Option<A>>) => Record<string, A> = filterMap(
   identity
@@ -537,7 +537,7 @@ export const compact: <A>(self: ReadonlyRecord<Option<A>>) => Record<string, A> 
  * assert.deepStrictEqual(partitionMap(x, f), [{ a: 1, c: 3 }, { b: 2}])
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const partitionMap: {
   <K extends string, A, B, C>(
@@ -583,7 +583,7 @@ export const partitionMap: {
  * )
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const separate: <A, B>(
   self: ReadonlyRecord<Either<A, B>>
@@ -604,7 +604,7 @@ export const separate: <A, B>(
  * )
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const partition: {
   <K extends string, C extends A, B extends A, A = C>(refinement: (a: A, key: K) => a is B): (

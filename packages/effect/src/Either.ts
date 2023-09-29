@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type * as Data from "./Data"
@@ -17,25 +17,25 @@ import * as Gen from "./Utils"
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Either<E, A> = Left<E, A> | Right<E, A>
 
 /**
  * @category symbols
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TypeId: unique symbol = either.TypeId
 
 /**
  * @category symbols
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TypeId = typeof TypeId
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Left"
@@ -52,7 +52,7 @@ export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Right"
@@ -69,7 +69,7 @@ export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface EitherUnify<A extends { [Unify.typeSymbol]?: any }> {
   Either?: () => A[Unify.typeSymbol] extends Either<infer E0, infer A0> | infer _ ? Either<E0, A0> : never
@@ -77,13 +77,13 @@ export interface EitherUnify<A extends { [Unify.typeSymbol]?: any }> {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface EitherUnifyBlacklist {}
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface EitherTypeLambda extends TypeLambda {
   readonly type: Either<this["Out1"], this["Target"]>
@@ -94,7 +94,7 @@ export interface EitherTypeLambda extends TypeLambda {
  * of this structure.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const right: <A>(a: A) => Either<never, A> = either.right
 
@@ -103,7 +103,7 @@ export const right: <A>(a: A) => Either<never, A> = either.right
  * structure.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const left: <E>(e: E) => Either<E, never> = either.left
 
@@ -118,7 +118,7 @@ export const left: <E>(e: E) => Either<E, never> = either.left
  * assert.deepStrictEqual(Either.fromNullable(null, () => 'fallback'), Either.left('fallback'))
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromNullable: {
   <A, E>(onNullable: (a: A) => E): (self: A) => Either<E, NonNullable<A>>
@@ -138,7 +138,7 @@ export const fromNullable: {
  * assert.deepStrictEqual(Either.fromOption(Option.none(), () => 'error'), Either.left('error'))
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromOption: {
   <A, E>(self: Option<A>, onNone: () => E): Either<E, A>
@@ -174,7 +174,7 @@ export {
    * thrown exceptions into typed failed eithers creating with `Either.left`.
    *
    * @category constructors
-   * @since 1.0.0
+   * @since 2.0.0
    */
   try_ as try
 }
@@ -192,7 +192,7 @@ export {
  * assert.deepStrictEqual(isEither({ right: 1 }), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isEither: (input: unknown) => input is Either<unknown, unknown> = either.isEither
 
@@ -208,7 +208,7 @@ export const isEither: (input: unknown) => input is Either<unknown, unknown> = e
  * assert.deepStrictEqual(isLeft(left("a")), true)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isLeft: <E, A>(self: Either<E, A>) => self is Left<E, A> = either.isLeft
 
@@ -224,7 +224,7 @@ export const isLeft: <E, A>(self: Either<E, A>) => self is Left<E, A> = either.i
  * assert.deepStrictEqual(isRight(left("a")), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isRight: <E, A>(self: Either<E, A>) => self is Right<E, A> = either.isRight
 
@@ -241,7 +241,7 @@ export const isRight: <E, A>(self: Either<E, A>) => self is Right<E, A> = either
  * assert.deepStrictEqual(E.getRight(E.left('err')), O.none())
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
 
@@ -256,13 +256,13 @@ export const getRight: <E, A>(self: Either<E, A>) => Option<A> = either.getRight
  * assert.deepStrictEqual(E.getLeft(E.left('err')), O.some('err'))
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
 
 /**
  * @category equivalence
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getEquivalence = <E, A>(
   EE: Equivalence.Equivalence<E>,
@@ -277,7 +277,7 @@ export const getEquivalence = <E, A>(
 
 /**
  * @category mapping
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapBoth: {
   <E1, E2, A, B>(options: {
@@ -303,7 +303,7 @@ export const mapBoth: {
  * @param f - A transformation function to apply to the `Left` value of the input `Either`.
  *
  * @category mapping
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapLeft: {
   <E, G>(f: (e: E) => G): <A>(self: Either<E, A>) => Either<G, A>
@@ -320,7 +320,7 @@ export const mapLeft: {
  * @param f - The function to map over the value of the `Either`
  *
  * @category mapping
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const map: {
   <A, B>(f: (a: A) => B): <E>(self: Either<E, A>) => Either<E, B>
@@ -349,7 +349,7 @@ export const map: {
  * )
  *
  * @category pattern matching
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const match: {
   <E, B, A, C = B>(options: {
@@ -370,7 +370,7 @@ export const match: {
 
 /**
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const merge: <E, A>(self: Either<E, A>) => E | A = match({
   onLeft: identity,
@@ -387,7 +387,7 @@ export const merge: <E, A>(self: Either<E, A>) => E | A = match({
  * assert.deepStrictEqual(Either.getOrElse(Either.left("not a number"), (error) => error + "!"), "not a number!")
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrElse: {
   <E, B>(onLeft: (e: E) => B): <A>(self: Either<E, A>) => B | A
@@ -405,7 +405,7 @@ export const getOrElse: {
  * assert.deepStrictEqual(Either.getOrNull(Either.left("a")), null)
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrNull: <E, A>(self: Either<E, A>) => A | null = getOrElse(constNull)
 
@@ -417,7 +417,7 @@ export const getOrNull: <E, A>(self: Either<E, A>) => A | null = getOrElse(const
  * assert.deepStrictEqual(Either.getOrUndefined(Either.left("a")), undefined)
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrUndefined: <E, A>(self: Either<E, A>) => A | undefined = getOrElse(constUndefined)
 
@@ -439,7 +439,7 @@ export const getOrUndefined: <E, A>(self: Either<E, A>) => A | undefined = getOr
  * assert.throws(() => E.getOrThrowWith(E.left("error"), () => new Error('Unexpected Left')))
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrThrowWith: {
   <E>(onLeft: (e: E) => unknown): <A>(self: Either<E, A>) => A
@@ -466,7 +466,7 @@ export const getOrThrowWith: {
  * assert.throws(() => E.getOrThrow(E.left("error")))
  *
  * @category getters
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrThrow: <E, A>(self: Either<E, A>) => A = getOrThrowWith(() =>
   new Error("getOrThrow called on a Left")
@@ -479,7 +479,7 @@ export const getOrThrow: <E, A>(self: Either<E, A>) => A = getOrThrowWith(() =>
  * @param that - A function that takes the error value from `self` (if it's a `Left`) and returns a new `Either` value.
  *
  * @category error handling
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const orElse: {
   <E1, E2, B>(that: (e1: E1) => Either<E2, B>): <A>(self: Either<E1, A>) => Either<E2, A | B>
@@ -492,7 +492,7 @@ export const orElse: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const flatMap: {
   <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E1 | E2, B>
@@ -520,7 +520,7 @@ export const flatMap: {
  * assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.left("error") }), Either.left("error"))
  *
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 // @ts-expect-error
 export const all: <const I extends Iterable<Either<any, any>> | Record<string, Either<any, any>>>(
@@ -559,7 +559,7 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
   }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const reverse = <E, A>(self: Either<E, A>): Either<A, E> => isLeft(self) ? right(self.left) : left(self.right)
 
@@ -567,7 +567,7 @@ const adapter = Gen.adapter<EitherTypeLambda>()
 
 /**
  * @category generators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
   const iterator = f(adapter)

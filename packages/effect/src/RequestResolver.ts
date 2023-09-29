@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import * as Context from "./Context"
@@ -13,13 +13,13 @@ import type { Pipeable } from "./Pipeable"
 import type * as Request from "./Request"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const RequestResolverTypeId: unique symbol = core.RequestResolverTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type RequestResolverTypeId = typeof RequestResolverTypeId
@@ -45,7 +45,7 @@ export type RequestResolverTypeId = typeof RequestResolverTypeId
  * sources must provide results for all requests received. Failure to do so
  * will cause a query to die with a `QueryFailure` when run.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
@@ -63,11 +63,11 @@ export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace RequestResolver {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<R, A> {
@@ -79,14 +79,14 @@ export declare namespace RequestResolver {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const contextFromEffect = <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) =>
   Effect.contextWith((_: Context.Context<R>) => provideContext(self, _))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const contextFromServices =
@@ -102,7 +102,7 @@ export const contextFromServices =
 /**
  * Returns `true` if the specified value is a `RequestResolver`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isRequestResolver: (u: unknown) => u is RequestResolver<unknown, unknown> = core.isRequestResolver
@@ -111,7 +111,7 @@ export const isRequestResolver: (u: unknown) => u is RequestResolver<unknown, un
  * Constructs a data source with the specified identifier and method to run
  * requests.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <R, A>(
@@ -122,7 +122,7 @@ export const make: <R, A>(
  * Constructs a data source with the specified identifier and method to run
  * requests.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeWithEntry: <R, A>(
@@ -133,7 +133,7 @@ export const makeWithEntry: <R, A>(
  * Constructs a data source from a function taking a collection of requests
  * and returning a `RequestCompletionMap`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeBatched: <R, A extends Request.Request<any, any>>(
@@ -144,7 +144,7 @@ export const makeBatched: <R, A extends Request.Request<any, any>>(
  * A data source aspect that executes requests between two effects, `before`
  * and `after`, where the result of `before` can be used by `after`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const around: {
@@ -162,7 +162,7 @@ export const around: {
 /**
  * Returns a data source that executes at most `n` requests in parallel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const batchN: {
@@ -173,7 +173,7 @@ export const batchN: {
 /**
  * Provides this data source with part of its required context.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const mapInputContext: {
@@ -191,7 +191,7 @@ export const mapInputContext: {
  * specified function to transform `C` requests into requests that either this
  * data source or that data source can execute.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const eitherWith: {
@@ -215,7 +215,7 @@ export const eitherWith: {
 /**
  * Constructs a data source from a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromFunction: <A extends Request.Request<never, any>>(
@@ -227,7 +227,7 @@ export const fromFunction: <A extends Request.Request<never, any>>(
  * and returns a list of results of the same size. Each item in the result
  * list must correspond to the item at the same index in the request list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromFunctionBatched: <A extends Request.Request<never, any>>(
@@ -237,7 +237,7 @@ export const fromFunctionBatched: <A extends Request.Request<never, any>>(
 /**
  * Constructs a data source from an effectual function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromFunctionEffect: <R, A extends Request.Request<any, any>>(
@@ -247,7 +247,7 @@ export const fromFunctionEffect: <R, A extends Request.Request<any, any>>(
 /**
  * A data source that never executes requests.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const never: RequestResolver<never, never> = internal.never
@@ -255,7 +255,7 @@ export const never: RequestResolver<never, never> = internal.never
 /**
  * Provides this data source with its required context.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideContext: {
@@ -273,7 +273,7 @@ export const provideContext: {
  * data source and that data source, returning the results from the first data
  * source to complete and safely interrupting the loser.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const race: {
@@ -289,7 +289,7 @@ export const race: {
 /**
  * Returns a new data source with a localized FiberRef
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const locally: {

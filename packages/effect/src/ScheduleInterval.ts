@@ -1,18 +1,18 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Duration from "./Duration"
 import * as internal from "./internal/schedule/interval"
 import type * as Option from "./Option"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const IntervalTypeId: unique symbol = internal.IntervalTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type IntervalTypeId = typeof IntervalTypeId
@@ -21,7 +21,7 @@ export type IntervalTypeId = typeof IntervalTypeId
  * An `Interval` represents an interval of time. Intervals can encompass all
  * time, or no time at all.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Interval {
@@ -35,7 +35,7 @@ export interface Interval {
  * endpoint greater than the end endpoint, then a zero size interval will be
  * returned.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (startMillis: number, endMillis: number) => Interval = internal.make
@@ -43,7 +43,7 @@ export const make: (startMillis: number, endMillis: number) => Interval = intern
 /**
  * An `Interval` of zero-width.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: Interval = internal.empty
@@ -52,7 +52,7 @@ export const empty: Interval = internal.empty
  * Returns `true` if this `Interval` is less than `that` interval, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const lessThan: {
@@ -63,7 +63,7 @@ export const lessThan: {
 /**
  * Returns the minimum of two `Interval`s.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const min: {
@@ -74,7 +74,7 @@ export const min: {
 /**
  * Returns the maximum of two `Interval`s.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const max: {
@@ -85,7 +85,7 @@ export const max: {
 /**
  * Returns `true` if the specified `Interval` is empty, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const isEmpty: (self: Interval) => boolean = internal.isEmpty
@@ -93,7 +93,7 @@ export const isEmpty: (self: Interval) => boolean = internal.isEmpty
 /**
  * Returns `true` if the specified `Interval` is non-empty, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const isNonEmpty: (self: Interval) => boolean = internal.isNonEmpty
@@ -102,7 +102,7 @@ export const isNonEmpty: (self: Interval) => boolean = internal.isNonEmpty
  * Computes a new `Interval` which is the intersection of this `Interval` and
  * that `Interval`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const intersect: {
@@ -114,7 +114,7 @@ export const intersect: {
  * Calculates the size of the `Interval` as the `Duration` from the start of the
  * interval to the end of the interval.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: (self: Interval) => Duration.Duration = internal.size
@@ -124,7 +124,7 @@ export const size: (self: Interval) => Duration.Duration = internal.size
  * `Interval` as a `Some`, otherwise returns `None` if the two intervals cannot
  * form a union.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const union: {
@@ -136,7 +136,7 @@ export const union: {
  * Construct an `Interval` that includes all time equal to and after the
  * specified start time.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const after: (startMilliseconds: number) => Interval = internal.after
@@ -146,6 +146,6 @@ export const after: (startMilliseconds: number) => Interval = internal.after
  * specified end time.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const before: (endMilliseconds: number) => Interval = internal.before

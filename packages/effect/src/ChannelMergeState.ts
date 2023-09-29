@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type * as Either from "./Either"
@@ -8,19 +8,19 @@ import type * as Fiber from "./Fiber"
 import * as internal from "./internal/channel/mergeState"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MergeStateTypeId: unique symbol = internal.MergeStateTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MergeStateTypeId = typeof MergeStateTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> =
@@ -29,11 +29,11 @@ export type MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> =
   | RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace MergeState {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Proto {
@@ -42,7 +42,7 @@ export declare namespace MergeState {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> extends MergeState.Proto {
@@ -52,7 +52,7 @@ export interface BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> 
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface LeftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2> extends MergeState.Proto {
@@ -61,7 +61,7 @@ export interface LeftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2> ext
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> extends MergeState.Proto {
@@ -70,7 +70,7 @@ export interface RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> ex
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const BothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
@@ -79,7 +79,7 @@ export const BothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> = internal.BothRunning
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const LeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
@@ -87,7 +87,7 @@ export const LeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> = internal.LeftDone
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const RightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
@@ -97,7 +97,7 @@ export const RightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 /**
  * Returns `true` if the specified value is a `MergeState`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isMergeState: (
@@ -108,7 +108,7 @@ export const isMergeState: (
  * Returns `true` if the specified `MergeState` is a `BothRunning`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isBothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
@@ -119,7 +119,7 @@ export const isBothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
  * Returns `true` if the specified `MergeState` is a `LeftDone`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isLeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
@@ -130,7 +130,7 @@ export const isLeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
  * Returns `true` if the specified `MergeState` is a `RightDone`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isRightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
@@ -138,7 +138,7 @@ export const isRightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 ) => self is RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> = internal.isRightDone
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const match: {

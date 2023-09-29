@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import * as internal from "./internal/stm/tReentrantLock"
@@ -8,13 +8,13 @@ import type * as STM from "./STM"
 import type * as TRef from "./TRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TReentrantLockTypeId: unique symbol = internal.TReentrantLockTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TReentrantLockTypeId = typeof TReentrantLockTypeId
@@ -35,13 +35,13 @@ export type TReentrantLockTypeId = typeof TReentrantLockTypeId
  * allows this structure to be composed into more complicated concurrent
  * structures that are consumed from effectful code.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TReentrantLock extends TReentrantLock.Proto {}
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TReentrantLock {
   /** @internal */
@@ -49,11 +49,11 @@ export interface TReentrantLock {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace TReentrantLock {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Proto {
@@ -66,7 +66,7 @@ export declare namespace TReentrantLock {
  * holding a write lock. Succeeds with the number of read locks held by this
  * fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const acquireRead: (self: TReentrantLock) => STM.STM<never, never, number> = internal.acquireRead
@@ -76,7 +76,7 @@ export const acquireRead: (self: TReentrantLock) => STM.STM<never, never, number
  * are holding read or write locks. Succeeds with the number of write locks
  * held by this fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const acquireWrite: (self: TReentrantLock) => STM.STM<never, never, number> = internal.acquireWrite
@@ -84,7 +84,7 @@ export const acquireWrite: (self: TReentrantLock) => STM.STM<never, never, numbe
 /**
  * Retrieves the number of acquired read locks for this fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const fiberReadLocks: (self: TReentrantLock) => STM.STM<never, never, number> = internal.fiberReadLocks
@@ -92,7 +92,7 @@ export const fiberReadLocks: (self: TReentrantLock) => STM.STM<never, never, num
 /**
  * Retrieves the number of acquired write locks for this fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const fiberWriteLocks: (self: TReentrantLock) => STM.STM<never, never, number> = internal.fiberWriteLocks
@@ -103,7 +103,7 @@ export const fiberWriteLocks: (self: TReentrantLock) => STM.STM<never, never, nu
  *
  * See `TReentrantLock.writeLock`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const lock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number> = internal.lock
@@ -111,7 +111,7 @@ export const lock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, n
 /**
  * Determines if any fiber has a read or write lock.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const locked: (self: TReentrantLock) => STM.STM<never, never, boolean> = internal.locked
@@ -119,7 +119,7 @@ export const locked: (self: TReentrantLock) => STM.STM<never, never, boolean> = 
 /**
  * Makes a new reentrant read/write lock.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: STM.STM<never, never, TReentrantLock> = internal.make
@@ -127,7 +127,7 @@ export const make: STM.STM<never, never, TReentrantLock> = internal.make
 /**
  * Obtains a read lock in a scoped context.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const readLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number> = internal.readLock
@@ -135,7 +135,7 @@ export const readLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, neve
 /**
  * Retrieves the total number of acquired read locks.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const readLocks: (self: TReentrantLock) => STM.STM<never, never, number> = internal.readLocks
@@ -143,7 +143,7 @@ export const readLocks: (self: TReentrantLock) => STM.STM<never, never, number> 
 /**
  * Determines if any fiber has a read lock.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const readLocked: (self: TReentrantLock) => STM.STM<never, never, boolean> = internal.readLocked
@@ -152,7 +152,7 @@ export const readLocked: (self: TReentrantLock) => STM.STM<never, never, boolean
  * Releases a read lock held by this fiber. Succeeds with the outstanding
  * number of read locks held by this fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const releaseRead: (self: TReentrantLock) => STM.STM<never, never, number> = internal.releaseRead
@@ -161,7 +161,7 @@ export const releaseRead: (self: TReentrantLock) => STM.STM<never, never, number
  * Releases a write lock held by this fiber. Succeeds with the outstanding
  * number of write locks held by this fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const releaseWrite: (self: TReentrantLock) => STM.STM<never, never, number> = internal.releaseWrite
@@ -169,7 +169,7 @@ export const releaseWrite: (self: TReentrantLock) => STM.STM<never, never, numbe
 /**
  * Runs the specified workflow with a lock.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const withLock: {
@@ -180,7 +180,7 @@ export const withLock: {
 /**
  * Runs the specified workflow with a read lock.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const withReadLock: {
@@ -191,7 +191,7 @@ export const withReadLock: {
 /**
  * Runs the specified workflow with a write lock.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const withWriteLock: {
@@ -202,7 +202,7 @@ export const withWriteLock: {
 /**
  * Obtains a write lock in a scoped context.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const writeLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number> = internal.writeLock
@@ -210,7 +210,7 @@ export const writeLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, nev
 /**
  * Determines if a write lock is held by some fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const writeLocked: (self: TReentrantLock) => STM.STM<never, never, boolean> = internal.writeLocked
@@ -218,7 +218,7 @@ export const writeLocked: (self: TReentrantLock) => STM.STM<never, never, boolea
 /**
  * Computes the number of write locks held by fibers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const writeLocks: (self: TReentrantLock) => STM.STM<never, never, number> = internal.writeLocks
