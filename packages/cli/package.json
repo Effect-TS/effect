@@ -57,9 +57,9 @@
   },
   "packageManager": "pnpm@8.6.10",
   "peerDependencies": {
-    "@effect/printer": "^0.16.0",
-    "@effect/printer-ansi": "^0.16.0",
-    "effect": "2.0.0-next.37"
+    "@effect/printer": "^0.17.1",
+    "@effect/printer-ansi": "^0.17.1",
+    "effect": "2.0.0-next.38"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.0",
@@ -72,17 +72,17 @@
     "@effect/docgen": "^0.1.8",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
-    "@effect/printer": "^0.17.0",
-    "@effect/printer-ansi": "^0.17.0",
+    "@effect/printer": "^0.17.1",
+    "@effect/printer-ansi": "^0.17.1",
     "@types/chai": "^4.3.6",
     "@types/node": "^20.7.1",
     "@typescript-eslint/eslint-plugin": "^6.7.3",
     "@typescript-eslint/parser": "^6.7.3",
     "@vitejs/plugin-react": "^4.1.0",
-    "@vitest/coverage-v8": "^0.34.5",
+    "@vitest/coverage-v8": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.1",
-    "effect": "2.0.0-next.37",
+    "effect": "2.0.0-next.38",
     "error-stack-parser": "^2.1.4",
     "eslint": "^8.50.0",
     "eslint-import-resolver-typescript": "^3.6.1",
@@ -98,6 +98,6 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2",
     "vite": "^4.4.9",
-    "vitest": "0.34.5"
+    "vitest": "0.34.6"
   }
 }
