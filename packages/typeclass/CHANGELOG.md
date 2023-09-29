@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.6.1
+
+### Patch Changes
+
+- [#22](https://github.com/Effect-TS/typeclass/pull/22) [`5a51d46`](https://github.com/Effect-TS/typeclass/commit/5a51d46b285ee66a44753d1a910645e2e5150246) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.6.0
 
 ### Minor Changes
