@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.15.1
+
+### Patch Changes
+
+- [#333](https://github.com/Effect-TS/cli/pull/333) [`333baa6`](https://github.com/Effect-TS/cli/commit/333baa60cbd847f39d7ab3303a7d866b467cb896) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.15.0
 
 ### Minor Changes
