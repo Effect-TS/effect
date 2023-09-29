@@ -1,0 +1,164 @@
+import * as Context from "../Context"
+import type * as Effect from "../Effect"
+import { pipe } from "../Function"
+import { globalValue } from "../GlobalValue"
+import * as core from "../internal/core"
+import * as effect from "../internal/core-effect"
+import * as fiberRuntime from "../internal/fiberRuntime"
+import * as _layer from "../internal/layer"
+import * as _schedule from "../internal/schedule"
+import * as scopedRef from "../internal/scopedRef"
+import type * as Layer from "../Layer"
+import type * as Reloadable from "../Reloadable"
+import type * as Schedule from "../Schedule"
+
+/** @internal */
+const ReloadableSymbolKey = "effect/Reloadable"
+
+/** @internal */
+export const ReloadableTypeId: Reloadable.ReloadableTypeId = Symbol.for(
+  ReloadableSymbolKey
+) as Reloadable.ReloadableTypeId
+
+/** @internal */
+const reloadableVariance = {
+  _A: (_: never) => _
+}
+
+/** @internal */
+export const auto = <Out extends Context.Tag<any, any>, In, E, R>(
+  tag: Out,
+  options: {
+    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly schedule: Schedule.Schedule<R, unknown, unknown>
+  }
+): Layer.Layer<
+  R | In,
+  E,
+  Reloadable.Reloadable<Context.Tag.Identifier<Out>>
+> =>
+  _layer.scoped(
+    reloadableTag(tag),
+    pipe(
+      _layer.build(manual(tag, { layer: options.layer })),
+      core.map(Context.unsafeGet(reloadableTag(tag))),
+      core.tap((reloadable) =>
+        fiberRuntime.acquireRelease(
+          pipe(
+            reloadable.reload(),
+            effect.ignoreLogged,
+            _schedule.schedule_Effect(options.schedule),
+            fiberRuntime.forkDaemon
+          ),
+          core.interruptFiber
+        )
+      )
+    )
+  )
+
+/** @internal */
+export const autoFromConfig = <Out extends Context.Tag<any, any>, In, E, R>(
+  tag: Out,
+  options: {
+    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
+  }
+): Layer.Layer<
+  R | In,
+  E,
+  Reloadable.Reloadable<Context.Tag.Identifier<Out>>
+> =>
+  _layer.scoped(
+    reloadableTag(tag),
+    pipe(
+      core.context<In>(),
+      core.flatMap((env) =>
+        pipe(
+          _layer.build(auto(tag, {
+            layer: options.layer,
+            schedule: options.scheduleFromConfig(env)
+          })),
+          core.map(Context.unsafeGet(reloadableTag(tag)))
+        )
+      )
+    )
+  )
+
+/** @internal */
+export const get = <T extends Context.Tag<any, any>>(
+  tag: T
+): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>> =>
+  core.flatMap(
+    reloadableTag(tag),
+    (reloadable) => scopedRef.get(reloadable.scopedRef)
+  )
+
+/** @internal */
+export const manual = <Out extends Context.Tag<any, any>, In, E>(
+  tag: Out,
+  options: {
+    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
+  }
+): Layer.Layer<In, E, Reloadable.Reloadable<Context.Tag.Identifier<Out>>> =>
+  _layer.scoped(
+    reloadableTag(tag),
+    pipe(
+      core.context<In>(),
+      core.flatMap((env) =>
+        pipe(
+          scopedRef.fromAcquire(pipe(_layer.build(options.layer), core.map(Context.unsafeGet(tag)))),
+          core.map((ref) => ({
+            [ReloadableTypeId]: reloadableVariance,
+            scopedRef: ref,
+            reload: () =>
+              pipe(
+                scopedRef.set(ref, pipe(_layer.build(options.layer), core.map(Context.unsafeGet(tag)))),
+                core.provideContext(env)
+              )
+          }))
+        )
+      )
+    )
+  )
+
+/** @internal */
+const tagMap = globalValue(
+  Symbol.for("effect/Reloadable/tagMap"),
+  () => new WeakMap<Context.Tag<any, any>, Context.Tag<any, any>>([])
+)
+
+/** @internal */
+export const reloadableTag = <T extends Context.Tag<any, any>>(
+  tag: T
+): Context.Tag<Reloadable.Reloadable<Context.Tag.Identifier<T>>, Reloadable.Reloadable<Context.Tag.Service<T>>> => {
+  if (tagMap.has(tag)) {
+    return tagMap.get(tag)!
+  }
+  const newTag = Context.Tag<
+    Reloadable.Reloadable<Context.Tag.Identifier<T>>,
+    Reloadable.Reloadable<Context.Tag.Service<T>>
+  >()
+  tagMap.set(tag, newTag)
+  return newTag
+}
+
+/** @internal */
+export const reload = <T extends Context.Tag<any, any>>(
+  tag: T
+): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+  core.flatMap(
+    reloadableTag(tag),
+    (reloadable) => reloadable.reload()
+  )
+
+/** @internal */
+export const reloadFork = <T extends Context.Tag<any, any>>(
+  tag: T
+): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+  core.flatMap(reloadableTag(tag), (reloadable) =>
+    pipe(
+      reloadable.reload(),
+      effect.ignoreLogged,
+      fiberRuntime.forkDaemon,
+      core.asUnit
+    ))

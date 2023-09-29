@@ -1,34 +1,94 @@
 ---
 title: MetricLabel.ts
-nav_order: 61
+nav_order: 64
 parent: Modules
 ---
 
 ## MetricLabel overview
 
-Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
-
-Added in v2.0.0
+Added in v1.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [exports](#exports)
-  - [From "@effect/io/MetricLabel"](#from-effectiometriclabel)
+- [constructors](#constructors)
+  - [make](#make)
+- [models](#models)
+  - [MetricLabel (interface)](#metriclabel-interface)
+- [refinements](#refinements)
+  - [isMetricLabel](#ismetriclabel)
+- [symbols](#symbols)
+  - [MetricLabelTypeId](#metriclabeltypeid)
+  - [MetricLabelTypeId (type alias)](#metriclabeltypeid-type-alias)
 
 ---
 
-# exports
+# constructors
 
-## From "@effect/io/MetricLabel"
-
-Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
+## make
 
 **Signature**
 
 ```ts
-export * from '@effect/io/MetricLabel'
+export declare const make: (key: string, value: string) => MetricLabel
 ```
 
-Added in v2.0.0
+Added in v1.0.0
+
+# models
+
+## MetricLabel (interface)
+
+A `MetricLabel` represents a key value pair that allows analyzing metrics at
+an additional level of granularity.
+
+For example if a metric tracks the response time of a service labels could
+be used to create separate versions that track response times for different
+clients.
+
+**Signature**
+
+```ts
+export interface MetricLabel extends Equal.Equal, Pipeable {
+  readonly [MetricLabelTypeId]: MetricLabelTypeId
+  readonly key: string
+  readonly value: string
+}
+```
+
+Added in v1.0.0
+
+# refinements
+
+## isMetricLabel
+
+**Signature**
+
+```ts
+export declare const isMetricLabel: (u: unknown) => u is MetricLabel
+```
+
+Added in v1.0.0
+
+# symbols
+
+## MetricLabelTypeId
+
+**Signature**
+
+```ts
+export declare const MetricLabelTypeId: typeof MetricLabelTypeId
+```
+
+Added in v1.0.0
+
+## MetricLabelTypeId (type alias)
+
+**Signature**
+
+```ts
+export type MetricLabelTypeId = typeof MetricLabelTypeId
+```
+
+Added in v1.0.0

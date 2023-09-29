@@ -6,29 +6,58 @@ parent: Modules
 
 ## DefaultServices overview
 
-Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
-
-Added in v2.0.0
+Added in v1.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [exports](#exports)
-  - [From "@effect/io/DefaultServices"](#from-effectiodefaultservices)
+- [constructors](#constructors)
+  - [liveServices](#liveservices)
+- [fiberRefs](#fiberrefs)
+  - [currentServices](#currentservices)
+- [models](#models)
+  - [DefaultServices (type alias)](#defaultservices-type-alias)
 
 ---
 
-# exports
+# constructors
 
-## From "@effect/io/DefaultServices"
-
-Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
+## liveServices
 
 **Signature**
 
 ```ts
-export * from '@effect/io/DefaultServices'
+export declare const liveServices: Context.Context<DefaultServices>
 ```
 
-Added in v2.0.0
+Added in v1.0.0
+
+# fiberRefs
+
+## currentServices
+
+**Signature**
+
+```ts
+export declare const currentServices: FiberRef.FiberRef<Context.Context<DefaultServices>>
+```
+
+Added in v1.0.0
+
+# models
+
+## DefaultServices (type alias)
+
+**Signature**
+
+```ts
+export type DefaultServices =
+  | Clock.Clock
+  | Console.Console
+  | Random.Random
+  | ConfigProvider.ConfigProvider
+  | Tracer.Tracer
+```
+
+Added in v1.0.0

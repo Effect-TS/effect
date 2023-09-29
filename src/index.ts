@@ -1,933 +1,809 @@
 /**
- * @since 2.0.0
+ * This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
+ * It includes functions for basic arithmetic operations, as well as type class instances for
+ * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ *
+ * @since 1.0.0
  */
+export * as Bigint from "./Bigint"
 
-import * as Bigint from "effect/Bigint"
-import * as Boolean from "effect/Boolean"
-import * as Brand from "effect/Brand"
-import * as Cache from "effect/Cache"
-import * as Cause from "effect/Cause"
-import * as Channel from "effect/Channel"
-import * as ChannelChildExecutorDecision from "effect/ChannelChildExecutorDecision"
-import * as ChannelMergeDecision from "effect/ChannelMergeDecision"
-import * as ChannelMergeState from "effect/ChannelMergeState"
-import * as ChannelMergeStrategy from "effect/ChannelMergeStrategy"
-import * as ChannelSingleProducerAsyncInput from "effect/ChannelSingleProducerAsyncInput"
-import * as ChannelUpstreamPullRequest from "effect/ChannelUpstreamPullRequest"
-import * as ChannelUpstreamPullStrategy from "effect/ChannelUpstreamPullStrategy"
-import * as Chunk from "effect/Chunk"
-import * as Clock from "effect/Clock"
-import * as Concurrency from "effect/Concurrency"
-import * as Config from "effect/Config"
-import * as ConfigError from "effect/ConfigError"
-import * as ConfigProvider from "effect/ConfigProvider"
-import * as ConfigSecret from "effect/ConfigSecret"
-import * as Console from "effect/Console"
-import * as Context from "effect/Context"
-import * as Data from "effect/Data"
-import * as DefaultServices from "effect/DefaultServices"
-import * as Deferred from "effect/Deferred"
-import * as Differ from "effect/Differ"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Equal from "effect/Equal"
-import * as Equivalence from "effect/Equivalence"
-import * as ExecutionStrategy from "effect/ExecutionStrategy"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
-import * as FiberRef from "effect/FiberRef"
-import * as FiberRefs from "effect/FiberRefs"
-import * as FiberRefsPatch from "effect/FiberRefsPatch"
-import * as FiberStatus from "effect/FiberStatus"
-import { absurd, flow, hole, identity, pipe, unsafeCoerce } from "effect/Function"
-import * as Function from "effect/Function"
-import * as GlobalValue from "effect/GlobalValue"
-import * as GroupBy from "effect/GroupBy"
-import * as Hash from "effect/Hash"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
-import * as HKT from "effect/HKT"
-import * as Hub from "effect/Hub"
-import * as KeyedPool from "effect/KeyedPool"
-import * as Layer from "effect/Layer"
-import * as List from "effect/List"
-import * as Logger from "effect/Logger"
-import * as LogLevel from "effect/LogLevel"
-import * as LogSpan from "effect/LogSpan"
-import * as Match from "effect/Match"
-import * as Metric from "effect/Metric"
-import * as MetricBoundaries from "effect/MetricBoundaries"
-import * as MetricHook from "effect/MetricHook"
-import * as MetricKey from "effect/MetricKey"
-import * as MetricKeyType from "effect/MetricKeyType"
-import * as MetricLabel from "effect/MetricLabel"
-import * as MetricPair from "effect/MetricPair"
-import * as MetricPolling from "effect/MetricPolling"
-import * as MetricRegistry from "effect/MetricRegistry"
-import * as MetricState from "effect/MetricState"
-import * as MutableHashMap from "effect/MutableHashMap"
-import * as MutableHashSet from "effect/MutableHashSet"
-import * as MutableList from "effect/MutableList"
-import * as MutableQueue from "effect/MutableQueue"
-import * as MutableRef from "effect/MutableRef"
-import * as Number from "effect/Number"
-import * as Option from "effect/Option"
-import * as Order from "effect/Order"
-import * as Ordering from "effect/Ordering"
-import * as PCGRandom from "effect/PCGRandom"
-import * as Pipeable from "effect/Pipeable"
-import * as Pool from "effect/Pool"
-import * as Predicate from "effect/Predicate"
-import * as Queue from "effect/Queue"
-import * as Random from "effect/Random"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as ReadonlyRecord from "effect/ReadonlyRecord"
-import * as RedBlackTree from "effect/RedBlackTree"
-import * as Ref from "effect/Ref"
-import * as Reloadable from "effect/Reloadable"
-import * as Request from "effect/Request"
-import * as RequestBlock from "effect/RequestBlock"
-import * as RequestResolver from "effect/RequestResolver"
-import * as Resource from "effect/Resource"
-import * as Runtime from "effect/Runtime"
-import * as RuntimeFlags from "effect/RuntimeFlags"
-import * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
-import * as Schedule from "effect/Schedule"
-import * as ScheduleDecision from "effect/ScheduleDecision"
-import * as ScheduleInterval from "effect/ScheduleInterval"
-import * as ScheduleIntervals from "effect/ScheduleIntervals"
-import * as Scheduler from "effect/Scheduler"
-import * as Scope from "effect/Scope"
-import * as ScopedCache from "effect/ScopedCache"
-import * as ScopedRef from "effect/ScopedRef"
-import * as Sink from "effect/Sink"
-import * as SortedMap from "effect/SortedMap"
-import * as SortedSet from "effect/SortedSet"
-import * as STM from "effect/STM"
-import * as Stream from "effect/Stream"
-import * as StreamEmit from "effect/StreamEmit"
-import * as StreamHaltStrategy from "effect/StreamHaltStrategy"
-import * as String from "effect/String"
-import * as Struct from "effect/Struct"
-import * as SubscriptionRef from "effect/SubscriptionRef"
-import * as Supervisor from "effect/Supervisor"
-import * as Symbol from "effect/Symbol"
-import * as SynchronizedRef from "effect/SynchronizedRef"
-import * as Take from "effect/Take"
-import * as TArray from "effect/TArray"
-import * as TDeferred from "effect/TDeferred"
-import * as THub from "effect/THub"
-import * as TMap from "effect/TMap"
-import * as TPriorityQueue from "effect/TPriorityQueue"
-import * as TQueue from "effect/TQueue"
-import * as Tracer from "effect/Tracer"
-import * as TRandom from "effect/TRandom"
-import * as TReentrantLock from "effect/TReentrantLock"
-import * as TRef from "effect/TRef"
-import * as TSemaphore from "effect/TSemaphore"
-import * as TSet from "effect/TSet"
-import * as Tuple from "effect/Tuple"
-import * as Types from "effect/Types"
+/**
+ * This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
+ * It includes functions for basic boolean operations, as well as type class instances for
+ * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ *
+ * @since 1.0.0
+ */
+export * as Boolean from "./Boolean"
 
-export {
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
-   *
-   * @since 2.0.0
-   */
-  absurd,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
-   *
-   * @since 2.0.0
-   */
-  Bigint,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
-   *
-   * @since 2.0.0
-   */
-  Boolean,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
-   *
-   * @since 2.0.0
-   */
-  Brand,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Cache.ts.html
-   *
-   * @since 2.0.0
-   */
-  Cache,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
-   *
-   * @since 2.0.0
-   */
-  Cause,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
-   *
-   * @since 2.0.0
-   */
-  Channel,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
-   *
-   * @since 2.0.0
-   */
-  ChannelChildExecutorDecision,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
-   *
-   * @since 2.0.0
-   */
-  ChannelMergeDecision,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
-   *
-   * @since 2.0.0
-   */
-  ChannelMergeState,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
-   *
-   * @since 2.0.0
-   */
-  ChannelMergeStrategy,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
-   *
-   * @since 2.0.0
-   */
-  ChannelSingleProducerAsyncInput,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
-   *
-   * @since 2.0.0
-   */
-  ChannelUpstreamPullRequest,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
-   *
-   * @since 2.0.0
-   */
-  ChannelUpstreamPullStrategy,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
-   *
-   * @since 2.0.0
-   */
-  Chunk,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
-   *
-   * @since 2.0.0
-   */
-  Clock,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
-   *
-   * @since 2.0.0
-   */
-  Concurrency,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Config.ts.html
-   *
-   * @since 2.0.0
-   */
-  Config,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
-   *
-   * @since 2.0.0
-   */
-  ConfigError,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
-   *
-   * @since 2.0.0
-   */
-  ConfigProvider,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
-   *
-   * @since 2.0.0
-   */
-  ConfigSecret,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Console.ts.html
-   *
-   * @since 2.0.0
-   */
-  Console,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Context.ts.html
-   *
-   * @since 2.0.0
-   */
-  Context,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Data.ts.html
-   *
-   * @since 2.0.0
-   */
-  Data,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
-   *
-   * @since 2.0.0
-   */
-  DefaultServices,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
-   *
-   * @since 2.0.0
-   */
-  Deferred,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
-   *
-   * @since 2.0.0
-   */
-  Differ,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
-   *
-   * @since 2.0.0
-   */
-  Duration,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
-   *
-   * @since 2.0.0
-   */
-  Effect,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Either.ts.html
-   *
-   * @since 2.0.0
-   */
-  Either,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
-   *
-   * @since 2.0.0
-   */
-  Equal,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
-   *
-   * @since 2.0.0
-   */
-  Equivalence,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
-   *
-   * @since 2.0.0
-   */
-  ExecutionStrategy,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
-   *
-   * @since 2.0.0
-   */
-  Exit,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
-   *
-   * @since 2.0.0
-   */
-  Fiber,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
-   *
-   * @since 2.0.0
-   */
-  FiberId,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
-   *
-   * @since 2.0.0
-   */
-  FiberRef,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
-   *
-   * @since 2.0.0
-   */
-  FiberRefs,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html
-   *
-   * @since 2.0.0
-   */
-  FiberRefsPatch,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
-   *
-   * @since 2.0.0
-   */
-  FiberStatus,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
-   *
-   * @since 2.0.0
-   */
-  flow,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html
-   *
-   * @since 2.0.0
-   */
-  Function,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
-   *
-   * @since 2.0.0
-   */
-  GlobalValue,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
-   *
-   * @since 2.0.0
-   */
-  GroupBy,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
-   *
-   * @since 2.0.0
-   */
-  Hash,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
-   *
-   * @since 2.0.0
-   */
-  HashMap,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
-   *
-   * @since 2.0.0
-   */
-  HashSet,
-  /**
-   * Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
-   *
-   * @since 2.0.0
-   */
-  HKT,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
-   *
-   * @since 2.0.0
-   */
-  hole,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
-   *
-   * @since 2.0.0
-   */
-  Hub,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
-   *
-   * @since 2.0.0
-   */
-  identity,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/KeyedPool.ts.html
-   *
-   * @since 2.0.0
-   */
-  KeyedPool,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
-   *
-   * @since 2.0.0
-   */
-  Layer,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/List.ts.html
-   *
-   * @since 2.0.0
-   */
-  List,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
-   *
-   * @since 2.0.0
-   */
-  Logger,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
-   *
-   * @since 2.0.0
-   */
-  LogLevel,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
-   *
-   * @since 2.0.0
-   */
-  LogSpan,
-  /**
-   * Docs: https://effect-ts.github.io/match/modules/index.ts.html
-   *
-   * @since 2.0.0
-   */
-  Match,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
-   *
-   * @since 2.0.0
-   */
-  Metric,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricBoundaries,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricHook,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricKey,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricKeyType,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricLabel,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricPair,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricPolling,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricRegistry,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
-   *
-   * @since 2.0.0
-   */
-  MetricState,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
-   *
-   * @since 2.0.0
-   */
-  MutableHashMap,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
-   *
-   * @since 2.0.0
-   */
-  MutableHashSet,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
-   *
-   * @since 2.0.0
-   */
-  MutableList,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
-   *
-   * @since 2.0.0
-   */
-  MutableQueue,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
-   *
-   * @since 2.0.0
-   */
-  MutableRef,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Number.ts.html
-   *
-   * @since 2.0.0
-   */
-  Number,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Option.ts.html
-   *
-   * @since 2.0.0
-   */
-  Option,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Order.ts.html
-   *
-   * @since 2.0.0
-   */
-  Order,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
-   *
-   * @since 2.0.0
-   */
-  Ordering,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
-   *
-   * @since 2.0.0
-   */
-  PCGRandom,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
-   *
-   * @since 2.0.0
-   */
-  pipe,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
-   *
-   * @since 2.0.0
-   */
-  Pipeable,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Pool.ts.html
-   *
-   * @since 2.0.0
-   */
-  Pool,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
-   *
-   * @since 2.0.0
-   */
-  Predicate,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
-   *
-   * @since 2.0.0
-   */
-  Queue,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Random.ts.html
-   *
-   * @since 2.0.0
-   */
-  Random,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
-   *
-   * @since 2.0.0
-   */
-  ReadonlyArray,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
-   *
-   * @since 2.0.0
-   */
-  ReadonlyRecord,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
-   *
-   * @since 2.0.0
-   */
-  RedBlackTree,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
-   *
-   * @since 2.0.0
-   */
-  Ref,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
-   *
-   * @since 2.0.0
-   */
-  Reloadable,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Request.ts.html
-   *
-   * @since 2.0.0
-   */
-  Request,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
-   *
-   * @since 2.0.0
-   */
-  RequestBlock,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/RequestResolver.ts.html
-   *
-   * @since 2.0.0
-   */
-  RequestResolver,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Resource.ts.html
-   *
-   * @since 2.0.0
-   */
-  Resource,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
-   *
-   * @since 2.0.0
-   */
-  Runtime,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
-   *
-   * @since 2.0.0
-   */
-  RuntimeFlags,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
-   *
-   * @since 2.0.0
-   */
-  RuntimeFlagsPatch,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
-   *
-   * @since 2.0.0
-   */
-  Schedule,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
-   *
-   * @since 2.0.0
-   */
-  ScheduleDecision,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
-   *
-   * @since 2.0.0
-   */
-  ScheduleInterval,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
-   *
-   * @since 2.0.0
-   */
-  ScheduleIntervals,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
-   *
-   * @since 2.0.0
-   */
-  Scheduler,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
-   *
-   * @since 2.0.0
-   */
-  Scope,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ScopedCache.ts.html
-   *
-   * @since 2.0.0
-   */
-  ScopedCache,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
-   *
-   * @since 2.0.0
-   */
-  ScopedRef,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
-   *
-   * @since 2.0.0
-   */
-  Sink,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
-   *
-   * @since 2.0.0
-   */
-  SortedMap,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
-   *
-   * @since 2.0.0
-   */
-  SortedSet,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
-   *
-   * @since 2.0.0
-   */
-  STM,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
-   *
-   * @since 2.0.0
-   */
-  Stream,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
-   *
-   * @since 2.0.0
-   */
-  StreamEmit,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
-   *
-   * @since 2.0.0
-   */
-  StreamHaltStrategy,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/String.ts.html
-   *
-   * @since 2.0.0
-   */
-  String,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
-   *
-   * @since 2.0.0
-   */
-  Struct,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
-   *
-   * @since 2.0.0
-   */
-  SubscriptionRef,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
-   *
-   * @since 2.0.0
-   */
-  Supervisor,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
-   *
-   * @since 2.0.0
-   */
-  Symbol,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
-   *
-   * @since 2.0.0
-   */
-  SynchronizedRef,
-  /**
-   * Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
-   *
-   * @since 2.0.0
-   */
-  Take,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
-   *
-   * @since 2.0.0
-   */
-  TArray,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
-   *
-   * @since 2.0.0
-   */
-  TDeferred,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
-   *
-   * @since 2.0.0
-   */
-  THub,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
-   *
-   * @since 2.0.0
-   */
-  TMap,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
-   *
-   * @since 2.0.0
-   */
-  TPriorityQueue,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
-   *
-   * @since 2.0.0
-   */
-  TQueue,
-  /**
-   * Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
-   *
-   * @since 2.0.0
-   */
-  Tracer,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
-   *
-   * @since 2.0.0
-   */
-  TRandom,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
-   *
-   * @since 2.0.0
-   */
-  TReentrantLock,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
-   *
-   * @since 2.0.0
-   */
-  TRef,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
-   *
-   * @since 2.0.0
-   */
-  TSemaphore,
-  /**
-   * Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
-   *
-   * @since 2.0.0
-   */
-  TSet,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
-   *
-   * @since 2.0.0
-   */
-  Tuple,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Types.ts.html
-   *
-   * @since 2.0.0
-   */
-  Types,
-  /**
-   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#unsafecoerce
-   *
-   * @since 2.0.0
-   */
-  unsafeCoerce
-}
+/**
+ * This module provides types and utility functions to create and work with branded types,
+ * which are TypeScript types with an added type tag to prevent accidental usage of a value in the wrong context.
+ *
+ * The `refined` and `nominal` functions are both used to create branded types in TypeScript.
+ * The main difference between them is that `refined` allows for validation of the data, while `nominal` does not.
+ *
+ * The `nominal` function is used to create a new branded type that has the same underlying type as the input, but with a different name.
+ * This is useful when you want to distinguish between two values of the same type that have different meanings.
+ * The `nominal` function does not perform any validation of the input data.
+ *
+ * On the other hand, the `refined` function is used to create a new branded type that has the same underlying type as the input,
+ * but with a different name, and it also allows for validation of the input data.
+ * The `refined` function takes a predicate that is used to validate the input data.
+ * If the input data fails the validation, a `BrandErrors` is returned, which provides information about the specific validation failure.
+ *
+ * @since 1.0.0
+ */
+export * as Brand from "./Brand"
+
+/**
+ * @since 1.0.0
+ */
+export * as Cache from "./Cache"
+
+/**
+ * The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
+ * work with any error type that we want. However, there is a lot of information
+ * that is not inside an arbitrary `E` value. So as a result, an `Effect` needs
+ * somewhere to store things like unexpected errors or defects, stack and
+ * execution traces, causes of fiber interruptions, and so forth.
+ *
+ * Effect-TS is very strict about preserving the full information related to a
+ * failure. It captures all type of errors into the `Cause` data type. `Effect`
+ * uses the `Cause<E>` data type to store the full story of failure. So its
+ * error model is lossless. It doesn't throw information related to the failure
+ * result. So we can figure out exactly what happened during the operation of
+ * our effects.
+ *
+ * It is important to note that `Cause` is an underlying data type representing
+ * errors occuring within an `Effect` workflow. Thus, we don't usually deal with
+ * `Cause`s directly. Even though it is not a data type that we deal with very
+ * often, the `Cause` of a failing `Effect` workflow can be accessed at any
+ * time, which gives us total access to all parallel and sequential errors in
+ * occurring within our codebase.
+ *
+ * @since 1.0.0
+ */
+export * as Cause from "./Cause"
+
+/**
+ * @since 1.0.0
+ */
+export * as Channel from "./Channel"
+
+/**
+ * @since 1.0.0
+ */
+export * as ChannelChildExecutorDecision from "./ChannelChildExecutorDecision"
+
+/**
+ * @since 1.0.0
+ */
+export * as ChannelMergeDecision from "./ChannelMergeDecision"
+
+/**
+ * @since 1.0.0
+ */
+export * as ChannelMergeState from "./ChannelMergeState"
+
+/**
+ * @since 1.0.0
+ */
+export * as ChannelMergeStrategy from "./ChannelMergeStrategy"
+
+/**
+ * @since 1.0.0
+ */
+export * as ChannelSingleProducerAsyncInput from "./ChannelSingleProducerAsyncInput"
+
+/**
+ * @since 1.0.0
+ */
+export * as ChannelUpstreamPullRequest from "./ChannelUpstreamPullRequest"
+
+/**
+ * @since 1.0.0
+ */
+export * as ChannelUpstreamPullStrategy from "./ChannelUpstreamPullStrategy"
+
+/**
+ * @since 1.0.0
+ */
+export * as Chunk from "./Chunk"
+
+/**
+ * @since 1.0.0
+ */
+export * as Clock from "./Clock"
+
+/**
+ * @since 1.0.0
+ */
+export * as Config from "./Config"
+
+/**
+ * @since 1.0.0
+ */
+export * as ConfigError from "./ConfigError"
+
+/**
+ * @since 1.0.0
+ */
+export * as ConfigProvider from "./ConfigProvider"
+
+/**
+ * @since 1.0.0
+ */
+export * as ConfigProviderPathPatch from "./ConfigProviderPathPatch"
+
+/**
+ * @since 1.0.0
+ */
+export * as ConfigSecret from "./ConfigSecret"
+
+/**
+ * @since 1.0.0
+ */
+export * as Console from "./Console"
+
+/**
+ * This module provides a data structure called `Context` that can be used for dependency injection in effectful
+ * programs. It is essentially a table mapping `Tag`s to their implementations (called `Service`s), and can be used to
+ * manage dependencies in a type-safe way. The `Context` data structure is essentially a way of providing access to a set
+ * of related services that can be passed around as a single unit. This module provides functions to create, modify, and
+ * query the contents of a `Context`, as well as a number of utility types for working with tags and services.
+ *
+ * @since 1.0.0
+ */
+export * as Context from "./Context"
+
+/**
+ * @since 1.0.0
+ */
+export * as Data from "./Data"
+
+/**
+ * @since 1.0.0
+ */
+export * as DefaultServices from "./DefaultServices"
+
+/**
+ * @since 1.0.0
+ */
+export * as Deferred from "./Deferred"
+
+/**
+ * @since 1.0.0
+ */
+export * as Differ from "./Differ"
+
+/**
+ * @since 1.0.0
+ */
+export * as Duration from "./Duration"
+
+/**
+ * @since 1.0.0
+ */
+export * as Effect from "./Effect"
+
+/**
+ * @since 1.0.0
+ */
+export * as Effectable from "./Effectable"
+
+/**
+ * @since 1.0.0
+ */
+export * as Either from "./Either"
+
+/**
+ * This module provides encoding & decoding functionality for:
+ *
+ * - base64 (RFC4648)
+ * - base64 (URL)
+ * - hex
+ *
+ * @since 1.0.0
+ */
+export * as Encoding from "./Encoding"
+
+/**
+ * @since 1.0.0
+ */
+export * as Equal from "./Equal"
+
+/**
+ * This module provides an implementation of the `Equivalence` type class, which defines a binary relation
+ * that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
+ * These properties are also known in mathematics as an "equivalence relation".
+ *
+ * @since 1.0.0
+ */
+export * as Equivalence from "./Equivalence"
+
+/**
+ * @since 1.0.0
+ */
+export * as Error from "./Error"
+
+/**
+ * @since 1.0.0
+ */
+export * as ExecutionStrategy from "./ExecutionStrategy"
+
+/**
+ * @since 1.0.0
+ */
+export * as Exit from "./Exit"
+
+/**
+ * @since 1.0.0
+ */
+export * as Fiber from "./Fiber"
+
+/**
+ * @since 1.0.0
+ */
+export * as FiberId from "./FiberId"
+
+/**
+ * @since 1.0.0
+ */
+export * as FiberRef from "./FiberRef"
+
+/**
+ * @since 1.0.0
+ */
+export * as FiberRefs from "./FiberRefs"
+
+/**
+ * @since 1.0.0
+ */
+export * as FiberRefsPatch from "./FiberRefsPatch"
+
+/**
+ * @since 1.0.0
+ */
+export * as FiberStatus from "./FiberStatus"
+
+/**
+ * @since 1.0.0
+ */
+export * as Function from "./Function"
+
+/**
+ * @since 1.0.0
+ */
+export * as GlobalValue from "./GlobalValue"
+
+/**
+ * @since 1.0.0
+ */
+export * as GroupBy from "./GroupBy"
+
+/**
+ * @since 1.0.0
+ */
+export * as HKT from "./HKT"
+
+/**
+ * @since 1.0.0
+ */
+export * as Hash from "./Hash"
+
+/**
+ * @since 1.0.0
+ */
+export * as HashMap from "./HashMap"
+
+/**
+ * @since 1.0.0
+ */
+export * as HashSet from "./HashSet"
+
+/**
+ * @since 1.0.0
+ */
+export * as Hub from "./Hub"
+
+/**
+ * @since 1.0.0
+ */
+export * as Inspectable from "./Inspectable"
+
+/**
+ * @since 1.0.0
+ */
+export * as KeyedPool from "./KeyedPool"
+
+/**
+ * A `Layer<RIn, E, ROut>` describes how to build one or more services in your
+ * application. Services can be injected into effects via
+ * `Effect.provideService`. Effects can require services via `Effect.service`.
+ *
+ * Layer can be thought of as recipes for producing bundles of services, given
+ * their dependencies (other services).
+ *
+ * Construction of services can be effectful and utilize resources that must be
+ * acquired and safely released when the services are done being utilized.
+ *
+ * By default layers are shared, meaning that if the same layer is used twice
+ * the layer will only be allocated a single time.
+ *
+ * Because of their excellent composition properties, layers are the idiomatic
+ * way in Effect-TS to create services that depend on other services.
+ *
+ * @since 1.0.0
+ */
+export * as Layer from "./Layer"
+
+/**
+ * A data type for immutable linked lists representing ordered collections of elements of type `A`.
+ *
+ * This data type is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
+ *
+ * **Performance**
+ *
+ * - Time: `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list. This includes the index-based lookup of elements, `length`, `append` and `reverse`.
+ * - Space: `List` implements structural sharing of the tail list. This means that many operations are either zero- or constant-memory cost.
+ *
+ * @since 1.0.0
+ */
+export * as List from "./List"
+
+/**
+ * @since 1.0.0
+ */
+export * as LogLevel from "./LogLevel"
+
+/**
+ * @since 1.0.0
+ */
+export * as LogSpan from "./LogSpan"
+
+/**
+ * @since 1.0.0
+ */
+export * as Logger from "./Logger"
+
+/**
+ * @since 1.0.0
+ */
+export * as Metric from "./Metric"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricBoundaries from "./MetricBoundaries"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricHook from "./MetricHook"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricKey from "./MetricKey"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricKeyType from "./MetricKeyType"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricLabel from "./MetricLabel"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricPair from "./MetricPair"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricPolling from "./MetricPolling"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricRegistry from "./MetricRegistry"
+
+/**
+ * @since 1.0.0
+ */
+export * as MetricState from "./MetricState"
+
+/**
+ * @since 1.0.0
+ */
+export * as MutableHashMap from "./MutableHashMap"
+
+/**
+ * @since 1.0.0
+ */
+export * as MutableHashSet from "./MutableHashSet"
+
+/**
+ * @since 1.0.0
+ */
+export * as MutableList from "./MutableList"
+
+/**
+ * @since 1.0.0
+ */
+export * as MutableQueue from "./MutableQueue"
+
+/**
+ * @since 1.0.0
+ */
+export * as MutableRef from "./MutableRef"
+
+/**
+ * @since 1.0.0
+ */
+export * as NonEmptyIterable from "./NonEmptyIterable"
+
+/**
+ * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
+ * It includes functions for basic arithmetic operations, as well as type class instances for
+ * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ *
+ * @since 1.0.0
+ */
+export * as Number from "./Number"
+
+/**
+ * @since 1.0.0
+ */
+export * as Option from "./Option"
+
+/**
+ * @since 1.0.0
+ */
+export * as Order from "./Order"
+
+/**
+ * @since 1.0.0
+ */
+export * as Ordering from "./Ordering"
+
+/**
+ * @since 1.0.0
+ */
+export * as Pipeable from "./Pipeable"
+
+/**
+ * @since 1.0.0
+ */
+export * as Pool from "./Pool"
+
+/**
+ * @since 1.0.0
+ */
+export * as Predicate from "./Predicate"
+
+/**
+ * @since 1.0.0
+ */
+export * as Queue from "./Queue"
+
+/**
+ * @since 1.0.0
+ */
+export * as Random from "./Random"
+
+/**
+ * This module provides utility functions for working with arrays in TypeScript.
+ *
+ * @since 1.0.0
+ */
+export * as ReadonlyArray from "./ReadonlyArray"
+
+/**
+ * This module provides utility functions for working with records in TypeScript.
+ *
+ * @since 1.0.0
+ */
+export * as ReadonlyRecord from "./ReadonlyRecord"
+
+/**
+ * @since 1.0.0
+ */
+export * as RedBlackTree from "./RedBlackTree"
+
+/**
+ * @since 1.0.0
+ */
+export * as Ref from "./Ref"
+
+/**
+ * @since 1.0.0
+ */
+export * as Reloadable from "./Reloadable"
+
+/**
+ * @since 1.0.0
+ */
+export * as Request from "./Request"
+
+/**
+ * @since 1.0.0
+ */
+export * as RequestBlock from "./RequestBlock"
+
+/**
+ * @since 1.0.0
+ */
+export * as RequestResolver from "./RequestResolver"
+
+/**
+ * @since 1.0.0
+ */
+export * as Resource from "./Resource"
+
+/**
+ * @since 1.0.0
+ */
+export * as Runtime from "./Runtime"
+
+/**
+ * @since 1.0.0
+ */
+export * as RuntimeFlags from "./RuntimeFlags"
+
+/**
+ * @since 1.0.0
+ */
+export * as RuntimeFlagsPatch from "./RuntimeFlagsPatch"
+
+/**
+ * @since 1.0.0
+ */
+export * as STM from "./STM"
+
+/**
+ * @since 1.0.0
+ */
+export * as Schedule from "./Schedule"
+
+/**
+ * @since 1.0.0
+ */
+export * as ScheduleDecision from "./ScheduleDecision"
+
+/**
+ * @since 1.0.0
+ */
+export * as ScheduleInterval from "./ScheduleInterval"
+
+/**
+ * @since 1.0.0
+ */
+export * as ScheduleIntervals from "./ScheduleIntervals"
+
+/**
+ * @since 1.0.0
+ */
+export * as Scheduler from "./Scheduler"
+
+/**
+ * @since 1.0.0
+ */
+export * as Scope from "./Scope"
+
+/**
+ * @since 1.0.0
+ */
+export * as ScopedCache from "./ScopedCache"
+
+/**
+ * @since 1.0.0
+ */
+export * as ScopedRef from "./ScopedRef"
+
+/**
+ * @since 1.0.0
+ */
+export * as Sink from "./Sink"
+
+/**
+ * @since 1.0.0
+ */
+export * as SortedMap from "./SortedMap"
+
+/**
+ * @since 1.0.0
+ */
+export * as SortedSet from "./SortedSet"
+
+/**
+ * @since 1.0.0
+ */
+export * as Stream from "./Stream"
+
+/**
+ * @since 1.0.0
+ */
+export * as StreamEmit from "./StreamEmit"
+
+/**
+ * @since 1.0.0
+ */
+export * as StreamHaltStrategy from "./StreamHaltStrategy"
+
+/**
+ * This module provides utility functions and type class instances for working with the `string` type in TypeScript.
+ * It includes functions for basic string manipulation, as well as type class instances for
+ * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ *
+ * @since 1.0.0
+ */
+export * as String from "./String"
+
+/**
+ * This module provides utility functions for working with structs in TypeScript.
+ *
+ * @since 1.0.0
+ */
+export * as Struct from "./Struct"
+
+/**
+ * @since 1.0.0
+ */
+export * as SubscriptionRef from "./SubscriptionRef"
+
+/**
+ * A `Supervisor<T>` is allowed to supervise the launching and termination of
+ * fibers, producing some visible value of type `T` from the supervision.
+ *
+ * @since 1.0.0
+ */
+export * as Supervisor from "./Supervisor"
+
+/**
+ * @since 1.0.0
+ */
+export * as Symbol from "./Symbol"
+
+/**
+ * @since 1.0.0
+ */
+export * as SynchronizedRef from "./SynchronizedRef"
+
+/**
+ * @since 1.0.0
+ */
+export * as TArray from "./TArray"
+
+/**
+ * @since 1.0.0
+ */
+export * as TDeferred from "./TDeferred"
+
+/**
+ * @since 1.0.0
+ */
+export * as THub from "./THub"
+
+/**
+ * @since 1.0.0
+ */
+export * as TMap from "./TMap"
+
+/**
+ * @since 1.0.0
+ */
+export * as TPriorityQueue from "./TPriorityQueue"
+
+/**
+ * @since 1.0.0
+ */
+export * as TQueue from "./TQueue"
+
+/**
+ * @since 1.0.0
+ */
+export * as TRandom from "./TRandom"
+
+/**
+ * @since 1.0.0
+ */
+export * as TReentrantLock from "./TReentrantLock"
+
+/**
+ * @since 1.0.0
+ */
+export * as TRef from "./TRef"
+
+/**
+ * @since 1.0.0
+ */
+export * as TSemaphore from "./TSemaphore"
+
+/**
+ * @since 1.0.0
+ */
+export * as TSet from "./TSet"
+
+/**
+ * @since 1.0.0
+ */
+export * as Take from "./Take"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestAnnotation from "./TestAnnotation"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestAnnotationMap from "./TestAnnotationMap"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestAnnotations from "./TestAnnotations"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestClock from "./TestClock"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestConfig from "./TestConfig"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestContext from "./TestContext"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestLive from "./TestLive"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestServices from "./TestServices"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestSized from "./TestSized"
+
+/**
+ * @since 1.0.0
+ */
+export * as Tracer from "./Tracer"
+
+/**
+ * This module provides utility functions for working with tuples in TypeScript.
+ *
+ * @since 1.0.0
+ */
+export * as Tuple from "./Tuple"
+
+/**
+ * A collection of types that are commonly used types.
+ *
+ * @since 1.0.0
+ */
+export * as Types from "./Types"
+
+/**
+ * @since 1.0.0
+ */
+export * as Unify from "./Unify"
+
+/**
+ * @since 1.0.0
+ */
+export * as Utils from "./Utils"

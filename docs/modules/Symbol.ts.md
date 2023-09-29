@@ -1,34 +1,55 @@
 ---
 title: Symbol.ts
-nav_order: 112
+nav_order: 115
 parent: Modules
 ---
 
 ## Symbol overview
 
-Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
-
-Added in v2.0.0
+Added in v1.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [exports](#exports)
-  - [From "@effect/data/Symbol"](#from-effectdatasymbol)
+- [guards](#guards)
+  - [isSymbol](#issymbol)
+- [instances](#instances)
+  - [Equivalence](#equivalence)
 
 ---
 
-# exports
+# guards
 
-## From "@effect/data/Symbol"
+## isSymbol
 
-Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
+Tests if a value is a `symbol`.
 
 **Signature**
 
 ```ts
-export * from '@effect/data/Symbol'
+export declare const isSymbol: (u: unknown) => u is symbol
 ```
 
-Added in v2.0.0
+**Example**
+
+```ts
+import { isSymbol } from 'effect/Predicate'
+
+assert.deepStrictEqual(isSymbol(Symbol.for('a')), true)
+assert.deepStrictEqual(isSymbol('a'), false)
+```
+
+Added in v1.0.0
+
+# instances
+
+## Equivalence
+
+**Signature**
+
+```ts
+export declare const Equivalence: equivalence.Equivalence<symbol>
+```
+
+Added in v1.0.0

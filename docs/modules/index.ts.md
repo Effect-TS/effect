@@ -1,1748 +1,1927 @@
 ---
 title: index.ts
-nav_order: 48
+nav_order: 51
 parent: Modules
 ---
 
 ## index overview
 
-Added in v2.0.0
+This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
+It includes functions for basic arithmetic operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+
+Added in v1.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [utils](#utils)
-  - [Bigint](#bigint)
-  - [Boolean](#boolean)
-  - [Brand](#brand)
-  - [Cache](#cache)
-  - [Cause](#cause)
-  - [Channel](#channel)
-  - [ChannelChildExecutorDecision](#channelchildexecutordecision)
-  - [ChannelMergeDecision](#channelmergedecision)
-  - [ChannelMergeState](#channelmergestate)
-  - [ChannelMergeStrategy](#channelmergestrategy)
-  - [ChannelSingleProducerAsyncInput](#channelsingleproducerasyncinput)
-  - [ChannelUpstreamPullRequest](#channelupstreampullrequest)
-  - [ChannelUpstreamPullStrategy](#channelupstreampullstrategy)
-  - [Chunk](#chunk)
-  - [Clock](#clock)
-  - [Concurrency](#concurrency)
-  - [Config](#config)
-  - [ConfigError](#configerror)
-  - [ConfigProvider](#configprovider)
-  - [ConfigSecret](#configsecret)
-  - [Console](#console)
-  - [Context](#context)
-  - [Data](#data)
-  - [DefaultServices](#defaultservices)
-  - [Deferred](#deferred)
-  - [Differ](#differ)
-  - [Duration](#duration)
-  - [Effect](#effect)
-  - [Either](#either)
-  - [Equal](#equal)
-  - [Equivalence](#equivalence)
-  - [ExecutionStrategy](#executionstrategy)
-  - [Exit](#exit)
-  - [Fiber](#fiber)
-  - [FiberId](#fiberid)
-  - [FiberRef](#fiberref)
-  - [FiberRefs](#fiberrefs)
-  - [FiberRefsPatch](#fiberrefspatch)
-  - [FiberStatus](#fiberstatus)
-  - [Function](#function)
-  - [GlobalValue](#globalvalue)
-  - [GroupBy](#groupby)
-  - [HKT](#hkt)
-  - [Hash](#hash)
-  - [HashMap](#hashmap)
-  - [HashSet](#hashset)
-  - [Hub](#hub)
-  - [KeyedPool](#keyedpool)
-  - [Layer](#layer)
-  - [List](#list)
-  - [LogLevel](#loglevel)
-  - [LogSpan](#logspan)
-  - [Logger](#logger)
-  - [Match](#match)
-  - [Metric](#metric)
-  - [MetricBoundaries](#metricboundaries)
-  - [MetricHook](#metrichook)
-  - [MetricKey](#metrickey)
-  - [MetricKeyType](#metrickeytype)
-  - [MetricLabel](#metriclabel)
-  - [MetricPair](#metricpair)
-  - [MetricPolling](#metricpolling)
-  - [MetricRegistry](#metricregistry)
-  - [MetricState](#metricstate)
-  - [MutableHashMap](#mutablehashmap)
-  - [MutableHashSet](#mutablehashset)
-  - [MutableList](#mutablelist)
-  - [MutableQueue](#mutablequeue)
-  - [MutableRef](#mutableref)
-  - [Number](#number)
-  - [Option](#option)
-  - [Order](#order)
-  - [Ordering](#ordering)
-  - [PCGRandom](#pcgrandom)
-  - [Pipeable](#pipeable)
-  - [Pool](#pool)
-  - [Predicate](#predicate)
-  - [Queue](#queue)
-  - [Random](#random)
-  - [ReadonlyArray](#readonlyarray)
-  - [ReadonlyRecord](#readonlyrecord)
-  - [RedBlackTree](#redblacktree)
-  - [Ref](#ref)
-  - [Reloadable](#reloadable)
-  - [Request](#request)
-  - [RequestBlock](#requestblock)
-  - [RequestResolver](#requestresolver)
-  - [Resource](#resource)
-  - [Runtime](#runtime)
-  - [RuntimeFlags](#runtimeflags)
-  - [RuntimeFlagsPatch](#runtimeflagspatch)
-  - [STM](#stm)
-  - [Schedule](#schedule)
-  - [ScheduleDecision](#scheduledecision)
-  - [ScheduleInterval](#scheduleinterval)
-  - [ScheduleIntervals](#scheduleintervals)
-  - [Scheduler](#scheduler)
-  - [Scope](#scope)
-  - [ScopedCache](#scopedcache)
-  - [ScopedRef](#scopedref)
-  - [Sink](#sink)
-  - [SortedMap](#sortedmap)
-  - [SortedSet](#sortedset)
-  - [Stream](#stream)
-  - [StreamEmit](#streamemit)
-  - [StreamHaltStrategy](#streamhaltstrategy)
-  - [String](#string)
-  - [Struct](#struct)
-  - [SubscriptionRef](#subscriptionref)
-  - [Supervisor](#supervisor)
-  - [Symbol](#symbol)
-  - [SynchronizedRef](#synchronizedref)
-  - [TArray](#tarray)
-  - [TDeferred](#tdeferred)
-  - [THub](#thub)
-  - [TMap](#tmap)
-  - [TPriorityQueue](#tpriorityqueue)
-  - [TQueue](#tqueue)
-  - [TRandom](#trandom)
-  - [TReentrantLock](#treentrantlock)
-  - [TRef](#tref)
-  - [TSemaphore](#tsemaphore)
-  - [TSet](#tset)
-  - [Take](#take)
-  - [Tracer](#tracer)
-  - [Tuple](#tuple)
-  - [Types](#types)
-  - [absurd](#absurd)
-  - [flow](#flow)
-  - [hole](#hole)
-  - [identity](#identity)
-  - [pipe](#pipe)
-  - [unsafeCoerce](#unsafecoerce)
+- [exports](#exports)
+  - [From "./Bigint"](#from-bigint)
+  - [From "./Boolean"](#from-boolean)
+  - [From "./Brand"](#from-brand)
+  - [From "./Cache"](#from-cache)
+  - [From "./Cause"](#from-cause)
+  - [From "./Channel"](#from-channel)
+  - [From "./ChannelChildExecutorDecision"](#from-channelchildexecutordecision)
+  - [From "./ChannelMergeDecision"](#from-channelmergedecision)
+  - [From "./ChannelMergeState"](#from-channelmergestate)
+  - [From "./ChannelMergeStrategy"](#from-channelmergestrategy)
+  - [From "./ChannelSingleProducerAsyncInput"](#from-channelsingleproducerasyncinput)
+  - [From "./ChannelUpstreamPullRequest"](#from-channelupstreampullrequest)
+  - [From "./ChannelUpstreamPullStrategy"](#from-channelupstreampullstrategy)
+  - [From "./Chunk"](#from-chunk)
+  - [From "./Clock"](#from-clock)
+  - [From "./Config"](#from-config)
+  - [From "./ConfigError"](#from-configerror)
+  - [From "./ConfigProvider"](#from-configprovider)
+  - [From "./ConfigProviderPathPatch"](#from-configproviderpathpatch)
+  - [From "./ConfigSecret"](#from-configsecret)
+  - [From "./Console"](#from-console)
+  - [From "./Context"](#from-context)
+  - [From "./Data"](#from-data)
+  - [From "./DefaultServices"](#from-defaultservices)
+  - [From "./Deferred"](#from-deferred)
+  - [From "./Differ"](#from-differ)
+  - [From "./Duration"](#from-duration)
+  - [From "./Effect"](#from-effect)
+  - [From "./Effectable"](#from-effectable)
+  - [From "./Either"](#from-either)
+  - [From "./Encoding"](#from-encoding)
+  - [From "./Equal"](#from-equal)
+  - [From "./Equivalence"](#from-equivalence)
+  - [From "./Error"](#from-error)
+  - [From "./ExecutionStrategy"](#from-executionstrategy)
+  - [From "./Exit"](#from-exit)
+  - [From "./Fiber"](#from-fiber)
+  - [From "./FiberId"](#from-fiberid)
+  - [From "./FiberRef"](#from-fiberref)
+  - [From "./FiberRefs"](#from-fiberrefs)
+  - [From "./FiberRefsPatch"](#from-fiberrefspatch)
+  - [From "./FiberStatus"](#from-fiberstatus)
+  - [From "./Function"](#from-function)
+  - [From "./GlobalValue"](#from-globalvalue)
+  - [From "./GroupBy"](#from-groupby)
+  - [From "./HKT"](#from-hkt)
+  - [From "./Hash"](#from-hash)
+  - [From "./HashMap"](#from-hashmap)
+  - [From "./HashSet"](#from-hashset)
+  - [From "./Hub"](#from-hub)
+  - [From "./Inspectable"](#from-inspectable)
+  - [From "./KeyedPool"](#from-keyedpool)
+  - [From "./Layer"](#from-layer)
+  - [From "./List"](#from-list)
+  - [From "./LogLevel"](#from-loglevel)
+  - [From "./LogSpan"](#from-logspan)
+  - [From "./Logger"](#from-logger)
+  - [From "./Metric"](#from-metric)
+  - [From "./MetricBoundaries"](#from-metricboundaries)
+  - [From "./MetricHook"](#from-metrichook)
+  - [From "./MetricKey"](#from-metrickey)
+  - [From "./MetricKeyType"](#from-metrickeytype)
+  - [From "./MetricLabel"](#from-metriclabel)
+  - [From "./MetricPair"](#from-metricpair)
+  - [From "./MetricPolling"](#from-metricpolling)
+  - [From "./MetricRegistry"](#from-metricregistry)
+  - [From "./MetricState"](#from-metricstate)
+  - [From "./MutableHashMap"](#from-mutablehashmap)
+  - [From "./MutableHashSet"](#from-mutablehashset)
+  - [From "./MutableList"](#from-mutablelist)
+  - [From "./MutableQueue"](#from-mutablequeue)
+  - [From "./MutableRef"](#from-mutableref)
+  - [From "./NonEmptyIterable"](#from-nonemptyiterable)
+  - [From "./Number"](#from-number)
+  - [From "./Option"](#from-option)
+  - [From "./Order"](#from-order)
+  - [From "./Ordering"](#from-ordering)
+  - [From "./Pipeable"](#from-pipeable)
+  - [From "./Pool"](#from-pool)
+  - [From "./Predicate"](#from-predicate)
+  - [From "./Queue"](#from-queue)
+  - [From "./Random"](#from-random)
+  - [From "./ReadonlyArray"](#from-readonlyarray)
+  - [From "./ReadonlyRecord"](#from-readonlyrecord)
+  - [From "./RedBlackTree"](#from-redblacktree)
+  - [From "./Ref"](#from-ref)
+  - [From "./Reloadable"](#from-reloadable)
+  - [From "./Request"](#from-request)
+  - [From "./RequestBlock"](#from-requestblock)
+  - [From "./RequestResolver"](#from-requestresolver)
+  - [From "./Resource"](#from-resource)
+  - [From "./Runtime"](#from-runtime)
+  - [From "./RuntimeFlags"](#from-runtimeflags)
+  - [From "./RuntimeFlagsPatch"](#from-runtimeflagspatch)
+  - [From "./STM"](#from-stm)
+  - [From "./Schedule"](#from-schedule)
+  - [From "./ScheduleDecision"](#from-scheduledecision)
+  - [From "./ScheduleInterval"](#from-scheduleinterval)
+  - [From "./ScheduleIntervals"](#from-scheduleintervals)
+  - [From "./Scheduler"](#from-scheduler)
+  - [From "./Scope"](#from-scope)
+  - [From "./ScopedCache"](#from-scopedcache)
+  - [From "./ScopedRef"](#from-scopedref)
+  - [From "./Sink"](#from-sink)
+  - [From "./SortedMap"](#from-sortedmap)
+  - [From "./SortedSet"](#from-sortedset)
+  - [From "./Stream"](#from-stream)
+  - [From "./StreamEmit"](#from-streamemit)
+  - [From "./StreamHaltStrategy"](#from-streamhaltstrategy)
+  - [From "./String"](#from-string)
+  - [From "./Struct"](#from-struct)
+  - [From "./SubscriptionRef"](#from-subscriptionref)
+  - [From "./Supervisor"](#from-supervisor)
+  - [From "./Symbol"](#from-symbol)
+  - [From "./SynchronizedRef"](#from-synchronizedref)
+  - [From "./TArray"](#from-tarray)
+  - [From "./TDeferred"](#from-tdeferred)
+  - [From "./THub"](#from-thub)
+  - [From "./TMap"](#from-tmap)
+  - [From "./TPriorityQueue"](#from-tpriorityqueue)
+  - [From "./TQueue"](#from-tqueue)
+  - [From "./TRandom"](#from-trandom)
+  - [From "./TReentrantLock"](#from-treentrantlock)
+  - [From "./TRef"](#from-tref)
+  - [From "./TSemaphore"](#from-tsemaphore)
+  - [From "./TSet"](#from-tset)
+  - [From "./Take"](#from-take)
+  - [From "./TestAnnotation"](#from-testannotation)
+  - [From "./TestAnnotationMap"](#from-testannotationmap)
+  - [From "./TestAnnotations"](#from-testannotations)
+  - [From "./TestClock"](#from-testclock)
+  - [From "./TestConfig"](#from-testconfig)
+  - [From "./TestContext"](#from-testcontext)
+  - [From "./TestLive"](#from-testlive)
+  - [From "./TestServices"](#from-testservices)
+  - [From "./TestSized"](#from-testsized)
+  - [From "./Tracer"](#from-tracer)
+  - [From "./Tuple"](#from-tuple)
+  - [From "./Types"](#from-types)
+  - [From "./Unify"](#from-unify)
+  - [From "./Utils"](#from-utils)
 
 ---
 
-# utils
+# exports
 
-## Bigint
+## From "./Bigint"
 
-Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
+This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
+It includes functions for basic arithmetic operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
 ```ts
-export declare const Bigint: any
+export * from './Bigint'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Boolean
+## From "./Boolean"
 
-Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
+This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
+It includes functions for basic boolean operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
 ```ts
-export declare const Boolean: any
+export * from './Boolean'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Brand
+## From "./Brand"
 
-Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
+This module provides types and utility functions to create and work with branded types,
+which are TypeScript types with an added type tag to prevent accidental usage of a value in the wrong context.
 
+The `refined` and `nominal` functions are both used to create branded types in TypeScript.
+The main difference between them is that `refined` allows for validation of the data, while `nominal` does not.
+
+The `nominal` function is used to create a new branded type that has the same underlying type as the input, but with a different name.
+This is useful when you want to distinguish between two values of the same type that have different meanings.
+The `nominal` function does not perform any validation of the input data.
+
+On the other hand, the `refined` function is used to create a new branded type that has the same underlying type as the input,
+but with a different name, and it also allows for validation of the input data.
+The `refined` function takes a predicate that is used to validate the input data.
+If the input data fails the validation, a `BrandErrors` is returned, which provides information about the specific validation failure.
+
+**Signature**
+
+```ts
+export * from './Brand'
+```
+
+Added in v1.0.0
+
+## From "./Cache"
+
+Re-exports all named exports from the "./Cache" module.
+
+**Signature**
+
+```ts
+export * from './Cache'
+```
+
+Added in v1.0.0
+
+## From "./Cause"
+
+The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
+work with any error type that we want. However, there is a lot of information
+that is not inside an arbitrary `E` value. So as a result, an `Effect` needs
+somewhere to store things like unexpected errors or defects, stack and
+execution traces, causes of fiber interruptions, and so forth.
+
+Effect-TS is very strict about preserving the full information related to a
+failure. It captures all type of errors into the `Cause` data type. `Effect`
+uses the `Cause<E>` data type to store the full story of failure. So its
+error model is lossless. It doesn't throw information related to the failure
+result. So we can figure out exactly what happened during the operation of
+our effects.
+
+It is important to note that `Cause` is an underlying data type representing
+errors occuring within an `Effect` workflow. Thus, we don't usually deal with
+`Cause`s directly. Even though it is not a data type that we deal with very
+often, the `Cause` of a failing `Effect` workflow can be accessed at any
+time, which gives us total access to all parallel and sequential errors in
+occurring within our codebase.
+
+**Signature**
+
+```ts
+export * from './Cause'
+```
+
+Added in v1.0.0
+
+## From "./Channel"
+
+Re-exports all named exports from the "./Channel" module.
+
+**Signature**
+
+```ts
+export * from './Channel'
+```
+
+Added in v1.0.0
+
+## From "./ChannelChildExecutorDecision"
+
+Re-exports all named exports from the "./ChannelChildExecutorDecision" module.
+
+**Signature**
+
+```ts
+export * from './ChannelChildExecutorDecision'
+```
+
+Added in v1.0.0
+
+## From "./ChannelMergeDecision"
+
+Re-exports all named exports from the "./ChannelMergeDecision" module.
+
+**Signature**
+
+```ts
+export * from './ChannelMergeDecision'
+```
+
+Added in v1.0.0
+
+## From "./ChannelMergeState"
+
+Re-exports all named exports from the "./ChannelMergeState" module.
+
+**Signature**
+
+```ts
+export * from './ChannelMergeState'
+```
+
+Added in v1.0.0
+
+## From "./ChannelMergeStrategy"
+
+Re-exports all named exports from the "./ChannelMergeStrategy" module.
+
+**Signature**
+
+```ts
+export * from './ChannelMergeStrategy'
+```
+
+Added in v1.0.0
+
+## From "./ChannelSingleProducerAsyncInput"
+
+Re-exports all named exports from the "./ChannelSingleProducerAsyncInput" module.
+
 **Signature**
 
 ```ts
-export declare const Brand: any
+export * from './ChannelSingleProducerAsyncInput'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Cache
+## From "./ChannelUpstreamPullRequest"
 
-Docs: https://effect-ts.github.io/io/modules/Cache.ts.html
+Re-exports all named exports from the "./ChannelUpstreamPullRequest" module.
 
 **Signature**
 
 ```ts
-export declare const Cache: any
+export * from './ChannelUpstreamPullRequest'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Cause
+## From "./ChannelUpstreamPullStrategy"
 
-Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
+Re-exports all named exports from the "./ChannelUpstreamPullStrategy" module.
 
 **Signature**
 
 ```ts
-export declare const Cause: any
+export * from './ChannelUpstreamPullStrategy'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Channel
+## From "./Chunk"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
+Re-exports all named exports from the "./Chunk" module.
 
 **Signature**
 
 ```ts
-export declare const Channel: any
+export * from './Chunk'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ChannelChildExecutorDecision
+## From "./Clock"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
+Re-exports all named exports from the "./Clock" module.
 
 **Signature**
 
 ```ts
-export declare const ChannelChildExecutorDecision: any
+export * from './Clock'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ChannelMergeDecision
+## From "./Config"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
+Re-exports all named exports from the "./Config" module.
 
 **Signature**
 
 ```ts
-export declare const ChannelMergeDecision: any
+export * from './Config'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ChannelMergeState
+## From "./ConfigError"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
+Re-exports all named exports from the "./ConfigError" module.
 
 **Signature**
 
 ```ts
-export declare const ChannelMergeState: any
+export * from './ConfigError'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ChannelMergeStrategy
+## From "./ConfigProvider"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
+Re-exports all named exports from the "./ConfigProvider" module.
 
 **Signature**
 
 ```ts
-export declare const ChannelMergeStrategy: any
+export * from './ConfigProvider'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ChannelSingleProducerAsyncInput
+## From "./ConfigProviderPathPatch"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
+Re-exports all named exports from the "./ConfigProviderPathPatch" module.
 
 **Signature**
 
 ```ts
-export declare const ChannelSingleProducerAsyncInput: any
+export * from './ConfigProviderPathPatch'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ChannelUpstreamPullRequest
+## From "./ConfigSecret"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
+Re-exports all named exports from the "./ConfigSecret" module.
 
 **Signature**
 
 ```ts
-export declare const ChannelUpstreamPullRequest: any
+export * from './ConfigSecret'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ChannelUpstreamPullStrategy
+## From "./Console"
 
-Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
+Re-exports all named exports from the "./Console" module.
 
 **Signature**
 
 ```ts
-export declare const ChannelUpstreamPullStrategy: any
+export * from './Console'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Chunk
+## From "./Context"
 
-Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
+This module provides a data structure called `Context` that can be used for dependency injection in effectful
+programs. It is essentially a table mapping `Tag`s to their implementations (called `Service`s), and can be used to
+manage dependencies in a type-safe way. The `Context` data structure is essentially a way of providing access to a set
+of related services that can be passed around as a single unit. This module provides functions to create, modify, and
+query the contents of a `Context`, as well as a number of utility types for working with tags and services.
 
 **Signature**
 
 ```ts
-export declare const Chunk: any
+export * from './Context'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Clock
+## From "./Data"
 
-Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
+Re-exports all named exports from the "./Data" module.
 
 **Signature**
 
 ```ts
-export declare const Clock: any
+export * from './Data'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Concurrency
+## From "./DefaultServices"
 
-Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
+Re-exports all named exports from the "./DefaultServices" module.
 
 **Signature**
 
 ```ts
-export declare const Concurrency: any
+export * from './DefaultServices'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Config
+## From "./Deferred"
 
-Docs: https://effect-ts.github.io/io/modules/Config.ts.html
+Re-exports all named exports from the "./Deferred" module.
 
 **Signature**
 
 ```ts
-export declare const Config: any
+export * from './Deferred'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ConfigError
+## From "./Differ"
 
-Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
+Re-exports all named exports from the "./Differ" module.
 
 **Signature**
 
 ```ts
-export declare const ConfigError: any
+export * from './Differ'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ConfigProvider
+## From "./Duration"
 
-Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
+Re-exports all named exports from the "./Duration" module.
 
 **Signature**
 
 ```ts
-export declare const ConfigProvider: any
+export * from './Duration'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ConfigSecret
+## From "./Effect"
 
-Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
+Re-exports all named exports from the "./Effect" module.
 
 **Signature**
 
 ```ts
-export declare const ConfigSecret: any
+export * from './Effect'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Console
+## From "./Effectable"
 
-Docs: https://effect-ts.github.io/data/modules/Console.ts.html
+Re-exports all named exports from the "./Effectable" module.
 
 **Signature**
 
 ```ts
-export declare const Console: any
+export * from './Effectable'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Context
+## From "./Either"
 
-Docs: https://effect-ts.github.io/data/modules/Context.ts.html
+Re-exports all named exports from the "./Either" module.
 
 **Signature**
 
 ```ts
-export declare const Context: any
+export * from './Either'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Data
+## From "./Encoding"
 
-Docs: https://effect-ts.github.io/data/modules/Data.ts.html
+This module provides encoding & decoding functionality for:
 
+- base64 (RFC4648)
+- base64 (URL)
+- hex
+
 **Signature**
 
 ```ts
-export declare const Data: any
+export * from './Encoding'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## DefaultServices
+## From "./Equal"
 
-Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
+Re-exports all named exports from the "./Equal" module.
 
 **Signature**
 
 ```ts
-export declare const DefaultServices: any
+export * from './Equal'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Deferred
+## From "./Equivalence"
 
-Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
+This module provides an implementation of the `Equivalence` type class, which defines a binary relation
+that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
+These properties are also known in mathematics as an "equivalence relation".
 
 **Signature**
 
 ```ts
-export declare const Deferred: any
+export * from './Equivalence'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Differ
+## From "./Error"
 
-Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
+Re-exports all named exports from the "./Error" module.
 
 **Signature**
 
 ```ts
-export declare const Differ: any
+export * from './Error'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Duration
+## From "./ExecutionStrategy"
 
-Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
+Re-exports all named exports from the "./ExecutionStrategy" module.
 
 **Signature**
 
 ```ts
-export declare const Duration: any
+export * from './ExecutionStrategy'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Effect
+## From "./Exit"
 
-Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
+Re-exports all named exports from the "./Exit" module.
 
 **Signature**
 
 ```ts
-export declare const Effect: any
+export * from './Exit'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Either
+## From "./Fiber"
 
-Docs: https://effect-ts.github.io/data/modules/Either.ts.html
+Re-exports all named exports from the "./Fiber" module.
 
 **Signature**
 
 ```ts
-export declare const Either: any
+export * from './Fiber'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Equal
+## From "./FiberId"
 
-Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
+Re-exports all named exports from the "./FiberId" module.
 
 **Signature**
 
 ```ts
-export declare const Equal: any
+export * from './FiberId'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Equivalence
+## From "./FiberRef"
 
-Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
+Re-exports all named exports from the "./FiberRef" module.
 
 **Signature**
 
 ```ts
-export declare const Equivalence: any
+export * from './FiberRef'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ExecutionStrategy
+## From "./FiberRefs"
 
-Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
+Re-exports all named exports from the "./FiberRefs" module.
 
 **Signature**
 
 ```ts
-export declare const ExecutionStrategy: any
+export * from './FiberRefs'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Exit
+## From "./FiberRefsPatch"
 
-Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
+Re-exports all named exports from the "./FiberRefsPatch" module.
 
 **Signature**
 
 ```ts
-export declare const Exit: any
+export * from './FiberRefsPatch'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Fiber
+## From "./FiberStatus"
 
-Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
+Re-exports all named exports from the "./FiberStatus" module.
 
 **Signature**
 
 ```ts
-export declare const Fiber: any
+export * from './FiberStatus'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## FiberId
+## From "./Function"
 
-Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
+Re-exports all named exports from the "./Function" module.
 
 **Signature**
 
 ```ts
-export declare const FiberId: any
+export * from './Function'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## FiberRef
+## From "./GlobalValue"
 
-Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
+Re-exports all named exports from the "./GlobalValue" module.
 
 **Signature**
 
 ```ts
-export declare const FiberRef: any
+export * from './GlobalValue'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## FiberRefs
+## From "./GroupBy"
 
-Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
+Re-exports all named exports from the "./GroupBy" module.
 
 **Signature**
 
 ```ts
-export declare const FiberRefs: any
+export * from './GroupBy'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## FiberRefsPatch
+## From "./HKT"
 
-Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html
+Re-exports all named exports from the "./HKT" module.
 
 **Signature**
 
 ```ts
-export declare const FiberRefsPatch: any
+export * from './HKT'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## FiberStatus
+## From "./Hash"
 
-Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
+Re-exports all named exports from the "./Hash" module.
 
 **Signature**
 
 ```ts
-export declare const FiberStatus: any
+export * from './Hash'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Function
+## From "./HashMap"
 
-Docs: https://effect-ts.github.io/data/modules/Function.ts.html
+Re-exports all named exports from the "./HashMap" module.
 
 **Signature**
 
 ```ts
-export declare const Function: any
+export * from './HashMap'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## GlobalValue
+## From "./HashSet"
 
-Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
+Re-exports all named exports from the "./HashSet" module.
 
 **Signature**
 
 ```ts
-export declare const GlobalValue: any
+export * from './HashSet'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## GroupBy
+## From "./Hub"
 
-Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
+Re-exports all named exports from the "./Hub" module.
 
 **Signature**
 
 ```ts
-export declare const GroupBy: any
+export * from './Hub'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## HKT
+## From "./Inspectable"
 
-Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
+Re-exports all named exports from the "./Inspectable" module.
 
 **Signature**
 
 ```ts
-export declare const HKT: any
+export * from './Inspectable'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Hash
+## From "./KeyedPool"
 
-Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
+Re-exports all named exports from the "./KeyedPool" module.
 
 **Signature**
 
 ```ts
-export declare const Hash: any
+export * from './KeyedPool'
 ```
+
+Added in v1.0.0
+
+## From "./Layer"
 
-Added in v2.0.0
+A `Layer<RIn, E, ROut>` describes how to build one or more services in your
+application. Services can be injected into effects via
+`Effect.provideService`. Effects can require services via `Effect.service`.
 
-## HashMap
+Layer can be thought of as recipes for producing bundles of services, given
+their dependencies (other services).
 
-Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
+Construction of services can be effectful and utilize resources that must be
+acquired and safely released when the services are done being utilized.
 
+By default layers are shared, meaning that if the same layer is used twice
+the layer will only be allocated a single time.
+
+Because of their excellent composition properties, layers are the idiomatic
+way in Effect-TS to create services that depend on other services.
+
 **Signature**
 
 ```ts
-export declare const HashMap: any
+export * from './Layer'
 ```
+
+Added in v1.0.0
+
+## From "./List"
+
+A data type for immutable linked lists representing ordered collections of elements of type `A`.
 
-Added in v2.0.0
+This data type is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
 
-## HashSet
+**Performance**
 
-Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
+- Time: `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list. This includes the index-based lookup of elements, `length`, `append` and `reverse`.
+- Space: `List` implements structural sharing of the tail list. This means that many operations are either zero- or constant-memory cost.
 
 **Signature**
 
 ```ts
-export declare const HashSet: any
+export * from './List'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Hub
+## From "./LogLevel"
 
-Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
+Re-exports all named exports from the "./LogLevel" module.
 
 **Signature**
 
 ```ts
-export declare const Hub: any
+export * from './LogLevel'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## KeyedPool
+## From "./LogSpan"
 
-Docs: https://effect-ts.github.io/io/modules/KeyedPool.ts.html
+Re-exports all named exports from the "./LogSpan" module.
 
 **Signature**
 
 ```ts
-export declare const KeyedPool: any
+export * from './LogSpan'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Layer
+## From "./Logger"
 
-Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
+Re-exports all named exports from the "./Logger" module.
 
 **Signature**
 
 ```ts
-export declare const Layer: any
+export * from './Logger'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## List
+## From "./Metric"
 
-Docs: https://effect-ts.github.io/data/modules/List.ts.html
+Re-exports all named exports from the "./Metric" module.
 
 **Signature**
 
 ```ts
-export declare const List: any
+export * from './Metric'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## LogLevel
+## From "./MetricBoundaries"
 
-Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
+Re-exports all named exports from the "./MetricBoundaries" module.
 
 **Signature**
 
 ```ts
-export declare const LogLevel: any
+export * from './MetricBoundaries'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## LogSpan
+## From "./MetricHook"
 
-Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
+Re-exports all named exports from the "./MetricHook" module.
 
 **Signature**
 
 ```ts
-export declare const LogSpan: any
+export * from './MetricHook'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Logger
+## From "./MetricKey"
 
-Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
+Re-exports all named exports from the "./MetricKey" module.
 
 **Signature**
 
 ```ts
-export declare const Logger: any
+export * from './MetricKey'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Match
+## From "./MetricKeyType"
 
-Docs: https://effect-ts.github.io/match/modules/index.ts.html
+Re-exports all named exports from the "./MetricKeyType" module.
 
 **Signature**
 
 ```ts
-export declare const Match: any
+export * from './MetricKeyType'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Metric
+## From "./MetricLabel"
 
-Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
+Re-exports all named exports from the "./MetricLabel" module.
 
 **Signature**
 
 ```ts
-export declare const Metric: any
+export * from './MetricLabel'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricBoundaries
+## From "./MetricPair"
 
-Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
+Re-exports all named exports from the "./MetricPair" module.
 
 **Signature**
 
 ```ts
-export declare const MetricBoundaries: any
+export * from './MetricPair'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricHook
+## From "./MetricPolling"
 
-Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
+Re-exports all named exports from the "./MetricPolling" module.
 
 **Signature**
 
 ```ts
-export declare const MetricHook: any
+export * from './MetricPolling'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricKey
+## From "./MetricRegistry"
 
-Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
+Re-exports all named exports from the "./MetricRegistry" module.
 
 **Signature**
 
 ```ts
-export declare const MetricKey: any
+export * from './MetricRegistry'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricKeyType
+## From "./MetricState"
 
-Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
+Re-exports all named exports from the "./MetricState" module.
 
 **Signature**
 
 ```ts
-export declare const MetricKeyType: any
+export * from './MetricState'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricLabel
+## From "./MutableHashMap"
 
-Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
+Re-exports all named exports from the "./MutableHashMap" module.
 
 **Signature**
 
 ```ts
-export declare const MetricLabel: any
+export * from './MutableHashMap'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricPair
+## From "./MutableHashSet"
 
-Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
+Re-exports all named exports from the "./MutableHashSet" module.
 
 **Signature**
 
 ```ts
-export declare const MetricPair: any
+export * from './MutableHashSet'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricPolling
+## From "./MutableList"
 
-Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
+Re-exports all named exports from the "./MutableList" module.
 
 **Signature**
 
 ```ts
-export declare const MetricPolling: any
+export * from './MutableList'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricRegistry
+## From "./MutableQueue"
 
-Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
+Re-exports all named exports from the "./MutableQueue" module.
 
 **Signature**
 
 ```ts
-export declare const MetricRegistry: any
+export * from './MutableQueue'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MetricState
+## From "./MutableRef"
 
-Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
+Re-exports all named exports from the "./MutableRef" module.
 
 **Signature**
 
 ```ts
-export declare const MetricState: any
+export * from './MutableRef'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MutableHashMap
+## From "./NonEmptyIterable"
 
-Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
+Re-exports all named exports from the "./NonEmptyIterable" module.
 
 **Signature**
 
 ```ts
-export declare const MutableHashMap: any
+export * from './NonEmptyIterable'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MutableHashSet
+## From "./Number"
 
-Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
+This module provides utility functions and type class instances for working with the `number` type in TypeScript.
+It includes functions for basic arithmetic operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
 ```ts
-export declare const MutableHashSet: any
+export * from './Number'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MutableList
+## From "./Option"
 
-Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
+Re-exports all named exports from the "./Option" module.
 
 **Signature**
 
 ```ts
-export declare const MutableList: any
+export * from './Option'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MutableQueue
+## From "./Order"
 
-Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
+Re-exports all named exports from the "./Order" module.
 
 **Signature**
 
 ```ts
-export declare const MutableQueue: any
+export * from './Order'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## MutableRef
+## From "./Ordering"
 
-Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
+Re-exports all named exports from the "./Ordering" module.
 
 **Signature**
 
 ```ts
-export declare const MutableRef: any
+export * from './Ordering'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Number
+## From "./Pipeable"
 
-Docs: https://effect-ts.github.io/data/modules/Number.ts.html
+Re-exports all named exports from the "./Pipeable" module.
 
 **Signature**
 
 ```ts
-export declare const Number: any
+export * from './Pipeable'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Option
+## From "./Pool"
 
-Docs: https://effect-ts.github.io/data/modules/Option.ts.html
+Re-exports all named exports from the "./Pool" module.
 
 **Signature**
 
 ```ts
-export declare const Option: any
+export * from './Pool'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Order
+## From "./Predicate"
 
-Docs: https://effect-ts.github.io/data/modules/Order.ts.html
+Re-exports all named exports from the "./Predicate" module.
 
 **Signature**
 
 ```ts
-export declare const Order: any
+export * from './Predicate'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Ordering
+## From "./Queue"
 
-Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
+Re-exports all named exports from the "./Queue" module.
 
 **Signature**
 
 ```ts
-export declare const Ordering: any
+export * from './Queue'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## PCGRandom
+## From "./Random"
 
-Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
+Re-exports all named exports from the "./Random" module.
 
 **Signature**
 
 ```ts
-export declare const PCGRandom: any
+export * from './Random'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Pipeable
+## From "./ReadonlyArray"
 
-Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
+This module provides utility functions for working with arrays in TypeScript.
 
 **Signature**
 
 ```ts
-export declare const Pipeable: any
+export * from './ReadonlyArray'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Pool
+## From "./ReadonlyRecord"
 
-Docs: https://effect-ts.github.io/io/modules/Pool.ts.html
+This module provides utility functions for working with records in TypeScript.
 
 **Signature**
 
 ```ts
-export declare const Pool: any
+export * from './ReadonlyRecord'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Predicate
+## From "./RedBlackTree"
 
-Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
+Re-exports all named exports from the "./RedBlackTree" module.
 
 **Signature**
 
 ```ts
-export declare const Predicate: any
+export * from './RedBlackTree'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Queue
+## From "./Ref"
 
-Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
+Re-exports all named exports from the "./Ref" module.
 
 **Signature**
 
 ```ts
-export declare const Queue: any
+export * from './Ref'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Random
+## From "./Reloadable"
 
-Docs: https://effect-ts.github.io/io/modules/Random.ts.html
+Re-exports all named exports from the "./Reloadable" module.
 
 **Signature**
 
 ```ts
-export declare const Random: any
+export * from './Reloadable'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ReadonlyArray
+## From "./Request"
 
-Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
+Re-exports all named exports from the "./Request" module.
 
 **Signature**
 
 ```ts
-export declare const ReadonlyArray: any
+export * from './Request'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ReadonlyRecord
+## From "./RequestBlock"
 
-Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
+Re-exports all named exports from the "./RequestBlock" module.
 
 **Signature**
 
 ```ts
-export declare const ReadonlyRecord: any
+export * from './RequestBlock'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## RedBlackTree
+## From "./RequestResolver"
 
-Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
+Re-exports all named exports from the "./RequestResolver" module.
 
 **Signature**
 
 ```ts
-export declare const RedBlackTree: any
+export * from './RequestResolver'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Ref
+## From "./Resource"
 
-Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
+Re-exports all named exports from the "./Resource" module.
 
 **Signature**
 
 ```ts
-export declare const Ref: any
+export * from './Resource'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Reloadable
+## From "./Runtime"
 
-Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
+Re-exports all named exports from the "./Runtime" module.
 
 **Signature**
 
 ```ts
-export declare const Reloadable: any
+export * from './Runtime'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Request
+## From "./RuntimeFlags"
 
-Docs: https://effect-ts.github.io/io/modules/Request.ts.html
+Re-exports all named exports from the "./RuntimeFlags" module.
 
 **Signature**
 
 ```ts
-export declare const Request: any
+export * from './RuntimeFlags'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## RequestBlock
+## From "./RuntimeFlagsPatch"
 
-Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
+Re-exports all named exports from the "./RuntimeFlagsPatch" module.
 
 **Signature**
 
 ```ts
-export declare const RequestBlock: any
+export * from './RuntimeFlagsPatch'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## RequestResolver
+## From "./STM"
 
-Docs: https://effect-ts.github.io/io/modules/RequestResolver.ts.html
+Re-exports all named exports from the "./STM" module.
 
 **Signature**
 
 ```ts
-export declare const RequestResolver: any
+export * from './STM'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Resource
+## From "./Schedule"
 
-Docs: https://effect-ts.github.io/io/modules/Resource.ts.html
+Re-exports all named exports from the "./Schedule" module.
 
 **Signature**
 
 ```ts
-export declare const Resource: any
+export * from './Schedule'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Runtime
+## From "./ScheduleDecision"
 
-Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
+Re-exports all named exports from the "./ScheduleDecision" module.
 
 **Signature**
 
 ```ts
-export declare const Runtime: any
+export * from './ScheduleDecision'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## RuntimeFlags
+## From "./ScheduleInterval"
 
-Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
+Re-exports all named exports from the "./ScheduleInterval" module.
 
 **Signature**
 
 ```ts
-export declare const RuntimeFlags: any
+export * from './ScheduleInterval'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## RuntimeFlagsPatch
+## From "./ScheduleIntervals"
 
-Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
+Re-exports all named exports from the "./ScheduleIntervals" module.
 
 **Signature**
 
 ```ts
-export declare const RuntimeFlagsPatch: any
+export * from './ScheduleIntervals'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## STM
+## From "./Scheduler"
 
-Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
+Re-exports all named exports from the "./Scheduler" module.
 
 **Signature**
 
 ```ts
-export declare const STM: any
+export * from './Scheduler'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Schedule
+## From "./Scope"
 
-Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
+Re-exports all named exports from the "./Scope" module.
 
 **Signature**
 
 ```ts
-export declare const Schedule: any
+export * from './Scope'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ScheduleDecision
+## From "./ScopedCache"
 
-Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
+Re-exports all named exports from the "./ScopedCache" module.
 
 **Signature**
 
 ```ts
-export declare const ScheduleDecision: any
+export * from './ScopedCache'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ScheduleInterval
+## From "./ScopedRef"
 
-Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
+Re-exports all named exports from the "./ScopedRef" module.
 
 **Signature**
 
 ```ts
-export declare const ScheduleInterval: any
+export * from './ScopedRef'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ScheduleIntervals
+## From "./Sink"
 
-Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
+Re-exports all named exports from the "./Sink" module.
 
 **Signature**
 
 ```ts
-export declare const ScheduleIntervals: any
+export * from './Sink'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Scheduler
+## From "./SortedMap"
 
-Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
+Re-exports all named exports from the "./SortedMap" module.
 
 **Signature**
 
 ```ts
-export declare const Scheduler: any
+export * from './SortedMap'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Scope
+## From "./SortedSet"
 
-Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
+Re-exports all named exports from the "./SortedSet" module.
 
 **Signature**
 
 ```ts
-export declare const Scope: any
+export * from './SortedSet'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ScopedCache
+## From "./Stream"
 
-Docs: https://effect-ts.github.io/io/modules/ScopedCache.ts.html
+Re-exports all named exports from the "./Stream" module.
 
 **Signature**
 
 ```ts
-export declare const ScopedCache: any
+export * from './Stream'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## ScopedRef
+## From "./StreamEmit"
 
-Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
+Re-exports all named exports from the "./StreamEmit" module.
 
 **Signature**
 
 ```ts
-export declare const ScopedRef: any
+export * from './StreamEmit'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Sink
+## From "./StreamHaltStrategy"
 
-Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
+Re-exports all named exports from the "./StreamHaltStrategy" module.
 
 **Signature**
 
 ```ts
-export declare const Sink: any
+export * from './StreamHaltStrategy'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## SortedMap
+## From "./String"
 
-Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
+This module provides utility functions and type class instances for working with the `string` type in TypeScript.
+It includes functions for basic string manipulation, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
 ```ts
-export declare const SortedMap: any
+export * from './String'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## SortedSet
+## From "./Struct"
 
-Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
+This module provides utility functions for working with structs in TypeScript.
 
 **Signature**
 
 ```ts
-export declare const SortedSet: any
+export * from './Struct'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Stream
+## From "./SubscriptionRef"
 
-Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
+Re-exports all named exports from the "./SubscriptionRef" module.
 
 **Signature**
 
 ```ts
-export declare const Stream: any
+export * from './SubscriptionRef'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## StreamEmit
+## From "./Supervisor"
 
-Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
+A `Supervisor<T>` is allowed to supervise the launching and termination of
+fibers, producing some visible value of type `T` from the supervision.
 
 **Signature**
 
 ```ts
-export declare const StreamEmit: any
+export * from './Supervisor'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## StreamHaltStrategy
+## From "./Symbol"
 
-Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
+Re-exports all named exports from the "./Symbol" module.
 
 **Signature**
 
 ```ts
-export declare const StreamHaltStrategy: any
+export * from './Symbol'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## String
+## From "./SynchronizedRef"
 
-Docs: https://effect-ts.github.io/data/modules/String.ts.html
+Re-exports all named exports from the "./SynchronizedRef" module.
 
 **Signature**
 
 ```ts
-export declare const String: any
+export * from './SynchronizedRef'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Struct
+## From "./TArray"
 
-Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
+Re-exports all named exports from the "./TArray" module.
 
 **Signature**
 
 ```ts
-export declare const Struct: any
+export * from './TArray'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## SubscriptionRef
+## From "./TDeferred"
 
-Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
+Re-exports all named exports from the "./TDeferred" module.
 
 **Signature**
 
 ```ts
-export declare const SubscriptionRef: any
+export * from './TDeferred'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Supervisor
+## From "./THub"
 
-Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
+Re-exports all named exports from the "./THub" module.
 
 **Signature**
 
 ```ts
-export declare const Supervisor: any
+export * from './THub'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Symbol
+## From "./TMap"
 
-Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
+Re-exports all named exports from the "./TMap" module.
 
 **Signature**
 
 ```ts
-export declare const Symbol: any
+export * from './TMap'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## SynchronizedRef
+## From "./TPriorityQueue"
 
-Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
+Re-exports all named exports from the "./TPriorityQueue" module.
 
 **Signature**
 
 ```ts
-export declare const SynchronizedRef: any
+export * from './TPriorityQueue'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TArray
+## From "./TQueue"
 
-Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
+Re-exports all named exports from the "./TQueue" module.
 
 **Signature**
 
 ```ts
-export declare const TArray: any
+export * from './TQueue'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TDeferred
+## From "./TRandom"
 
-Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
+Re-exports all named exports from the "./TRandom" module.
 
 **Signature**
 
 ```ts
-export declare const TDeferred: any
+export * from './TRandom'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## THub
+## From "./TReentrantLock"
 
-Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
+Re-exports all named exports from the "./TReentrantLock" module.
 
 **Signature**
 
 ```ts
-export declare const THub: any
+export * from './TReentrantLock'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TMap
+## From "./TRef"
 
-Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
+Re-exports all named exports from the "./TRef" module.
 
 **Signature**
 
 ```ts
-export declare const TMap: any
+export * from './TRef'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TPriorityQueue
+## From "./TSemaphore"
 
-Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
+Re-exports all named exports from the "./TSemaphore" module.
 
 **Signature**
 
 ```ts
-export declare const TPriorityQueue: any
+export * from './TSemaphore'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TQueue
+## From "./TSet"
 
-Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
+Re-exports all named exports from the "./TSet" module.
 
 **Signature**
 
 ```ts
-export declare const TQueue: any
+export * from './TSet'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TRandom
+## From "./Take"
 
-Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
+Re-exports all named exports from the "./Take" module.
 
 **Signature**
 
 ```ts
-export declare const TRandom: any
+export * from './Take'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TReentrantLock
+## From "./TestAnnotation"
 
-Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
+Re-exports all named exports from the "./TestAnnotation" module.
 
 **Signature**
 
 ```ts
-export declare const TReentrantLock: any
+export * from './TestAnnotation'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TRef
+## From "./TestAnnotationMap"
 
-Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
+Re-exports all named exports from the "./TestAnnotationMap" module.
 
 **Signature**
 
 ```ts
-export declare const TRef: any
+export * from './TestAnnotationMap'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TSemaphore
+## From "./TestAnnotations"
 
-Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
+Re-exports all named exports from the "./TestAnnotations" module.
 
 **Signature**
 
 ```ts
-export declare const TSemaphore: any
+export * from './TestAnnotations'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## TSet
+## From "./TestClock"
 
-Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
+Re-exports all named exports from the "./TestClock" module.
 
 **Signature**
 
 ```ts
-export declare const TSet: any
+export * from './TestClock'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Take
+## From "./TestConfig"
 
-Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
+Re-exports all named exports from the "./TestConfig" module.
 
 **Signature**
 
 ```ts
-export declare const Take: any
+export * from './TestConfig'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Tracer
+## From "./TestContext"
 
-Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
+Re-exports all named exports from the "./TestContext" module.
 
 **Signature**
 
 ```ts
-export declare const Tracer: any
+export * from './TestContext'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Tuple
+## From "./TestLive"
 
-Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
+Re-exports all named exports from the "./TestLive" module.
 
 **Signature**
 
 ```ts
-export declare const Tuple: any
+export * from './TestLive'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## Types
+## From "./TestServices"
 
-Docs: https://effect-ts.github.io/data/modules/Types.ts.html
+Re-exports all named exports from the "./TestServices" module.
 
 **Signature**
 
 ```ts
-export declare const Types: any
+export * from './TestServices'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## absurd
+## From "./TestSized"
 
-Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
+Re-exports all named exports from the "./TestSized" module.
 
 **Signature**
 
 ```ts
-export declare const absurd: any
+export * from './TestSized'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## flow
+## From "./Tracer"
 
-Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
+Re-exports all named exports from the "./Tracer" module.
 
 **Signature**
 
 ```ts
-export declare const flow: any
+export * from './Tracer'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## hole
+## From "./Tuple"
 
-Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
+This module provides utility functions for working with tuples in TypeScript.
 
 **Signature**
 
 ```ts
-export declare const hole: any
+export * from './Tuple'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## identity
+## From "./Types"
 
-Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
+A collection of types that are commonly used types.
 
 **Signature**
 
 ```ts
-export declare const identity: any
+export * from './Types'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## pipe
+## From "./Unify"
 
-Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
+Re-exports all named exports from the "./Unify" module.
 
 **Signature**
 
 ```ts
-export declare const pipe: any
+export * from './Unify'
 ```
 
-Added in v2.0.0
+Added in v1.0.0
 
-## unsafeCoerce
+## From "./Utils"
 
-Docs: https://effect-ts.github.io/data/modules/Function.ts.html#unsafecoerce
+Re-exports all named exports from the "./Utils" module.
 
 **Signature**
 
 ```ts
-export declare const unsafeCoerce: any
+export * from './Utils'
 ```
 
-Added in v2.0.0
+Added in v1.0.0

@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.17.1]
+        node-version: [18.16.1]
 
     steps:
       - uses: actions/checkout@v3
@@ -41,16 +41,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - run: pnpm install
-      - run: pnpm run build
-      - run: pnpm run circular
-      - run: pnpm run test
-      - run: pnpm run lint
-      - run: pnpm run docs
+      - run: pnpm build
+      - run: pnpm circular
+      - run: pnpm test
+      - run: pnpm lint
+      - run: pnpm docgen
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1
         with:
-          version: pnpm run version
+          version: pnpm update-version
           publish: pnpm exec changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,1 +1,22 @@
-{ "theme": "mikearnaldi/just-the-docs" }
+{
+    "exclude": [
+        "src/internal/**/*.ts"
+    ],
+    "theme": "mikearnaldi/just-the-docs",
+    "parseCompilerOptions": {
+        "strict": true,
+        "noEmit": true,
+        "target": "ES2021",
+        "lib": [
+            "ES2021"
+        ]
+    },
+    "examplesCompilerOptions": {
+        "strict": true,
+        "noEmit": true,
+        "target": "ES2021",
+        "lib": [
+            "ES2021"
+        ]
+    }
+}
