@@ -6,6 +6,7 @@
   "eslint.format.enable": true,
   "files.exclude": {
     "dist": true,
+    "internal": true,
     "Bigint": true,
     "Boolean": true,
     "Brand": true,
