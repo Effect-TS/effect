@@ -1,5 +1,5 @@
-import * as Number from "@effect/data/Number"
 import * as _ from "@effect/typeclass/Bounded"
+import * as Number from "effect/Number"
 import * as U from "./util"
 
 describe.concurrent("Bounded", () => {

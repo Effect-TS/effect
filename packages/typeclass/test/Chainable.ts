@@ -1,7 +1,7 @@
-import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
 import * as _ from "@effect/typeclass/Chainable"
 import * as OptionInstances from "@effect/typeclass/data/Option"
+import { pipe } from "effect/Function"
+import * as O from "effect/Option"
 import * as U from "./util"
 
 describe.concurrent("Chainable", () => {

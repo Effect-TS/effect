@@ -1,6 +1,6 @@
 import * as _ from "@effect/typeclass/FlatMap"
-import type { TypeLambda } from "@effect/data/HKT"
-import { pipe } from "@effect/data/Function"
+import type { TypeLambda } from "effect/HKT"
+import { pipe } from "effect/Function"
 
 interface RAW<R, E, A> {
   (r: R): () => Promise<readonly [E, A]>

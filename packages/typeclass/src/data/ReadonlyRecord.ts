@@ -1,17 +1,17 @@
 /**
  * @since 1.0.0
  */
-import type { Either } from "@effect/data/Either"
-import { dual } from "@effect/data/Function"
-import type { Kind, TypeLambda } from "@effect/data/HKT"
-import type { Option } from "@effect/data/Option"
-import * as ReadonlyRecord from "@effect/data/ReadonlyRecord"
 import type * as applicative from "@effect/typeclass/Applicative"
 import * as covariant from "@effect/typeclass/Covariant"
 import type * as filterable from "@effect/typeclass/Filterable"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as traversable from "@effect/typeclass/Traversable"
 import type * as traversableFilterable from "@effect/typeclass/TraversableFilterable"
+import type { Either } from "effect/Either"
+import { dual } from "effect/Function"
+import type { Kind, TypeLambda } from "effect/HKT"
+import type { Option } from "effect/Option"
+import * as ReadonlyRecord from "effect/ReadonlyRecord"
 
 const map = ReadonlyRecord.map
 

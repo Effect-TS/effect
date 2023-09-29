@@ -1,13 +1,13 @@
-import * as Boolean from "@effect/data/Boolean"
-import * as Number from "@effect/data/Number"
-import * as O from "@effect/data/Option"
-import * as String from "@effect/data/String"
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as PredicateInstances from "@effect/typeclass/data/Predicate"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as _ from "@effect/typeclass/Product"
 import * as Semigroup from "@effect/typeclass/Semigroup"
+import * as Boolean from "effect/Boolean"
+import * as Number from "effect/Number"
+import * as O from "effect/Option"
+import * as String from "effect/String"
 import * as U from "./util"
 
 describe.concurrent("Product", () => {

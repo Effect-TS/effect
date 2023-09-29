@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import { dual, identity, SK } from "@effect/data/Function"
-import type { Kind, TypeLambda } from "@effect/data/HKT"
 import type { Covariant } from "@effect/typeclass/Covariant"
 import type { Semigroup } from "@effect/typeclass/Semigroup"
 import * as semigroup from "@effect/typeclass/Semigroup"
 import type { SemiProduct } from "@effect/typeclass/SemiProduct"
+import { dual, identity, SK } from "effect/Function"
+import type { Kind, TypeLambda } from "effect/HKT"
 
 /**
  * @category type class

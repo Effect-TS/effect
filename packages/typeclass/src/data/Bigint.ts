@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import { Order } from "@effect/data/Bigint"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
+import { Order } from "effect/Bigint"
 
 /**
  * `bigint` semigroup under addition.

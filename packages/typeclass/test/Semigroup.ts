@@ -1,9 +1,9 @@
-import { pipe } from "@effect/data/Function"
-import * as Number from "@effect/data/Number"
-import * as order from "@effect/data/Order"
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as Semigroup from "@effect/typeclass/Semigroup"
+import { pipe } from "effect/Function"
+import * as Number from "effect/Number"
+import * as order from "effect/Order"
 import * as U from "./util"
 
 describe.concurrent("Semigroup", () => {

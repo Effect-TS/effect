@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Kind, TypeClass, TypeLambda } from "@effect/data/HKT"
+import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
 
 /**
  * @category type class

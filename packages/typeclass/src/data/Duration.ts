@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as Duration from "@effect/data/Duration"
 import type * as bounded from "@effect/typeclass/Bounded"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
+import * as Duration from "effect/Duration"
 
 /**
  * @category instances

@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import { dual } from "@effect/data/Function"
-import type { TypeLambda } from "@effect/data/HKT"
-import type { Order } from "@effect/data/Order"
 import { map, reduce } from "@effect/typeclass/internal/Iterable"
 import type * as invariant from "@effect/typeclass/Invariant"
 import * as product_ from "@effect/typeclass/Product"
 import type * as semiProduct from "@effect/typeclass/SemiProduct"
+import { dual } from "effect/Function"
+import type { TypeLambda } from "effect/HKT"
+import type { Order } from "effect/Order"
 
 /**
  * @category type class

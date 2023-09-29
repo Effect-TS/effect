@@ -1,7 +1,7 @@
-import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/FlatMap"
+import { pipe } from "effect/Function"
+import * as O from "effect/Option"
 import * as U from "./util"
 
 describe.concurrent("FlatMap", () => {

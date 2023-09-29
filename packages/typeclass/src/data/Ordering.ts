@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Ordering } from "@effect/data/Ordering"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
+import type { Ordering } from "effect/Ordering"
 
 /**
  * `Semigroup` instance for `Ordering`, returns the left-most non-zero `Ordering`.

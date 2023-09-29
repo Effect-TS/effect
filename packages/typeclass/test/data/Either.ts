@@ -1,8 +1,8 @@
-import * as Either from "@effect/data/Either"
-import { pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
 import * as EitherInstances from "@effect/typeclass/data/Either"
 import * as OptionInstances from "@effect/typeclass/data/Option"
+import * as Either from "effect/Either"
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Util from "../util"
 
 describe.concurrent("Either", () => {

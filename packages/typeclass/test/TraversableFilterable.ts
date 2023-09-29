@@ -1,8 +1,8 @@
-import * as E from "@effect/data/Either"
-import * as O from "@effect/data/Option"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as _ from "@effect/typeclass/TraversableFilterable"
+import * as E from "effect/Either"
+import * as O from "effect/Option"
 import * as U from "./util"
 
 describe.concurrent("TraversableFilterable", () => {

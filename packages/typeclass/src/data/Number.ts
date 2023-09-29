@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as Number from "@effect/data/Number"
 import * as bounded from "@effect/typeclass/Bounded"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
+import * as Number from "effect/Number"
 
 /**
  * @category instances

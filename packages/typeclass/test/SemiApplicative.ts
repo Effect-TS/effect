@@ -1,8 +1,8 @@
-import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as _ from "@effect/typeclass/SemiApplicative"
+import { pipe } from "effect/Function"
+import * as O from "effect/Option"
 import * as U from "./util"
 
 describe.concurrent("SemiApplicative", () => {

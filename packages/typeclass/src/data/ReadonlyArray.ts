@@ -4,11 +4,6 @@
  * @since 1.0.0
  */
 
-import type { Either } from "@effect/data/Either"
-import { dual } from "@effect/data/Function"
-import type { Kind, TypeLambda } from "@effect/data/HKT"
-import type { Option } from "@effect/data/Option"
-import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import type * as applicative from "@effect/typeclass/Applicative"
 import type * as chainable from "@effect/typeclass/Chainable"
 import * as covariant from "@effect/typeclass/Covariant"
@@ -28,6 +23,11 @@ import * as semigroup from "@effect/typeclass/Semigroup"
 import * as semiProduct from "@effect/typeclass/SemiProduct"
 import type * as traversable from "@effect/typeclass/Traversable"
 import type * as traversableFilterable from "@effect/typeclass/TraversableFilterable"
+import type { Either } from "effect/Either"
+import { dual } from "effect/Function"
+import type { Kind, TypeLambda } from "effect/HKT"
+import type { Option } from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
 const of = ReadonlyArray.of
 

@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type { TypeLambda } from "@effect/data/HKT"
-import * as order from "@effect/data/Order"
-import type { Order } from "@effect/data/Order"
 import type { Monoid } from "@effect/typeclass/Monoid"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
+import type { TypeLambda } from "effect/HKT"
+import * as order from "effect/Order"
+import type { Order } from "effect/Order"
 
 /**
  * @category type class

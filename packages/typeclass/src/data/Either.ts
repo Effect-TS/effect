@@ -2,9 +2,6 @@
  * @since 1.0.0
  */
 
-import * as Either from "@effect/data/Either"
-import { dual } from "@effect/data/Function"
-import type { Kind, TypeLambda } from "@effect/data/HKT"
 import type * as applicative from "@effect/typeclass/Applicative"
 import type * as bicovariant from "@effect/typeclass/Bicovariant"
 import type * as chainable from "@effect/typeclass/Chainable"
@@ -21,6 +18,9 @@ import type * as semiApplicative from "@effect/typeclass/SemiApplicative"
 import type * as semiCoproduct from "@effect/typeclass/SemiCoproduct"
 import type * as semiProduct from "@effect/typeclass/SemiProduct"
 import type * as traversable from "@effect/typeclass/Traversable"
+import * as Either from "effect/Either"
+import { dual } from "effect/Function"
+import type { Kind, TypeLambda } from "effect/HKT"
 
 const of = Either.right
 

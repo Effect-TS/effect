@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import { dual, identity } from "@effect/data/Function"
-import type { Kind, TypeLambda } from "@effect/data/HKT"
-import * as readonlyArray from "@effect/data/ReadonlyArray"
 import type * as applicative from "@effect/typeclass/Applicative"
 import type * as chainable from "@effect/typeclass/Chainable"
 import * as covariant from "@effect/typeclass/Covariant"
@@ -20,6 +17,9 @@ import type * as semiCoproduct from "@effect/typeclass/SemiCoproduct"
 import type { Semigroup } from "@effect/typeclass/Semigroup"
 import type * as semiProduct from "@effect/typeclass/SemiProduct"
 import type * as traversable from "@effect/typeclass/Traversable"
+import { dual, identity } from "effect/Function"
+import type { Kind, TypeLambda } from "effect/HKT"
+import * as readonlyArray from "effect/ReadonlyArray"
 
 const of: <A>(a: A) => Identity<A> = identity
 

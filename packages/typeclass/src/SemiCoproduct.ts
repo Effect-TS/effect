@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import type { Kind, TypeLambda } from "@effect/data/HKT"
 import type { Invariant } from "@effect/typeclass/Invariant"
 import type { Semigroup } from "@effect/typeclass/Semigroup"
+import type { Kind, TypeLambda } from "effect/HKT"
 
 /**
  * @category type class

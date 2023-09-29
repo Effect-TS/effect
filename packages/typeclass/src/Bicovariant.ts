@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import { dual, identity } from "@effect/data/Function"
-import type { Kind, TypeClass, TypeLambda } from "@effect/data/HKT"
 import type { Covariant } from "@effect/typeclass/Covariant"
+import { dual, identity } from "effect/Function"
+import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
 
 /**
  * @category type class

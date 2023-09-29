@@ -1,7 +1,7 @@
-import { pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 import * as Util from "../util"
 
 describe.concurrent("Option", () => {

@@ -3,17 +3,17 @@
  *
  * @since 1.0.0
  */
-import type { Either } from "@effect/data/Either"
-import * as E from "@effect/data/Either"
-import { dual } from "@effect/data/Function"
-import type { Kind, TypeClass, TypeLambda } from "@effect/data/HKT"
-import type { Option } from "@effect/data/Option"
-import * as O from "@effect/data/Option"
 import type { Applicative } from "@effect/typeclass/Applicative"
 import type { Covariant } from "@effect/typeclass/Covariant"
 import * as filterable from "@effect/typeclass/Filterable"
 import type { Filterable } from "@effect/typeclass/Filterable"
 import type { Traversable } from "@effect/typeclass/Traversable"
+import type { Either } from "effect/Either"
+import * as E from "effect/Either"
+import { dual } from "effect/Function"
+import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
+import type { Option } from "effect/Option"
+import * as O from "effect/Option"
 
 /**
  * @category models

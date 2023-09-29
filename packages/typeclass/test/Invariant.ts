@@ -1,11 +1,11 @@
-import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
-import * as String from "@effect/data/String"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as PredicateInstances from "@effect/typeclass/data/Predicate"
 import * as StringInstances from "@effect/typeclass/data/String"
 import * as _ from "@effect/typeclass/Invariant"
 import * as Semigroup from "@effect/typeclass/Semigroup"
+import { pipe } from "effect/Function"
+import * as O from "effect/Option"
+import * as String from "effect/String"
 import * as U from "./util"
 
 describe.concurrent("Invariant", () => {
