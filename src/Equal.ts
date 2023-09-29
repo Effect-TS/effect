@@ -1,17 +1,17 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { Equivalence } from "./Equivalence"
 import * as Hash from "./Hash"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const symbol: unique symbol = Symbol.for("effect/Equal")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Equal extends Hash.Hash {
@@ -19,7 +19,7 @@ export interface Equal extends Hash.Hash {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category equality
  */
 export function equals<B>(that: B): <A>(self: A) => boolean
@@ -52,13 +52,13 @@ function compareBoth(self: unknown, that: unknown) {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isEqual = (u: unknown): u is Equal => typeof u === "object" && u !== null && symbol in u
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category instances
  */
 export const equivalence: <A>() => Equivalence<A> = () => (self, that) => equals(self, that)

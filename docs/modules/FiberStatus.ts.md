@@ -6,7 +6,7 @@ parent: Modules
 
 ## FiberStatus overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -42,7 +42,7 @@ Added in v1.0.0
 export declare const done: FiberStatus
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## running
 
@@ -52,7 +52,7 @@ Added in v1.0.0
 export declare const running: (runtimeFlags: RuntimeFlags.RuntimeFlags) => FiberStatus
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## suspended
 
@@ -62,7 +62,7 @@ Added in v1.0.0
 export declare const suspended: (runtimeFlags: RuntimeFlags.RuntimeFlags, blockingOn: FiberId.FiberId) => FiberStatus
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -77,7 +77,7 @@ export interface Done extends Equal.Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberStatus (type alias)
 
@@ -87,7 +87,7 @@ Added in v1.0.0
 export type FiberStatus = Done | Running | Suspended
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Running (interface)
 
@@ -101,7 +101,7 @@ export interface Running extends Equal.Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Suspended (interface)
 
@@ -116,7 +116,7 @@ export interface Suspended extends Equal.Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -130,7 +130,7 @@ Returns `true` if the specified `FiberStatus` is `Done`, `false` otherwise.
 export declare const isDone: (self: FiberStatus) => self is Done
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFiberStatus
 
@@ -142,7 +142,7 @@ Returns `true` if the specified value is a `FiberStatus`, `false` otherwise.
 export declare const isFiberStatus: (u: unknown) => u is FiberStatus
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRunning
 
@@ -155,7 +155,7 @@ otherwise.
 export declare const isRunning: (self: FiberStatus) => self is Running
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSuspended
 
@@ -168,7 +168,7 @@ otherwise.
 export declare const isSuspended: (self: FiberStatus) => self is Suspended
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -180,7 +180,7 @@ Added in v1.0.0
 export declare const FiberStatusTypeId: typeof FiberStatusTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberStatusTypeId (type alias)
 
@@ -190,4 +190,4 @@ Added in v1.0.0
 export type FiberStatusTypeId = typeof FiberStatusTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

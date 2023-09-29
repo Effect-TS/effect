@@ -6,7 +6,7 @@ parent: Modules
 
 ## Data overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -53,7 +53,7 @@ export declare const Class: new <A extends Record<string, any>>(
 ) => Data<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Structural
 
@@ -65,7 +65,7 @@ export declare const Structural: new <A>(
 ) => Case
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TaggedClass
 
@@ -81,7 +81,7 @@ export declare const TaggedClass: <Key extends string>(
 ) => Data<A & { _tag: Key }>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## array
 
@@ -91,7 +91,7 @@ Added in v1.0.0
 export declare const array: <As extends readonly any[]>(as: As) => Data<As>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## case
 
@@ -103,7 +103,7 @@ Provides a constructor for the specified `Case`.
 export declare const case: <A extends Case>() => Case.Constructor<A, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## struct
 
@@ -113,7 +113,7 @@ Added in v1.0.0
 export declare const struct: <As extends Readonly<Record<string, any>>>(as: As) => Data<As>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tagged
 
@@ -125,7 +125,7 @@ Provides a tagged constructor for the specified `Case`.
 export declare const tagged: <A extends Case & { _tag: string }>(tag: A['_tag']) => Case.Constructor<A, '_tag'>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## taggedEnum
 
@@ -194,7 +194,7 @@ const MyResult = Data.taggedEnum<MyResultDefinition>()
 const success = MyResult('Success')({ value: 1 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tuple
 
@@ -204,7 +204,7 @@ Added in v1.0.0
 export declare const tuple: <As extends readonly any[]>(...as: As) => Data<As>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeArray
 
@@ -214,7 +214,7 @@ Added in v1.0.0
 export declare const unsafeArray: <As extends readonly any[]>(as: As) => Data<As>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeStruct
 
@@ -224,7 +224,7 @@ Added in v1.0.0
 export declare const unsafeStruct: <As extends Readonly<Record<string, any>>>(as: As) => Data<As>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -240,7 +240,7 @@ for a constructor, `Hash`, and `Equal`.
 export interface Case extends Equal.Equal {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Data (type alias)
 
@@ -250,7 +250,7 @@ Added in v1.0.0
 export type Data<A extends Readonly<Record<string, any>> | ReadonlyArray<any>> = Readonly<A> & Equal.Equal
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TaggedEnum (type alias)
 
@@ -286,13 +286,13 @@ export type TaggedEnum<A extends Record<string, Record<string, any>>> = {
 }[keyof A]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Case (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Constructor (interface)
 
@@ -304,11 +304,11 @@ export interface Constructor<A extends Case, T extends keyof A = never> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TaggedEnum (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### WithGenerics (interface)
 
@@ -326,7 +326,7 @@ export interface WithGenerics<Count extends number> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Args (type alias)
 
@@ -343,7 +343,7 @@ export type Args<A extends Data<{ readonly _tag: string }>, K extends A['_tag']>
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Kind (type alias)
 
@@ -358,7 +358,7 @@ export type Kind<Z extends WithGenerics<number>, A = unknown, B = unknown, C = u
 })['taggedEnum']
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Value (type alias)
 
@@ -368,4 +368,4 @@ Added in v1.0.0
 export type Value<A extends Data<{ readonly _tag: string }>, K extends A['_tag']> = Extract<A, { readonly _tag: K }>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

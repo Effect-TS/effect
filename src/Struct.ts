@@ -1,7 +1,7 @@
 /**
  * This module provides utility functions for working with structs in TypeScript.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import * as Equivalence from "./Equivalence"
@@ -17,7 +17,7 @@ import * as order from "./Order"
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, pick("a", "b")), { a: "a", b: 1 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const pick = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
   ...keys: Keys
@@ -39,7 +39,7 @@ export const pick = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
  *
  * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, omit("c")), { a: "a", b: 1 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const omit = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
   ...keys: Keys
@@ -78,7 +78,7 @@ export const omit = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
  * )
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getEquivalence: <R extends Record<string, Equivalence.Equivalence<any>>>(
   isEquivalents: R
@@ -93,7 +93,7 @@ export const getEquivalence: <R extends Record<string, Equivalence.Equivalence<a
  * Alias of {@link order.struct}.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getOrder: <R extends { readonly [x: string]: order.Order<any> }>(
   fields: R
@@ -126,7 +126,7 @@ type Transformed<O, T extends PartialTransform<O>> =
  *   { a: 1, b: 2, c: 3 }
  * )
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const evolve: {
   <O, T extends PartialTransform<O>>(t: T): (

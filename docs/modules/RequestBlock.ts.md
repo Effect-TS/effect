@@ -6,7 +6,7 @@ parent: Modules
 
 ## RequestBlock overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ Added in v1.0.0
 export declare const empty: RequestBlock<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapRequestResolvers
 
@@ -56,7 +56,7 @@ export declare const mapRequestResolvers: <R, A, R2>(
 ) => RequestBlock<R | R2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## parallel
 
@@ -66,7 +66,7 @@ Added in v1.0.0
 export declare const parallel: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduce
 
@@ -76,7 +76,7 @@ Added in v1.0.0
 export declare const reduce: <R, Z>(self: RequestBlock<R>, reducer: RequestBlock.Reducer<R, Z>) => Z
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sequential
 
@@ -86,7 +86,7 @@ Added in v1.0.0
 export declare const sequential: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## single
 
@@ -99,7 +99,7 @@ export declare const single: <R, A>(
 ) => RequestBlock<R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -113,7 +113,7 @@ export interface Empty {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Par (interface)
 
@@ -127,7 +127,7 @@ export interface Par<R> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RequestBlock (type alias)
 
@@ -143,11 +143,11 @@ preserving ordering guarantees.
 export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RequestBlock (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Reducer (interface)
 
@@ -165,7 +165,7 @@ export interface Reducer<R, Z> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Seq (interface)
 
@@ -179,7 +179,7 @@ export interface Seq<R> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Single (interface)
 
@@ -193,7 +193,7 @@ export interface Single<R> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -207,7 +207,7 @@ Provides each data source with a fiber ref value.
 export declare const locally: <R, A>(self: RequestBlock<R>, ref: FiberRef<A>, value: A) => RequestBlock<R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputContext
 
@@ -222,4 +222,4 @@ export declare const mapInputContext: <R0, R>(
 ) => RequestBlock<R0>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

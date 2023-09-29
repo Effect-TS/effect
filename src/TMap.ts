@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Chunk from "./Chunk"
 import type { LazyArg } from "./Function"
@@ -11,13 +11,13 @@ import type * as TArray from "./TArray"
 import type * as TRef from "./TRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TMapTypeId: unique symbol = internal.TMapTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TMapTypeId = typeof TMapTypeId
@@ -26,13 +26,13 @@ export type TMapTypeId = typeof TMapTypeId
  * Transactional map implemented on top of `TRef` and `TArray`. Resolves
  * conflicts via chaining.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TMap<K, V> extends TMap.Variance<K, V> {}
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TMap<K, V> {
   /** @internal */
@@ -42,11 +42,11 @@ export interface TMap<K, V> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace TMap {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<K, V> {
@@ -60,7 +60,7 @@ export declare namespace TMap {
 /**
  * Makes an empty `TMap`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: <K, V>() => STM.STM<never, never, TMap<K, V>> = internal.empty
@@ -69,7 +69,7 @@ export const empty: <K, V>() => STM.STM<never, never, TMap<K, V>> = internal.emp
  * Finds the key/value pair matching the specified predicate, and uses the
  * provided function to extract a value out of it.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const find: {
@@ -81,7 +81,7 @@ export const find: {
  * Finds the key/value pair matching the specified predicate, and uses the
  * provided effectful function to extract a value out of it.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findSTM: {
@@ -98,7 +98,7 @@ export const findSTM: {
  * Finds all the key/value pairs matching the specified predicate, and uses
  * the provided function to extract values out them.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findAll: {
@@ -110,7 +110,7 @@ export const findAll: {
  * Finds all the key/value pairs matching the specified predicate, and uses
  * the provided effectful function to extract values out of them..
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findAllSTM: {
@@ -123,7 +123,7 @@ export const findAllSTM: {
 /**
  * Atomically performs transactional-effect for each binding present in map.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const forEach: {
@@ -134,7 +134,7 @@ export const forEach: {
 /**
  * Makes a new `TMap` initialized with provided iterable.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable: <K, V>(
@@ -144,7 +144,7 @@ export const fromIterable: <K, V>(
 /**
  * Retrieves value associated with given key.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const get: {
@@ -156,7 +156,7 @@ export const get: {
  * Retrieves value associated with given key or default value, in case the key
  * isn't present.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const getOrElse: {
@@ -167,7 +167,7 @@ export const getOrElse: {
 /**
  * Tests whether or not map contains a key.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const has: {
@@ -178,7 +178,7 @@ export const has: {
 /**
  * Tests if the map is empty or not.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isEmpty: <K, V>(self: TMap<K, V>) => STM.STM<never, never, boolean> = internal.isEmpty
@@ -186,7 +186,7 @@ export const isEmpty: <K, V>(self: TMap<K, V>) => STM.STM<never, never, boolean>
 /**
  * Collects all keys stored in map.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const keys: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<K>> = internal.keys
@@ -194,7 +194,7 @@ export const keys: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<K>> =
 /**
  * Makes a new `TMap` that is initialized with specified values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <K, V>(...entries: Array<readonly [K, V]>) => STM.STM<never, never, TMap<K, V>> = internal.make
@@ -204,7 +204,7 @@ export const make: <K, V>(...entries: Array<readonly [K, V]>) => STM.STM<never, 
  * otherwise merge the existing value with the new one using function `f` and
  * store the result.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const merge: {
@@ -215,7 +215,7 @@ export const merge: {
 /**
  * Atomically folds using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduce: {
@@ -226,7 +226,7 @@ export const reduce: {
 /**
  * Atomically folds using a transactional function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduceSTM: {
@@ -237,7 +237,7 @@ export const reduceSTM: {
 /**
  * Atomically folds using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduceWithIndex: {
@@ -248,7 +248,7 @@ export const reduceWithIndex: {
 /**
  * Atomically folds using a transactional function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduceWithIndexSTM: {
@@ -259,7 +259,7 @@ export const reduceWithIndexSTM: {
 /**
  * Removes binding for given key.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const remove: {
@@ -270,7 +270,7 @@ export const remove: {
 /**
  * Deletes all entries associated with the specified keys.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const removeAll: {
@@ -281,7 +281,7 @@ export const removeAll: {
 /**
  * Removes bindings matching predicate and returns the removed entries.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const removeIf: {
@@ -292,7 +292,7 @@ export const removeIf: {
 /**
  * Removes bindings matching predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const removeIfDiscard: {
@@ -303,7 +303,7 @@ export const removeIfDiscard: {
 /**
  * Retains bindings matching predicate and returns removed bindings.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const retainIf: {
@@ -314,7 +314,7 @@ export const retainIf: {
 /**
  * Retains bindings matching predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const retainIfDiscard: {
@@ -325,7 +325,7 @@ export const retainIfDiscard: {
 /**
  * Stores new binding into the map.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const set: {
@@ -336,7 +336,7 @@ export const set: {
 /**
  * Stores new binding in the map if it does not already exist.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const setIfAbsent: {
@@ -347,7 +347,7 @@ export const setIfAbsent: {
 /**
  * Returns the number of bindings.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: <K, V>(self: TMap<K, V>) => STM.STM<never, never, number> = internal.size
@@ -355,7 +355,7 @@ export const size: <K, V>(self: TMap<K, V>) => STM.STM<never, never, number> = i
 /**
  * Takes the first matching value, or retries until there is one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeFirst: {
@@ -366,7 +366,7 @@ export const takeFirst: {
 /**
  * Takes the first matching value, or retries until there is one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeFirstSTM: {
@@ -377,7 +377,7 @@ export const takeFirstSTM: {
 /**
  * Takes all matching values, or retries until there is at least one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeSome: {
@@ -388,7 +388,7 @@ export const takeSome: {
 /**
  * Takes all matching values, or retries until there is at least one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const takeSomeSTM: {
@@ -404,7 +404,7 @@ export const takeSomeSTM: {
 /**
  * Collects all bindings into a `Chunk`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> = internal.toArray
@@ -412,7 +412,7 @@ export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<re
 /**
  * Collects all bindings into a `HashMap`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMap.HashMap<K, V>> = internal.toHashMap
@@ -420,7 +420,7 @@ export const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMa
 /**
  * Collects all bindings into a `ReadonlyArray`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyArray<readonly [K, V]>> =
@@ -429,7 +429,7 @@ export const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, 
 /**
  * Collects all bindings into a `ReadonlyMap`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toReadonlyMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>> =
@@ -438,7 +438,7 @@ export const toReadonlyMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Re
 /**
  * Atomically updates all bindings using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const transform: {
@@ -449,7 +449,7 @@ export const transform: {
 /**
  * Atomically updates all bindings using a transactional function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const transformSTM: {
@@ -460,7 +460,7 @@ export const transformSTM: {
 /**
  * Atomically updates all values using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const transformValues: {
@@ -471,7 +471,7 @@ export const transformValues: {
 /**
  * Atomically updates all values using a transactional function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const transformValuesSTM: {
@@ -486,7 +486,7 @@ export const transformValuesSTM: {
  * the map or `None` to remove the value from the map. Returns `Some` with the
  * updated value or `None` if the value was removed from the map.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const updateWith: {
@@ -504,7 +504,7 @@ export const updateWith: {
 /**
  * Collects all values stored in map.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const values: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<V>> = internal.values

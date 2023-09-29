@@ -6,7 +6,7 @@ parent: Modules
 
 ## TRandom overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -42,7 +42,7 @@ The service tag used to access `TRandom` in the environment of an effect.
 export declare const Tag: Context.Tag<TRandom, TRandom>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## live
 
@@ -54,7 +54,7 @@ The "live" `TRandom` service wrapped into a `Layer`.
 export declare const live: Layer.Layer<never, never, TRandom>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -94,7 +94,7 @@ export interface TRandom {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # random
 
@@ -108,7 +108,7 @@ Returns the next number from the pseudo-random number generator.
 export declare const next: STM.STM<TRandom, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextBoolean
 
@@ -120,7 +120,7 @@ Returns the next boolean value from the pseudo-random number generator.
 export declare const nextBoolean: STM.STM<TRandom, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextInt
 
@@ -132,7 +132,7 @@ Returns the next integer from the pseudo-random number generator.
 export declare const nextInt: STM.STM<TRandom, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextIntBetween
 
@@ -145,7 +145,7 @@ generator.
 export declare const nextIntBetween: (low: number, high: number) => STM.STM<TRandom, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextRange
 
@@ -158,7 +158,7 @@ generator.
 export declare const nextRange: (min: number, max: number) => STM.STM<TRandom, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## shuffle
 
@@ -170,7 +170,7 @@ Uses the pseudo-random number generator to shuffle the specified iterable.
 export declare const shuffle: <A>(elements: Iterable<A>) => STM.STM<TRandom, never, A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -182,7 +182,7 @@ Added in v1.0.0
 export declare const TRandomTypeId: typeof TRandomTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TRandomTypeId (type alias)
 
@@ -192,4 +192,4 @@ Added in v1.0.0
 export type TRandomTypeId = typeof TRandomTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

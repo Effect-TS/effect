@@ -6,7 +6,7 @@ parent: Modules
 
 ## Random overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -40,7 +40,7 @@ Returns the next numeric value from the pseudo-random number generator.
 export declare const next: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextBoolean
 
@@ -52,7 +52,7 @@ Returns the next boolean value from the pseudo-random number generator.
 export declare const nextBoolean: Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextInt
 
@@ -64,7 +64,7 @@ Returns the next integer value from the pseudo-random number generator.
 export declare const nextInt: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextIntBetween
 
@@ -77,7 +77,7 @@ pseudo-random number generator.
 export declare const nextIntBetween: (min: number, max: number) => Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nextRange
 
@@ -90,7 +90,7 @@ pseudo-random number generator.
 export declare const nextRange: (min: number, max: number) => Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## randomWith
 
@@ -103,7 +103,7 @@ specified workflow.
 export declare const randomWith: <R, E, A>(f: (random: Random) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## shuffle
 
@@ -115,7 +115,7 @@ Uses the pseudo-random number generator to shuffle the specified iterable.
 export declare const shuffle: <A>(elements: Iterable<A>) => Effect.Effect<never, never, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -155,7 +155,7 @@ export interface Random {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -167,7 +167,7 @@ Added in v1.0.0
 export declare const RandomTypeId: typeof RandomTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RandomTypeId (type alias)
 
@@ -177,4 +177,4 @@ Added in v1.0.0
 export type RandomTypeId = typeof RandomTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

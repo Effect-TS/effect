@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestClock overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -46,7 +46,7 @@ export interface Data {
 }
 ```
 
-Added in v1.0.1
+Added in v2.0.1
 
 ## TestClock
 
@@ -56,7 +56,7 @@ Added in v1.0.1
 export declare const TestClock: Context.Tag<TestClock, TestClock>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestClock (interface)
 
@@ -106,7 +106,7 @@ export interface TestClock extends Clock.Clock {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## adjust
 
@@ -120,7 +120,7 @@ the new time in order.
 export declare const adjust: (durationInput: Duration.DurationInput) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## adjustWith
 
@@ -133,7 +133,7 @@ export declare const adjustWith: ((
   (<R, E, A>(effect: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, A>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentTimeMillis
 
@@ -146,7 +146,7 @@ milliseconds.
 export declare const currentTimeMillis: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## defaultTestClock
 
@@ -156,7 +156,7 @@ Added in v1.0.0
 export declare const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## live
 
@@ -166,7 +166,7 @@ Added in v1.0.0
 export declare const live: (data: Data) => Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeData
 
@@ -179,7 +179,7 @@ export declare const makeData: (
 ) => Data
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## save
 
@@ -193,7 +193,7 @@ saved state.
 export declare const save: () => Effect.Effect<never, never, Effect.Effect<never, never, void>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setTime
 
@@ -207,7 +207,7 @@ the new time in order.
 export declare const setTime: (instant: number) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sleep
 
@@ -221,7 +221,7 @@ on or after the duration, the fiber will automatically be resumed.
 export declare const sleep: (durationInput: Duration.DurationInput) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sleeps
 
@@ -234,7 +234,7 @@ times that effects are scheduled to run.
 export declare const sleeps: () => Effect.Effect<never, never, Chunk.Chunk<number>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## testClock
 
@@ -246,7 +246,7 @@ Retrieves the `TestClock` service for this test.
 export declare const testClock: () => Effect.Effect<never, never, TestClock>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## testClockWith
 
@@ -261,4 +261,4 @@ export declare const testClockWith: <R, E, A>(
 ) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

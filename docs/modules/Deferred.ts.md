@@ -6,7 +6,7 @@ parent: Modules
 
 ## Deferred overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -58,7 +58,7 @@ Creates a new `Deferred`.
 export declare const make: <E, A>() => Effect.Effect<never, never, Deferred<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeAs
 
@@ -70,7 +70,7 @@ Creates a new `Deferred` from the specified `FiberId`.
 export declare const makeAs: <E, A>(fiberId: FiberId.FiberId) => Effect.Effect<never, never, Deferred<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -85,7 +85,7 @@ workflow until the result is available.
 export declare const await: <E, A>(self: Deferred<E, A>) => Effect.Effect<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isDone
 
@@ -98,7 +98,7 @@ an error, `false` otherwise.
 export declare const isDone: <E, A>(self: Deferred<E, A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## poll
 
@@ -113,7 +113,7 @@ export declare const poll: <E, A>(
 ) => Effect.Effect<never, never, Option.Option<Effect.Effect<never, E, A>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -138,7 +138,7 @@ export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -150,7 +150,7 @@ Added in v1.0.0
 export declare const DeferredTypeId: typeof DeferredTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## DeferredTypeId (type alias)
 
@@ -160,7 +160,7 @@ Added in v1.0.0
 export type DeferredTypeId = typeof DeferredTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -175,7 +175,7 @@ propagated to all fibers waiting on the value of the `Deferred`.
 export declare const unsafeDone: <E, A>(self: Deferred<E, A>, effect: Effect.Effect<never, E, A>) => void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMake
 
@@ -187,13 +187,13 @@ Unsafely creates a new `Deferred` from the specified `FiberId`.
 export declare const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Deferred (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -208,7 +208,7 @@ export interface Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## complete
 
@@ -227,7 +227,7 @@ export declare const complete: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## completeWith
 
@@ -243,7 +243,7 @@ export declare const completeWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -259,7 +259,7 @@ export declare const die: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieSync
 
@@ -275,7 +275,7 @@ export declare const dieSync: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## done
 
@@ -291,7 +291,7 @@ export declare const done: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -307,7 +307,7 @@ export declare const fail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -323,7 +323,7 @@ export declare const failCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCauseSync
 
@@ -339,7 +339,7 @@ export declare const failCauseSync: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failSync
 
@@ -355,7 +355,7 @@ export declare const failSync: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interrupt
 
@@ -369,7 +369,7 @@ calling this method.
 export declare const interrupt: <E, A>(self: Deferred<E, A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptWith
 
@@ -385,7 +385,7 @@ export declare const interruptWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -400,7 +400,7 @@ export declare const succeed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -415,4 +415,4 @@ export declare const sync: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

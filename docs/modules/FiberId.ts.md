@@ -6,7 +6,7 @@ parent: Modules
 
 ## FiberId overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -56,7 +56,7 @@ Combine two `FiberId`s.
 export declare const combine: { (that: FiberId): (self: FiberId) => FiberId; (self: FiberId, that: FiberId): FiberId }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineAll
 
@@ -68,7 +68,7 @@ Combines a set of `FiberId`s into a single `FiberId`.
 export declare const combineAll: (fiberIds: HashSet.HashSet<FiberId>) => FiberId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## composite
 
@@ -78,7 +78,7 @@ Added in v1.0.0
 export declare const composite: (left: FiberId, right: FiberId) => FiberId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -90,7 +90,7 @@ Creates a new `FiberId`.
 export declare const make: (id: number, startTimeSeconds: number) => FiberId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## none
 
@@ -100,7 +100,7 @@ Added in v1.0.0
 export declare const none: FiberId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runtime
 
@@ -110,7 +110,7 @@ Added in v1.0.0
 export declare const runtime: (id: number, startTimeMillis: number) => FiberId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -124,7 +124,7 @@ Get the set of identifiers for this `FiberId`.
 export declare const ids: (self: FiberId) => HashSet.HashSet<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## threadName
 
@@ -137,7 +137,7 @@ represented by the specified `FiberId`.
 export declare const threadName: (self: FiberId) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toOption
 
@@ -149,7 +149,7 @@ Convert a `FiberId` into an `Option<FiberId>`.
 export declare const toOption: (self: FiberId) => Option.Option<FiberId>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toSet
 
@@ -161,7 +161,7 @@ Convert a `FiberId` into a `HashSet<FiberId>`.
 export declare const toSet: (self: FiberId) => HashSet.HashSet<Runtime>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -178,7 +178,7 @@ export interface Composite extends Equal.Equal, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberId (type alias)
 
@@ -188,7 +188,7 @@ Added in v1.0.0
 export type FiberId = None | Runtime | Composite
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## None (interface)
 
@@ -201,7 +201,7 @@ export interface None extends Equal.Equal, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Runtime (interface)
 
@@ -216,7 +216,7 @@ export interface Runtime extends Equal.Equal, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -230,7 +230,7 @@ Returns `true` if the `FiberId` is a `Composite`, `false` otherwise.
 export declare const isComposite: (self: FiberId) => self is Composite
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFiberId
 
@@ -243,7 +243,7 @@ otherwise.
 export declare const isFiberId: (self: unknown) => self is FiberId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNone
 
@@ -255,7 +255,7 @@ Returns `true` if the `FiberId` is a `None`, `false` otherwise.
 export declare const isNone: (self: FiberId) => self is None
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRuntime
 
@@ -267,7 +267,7 @@ Returns `true` if the `FiberId` is a `Runtime`, `false` otherwise.
 export declare const isRuntime: (self: FiberId) => self is Runtime
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -279,7 +279,7 @@ Added in v1.0.0
 export declare const FiberIdTypeId: typeof FiberIdTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberIdTypeId (type alias)
 
@@ -289,7 +289,7 @@ Added in v1.0.0
 export type FiberIdTypeId = typeof FiberIdTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -303,7 +303,7 @@ Unsafely creates a new `FiberId`.
 export declare const unsafeMake: (_: void) => Runtime
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -317,4 +317,4 @@ Returns this `FiberId` if it is not `None`, otherwise returns that `FiberId`.
 export declare const getOrElse: { (that: FiberId): (self: FiberId) => FiberId; (self: FiberId, that: FiberId): FiberId }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -6,7 +6,7 @@ parent: Modules
 
 ## Schedule overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -156,7 +156,7 @@ export declare const either: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## eitherWith
 
@@ -178,7 +178,7 @@ export declare const eitherWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -192,7 +192,7 @@ Returns a new schedule that maps the output of this schedule to unit.
 export declare const asUnit: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllInputs
 
@@ -204,7 +204,7 @@ A schedule that recurs anywhere, collecting all inputs into a `Chunk`.
 export declare const collectAllInputs: <A>() => Schedule<never, A, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## count
 
@@ -216,7 +216,7 @@ A schedule that always recurs, which counts the number of recurrences.
 export declare const count: Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dayOfMonth
 
@@ -233,7 +233,7 @@ NOTE: `day` parameter is validated lazily. Must be in range 1...31.
 export declare const dayOfMonth: (day: number) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dayOfWeek
 
@@ -249,7 +249,7 @@ NOTE: `day` parameter is validated lazily. Must be in range 1 (Monday)...7
 export declare const dayOfWeek: (day: number) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## delayedEffect
 
@@ -270,7 +270,7 @@ export declare const delayedEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## delayedSchedule
 
@@ -285,7 +285,7 @@ export declare const delayedSchedule: <Env, In>(
 ) => Schedule<Env, In, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## delays
 
@@ -297,7 +297,7 @@ Returns a new schedule that outputs the delay between each occurence.
 export declare const delays: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## duration
 
@@ -310,7 +310,7 @@ future.
 export declare const duration: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## elapsed
 
@@ -323,7 +323,7 @@ since the first step.
 export declare const elapsed: Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## exponential
 
@@ -340,7 +340,7 @@ export declare const exponential: (
 ) => Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fibonacci
 
@@ -354,7 +354,7 @@ duration between recurrences.
 export declare const fibonacci: (one: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fixed
 
@@ -375,7 +375,7 @@ action will be run immediately, but re-runs will not "pile up".
 export declare const fixed: (interval: Duration.DurationInput) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forever
 
@@ -387,7 +387,7 @@ A schedule that always recurs, producing a count of repeats: 0, 1, 2.
 export declare const forever: Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromDelay
 
@@ -399,7 +399,7 @@ A schedule that recurs once with the specified delay.
 export declare const fromDelay: (delay: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromDelays
 
@@ -416,7 +416,7 @@ export declare const fromDelays: (
 ) => Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromFunction
 
@@ -429,7 +429,7 @@ function.
 export declare const fromFunction: <A, B>(f: (a: A) => B) => Schedule<never, A, B>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hourOfDay
 
@@ -444,7 +444,7 @@ NOTE: `hour` parameter is validated lazily. Must be in range 0...23.
 export declare const hourOfDay: (hour: number) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## identity
 
@@ -456,7 +456,7 @@ A schedule that always recurs, which returns inputs as outputs.
 export declare const identity: <A>() => Schedule<never, A, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## jittered
 
@@ -474,7 +474,7 @@ interval size`.
 export declare const jittered: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## jitteredWith
 
@@ -493,7 +493,7 @@ export declare const jitteredWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## linear
 
@@ -507,7 +507,7 @@ the current duration between recurrences.
 export declare const linear: (base: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWithState
 
@@ -527,7 +527,7 @@ export declare const makeWithState: <S, Env, In, Out>(
 ) => Schedule<Env, In, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## minuteOfHour
 
@@ -542,7 +542,7 @@ NOTE: `minute` parameter is validated lazily. Must be in range 0...59.
 export declare const minuteOfHour: (minute: number) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## once
 
@@ -554,7 +554,7 @@ A schedule that recurs one time.
 export declare const once: Schedule<never, unknown, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## recurs
 
@@ -567,7 +567,7 @@ number of times before it terminates.
 export declare const recurs: (n: number) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatForever
 
@@ -580,7 +580,7 @@ state when this schedule is done.
 export declare const repeatForever: Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## secondOfMinute
 
@@ -596,7 +596,7 @@ NOTE: `second` parameter is validated lazily. Must be in range 0...59.
 export declare const secondOfMinute: (second: number) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## spaced
 
@@ -609,7 +609,7 @@ specified duration from the last run.
 export declare const spaced: (duration: Duration.DurationInput) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## stop
 
@@ -621,7 +621,7 @@ A schedule that does not recur, it just stops.
 export declare const stop: Schedule<never, unknown, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -634,7 +634,7 @@ value.
 export declare const succeed: <A>(value: A) => Schedule<never, unknown, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -647,7 +647,7 @@ value.
 export declare const sync: <A>(evaluate: LazyArg<A>) => Schedule<never, unknown, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unfold
 
@@ -660,7 +660,7 @@ iterator.
 export declare const unfold: <A>(initial: A, f: (a: A) => A) => Schedule<never, unknown, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## windowed
 
@@ -682,7 +682,7 @@ follows:
 export declare const windowed: (interval: Duration.DurationInput) => Schedule<never, unknown, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -705,7 +705,7 @@ export declare const mapInputContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideContext
 
@@ -721,7 +721,7 @@ export declare const provideContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideService
 
@@ -744,7 +744,7 @@ export declare const provideService: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -767,7 +767,7 @@ export declare const run: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # finalization
 
@@ -788,7 +788,7 @@ export declare const ensuring: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -805,7 +805,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceEffect
 
@@ -826,7 +826,7 @@ export declare const reduceEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getter
 
@@ -843,7 +843,7 @@ export declare const driver: <Env, In, Out>(
 ) => Effect.Effect<never, never, ScheduleDriver<Env, In, Out>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -860,7 +860,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -876,7 +876,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapBoth
 
@@ -896,7 +896,7 @@ export declare const mapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapBothEffect
 
@@ -920,7 +920,7 @@ export declare const mapBothEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapEffect
 
@@ -942,7 +942,7 @@ export declare const mapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -958,7 +958,7 @@ export declare const mapInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputEffect
 
@@ -980,7 +980,7 @@ export declare const mapInputEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -1029,7 +1029,7 @@ export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>,
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -1046,7 +1046,7 @@ export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<En
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -1069,7 +1069,7 @@ export declare const andThen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## andThenEither
 
@@ -1091,7 +1091,7 @@ export declare const andThenEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapInput
 
@@ -1112,7 +1112,7 @@ export declare const tapInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapOutput
 
@@ -1133,7 +1133,7 @@ export declare const tapOutput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -1145,7 +1145,7 @@ Added in v1.0.0
 export declare const ScheduleDriverTypeId: typeof ScheduleDriverTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScheduleDriverTypeId (type alias)
 
@@ -1155,7 +1155,7 @@ Added in v1.0.0
 export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScheduleTypeId
 
@@ -1165,7 +1165,7 @@ Added in v1.0.0
 export declare const ScheduleTypeId: typeof ScheduleTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScheduleTypeId (type alias)
 
@@ -1175,13 +1175,13 @@ Added in v1.0.0
 export type ScheduleTypeId = typeof ScheduleTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Schedule (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### DriverVariance (interface)
 
@@ -1197,7 +1197,7 @@ export interface DriverVariance<Env, In, Out> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -1213,7 +1213,7 @@ export interface Variance<Env, In, Out> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## addDelay
 
@@ -1229,7 +1229,7 @@ export declare const addDelay: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## addDelayEffect
 
@@ -1250,7 +1250,7 @@ export declare const addDelayEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bothInOut
 
@@ -1272,7 +1272,7 @@ export declare const bothInOut: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## check
 
@@ -1289,7 +1289,7 @@ export declare const check: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## checkEffect
 
@@ -1311,7 +1311,7 @@ export declare const checkEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllOutputs
 
@@ -1325,7 +1325,7 @@ export declare const collectAllOutputs: <Env, In, Out>(
 ) => Schedule<Env, In, Chunk.Chunk<Out>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectUntil
 
@@ -1338,7 +1338,7 @@ into a list.
 export declare const collectUntil: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectUntilEffect
 
@@ -1353,7 +1353,7 @@ export declare const collectUntilEffect: <Env, A>(
 ) => Schedule<Env, A, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectWhile
 
@@ -1366,7 +1366,7 @@ inputs into a list.
 export declare const collectWhile: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectWhileEffect
 
@@ -1381,7 +1381,7 @@ export declare const collectWhileEffect: <Env, A>(
 ) => Schedule<Env, A, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## compose
 
@@ -1405,7 +1405,7 @@ export declare const compose: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## delayed
 
@@ -1427,7 +1427,7 @@ export declare const delayed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersect
 
@@ -1449,7 +1449,7 @@ export declare const intersect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersectWith
 
@@ -1473,7 +1473,7 @@ export declare const intersectWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyDelay
 
@@ -1494,7 +1494,7 @@ export declare const modifyDelay: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyDelayEffect
 
@@ -1518,7 +1518,7 @@ export declare const modifyDelayEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## onDecision
 
@@ -1543,7 +1543,7 @@ export declare const onDecision: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## passthrough
 
@@ -1557,7 +1557,7 @@ export declare const passthrough: <Env, Input, Output>(
 ) => Schedule<Env, Input, Input>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## recurUntil
 
@@ -1569,7 +1569,7 @@ A schedule that recurs for until the predicate evaluates to true.
 export declare const recurUntil: <A>(f: Predicate<A>) => Schedule<never, A, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## recurUntilEffect
 
@@ -1581,7 +1581,7 @@ A schedule that recurs for until the predicate evaluates to true.
 export declare const recurUntilEffect: <Env, A>(f: (a: A) => Effect.Effect<Env, never, boolean>) => Schedule<Env, A, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## recurUntilOption
 
@@ -1594,7 +1594,7 @@ partial function and then map that value with given function.
 export declare const recurUntilOption: <A, B>(pf: (a: A) => Option.Option<B>) => Schedule<never, A, Option.Option<B>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## recurUpTo
 
@@ -1606,7 +1606,7 @@ A schedule that recurs during the given duration.
 export declare const recurUpTo: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## recurWhile
 
@@ -1618,7 +1618,7 @@ A schedule that recurs for as long as the predicate evaluates to true.
 export declare const recurWhile: <A>(f: Predicate<A>) => Schedule<never, A, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## recurWhileEffect
 
@@ -1631,7 +1631,7 @@ true.
 export declare const recurWhileEffect: <Env, A>(f: (a: A) => Effect.Effect<Env, never, boolean>) => Schedule<Env, A, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repetitions
 
@@ -1643,7 +1643,7 @@ Returns a new schedule that outputs the number of repetitions of this one.
 export declare const repetitions: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## resetAfter
 
@@ -1659,7 +1659,7 @@ export declare const resetAfter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## resetWhen
 
@@ -1675,7 +1675,7 @@ export declare const resetWhen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -1697,7 +1697,7 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unionWith
 
@@ -1721,7 +1721,7 @@ export declare const unionWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## untilInput
 
@@ -1737,7 +1737,7 @@ export declare const untilInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## untilInputEffect
 
@@ -1759,7 +1759,7 @@ export declare const untilInputEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## untilOutput
 
@@ -1775,7 +1775,7 @@ export declare const untilOutput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## untilOutputEffect
 
@@ -1797,7 +1797,7 @@ export declare const untilOutputEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## upTo
 
@@ -1812,7 +1812,7 @@ export declare const upTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whileInput
 
@@ -1828,7 +1828,7 @@ export declare const whileInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whileInputEffect
 
@@ -1850,7 +1850,7 @@ export declare const whileInputEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whileOutput
 
@@ -1866,7 +1866,7 @@ export declare const whileOutput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whileOutputEffect
 
@@ -1888,7 +1888,7 @@ export declare const whileOutputEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -1911,7 +1911,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -1932,7 +1932,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -1953,4 +1953,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

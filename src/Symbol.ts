@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import * as equivalence from "./Equivalence"
@@ -17,12 +17,12 @@ import * as predicate from "./Predicate"
  * assert.deepStrictEqual(isSymbol("a"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isSymbol: (u: unknown) => u is symbol = predicate.isSymbol
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Equivalence: equivalence.Equivalence<symbol> = equivalence.symbol

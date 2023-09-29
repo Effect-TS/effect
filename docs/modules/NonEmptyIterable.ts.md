@@ -6,7 +6,7 @@ parent: Modules
 
 ## NonEmptyIterable overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -29,7 +29,7 @@ Added in v1.0.0
 export declare const unprepend: <A>(self: NonEmptyIterable<A>) => readonly [A, Iterator<A, any, undefined>]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -43,4 +43,4 @@ export interface NonEmptyIterable<A> extends Iterable<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

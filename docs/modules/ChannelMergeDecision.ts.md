@@ -6,7 +6,7 @@ parent: Modules
 
 ## ChannelMergeDecision overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ export declare const Await: <R, E0, Z0, E, Z>(
 ) => MergeDecision<R, E0, Z0, E, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## AwaitConst
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export declare const AwaitConst: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Done
 
@@ -63,7 +63,7 @@ Added in v1.0.0
 export declare const Done: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -87,7 +87,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -99,7 +99,7 @@ Added in v1.0.0
 export interface MergeDecision<R, E0, Z0, E, Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -114,7 +114,7 @@ otherwise.
 export declare const isMergeDecision: (u: unknown) => u is MergeDecision<unknown, unknown, unknown, unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -126,7 +126,7 @@ Added in v1.0.0
 export declare const MergeDecisionTypeId: typeof MergeDecisionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeDecisionTypeId (type alias)
 
@@ -136,13 +136,13 @@ Added in v1.0.0
 export type MergeDecisionTypeId = typeof MergeDecisionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MergeDecision (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -160,4 +160,4 @@ export interface Variance<R, E0, Z0, E, Z> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

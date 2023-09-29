@@ -6,7 +6,7 @@ parent: Modules
 
 ## RuntimeFlags overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -73,7 +73,7 @@ yield to another fiber.
 export declare const CooperativeYielding: RuntimeFlag
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Interruption
 
@@ -86,7 +86,7 @@ interrupt a fiber.
 export declare const Interruption: RuntimeFlag
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## None
 
@@ -98,7 +98,7 @@ No runtime flags.
 export declare const None: RuntimeFlag
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## OpSupervision
 
@@ -113,7 +113,7 @@ profiling.
 export declare const OpSupervision: RuntimeFlag
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeMetrics
 
@@ -129,7 +129,7 @@ Prometheus or other tools via Effect Metrics.
 export declare const RuntimeMetrics: RuntimeFlag
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## WindDown
 
@@ -144,7 +144,7 @@ execution uninterrupted.
 export declare const WindDown: RuntimeFlag
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -154,7 +154,7 @@ Added in v1.0.0
 export declare const make: (...flags: ReadonlyArray<RuntimeFlag>) => RuntimeFlags
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## none
 
@@ -164,7 +164,7 @@ Added in v1.0.0
 export declare const none: RuntimeFlags
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -176,7 +176,7 @@ Added in v1.0.0
 export declare const disableCooperativeYielding: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## disableInterruption
 
@@ -186,7 +186,7 @@ Added in v1.0.0
 export declare const disableInterruption: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## disableOpSupervision
 
@@ -196,7 +196,7 @@ Added in v1.0.0
 export declare const disableOpSupervision: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## disableRuntimeMetrics
 
@@ -206,7 +206,7 @@ Added in v1.0.0
 export declare const disableRuntimeMetrics: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## disableWindDown
 
@@ -216,7 +216,7 @@ Added in v1.0.0
 export declare const disableWindDown: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enableCooperativeYielding
 
@@ -226,7 +226,7 @@ Added in v1.0.0
 export declare const enableCooperativeYielding: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enableInterruption
 
@@ -236,7 +236,7 @@ Added in v1.0.0
 export declare const enableInterruption: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enableOpSupervision
 
@@ -246,7 +246,7 @@ Added in v1.0.0
 export declare const enableOpSupervision: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enableRuntimeMetrics
 
@@ -256,7 +256,7 @@ Added in v1.0.0
 export declare const enableRuntimeMetrics: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enableWindDown
 
@@ -266,7 +266,7 @@ Added in v1.0.0
 export declare const enableWindDown: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -280,7 +280,7 @@ Converts the provided `RuntimeFlags` into a `string`.
 export declare const render: (self: RuntimeFlags) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toSet
 
@@ -292,7 +292,7 @@ Converts the provided `RuntimeFlags` into a `ReadonlySet<number>`.
 export declare const toSet: (self: RuntimeFlags) => ReadonlySet<RuntimeFlag>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # diffing
 
@@ -310,7 +310,7 @@ export declare const diff: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -327,7 +327,7 @@ export declare const isDisabled: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEnabled
 
@@ -342,7 +342,7 @@ export declare const isEnabled: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -357,7 +357,7 @@ otherwise.
 export declare const cooperativeYielding: (self: RuntimeFlags) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptible
 
@@ -374,7 +374,7 @@ related to fiber shutdown.
 export declare const interruptible: (self: RuntimeFlags) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruption
 
@@ -387,7 +387,7 @@ otherwise.
 export declare const interruption: (self: RuntimeFlags) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## opSupervision
 
@@ -400,7 +400,7 @@ otherwise.
 export declare const opSupervision: (self: RuntimeFlags) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runtimeMetrics
 
@@ -413,7 +413,7 @@ otherwise.
 export declare const runtimeMetrics: (self: RuntimeFlags) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## windDown
 
@@ -426,7 +426,7 @@ otherwise.
 export declare const windDown: (self: RuntimeFlags) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -443,7 +443,7 @@ export type RuntimeFlag = number & {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeFlags (type alias)
 
@@ -459,7 +459,7 @@ export type RuntimeFlags = number & {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -473,7 +473,7 @@ Constructs a differ that knows how to diff `RuntimeFlags` values.
 export declare const differ: Differ.Differ<RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsPatch>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## disable
 
@@ -488,7 +488,7 @@ export declare const disable: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## disableAll
 
@@ -503,7 +503,7 @@ export declare const disableAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enable
 
@@ -518,7 +518,7 @@ export declare const enable: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enableAll
 
@@ -533,7 +533,7 @@ export declare const enableAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## patch
 
@@ -549,4 +549,4 @@ export declare const patch: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

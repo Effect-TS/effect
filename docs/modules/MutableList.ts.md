@@ -6,7 +6,7 @@ parent: Modules
 
 ## MutableList overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -52,7 +52,7 @@ export declare const append: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prepend
 
@@ -67,7 +67,7 @@ export declare const prepend: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -81,7 +81,7 @@ Creates an empty `MutableList`.
 export declare const empty: <A>() => MutableList<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -93,7 +93,7 @@ Creates a new `MutableList` from an `Iterable`.
 export declare const fromIterable: <A>(iterable: Iterable<A>) => MutableList<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -105,7 +105,7 @@ Creates a new `MutableList` from the specified elements.
 export declare const make: <A>(...elements: readonly A[]) => MutableList<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -119,7 +119,7 @@ Returns the first element of the list, if it exists.
 export declare const head: <A>(self: MutableList<A>) => A | undefined
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -131,7 +131,7 @@ Returns `true` if the list contains zero elements, `false`, otherwise.
 export declare const isEmpty: <A>(self: MutableList<A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## length
 
@@ -143,7 +143,7 @@ Returns the length of the list.
 export declare const length: <A>(self: MutableList<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tail
 
@@ -155,7 +155,7 @@ Returns the last element of the list, if it exists.
 export declare const tail: <A>(self: MutableList<A>) => A | undefined
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -174,7 +174,7 @@ export interface MutableList<A> extends Iterable<A>, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -186,7 +186,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # traversing
 
@@ -203,7 +203,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -229,7 +229,7 @@ Removes all elements from the doubly-linked list.
 export declare const reset: <A>(self: MutableList<A>) => MutableList<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## shift
 

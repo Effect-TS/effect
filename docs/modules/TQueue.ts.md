@@ -6,7 +6,7 @@ parent: Modules
 
 ## TQueue overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -74,7 +74,7 @@ For best performance use capacities that are powers of two.
 export declare const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropping
 
@@ -89,7 +89,7 @@ For best performance use capacities that are powers of two.
 export declare const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sliding
 
@@ -104,7 +104,7 @@ For best performance use capacities that are powers of two.
 export declare const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unbounded
 
@@ -116,7 +116,7 @@ Creates an unbounded queue.
 export declare const unbounded: <A>() => STM.STM<never, never, TQueue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -130,7 +130,7 @@ Returns the number of elements the queue can hold.
 export declare const capacity: <A>(self: TQueue<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -142,7 +142,7 @@ Returns `true` if the `TQueue` contains zero elements, `false` otherwise.
 export declare const isEmpty: <A>(self: TQueue<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFull
 
@@ -155,7 +155,7 @@ otherwise.
 export declare const isFull: <A>(self: TQueue<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isShutdown
 
@@ -167,7 +167,7 @@ Returns `true` if `shutdown` has been called, otherwise returns `false`.
 export declare const isShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## peek
 
@@ -180,7 +180,7 @@ queue is empty.
 export declare const peek: <A>(self: TDequeue<A>) => STM.STM<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## peekOption
 
@@ -193,7 +193,7 @@ if the queue is empty.
 export declare const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## poll
 
@@ -206,7 +206,7 @@ empty.
 export declare const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -220,7 +220,7 @@ elements to be added to the queue.
 export declare const size: <A>(self: TQueue<A>) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -275,7 +275,7 @@ export interface BaseTQueue {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TDequeue (interface)
 
@@ -314,7 +314,7 @@ export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TEnqueue (interface)
 
@@ -346,7 +346,7 @@ export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TQueue (interface)
 
@@ -356,7 +356,7 @@ Added in v1.0.0
 export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -372,7 +372,7 @@ shutdown, the `STM` will resume right away.
 export declare const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## offer
 
@@ -387,7 +387,7 @@ export declare const offer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## offerAll
 
@@ -414,7 +414,7 @@ export declare const offerAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## seek
 
@@ -431,7 +431,7 @@ export declare const seek: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## shutdown
 
@@ -444,7 +444,7 @@ to `offer*` and `take*` will be interrupted immediately.
 export declare const shutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -457,7 +457,7 @@ a computation that resumes when an item has been added to the queue.
 export declare const take: <A>(self: TDequeue<A>) => STM.STM<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeAll
 
@@ -470,7 +470,7 @@ empty returns an empty collection.
 export declare const takeAll: <A>(self: TDequeue<A>) => STM.STM<never, never, A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeBetween
 
@@ -487,7 +487,7 @@ export declare const takeBetween: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeN
 
@@ -504,7 +504,7 @@ export declare const takeN: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeUpTo
 
@@ -519,7 +519,7 @@ export declare const takeUpTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -533,7 +533,7 @@ Returns `true` if the specified value is a `TDequeue`, `false` otherwise.
 export declare const isTDequeue: (u: unknown) => u is TDequeue<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isTEnqueue
 
@@ -545,7 +545,7 @@ Returns `true` if the specified value is a `TEnqueue`, `false` otherwise.
 export declare const isTEnqueue: (u: unknown) => u is TEnqueue<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isTQueue
 
@@ -557,7 +557,7 @@ Returns `true` if the specified value is a `TQueue`, `false` otherwise.
 export declare const isTQueue: (u: unknown) => u is TQueue<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -569,7 +569,7 @@ Added in v1.0.0
 export declare const TDequeueTypeId: typeof TDequeueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TDequeueTypeId (type alias)
 
@@ -579,7 +579,7 @@ Added in v1.0.0
 export type TDequeueTypeId = typeof TDequeueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TEnqueueTypeId
 
@@ -589,7 +589,7 @@ Added in v1.0.0
 export declare const TEnqueueTypeId: typeof TEnqueueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TEnqueueTypeId (type alias)
 
@@ -599,13 +599,13 @@ Added in v1.0.0
 export type TEnqueueTypeId = typeof TEnqueueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TQueue (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### TDequeueVariance (interface)
 
@@ -619,7 +619,7 @@ export interface TDequeueVariance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### TEnqueueVariance (interface)
 
@@ -633,4 +633,4 @@ export interface TEnqueueVariance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

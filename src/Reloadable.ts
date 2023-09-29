@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Context from "./Context"
 import type * as Effect from "./Effect"
@@ -9,13 +9,13 @@ import type * as Schedule from "./Schedule"
 import type * as ScopedRef from "./ScopedRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ReloadableTypeId: unique symbol = internal.ReloadableTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ReloadableTypeId = typeof ReloadableTypeId
@@ -24,7 +24,7 @@ export type ReloadableTypeId = typeof ReloadableTypeId
  * A `Reloadable` is an implementation of some service that can be dynamically
  * reloaded, or swapped out for another implementation on-the-fly.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Reloadable<A> extends Reloadable.Variance<A> {
@@ -39,11 +39,11 @@ export interface Reloadable<A> extends Reloadable.Variance<A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Reloadable {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -58,7 +58,7 @@ export declare namespace Reloadable {
  * of a static service. The service is automatically reloaded according to the
  * provided schedule.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
@@ -74,7 +74,7 @@ export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
  * of a static service. The service is automatically reloaded according to a
  * schedule, which is extracted from the input to the layer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, R>(
@@ -88,7 +88,7 @@ export const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, R>(
 /**
  * Retrieves the current version of the reloadable service.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: <T extends Context.Tag<any, any>>(
@@ -99,7 +99,7 @@ export const get: <T extends Context.Tag<any, any>>(
  * Makes a new reloadable service from a layer that describes the construction
  * of a static service.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const manual: <Out extends Context.Tag<any, any>, In, E>(
@@ -110,7 +110,7 @@ export const manual: <Out extends Context.Tag<any, any>, In, E>(
 /**
  * Reloads the specified service.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const reload: <T extends Context.Tag<any, any>>(
@@ -118,7 +118,7 @@ export const reload: <T extends Context.Tag<any, any>>(
 ) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void> = internal.reload
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const tag: <T extends Context.Tag<any, any>>(
@@ -128,7 +128,7 @@ export const tag: <T extends Context.Tag<any, any>>(
 /**
  * Forks the reload of the service in the background, ignoring any errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const reloadFork: <T extends Context.Tag<any, any>>(

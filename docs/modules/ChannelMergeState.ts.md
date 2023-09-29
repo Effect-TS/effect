@@ -6,7 +6,7 @@ parent: Modules
 
 ## ChannelMergeState overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -50,7 +50,7 @@ export declare const BothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## LeftDone
 
@@ -62,7 +62,7 @@ export declare const LeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RightDone
 
@@ -74,7 +74,7 @@ export declare const RightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -106,7 +106,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -122,7 +122,7 @@ export interface BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> 
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## LeftDone (interface)
 
@@ -135,7 +135,7 @@ export interface LeftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2> ext
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeState (type alias)
 
@@ -148,7 +148,7 @@ export type MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> =
   | RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RightDone (interface)
 
@@ -161,7 +161,7 @@ export interface RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> ex
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -178,7 +178,7 @@ export declare const isBothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Do
 ) => self is BothRunning<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isLeftDone
 
@@ -193,7 +193,7 @@ export declare const isLeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2
 ) => self is LeftDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isMergeState
 
@@ -207,7 +207,7 @@ export declare const isMergeState: (
 ) => u is MergeState<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRightDone
 
@@ -222,7 +222,7 @@ export declare const isRightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done
 ) => self is RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -234,7 +234,7 @@ Added in v1.0.0
 export declare const MergeStateTypeId: typeof MergeStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeStateTypeId (type alias)
 
@@ -244,13 +244,13 @@ Added in v1.0.0
 export type MergeStateTypeId = typeof MergeStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MergeState (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -262,4 +262,4 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

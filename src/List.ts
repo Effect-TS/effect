@@ -8,7 +8,7 @@
  * - Time: `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list. This includes the index-based lookup of elements, `length`, `append` and `reverse`.
  * - Space: `List` implements structural sharing of the tail list. This means that many operations are either zero- or constant-memory cost.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 /**
@@ -42,25 +42,25 @@ import * as ReadonlyArray from "./ReadonlyArray"
  * If you need another access pattern, for example, random access or FIFO,
  * consider using a collection more suited for that other than `List`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type List<A> = Cons<A> | Nil<A>
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export const TypeId: unique symbol = Symbol.for("effect/List")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
@@ -69,7 +69,7 @@ export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable 
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
@@ -83,13 +83,13 @@ export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable
  * Converts the specified `List` to a `ReadonlyArray`.
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toReadonlyArray = <A>(self: List<A>): ReadonlyArray<A> => Array.from(self)
 
 /**
  * @category equivalence
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<List<A>> =>
   Equivalence.mapInput(ReadonlyArray.getEquivalence(isEquivalent), toReadonlyArray<A>)
@@ -200,7 +200,7 @@ const _Nil = Object.create(NilProto) as Nil<never>
 /**
  * Returns `true` if the specified value is a `List`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isList: {
@@ -211,7 +211,7 @@ export const isList: {
 /**
  * Returns `true` if the specified value is a `List.Nil<A>`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isNil = <A>(self: List<A>): self is Nil<A> => self._tag === "Nil"
@@ -219,7 +219,7 @@ export const isNil = <A>(self: List<A>): self is Nil<A> => self._tag === "Nil"
 /**
  * Returns `true` if the specified value is a `List.Cons<A>`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isCons = <A>(self: List<A>): self is Cons<A> => self._tag === "Cons"
@@ -227,7 +227,7 @@ export const isCons = <A>(self: List<A>): self is Cons<A> => self._tag === "Cons
 /**
  * Returns the number of elements contained in the specified `List`
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size = <A>(self: List<A>): number => {
@@ -243,7 +243,7 @@ export const size = <A>(self: List<A>): number => {
 /**
  * Constructs a new empty `List<A>`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const nil = <A = never>(): List<A> => _Nil
@@ -251,7 +251,7 @@ export const nil = <A = never>(): List<A> => _Nil
 /**
  * Constructs a new `List.Cons<A>` from the specified `head` and `tail` values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const cons = <A>(head: A, tail: List<A>): Cons<A> => makeCons(head, tail)
@@ -261,7 +261,7 @@ export const cons = <A>(head: A, tail: List<A>): Cons<A> => makeCons(head, tail)
  *
  * Alias of {@link nil}.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty = nil
@@ -269,7 +269,7 @@ export const empty = nil
 /**
  * Constructs a new `List<A>` from the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const of = <A>(value: A): Cons<A> => makeCons(value, _Nil)
@@ -277,7 +277,7 @@ export const of = <A>(value: A): Cons<A> => makeCons(value, _Nil)
 /**
  * Constructs a new `List<A>` from the specified `Iterable<A>`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable = <A>(prefix: Iterable<A>): List<A> => {
@@ -300,7 +300,7 @@ export const fromIterable = <A>(prefix: Iterable<A>): List<A> => {
 /**
  * Constructs a new `List<A>` from the specified values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make = <Elements extends readonly [any, ...Array<any>]>(
@@ -311,7 +311,7 @@ export const make = <Elements extends readonly [any, ...Array<any>]>(
  * Appends the specified element to the end of the `List`, creating a new `Cons`.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const append: {
   <B>(element: B): <A>(self: List<A>) => Cons<A | B>
@@ -322,7 +322,7 @@ export const append: {
  * Concatentates the specified lists together.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const appendAll: {
   <B>(that: List<B>): <A>(self: List<A>) => List<A | B>
@@ -331,7 +331,7 @@ export const appendAll: {
 
 /**
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const appendAllNonEmpty: {
   <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
@@ -344,7 +344,7 @@ export const appendAllNonEmpty: {
  * Prepends the specified element to the beginning of the list.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prepend: {
   <B>(element: B): <A>(self: List<A>) => Cons<A | B>
@@ -355,7 +355,7 @@ export const prepend: {
  * Prepends the specified prefix list to the beginning of the specified list.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prependAll: {
   <B>(prefix: List<B>): <A>(self: List<A>) => List<A | B>
@@ -381,7 +381,7 @@ export const prependAll: {
 
 /**
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prependAllNonEmpty: {
   <B>(that: Cons<B>): <A>(self: List<A>) => Cons<B | A>
@@ -395,7 +395,7 @@ export const prependAllNonEmpty: {
  * specified list.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prependAllReversed: {
   <B>(prefix: List<B>): <A>(self: List<A>) => List<A | B>
@@ -413,7 +413,7 @@ export const prependAllReversed: {
 /**
  * Drops the first `n` elements from the specified list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const drop: {
@@ -438,7 +438,7 @@ export const drop: {
 /**
  * Check if a predicate holds true for every `List` element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const every: {
@@ -458,7 +458,7 @@ export const every: {
 /**
  * Check if a predicate holds true for some `List` element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const some: {
@@ -478,7 +478,7 @@ export const some: {
 /**
  * Filters a list using the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const filter: {
@@ -585,7 +585,7 @@ const partialFill = <A>(
  * list may be smaller than the input list due to the possibility of the partial
  * function not being defined for some elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const filterMap: {
@@ -605,7 +605,7 @@ export const filterMap: {
 /**
  * Removes all `None` values from the specified list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(self, identity)
@@ -615,7 +615,7 @@ export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(s
  * predicate, or `None` if no such element exists.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option.Option<B>
@@ -636,7 +636,7 @@ export const findFirst: {
 /**
  * Flat maps a list using the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -668,7 +668,7 @@ export const flatMap: {
 
 /**
  * @category sequencing
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const flatMapNonEmpty: {
   <A, B>(f: (a: A, i: number) => Cons<B>): (self: Cons<A>) => Cons<B>
@@ -678,7 +678,7 @@ export const flatMapNonEmpty: {
 /**
  * Applies the specified function to each element of the `List`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const forEach: {
@@ -696,7 +696,7 @@ export const forEach: {
  * Returns the first element of the specified list, or `None` if the list is
  * empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const head = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option.none() : Option.some(self.head)
@@ -705,7 +705,7 @@ export const head = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option
  * Returns the last element of the specified list, or `None` if the list is
  * empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const last = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option.none() : Option.some(unsafeLast(self)!)
@@ -713,7 +713,7 @@ export const last = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option
 /**
  * Applies the specified mapping function to each element of the list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const map: {
@@ -741,7 +741,7 @@ export const map: {
  * that did not satisfy the specified predicate, and the second list contains
  * all elements that did satisfy the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const partition: {
@@ -767,7 +767,7 @@ export const partition: {
  * for which the specified function returned a `Left`, and the second list
  * contains all elements for which the specified function returned a `Right`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const partitionMap: {
@@ -791,7 +791,7 @@ export const partitionMap: {
  * Folds over the elements of the list using the specified function, using the
  * specified initial value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduce: {
@@ -811,7 +811,7 @@ export const reduce: {
  * Folds over the elements of the list using the specified function, beginning
  * with the last element of the list, using the specified initial value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduceRight: {
@@ -830,7 +830,7 @@ export const reduceRight: {
 /**
  * Returns a new list with the elements of the specified list in reverse order.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const reverse = <A>(self: List<A>): List<A> => {
@@ -846,7 +846,7 @@ export const reverse = <A>(self: List<A>): List<A> => {
 /**
  * Splits the specified list into two lists at the specified index.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const splitAt: {
@@ -857,7 +857,7 @@ export const splitAt: {
 /**
  * Returns the tail of the specified list, or `None` if the list is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const tail = <A>(self: List<A>): Option.Option<List<A>> => isNil(self) ? Option.none() : Option.some(self.tail)
@@ -866,7 +866,7 @@ export const tail = <A>(self: List<A>): Option.Option<List<A>> => isNil(self) ? 
  * Takes the specified number of elements from the beginning of the specified
  * list.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const take: {
@@ -891,7 +891,7 @@ export const take: {
 /**
  * Converts the specified `List` to a `Chunk`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category conversions
  */
 export const toChunk = <A>(self: List<A>): Chunk.Chunk<A> => Chunk.fromIterable(self)
@@ -899,7 +899,7 @@ export const toChunk = <A>(self: List<A>): Chunk.Chunk<A> => Chunk.fromIterable(
 /**
  * Unsafely returns the first element of the specified `List`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeHead = <A>(self: List<A>): A => {
@@ -912,7 +912,7 @@ export const unsafeHead = <A>(self: List<A>): A => {
 /**
  * Unsafely returns the last element of the specified `List`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeLast = <A>(self: List<A>): A => {
@@ -931,7 +931,7 @@ export const unsafeLast = <A>(self: List<A>): A => {
 /**
  * Unsafely returns the tail of the specified `List`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeTail = <A>(self: List<A>): List<A> => {

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Chunk from "./Chunk"
 import type * as ConfigError from "./ConfigError"
@@ -15,13 +15,13 @@ import type { Pipeable } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ConfigTypeId: unique symbol = internal.ConfigTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ConfigTypeId = typeof ConfigTypeId
@@ -29,17 +29,17 @@ export type ConfigTypeId = typeof ConfigTypeId
 /**
  * A `Config` describes the structure of some configuration data.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Config<A> extends Config.Variance<A>, Pipeable {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Config {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -49,7 +49,7 @@ export declare namespace Config {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Primitive<A> extends Config<A> {
@@ -64,7 +64,7 @@ export declare namespace Config {
    *
    * To create the resulting config, use the `unwrap` constructor.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Wrap<A> =
@@ -78,7 +78,7 @@ export declare namespace Config {
 /**
  * Constructs a config from a tuple / struct / arguments of configs.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const all: <const Arg extends Iterable<Config<any>> | Record<string, Config<any>>>(
@@ -97,7 +97,7 @@ export const all: <const Arg extends Iterable<Config<any>> | Record<string, Conf
 /**
  * Constructs a config for an array of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const array: <A>(config: Config<A>, name?: string | undefined) => Config<ReadonlyArray<A>> = internal.array
@@ -105,7 +105,7 @@ export const array: <A>(config: Config<A>, name?: string | undefined) => Config<
 /**
  * Constructs a config for a boolean value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const boolean: (name?: string | undefined) => Config<boolean> = internal.boolean
@@ -113,7 +113,7 @@ export const boolean: (name?: string | undefined) => Config<boolean> = internal.
 /**
  * Constructs a config for a sequence of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk.Chunk<A>> = internal.chunk
@@ -121,7 +121,7 @@ export const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<
 /**
  * Constructs a config for a date value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const date: (name?: string | undefined) => Config<Date> = internal.date
@@ -129,7 +129,7 @@ export const date: (name?: string | undefined) => Config<Date> = internal.date
 /**
  * Constructs a config that fails with the specified message.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fail: (message: string) => Config<never> = internal.fail
@@ -137,7 +137,7 @@ export const fail: (message: string) => Config<never> = internal.fail
 /**
  * Constructs a config for a float value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const number: (name?: string | undefined) => Config<number> = internal.number
@@ -145,7 +145,7 @@ export const number: (name?: string | undefined) => Config<number> = internal.nu
 /**
  * Constructs a config for a integer value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const integer: (name?: string | undefined) => Config<number> = internal.integer
@@ -153,7 +153,7 @@ export const integer: (name?: string | undefined) => Config<number> = internal.i
 /**
  * Constructs a config for a `LogLevel` value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const logLevel: (name?: string | undefined) => Config<LogLevel.LogLevel> = internal.logLevel
@@ -172,7 +172,7 @@ export const logLevel: (name?: string | undefined) => Config<LogLevel.LogLevel> 
  * @returns `true` if the specified value is a `Config` value, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isConfig: (u: unknown) => u is Config<unknown> = internal.isConfig
@@ -181,7 +181,7 @@ export const isConfig: (u: unknown) => u is Config<unknown> = internal.isConfig
  * Returns a  config whose structure is the same as this one, but which produces
  * a different value, constructed using the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const map: {
@@ -194,7 +194,7 @@ export const map: {
  * produce a different value, constructed using the specified function, which
  * may throw exceptions that will be translated into validation errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapAttempt: {
@@ -207,7 +207,7 @@ export const mapAttempt: {
  * may produce a different value, constructed using the specified fallible
  * function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapOrFail: {
@@ -219,7 +219,7 @@ export const mapOrFail: {
  * Returns a config that has this configuration nested as a property of the
  * specified name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const nested: {
@@ -232,7 +232,7 @@ export const nested: {
  * config, but which falls back to the specified config if there is an issue
  * reading from this config.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const orElse: {
@@ -245,7 +245,7 @@ export const orElse: {
  * back to the specified configuration if reading from this configuration
  * fails with an error satisfying the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const orElseIf: {
@@ -268,7 +268,7 @@ export const orElseIf: {
  * Returns an optional version of this config, which will be `None` if the
  * data is missing from configuration, and `Some` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const option: <A>(self: Config<A>) => Config<Option.Option<A>> = internal.option
@@ -276,7 +276,7 @@ export const option: <A>(self: Config<A>) => Config<Option.Option<A>> = internal
 /**
  * Constructs a new primitive config.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const primitive: <A>(
@@ -288,7 +288,7 @@ export const primitive: <A>(
  * Returns a config that describes a sequence of values, each of which has the
  * structure of this config.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const repeat: <A>(self: Config<A>) => Config<Array<A>> = internal.repeat
@@ -296,7 +296,7 @@ export const repeat: <A>(self: Config<A>) => Config<Array<A>> = internal.repeat
 /**
  * Constructs a config for a secret value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSecret> = internal.secret
@@ -304,7 +304,7 @@ export const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSe
 /**
  * Constructs a config for a sequence of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet.HashSet<A>> = internal.hashSet
@@ -312,7 +312,7 @@ export const hashSet: <A>(config: Config<A>, name?: string | undefined) => Confi
 /**
  * Constructs a config for a string value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const string: (name?: string | undefined) => Config<string> = internal.string
@@ -320,7 +320,7 @@ export const string: (name?: string | undefined) => Config<string> = internal.st
 /**
  * Constructs a config which contains the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: <A>(value: A) => Config<A> = internal.succeed
@@ -328,7 +328,7 @@ export const succeed: <A>(value: A) => Config<A> = internal.succeed
 /**
  * Lazily constructs a config.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const suspend: <A>(config: LazyArg<Config<A>>) => Config<A> = internal.suspend
@@ -336,7 +336,7 @@ export const suspend: <A>(config: LazyArg<Config<A>>) => Config<A> = internal.su
 /**
  * Constructs a config which contains the specified lazy value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: <A>(value: LazyArg<A>) => Config<A> = internal.sync
@@ -344,7 +344,7 @@ export const sync: <A>(value: LazyArg<A>) => Config<A> = internal.sync
 /**
  * Constructs a config for a sequence of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap.HashMap<string, A>> =
@@ -363,7 +363,7 @@ export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Confi
  * const makeConfig = (config: Config.Wrap<Options>): Config<Options> => unwrap(config)
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unwrap: <A>(wrapped: Config.Wrap<A>) => Config<A> = internal.unwrap
@@ -372,7 +372,7 @@ export const unwrap: <A>(wrapped: Config.Wrap<A>) => Config<A> = internal.unwrap
  * Returns a config that describes the same structure as this one, but which
  * performs validation during loading.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const validate: {
@@ -403,7 +403,7 @@ export const validate: {
  * Returns a config that describes the same structure as this one, but has the
  * specified default value in case the information cannot be found.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const withDefault: {
@@ -414,7 +414,7 @@ export const withDefault: {
 /**
  * Adds a description to this configuration, which is intended for humans.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const withDescription: {
@@ -426,7 +426,7 @@ export const withDescription: {
  * Returns a config that is the composition of this config and the specified
  * config.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const zip: {
@@ -438,7 +438,7 @@ export const zip: {
  * Returns a config that is the composes this config and the specified config
  * using the provided function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const zipWith: {

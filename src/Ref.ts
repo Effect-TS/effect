@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import * as internal from "./internal/ref"
@@ -7,19 +7,19 @@ import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const RefTypeId: unique symbol = internal.RefTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type RefTypeId = typeof RefTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Ref<A> extends Ref.Variance<A>, Pipeable {
@@ -27,12 +27,12 @@ export interface Ref<A> extends Ref.Variance<A>, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export declare namespace Ref {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export interface Variance<A> {
     readonly [RefTypeId]: {
@@ -42,19 +42,19 @@ export declare namespace Ref {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <A>(value: A) => Effect.Effect<never, never, Ref<A>> = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: <A>(self: Ref<A>) => Effect.Effect<never, never, A> = internal.get
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndSet: {
@@ -63,7 +63,7 @@ export const getAndSet: {
 } = internal.getAndSet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdate: {
@@ -72,7 +72,7 @@ export const getAndUpdate: {
 } = internal.getAndUpdate
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdateSome: {
@@ -81,7 +81,7 @@ export const getAndUpdateSome: {
 } = internal.getAndUpdateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modify: {
@@ -90,7 +90,7 @@ export const modify: {
 } = internal.modify
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modifySome: {
@@ -99,7 +99,7 @@ export const modifySome: {
 } = internal.modifySome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const set: {
@@ -108,7 +108,7 @@ export const set: {
 } = internal.set
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const setAndGet: {
@@ -117,7 +117,7 @@ export const setAndGet: {
 } = internal.setAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const update: {
@@ -126,7 +126,7 @@ export const update: {
 } = internal.update
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateAndGet: {
@@ -135,7 +135,7 @@ export const updateAndGet: {
 } = internal.updateAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSome: {
@@ -144,7 +144,7 @@ export const updateSome: {
 } = internal.updateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSomeAndGet: {
@@ -153,7 +153,7 @@ export const updateSomeAndGet: {
 } = internal.updateSomeAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeMake: <A>(value: A) => Ref<A> = internal.unsafeMake

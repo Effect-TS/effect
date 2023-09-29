@@ -26,7 +26,7 @@ often, the `Cause` of a failing `Effect` workflow can be accessed at any
 time, which gives us total access to all parallel and sequential errors in
 occurring within our codebase.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -141,7 +141,7 @@ Constructs a new `Die` cause from the specified `defect`.
 export declare const die: (defect: unknown) => Cause<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -153,7 +153,7 @@ Constructs a new `Empty` cause.
 export declare const empty: Cause<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -165,7 +165,7 @@ Constructs a new `Fail` cause from the specified `error`.
 export declare const fail: <E>(error: E) => Cause<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interrupt
 
@@ -177,7 +177,7 @@ Constructs a new `Interrupt` cause from the specified `fiberId`.
 export declare const interrupt: (fiberId: FiberId.FiberId) => Cause<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## parallel
 
@@ -190,7 +190,7 @@ causes.
 export declare const parallel: <E, E2>(left: Cause<E>, right: Cause<E2>) => Cause<E | E2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sequential
 
@@ -203,7 +203,7 @@ Constructs a new `Sequential` cause from the specified pecified `left` and
 export declare const sequential: <E, E2>(left: Cause<E>, right: Cause<E2>) => Cause<E | E2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -218,7 +218,7 @@ defect.
 export declare const squash: <E>(self: Cause<E>) => unknown
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## squashWith
 
@@ -235,7 +235,7 @@ export declare const squashWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -253,7 +253,7 @@ export declare const contains: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## find
 
@@ -269,7 +269,7 @@ export declare const find: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # errors
 
@@ -284,7 +284,7 @@ provided to a method.
 export declare const IllegalArgumentException: (message?: string | undefined) => IllegalArgumentException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InterruptedException
 
@@ -296,7 +296,7 @@ Represents a checked exception which occurs when a `Fiber` is interrupted.
 export declare const InterruptedException: (message?: string | undefined) => InterruptedException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## NoSuchElementException
 
@@ -309,7 +309,7 @@ unable to be found.
 export declare const NoSuchElementException: (message?: string | undefined) => NoSuchElementException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeException
 
@@ -321,7 +321,7 @@ Represents a generic checked exception which occurs at runtime.
 export declare const RuntimeException: (message?: string | undefined) => RuntimeException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## originalError
 
@@ -333,7 +333,7 @@ Returns the original, unproxied, instance of a thrown error
 export declare const originalError: <E>(obj: E) => E
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -350,7 +350,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -384,7 +384,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduce
 
@@ -400,7 +400,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceWithContext
 
@@ -416,7 +416,7 @@ export declare const reduceWithContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -430,7 +430,7 @@ Returns a `List` of all unrecoverable defects in the specified cause.
 export declare const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieOption
 
@@ -443,7 +443,7 @@ exists.
 export declare const dieOption: <E>(self: Cause<E>) => Option.Option<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failureOption
 
@@ -456,7 +456,7 @@ exists.
 export declare const failureOption: <E>(self: Cause<E>) => Option.Option<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failureOrCause
 
@@ -470,7 +470,7 @@ only `Die` or `Interrupt` causes.
 export declare const failureOrCause: <E>(self: Cause<E>) => Either.Either<E, Cause<never>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failures
 
@@ -483,7 +483,7 @@ cause.
 export declare const failures: <E>(self: Cause<E>) => Chunk.Chunk<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flipCauseOption
 
@@ -496,7 +496,7 @@ recursively stripping out any failures with the error `None`.
 export declare const flipCauseOption: <E>(self: Cause<Option.Option<E>>) => Option.Option<Cause<E>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptOption
 
@@ -509,7 +509,7 @@ cause, if one exists.
 export declare const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.FiberId>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptors
 
@@ -522,7 +522,7 @@ described by the specified cause.
 export declare const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberId>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isDie
 
@@ -534,7 +534,7 @@ Returns `true` if the specified cause contains a defect, `false` otherwise.
 export declare const isDie: <E>(self: Cause<E>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -546,7 +546,7 @@ Returns `true` if the specified cause is empty, `false` otherwise.
 export declare const isEmpty: <E>(self: Cause<E>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFailure
 
@@ -558,7 +558,7 @@ Returns `true` if the specified cause contains a failure, `false` otherwise.
 export declare const isFailure: <E>(self: Cause<E>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isInterrupted
 
@@ -571,7 +571,7 @@ otherwise.
 export declare const isInterrupted: <E>(self: Cause<E>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isInterruptedOnly
 
@@ -584,7 +584,7 @@ any `Die` or `Fail` causes), `false` otherwise.
 export declare const isInterruptedOnly: <E>(self: Cause<E>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## keepDefects
 
@@ -597,7 +597,7 @@ a cause containing only `Die` cause/finalizer defects.
 export declare const keepDefects: <E>(self: Cause<E>) => Option.Option<Cause<never>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## linearize
 
@@ -610,7 +610,7 @@ parallel cause contains a linear sequence of failures.
 export declare const linearize: <E>(self: Cause<E>) => HashSet.HashSet<Cause<E>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -623,7 +623,7 @@ nodes found in the `Cause` semiring structure.
 export declare const size: <E>(self: Cause<E>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## stripFailures
 
@@ -636,7 +636,7 @@ a cause containing only `Die` cause/finalizer defects.
 export declare const stripFailures: <E>(self: Cause<E>) => Cause<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## stripSomeDefects
 
@@ -653,7 +653,7 @@ export declare const stripSomeDefects: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -668,7 +668,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -681,7 +681,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -701,7 +701,7 @@ and parallel composition of errors in a fully lossless fashion.
 export type Cause<E> = Empty | Fail<E> | Die | Interrupt | Sequential<E> | Parallel<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## CauseReducer (interface)
 
@@ -721,7 +721,7 @@ export interface CauseReducer<C, E, Z> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Die (interface)
 
@@ -739,7 +739,7 @@ export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspe
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Empty (interface)
 
@@ -753,7 +753,7 @@ export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Ins
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Fail (interface)
 
@@ -769,7 +769,7 @@ export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspe
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## IllegalArgumentException (interface)
 
@@ -786,7 +786,7 @@ export interface IllegalArgumentException {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Interrupt (interface)
 
@@ -802,7 +802,7 @@ export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable,
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InterruptedException (interface)
 
@@ -818,7 +818,7 @@ export interface InterruptedException {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InvalidHubCapacityException (interface)
 
@@ -835,7 +835,7 @@ export interface InvalidHubCapacityException {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## NoSuchElementException (interface)
 
@@ -852,7 +852,7 @@ export interface NoSuchElementException {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Parallel (interface)
 
@@ -875,7 +875,7 @@ export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, I
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeException (interface)
 
@@ -891,7 +891,7 @@ export interface RuntimeException {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Sequential (interface)
 
@@ -913,7 +913,7 @@ export interface Sequential<E> extends Cause.Variance<E>, Equal.Equal, Pipeable,
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -927,7 +927,7 @@ Returns `true` if the specified value is a `Cause`, `false` otherwise.
 export declare const isCause: (u: unknown) => u is Cause<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isDieType
 
@@ -940,7 +940,7 @@ otherwise.
 export declare const isDieType: <E>(self: Cause<E>) => self is Die
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmptyType
 
@@ -953,7 +953,7 @@ otherwise.
 export declare const isEmptyType: <E>(self: Cause<E>) => self is Empty
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFailType
 
@@ -966,7 +966,7 @@ otherwise.
 export declare const isFailType: <E>(self: Cause<E>) => self is Fail<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isIllegalArgumentException
 
@@ -979,7 +979,7 @@ otherwise.
 export declare const isIllegalArgumentException: (u: unknown) => u is IllegalArgumentException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isInterruptType
 
@@ -992,7 +992,7 @@ otherwise.
 export declare const isInterruptType: <E>(self: Cause<E>) => self is Interrupt
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isInterruptedException
 
@@ -1005,7 +1005,7 @@ otherwise.
 export declare const isInterruptedException: (u: unknown) => u is InterruptedException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNoSuchElementException
 
@@ -1018,7 +1018,7 @@ otherwise.
 export declare const isNoSuchElementException: (u: unknown) => u is NoSuchElementException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isParallelType
 
@@ -1031,7 +1031,7 @@ otherwise.
 export declare const isParallelType: <E>(self: Cause<E>) => self is Parallel<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRuntimeException
 
@@ -1044,7 +1044,7 @@ otherwise.
 export declare const isRuntimeException: (u: unknown) => u is RuntimeException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSequentialType
 
@@ -1057,7 +1057,7 @@ otherwise.
 export declare const isSequentialType: <E>(self: Cause<E>) => self is Sequential<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # rendering
 
@@ -1071,7 +1071,7 @@ Returns the specified `Cause` as a pretty-printed string.
 export declare const pretty: <E>(cause: Cause<E>) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -1086,7 +1086,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -1096,7 +1096,7 @@ Added in v1.0.0
 export declare const flatten: <E>(self: Cause<Cause<E>>) => Cause<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -1108,7 +1108,7 @@ Added in v1.0.0
 export declare const CauseTypeId: typeof CauseTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## CauseTypeId (type alias)
 
@@ -1118,7 +1118,7 @@ Added in v1.0.0
 export type CauseTypeId = typeof CauseTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## IllegalArgumentExceptionTypeId
 
@@ -1128,7 +1128,7 @@ Added in v1.0.0
 export declare const IllegalArgumentExceptionTypeId: typeof IllegalArgumentExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## IllegalArgumentExceptionTypeId (type alias)
 
@@ -1138,7 +1138,7 @@ Added in v1.0.0
 export type IllegalArgumentExceptionTypeId = typeof IllegalArgumentExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InterruptedExceptionTypeId
 
@@ -1148,7 +1148,7 @@ Added in v1.0.0
 export declare const InterruptedExceptionTypeId: typeof InterruptedExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InterruptedExceptionTypeId (type alias)
 
@@ -1158,7 +1158,7 @@ Added in v1.0.0
 export type InterruptedExceptionTypeId = typeof InterruptedExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InvalidHubCapacityExceptionTypeId
 
@@ -1168,7 +1168,7 @@ Added in v1.0.0
 export declare const InvalidHubCapacityExceptionTypeId: typeof InvalidHubCapacityExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InvalidHubCapacityExceptionTypeId (type alias)
 
@@ -1178,7 +1178,7 @@ Added in v1.0.0
 export type InvalidHubCapacityExceptionTypeId = typeof InvalidHubCapacityExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## NoSuchElementExceptionTypeId
 
@@ -1188,7 +1188,7 @@ Added in v1.0.0
 export declare const NoSuchElementExceptionTypeId: typeof NoSuchElementExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## NoSuchElementExceptionTypeId (type alias)
 
@@ -1198,7 +1198,7 @@ Added in v1.0.0
 export type NoSuchElementExceptionTypeId = typeof NoSuchElementExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeExceptionTypeId
 
@@ -1208,7 +1208,7 @@ Added in v1.0.0
 export declare const RuntimeExceptionTypeId: typeof RuntimeExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeExceptionTypeId (type alias)
 
@@ -1218,13 +1218,13 @@ Added in v1.0.0
 export type RuntimeExceptionTypeId = typeof RuntimeExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Cause (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -1238,4 +1238,4 @@ export interface Variance<E> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

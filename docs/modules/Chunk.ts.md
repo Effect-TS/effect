@@ -6,7 +6,7 @@ parent: Modules
 
 ## Chunk overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -129,7 +129,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # concatenating
 
@@ -146,7 +146,7 @@ export declare const append: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## appendAll
 
@@ -161,7 +161,7 @@ export declare const appendAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## appendAllNonEmpty
 
@@ -176,7 +176,7 @@ export declare const appendAllNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prepend
 
@@ -191,7 +191,7 @@ export declare const prepend: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prependAll
 
@@ -204,7 +204,7 @@ export declare const prependAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prependAllNonEmpty
 
@@ -219,7 +219,7 @@ export declare const prependAllNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -231,7 +231,7 @@ Added in v1.0.0
 export declare const empty: <A = never>() => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isChunk
 
@@ -243,7 +243,7 @@ Checks if `u` is a `Chunk<unknown>`
 export declare const isChunk: { <A>(u: Iterable<A>): u is Chunk<A>; (u: unknown): u is Chunk<unknown> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -255,7 +255,7 @@ Builds a `NonEmptyChunk` from an non-empty collection of elements.
 export declare const make: <As extends readonly [any, ...any[]]>(...as: As) => NonEmptyChunk<As[number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeBy
 
@@ -272,7 +272,7 @@ export declare const makeBy: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## of
 
@@ -284,7 +284,7 @@ Builds a `NonEmptyChunk` from a single element.
 export declare const of: <A>(a: A) => NonEmptyChunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## range
 
@@ -296,7 +296,7 @@ Create a non empty `Chunk` containing a range of integers, including both endpoi
 export declare const range: (start: number, end: number) => NonEmptyChunk<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -310,7 +310,7 @@ Converts from an `Iterable<A>`
 export declare const fromIterable: <A>(self: Iterable<A>) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadonlyArray
 
@@ -322,7 +322,7 @@ Converts the specified `Chunk` to a `ReadonlyArray`.
 export declare const toReadonlyArray: <A>(self: Chunk<A>) => readonly A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -339,7 +339,7 @@ export declare const chunksOf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contains
 
@@ -351,7 +351,7 @@ Returns a function that checks if a `Chunk` contains a given value using the def
 export declare const contains: { <A>(a: A): (self: Chunk<A>) => boolean; <A>(self: Chunk<A>, a: A): boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## containsWith
 
@@ -366,7 +366,7 @@ export declare const containsWith: <A>(isEquivalent: (self: A, that: A) => boole
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupe
 
@@ -378,7 +378,7 @@ Remove duplicates from an array, keeping the first occurrence of an element.
 export declare const dedupe: <A>(self: Chunk<A>) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## every
 
@@ -395,7 +395,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirst
 
@@ -413,7 +413,7 @@ export declare const findFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndex
 
@@ -428,7 +428,7 @@ export declare const findFirstIndex: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLast
 
@@ -445,7 +445,7 @@ export declare const findLast: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLastIndex
 
@@ -460,7 +460,7 @@ export declare const findLastIndex: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -475,7 +475,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## head
 
@@ -487,7 +487,7 @@ Returns the first element of this chunk if it exists.
 export declare const head: <A>(self: Chunk<A>) => Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## headNonEmpty
 
@@ -499,7 +499,7 @@ Returns the first element of this non empty chunk.
 export declare const headNonEmpty: <A>(self: NonEmptyChunk<A>) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersection
 
@@ -516,7 +516,7 @@ export declare const intersection: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -528,7 +528,7 @@ Determines if the chunk is empty.
 export declare const isEmpty: <A>(self: Chunk<A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmpty
 
@@ -540,7 +540,7 @@ Determines if the chunk is not empty.
 export declare const isNonEmpty: <A>(self: Chunk<A>) => self is NonEmptyChunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## last
 
@@ -552,7 +552,7 @@ Returns the last element of this chunk if it exists.
 export declare const last: <A>(self: Chunk<A>) => Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reverse
 
@@ -562,7 +562,7 @@ Added in v1.0.0
 export declare const reverse: <A>(self: Chunk<A>) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -574,7 +574,7 @@ Retireves the size of the chunk
 export declare const size: <A>(self: Chunk<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -589,7 +589,7 @@ export declare const some: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sort
 
@@ -604,7 +604,7 @@ export declare const sort: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sortWith
 
@@ -617,7 +617,7 @@ export declare const sortWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## split
 
@@ -632,7 +632,7 @@ export declare const split: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## splitAt
 
@@ -647,7 +647,7 @@ export declare const splitAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## splitWhere
 
@@ -662,7 +662,7 @@ export declare const splitWhere: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tail
 
@@ -674,7 +674,7 @@ Returns every elements after the first.
 export declare const tail: <A>(self: Chunk<A>) => Option<Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tailNonEmpty
 
@@ -686,7 +686,7 @@ Returns every elements after the first.
 export declare const tailNonEmpty: <A>(self: NonEmptyChunk<A>) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeRight
 
@@ -701,7 +701,7 @@ export declare const takeRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeWhile
 
@@ -716,7 +716,7 @@ export declare const takeWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -731,7 +731,7 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unzip
 
@@ -745,7 +745,7 @@ Note: The function is reverse of `zip`.
 export declare const unzip: <A, B>(self: Chunk<readonly [A, B]>) => [Chunk<A>, Chunk<B>]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zip
 
@@ -760,7 +760,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -775,7 +775,7 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # equivalence
 
@@ -789,7 +789,7 @@ Compares the two chunks of equal length using the specified function
 export declare const getEquivalence: <A>(isEquivalent: Equivalence.Equivalence<A>) => Equivalence.Equivalence<Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -803,7 +803,7 @@ Filter out optional values
 export declare const compact: <A>(self: Chunk<Option<A>>) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupeAdjacent
 
@@ -815,7 +815,7 @@ Deduplicates adjacent elements that are identical.
 export declare const dedupeAdjacent: <A>(self: Chunk<A>) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -832,7 +832,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMap
 
@@ -847,7 +847,7 @@ export declare const filterMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMapWhile
 
@@ -862,7 +862,7 @@ export declare const filterMapWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -879,7 +879,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partitionMap
 
@@ -894,7 +894,7 @@ export declare const partitionMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## separate
 
@@ -906,7 +906,7 @@ Partitions the elements of this chunk into two chunks.
 export declare const separate: <A, B>(self: Chunk<Either<A, B>>) => [Chunk<A>, Chunk<B>]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -923,7 +923,7 @@ export declare const join: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapAccum
 
@@ -938,7 +938,7 @@ export declare const mapAccum: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduce
 
@@ -951,7 +951,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceRight
 
@@ -964,7 +964,7 @@ export declare const reduceRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -981,7 +981,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -993,7 +993,7 @@ Added in v1.0.0
 export interface NonEmptyChunk<A> extends Chunk<A>, NonEmptyIterable<A> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -1018,7 +1018,7 @@ export interface Chunk<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectabl
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -1035,7 +1035,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMapNonEmpty
 
@@ -1048,7 +1048,7 @@ export declare const flatMapNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -1060,7 +1060,7 @@ Flattens a chunk of chunks into a single chunk by concatenating all chunks.
 export declare const flatten: <A>(self: Chunk<Chunk<A>>) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flattenNonEmpty
 
@@ -1070,7 +1070,7 @@ Added in v1.0.0
 export declare const flattenNonEmpty: <A>(self: NonEmptyChunk<NonEmptyChunk<A>>) => NonEmptyChunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -1082,7 +1082,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -1096,7 +1096,7 @@ export interface ChunkTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -1110,7 +1110,7 @@ Wraps an array into a chunk without copying, unsafe on mutable arrays
 export declare const unsafeFromArray: <A>(self: readonly A[]) => Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeFromNonEmptyArray
 
@@ -1122,7 +1122,7 @@ Wraps an array into a chunk without copying, unsafe on mutable arrays
 export declare const unsafeFromNonEmptyArray: <A>(self: readonly [A, ...A[]]) => NonEmptyChunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeGet
 
@@ -1134,7 +1134,7 @@ Gets an element unsafely, will throw on out of bounds
 export declare const unsafeGet: { (index: number): <A>(self: Chunk<A>) => A; <A>(self: Chunk<A>, index: number): A }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeHead
 
@@ -1146,7 +1146,7 @@ Returns the first element of this chunk.
 export declare const unsafeHead: <A>(self: Chunk<A>) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeLast
 
@@ -1158,7 +1158,7 @@ Returns the last element of this chunk.
 export declare const unsafeLast: <A>(self: Chunk<A>) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -1172,7 +1172,7 @@ Drops the first up to `n` elements from the chunk
 export declare const drop: { (n: number): <A>(self: Chunk<A>) => Chunk<A>; <A>(self: Chunk<A>, n: number): Chunk<A> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropRight
 
@@ -1187,7 +1187,7 @@ export declare const dropRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropWhile
 
@@ -1202,7 +1202,7 @@ export declare const dropWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modify
 
@@ -1218,7 +1218,7 @@ export declare const modify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyOption
 
@@ -1231,7 +1231,7 @@ export declare const modifyOption: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -1244,7 +1244,7 @@ or returning the input if the index is out of bounds.
 export declare const remove: { (i: number): <A>(self: Chunk<A>) => Chunk<A>; <A>(self: Chunk<A>, i: number): Chunk<A> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replace
 
@@ -1260,7 +1260,7 @@ export declare const replace: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replaceOption
 
@@ -1273,7 +1273,7 @@ export declare const replaceOption: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -1285,4 +1285,4 @@ Takes the first up to `n` elements from the chunk
 export declare const take: { (n: number): <A>(self: Chunk<A>) => Chunk<A>; <A>(self: Chunk<A>, n: number): Chunk<A> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

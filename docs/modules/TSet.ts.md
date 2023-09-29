@@ -6,7 +6,7 @@ parent: Modules
 
 ## TSet overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -70,7 +70,7 @@ Makes an empty `TSet`.
 export declare const empty: <A>() => STM.STM<never, never, TSet<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -82,7 +82,7 @@ Makes a new `TSet` initialized with provided iterable.
 export declare const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, TSet<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -96,7 +96,7 @@ export declare const make: <Elements extends any[]>(
 ) => STM.STM<never, never, TSet<Elements[number]>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -110,7 +110,7 @@ Collects all elements into a `Chunk`.
 export declare const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toHashSet
 
@@ -122,7 +122,7 @@ Collects all elements into a `HashSet`.
 export declare const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.HashSet<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadonlyArray
 
@@ -134,7 +134,7 @@ Collects all elements into a `ReadonlyArray`.
 export declare const toReadonlyArray: <A>(self: TSet<A>) => STM.STM<never, never, readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadonlySet
 
@@ -146,7 +146,7 @@ Collects all elements into a `ReadonlySet`.
 export declare const toReadonlySet: <A>(self: TSet<A>) => STM.STM<never, never, ReadonlySet<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -163,7 +163,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -178,7 +178,7 @@ export declare const has: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -195,7 +195,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceSTM
 
@@ -210,7 +210,7 @@ export declare const reduceSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -224,7 +224,7 @@ Tests if the set is empty or not
 export declare const isEmpty: <A>(self: TSet<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -236,7 +236,7 @@ Returns the set's cardinality.
 export declare const size: <A>(self: TSet<A>) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -250,7 +250,7 @@ Transactional set implemented on top of `TMap`.
 export interface TSet<A> extends TSet.Variance<A> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -267,7 +267,7 @@ export declare const add: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## difference
 
@@ -283,7 +283,7 @@ export declare const difference: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersection
 
@@ -299,7 +299,7 @@ export declare const intersection: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -314,7 +314,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeAll
 
@@ -329,7 +329,7 @@ export declare const removeAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeIf
 
@@ -344,7 +344,7 @@ export declare const removeIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeIfDiscard
 
@@ -359,7 +359,7 @@ export declare const removeIfDiscard: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retainIf
 
@@ -374,7 +374,7 @@ export declare const retainIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retainIfDiscard
 
@@ -389,7 +389,7 @@ export declare const retainIfDiscard: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeFirst
 
@@ -404,7 +404,7 @@ export declare const takeFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeFirstSTM
 
@@ -419,7 +419,7 @@ export declare const takeFirstSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeSome
 
@@ -434,7 +434,7 @@ export declare const takeSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeSomeSTM
 
@@ -449,7 +449,7 @@ export declare const takeSomeSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transform
 
@@ -464,7 +464,7 @@ export declare const transform: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transformSTM
 
@@ -479,7 +479,7 @@ export declare const transformSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -495,7 +495,7 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -507,7 +507,7 @@ Added in v1.0.0
 export declare const TSetTypeId: typeof TSetTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TSetTypeId (type alias)
 
@@ -517,13 +517,13 @@ Added in v1.0.0
 export type TSetTypeId = typeof TSetTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TSet (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -537,4 +537,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type * as Channel from "./Channel"
@@ -23,13 +23,13 @@ import type * as Scope from "./Scope"
 import type * as Unify from "./Unify"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const SinkTypeId: unique symbol = internal.SinkTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type SinkTypeId = typeof SinkTypeId
@@ -41,13 +41,13 @@ export type SinkTypeId = typeof SinkTypeId
  * and will eventually yield a value of type `Z` together with a remainder of
  * type `L` (i.e. any leftovers).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Sink<R, E, In, L, Z> extends Sink.Variance<R, E, In, L, Z>, Pipeable {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SinkUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
@@ -65,14 +65,14 @@ export interface SinkUnify<A extends { [Unify.typeSymbol]?: any }> extends Effec
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface SinkUnifyBlacklist extends Effect.EffectUnifyBlacklist {
   Sink?: true
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 declare module "./Effect" {
@@ -83,18 +83,18 @@ declare module "./Effect" {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Sink {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<R, E, In, L, Z> {
     readonly [SinkTypeId]: VarianceStruct<R, E, In, L, Z>
   }
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface VarianceStruct<R, E, In, L, Z> {
@@ -109,7 +109,7 @@ export declare namespace Sink {
 /**
  * Replaces this sink's result with the provided value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const as: {
@@ -120,7 +120,7 @@ export const as: {
 /**
  * A sink that collects all elements into a `Chunk`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAll: <In>() => Sink<never, never, In, never, Chunk.Chunk<In>> = internal.collectAll
@@ -128,7 +128,7 @@ export const collectAll: <In>() => Sink<never, never, In, never, Chunk.Chunk<In>
 /**
  * A sink that collects first `n` elements into a chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllN: <In>(n: number) => Sink<never, never, In, In, Chunk.Chunk<In>> = internal.collectAllN
@@ -136,7 +136,7 @@ export const collectAllN: <In>(n: number) => Sink<never, never, In, In, Chunk.Ch
 /**
  * Repeatedly runs the sink and accumulates its results into a `Chunk`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const collectAllFrom: <R, E, In, L extends In, Z>(
@@ -148,7 +148,7 @@ export const collectAllFrom: <R, E, In, L extends In, Z>(
  * from inputs using the keying function `key`; if multiple inputs use the
  * same key, they are merged using the `merge` function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllToMap: <In, K>(
@@ -161,7 +161,7 @@ export const collectAllToMap: <In, K>(
  * from inputs using the keying function `key`; if multiple inputs use the the
  * same key, they are merged using the `merge` function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllToMapN: <In, K>(
@@ -173,7 +173,7 @@ export const collectAllToMapN: <In, K>(
 /**
  * A sink that collects all of its inputs into a set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllToSet: <In>() => Sink<never, never, In, never, HashSet.HashSet<In>> = internal.collectAllToSet
@@ -181,7 +181,7 @@ export const collectAllToSet: <In>() => Sink<never, never, In, never, HashSet.Ha
 /**
  * A sink that collects first `n` distinct inputs into a set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllToSetN: <In>(n: number) => Sink<never, never, In, In, HashSet.HashSet<In>> =
@@ -191,7 +191,7 @@ export const collectAllToSetN: <In>(n: number) => Sink<never, never, In, In, Has
  * Accumulates incoming elements into a chunk until predicate `p` is
  * satisfied.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllUntil: <In>(p: Predicate<In>) => Sink<never, never, In, In, Chunk.Chunk<In>> =
@@ -201,7 +201,7 @@ export const collectAllUntil: <In>(p: Predicate<In>) => Sink<never, never, In, I
  * Accumulates incoming elements into a chunk until effectful predicate `p` is
  * satisfied.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllUntilEffect: <In, R, E>(
@@ -212,7 +212,7 @@ export const collectAllUntilEffect: <In, R, E>(
  * Accumulates incoming elements into a chunk as long as they verify predicate
  * `p`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, Chunk.Chunk<In>> =
@@ -222,7 +222,7 @@ export const collectAllWhile: <In>(predicate: Predicate<In>) => Sink<never, neve
  * Accumulates incoming elements into a chunk as long as they verify effectful
  * predicate `p`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAllWhileEffect: <In, R, E>(
@@ -233,7 +233,7 @@ export const collectAllWhileEffect: <In, R, E>(
  * Repeatedly runs the sink for as long as its results satisfy the predicate
  * `p`. The sink's results will be accumulated using the stepping function `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const collectAllWhileWith: {
@@ -258,7 +258,7 @@ export const collectAllWhileWith: {
  * Collects the leftovers from the stream when the sink succeeds and returns
  * them as part of the sink's result.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const collectLeftover: <R, E, In, L, Z>(
@@ -268,7 +268,7 @@ export const collectLeftover: <R, E, In, L, Z>(
 /**
  * Transforms this sink's input elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapInput = internal.mapInput
@@ -276,7 +276,7 @@ export const mapInput = internal.mapInput
 /**
  * Effectfully transforms this sink's input elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapInputEffect = internal.mapInputEffect
@@ -284,7 +284,7 @@ export const mapInputEffect = internal.mapInputEffect
 /**
  * Transforms this sink's input chunks. `f` must preserve chunking-invariance.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapInputChunks: {
@@ -301,7 +301,7 @@ export const mapInputChunks: {
  * Effectfully transforms this sink's input chunks. `f` must preserve
  * chunking-invariance.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapInputChunksEffect: {
@@ -317,7 +317,7 @@ export const mapInputChunksEffect: {
 /**
  * A sink that counts the number of elements fed to it.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const count: Sink<never, never, unknown, never, number> = internal.count
@@ -325,7 +325,7 @@ export const count: Sink<never, never, unknown, never, number> = internal.count
 /**
  * Creates a sink halting with the specified defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const die: (defect: unknown) => Sink<never, never, unknown, never, never> = internal.die
@@ -334,7 +334,7 @@ export const die: (defect: unknown) => Sink<never, never, unknown, never, never>
  * Creates a sink halting with the specified message, wrapped in a
  * `RuntimeException`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieMessage: (message: string) => Sink<never, never, unknown, never, never> = internal.dieMessage
@@ -342,7 +342,7 @@ export const dieMessage: (message: string) => Sink<never, never, unknown, never,
 /**
  * Creates a sink halting with the specified defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieSync: (evaluate: LazyArg<unknown>) => Sink<never, never, unknown, never, never> = internal.dieSync
@@ -351,7 +351,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Sink<never, never, unknown
  * Transforms both inputs and result of this sink using the provided
  * functions.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const dimap: {
@@ -368,7 +368,7 @@ export const dimap: {
  * Effectfully transforms both inputs and result of this sink using the
  * provided functions.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const dimapEffect: {
@@ -391,7 +391,7 @@ export const dimapEffect: {
  * Transforms both input chunks and result of this sink using the provided
  * functions.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const dimapChunks: {
@@ -408,7 +408,7 @@ export const dimapChunks: {
  * Effectfully transforms both input chunks and result of this sink using the
  * provided functions. `f` and `g` must preserve chunking-invariance.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const dimapChunksEffect: {
@@ -430,7 +430,7 @@ export const dimapChunksEffect: {
 /**
  * A sink that ignores its inputs.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const drain: Sink<never, never, unknown, never, void> = internal.drain
@@ -438,7 +438,7 @@ export const drain: Sink<never, never, unknown, never, void> = internal.drain
 /**
  * Creates a sink that drops `n` elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const drop: <In>(n: number) => Sink<never, never, In, In, unknown> = internal.drop
@@ -446,7 +446,7 @@ export const drop: <In>(n: number) => Sink<never, never, In, In, unknown> = inte
 /**
  * Drops incoming elements until the predicate is satisfied.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dropUntil: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, unknown> = internal.dropUntil
@@ -454,7 +454,7 @@ export const dropUntil: <In>(predicate: Predicate<In>) => Sink<never, never, In,
 /**
  * Drops incoming elements until the effectful predicate is satisfied.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dropUntilEffect: <In, R, E>(
@@ -464,7 +464,7 @@ export const dropUntilEffect: <In, R, E>(
 /**
  * Drops incoming elements as long as the predicate is satisfied.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dropWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, unknown> = internal.dropWhile
@@ -472,7 +472,7 @@ export const dropWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In,
 /**
  * Drops incoming elements as long as the effectful predicate is satisfied.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dropWhileEffect: <In, R, E>(
@@ -484,7 +484,7 @@ export const dropWhileEffect: <In, R, E>(
  * to be executed so long as the sink begins execution (and regardless of
  * whether or not it completes).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category finalization
  */
 export const ensuring: {
@@ -499,7 +499,7 @@ export const ensuring: {
  * to be executed so long as the sink begins execution (and regardless of
  * whether or not it completes).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category finalization
  */
 export const ensuringWith: {
@@ -515,7 +515,7 @@ export const ensuringWith: {
 /**
  * Accesses the whole context of the sink.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const context: <R>() => Sink<R, never, unknown, never, Context.Context<R>> = internal.context
@@ -523,7 +523,7 @@ export const context: <R>() => Sink<R, never, unknown, never, Context.Context<R>
 /**
  * Accesses the context of the sink.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const contextWith: <R, Z>(f: (context: Context.Context<R>) => Z) => Sink<R, never, unknown, never, Z> =
@@ -532,7 +532,7 @@ export const contextWith: <R, Z>(f: (context: Context.Context<R>) => Z) => Sink<
 /**
  * Accesses the context of the sink in the context of an effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const contextWithEffect: <R, R2, E, Z>(
@@ -542,7 +542,7 @@ export const contextWithEffect: <R, R2, E, Z>(
 /**
  * Accesses the context of the sink in the context of a sink.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const contextWithSink: <R0, R, E, In, L, Z>(
@@ -552,7 +552,7 @@ export const contextWithSink: <R0, R, E, In, L, Z>(
 /**
  * A sink that returns whether all elements satisfy the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const every: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, boolean> = internal.every
@@ -560,7 +560,7 @@ export const every: <In>(predicate: Predicate<In>) => Sink<never, never, In, In,
 /**
  * A sink that always fails with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fail: <E>(e: E) => Sink<never, E, unknown, never, never> = internal.fail
@@ -568,7 +568,7 @@ export const fail: <E>(e: E) => Sink<never, E, unknown, never, never> = internal
 /**
  * A sink that always fails with the specified lazily evaluated error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failSync: <E>(evaluate: LazyArg<E>) => Sink<never, E, unknown, never, never> = internal.failSync
@@ -576,7 +576,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => Sink<never, E, unknown, neve
 /**
  * Creates a sink halting with a specified `Cause`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCause: <E>(cause: Cause.Cause<E>) => Sink<never, E, unknown, never, never> = internal.failCause
@@ -584,7 +584,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Sink<never, E, unknown, ne
 /**
  * Creates a sink halting with a specified lazily evaluated `Cause`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Sink<never, E, unknown, never, never> =
@@ -593,7 +593,7 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Sink<never
 /**
  * Filters the sink's input with the given predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterInput: {
@@ -606,7 +606,7 @@ export const filterInput: {
 /**
  * Effectfully filter the input of this sink using the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterInputEffect: {
@@ -622,7 +622,7 @@ export const filterInputEffect: {
 /**
  * Creates a sink that produces values until one verifies the predicate `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findEffect: {
@@ -639,7 +639,7 @@ export const findEffect: {
  * A sink that folds its inputs with the provided function, termination
  * predicate and initial state.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const fold: <S, In>(s: S, contFn: Predicate<S>, f: (z: S, input: In) => S) => Sink<never, never, In, In, S> =
@@ -648,7 +648,7 @@ export const fold: <S, In>(s: S, contFn: Predicate<S>, f: (z: S, input: In) => S
 /**
  * Folds over the result of the sink
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const foldSink: {
@@ -673,7 +673,7 @@ export const foldSink: {
  * initial value and at the end of processing of each chunk. `f` and `contFn`
  * must preserve chunking-invariance.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldChunks: <S, In>(
@@ -688,7 +688,7 @@ export const foldChunks: <S, In>(
  * for the initial value and at the end of processing of each chunk. `f` and
  * `contFn` must preserve chunking-invariance.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldChunksEffect: <S, R, E, In>(
@@ -701,7 +701,7 @@ export const foldChunksEffect: <S, R, E, In>(
  * A sink that effectfully folds its inputs with the provided function,
  * termination predicate and initial state.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldEffect: <S, R, E, In>(
@@ -713,7 +713,7 @@ export const foldEffect: <S, R, E, In>(
 /**
  * A sink that folds its inputs with the provided function and initial state.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldLeft: <S, In>(s: S, f: (s: S, input: In) => S) => Sink<never, never, In, never, S> = internal.foldLeft
@@ -722,7 +722,7 @@ export const foldLeft: <S, In>(s: S, f: (s: S, input: In) => S) => Sink<never, n
  * A sink that folds its input chunks with the provided function and initial
  * state. `f` must preserve chunking-invariance.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldLeftChunks: <S, In>(s: S, f: (s: S, chunk: Chunk.Chunk<In>) => S) => Sink<never, never, In, never, S> =
@@ -732,7 +732,7 @@ export const foldLeftChunks: <S, In>(s: S, f: (s: S, chunk: Chunk.Chunk<In>) => 
  * A sink that effectfully folds its input chunks with the provided function
  * and initial state. `f` must preserve chunking-invariance.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldLeftChunksEffect: <S, R, E, In>(
@@ -744,7 +744,7 @@ export const foldLeftChunksEffect: <S, R, E, In>(
  * A sink that effectfully folds its inputs with the provided function and
  * initial state.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldLeftEffect: <S, R, E, In>(
@@ -758,7 +758,7 @@ export const foldLeftEffect: <S, R, E, In>(
  *
  * Like `Sink.foldWeighted`, but with a constant cost function of `1`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldUntil: <In, S>(s: S, max: number, f: (z: S, input: In) => S) => Sink<never, never, In, In, S> =
@@ -770,7 +770,7 @@ export const foldUntil: <In, S>(s: S, max: number, f: (z: S, input: In) => S) =>
  *
  * Like `Sink.foldWeightedEffect` but with a constant cost function of `1`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldUntilEffect: <S, R, E, In>(
@@ -789,7 +789,7 @@ export const foldUntilEffect: <S, R, E, In>(
  *   sink to cross the `max` cost. See `Sink.foldWeightedDecompose` for a
  *   variant that can handle these cases.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldWeighted: <S, In>(
@@ -835,7 +835,7 @@ export const foldWeighted: <S, In>(
  * `Sink.foldWeightedDecomposeEffect` allows the decompose function to return an
  * effect value, and consequently it allows the sink to fail.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldWeightedDecompose: <S, In>(
@@ -862,7 +862,7 @@ export const foldWeightedDecompose: <S, In>(
  *
  * See `Sink.foldWeightedDecompose` for an example.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldWeightedDecomposeEffect: <S, In, R, E, R2, E2, R3, E3>(
@@ -885,7 +885,7 @@ export const foldWeightedDecomposeEffect: <S, In, R, E, R2, E2, R3, E3>(
  *   sink to cross the `max` cost. See `Sink.foldWeightedDecomposeEffect` for
  *   a variant that can handle these cases.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const foldWeightedEffect: <S, In, R, E, R2, E2>(
@@ -901,7 +901,7 @@ export const foldWeightedEffect: <S, In, R, E, R2, E2>(
  * A sink that executes the provided effectful function for every element fed
  * to it.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const forEach: <In, R, E, _>(f: (input: In) => Effect.Effect<R, E, _>) => Sink<R, E, In, never, void> =
@@ -911,7 +911,7 @@ export const forEach: <In, R, E, _>(f: (input: In) => Effect.Effect<R, E, _>) =>
  * A sink that executes the provided effectful function for every chunk fed to
  * it.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const forEachChunk: <In, R, E, _>(
@@ -922,7 +922,7 @@ export const forEachChunk: <In, R, E, _>(
  * A sink that executes the provided effectful function for every chunk fed to
  * it until `f` evaluates to `false`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const forEachChunkWhile: <In, R, E>(
@@ -933,7 +933,7 @@ export const forEachChunkWhile: <In, R, E>(
  * A sink that executes the provided effectful function for every element fed
  * to it until `f` evaluates to `false`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const forEachWhile: <In, R, E>(f: (input: In) => Effect.Effect<R, E, boolean>) => Sink<R, E, In, In, void> =
@@ -946,7 +946,7 @@ export const forEachWhile: <In, R, E>(f: (input: In) => Effect.Effect<R, E, bool
  *
  * This function essentially runs sinks in sequence.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -962,7 +962,7 @@ export const flatMap: {
 /**
  * Creates a sink from a `Channel`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromChannel: <R, E, In, L, Z>(
@@ -972,7 +972,7 @@ export const fromChannel: <R, E, In, L, Z>(
 /**
  * Creates a `Channel` from a Sink.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const toChannel: <R, E, In, L, Z>(
@@ -982,7 +982,7 @@ export const toChannel: <R, E, In, L, Z>(
 /**
  * Creates a single-value sink produced from an effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEffect: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => Sink<R, E, unknown, never, Z> =
@@ -992,7 +992,7 @@ export const fromEffect: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => Sink<R, E,
  * Create a sink which publishes each element to the specified hub.
  *
  * @param shutdown If `true`, the hub will be shutdown after the sink is evaluated (defaults to `false`)
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromHub: <In>(
@@ -1003,7 +1003,7 @@ export const fromHub: <In>(
 /**
  * Creates a sink from a chunk processing function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromPush: <R, E, In, L, Z>(
@@ -1018,7 +1018,7 @@ export const fromPush: <R, E, In, L, Z>(
  * Create a sink which enqueues each element into the specified queue.
  *
  * @param shutdown If `true`, the queue will be shutdown after the sink is evaluated (defaults to `false`)
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromQueue: <In>(
@@ -1029,7 +1029,7 @@ export const fromQueue: <In>(
 /**
  * Creates a sink containing the first value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const head: <In>() => Sink<never, never, In, In, Option.Option<In>> = internal.head
@@ -1037,7 +1037,7 @@ export const head: <In>() => Sink<never, never, In, In, Option.Option<In>> = int
 /**
  * Drains the remaining elements from the stream after the sink finishes
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const ignoreLeftover: <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In, never, Z> =
@@ -1046,7 +1046,7 @@ export const ignoreLeftover: <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sin
 /**
  * Creates a sink containing the last value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const last: <In>() => Sink<never, never, In, In, Option.Option<In>> = internal.last
@@ -1055,7 +1055,7 @@ export const last: <In>() => Sink<never, never, In, In, Option.Option<In>> = int
  * Creates a sink that does not consume any input but provides the given chunk
  * as its leftovers
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const leftover: <L>(chunk: Chunk.Chunk<L>) => Sink<never, never, unknown, L, void> = internal.leftover
@@ -1063,7 +1063,7 @@ export const leftover: <L>(chunk: Chunk.Chunk<L>) => Sink<never, never, unknown,
 /**
  * Transforms this sink's result.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -1074,7 +1074,7 @@ export const map: {
 /**
  * Effectfully transforms this sink's result.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapEffect: {
@@ -1090,7 +1090,7 @@ export const mapEffect: {
 /**
  * Transforms the errors emitted by this sink using `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapError: {
@@ -1101,7 +1101,7 @@ export const mapError: {
 /**
  * Transforms the leftovers emitted by this sink using `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapLeftover: {
@@ -1112,7 +1112,7 @@ export const mapLeftover: {
 /**
  * Creates a sink which transforms it's inputs into a string.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const mkString: Sink<never, never, unknown, never, string> = internal.mkString
@@ -1120,7 +1120,7 @@ export const mkString: Sink<never, never, unknown, never, string> = internal.mkS
 /**
  * Creates a sink which never terminates.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const never: Sink<never, never, unknown, never, never> = internal.never
@@ -1128,7 +1128,7 @@ export const never: Sink<never, never, unknown, never, never> = internal.never
 /**
  * Switch to another sink in case of failure
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElse: {
@@ -1145,7 +1145,7 @@ export const orElse: {
  * Provides the sink with its required context, which eliminates its
  * dependency on `R`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideContext: {
@@ -1157,7 +1157,7 @@ export const provideContext: {
  * Runs both sinks in parallel on the input, , returning the result or the
  * error from the one that finishes first.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const race: {
@@ -1174,7 +1174,7 @@ export const race: {
  * Runs both sinks in parallel on the input, returning the result or the error
  * from the one that finishes first.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const raceBoth: {
@@ -1193,7 +1193,7 @@ export const raceBoth: {
  * Runs both sinks in parallel on the input, using the specified merge
  * function as soon as one result or the other has been computed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const raceWith: {
@@ -1217,7 +1217,7 @@ export const raceWith: {
 } = internal.raceWith
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const refineOrDie: {
@@ -1226,7 +1226,7 @@ export const refineOrDie: {
 } = internal.refineOrDie
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const refineOrDieWith: <E, E2>(
@@ -1237,7 +1237,7 @@ export const refineOrDieWith: <E, E2>(
 /**
  * A sink that returns whether an element satisfies the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const some: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, boolean> = internal.some
@@ -1247,7 +1247,7 @@ export const some: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, 
  * consumes elements until an element after the first satisfies the specified
  * predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const splitWhere: {
@@ -1258,7 +1258,7 @@ export const splitWhere: {
 /**
  * A sink that immediately ends with the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: <Z>(z: Z) => Sink<never, never, unknown, never, Z> = internal.succeed
@@ -1266,7 +1266,7 @@ export const succeed: <Z>(z: Z) => Sink<never, never, unknown, never, Z> = inter
 /**
  * A sink that sums incoming numeric values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sum: Sink<never, never, number, never, number> = internal.sum
@@ -1275,7 +1275,7 @@ export const sum: Sink<never, never, number, never, number> = internal.sum
  * Summarize a sink by running an effect when the sink starts and again when
  * it completes.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const summarized: {
@@ -1294,7 +1294,7 @@ export const summarized: {
  * Returns a lazily constructed sink that may require effects for its
  * creation.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const suspend: <R, E, In, L, Z>(evaluate: LazyArg<Sink<R, E, In, L, Z>>) => Sink<R, E, In, L, Z> =
@@ -1303,7 +1303,7 @@ export const suspend: <R, E, In, L, Z>(evaluate: LazyArg<Sink<R, E, In, L, Z>>) 
 /**
  * A sink that immediately ends with the specified lazy value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: <Z>(evaluate: LazyArg<Z>) => Sink<never, never, unknown, never, Z> = internal.sync
@@ -1311,13 +1311,13 @@ export const sync: <Z>(evaluate: LazyArg<Z>) => Sink<never, never, unknown, neve
 /**
  * A sink that takes the specified number of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const take: <In>(n: number) => Sink<never, never, In, In, Chunk.Chunk<In>> = internal.take
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const timed: Sink<never, never, unknown, never, Duration.Duration> = internal.timed
@@ -1325,7 +1325,7 @@ export const timed: Sink<never, never, unknown, never, Duration.Duration> = inte
 /**
  * Creates a sink produced from an effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unwrap: <R, E, R2, E2, In, L, Z>(
@@ -1335,7 +1335,7 @@ export const unwrap: <R, E, R2, E2, In, L, Z>(
 /**
  * Creates a sink produced from a scoped effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unwrapScoped: <R, E, In, L, Z>(
@@ -1345,7 +1345,7 @@ export const unwrapScoped: <R, E, In, L, Z>(
 /**
  * Returns the sink that executes this one and times its execution.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const withDuration: <R, E, In, L, Z>(
@@ -1357,7 +1357,7 @@ export const withDuration: <R, E, In, L, Z>(
  * the provided sink until it yields a result, finally combining the two
  * results into a tuple.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zip: {
@@ -1375,7 +1375,7 @@ export const zip: {
 /**
  * Like `Sink.zip` but keeps only the result from this sink.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipLeft: {
@@ -1393,7 +1393,7 @@ export const zipLeft: {
 /**
  * Like `Sink.zip` but keeps only the result from `that` sink.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipRight: {
@@ -1413,7 +1413,7 @@ export const zipRight: {
  * the provided sink until it yields a result, finally combining the two
  * results with `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWith: {

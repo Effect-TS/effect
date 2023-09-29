@@ -1,12 +1,12 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { LazyArg } from "./Function"
 import { dual } from "./Function"
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Ordering = -1 | 0 | 1
 
@@ -22,7 +22,7 @@ export type Ordering = -1 | 0 | 1
  * assert.deepStrictEqual(reverse(-1), 1)
  * assert.deepStrictEqual(reverse(0), 0)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 : 0)
 
@@ -49,7 +49,7 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  * assert.deepStrictEqual(toMessage(1), "greater than")
  *
  * @category pattern matching
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const match: {
   <A, B, C = B>(
@@ -78,7 +78,7 @@ export const match: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combine: {
   (that: Ordering): (self: Ordering) => Ordering
@@ -87,7 +87,7 @@ export const combine: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combineMany: {
   (collection: Iterable<Ordering>): (self: Ordering) => Ordering
@@ -107,6 +107,6 @@ export const combineMany: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combineAll = (collection: Iterable<Ordering>): Ordering => combineMany(0, collection)

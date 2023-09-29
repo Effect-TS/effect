@@ -6,7 +6,7 @@ parent: Modules
 
 ## MutableHashSet overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -38,7 +38,7 @@ Added in v1.0.0
 export declare const empty: <K = never>() => MutableHashSet<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -48,7 +48,7 @@ Added in v1.0.0
 export declare const fromIterable: <K = never>(keys: Iterable<K>) => MutableHashSet<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -58,7 +58,7 @@ Added in v1.0.0
 export declare const make: <Keys extends readonly unknown[]>(...keys: Keys) => MutableHashSet<Keys[number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -73,7 +73,7 @@ export declare const add: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -86,7 +86,7 @@ export declare const has: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -99,7 +99,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -109,7 +109,7 @@ Added in v1.0.0
 export declare const size: <V>(self: MutableHashSet<V>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -126,7 +126,7 @@ export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -138,4 +138,4 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

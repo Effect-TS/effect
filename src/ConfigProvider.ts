@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Config from "./Config"
 import type * as ConfigError from "./ConfigError"
@@ -12,25 +12,25 @@ import * as internal from "./internal/configProvider"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ConfigProviderTypeId: unique symbol = internal.ConfigProviderTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ConfigProviderTypeId = typeof ConfigProviderTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const FlatConfigProviderTypeId: unique symbol = internal.FlatConfigProviderTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
@@ -39,7 +39,7 @@ export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
  * A ConfigProvider is a service that provides configuration given a description
  * of the structure of that configuration.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
@@ -55,11 +55,11 @@ export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace ConfigProvider {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Proto {
@@ -71,7 +71,7 @@ export declare namespace ConfigProvider {
    * (key/value) properties. Because these providers are common, there is
    * special support for implementing them.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Flat {
@@ -88,7 +88,7 @@ export declare namespace ConfigProvider {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface FromMapConfig {
@@ -97,7 +97,7 @@ export declare namespace ConfigProvider {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface FromEnvConfig {
@@ -109,7 +109,7 @@ export declare namespace ConfigProvider {
 /**
  * The service tag for `ConfigProvider`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = internal.configProviderTag
@@ -117,7 +117,7 @@ export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = inter
 /**
  * Creates a new config provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (
@@ -130,7 +130,7 @@ export const make: (
 /**
  * Creates a new flat config provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeFlat: (options: {
@@ -149,7 +149,7 @@ export const makeFlat: (options: {
  * A config provider that loads configuration from context variables,
  * using the default System service.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEnv: (config?: ConfigProvider.FromEnvConfig) => ConfigProvider = internal.fromEnv
@@ -158,7 +158,7 @@ export const fromEnv: (config?: ConfigProvider.FromEnvConfig) => ConfigProvider 
  * Constructs a new `ConfigProvider` from a key/value (flat) provider, where
  * nesting is embedded into the string keys.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromFlat: (flat: ConfigProvider.Flat) => ConfigProvider = internal.fromFlat
@@ -167,7 +167,7 @@ export const fromFlat: (flat: ConfigProvider.Flat) => ConfigProvider = internal.
  * Constructs a ConfigProvider using a map and the specified delimiter string,
  * which determines how to split the keys in the map into path segments.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromMap: (map: Map<string, string>, config?: Partial<ConfigProvider.FromMapConfig>) => ConfigProvider =
@@ -179,7 +179,7 @@ export const fromMap: (map: Map<string, string>, config?: Partial<ConfigProvider
  * configuration properties from the default naming convention of camel case
  * to the naming convention of a config provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const constantCase: (self: ConfigProvider) => ConfigProvider = internal.constantCase
@@ -190,7 +190,7 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = internal.c
  * adapt the names of configuration properties from one naming convention to
  * another.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInputPath: {
@@ -204,7 +204,7 @@ export const mapInputPath: {
  * configuration properties from the default naming convention of camel case
  * to the naming convention of a config provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const kebabCase: (self: ConfigProvider) => ConfigProvider = internal.kebabCase
@@ -215,7 +215,7 @@ export const kebabCase: (self: ConfigProvider) => ConfigProvider = internal.keba
  * configuration properties from the default naming convention of camel case
  * to the naming convention of a config provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const lowerCase: (self: ConfigProvider) => ConfigProvider = internal.lowerCase
@@ -226,7 +226,7 @@ export const lowerCase: (self: ConfigProvider) => ConfigProvider = internal.lowe
  * aggregate separate configuration sources that are all required to load a
  * single configuration value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const nested: {
@@ -239,7 +239,7 @@ export const nested: {
  * from this one, but which will fall back to the specified alternate provider
  * if there are any issues loading the configuration from this provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const orElse: {
@@ -253,7 +253,7 @@ export const orElse: {
  * de-aggregate separate configuration sources that are all required to load a
  * single configuration value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const unnested: {
@@ -267,7 +267,7 @@ export const unnested: {
  * configuration properties from the default naming convention of camel case
  * to the naming convention of a config provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const snakeCase: (self: ConfigProvider) => ConfigProvider = internal.snakeCase
@@ -278,7 +278,7 @@ export const snakeCase: (self: ConfigProvider) => ConfigProvider = internal.snak
  * configuration properties from the default naming convention of camel case
  * to the naming convention of a config provider.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const upperCase: (self: ConfigProvider) => ConfigProvider = internal.upperCase
@@ -287,7 +287,7 @@ export const upperCase: (self: ConfigProvider) => ConfigProvider = internal.uppe
  * Returns a new config provider that transforms the config provider with the
  * specified function within the specified path.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const within: {

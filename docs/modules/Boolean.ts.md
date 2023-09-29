@@ -10,7 +10,7 @@ This module provides utility functions and type class instances for working with
 It includes functions for basic boolean operations, as well as type class instances for
 `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -61,7 +61,7 @@ assert.deepStrictEqual(and(false, true), false)
 assert.deepStrictEqual(and(false, false), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## eqv
 
@@ -84,7 +84,7 @@ assert.deepStrictEqual(eqv(false, true), false)
 assert.deepStrictEqual(eqv(false, false), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## implies
 
@@ -107,7 +107,7 @@ assert.deepStrictEqual(implies(false, true), true)
 assert.deepStrictEqual(implies(false, false), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nand
 
@@ -130,7 +130,7 @@ assert.deepStrictEqual(nand(false, true), true)
 assert.deepStrictEqual(nand(false, false), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nor
 
@@ -153,7 +153,7 @@ assert.deepStrictEqual(nor(false, true), false)
 assert.deepStrictEqual(nor(false, false), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## not
 
@@ -174,7 +174,7 @@ assert.deepStrictEqual(not(true), false)
 assert.deepStrictEqual(not(false), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## or
 
@@ -197,7 +197,7 @@ assert.deepStrictEqual(or(false, true), true)
 assert.deepStrictEqual(or(false, false), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## xor
 
@@ -220,7 +220,7 @@ assert.deepStrictEqual(xor(false, true), true)
 assert.deepStrictEqual(xor(false, false), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -243,7 +243,7 @@ assert.deepStrictEqual(isBoolean(true), true)
 assert.deepStrictEqual(isBoolean('true'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -255,7 +255,7 @@ Added in v1.0.0
 export declare const Equivalence: equivalence.Equivalence<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Order
 
@@ -265,7 +265,7 @@ Added in v1.0.0
 export declare const Order: order.Order<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # pattern matching
 
@@ -291,7 +291,7 @@ import * as B from 'effect/Boolean'
 assert.deepStrictEqual(B.match(true, { onFalse: () => "It's false!", onTrue: () => "It's true!" }), "It's true!")
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -314,7 +314,7 @@ assert.deepStrictEqual(every([true, true, true]), true)
 assert.deepStrictEqual(every([true, false, true]), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -335,4 +335,4 @@ assert.deepStrictEqual(some([true, false, true]), true)
 assert.deepStrictEqual(some([false, false, false]), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0

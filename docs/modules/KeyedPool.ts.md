@@ -6,7 +6,7 @@ parent: Modules
 
 ## KeyedPool overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -49,7 +49,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## invalidate
 
@@ -66,7 +66,7 @@ export declare const invalidate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -86,7 +86,7 @@ export declare const make: <K, R, E, A>(options: {
 }) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWith
 
@@ -106,7 +106,7 @@ export declare const makeWith: <K, R, E, A>(options: {
 }) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWithTTL
 
@@ -130,7 +130,7 @@ export declare const makeWithTTL: <K, R, E, A>(options: {
 }) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWithTTLBy
 
@@ -154,7 +154,7 @@ export declare const makeWithTTLBy: <K, R, E, A>(options: {
 }) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -184,7 +184,7 @@ export interface KeyedPool<K, E, A> extends KeyedPool.Variance<K, E, A>, Pipeabl
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -196,7 +196,7 @@ Added in v1.0.0
 export declare const KeyedPoolTypeId: typeof KeyedPoolTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## KeyedPoolTypeId (type alias)
 
@@ -206,13 +206,13 @@ Added in v1.0.0
 export type KeyedPoolTypeId = typeof KeyedPoolTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## KeyedPool (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -228,4 +228,4 @@ export interface Variance<K, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

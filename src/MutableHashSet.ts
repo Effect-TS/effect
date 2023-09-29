@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Dual from "./Function"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable"
@@ -10,13 +10,13 @@ import { pipeArguments } from "./Pipeable"
 const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
@@ -55,20 +55,20 @@ const fromHashMap = <V>(keyMap: MutableHashMap.MutableHashMap<V, boolean>): Muta
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty = <K = never>(): MutableHashSet<K> => fromHashMap(MutableHashMap.empty())
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable = <K = never>(keys: Iterable<K>): MutableHashSet<K> =>
   fromHashMap(MutableHashMap.fromIterable(Array.from(keys).map((k) => [k, true])))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make = <Keys extends ReadonlyArray<unknown>>(
@@ -76,7 +76,7 @@ export const make = <Keys extends ReadonlyArray<unknown>>(
 ): MutableHashSet<Keys[number]> => fromIterable(keys)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const add: {
@@ -88,7 +88,7 @@ export const add: {
 >(2, (self, key) => (MutableHashMap.set(self.keyMap, key, true), self))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const has: {
@@ -100,7 +100,7 @@ export const has: {
 >(2, (self, key) => MutableHashMap.has(self.keyMap, key))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const remove: {
@@ -112,7 +112,7 @@ export const remove: {
 >(2, (self, key) => (MutableHashMap.remove(self.keyMap, key), self))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const size = <V>(self: MutableHashSet<V>): number => MutableHashMap.size(self.keyMap)

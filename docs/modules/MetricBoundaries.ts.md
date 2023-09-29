@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricBoundaries overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ export declare const exponential: (options: {
 }) => MetricBoundaries
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromChunk
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export declare const fromChunk: (chunk: Chunk.Chunk<number>) => MetricBoundaries
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## linear
 
@@ -70,7 +70,7 @@ export declare const linear: (options: {
 }) => MetricBoundaries
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -85,7 +85,7 @@ export interface MetricBoundaries extends Equal.Equal, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -97,7 +97,7 @@ Added in v1.0.0
 export declare const isMetricBoundaries: (u: unknown) => u is MetricBoundaries
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -109,7 +109,7 @@ Added in v1.0.0
 export declare const MetricBoundariesTypeId: typeof MetricBoundariesTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricBoundariesTypeId (type alias)
 
@@ -119,4 +119,4 @@ Added in v1.0.0
 export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

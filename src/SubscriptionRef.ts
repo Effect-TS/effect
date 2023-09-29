@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type * as Hub from "./Hub"
@@ -11,13 +11,13 @@ import type * as Stream from "./Stream"
 import * as Synchronized from "./SynchronizedRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const SubscriptionRefTypeId: unique symbol = internal.SubscriptionRefTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
@@ -26,7 +26,7 @@ export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
  * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
  * receive the current value as well as all changes to the value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable {
@@ -44,11 +44,11 @@ export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchro
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace SubscriptionRef {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -59,13 +59,13 @@ export declare namespace SubscriptionRef {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: <A>(self: SubscriptionRef<A>) => Effect.Effect<never, never, A> = internal.get
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndSet: {
@@ -74,7 +74,7 @@ export const getAndSet: {
 } = Ref.getAndSet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdate: {
@@ -83,7 +83,7 @@ export const getAndUpdate: {
 } = Ref.getAndUpdate
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdateEffect: {
@@ -92,7 +92,7 @@ export const getAndUpdateEffect: {
 } = Synchronized.getAndUpdateEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdateSome: {
@@ -101,7 +101,7 @@ export const getAndUpdateSome: {
 } = Ref.getAndUpdateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const getAndUpdateSomeEffect: {
@@ -117,13 +117,13 @@ export const getAndUpdateSomeEffect: {
 /**
  * Creates a new `SubscriptionRef` with the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <A>(value: A) => Effect.Effect<never, never, SubscriptionRef<A>> = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modify: {
@@ -132,7 +132,7 @@ export const modify: {
 } = internal.modify
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modifyEffect: {
@@ -141,7 +141,7 @@ export const modifyEffect: {
 } = internal.modifyEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modifySome: {
@@ -157,7 +157,7 @@ export const modifySome: {
 } = Ref.modifySome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const modifySomeEffect: {
@@ -173,7 +173,7 @@ export const modifySomeEffect: {
 } = Synchronized.modifySomeEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const set: {
@@ -182,7 +182,7 @@ export const set: {
 } = internal.set
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const setAndGet: {
@@ -191,7 +191,7 @@ export const setAndGet: {
 } = Ref.setAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const update: {
@@ -200,7 +200,7 @@ export const update: {
 } = Ref.update
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateEffect: {
@@ -209,7 +209,7 @@ export const updateEffect: {
 } = Synchronized.updateEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateAndGet: {
@@ -218,7 +218,7 @@ export const updateAndGet: {
 } = Ref.updateAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateAndGetEffect: {
@@ -227,7 +227,7 @@ export const updateAndGetEffect: {
 } = Synchronized.updateAndGetEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSome: {
@@ -236,7 +236,7 @@ export const updateSome: {
 } = Ref.updateSome
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSomeEffect: {
@@ -250,7 +250,7 @@ export const updateSomeEffect: {
 } = Synchronized.updateSomeEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSomeAndGet: {
@@ -259,7 +259,7 @@ export const updateSomeAndGet: {
 } = Ref.updateSomeAndGet
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updateSomeAndGetEffect: {

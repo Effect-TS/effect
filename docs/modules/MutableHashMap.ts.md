@@ -6,7 +6,7 @@ parent: Modules
 
 ## MutableHashMap overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ Added in v1.0.0
 export declare const empty: <K = never, V = never>() => MutableHashMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -58,7 +58,7 @@ export declare const make: <Entries extends (readonly [any, any])[]>(
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -70,7 +70,7 @@ Added in v1.0.0
 export declare const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => MutableHashMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -85,7 +85,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -98,7 +98,7 @@ export declare const has: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -108,7 +108,7 @@ Added in v1.0.0
 export declare const size: <K, V>(self: MutableHashMap<K, V>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -125,7 +125,7 @@ export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeabl
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -137,7 +137,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -154,7 +154,7 @@ export declare const modify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyAt
 
@@ -170,7 +170,7 @@ export declare const modifyAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -183,7 +183,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -196,4 +196,4 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

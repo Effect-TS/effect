@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Equal from "./Equal"
 import * as internal from "./internal/Data"
@@ -7,7 +7,7 @@ import type * as Types from "./Types"
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Data<A extends Readonly<Record<string, any>> | ReadonlyArray<any>> =
   & Readonly<A>
@@ -18,17 +18,17 @@ export type Data<A extends Readonly<Record<string, any>> | ReadonlyArray<any>> =
  * datatype created using `Case` will, by default, provide an implementation
  * for a constructor, `Hash`, and `Equal`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Case extends Equal.Equal {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Case {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Constructor<A extends Case, T extends keyof A = never> {
@@ -38,33 +38,33 @@ export declare namespace Case {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const struct = <As extends Readonly<Record<string, any>>>(as: As): Data<As> =>
   Object.assign(Object.create(internal.StructProto), as)
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const unsafeStruct = <As extends Readonly<Record<string, any>>>(as: As): Data<As> =>
   Object.setPrototypeOf(as, internal.StructProto)
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<As> => unsafeArray(as)
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const array = <As extends ReadonlyArray<any>>(as: As): Data<As> => unsafeArray(as.slice(0) as unknown as As)
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<As> =>
   Object.setPrototypeOf(as, internal.ArrayProto)
@@ -76,7 +76,7 @@ export {
   /**
    * Provides a constructor for the specified `Case`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category constructors
    */
   _case as case
@@ -85,7 +85,7 @@ export {
 /**
  * Provides a tagged constructor for the specified `Case`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const tagged = <A extends Case & { _tag: string }>(
@@ -100,7 +100,7 @@ export const tagged = <A extends Case & { _tag: string }>(
 /**
  * Provides a Tagged constructor for a Case Class.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const TaggedClass = <Key extends string>(
@@ -117,7 +117,7 @@ export const TaggedClass = <Key extends string>(
 /**
  * Provides a constructor for a Case Class.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Class: new<A extends Record<string, any>>(
@@ -125,7 +125,7 @@ export const Class: new<A extends Record<string, any>>(
 ) => Data<A> = internal.Structural as any
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Structural: new<A>(
@@ -157,7 +157,7 @@ export const Structural: new<A>(
  *   }>
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type TaggedEnum<A extends Record<string, Record<string, any>>> = {
@@ -167,11 +167,11 @@ export type TaggedEnum<A extends Record<string, Record<string, any>>> = {
 }[keyof A]
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace TaggedEnum {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface WithGenerics<Count extends number> {
@@ -185,7 +185,7 @@ export declare namespace TaggedEnum {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Kind<
@@ -202,7 +202,7 @@ export declare namespace TaggedEnum {
   })["taggedEnum"]
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export type Args<
     A extends Data<{ readonly _tag: string }>,
@@ -215,7 +215,7 @@ export declare namespace TaggedEnum {
     : never
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export type Value<
     A extends Data<{ readonly _tag: string }>,
@@ -254,7 +254,7 @@ export declare namespace TaggedEnum {
  * const success = MyResult("Success")({ value: 1 })
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const taggedEnum: {
   <Z extends TaggedEnum.WithGenerics<1>>(): <

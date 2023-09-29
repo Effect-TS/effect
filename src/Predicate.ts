@@ -1,12 +1,12 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import { dual, isFunction as isFunction_ } from "./Function"
 import type { TypeLambda } from "./HKT"
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Predicate<A> {
   (a: A): boolean
@@ -14,7 +14,7 @@ export interface Predicate<A> {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface PredicateTypeLambda extends TypeLambda {
   readonly type: Predicate<this["Target"]>
@@ -22,7 +22,7 @@ export interface PredicateTypeLambda extends TypeLambda {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Refinement<A, B extends A> {
   (a: A): a is B
@@ -46,7 +46,7 @@ export interface Refinement<A, B extends A> {
  * assert.deepStrictEqual(minLength3("aaaa"), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapInput: {
   <B, A>(f: (b: B) => A): (self: Predicate<A>) => Predicate<B>
@@ -66,7 +66,7 @@ export const mapInput: {
  * assert.deepStrictEqual(isString(1), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isString = (input: unknown): input is string => typeof input === "string"
 
@@ -83,7 +83,7 @@ export const isString = (input: unknown): input is string => typeof input === "s
  * assert.deepStrictEqual(isNumber("2"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNumber = (input: unknown): input is number => typeof input === "number"
 
@@ -100,7 +100,7 @@ export const isNumber = (input: unknown): input is number => typeof input === "n
  * assert.deepStrictEqual(isBoolean("true"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isBoolean = (input: unknown): input is boolean => typeof input === "boolean"
 
@@ -117,7 +117,7 @@ export const isBoolean = (input: unknown): input is boolean => typeof input === 
  * assert.deepStrictEqual(isBigint(1), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isBigint = (input: unknown): input is bigint => typeof input === "bigint"
 
@@ -134,7 +134,7 @@ export const isBigint = (input: unknown): input is bigint => typeof input === "b
  * assert.deepStrictEqual(isSymbol("a"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isSymbol = (input: unknown): input is symbol => typeof input === "symbol"
 
@@ -151,7 +151,7 @@ export const isSymbol = (input: unknown): input is symbol => typeof input === "s
  * assert.deepStrictEqual(isFunction("function"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isFunction: (input: unknown) => input is Function = isFunction_
 
@@ -169,7 +169,7 @@ export const isFunction: (input: unknown) => input is Function = isFunction_
  * assert.deepStrictEqual(isUndefined("undefined"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isUndefined = (input: unknown): input is undefined => input === undefined
 
@@ -187,7 +187,7 @@ export const isUndefined = (input: unknown): input is undefined => input === und
  * assert.deepStrictEqual(isNotUndefined(undefined), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => input !== undefined
 
@@ -205,7 +205,7 @@ export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => i
  * assert.deepStrictEqual(isNull("null"), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNull = (input: unknown): input is null => input === null
 
@@ -223,7 +223,7 @@ export const isNull = (input: unknown): input is null => input === null
  * assert.deepStrictEqual(isNotNull(null), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNotNull = <A>(input: A): input is Exclude<A, null> => input !== null
 
@@ -241,7 +241,7 @@ export const isNotNull = <A>(input: A): input is Exclude<A, null> => input !== n
  * assert.deepStrictEqual(isNever([]), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNever: (input: unknown) => input is never = (_: unknown): _ is never => false
 
@@ -260,7 +260,7 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
  * assert.deepStrictEqual(isUnknown([]), true)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown => true
 
@@ -279,7 +279,7 @@ export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown
  * assert.deepStrictEqual(isObject(undefined), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isObject = (input: unknown): input is object =>
   (typeof input === "object" && input != null) || isFunction(input)
@@ -301,7 +301,7 @@ export const isObject = (input: unknown): input is object =>
  * assert.deepStrictEqual(isTagged("a")({ _tag: "a" }), true)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isTagged: {
   <K extends string>(tag: K): (self: unknown) => self is { _tag: K }
@@ -327,7 +327,7 @@ export const isTagged: {
  * assert.deepStrictEqual(isNullable([]), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNullable = <A>(input: A): input is Extract<A, null | undefined> => input === null || input === undefined
 
@@ -346,7 +346,7 @@ export const isNullable = <A>(input: A): input is Extract<A, null | undefined> =
  * assert.deepStrictEqual(isNotNullable(undefined), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNotNullable = <A>(input: A): input is NonNullable<A> => input !== null && input !== undefined
 
@@ -364,7 +364,7 @@ export const isNotNullable = <A>(input: A): input is NonNullable<A> => input !==
  * assert.deepStrictEqual(isError({}), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isError = (input: unknown): input is Error => input instanceof Error
 
@@ -382,7 +382,7 @@ export const isError = (input: unknown): input is Error => input instanceof Erro
  * assert.deepStrictEqual(isUint8Array({}), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isUint8Array = (input: unknown): input is Uint8Array => input instanceof Uint8Array
 
@@ -400,7 +400,7 @@ export const isUint8Array = (input: unknown): input is Uint8Array => input insta
  * assert.deepStrictEqual(isDate({}), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isDate = (input: unknown): input is Date => input instanceof Date
 
@@ -419,7 +419,7 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
  * assert.deepStrictEqual(isIterable({}), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isIterable = (input: unknown): input is Iterable<unknown> => isObject(input) && Symbol.iterator in input
 
@@ -440,7 +440,7 @@ export const isIterable = (input: unknown): input is Iterable<unknown> => isObje
  * assert.deepStrictEqual(isRecord(undefined), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isRecord = (input: unknown): input is { [x: string | symbol]: unknown } =>
   isObject(input) && !Array.isArray(input)
@@ -462,14 +462,14 @@ export const isRecord = (input: unknown): input is { [x: string | symbol]: unkno
  * assert.deepStrictEqual(isReadonlyRecord(undefined), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isReadonlyRecord: (
   input: unknown
 ) => input is { readonly [x: string | symbol]: unknown } = isRecord
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const compose: {
   <A, B extends A, C extends B>(bc: Refinement<B, C>): (ab: Refinement<A, B>) => Refinement<A, C>
@@ -482,14 +482,14 @@ export const compose: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const product = <A, B>(self: Predicate<A>, that: Predicate<B>): Predicate<readonly [A, B]> => ([a, b]) =>
   self(a) && that(b)
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const all = <A>(
   collection: Iterable<Predicate<A>>
@@ -511,7 +511,7 @@ export const all = <A>(
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const productMany = <A>(
   self: Predicate<A>,
@@ -528,14 +528,14 @@ export const productMany = <A>(
  * [Predicate<A>, Predicate<B>, ...] -> Predicate<[A, B, ...]>
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const tuple = <T extends ReadonlyArray<Predicate<any>>>(
   ...elements: T
 ): Predicate<Readonly<{ [I in keyof T]: [T[I]] extends [Predicate<infer A>] ? A : never }>> => all(elements) as any
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const struct = <R extends Record<string, Predicate<any>>>(
   fields: R
@@ -567,7 +567,7 @@ export const struct = <R extends Record<string, Predicate<any>>>(
  * assert.deepStrictEqual(isPositive(1), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
 
@@ -588,7 +588,7 @@ export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
  * assert.deepStrictEqual(nonZero(1), true)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const or: {
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
@@ -614,7 +614,7 @@ export const or: {
  * assert.deepStrictEqual(length(2)("aaa"), false)
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const and: {
   <A, C extends A>(that: Refinement<A, C>): <B extends A>(self: Refinement<A, B>) => Refinement<A, B & C>
@@ -625,7 +625,7 @@ export const and: {
 
 /**
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const xor: {
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
@@ -634,7 +634,7 @@ export const xor: {
 
 /**
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const eqv: {
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
@@ -643,7 +643,7 @@ export const eqv: {
 
 /**
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const implies: {
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
@@ -655,7 +655,7 @@ export const implies: {
 
 /**
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const nor: {
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
@@ -667,7 +667,7 @@ export const nor: {
 
 /**
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const nand: {
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
@@ -679,7 +679,7 @@ export const nand: {
 
 /**
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const every = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a: A) => {
   for (const p of collection) {
@@ -692,7 +692,7 @@ export const every = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a
 
 /**
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const some = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a) => {
   for (const p of collection) {

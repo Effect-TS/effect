@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestConfig overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -29,7 +29,7 @@ Added in v1.0.0
 export declare const TestConfig: Context.Tag<TestConfig, TestConfig>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestConfig (interface)
 
@@ -62,7 +62,7 @@ export interface TestConfig {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -77,4 +77,4 @@ export declare const make: (params: {
 }) => TestConfig
 ```
 
-Added in v1.0.0
+Added in v2.0.0

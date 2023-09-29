@@ -8,7 +8,7 @@ parent: Modules
 
 This module provides utility functions for working with tuples in TypeScript.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -52,7 +52,7 @@ export declare const getEquivalence: <T extends readonly Equivalence.Equivalence
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrder
 
@@ -69,7 +69,7 @@ export declare const getOrder: <T extends readonly order.Order<any>[]>(
 ) => order.Order<{ [I in keyof T]: [T[I]] extends [order.Order<infer A>] ? A : never }>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # concatenating
 
@@ -86,7 +86,7 @@ export declare const appendElement: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -108,7 +108,7 @@ import { tuple } from 'effect/Tuple'
 assert.deepStrictEqual(tuple(1, 'hello', true), [1, 'hello', true])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -130,7 +130,7 @@ import { getFirst } from 'effect/Tuple'
 assert.deepStrictEqual(getFirst(['hello', 42]), 'hello')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getSecond
 
@@ -150,7 +150,7 @@ import { getSecond } from 'effect/Tuple'
 assert.deepStrictEqual(getSecond(['hello', 42]), 42)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -183,7 +183,7 @@ assert.deepStrictEqual(mapBoth(['hello', 42], { onFirst: (s) => s.toUpperCase(),
 ])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapFirst
 
@@ -209,7 +209,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapSecond
 
@@ -235,7 +235,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -249,7 +249,7 @@ export interface TupleTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -271,4 +271,4 @@ import { swap } from 'effect/Tuple'
 assert.deepStrictEqual(swap(['hello', 42]), [42, 'hello'])
 ```
 
-Added in v1.0.0
+Added in v2.0.0

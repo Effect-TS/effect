@@ -6,7 +6,7 @@ parent: Modules
 
 ## ChannelUpstreamPullStrategy overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ Added in v1.0.0
 export declare const PullAfterAllEnqueued: <A>(emitSeparator: Option.Option<A>) => UpstreamPullStrategy<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## PullAfterNext
 
@@ -54,7 +54,7 @@ Added in v1.0.0
 export declare const PullAfterNext: <A>(emitSeparator: Option.Option<A>) => UpstreamPullStrategy<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -80,7 +80,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -95,7 +95,7 @@ export interface PullAfterAllEnqueued<A> extends UpstreamPullStrategy.Variance<A
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## PullAfterNext (interface)
 
@@ -108,7 +108,7 @@ export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## UpstreamPullStrategy (type alias)
 
@@ -118,7 +118,7 @@ Added in v1.0.0
 export type UpstreamPullStrategy<A> = PullAfterNext<A> | PullAfterAllEnqueued<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -133,7 +133,7 @@ Returns `true` if the specified `UpstreamPullStrategy` is a
 export declare const isPullAfterAllEnqueued: <A>(self: UpstreamPullStrategy<A>) => self is PullAfterAllEnqueued<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isPullAfterNext
 
@@ -146,7 +146,7 @@ Returns `true` if the specified `UpstreamPullStrategy` is a `PullAfterNext`,
 export declare const isPullAfterNext: <A>(self: UpstreamPullStrategy<A>) => self is PullAfterNext<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isUpstreamPullStrategy
 
@@ -159,7 +159,7 @@ otherwise.
 export declare const isUpstreamPullStrategy: (u: unknown) => u is UpstreamPullStrategy<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -171,7 +171,7 @@ Added in v1.0.0
 export declare const UpstreamPullStrategyTypeId: typeof UpstreamPullStrategyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## UpstreamPullStrategyTypeId (type alias)
 
@@ -181,13 +181,13 @@ Added in v1.0.0
 export type UpstreamPullStrategyTypeId = typeof UpstreamPullStrategyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## UpstreamPullStrategy (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -201,4 +201,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

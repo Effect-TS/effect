@@ -6,7 +6,7 @@ parent: Modules
 
 ## ScheduleInterval overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -49,7 +49,7 @@ specified start time.
 export declare const after: (startMilliseconds: number) => Interval
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## before
 
@@ -62,7 +62,7 @@ specified end time.
 export declare const before: (endMilliseconds: number) => Interval
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -74,7 +74,7 @@ An `Interval` of zero-width.
 export declare const empty: Interval
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -88,7 +88,7 @@ returned.
 export declare const make: (startMillis: number, endMillis: number) => Interval
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -103,7 +103,7 @@ interval to the end of the interval.
 export declare const size: (self: Interval) => Duration.Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -122,7 +122,7 @@ export interface Interval {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # ordering
 
@@ -140,7 +140,7 @@ export declare const intersect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -152,7 +152,7 @@ Returns `true` if the specified `Interval` is empty, `false` otherwise.
 export declare const isEmpty: (self: Interval) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmpty
 
@@ -164,7 +164,7 @@ Returns `true` if the specified `Interval` is non-empty, `false` otherwise.
 export declare const isNonEmpty: (self: Interval) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThan
 
@@ -180,7 +180,7 @@ export declare const lessThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## max
 
@@ -192,7 +192,7 @@ Returns the maximum of two `Interval`s.
 export declare const max: { (that: Interval): (self: Interval) => Interval; (self: Interval, that: Interval): Interval }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## min
 
@@ -204,7 +204,7 @@ Returns the minimum of two `Interval`s.
 export declare const min: { (that: Interval): (self: Interval) => Interval; (self: Interval, that: Interval): Interval }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -216,7 +216,7 @@ Added in v1.0.0
 export declare const IntervalTypeId: typeof IntervalTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## IntervalTypeId (type alias)
 
@@ -226,7 +226,7 @@ Added in v1.0.0
 export type IntervalTypeId = typeof IntervalTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -245,4 +245,4 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

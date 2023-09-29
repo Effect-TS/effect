@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Context from "../Context"
 import type * as Exit from "../Exit"

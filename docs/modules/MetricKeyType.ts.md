@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricKeyType overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -64,7 +64,7 @@ Added in v1.0.0
 export declare const counter: MetricKeyType.Counter
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## frequency
 
@@ -74,7 +74,7 @@ Added in v1.0.0
 export declare const frequency: MetricKeyType.Frequency
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## gauge
 
@@ -84,7 +84,7 @@ Added in v1.0.0
 export declare const gauge: MetricKeyType.Gauge
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## histogram
 
@@ -94,7 +94,7 @@ Added in v1.0.0
 export declare const histogram: (boundaries: MetricBoundaries.MetricBoundaries) => MetricKeyType.Histogram
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summary
 
@@ -109,7 +109,7 @@ export declare const summary: (options: {
 }) => MetricKeyType.Summary
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # modelz
 
@@ -121,7 +121,7 @@ Added in v1.0.0
 export interface MetricKeyType<In, Out> extends MetricKeyType.Variance<In, Out>, Equal.Equal, Pipeable {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -133,7 +133,7 @@ Added in v1.0.0
 export declare const isCounterKey: (u: unknown) => u is MetricKeyType.Counter
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFrequencyKey
 
@@ -143,7 +143,7 @@ Added in v1.0.0
 export declare const isFrequencyKey: (u: unknown) => u is MetricKeyType.Frequency
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isGaugeKey
 
@@ -153,7 +153,7 @@ Added in v1.0.0
 export declare const isGaugeKey: (u: unknown) => u is MetricKeyType.Gauge
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isHistogramKey
 
@@ -163,7 +163,7 @@ Added in v1.0.0
 export declare const isHistogramKey: (u: unknown) => u is MetricKeyType.Histogram
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isMetricKeyType
 
@@ -173,7 +173,7 @@ Added in v1.0.0
 export declare const isMetricKeyType: (u: unknown) => u is MetricKeyType<unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSummaryKey
 
@@ -183,7 +183,7 @@ Added in v1.0.0
 export declare const isSummaryKey: (u: unknown) => u is MetricKeyType.Summary
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -195,7 +195,7 @@ Added in v1.0.0
 export declare const CounterKeyTypeTypeId: typeof CounterKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## CounterKeyTypeTypeId (type alias)
 
@@ -205,7 +205,7 @@ Added in v1.0.0
 export type CounterKeyTypeTypeId = typeof CounterKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FrequencyKeyTypeTypeId
 
@@ -215,7 +215,7 @@ Added in v1.0.0
 export declare const FrequencyKeyTypeTypeId: typeof FrequencyKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FrequencyKeyTypeTypeId (type alias)
 
@@ -225,7 +225,7 @@ Added in v1.0.0
 export type FrequencyKeyTypeTypeId = typeof FrequencyKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## GaugeKeyTypeTypeId
 
@@ -235,7 +235,7 @@ Added in v1.0.0
 export declare const GaugeKeyTypeTypeId: typeof GaugeKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## GaugeKeyTypeTypeId (type alias)
 
@@ -245,7 +245,7 @@ Added in v1.0.0
 export type GaugeKeyTypeTypeId = typeof GaugeKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## HistogramKeyTypeTypeId
 
@@ -255,7 +255,7 @@ Added in v1.0.0
 export declare const HistogramKeyTypeTypeId: typeof HistogramKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## HistogramKeyTypeTypeId (type alias)
 
@@ -265,7 +265,7 @@ Added in v1.0.0
 export type HistogramKeyTypeTypeId = typeof HistogramKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricKeyTypeTypeId
 
@@ -275,7 +275,7 @@ Added in v1.0.0
 export declare const MetricKeyTypeTypeId: typeof MetricKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricKeyTypeTypeId (type alias)
 
@@ -285,7 +285,7 @@ Added in v1.0.0
 export type MetricKeyTypeTypeId = typeof MetricKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SummaryKeyTypeTypeId
 
@@ -295,7 +295,7 @@ Added in v1.0.0
 export declare const SummaryKeyTypeTypeId: typeof SummaryKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SummaryKeyTypeTypeId (type alias)
 
@@ -305,13 +305,13 @@ Added in v1.0.0
 export type SummaryKeyTypeTypeId = typeof SummaryKeyTypeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MetricKeyType (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -326,7 +326,7 @@ export interface Variance<In, Out> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Counter (type alias)
 
@@ -338,7 +338,7 @@ export type Counter = MetricKeyType<number, MetricState.MetricState.Counter> & {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Frequency (type alias)
 
@@ -350,7 +350,7 @@ export type Frequency = MetricKeyType<string, MetricState.MetricState.Frequency>
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Gauge (type alias)
 
@@ -362,7 +362,7 @@ export type Gauge = MetricKeyType<number, MetricState.MetricState.Gauge> & {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Histogram (type alias)
 
@@ -375,7 +375,7 @@ export type Histogram = MetricKeyType<number, MetricState.MetricState.Histogram>
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### InType (type alias)
 
@@ -393,7 +393,7 @@ export type InType<Type extends MetricKeyType<any, any>> = [Type] extends [
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### OutType (type alias)
 
@@ -411,7 +411,7 @@ export type OutType<Type extends MetricKeyType<any, any>> = [Type] extends [
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Summary (type alias)
 
@@ -427,7 +427,7 @@ export type Summary = MetricKeyType<readonly [number, number], MetricState.Metri
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Untyped (type alias)
 
@@ -437,4 +437,4 @@ Added in v1.0.0
 export type Untyped = MetricKeyType<any, any>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

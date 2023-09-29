@@ -6,7 +6,7 @@ parent: Modules
 
 ## ChannelMergeStrategy overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ Added in v1.0.0
 export declare const BackPressure: (_: void) => MergeStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## BufferSliding
 
@@ -54,7 +54,7 @@ Added in v1.0.0
 export declare const BufferSliding: (_: void) => MergeStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -71,7 +71,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -85,7 +85,7 @@ export interface BackPressure extends MergeStrategy.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## BufferSliding (interface)
 
@@ -97,7 +97,7 @@ export interface BufferSliding extends MergeStrategy.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeStrategy (type alias)
 
@@ -107,7 +107,7 @@ Added in v1.0.0
 export type MergeStrategy = BackPressure | BufferSliding
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -122,7 +122,7 @@ otherwise.
 export declare const isBackPressure: (self: MergeStrategy) => self is BackPressure
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isBufferSliding
 
@@ -135,7 +135,7 @@ otherwise.
 export declare const isBufferSliding: (self: MergeStrategy) => self is BufferSliding
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isMergeStrategy
 
@@ -148,7 +148,7 @@ otherwise.
 export declare const isMergeStrategy: (u: unknown) => u is MergeStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -160,7 +160,7 @@ Added in v1.0.0
 export declare const MergeStrategyTypeId: typeof MergeStrategyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeStrategyTypeId (type alias)
 
@@ -170,13 +170,13 @@ Added in v1.0.0
 export type MergeStrategyTypeId = typeof MergeStrategyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MergeStrategy (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -188,4 +188,4 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

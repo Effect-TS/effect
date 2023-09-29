@@ -6,7 +6,7 @@ parent: Modules
 
 ## GlobalValue overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -27,4 +27,4 @@ Added in v1.0.0
 export declare const globalValue: <A>(id: unknown, compute: () => A) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0

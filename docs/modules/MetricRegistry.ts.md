@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricRegistry overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -32,7 +32,7 @@ Added in v1.0.0
 export declare const make: (_: void) => MetricRegistry
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -58,7 +58,7 @@ export interface MetricRegistry {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -70,7 +70,7 @@ Added in v1.0.0
 export declare const MetricRegistryTypeId: typeof MetricRegistryTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricRegistryTypeId (type alias)
 
@@ -80,4 +80,4 @@ Added in v1.0.0
 export type MetricRegistryTypeId = typeof MetricRegistryTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

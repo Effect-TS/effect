@@ -6,7 +6,7 @@ parent: Modules
 
 ## ChannelUpstreamPullRequest overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ Added in v1.0.0
 export declare const NoUpstream: (activeDownstreamCount: number) => UpstreamPullRequest<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Pulled
 
@@ -54,7 +54,7 @@ Added in v1.0.0
 export declare const Pulled: <A>(value: A) => UpstreamPullRequest<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -77,7 +77,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -92,7 +92,7 @@ export interface NoUpstream extends UpstreamPullRequest.Variance<never> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Pulled (interface)
 
@@ -105,7 +105,7 @@ export interface Pulled<A> extends UpstreamPullRequest.Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## UpstreamPullRequest (type alias)
 
@@ -115,7 +115,7 @@ Added in v1.0.0
 export type UpstreamPullRequest<A> = Pulled<A> | NoUpstream
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -130,7 +130,7 @@ Returns `true` if the specified `UpstreamPullRequest` is a `NoUpstream`,
 export declare const isNoUpstream: <A>(self: UpstreamPullRequest<A>) => self is NoUpstream
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isPulled
 
@@ -143,7 +143,7 @@ otherwise.
 export declare const isPulled: <A>(self: UpstreamPullRequest<A>) => self is Pulled<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isUpstreamPullRequest
 
@@ -156,7 +156,7 @@ otherwise.
 export declare const isUpstreamPullRequest: (u: unknown) => u is UpstreamPullRequest<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -168,7 +168,7 @@ Added in v1.0.0
 export declare const UpstreamPullRequestTypeId: typeof UpstreamPullRequestTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## UpstreamPullRequestTypeId (type alias)
 
@@ -178,13 +178,13 @@ Added in v1.0.0
 export type UpstreamPullRequestTypeId = typeof UpstreamPullRequestTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## UpstreamPullRequest (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -198,4 +198,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

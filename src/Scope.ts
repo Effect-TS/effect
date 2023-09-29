@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type * as Context from "./Context"
@@ -11,31 +11,31 @@ import * as fiberRuntime from "./internal/fiberRuntime"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ScopeTypeId: unique symbol = core.ScopeTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ScopeTypeId = typeof ScopeTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const CloseableScopeTypeId: unique symbol = core.CloseableScopeTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type CloseableScopeTypeId = typeof CloseableScopeTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Scope extends Pipeable {
@@ -52,7 +52,7 @@ export interface Scope extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface CloseableScope extends Scope, Pipeable {
@@ -65,22 +65,22 @@ export interface CloseableScope extends Scope, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const Scope: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Scope {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category model
    */
   export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category model
    */
   export type Closeable = CloseableScope
@@ -90,7 +90,7 @@ export declare namespace Scope {
  * Adds a finalizer to this scope. The finalizer is guaranteed to be run when
  * the scope is closed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const addFinalizer: (
@@ -102,7 +102,7 @@ export const addFinalizer: (
  * A simplified version of `addFinalizerWith` when the `finalizer` does not
  * depend on the `Exit` value that the scope is closed with.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<never, never, void> =
@@ -112,7 +112,7 @@ export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effe
  * Closes a scope with the specified exit value, running all finalizers that
  * have been added to the scope.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void> =
@@ -124,7 +124,7 @@ export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) =>
  * workflow completes execution. This allows extending a scoped value into a
  * larger scope.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const extend: {
@@ -136,7 +136,7 @@ export const extend: {
  * Forks a new scope that is a child of this scope. The child scope will
  * automatically be closed when this scope is closed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const fork: (
@@ -150,7 +150,7 @@ export const fork: (
  * soon as the workflow completes execution, whether by success, failure, or
  * interruption.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const use: {
@@ -163,7 +163,7 @@ export const use: {
  *
  * If an ExecutionStrategy is not provided `sequential` will be used.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (

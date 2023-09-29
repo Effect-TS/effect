@@ -6,7 +6,7 @@ parent: Modules
 
 ## Take overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -59,7 +59,7 @@ Creates a `Take` with the specified chunk.
 export declare const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -71,7 +71,7 @@ Creates a failing `Take` with the specified defect.
 export declare const die: (defect: unknown) => Take<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieMessage
 
@@ -83,7 +83,7 @@ Creates a failing `Take` with the specified error message.
 export declare const dieMessage: (message: string) => Take<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## end
 
@@ -95,7 +95,7 @@ Represents the end-of-stream marker.
 export declare const end: Take<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -107,7 +107,7 @@ Creates a failing `Take` with the specified error.
 export declare const fail: <E>(error: E) => Take<E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -119,7 +119,7 @@ Creates a failing `Take` with the specified cause.
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEffect
 
@@ -133,7 +133,7 @@ the `Take<E, A>`. Error from stream when pulling is converted to
 export declare const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Take<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromExit
 
@@ -145,7 +145,7 @@ Creates a `Take` from an `Exit`.
 export declare const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromPull
 
@@ -161,7 +161,7 @@ export declare const fromPull: <R, E, A>(
 ) => Effect.Effect<R, never, Take<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -173,7 +173,7 @@ Constructs a `Take`.
 export declare const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## of
 
@@ -185,7 +185,7 @@ Creates a `Take` with a single value chunk.
 export declare const of: <A>(value: A) => Take<never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -199,7 +199,7 @@ Transforms a `Take<E, A>` to an `Effect<never, E, A>`.
 export declare const done: <E, A>(self: Take<E, A>) => Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## match
 
@@ -226,7 +226,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchEffect
 
@@ -255,7 +255,7 @@ export declare const matchEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -269,7 +269,7 @@ Checks if this `take` is done (`Take.end`).
 export declare const isDone: <E, A>(self: Take<E, A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFailure
 
@@ -281,7 +281,7 @@ Checks if this `take` is a failure.
 export declare const isFailure: <E, A>(self: Take<E, A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSuccess
 
@@ -293,7 +293,7 @@ Checks if this `take` is a success.
 export declare const isSuccess: <E, A>(self: Take<E, A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -310,7 +310,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -329,7 +329,7 @@ export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -352,7 +352,7 @@ export declare const tap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -364,7 +364,7 @@ Added in v1.0.0
 export declare const TakeTypeId: typeof TakeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TakeTypeId (type alias)
 
@@ -374,13 +374,13 @@ Added in v1.0.0
 export type TakeTypeId = typeof TakeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Take (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -395,4 +395,4 @@ export interface Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

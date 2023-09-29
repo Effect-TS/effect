@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type * as Effect from "./Effect"
@@ -23,7 +23,7 @@ import * as internal from "./internal/channel/singleProducerAsyncInput"
  *   - Trying to publish another emit/error/done after an error/done have
  *     already been published results in an interruption.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SingleProducerAsyncInput<Err, Elem, Done>
@@ -36,7 +36,7 @@ export interface SingleProducerAsyncInput<Err, Elem, Done>
 /**
  * Producer-side view of `SingleProducerAsyncInput` for variance purposes.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface AsyncInputProducer<Err, Elem, Done> {
@@ -49,7 +49,7 @@ export interface AsyncInputProducer<Err, Elem, Done> {
 /**
  * Consumer-side view of `SingleProducerAsyncInput` for variance purposes.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface AsyncInputConsumer<Err, Elem, Done> {
@@ -61,7 +61,7 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Err, Elem, Done>() => Effect.Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> =

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as HashSet from "./HashSet"
 import * as internal from "./internal/metric/registry"
@@ -9,19 +9,19 @@ import type * as MetricKeyType from "./MetricKeyType"
 import type * as MetricPair from "./MetricPair"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MetricRegistryTypeId: unique symbol = internal.MetricRegistryTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MetricRegistryTypeId = typeof MetricRegistryTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MetricRegistry {
@@ -41,7 +41,7 @@ export interface MetricRegistry {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (_: void) => MetricRegistry = internal.make

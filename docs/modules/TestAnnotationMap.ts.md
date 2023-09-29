@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestAnnotationMap overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ export interface TestAnnotationMap {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestAnnotationMapTypeId
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export declare const TestAnnotationMapTypeId: typeof TestAnnotationMapTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestAnnotationMapTypeId (type alias)
 
@@ -63,7 +63,7 @@ Added in v1.0.0
 export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## annotate
 
@@ -79,7 +79,7 @@ export declare const annotate: (<A>(
   (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combine
 
@@ -90,7 +90,7 @@ export declare const combine: ((that: TestAnnotationMap) => (self: TestAnnotatio
   ((self: TestAnnotationMap, that: TestAnnotationMap) => TestAnnotationMap)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -100,7 +100,7 @@ Added in v1.0.0
 export declare const empty: (_: void) => TestAnnotationMap
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -114,7 +114,7 @@ export declare const get: (<A>(key: TestAnnotation.TestAnnotation<A>) => (self: 
   (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => A)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isTestAnnotationMap
 
@@ -124,7 +124,7 @@ Added in v1.0.0
 export declare const isTestAnnotationMap: (u: unknown) => u is TestAnnotationMap
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -134,7 +134,7 @@ Added in v1.0.0
 export declare const make: (map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>) => TestAnnotationMap
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## overwrite
 
@@ -148,7 +148,7 @@ export declare const overwrite: (<A>(
   (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -162,4 +162,4 @@ export declare const update: (<A>(
   (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap)
 ```
 
-Added in v1.0.0
+Added in v2.0.0

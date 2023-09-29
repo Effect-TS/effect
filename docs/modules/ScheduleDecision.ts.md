@@ -6,7 +6,7 @@ parent: Modules
 
 ## ScheduleDecision overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -36,7 +36,7 @@ Added in v1.0.0
 export declare const continue: (intervals: Intervals.Intervals) => ScheduleDecision
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## continueWith
 
@@ -46,7 +46,7 @@ Added in v1.0.0
 export declare const continueWith: (interval: Interval.Interval) => ScheduleDecision
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## done
 
@@ -56,7 +56,7 @@ Added in v1.0.0
 export declare const done: ScheduleDecision
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -71,7 +71,7 @@ export interface Continue {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Done (interface)
 
@@ -83,7 +83,7 @@ export interface Done {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScheduleDecision (type alias)
 
@@ -93,7 +93,7 @@ Added in v1.0.0
 export type ScheduleDecision = Continue | Done
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -105,7 +105,7 @@ Added in v1.0.0
 export declare const isContinue: (self: ScheduleDecision) => self is Continue
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isDone
 
@@ -115,4 +115,4 @@ Added in v1.0.0
 export declare const isDone: (self: ScheduleDecision) => self is Done
 ```
 
-Added in v1.0.0
+Added in v2.0.0

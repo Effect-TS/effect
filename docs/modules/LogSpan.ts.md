@@ -6,7 +6,7 @@ parent: Modules
 
 ## LogSpan overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -31,7 +31,7 @@ Added in v1.0.0
 export declare const make: (label: string, startTime: number) => LogSpan
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -43,7 +43,7 @@ Added in v1.0.0
 export declare const render: (now: number) => (self: LogSpan) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -58,4 +58,4 @@ export interface LogSpan {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -6,7 +6,7 @@ parent: Modules
 
 ## Scope overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -54,7 +54,7 @@ export declare const make: (
 ) => Effect.Effect<never, never, CloseableScope>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -66,7 +66,7 @@ Added in v1.0.0
 export declare const Scope: Context.Tag<Scope, Scope>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -84,7 +84,7 @@ export declare const close: (
 ) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## use
 
@@ -102,7 +102,7 @@ export declare const use: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -121,7 +121,7 @@ export interface CloseableScope extends Scope, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Scope (interface)
 
@@ -142,7 +142,7 @@ export interface Scope extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -154,7 +154,7 @@ Added in v1.0.0
 export declare const CloseableScopeTypeId: typeof CloseableScopeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## CloseableScopeTypeId (type alias)
 
@@ -164,7 +164,7 @@ Added in v1.0.0
 export type CloseableScopeTypeId = typeof CloseableScopeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScopeTypeId
 
@@ -174,7 +174,7 @@ Added in v1.0.0
 export declare const ScopeTypeId: typeof ScopeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScopeTypeId (type alias)
 
@@ -184,13 +184,13 @@ Added in v1.0.0
 export type ScopeTypeId = typeof ScopeTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Scope (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Closeable (type alias)
 
@@ -200,7 +200,7 @@ Added in v1.0.0
 export type Closeable = CloseableScope
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Finalizer (type alias)
 
@@ -210,7 +210,7 @@ Added in v1.0.0
 export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## addFinalizer
 
@@ -226,7 +226,7 @@ export declare const addFinalizer: (
 ) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## addFinalizerExit
 
@@ -239,7 +239,7 @@ depend on the `Exit` value that the scope is closed with.
 export declare const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## extend
 
@@ -257,7 +257,7 @@ export declare const extend: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fork
 
@@ -273,4 +273,4 @@ export declare const fork: (
 ) => Effect.Effect<never, never, CloseableScope>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

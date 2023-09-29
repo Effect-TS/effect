@@ -6,7 +6,7 @@ parent: Modules
 
 ## LogLevel overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -57,7 +57,7 @@ Added in v1.0.0
 export declare const All: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Debug
 
@@ -67,7 +67,7 @@ Added in v1.0.0
 export declare const Debug: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Error
 
@@ -77,7 +77,7 @@ Added in v1.0.0
 export declare const Error: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Fatal
 
@@ -87,7 +87,7 @@ Added in v1.0.0
 export declare const Fatal: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Info
 
@@ -97,7 +97,7 @@ Added in v1.0.0
 export declare const Info: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## None
 
@@ -107,7 +107,7 @@ Added in v1.0.0
 export declare const None: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Trace
 
@@ -117,7 +117,7 @@ Added in v1.0.0
 export declare const Trace: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Warning
 
@@ -127,7 +127,7 @@ Added in v1.0.0
 export declare const Warning: LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## allLevels
 
@@ -137,7 +137,7 @@ Added in v1.0.0
 export declare const allLevels: readonly LogLevel[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -149,7 +149,7 @@ Added in v1.0.0
 export declare const fromLiteral: (_: Literal) => LogLevel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -161,7 +161,7 @@ Added in v1.0.0
 export declare const Order: order.Order<LogLevel>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -178,7 +178,7 @@ export interface All extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Debug (interface)
 
@@ -193,7 +193,7 @@ export interface Debug extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Error (interface)
 
@@ -208,7 +208,7 @@ export interface Error extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Fatal (interface)
 
@@ -223,7 +223,7 @@ export interface Fatal extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Info (interface)
 
@@ -238,7 +238,7 @@ export interface Info extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Literal (type alias)
 
@@ -248,7 +248,7 @@ Added in v1.0.0
 export type Literal = LogLevel['_tag']
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## LogLevel (type alias)
 
@@ -263,7 +263,7 @@ verbosity of log output.
 export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## None (interface)
 
@@ -278,7 +278,7 @@ export interface None extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Trace (interface)
 
@@ -293,7 +293,7 @@ export interface Trace extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Warning (interface)
 
@@ -308,7 +308,7 @@ export interface Warning extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # ordering
 
@@ -323,7 +323,7 @@ export declare const greaterThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanEqual
 
@@ -336,7 +336,7 @@ export declare const greaterThanEqual: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThan
 
@@ -349,7 +349,7 @@ export declare const lessThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanEqual
 
@@ -362,7 +362,7 @@ export declare const lessThanEqual: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -380,4 +380,4 @@ export declare const locally: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

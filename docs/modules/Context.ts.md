@@ -12,7 +12,7 @@ manage dependencies in a type-safe way. The `Context` data structure is essentia
 of related services that can be passed around as a single unit. This module provides functions to create, modify, and
 query the contents of a `Context`, as well as a number of utility types for working with tags and services.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -78,7 +78,7 @@ assert.strictEqual(Context.Tag() === Context.Tag(), false)
 assert.strictEqual(Context.Tag('PORT') === Context.Tag('PORT'), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -98,7 +98,7 @@ import * as Context from 'effect/Context'
 assert.strictEqual(Context.isContext(Context.empty()), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -122,7 +122,7 @@ const Services = Context.make(Port, { PORT: 8080 })
 assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMake
 
@@ -132,7 +132,7 @@ Added in v1.0.0
 export declare const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Context<Services>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -163,7 +163,7 @@ const Services = pipe(Context.make(Port, { PORT: 8080 }), Context.add(Timeout, {
 assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOption
 
@@ -194,7 +194,7 @@ assert.deepStrictEqual(Context.getOption(Services, Port), O.some({ PORT: 8080 })
 assert.deepStrictEqual(Context.getOption(Services, Timeout), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -216,7 +216,7 @@ import * as Context from 'effect/Context'
 assert.strictEqual(Context.isContext(Context.empty()), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isTag
 
@@ -236,7 +236,7 @@ import * as Context from 'effect/Context'
 assert.strictEqual(Context.isTag(Context.Tag()), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -253,7 +253,7 @@ export interface Context<Services> extends Equal, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Tag (interface)
 
@@ -277,7 +277,7 @@ export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TagUnify (interface)
 
@@ -289,7 +289,7 @@ export interface TagUnify<A extends { [Unify.typeSymbol]?: any }> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TagUnifyBlacklist (interface)
 
@@ -299,7 +299,7 @@ Added in v1.0.0
 export interface TagUnifyBlacklist {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ValidTagsById (type alias)
 
@@ -309,7 +309,7 @@ Added in v1.0.0
 export type ValidTagsById<R> = R extends infer S ? Tag<S, any> : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -321,7 +321,7 @@ Added in v1.0.0
 export type TagTypeId = typeof TagTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeId (type alias)
 
@@ -331,7 +331,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -365,13 +365,13 @@ assert.deepStrictEqual(Context.unsafeGet(Services, Port), { PORT: 8080 })
 assert.throws(() => Context.unsafeGet(Services, Timeout))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Tag (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Identifier (type alias)
 
@@ -381,7 +381,7 @@ Added in v1.0.0
 export type Identifier<T extends Tag<any, any>> = T extends Tag<infer A, any> ? A : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Service (type alias)
 
@@ -391,7 +391,7 @@ Added in v1.0.0
 export type Service<T extends Tag<any, any>> = T extends Tag<any, infer A> ? A : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## add
 
@@ -427,7 +427,7 @@ assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
 assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## merge
 
@@ -459,7 +459,7 @@ assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
 assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## omit
 
@@ -471,7 +471,7 @@ export declare const omit: <Services, S extends ValidTagsById<Services>[]>(
 ) => (self: Context<Services>) => Context<Exclude<Services, { [k in keyof S]: Tag.Identifier<S[k]> }[keyof S]>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pick
 
@@ -503,4 +503,4 @@ assert.deepStrictEqual(Context.getOption(Services, Port), O.some({ PORT: 8080 })
 assert.deepStrictEqual(Context.getOption(Services, Timeout), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0

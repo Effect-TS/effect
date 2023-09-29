@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Equal from "./Equal"
 import type * as equivalence from "./Equivalence"
@@ -19,13 +19,13 @@ const bigint1e3 = BigInt(1_000)
 const bigint1e9 = BigInt(1_000_000_000)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Duration extends Equal.Equal, Pipeable, Inspectable {
@@ -33,7 +33,7 @@ export interface Duration extends Equal.Equal, Pipeable, Inspectable {
   readonly value: DurationValue
 }
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type DurationValue =
@@ -42,7 +42,7 @@ export type DurationValue =
   | { _tag: "Infinity" }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type Unit =
@@ -56,7 +56,7 @@ export type Unit =
   | "weeks"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type DurationInput =
@@ -68,7 +68,7 @@ export type DurationInput =
 const DURATION_REGEX = /^(-?\d+(?:\.\d+)?)\s+(nanos|micros|millis|seconds|minutes|hours|days|weeks)$/
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const decode = (input: DurationInput): Duration => {
   if (isDuration(input)) {
@@ -159,73 +159,73 @@ const make = (input: number | bigint): Duration => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isDuration = (u: unknown): u is Duration => typeof u === "object" && u !== null && TypeId in u
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const zero: Duration = make(0)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const infinity: Duration = make(Infinity)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const nanos = (nanos: bigint): Duration => make(nanos)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const micros = (micros: bigint): Duration => make(micros * bigint1e3)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const millis = (millis: number): Duration => make(millis)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const seconds = (seconds: number): Duration => make(seconds * 1000)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const minutes = (minutes: number): Duration => make(minutes * 60_000)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const hours = (hours: number): Duration => make(hours * 3_600_000)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const days = (days: number): Duration => make(days * 86_400_000)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const toMillis = (self: DurationInput): number => {
@@ -245,7 +245,7 @@ export const toMillis = (self: DurationInput): number => {
  *
  * If the duration is infinite, returns `Option.none()`
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const toNanos = (self: DurationInput): Option.Option<bigint> => {
@@ -265,7 +265,7 @@ export const toNanos = (self: DurationInput): Option.Option<bigint> => {
  *
  * If the duration is infinite, it throws an error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const unsafeToNanos = (self: DurationInput): bigint => {
@@ -281,7 +281,7 @@ export const unsafeToNanos = (self: DurationInput): bigint => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const toHrTime = (self: DurationInput): readonly [seconds: number, nanos: number] => {
@@ -303,7 +303,7 @@ export const toHrTime = (self: DurationInput): readonly [seconds: number, nanos:
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category pattern matching
  */
 export const match: {
@@ -330,7 +330,7 @@ export const match: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category pattern matching
  */
 export const matchWith: {
@@ -382,7 +382,7 @@ export const matchWith: {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Order: order.Order<Duration> = order.make((self, that) =>
   matchWith(self, that, {
@@ -395,7 +395,7 @@ export const Order: order.Order<Duration> = order.make((self, that) =>
  * Checks if a `Duration` is between a `minimum` and `maximum` value.
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const between: {
   (minimum: DurationInput, maximum: DurationInput): (self: DurationInput) => boolean
@@ -404,7 +404,7 @@ export const between: {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Equivalence: equivalence.Equivalence<Duration> = (self, that) =>
   matchWith(self, that, {
@@ -415,7 +415,7 @@ export const Equivalence: equivalence.Equivalence<Duration> = (self, that) =>
 const _min = order.min(Order)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const min: {
   (that: DurationInput): (self: DurationInput) => Duration
@@ -425,7 +425,7 @@ export const min: {
 const _max = order.max(Order)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const max: {
   (that: DurationInput): (self: DurationInput) => Duration
@@ -435,7 +435,7 @@ export const max: {
 const _clamp = order.clamp(Order)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const clamp: {
   (minimum: DurationInput, maximum: DurationInput): (self: DurationInput) => Duration
@@ -447,7 +447,7 @@ export const clamp: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category math
  */
 export const times: {
@@ -463,7 +463,7 @@ export const times: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category math
  */
 export const sum: {
@@ -479,7 +479,7 @@ export const sum: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category predicates
  */
 export const lessThan: {
@@ -495,7 +495,7 @@ export const lessThan: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category predicates
  */
 export const lessThanOrEqualTo: {
@@ -511,7 +511,7 @@ export const lessThanOrEqualTo: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category predicates
  */
 export const greaterThan: {
@@ -527,7 +527,7 @@ export const greaterThan: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category predicates
  */
 export const greaterThanOrEqualTo: {
@@ -543,7 +543,7 @@ export const greaterThanOrEqualTo: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category predicates
  */
 export const equals: {

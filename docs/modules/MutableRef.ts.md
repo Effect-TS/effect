@@ -6,7 +6,7 @@ parent: Modules
 
 ## MutableRef overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -49,7 +49,7 @@ Added in v1.0.0
 export declare const toggle: (self: MutableRef<boolean>) => MutableRef<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -61,7 +61,7 @@ Added in v1.0.0
 export declare const make: <T>(value: T) => MutableRef<T>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # general
 
@@ -76,7 +76,7 @@ export declare const compareAndSet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -86,7 +86,7 @@ Added in v1.0.0
 export declare const get: <T>(self: MutableRef<T>) => T
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndSet
 
@@ -96,7 +96,7 @@ Added in v1.0.0
 export declare const getAndSet: { <T>(value: T): (self: MutableRef<T>) => T; <T>(self: MutableRef<T>, value: T): T }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdate
 
@@ -109,7 +109,7 @@ export declare const getAndUpdate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -122,7 +122,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setAndGet
 
@@ -132,7 +132,7 @@ Added in v1.0.0
 export declare const setAndGet: { <T>(value: T): (self: MutableRef<T>) => T; <T>(self: MutableRef<T>, value: T): T }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -145,7 +145,7 @@ export declare const update: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateAndGet
 
@@ -158,7 +158,7 @@ export declare const updateAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -175,7 +175,7 @@ export interface MutableRef<T> extends Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # numeric
 
@@ -187,7 +187,7 @@ Added in v1.0.0
 export declare const decrement: (self: MutableRef<number>) => MutableRef<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## decrementAndGet
 
@@ -197,7 +197,7 @@ Added in v1.0.0
 export declare const decrementAndGet: (self: MutableRef<number>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndDecrement
 
@@ -207,7 +207,7 @@ Added in v1.0.0
 export declare const getAndDecrement: (self: MutableRef<number>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndIncrement
 
@@ -217,7 +217,7 @@ Added in v1.0.0
 export declare const getAndIncrement: (self: MutableRef<number>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## increment
 
@@ -227,7 +227,7 @@ Added in v1.0.0
 export declare const increment: (self: MutableRef<number>) => MutableRef<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## incrementAndGet
 
@@ -237,7 +237,7 @@ Added in v1.0.0
 export declare const incrementAndGet: (self: MutableRef<number>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -249,4 +249,4 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

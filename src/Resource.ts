@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type * as Exit from "./Exit"
@@ -9,13 +9,13 @@ import type * as Scope from "./Scope"
 import type * as ScopedRef from "./ScopedRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ResourceTypeId: unique symbol = internal.ResourceTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ResourceTypeId = typeof ResourceTypeId
@@ -24,7 +24,7 @@ export type ResourceTypeId = typeof ResourceTypeId
  * A `Resource` is a possibly resourceful value that is loaded into memory, and
  * which can be refreshed either manually or automatically.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Resource<E, A> extends Resource.Variance<E, A> {
@@ -35,11 +35,11 @@ export interface Resource<E, A> extends Resource.Variance<E, A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Resource {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<E, A> {
@@ -57,7 +57,7 @@ export declare namespace Resource {
  * retry policies to the acquisition effect before passing it to this
  * constructor.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const auto: <R, E, A, R2, Out>(
@@ -68,7 +68,7 @@ export const auto: <R, E, A, R2, Out>(
 /**
  * Retrieves the current value stored in the cache.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = internal.get
@@ -80,7 +80,7 @@ export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = i
  * retry policies to the acquisition effect before passing it to this
  * constructor.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const manual: <R, E, A>(
@@ -91,7 +91,7 @@ export const manual: <R, E, A>(
  * Refreshes the cache. This method will not return until either the refresh
  * is successful, or the refresh operation fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, void> = internal.refresh

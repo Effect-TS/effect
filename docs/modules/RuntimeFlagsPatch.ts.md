@@ -6,7 +6,7 @@ parent: Modules
 
 ## RuntimeFlagsPatch overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -51,7 +51,7 @@ Creates a `RuntimeFlagsPatch` describing disabling the provided `RuntimeFlag`.
 export declare const disable: (flag: RuntimeFlags.RuntimeFlag) => RuntimeFlagsPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -63,7 +63,7 @@ The empty `RuntimeFlagsPatch`.
 export declare const empty: RuntimeFlagsPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enable
 
@@ -75,7 +75,7 @@ Creates a `RuntimeFlagsPatch` describing enabling the provided `RuntimeFlag`.
 export declare const enable: (flag: RuntimeFlags.RuntimeFlag) => RuntimeFlagsPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -85,7 +85,7 @@ Added in v1.0.0
 export declare const make: (active: number, enabled: number) => RuntimeFlagsPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -100,7 +100,7 @@ disabled by the specified `RuntimeFlagsPatch`.
 export declare const disabledSet: (self: RuntimeFlagsPatch) => ReadonlySet<RuntimeFlags.RuntimeFlag>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## enabledSet
 
@@ -113,7 +113,7 @@ enabled by the specified `RuntimeFlagsPatch`.
 export declare const enabledSet: (self: RuntimeFlagsPatch) => ReadonlySet<RuntimeFlags.RuntimeFlag>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## render
 
@@ -125,7 +125,7 @@ Renders the provided `RuntimeFlagsPatch` to a string.
 export declare const render: (self: RuntimeFlagsPatch) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -143,7 +143,7 @@ export declare const includes: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isActive
 
@@ -159,7 +159,7 @@ export declare const isActive: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isDisabled
 
@@ -175,7 +175,7 @@ export declare const isDisabled: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEnabled
 
@@ -191,7 +191,7 @@ export declare const isEnabled: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -205,7 +205,7 @@ Returns `true` if the specified `RuntimeFlagsPatch` is empty.
 export declare const isEmpty: (patch: RuntimeFlagsPatch) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -219,7 +219,7 @@ export type RuntimeFlagsPatch = number & {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -237,7 +237,7 @@ export declare const andThen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## both
 
@@ -253,7 +253,7 @@ export declare const both: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## either
 
@@ -269,7 +269,7 @@ export declare const either: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## exclude
 
@@ -285,7 +285,7 @@ export declare const exclude: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## inverse
 
@@ -298,4 +298,4 @@ specified by the provided `RuntimeFlagsPatch`.
 export declare const inverse: (patch: RuntimeFlagsPatch) => RuntimeFlagsPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0

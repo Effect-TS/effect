@@ -12,7 +12,7 @@ This module provides encoding & decoding functionality for:
 - base64 (URL)
 - hex
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -53,7 +53,7 @@ Decodes a base64 (RFC4648) encoded `string` into a `Uint8Array`.
 export declare const decodeBase64: (str: string) => Either.Either<DecodeException, Uint8Array>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## decodeBase64String
 
@@ -65,7 +65,7 @@ Decodes a base64 (RFC4648) encoded `string` into a UTF-8 `string`.
 export declare const decodeBase64String: (str: string) => Either.Either<DecodeException, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## decodeBase64Url
 
@@ -77,7 +77,7 @@ Decodes a base64 (URL) encoded `string` into a `Uint8Array`.
 export declare const decodeBase64Url: (str: string) => Either.Either<DecodeException, Uint8Array>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## decodeBase64UrlString
 
@@ -89,7 +89,7 @@ Decodes a base64 (URL) encoded `string` into a UTF-8 `string`.
 export declare const decodeBase64UrlString: (str: string) => Either.Either<DecodeException, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## decodeHex
 
@@ -101,7 +101,7 @@ Decodes a hex encoded `string` into a `Uint8Array`.
 export declare const decodeHex: (str: string) => Either.Either<DecodeException, Uint8Array>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## decodeHexString
 
@@ -113,7 +113,7 @@ Decodes a hex encoded `string` into a UTF-8 `string`.
 export declare const decodeHexString: (str: string) => Either.Either<DecodeException, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # encoding
 
@@ -127,7 +127,7 @@ Encodes the given value into a base64 (RFC4648) `string`.
 export declare const encodeBase64: (input: Uint8Array | string) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## encodeBase64Url
 
@@ -139,7 +139,7 @@ Encodes the given value into a base64 (URL) `string`.
 export declare const encodeBase64Url: (input: Uint8Array | string) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## encodeHex
 
@@ -151,7 +151,7 @@ Encodes the given value into a hex `string`.
 export declare const encodeHex: (input: Uint8Array | string) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # errors
 
@@ -165,7 +165,7 @@ Creates a checked exception which occurs when decoding fails.
 export declare const DecodeException: (input: string, message?: string) => DecodeException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -184,7 +184,7 @@ export interface DecodeException {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -198,7 +198,7 @@ Returns `true` if the specified value is an `DecodeException`, `false` otherwise
 export declare const isDecodeException: (u: unknown) => u is DecodeException
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -210,7 +210,7 @@ Added in v1.0.0
 export declare const DecodeExceptionTypeId: typeof DecodeExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## DecodeExceptionTypeId (type alias)
 
@@ -220,4 +220,4 @@ Added in v1.0.0
 export type DecodeExceptionTypeId = typeof DecodeExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

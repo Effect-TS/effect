@@ -6,7 +6,7 @@ parent: Modules
 
 ## Metric overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -90,7 +90,7 @@ Added in v1.0.0
 export declare const increment: (self: Metric.Counter<number>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## incrementBy
 
@@ -103,7 +103,7 @@ export declare const incrementBy: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -116,7 +116,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackAll
 
@@ -137,7 +137,7 @@ export declare const trackAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackDefect
 
@@ -153,7 +153,7 @@ export declare const trackDefect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackDefectWith
 
@@ -176,7 +176,7 @@ export declare const trackDefectWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackDuration
 
@@ -199,7 +199,7 @@ export declare const trackDuration: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackDurationWith
 
@@ -222,7 +222,7 @@ export declare const trackDurationWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackError
 
@@ -244,7 +244,7 @@ export declare const trackError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackErrorWith
 
@@ -267,7 +267,7 @@ export declare const trackErrorWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackSuccess
 
@@ -289,7 +289,7 @@ export declare const trackSuccess: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trackSuccessWith
 
@@ -312,7 +312,7 @@ export declare const trackSuccessWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -326,7 +326,7 @@ A counter, which can be incremented by numbers.
 export declare const counter: (name: string, description?: string) => Metric.Counter<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## frequency
 
@@ -339,7 +339,7 @@ strings.
 export declare const frequency: (name: string, description?: string) => Metric.Frequency<string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromMetricKey
 
@@ -351,7 +351,7 @@ export declare const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<an
 ) => Metric<Type, MetricKeyType.MetricKeyType.InType<Type>, MetricKeyType.MetricKeyType.OutType<Type>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## gauge
 
@@ -363,7 +363,7 @@ A gauge, which can be set to a value.
 export declare const gauge: (name: string, description?: string) => Metric.Gauge<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## histogram
 
@@ -380,7 +380,7 @@ export declare const histogram: (
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -390,7 +390,7 @@ Added in v1.0.0
 export declare const make: MetricApply
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -402,7 +402,7 @@ Creates a metric that ignores input and produces constant output.
 export declare const succeed: <Out>(out: Out) => Metric<void, unknown, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summary
 
@@ -419,7 +419,7 @@ export declare const summary: (options: {
 }) => Metric.Summary<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summaryTimestamp
 
@@ -436,7 +436,7 @@ export declare const summaryTimestamp: (options: {
 }) => Metric.Summary<readonly [value: number, timestamp: number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -448,7 +448,7 @@ Creates a metric that ignores input and produces constant output.
 export declare const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timer
 
@@ -464,7 +464,7 @@ export declare const timer: (
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timerWithBoundaries
 
@@ -482,7 +482,7 @@ export declare const timerWithBoundaries: (
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withConstantInput
 
@@ -499,7 +499,7 @@ export declare const withConstantInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -513,7 +513,7 @@ Captures a snapshot of all metrics recorded by the application.
 export declare const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## value
 
@@ -525,7 +525,7 @@ Retrieves a snapshot of the value of the metric at this moment in time.
 export declare const value: <Type, In, Out>(self: Metric<Type, In, Out>) => Effect.Effect<never, never, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # globals
 
@@ -537,7 +537,7 @@ Added in v1.0.0
 export declare const globalMetricRegistry: MetricRegistry.MetricRegistry
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -556,7 +556,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -573,7 +573,7 @@ export declare const mapInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapType
 
@@ -586,7 +586,7 @@ export declare const mapType: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # metrics
 
@@ -598,7 +598,7 @@ Added in v1.0.0
 export declare const fiberActive: Metric.Counter<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberFailures
 
@@ -608,7 +608,7 @@ Added in v1.0.0
 export declare const fiberFailures: Metric.Counter<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberLifetimes
 
@@ -622,7 +622,7 @@ export declare const fiberLifetimes: Metric<
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberStarted
 
@@ -632,7 +632,7 @@ Added in v1.0.0
 export declare const fiberStarted: Metric.Counter<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberSuccesses
 
@@ -642,7 +642,7 @@ Added in v1.0.0
 export declare const fiberSuccesses: Metric.Counter<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -680,7 +680,7 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricApply (interface)
 
@@ -696,7 +696,7 @@ export interface MetricApply {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -708,7 +708,7 @@ Added in v1.0.0
 export declare const MetricTypeId: typeof MetricTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricTypeId (type alias)
 
@@ -718,7 +718,7 @@ Added in v1.0.0
 export type MetricTypeId = typeof MetricTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -732,13 +732,13 @@ Unsafely captures a snapshot of all metrics recorded by the application.
 export declare const unsafeSnapshot: (_: void) => HashSet.HashSet<MetricPair.MetricPair.Untyped>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Metric (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Counter (interface)
 
@@ -748,7 +748,7 @@ Added in v1.0.0
 export interface Counter<In> extends Metric<MetricKeyType.MetricKeyType.Counter, In, MetricState.MetricState.Counter> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Frequency (interface)
 
@@ -759,7 +759,7 @@ export interface Frequency<In>
   extends Metric<MetricKeyType.MetricKeyType.Frequency, In, MetricState.MetricState.Frequency> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Gauge (interface)
 
@@ -769,7 +769,7 @@ Added in v1.0.0
 export interface Gauge<In> extends Metric<MetricKeyType.MetricKeyType.Gauge, In, MetricState.MetricState.Gauge> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Histogram (interface)
 
@@ -780,7 +780,7 @@ export interface Histogram<In>
   extends Metric<MetricKeyType.MetricKeyType.Histogram, In, MetricState.MetricState.Histogram> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Summary (interface)
 
@@ -790,7 +790,7 @@ Added in v1.0.0
 export interface Summary<In> extends Metric<MetricKeyType.MetricKeyType.Summary, In, MetricState.MetricState.Summary> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -806,7 +806,7 @@ export interface Variance<Type, In, Out> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tagged
 
@@ -822,7 +822,7 @@ export declare const tagged: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## taggedWithLabels
 
@@ -838,7 +838,7 @@ export declare const taggedWithLabels: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## taggedWithLabelsInput
 
@@ -862,7 +862,7 @@ export declare const taggedWithLabelsInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -879,7 +879,7 @@ export declare const update: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withNow
 
@@ -889,7 +889,7 @@ Added in v1.0.0
 export declare const withNow: <Type, In, Out>(self: Metric<Type, readonly [In, number], Out>) => Metric<Type, In, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -910,4 +910,4 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

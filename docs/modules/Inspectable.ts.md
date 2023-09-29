@@ -6,7 +6,7 @@ parent: Modules
 
 ## Inspectable overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -37,7 +37,7 @@ export interface Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -49,7 +49,7 @@ Added in v1.0.0
 export declare const NodeInspectSymbol: typeof NodeInspectSymbol
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## NodeInspectSymbol (type alias)
 
@@ -59,7 +59,7 @@ Added in v1.0.0
 export type NodeInspectSymbol = typeof NodeInspectSymbol
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -71,7 +71,7 @@ Added in v1.0.0
 export declare const toJSON: (x: unknown) => unknown
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toString
 
@@ -81,4 +81,4 @@ Added in v1.0.0
 export declare const toString: (x: unknown) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0

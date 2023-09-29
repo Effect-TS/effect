@@ -6,7 +6,7 @@ parent: Modules
 
 ## Channel overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -156,7 +156,7 @@ export declare const acquireReleaseOut: <R, R2, E, Z>(
 ) => Channel<R | R2, unknown, unknown, unknown, E, Z, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## acquireUseRelease
 
@@ -170,7 +170,7 @@ export declare const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, Out
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## buffer
 
@@ -188,7 +188,7 @@ export declare const buffer: <InErr, InElem, InDone>(options: {
 }) => Channel<never, InErr, InElem, InDone, InErr, InElem, InDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bufferChunk
 
@@ -200,7 +200,7 @@ export declare const bufferChunk: <InErr, InElem, InDone>(
 ) => Channel<never, InErr, Chunk.Chunk<InElem>, InDone, InErr, Chunk.Chunk<InElem>, InDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concatAll
 
@@ -214,7 +214,7 @@ export declare const concatAll: <Env, InErr, InElem, InDone, OutErr, OutElem>(
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concatAllWith
 
@@ -253,7 +253,7 @@ export declare const concatAllWith: <
 ) => Channel<Env | Env2, InErr & InErr2, InElem & InElem2, InDone & InDone2, OutErr | OutErr2, OutElem, OutDone3>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -265,7 +265,7 @@ Constructs a channel that fails immediately with the specified error.
 export declare const fail: <E>(error: E) => Channel<never, unknown, unknown, unknown, E, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -277,7 +277,7 @@ Constructs a channel that fails immediately with the specified `Cause`.
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Channel<never, unknown, unknown, unknown, E, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCauseSync
 
@@ -292,7 +292,7 @@ export declare const failCauseSync: <E>(
 ) => Channel<never, unknown, unknown, unknown, E, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failSync
 
@@ -305,7 +305,7 @@ evaluated value.
 export declare const failSync: <E>(evaluate: LazyArg<E>) => Channel<never, unknown, unknown, unknown, E, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEffect
 
@@ -319,7 +319,7 @@ export declare const fromEffect: <R, E, A>(
 ) => Channel<R, unknown, unknown, unknown, E, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEither
 
@@ -333,7 +333,7 @@ export declare const fromEither: <E, A>(
 ) => Channel<never, unknown, unknown, unknown, E, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromHub
 
@@ -347,7 +347,7 @@ export declare const fromHub: <Err, Done, Elem>(
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromHubScoped
 
@@ -361,7 +361,7 @@ export declare const fromHubScoped: <Err, Done, Elem>(
 ) => Effect.Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromInput
 
@@ -375,7 +375,7 @@ export declare const fromInput: <Err, Elem, Done>(
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromOption
 
@@ -389,7 +389,7 @@ export declare const fromOption: <A>(
 ) => Channel<never, unknown, unknown, unknown, Option.Option<never>, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromQueue
 
@@ -403,7 +403,7 @@ export declare const fromQueue: <Err, Elem, Done>(
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## identity
 
@@ -413,7 +413,7 @@ Added in v1.0.0
 export declare const identity: <Err, Elem, Done>() => Channel<never, Err, Elem, Done, Err, Elem, Done>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## never
 
@@ -425,7 +425,7 @@ Returns a channel that never completes
 export declare const never: Channel<never, unknown, unknown, unknown, never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## read
 
@@ -435,7 +435,7 @@ Added in v1.0.0
 export declare const read: <In>() => Channel<never, unknown, In, unknown, Option.Option<never>, never, In>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## readOrFail
 
@@ -445,7 +445,7 @@ Added in v1.0.0
 export declare const readOrFail: <In, E>(error: E) => Channel<never, unknown, In, unknown, E, never, In>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## readWith
 
@@ -483,7 +483,7 @@ export declare const readWith: <
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## readWithCause
 
@@ -521,7 +521,7 @@ export declare const readWithCause: <
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scoped
 
@@ -535,7 +535,7 @@ export declare const scoped: <R, E, A>(
 ) => Channel<Exclude<R, Scope.Scope>, unknown, unknown, unknown, E, A, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -547,7 +547,7 @@ Constructs a channel that succeeds immediately with the specified value.
 export declare const succeed: <A>(value: A) => Channel<never, unknown, unknown, unknown, never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -561,7 +561,7 @@ export declare const sync: <OutDone>(
 ) => Channel<never, unknown, unknown, unknown, never, never, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unit
 
@@ -571,7 +571,7 @@ Added in v1.0.0
 export declare const unit: Channel<never, unknown, unknown, unknown, never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrap
 
@@ -585,7 +585,7 @@ export declare const unwrap: <R, E, R2, InErr, InElem, InDone, OutErr, OutElem, 
 ) => Channel<R | R2, InErr, InElem, InDone, E | OutErr, OutElem, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrapScoped
 
@@ -599,7 +599,7 @@ export declare const unwrapScoped: <R, E, Env, InErr, InElem, InDone, OutErr, Ou
 ) => Channel<Env | Exclude<R, Scope.Scope>, InErr, InElem, InDone, E | OutErr, OutElem, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## write
 
@@ -611,7 +611,7 @@ Writes a single value to the channel.
 export declare const write: <OutElem>(out: OutElem) => Channel<never, unknown, unknown, unknown, never, OutElem, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## writeAll
 
@@ -625,7 +625,7 @@ export declare const writeAll: <OutElems extends any[]>(
 ) => Channel<never, unknown, unknown, unknown, never, OutElems[number], void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## writeChunk
 
@@ -639,7 +639,7 @@ export declare const writeChunk: <OutElem>(
 ) => Channel<never, unknown, unknown, unknown, never, OutElem, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -653,7 +653,7 @@ Accesses the whole context of the channel.
 export declare const context: <Env>() => Channel<Env, unknown, unknown, unknown, never, never, Context.Context<Env>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWith
 
@@ -667,7 +667,7 @@ export declare const contextWith: <Env, OutDone>(
 ) => Channel<Env, unknown, unknown, unknown, never, never, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithChannel
 
@@ -681,7 +681,7 @@ export declare const contextWithChannel: <Env, Env1, InErr, InElem, InDone, OutE
 ) => Channel<Env | Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithEffect
 
@@ -695,7 +695,7 @@ export declare const contextWithEffect: <Env, Env1, OutErr, OutDone>(
 ) => Channel<Env | Env1, unknown, unknown, unknown, OutErr, never, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputContext
 
@@ -723,7 +723,7 @@ export declare const mapInputContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideContext
 
@@ -744,7 +744,7 @@ export declare const provideContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideLayer
 
@@ -764,7 +764,7 @@ export declare const provideLayer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideService
 
@@ -794,7 +794,7 @@ export declare const provideService: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideSomeLayer
 
@@ -815,7 +815,7 @@ export declare const provideSomeLayer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateService
 
@@ -843,7 +843,7 @@ export declare const updateService: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -859,7 +859,7 @@ export declare const run: <Env, InErr, InDone, OutErr, OutDone>(
 ) => Effect.Effect<Env, OutErr, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runCollect
 
@@ -876,7 +876,7 @@ export declare const runCollect: <Env, InErr, InDone, OutErr, OutElem, OutDone>(
 ) => Effect.Effect<Env, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runDrain
 
@@ -890,7 +890,7 @@ export declare const runDrain: <Env, InErr, InDone, OutElem, OutErr, OutDone>(
 ) => Effect.Effect<Env, OutErr, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toHub
 
@@ -904,7 +904,7 @@ export declare const toHub: <Err, Done, Elem>(
 ) => Channel<never, Err, Elem, Done, never, never, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toPull
 
@@ -921,7 +921,7 @@ export declare const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDo
 ) => Effect.Effect<Scope.Scope | Env, never, Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toQueue
 
@@ -935,7 +935,7 @@ export declare const toQueue: <Err, Done, Elem>(
 ) => Channel<never, Err, Elem, Done, never, never, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toSink
 
@@ -949,7 +949,7 @@ export declare const toSink: <Env, InErr, InElem, OutErr, OutElem, OutDone>(
 ) => Sink.Sink<Env, OutErr, InElem, OutElem, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toStream
 
@@ -963,7 +963,7 @@ export declare const toStream: <Env, OutErr, OutElem, OutDone>(
 ) => Stream.Stream<Env, OutErr, OutElem>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -1005,7 +1005,7 @@ export declare const catchAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchAllCause
 
@@ -1045,7 +1045,7 @@ export declare const catchAllCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDie
 
@@ -1066,7 +1066,7 @@ export declare const orDie: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDieWith
 
@@ -1087,7 +1087,7 @@ export declare const orDieWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -1127,7 +1127,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # errors
 
@@ -1142,7 +1142,7 @@ executed.
 export declare const ChannelException: <E>(error: E) => ChannelException<E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -1168,7 +1168,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asUnit
 
@@ -1180,7 +1180,7 @@ export declare const asUnit: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDo
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -1202,7 +1202,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapEffect
 
@@ -1231,7 +1231,7 @@ export declare const mapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapError
 
@@ -1253,7 +1253,7 @@ export declare const mapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapErrorCause
 
@@ -1281,7 +1281,7 @@ export declare const mapErrorCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapOut
 
@@ -1301,7 +1301,7 @@ export declare const mapOut: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapOutEffect
 
@@ -1329,7 +1329,7 @@ export declare const mapOutEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapOutEffectPar
 
@@ -1359,7 +1359,7 @@ export declare const mapOutEffectPar: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeMap
 
@@ -1394,7 +1394,7 @@ export declare const mergeMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -1434,7 +1434,7 @@ export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChannelException (interface)
 
@@ -1451,7 +1451,7 @@ export interface ChannelException<E> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChannelUnify (interface)
 
@@ -1467,7 +1467,7 @@ export interface ChannelUnify<A extends { [Unify.typeSymbol]?: any }> extends Ef
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChannelUnifyBlacklist (interface)
 
@@ -1479,7 +1479,7 @@ export interface ChannelUnifyBlacklist extends Effect.EffectUnifyBlacklist {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -1494,7 +1494,7 @@ otherwise.
 export declare const isChannelException: (u: unknown) => u is ChannelException<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -1538,7 +1538,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -1584,7 +1584,7 @@ export declare const flatten: <
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -1596,7 +1596,7 @@ Added in v1.0.0
 export declare const ChannelExceptionTypeId: typeof ChannelExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChannelExceptionTypeId (type alias)
 
@@ -1606,7 +1606,7 @@ Added in v1.0.0
 export type ChannelExceptionTypeId = typeof ChannelExceptionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChannelTypeId
 
@@ -1616,7 +1616,7 @@ Added in v1.0.0
 export declare const ChannelTypeId: typeof ChannelTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChannelTypeId (type alias)
 
@@ -1626,7 +1626,7 @@ Added in v1.0.0
 export type ChannelTypeId = typeof ChannelTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # tracing
 
@@ -1664,13 +1664,13 @@ export declare const withSpan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Channel (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -1682,7 +1682,7 @@ export interface Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> 
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### VarianceStruct (interface)
 
@@ -1700,7 +1700,7 @@ export interface VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, Out
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collect
 
@@ -1721,7 +1721,7 @@ export declare const collect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concatMap
 
@@ -1746,7 +1746,7 @@ export declare const concatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concatMapWith
 
@@ -1793,7 +1793,7 @@ export declare const concatMapWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concatMapWithCustom
 
@@ -1848,7 +1848,7 @@ export declare const concatMapWithCustom: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concatOut
 
@@ -1872,7 +1872,7 @@ export declare const concatOut: <Env, InErr, InElem, InDone, OutErr, OutElem, Ou
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## doneCollect
 
@@ -1892,7 +1892,7 @@ export declare const doneCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, 
 ) => Channel<Env, InErr, InElem, InDone, OutErr, never, readonly [Chunk.Chunk<OutElem>, OutDone]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drain
 
@@ -1907,7 +1907,7 @@ export declare const drain: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 ) => Channel<Env, InErr, InElem, InDone, OutErr, never, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## embedInput
 
@@ -1933,7 +1933,7 @@ export declare const embedInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## emitCollect
 
@@ -1948,7 +1948,7 @@ export declare const emitCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, 
 ) => Channel<Env, InErr, InElem, InDone, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone], void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuring
 
@@ -1970,7 +1970,7 @@ export declare const ensuring: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuringWith
 
@@ -1998,7 +1998,7 @@ export declare const ensuringWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldCauseChannel
 
@@ -2081,7 +2081,7 @@ export declare const foldCauseChannel: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldChannel
 
@@ -2162,7 +2162,7 @@ export declare const foldChannel: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptWhen
 
@@ -2196,7 +2196,7 @@ export declare const interruptWhen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptWhenDeferred
 
@@ -2229,7 +2229,7 @@ export declare const interruptWhenDeferred: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -2250,7 +2250,7 @@ export declare const mapInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputEffect
 
@@ -2277,7 +2277,7 @@ export declare const mapInputEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputError
 
@@ -2298,7 +2298,7 @@ export declare const mapInputError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputErrorEffect
 
@@ -2325,7 +2325,7 @@ export declare const mapInputErrorEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputIn
 
@@ -2346,7 +2346,7 @@ export declare const mapInputIn: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputInEffect
 
@@ -2373,7 +2373,7 @@ export declare const mapInputInEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeAll
 
@@ -2397,7 +2397,7 @@ export declare const mergeAll: (options: {
 ) => Channel<Env | Env1, InErr & InErr1, InElem & InElem1, InDone & InDone1, OutErr | OutErr1, OutElem, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeAllUnbounded
 
@@ -2429,7 +2429,7 @@ export declare const mergeAllUnbounded: <
 ) => Channel<Env | Env1, InErr & InErr1, InElem & InElem1, InDone & InDone1, OutErr | OutErr1, OutElem, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeAllUnboundedWith
 
@@ -2463,7 +2463,7 @@ export declare const mergeAllUnboundedWith: <
 ) => Channel<Env | Env1, InErr & InErr1, InElem & InElem1, InDone & InDone1, OutErr | OutErr1, OutElem, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeAllWith
 
@@ -2492,7 +2492,7 @@ export declare const mergeAllWith: ({
 ) => Channel<Env | Env1, InErr & InErr1, InElem & InElem1, InDone & InDone1, OutErr | OutErr1, OutElem, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeOut
 
@@ -2529,7 +2529,7 @@ export declare const mergeOut: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeOutWith
 
@@ -2581,7 +2581,7 @@ export declare const mergeOutWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeWith
 
@@ -2669,7 +2669,7 @@ export declare const mergeWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pipeTo
 
@@ -2694,7 +2694,7 @@ export declare const pipeTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pipeToOrFail
 
@@ -2718,7 +2718,7 @@ export declare const pipeToOrFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeated
 
@@ -2732,7 +2732,7 @@ export declare const repeated: <Env, InErr, InElem, InDone, OutErr, OutElem, Out
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -2776,7 +2776,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -2818,7 +2818,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -2860,4 +2860,4 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

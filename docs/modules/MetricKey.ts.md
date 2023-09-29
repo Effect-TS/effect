@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricKey overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -52,7 +52,7 @@ Creates a metric key for a counter, with the specified name.
 export declare const counter: (name: string, description?: string) => MetricKey.Counter
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## frequency
 
@@ -65,7 +65,7 @@ name.
 export declare const frequency: (name: string, description?: string) => MetricKey.Frequency
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## gauge
 
@@ -77,7 +77,7 @@ Creates a metric key for a gauge, with the specified name.
 export declare const gauge: (name: string, description?: string) => MetricKey.Gauge
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## histogram
 
@@ -93,7 +93,7 @@ export declare const histogram: (
 ) => MetricKey.Histogram
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summary
 
@@ -113,7 +113,7 @@ export declare const summary: (options: {
 }) => MetricKey.Summary
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tagged
 
@@ -134,7 +134,7 @@ export declare const tagged: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## taggedWithLabelSet
 
@@ -154,7 +154,7 @@ export declare const taggedWithLabelSet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## taggedWithLabels
 
@@ -174,7 +174,7 @@ export declare const taggedWithLabels: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -200,7 +200,7 @@ export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -212,7 +212,7 @@ Added in v1.0.0
 export declare const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKeyType<unknown, unknown>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -224,7 +224,7 @@ Added in v1.0.0
 export declare const MetricKeyTypeId: typeof MetricKeyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricKeyTypeId (type alias)
 
@@ -234,13 +234,13 @@ Added in v1.0.0
 export type MetricKeyTypeId = typeof MetricKeyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MetricKey (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -254,7 +254,7 @@ export interface Variance<Type> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Counter (type alias)
 
@@ -264,7 +264,7 @@ Added in v1.0.0
 export type Counter = MetricKey<MetricKeyType.MetricKeyType.Counter>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Frequency (type alias)
 
@@ -274,7 +274,7 @@ Added in v1.0.0
 export type Frequency = MetricKey<MetricKeyType.MetricKeyType.Frequency>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Gauge (type alias)
 
@@ -284,7 +284,7 @@ Added in v1.0.0
 export type Gauge = MetricKey<MetricKeyType.MetricKeyType.Gauge>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Histogram (type alias)
 
@@ -294,7 +294,7 @@ Added in v1.0.0
 export type Histogram = MetricKey<MetricKeyType.MetricKeyType.Histogram>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Summary (type alias)
 
@@ -304,7 +304,7 @@ Added in v1.0.0
 export type Summary = MetricKey<MetricKeyType.MetricKeyType.Summary>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Untyped (type alias)
 
@@ -314,4 +314,4 @@ Added in v1.0.0
 export type Untyped = MetricKey<any>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

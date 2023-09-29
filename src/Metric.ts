@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Chunk from "./Chunk"
 import type * as Duration from "./Duration"
@@ -18,13 +18,13 @@ import type * as MetricState from "./MetricState"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MetricTypeId: unique symbol = internal.MetricTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MetricTypeId = typeof MetricTypeId
@@ -46,7 +46,7 @@ export type MetricTypeId = typeof MetricTypeId
  *   - Histograms
  *   - Summaries
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, Pipeable {
@@ -62,7 +62,7 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MetricApply {
@@ -74,11 +74,11 @@ export interface MetricApply {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Metric {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Counter<In>
@@ -86,13 +86,13 @@ export declare namespace Metric {
   {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Gauge<In> extends Metric<MetricKeyType.MetricKeyType.Gauge, In, MetricState.MetricState.Gauge> {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Frequency<In>
@@ -100,7 +100,7 @@ export declare namespace Metric {
   {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Histogram<In>
@@ -108,7 +108,7 @@ export declare namespace Metric {
   {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Summary<In>
@@ -116,7 +116,7 @@ export declare namespace Metric {
   {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<Type, In, Out> {
@@ -129,13 +129,13 @@ export declare namespace Metric {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category globals
  */
 export const globalMetricRegistry: MetricRegistry.MetricRegistry = internal.globalMetricRegistry
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: MetricApply = internal.make
@@ -145,7 +145,7 @@ export const make: MetricApply = internal.make
  * of the specified new type, which must be transformable to the input type of
  * this metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapInput: {
@@ -156,7 +156,7 @@ export const mapInput: {
 /**
  * A counter, which can be incremented by numbers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const counter: (name: string, description?: string) => Metric.Counter<number> = internal.counter
@@ -165,7 +165,7 @@ export const counter: (name: string, description?: string) => Metric.Counter<num
  * A string histogram metric, which keeps track of the counts of different
  * strings.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const frequency: (name: string, description?: string) => Metric.Frequency<string> = internal.frequency
@@ -175,7 +175,7 @@ export const frequency: (name: string, description?: string) => Metric.Frequency
  * of any type, and translates them to updates with the specified constant
  * update value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const withConstantInput: {
@@ -184,7 +184,7 @@ export const withConstantInput: {
 } = internal.withConstantInput
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>(
@@ -195,7 +195,7 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
 /**
  * A gauge, which can be set to a value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const gauge: (name: string, description?: string) => Metric.Gauge<number> = internal.gauge
@@ -204,7 +204,7 @@ export const gauge: (name: string, description?: string) => Metric.Gauge<number>
  * A numeric histogram metric, which keeps track of the count of numbers that
  * fall in bins with the specified boundaries.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const histogram: (
@@ -214,13 +214,13 @@ export const histogram: (
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram> = internal.histogram
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const increment: (self: Metric.Counter<number>) => Effect.Effect<never, never, void> = internal.increment
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const incrementBy: {
@@ -233,7 +233,7 @@ export const incrementBy: {
  * state type, determined by transforming the state type of this metric by the
  * specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -242,7 +242,7 @@ export const map: {
 } = internal.map
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapType: {
@@ -251,7 +251,7 @@ export const mapType: {
 } = internal.mapType
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const set: {
@@ -262,7 +262,7 @@ export const set: {
 /**
  * Captures a snapshot of all metrics recorded by the application.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>> = internal.snapshot
@@ -270,7 +270,7 @@ export const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.Me
 /**
  * Creates a metric that ignores input and produces constant output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: <Out>(out: Out) => Metric<void, unknown, Out> = internal.succeed
@@ -278,13 +278,13 @@ export const succeed: <Out>(out: Out) => Metric<void, unknown, Out> = internal.s
 /**
  * Creates a metric that ignores input and produces constant output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> = internal.sync
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const summary: (
@@ -299,7 +299,7 @@ export const summary: (
 ) => Metric.Summary<number> = internal.summary
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const summaryTimestamp: (
@@ -317,7 +317,7 @@ export const summaryTimestamp: (
  * Returns a new metric, which is identical in every way to this one, except
  * the specified tags have been added to the tags of this metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const tagged: {
@@ -331,7 +331,7 @@ export const tagged: {
  * returned by this method does not return any useful information, due to the
  * dynamic nature of the added tags.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const taggedWithLabelsInput: {
@@ -348,7 +348,7 @@ export const taggedWithLabelsInput: {
  * Returns a new metric, which is identical in every way to this one, except
  * the specified tags have been added to the tags of this metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const taggedWithLabels: {
@@ -361,7 +361,7 @@ export const taggedWithLabels: {
  * durations in milliseconds. The unit of time will automatically be added to
  * the metric as a tag (i.e. `"time_unit: milliseconds"`).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const timer: (
@@ -375,7 +375,7 @@ export const timer: (
  * will automatically be added to the metric as a tag (i.e.
  * `"time_unit: milliseconds"`).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const timerWithBoundaries: (
@@ -389,7 +389,7 @@ export const timerWithBoundaries: (
  * value every time the aspect is applied to an effect, regardless of whether
  * that effect fails or succeeds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackAll: {
@@ -406,7 +406,7 @@ export const trackAll: {
  * Returns an aspect that will update this metric with the defects of the
  * effects that it is applied to.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackDefect: {
@@ -419,7 +419,7 @@ export const trackDefect: {
  * the specified function to the defect throwables of the effects that the
  * aspect is applied to.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackDefectWith: {
@@ -439,7 +439,7 @@ export const trackDefectWith: {
  * effect takes to execute. To call this method, the input type of the metric
  * must be `Duration`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackDuration: {
@@ -457,7 +457,7 @@ export const trackDuration: {
  * effect takes to execute. To call this method, you must supply a function
  * that can convert the `Duration` to the input type of this metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackDurationWith: {
@@ -476,7 +476,7 @@ export const trackDurationWith: {
  * Returns an aspect that will update this metric with the failure value of
  * the effects that it is applied to.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackError: {
@@ -494,7 +494,7 @@ export const trackError: {
  * the specified function to the error value of the effects that the aspect is
  * applied to.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackErrorWith: {
@@ -513,7 +513,7 @@ export const trackErrorWith: {
  * Returns an aspect that will update this metric with the success value of
  * the effects that it is applied to.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackSuccess: {
@@ -531,7 +531,7 @@ export const trackSuccess: {
  * the specified function to the success value of the effects that the aspect is
  * applied to.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category aspects
  */
 export const trackSuccessWith: {
@@ -551,7 +551,7 @@ export const trackSuccessWith: {
  * metric were a counter, the update would increment the method by the
  * provided amount.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const update: {
@@ -562,20 +562,20 @@ export const update: {
 /**
  * Retrieves a snapshot of the value of the metric at this moment in time.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const value: <Type, In, Out>(self: Metric<Type, In, Out>) => Effect.Effect<never, never, Out> = internal.value
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const withNow: <Type, In, Out>(self: Metric<Type, readonly [In, number], Out>) => Metric<Type, In, Out> =
   internal.withNow
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zip: {
@@ -593,38 +593,38 @@ export const zip: {
 /**
  * Unsafely captures a snapshot of all metrics recorded by the application.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeSnapshot: (_: void) => HashSet.HashSet<MetricPair.MetricPair.Untyped> = internal.unsafeSnapshot
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category metrics
  */
 export const fiberStarted: Metric.Counter<number> = fiberRuntime.fiberStarted
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category metrics
  */
 export const fiberSuccesses: Metric.Counter<number> = fiberRuntime.fiberSuccesses
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category metrics
  */
 export const fiberFailures: Metric.Counter<number> = fiberRuntime.fiberFailures
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category metrics
  */
 export const fiberLifetimes: Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram> =
   fiberRuntime.fiberLifetimes
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category metrics
  */
 export const fiberActive: Metric.Counter<number> = fiberRuntime.fiberActive

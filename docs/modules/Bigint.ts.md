@@ -10,7 +10,7 @@ This module provides utility functions and type class instances for working with
 It includes functions for basic arithmetic operations, as well as type class instances for
 `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -65,7 +65,7 @@ assert.deepStrictEqual(isBigint(1n), true)
 assert.deepStrictEqual(isBigint(1), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -77,7 +77,7 @@ Added in v1.0.0
 export declare const Equivalence: equivalence.Equivalence<bigint>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Order
 
@@ -87,7 +87,7 @@ Added in v1.0.0
 export declare const Order: order.Order<bigint>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # math
 
@@ -109,7 +109,7 @@ import { decrement } from 'effect/Bigint'
 assert.deepStrictEqual(decrement(3n), 2n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## divide
 
@@ -133,7 +133,7 @@ assert.deepStrictEqual(divide(6n, 3n), 2n)
 assert.deepStrictEqual(divide(6n, 4n), 1n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## increment
 
@@ -153,7 +153,7 @@ import { increment } from 'effect/Bigint'
 assert.deepStrictEqual(increment(2n), 3n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## multiply
 
@@ -173,7 +173,7 @@ import { multiply } from 'effect/Bigint'
 assert.deepStrictEqual(multiply(2n, 3n), 6n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## multiplyAll
 
@@ -193,7 +193,7 @@ import { multiplyAll } from 'effect/Bigint'
 assert.deepStrictEqual(multiplyAll([2n, 3n, 4n]), 24n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sign
 
@@ -215,7 +215,7 @@ assert.deepStrictEqual(sign(0n), 0)
 assert.deepStrictEqual(sign(5n), 1)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## subtract
 
@@ -235,7 +235,7 @@ import { subtract } from 'effect/Bigint'
 assert.deepStrictEqual(subtract(2n, 3n), -1n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sum
 
@@ -255,7 +255,7 @@ import { sum } from 'effect/Bigint'
 assert.deepStrictEqual(sum(2n, 3n), 5n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sumAll
 
@@ -275,7 +275,7 @@ import { sumAll } from 'effect/Bigint'
 assert.deepStrictEqual(sumAll([2n, 3n, 4n]), 9n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # predicates
 
@@ -302,7 +302,7 @@ assert.deepStrictEqual(between(0n, 5n)(-1n), false)
 assert.deepStrictEqual(between(0n, 5n)(6n), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThan
 
@@ -324,7 +324,7 @@ assert.deepStrictEqual(greaterThan(3n, 3n), false)
 assert.deepStrictEqual(greaterThan(4n, 3n), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanOrEqualTo
 
@@ -349,7 +349,7 @@ assert.deepStrictEqual(greaterThanOrEqualTo(3n, 3n), true)
 assert.deepStrictEqual(greaterThanOrEqualTo(4n, 3n), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThan
 
@@ -371,7 +371,7 @@ assert.deepStrictEqual(lessThan(3n, 3n), false)
 assert.deepStrictEqual(lessThan(4n, 3n), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanOrEqualTo
 
@@ -396,7 +396,7 @@ assert.deepStrictEqual(lessThanOrEqualTo(3n, 3n), true)
 assert.deepStrictEqual(lessThanOrEqualTo(4n, 3n), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -427,7 +427,7 @@ assert.deepStrictEqual(clamp(0n, 5n)(-1n), 0n)
 assert.deepStrictEqual(clamp(0n, 5n)(6n), 5n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## max
 
@@ -447,7 +447,7 @@ import { max } from 'effect/Bigint'
 assert.deepStrictEqual(max(2n, 3n), 3n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## min
 
@@ -467,4 +467,4 @@ import { min } from 'effect/Bigint'
 assert.deepStrictEqual(min(2n, 3n), 2n)
 ```
 
-Added in v1.0.0
+Added in v2.0.0

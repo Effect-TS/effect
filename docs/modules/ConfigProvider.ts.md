@@ -6,7 +6,7 @@ parent: Modules
 
 ## ConfigProvider overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -62,7 +62,7 @@ to the naming convention of a config provider.
 export declare const constantCase: (self: ConfigProvider) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## kebabCase
 
@@ -77,7 +77,7 @@ to the naming convention of a config provider.
 export declare const kebabCase: (self: ConfigProvider) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lowerCase
 
@@ -92,7 +92,7 @@ to the naming convention of a config provider.
 export declare const lowerCase: (self: ConfigProvider) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## snakeCase
 
@@ -107,7 +107,7 @@ to the naming convention of a config provider.
 export declare const snakeCase: (self: ConfigProvider) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## upperCase
 
@@ -122,7 +122,7 @@ to the naming convention of a config provider.
 export declare const upperCase: (self: ConfigProvider) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## within
 
@@ -138,7 +138,7 @@ export declare const within: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -153,7 +153,7 @@ using the default System service.
 export declare const fromEnv: (config?: ConfigProvider.FromEnvConfig) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromFlat
 
@@ -166,7 +166,7 @@ nesting is embedded into the string keys.
 export declare const fromFlat: (flat: ConfigProvider.Flat) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromMap
 
@@ -182,7 +182,7 @@ export declare const fromMap: (
 ) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -197,7 +197,7 @@ export declare const make: (options: {
 }) => ConfigProvider
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeFlat
 
@@ -219,7 +219,7 @@ export declare const makeFlat: (options: {
 }) => ConfigProvider.Flat
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -233,7 +233,7 @@ The service tag for `ConfigProvider`.
 export declare const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -258,7 +258,7 @@ export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -270,7 +270,7 @@ Added in v1.0.0
 export declare const ConfigProviderTypeId: typeof ConfigProviderTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ConfigProviderTypeId (type alias)
 
@@ -280,7 +280,7 @@ Added in v1.0.0
 export type ConfigProviderTypeId = typeof ConfigProviderTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FlatConfigProviderTypeId
 
@@ -290,7 +290,7 @@ Added in v1.0.0
 export declare const FlatConfigProviderTypeId: typeof FlatConfigProviderTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FlatConfigProviderTypeId (type alias)
 
@@ -300,13 +300,13 @@ Added in v1.0.0
 export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## ConfigProvider (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Flat (interface)
 
@@ -329,7 +329,7 @@ export interface Flat {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### FromEnvConfig (interface)
 
@@ -342,7 +342,7 @@ export interface FromEnvConfig {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### FromMapConfig (interface)
 
@@ -355,7 +355,7 @@ export interface FromMapConfig {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -367,7 +367,7 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputPath
 
@@ -385,7 +385,7 @@ export declare const mapInputPath: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nested
 
@@ -403,7 +403,7 @@ export declare const nested: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -420,7 +420,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unnested
 
@@ -438,4 +438,4 @@ export declare const unnested: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

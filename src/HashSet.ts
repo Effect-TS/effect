@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type { Equal } from "./Equal"
@@ -11,13 +11,13 @@ import type { Predicate, Refinement } from "./Predicate"
 const TypeId: unique symbol = HS.HashSetTypeId as TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface HashSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
@@ -25,7 +25,7 @@ export interface HashSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isHashSet: {
@@ -36,7 +36,7 @@ export const isHashSet: {
 /**
  * Creates an empty `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: <A = never>() => HashSet<A> = HS.empty
@@ -44,7 +44,7 @@ export const empty: <A = never>() => HashSet<A> = HS.empty
 /**
  * Construct a new `HashSet` from a `Collection` of values
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable: <A>(elements: Iterable<A>) => HashSet<A> = HS.fromIterable
@@ -52,7 +52,7 @@ export const fromIterable: <A>(elements: Iterable<A>) => HashSet<A> = HS.fromIte
 /**
  * Construct a new `HashSet` from a variable number of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<As[number]> = HS.make
@@ -60,7 +60,7 @@ export const make: <As extends ReadonlyArray<any>>(...elements: As) => HashSet<A
 /**
  * Checks if the specified value exists in the `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const has: {
@@ -71,7 +71,7 @@ export const has: {
 /**
  * Check if a predicate holds true for some `HashSet` element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const some: {
@@ -82,7 +82,7 @@ export const some: {
 /**
  * Check if a predicate holds true for every `HashSet` element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const every: {
@@ -98,7 +98,7 @@ export const every: {
  *
  * **NOTE**: the hash and equal of both sets must be the same.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const isSubset: {
@@ -109,7 +109,7 @@ export const isSubset: {
 /**
  * Returns an `IterableIterator` of the values in the `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const values: <A>(self: HashSet<A>) => IterableIterator<A> = HS.values
@@ -117,7 +117,7 @@ export const values: <A>(self: HashSet<A>) => IterableIterator<A> = HS.values
 /**
  * Calculates the number of values in the `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: <A>(self: HashSet<A>) => number = HS.size
@@ -125,21 +125,21 @@ export const size: <A>(self: HashSet<A>) => number = HS.size
 /**
  * Marks the `HashSet` as mutable.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const beginMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.beginMutation
 
 /**
  * Marks the `HashSet` as immutable.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const endMutation: <A>(self: HashSet<A>) => HashSet<A> = HS.endMutation
 
 /**
  * Mutates the `HashSet` within the context of the provided function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mutate: {
   <A>(f: (set: HashSet<A>) => void): (self: HashSet<A>) => HashSet<A>
@@ -149,7 +149,7 @@ export const mutate: {
 /**
  * Adds a value to the `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const add: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
@@ -159,7 +159,7 @@ export const add: {
 /**
  * Removes a value from the `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const remove: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
@@ -173,7 +173,7 @@ export const remove: {
  * **NOTE**: the hash and equal of the values in both the set and the iterable
  * must be the same.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const difference: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
@@ -187,7 +187,7 @@ export const difference: {
  * **NOTE**: the hash and equal of the values in both the set and the iterable
  * must be the same.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const intersection: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
@@ -201,7 +201,7 @@ export const intersection: {
  * **NOTE**: the hash and equal of the values in both the set and the iterable
  * must be the same.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const union: {
   <A>(that: Iterable<A>): (self: HashSet<A>) => HashSet<A>
@@ -213,7 +213,7 @@ export const union: {
  * will be removed from the `HashSet`, otherwise the value will be added to the
  * `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toggle: {
   <A>(value: A): (self: HashSet<A>) => HashSet<A>
@@ -223,7 +223,7 @@ export const toggle: {
 /**
  * Maps over the values of the `HashSet` using the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -234,7 +234,7 @@ export const map: {
 /**
  * Chains over the values of the `HashSet` using the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -245,7 +245,7 @@ export const flatMap: {
 /**
  * Applies the specified function to the values of the `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category traversing
  */
 export const forEach: {
@@ -256,7 +256,7 @@ export const forEach: {
 /**
  * Reduces the specified state over the values of the `HashSet`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduce: {
@@ -267,7 +267,7 @@ export const reduce: {
 /**
  * Filters values out of a `HashSet` using the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filter: {
@@ -284,7 +284,7 @@ export const filter: {
  * right side of the resulting `Tuple`, otherwise the value will be placed into
  * the left side.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category partitioning
  */
 export const partition: {

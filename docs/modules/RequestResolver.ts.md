@@ -6,7 +6,7 @@ parent: Modules
 
 ## RequestResolver overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -66,7 +66,7 @@ export declare const around: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## batchN
 
@@ -81,7 +81,7 @@ export declare const batchN: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## eitherWith
 
@@ -111,7 +111,7 @@ export declare const eitherWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locally
 
@@ -131,7 +131,7 @@ export declare const locally: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## race
 
@@ -153,7 +153,7 @@ export declare const race: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -169,7 +169,7 @@ export declare const fromFunction: <A extends Request.Request<never, any>>(
 ) => RequestResolver<A, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromFunctionBatched
 
@@ -185,7 +185,7 @@ export declare const fromFunctionBatched: <A extends Request.Request<never, any>
 ) => RequestResolver<A, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromFunctionEffect
 
@@ -199,7 +199,7 @@ export declare const fromFunctionEffect: <R, A extends Request.Request<any, any>
 ) => RequestResolver<A, R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -212,7 +212,7 @@ requests.
 export declare const make: <R, A>(runAll: (requests: A[][]) => Effect.Effect<R, never, void>) => RequestResolver<A, R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeBatched
 
@@ -227,7 +227,7 @@ export declare const makeBatched: <R, A extends Request.Request<any, any>>(
 ) => RequestResolver<A, R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWithEntry
 
@@ -242,7 +242,7 @@ export declare const makeWithEntry: <R, A>(
 ) => RequestResolver<A, R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## never
 
@@ -254,7 +254,7 @@ A data source that never executes requests.
 export declare const never: RequestResolver<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -276,7 +276,7 @@ export declare const mapInputContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideContext
 
@@ -296,7 +296,7 @@ export declare const provideContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -340,7 +340,7 @@ export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -354,7 +354,7 @@ Returns `true` if the specified value is a `RequestResolver`, `false` otherwise.
 export declare const isRequestResolver: (u: unknown) => u is RequestResolver<unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -366,7 +366,7 @@ Added in v1.0.0
 export declare const RequestResolverTypeId: typeof RequestResolverTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RequestResolverTypeId (type alias)
 
@@ -376,13 +376,13 @@ Added in v1.0.0
 export type RequestResolverTypeId = typeof RequestResolverTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## RequestResolver (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -397,7 +397,7 @@ export interface Variance<R, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextFromEffect
 
@@ -409,7 +409,7 @@ export declare const contextFromEffect: <R, A extends Request.Request<any, any>>
 ) => Effect.Effect<R, never, RequestResolver<A, never>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextFromServices
 
@@ -427,4 +427,4 @@ export declare const contextFromServices: <Services extends Context.Tag<any, any
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0

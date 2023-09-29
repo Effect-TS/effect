@@ -3,14 +3,14 @@
  * that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
  * These properties are also known in mathematics as an "equivalence relation".
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import { dual } from "./Function"
 import type { TypeLambda } from "./HKT"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Equivalence<A> {
   (self: A, that: A): boolean
@@ -18,7 +18,7 @@ export interface Equivalence<A> {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface EquivalenceTypeLambda extends TypeLambda {
   readonly type: Equivalence<this["Target"]>
@@ -26,7 +26,7 @@ export interface EquivalenceTypeLambda extends TypeLambda {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = <A>(isEquivalent: (self: A, that: A) => boolean): Equivalence<A> => (self: A, that: A): boolean =>
   self === that || isEquivalent(self, that)
@@ -36,44 +36,44 @@ const isStrictEquivalent = (x: unknown, y: unknown) => x === y
 /**
  * Return an `Equivalence` that uses strict equality (===) to compare values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const strict: <A>() => Equivalence<A> = () => isStrictEquivalent
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const string: Equivalence<string> = strict()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const number: Equivalence<number> = strict()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const boolean: Equivalence<boolean> = strict()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const bigint: Equivalence<bigint> = strict()
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const symbol: Equivalence<symbol> = strict()
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combine: {
   <A>(that: Equivalence<A>): (self: Equivalence<A>) => Equivalence<A>
@@ -82,7 +82,7 @@ export const combine: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combineMany: {
   <A>(collection: Iterable<Equivalence<A>>): (self: Equivalence<A>) => Equivalence<A>
@@ -104,14 +104,14 @@ const isAlwaysEquivalent: Equivalence<unknown> = (_x, _y) => true
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combineAll = <A>(collection: Iterable<Equivalence<A>>): Equivalence<A> =>
   combineMany(isAlwaysEquivalent, collection)
 
 /**
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapInput: {
   <B, A>(f: (b: B) => A): (self: Equivalence<A>) => Equivalence<B>
@@ -123,13 +123,13 @@ export const mapInput: {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Date: Equivalence<Date> = mapInput(number, (date) => date.getTime())
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const product: {
   <B>(that: Equivalence<B>): <A>(self: Equivalence<A>) => Equivalence<readonly [A, B]>
@@ -142,7 +142,7 @@ export const product: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const all = <A>(collection: Iterable<Equivalence<A>>): Equivalence<ReadonlyArray<A>> => {
   return make((x, y) => {
@@ -164,7 +164,7 @@ export const all = <A>(collection: Iterable<Equivalence<A>>): Equivalence<Readon
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const productMany = <A>(
   self: Equivalence<A>,
@@ -185,7 +185,7 @@ export const productMany = <A>(
  * by applying each `Equivalence` to the corresponding element of the tuple.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const tuple = <T extends ReadonlyArray<Equivalence<any>>>(
   ...elements: T
@@ -195,7 +195,7 @@ export const tuple = <T extends ReadonlyArray<Equivalence<any>>>(
  * Creates a new `Equivalence` for an array of values based on a given `Equivalence` for the elements of the array.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const array = <A>(item: Equivalence<A>): Equivalence<ReadonlyArray<A>> =>
   make((self, that) => {
@@ -218,7 +218,7 @@ export const array = <A>(item: Equivalence<A>): Equivalence<ReadonlyArray<A>> =>
  * by applying each `Equivalence` to the corresponding property of the struct.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const struct = <R extends Record<string, Equivalence<any>>>(
   fields: R

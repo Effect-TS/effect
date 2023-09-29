@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { Cause } from "./Cause"
 import type * as Context from "./Context"
@@ -15,7 +15,7 @@ import type * as RuntimeFlags from "./RuntimeFlags"
 import type { Scheduler } from "./Scheduler"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface AsyncFiberException<E, A> {
@@ -24,7 +24,7 @@ export interface AsyncFiberException<E, A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Cancel<E, A> {
@@ -32,7 +32,7 @@ export interface Cancel<E, A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Runtime<R> extends Pipeable {
@@ -51,7 +51,7 @@ export interface Runtime<R> extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface RunForkOptions {
@@ -63,7 +63,7 @@ export interface RunForkOptions {
  * Executes the effect using the provided Scheduler or using the global
  * Scheduler if not provided
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category execution
  */
 export const runFork: <R>(
@@ -77,7 +77,7 @@ export const runFork: <R>(
  * This method is effectful and should only be invoked at the edges of your
  * program.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category execution
  */
 export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Exit.Exit<E, A> =
@@ -89,7 +89,7 @@ export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effe
  * This method is effectful and should only be invoked at the edges of your
  * program.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category execution
  */
 export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => A = internal.unsafeRunSync
@@ -101,7 +101,7 @@ export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R
  * This method is effectful and should only be invoked at the edges of your
  * program.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category execution
  */
 export const runCallback: <R>(
@@ -120,7 +120,7 @@ export const runCallback: <R>(
  * This method is effectful and should only be used at the edges of your
  * program.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category execution
  */
 export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<A> =
@@ -133,7 +133,7 @@ export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effec
  * This method is effectful and should only be used at the edges of your
  * program.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category execution
  */
 export const runPromiseExit: <R>(
@@ -141,19 +141,19 @@ export const runPromiseExit: <R>(
 ) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>> = internal.unsafeRunPromiseExit
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const defaultRuntime: Runtime<never> = internal.defaultRuntime
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags = internal.defaultRuntimeFlags
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <R>(
@@ -165,30 +165,30 @@ export const make: <R>(
 ) => Runtime<R> = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const FiberFailureId = Symbol.for("effect/Runtime/FiberFailure")
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type FiberFailureId = typeof FiberFailureId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const FiberFailureCauseId: unique symbol = internal.FiberFailureCauseId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category exports
  */
 export type FiberFailureCauseId = typeof FiberFailureCauseId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface FiberFailure extends Error, Inspectable {
@@ -197,20 +197,20 @@ export interface FiberFailure extends Error, Inspectable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isAsyncFiberException: (u: unknown) => u is AsyncFiberException<unknown, unknown> =
   internal.isAsyncFiberException
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isFiberFailure: (u: unknown) => u is FiberFailure = internal.isFiberFailure
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeFiberFailure: <E>(cause: Cause<E>) => FiberFailure = internal.fiberFailure

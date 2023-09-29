@@ -6,7 +6,7 @@ parent: Modules
 
 ## TReentrantLock overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -55,7 +55,7 @@ Makes a new reentrant read/write lock.
 export declare const make: STM.STM<never, never, TReentrantLock>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -82,7 +82,7 @@ structures that are consumed from effectful code.
 export interface TReentrantLock extends TReentrantLock.Proto {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -98,7 +98,7 @@ fiber.
 export declare const acquireRead: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## acquireWrite
 
@@ -112,7 +112,7 @@ held by this fiber.
 export declare const acquireWrite: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberReadLocks
 
@@ -124,7 +124,7 @@ Retrieves the number of acquired read locks for this fiber.
 export declare const fiberReadLocks: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberWriteLocks
 
@@ -136,7 +136,7 @@ Retrieves the number of acquired write locks for this fiber.
 export declare const fiberWriteLocks: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lock
 
@@ -151,7 +151,7 @@ See `TReentrantLock.writeLock`.
 export declare const lock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locked
 
@@ -163,7 +163,7 @@ Determines if any fiber has a read or write lock.
 export declare const locked: (self: TReentrantLock) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## readLock
 
@@ -175,7 +175,7 @@ Obtains a read lock in a scoped context.
 export declare const readLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## readLocked
 
@@ -187,7 +187,7 @@ Determines if any fiber has a read lock.
 export declare const readLocked: (self: TReentrantLock) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## readLocks
 
@@ -199,7 +199,7 @@ Retrieves the total number of acquired read locks.
 export declare const readLocks: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## releaseRead
 
@@ -212,7 +212,7 @@ number of read locks held by this fiber.
 export declare const releaseRead: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## releaseWrite
 
@@ -225,7 +225,7 @@ number of write locks held by this fiber.
 export declare const releaseWrite: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withLock
 
@@ -240,7 +240,7 @@ export declare const withLock: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withReadLock
 
@@ -255,7 +255,7 @@ export declare const withReadLock: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withWriteLock
 
@@ -270,7 +270,7 @@ export declare const withWriteLock: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## writeLock
 
@@ -282,7 +282,7 @@ Obtains a write lock in a scoped context.
 export declare const writeLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## writeLocked
 
@@ -294,7 +294,7 @@ Determines if a write lock is held by some fiber.
 export declare const writeLocked: (self: TReentrantLock) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## writeLocks
 
@@ -306,7 +306,7 @@ Computes the number of write locks held by fibers.
 export declare const writeLocks: (self: TReentrantLock) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -318,7 +318,7 @@ Added in v1.0.0
 export declare const TReentrantLockTypeId: typeof TReentrantLockTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TReentrantLockTypeId (type alias)
 
@@ -328,13 +328,13 @@ Added in v1.0.0
 export type TReentrantLockTypeId = typeof TReentrantLockTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TReentrantLock (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -346,4 +346,4 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

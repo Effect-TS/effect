@@ -6,7 +6,7 @@ parent: Modules
 
 ## ScopedRef overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ export declare const fromAcquire: <R, E, A>(
 ) => Effect.Effect<Scope.Scope | R, E, ScopedRef<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -57,7 +57,7 @@ not be used for values whose creation require the acquisition of resources.
 export declare const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never, ScopedRef<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -71,7 +71,7 @@ Retrieves the current value of the scoped reference.
 export declare const get: <A>(self: ScopedRef<A>) => Effect.Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -91,7 +91,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -112,7 +112,7 @@ export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -124,7 +124,7 @@ Added in v1.0.0
 export declare const ScopedRefTypeId: typeof ScopedRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScopedRefTypeId (type alias)
 
@@ -134,13 +134,13 @@ Added in v1.0.0
 export type ScopedRefTypeId = typeof ScopedRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## ScopedRef (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -154,4 +154,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

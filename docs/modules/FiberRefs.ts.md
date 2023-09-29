@@ -6,7 +6,7 @@ parent: Modules
 
 ## FiberRefs overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -46,7 +46,7 @@ The empty collection of `FiberRef` values.
 export declare const empty: () => FiberRefs
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -60,7 +60,7 @@ Returns a set of each `FiberRef` in this collection.
 export declare const fiberRefs: (self: FiberRefs) => HashSet.HashSet<FiberRef.FiberRef<any>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -76,7 +76,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrDefault
 
@@ -92,7 +92,7 @@ export declare const getOrDefault: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -112,7 +112,7 @@ export interface FiberRefs extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -124,7 +124,7 @@ Added in v1.0.0
 export declare const FiberRefsSym: typeof FiberRefsSym
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberRefsSym (type alias)
 
@@ -134,7 +134,7 @@ Added in v1.0.0
 export type FiberRefsSym = typeof FiberRefsSym
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -150,7 +150,7 @@ export declare const unsafeMake: (
 ) => FiberRefs
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -164,7 +164,7 @@ Deletes the specified `FiberRef` from the `FibterRefs`.
 export declare const delete: { <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => FiberRefs; <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): FiberRefs; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forkAs
 
@@ -181,7 +181,7 @@ export declare const forkAs: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## joinAs
 
@@ -198,7 +198,7 @@ export declare const joinAs: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setAll
 
@@ -210,7 +210,7 @@ Set each ref to either its value or its default.
 export declare const setAll: (self: FiberRefs) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updatedAs
 
@@ -230,4 +230,4 @@ export declare const updatedAs: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -8,7 +8,7 @@ parent: Modules
 
 A collection of types that are commonly used types.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -40,7 +40,7 @@ Describes the concurrency to use when executing multiple Effect's.
 export type Concurrency = number | 'unbounded' | 'inherit'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Equals (type alias)
 
@@ -61,7 +61,7 @@ type Res1 = Types.Equals<{ a: number }, { a: number }> // true
 type Res2 = Types.Equals<{ a: number }, { b: number }> // false
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeLeft (type alias)
 
@@ -82,7 +82,7 @@ import * as Types from 'effect/Types'
 type MergeLeft = Types.MergeLeft<{ a: number; b: number }, { a: string }> // { a: number; b: number; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeRight (type alias)
 
@@ -103,7 +103,7 @@ import * as Types from 'effect/Types'
 type MergeRight = Types.MergeRight<{ a: number; b: number }, { a: string }> // { a: string; b: number; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # types
 
@@ -125,7 +125,7 @@ import * as Types from 'effect/Types'
 type Res = Types.ExcludeTag<string | { _tag: 'a' } | { _tag: 'b' }, 'a'> // string | { _tag: "b" }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ExtractTag (type alias)
 
@@ -145,7 +145,7 @@ import * as Types from 'effect/Types'
 type Res = Types.ExtractTag<{ _tag: 'a'; a: number } | { _tag: 'b'; b: number }, 'b'> // { _tag: "b", b: number }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Simplify (type alias)
 
@@ -169,7 +169,7 @@ import * as Types from 'effect/Types'
 type Res = Types.Simplify<{ a: number } & { b: number }> // { a: number; b: number; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Tags (type alias)
 
@@ -189,7 +189,7 @@ import * as Types from 'effect/Types'
 type Res = Types.Tags<string | { _tag: 'a' } | { _tag: 'b' }> // "a" | "b"
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## UnionToIntersection (type alias)
 
@@ -201,4 +201,4 @@ A utility type that transforms a union type `T` into an intersection type.
 export type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0

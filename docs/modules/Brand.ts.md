@@ -21,7 +21,7 @@ but with a different name, and it also allows for validation of the input data.
 The `refined` function takes a predicate that is used to validate the input data.
 If the input data fails the validation, a `BrandErrors` is returned, which provides information about the specific validation failure.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -65,7 +65,7 @@ Added in v1.0.0
 export type Branded<A, K extends string | symbol> = A & Brand<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # combining
 
@@ -110,7 +110,7 @@ assert.strictEqual(PositiveInt(1), 1)
 assert.throws(() => PositiveInt(1.1))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -124,7 +124,7 @@ Returns a `BrandErrors` that contains a single `RefinementError`.
 export declare const error: (message: string, meta?: unknown) => Brand.BrandErrors
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## errors
 
@@ -136,7 +136,7 @@ Takes a variable number of `BrandErrors` and returns a single `BrandErrors` that
 export declare const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nominal
 
@@ -163,7 +163,7 @@ const UserId = Brand.nominal<UserId>()
 assert.strictEqual(UserId(1), 1)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refined
 
@@ -198,7 +198,7 @@ assert.strictEqual(Int(1), 1)
 assert.throws(() => Int(1.1))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -216,7 +216,7 @@ export interface Brand<in out K extends string | symbol> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -228,7 +228,7 @@ Added in v1.0.0
 export declare const BrandTypeId: typeof BrandTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## BrandTypeId (type alias)
 
@@ -238,7 +238,7 @@ Added in v1.0.0
 export type BrandTypeId = typeof BrandTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RefinedConstructorsTypeId
 
@@ -248,7 +248,7 @@ Added in v1.0.0
 export declare const RefinedConstructorsTypeId: typeof RefinedConstructorsTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RefinedConstructorsTypeId (type alias)
 
@@ -258,13 +258,13 @@ Added in v1.0.0
 export type RefinedConstructorsTypeId = typeof RefinedConstructorsTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Brand (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### BrandErrors (interface)
 
@@ -276,7 +276,7 @@ Represents a list of refinement errors.
 export interface BrandErrors extends ReadonlyArray<RefinementError> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Constructor (interface)
 
@@ -308,7 +308,7 @@ export interface Constructor<in out A extends Brand<any>> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### RefinementError (interface)
 
@@ -323,7 +323,7 @@ export interface RefinementError {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Brands (type alias)
 
@@ -341,7 +341,7 @@ export type Brands<P> = P extends Brand<any>
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### EnsureCommonBase (type alias)
 
@@ -361,7 +361,7 @@ export type EnsureCommonBase<Brands extends readonly [Brand.Constructor<any>, ..
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### FromConstructor (type alias)
 
@@ -373,7 +373,7 @@ A utility type to extract a branded type from a `Brand.Constructor`.
 export type FromConstructor<A> = A extends Brand.Constructor<infer B> ? B : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Unbranded (type alias)
 
@@ -385,4 +385,4 @@ A utility type to extract the value type from a brand.
 export type Unbranded<P> = P extends infer Q & Brands<P> ? Q : P
 ```
 
-Added in v1.0.0
+Added in v2.0.0

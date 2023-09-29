@@ -10,7 +10,7 @@ This module provides utility functions and type class instances for working with
 It includes functions for basic arithmetic operations, as well as type class instances for
 `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -66,7 +66,7 @@ assert.deepStrictEqual(isNumber(2), true)
 assert.deepStrictEqual(isNumber('2'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -78,7 +78,7 @@ Added in v1.0.0
 export declare const Equivalence: equivalence.Equivalence<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Order
 
@@ -88,7 +88,7 @@ Added in v1.0.0
 export declare const Order: order.Order<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # math
 
@@ -110,7 +110,7 @@ import { decrement } from 'effect/Number'
 assert.deepStrictEqual(decrement(3), 2)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## divide
 
@@ -130,7 +130,7 @@ import { divide } from 'effect/Number'
 assert.deepStrictEqual(divide(6, 3), 2)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## increment
 
@@ -150,7 +150,7 @@ import { increment } from 'effect/Number'
 assert.deepStrictEqual(increment(2), 3)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## multiply
 
@@ -170,7 +170,7 @@ import { multiply } from 'effect/Number'
 assert.deepStrictEqual(multiply(2, 3), 6)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## multiplyAll
 
@@ -190,7 +190,7 @@ import { multiplyAll } from 'effect/Number'
 assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remainder
 
@@ -214,7 +214,7 @@ assert.deepStrictEqual(remainder(3, 2), 1)
 assert.deepStrictEqual(remainder(-4, 2), -0)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sign
 
@@ -236,7 +236,7 @@ assert.deepStrictEqual(sign(0), 0)
 assert.deepStrictEqual(sign(5), 1)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## subtract
 
@@ -256,7 +256,7 @@ import { subtract } from 'effect/Number'
 assert.deepStrictEqual(subtract(2, 3), -1)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sum
 
@@ -276,7 +276,7 @@ import { sum } from 'effect/Number'
 assert.deepStrictEqual(sum(2, 3), 5)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sumAll
 
@@ -296,7 +296,7 @@ import { sumAll } from 'effect/Number'
 assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # predicates
 
@@ -323,7 +323,7 @@ assert.deepStrictEqual(between(0, 5)(-1), false)
 assert.deepStrictEqual(between(0, 5)(6), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThan
 
@@ -345,7 +345,7 @@ assert.deepStrictEqual(greaterThan(3, 3), false)
 assert.deepStrictEqual(greaterThan(4, 3), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanOrEqualTo
 
@@ -370,7 +370,7 @@ assert.deepStrictEqual(greaterThanOrEqualTo(3, 3), true)
 assert.deepStrictEqual(greaterThanOrEqualTo(4, 3), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThan
 
@@ -392,7 +392,7 @@ assert.deepStrictEqual(lessThan(3, 3), false)
 assert.deepStrictEqual(lessThan(4, 3), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanOrEqualTo
 
@@ -417,7 +417,7 @@ assert.deepStrictEqual(lessThanOrEqualTo(3, 3), true)
 assert.deepStrictEqual(lessThanOrEqualTo(4, 3), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -448,7 +448,7 @@ assert.deepStrictEqual(clamp(0, 5)(-1), 0)
 assert.deepStrictEqual(clamp(0, 5)(6), 5)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## max
 
@@ -468,7 +468,7 @@ import { max } from 'effect/Number'
 assert.deepStrictEqual(max(2, 3), 3)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## min
 
@@ -488,4 +488,4 @@ import { min } from 'effect/Number'
 assert.deepStrictEqual(min(2, 3), 2)
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -1,36 +1,36 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import { identity } from "./Function"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare const unifySymbol: unique symbol
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type unifySymbol = typeof unifySymbol
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare const typeSymbol: unique symbol
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type typeSymbol = typeof typeSymbol
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare const blacklistSymbol: unique symbol
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type blacklistSymbol = typeof blacklistSymbol
 
@@ -61,7 +61,7 @@ type FilterIn<A> = A extends any ? typeSymbol extends keyof A ? A : never : neve
 type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : never
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Unify<A> = Values<
   ExtractTypes<
@@ -73,7 +73,7 @@ export type Unify<A> = Values<
 > extends infer Z ? Z | Exclude<A, Z> | FilterOut<A> : never
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const unify: {
   <

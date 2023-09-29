@@ -12,32 +12,36 @@ export * as ${module} from "./${module}"`;
   .join("\n\n");
 
 console.log(
-  `export {
+  `/**
+ * @since 2.0.0
+ */
+
+export {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   absurd,
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   flow,
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   hole,
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   identity,
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   pipe,
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   unsafeCoerce
 } from "./Function"
 
-${modules}`,
+${modules}`
 );

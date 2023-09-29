@@ -18,7 +18,7 @@ export type FiberScopeTypeId = typeof FiberScopeTypeId
  * fiber can be retrieved using `Effect.descriptor`, and when forking fibers,
  * you can specify a custom scope to fork them on by using the `forkIn`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface FiberScope {

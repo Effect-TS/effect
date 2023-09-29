@@ -1,18 +1,18 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as internal from "./internal/schedule/decision"
 import type * as Interval from "./ScheduleInterval"
 import type * as Intervals from "./ScheduleIntervals"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type ScheduleDecision = Continue | Done
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Continue {
@@ -21,7 +21,7 @@ export interface Continue {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Done {
@@ -31,32 +31,32 @@ export interface Done {
 const _continue = internal._continue
 export {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category constructors
    */
   _continue as continue
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const continueWith: (interval: Interval.Interval) => ScheduleDecision = internal.continueWith
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const done: ScheduleDecision = internal.done
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isContinue: (self: ScheduleDecision) => self is Continue = internal.isContinue
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isDone: (self: ScheduleDecision) => self is Done = internal.isDone

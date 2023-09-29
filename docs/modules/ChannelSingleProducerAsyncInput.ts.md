@@ -6,7 +6,7 @@ parent: Modules
 
 ## ChannelSingleProducerAsyncInput overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -31,7 +31,7 @@ Added in v1.0.0
 export declare const make: <Err, Elem, Done>() => Effect.Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -51,7 +51,7 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## AsyncInputProducer (interface)
 
@@ -68,7 +68,7 @@ export interface AsyncInputProducer<Err, Elem, Done> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SingleProducerAsyncInput (interface)
 
@@ -99,4 +99,4 @@ export interface SingleProducerAsyncInput<Err, Elem, Done>
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type * as Effect from "./Effect"
@@ -13,13 +13,13 @@ import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const DeferredTypeId: unique symbol = internal.DeferredTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type DeferredTypeId = typeof DeferredTypeId
@@ -33,7 +33,7 @@ export type DeferredTypeId = typeof DeferredTypeId
  * require the coordinated action of multiple fibers, and for building
  * higher-level concurrent or asynchronous structures.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
@@ -44,11 +44,11 @@ export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Deferred {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<E, A> {
@@ -62,7 +62,7 @@ export declare namespace Deferred {
 /**
  * Creates a new `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <E, A>() => Effect.Effect<never, never, Deferred<E, A>> = core.deferredMake
@@ -70,7 +70,7 @@ export const make: <E, A>() => Effect.Effect<never, never, Deferred<E, A>> = cor
 /**
  * Creates a new `Deferred` from the specified `FiberId`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeAs: <E, A>(fiberId: FiberId.FiberId) => Effect.Effect<never, never, Deferred<E, A>> =
@@ -83,7 +83,7 @@ export {
    * Retrieves the value of the `Deferred`, suspending the fiber running the
    * workflow until the result is available.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category getters
    */
   _await as await
@@ -96,7 +96,7 @@ export {
  * Note that `Deferred.completeWith` will be much faster, so consider using
  * that if you do not need to memoize the result of the specified effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const complete: {
@@ -108,7 +108,7 @@ export const complete: {
  * Completes the deferred with the result of the specified effect. If the
  * deferred has already been completed, the method will produce false.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const completeWith: {
@@ -120,7 +120,7 @@ export const completeWith: {
  * Exits the `Deferred` with the specified `Exit` value, which will be
  * propagated to all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const done: {
@@ -132,7 +132,7 @@ export const done: {
  * Fails the `Deferred` with the specified error, which will be propagated to
  * all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const fail: {
@@ -144,7 +144,7 @@ export const fail: {
  * Fails the `Deferred` with the specified error, which will be propagated to
  * all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const failSync: {
@@ -156,7 +156,7 @@ export const failSync: {
  * Fails the `Deferred` with the specified `Cause`, which will be propagated to
  * all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const failCause: {
@@ -168,7 +168,7 @@ export const failCause: {
  * Fails the `Deferred` with the specified `Cause`, which will be propagated to
  * all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const failCauseSync: {
@@ -180,7 +180,7 @@ export const failCauseSync: {
  * Kills the `Deferred` with the specified defect, which will be propagated to
  * all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const die: {
@@ -192,7 +192,7 @@ export const die: {
  * Kills the `Deferred` with the specified defect, which will be propagated to
  * all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const dieSync: {
@@ -205,7 +205,7 @@ export const dieSync: {
  * waiting on the value of the `Deferred` with the `FiberId` of the fiber
  * calling this method.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interrupt: <E, A>(self: Deferred<E, A>) => Effect.Effect<never, never, boolean> = core.deferredInterrupt
@@ -214,7 +214,7 @@ export const interrupt: <E, A>(self: Deferred<E, A>) => Effect.Effect<never, nev
  * Completes the `Deferred` with interruption. This will interrupt all fibers
  * waiting on the value of the `Deferred` with the specified `FiberId`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interruptWith: {
@@ -226,7 +226,7 @@ export const interruptWith: {
  * Returns `true` if this `Deferred` has already been completed with a value or
  * an error, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isDone: <E, A>(self: Deferred<E, A>) => Effect.Effect<never, never, boolean> = core.deferredIsDone
@@ -235,7 +235,7 @@ export const isDone: <E, A>(self: Deferred<E, A>) => Effect.Effect<never, never,
  * Returns a `Some<Effect<R, E, A>>` from the `Deferred` if this `Deferred` has
  * already been completed, `None` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const poll: <E, A>(
@@ -245,7 +245,7 @@ export const poll: <E, A>(
 /**
  * Completes the `Deferred` with the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const succeed: {
@@ -256,7 +256,7 @@ export const succeed: {
 /**
  * Completes the `Deferred` with the specified lazily evaluated value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const sync: {
@@ -267,7 +267,7 @@ export const sync: {
 /**
  * Unsafely creates a new `Deferred` from the specified `FiberId`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<E, A> = core.deferredUnsafeMake
@@ -276,7 +276,7 @@ export const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<E, A> = co
  * Unsafely exits the `Deferred` with the specified `Exit` value, which will be
  * propagated to all fibers waiting on the value of the `Deferred`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeDone: <E, A>(self: Deferred<E, A>, effect: Effect.Effect<never, E, A>) => void =

@@ -1,32 +1,32 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as internal from "./internal/channel/upstreamPullRequest"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const UpstreamPullRequestTypeId: unique symbol = internal.UpstreamPullRequestTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type UpstreamPullRequestTypeId = typeof UpstreamPullRequestTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type UpstreamPullRequest<A> = Pulled<A> | NoUpstream
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace UpstreamPullRequest {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -37,7 +37,7 @@ export declare namespace UpstreamPullRequest {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Pulled<A> extends UpstreamPullRequest.Variance<A> {
@@ -46,7 +46,7 @@ export interface Pulled<A> extends UpstreamPullRequest.Variance<A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface NoUpstream extends UpstreamPullRequest.Variance<never> {
@@ -55,13 +55,13 @@ export interface NoUpstream extends UpstreamPullRequest.Variance<never> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Pulled: <A>(value: A) => UpstreamPullRequest<A> = internal.Pulled
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const NoUpstream: (activeDownstreamCount: number) => UpstreamPullRequest<never> = internal.NoUpstream
@@ -70,7 +70,7 @@ export const NoUpstream: (activeDownstreamCount: number) => UpstreamPullRequest<
  * Returns `true` if the specified value is an `UpstreamPullRequest`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isUpstreamPullRequest: (u: unknown) => u is UpstreamPullRequest<unknown> = internal.isUpstreamPullRequest
@@ -79,7 +79,7 @@ export const isUpstreamPullRequest: (u: unknown) => u is UpstreamPullRequest<unk
  * Returns `true` if the specified `UpstreamPullRequest` is a `Pulled`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isPulled: <A>(self: UpstreamPullRequest<A>) => self is Pulled<A> = internal.isPulled
@@ -88,7 +88,7 @@ export const isPulled: <A>(self: UpstreamPullRequest<A>) => self is Pulled<A> = 
  * Returns `true` if the specified `UpstreamPullRequest` is a `NoUpstream`,
  * `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isNoUpstream: <A>(self: UpstreamPullRequest<A>) => self is NoUpstream = internal.isNoUpstream
@@ -96,7 +96,7 @@ export const isNoUpstream: <A>(self: UpstreamPullRequest<A>) => self is NoUpstre
 /**
  * Folds an `UpstreamPullRequest<A>` into a value of type `Z`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const match: {

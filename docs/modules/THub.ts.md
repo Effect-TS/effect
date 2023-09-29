@@ -6,7 +6,7 @@ parent: Modules
 
 ## THub overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -51,7 +51,7 @@ pressure to publishers if the hub is at capacity.
 export declare const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, THub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropping
 
@@ -64,7 +64,7 @@ messages if the hub is at capacity.
 export declare const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, THub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sliding
 
@@ -79,7 +79,7 @@ For best performance use capacities that are powers of two.
 export declare const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, THub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unbounded
 
@@ -91,7 +91,7 @@ Creates an unbounded hub.
 export declare const unbounded: <A>() => STM.STM<never, never, THub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -105,7 +105,7 @@ Returns the number of elements the hub can hold.
 export declare const capacity: <A>(self: THub<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -117,7 +117,7 @@ Returns `true` if the `THub` contains zero elements, `false` otherwise.
 export declare const isEmpty: <A>(self: THub<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFull
 
@@ -130,7 +130,7 @@ otherwise.
 export declare const isFull: <A>(self: THub<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isShutdown
 
@@ -142,7 +142,7 @@ Returns `true` if `shutdown` has been called, otherwise returns `false`.
 export declare const isShutdown: <A>(self: THub<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -156,7 +156,7 @@ elements to be added to the hub.
 export declare const size: <A>(self: THub<A>) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -168,7 +168,7 @@ Added in v1.0.0
 export interface THub<A> extends TQueue.TEnqueue<A> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -184,7 +184,7 @@ shutdown, the `STM` will resume right away.
 export declare const awaitShutdown: <A>(self: THub<A>) => STM.STM<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## publish
 
@@ -200,7 +200,7 @@ export declare const publish: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## publishAll
 
@@ -216,7 +216,7 @@ export declare const publishAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## subscribe
 
@@ -231,7 +231,7 @@ queue.
 export declare const subscribe: <A>(self: THub<A>) => STM.STM<never, never, TQueue.TDequeue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## subscribeScoped
 
@@ -245,7 +245,7 @@ each time.
 export declare const subscribeScoped: <A>(self: THub<A>) => Effect.Effect<Scope.Scope, never, TQueue.TDequeue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -257,7 +257,7 @@ Added in v1.0.0
 export declare const THubTypeId: typeof THubTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## THubTypeId (type alias)
 
@@ -267,4 +267,4 @@ Added in v1.0.0
 export type THubTypeId = typeof THubTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

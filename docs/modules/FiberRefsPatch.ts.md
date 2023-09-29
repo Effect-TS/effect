@@ -6,7 +6,7 @@ parent: Modules
 
 ## FiberRefsPatch overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -45,7 +45,7 @@ export declare const combine: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## diff
 
@@ -58,7 +58,7 @@ collections of `FiberRef`
 export declare const diff: (oldValue: FiberRefs.FiberRefs, newValue: FiberRefs.FiberRefs) => FiberRefsPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -68,7 +68,7 @@ Added in v1.0.0
 export declare const empty: FiberRefsPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -86,7 +86,7 @@ export declare const patch: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -102,7 +102,7 @@ export interface Add {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## AndThen (interface)
 
@@ -116,7 +116,7 @@ export interface AndThen {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Empty (interface)
 
@@ -128,7 +128,7 @@ export interface Empty {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberRefsPatch (type alias)
 
@@ -143,7 +143,7 @@ workflow.
 export type FiberRefsPatch = Empty | Add | Remove | Update | AndThen
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Remove (interface)
 
@@ -156,7 +156,7 @@ export interface Remove {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Update (interface)
 
@@ -170,4 +170,4 @@ export interface Update {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -6,7 +6,7 @@ parent: Modules
 
 ## Utils overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export declare const adapter: <F extends TypeLambda>() => Adapter<F>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -65,14 +65,14 @@ Added in v1.0.0
 export declare class GenKindImpl<F, R, O, E, A> {
   constructor(
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      */
     readonly value: Kind<F, R, O, E, A>
   )
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### [Symbol.iterator] (method)
 
@@ -82,7 +82,7 @@ Added in v1.0.0
 [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### [GenKindTypeId] (property)
 
@@ -92,7 +92,7 @@ Added in v1.0.0
 readonly [GenKindTypeId]: typeof GenKindTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SingleShotGen (class)
 
@@ -104,7 +104,7 @@ export declare class SingleShotGen<T, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### next (method)
 
@@ -114,7 +114,7 @@ Added in v1.0.0
 next(a: A): IteratorResult<T, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### return (method)
 
@@ -124,7 +124,7 @@ Added in v1.0.0
 return(a: A): IteratorResult<T, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### throw (method)
 
@@ -134,7 +134,7 @@ Added in v1.0.0
 throw(e: unknown): IteratorResult<T, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### [Symbol.iterator] (method)
 
@@ -144,7 +144,7 @@ Added in v1.0.0
 [Symbol.iterator](): Generator<T, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeGenKind
 
@@ -156,7 +156,7 @@ export declare const makeGenKind: <F extends TypeLambda, R, O, E, A>(
 ) => GenKind<F, R, O, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -168,7 +168,7 @@ Added in v1.0.0
 export type OptionalNumber = number | null | undefined
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## PCGRandom (class)
 
@@ -184,7 +184,7 @@ export declare class PCGRandom {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### getState (method)
 
@@ -197,7 +197,7 @@ JavaScript Array.
 getState(): PCGRandomState
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### setState (method)
 
@@ -209,7 +209,7 @@ Restore state previously retrieved using `getState()`.
 setState(state: PCGRandomState)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### integer (method)
 
@@ -221,7 +221,7 @@ Get a uniformly distributed 32 bit integer between [0, max).
 integer(max: number)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### number (method)
 
@@ -234,7 +234,7 @@ Get a uniformly distributed IEEE-754 double between 0.0 and 1.0, with
 number()
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## PCGRandomState (type alias)
 
@@ -244,7 +244,7 @@ Added in v1.0.0
 export type PCGRandomState = [number, number, number, number]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -522,7 +522,7 @@ export interface Adapter<Z extends TypeLambda> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Gen (interface)
 
@@ -540,7 +540,7 @@ export interface Gen<F extends TypeLambda, Z> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## GenKind (interface)
 
@@ -554,7 +554,7 @@ export interface GenKind<F extends TypeLambda, R, O, E, A> extends Variance<F, R
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Variance (interface)
 
@@ -570,7 +570,7 @@ export interface Variance<F extends TypeLambda, R, O, E> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -582,7 +582,7 @@ Added in v1.0.0
 export declare const GenKindTypeId: typeof GenKindTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## GenKindTypeId (type alias)
 
@@ -592,4 +592,4 @@ Added in v1.0.0
 export type GenKindTypeId = typeof GenKindTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

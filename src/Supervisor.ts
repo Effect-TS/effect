@@ -2,7 +2,7 @@
  * A `Supervisor<T>` is allowed to supervise the launching and termination of
  * fibers, producing some visible value of type `T` from the supervision.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Context from "./Context"
 import type * as Effect from "./Effect"
@@ -17,19 +17,19 @@ import type * as Option from "./Option"
 import type * as SortedSet from "./SortedSet"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const SupervisorTypeId: unique symbol = internal.SupervisorTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type SupervisorTypeId = typeof SupervisorTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Supervisor<T> extends Supervisor.Variance<T> {
@@ -85,11 +85,11 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Supervisor {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<T> {
@@ -100,7 +100,7 @@ export declare namespace Supervisor {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never, never, never> = circular.addSupervisor
@@ -108,7 +108,7 @@ export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never,
 /**
  * Creates a new supervisor that tracks children in a set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fibersIn: (
@@ -118,7 +118,7 @@ export const fibersIn: (
 /**
  * Creates a new supervisor that constantly yields effect when polled
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEffect: <A>(effect: Effect.Effect<never, never, A>) => Supervisor<A> = internal.fromEffect
@@ -126,7 +126,7 @@ export const fromEffect: <A>(effect: Effect.Effect<never, never, A>) => Supervis
 /**
  * A supervisor that doesn't do anything in response to supervision events.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const none: Supervisor<void> = internal.none
@@ -134,7 +134,7 @@ export const none: Supervisor<void> = internal.none
 /**
  * Creates a new supervisor that tracks children in a set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const track: Effect.Effect<never, never, Supervisor<Array<Fiber.RuntimeFiber<any, any>>>> = internal.track
@@ -142,23 +142,23 @@ export const track: Effect.Effect<never, never, Supervisor<Array<Fiber.RuntimeFi
 /**
  * Unsafely creates a new supervisor that tracks children in a set.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeTrack: () => Supervisor<Array<Fiber.RuntimeFiber<any, any>>> = internal.unsafeTrack
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   abstract value(): Effect.Effect<never, never, T>
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   onStart<R, E, A>(
     _context: Context.Context<R>,
@@ -170,7 +170,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   onEnd<E, A>(
     _value: Exit.Exit<E, A>,
@@ -180,7 +180,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   onEffect<E, A>(
     _fiber: Fiber.RuntimeFiber<E, A>,
@@ -190,7 +190,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   onSuspend<E, A>(
     _fiber: Fiber.RuntimeFiber<E, A>
@@ -199,7 +199,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   onResume<E, A>(
     _fiber: Fiber.RuntimeFiber<E, A>
@@ -208,14 +208,14 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   map<B>(f: (a: T) => B): Supervisor<B> {
     return new internal.ProxySupervisor(this, () => core.map(this.value(), f))
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   zip<A>(
     right: Supervisor<A>
@@ -224,14 +224,14 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<E, A>): X {
     return execution()
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   readonly [SupervisorTypeId]: {
     _T: (_: never) => never

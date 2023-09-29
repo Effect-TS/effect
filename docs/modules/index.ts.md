@@ -6,11 +6,7 @@ parent: Modules
 
 ## index overview
 
-This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
-It includes functions for basic arithmetic operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
-
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -158,6 +154,13 @@ Added in v1.0.0
   - [From "./Types"](#from-types)
   - [From "./Unify"](#from-unify)
   - [From "./Utils"](#from-utils)
+- [utils](#utils)
+  - [absurd](#absurd)
+  - [flow](#flow)
+  - [hole](#hole)
+  - [identity](#identity)
+  - [pipe](#pipe)
+  - [unsafeCoerce](#unsafecoerce)
 
 ---
 
@@ -175,7 +178,7 @@ It includes functions for basic arithmetic operations, as well as type class ins
 export * from './Bigint'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Boolean"
 
@@ -189,7 +192,7 @@ It includes functions for basic boolean operations, as well as type class instan
 export * from './Boolean'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Brand"
 
@@ -214,7 +217,7 @@ If the input data fails the validation, a `BrandErrors` is returned, which provi
 export * from './Brand'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Cache"
 
@@ -226,7 +229,7 @@ Re-exports all named exports from the "./Cache" module.
 export * from './Cache'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Cause"
 
@@ -256,7 +259,7 @@ occurring within our codebase.
 export * from './Cause'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Channel"
 
@@ -268,7 +271,7 @@ Re-exports all named exports from the "./Channel" module.
 export * from './Channel'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ChannelChildExecutorDecision"
 
@@ -280,7 +283,7 @@ Re-exports all named exports from the "./ChannelChildExecutorDecision" module.
 export * from './ChannelChildExecutorDecision'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ChannelMergeDecision"
 
@@ -292,7 +295,7 @@ Re-exports all named exports from the "./ChannelMergeDecision" module.
 export * from './ChannelMergeDecision'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ChannelMergeState"
 
@@ -304,7 +307,7 @@ Re-exports all named exports from the "./ChannelMergeState" module.
 export * from './ChannelMergeState'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ChannelMergeStrategy"
 
@@ -316,7 +319,7 @@ Re-exports all named exports from the "./ChannelMergeStrategy" module.
 export * from './ChannelMergeStrategy'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ChannelSingleProducerAsyncInput"
 
@@ -328,7 +331,7 @@ Re-exports all named exports from the "./ChannelSingleProducerAsyncInput" module
 export * from './ChannelSingleProducerAsyncInput'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ChannelUpstreamPullRequest"
 
@@ -340,7 +343,7 @@ Re-exports all named exports from the "./ChannelUpstreamPullRequest" module.
 export * from './ChannelUpstreamPullRequest'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ChannelUpstreamPullStrategy"
 
@@ -352,7 +355,7 @@ Re-exports all named exports from the "./ChannelUpstreamPullStrategy" module.
 export * from './ChannelUpstreamPullStrategy'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Chunk"
 
@@ -364,7 +367,7 @@ Re-exports all named exports from the "./Chunk" module.
 export * from './Chunk'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Clock"
 
@@ -376,7 +379,7 @@ Re-exports all named exports from the "./Clock" module.
 export * from './Clock'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Config"
 
@@ -388,7 +391,7 @@ Re-exports all named exports from the "./Config" module.
 export * from './Config'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ConfigError"
 
@@ -400,7 +403,7 @@ Re-exports all named exports from the "./ConfigError" module.
 export * from './ConfigError'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ConfigProvider"
 
@@ -412,7 +415,7 @@ Re-exports all named exports from the "./ConfigProvider" module.
 export * from './ConfigProvider'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ConfigProviderPathPatch"
 
@@ -424,7 +427,7 @@ Re-exports all named exports from the "./ConfigProviderPathPatch" module.
 export * from './ConfigProviderPathPatch'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ConfigSecret"
 
@@ -436,7 +439,7 @@ Re-exports all named exports from the "./ConfigSecret" module.
 export * from './ConfigSecret'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Console"
 
@@ -448,7 +451,7 @@ Re-exports all named exports from the "./Console" module.
 export * from './Console'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Context"
 
@@ -464,7 +467,7 @@ query the contents of a `Context`, as well as a number of utility types for work
 export * from './Context'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Data"
 
@@ -476,7 +479,7 @@ Re-exports all named exports from the "./Data" module.
 export * from './Data'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./DefaultServices"
 
@@ -488,7 +491,7 @@ Re-exports all named exports from the "./DefaultServices" module.
 export * from './DefaultServices'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Deferred"
 
@@ -500,7 +503,7 @@ Re-exports all named exports from the "./Deferred" module.
 export * from './Deferred'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Differ"
 
@@ -512,7 +515,7 @@ Re-exports all named exports from the "./Differ" module.
 export * from './Differ'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Duration"
 
@@ -524,7 +527,7 @@ Re-exports all named exports from the "./Duration" module.
 export * from './Duration'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Effect"
 
@@ -536,7 +539,7 @@ Re-exports all named exports from the "./Effect" module.
 export * from './Effect'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Effectable"
 
@@ -548,7 +551,7 @@ Re-exports all named exports from the "./Effectable" module.
 export * from './Effectable'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Either"
 
@@ -560,7 +563,7 @@ Re-exports all named exports from the "./Either" module.
 export * from './Either'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Encoding"
 
@@ -576,7 +579,7 @@ This module provides encoding & decoding functionality for:
 export * from './Encoding'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Equal"
 
@@ -588,7 +591,7 @@ Re-exports all named exports from the "./Equal" module.
 export * from './Equal'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Equivalence"
 
@@ -602,7 +605,7 @@ These properties are also known in mathematics as an "equivalence relation".
 export * from './Equivalence'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Error"
 
@@ -614,7 +617,7 @@ Re-exports all named exports from the "./Error" module.
 export * from './Error'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ExecutionStrategy"
 
@@ -626,7 +629,7 @@ Re-exports all named exports from the "./ExecutionStrategy" module.
 export * from './ExecutionStrategy'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Exit"
 
@@ -638,7 +641,7 @@ Re-exports all named exports from the "./Exit" module.
 export * from './Exit'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Fiber"
 
@@ -650,7 +653,7 @@ Re-exports all named exports from the "./Fiber" module.
 export * from './Fiber'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./FiberId"
 
@@ -662,7 +665,7 @@ Re-exports all named exports from the "./FiberId" module.
 export * from './FiberId'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./FiberRef"
 
@@ -674,7 +677,7 @@ Re-exports all named exports from the "./FiberRef" module.
 export * from './FiberRef'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./FiberRefs"
 
@@ -686,7 +689,7 @@ Re-exports all named exports from the "./FiberRefs" module.
 export * from './FiberRefs'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./FiberRefsPatch"
 
@@ -698,7 +701,7 @@ Re-exports all named exports from the "./FiberRefsPatch" module.
 export * from './FiberRefsPatch'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./FiberStatus"
 
@@ -710,7 +713,7 @@ Re-exports all named exports from the "./FiberStatus" module.
 export * from './FiberStatus'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Function"
 
@@ -722,7 +725,7 @@ Re-exports all named exports from the "./Function" module.
 export * from './Function'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./GlobalValue"
 
@@ -734,7 +737,7 @@ Re-exports all named exports from the "./GlobalValue" module.
 export * from './GlobalValue'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./GroupBy"
 
@@ -746,7 +749,7 @@ Re-exports all named exports from the "./GroupBy" module.
 export * from './GroupBy'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./HKT"
 
@@ -758,7 +761,7 @@ Re-exports all named exports from the "./HKT" module.
 export * from './HKT'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Hash"
 
@@ -770,7 +773,7 @@ Re-exports all named exports from the "./Hash" module.
 export * from './Hash'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./HashMap"
 
@@ -782,7 +785,7 @@ Re-exports all named exports from the "./HashMap" module.
 export * from './HashMap'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./HashSet"
 
@@ -794,7 +797,7 @@ Re-exports all named exports from the "./HashSet" module.
 export * from './HashSet'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Hub"
 
@@ -806,7 +809,7 @@ Re-exports all named exports from the "./Hub" module.
 export * from './Hub'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Inspectable"
 
@@ -818,7 +821,7 @@ Re-exports all named exports from the "./Inspectable" module.
 export * from './Inspectable'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./KeyedPool"
 
@@ -830,7 +833,7 @@ Re-exports all named exports from the "./KeyedPool" module.
 export * from './KeyedPool'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Layer"
 
@@ -856,7 +859,7 @@ way in Effect-TS to create services that depend on other services.
 export * from './Layer'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./List"
 
@@ -875,7 +878,7 @@ This data type is optimal for last-in-first-out (LIFO), stack-like access patter
 export * from './List'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./LogLevel"
 
@@ -887,7 +890,7 @@ Re-exports all named exports from the "./LogLevel" module.
 export * from './LogLevel'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./LogSpan"
 
@@ -899,7 +902,7 @@ Re-exports all named exports from the "./LogSpan" module.
 export * from './LogSpan'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Logger"
 
@@ -911,7 +914,7 @@ Re-exports all named exports from the "./Logger" module.
 export * from './Logger'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Metric"
 
@@ -923,7 +926,7 @@ Re-exports all named exports from the "./Metric" module.
 export * from './Metric'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricBoundaries"
 
@@ -935,7 +938,7 @@ Re-exports all named exports from the "./MetricBoundaries" module.
 export * from './MetricBoundaries'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricHook"
 
@@ -947,7 +950,7 @@ Re-exports all named exports from the "./MetricHook" module.
 export * from './MetricHook'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricKey"
 
@@ -959,7 +962,7 @@ Re-exports all named exports from the "./MetricKey" module.
 export * from './MetricKey'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricKeyType"
 
@@ -971,7 +974,7 @@ Re-exports all named exports from the "./MetricKeyType" module.
 export * from './MetricKeyType'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricLabel"
 
@@ -983,7 +986,7 @@ Re-exports all named exports from the "./MetricLabel" module.
 export * from './MetricLabel'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricPair"
 
@@ -995,7 +998,7 @@ Re-exports all named exports from the "./MetricPair" module.
 export * from './MetricPair'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricPolling"
 
@@ -1007,7 +1010,7 @@ Re-exports all named exports from the "./MetricPolling" module.
 export * from './MetricPolling'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricRegistry"
 
@@ -1019,7 +1022,7 @@ Re-exports all named exports from the "./MetricRegistry" module.
 export * from './MetricRegistry'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MetricState"
 
@@ -1031,7 +1034,7 @@ Re-exports all named exports from the "./MetricState" module.
 export * from './MetricState'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MutableHashMap"
 
@@ -1043,7 +1046,7 @@ Re-exports all named exports from the "./MutableHashMap" module.
 export * from './MutableHashMap'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MutableHashSet"
 
@@ -1055,7 +1058,7 @@ Re-exports all named exports from the "./MutableHashSet" module.
 export * from './MutableHashSet'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MutableList"
 
@@ -1067,7 +1070,7 @@ Re-exports all named exports from the "./MutableList" module.
 export * from './MutableList'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MutableQueue"
 
@@ -1079,7 +1082,7 @@ Re-exports all named exports from the "./MutableQueue" module.
 export * from './MutableQueue'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./MutableRef"
 
@@ -1091,7 +1094,7 @@ Re-exports all named exports from the "./MutableRef" module.
 export * from './MutableRef'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./NonEmptyIterable"
 
@@ -1103,7 +1106,7 @@ Re-exports all named exports from the "./NonEmptyIterable" module.
 export * from './NonEmptyIterable'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Number"
 
@@ -1117,7 +1120,7 @@ It includes functions for basic arithmetic operations, as well as type class ins
 export * from './Number'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Option"
 
@@ -1129,7 +1132,7 @@ Re-exports all named exports from the "./Option" module.
 export * from './Option'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Order"
 
@@ -1141,7 +1144,7 @@ Re-exports all named exports from the "./Order" module.
 export * from './Order'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Ordering"
 
@@ -1153,7 +1156,7 @@ Re-exports all named exports from the "./Ordering" module.
 export * from './Ordering'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Pipeable"
 
@@ -1165,7 +1168,7 @@ Re-exports all named exports from the "./Pipeable" module.
 export * from './Pipeable'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Pool"
 
@@ -1177,7 +1180,7 @@ Re-exports all named exports from the "./Pool" module.
 export * from './Pool'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Predicate"
 
@@ -1189,7 +1192,7 @@ Re-exports all named exports from the "./Predicate" module.
 export * from './Predicate'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Queue"
 
@@ -1201,7 +1204,7 @@ Re-exports all named exports from the "./Queue" module.
 export * from './Queue'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Random"
 
@@ -1213,7 +1216,7 @@ Re-exports all named exports from the "./Random" module.
 export * from './Random'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ReadonlyArray"
 
@@ -1225,7 +1228,7 @@ This module provides utility functions for working with arrays in TypeScript.
 export * from './ReadonlyArray'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ReadonlyRecord"
 
@@ -1237,7 +1240,7 @@ This module provides utility functions for working with records in TypeScript.
 export * from './ReadonlyRecord'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./RedBlackTree"
 
@@ -1249,7 +1252,7 @@ Re-exports all named exports from the "./RedBlackTree" module.
 export * from './RedBlackTree'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Ref"
 
@@ -1261,7 +1264,7 @@ Re-exports all named exports from the "./Ref" module.
 export * from './Ref'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Reloadable"
 
@@ -1273,7 +1276,7 @@ Re-exports all named exports from the "./Reloadable" module.
 export * from './Reloadable'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Request"
 
@@ -1285,7 +1288,7 @@ Re-exports all named exports from the "./Request" module.
 export * from './Request'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./RequestBlock"
 
@@ -1297,7 +1300,7 @@ Re-exports all named exports from the "./RequestBlock" module.
 export * from './RequestBlock'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./RequestResolver"
 
@@ -1309,7 +1312,7 @@ Re-exports all named exports from the "./RequestResolver" module.
 export * from './RequestResolver'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Resource"
 
@@ -1321,7 +1324,7 @@ Re-exports all named exports from the "./Resource" module.
 export * from './Resource'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Runtime"
 
@@ -1333,7 +1336,7 @@ Re-exports all named exports from the "./Runtime" module.
 export * from './Runtime'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./RuntimeFlags"
 
@@ -1345,7 +1348,7 @@ Re-exports all named exports from the "./RuntimeFlags" module.
 export * from './RuntimeFlags'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./RuntimeFlagsPatch"
 
@@ -1357,7 +1360,7 @@ Re-exports all named exports from the "./RuntimeFlagsPatch" module.
 export * from './RuntimeFlagsPatch'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./STM"
 
@@ -1369,7 +1372,7 @@ Re-exports all named exports from the "./STM" module.
 export * from './STM'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Schedule"
 
@@ -1381,7 +1384,7 @@ Re-exports all named exports from the "./Schedule" module.
 export * from './Schedule'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ScheduleDecision"
 
@@ -1393,7 +1396,7 @@ Re-exports all named exports from the "./ScheduleDecision" module.
 export * from './ScheduleDecision'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ScheduleInterval"
 
@@ -1405,7 +1408,7 @@ Re-exports all named exports from the "./ScheduleInterval" module.
 export * from './ScheduleInterval'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ScheduleIntervals"
 
@@ -1417,7 +1420,7 @@ Re-exports all named exports from the "./ScheduleIntervals" module.
 export * from './ScheduleIntervals'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Scheduler"
 
@@ -1429,7 +1432,7 @@ Re-exports all named exports from the "./Scheduler" module.
 export * from './Scheduler'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Scope"
 
@@ -1441,7 +1444,7 @@ Re-exports all named exports from the "./Scope" module.
 export * from './Scope'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ScopedCache"
 
@@ -1453,7 +1456,7 @@ Re-exports all named exports from the "./ScopedCache" module.
 export * from './ScopedCache'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./ScopedRef"
 
@@ -1465,7 +1468,7 @@ Re-exports all named exports from the "./ScopedRef" module.
 export * from './ScopedRef'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Sink"
 
@@ -1477,7 +1480,7 @@ Re-exports all named exports from the "./Sink" module.
 export * from './Sink'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./SortedMap"
 
@@ -1489,7 +1492,7 @@ Re-exports all named exports from the "./SortedMap" module.
 export * from './SortedMap'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./SortedSet"
 
@@ -1501,7 +1504,7 @@ Re-exports all named exports from the "./SortedSet" module.
 export * from './SortedSet'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Stream"
 
@@ -1513,7 +1516,7 @@ Re-exports all named exports from the "./Stream" module.
 export * from './Stream'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./StreamEmit"
 
@@ -1525,7 +1528,7 @@ Re-exports all named exports from the "./StreamEmit" module.
 export * from './StreamEmit'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./StreamHaltStrategy"
 
@@ -1537,7 +1540,7 @@ Re-exports all named exports from the "./StreamHaltStrategy" module.
 export * from './StreamHaltStrategy'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./String"
 
@@ -1551,7 +1554,7 @@ It includes functions for basic string manipulation, as well as type class insta
 export * from './String'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Struct"
 
@@ -1563,7 +1566,7 @@ This module provides utility functions for working with structs in TypeScript.
 export * from './Struct'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./SubscriptionRef"
 
@@ -1575,7 +1578,7 @@ Re-exports all named exports from the "./SubscriptionRef" module.
 export * from './SubscriptionRef'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Supervisor"
 
@@ -1588,7 +1591,7 @@ fibers, producing some visible value of type `T` from the supervision.
 export * from './Supervisor'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Symbol"
 
@@ -1600,7 +1603,7 @@ Re-exports all named exports from the "./Symbol" module.
 export * from './Symbol'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./SynchronizedRef"
 
@@ -1612,7 +1615,7 @@ Re-exports all named exports from the "./SynchronizedRef" module.
 export * from './SynchronizedRef'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TArray"
 
@@ -1624,7 +1627,7 @@ Re-exports all named exports from the "./TArray" module.
 export * from './TArray'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TDeferred"
 
@@ -1636,7 +1639,7 @@ Re-exports all named exports from the "./TDeferred" module.
 export * from './TDeferred'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./THub"
 
@@ -1648,7 +1651,7 @@ Re-exports all named exports from the "./THub" module.
 export * from './THub'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TMap"
 
@@ -1660,7 +1663,7 @@ Re-exports all named exports from the "./TMap" module.
 export * from './TMap'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TPriorityQueue"
 
@@ -1672,7 +1675,7 @@ Re-exports all named exports from the "./TPriorityQueue" module.
 export * from './TPriorityQueue'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TQueue"
 
@@ -1684,7 +1687,7 @@ Re-exports all named exports from the "./TQueue" module.
 export * from './TQueue'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TRandom"
 
@@ -1696,7 +1699,7 @@ Re-exports all named exports from the "./TRandom" module.
 export * from './TRandom'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TReentrantLock"
 
@@ -1708,7 +1711,7 @@ Re-exports all named exports from the "./TReentrantLock" module.
 export * from './TReentrantLock'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TRef"
 
@@ -1720,7 +1723,7 @@ Re-exports all named exports from the "./TRef" module.
 export * from './TRef'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TSemaphore"
 
@@ -1732,7 +1735,7 @@ Re-exports all named exports from the "./TSemaphore" module.
 export * from './TSemaphore'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TSet"
 
@@ -1744,7 +1747,7 @@ Re-exports all named exports from the "./TSet" module.
 export * from './TSet'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Take"
 
@@ -1756,7 +1759,7 @@ Re-exports all named exports from the "./Take" module.
 export * from './Take'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestAnnotation"
 
@@ -1768,7 +1771,7 @@ Re-exports all named exports from the "./TestAnnotation" module.
 export * from './TestAnnotation'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestAnnotationMap"
 
@@ -1780,7 +1783,7 @@ Re-exports all named exports from the "./TestAnnotationMap" module.
 export * from './TestAnnotationMap'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestAnnotations"
 
@@ -1792,7 +1795,7 @@ Re-exports all named exports from the "./TestAnnotations" module.
 export * from './TestAnnotations'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestClock"
 
@@ -1804,7 +1807,7 @@ Re-exports all named exports from the "./TestClock" module.
 export * from './TestClock'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestConfig"
 
@@ -1816,7 +1819,7 @@ Re-exports all named exports from the "./TestConfig" module.
 export * from './TestConfig'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestContext"
 
@@ -1828,7 +1831,7 @@ Re-exports all named exports from the "./TestContext" module.
 export * from './TestContext'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestLive"
 
@@ -1840,7 +1843,7 @@ Re-exports all named exports from the "./TestLive" module.
 export * from './TestLive'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestServices"
 
@@ -1852,7 +1855,7 @@ Re-exports all named exports from the "./TestServices" module.
 export * from './TestServices'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./TestSized"
 
@@ -1864,7 +1867,7 @@ Re-exports all named exports from the "./TestSized" module.
 export * from './TestSized'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Tracer"
 
@@ -1876,7 +1879,7 @@ Re-exports all named exports from the "./Tracer" module.
 export * from './Tracer'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Tuple"
 
@@ -1888,7 +1891,7 @@ This module provides utility functions for working with tuples in TypeScript.
 export * from './Tuple'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Types"
 
@@ -1900,7 +1903,7 @@ A collection of types that are commonly used types.
 export * from './Types'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Unify"
 
@@ -1912,7 +1915,7 @@ Re-exports all named exports from the "./Unify" module.
 export * from './Unify'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## From "./Utils"
 
@@ -1924,4 +1927,66 @@ Re-exports all named exports from the "./Utils" module.
 export * from './Utils'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
+
+# utils
+
+## absurd
+
+**Signature**
+
+```ts
+export declare const absurd: <A>(_: never) => A
+```
+
+Added in v2.0.0
+
+## flow
+
+**Signature**
+
+```ts
+export declare const flow: typeof flow
+```
+
+Added in v2.0.0
+
+## hole
+
+**Signature**
+
+```ts
+export declare const hole: <T>() => T
+```
+
+Added in v2.0.0
+
+## identity
+
+**Signature**
+
+```ts
+export declare const identity: <A>(a: A) => A
+```
+
+Added in v2.0.0
+
+## pipe
+
+**Signature**
+
+```ts
+export declare const pipe: typeof pipe
+```
+
+Added in v2.0.0
+
+## unsafeCoerce
+
+**Signature**
+
+```ts
+export declare const unsafeCoerce: <A, B>(a: A) => B
+```
+
+Added in v2.0.0

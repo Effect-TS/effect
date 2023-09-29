@@ -6,7 +6,7 @@ parent: Modules
 
 ## MutableQueue overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -47,7 +47,7 @@ Creates a new bounded `MutableQueue`.
 export declare const bounded: <A>(capacity: number) => MutableQueue<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unbounded
 
@@ -59,7 +59,7 @@ Creates a new unbounded `MutableQueue`.
 export declare const unbounded: <A>() => MutableQueue<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -76,7 +76,7 @@ The **maximum** number of elements that a queue can hold.
 export declare const capacity: <A>(self: MutableQueue<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -88,7 +88,7 @@ Returns `true` if the queue is empty, `false` otherwise.
 export declare const isEmpty: <A>(self: MutableQueue<A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFull
 
@@ -100,7 +100,7 @@ Returns `true` if the queue is full, `false` otherwise.
 export declare const isFull: <A>(self: MutableQueue<A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## length
 
@@ -112,7 +112,7 @@ Returns the current number of elements in the queue.
 export declare const length: <A>(self: MutableQueue<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -131,7 +131,7 @@ export interface MutableQueue<A> extends Iterable<A>, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -143,7 +143,7 @@ Added in v1.0.0
 export declare const EmptyMutableQueue: typeof EmptyMutableQueue
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeId (type alias)
 
@@ -153,13 +153,13 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MutableQueue (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Empty (type alias)
 
@@ -169,7 +169,7 @@ Added in v1.0.0
 export type Empty = typeof EmptyMutableQueue
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## offer
 
@@ -186,7 +186,7 @@ export declare const offer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## offerAll
 
@@ -203,7 +203,7 @@ export declare const offerAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## poll
 
@@ -223,7 +223,7 @@ export declare const poll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pollUpTo
 
@@ -240,4 +240,4 @@ export declare const pollUpTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

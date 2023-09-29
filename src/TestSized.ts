@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Context from "./Context"
 import type * as Effect from "./Effect"
@@ -7,17 +7,17 @@ import type * as FiberRef from "./FiberRef"
 import * as core from "./internal/core"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestSizedTypeId = Symbol.for("effect/TestSized")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TestSizedTypeId = typeof TestSizedTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId
@@ -27,7 +27,7 @@ export interface TestSized {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestSized: Context.Tag<TestSized, TestSized> = Context.Tag(TestSizedTypeId)
 
@@ -45,11 +45,11 @@ class SizedImpl implements TestSized {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = (size: number): TestSized => new SizedImpl(core.fiberRefUnsafeMake(size))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromFiberRef = (fiberRef: FiberRef.FiberRef<number>): TestSized => new SizedImpl(fiberRef)

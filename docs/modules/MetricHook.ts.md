@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricHook overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -48,7 +48,7 @@ Added in v1.0.0
 export declare const counter: (_key: MetricKey.MetricKey.Counter) => MetricHook.Counter
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## frequency
 
@@ -58,7 +58,7 @@ Added in v1.0.0
 export declare const frequency: (_key: MetricKey.MetricKey.Frequency) => MetricHook.Frequency
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## gauge
 
@@ -68,7 +68,7 @@ Added in v1.0.0
 export declare const gauge: (_key: MetricKey.MetricKey.Gauge, startAt: number) => MetricHook.Gauge
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## histogram
 
@@ -78,7 +78,7 @@ Added in v1.0.0
 export declare const histogram: (key: MetricKey.MetricKey.Histogram) => MetricHook.Histogram
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -91,7 +91,7 @@ export declare const make: <In, Out>(options: {
 }) => MetricHook<In, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summary
 
@@ -101,7 +101,7 @@ Added in v1.0.0
 export declare const summary: (key: MetricKey.MetricKey.Summary) => MetricHook.Summary
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -116,7 +116,7 @@ export interface MetricHook<In, Out> extends MetricHook.Variance<In, Out>, Pipea
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -128,7 +128,7 @@ Added in v1.0.0
 export declare const MetricHookTypeId: typeof MetricHookTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricHookTypeId (type alias)
 
@@ -138,13 +138,13 @@ Added in v1.0.0
 export type MetricHookTypeId = typeof MetricHookTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MetricHook (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -159,7 +159,7 @@ export interface Variance<In, Out> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Counter (type alias)
 
@@ -169,7 +169,7 @@ Added in v1.0.0
 export type Counter = MetricHook<number, MetricState.MetricState.Counter>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Frequency (type alias)
 
@@ -179,7 +179,7 @@ Added in v1.0.0
 export type Frequency = MetricHook<string, MetricState.MetricState.Frequency>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Gauge (type alias)
 
@@ -189,7 +189,7 @@ Added in v1.0.0
 export type Gauge = MetricHook<number, MetricState.MetricState.Gauge>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Histogram (type alias)
 
@@ -199,7 +199,7 @@ Added in v1.0.0
 export type Histogram = MetricHook<number, MetricState.MetricState.Histogram>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Root (type alias)
 
@@ -209,7 +209,7 @@ Added in v1.0.0
 export type Root = MetricHook<any, MetricState.MetricState.Untyped>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Summary (type alias)
 
@@ -219,7 +219,7 @@ Added in v1.0.0
 export type Summary = MetricHook<readonly [number, number], MetricState.MetricState.Summary>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Untyped (type alias)
 
@@ -229,7 +229,7 @@ Added in v1.0.0
 export type Untyped = MetricHook<any, any>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## onUpdate
 
@@ -242,4 +242,4 @@ export declare const onUpdate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

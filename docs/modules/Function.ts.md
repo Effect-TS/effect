@@ -6,7 +6,7 @@ parent: Modules
 
 ## Function overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -62,7 +62,7 @@ assert.deepStrictEqual(isFunction(isFunction), true)
 assert.deepStrictEqual(isFunction('function'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -76,7 +76,7 @@ export interface FunctionTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -98,7 +98,7 @@ import { FunctionN } from 'effect/Function'
 export const sum: FunctionN<[number, number], number> = (a, b) => a + b
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## LazyArg (interface)
 
@@ -120,7 +120,7 @@ import { LazyArg, constant } from 'effect/Function'
 export const constNull: LazyArg<null> = constant(null)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SK
 
@@ -143,7 +143,7 @@ import { SK } from 'effect/Function'
 assert.deepStrictEqual(SK(0, 'hello'), 'hello')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## absurd
 
@@ -158,7 +158,7 @@ This function is particularly when it's necessary to specify that certain cases 
 export declare const absurd: <A>(_: never) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## apply
 
@@ -179,7 +179,7 @@ import { length } from 'effect/String'
 assert.deepStrictEqual(pipe(length, apply('hello')), 5)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## compose
 
@@ -206,7 +206,7 @@ const square = (n: number) => n * n
 assert.strictEqual(compose(increment, square)(2), 9)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## constFalse
 
@@ -226,7 +226,7 @@ import { constFalse } from 'effect/Function'
 assert.deepStrictEqual(constFalse(), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## constNull
 
@@ -246,7 +246,7 @@ import { constNull } from 'effect/Function'
 assert.deepStrictEqual(constNull(), null)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## constTrue
 
@@ -266,7 +266,7 @@ import { constTrue } from 'effect/Function'
 assert.deepStrictEqual(constTrue(), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## constUndefined
 
@@ -286,7 +286,7 @@ import { constUndefined } from 'effect/Function'
 assert.deepStrictEqual(constUndefined(), undefined)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## constVoid
 
@@ -306,7 +306,7 @@ import { constVoid } from 'effect/Function'
 assert.deepStrictEqual(constVoid(), undefined)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## constant
 
@@ -332,7 +332,7 @@ assert.deepStrictEqual(constNull(), null)
 assert.deepStrictEqual(constNull(), null)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dual
 
@@ -390,7 +390,7 @@ assert.deepStrictEqual(sum(2, 3), 5)
 assert.deepStrictEqual(pipe(2, sum(3)), 5)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flip
 
@@ -414,7 +414,7 @@ const f = (a: number) => (b: string) => a - b.length
 assert.deepStrictEqual(flip(f)('aaa')(2), -1)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flow
 
@@ -501,7 +501,7 @@ const f = flow(len, double)
 assert.strictEqual(f('aaa'), 6)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hole
 
@@ -513,7 +513,7 @@ Type hole simulation.
 export declare const hole: <T>() => T
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## identity
 
@@ -533,7 +533,7 @@ import { identity } from 'effect/Function'
 assert.deepStrictEqual(identity(5), 5)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pipe
 
@@ -792,7 +792,7 @@ const decrement = (n: number): number => n - 1
 assert.deepStrictEqual(pipe(length('hello'), double, decrement), 9)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tupled
 
@@ -814,7 +814,7 @@ const sumTupled = tupled((x: number, y: number): number => x + y)
 assert.deepStrictEqual(sumTupled([1, 2]), 3)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeCoerce
 
@@ -834,7 +834,7 @@ import { unsafeCoerce, identity } from 'effect/Function'
 assert.deepStrictEqual(unsafeCoerce, identity)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## untupled
 
@@ -856,4 +856,4 @@ const getFirst = untupled(<A, B>(tuple: [A, B]): A => tuple[0])
 assert.deepStrictEqual(getFirst(1, 2), 1)
 ```
 
-Added in v1.0.0
+Added in v2.0.0

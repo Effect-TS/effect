@@ -6,7 +6,7 @@ parent: Modules
 
 ## Predicate overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -96,7 +96,7 @@ assert.deepStrictEqual(length(2)('a'), false)
 assert.deepStrictEqual(length(2)('aaa'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## eqv
 
@@ -109,7 +109,7 @@ export declare const eqv: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## implies
 
@@ -122,7 +122,7 @@ export declare const implies: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -151,7 +151,7 @@ assert.deepStrictEqual(minLength3('aaa'), true)
 assert.deepStrictEqual(minLength3('aaaa'), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nand
 
@@ -164,7 +164,7 @@ export declare const nand: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nor
 
@@ -177,7 +177,7 @@ export declare const nor: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## not
 
@@ -202,7 +202,7 @@ assert.deepStrictEqual(isPositive(0), true)
 assert.deepStrictEqual(isPositive(1), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## or
 
@@ -230,7 +230,7 @@ assert.deepStrictEqual(nonZero(0), false)
 assert.deepStrictEqual(nonZero(1), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## xor
 
@@ -243,7 +243,7 @@ export declare const xor: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # combining
 
@@ -255,7 +255,7 @@ Added in v1.0.0
 export declare const all: <A>(collection: Iterable<Predicate<A>>) => Predicate<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## product
 
@@ -265,7 +265,7 @@ Added in v1.0.0
 export declare const product: <A, B>(self: Predicate<A>, that: Predicate<B>) => Predicate<readonly [A, B]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## productMany
 
@@ -278,7 +278,7 @@ export declare const productMany: <A>(
 ) => Predicate<readonly [A, ...A[]]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -290,7 +290,7 @@ Added in v1.0.0
 export declare const every: <A>(collection: Iterable<Predicate<A>>) => Predicate<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -300,7 +300,7 @@ Added in v1.0.0
 export declare const some: <A>(collection: Iterable<Predicate<A>>) => Predicate<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -324,7 +324,7 @@ assert.deepStrictEqual(isBigint(1n), true)
 assert.deepStrictEqual(isBigint(1), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isBoolean
 
@@ -346,7 +346,7 @@ assert.deepStrictEqual(isBoolean(true), true)
 assert.deepStrictEqual(isBoolean('true'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isDate
 
@@ -369,7 +369,7 @@ assert.deepStrictEqual(isDate(null), false)
 assert.deepStrictEqual(isDate({}), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isError
 
@@ -392,7 +392,7 @@ assert.deepStrictEqual(isError(null), false)
 assert.deepStrictEqual(isError({}), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFunction
 
@@ -414,7 +414,7 @@ assert.deepStrictEqual(isFunction(isFunction), true)
 assert.deepStrictEqual(isFunction('function'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isIterable
 
@@ -438,7 +438,7 @@ assert.deepStrictEqual(isIterable(null), false)
 assert.deepStrictEqual(isIterable({}), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNever
 
@@ -461,7 +461,7 @@ assert.deepStrictEqual(isNever({}), false)
 assert.deepStrictEqual(isNever([]), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNotNull
 
@@ -484,7 +484,7 @@ assert.deepStrictEqual(isNotNull('null'), true)
 assert.deepStrictEqual(isNotNull(null), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNotNullable
 
@@ -508,7 +508,7 @@ assert.deepStrictEqual(isNotNullable(null), false)
 assert.deepStrictEqual(isNotNullable(undefined), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNotUndefined
 
@@ -531,7 +531,7 @@ assert.deepStrictEqual(isNotUndefined('undefined'), true)
 assert.deepStrictEqual(isNotUndefined(undefined), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNull
 
@@ -554,7 +554,7 @@ assert.deepStrictEqual(isNull(undefined), false)
 assert.deepStrictEqual(isNull('null'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNullable
 
@@ -578,7 +578,7 @@ assert.deepStrictEqual(isNullable({}), false)
 assert.deepStrictEqual(isNullable([]), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNumber
 
@@ -600,7 +600,7 @@ assert.deepStrictEqual(isNumber(2), true)
 assert.deepStrictEqual(isNumber('2'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isObject
 
@@ -624,7 +624,7 @@ assert.deepStrictEqual(isObject(null), false)
 assert.deepStrictEqual(isObject(undefined), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isReadonlyRecord
 
@@ -652,7 +652,7 @@ assert.deepStrictEqual(isReadonlyRecord(null), false)
 assert.deepStrictEqual(isReadonlyRecord(undefined), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRecord
 
@@ -678,7 +678,7 @@ assert.deepStrictEqual(isRecord(null), false)
 assert.deepStrictEqual(isRecord(undefined), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isString
 
@@ -700,7 +700,7 @@ assert.deepStrictEqual(isString('a'), true)
 assert.deepStrictEqual(isString(1), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSymbol
 
@@ -722,7 +722,7 @@ assert.deepStrictEqual(isSymbol(Symbol.for('a')), true)
 assert.deepStrictEqual(isSymbol('a'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isTagged
 
@@ -750,7 +750,7 @@ assert.deepStrictEqual(isTagged({ _tag: 'a' }, 'a'), true)
 assert.deepStrictEqual(isTagged('a')({ _tag: 'a' }), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isUint8Array
 
@@ -773,7 +773,7 @@ assert.deepStrictEqual(isUint8Array(null), false)
 assert.deepStrictEqual(isUint8Array({}), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isUndefined
 
@@ -796,7 +796,7 @@ assert.deepStrictEqual(isUndefined(null), false)
 assert.deepStrictEqual(isUndefined('undefined'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isUnknown
 
@@ -820,7 +820,7 @@ assert.deepStrictEqual(isUnknown({}), true)
 assert.deepStrictEqual(isUnknown([]), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -834,7 +834,7 @@ export interface Predicate<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Refinement (interface)
 
@@ -846,7 +846,7 @@ export interface Refinement<A, B extends A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -860,7 +860,7 @@ export interface PredicateTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -875,7 +875,7 @@ export declare const compose: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## struct
 
@@ -887,7 +887,7 @@ export declare const struct: <R extends Record<string, Predicate<any>>>(
 ) => Predicate<{ readonly [K in keyof R]: [R[K]] extends [Predicate<infer A>] ? A : never }>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tuple
 
@@ -905,4 +905,4 @@ export declare const tuple: <T extends readonly Predicate<any>[]>(
 ) => Predicate<Readonly<{ [I in keyof T]: [T[I]] extends [Predicate<infer A>] ? A : never }>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

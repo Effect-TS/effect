@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as internal from "./internal/configProvider/pathPatch"
 
@@ -7,13 +7,13 @@ import * as internal from "./internal/configProvider/pathPatch"
  * Represents a description of how to modify the path to a configuration
  * value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type PathPatch = Empty | AndThen | MapName | Nested | Unnested
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Empty {
@@ -21,7 +21,7 @@ export interface Empty {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface AndThen {
@@ -31,7 +31,7 @@ export interface AndThen {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MapName {
@@ -40,7 +40,7 @@ export interface MapName {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Nested {
@@ -49,7 +49,7 @@ export interface Nested {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Unnested {
@@ -58,13 +58,13 @@ export interface Unnested {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: PathPatch = internal.empty
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const andThen: {
@@ -73,7 +73,7 @@ export const andThen: {
 } = internal.andThen
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const mapName: {
@@ -82,7 +82,7 @@ export const mapName: {
 } = internal.mapName
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const nested: {
@@ -91,7 +91,7 @@ export const nested: {
 } = internal.nested
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unnested: {

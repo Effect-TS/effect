@@ -6,7 +6,7 @@ parent: Modules
 
 ## Stream overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -348,7 +348,7 @@ newlines (`\n`).
 export declare const splitLines: <R, E>(self: Stream<R, E, string>) => Stream<R, E, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constants
 
@@ -363,7 +363,7 @@ The default chunk size used by the various combinators and constructors of
 export declare const DefaultChunkSize: number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -381,7 +381,7 @@ export declare const acquireRelease: <R, E, A, R2, _>(
 ) => Stream<R | R2, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## async
 
@@ -398,7 +398,7 @@ export declare const async: <R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asyncEffect
 
@@ -416,7 +416,7 @@ export declare const asyncEffect: <R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asyncInterrupt
 
@@ -434,7 +434,7 @@ export declare const asyncInterrupt: <R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asyncOption
 
@@ -452,7 +452,7 @@ export declare const asyncOption: <R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asyncScoped
 
@@ -470,7 +470,7 @@ export declare const asyncScoped: <R, E, A>(
 ) => Stream<Exclude<R, Scope.Scope>, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concatAll
 
@@ -482,7 +482,7 @@ Concatenates all of the streams in the chunk to one stream.
 export declare const concatAll: <R, E, A>(streams: Chunk.Chunk<Stream<R, E, A>>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -494,7 +494,7 @@ The stream that dies with the specified defect.
 export declare const die: (defect: unknown) => Stream<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieMessage
 
@@ -506,7 +506,7 @@ The stream that dies with an exception described by `message`.
 export declare const dieMessage: (message: string) => Stream<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieSync
 
@@ -518,7 +518,7 @@ The stream that dies with the specified lazily evaluated defect.
 export declare const dieSync: (evaluate: LazyArg<unknown>) => Stream<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -530,7 +530,7 @@ The empty stream.
 export declare const empty: Stream<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## execute
 
@@ -542,7 +542,7 @@ Creates a stream that executes the specified effect but emits no elements.
 export declare const execute: <R, E, _>(effect: Effect.Effect<R, E, _>) => Stream<R, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -554,7 +554,7 @@ Terminates with the specified error.
 export declare const fail: <E>(error: E) => Stream<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -566,7 +566,7 @@ The stream that always fails with the specified `Cause`.
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Stream<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCauseSync
 
@@ -578,7 +578,7 @@ The stream that always fails with the specified lazily evaluated `Cause`.
 export declare const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failSync
 
@@ -590,7 +590,7 @@ Terminates with the specified lazily evaluated error.
 export declare const failSync: <E>(evaluate: LazyArg<E>) => Stream<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## finalizer
 
@@ -603,7 +603,7 @@ when it ends.
 export declare const finalizer: <R, _>(finalizer: Effect.Effect<R, never, _>) => Stream<R, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromAsyncIterable
 
@@ -618,7 +618,7 @@ export declare const fromAsyncIterable: <E, A>(
 ) => Stream<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromChannel
 
@@ -632,7 +632,7 @@ export declare const fromChannel: <R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromChunk
 
@@ -644,7 +644,7 @@ Creates a stream from a `Chunk` of values.
 export declare const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromChunkHub
 
@@ -667,7 +667,7 @@ export declare const fromChunkHub: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromChunkQueue
 
@@ -682,7 +682,7 @@ export declare const fromChunkQueue: <A>(
 ) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromChunks
 
@@ -694,7 +694,7 @@ Creates a stream from an arbitrary number of chunks.
 export declare const fromChunks: <A>(...chunks: Chunk.Chunk<A>[]) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEffect
 
@@ -707,7 +707,7 @@ with the failure value of this effect.
 export declare const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEffectOption
 
@@ -720,7 +720,7 @@ Creates a stream from an effect producing a value of type `A` or an empty
 export declare const fromEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromHub
 
@@ -741,7 +741,7 @@ export declare const fromHub: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -753,7 +753,7 @@ Creates a stream from an `Iterable` collection of values.
 export declare const fromIterable: <A>(iterable: Iterable<A>) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterableEffect
 
@@ -765,7 +765,7 @@ Creates a stream from an effect producing a value of type `Iterable<A>`.
 export declare const fromIterableEffect: <R, E, A>(effect: Effect.Effect<R, E, Iterable<A>>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIteratorSucceed
 
@@ -780,7 +780,7 @@ export declare const fromIteratorSucceed: <A>(
 ) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromPull
 
@@ -796,7 +796,7 @@ export declare const fromPull: <R, R2, E, A>(
 ) => Stream<R2 | Exclude<R, Scope.Scope>, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromQueue
 
@@ -811,7 +811,7 @@ export declare const fromQueue: <A>(
 ) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromReadableStream
 
@@ -828,7 +828,7 @@ export declare const fromReadableStream: <A, E>(
 ) => Stream<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromReadableStreamByob
 
@@ -846,7 +846,7 @@ export declare const fromReadableStreamByob: <E>(
 ) => Stream<never, E, Uint8Array>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromSchedule
 
@@ -860,7 +860,7 @@ schedule, continuing for as long as the schedule continues.
 export declare const fromSchedule: <R, A>(schedule: Schedule.Schedule<R, unknown, A>) => Stream<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## iterate
 
@@ -873,7 +873,7 @@ f(f(f(a))), ...
 export declare const iterate: <A>(value: A, next: (value: A) => A) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -885,7 +885,7 @@ Creates a stream from an sequence of values.
 export declare const make: <As extends any[]>(...as: As) => Stream<never, never, As[number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## never
 
@@ -897,7 +897,7 @@ The stream that never produces any value or fails with any error.
 export declare const never: Stream<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## paginate
 
@@ -911,7 +911,7 @@ APIs, hence the name.
 export declare const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option.Option<S>]) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## paginateChunk
 
@@ -928,7 +928,7 @@ export declare const paginateChunk: <S, A>(
 ) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## paginateChunkEffect
 
@@ -945,7 +945,7 @@ export declare const paginateChunkEffect: <S, R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## paginateEffect
 
@@ -962,7 +962,7 @@ export declare const paginateEffect: <S, R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## range
 
@@ -974,7 +974,7 @@ Constructs a stream from a range of integers, including both endpoints.
 export declare const range: (min: number, max: number, chunkSize?: number) => Stream<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatEffect
 
@@ -987,7 +987,7 @@ forever.
 export declare const repeatEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatEffectChunk
 
@@ -1000,7 +1000,7 @@ repeats forever.
 export declare const repeatEffectChunk: <R, E, A>(effect: Effect.Effect<R, E, Chunk.Chunk<A>>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatEffectChunkOption
 
@@ -1015,7 +1015,7 @@ export declare const repeatEffectChunkOption: <R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatEffectOption
 
@@ -1028,7 +1028,7 @@ with `None`.
 export declare const repeatEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatEffectWithSchedule
 
@@ -1044,7 +1044,7 @@ export declare const repeatEffectWithSchedule: <R, E, A, A0 extends A, R2, _>(
 ) => Stream<R | R2, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatValue
 
@@ -1056,7 +1056,7 @@ Repeats the provided value infinitely.
 export declare const repeatValue: <A>(value: A) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scoped
 
@@ -1068,7 +1068,7 @@ Creates a single-valued stream from a scoped resource.
 export declare const scoped: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<Exclude<R, Scope.Scope>, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -1080,7 +1080,7 @@ Creates a single-valued pure stream.
 export declare const succeed: <A>(value: A) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## suspend
 
@@ -1092,7 +1092,7 @@ Returns a lazily constructed stream.
 export declare const suspend: <R, E, A>(stream: LazyArg<Stream<R, E, A>>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -1104,7 +1104,7 @@ Creates a single-valued pure stream.
 export declare const sync: <A>(evaluate: LazyArg<A>) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tick
 
@@ -1116,7 +1116,7 @@ A stream that emits Unit values spaced by the specified duration.
 export declare const tick: (interval: Duration.DurationInput) => Stream<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toChannel
 
@@ -1130,7 +1130,7 @@ export declare const toChannel: <R, E, A>(
 ) => Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unfold
 
@@ -1142,7 +1142,7 @@ Creates a stream by peeling off the "layers" of a value of type `S`.
 export declare const unfold: <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unfoldChunk
 
@@ -1157,7 +1157,7 @@ export declare const unfoldChunk: <S, A>(
 ) => Stream<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unfoldChunkEffect
 
@@ -1173,7 +1173,7 @@ export declare const unfoldChunkEffect: <R, E, A, S>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unfoldEffect
 
@@ -1189,7 +1189,7 @@ export declare const unfoldEffect: <S, R, E, A>(
 ) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unit
 
@@ -1201,7 +1201,7 @@ A stream that contains a single `Unit` value.
 export declare const unit: Stream<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrap
 
@@ -1215,7 +1215,7 @@ export declare const unwrap: <R, E, R2, E2, A>(
 ) => Stream<R | R2, E | E2, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrapScoped
 
@@ -1229,7 +1229,7 @@ export declare const unwrapScoped: <R, E, R2, E2, A>(
 ) => Stream<R2 | Exclude<R, Scope.Scope>, E | E2, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whenCase
 
@@ -1245,7 +1245,7 @@ export declare const whenCase: <A, R, E, A2>(
 ) => Stream<R, E, A2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -1259,7 +1259,7 @@ Accesses the whole context of the stream.
 export declare const context: <R>() => Stream<R, never, Context.Context<R>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWith
 
@@ -1271,7 +1271,7 @@ Accesses the context of the stream.
 export declare const contextWith: <R, A>(f: (env: Context.Context<R>) => A) => Stream<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithEffect
 
@@ -1285,7 +1285,7 @@ export declare const contextWithEffect: <R0, R, E, A>(
 ) => Stream<R0 | R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithStream
 
@@ -1299,7 +1299,7 @@ export declare const contextWithStream: <R0, R, E, A>(
 ) => Stream<R0 | R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputContext
 
@@ -1315,7 +1315,7 @@ export declare const mapInputContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideContext
 
@@ -1331,7 +1331,7 @@ export declare const provideContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideLayer
 
@@ -1346,7 +1346,7 @@ export declare const provideLayer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideService
 
@@ -1368,7 +1368,7 @@ export declare const provideService: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideServiceEffect
 
@@ -1390,7 +1390,7 @@ export declare const provideServiceEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideServiceStream
 
@@ -1412,7 +1412,7 @@ export declare const provideServiceStream: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideSomeLayer
 
@@ -1434,7 +1434,7 @@ export declare const provideSomeLayer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateService
 
@@ -1454,7 +1454,7 @@ export declare const updateService: (<T extends Context.Tag<any, any>>(
   ) => Stream<R | T, E, A>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -1473,7 +1473,7 @@ export declare const run: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runCollect
 
@@ -1485,7 +1485,7 @@ Runs the stream and collects all of its elements to a chunk.
 export declare const runCollect: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runCount
 
@@ -1497,7 +1497,7 @@ Runs the stream and emits the number of elements processed
 export declare const runCount: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runDrain
 
@@ -1509,7 +1509,7 @@ Runs the stream only for its effects. The emitted elements are discarded.
 export declare const runDrain: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFold
 
@@ -1525,7 +1525,7 @@ export declare const runFold: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFoldEffect
 
@@ -1546,7 +1546,7 @@ export declare const runFoldEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFoldScoped
 
@@ -1562,7 +1562,7 @@ export declare const runFoldScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFoldScopedEffect
 
@@ -1584,7 +1584,7 @@ export declare const runFoldScopedEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFoldWhile
 
@@ -1600,7 +1600,7 @@ export declare const runFoldWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFoldWhileEffect
 
@@ -1623,7 +1623,7 @@ export declare const runFoldWhileEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFoldWhileScoped
 
@@ -1646,7 +1646,7 @@ export declare const runFoldWhileScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFoldWhileScopedEffect
 
@@ -1670,7 +1670,7 @@ export declare const runFoldWhileScopedEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runForEach
 
@@ -1692,7 +1692,7 @@ export declare const runForEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runForEachChunk
 
@@ -1714,7 +1714,7 @@ export declare const runForEachChunk: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runForEachChunkScoped
 
@@ -1736,7 +1736,7 @@ export declare const runForEachChunkScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runForEachScoped
 
@@ -1758,7 +1758,7 @@ export declare const runForEachScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runForEachWhile
 
@@ -1780,7 +1780,7 @@ export declare const runForEachWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runForEachWhileScoped
 
@@ -1802,7 +1802,7 @@ export declare const runForEachWhileScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runHead
 
@@ -1815,7 +1815,7 @@ discarding the rest of the elements.
 export declare const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runIntoHub
 
@@ -1831,7 +1831,7 @@ export declare const runIntoHub: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runIntoHubScoped
 
@@ -1847,7 +1847,7 @@ export declare const runIntoHubScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runIntoQueue
 
@@ -1863,7 +1863,7 @@ export declare const runIntoQueue: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runIntoQueueElementsScoped
 
@@ -1885,7 +1885,7 @@ export declare const runIntoQueueElementsScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runIntoQueueScoped
 
@@ -1903,7 +1903,7 @@ export declare const runIntoQueueScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runLast
 
@@ -1916,7 +1916,7 @@ discarding the rest of the elements.
 export declare const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runScoped
 
@@ -1935,7 +1935,7 @@ export declare const runScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runSum
 
@@ -1947,7 +1947,7 @@ Runs the stream to a sink which sums elements, provided they are Numeric.
 export declare const runSum: <R, E>(self: Stream<R, E, number>) => Effect.Effect<R, E, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toHub
 
@@ -1965,7 +1965,7 @@ export declare const toHub: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toPull
 
@@ -1982,7 +1982,7 @@ export declare const toPull: <R, E, A>(
 ) => Effect.Effect<Scope.Scope | R, never, Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toQueue
 
@@ -2009,7 +2009,7 @@ export declare const toQueue: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toQueueOfElements
 
@@ -2033,7 +2033,7 @@ export declare const toQueueOfElements: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadableStream
 
@@ -2047,7 +2047,7 @@ See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
 export declare const toReadableStream: <E, A>(source: Stream<never, E, A>) => ReadableStream<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # do notation
 
@@ -2059,7 +2059,7 @@ Added in v1.0.0
 export declare const Do: Stream<never, never, {}>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bind
 
@@ -2083,7 +2083,7 @@ export declare const bind: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bindEffect
 
@@ -2107,7 +2107,7 @@ export declare const bindEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bindTo
 
@@ -2120,7 +2120,7 @@ export declare const bindTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## let
 
@@ -2141,7 +2141,7 @@ export declare const let: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -2161,7 +2161,7 @@ export declare const find: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findEffect
 
@@ -2183,7 +2183,7 @@ export declare const findEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # encoding
 
@@ -2200,7 +2200,7 @@ export declare const decodeText: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## encodeText
 
@@ -2212,7 +2212,7 @@ Encode a stream of strings into a stream of Uint8Array chunks using the specifie
 export declare const encodeText: <R, E>(self: Stream<R, E, string>) => Stream<R, E, Uint8Array>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -2230,7 +2230,7 @@ export declare const catchAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchAllCause
 
@@ -2253,7 +2253,7 @@ export declare const catchAllCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchSome
 
@@ -2275,7 +2275,7 @@ export declare const catchSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchSomeCause
 
@@ -2297,7 +2297,7 @@ export declare const catchSomeCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchTag
 
@@ -2320,7 +2320,7 @@ export declare const catchTag: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchTags
 
@@ -2389,7 +2389,7 @@ export declare const catchTags: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDie
 
@@ -2402,7 +2402,7 @@ infallible and all failures unchecked.
 export declare const orDie: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDieWith
 
@@ -2418,7 +2418,7 @@ export declare const orDieWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -2435,7 +2435,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseEither
 
@@ -2458,7 +2458,7 @@ export declare const orElseEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseFail
 
@@ -2475,7 +2475,7 @@ export declare const orElseFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseIfEmpty
 
@@ -2490,7 +2490,7 @@ export declare const orElseIfEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseIfEmptyChunk
 
@@ -2505,7 +2505,7 @@ export declare const orElseIfEmptyChunk: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseIfEmptyStream
 
@@ -2520,7 +2520,7 @@ export declare const orElseIfEmptyStream: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseSucceed
 
@@ -2535,7 +2535,7 @@ export declare const orElseSucceed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refineOrDie
 
@@ -2550,7 +2550,7 @@ export declare const refineOrDie: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refineOrDieWith
 
@@ -2568,7 +2568,7 @@ export declare const refineOrDieWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -2587,7 +2587,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterEffect
 
@@ -2608,7 +2608,7 @@ export declare const filterEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # grouping
 
@@ -2626,7 +2626,7 @@ export declare const groupAdjacentBy: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## groupBy
 
@@ -2650,7 +2650,7 @@ export declare const groupBy: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -2667,7 +2667,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -2682,7 +2682,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapAccum
 
@@ -2697,7 +2697,7 @@ export declare const mapAccum: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapAccumEffect
 
@@ -2719,7 +2719,7 @@ export declare const mapAccumEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapChunks
 
@@ -2734,7 +2734,7 @@ export declare const mapChunks: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapChunksEffect
 
@@ -2754,7 +2754,7 @@ export declare const mapChunksEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapConcat
 
@@ -2770,7 +2770,7 @@ export declare const mapConcat: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapConcatChunk
 
@@ -2786,7 +2786,7 @@ export declare const mapConcatChunk: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapConcatChunkEffect
 
@@ -2808,7 +2808,7 @@ export declare const mapConcatChunkEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapConcatEffect
 
@@ -2830,7 +2830,7 @@ export declare const mapConcatEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapEffect
 
@@ -2861,7 +2861,7 @@ export declare const mapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapError
 
@@ -2876,7 +2876,7 @@ export declare const mapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapErrorCause
 
@@ -2891,7 +2891,7 @@ export declare const mapErrorCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -2923,7 +2923,7 @@ export interface Stream<R, E, A> extends Stream.Variance<R, E, A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## StreamUnify (interface)
 
@@ -2935,7 +2935,7 @@ export interface StreamUnify<A extends { [Unify.typeSymbol]?: any }> extends Eff
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## StreamUnifyBlacklist (interface)
 
@@ -2947,7 +2947,7 @@ export interface StreamUnifyBlacklist extends Effect.EffectUnifyBlacklist {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -2972,7 +2972,7 @@ export declare const branchAfter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMap
 
@@ -2995,7 +2995,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -3016,7 +3016,7 @@ export declare const flatten: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flattenChunks
 
@@ -3029,7 +3029,7 @@ while still preserving them.
 export declare const flattenChunks: <R, E, A>(self: Stream<R, E, Chunk.Chunk<A>>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flattenEffect
 
@@ -3050,7 +3050,7 @@ export declare const flattenEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flattenExitOption
 
@@ -3070,7 +3070,7 @@ export declare const flattenExitOption: <R, E, E2, A>(
 ) => Stream<R, E | E2, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flattenIterables
 
@@ -3083,7 +3083,7 @@ while still preserving them.
 export declare const flattenIterables: <R, E, A>(self: Stream<R, E, Iterable<A>>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flattenTake
 
@@ -3096,7 +3096,7 @@ by failing with `None`.
 export declare const flattenTake: <R, E, E2, A>(self: Stream<R, E, Take.Take<E2, A>>) => Stream<R, E | E2, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tap
 
@@ -3117,7 +3117,7 @@ export declare const tap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapBoth
 
@@ -3142,7 +3142,7 @@ export declare const tapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapError
 
@@ -3163,7 +3163,7 @@ export declare const tapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapSink
 
@@ -3179,7 +3179,7 @@ export declare const tapSink: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -3191,7 +3191,7 @@ Added in v1.0.0
 export declare const StreamTypeId: typeof StreamTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## StreamTypeId (type alias)
 
@@ -3201,7 +3201,7 @@ Added in v1.0.0
 export type StreamTypeId = typeof StreamTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # tracing
 
@@ -3237,7 +3237,7 @@ export declare const withSpan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -3251,13 +3251,13 @@ export interface StreamTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Stream (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -3273,7 +3273,7 @@ export interface Variance<R, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### DynamicTuple (type alias)
 
@@ -3287,7 +3287,7 @@ export type DynamicTuple<T, N extends number> = N extends N
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### DynamicTupleOf (type alias)
 
@@ -3299,7 +3299,7 @@ export type DynamicTupleOf<T, N extends number, R extends Array<unknown>> = R['l
   : DynamicTupleOf<T, N, [T, ...R]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## aggregate
 
@@ -3324,7 +3324,7 @@ export declare const aggregate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## aggregateWithin
 
@@ -3346,7 +3346,7 @@ export declare const aggregateWithin: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## aggregateWithinEither
 
@@ -3377,7 +3377,7 @@ export declare const aggregateWithinEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## broadcast
 
@@ -3400,7 +3400,7 @@ export declare const broadcast: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## broadcastDynamic
 
@@ -3417,7 +3417,7 @@ export declare const broadcastDynamic: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## broadcastedQueues
 
@@ -3442,7 +3442,7 @@ export declare const broadcastedQueues: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## broadcastedQueuesDynamic
 
@@ -3467,7 +3467,7 @@ export declare const broadcastedQueuesDynamic: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## buffer
 
@@ -3492,7 +3492,7 @@ export declare const buffer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bufferChunks
 
@@ -3513,7 +3513,7 @@ export declare const bufferChunks: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## changes
 
@@ -3527,7 +3527,7 @@ elements are equal.
 export declare const changes: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## changesWith
 
@@ -3544,7 +3544,7 @@ export declare const changesWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## changesWithEffect
 
@@ -3563,7 +3563,7 @@ export declare const changesWithEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## chunks
 
@@ -3576,7 +3576,7 @@ elements.
 export declare const chunks: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## chunksWith
 
@@ -3591,7 +3591,7 @@ export declare const chunksWith: <R, E, A, R2, E2, A2>(
 ) => (self: Stream<R, E, A>) => Stream<R | R2, E | E2, A2>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combine
 
@@ -3630,7 +3630,7 @@ export declare const combine: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineChunks
 
@@ -3666,7 +3666,7 @@ export declare const combineChunks: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concat
 
@@ -3683,7 +3683,7 @@ export declare const concat: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cross
 
@@ -3702,7 +3702,7 @@ export declare const cross: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## crossLeft
 
@@ -3721,7 +3721,7 @@ export declare const crossLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## crossRight
 
@@ -3741,7 +3741,7 @@ export declare const crossRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## crossWith
 
@@ -3766,7 +3766,7 @@ export declare const crossWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## debounce
 
@@ -3789,7 +3789,7 @@ export declare const debounce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## distributedWith
 
@@ -3819,7 +3819,7 @@ export declare const distributedWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## distributedWithDynamic
 
@@ -3855,7 +3855,7 @@ export declare const distributedWithDynamic: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drain
 
@@ -3868,7 +3868,7 @@ elements. Useful for sequencing effects using streams:
 export declare const drain: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drainFork
 
@@ -3885,7 +3885,7 @@ export declare const drainFork: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drop
 
@@ -3900,7 +3900,7 @@ export declare const drop: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropRight
 
@@ -3915,7 +3915,7 @@ export declare const dropRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropUntil
 
@@ -3931,7 +3931,7 @@ export declare const dropUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropUntilEffect
 
@@ -3953,7 +3953,7 @@ export declare const dropUntilEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropWhile
 
@@ -3969,7 +3969,7 @@ export declare const dropWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropWhileEffect
 
@@ -3991,7 +3991,7 @@ export declare const dropWhileEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## either
 
@@ -4005,7 +4005,7 @@ exposed as part of the `Either` success case.
 export declare const either: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, Either.Either<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuring
 
@@ -4020,7 +4020,7 @@ export declare const ensuring: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuringWith
 
@@ -4040,7 +4040,7 @@ export declare const ensuringWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMap
 
@@ -4055,7 +4055,7 @@ export declare const filterMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMapEffect
 
@@ -4076,7 +4076,7 @@ export declare const filterMapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMapWhile
 
@@ -4092,7 +4092,7 @@ export declare const filterMapWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMapWhileEffect
 
@@ -4114,7 +4114,7 @@ export declare const filterMapWhileEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forever
 
@@ -4126,7 +4126,7 @@ Repeats this stream forever.
 export declare const forever: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## groupByKey
 
@@ -4179,7 +4179,7 @@ export declare const groupByKey: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## grouped
 
@@ -4194,7 +4194,7 @@ export declare const grouped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## groupedWithin
 
@@ -4212,7 +4212,7 @@ export declare const groupedWithin: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## haltAfter
 
@@ -4231,7 +4231,7 @@ export declare const haltAfter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## haltWhen
 
@@ -4253,7 +4253,7 @@ export declare const haltWhen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## haltWhenDeferred
 
@@ -4270,7 +4270,7 @@ export declare const haltWhenDeferred: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## identity
 
@@ -4282,7 +4282,7 @@ The identity pipeline, which does not modify streams in any way.
 export declare const identity: <R, E, A>() => Stream<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interleave
 
@@ -4300,7 +4300,7 @@ export declare const interleave: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interleaveWith
 
@@ -4327,7 +4327,7 @@ export declare const interleaveWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptAfter
 
@@ -4343,7 +4343,7 @@ export declare const interruptAfter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptWhen
 
@@ -4364,7 +4364,7 @@ export declare const interruptWhen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptWhenDeferred
 
@@ -4383,7 +4383,7 @@ export declare const interruptWhenDeferred: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersperse
 
@@ -4398,7 +4398,7 @@ export declare const intersperse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersperseAffixes
 
@@ -4418,7 +4418,7 @@ export declare const intersperseAffixes: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapBoth
 
@@ -4439,7 +4439,7 @@ export declare const mapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## merge
 
@@ -4467,7 +4467,7 @@ export declare const merge: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeAll
 
@@ -4489,7 +4489,7 @@ export declare const mergeAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeEither
 
@@ -4507,7 +4507,7 @@ export declare const mergeEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeLeft
 
@@ -4523,7 +4523,7 @@ export declare const mergeLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeRight
 
@@ -4539,7 +4539,7 @@ export declare const mergeRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeWith
 
@@ -4573,7 +4573,7 @@ export declare const mergeWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mkString
 
@@ -4586,7 +4586,7 @@ from the stream.
 export declare const mkString: <R, E>(self: Stream<R, E, string>) => Effect.Effect<R, E, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## onDone
 
@@ -4601,7 +4601,7 @@ export declare const onDone: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## onError
 
@@ -4626,7 +4626,7 @@ export declare const onError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -4650,7 +4650,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partitionEither
 
@@ -4675,7 +4675,7 @@ export declare const partitionEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## peel
 
@@ -4699,7 +4699,7 @@ export declare const peel: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pipeThrough
 
@@ -4716,7 +4716,7 @@ export declare const pipeThrough: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pipeThroughChannel
 
@@ -4736,7 +4736,7 @@ export declare const pipeThroughChannel: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pipeThroughChannelOrFail
 
@@ -4757,7 +4757,7 @@ export declare const pipeThroughChannelOrFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prepend
 
@@ -4772,7 +4772,7 @@ export declare const prepend: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## rechunk
 
@@ -4788,7 +4788,7 @@ export declare const rechunk: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeat
 
@@ -4804,7 +4804,7 @@ export declare const repeat: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatEither
 
@@ -4827,7 +4827,7 @@ export declare const repeatEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatElements
 
@@ -4846,7 +4846,7 @@ export declare const repeatElements: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatElementsWith
 
@@ -4877,7 +4877,7 @@ export declare const repeatElementsWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatWith
 
@@ -4902,7 +4902,7 @@ export declare const repeatWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retry
 
@@ -4925,7 +4925,7 @@ export declare const retry: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scan
 
@@ -4941,7 +4941,7 @@ export declare const scan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scanEffect
 
@@ -4963,7 +4963,7 @@ export declare const scanEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scanReduce
 
@@ -4981,7 +4981,7 @@ export declare const scanReduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scanReduceEffect
 
@@ -4998,7 +4998,7 @@ export declare const scanReduceEffect: <A2, A, R2, E2>(
 ) => <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2 | A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## schedule
 
@@ -5015,7 +5015,7 @@ export declare const schedule: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scheduleWith
 
@@ -5039,7 +5039,7 @@ export declare const scheduleWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sliding
 
@@ -5062,7 +5062,7 @@ export declare const sliding: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## slidingSize
 
@@ -5077,7 +5077,7 @@ export declare const slidingSize: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -5089,7 +5089,7 @@ Converts an option on values into an option on errors.
 export declare const some: <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, Option.Option<E>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## someOrElse
 
@@ -5104,7 +5104,7 @@ export declare const someOrElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## someOrFail
 
@@ -5119,7 +5119,7 @@ export declare const someOrFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## split
 
@@ -5146,7 +5146,7 @@ export declare const split: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## splitOnChunk
 
@@ -5161,7 +5161,7 @@ export declare const splitOnChunk: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -5176,7 +5176,7 @@ export declare const take: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeRight
 
@@ -5191,7 +5191,7 @@ export declare const takeRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeUntil
 
@@ -5207,7 +5207,7 @@ export declare const takeUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeUntilEffect
 
@@ -5229,7 +5229,7 @@ export declare const takeUntilEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeWhile
 
@@ -5245,7 +5245,7 @@ export declare const takeWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapErrorCause
 
@@ -5266,7 +5266,7 @@ export declare const tapErrorCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## throttle
 
@@ -5306,7 +5306,7 @@ export declare const throttle: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## throttleEffect
 
@@ -5346,7 +5346,7 @@ export declare const throttleEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeout
 
@@ -5361,7 +5361,7 @@ export declare const timeout: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeoutFail
 
@@ -5377,7 +5377,7 @@ export declare const timeoutFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeoutFailCause
 
@@ -5399,7 +5399,7 @@ export declare const timeoutFailCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeoutTo
 
@@ -5421,7 +5421,7 @@ export declare const timeoutTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transduce
 
@@ -5436,7 +5436,7 @@ export declare const transduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## when
 
@@ -5452,7 +5452,7 @@ export declare const when: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whenCaseEffect
 
@@ -5474,7 +5474,7 @@ export declare const whenCaseEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whenEffect
 
@@ -5490,7 +5490,7 @@ export declare const whenEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -5510,7 +5510,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAll
 
@@ -5536,7 +5536,7 @@ export declare const zipAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAllLeft
 
@@ -5555,7 +5555,7 @@ export declare const zipAllLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAllRight
 
@@ -5576,7 +5576,7 @@ export declare const zipAllRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAllSortedByKey
 
@@ -5612,7 +5612,7 @@ export declare const zipAllSortedByKey: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAllSortedByKeyLeft
 
@@ -5645,7 +5645,7 @@ export declare const zipAllSortedByKeyLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAllSortedByKeyRight
 
@@ -5678,7 +5678,7 @@ export declare const zipAllSortedByKeyRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAllSortedByKeyWith
 
@@ -5716,7 +5716,7 @@ export declare const zipAllSortedByKeyWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipAllWith
 
@@ -5748,7 +5748,7 @@ export declare const zipAllWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipFlatten
 
@@ -5772,7 +5772,7 @@ export declare const zipFlatten: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLatest
 
@@ -5793,7 +5793,7 @@ export declare const zipLatest: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLatestWith
 
@@ -5820,7 +5820,7 @@ export declare const zipLatestWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -5838,7 +5838,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -5856,7 +5856,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -5880,7 +5880,7 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWithChunks
 
@@ -5911,7 +5911,7 @@ export declare const zipWithChunks: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWithIndex
 
@@ -5923,7 +5923,7 @@ Zips this stream together with the index of elements.
 export declare const zipWithIndex: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWithNext
 
@@ -5935,7 +5935,7 @@ Zips each element with the next element if present.
 export declare const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option.Option<A>]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWithPrevious
 
@@ -5948,7 +5948,7 @@ Zips each element with the previous element. Initially accompanied by
 export declare const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option.Option<A>, A]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWithPreviousAndNext
 
@@ -5962,4 +5962,4 @@ export declare const zipWithPreviousAndNext: <R, E, A>(
 ) => Stream<R, E, readonly [Option.Option<A>, A, Option.Option<A>]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

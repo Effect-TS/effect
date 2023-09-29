@@ -6,7 +6,7 @@ parent: Modules
 
 ## Equal overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -36,7 +36,7 @@ export declare function equals<B>(that: B): <A>(self: A) => boolean
 export declare function equals<A, B>(self: A, that: B): boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -48,7 +48,7 @@ Added in v1.0.0
 export declare const isEqual: (u: unknown) => u is Equal
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -60,7 +60,7 @@ Added in v1.0.0
 export declare const equivalence: <A>() => Equivalence<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -74,7 +74,7 @@ export interface Equal extends Hash.Hash {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -86,4 +86,4 @@ Added in v1.0.0
 export declare const symbol: typeof symbol
 ```
 
-Added in v1.0.0
+Added in v2.0.0

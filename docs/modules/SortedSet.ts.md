@@ -6,7 +6,7 @@ parent: Modules
 
 ## SortedSet overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -59,7 +59,7 @@ Added in v1.0.0
 export declare const empty: <A>(O: Order<A>) => SortedSet<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -69,7 +69,7 @@ Added in v1.0.0
 export declare const fromIterable: <K>(ord: Order<K>) => (iterable: Iterable<K>) => SortedSet<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -81,7 +81,7 @@ export declare const make: <K>(
 ) => <Entries extends readonly K[]>(...entries: Entries) => SortedSet<Entries[number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -96,7 +96,7 @@ export declare const add: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## every
 
@@ -113,7 +113,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -123,7 +123,7 @@ Added in v1.0.0
 export declare const has: { <A>(value: A): (self: SortedSet<A>) => boolean; <A>(self: SortedSet<A>, value: A): boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSubset
 
@@ -136,7 +136,7 @@ export declare const isSubset: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -149,7 +149,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -164,7 +164,7 @@ export declare const some: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toggle
 
@@ -177,7 +177,7 @@ export declare const toggle: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -194,7 +194,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -214,7 +214,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -226,7 +226,7 @@ Added in v1.0.0
 export declare const size: <A>(self: SortedSet<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## values
 
@@ -236,7 +236,7 @@ Added in v1.0.0
 export declare const values: <A>(self: SortedSet<A>) => IterableIterator<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -251,7 +251,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -269,7 +269,7 @@ export interface SortedSet<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspec
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -281,7 +281,7 @@ Added in v1.0.0
 export declare const isSortedSet: { <A>(u: Iterable<A>): u is SortedSet<A>; (u: unknown): u is SortedSet<unknown> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -296,7 +296,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -308,7 +308,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # traversing
 
@@ -323,7 +323,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -338,7 +338,7 @@ export declare const difference: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersection
 
@@ -351,7 +351,7 @@ export declare const intersection: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -364,4 +364,4 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

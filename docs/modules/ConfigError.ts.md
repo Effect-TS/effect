@@ -6,7 +6,7 @@ parent: Modules
 
 ## ConfigError overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -61,7 +61,7 @@ Added in v1.0.0
 export declare const And: (self: ConfigError, that: ConfigError) => ConfigError
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InvalidData
 
@@ -71,7 +71,7 @@ Added in v1.0.0
 export declare const InvalidData: (path: Array<string>, message: string, options?: Options) => ConfigError
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MissingData
 
@@ -81,7 +81,7 @@ Added in v1.0.0
 export declare const MissingData: (path: Array<string>, message: string, options?: Options) => ConfigError
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Or
 
@@ -91,7 +91,7 @@ Added in v1.0.0
 export declare const Or: (self: ConfigError, that: ConfigError) => ConfigError
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SourceUnavailable
 
@@ -106,7 +106,7 @@ export declare const SourceUnavailable: (
 ) => ConfigError
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Unsupported
 
@@ -116,7 +116,7 @@ Added in v1.0.0
 export declare const Unsupported: (path: Array<string>, message: string, options?: Options) => ConfigError
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -131,7 +131,7 @@ export declare const reduceWithContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -147,7 +147,7 @@ export interface And extends ConfigError.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ConfigError (type alias)
 
@@ -159,7 +159,7 @@ The possible ways that loading configuration data may fail.
 export type ConfigError = And | Or | InvalidData | MissingData | SourceUnavailable | Unsupported
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ConfigErrorReducer (interface)
 
@@ -176,7 +176,7 @@ export interface ConfigErrorReducer<C, Z> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## InvalidData (interface)
 
@@ -190,7 +190,7 @@ export interface InvalidData extends ConfigError.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MissingData (interface)
 
@@ -204,7 +204,7 @@ export interface MissingData extends ConfigError.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Options (interface)
 
@@ -216,7 +216,7 @@ export interface Options {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Or (interface)
 
@@ -230,7 +230,7 @@ export interface Or extends ConfigError.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SourceUnavailable (interface)
 
@@ -245,7 +245,7 @@ export interface SourceUnavailable extends ConfigError.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Unsupported (interface)
 
@@ -259,7 +259,7 @@ export interface Unsupported extends ConfigError.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -273,7 +273,7 @@ Returns `true` if the specified `ConfigError` is an `And`, `false` otherwise.
 export declare const isAnd: (self: ConfigError) => self is And
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isConfigError
 
@@ -285,7 +285,7 @@ Returns `true` if the specified value is a `ConfigError`, `false` otherwise.
 export declare const isConfigError: (u: unknown) => u is ConfigError
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isInvalidData
 
@@ -298,7 +298,7 @@ otherwise.
 export declare const isInvalidData: (self: ConfigError) => self is InvalidData
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isMissingData
 
@@ -311,7 +311,7 @@ otherwise.
 export declare const isMissingData: (self: ConfigError) => self is MissingData
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isOr
 
@@ -323,7 +323,7 @@ Returns `true` if the specified `ConfigError` is an `Or`, `false` otherwise.
 export declare const isOr: (self: ConfigError) => self is Or
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSourceUnavailable
 
@@ -336,7 +336,7 @@ Returns `true` if the specified `ConfigError` is a `SourceUnavailable`,
 export declare const isSourceUnavailable: (self: ConfigError) => self is SourceUnavailable
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isUnsupported
 
@@ -349,7 +349,7 @@ otherwise.
 export declare const isUnsupported: (self: ConfigError) => self is Unsupported
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -361,7 +361,7 @@ Added in v1.0.0
 export declare const ConfigErrorTypeId: typeof ConfigErrorTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ConfigErrorTypeId (type alias)
 
@@ -371,13 +371,13 @@ Added in v1.0.0
 export type ConfigErrorTypeId = typeof ConfigErrorTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## ConfigError (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -389,7 +389,7 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Reducer (type alias)
 
@@ -399,7 +399,7 @@ Added in v1.0.0
 export type Reducer<C, Z> = ConfigErrorReducer<C, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isMissingDataOnly
 
@@ -411,7 +411,7 @@ Returns `true` if the specified `ConfigError` contains only `MissingData` errors
 export declare const isMissingDataOnly: (self: ConfigError) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prefixed
 
@@ -424,4 +424,4 @@ export declare const prefixed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

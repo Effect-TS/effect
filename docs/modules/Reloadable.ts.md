@@ -6,7 +6,7 @@ parent: Modules
 
 ## Reloadable overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -53,7 +53,7 @@ export declare const auto: <Out extends Context.Tag<any, any>, In, E, R>(
 ) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## autoFromConfig
 
@@ -73,7 +73,7 @@ export declare const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, 
 ) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## manual
 
@@ -89,7 +89,7 @@ export declare const manual: <Out extends Context.Tag<any, any>, In, E>(
 ) => Layer.Layer<In, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reload
 
@@ -103,7 +103,7 @@ export declare const reload: <T extends Context.Tag<any, any>>(
 ) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reloadFork
 
@@ -117,7 +117,7 @@ export declare const reloadFork: <T extends Context.Tag<any, any>>(
 ) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -131,7 +131,7 @@ export declare const tag: <T extends Context.Tag<any, any>>(
 ) => Context.Tag<Reloadable<Context.Tag.Identifier<T>>, Reloadable<Context.Tag.Service<T>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -147,7 +147,7 @@ export declare const get: <T extends Context.Tag<any, any>>(
 ) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -171,7 +171,7 @@ export interface Reloadable<A> extends Reloadable.Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -183,7 +183,7 @@ Added in v1.0.0
 export declare const ReloadableTypeId: typeof ReloadableTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ReloadableTypeId (type alias)
 
@@ -193,13 +193,13 @@ Added in v1.0.0
 export type ReloadableTypeId = typeof ReloadableTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Reloadable (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -213,4 +213,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

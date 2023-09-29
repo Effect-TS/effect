@@ -6,7 +6,7 @@ parent: Modules
 
 ## Queue overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -83,7 +83,7 @@ better performance by utilising an optimised version of the underlying
 export declare const bounded: <A>(requestedCapacity: number) => Effect.Effect<never, never, Queue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropping
 
@@ -102,7 +102,7 @@ better performance by utilising an optimised version of the underlying
 export declare const dropping: <A>(requestedCapacity: number) => Effect.Effect<never, never, Queue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -112,7 +112,7 @@ Added in v1.0.0
 export declare const make: <A>(queue: BackingQueue<A>, strategy: Strategy<A>) => Effect.Effect<never, never, Queue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sliding
 
@@ -131,7 +131,7 @@ better performance by utilising an optimised version of the underlying
 export declare const sliding: <A>(requestedCapacity: number) => Effect.Effect<never, never, Queue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unbounded
 
@@ -143,7 +143,7 @@ Creates a new unbounded `Queue`.
 export declare const unbounded: <A>() => Effect.Effect<never, never, Queue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -157,7 +157,7 @@ Returns the number of elements the queue can hold.
 export declare const capacity: <A>(self: Dequeue<A> | Enqueue<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -169,7 +169,7 @@ Returns `true` if the `Queue` contains zero elements, `false` otherwise.
 export declare const isEmpty: <A>(self: Dequeue<A> | Enqueue<A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFull
 
@@ -182,7 +182,7 @@ otherwise.
 export declare const isFull: <A>(self: Dequeue<A> | Enqueue<A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isShutdown
 
@@ -194,7 +194,7 @@ Returns `true` if `shutdown` has been called, otherwise returns `false`.
 export declare const isShutdown: <A>(self: Dequeue<A> | Enqueue<A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -208,7 +208,7 @@ elements to be added to the queue.
 export declare const size: <A>(self: Dequeue<A> | Enqueue<A>) => Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -253,7 +253,7 @@ export interface BackingQueue<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## BaseQueue (interface)
 
@@ -318,7 +318,7 @@ export interface BaseQueue {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Dequeue (interface)
 
@@ -352,7 +352,7 @@ export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeabl
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Enqueue (interface)
 
@@ -389,7 +389,7 @@ export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeabl
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Queue (interface)
 
@@ -410,7 +410,7 @@ export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Strategy (interface)
 
@@ -450,7 +450,7 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -464,7 +464,7 @@ Returns `true` if the specified value is a `Dequeue`, `false` otherwise.
 export declare const isDequeue: (u: unknown) => u is Dequeue<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEnqueue
 
@@ -476,7 +476,7 @@ Returns `true` if the specified value is a `Enqueue`, `false` otherwise.
 export declare const isEnqueue: (u: unknown) => u is Enqueue<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isQueue
 
@@ -488,7 +488,7 @@ Returns `true` if the specified value is a `Queue`, `false` otherwise.
 export declare const isQueue: (u: unknown) => u is Queue<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # strategies
 
@@ -500,7 +500,7 @@ Added in v1.0.0
 export declare const backPressureStrategy: <A>() => Strategy<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## droppingStrategy
 
@@ -510,7 +510,7 @@ Added in v1.0.0
 export declare const droppingStrategy: <A>() => Strategy<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## slidingStrategy
 
@@ -520,7 +520,7 @@ Added in v1.0.0
 export declare const slidingStrategy: <A>() => Strategy<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -532,7 +532,7 @@ Added in v1.0.0
 export declare const DequeueTypeId: typeof DequeueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## DequeueTypeId (type alias)
 
@@ -542,7 +542,7 @@ Added in v1.0.0
 export type DequeueTypeId = typeof DequeueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EnqueueTypeId
 
@@ -552,7 +552,7 @@ Added in v1.0.0
 export declare const EnqueueTypeId: typeof EnqueueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EnqueueTypeId (type alias)
 
@@ -562,7 +562,7 @@ Added in v1.0.0
 export type EnqueueTypeId = typeof EnqueueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## QueueStrategyTypeId
 
@@ -572,7 +572,7 @@ Added in v1.0.0
 export declare const QueueStrategyTypeId: typeof QueueStrategyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## QueueStrategyTypeId (type alias)
 
@@ -582,13 +582,13 @@ Added in v1.0.0
 export type QueueStrategyTypeId = typeof QueueStrategyTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Queue (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### DequeueVariance (interface)
 
@@ -602,7 +602,7 @@ export interface DequeueVariance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### EnqueueVariance (interface)
 
@@ -616,7 +616,7 @@ export interface EnqueueVariance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### StrategyVariance (interface)
 
@@ -630,7 +630,7 @@ export interface StrategyVariance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## awaitShutdown
 
@@ -644,7 +644,7 @@ shutdown, the `Effect` will resume right away.
 export declare const awaitShutdown: <A>(self: Dequeue<A> | Enqueue<A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## offer
 
@@ -659,7 +659,7 @@ export declare const offer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## offerAll
 
@@ -686,7 +686,7 @@ export declare const offerAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## poll
 
@@ -699,7 +699,7 @@ is empty.
 export declare const poll: <A>(self: Dequeue<A>) => Effect.Effect<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## shutdown
 
@@ -712,7 +712,7 @@ to `offer*` and `take*` will be interrupted immediately.
 export declare const shutdown: <A>(self: Dequeue<A> | Enqueue<A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -725,7 +725,7 @@ a computation that resumes when an item has been added to the queue.
 export declare const take: <A>(self: Dequeue<A>) => Effect.Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeAll
 
@@ -738,7 +738,7 @@ empty returns an empty collection.
 export declare const takeAll: <A>(self: Dequeue<A>) => Effect.Effect<never, never, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeBetween
 
@@ -755,7 +755,7 @@ export declare const takeBetween: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeN
 
@@ -772,7 +772,7 @@ export declare const takeN: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeUpTo
 
@@ -787,7 +787,7 @@ export declare const takeUpTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeOffer
 
@@ -802,4 +802,4 @@ export declare const unsafeOffer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

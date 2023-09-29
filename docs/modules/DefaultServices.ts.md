@@ -6,7 +6,7 @@ parent: Modules
 
 ## DefaultServices overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -31,7 +31,7 @@ Added in v1.0.0
 export declare const liveServices: Context.Context<DefaultServices>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # fiberRefs
 
@@ -43,7 +43,7 @@ Added in v1.0.0
 export declare const currentServices: FiberRef.FiberRef<Context.Context<DefaultServices>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -60,4 +60,4 @@ export type DefaultServices =
   | Tracer.Tracer
 ```
 
-Added in v1.0.0
+Added in v2.0.0

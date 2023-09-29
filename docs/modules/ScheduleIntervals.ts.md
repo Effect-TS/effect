@@ -6,7 +6,7 @@ parent: Modules
 
 ## ScheduleIntervals overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -46,7 +46,7 @@ Constructs an empty list of `Interval`s.
 export declare const empty: Intervals
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -58,7 +58,7 @@ Constructs `Intervals` from the specified `Iterable<Interval>`.
 export declare const fromIterable: (intervals: Iterable<Interval.Interval>) => Intervals
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -70,7 +70,7 @@ Creates a new `Intervals` from a `List` of `Interval`s.
 export declare const make: (intervals: Check.Chunk<Interval.Interval>) => Intervals
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -84,7 +84,7 @@ The end of the latest interval in the specified `Intervals`.
 export declare const end: (self: Intervals) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmpty
 
@@ -96,7 +96,7 @@ Returns `true` if this `Intervals` is non-empty, `false` otherwise.
 export declare const isNonEmpty: (self: Intervals) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## start
 
@@ -108,7 +108,7 @@ The start of the earliest interval in the specified `Intervals`.
 export declare const start: (self: Intervals) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -125,7 +125,7 @@ export interface Intervals {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # ordering
 
@@ -143,7 +143,7 @@ export declare const lessThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## max
 
@@ -158,7 +158,7 @@ export declare const max: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -170,7 +170,7 @@ Added in v1.0.0
 export declare const IntervalsTypeId: typeof IntervalsTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## IntervalsTypeId (type alias)
 
@@ -180,7 +180,7 @@ Added in v1.0.0
 export type IntervalsTypeId = typeof IntervalsTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -197,7 +197,7 @@ export declare const intersect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -212,4 +212,4 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -6,7 +6,7 @@ parent: Modules
 
 ## SubscriptionRef overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -58,7 +58,7 @@ Creates a new `SubscriptionRef` with the specified value.
 export declare const make: <A>(value: A) => Effect.Effect<never, never, SubscriptionRef<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -70,7 +70,7 @@ Added in v1.0.0
 export declare const get: <A>(self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -97,7 +97,7 @@ export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchro
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -109,7 +109,7 @@ Added in v1.0.0
 export declare const SubscriptionRefTypeId: typeof SubscriptionRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SubscriptionRefTypeId (type alias)
 
@@ -119,13 +119,13 @@ Added in v1.0.0
 export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## SubscriptionRef (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -139,7 +139,7 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndSet
 
@@ -152,7 +152,7 @@ export declare const getAndSet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdate
 
@@ -165,7 +165,7 @@ export declare const getAndUpdate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdateEffect
 
@@ -178,7 +178,7 @@ export declare const getAndUpdateEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdateSome
 
@@ -191,7 +191,7 @@ export declare const getAndUpdateSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdateSomeEffect
 
@@ -204,7 +204,7 @@ export declare const getAndUpdateSomeEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modify
 
@@ -217,7 +217,7 @@ export declare const modify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyEffect
 
@@ -230,7 +230,7 @@ export declare const modifyEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifySome
 
@@ -249,7 +249,7 @@ export declare const modifySome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifySomeEffect
 
@@ -268,7 +268,7 @@ export declare const modifySomeEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -281,7 +281,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setAndGet
 
@@ -294,7 +294,7 @@ export declare const setAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -307,7 +307,7 @@ export declare const update: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateAndGet
 
@@ -320,7 +320,7 @@ export declare const updateAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateAndGetEffect
 
@@ -333,7 +333,7 @@ export declare const updateAndGetEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateEffect
 
@@ -346,7 +346,7 @@ export declare const updateEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSome
 
@@ -359,7 +359,7 @@ export declare const updateSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSomeAndGet
 
@@ -372,7 +372,7 @@ export declare const updateSomeAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSomeAndGetEffect
 
@@ -385,7 +385,7 @@ export declare const updateSomeAndGetEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSomeEffect
 
@@ -400,4 +400,4 @@ export declare const updateSomeEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

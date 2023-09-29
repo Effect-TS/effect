@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as internal from "./internal/stm/tArray"
 import type * as Option from "./Option"
@@ -9,25 +9,25 @@ import type * as STM from "./STM"
 import type * as TRef from "./TRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TArrayTypeId: unique symbol = internal.TArrayTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TArrayTypeId = typeof TArrayTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TArray<A> extends TArray.Variance<A> {}
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TArray<A> {
   /** @internal */
@@ -35,11 +35,11 @@ export interface TArray<A> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace TArray {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<A> {
@@ -53,7 +53,7 @@ export declare namespace TArray {
  * Finds the result of applying a partial function to the first value in its
  * domain.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const collectFirst: {
@@ -65,7 +65,7 @@ export const collectFirst: {
  * Finds the result of applying an transactional partial function to the first
  * value in its domain.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const collectFirstSTM: {
@@ -77,7 +77,7 @@ export const collectFirstSTM: {
  * Determine if the array contains a specified value.
  *
  * @macro trace
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const contains: {
@@ -89,7 +89,7 @@ export const contains: {
  * Count the values in the array matching a predicate.
  *
  * @macro trace
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const count: {
@@ -101,7 +101,7 @@ export const count: {
  * Count the values in the array matching a transactional predicate.
  *
  * @macro trace
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const countSTM: {
@@ -112,7 +112,7 @@ export const countSTM: {
 /**
  * Makes an empty `TArray`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: <A>() => STM.STM<never, never, TArray<A>> = internal.empty
@@ -121,7 +121,7 @@ export const empty: <A>() => STM.STM<never, never, TArray<A>> = internal.empty
  * Atomically evaluate the conjunction of a predicate across the members of
  * the array.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const every: {
@@ -133,7 +133,7 @@ export const every: {
  * Atomically evaluate the conjunction of a transactional predicate across the
  * members of the array.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const everySTM: {
@@ -144,7 +144,7 @@ export const everySTM: {
 /**
  * Find the first element in the array matching the specified predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirst: {
@@ -155,7 +155,7 @@ export const findFirst: {
 /**
  * Get the first index of a specific value in the array.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirstIndex: {
@@ -167,7 +167,7 @@ export const findFirstIndex: {
  * Get the first index of a specific value in the array starting from the
  * specified index.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirstIndexFrom: {
@@ -178,7 +178,7 @@ export const findFirstIndexFrom: {
 /**
  * Get the index of the first entry in the array matching a predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirstIndexWhere: {
@@ -190,7 +190,7 @@ export const findFirstIndexWhere: {
  * Get the index of the first entry in the array starting from the specified
  * index, matching a predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirstIndexWhereFrom: {
@@ -201,7 +201,7 @@ export const findFirstIndexWhereFrom: {
 /**
  * Get the index of the next entry that matches a transactional predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirstIndexWhereSTM: {
@@ -213,7 +213,7 @@ export const findFirstIndexWhereSTM: {
  * Starting at specified index, get the index of the next entry that matches a
  * transactional predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirstIndexWhereFromSTM: {
@@ -231,7 +231,7 @@ export const findFirstIndexWhereFromSTM: {
 /**
  * Find the first element in the array matching a transactional predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findFirstSTM: {
@@ -242,7 +242,7 @@ export const findFirstSTM: {
 /**
  * Find the last element in the array matching a predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findLast: {
@@ -254,7 +254,7 @@ export const findLast: {
  * Get the last index of a specific value in the array bounded above by a
  * specific index.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findLastIndex: {
@@ -266,7 +266,7 @@ export const findLastIndex: {
  * Get the last index of a specific value in the array bounded above by a
  * specific index.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findLastIndexFrom: {
@@ -277,7 +277,7 @@ export const findLastIndexFrom: {
 /**
  * Find the last element in the array matching a transactional predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const findLastSTM: {
@@ -288,7 +288,7 @@ export const findLastSTM: {
 /**
  * Atomically performs transactional effect for each item in array.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const forEach: {
@@ -299,7 +299,7 @@ export const forEach: {
 /**
  * Makes a new `TArray` initialized with provided iterable.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, TArray<A>> = internal.fromIterable
@@ -307,7 +307,7 @@ export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, T
 /**
  * Extracts value from ref in array.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const get: {
@@ -318,7 +318,7 @@ export const get: {
 /**
  * The first entry of the array, if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const headOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Option<A>> = internal.headOption
@@ -326,7 +326,7 @@ export const headOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Op
 /**
  * The last entry in the array, if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const lastOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Option<A>> = internal.lastOption
@@ -334,7 +334,7 @@ export const lastOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Op
 /**
  * Makes a new `TArray` that is initialized with specified values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Elements extends [any, ...Array<any>]>(
@@ -344,7 +344,7 @@ export const make: <Elements extends [any, ...Array<any>]>(
 /**
  * Atomically compute the greatest element in the array, if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const maxOption: {
@@ -355,7 +355,7 @@ export const maxOption: {
 /**
  * Atomically compute the least element in the array, if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const minOption: {
@@ -366,7 +366,7 @@ export const minOption: {
 /**
  * Atomically folds using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduce: {
@@ -377,7 +377,7 @@ export const reduce: {
 /**
  * Atomically reduce the array, if non-empty, by a binary operator.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const reduceOption: {
@@ -389,7 +389,7 @@ export const reduceOption: {
  * Atomically reduce the non-empty array using a transactional binary
  * operator.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const reduceOptionSTM: {
@@ -401,7 +401,7 @@ export const reduceOptionSTM: {
  * Atomically folds using a transactional function.
  *
  * @macro trace
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduceSTM: {
@@ -412,7 +412,7 @@ export const reduceSTM: {
 /**
  * Returns the size of the `TArray`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: <A>(self: TArray<A>) => number = internal.size
@@ -420,7 +420,7 @@ export const size: <A>(self: TArray<A>) => number = internal.size
 /**
  * Determine if the array contains a value satisfying a predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const some: {
@@ -432,7 +432,7 @@ export const some: {
  * Determine if the array contains a value satisfying a transactional
  * predicate.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const someSTM: {
@@ -443,8 +443,8 @@ export const someSTM: {
 /**
  * Collects all elements into a chunk.
  *
- * @since 1.0.0
- * @since 1.0.0
+ * @since 2.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toArray: <A>(self: TArray<A>) => STM.STM<never, never, Array<A>> = internal.toArray
@@ -452,7 +452,7 @@ export const toArray: <A>(self: TArray<A>) => STM.STM<never, never, Array<A>> = 
 /**
  * Atomically updates all elements using a pure function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const transform: {
@@ -463,7 +463,7 @@ export const transform: {
 /**
  * Atomically updates all elements using a transactional effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const transformSTM: {
@@ -474,7 +474,7 @@ export const transformSTM: {
 /**
  * Updates element in the array with given function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const update: {
@@ -485,7 +485,7 @@ export const update: {
 /**
  * Atomically updates element in the array with given transactional effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const updateSTM: {

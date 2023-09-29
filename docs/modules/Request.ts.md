@@ -6,7 +6,7 @@ parent: Modules
 
 ## Request overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -66,7 +66,7 @@ export declare const makeEntry: <A extends Request<any, any>>(options: {
 }) => Entry<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## of
 
@@ -78,7 +78,7 @@ Constructs a new `Request`.
 export declare const of: <R extends Request<any, any>>() => Request.Constructor<R, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tagged
 
@@ -92,7 +92,7 @@ export declare const tagged: <R extends Request<any, any> & { _tag: string }>(
 ) => Request.Constructor<R, '_tag'>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -104,7 +104,7 @@ Added in v1.0.0
 export declare const isEntry: (u: unknown) => u is Entry<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -124,7 +124,7 @@ export interface Cache
   > {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Entry (interface)
 
@@ -151,11 +151,11 @@ export interface Entry<R> extends Entry.Variance<R> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Entry (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -169,7 +169,7 @@ export interface Variance<R> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Listeners (interface)
 
@@ -186,7 +186,7 @@ export interface Listeners {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Request (interface)
 
@@ -199,7 +199,7 @@ that may fail with an `E`.
 export interface Request<E, A> extends Request.Variance<E, A>, Data.Case {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeCache
 
@@ -212,7 +212,7 @@ export declare const makeCache: (options: {
 }) => Effect.Effect<never, never, Cache>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -226,7 +226,7 @@ Returns `true` if the specified value is a `Request`, `false` otherwise.
 export declare const isRequest: (u: unknown) => u is Request<unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # request completion
 
@@ -243,7 +243,7 @@ export declare const complete: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## completeEffect
 
@@ -265,7 +265,7 @@ export declare const completeEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -280,7 +280,7 @@ export declare const fail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptWhenPossible
 
@@ -295,7 +295,7 @@ export declare const interruptWhenPossible: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -310,7 +310,7 @@ export declare const succeed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -322,7 +322,7 @@ Added in v1.0.0
 export declare const EntryTypeId: typeof EntryTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EntryTypeId (type alias)
 
@@ -332,7 +332,7 @@ Added in v1.0.0
 export type EntryTypeId = typeof EntryTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RequestTypeId
 
@@ -342,7 +342,7 @@ Added in v1.0.0
 export declare const RequestTypeId: typeof RequestTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RequestTypeId (type alias)
 
@@ -352,13 +352,13 @@ Added in v1.0.0
 export type RequestTypeId = typeof RequestTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Request (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Constructor (interface)
 
@@ -370,7 +370,7 @@ export interface Constructor<R extends Request<any, any>, T extends keyof R = ne
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -385,7 +385,7 @@ export interface Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Error (type alias)
 
@@ -397,7 +397,7 @@ A utility type to extract the error type from a `Request`.
 export type Error<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _E : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### OptionalResult (type alias)
 
@@ -411,7 +411,7 @@ export type OptionalResult<T extends Request<any, any>> = T extends Request<infe
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Result (type alias)
 
@@ -423,7 +423,7 @@ A utility type to extract the result type from a `Request`.
 export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit.Exit<E, A> : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Success (type alias)
 
@@ -435,4 +435,4 @@ A utility type to extract the value type from a `Request`.
 export type Success<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _A : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
