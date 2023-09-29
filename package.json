@@ -1,6 +1,7 @@
 {
   "name": "effect",
   "version": "2.0.0-next.39",
+  "packageManager": "pnpm@8.7.3",
   "publishConfig": {
     "access": "public"
   },
