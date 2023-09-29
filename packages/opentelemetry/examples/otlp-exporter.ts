@@ -1,11 +1,11 @@
-import { seconds } from "@effect/data/Duration"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as Resource from "@effect/opentelemetry/Resource"
 import * as Tracer from "@effect/opentelemetry/Tracer"
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http"
+import { seconds } from "effect/Duration"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
 
 const ResourceLive = Resource.layer({ serviceName: "example" })
 

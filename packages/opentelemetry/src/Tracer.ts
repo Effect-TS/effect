@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type { Tag } from "@effect/data/Context"
-import type * as Option from "@effect/data/Option"
-import type { Effect } from "@effect/io/Effect"
-import type { Layer } from "@effect/io/Layer"
-import type { ExternalSpan, Tracer } from "@effect/io/Tracer"
 import * as internal from "@effect/opentelemetry/internal/tracer"
 import type { Resource } from "@effect/opentelemetry/Resource"
 import type * as Otel from "@opentelemetry/api"
+import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Layer } from "effect/Layer"
+import type * as Option from "effect/Option"
+import type { ExternalSpan, Tracer } from "effect/Tracer"
 
 /**
  * @since 1.0.0

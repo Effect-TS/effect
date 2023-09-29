@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import { Resource } from "@effect/opentelemetry/Resource"
 import type { NodeSDKConfiguration } from "@opentelemetry/sdk-node"
 import { NodeSDK } from "@opentelemetry/sdk-node"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 
 /**
  * @since 1.0.0

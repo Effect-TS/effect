@@ -1,6 +1,3 @@
-import { identity } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import { OtelSpan } from "@effect/opentelemetry/internal/tracer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as Resource from "@effect/opentelemetry/Resource"
@@ -8,6 +5,9 @@ import * as it from "@effect/opentelemetry/test/utils/extend"
 import * as Tracer from "@effect/opentelemetry/Tracer"
 import * as OtelApi from "@opentelemetry/api"
 import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base"
+import * as Effect from "effect/Effect"
+import { identity } from "effect/Function"
+import * as Layer from "effect/Layer"
 
 const TracingLive = Layer.provide(
   Resource.layer({ serviceName: "test" }),

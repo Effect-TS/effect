@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import { Tag } from "@effect/data/Context"
-import * as Layer from "@effect/io/Layer"
 import * as Resources from "@opentelemetry/resources"
 import { SemanticResourceAttributes, TelemetrySdkLanguageValues } from "@opentelemetry/semantic-conventions"
+import { Tag } from "effect/Context"
+import * as Layer from "effect/Layer"
 
 /**
  * @since 1.0.0

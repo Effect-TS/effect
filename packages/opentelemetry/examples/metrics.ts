@@ -1,12 +1,12 @@
-import * as Chunk from "@effect/data/Chunk"
-import { millis, seconds } from "@effect/data/Duration"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
-import * as Metric from "@effect/io/Metric"
 import * as OtelMetrics from "@effect/opentelemetry/Metrics"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus"
+import * as Chunk from "effect/Chunk"
+import { millis, seconds } from "effect/Duration"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Metric from "effect/Metric"
 
 const counter = Metric.counter("count", "An example counter")
 
