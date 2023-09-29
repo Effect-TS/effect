@@ -1,6 +1,6 @@
 {
   "name": "@effect/platform",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "description": "Unified interfaces for common platform-specific services",
   "publishConfig": {
     "access": "public",
