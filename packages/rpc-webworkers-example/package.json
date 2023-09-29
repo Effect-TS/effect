@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@effect/rpc-webworkers": "workspace:^",
-    "@effect/schema": "^0.39.0",
-    "effect": "2.0.0-next.37"
+    "@effect/schema": "^0.39.1",
+    "effect": "2.0.0-next.38"
   }
 }
