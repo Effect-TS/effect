@@ -1,7 +1,70 @@
 /**
- * Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
- *
- * @since 2.0.0
+ * @since 1.0.0
  */
+import type * as Chunk from "./Chunk"
+import type * as Equal from "./Equal"
+import * as internal from "./internal/metric/boundaries"
+import type { Pipeable } from "./Pipeable"
 
-export * from "@effect/io/MetricBoundaries"
+/**
+ * @since 1.0.0
+ * @category symbols
+ */
+export const MetricBoundariesTypeId: unique symbol = internal.MetricBoundariesTypeId
+
+/**
+ * @since 1.0.0
+ * @category symbols
+ */
+export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface MetricBoundaries extends Equal.Equal, Pipeable {
+  readonly [MetricBoundariesTypeId]: MetricBoundariesTypeId
+  readonly values: Chunk.Chunk<number>
+}
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isMetricBoundaries: (u: unknown) => u is MetricBoundaries = internal.isMetricBoundaries
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fromChunk: (chunk: Chunk.Chunk<number>) => MetricBoundaries = internal.fromChunk
+
+/**
+ * A helper method to create histogram bucket boundaries for a histogram
+ * with linear increasing values.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const linear: (
+  options: {
+    readonly start: number
+    readonly width: number
+    readonly count: number
+  }
+) => MetricBoundaries = internal.linear
+
+/**
+ * A helper method to create histogram bucket boundaries for a histogram
+ * with exponentially increasing values.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const exponential: (
+  options: {
+    readonly start: number
+    readonly factor: number
+    readonly count: number
+  }
+) => MetricBoundaries = internal.exponential

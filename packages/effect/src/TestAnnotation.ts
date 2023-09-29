@@ -1,0 +1,166 @@
+/**
+ * @since 1.0.0
+ */
+import * as Chunk from "./Chunk"
+import * as Context from "./Context"
+import * as Either from "./Either"
+import * as Equal from "./Equal"
+import type * as Fiber from "./Fiber"
+import { pipe } from "./Function"
+import * as Hash from "./Hash"
+import * as HashSet from "./HashSet"
+import type * as MutableRef from "./MutableRef"
+import type * as SortedSet from "./SortedSet"
+
+/** @internal */
+const TestAnnotationSymbolKey = "effect/TestAnnotation"
+
+/**
+ * @since 1.0.0
+ */
+export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
+
+/**
+ * @since 1.0.0
+ */
+export type TestAnnotationTypeId = typeof TestAnnotationTypeId
+
+/**
+ * @since 1.0.0
+ */
+export interface TestAnnotation<A> extends Equal.Equal {
+  readonly [TestAnnotationTypeId]: TestAnnotationTypeId
+  readonly identifier: string
+  readonly tag: Context.Tag<A, A>
+  readonly initial: A
+  readonly combine: (a: A, b: A) => A
+}
+
+/** @internal */
+class TestAnnotationImpl<A> implements Equal.Equal {
+  readonly [TestAnnotationTypeId]: TestAnnotationTypeId = TestAnnotationTypeId
+  constructor(
+    readonly identifier: string,
+    readonly tag: Context.Tag<A, A>,
+    readonly initial: A,
+    readonly combine: (a: A, b: A) => A
+  ) {}
+  [Hash.symbol](): number {
+    return pipe(
+      Hash.hash(TestAnnotationSymbolKey),
+      Hash.combine(Hash.hash(this.identifier)),
+      Hash.combine(Hash.hash(this.tag))
+    )
+  }
+  [Equal.symbol](that: unknown): boolean {
+    return isTestAnnotation(that) &&
+      this.identifier === that.identifier &&
+      Equal.equals(this.tag, that.tag)
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isTestAnnotation = (u: unknown): u is TestAnnotation<unknown> => {
+  return typeof u === "object" && u != null && TestAnnotationTypeId in u
+}
+
+/**
+ * @since 1.0.0
+ */
+export const make = <A>(
+  identifier: string,
+  tag: Context.Tag<A, A>,
+  initial: A,
+  combine: (a: A, b: A) => A
+): TestAnnotation<A> => {
+  return new TestAnnotationImpl(identifier, tag, initial, combine)
+}
+
+/**
+ * @since 1.0.0
+ */
+export const compose = <A>(
+  left: Either.Either<number, Chunk.Chunk<A>>,
+  right: Either.Either<number, Chunk.Chunk<A>>
+): Either.Either<number, Chunk.Chunk<A>> => {
+  if (Either.isLeft(left) && Either.isLeft(right)) {
+    return Either.left(left.left + right.left)
+  }
+  if (Either.isRight(left) && Either.isRight(right)) {
+    return Either.right(pipe(left.right, Chunk.appendAll(right.right)))
+  }
+  if (Either.isRight(left) && Either.isLeft(right)) {
+    return right
+  }
+  if (Either.isLeft(left) && Either.isRight(right)) {
+    return right
+  }
+  throw new Error("BUG: TestAnnotation.compose - please report an issue at https://github.com/Effect-TS/io/issues")
+}
+
+/**
+ * @since 1.0.0
+ */
+export const fibers: TestAnnotation<
+  Either.Either<
+    number,
+    Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>
+  >
+> = make(
+  "fibers",
+  Context.Tag<
+    Either.Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
+  >(),
+  Either.left(0),
+  compose
+)
+
+/**
+ * An annotation which counts ignored tests.
+ *
+ * @since 1.0.0
+ */
+export const ignored: TestAnnotation<number> = make(
+  "ignored",
+  Context.Tag<number>(Symbol.for("effect/TestAnnotation/ignored")),
+  0,
+  (a, b) => a + b
+)
+
+/**
+ * An annotation which counts repeated tests.
+ *
+ * @since 1.0.0
+ */
+export const repeated: TestAnnotation<number> = make(
+  "repeated",
+  Context.Tag<number>(Symbol.for("effect/TestAnnotation/repeated")),
+  0,
+  (a, b) => a + b
+)
+
+/**
+ * An annotation which counts retried tests.
+ *
+ * @since 1.0.0
+ */
+export const retried: TestAnnotation<number> = make(
+  "retried",
+  Context.Tag<number>(Symbol.for("effect/TestAnnotation/retired")),
+  0,
+  (a, b) => a + b
+)
+
+/**
+ * An annotation which tags tests with strings.
+ *
+ * @since 1.0.0
+ */
+export const tagged: TestAnnotation<HashSet.HashSet<string>> = make(
+  "tagged",
+  Context.Tag<HashSet.HashSet<string>>(Symbol.for("effect/TestAnnotation/tagged")),
+  HashSet.empty(),
+  (a, b) => pipe(a, HashSet.union(b))
+)
