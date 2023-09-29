@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.39.0
+
+### Minor Changes
+
+- [#449](https://github.com/Effect-TS/schema/pull/449) [`5950b14`](https://github.com/Effect-TS/schema/commit/5950b14a31518798133a1b702c4bc57afa803485) Thanks [@tim-smart](https://github.com/tim-smart)! - update to use unified "effect" package
+
 ## 0.38.0
 
 ### Minor Changes
