@@ -48,12 +48,12 @@
     "path-browserify": "^1.0.1"
   },
   "devDependencies": {
-    "@effect/schema": "^0.39.0",
+    "@effect/schema": "^0.39.1",
     "@types/path-browserify": "^1.0.0",
-    "effect": "2.0.0-next.37"
+    "effect": "2.0.0-next.38"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.37.0",
-    "effect": "2.0.0-next.37"
+    "@effect/schema": "^0.37.1",
+    "effect": "2.0.0-next.38"
   }
 }
