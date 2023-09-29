@@ -1,3 +1,30 @@
+export {
+  /**
+   * @since 1.0.0
+   */
+  absurd,
+  /**
+   * @since 1.0.0
+   */
+  flow,
+  /**
+   * @since 1.0.0
+   */
+  hole,
+  /**
+   * @since 1.0.0
+   */
+  identity,
+  /**
+   * @since 1.0.0
+   */
+  pipe,
+  /**
+   * @since 1.0.0
+   */
+  unsafeCoerce
+} from "./Function"
+
 /**
  * This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
  * It includes functions for basic arithmetic operations, as well as type class instances for
