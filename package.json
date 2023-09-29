@@ -6,8 +6,9 @@
   },
   "scripts": {
     "build": "preconstruct fix && preconstruct build",
-    "gen": "pnpm run gen:gitignore && pnpm run gen:package",
+    "gen": "pnpm run gen:gitignore && pnpm run gen:package && pnpm run gen:index",
     "gen:gitignore": "node scripts/gen-gitignore.mjs > .gitignore",
+    "gen:index": "node scripts/gen-index.mjs > src/index.ts",
     "gen:package": "node scripts/gen-packagejson.mjs > package.json.new && mv package.json.new package.json",
     "clean": "node scripts/clean.mjs",
     "test": "vitest",
