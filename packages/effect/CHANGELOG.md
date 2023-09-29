@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.38
+
+### Patch Changes
+
+- [#1442](https://github.com/Effect-TS/effect/pull/1442) [`c5e4a2390`](https://github.com/Effect-TS/effect/commit/c5e4a2390168b335307004a6e5623e53bd22734e) Thanks [@tim-smart](https://github.com/tim-smart)! - add top level exports from Function
+
 ## 2.0.0-next.37
 
 ### Minor Changes
