@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.7.2
+
+### Patch Changes
+
+- [#165](https://github.com/Effect-TS/platform/pull/165) [`7e3a741`](https://github.com/Effect-TS/platform/commit/7e3a74197325566df47f9b4459e518eea0762d13) Thanks [@fubhy](https://github.com/fubhy)! - Fix peer deps version range
+
+- Updated dependencies [[`7e3a741`](https://github.com/Effect-TS/platform/commit/7e3a74197325566df47f9b4459e518eea0762d13)]:
+  - @effect/platform-node@0.19.2
+  - @effect/platform@0.18.2
+
 ## 0.7.1
 
 ### Patch Changes
