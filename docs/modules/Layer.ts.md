@@ -84,6 +84,8 @@ Added in v2.0.0
 - [symbols](#symbols)
   - [LayerTypeId](#layertypeid)
   - [LayerTypeId (type alias)](#layertypeid-type-alias)
+- [tracing](#tracing)
+  - [withSpan](#withspan)
 - [utils](#utils)
   - [Layer (namespace)](#layer-namespace)
     - [Variance (interface)](#variance-interface)
@@ -829,6 +831,40 @@ Added in v2.0.0
 
 ```ts
 export type LayerTypeId = typeof LayerTypeId
+```
+
+Added in v2.0.0
+
+# tracing
+
+## withSpan
+
+**Signature**
+
+```ts
+export declare const withSpan: {
+  (
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
+  <R, E, A>(
+    self: Layer<R, E, A>,
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): Layer<R, E, A>
+}
 ```
 
 Added in v2.0.0

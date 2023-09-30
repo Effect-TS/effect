@@ -25,6 +25,7 @@ import * as ScheduleDecision from "../ScheduleDecision"
 import * as Intervals from "../ScheduleIntervals"
 import * as Scope from "../Scope"
 import type * as Synchronized from "../SynchronizedRef"
+import type * as Tracer from "../Tracer"
 import * as runtimeFlags from "./runtimeFlags"
 
 /** @internal */
@@ -1097,6 +1098,50 @@ export const zipWithPar = dual<
     zipWithPar.zipK = f
     return zipWithPar
   }))
+
+/** @internal */
+export const unwrapEffect = <R, E, R1, E1, A>(
+  self: Effect.Effect<R, E, Layer.Layer<R1, E1, A>>
+): Layer.Layer<R | R1, E | E1, A> => {
+  const tag = Context.Tag<Layer.Layer<R1, E1, A>>()
+  return flatMap(fromEffect(tag, self), (context) => Context.get(context, tag))
+}
+
+/** @internal */
+export const unwrapScoped = <R, E, R1, E1, A>(
+  self: Effect.Effect<R, E, Layer.Layer<R1, E1, A>>
+): Layer.Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A> => {
+  const tag = Context.Tag<Layer.Layer<R1, E1, A>>()
+  return flatMap(scoped(tag, self), (context) => Context.get(context, tag))
+}
+
+// -----------------------------------------------------------------------------
+// tracing
+// -----------------------------------------------------------------------------
+
+/** @internal */
+export const withSpan = dual<
+  (name: string, options?: {
+    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly links?: ReadonlyArray<Tracer.SpanLink>
+    readonly parent?: Tracer.ParentSpan
+    readonly root?: boolean
+    readonly context?: Context.Context<never>
+  }) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<R, E, A>,
+  <R, E, A>(self: Layer.Layer<R, E, A>, name: string, options?: {
+    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly links?: ReadonlyArray<Tracer.SpanLink>
+    readonly parent?: Tracer.ParentSpan
+    readonly root?: boolean
+    readonly context?: Context.Context<never>
+  }) => Layer.Layer<R, E, A>
+>(2, (self, name, options) =>
+  unwrapScoped(
+    core.map(
+      fiberRuntime.useSpanScoped(name, options),
+      (span) => locallyEffect(self, effect.withParentSpan(span))
+    )
+  ))
 
 // circular with Effect
 
