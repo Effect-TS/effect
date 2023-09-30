@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.6.2
+
+### Patch Changes
+
+- [#24](https://github.com/Effect-TS/typeclass/pull/24) [`60a41e0`](https://github.com/Effect-TS/typeclass/commit/60a41e03b94476aebbccd592fdc4d7c7cc8d474b) Thanks [@fubhy](https://github.com/fubhy)! - Fix peer deps ranges
+
 ## 0.6.1
 
 ### Patch Changes
