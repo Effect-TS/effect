@@ -18,7 +18,7 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause"
-import * as Context from "./Context"
+import type * as Context from "./Context"
 import type * as Effect from "./Effect"
 import type { FiberRef } from "./FiberRef"
 import type { LazyArg } from "./Function"
@@ -27,6 +27,7 @@ import type { Pipeable } from "./Pipeable"
 import type * as Runtime from "./Runtime"
 import type * as Schedule from "./Schedule"
 import type * as Scope from "./Scope"
+import type * as Tracer from "./Tracer"
 
 /**
  * @since 2.0.0
@@ -825,20 +826,41 @@ export const zipWithPar: {
  * @since 2.0.0
  * @category utils
  */
-export const unwrapEffect = <R, E, R1, E1, A>(
-  self: Effect.Effect<R, E, Layer<R1, E1, A>>
-): Layer<R | R1, E | E1, A> => {
-  const tag = Context.Tag<Layer<R1, E1, A>>()
-  return internal.flatMap(internal.fromEffect(tag, self), (context) => Context.get(context, tag))
-}
+export const unwrapEffect: <R, E, R1, E1, A>(self: Effect.Effect<R, E, Layer<R1, E1, A>>) => Layer<R | R1, E | E1, A> =
+  internal.unwrapEffect
 
 /**
  * @since 2.0.0
  * @category utils
  */
-export const unwrapScoped = <R, E, R1, E1, A>(
+export const unwrapScoped: <R, E, R1, E1, A>(
   self: Effect.Effect<R, E, Layer<R1, E1, A>>
-): Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A> => {
-  const tag = Context.Tag<Layer<R1, E1, A>>()
-  return internal.flatMap(internal.scoped(tag, self), (context) => Context.get(context, tag))
-}
+) => Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A> = internal.unwrapScoped
+
+/**
+ * @since 2.0.0
+ * @category tracing
+ */
+export const withSpan: {
+  (
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
+  <R, E, A>(
+    self: Layer<R, E, A>,
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): Layer<R, E, A>
+} = internal.withSpan
