@@ -52,7 +52,7 @@
     }
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.38"
+    "effect": "^2.0.0-next.39"
   },
   "devDependencies": {
     "@babel/cli": "^7.22.6",
@@ -74,7 +74,7 @@
     "@vitest/coverage-v8": "^0.33.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.0",
-    "effect": "2.0.0-next.38",
+    "effect": "^2.0.0-next.39",
     "error-stack-parser": "^2.1.4",
     "eslint": "^8.44.0",
     "eslint-import-resolver-typescript": "^3.5.5",
