@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.39.2
+
+### Patch Changes
+
+- [#454](https://github.com/Effect-TS/schema/pull/454) [`f8a9c57`](https://github.com/Effect-TS/schema/commit/f8a9c577c82ddf12c83717c34c5984e1d3f81924) Thanks [@fubhy](https://github.com/fubhy)! - Fix effect peer dependency version range
+
 ## 0.39.1
 
 ### Patch Changes
