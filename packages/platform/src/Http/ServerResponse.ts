@@ -3,7 +3,6 @@
  */
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
-import type { Pipeable } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../Error"
 import type * as FileSystem from "../FileSystem"
@@ -29,7 +28,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface ServerResponse extends Pipeable {
+export interface ServerResponse extends Effect.Effect<never, never, ServerResponse> {
   readonly [TypeId]: TypeId
   readonly status: number
   readonly statusText?: string

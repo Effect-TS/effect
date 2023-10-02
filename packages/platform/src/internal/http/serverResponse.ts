@@ -1,7 +1,7 @@
 import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
-import { pipeArguments } from "effect/Pipeable"
 import type * as Stream from "effect/Stream"
 import type * as PlatformError from "../../Error"
 import type * as FileSystem from "../../FileSystem"
@@ -15,7 +15,9 @@ import * as internalBody from "./body"
 /** @internal */
 export const TypeId: ServerResponse.TypeId = Symbol.for("@effect/platform/Http/ServerResponse") as ServerResponse.TypeId
 
-class ServerResponseImpl implements ServerResponse.ServerResponse {
+class ServerResponseImpl extends Effectable.Effectable<never, never, ServerResponse.ServerResponse>
+  implements ServerResponse.ServerResponse
+{
   readonly [TypeId]: ServerResponse.TypeId
   readonly headers: Headers.Headers
   constructor(
@@ -24,6 +26,7 @@ class ServerResponseImpl implements ServerResponse.ServerResponse {
     headers: Headers.Headers,
     readonly body: Body.Body
   ) {
+    super()
     this[TypeId] = TypeId
     if (body.contentType || body.contentLength) {
       const newHeaders = { ...headers }
@@ -38,8 +41,19 @@ class ServerResponseImpl implements ServerResponse.ServerResponse {
       this.headers = headers
     }
   }
-  pipe() {
-    return pipeArguments(this, arguments)
+
+  commit(): Effect.Effect<never, never, ServerResponse.ServerResponse> {
+    return Effect.succeed(this)
+  }
+
+  toJSON() {
+    return {
+      _id: "ServerResponse",
+      status: this.status,
+      statusText: this.statusText,
+      headers: this.headers,
+      body: this.body
+    }
   }
 }
 

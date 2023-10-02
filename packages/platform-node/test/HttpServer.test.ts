@@ -145,7 +145,7 @@ describe("HttpServer", () => {
         ),
         Effect.catchTag("FormDataError", (error) =>
           error.reason === "FileTooLarge" ?
-            Effect.succeed(Http.response.empty({ status: 413 })) :
+            Http.response.empty({ status: 413 }) :
             Effect.fail(error)),
         Http.server.serve(),
         Http.formData.withMaxFileSize(Option.some(100)),
@@ -176,7 +176,7 @@ describe("HttpServer", () => {
         ),
         Effect.catchTag("FormDataError", (error) =>
           error.reason === "FieldTooLarge" ?
-            Effect.succeed(Http.response.empty({ status: 413 })) :
+            Http.response.empty({ status: 413 }) :
             Effect.fail(error)),
         Http.server.serve(),
         Http.formData.withMaxFieldSize(100),
@@ -236,22 +236,24 @@ describe("HttpServer", () => {
   it("file", () =>
     Effect.gen(function*(_) {
       yield* _(
-        Effect.succeed(
-          yield* _(
-            Http.response.file(`${__dirname}/fixtures/text.txt`),
-            Effect.updateService(
-              Platform.Platform,
-              (_) => ({
-                ..._,
-                fileResponse: (path, options) =>
-                  Effect.map(
-                    _.fileResponse(path, options),
-                    (res) => ({ ...res, headers: { ...res.headers, etag: "\"etag\"" } })
-                  )
-              })
-            )
+        yield* _(
+          Http.response.file(`${__dirname}/fixtures/text.txt`),
+          Effect.updateService(
+            Platform.Platform,
+            (_) => ({
+              ..._,
+              fileResponse: (path, options) =>
+                Effect.map(
+                  _.fileResponse(path, options),
+                  (res) => {
+                    ;(res as any).headers.etag = "\"etag\""
+                    return res
+                  }
+                )
+            })
           )
         ),
+        Effect.tapErrorCause(Effect.logError),
         Http.server.serve(),
         Effect.scoped,
         Effect.fork
@@ -342,8 +344,7 @@ describe("HttpServer", () => {
             ({ id, title }) => todoResponse({ id, title })
           )
         ),
-        Http.router.catchTag("ParseError", (error) =>
-          Effect.succeed(Http.response.unsafeJson({ error }, { status: 400 }))),
+        Http.router.catchTag("ParseError", (error) => Http.response.unsafeJson({ error }, { status: 400 })),
         Http.server.serve(),
         Effect.scoped,
         Effect.fork
