@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.19.7
+
+### Patch Changes
+
+- [#174](https://github.com/Effect-TS/platform/pull/174) [`6116f8b`](https://github.com/Effect-TS/platform/commit/6116f8b39533c897445713c7dce531c0c60a1cbb) Thanks [@vecerek](https://github.com/vecerek)! - handle empty body when parsing responses as json
+
 ## 0.19.6
 
 ### Patch Changes
