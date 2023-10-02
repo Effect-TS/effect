@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.7.3
+
+### Patch Changes
+
+- [#167](https://github.com/Effect-TS/platform/pull/167) [`7027589`](https://github.com/Effect-TS/platform/commit/7027589d6dde621065eb8834a2b1ba4d3adc943b) Thanks [@tim-smart](https://github.com/tim-smart)! - build with preconstruct
+
+- Updated dependencies [[`7027589`](https://github.com/Effect-TS/platform/commit/7027589d6dde621065eb8834a2b1ba4d3adc943b)]:
+  - @effect/platform-node@0.19.3
+  - @effect/platform@0.18.3
+
 ## 0.7.2
 
 ### Patch Changes
