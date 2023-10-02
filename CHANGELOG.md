@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.41
+
+### Patch Changes
+
+- [#1456](https://github.com/Effect-TS/effect/pull/1456) [`4bc30e5ff`](https://github.com/Effect-TS/effect/commit/4bc30e5ff0db46f7920cedeb9254bb09c50a5875) Thanks [@tim-smart](https://github.com/tim-smart)! - re-add types field to exports in package.json
+
 ## 2.0.0-next.40
 
 ### Patch Changes
