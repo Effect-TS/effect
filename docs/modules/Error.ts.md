@@ -14,7 +14,7 @@ Added in v2.0.0
 
 - [constructors](#constructors)
   - [Class](#class)
-  - [Tagged](#tagged)
+  - [TaggedClass](#taggedclass)
 - [models](#models)
   - [YieldableError (interface)](#yieldableerror-interface)
 
@@ -36,12 +36,12 @@ export declare const Class: new <A extends Record<string, any>>(
 
 Added in v2.0.0
 
-## Tagged
+## TaggedClass
 
 **Signature**
 
 ```ts
-export declare const Tagged: <Tag extends string>(
+export declare const TaggedClass: <Tag extends string>(
   tag: Tag
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
