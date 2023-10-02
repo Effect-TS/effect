@@ -103,12 +103,12 @@ export const tagged = <A extends Case & { _tag: string }>(
  * @since 2.0.0
  * @category constructors
  */
-export const TaggedClass = <Key extends string>(
-  tag: Key
+export const TaggedClass = <Tag extends string>(
+  tag: Tag
 ): new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A & { _tag: Key }> => {
-  class Base extends (Class as any) {
+) => Data<A & { readonly _tag: Tag }> => {
+  class Base extends Class<any> {
     readonly _tag = tag
   }
   return Base as any

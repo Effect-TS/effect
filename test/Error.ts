@@ -5,9 +5,9 @@ import * as Equal from "effect/Equal"
 import * as Error from "effect/Error"
 
 describe.concurrent("Error", () => {
-  it.effect("Tagged", () =>
+  it.effect("TaggedClass", () =>
     Effect.gen(function*(_) {
-      class MyError extends Error.Tagged("MyError")<{
+      class MyError extends Error.TaggedClass("MyError")<{
         readonly message: string
       }> {}
       const error = new MyError({ message: "foo" })
