@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.18.4
+
+### Patch Changes
+
+- [#169](https://github.com/Effect-TS/platform/pull/169) [`bd8778d`](https://github.com/Effect-TS/platform/commit/bd8778d1a534f28cab4b326bb25c086fafed8101) Thanks [@tim-smart](https://github.com/tim-smart)! - fix nested modules
+
 ## 0.18.3
 
 ### Patch Changes
