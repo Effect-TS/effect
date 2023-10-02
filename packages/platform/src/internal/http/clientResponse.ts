@@ -62,8 +62,8 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
   }
 
   get json(): Effect.Effect<never, Error.ResponseError, unknown> {
-    return Effect.tryPromise({
-      try: () => this.source.json(),
+    return Effect.tryMap(this.text, {
+      try: (text) => text === "" ? null : JSON.parse(text) as unknown,
       catch: (_) =>
         internalError.responseError({
           request: this.request,

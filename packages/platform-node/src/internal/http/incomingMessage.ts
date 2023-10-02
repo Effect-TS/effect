@@ -49,7 +49,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
 
   get json(): Effect.Effect<never, E, unknown> {
     return Effect.tryMap(this.text, {
-      try: (_) => JSON.parse(_) as unknown,
+      try: (_) => _ === "" ? null : JSON.parse(_) as unknown,
       catch: this.onError
     })
   }

@@ -81,4 +81,15 @@ describe("HttpClient", () => {
       }))
       expect(response.title).toBe("test")
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
+
+  it("head request with schemaJson", () =>
+    Effect.gen(function*(_) {
+      const client = yield* _(Http.client.Client)
+      const response = yield* _(
+        Http.request.head("https://jsonplaceholder.typicode.com/todos"),
+        client,
+        Effect.flatMap(Http.response.schemaJson(Schema.struct({ status: Schema.literal(200) })))
+      )
+      expect(response).toEqual({ status: 200 })
+    }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
 })
