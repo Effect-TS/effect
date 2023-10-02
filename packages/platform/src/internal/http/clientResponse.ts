@@ -149,3 +149,19 @@ export const schemaJson = <
         })
     )
 }
+
+/** @internal */
+export const schemaNoBody = <
+  I extends {
+    readonly status?: number
+    readonly headers?: Headers.Headers
+  },
+  A
+>(schema: Schema.Schema<I, A>) => {
+  const parse = Schema.parse(schema)
+  return (self: ClientResponse.ClientResponse): Effect.Effect<never, ParseResult.ParseError, A> =>
+    parse({
+      status: self.status,
+      headers: self.headers
+    })
+}

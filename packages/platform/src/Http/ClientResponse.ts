@@ -71,3 +71,13 @@ export const schemaJson: <
   schema: Schema.Schema<I, A>
 ) => (self: ClientResponse) => Effect.Effect<never, Error.ResponseError | ParseResult.ParseError, A> =
   internal.schemaJson
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const schemaNoBody: <
+  I extends { readonly status?: number; readonly headers?: Headers.Headers },
+  A
+>(schema: Schema.Schema<I, A>) => (self: ClientResponse) => Effect.Effect<never, ParseResult.ParseError, A> =
+  internal.schemaNoBody
