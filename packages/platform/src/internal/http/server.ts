@@ -1,12 +1,12 @@
-import type * as App from "@effect/platform/Http/App"
-import type * as Middleware from "@effect/platform/Http/Middleware"
-import type * as Server from "@effect/platform/Http/Server"
-import type * as Error from "@effect/platform/Http/ServerError"
-import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import type * as Scope from "effect/Scope"
+import type * as App from "../../Http/App"
+import type * as Middleware from "../../Http/Middleware"
+import type * as Server from "../../Http/Server"
+import type * as Error from "../../Http/ServerError"
+import type * as ServerRequest from "../../Http/ServerRequest"
 
 /** @internal */
 export const TypeId: Server.TypeId = Symbol.for("@effect/platform/Http/Server") as Server.TypeId

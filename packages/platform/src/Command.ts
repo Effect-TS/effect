@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { CommandExecutor, ExitCode, Process } from "@effect/platform/CommandExecutor"
-import type { PlatformError } from "@effect/platform/Error"
-import * as internal from "@effect/platform/internal/command"
 import type { Effect } from "effect/Effect"
 import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
@@ -11,6 +8,9 @@ import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
+import type { CommandExecutor, ExitCode, Process } from "./CommandExecutor"
+import type { PlatformError } from "./Error"
+import * as internal from "./internal/command"
 
 /**
  * @since 1.0.0

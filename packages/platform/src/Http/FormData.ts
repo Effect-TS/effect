@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as FileSystem from "@effect/platform/FileSystem"
-import * as internal from "@effect/platform/internal/http/formData"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Chunk from "effect/Chunk"
@@ -11,6 +9,8 @@ import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
+import type * as FileSystem from "../FileSystem"
+import * as internal from "../internal/http/formData"
 
 /**
  * @since 1.0.0

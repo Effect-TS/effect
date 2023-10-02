@@ -1,5 +1,3 @@
-import * as FileSystem from "@effect/platform/FileSystem"
-import type * as FormData from "@effect/platform/Http/FormData"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
@@ -11,6 +9,8 @@ import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as FileSystem from "../../FileSystem"
+import type * as FormData from "../../Http/FormData"
 
 /** @internal */
 export const TypeId: FormData.TypeId = Symbol.for("@effect/platform/Http/FormData") as FormData.TypeId

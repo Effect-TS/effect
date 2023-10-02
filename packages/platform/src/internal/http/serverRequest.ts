@@ -1,10 +1,10 @@
-import * as FormData from "@effect/platform/Http/FormData"
-import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
-import * as Error from "@effect/platform/Http/ServerError"
-import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as FormData from "../../Http/FormData"
+import * as IncomingMessage from "../../Http/IncomingMessage"
+import * as Error from "../../Http/ServerError"
+import type * as ServerRequest from "../../Http/ServerRequest"
 
 /** @internal */
 export const TypeId: ServerRequest.TypeId = Symbol.for("@effect/platform/Http/ServerRequest") as ServerRequest.TypeId

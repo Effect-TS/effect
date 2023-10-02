@@ -1,9 +1,3 @@
-import type * as App from "@effect/platform/Http/App"
-import type * as Method from "@effect/platform/Http/Method"
-import type * as Router from "@effect/platform/Http/Router"
-import * as Error from "@effect/platform/Http/ServerError"
-import * as ServerRequest from "@effect/platform/Http/ServerRequest"
-import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
@@ -15,6 +9,12 @@ import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type { HTTPMethod } from "find-my-way"
 import FindMyWay from "find-my-way"
+import type * as App from "../../Http/App"
+import type * as Method from "../../Http/Method"
+import type * as Router from "../../Http/Router"
+import * as Error from "../../Http/ServerError"
+import * as ServerRequest from "../../Http/ServerRequest"
+import type * as ServerResponse from "../../Http/ServerResponse"
 
 /** @internal */
 export const TypeId: Router.TypeId = Symbol.for("@effect/platform/Http/Router") as Router.TypeId

@@ -1,4 +1,3 @@
-import * as NodeStream from "@effect/platform-node/Stream"
 import * as FileSystem from "@effect/platform/FileSystem"
 import * as FormData from "@effect/platform/Http/FormData"
 import * as Path from "@effect/platform/Path"
@@ -13,6 +12,7 @@ import * as NodeFs from "node:fs"
 import type { IncomingHttpHeaders } from "node:http"
 import type { Readable } from "node:stream"
 import * as NodeStreamP from "node:stream/promises"
+import * as NodeStream from "../../Stream"
 
 export const stream = (
   source: Readable,

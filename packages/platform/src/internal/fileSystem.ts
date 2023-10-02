@@ -1,11 +1,11 @@
-import * as Error from "@effect/platform/Error"
-import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "@effect/platform/FileSystem"
 import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import * as Error from "../Error"
+import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem"
 
 /** @internal */
 export const tag = Tag<FileSystem>("@effect/platform/FileSystem")

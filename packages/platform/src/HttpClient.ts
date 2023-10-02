@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as body from "@effect/platform/Http/Body"
-import * as client from "@effect/platform/Http/Client"
-import * as error from "@effect/platform/Http/ClientError"
-import * as request from "@effect/platform/Http/ClientRequest"
-import * as response from "@effect/platform/Http/ClientResponse"
-import * as headers from "@effect/platform/Http/Headers"
-import * as urlParams from "@effect/platform/Http/UrlParams"
+import * as body from "./Http/Body"
+import * as client from "./Http/Client"
+import * as error from "./Http/ClientError"
+import * as request from "./Http/ClientRequest"
+import * as response from "./Http/ClientResponse"
+import * as headers from "./Http/Headers"
+import * as urlParams from "./Http/UrlParams"
 
 export {
   /**

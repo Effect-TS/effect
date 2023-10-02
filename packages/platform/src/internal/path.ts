@@ -1,10 +1,10 @@
-import { BadArgument } from "@effect/platform/Error"
-import type { Path as _Path } from "@effect/platform/Path"
 import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as PathB from "path-browserify"
+import { BadArgument } from "../Error"
+import type { Path as _Path } from "../Path"
 
 /** @internal */
 export const Path = Tag<_Path>("@effect/platform/Path")

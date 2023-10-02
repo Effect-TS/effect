@@ -1,4 +1,3 @@
-import * as Platform from "@effect/platform-bun/Http/Platform"
 import * as FormData from "@effect/platform-node/Http/FormData"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as App from "@effect/platform/Http/App"
@@ -23,6 +22,7 @@ import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Readable } from "node:stream"
+import * as Platform from "../../Http/Platform"
 
 /** @internal */
 export const make = (
@@ -283,13 +283,13 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
       return this.formDataEffect
     }
     this.formDataEffect = Effect.runSync(Effect.cached(
-      FormData.formData(Readable.fromWeb(this.source.body!), this.headers)
+      FormData.formData(Readable.fromWeb(this.source.body! as any), this.headers)
     ))
     return this.formDataEffect
   }
 
   get formDataStream(): Stream.Stream<never, FormData.FormDataError, FormData.Part> {
-    return FormData.stream(Readable.fromWeb(this.source.body!), this.headers)
+    return FormData.stream(Readable.fromWeb(this.source.body! as any), this.headers)
   }
 
   private arrayBufferEffect: Effect.Effect<never, Error.RequestError, ArrayBuffer> | undefined

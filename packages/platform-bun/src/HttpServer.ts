@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as server from "@effect/platform-bun/Http/Server"
 import * as etag from "@effect/platform-node/Http/Etag"
 import * as formData from "@effect/platform-node/Http/FormData"
 import * as app from "@effect/platform/Http/App"
@@ -13,6 +12,7 @@ import * as error from "@effect/platform/Http/ServerError"
 import * as request from "@effect/platform/Http/ServerRequest"
 import * as response from "@effect/platform/Http/ServerResponse"
 import * as urlParams from "@effect/platform/Http/UrlParams"
+import * as server from "./Http/Server"
 
 export {
   /**

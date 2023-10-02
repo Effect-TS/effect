@@ -1,15 +1,15 @@
-import type * as Error from "@effect/platform/Http/ClientError"
-import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
-import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
-import * as Headers from "@effect/platform/Http/Headers"
-import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
-import * as UrlParams from "@effect/platform/Http/UrlParams"
-import * as internalError from "@effect/platform/internal/http/clientError"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
+import type * as Error from "../../Http/ClientError"
+import type * as ClientRequest from "../../Http/ClientRequest"
+import type * as ClientResponse from "../../Http/ClientResponse"
+import * as Headers from "../../Http/Headers"
+import * as IncomingMessage from "../../Http/IncomingMessage"
+import * as UrlParams from "../../Http/UrlParams"
+import * as internalError from "./clientError"
 
 /** @internal */
 export const TypeId: ClientResponse.TypeId = Symbol.for("@effect/platform/Http/ClientResponse") as ClientResponse.TypeId

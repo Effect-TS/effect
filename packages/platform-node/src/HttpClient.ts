@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as nodeClient from "@effect/platform-node/Http/NodeClient"
 import * as body from "@effect/platform/Http/Body"
 import * as client from "@effect/platform/Http/Client"
 import * as error from "@effect/platform/Http/ClientError"
@@ -9,6 +8,7 @@ import * as request from "@effect/platform/Http/ClientRequest"
 import * as response from "@effect/platform/Http/ClientResponse"
 import * as headers from "@effect/platform/Http/Headers"
 import * as urlParams from "@effect/platform/Http/UrlParams"
+import * as nodeClient from "./Http/NodeClient"
 
 export {
   /**

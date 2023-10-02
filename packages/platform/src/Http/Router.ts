@@ -1,12 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as App from "@effect/platform/Http/App"
-import type * as Method from "@effect/platform/Http/Method"
-import type * as Error from "@effect/platform/Http/ServerError"
-import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
-import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
-import * as internal from "@effect/platform/internal/http/router"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Cause from "effect/Cause"
@@ -14,6 +8,12 @@ import type * as Chunk from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
+import * as internal from "../internal/http/router"
+import type * as App from "./App"
+import type * as Method from "./Method"
+import type * as Error from "./ServerError"
+import type * as ServerRequest from "./ServerRequest"
+import type * as ServerResponse from "./ServerResponse"
 
 /**
  * @since 1.0.0

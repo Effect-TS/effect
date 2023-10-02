@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/platform/internal/effectify"
 import type * as Effect from "effect/Effect"
+import * as internal from "./internal/effectify"
 
 interface Callback<E, A> {
   (err: E, a?: A): void

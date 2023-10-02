@@ -3,12 +3,12 @@
  *
  * Also includes exports from [`@effect/platform/Http/Platform`](https://effect-ts.github.io/platform/platform/Http/Platform.ts.html).
  */
-import type * as FileSystem from "@effect/platform-bun/FileSystem"
-import * as internal from "@effect/platform-bun/internal/http/platform"
 import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import type * as FileSystem from "../FileSystem"
+import * as internal from "../internal/http/platform"
 
 /**
  * @since 1.0.0

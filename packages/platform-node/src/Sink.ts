@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
-import * as internal from "@effect/platform-node/internal/sink"
 import type { LazyArg } from "effect/Function"
 import type { Sink } from "effect/Sink"
 import type { Writable } from "stream"
+import * as internal from "./internal/sink"
 
 /**
  * @category model

@@ -1,4 +1,3 @@
-import { handleErrnoException } from "@effect/platform-node/internal/error"
 import { effectify } from "@effect/platform/Effectify"
 import * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
@@ -10,6 +9,7 @@ import * as Crypto from "node:crypto"
 import * as NFS from "node:fs"
 import * as OS from "node:os"
 import * as Path from "node:path"
+import { handleErrnoException } from "./error"
 
 const handleBadArgument = (method: string) => (err: unknown) =>
   Error.BadArgument({

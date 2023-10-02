@@ -1,7 +1,3 @@
-import * as internalFormData from "@effect/platform-node/internal/http/formData"
-import { IncomingMessageImpl } from "@effect/platform-node/internal/http/incomingMessage"
-import * as internalPlatform from "@effect/platform-node/internal/http/platform"
-import * as NodeSink from "@effect/platform-node/Sink"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as FormData from "@effect/platform/Http/FormData"
 import type * as Headers from "@effect/platform/Http/Headers"
@@ -26,6 +22,10 @@ import type * as Http from "node:http"
 import type * as Net from "node:net"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import * as NodeSink from "../../Sink"
+import * as internalFormData from "./formData"
+import { IncomingMessageImpl } from "./incomingMessage"
+import * as internalPlatform from "./platform"
 
 /** @internal */
 export const make = (

@@ -1,4 +1,3 @@
-import type { FromReadableOptions } from "@effect/platform-node/Stream"
 import type { SizeInput } from "@effect/platform/FileSystem"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
@@ -6,6 +5,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import type { Readable } from "node:stream"
+import type { FromReadableOptions } from "../Stream"
 
 /** @internal */
 export const fromReadable = <E, A>(

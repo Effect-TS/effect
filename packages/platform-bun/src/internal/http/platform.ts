@@ -1,9 +1,9 @@
-import * as FileSystem from "@effect/platform-bun/FileSystem"
 import * as Etag from "@effect/platform-node/Http/Etag"
 import * as Platform from "@effect/platform/Http/Platform"
 import * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as FileSystem from "../../FileSystem"
 
 /** @internal */
 export const make = Platform.make({

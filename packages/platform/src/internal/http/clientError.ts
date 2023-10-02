@@ -1,5 +1,5 @@
-import type * as Error from "@effect/platform/Http/ClientError"
 import * as Data from "effect/Data"
+import type * as Error from "../../Http/ClientError"
 
 /** @internal */
 export const TypeId: Error.TypeId = Symbol.for(

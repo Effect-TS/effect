@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { PlatformError } from "@effect/platform/Error"
-import * as internal from "@effect/platform/internal/fileSystem"
 import * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
 import type * as Effect from "effect/Effect"
@@ -10,6 +8,8 @@ import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
+import type { PlatformError } from "./Error"
+import * as internal from "./internal/fileSystem"
 
 /**
  * @since 1.0.0

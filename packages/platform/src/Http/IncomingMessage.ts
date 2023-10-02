@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as FileSystem from "@effect/platform/FileSystem"
-import type * as Headers from "@effect/platform/Http/Headers"
-import type * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
@@ -14,6 +11,9 @@ import * as Global from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
 import type { ExternalSpan } from "effect/Tracer"
+import * as FileSystem from "../FileSystem"
+import type * as Headers from "./Headers"
+import type * as UrlParams from "./UrlParams"
 
 /**
  * @since 1.0.0

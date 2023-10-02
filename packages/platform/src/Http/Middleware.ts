@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type * as App from "@effect/platform/Http/App"
-import * as internal from "@effect/platform/internal/http/middleware"
+import * as internal from "../internal/http/middleware"
+import type * as App from "./App"
 
 /**
  * @since 1.0.0

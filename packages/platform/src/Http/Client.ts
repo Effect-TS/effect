@@ -1,10 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Error from "@effect/platform/Http/ClientError"
-import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
-import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
-import * as internal from "@effect/platform/internal/http/client"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
@@ -14,6 +10,10 @@ import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
+import * as internal from "../internal/http/client"
+import type * as Error from "./ClientError"
+import type * as ClientRequest from "./ClientRequest"
+import type * as ClientResponse from "./ClientResponse"
 
 /**
  * @since 1.0.0

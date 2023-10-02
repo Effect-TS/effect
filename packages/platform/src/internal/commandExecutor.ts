@@ -1,4 +1,3 @@
-import type * as _CommandExecutor from "@effect/platform/CommandExecutor"
 import * as Brand from "effect/Brand"
 import * as Chunk from "effect/Chunk"
 import { Tag } from "effect/Context"
@@ -6,6 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import type * as _CommandExecutor from "../CommandExecutor"
 
 /** @internal */
 export const ProcessTypeId: _CommandExecutor.ProcessTypeId = Symbol.for(

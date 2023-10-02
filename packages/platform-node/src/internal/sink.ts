@@ -1,9 +1,9 @@
-import type { FromWritableOptions } from "@effect/platform-node/Sink"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import type { Writable } from "node:stream"
+import type { FromWritableOptions } from "../Sink"
 
 /** @internal */
 export const fromWritable = <E, A>(

@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/platform-node/internal/http/nodeClient"
 import type * as Client from "@effect/platform/Http/Client"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
@@ -9,6 +8,7 @@ import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Https from "node:https"
+import * as internal from "../internal/http/nodeClient"
 
 /**
  * @since 1.0.0

@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type * as FileSystem from "@effect/platform/FileSystem"
-import type * as Body from "@effect/platform/Http/Body"
-import * as internal from "@effect/platform/internal/http/etag"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
+import type * as FileSystem from "../FileSystem"
+import * as internal from "../internal/http/etag"
+import type * as Body from "./Body"
 
 /**
  * @since 1.0.0

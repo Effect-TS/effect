@@ -1,8 +1,8 @@
-import type * as Clipboard from "@effect/platform-browser/Clipboard"
 import * as PlatformError from "@effect/platform/Error"
 import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type * as Clipboard from "../Clipboard"
 
 /** @internal */
 export const tag = Tag<Clipboard.Clipboard>("@effect/platform-browser/Clipboard")

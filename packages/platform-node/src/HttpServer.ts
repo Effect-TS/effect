@@ -1,9 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as etag from "@effect/platform-node/Http/Etag"
-import * as formData from "@effect/platform-node/Http/FormData"
-import * as server from "@effect/platform-node/Http/Server"
 import * as app from "@effect/platform/Http/App"
 import * as body from "@effect/platform/Http/Body"
 import * as headers from "@effect/platform/Http/Headers"
@@ -13,6 +10,9 @@ import * as error from "@effect/platform/Http/ServerError"
 import * as request from "@effect/platform/Http/ServerRequest"
 import * as response from "@effect/platform/Http/ServerResponse"
 import * as urlParams from "@effect/platform/Http/UrlParams"
+import * as etag from "./Http/Etag"
+import * as formData from "./Http/FormData"
+import * as server from "./Http/Server"
 
 export {
   /**

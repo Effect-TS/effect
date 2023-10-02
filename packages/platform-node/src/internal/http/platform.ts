@@ -1,5 +1,3 @@
-import * as FileSystem from "@effect/platform-node/FileSystem"
-import * as Etag from "@effect/platform-node/Http/Etag"
 import * as Platform from "@effect/platform/Http/Platform"
 import * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import { pipe } from "effect/Function"
@@ -7,6 +5,8 @@ import * as Layer from "effect/Layer"
 import Mime from "mime"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
+import * as FileSystem from "../../FileSystem"
+import * as Etag from "../../Http/Etag"
 
 /** @internal */
 export const make = Platform.make({

@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 
-import * as internal from "@effect/platform-browser/internal/clipboard"
 import type { PlatformError } from "@effect/platform/Error"
 import type { Tag } from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import * as internal from "./internal/clipboard"
 
 /**
  * @since 1.0.0

@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import * as app from "@effect/platform/Http/App"
-import * as body from "@effect/platform/Http/Body"
-import * as formData from "@effect/platform/Http/FormData"
-import * as headers from "@effect/platform/Http/Headers"
-import * as middleware from "@effect/platform/Http/Middleware"
-import * as router from "@effect/platform/Http/Router"
-import * as error from "@effect/platform/Http/ServerError"
-import * as request from "@effect/platform/Http/ServerRequest"
-import * as response from "@effect/platform/Http/ServerResponse"
-import * as urlParams from "@effect/platform/Http/UrlParams"
+import * as app from "./Http/App"
+import * as body from "./Http/Body"
+import * as formData from "./Http/FormData"
+import * as headers from "./Http/Headers"
+import * as middleware from "./Http/Middleware"
+import * as router from "./Http/Router"
+import * as error from "./Http/ServerError"
+import * as request from "./Http/ServerRequest"
+import * as response from "./Http/ServerResponse"
+import * as urlParams from "./Http/UrlParams"
 
 export {
   /**

@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/platform-browser/internal/runtime"
 import type * as Effect from "effect/Effect"
+import * as internal from "./internal/runtime"
 
 /**
  * @since 1.0.0

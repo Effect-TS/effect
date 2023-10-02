@@ -1,6 +1,3 @@
-import { handleErrnoException } from "@effect/platform-node/internal/error"
-import { fromWritable } from "@effect/platform-node/internal/sink"
-import { fromReadable } from "@effect/platform-node/internal/stream"
 import * as Command from "@effect/platform/Command"
 import * as CommandExecutor from "@effect/platform/CommandExecutor"
 import type * as Error from "@effect/platform/Error"
@@ -12,6 +9,9 @@ import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as ChildProcess from "node:child_process"
+import { handleErrnoException } from "./error"
+import { fromWritable } from "./sink"
+import { fromReadable } from "./stream"
 
 const inputToStdioOption = (stdin: Option.Option<Command.Command.Input>): "pipe" | "inherit" =>
   Option.match(stdin, { onNone: () => "inherit", onSome: () => "pipe" })

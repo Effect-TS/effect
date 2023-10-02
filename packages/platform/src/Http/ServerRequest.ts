@@ -1,20 +1,20 @@
 /**
  * @since 1.0.0
  */
-import type * as FileSystem from "@effect/platform/FileSystem"
-import type * as FormData from "@effect/platform/Http/FormData"
-import type * as Headers from "@effect/platform/Http/Headers"
-import type * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
-import type { Method } from "@effect/platform/Http/Method"
-import type * as Error from "@effect/platform/Http/ServerError"
-import * as internal from "@effect/platform/internal/http/serverRequest"
-import type * as Path from "@effect/platform/Path"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
+import type * as FileSystem from "../FileSystem"
+import * as internal from "../internal/http/serverRequest"
+import type * as Path from "../Path"
+import type * as FormData from "./FormData"
+import type * as Headers from "./Headers"
+import type * as IncomingMessage from "./IncomingMessage"
+import type { Method } from "./Method"
+import type * as Error from "./ServerError"
 
 export {
   /**
@@ -22,7 +22,7 @@ export {
    * @category fiber refs
    */
   maxBodySize
-} from "@effect/platform/Http/IncomingMessage"
+} from "./IncomingMessage"
 
 /**
  * @since 1.0.0

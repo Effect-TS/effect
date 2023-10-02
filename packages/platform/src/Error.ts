@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/platform/internal/error"
 import type * as Data from "effect/Data"
+import * as internal from "./internal/error"
 
 /**
  * @since 1.0.0

@@ -1,5 +1,5 @@
-import type * as Error from "@effect/platform/Error"
 import * as Data from "effect/Data"
+import type * as Error from "../Error"
 
 /** @internal */
 export const PlatformErrorTypeId: Error.PlatformErrorTypeId = Symbol.for(

@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
-import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
-import * as internal from "@effect/platform/internal/http/serverError"
 import type * as Data from "effect/Data"
+import * as internal from "../internal/http/serverError"
+import type * as ServerRequest from "./ServerRequest"
+import type * as ServerResponse from "./ServerResponse"
 
 /**
  * @since 1.0.0

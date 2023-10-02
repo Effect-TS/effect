@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type { Command } from "@effect/platform/Command"
-import type { PlatformError } from "@effect/platform/Error"
-import * as internal from "@effect/platform/internal/commandExecutor"
 import type * as Brand from "effect/Brand"
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
+import type { Command } from "./Command"
+import type { PlatformError } from "./Error"
+import * as internal from "./internal/commandExecutor"
 
 /**
  * @since 1.0.0

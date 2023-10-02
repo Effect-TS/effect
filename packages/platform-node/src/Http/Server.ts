@@ -3,7 +3,6 @@
  *
  * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/platform/platform/Http/Server.ts.html).
  */
-import * as internal from "@effect/platform-node/internal/http/server"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Server from "@effect/platform/Http/Server"
 import type * as Config from "effect/Config"
@@ -14,6 +13,7 @@ import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
+import * as internal from "../internal/http/server"
 
 /**
  * @since 1.0.0

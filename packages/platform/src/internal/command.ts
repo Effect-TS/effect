@@ -1,7 +1,3 @@
-import type * as Command from "@effect/platform/Command"
-import type * as CommandExecutor from "@effect/platform/CommandExecutor"
-import type { PlatformError } from "@effect/platform/Error"
-import * as commandExecutor from "@effect/platform/internal/commandExecutor"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
@@ -10,6 +6,10 @@ import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import type ReadonlyArray from "effect/ReadonlyArray"
 import * as Stream from "effect/Stream"
+import type * as Command from "../Command"
+import type * as CommandExecutor from "../CommandExecutor"
+import type { PlatformError } from "../Error"
+import * as commandExecutor from "./commandExecutor"
 
 /** @internal */
 export const CommandTypeId: Command.CommandTypeId = Symbol.for("@effect/platform/Command") as Command.CommandTypeId

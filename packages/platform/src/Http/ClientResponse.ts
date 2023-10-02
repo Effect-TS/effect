@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as Error from "@effect/platform/Http/ClientError"
-import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
-import type * as Headers from "@effect/platform/Http/Headers"
-import type * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
-import * as internal from "@effect/platform/internal/http/clientResponse"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
+import * as internal from "../internal/http/clientResponse"
+import type * as Error from "./ClientError"
+import type * as ClientRequest from "./ClientRequest"
+import type * as Headers from "./Headers"
+import type * as IncomingMessage from "./IncomingMessage"
 
 export {
   /**
@@ -26,7 +26,7 @@ export {
    * @category schema
    */
   schemaHeaders
-} from "@effect/platform/Http/IncomingMessage"
+} from "./IncomingMessage"
 
 /**
  * @since 1.0.0

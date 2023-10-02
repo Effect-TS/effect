@@ -1,6 +1,3 @@
-import type * as NodeClient from "@effect/platform-node/Http/NodeClient"
-import { IncomingMessageImpl } from "@effect/platform-node/internal/http/incomingMessage"
-import * as NodeSink from "@effect/platform-node/Sink"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Client from "@effect/platform/Http/Client"
 import * as Error from "@effect/platform/Http/ClientError"
@@ -17,6 +14,9 @@ import * as Http from "node:http"
 import * as Https from "node:https"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import type * as NodeClient from "../../Http/NodeClient"
+import * as NodeSink from "../../Sink"
+import { IncomingMessageImpl } from "./incomingMessage"
 
 /** @internal */
 export const HttpAgentTypeId: NodeClient.HttpAgentTypeId = Symbol.for(

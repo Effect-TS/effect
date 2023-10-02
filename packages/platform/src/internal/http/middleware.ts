@@ -1,10 +1,10 @@
-import * as Headers from "@effect/platform/Http/Headers"
-import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
-import type * as Middleware from "@effect/platform/Http/Middleware"
-import * as ServerRequest from "@effect/platform/Http/ServerRequest"
-import * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as Effect from "effect/Effect"
 import { flow } from "effect/Function"
+import * as Headers from "../../Http/Headers"
+import * as IncomingMessage from "../../Http/IncomingMessage"
+import type * as Middleware from "../../Http/Middleware"
+import * as ServerRequest from "../../Http/ServerRequest"
+import * as ServerResponse from "../../Http/ServerResponse"
 
 /** @internal */
 export const make = <M extends Middleware.Middleware>(middleware: M): M => middleware

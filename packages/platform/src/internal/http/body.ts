@@ -1,11 +1,11 @@
-import type * as PlatformError from "@effect/platform/Error"
-import * as FileSystem from "@effect/platform/FileSystem"
-import type * as Body from "@effect/platform/Http/Body"
 import * as Schema from "@effect/schema/Schema"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Stream_ from "effect/Stream"
+import type * as PlatformError from "../../Error"
+import * as FileSystem from "../../FileSystem"
+import type * as Body from "../../Http/Body"
 
 /** @internal */
 export const TypeId: Body.TypeId = Symbol.for(

@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/platform-node/internal/runtime"
 import type { RunMain } from "@effect/platform/Runtime"
+import * as internal from "./internal/runtime"
 
 export type {
   /**

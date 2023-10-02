@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/platform-node/internal/stream"
 import type { SizeInput } from "@effect/platform/FileSystem"
 import type { Effect } from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type { Stream } from "effect/Stream"
 import type { Readable } from "stream"
+import * as internal from "./internal/stream"
 
 /**
  * @category models
