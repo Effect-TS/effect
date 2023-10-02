@@ -45,7 +45,6 @@
   "files": [
     "src",
     "dist",
-    "internal",
     "Clipboard",
     "Effectify",
     "Error",

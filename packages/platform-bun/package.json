@@ -48,7 +48,6 @@
   "files": [
     "src",
     "dist",
-    "internal",
     "BunContext",
     "Command",
     "CommandExecutor",

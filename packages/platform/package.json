@@ -49,7 +49,6 @@
   "files": [
     "src",
     "dist",
-    "internal",
     "Command",
     "CommandExecutor",
     "Effectify",
