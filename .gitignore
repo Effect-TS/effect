@@ -61,7 +61,6 @@ dist/
 /Hash
 /HashMap
 /HashSet
-/Hub
 /Inspectable
 /KeyedPool
 /Layer
@@ -92,6 +91,7 @@ dist/
 /Pipeable
 /Pool
 /Predicate
+/PubSub
 /Queue
 /Random
 /ReadonlyArray
@@ -129,9 +129,9 @@ dist/
 /SynchronizedRef
 /TArray
 /TDeferred
-/THub
 /TMap
 /TPriorityQueue
+/TPubSub
 /TQueue
 /TRandom
 /TReentrantLock

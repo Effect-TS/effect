@@ -336,11 +336,6 @@ export * as HashSet from "effect/HashSet"
 /**
  * @since 2.0.0
  */
-export * as PubSub from "effect/PubSub"
-
-/**
- * @since 2.0.0
- */
 export * as Inspectable from "effect/Inspectable"
 
 /**
@@ -516,6 +511,11 @@ export * as Pool from "effect/Pool"
  * @since 2.0.0
  */
 export * as Predicate from "effect/Predicate"
+
+/**
+ * @since 2.0.0
+ */
+export * as PubSub from "effect/PubSub"
 
 /**
  * @since 2.0.0
@@ -718,17 +718,17 @@ export * as TDeferred from "effect/TDeferred"
 /**
  * @since 2.0.0
  */
-export * as TPubSub from "effect/TPubSub"
-
-/**
- * @since 2.0.0
- */
 export * as TMap from "effect/TMap"
 
 /**
  * @since 2.0.0
  */
 export * as TPriorityQueue from "effect/TPriorityQueue"
+
+/**
+ * @since 2.0.0
+ */
+export * as TPubSub from "effect/TPubSub"
 
 /**
  * @since 2.0.0
