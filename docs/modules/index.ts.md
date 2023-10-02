@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 51
+nav_order: 50
 parent: Modules
 ---
 
@@ -62,7 +62,6 @@ Added in v2.0.0
   - [From "./Hash"](#from-hash)
   - [From "./HashMap"](#from-hashmap)
   - [From "./HashSet"](#from-hashset)
-  - [From "./Hub"](#from-hub)
   - [From "./Inspectable"](#from-inspectable)
   - [From "./KeyedPool"](#from-keyedpool)
   - [From "./Layer"](#from-layer)
@@ -93,6 +92,7 @@ Added in v2.0.0
   - [From "./Pipeable"](#from-pipeable)
   - [From "./Pool"](#from-pool)
   - [From "./Predicate"](#from-predicate)
+  - [From "./PubSub"](#from-pubsub)
   - [From "./Queue"](#from-queue)
   - [From "./Random"](#from-random)
   - [From "./ReadonlyArray"](#from-readonlyarray)
@@ -130,9 +130,9 @@ Added in v2.0.0
   - [From "./SynchronizedRef"](#from-synchronizedref)
   - [From "./TArray"](#from-tarray)
   - [From "./TDeferred"](#from-tdeferred)
-  - [From "./THub"](#from-thub)
   - [From "./TMap"](#from-tmap)
   - [From "./TPriorityQueue"](#from-tpriorityqueue)
+  - [From "./TPubSub"](#from-tpubsub)
   - [From "./TQueue"](#from-tqueue)
   - [From "./TRandom"](#from-trandom)
   - [From "./TReentrantLock"](#from-treentrantlock)
@@ -799,18 +799,6 @@ export * as HashSet from './HashSet'
 
 Added in v2.0.0
 
-## From "./Hub"
-
-Re-exports all named exports from the "./Hub" module as "Hub".
-
-**Signature**
-
-```ts
-export * as Hub from './Hub'
-```
-
-Added in v2.0.0
-
 ## From "./Inspectable"
 
 Re-exports all named exports from the "./Inspectable" module as "Inspectable".
@@ -1190,6 +1178,18 @@ Re-exports all named exports from the "./Predicate" module as "Predicate".
 
 ```ts
 export * as Predicate from './Predicate'
+```
+
+Added in v2.0.0
+
+## From "./PubSub"
+
+Re-exports all named exports from the "./PubSub" module as "PubSub".
+
+**Signature**
+
+```ts
+export * as PubSub from './PubSub'
 ```
 
 Added in v2.0.0
@@ -1641,18 +1641,6 @@ export * as TDeferred from './TDeferred'
 
 Added in v2.0.0
 
-## From "./THub"
-
-Re-exports all named exports from the "./THub" module as "THub".
-
-**Signature**
-
-```ts
-export * as THub from './THub'
-```
-
-Added in v2.0.0
-
 ## From "./TMap"
 
 Re-exports all named exports from the "./TMap" module as "TMap".
@@ -1673,6 +1661,18 @@ Re-exports all named exports from the "./TPriorityQueue" module as "TPriorityQue
 
 ```ts
 export * as TPriorityQueue from './TPriorityQueue'
+```
+
+Added in v2.0.0
+
+## From "./TPubSub"
+
+Re-exports all named exports from the "./TPubSub" module as "TPubSub".
+
+**Signature**
+
+```ts
+export * as TPubSub from './TPubSub'
 ```
 
 Added in v2.0.0

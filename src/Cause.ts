@@ -97,13 +97,13 @@ export type NoSuchElementExceptionTypeId = typeof NoSuchElementExceptionTypeId
  * @since 2.0.0
  * @category symbols
  */
-export const InvalidHubCapacityExceptionTypeId: unique symbol = internal.InvalidHubCapacityExceptionTypeId
+export const InvalidPubSubCapacityExceptionTypeId: unique symbol = internal.InvalidPubSubCapacityExceptionTypeId
 
 /**
  * @since 2.0.0
  * @category symbols
  */
-export type InvalidHubCapacityExceptionTypeId = typeof InvalidHubCapacityExceptionTypeId
+export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
 /**
  * A `Cause` represents the full history of a failure resulting from running an
@@ -208,14 +208,14 @@ export interface NoSuchElementException {
 
 /**
  * Represents a checked exception which occurs when attempting to construct a
- * `Hub` with an invalid capacity.
+ * `PubSub` with an invalid capacity.
  *
  * @since 2.0.0
  * @category models
  */
-export interface InvalidHubCapacityException {
-  readonly _tag: "InvalidHubCapacityException"
-  readonly [InvalidHubCapacityExceptionTypeId]: InvalidHubCapacityExceptionTypeId
+export interface InvalidPubSubCapacityException {
+  readonly _tag: "InvalidPubSubCapacityException"
+  readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
   readonly message?: string
 }
 

@@ -5,12 +5,12 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as Hub from "effect/Hub"
 import * as internalQueue from "effect/internal/queue"
 import type * as MutableQueue from "effect/MutableQueue"
 import type * as MutableRef from "effect/MutableRef"
 import type * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
+import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
@@ -52,13 +52,13 @@ describe.concurrent("Sink", () => {
       assert.isTrue(isShutdown)
     }))
 
-  it.effect("fromHub - should publish all elements", () =>
+  it.effect("fromPubSub - should publish all elements", () =>
     Effect.gen(function*($) {
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.unbounded<number>())
+      const pubsub = yield* $(PubSub.unbounded<number>())
       const fiber = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed<never, void>(deferred1, void 0),
@@ -70,17 +70,17 @@ describe.concurrent("Sink", () => {
         Effect.fork
       )
       yield* $(Deferred.await(deferred1))
-      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromHub(hub)))
+      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub)))
       yield* $(Deferred.succeed<never, void>(deferred2, void 0))
       const result = yield* $(Fiber.join(fiber))
       assert.deepStrictEqual(Array.from(result), [1, 2, 3])
     }))
 
-  it.effect("fromHubWithShutdown - should shutdown the hub", () =>
+  it.effect("fromPubSub(_, { shutdown: true }) - should shutdown the pubsub", () =>
     Effect.gen(function*($) {
-      const hub = yield* $(Hub.unbounded<number>())
-      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromHub(hub, { shutdown: true })))
-      const isShutdown = yield* $(Hub.isShutdown(hub))
+      const pubsub = yield* $(PubSub.unbounded<number>())
+      yield* $(Stream.make(1, 2, 3), Stream.run(Sink.fromPubSub(pubsub, { shutdown: true })))
+      const isShutdown = yield* $(PubSub.isShutdown(pubsub))
       assert.isTrue(isShutdown)
     }))
 })

@@ -336,7 +336,7 @@ export * as HashSet from "effect/HashSet"
 /**
  * @since 2.0.0
  */
-export * as Hub from "effect/Hub"
+export * as PubSub from "effect/PubSub"
 
 /**
  * @since 2.0.0
@@ -718,7 +718,7 @@ export * as TDeferred from "effect/TDeferred"
 /**
  * @since 2.0.0
  */
-export * as THub from "effect/THub"
+export * as TPubSub from "effect/TPubSub"
 
 /**
  * @since 2.0.0

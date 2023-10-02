@@ -13,12 +13,12 @@ import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
 import { constTrue, dual, identity, pipe } from "../Function"
 import type { LazyArg } from "../Function"
-import * as Hub from "../Hub"
 import * as Layer from "../Layer"
 import * as Option from "../Option"
 import type * as Order from "../Order"
 import { pipeArguments } from "../Pipeable"
 import type { Predicate, Refinement } from "../Predicate"
+import * as PubSub from "../PubSub"
 import * as Queue from "../Queue"
 import * as Ref from "../Ref"
 import * as Runtime from "../Runtime"
@@ -752,14 +752,14 @@ export const broadcastedQueues = dual<
   n: N,
   maximumLag: number
 ): Effect.Effect<R | Scope.Scope, never, Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>> =>
-  Effect.flatMap(Hub.bounded<Take.Take<E, A>>(maximumLag), (hub) =>
+  Effect.flatMap(PubSub.bounded<Take.Take<E, A>>(maximumLag), (pubsub) =>
     pipe(
-      Effect.all(Array.from({ length: n }, () => Hub.subscribe(hub))) as Effect.Effect<
+      Effect.all(Array.from({ length: n }, () => PubSub.subscribe(pubsub))) as Effect.Effect<
         R,
         never,
         Stream.Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>
       >,
-      Effect.tap(() => Effect.forkScoped(runIntoHubScoped(self, hub)))
+      Effect.tap(() => Effect.forkScoped(runIntoPubSubScoped(self, pubsub)))
     )))
 
 /** @internal */
@@ -777,7 +777,7 @@ export const broadcastedQueuesDynamic = dual<
   self: Stream.Stream<R, E, A>,
   maximumLag: number
 ): Effect.Effect<R | Scope.Scope, never, Effect.Effect<Scope.Scope, never, Queue.Dequeue<Take.Take<E, A>>>> =>
-  Effect.map(toHub(self, maximumLag), Hub.subscribe))
+  Effect.map(toPubSub(self, maximumLag), PubSub.subscribe))
 
 /** @internal */
 export const buffer = dual<
@@ -2848,22 +2848,22 @@ export const fromChunk = <A>(chunk: Chunk.Chunk<A>): Stream.Stream<never, never,
   new StreamImpl(Chunk.isEmpty(chunk) ? core.unit : core.write(chunk))
 
 /** @internal */
-export const fromChunkHub: {
-  <A>(hub: Hub.Hub<Chunk.Chunk<A>>, options: {
+export const fromChunkPubSub: {
+  <A>(pubsub: PubSub.PubSub<Chunk.Chunk<A>>, options: {
     readonly scoped: true
     readonly shutdown?: boolean
   }): Effect.Effect<Scope.Scope, never, Stream.Stream<never, never, A>>
-  <A>(hub: Hub.Hub<Chunk.Chunk<A>>, options?: {
+  <A>(pubsub: PubSub.PubSub<Chunk.Chunk<A>>, options?: {
     readonly scoped?: false
     readonly shutdown?: boolean
   }): Stream.Stream<never, never, A>
-} = (hub, options): any => {
+} = (pubsub, options): any => {
   if (options?.scoped) {
-    const effect = Effect.map(Hub.subscribe(hub), fromChunkQueue)
-    return options.shutdown ? Effect.map(effect, ensuring(Hub.shutdown(hub))) : effect
+    const effect = Effect.map(PubSub.subscribe(pubsub), fromChunkQueue)
+    return options.shutdown ? Effect.map(effect, ensuring(PubSub.shutdown(pubsub))) : effect
   }
-  const stream = flatMap(scoped(Hub.subscribe(hub)), fromChunkQueue)
-  return options?.shutdown ? ensuring(stream, Hub.shutdown(hub)) : stream
+  const stream = flatMap(scoped(PubSub.subscribe(pubsub)), fromChunkQueue)
+  return options?.shutdown ? ensuring(stream, PubSub.shutdown(pubsub)) : stream
 }
 
 /** @internal */
@@ -2910,33 +2910,33 @@ export const fromEffectOption = <R, E, A>(effect: Effect.Effect<R, Option.Option
   )
 
 /** @internal */
-export const fromHub: {
-  <A>(hub: Hub.Hub<A>, options: {
+export const fromPubSub: {
+  <A>(pubsub: PubSub.PubSub<A>, options: {
     readonly scoped: true
     readonly maxChunkSize?: number
     readonly shutdown?: boolean
   }): Effect.Effect<Scope.Scope, never, Stream.Stream<never, never, A>>
-  <A>(hub: Hub.Hub<A>, options?: {
+  <A>(pubsub: PubSub.PubSub<A>, options?: {
     readonly scoped?: false
     readonly maxChunkSize?: number
     readonly shutdown?: boolean
   }): Stream.Stream<never, never, A>
-} = (hub, options): any => {
+} = (pubsub, options): any => {
   const maxChunkSize = options?.maxChunkSize ?? DefaultChunkSize
 
   if (options?.scoped) {
     const effect = Effect.map(
-      Hub.subscribe(hub),
+      PubSub.subscribe(pubsub),
       (queue) => fromQueue(queue, { maxChunkSize, shutdown: true })
     )
 
-    return options.shutdown ? Effect.map(effect, ensuring(Hub.shutdown(hub))) : effect
+    return options.shutdown ? Effect.map(effect, ensuring(PubSub.shutdown(pubsub))) : effect
   }
   const stream = flatMap(
-    scoped(Hub.subscribe(hub)),
+    scoped(PubSub.subscribe(pubsub)),
     (queue) => fromQueue(queue, { maxChunkSize })
   )
-  return options?.shutdown ? ensuring(stream, Hub.shutdown(hub)) : stream
+  return options?.shutdown ? ensuring(stream, PubSub.shutdown(pubsub)) : stream
 }
 
 /** @internal */
@@ -5316,25 +5316,28 @@ export const runHead = <R, E, A>(self: Stream.Stream<R, E, A>): Effect.Effect<R,
   pipe(self, run(_sink.head<A>()))
 
 /** @internal */
-export const runIntoHub = dual<
-  <E, A>(hub: Hub.Hub<Take.Take<E, A>>) => <R>(self: Stream.Stream<R, E, A>) => Effect.Effect<R, never, void>,
-  <R, E, A>(self: Stream.Stream<R, E, A>, hub: Hub.Hub<Take.Take<E, A>>) => Effect.Effect<R, never, void>
+export const runIntoPubSub = dual<
+  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>) => <R>(self: Stream.Stream<R, E, A>) => Effect.Effect<R, never, void>,
+  <R, E, A>(self: Stream.Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>) => Effect.Effect<R, never, void>
 >(
   2,
-  <R, E, A>(self: Stream.Stream<R, E, A>, hub: Hub.Hub<Take.Take<E, A>>): Effect.Effect<R, never, void> =>
-    pipe(self, runIntoQueue(hub))
+  <R, E, A>(self: Stream.Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<R, never, void> =>
+    pipe(self, runIntoQueue(pubsub))
 )
 
 /** @internal */
-export const runIntoHubScoped = dual<
+export const runIntoPubSubScoped = dual<
   <E, A>(
-    hub: Hub.Hub<Take.Take<E, A>>
+    pubsub: PubSub.PubSub<Take.Take<E, A>>
   ) => <R>(self: Stream.Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>,
-  <R, E, A>(self: Stream.Stream<R, E, A>, hub: Hub.Hub<Take.Take<E, A>>) => Effect.Effect<Scope.Scope | R, never, void>
+  <R, E, A>(
+    self: Stream.Stream<R, E, A>,
+    pubsub: PubSub.PubSub<Take.Take<E, A>>
+  ) => Effect.Effect<Scope.Scope | R, never, void>
 >(2, <R, E, A>(
   self: Stream.Stream<R, E, A>,
-  hub: Hub.Hub<Take.Take<E, A>>
-): Effect.Effect<R | Scope.Scope, never, void> => pipe(self, runIntoQueueScoped(hub)))
+  pubsub: PubSub.PubSub<Take.Take<E, A>>
+): Effect.Effect<R | Scope.Scope, never, void> => pipe(self, runIntoQueueScoped(pubsub)))
 
 /** @internal */
 export const runIntoQueue = dual<
@@ -6482,24 +6485,24 @@ export const timeoutTo = dual<
 )
 
 /** @internal */
-export const toHub = dual<
+export const toPubSub = dual<
   (
     capacity: number
-  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, Hub.Hub<Take.Take<E, A>>>,
+  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>,
   <R, E, A>(
     self: Stream.Stream<R, E, A>,
     capacity: number
-  ) => Effect.Effect<Scope.Scope | R, never, Hub.Hub<Take.Take<E, A>>>
+  ) => Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
 >(2, <R, E, A>(
   self: Stream.Stream<R, E, A>,
   capacity: number
-): Effect.Effect<R | Scope.Scope, never, Hub.Hub<Take.Take<E, A>>> =>
+): Effect.Effect<R | Scope.Scope, never, PubSub.PubSub<Take.Take<E, A>>> =>
   pipe(
     Effect.acquireRelease(
-      Hub.bounded<Take.Take<E, A>>(capacity),
-      (hub) => Hub.shutdown(hub)
+      PubSub.bounded<Take.Take<E, A>>(capacity),
+      (pubsub) => PubSub.shutdown(pubsub)
     ),
-    Effect.tap((hub) => pipe(self, runIntoHubScoped(hub), Effect.forkScoped))
+    Effect.tap((pubsub) => pipe(self, runIntoPubSubScoped(pubsub), Effect.forkScoped))
   ))
 
 /** @internal */

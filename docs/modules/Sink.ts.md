@@ -61,7 +61,7 @@ Added in v2.0.0
   - [forEachWhile](#foreachwhile)
   - [fromChannel](#fromchannel)
   - [fromEffect](#fromeffect)
-  - [fromHub](#fromhub)
+  - [fromPubSub](#frompubsub)
   - [fromPush](#frompush)
   - [fromQueue](#fromqueue)
   - [head](#head)
@@ -868,15 +868,15 @@ export declare const fromEffect: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => Si
 
 Added in v2.0.0
 
-## fromHub
+## fromPubSub
 
-Create a sink which publishes each element to the specified hub.
+Create a sink which publishes each element to the specified `PubSub`.
 
 **Signature**
 
 ```ts
-export declare const fromHub: <In>(
-  hub: Hub.Hub<In>,
+export declare const fromPubSub: <In>(
+  pubsub: PubSub.PubSub<In>,
   options?: { readonly shutdown?: boolean }
 ) => Sink<never, never, In, never, void>
 ```

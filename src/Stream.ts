@@ -13,7 +13,6 @@ import type * as Exit from "./Exit"
 import type { LazyArg } from "./Function"
 import type * as GroupBy from "./GroupBy"
 import type { TypeLambda } from "./HKT"
-import type * as Hub from "./Hub"
 import * as _groupBy from "./internal/groupBy"
 import * as internal from "./internal/stream"
 import type * as Layer from "./Layer"
@@ -21,6 +20,7 @@ import type * as Option from "./Option"
 import type * as Order from "./Order"
 import type { Pipeable } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
+import type * as PubSub from "./PubSub"
 import type * as Queue from "./Queue"
 import type * as Schedule from "./Schedule"
 import type * as Scope from "./Scope"
@@ -1433,22 +1433,22 @@ export const toChannel: <R, E, A>(
 export const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<never, never, A> = internal.fromChunk
 
 /**
- * Creates a stream from a subscription to a `Hub`.
+ * Creates a stream from a subscription to a `PubSub`.
  *
- * @param shutdown If `true`, the hub will be shutdown after the stream is evaluated (defaults to `false`)
+ * @param shutdown If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
  * @since 2.0.0
  * @category constructors
  */
-export const fromChunkHub: {
+export const fromChunkPubSub: {
   <A>(
-    hub: Hub.Hub<Chunk.Chunk<A>>,
+    pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
     options: { readonly scoped: true; readonly shutdown?: boolean }
   ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
   <A>(
-    hub: Hub.Hub<Chunk.Chunk<A>>,
+    pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
     options?: { readonly scoped?: false; readonly shutdown?: boolean }
   ): Stream<never, never, A>
-} = internal.fromChunkHub
+} = internal.fromChunkPubSub
 
 /**
  * Creates a stream from a `Queue` of values.
@@ -1490,22 +1490,22 @@ export const fromEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<
   internal.fromEffectOption
 
 /**
- * Creates a stream from a subscription to a `Hub`.
+ * Creates a stream from a subscription to a `PubSub`.
  *
- * @param shutdown If `true`, the hub will be shutdown after the stream is evaluated (defaults to `false`)
+ * @param shutdown If `true`, the `PubSub` will be shutdown after the stream is evaluated (defaults to `false`)
  * @since 2.0.0
  * @category constructors
  */
-export const fromHub: {
+export const fromPubSub: {
   <A>(
-    hub: Hub.Hub<A>,
+    pubsub: PubSub.PubSub<A>,
     options: { readonly scoped: true; readonly maxChunkSize?: number; readonly shutdown?: boolean }
   ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
   <A>(
-    hub: Hub.Hub<A>,
+    pubsub: PubSub.PubSub<A>,
     options?: { readonly scoped?: false; readonly maxChunkSize?: number; readonly shutdown?: boolean }
   ): Stream<never, never, A>
-} = internal.fromHub
+} = internal.fromPubSub
 
 /**
  * Creates a stream from an `Iterable` collection of values.
@@ -3141,28 +3141,30 @@ export const runForEachWhileScoped: {
 export const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Option.Option<A>> = internal.runHead
 
 /**
- * Publishes elements of this stream to a hub. Stream failure and ending will
+ * Publishes elements of this stream to a `PubSub`. Stream failure and ending will
  * also be signalled.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const runIntoHub: {
-  <E, A>(hub: Hub.Hub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, hub: Hub.Hub<Take.Take<E, A>>): Effect.Effect<R, never, void>
-} = internal.runIntoHub
+export const runIntoPubSub: {
+  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<R, never, void>
+} = internal.runIntoPubSub
 
 /**
- * Like `Stream.runIntoHub`, but provides the result as a scoped effect to
+ * Like `Stream.runIntoPubSub`, but provides the result as a scoped effect to
  * allow for scope composition.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const runIntoHubScoped: {
-  <E, A>(hub: Hub.Hub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, hub: Hub.Hub<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
-} = internal.runIntoHubScoped
+export const runIntoPubSubScoped: {
+  <E, A>(
+    pubsub: PubSub.PubSub<Take.Take<E, A>>
+  ): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
+} = internal.runIntoPubSubScoped
 
 /**
  * Enqueues elements of this stream into a queue. Stream failure and ending
@@ -3762,18 +3764,21 @@ export const timeoutTo: {
 } = internal.timeoutTo
 
 /**
- * Converts the stream to a scoped hub of chunks. After the scope is closed,
- * the hub will never again produce values and should be discarded.
+ * Converts the stream to a scoped `PubSub` of chunks. After the scope is closed,
+ * the `PubSub` will never again produce values and should be discarded.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toHub: {
+export const toPubSub: {
   (
     capacity: number
-  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, Hub.Hub<Take.Take<E, A>>>
-  <R, E, A>(self: Stream<R, E, A>, capacity: number): Effect.Effect<Scope.Scope | R, never, Hub.Hub<Take.Take<E, A>>>
-} = internal.toHub
+  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
+  <R, E, A>(
+    self: Stream<R, E, A>,
+    capacity: number
+  ): Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
+} = internal.toPubSub
 
 /**
  * Returns in a scope a ZIO effect that can be used to repeatedly pull chunks

@@ -37,15 +37,15 @@ Added in v2.0.0
   - [fromAsyncIterable](#fromasynciterable)
   - [fromChannel](#fromchannel)
   - [fromChunk](#fromchunk)
-  - [fromChunkHub](#fromchunkhub)
+  - [fromChunkPubSub](#fromchunkpubsub)
   - [fromChunkQueue](#fromchunkqueue)
   - [fromChunks](#fromchunks)
   - [fromEffect](#fromeffect)
   - [fromEffectOption](#fromeffectoption)
-  - [fromHub](#fromhub)
   - [fromIterable](#fromiterable)
   - [fromIterableEffect](#fromiterableeffect)
   - [fromIteratorSucceed](#fromiteratorsucceed)
+  - [fromPubSub](#frompubsub)
   - [fromPull](#frompull)
   - [fromQueue](#fromqueue)
   - [fromReadableStream](#fromreadablestream)
@@ -112,15 +112,15 @@ Added in v2.0.0
   - [runForEachWhile](#runforeachwhile)
   - [runForEachWhileScoped](#runforeachwhilescoped)
   - [runHead](#runhead)
-  - [runIntoHub](#runintohub)
-  - [runIntoHubScoped](#runintohubscoped)
+  - [runIntoPubSub](#runintopubsub)
+  - [runIntoPubSubScoped](#runintopubsubscoped)
   - [runIntoQueue](#runintoqueue)
   - [runIntoQueueElementsScoped](#runintoqueueelementsscoped)
   - [runIntoQueueScoped](#runintoqueuescoped)
   - [runLast](#runlast)
   - [runScoped](#runscoped)
   - [runSum](#runsum)
-  - [toHub](#tohub)
+  - [toPubSub](#topubsub)
   - [toPull](#topull)
   - [toQueue](#toqueue)
   - [toQueueOfElements](#toqueueofelements)
@@ -646,24 +646,22 @@ export declare const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<never, neve
 
 Added in v2.0.0
 
-## fromChunkHub
+## fromChunkPubSub
 
-Creates a stream from a subscription to a `Hub`.
+Creates a stream from a subscription to a `PubSub`.
 
 **Signature**
 
 ```ts
-export declare const fromChunkHub: {
-  <A>(hub: Hub.Hub<Chunk.Chunk<A>>, options: { readonly scoped: true; readonly shutdown?: boolean }): Effect.Effect<
-    Scope.Scope,
-    never,
-    Stream<never, never, A>
-  >
-  <A>(hub: Hub.Hub<Chunk.Chunk<A>>, options?: { readonly scoped?: false; readonly shutdown?: boolean }): Stream<
-    never,
-    never,
-    A
-  >
+export declare const fromChunkPubSub: {
+  <A>(
+    pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
+    options: { readonly scoped: true; readonly shutdown?: boolean }
+  ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
+  <A>(
+    pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
+    options?: { readonly scoped?: false; readonly shutdown?: boolean }
+  ): Stream<never, never, A>
 }
 ```
 
@@ -722,27 +720,6 @@ export declare const fromEffectOption: <R, E, A>(effect: Effect.Effect<R, Option
 
 Added in v2.0.0
 
-## fromHub
-
-Creates a stream from a subscription to a `Hub`.
-
-**Signature**
-
-```ts
-export declare const fromHub: {
-  <A>(
-    hub: Hub.Hub<A>,
-    options: { readonly scoped: true; readonly maxChunkSize?: number; readonly shutdown?: boolean }
-  ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
-  <A>(
-    hub: Hub.Hub<A>,
-    options?: { readonly scoped?: false; readonly maxChunkSize?: number; readonly shutdown?: boolean }
-  ): Stream<never, never, A>
-}
-```
-
-Added in v2.0.0
-
 ## fromIterable
 
 Creates a stream from an `Iterable` collection of values.
@@ -778,6 +755,27 @@ export declare const fromIteratorSucceed: <A>(
   iterator: IterableIterator<A>,
   maxChunkSize?: number
 ) => Stream<never, never, A>
+```
+
+Added in v2.0.0
+
+## fromPubSub
+
+Creates a stream from a subscription to a `PubSub`.
+
+**Signature**
+
+```ts
+export declare const fromPubSub: {
+  <A>(
+    pubsub: PubSub.PubSub<A>,
+    options: { readonly scoped: true; readonly maxChunkSize?: number; readonly shutdown?: boolean }
+  ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
+  <A>(
+    pubsub: PubSub.PubSub<A>,
+    options?: { readonly scoped?: false; readonly maxChunkSize?: number; readonly shutdown?: boolean }
+  ): Stream<never, never, A>
+}
 ```
 
 Added in v2.0.0
@@ -1817,33 +1815,35 @@ export declare const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<
 
 Added in v2.0.0
 
-## runIntoHub
+## runIntoPubSub
 
-Publishes elements of this stream to a hub. Stream failure and ending will
+Publishes elements of this stream to a `PubSub`. Stream failure and ending will
 also be signalled.
 
 **Signature**
 
 ```ts
-export declare const runIntoHub: {
-  <E, A>(hub: Hub.Hub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, hub: Hub.Hub<Take.Take<E, A>>): Effect.Effect<R, never, void>
+export declare const runIntoPubSub: {
+  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<R, never, void>
 }
 ```
 
 Added in v2.0.0
 
-## runIntoHubScoped
+## runIntoPubSubScoped
 
-Like `Stream.runIntoHub`, but provides the result as a scoped effect to
+Like `Stream.runIntoPubSub`, but provides the result as a scoped effect to
 allow for scope composition.
 
 **Signature**
 
 ```ts
-export declare const runIntoHubScoped: {
-  <E, A>(hub: Hub.Hub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, hub: Hub.Hub<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
+export declare const runIntoPubSubScoped: {
+  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>): <R>(
+    self: Stream<R, E, A>
+  ) => Effect.Effect<Scope.Scope | R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
 }
 ```
 
@@ -1949,19 +1949,23 @@ export declare const runSum: <R, E>(self: Stream<R, E, number>) => Effect.Effect
 
 Added in v2.0.0
 
-## toHub
+## toPubSub
 
-Converts the stream to a scoped hub of chunks. After the scope is closed,
-the hub will never again produce values and should be discarded.
+Converts the stream to a scoped `PubSub` of chunks. After the scope is closed,
+the `PubSub` will never again produce values and should be discarded.
 
 **Signature**
 
 ```ts
-export declare const toHub: {
+export declare const toPubSub: {
   (capacity: number): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Hub.Hub<Take.Take<E, A>>>
-  <R, E, A>(self: Stream<R, E, A>, capacity: number): Effect.Effect<Scope.Scope | R, never, Hub.Hub<Take.Take<E, A>>>
+  ) => Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
+  <R, E, A>(self: Stream<R, E, A>, capacity: number): Effect.Effect<
+    Scope.Scope | R,
+    never,
+    PubSub.PubSub<Take.Take<E, A>>
+  >
 }
 ```
 
