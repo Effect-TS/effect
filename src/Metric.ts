@@ -89,7 +89,23 @@ export declare namespace Metric {
    * @since 2.0.0
    * @category models
    */
+  export interface BigintCounter<In>
+    extends Metric<MetricKeyType.MetricKeyType.BigintCounter, In, MetricState.MetricState.BigintCounter>
+  {}
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
   export interface Gauge<In> extends Metric<MetricKeyType.MetricKeyType.Gauge, In, MetricState.MetricState.Gauge> {}
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface BigintGauge<In>
+    extends Metric<MetricKeyType.MetricKeyType.BigintGauge, In, MetricState.MetricState.BigintGauge>
+  {}
 
   /**
    * @since 2.0.0
@@ -162,6 +178,15 @@ export const mapInput: {
 export const counter: (name: string, description?: string) => Metric.Counter<number> = internal.counter
 
 /**
+ * A bigint counter, which can be incremented by numbers.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bigintCounter: (name: string, description?: string) => Metric.BigintCounter<bigint> =
+  internal.bigintCounter
+
+/**
  * A string histogram metric, which keeps track of the counts of different
  * strings.
  *
@@ -201,6 +226,14 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
 export const gauge: (name: string, description?: string) => Metric.Gauge<number> = internal.gauge
 
 /**
+ * A bigint gauge, which can be set to a value.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bigintGauge: (name: string, description?: string) => Metric.BigintGauge<bigint> = internal.bigintGauge
+
+/**
  * A numeric histogram metric, which keeps track of the count of numbers that
  * fall in bins with the specified boundaries.
  *
@@ -217,7 +250,10 @@ export const histogram: (
  * @since 2.0.0
  * @category aspects
  */
-export const increment: (self: Metric.Counter<number>) => Effect.Effect<never, never, void> = internal.increment
+export const increment: {
+  (self: Metric.Counter<number>): Effect.Effect<never, never, void>
+  (self: Metric.Counter<bigint>): Effect.Effect<never, never, void>
+} = internal.increment
 
 /**
  * @since 2.0.0
@@ -226,6 +262,8 @@ export const increment: (self: Metric.Counter<number>) => Effect.Effect<never, n
 export const incrementBy: {
   (amount: number): (self: Metric.Counter<number>) => Effect.Effect<never, never, void>
   (self: Metric.Counter<number>, amount: number): Effect.Effect<never, never, void>
+  (amount: bigint): (self: Metric.Counter<bigint>) => Effect.Effect<never, never, void>
+  (self: Metric.Counter<bigint>, amount: bigint): Effect.Effect<never, never, void>
 } = internal.incrementBy
 
 /**

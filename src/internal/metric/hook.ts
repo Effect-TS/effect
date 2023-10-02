@@ -67,6 +67,17 @@ export const counter = (_key: MetricKey.MetricKey.Counter): MetricHook.MetricHoo
 }
 
 /** @internal */
+export const bigintCounter = (_key: MetricKey.MetricKey.BigintCounter): MetricHook.MetricHook.BigintCounter => {
+  let sum = BigInt(0)
+  return make({
+    get: () => metricState.bigintCounter(sum),
+    update: (value) => {
+      sum = sum + value
+    }
+  })
+}
+
+/** @internal */
 export const frequency = (_key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency => {
   let count = 0
   const values = new Map<string, number>()
@@ -87,6 +98,20 @@ export const gauge = (_key: MetricKey.MetricKey.Gauge, startAt: number): MetricH
   let value = startAt
   return make({
     get: () => metricState.gauge(value),
+    update: (v) => {
+      value = v
+    }
+  })
+}
+
+/** @internal */
+export const bigintGauge = (
+  _key: MetricKey.MetricKey.BigintGauge,
+  startAt: bigint
+): MetricHook.MetricHook.BigintGauge => {
+  let value = startAt
+  return make({
+    get: () => metricState.bigintGauge(value),
     update: (v) => {
       value = v
     }

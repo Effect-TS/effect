@@ -37,6 +37,18 @@ export type CounterKeyTypeTypeId = typeof CounterKeyTypeTypeId
  * @since 2.0.0
  * @category symbols
  */
+export const BigintCounterKeyTypeTypeId: unique symbol = internal.BigintCounterKeyTypeTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type BigintCounterKeyTypeTypeId = typeof BigintCounterKeyTypeTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
 export const FrequencyKeyTypeTypeId: unique symbol = internal.FrequencyKeyTypeTypeId
 
 /**
@@ -56,6 +68,18 @@ export const GaugeKeyTypeTypeId: unique symbol = internal.GaugeKeyTypeTypeId
  * @category symbols
  */
 export type GaugeKeyTypeTypeId = typeof GaugeKeyTypeTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const BigintGaugeKeyTypeTypeId: unique symbol = internal.BigintGaugeKeyTypeTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type BigintGaugeKeyTypeTypeId = typeof BigintGaugeKeyTypeTypeId
 
 /**
  * @since 2.0.0
@@ -109,6 +133,14 @@ export declare namespace MetricKeyType {
    * @since 2.0.0
    * @category models
    */
+  export type BigintCounter = MetricKeyType<bigint, MetricState.MetricState.BigintCounter> & {
+    readonly [BigintCounterKeyTypeTypeId]: BigintCounterKeyTypeTypeId
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
   export type Frequency = MetricKeyType<string, MetricState.MetricState.Frequency> & {
     readonly [FrequencyKeyTypeTypeId]: FrequencyKeyTypeTypeId
   }
@@ -119,6 +151,14 @@ export declare namespace MetricKeyType {
    */
   export type Gauge = MetricKeyType<number, MetricState.MetricState.Gauge> & {
     readonly [GaugeKeyTypeTypeId]: GaugeKeyTypeTypeId
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type BigintGauge = MetricKeyType<bigint, MetricState.MetricState.BigintGauge> & {
+    readonly [BigintGaugeKeyTypeTypeId]: BigintGaugeKeyTypeTypeId
   }
 
   /**

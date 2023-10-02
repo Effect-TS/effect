@@ -63,7 +63,19 @@ export declare namespace MetricKey {
    * @since 2.0.0
    * @category models
    */
+  export type BigintCounter = MetricKey<MetricKeyType.MetricKeyType.BigintCounter>
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
   export type Gauge = MetricKey<MetricKeyType.MetricKeyType.Gauge>
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type BigintGauge = MetricKey<MetricKeyType.MetricKeyType.BigintGauge>
 
   /**
    * @since 2.0.0
@@ -110,6 +122,14 @@ export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKey
 export const counter: (name: string, description?: string) => MetricKey.Counter = internal.counter
 
 /**
+ * Creates a metric key for a bigint counter, with the specified name.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bigintCounter: (name: string, description?: string) => MetricKey.BigintCounter = internal.bigintCounter
+
+/**
  * Creates a metric key for a categorical frequency table, with the specified
  * name.
  *
@@ -125,6 +145,14 @@ export const frequency: (name: string, description?: string) => MetricKey.Freque
  * @category constructors
  */
 export const gauge: (name: string, description?: string) => MetricKey.Gauge = internal.gauge
+
+/**
+ * Creates a metric key for a bigint gauge, with the specified name.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bigintGauge: (name: string, description?: string) => MetricKey.BigintGauge = internal.bigintGauge
 
 /**
  * Creates a metric key for a histogram, with the specified name and boundaries.

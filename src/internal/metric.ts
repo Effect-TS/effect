@@ -10,6 +10,7 @@ import * as Cause from "../internal/cause"
 import * as core from "../internal/core"
 import * as metricBoundaries from "../internal/metric/boundaries"
 import * as metricKey from "../internal/metric/key"
+import * as metricKeyType from "../internal/metric/keyType"
 import * as metricLabel from "../internal/metric/label"
 import * as metricRegistry from "../internal/metric/registry"
 import type * as Metric from "../Metric"
@@ -87,6 +88,10 @@ export const counter = (name: string, description?: string): Metric.Metric.Count
   fromMetricKey(metricKey.counter(name, description))
 
 /** @internal */
+export const bigintCounter = (name: string, description?: string): Metric.Metric.BigintCounter<bigint> =>
+  fromMetricKey(metricKey.bigintCounter(name, description))
+
+/** @internal */
 export const frequency = (name: string, description?: string): Metric.Metric.Frequency<string> =>
   fromMetricKey(metricKey.frequency(name, description))
 
@@ -123,16 +128,25 @@ export const gauge = (name: string, description?: string): Metric.Metric.Gauge<n
   fromMetricKey(metricKey.gauge(name, description))
 
 /** @internal */
+export const bigintGauge = (name: string, description?: string): Metric.Metric.BigintGauge<bigint> =>
+  fromMetricKey(metricKey.bigintGauge(name, description))
+
+/** @internal */
 export const histogram = (name: string, boundaries: MetricBoundaries.MetricBoundaries, description?: string) =>
   fromMetricKey(metricKey.histogram(name, boundaries, description))
 
 /* @internal */
-export const increment = (self: Metric.Metric.Counter<number>): Effect.Effect<never, never, void> => update(self, 1)
+export const increment = (
+  self: Metric.Metric.Counter<bigint> | Metric.Metric.Counter<number>
+): Effect.Effect<never, never, void> =>
+  metricKeyType.isCounterKey(self.keyType)
+    ? update(self as Metric.Metric.Counter<number>, 1)
+    : update(self as unknown as Metric.Metric.BigintCounter<bigint>, BigInt(1))
 
 /* @internal */
 export const incrementBy = dual<
-  (amount: number) => (self: Metric.Metric.Counter<number>) => Effect.Effect<never, never, void>,
-  (self: Metric.Metric.Counter<number>, amount: number) => Effect.Effect<never, never, void>
+  <In extends number | bigint>(amount: In) => (self: Metric.Metric.Counter<In>) => Effect.Effect<never, never, void>,
+  <In extends number | bigint>(self: Metric.Metric.Counter<In>, amount: In) => Effect.Effect<never, never, void>
 >(2, (self, amount) => update(self, amount))
 
 /** @internal */

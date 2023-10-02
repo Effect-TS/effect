@@ -37,6 +37,18 @@ export type CounterStateTypeId = typeof CounterStateTypeId
  * @since 2.0.0
  * @category symbols
  */
+export const BigintCounterStateTypeId: unique symbol = internal.BigintCounterStateTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type BigintCounterStateTypeId = typeof BigintCounterStateTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
 export const FrequencyStateTypeId: unique symbol = internal.FrequencyStateTypeId
 
 /**
@@ -56,6 +68,18 @@ export const GaugeStateTypeId: unique symbol = internal.GaugeStateTypeId
  * @category symbols
  */
 export type GaugeStateTypeId = typeof GaugeStateTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const BigintGaugeStateTypeId: unique symbol = internal.BigintGaugeStateTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type BigintGaugeStateTypeId = typeof BigintGaugeStateTypeId
 
 /**
  * @since 2.0.0
@@ -114,6 +138,15 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
+  export interface BigintCounter extends MetricState<MetricKeyType.MetricKeyType.BigintCounter> {
+    readonly [BigintCounterStateTypeId]: BigintCounterStateTypeId
+    readonly count: bigint
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
   export interface Frequency extends MetricState<MetricKeyType.MetricKeyType.Frequency> {
     readonly [FrequencyStateTypeId]: FrequencyStateTypeId
     readonly occurrences: HashMap.HashMap<string, number>
@@ -126,6 +159,15 @@ export declare namespace MetricState {
   export interface Gauge extends MetricState<MetricKeyType.MetricKeyType.Gauge> {
     readonly [GaugeStateTypeId]: GaugeStateTypeId
     readonly value: number
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface BigintGauge extends MetricState<MetricKeyType.MetricKeyType.BigintGauge> {
+    readonly [BigintGaugeStateTypeId]: BigintGaugeStateTypeId
+    readonly value: bigint
   }
 
   /**
@@ -176,6 +218,12 @@ export const counter: (count: number) => MetricState.Counter = internal.counter
  * @since 2.0.0
  * @category constructors
  */
+export const bigintCounter: (count: bigint) => MetricState.BigintCounter = internal.bigintCounter
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const frequency: (occurrences: HashMap.HashMap<string, number>) => MetricState.Frequency = internal.frequency
 
 /**
@@ -183,6 +231,12 @@ export const frequency: (occurrences: HashMap.HashMap<string, number>) => Metric
  * @category constructors
  */
 export const gauge: (value: number) => MetricState.Gauge = internal.gauge
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bigintGauge: (value: bigint) => MetricState.BigintGauge = internal.bigintGauge
 
 /**
  * @since 2.0.0
@@ -229,6 +283,12 @@ export const isCounterState: (u: unknown) => u is MetricState.Counter = internal
  * @since 2.0.0
  * @category refinements
  */
+export const isBigintCounterState: (u: unknown) => u is MetricState.BigintCounter = internal.isBigintCounterState
+
+/**
+ * @since 2.0.0
+ * @category refinements
+ */
 export const isFrequencyState: (u: unknown) => u is MetricState.Frequency = internal.isFrequencyState
 
 /**
@@ -236,6 +296,12 @@ export const isFrequencyState: (u: unknown) => u is MetricState.Frequency = inte
  * @category refinements
  */
 export const isGaugeState: (u: unknown) => u is MetricState.Gauge = internal.isGaugeState
+
+/**
+ * @since 2.0.0
+ * @category refinements
+ */
+export const isBigintGaugeState: (u: unknown) => u is MetricState.BigintGauge = internal.isBigintGaugeState
 
 /**
  * @since 2.0.0

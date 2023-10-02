@@ -24,6 +24,14 @@ export const CounterKeyTypeTypeId: MetricKeyType.CounterKeyTypeTypeId = Symbol.f
 ) as MetricKeyType.CounterKeyTypeTypeId
 
 /** @internal */
+const BigintCounterKeyTypeSymbolKey = "effect/MetricKeyType/BigintCounter"
+
+/** @internal */
+export const BigintCounterKeyTypeTypeId: MetricKeyType.BigintCounterKeyTypeTypeId = Symbol.for(
+  BigintCounterKeyTypeSymbolKey
+) as MetricKeyType.BigintCounterKeyTypeTypeId
+
+/** @internal */
 const FrequencyKeyTypeSymbolKey = "effect/MetricKeyType/Frequency"
 
 /** @internal */
@@ -38,6 +46,14 @@ const GaugeKeyTypeSymbolKey = "effect/MetricKeyType/Gauge"
 export const GaugeKeyTypeTypeId: MetricKeyType.GaugeKeyTypeTypeId = Symbol.for(
   GaugeKeyTypeSymbolKey
 ) as MetricKeyType.GaugeKeyTypeTypeId
+
+/** @internal */
+const BigintGaugeKeyTypeSymbolKey = "effect/MetricKeyType/BigintGauge"
+
+/** @internal */
+export const BigintGaugeKeyTypeTypeId: MetricKeyType.BigintGaugeKeyTypeTypeId = Symbol.for(
+  BigintGaugeKeyTypeSymbolKey
+) as MetricKeyType.BigintGaugeKeyTypeTypeId
 
 /** @internal */
 const HistogramKeyTypeSymbolKey = "effect/MetricKeyType/Histogram"
@@ -77,6 +93,21 @@ class CounterKeyType implements MetricKeyType.MetricKeyType.Counter {
 }
 
 /** @internal */
+class BigintCounterKeyType implements MetricKeyType.MetricKeyType.BigintCounter {
+  readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
+  readonly [BigintCounterKeyTypeTypeId]: MetricKeyType.BigintCounterKeyTypeTypeId = BigintCounterKeyTypeTypeId;
+  [Hash.symbol](): number {
+    return Hash.hash(BigintCounterKeyTypeSymbolKey)
+  }
+  [Equal.symbol](that: unknown): boolean {
+    return isBigintCounterKey(that)
+  }
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/** @internal */
 class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId;
@@ -100,6 +131,21 @@ class GaugeKeyType implements MetricKeyType.MetricKeyType.Gauge {
   }
   [Equal.symbol](that: unknown): boolean {
     return isGaugeKey(that)
+  }
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/** @internal */
+class BigintGaugeKeyType implements MetricKeyType.MetricKeyType.BigintGauge {
+  readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
+  readonly [BigintGaugeKeyTypeTypeId]: MetricKeyType.BigintGaugeKeyTypeTypeId = BigintGaugeKeyTypeTypeId;
+  [Hash.symbol](): number {
+    return Hash.hash(BigintGaugeKeyTypeSymbolKey)
+  }
+  [Equal.symbol](that: unknown): boolean {
+    return isBigintGaugeKey(that)
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -169,6 +215,12 @@ export const counter: MetricKeyType.MetricKeyType.Counter = new CounterKeyType()
  * @since 2.0.0
  * @category constructors
  */
+export const bigintCounter: MetricKeyType.MetricKeyType.BigintCounter = new BigintCounterKeyType()
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const frequency: MetricKeyType.MetricKeyType.Frequency = new FrequencyKeyType()
 
 /**
@@ -176,6 +228,12 @@ export const frequency: MetricKeyType.MetricKeyType.Frequency = new FrequencyKey
  * @category constructors
  */
 export const gauge: MetricKeyType.MetricKeyType.Gauge = new GaugeKeyType()
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bigintGauge: MetricKeyType.MetricKeyType.BigintGauge = new BigintGaugeKeyType()
 
 /**
  * @since 2.0.0
@@ -220,6 +278,14 @@ export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Count
  * @since 2.0.0
  * @category refinements
  */
+export const isBigintCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.BigintCounter => {
+  return typeof u === "object" && u != null && BigintCounterKeyTypeTypeId in u
+}
+
+/**
+ * @since 2.0.0
+ * @category refinements
+ */
 export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Frequency => {
   return typeof u === "object" && u != null && FrequencyKeyTypeTypeId in u
 }
@@ -230,6 +296,14 @@ export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Fre
  */
 export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge => {
   return typeof u === "object" && u != null && GaugeKeyTypeTypeId in u
+}
+
+/**
+ * @since 2.0.0
+ * @category refinements
+ */
+export const isBigintGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.BigintGauge => {
+  return typeof u === "object" && u != null && BigintGaugeKeyTypeTypeId in u
 }
 
 /**

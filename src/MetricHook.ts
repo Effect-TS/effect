@@ -54,7 +54,19 @@ export declare namespace MetricHook {
    * @since 2.0.0
    * @category models
    */
+  export type BigintCounter = MetricHook<bigint, MetricState.MetricState.BigintCounter>
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
   export type Gauge = MetricHook<number, MetricState.MetricState.Gauge>
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type BigintGauge = MetricHook<bigint, MetricState.MetricState.BigintGauge>
 
   /**
    * @since 2.0.0
@@ -105,6 +117,13 @@ export const counter: (_key: MetricKey.MetricKey.Counter) => MetricHook.Counter 
  * @since 2.0.0
  * @category constructors
  */
+export const bigintCounter: (_key: MetricKey.MetricKey.BigintCounter) => MetricHook.BigintCounter =
+  internal.bigintCounter
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
 export const frequency: (_key: MetricKey.MetricKey.Frequency) => MetricHook.Frequency = internal.frequency
 
 /**
@@ -112,6 +131,13 @@ export const frequency: (_key: MetricKey.MetricKey.Frequency) => MetricHook.Freq
  * @category constructors
  */
 export const gauge: (_key: MetricKey.MetricKey.Gauge, startAt: number) => MetricHook.Gauge = internal.gauge
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bigintGauge: (_key: MetricKey.MetricKey.BigintGauge, startAt: bigint) => MetricHook.BigintGauge =
+  internal.bigintGauge
 
 /**
  * @since 2.0.0

@@ -24,6 +24,14 @@ export const CounterStateTypeId: MetricState.CounterStateTypeId = Symbol.for(
 ) as MetricState.CounterStateTypeId
 
 /** @internal */
+const BigintCounterStateSymbolKey = "effect/MetricState/BigintCounter"
+
+/** @internal */
+export const BigintCounterStateTypeId: MetricState.BigintCounterStateTypeId = Symbol.for(
+  BigintCounterStateSymbolKey
+) as MetricState.BigintCounterStateTypeId
+
+/** @internal */
 const FrequencyStateSymbolKey = "effect/MetricState/Frequency"
 
 /** @internal */
@@ -38,6 +46,14 @@ const GaugeStateSymbolKey = "effect/MetricState/Gauge"
 export const GaugeStateTypeId: MetricState.GaugeStateTypeId = Symbol.for(
   GaugeStateSymbolKey
 ) as MetricState.GaugeStateTypeId
+
+/** @internal */
+const BigintGaugeStateSymbolKey = "effect/MetricState/BigintGauge"
+
+/** @internal */
+export const BigintGaugeStateTypeId: MetricState.BigintGaugeStateTypeId = Symbol.for(
+  BigintGaugeStateSymbolKey
+) as MetricState.BigintGaugeStateTypeId
 
 /** @internal */
 const HistogramStateSymbolKey = "effect/MetricState/Histogram"
@@ -80,6 +96,25 @@ class CounterState implements MetricState.MetricState.Counter {
 }
 
 /** @internal */
+class BigintCounterState implements MetricState.MetricState.BigintCounter {
+  readonly [MetricStateTypeId] = metricStateVariance
+  readonly [BigintCounterStateTypeId]: MetricState.BigintCounterStateTypeId = BigintCounterStateTypeId
+  constructor(readonly count: bigint) {}
+  [Hash.symbol](): number {
+    return pipe(
+      Hash.hash(CounterStateSymbolKey),
+      Hash.combine(Hash.hash(this.count))
+    )
+  }
+  [Equal.symbol](that: unknown): boolean {
+    return isBigintCounterState(that) && this.count === that.count
+  }
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/** @internal */
 class FrequencyState implements MetricState.MetricState.Frequency {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [FrequencyStateTypeId]: MetricState.FrequencyStateTypeId = FrequencyStateTypeId
@@ -111,6 +146,25 @@ class GaugeState implements MetricState.MetricState.Gauge {
   }
   [Equal.symbol](u: unknown): boolean {
     return isGaugeState(u) && this.value === u.value
+  }
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/** @internal */
+class BigintGaugeState implements MetricState.MetricState.BigintGauge {
+  readonly [MetricStateTypeId] = metricStateVariance
+  readonly [BigintGaugeStateTypeId]: MetricState.BigintGaugeStateTypeId = BigintGaugeStateTypeId
+  constructor(readonly value: bigint) {}
+  [Hash.symbol](): number {
+    return pipe(
+      Hash.hash(BigintGaugeStateSymbolKey),
+      Hash.combine(Hash.hash(this.value))
+    )
+  }
+  [Equal.symbol](u: unknown): boolean {
+    return isBigintGaugeState(u) && this.value === u.value
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -194,6 +248,11 @@ export const counter = (count: number): MetricState.MetricState.Counter => {
 }
 
 /** @internal */
+export const bigintCounter = (count: bigint): MetricState.MetricState.BigintCounter => {
+  return new BigintCounterState(count)
+}
+
+/** @internal */
 export const frequency = (occurrences: HashMap.HashMap<string, number>): MetricState.MetricState.Frequency => {
   return new FrequencyState(occurrences)
 }
@@ -201,6 +260,11 @@ export const frequency = (occurrences: HashMap.HashMap<string, number>): MetricS
 /** @internal */
 export const gauge = (value: number): MetricState.MetricState.Gauge => {
   return new GaugeState(value)
+}
+
+/** @internal */
+export const bigintGauge = (value: bigint): MetricState.MetricState.BigintGauge => {
+  return new BigintGaugeState(value)
 }
 
 /** @internal */
@@ -251,34 +315,32 @@ export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter
   return typeof u === "object" && u != null && CounterStateTypeId in u
 }
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
+export const isBigintCounterState = (u: unknown): u is MetricState.MetricState.BigintCounter => {
+  return typeof u === "object" && u != null && BigintCounterStateTypeId in u
+}
+
+/** @internal */
 export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequency => {
   return typeof u === "object" && u != null && FrequencyStateTypeId in u
 }
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge => {
   return typeof u === "object" && u != null && GaugeStateTypeId in u
 }
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
+export const isBigintGaugeState = (u: unknown): u is MetricState.MetricState.BigintGauge => {
+  return typeof u === "object" && u != null && BigintGaugeStateTypeId in u
+}
+
+/** @internal */
 export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histogram => {
   return typeof u === "object" && u != null && HistogramStateTypeId in u
 }
 
-/**
- * @since 2.0.0
- * @category refinements
- */
+/** @internal */
 export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary => {
   return typeof u === "object" && u != null && SummaryStateTypeId in u
 }

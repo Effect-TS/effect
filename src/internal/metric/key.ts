@@ -64,12 +64,20 @@ export const counter = (name: string, description?: string): MetricKey.MetricKey
   new MetricKeyImpl(name, metricKeyType.counter, Option.fromNullable(description))
 
 /** @internal */
+export const bigintCounter = (name: string, description?: string): MetricKey.MetricKey.BigintCounter =>
+  new MetricKeyImpl(name, metricKeyType.bigintCounter, Option.fromNullable(description))
+
+/** @internal */
 export const frequency = (name: string, description?: string): MetricKey.MetricKey.Frequency =>
   new MetricKeyImpl(name, metricKeyType.frequency, Option.fromNullable(description))
 
 /** @internal */
 export const gauge = (name: string, description?: string): MetricKey.MetricKey.Gauge =>
   new MetricKeyImpl(name, metricKeyType.gauge, Option.fromNullable(description))
+
+/** @internal */
+export const bigintGauge = (name: string, description?: string): MetricKey.MetricKey.BigintGauge =>
+  new MetricKeyImpl(name, metricKeyType.bigintGauge, Option.fromNullable(description))
 
 /** @internal */
 export const histogram = (
