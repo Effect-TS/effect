@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.18.5
+
+### Patch Changes
+
+- [#171](https://github.com/Effect-TS/platform/pull/171) [`fbbcaa9`](https://github.com/Effect-TS/platform/commit/fbbcaa9b1d4f48f204072a802fb11bcb29813664) Thanks [@tim-smart](https://github.com/tim-smart)! - remove preserveModules patch for preconstruct
+
 ## 0.18.4
 
 ### Patch Changes
