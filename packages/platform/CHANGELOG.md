@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.18.6
+
+### Patch Changes
+
+- [#177](https://github.com/Effect-TS/platform/pull/177) [`7e4e2a5`](https://github.com/Effect-TS/platform/commit/7e4e2a5d815c677e4eb6adb2c6e9369414a79384) Thanks [@tim-smart](https://github.com/tim-smart)! - add ClientResponse.schemaNoBody
+
+- [#175](https://github.com/Effect-TS/platform/pull/175) [`d1c2b38`](https://github.com/Effect-TS/platform/commit/d1c2b38cbb1189249c0bfd47582e00ff771428e3) Thanks [@tim-smart](https://github.com/tim-smart)! - make ServerResponse an Effect
+
 ## 0.18.5
 
 ### Patch Changes
