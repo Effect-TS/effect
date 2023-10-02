@@ -83,8 +83,18 @@ export const mapInput = dual<
   ))
 
 /** @internal */
-export const counter = (name: string, description?: string): Metric.Metric.Counter<number> =>
-  fromMetricKey(metricKey.counter(name, description))
+export const counter: {
+  (name: string, options?: {
+    readonly description?: string
+    readonly bigint?: false
+    readonly incremental?: boolean
+  }): Metric.Metric.Counter<number>
+  (name: string, options: {
+    readonly description?: string
+    readonly bigint: true
+    readonly incremental?: boolean
+  }): Metric.Metric.Counter<bigint>
+} = (name, options) => fromMetricKey(metricKey.counter(name, options as any)) as any
 
 /** @internal */
 export const frequency = (name: string, description?: string): Metric.Metric.Frequency<string> =>
@@ -119,21 +129,37 @@ export const fromMetricKey = <Type extends MetricKeyType.MetricKeyType<any, any>
 }
 
 /** @internal */
-export const gauge = (name: string, description?: string): Metric.Metric.Gauge<number> =>
-  fromMetricKey(metricKey.gauge(name, description))
+export const gauge: {
+  (name: string, options?: {
+    readonly description?: string
+    readonly bigint?: false
+  }): Metric.Metric.Gauge<number>
+  (name: string, options: {
+    readonly description?: string
+    readonly bigint: true
+  }): Metric.Metric.Gauge<bigint>
+} = (name, options) => fromMetricKey(metricKey.gauge(name, options as any)) as any
 
 /** @internal */
 export const histogram = (name: string, boundaries: MetricBoundaries.MetricBoundaries, description?: string) =>
   fromMetricKey(metricKey.histogram(name, boundaries, description))
 
 /* @internal */
-export const increment = (self: Metric.Metric.Counter<number>): Effect.Effect<never, never, void> => update(self, 1)
+export const increment = <In extends (number | bigint)>(
+  self: Metric.Metric.Counter<In>
+): Effect.Effect<never, never, void> => update(self, self.keyType.bigint ? BigInt(1) as In : 1 as In)
 
 /* @internal */
 export const incrementBy = dual<
-  (amount: number) => (self: Metric.Metric.Counter<number>) => Effect.Effect<never, never, void>,
-  (self: Metric.Metric.Counter<number>, amount: number) => Effect.Effect<never, never, void>
->(2, (self, amount) => update(self, amount))
+  {
+    (amount: number): (self: Metric.Metric.Counter<number>) => Effect.Effect<never, never, void>
+    (amount: bigint): (self: Metric.Metric.Counter<bigint>) => Effect.Effect<never, never, void>
+  },
+  {
+    (self: Metric.Metric.Counter<number>, amount: number): Effect.Effect<never, never, void>
+    (self: Metric.Metric.Counter<bigint>, amount: bigint): Effect.Effect<never, never, void>
+  }
+>(2, (self, amount) => update(self as any, amount))
 
 /** @internal */
 export const map = dual<
@@ -161,9 +187,15 @@ export const mapType = dual<
 
 /* @internal */
 export const set = dual<
-  <In>(value: In) => (self: Metric.Metric.Gauge<In>) => Effect.Effect<never, never, void>,
-  <In>(self: Metric.Metric.Gauge<In>, value: In) => Effect.Effect<never, never, void>
->(2, (self, value) => update(self, value))
+  {
+    (value: number): (self: Metric.Metric.Gauge<number>) => Effect.Effect<never, never, void>
+    (value: bigint): (self: Metric.Metric.Gauge<bigint>) => Effect.Effect<never, never, void>
+  },
+  {
+    (self: Metric.Metric.Gauge<number>, value: number): Effect.Effect<never, never, void>
+    (self: Metric.Metric.Gauge<bigint>, value: bigint): Effect.Effect<never, never, void>
+  }
+>(2, (self, value) => update(self as any, value))
 
 /** @internal */
 export const succeed = <Out>(out: Out): Metric.Metric<void, unknown, Out> => make(void 0 as void, constVoid, () => out)

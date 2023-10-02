@@ -61,10 +61,10 @@ const metricStateVariance = {
 }
 
 /** @internal */
-class CounterState implements MetricState.MetricState.Counter {
+class CounterState<A extends (number | bigint)> implements MetricState.MetricState.Counter<A> {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [CounterStateTypeId]: MetricState.CounterStateTypeId = CounterStateTypeId
-  constructor(readonly count: number) {}
+  constructor(readonly count: A) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(CounterStateSymbolKey),
@@ -99,10 +99,10 @@ class FrequencyState implements MetricState.MetricState.Frequency {
 }
 
 /** @internal */
-class GaugeState implements MetricState.MetricState.Gauge {
+class GaugeState<A extends (number | bigint)> implements MetricState.MetricState.Gauge<A> {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [GaugeStateTypeId]: MetricState.GaugeStateTypeId = GaugeStateTypeId
-  constructor(readonly value: number) {}
+  constructor(readonly value: A) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(GaugeStateSymbolKey),
@@ -189,9 +189,10 @@ export class SummaryState implements MetricState.MetricState.Summary {
 }
 
 /** @internal */
-export const counter = (count: number): MetricState.MetricState.Counter => {
-  return new CounterState(count)
-}
+export const counter: {
+  (count: number): MetricState.MetricState.Counter<number>
+  (count: bigint): MetricState.MetricState.Counter<bigint>
+} = (count) => new CounterState(count) as any
 
 /** @internal */
 export const frequency = (occurrences: HashMap.HashMap<string, number>): MetricState.MetricState.Frequency => {
@@ -199,9 +200,10 @@ export const frequency = (occurrences: HashMap.HashMap<string, number>): MetricS
 }
 
 /** @internal */
-export const gauge = (value: number): MetricState.MetricState.Gauge => {
-  return new GaugeState(value)
-}
+export const gauge: {
+  (count: number): MetricState.MetricState.Gauge<number>
+  (count: bigint): MetricState.MetricState.Gauge<bigint>
+} = (count) => new GaugeState(count) as any
 
 /** @internal */
 export const histogram = (
@@ -242,12 +244,12 @@ export const summary = (
   )
 
 /** @internal */
-export const isMetricState = (u: unknown): u is MetricState.MetricState.Counter => {
+export const isMetricState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> => {
   return typeof u === "object" && u != null && MetricStateTypeId in u
 }
 
 /** @internal */
-export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter => {
+export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> => {
   return typeof u === "object" && u != null && CounterStateTypeId in u
 }
 
@@ -263,7 +265,7 @@ export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequ
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge => {
+export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge<number | bigint> => {
   return typeof u === "object" && u != null && GaugeStateTypeId in u
 }
 
