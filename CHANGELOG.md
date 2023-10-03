@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.44
+
+### Patch Changes
+
+- [#1469](https://github.com/Effect-TS/effect/pull/1469) [`5a217ac18`](https://github.com/Effect-TS/effect/commit/5a217ac1842252636d4e529baa191ea0778e42ce) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix yield loop
+
 ## 2.0.0-next.43
 
 ### Patch Changes
