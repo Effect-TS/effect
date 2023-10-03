@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.43
+
+### Patch Changes
+
+- [#1467](https://github.com/Effect-TS/effect/pull/1467) [`7e258a9c1`](https://github.com/Effect-TS/effect/commit/7e258a9c1fabeeb9319cb50655a0221bd1e38ac8) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Attempt at resolving TS issue with module discovery
+
 ## 2.0.0-next.42
 
 ### Patch Changes
