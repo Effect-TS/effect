@@ -7,7 +7,7 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "preconstruct fix && preconstruct build && pnpm gen:package",
+    "build": "pnpm gen:index && preconstruct fix && preconstruct build && pnpm gen:package",
     "gen": "pnpm run gen:gitignore && pnpm run gen:package && pnpm run gen:index && pnpm run gen:vscode",
     "gen:gitignore": "node scripts/gen-gitignore.mjs > .gitignore",
     "gen:index": "node scripts/gen-index.mjs > src/index.ts",
