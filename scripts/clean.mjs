@@ -1,7 +1,8 @@
-
 import * as Fs from "node:fs";
 import Package from "../package.json" assert { type: "json" };
 
-Package.files.forEach((file) => {
-  Fs.rmSync(file, { recursive: true, force: true });
-})
+Package.files
+  .filter((_) => _ !== "src")
+  .forEach((file) => {
+    Fs.rm(file, { recursive: true, force: true }, () => {});
+  });
