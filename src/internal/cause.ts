@@ -1065,18 +1065,18 @@ export const isNoSuchElementException = (u: unknown): u is Cause.NoSuchElementEx
 }
 
 /** @internal */
-export const InvalidHubCapacityExceptionTypeId: Cause.InvalidHubCapacityExceptionTypeId = Symbol.for(
-  "effect/Cause/errors/InvalidHubCapacityException"
-) as Cause.InvalidHubCapacityExceptionTypeId
+export const InvalidPubSubCapacityExceptionTypeId: Cause.InvalidPubSubCapacityExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/InvalidPubSubCapacityException"
+) as Cause.InvalidPubSubCapacityExceptionTypeId
 
 /** @internal */
-export const InvalidHubCapacityException = makeException<Cause.InvalidHubCapacityException>({
-  [InvalidHubCapacityExceptionTypeId]: InvalidHubCapacityExceptionTypeId
-}, "InvalidHubCapacityException")
+export const InvalidPubSubCapacityException = makeException<Cause.InvalidPubSubCapacityException>({
+  [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
+}, "InvalidPubSubCapacityException")
 
 /** @internal */
-export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidHubCapacityException => {
-  return typeof u === "object" && u != null && InvalidHubCapacityExceptionTypeId in u
+export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException => {
+  return typeof u === "object" && u != null && InvalidPubSubCapacityExceptionTypeId in u
 }
 
 // -----------------------------------------------------------------------------

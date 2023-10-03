@@ -3,21 +3,21 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as Hub from "effect/Hub"
+import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Hub", () => {
-  it.effect("publishAll - capacity 2 (BoundedHubPow2)", () => {
+describe.concurrent("PubSub", () => {
+  it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
     const messages = [1, 2]
-    return Hub.bounded<number>(2).pipe(
-      Effect.flatMap((hub) =>
+    return PubSub.bounded<number>(2).pipe(
+      Effect.flatMap((pubsub) =>
         Effect.scoped(
           Effect.gen(function*(_) {
-            const dequeue1 = yield* _(Hub.subscribe(hub))
-            const dequeue2 = yield* _(Hub.subscribe(hub))
-            yield* _(Hub.publishAll(hub, messages))
+            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
+            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
+            yield* _(PubSub.publishAll(pubsub, messages))
             const takes1 = yield* _(Queue.takeAll(dequeue1))
             const takes2 = yield* _(Queue.takeAll(dequeue2))
             assert.deepStrictEqual([...takes1], messages)
@@ -27,15 +27,15 @@ describe.concurrent("Hub", () => {
       )
     )
   })
-  it.effect("publishAll - capacity 4 (BoundedHubPow2)", () => {
+  it.effect("publishAll - capacity 4 (BoundedPubSubPow2)", () => {
     const messages = [1, 2]
-    return Hub.bounded<number>(4).pipe(
-      Effect.flatMap((hub) =>
+    return PubSub.bounded<number>(4).pipe(
+      Effect.flatMap((pubsub) =>
         Effect.scoped(
           Effect.gen(function*(_) {
-            const dequeue1 = yield* _(Hub.subscribe(hub))
-            const dequeue2 = yield* _(Hub.subscribe(hub))
-            yield* _(Hub.publishAll(hub, messages))
+            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
+            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
+            yield* _(PubSub.publishAll(pubsub, messages))
             const takes1 = yield* _(Queue.takeAll(dequeue1))
             const takes2 = yield* _(Queue.takeAll(dequeue2))
             assert.deepStrictEqual([...takes1], messages)
@@ -45,15 +45,15 @@ describe.concurrent("Hub", () => {
       )
     )
   })
-  it.effect("publishAll - capacity 3 (BoundedHubArb)", () => {
+  it.effect("publishAll - capacity 3 (BoundedPubSubArb)", () => {
     const messages = [1, 2]
-    return Hub.bounded<number>(3).pipe(
-      Effect.flatMap((hub) =>
+    return PubSub.bounded<number>(3).pipe(
+      Effect.flatMap((pubsub) =>
         Effect.scoped(
           Effect.gen(function*(_) {
-            const dequeue1 = yield* _(Hub.subscribe(hub))
-            const dequeue2 = yield* _(Hub.subscribe(hub))
-            yield* _(Hub.publishAll(hub, messages))
+            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
+            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
+            yield* _(PubSub.publishAll(pubsub, messages))
             const takes1 = yield* _(Queue.takeAll(dequeue1))
             const takes2 = yield* _(Queue.takeAll(dequeue2))
             assert.deepStrictEqual([...takes1], messages)
@@ -68,10 +68,10 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(0, 9)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.bounded<number>(10))
+      const pubsub = yield* $(PubSub.bounded<number>(10))
       const subscriber = yield* $(
         pipe(
-          Hub.subscribe(hub),
+          PubSub.subscribe(pubsub),
           Effect.flatMap((subscription) =>
             pipe(
               Deferred.succeed(deferred1, void 0),
@@ -84,7 +84,7 @@ describe.concurrent("Hub", () => {
         )
       )
       yield* $(Deferred.await(deferred1))
-      yield* $(values, Effect.forEach((n) => Hub.publish(hub, n)))
+      yield* $(values, Effect.forEach((n) => PubSub.publish(pubsub, n)))
       yield* $(Deferred.succeed(deferred2, void 0))
       const result = yield* $(Fiber.join(subscriber))
       assert.deepStrictEqual(result, values)
@@ -95,10 +95,10 @@ describe.concurrent("Hub", () => {
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
       const deferred3 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.bounded<number>(10))
+      const pubsub = yield* $(PubSub.bounded<number>(10))
       const subscriber1 = yield* $(
-        hub.pipe(
-          Hub.subscribe,
+        pubsub.pipe(
+          PubSub.subscribe,
           Effect.flatMap((subscription) =>
             pipe(
               Deferred.succeed(deferred1, void 0),
@@ -111,8 +111,8 @@ describe.concurrent("Hub", () => {
         )
       )
       const subscriber2 = yield* $(
-        hub.pipe(
-          Hub.subscribe,
+        pubsub.pipe(
+          PubSub.subscribe,
           Effect.flatMap((subscription) =>
             pipe(
               Deferred.succeed(deferred2, void 0),
@@ -126,7 +126,7 @@ describe.concurrent("Hub", () => {
       )
       yield* $(Deferred.await(deferred1))
       yield* $(Deferred.await(deferred2))
-      yield* $(values, Effect.forEach((n) => Hub.publish(hub, n)))
+      yield* $(values, Effect.forEach((n) => PubSub.publish(pubsub, n)))
       yield* $(Deferred.succeed(deferred3, undefined))
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
@@ -137,9 +137,9 @@ describe.concurrent("Hub", () => {
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
       const deferred = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.bounded<number>(64))
+      const pubsub = yield* $(PubSub.bounded<number>(64))
       const subscriber = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred, void 0),
@@ -152,7 +152,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
       const result = yield* $(Fiber.join(subscriber))
@@ -163,9 +163,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(0, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.bounded<number>(64))
+      const pubsub = yield* $(PubSub.bounded<number>(64))
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -176,7 +176,7 @@ describe.concurrent("Hub", () => {
         Effect.fork
       )
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -190,7 +190,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
       const result1 = yield* $(Fiber.join(subscriber1))
@@ -203,9 +203,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(1, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.bounded<number>(64 * 2))
+      const pubsub = yield* $(PubSub.bounded<number>(64 * 2))
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -220,7 +220,7 @@ describe.concurrent("Hub", () => {
         Effect.fork
       )
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -238,10 +238,10 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       const fiber = yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => Hub.publish(hub, n)), Effect.fork)
+      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
@@ -260,9 +260,9 @@ describe.concurrent("Hub", () => {
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
       const deferred = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.dropping<number>(64))
+      const pubsub = yield* $(PubSub.dropping<number>(64))
       const subscriber = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred, void 0),
@@ -275,7 +275,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
       const result = yield* $(Fiber.join(subscriber))
@@ -286,9 +286,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(0, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.dropping<number>(64))
+      const pubsub = yield* $(PubSub.dropping<number>(64))
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -299,7 +299,7 @@ describe.concurrent("Hub", () => {
         Effect.fork
       )
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -313,7 +313,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
       const result1 = yield* $(Fiber.join(subscriber1))
@@ -326,9 +326,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(1, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.dropping<number>(64 * 2))
+      const pubsub = yield* $(PubSub.dropping<number>(64 * 2))
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -343,7 +343,7 @@ describe.concurrent("Hub", () => {
         Effect.fork
       )
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -361,10 +361,10 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       const fiber = yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => Hub.publish(hub, n)), Effect.fork)
+      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
@@ -383,9 +383,9 @@ describe.concurrent("Hub", () => {
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
       const deferred = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.sliding<number>(64))
+      const pubsub = yield* $(PubSub.sliding<number>(64))
       const subscriber = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred, void 0),
@@ -398,7 +398,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
       const result = yield* $(Fiber.join(subscriber))
@@ -409,9 +409,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(0, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.sliding<number>(64))
+      const pubsub = yield* $(PubSub.sliding<number>(64))
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -422,7 +422,7 @@ describe.concurrent("Hub", () => {
         Effect.fork
       )
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -436,7 +436,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
       const result1 = yield* $(Fiber.join(subscriber1))
@@ -449,9 +449,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(1, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.sliding<number>(64 * 2))
+      const pubsub = yield* $(PubSub.sliding<number>(64 * 2))
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -466,7 +466,7 @@ describe.concurrent("Hub", () => {
         Effect.fork
       )
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -484,10 +484,10 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       const fiber = yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => Hub.publish(hub, n)), Effect.fork)
+      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))
@@ -506,9 +506,9 @@ describe.concurrent("Hub", () => {
     Effect.gen(function*($) {
       const values = ReadonlyArray.range(0, 64)
       const deferred = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.unbounded<number>())
+      const pubsub = yield* $(PubSub.unbounded<number>())
       const subscriber = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred, void 0),
@@ -521,7 +521,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
 
@@ -533,9 +533,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(0, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.unbounded<number>())
+      const pubsub = yield* $(PubSub.unbounded<number>())
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -546,7 +546,7 @@ describe.concurrent("Hub", () => {
         Effect.fork
       )
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -560,7 +560,7 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
       const result1 = yield* $(Fiber.join(subscriber1))
@@ -573,9 +573,9 @@ describe.concurrent("Hub", () => {
       const values = ReadonlyArray.range(1, 64)
       const deferred1 = yield* $(Deferred.make<never, void>())
       const deferred2 = yield* $(Deferred.make<never, void>())
-      const hub = yield* $(Hub.unbounded<number>())
+      const pubsub = yield* $(PubSub.unbounded<number>())
       const subscriber1 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred1, void 0),
@@ -591,7 +591,7 @@ describe.concurrent("Hub", () => {
       )
 
       const subscriber2 = yield* $(
-        Hub.subscribe(hub),
+        PubSub.subscribe(pubsub),
         Effect.flatMap((subscription) =>
           pipe(
             Deferred.succeed(deferred2, void 0),
@@ -609,10 +609,10 @@ describe.concurrent("Hub", () => {
       yield* $(Deferred.await(deferred2))
       const fiber = yield* $(
         values,
-        Effect.forEach((n) => Hub.publish(hub, n)),
+        Effect.forEach((n) => PubSub.publish(pubsub, n)),
         Effect.fork
       )
-      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => Hub.publish(hub, n)), Effect.fork)
+      yield* $(values, ReadonlyArray.map((n) => -n), Effect.forEach((n) => PubSub.publish(pubsub, n)), Effect.fork)
       const result1 = yield* $(Fiber.join(subscriber1))
       const result2 = yield* $(Fiber.join(subscriber2))
       yield* $(Fiber.join(fiber))

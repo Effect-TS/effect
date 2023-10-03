@@ -88,7 +88,7 @@ Added in v2.0.0
   - [IllegalArgumentException (interface)](#illegalargumentexception-interface)
   - [Interrupt (interface)](#interrupt-interface)
   - [InterruptedException (interface)](#interruptedexception-interface)
-  - [InvalidHubCapacityException (interface)](#invalidhubcapacityexception-interface)
+  - [InvalidPubSubCapacityException (interface)](#invalidpubsubcapacityexception-interface)
   - [NoSuchElementException (interface)](#nosuchelementexception-interface)
   - [Parallel (interface)](#parallel-interface)
   - [RuntimeException (interface)](#runtimeexception-interface)
@@ -117,8 +117,8 @@ Added in v2.0.0
   - [IllegalArgumentExceptionTypeId (type alias)](#illegalargumentexceptiontypeid-type-alias)
   - [InterruptedExceptionTypeId](#interruptedexceptiontypeid)
   - [InterruptedExceptionTypeId (type alias)](#interruptedexceptiontypeid-type-alias)
-  - [InvalidHubCapacityExceptionTypeId](#invalidhubcapacityexceptiontypeid)
-  - [InvalidHubCapacityExceptionTypeId (type alias)](#invalidhubcapacityexceptiontypeid-type-alias)
+  - [InvalidPubSubCapacityExceptionTypeId](#invalidpubsubcapacityexceptiontypeid)
+  - [InvalidPubSubCapacityExceptionTypeId (type alias)](#invalidpubsubcapacityexceptiontypeid-type-alias)
   - [NoSuchElementExceptionTypeId](#nosuchelementexceptiontypeid)
   - [NoSuchElementExceptionTypeId (type alias)](#nosuchelementexceptiontypeid-type-alias)
   - [RuntimeExceptionTypeId](#runtimeexceptiontypeid)
@@ -820,17 +820,17 @@ export interface InterruptedException {
 
 Added in v2.0.0
 
-## InvalidHubCapacityException (interface)
+## InvalidPubSubCapacityException (interface)
 
 Represents a checked exception which occurs when attempting to construct a
-`Hub` with an invalid capacity.
+`PubSub` with an invalid capacity.
 
 **Signature**
 
 ```ts
-export interface InvalidHubCapacityException {
-  readonly _tag: 'InvalidHubCapacityException'
-  readonly [InvalidHubCapacityExceptionTypeId]: InvalidHubCapacityExceptionTypeId
+export interface InvalidPubSubCapacityException {
+  readonly _tag: 'InvalidPubSubCapacityException'
+  readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
   readonly message?: string
 }
 ```
@@ -1160,22 +1160,22 @@ export type InterruptedExceptionTypeId = typeof InterruptedExceptionTypeId
 
 Added in v2.0.0
 
-## InvalidHubCapacityExceptionTypeId
+## InvalidPubSubCapacityExceptionTypeId
 
 **Signature**
 
 ```ts
-export declare const InvalidHubCapacityExceptionTypeId: typeof InvalidHubCapacityExceptionTypeId
+export declare const InvalidPubSubCapacityExceptionTypeId: typeof InvalidPubSubCapacityExceptionTypeId
 ```
 
 Added in v2.0.0
 
-## InvalidHubCapacityExceptionTypeId (type alias)
+## InvalidPubSubCapacityExceptionTypeId (type alias)
 
 **Signature**
 
 ```ts
-export type InvalidHubCapacityExceptionTypeId = typeof InvalidHubCapacityExceptionTypeId
+export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 ```
 
 Added in v2.0.0

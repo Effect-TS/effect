@@ -2,10 +2,10 @@
  * @since 2.0.0
  */
 import type * as Effect from "./Effect"
-import type * as Hub from "./Hub"
 import * as internal from "./internal/subscriptionRef"
 import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
+import type * as PubSub from "./PubSub"
 import * as Ref from "./Ref"
 import type * as Stream from "./Stream"
 import * as Synchronized from "./SynchronizedRef"
@@ -33,7 +33,7 @@ export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchro
   /** @internal */
   readonly ref: Ref.Ref<A>
   /** @internal */
-  readonly hub: Hub.Hub<A>
+  readonly pubsub: PubSub.PubSub<A>
   /** @internal */
   readonly semaphore: Effect.Semaphore
   /**

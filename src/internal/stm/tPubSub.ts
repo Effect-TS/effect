@@ -1,24 +1,24 @@
 import * as Effect from "../../Effect"
 import { dual, identity, pipe } from "../../Function"
 import * as HashSet from "../../HashSet"
-import * as core from "../../internal/stm/core"
-import * as OpCodes from "../../internal/stm/opCodes/strategy"
-import * as stm from "../../internal/stm/stm"
-import * as tQueue from "../../internal/stm/tQueue"
-import * as tRef from "../../internal/stm/tRef"
 import * as Option from "../../Option"
 import * as RA from "../../ReadonlyArray"
 import type * as Scope from "../../Scope"
 import type * as STM from "../../STM"
-import type * as THub from "../../THub"
+import type * as TPubSub from "../../TPubSub"
 import type * as TQueue from "../../TQueue"
 import type * as TRef from "../../TRef"
+import * as core from "./core"
+import * as OpCodes from "./opCodes/strategy"
+import * as stm from "./stm"
+import * as tQueue from "./tQueue"
+import * as tRef from "./tRef"
 
 /** @internal */
-const THubSymbolKey = "effect/THub"
+const TPubSubSymbolKey = "effect/TPubSub"
 
 /** @internal */
-export const THubTypeId: THub.THubTypeId = Symbol.for(THubSymbolKey) as THub.THubTypeId
+export const TPubSubTypeId: TPubSub.TPubSubTypeId = Symbol.for(TPubSubSymbolKey) as TPubSub.TPubSubTypeId
 
 /** @internal */
 export interface Node<A> {
@@ -39,11 +39,11 @@ export const makeNode = <A>(
 })
 
 /** @internal */
-class THubImpl<A> implements THub.THub<A> {
-  readonly [THubTypeId]: THub.THubTypeId = THubTypeId
+class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
+  readonly [TPubSubTypeId]: TPubSub.TPubSubTypeId = TPubSubTypeId
   readonly [tQueue.TEnqueueTypeId] = tQueue.tEnqueueVariance
   constructor(
-    readonly hubSize: TRef.TRef<number>,
+    readonly pubsubSize: TRef.TRef<number>,
     readonly publisherHead: TRef.TRef<TRef.TRef<Node<A> | undefined>>,
     readonly publisherTail: TRef.TRef<TRef.TRef<Node<A> | undefined> | undefined>,
     readonly requestedCapacity: number,
@@ -71,7 +71,7 @@ class THubImpl<A> implements THub.THub<A> {
     if (currentPublisherTail === undefined) {
       return core.interruptAs(runtime.fiberId)
     }
-    return core.succeed(tRef.unsafeGet(this.hubSize, runtime.journal))
+    return core.succeed(tRef.unsafeGet(this.pubsubSize, runtime.journal))
   })
 
   isEmpty: STM.STM<never, never, boolean> = core.map(this.size, (size) => size === 0)
@@ -88,8 +88,8 @@ class THubImpl<A> implements THub.THub<A> {
       if (currentSubscriberCount === 0) {
         return core.succeed(true)
       }
-      const currentHubSize = tRef.unsafeGet(this.hubSize, runtime.journal)
-      if (currentHubSize < this.requestedCapacity) {
+      const currentPubSubSize = tRef.unsafeGet(this.pubsubSize, runtime.journal)
+      if (currentPubSubSize < this.requestedCapacity) {
         const updatedPublisherTail: TRef.TRef<Node<A> | undefined> = new tRef.TRefImpl(void 0)
         const updatedNode = makeNode(value, currentSubscriberCount, updatedPublisherTail)
         tRef.unsafeSet<Node<A> | undefined>(currentPublisherTail, updatedNode, runtime.journal)
@@ -98,7 +98,7 @@ class THubImpl<A> implements THub.THub<A> {
           updatedPublisherTail,
           runtime.journal
         )
-        tRef.unsafeSet(this.hubSize, currentHubSize + 1, runtime.journal)
+        tRef.unsafeSet(this.pubsubSize, currentPubSubSize + 1, runtime.journal)
         return core.succeed(true)
       }
       switch (this.strategy._tag) {
@@ -167,11 +167,11 @@ class THubImpl<A> implements THub.THub<A> {
 }
 
 /** @internal */
-class THubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
-  readonly [THubTypeId]: THub.THubTypeId = THubTypeId
+class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
+  readonly [TPubSubTypeId]: TPubSub.TPubSubTypeId = TPubSubTypeId
   readonly [tQueue.TDequeueTypeId] = tQueue.tDequeueVariance
   constructor(
-    readonly hubSize: TRef.TRef<number>,
+    readonly pubsubSize: TRef.TRef<number>,
     readonly publisherHead: TRef.TRef<TRef.TRef<Node<A> | undefined>>,
     readonly requestedCapacity: number,
     readonly subscriberHead: TRef.TRef<TRef.TRef<Node<A | undefined> | undefined> | undefined>,
@@ -287,11 +287,11 @@ class THubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
           if (head !== undefined) {
             const subscribers = node.subscribers
             if (subscribers === 1) {
-              const size = tRef.unsafeGet(this.hubSize, journal)
+              const size = tRef.unsafeGet(this.pubsubSize, journal)
               const updatedNode = makeNode(undefined, 0, tail)
               tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, journal)
               tRef.unsafeSet(this.publisherHead, tail, journal)
-              tRef.unsafeSet(this.hubSize, size - 1, journal)
+              tRef.unsafeSet(this.pubsubSize, size - 1, journal)
             } else {
               const updatedNode = makeNode(head, subscribers - 1, tail)
               tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, journal)
@@ -330,11 +330,11 @@ class THubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
       if (head !== undefined) {
         const subscribers = node.subscribers
         if (subscribers === 1) {
-          const size = tRef.unsafeGet(this.hubSize, runtime.journal)
+          const size = tRef.unsafeGet(this.pubsubSize, runtime.journal)
           const updatedNode = makeNode(void 0, 0, tail)
           tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
           tRef.unsafeSet(this.publisherHead, tail, runtime.journal)
-          tRef.unsafeSet(this.hubSize, size - 1, runtime.journal)
+          tRef.unsafeSet(this.pubsubSize, size - 1, runtime.journal)
         } else {
           const updatedNode = makeNode(head, subscribers - 1, tail)
           tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
@@ -373,11 +373,11 @@ class THubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
           if (head !== undefined) {
             const subscribers = node.subscribers
             if (subscribers === 1) {
-              const size = tRef.unsafeGet(this.hubSize, runtime.journal)
+              const size = tRef.unsafeGet(this.pubsubSize, runtime.journal)
               const updatedNode = makeNode(void 0, 0, tail)
               tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
               tRef.unsafeSet(this.publisherHead, tail, runtime.journal)
-              tRef.unsafeSet(this.hubSize, size - 1, runtime.journal)
+              tRef.unsafeSet(this.pubsubSize, size - 1, runtime.journal)
             } else {
               const updatedNode = makeNode(head, subscribers - 1, tail)
               tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
@@ -399,16 +399,16 @@ class THubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
 }
 
 /** @internal */
-const makeHub = <A>(
+const makeTPubSub = <A>(
   requestedCapacity: number,
   strategy: tQueue.TQueueStrategy
-): STM.STM<never, never, THub.THub<A>> =>
+): STM.STM<never, never, TPubSub.TPubSub<A>> =>
   pipe(
     stm.all([
       tRef.make<Node<A> | undefined>(void 0),
       tRef.make(0)
     ]),
-    core.flatMap(([empty, hubSize]) =>
+    core.flatMap(([empty, pubsubSize]) =>
       pipe(
         stm.all([
           tRef.make(empty),
@@ -417,8 +417,8 @@ const makeHub = <A>(
           tRef.make(HashSet.empty())
         ]),
         core.map(([publisherHead, publisherTail, subscriberCount, subscribers]) =>
-          new THubImpl(
-            hubSize,
+          new TPubSubImpl(
+            pubsubSize,
             publisherHead,
             publisherTail,
             requestedCapacity,
@@ -432,7 +432,7 @@ const makeHub = <A>(
   )
 
 const makeSubscription = <A>(
-  hubSize: TRef.TRef<number>,
+  pubsubSize: TRef.TRef<number>,
   publisherHead: TRef.TRef<TRef.TRef<Node<A> | undefined>>,
   publisherTail: TRef.TRef<TRef.TRef<Node<A> | undefined> | undefined>,
   requestedCapacity: number,
@@ -461,8 +461,8 @@ const makeSubscription = <A>(
           )
         ),
         core.map(([subscriberHead]) =>
-          new THubSubscriptionImpl(
-            hubSize,
+          new TPubSubSubscriptionImpl(
+            pubsubSize,
             publisherHead,
             requestedCapacity,
             subscriberHead,
@@ -475,54 +475,54 @@ const makeSubscription = <A>(
   )
 
 /** @internal */
-export const awaitShutdown = <A>(self: THub.THub<A>): STM.STM<never, never, void> => self.awaitShutdown
+export const awaitShutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, void> => self.awaitShutdown
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number): STM.STM<never, never, THub.THub<A>> =>
-  makeHub<A>(requestedCapacity, tQueue.BackPressure)
+export const bounded = <A>(requestedCapacity: number): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+  makeTPubSub<A>(requestedCapacity, tQueue.BackPressure)
 
 /** @internal */
-export const capacity = <A>(self: THub.THub<A>): number => self.capacity()
+export const capacity = <A>(self: TPubSub.TPubSub<A>): number => self.capacity()
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number): STM.STM<never, never, THub.THub<A>> =>
-  makeHub<A>(requestedCapacity, tQueue.Dropping)
+export const dropping = <A>(requestedCapacity: number): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+  makeTPubSub<A>(requestedCapacity, tQueue.Dropping)
 
 /** @internal */
-export const isEmpty = <A>(self: THub.THub<A>): STM.STM<never, never, boolean> => self.isEmpty
+export const isEmpty = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, boolean> => self.isEmpty
 
 /** @internal */
-export const isFull = <A>(self: THub.THub<A>): STM.STM<never, never, boolean> => self.isFull
+export const isFull = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, boolean> => self.isFull
 
 /** @internal */
-export const isShutdown = <A>(self: THub.THub<A>): STM.STM<never, never, boolean> => self.isShutdown
+export const isShutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, boolean> => self.isShutdown
 
 /** @internal */
 export const publish = dual<
-  <A>(value: A) => (self: THub.THub<A>) => STM.STM<never, never, boolean>,
-  <A>(self: THub.THub<A>, value: A) => STM.STM<never, never, boolean>
+  <A>(value: A) => (self: TPubSub.TPubSub<A>) => STM.STM<never, never, boolean>,
+  <A>(self: TPubSub.TPubSub<A>, value: A) => STM.STM<never, never, boolean>
 >(2, (self, value) => self.offer(value))
 
 /** @internal */
 export const publishAll = dual<
-  <A>(iterable: Iterable<A>) => (self: THub.THub<A>) => STM.STM<never, never, boolean>,
-  <A>(self: THub.THub<A>, iterable: Iterable<A>) => STM.STM<never, never, boolean>
+  <A>(iterable: Iterable<A>) => (self: TPubSub.TPubSub<A>) => STM.STM<never, never, boolean>,
+  <A>(self: TPubSub.TPubSub<A>, iterable: Iterable<A>) => STM.STM<never, never, boolean>
 >(2, (self, iterable) => self.offerAll(iterable))
 
 /** @internal */
-export const size = <A>(self: THub.THub<A>): STM.STM<never, never, number> => self.size
+export const size = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, number> => self.size
 
 /** @internal */
-export const shutdown = <A>(self: THub.THub<A>): STM.STM<never, never, void> => self.shutdown
+export const shutdown = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, void> => self.shutdown
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number): STM.STM<never, never, THub.THub<A>> =>
-  makeHub<A>(requestedCapacity, tQueue.Sliding)
+export const sliding = <A>(requestedCapacity: number): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+  makeTPubSub<A>(requestedCapacity, tQueue.Sliding)
 
 /** @internal */
-export const subscribe = <A>(self: THub.THub<A>): STM.STM<never, never, TQueue.TDequeue<A>> =>
+export const subscribe = <A>(self: TPubSub.TPubSub<A>): STM.STM<never, never, TQueue.TDequeue<A>> =>
   makeSubscription(
-    self.hubSize,
+    self.pubsubSize,
     self.publisherHead,
     self.publisherTail,
     self.requestedCapacity,
@@ -531,12 +531,12 @@ export const subscribe = <A>(self: THub.THub<A>): STM.STM<never, never, TQueue.T
   )
 
 /** @internal */
-export const subscribeScoped = <A>(self: THub.THub<A>): Effect.Effect<Scope.Scope, never, TQueue.TDequeue<A>> =>
+export const subscribeScoped = <A>(self: TPubSub.TPubSub<A>): Effect.Effect<Scope.Scope, never, TQueue.TDequeue<A>> =>
   Effect.acquireRelease(
     subscribe(self),
     (dequeue) => tQueue.shutdown(dequeue)
   )
 
 /** @internal */
-export const unbounded = <A>(): STM.STM<never, never, THub.THub<A>> =>
-  makeHub<A>(Number.MAX_SAFE_INTEGER, tQueue.Dropping)
+export const unbounded = <A>(): STM.STM<never, never, TPubSub.TPubSub<A>> =>
+  makeTPubSub<A>(Number.MAX_SAFE_INTEGER, tQueue.Dropping)

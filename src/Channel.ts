@@ -15,7 +15,6 @@ import type * as Effect from "./Effect"
 import type * as Either from "./Either"
 import type * as Exit from "./Exit"
 import type { LazyArg } from "./Function"
-import type * as Hub from "./Hub"
 import * as channel from "./internal/channel"
 import * as core from "./internal/core-stream"
 import * as sink from "./internal/sink"
@@ -24,6 +23,7 @@ import type * as Layer from "./Layer"
 import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 import type { Predicate } from "./Predicate"
+import type * as PubSub from "./PubSub"
 import type * as Queue from "./Queue"
 import type * as Ref from "./Ref"
 import type * as Scope from "./Scope"
@@ -1072,25 +1072,25 @@ export const fromInput: <Err, Elem, Done>(
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromInput
 
 /**
- * Construct a `Channel` from a `Hub`.
+ * Construct a `Channel` from a `PubSub`.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromHub: <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromHub
+export const fromPubSub: <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromPubSub
 
 /**
- * Construct a `Channel` from a `Hub` within a scoped effect.
+ * Construct a `Channel` from a `PubSub` within a scoped effect.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromHubScoped: <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+export const fromPubSubScoped: <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
 ) => Effect.Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =
-  channel.fromHubScoped
+  channel.fromPubSubScoped
 
 /**
  * Construct a `Channel` from an `Option`.
@@ -1952,14 +1952,14 @@ export const sync: <OutDone>(
 ) => Channel<never, unknown, unknown, unknown, never, never, OutDone> = core.sync
 
 /**
- * Converts a `Channel` to a `Hub`.
+ * Converts a `Channel` to a `PubSub`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toHub: <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toHub
+export const toPubSub: <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toPubSub
 
 /**
  * Returns a scoped `Effect` that can be used to repeatedly pull elements from

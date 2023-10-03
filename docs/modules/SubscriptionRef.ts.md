@@ -86,7 +86,7 @@ export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchro
   /** @internal */
   readonly ref: Ref.Ref<A>
   /** @internal */
-  readonly hub: Hub.Hub<A>
+  readonly pubsub: PubSub.PubSub<A>
   /** @internal */
   readonly semaphore: Effect.Semaphore
   /**

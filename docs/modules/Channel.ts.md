@@ -25,10 +25,10 @@ Added in v2.0.0
   - [failSync](#failsync)
   - [fromEffect](#fromeffect)
   - [fromEither](#fromeither)
-  - [fromHub](#fromhub)
-  - [fromHubScoped](#fromhubscoped)
   - [fromInput](#frominput)
   - [fromOption](#fromoption)
+  - [fromPubSub](#frompubsub)
+  - [fromPubSubScoped](#frompubsubscoped)
   - [fromQueue](#fromqueue)
   - [identity](#identity)
   - [never](#never)
@@ -60,7 +60,7 @@ Added in v2.0.0
   - [run](#run)
   - [runCollect](#runcollect)
   - [runDrain](#rundrain)
-  - [toHub](#tohub)
+  - [toPubSub](#topubsub)
   - [toPull](#topull)
   - [toQueue](#toqueue)
   - [toSink](#tosink)
@@ -335,34 +335,6 @@ export declare const fromEither: <E, A>(
 
 Added in v2.0.0
 
-## fromHub
-
-Construct a `Channel` from a `Hub`.
-
-**Signature**
-
-```ts
-export declare const fromHub: <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
-```
-
-Added in v2.0.0
-
-## fromHubScoped
-
-Construct a `Channel` from a `Hub` within a scoped effect.
-
-**Signature**
-
-```ts
-export declare const fromHubScoped: <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-) => Effect.Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>>
-```
-
-Added in v2.0.0
-
 ## fromInput
 
 Construct a `Channel` from an `AsyncInputConsumer`.
@@ -387,6 +359,34 @@ Construct a `Channel` from an `Option`.
 export declare const fromOption: <A>(
   option: Option.Option<A>
 ) => Channel<never, unknown, unknown, unknown, Option.Option<never>, never, A>
+```
+
+Added in v2.0.0
+
+## fromPubSub
+
+Construct a `Channel` from a `PubSub`.
+
+**Signature**
+
+```ts
+export declare const fromPubSub: <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
+```
+
+Added in v2.0.0
+
+## fromPubSubScoped
+
+Construct a `Channel` from a `PubSub` within a scoped effect.
+
+**Signature**
+
+```ts
+export declare const fromPubSubScoped: <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+) => Effect.Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>>
 ```
 
 Added in v2.0.0
@@ -892,15 +892,15 @@ export declare const runDrain: <Env, InErr, InDone, OutElem, OutErr, OutDone>(
 
 Added in v2.0.0
 
-## toHub
+## toPubSub
 
-Converts a `Channel` to a `Hub`.
+Converts a `Channel` to a `PubSub`.
 
 **Signature**
 
 ```ts
-export declare const toHub: <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+export declare const toPubSub: <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown>
 ```
 

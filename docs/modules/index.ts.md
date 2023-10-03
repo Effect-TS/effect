@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 51
+nav_order: 50
 parent: Modules
 ---
 
@@ -13,147 +13,147 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [exports](#exports)
-  - [From "./Bigint"](#from-bigint)
-  - [From "./Boolean"](#from-boolean)
-  - [From "./Brand"](#from-brand)
-  - [From "./Cache"](#from-cache)
-  - [From "./Cause"](#from-cause)
-  - [From "./Channel"](#from-channel)
-  - [From "./ChannelChildExecutorDecision"](#from-channelchildexecutordecision)
-  - [From "./ChannelMergeDecision"](#from-channelmergedecision)
-  - [From "./ChannelMergeState"](#from-channelmergestate)
-  - [From "./ChannelMergeStrategy"](#from-channelmergestrategy)
-  - [From "./ChannelSingleProducerAsyncInput"](#from-channelsingleproducerasyncinput)
-  - [From "./ChannelUpstreamPullRequest"](#from-channelupstreampullrequest)
-  - [From "./ChannelUpstreamPullStrategy"](#from-channelupstreampullstrategy)
-  - [From "./Chunk"](#from-chunk)
-  - [From "./Clock"](#from-clock)
-  - [From "./Config"](#from-config)
-  - [From "./ConfigError"](#from-configerror)
-  - [From "./ConfigProvider"](#from-configprovider)
-  - [From "./ConfigProviderPathPatch"](#from-configproviderpathpatch)
-  - [From "./ConfigSecret"](#from-configsecret)
-  - [From "./Console"](#from-console)
-  - [From "./Context"](#from-context)
-  - [From "./Data"](#from-data)
-  - [From "./DefaultServices"](#from-defaultservices)
-  - [From "./Deferred"](#from-deferred)
-  - [From "./Differ"](#from-differ)
-  - [From "./Duration"](#from-duration)
-  - [From "./Effect"](#from-effect)
-  - [From "./Effectable"](#from-effectable)
-  - [From "./Either"](#from-either)
-  - [From "./Encoding"](#from-encoding)
-  - [From "./Equal"](#from-equal)
-  - [From "./Equivalence"](#from-equivalence)
-  - [From "./Error"](#from-error)
-  - [From "./ExecutionStrategy"](#from-executionstrategy)
-  - [From "./Exit"](#from-exit)
-  - [From "./Fiber"](#from-fiber)
-  - [From "./FiberId"](#from-fiberid)
-  - [From "./FiberRef"](#from-fiberref)
-  - [From "./FiberRefs"](#from-fiberrefs)
-  - [From "./FiberRefsPatch"](#from-fiberrefspatch)
-  - [From "./FiberStatus"](#from-fiberstatus)
-  - [From "./Function"](#from-function)
-  - [From "./GlobalValue"](#from-globalvalue)
-  - [From "./GroupBy"](#from-groupby)
-  - [From "./HKT"](#from-hkt)
-  - [From "./Hash"](#from-hash)
-  - [From "./HashMap"](#from-hashmap)
-  - [From "./HashSet"](#from-hashset)
-  - [From "./Hub"](#from-hub)
-  - [From "./Inspectable"](#from-inspectable)
-  - [From "./KeyedPool"](#from-keyedpool)
-  - [From "./Layer"](#from-layer)
-  - [From "./List"](#from-list)
-  - [From "./LogLevel"](#from-loglevel)
-  - [From "./LogSpan"](#from-logspan)
-  - [From "./Logger"](#from-logger)
-  - [From "./Metric"](#from-metric)
-  - [From "./MetricBoundaries"](#from-metricboundaries)
-  - [From "./MetricHook"](#from-metrichook)
-  - [From "./MetricKey"](#from-metrickey)
-  - [From "./MetricKeyType"](#from-metrickeytype)
-  - [From "./MetricLabel"](#from-metriclabel)
-  - [From "./MetricPair"](#from-metricpair)
-  - [From "./MetricPolling"](#from-metricpolling)
-  - [From "./MetricRegistry"](#from-metricregistry)
-  - [From "./MetricState"](#from-metricstate)
-  - [From "./MutableHashMap"](#from-mutablehashmap)
-  - [From "./MutableHashSet"](#from-mutablehashset)
-  - [From "./MutableList"](#from-mutablelist)
-  - [From "./MutableQueue"](#from-mutablequeue)
-  - [From "./MutableRef"](#from-mutableref)
-  - [From "./NonEmptyIterable"](#from-nonemptyiterable)
-  - [From "./Number"](#from-number)
-  - [From "./Option"](#from-option)
-  - [From "./Order"](#from-order)
-  - [From "./Ordering"](#from-ordering)
-  - [From "./Pipeable"](#from-pipeable)
-  - [From "./Pool"](#from-pool)
-  - [From "./Predicate"](#from-predicate)
-  - [From "./Queue"](#from-queue)
-  - [From "./Random"](#from-random)
-  - [From "./ReadonlyArray"](#from-readonlyarray)
-  - [From "./ReadonlyRecord"](#from-readonlyrecord)
-  - [From "./RedBlackTree"](#from-redblacktree)
-  - [From "./Ref"](#from-ref)
-  - [From "./Reloadable"](#from-reloadable)
-  - [From "./Request"](#from-request)
-  - [From "./RequestBlock"](#from-requestblock)
-  - [From "./RequestResolver"](#from-requestresolver)
-  - [From "./Resource"](#from-resource)
-  - [From "./Runtime"](#from-runtime)
-  - [From "./RuntimeFlags"](#from-runtimeflags)
-  - [From "./RuntimeFlagsPatch"](#from-runtimeflagspatch)
-  - [From "./STM"](#from-stm)
-  - [From "./Schedule"](#from-schedule)
-  - [From "./ScheduleDecision"](#from-scheduledecision)
-  - [From "./ScheduleInterval"](#from-scheduleinterval)
-  - [From "./ScheduleIntervals"](#from-scheduleintervals)
-  - [From "./Scheduler"](#from-scheduler)
-  - [From "./Scope"](#from-scope)
-  - [From "./ScopedCache"](#from-scopedcache)
-  - [From "./ScopedRef"](#from-scopedref)
-  - [From "./Sink"](#from-sink)
-  - [From "./SortedMap"](#from-sortedmap)
-  - [From "./SortedSet"](#from-sortedset)
-  - [From "./Stream"](#from-stream)
-  - [From "./StreamEmit"](#from-streamemit)
-  - [From "./StreamHaltStrategy"](#from-streamhaltstrategy)
-  - [From "./String"](#from-string)
-  - [From "./Struct"](#from-struct)
-  - [From "./SubscriptionRef"](#from-subscriptionref)
-  - [From "./Supervisor"](#from-supervisor)
-  - [From "./Symbol"](#from-symbol)
-  - [From "./SynchronizedRef"](#from-synchronizedref)
-  - [From "./TArray"](#from-tarray)
-  - [From "./TDeferred"](#from-tdeferred)
-  - [From "./THub"](#from-thub)
-  - [From "./TMap"](#from-tmap)
-  - [From "./TPriorityQueue"](#from-tpriorityqueue)
-  - [From "./TQueue"](#from-tqueue)
-  - [From "./TRandom"](#from-trandom)
-  - [From "./TReentrantLock"](#from-treentrantlock)
-  - [From "./TRef"](#from-tref)
-  - [From "./TSemaphore"](#from-tsemaphore)
-  - [From "./TSet"](#from-tset)
-  - [From "./Take"](#from-take)
-  - [From "./TestAnnotation"](#from-testannotation)
-  - [From "./TestAnnotationMap"](#from-testannotationmap)
-  - [From "./TestAnnotations"](#from-testannotations)
-  - [From "./TestClock"](#from-testclock)
-  - [From "./TestConfig"](#from-testconfig)
-  - [From "./TestContext"](#from-testcontext)
-  - [From "./TestLive"](#from-testlive)
-  - [From "./TestServices"](#from-testservices)
-  - [From "./TestSized"](#from-testsized)
-  - [From "./Tracer"](#from-tracer)
-  - [From "./Tuple"](#from-tuple)
-  - [From "./Types"](#from-types)
-  - [From "./Unify"](#from-unify)
-  - [From "./Utils"](#from-utils)
+  - [From "effect/Bigint"](#from-effectbigint)
+  - [From "effect/Boolean"](#from-effectboolean)
+  - [From "effect/Brand"](#from-effectbrand)
+  - [From "effect/Cache"](#from-effectcache)
+  - [From "effect/Cause"](#from-effectcause)
+  - [From "effect/Channel"](#from-effectchannel)
+  - [From "effect/ChannelChildExecutorDecision"](#from-effectchannelchildexecutordecision)
+  - [From "effect/ChannelMergeDecision"](#from-effectchannelmergedecision)
+  - [From "effect/ChannelMergeState"](#from-effectchannelmergestate)
+  - [From "effect/ChannelMergeStrategy"](#from-effectchannelmergestrategy)
+  - [From "effect/ChannelSingleProducerAsyncInput"](#from-effectchannelsingleproducerasyncinput)
+  - [From "effect/ChannelUpstreamPullRequest"](#from-effectchannelupstreampullrequest)
+  - [From "effect/ChannelUpstreamPullStrategy"](#from-effectchannelupstreampullstrategy)
+  - [From "effect/Chunk"](#from-effectchunk)
+  - [From "effect/Clock"](#from-effectclock)
+  - [From "effect/Config"](#from-effectconfig)
+  - [From "effect/ConfigError"](#from-effectconfigerror)
+  - [From "effect/ConfigProvider"](#from-effectconfigprovider)
+  - [From "effect/ConfigProviderPathPatch"](#from-effectconfigproviderpathpatch)
+  - [From "effect/ConfigSecret"](#from-effectconfigsecret)
+  - [From "effect/Console"](#from-effectconsole)
+  - [From "effect/Context"](#from-effectcontext)
+  - [From "effect/Data"](#from-effectdata)
+  - [From "effect/DefaultServices"](#from-effectdefaultservices)
+  - [From "effect/Deferred"](#from-effectdeferred)
+  - [From "effect/Differ"](#from-effectdiffer)
+  - [From "effect/Duration"](#from-effectduration)
+  - [From "effect/Effect"](#from-effecteffect)
+  - [From "effect/Effectable"](#from-effecteffectable)
+  - [From "effect/Either"](#from-effecteither)
+  - [From "effect/Encoding"](#from-effectencoding)
+  - [From "effect/Equal"](#from-effectequal)
+  - [From "effect/Equivalence"](#from-effectequivalence)
+  - [From "effect/Error"](#from-effecterror)
+  - [From "effect/ExecutionStrategy"](#from-effectexecutionstrategy)
+  - [From "effect/Exit"](#from-effectexit)
+  - [From "effect/Fiber"](#from-effectfiber)
+  - [From "effect/FiberId"](#from-effectfiberid)
+  - [From "effect/FiberRef"](#from-effectfiberref)
+  - [From "effect/FiberRefs"](#from-effectfiberrefs)
+  - [From "effect/FiberRefsPatch"](#from-effectfiberrefspatch)
+  - [From "effect/FiberStatus"](#from-effectfiberstatus)
+  - [From "effect/Function"](#from-effectfunction)
+  - [From "effect/GlobalValue"](#from-effectglobalvalue)
+  - [From "effect/GroupBy"](#from-effectgroupby)
+  - [From "effect/HKT"](#from-effecthkt)
+  - [From "effect/Hash"](#from-effecthash)
+  - [From "effect/HashMap"](#from-effecthashmap)
+  - [From "effect/HashSet"](#from-effecthashset)
+  - [From "effect/Inspectable"](#from-effectinspectable)
+  - [From "effect/KeyedPool"](#from-effectkeyedpool)
+  - [From "effect/Layer"](#from-effectlayer)
+  - [From "effect/List"](#from-effectlist)
+  - [From "effect/LogLevel"](#from-effectloglevel)
+  - [From "effect/LogSpan"](#from-effectlogspan)
+  - [From "effect/Logger"](#from-effectlogger)
+  - [From "effect/Metric"](#from-effectmetric)
+  - [From "effect/MetricBoundaries"](#from-effectmetricboundaries)
+  - [From "effect/MetricHook"](#from-effectmetrichook)
+  - [From "effect/MetricKey"](#from-effectmetrickey)
+  - [From "effect/MetricKeyType"](#from-effectmetrickeytype)
+  - [From "effect/MetricLabel"](#from-effectmetriclabel)
+  - [From "effect/MetricPair"](#from-effectmetricpair)
+  - [From "effect/MetricPolling"](#from-effectmetricpolling)
+  - [From "effect/MetricRegistry"](#from-effectmetricregistry)
+  - [From "effect/MetricState"](#from-effectmetricstate)
+  - [From "effect/MutableHashMap"](#from-effectmutablehashmap)
+  - [From "effect/MutableHashSet"](#from-effectmutablehashset)
+  - [From "effect/MutableList"](#from-effectmutablelist)
+  - [From "effect/MutableQueue"](#from-effectmutablequeue)
+  - [From "effect/MutableRef"](#from-effectmutableref)
+  - [From "effect/NonEmptyIterable"](#from-effectnonemptyiterable)
+  - [From "effect/Number"](#from-effectnumber)
+  - [From "effect/Option"](#from-effectoption)
+  - [From "effect/Order"](#from-effectorder)
+  - [From "effect/Ordering"](#from-effectordering)
+  - [From "effect/Pipeable"](#from-effectpipeable)
+  - [From "effect/Pool"](#from-effectpool)
+  - [From "effect/Predicate"](#from-effectpredicate)
+  - [From "effect/PubSub"](#from-effectpubsub)
+  - [From "effect/Queue"](#from-effectqueue)
+  - [From "effect/Random"](#from-effectrandom)
+  - [From "effect/ReadonlyArray"](#from-effectreadonlyarray)
+  - [From "effect/ReadonlyRecord"](#from-effectreadonlyrecord)
+  - [From "effect/RedBlackTree"](#from-effectredblacktree)
+  - [From "effect/Ref"](#from-effectref)
+  - [From "effect/Reloadable"](#from-effectreloadable)
+  - [From "effect/Request"](#from-effectrequest)
+  - [From "effect/RequestBlock"](#from-effectrequestblock)
+  - [From "effect/RequestResolver"](#from-effectrequestresolver)
+  - [From "effect/Resource"](#from-effectresource)
+  - [From "effect/Runtime"](#from-effectruntime)
+  - [From "effect/RuntimeFlags"](#from-effectruntimeflags)
+  - [From "effect/RuntimeFlagsPatch"](#from-effectruntimeflagspatch)
+  - [From "effect/STM"](#from-effectstm)
+  - [From "effect/Schedule"](#from-effectschedule)
+  - [From "effect/ScheduleDecision"](#from-effectscheduledecision)
+  - [From "effect/ScheduleInterval"](#from-effectscheduleinterval)
+  - [From "effect/ScheduleIntervals"](#from-effectscheduleintervals)
+  - [From "effect/Scheduler"](#from-effectscheduler)
+  - [From "effect/Scope"](#from-effectscope)
+  - [From "effect/ScopedCache"](#from-effectscopedcache)
+  - [From "effect/ScopedRef"](#from-effectscopedref)
+  - [From "effect/Sink"](#from-effectsink)
+  - [From "effect/SortedMap"](#from-effectsortedmap)
+  - [From "effect/SortedSet"](#from-effectsortedset)
+  - [From "effect/Stream"](#from-effectstream)
+  - [From "effect/StreamEmit"](#from-effectstreamemit)
+  - [From "effect/StreamHaltStrategy"](#from-effectstreamhaltstrategy)
+  - [From "effect/String"](#from-effectstring)
+  - [From "effect/Struct"](#from-effectstruct)
+  - [From "effect/SubscriptionRef"](#from-effectsubscriptionref)
+  - [From "effect/Supervisor"](#from-effectsupervisor)
+  - [From "effect/Symbol"](#from-effectsymbol)
+  - [From "effect/SynchronizedRef"](#from-effectsynchronizedref)
+  - [From "effect/TArray"](#from-effecttarray)
+  - [From "effect/TDeferred"](#from-effecttdeferred)
+  - [From "effect/TMap"](#from-effecttmap)
+  - [From "effect/TPriorityQueue"](#from-effecttpriorityqueue)
+  - [From "effect/TPubSub"](#from-effecttpubsub)
+  - [From "effect/TQueue"](#from-effecttqueue)
+  - [From "effect/TRandom"](#from-effecttrandom)
+  - [From "effect/TReentrantLock"](#from-effecttreentrantlock)
+  - [From "effect/TRef"](#from-effecttref)
+  - [From "effect/TSemaphore"](#from-effecttsemaphore)
+  - [From "effect/TSet"](#from-effecttset)
+  - [From "effect/Take"](#from-effecttake)
+  - [From "effect/TestAnnotation"](#from-effecttestannotation)
+  - [From "effect/TestAnnotationMap"](#from-effecttestannotationmap)
+  - [From "effect/TestAnnotations"](#from-effecttestannotations)
+  - [From "effect/TestClock"](#from-effecttestclock)
+  - [From "effect/TestConfig"](#from-effecttestconfig)
+  - [From "effect/TestContext"](#from-effecttestcontext)
+  - [From "effect/TestLive"](#from-effecttestlive)
+  - [From "effect/TestServices"](#from-effecttestservices)
+  - [From "effect/TestSized"](#from-effecttestsized)
+  - [From "effect/Tracer"](#from-effecttracer)
+  - [From "effect/Tuple"](#from-effecttuple)
+  - [From "effect/Types"](#from-effecttypes)
+  - [From "effect/Unify"](#from-effectunify)
+  - [From "effect/Utils"](#from-effectutils)
 - [utils](#utils)
   - [absurd](#absurd)
   - [flow](#flow)
@@ -166,7 +166,7 @@ Added in v2.0.0
 
 # exports
 
-## From "./Bigint"
+## From "effect/Bigint"
 
 This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
@@ -175,12 +175,12 @@ It includes functions for basic arithmetic operations, as well as type class ins
 **Signature**
 
 ```ts
-export * as Bigint from './Bigint'
+export * as Bigint from 'effect/Bigint'
 ```
 
 Added in v2.0.0
 
-## From "./Boolean"
+## From "effect/Boolean"
 
 This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
 It includes functions for basic boolean operations, as well as type class instances for
@@ -189,12 +189,12 @@ It includes functions for basic boolean operations, as well as type class instan
 **Signature**
 
 ```ts
-export * as Boolean from './Boolean'
+export * as Boolean from 'effect/Boolean'
 ```
 
 Added in v2.0.0
 
-## From "./Brand"
+## From "effect/Brand"
 
 This module provides types and utility functions to create and work with branded types,
 which are TypeScript types with an added type tag to prevent accidental usage of a value in the wrong context.
@@ -214,24 +214,24 @@ If the input data fails the validation, a `BrandErrors` is returned, which provi
 **Signature**
 
 ```ts
-export * as Brand from './Brand'
+export * as Brand from 'effect/Brand'
 ```
 
 Added in v2.0.0
 
-## From "./Cache"
+## From "effect/Cache"
 
-Re-exports all named exports from the "./Cache" module as "Cache".
+Re-exports all named exports from the "effect/Cache" module as "Cache".
 
 **Signature**
 
 ```ts
-export * as Cache from './Cache'
+export * as Cache from 'effect/Cache'
 ```
 
 Added in v2.0.0
 
-## From "./Cause"
+## From "effect/Cause"
 
 The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
 work with any error type that we want. However, there is a lot of information
@@ -256,204 +256,204 @@ occurring within our codebase.
 **Signature**
 
 ```ts
-export * as Cause from './Cause'
+export * as Cause from 'effect/Cause'
 ```
 
 Added in v2.0.0
 
-## From "./Channel"
+## From "effect/Channel"
 
-Re-exports all named exports from the "./Channel" module as "Channel".
+Re-exports all named exports from the "effect/Channel" module as "Channel".
 
 **Signature**
 
 ```ts
-export * as Channel from './Channel'
+export * as Channel from 'effect/Channel'
 ```
 
 Added in v2.0.0
 
-## From "./ChannelChildExecutorDecision"
+## From "effect/ChannelChildExecutorDecision"
 
-Re-exports all named exports from the "./ChannelChildExecutorDecision" module as "ChannelChildExecutorDecision".
+Re-exports all named exports from the "effect/ChannelChildExecutorDecision" module as "ChannelChildExecutorDecision".
 
 **Signature**
 
 ```ts
-export * as ChannelChildExecutorDecision from './ChannelChildExecutorDecision'
+export * as ChannelChildExecutorDecision from 'effect/ChannelChildExecutorDecision'
 ```
 
 Added in v2.0.0
 
-## From "./ChannelMergeDecision"
+## From "effect/ChannelMergeDecision"
 
-Re-exports all named exports from the "./ChannelMergeDecision" module as "ChannelMergeDecision".
+Re-exports all named exports from the "effect/ChannelMergeDecision" module as "ChannelMergeDecision".
 
 **Signature**
 
 ```ts
-export * as ChannelMergeDecision from './ChannelMergeDecision'
+export * as ChannelMergeDecision from 'effect/ChannelMergeDecision'
 ```
 
 Added in v2.0.0
 
-## From "./ChannelMergeState"
+## From "effect/ChannelMergeState"
 
-Re-exports all named exports from the "./ChannelMergeState" module as "ChannelMergeState".
+Re-exports all named exports from the "effect/ChannelMergeState" module as "ChannelMergeState".
 
 **Signature**
 
 ```ts
-export * as ChannelMergeState from './ChannelMergeState'
+export * as ChannelMergeState from 'effect/ChannelMergeState'
 ```
 
 Added in v2.0.0
 
-## From "./ChannelMergeStrategy"
+## From "effect/ChannelMergeStrategy"
 
-Re-exports all named exports from the "./ChannelMergeStrategy" module as "ChannelMergeStrategy".
+Re-exports all named exports from the "effect/ChannelMergeStrategy" module as "ChannelMergeStrategy".
 
 **Signature**
 
 ```ts
-export * as ChannelMergeStrategy from './ChannelMergeStrategy'
+export * as ChannelMergeStrategy from 'effect/ChannelMergeStrategy'
 ```
 
 Added in v2.0.0
 
-## From "./ChannelSingleProducerAsyncInput"
+## From "effect/ChannelSingleProducerAsyncInput"
 
-Re-exports all named exports from the "./ChannelSingleProducerAsyncInput" module as "ChannelSingleProducerAsyncInput".
+Re-exports all named exports from the "effect/ChannelSingleProducerAsyncInput" module as "ChannelSingleProducerAsyncInput".
 
 **Signature**
 
 ```ts
-export * as ChannelSingleProducerAsyncInput from './ChannelSingleProducerAsyncInput'
+export * as ChannelSingleProducerAsyncInput from 'effect/ChannelSingleProducerAsyncInput'
 ```
 
 Added in v2.0.0
 
-## From "./ChannelUpstreamPullRequest"
+## From "effect/ChannelUpstreamPullRequest"
 
-Re-exports all named exports from the "./ChannelUpstreamPullRequest" module as "ChannelUpstreamPullRequest".
+Re-exports all named exports from the "effect/ChannelUpstreamPullRequest" module as "ChannelUpstreamPullRequest".
 
 **Signature**
 
 ```ts
-export * as ChannelUpstreamPullRequest from './ChannelUpstreamPullRequest'
+export * as ChannelUpstreamPullRequest from 'effect/ChannelUpstreamPullRequest'
 ```
 
 Added in v2.0.0
 
-## From "./ChannelUpstreamPullStrategy"
+## From "effect/ChannelUpstreamPullStrategy"
 
-Re-exports all named exports from the "./ChannelUpstreamPullStrategy" module as "ChannelUpstreamPullStrategy".
+Re-exports all named exports from the "effect/ChannelUpstreamPullStrategy" module as "ChannelUpstreamPullStrategy".
 
 **Signature**
 
 ```ts
-export * as ChannelUpstreamPullStrategy from './ChannelUpstreamPullStrategy'
+export * as ChannelUpstreamPullStrategy from 'effect/ChannelUpstreamPullStrategy'
 ```
 
 Added in v2.0.0
 
-## From "./Chunk"
+## From "effect/Chunk"
 
-Re-exports all named exports from the "./Chunk" module as "Chunk".
+Re-exports all named exports from the "effect/Chunk" module as "Chunk".
 
 **Signature**
 
 ```ts
-export * as Chunk from './Chunk'
+export * as Chunk from 'effect/Chunk'
 ```
 
 Added in v2.0.0
 
-## From "./Clock"
+## From "effect/Clock"
 
-Re-exports all named exports from the "./Clock" module as "Clock".
+Re-exports all named exports from the "effect/Clock" module as "Clock".
 
 **Signature**
 
 ```ts
-export * as Clock from './Clock'
+export * as Clock from 'effect/Clock'
 ```
 
 Added in v2.0.0
 
-## From "./Config"
+## From "effect/Config"
 
-Re-exports all named exports from the "./Config" module as "Config".
+Re-exports all named exports from the "effect/Config" module as "Config".
 
 **Signature**
 
 ```ts
-export * as Config from './Config'
+export * as Config from 'effect/Config'
 ```
 
 Added in v2.0.0
 
-## From "./ConfigError"
+## From "effect/ConfigError"
 
-Re-exports all named exports from the "./ConfigError" module as "ConfigError".
+Re-exports all named exports from the "effect/ConfigError" module as "ConfigError".
 
 **Signature**
 
 ```ts
-export * as ConfigError from './ConfigError'
+export * as ConfigError from 'effect/ConfigError'
 ```
 
 Added in v2.0.0
 
-## From "./ConfigProvider"
+## From "effect/ConfigProvider"
 
-Re-exports all named exports from the "./ConfigProvider" module as "ConfigProvider".
+Re-exports all named exports from the "effect/ConfigProvider" module as "ConfigProvider".
 
 **Signature**
 
 ```ts
-export * as ConfigProvider from './ConfigProvider'
+export * as ConfigProvider from 'effect/ConfigProvider'
 ```
 
 Added in v2.0.0
 
-## From "./ConfigProviderPathPatch"
+## From "effect/ConfigProviderPathPatch"
 
-Re-exports all named exports from the "./ConfigProviderPathPatch" module as "ConfigProviderPathPatch".
+Re-exports all named exports from the "effect/ConfigProviderPathPatch" module as "ConfigProviderPathPatch".
 
 **Signature**
 
 ```ts
-export * as ConfigProviderPathPatch from './ConfigProviderPathPatch'
+export * as ConfigProviderPathPatch from 'effect/ConfigProviderPathPatch'
 ```
 
 Added in v2.0.0
 
-## From "./ConfigSecret"
+## From "effect/ConfigSecret"
 
-Re-exports all named exports from the "./ConfigSecret" module as "ConfigSecret".
+Re-exports all named exports from the "effect/ConfigSecret" module as "ConfigSecret".
 
 **Signature**
 
 ```ts
-export * as ConfigSecret from './ConfigSecret'
+export * as ConfigSecret from 'effect/ConfigSecret'
 ```
 
 Added in v2.0.0
 
-## From "./Console"
+## From "effect/Console"
 
-Re-exports all named exports from the "./Console" module as "Console".
+Re-exports all named exports from the "effect/Console" module as "Console".
 
 **Signature**
 
 ```ts
-export * as Console from './Console'
+export * as Console from 'effect/Console'
 ```
 
 Added in v2.0.0
 
-## From "./Context"
+## From "effect/Context"
 
 This module provides a data structure called `Context` that can be used for dependency injection in effectful
 programs. It is essentially a table mapping `Tag`s to their implementations (called `Service`s), and can be used to
@@ -464,108 +464,108 @@ query the contents of a `Context`, as well as a number of utility types for work
 **Signature**
 
 ```ts
-export * as Context from './Context'
+export * as Context from 'effect/Context'
 ```
 
 Added in v2.0.0
 
-## From "./Data"
+## From "effect/Data"
 
-Re-exports all named exports from the "./Data" module as "Data".
+Re-exports all named exports from the "effect/Data" module as "Data".
 
 **Signature**
 
 ```ts
-export * as Data from './Data'
+export * as Data from 'effect/Data'
 ```
 
 Added in v2.0.0
 
-## From "./DefaultServices"
+## From "effect/DefaultServices"
 
-Re-exports all named exports from the "./DefaultServices" module as "DefaultServices".
+Re-exports all named exports from the "effect/DefaultServices" module as "DefaultServices".
 
 **Signature**
 
 ```ts
-export * as DefaultServices from './DefaultServices'
+export * as DefaultServices from 'effect/DefaultServices'
 ```
 
 Added in v2.0.0
 
-## From "./Deferred"
+## From "effect/Deferred"
 
-Re-exports all named exports from the "./Deferred" module as "Deferred".
+Re-exports all named exports from the "effect/Deferred" module as "Deferred".
 
 **Signature**
 
 ```ts
-export * as Deferred from './Deferred'
+export * as Deferred from 'effect/Deferred'
 ```
 
 Added in v2.0.0
 
-## From "./Differ"
+## From "effect/Differ"
 
-Re-exports all named exports from the "./Differ" module as "Differ".
+Re-exports all named exports from the "effect/Differ" module as "Differ".
 
 **Signature**
 
 ```ts
-export * as Differ from './Differ'
+export * as Differ from 'effect/Differ'
 ```
 
 Added in v2.0.0
 
-## From "./Duration"
+## From "effect/Duration"
 
-Re-exports all named exports from the "./Duration" module as "Duration".
+Re-exports all named exports from the "effect/Duration" module as "Duration".
 
 **Signature**
 
 ```ts
-export * as Duration from './Duration'
+export * as Duration from 'effect/Duration'
 ```
 
 Added in v2.0.0
 
-## From "./Effect"
+## From "effect/Effect"
 
-Re-exports all named exports from the "./Effect" module as "Effect".
+Re-exports all named exports from the "effect/Effect" module as "Effect".
 
 **Signature**
 
 ```ts
-export * as Effect from './Effect'
+export * as Effect from 'effect/Effect'
 ```
 
 Added in v2.0.0
 
-## From "./Effectable"
+## From "effect/Effectable"
 
-Re-exports all named exports from the "./Effectable" module as "Effectable".
+Re-exports all named exports from the "effect/Effectable" module as "Effectable".
 
 **Signature**
 
 ```ts
-export * as Effectable from './Effectable'
+export * as Effectable from 'effect/Effectable'
 ```
 
 Added in v2.0.0
 
-## From "./Either"
+## From "effect/Either"
 
-Re-exports all named exports from the "./Either" module as "Either".
+Re-exports all named exports from the "effect/Either" module as "Either".
 
 **Signature**
 
 ```ts
-export * as Either from './Either'
+export * as Either from 'effect/Either'
 ```
 
 Added in v2.0.0
 
-## From "./Encoding"
+## From "effect/Encoding"
 
 This module provides encoding & decoding functionality for:
 
@@ -576,24 +576,24 @@ This module provides encoding & decoding functionality for:
 **Signature**
 
 ```ts
-export * as Encoding from './Encoding'
+export * as Encoding from 'effect/Encoding'
 ```
 
 Added in v2.0.0
 
-## From "./Equal"
+## From "effect/Equal"
 
-Re-exports all named exports from the "./Equal" module as "Equal".
+Re-exports all named exports from the "effect/Equal" module as "Equal".
 
 **Signature**
 
 ```ts
-export * as Equal from './Equal'
+export * as Equal from 'effect/Equal'
 ```
 
 Added in v2.0.0
 
-## From "./Equivalence"
+## From "effect/Equivalence"
 
 This module provides an implementation of the `Equivalence` type class, which defines a binary relation
 that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
@@ -602,240 +602,228 @@ These properties are also known in mathematics as an "equivalence relation".
 **Signature**
 
 ```ts
-export * as Equivalence from './Equivalence'
+export * as Equivalence from 'effect/Equivalence'
 ```
 
 Added in v2.0.0
 
-## From "./Error"
+## From "effect/Error"
 
-Re-exports all named exports from the "./Error" module as "Error".
+Re-exports all named exports from the "effect/Error" module as "Error".
 
 **Signature**
 
 ```ts
-export * as Error from './Error'
+export * as Error from 'effect/Error'
 ```
 
 Added in v2.0.0
 
-## From "./ExecutionStrategy"
+## From "effect/ExecutionStrategy"
 
-Re-exports all named exports from the "./ExecutionStrategy" module as "ExecutionStrategy".
+Re-exports all named exports from the "effect/ExecutionStrategy" module as "ExecutionStrategy".
 
 **Signature**
 
 ```ts
-export * as ExecutionStrategy from './ExecutionStrategy'
+export * as ExecutionStrategy from 'effect/ExecutionStrategy'
 ```
 
 Added in v2.0.0
 
-## From "./Exit"
+## From "effect/Exit"
 
-Re-exports all named exports from the "./Exit" module as "Exit".
+Re-exports all named exports from the "effect/Exit" module as "Exit".
 
 **Signature**
 
 ```ts
-export * as Exit from './Exit'
+export * as Exit from 'effect/Exit'
 ```
 
 Added in v2.0.0
 
-## From "./Fiber"
+## From "effect/Fiber"
 
-Re-exports all named exports from the "./Fiber" module as "Fiber".
+Re-exports all named exports from the "effect/Fiber" module as "Fiber".
 
 **Signature**
 
 ```ts
-export * as Fiber from './Fiber'
+export * as Fiber from 'effect/Fiber'
 ```
 
 Added in v2.0.0
 
-## From "./FiberId"
+## From "effect/FiberId"
 
-Re-exports all named exports from the "./FiberId" module as "FiberId".
+Re-exports all named exports from the "effect/FiberId" module as "FiberId".
 
 **Signature**
 
 ```ts
-export * as FiberId from './FiberId'
+export * as FiberId from 'effect/FiberId'
 ```
 
 Added in v2.0.0
 
-## From "./FiberRef"
+## From "effect/FiberRef"
 
-Re-exports all named exports from the "./FiberRef" module as "FiberRef".
+Re-exports all named exports from the "effect/FiberRef" module as "FiberRef".
 
 **Signature**
 
 ```ts
-export * as FiberRef from './FiberRef'
+export * as FiberRef from 'effect/FiberRef'
 ```
 
 Added in v2.0.0
 
-## From "./FiberRefs"
+## From "effect/FiberRefs"
 
-Re-exports all named exports from the "./FiberRefs" module as "FiberRefs".
+Re-exports all named exports from the "effect/FiberRefs" module as "FiberRefs".
 
 **Signature**
 
 ```ts
-export * as FiberRefs from './FiberRefs'
+export * as FiberRefs from 'effect/FiberRefs'
 ```
 
 Added in v2.0.0
 
-## From "./FiberRefsPatch"
+## From "effect/FiberRefsPatch"
 
-Re-exports all named exports from the "./FiberRefsPatch" module as "FiberRefsPatch".
+Re-exports all named exports from the "effect/FiberRefsPatch" module as "FiberRefsPatch".
 
 **Signature**
 
 ```ts
-export * as FiberRefsPatch from './FiberRefsPatch'
+export * as FiberRefsPatch from 'effect/FiberRefsPatch'
 ```
 
 Added in v2.0.0
 
-## From "./FiberStatus"
+## From "effect/FiberStatus"
 
-Re-exports all named exports from the "./FiberStatus" module as "FiberStatus".
+Re-exports all named exports from the "effect/FiberStatus" module as "FiberStatus".
 
 **Signature**
 
 ```ts
-export * as FiberStatus from './FiberStatus'
+export * as FiberStatus from 'effect/FiberStatus'
 ```
 
 Added in v2.0.0
 
-## From "./Function"
+## From "effect/Function"
 
-Re-exports all named exports from the "./Function" module as "Function".
+Re-exports all named exports from the "effect/Function" module as "Function".
 
 **Signature**
 
 ```ts
-export * as Function from './Function'
+export * as Function from 'effect/Function'
 ```
 
 Added in v2.0.0
 
-## From "./GlobalValue"
+## From "effect/GlobalValue"
 
-Re-exports all named exports from the "./GlobalValue" module as "GlobalValue".
+Re-exports all named exports from the "effect/GlobalValue" module as "GlobalValue".
 
 **Signature**
 
 ```ts
-export * as GlobalValue from './GlobalValue'
+export * as GlobalValue from 'effect/GlobalValue'
 ```
 
 Added in v2.0.0
 
-## From "./GroupBy"
+## From "effect/GroupBy"
 
-Re-exports all named exports from the "./GroupBy" module as "GroupBy".
+Re-exports all named exports from the "effect/GroupBy" module as "GroupBy".
 
 **Signature**
 
 ```ts
-export * as GroupBy from './GroupBy'
+export * as GroupBy from 'effect/GroupBy'
 ```
 
 Added in v2.0.0
 
-## From "./HKT"
+## From "effect/HKT"
 
-Re-exports all named exports from the "./HKT" module as "HKT".
+Re-exports all named exports from the "effect/HKT" module as "HKT".
 
 **Signature**
 
 ```ts
-export * as HKT from './HKT'
+export * as HKT from 'effect/HKT'
 ```
 
 Added in v2.0.0
 
-## From "./Hash"
+## From "effect/Hash"
 
-Re-exports all named exports from the "./Hash" module as "Hash".
+Re-exports all named exports from the "effect/Hash" module as "Hash".
 
 **Signature**
 
 ```ts
-export * as Hash from './Hash'
+export * as Hash from 'effect/Hash'
 ```
 
 Added in v2.0.0
 
-## From "./HashMap"
+## From "effect/HashMap"
 
-Re-exports all named exports from the "./HashMap" module as "HashMap".
+Re-exports all named exports from the "effect/HashMap" module as "HashMap".
 
 **Signature**
 
 ```ts
-export * as HashMap from './HashMap'
+export * as HashMap from 'effect/HashMap'
 ```
 
 Added in v2.0.0
 
-## From "./HashSet"
+## From "effect/HashSet"
 
-Re-exports all named exports from the "./HashSet" module as "HashSet".
+Re-exports all named exports from the "effect/HashSet" module as "HashSet".
 
 **Signature**
 
 ```ts
-export * as HashSet from './HashSet'
+export * as HashSet from 'effect/HashSet'
 ```
 
 Added in v2.0.0
 
-## From "./Hub"
+## From "effect/Inspectable"
 
-Re-exports all named exports from the "./Hub" module as "Hub".
+Re-exports all named exports from the "effect/Inspectable" module as "Inspectable".
 
 **Signature**
 
 ```ts
-export * as Hub from './Hub'
+export * as Inspectable from 'effect/Inspectable'
 ```
 
 Added in v2.0.0
 
-## From "./Inspectable"
+## From "effect/KeyedPool"
 
-Re-exports all named exports from the "./Inspectable" module as "Inspectable".
+Re-exports all named exports from the "effect/KeyedPool" module as "KeyedPool".
 
 **Signature**
 
 ```ts
-export * as Inspectable from './Inspectable'
+export * as KeyedPool from 'effect/KeyedPool'
 ```
 
 Added in v2.0.0
 
-## From "./KeyedPool"
-
-Re-exports all named exports from the "./KeyedPool" module as "KeyedPool".
-
-**Signature**
-
-```ts
-export * as KeyedPool from './KeyedPool'
-```
-
-Added in v2.0.0
-
-## From "./Layer"
+## From "effect/Layer"
 
 A `Layer<RIn, E, ROut>` describes how to build one or more services in your
 application. Services can be injected into effects via
@@ -856,12 +844,12 @@ way in Effect-TS to create services that depend on other services.
 **Signature**
 
 ```ts
-export * as Layer from './Layer'
+export * as Layer from 'effect/Layer'
 ```
 
 Added in v2.0.0
 
-## From "./List"
+## From "effect/List"
 
 A data type for immutable linked lists representing ordered collections of elements of type `A`.
 
@@ -875,240 +863,240 @@ This data type is optimal for last-in-first-out (LIFO), stack-like access patter
 **Signature**
 
 ```ts
-export * as List from './List'
+export * as List from 'effect/List'
 ```
 
 Added in v2.0.0
 
-## From "./LogLevel"
+## From "effect/LogLevel"
 
-Re-exports all named exports from the "./LogLevel" module as "LogLevel".
+Re-exports all named exports from the "effect/LogLevel" module as "LogLevel".
 
 **Signature**
 
 ```ts
-export * as LogLevel from './LogLevel'
+export * as LogLevel from 'effect/LogLevel'
 ```
 
 Added in v2.0.0
 
-## From "./LogSpan"
+## From "effect/LogSpan"
 
-Re-exports all named exports from the "./LogSpan" module as "LogSpan".
+Re-exports all named exports from the "effect/LogSpan" module as "LogSpan".
 
 **Signature**
 
 ```ts
-export * as LogSpan from './LogSpan'
+export * as LogSpan from 'effect/LogSpan'
 ```
 
 Added in v2.0.0
 
-## From "./Logger"
+## From "effect/Logger"
 
-Re-exports all named exports from the "./Logger" module as "Logger".
+Re-exports all named exports from the "effect/Logger" module as "Logger".
 
 **Signature**
 
 ```ts
-export * as Logger from './Logger'
+export * as Logger from 'effect/Logger'
 ```
 
 Added in v2.0.0
 
-## From "./Metric"
+## From "effect/Metric"
 
-Re-exports all named exports from the "./Metric" module as "Metric".
+Re-exports all named exports from the "effect/Metric" module as "Metric".
 
 **Signature**
 
 ```ts
-export * as Metric from './Metric'
+export * as Metric from 'effect/Metric'
 ```
 
 Added in v2.0.0
 
-## From "./MetricBoundaries"
+## From "effect/MetricBoundaries"
 
-Re-exports all named exports from the "./MetricBoundaries" module as "MetricBoundaries".
+Re-exports all named exports from the "effect/MetricBoundaries" module as "MetricBoundaries".
 
 **Signature**
 
 ```ts
-export * as MetricBoundaries from './MetricBoundaries'
+export * as MetricBoundaries from 'effect/MetricBoundaries'
 ```
 
 Added in v2.0.0
 
-## From "./MetricHook"
+## From "effect/MetricHook"
 
-Re-exports all named exports from the "./MetricHook" module as "MetricHook".
+Re-exports all named exports from the "effect/MetricHook" module as "MetricHook".
 
 **Signature**
 
 ```ts
-export * as MetricHook from './MetricHook'
+export * as MetricHook from 'effect/MetricHook'
 ```
 
 Added in v2.0.0
 
-## From "./MetricKey"
+## From "effect/MetricKey"
 
-Re-exports all named exports from the "./MetricKey" module as "MetricKey".
+Re-exports all named exports from the "effect/MetricKey" module as "MetricKey".
 
 **Signature**
 
 ```ts
-export * as MetricKey from './MetricKey'
+export * as MetricKey from 'effect/MetricKey'
 ```
 
 Added in v2.0.0
 
-## From "./MetricKeyType"
+## From "effect/MetricKeyType"
 
-Re-exports all named exports from the "./MetricKeyType" module as "MetricKeyType".
+Re-exports all named exports from the "effect/MetricKeyType" module as "MetricKeyType".
 
 **Signature**
 
 ```ts
-export * as MetricKeyType from './MetricKeyType'
+export * as MetricKeyType from 'effect/MetricKeyType'
 ```
 
 Added in v2.0.0
 
-## From "./MetricLabel"
+## From "effect/MetricLabel"
 
-Re-exports all named exports from the "./MetricLabel" module as "MetricLabel".
+Re-exports all named exports from the "effect/MetricLabel" module as "MetricLabel".
 
 **Signature**
 
 ```ts
-export * as MetricLabel from './MetricLabel'
+export * as MetricLabel from 'effect/MetricLabel'
 ```
 
 Added in v2.0.0
 
-## From "./MetricPair"
+## From "effect/MetricPair"
 
-Re-exports all named exports from the "./MetricPair" module as "MetricPair".
+Re-exports all named exports from the "effect/MetricPair" module as "MetricPair".
 
 **Signature**
 
 ```ts
-export * as MetricPair from './MetricPair'
+export * as MetricPair from 'effect/MetricPair'
 ```
 
 Added in v2.0.0
 
-## From "./MetricPolling"
+## From "effect/MetricPolling"
 
-Re-exports all named exports from the "./MetricPolling" module as "MetricPolling".
+Re-exports all named exports from the "effect/MetricPolling" module as "MetricPolling".
 
 **Signature**
 
 ```ts
-export * as MetricPolling from './MetricPolling'
+export * as MetricPolling from 'effect/MetricPolling'
 ```
 
 Added in v2.0.0
 
-## From "./MetricRegistry"
+## From "effect/MetricRegistry"
 
-Re-exports all named exports from the "./MetricRegistry" module as "MetricRegistry".
+Re-exports all named exports from the "effect/MetricRegistry" module as "MetricRegistry".
 
 **Signature**
 
 ```ts
-export * as MetricRegistry from './MetricRegistry'
+export * as MetricRegistry from 'effect/MetricRegistry'
 ```
 
 Added in v2.0.0
 
-## From "./MetricState"
+## From "effect/MetricState"
 
-Re-exports all named exports from the "./MetricState" module as "MetricState".
+Re-exports all named exports from the "effect/MetricState" module as "MetricState".
 
 **Signature**
 
 ```ts
-export * as MetricState from './MetricState'
+export * as MetricState from 'effect/MetricState'
 ```
 
 Added in v2.0.0
 
-## From "./MutableHashMap"
+## From "effect/MutableHashMap"
 
-Re-exports all named exports from the "./MutableHashMap" module as "MutableHashMap".
+Re-exports all named exports from the "effect/MutableHashMap" module as "MutableHashMap".
 
 **Signature**
 
 ```ts
-export * as MutableHashMap from './MutableHashMap'
+export * as MutableHashMap from 'effect/MutableHashMap'
 ```
 
 Added in v2.0.0
 
-## From "./MutableHashSet"
+## From "effect/MutableHashSet"
 
-Re-exports all named exports from the "./MutableHashSet" module as "MutableHashSet".
+Re-exports all named exports from the "effect/MutableHashSet" module as "MutableHashSet".
 
 **Signature**
 
 ```ts
-export * as MutableHashSet from './MutableHashSet'
+export * as MutableHashSet from 'effect/MutableHashSet'
 ```
 
 Added in v2.0.0
 
-## From "./MutableList"
+## From "effect/MutableList"
 
-Re-exports all named exports from the "./MutableList" module as "MutableList".
+Re-exports all named exports from the "effect/MutableList" module as "MutableList".
 
 **Signature**
 
 ```ts
-export * as MutableList from './MutableList'
+export * as MutableList from 'effect/MutableList'
 ```
 
 Added in v2.0.0
 
-## From "./MutableQueue"
+## From "effect/MutableQueue"
 
-Re-exports all named exports from the "./MutableQueue" module as "MutableQueue".
+Re-exports all named exports from the "effect/MutableQueue" module as "MutableQueue".
 
 **Signature**
 
 ```ts
-export * as MutableQueue from './MutableQueue'
+export * as MutableQueue from 'effect/MutableQueue'
 ```
 
 Added in v2.0.0
 
-## From "./MutableRef"
+## From "effect/MutableRef"
 
-Re-exports all named exports from the "./MutableRef" module as "MutableRef".
+Re-exports all named exports from the "effect/MutableRef" module as "MutableRef".
 
 **Signature**
 
 ```ts
-export * as MutableRef from './MutableRef'
+export * as MutableRef from 'effect/MutableRef'
 ```
 
 Added in v2.0.0
 
-## From "./NonEmptyIterable"
+## From "effect/NonEmptyIterable"
 
-Re-exports all named exports from the "./NonEmptyIterable" module as "NonEmptyIterable".
+Re-exports all named exports from the "effect/NonEmptyIterable" module as "NonEmptyIterable".
 
 **Signature**
 
 ```ts
-export * as NonEmptyIterable from './NonEmptyIterable'
+export * as NonEmptyIterable from 'effect/NonEmptyIterable'
 ```
 
 Added in v2.0.0
 
-## From "./Number"
+## From "effect/Number"
 
 This module provides utility functions and type class instances for working with the `number` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
@@ -1117,432 +1105,444 @@ It includes functions for basic arithmetic operations, as well as type class ins
 **Signature**
 
 ```ts
-export * as Number from './Number'
+export * as Number from 'effect/Number'
 ```
 
 Added in v2.0.0
 
-## From "./Option"
+## From "effect/Option"
 
-Re-exports all named exports from the "./Option" module as "Option".
+Re-exports all named exports from the "effect/Option" module as "Option".
 
 **Signature**
 
 ```ts
-export * as Option from './Option'
+export * as Option from 'effect/Option'
 ```
 
 Added in v2.0.0
 
-## From "./Order"
+## From "effect/Order"
 
-Re-exports all named exports from the "./Order" module as "Order".
+Re-exports all named exports from the "effect/Order" module as "Order".
 
 **Signature**
 
 ```ts
-export * as Order from './Order'
+export * as Order from 'effect/Order'
 ```
 
 Added in v2.0.0
 
-## From "./Ordering"
+## From "effect/Ordering"
 
-Re-exports all named exports from the "./Ordering" module as "Ordering".
+Re-exports all named exports from the "effect/Ordering" module as "Ordering".
 
 **Signature**
 
 ```ts
-export * as Ordering from './Ordering'
+export * as Ordering from 'effect/Ordering'
 ```
 
 Added in v2.0.0
 
-## From "./Pipeable"
+## From "effect/Pipeable"
 
-Re-exports all named exports from the "./Pipeable" module as "Pipeable".
+Re-exports all named exports from the "effect/Pipeable" module as "Pipeable".
 
 **Signature**
 
 ```ts
-export * as Pipeable from './Pipeable'
+export * as Pipeable from 'effect/Pipeable'
 ```
 
 Added in v2.0.0
 
-## From "./Pool"
+## From "effect/Pool"
 
-Re-exports all named exports from the "./Pool" module as "Pool".
+Re-exports all named exports from the "effect/Pool" module as "Pool".
 
 **Signature**
 
 ```ts
-export * as Pool from './Pool'
+export * as Pool from 'effect/Pool'
 ```
 
 Added in v2.0.0
 
-## From "./Predicate"
+## From "effect/Predicate"
 
-Re-exports all named exports from the "./Predicate" module as "Predicate".
+Re-exports all named exports from the "effect/Predicate" module as "Predicate".
 
 **Signature**
 
 ```ts
-export * as Predicate from './Predicate'
+export * as Predicate from 'effect/Predicate'
 ```
 
 Added in v2.0.0
 
-## From "./Queue"
+## From "effect/PubSub"
 
-Re-exports all named exports from the "./Queue" module as "Queue".
+Re-exports all named exports from the "effect/PubSub" module as "PubSub".
 
 **Signature**
 
 ```ts
-export * as Queue from './Queue'
+export * as PubSub from 'effect/PubSub'
 ```
 
 Added in v2.0.0
 
-## From "./Random"
+## From "effect/Queue"
 
-Re-exports all named exports from the "./Random" module as "Random".
+Re-exports all named exports from the "effect/Queue" module as "Queue".
 
 **Signature**
 
 ```ts
-export * as Random from './Random'
+export * as Queue from 'effect/Queue'
 ```
 
 Added in v2.0.0
 
-## From "./ReadonlyArray"
+## From "effect/Random"
+
+Re-exports all named exports from the "effect/Random" module as "Random".
+
+**Signature**
+
+```ts
+export * as Random from 'effect/Random'
+```
+
+Added in v2.0.0
+
+## From "effect/ReadonlyArray"
 
 This module provides utility functions for working with arrays in TypeScript.
 
 **Signature**
 
 ```ts
-export * as ReadonlyArray from './ReadonlyArray'
+export * as ReadonlyArray from 'effect/ReadonlyArray'
 ```
 
 Added in v2.0.0
 
-## From "./ReadonlyRecord"
+## From "effect/ReadonlyRecord"
 
 This module provides utility functions for working with records in TypeScript.
 
 **Signature**
 
 ```ts
-export * as ReadonlyRecord from './ReadonlyRecord'
+export * as ReadonlyRecord from 'effect/ReadonlyRecord'
 ```
 
 Added in v2.0.0
 
-## From "./RedBlackTree"
+## From "effect/RedBlackTree"
 
-Re-exports all named exports from the "./RedBlackTree" module as "RedBlackTree".
+Re-exports all named exports from the "effect/RedBlackTree" module as "RedBlackTree".
 
 **Signature**
 
 ```ts
-export * as RedBlackTree from './RedBlackTree'
+export * as RedBlackTree from 'effect/RedBlackTree'
 ```
 
 Added in v2.0.0
 
-## From "./Ref"
+## From "effect/Ref"
 
-Re-exports all named exports from the "./Ref" module as "Ref".
+Re-exports all named exports from the "effect/Ref" module as "Ref".
 
 **Signature**
 
 ```ts
-export * as Ref from './Ref'
+export * as Ref from 'effect/Ref'
 ```
 
 Added in v2.0.0
 
-## From "./Reloadable"
+## From "effect/Reloadable"
 
-Re-exports all named exports from the "./Reloadable" module as "Reloadable".
+Re-exports all named exports from the "effect/Reloadable" module as "Reloadable".
 
 **Signature**
 
 ```ts
-export * as Reloadable from './Reloadable'
+export * as Reloadable from 'effect/Reloadable'
 ```
 
 Added in v2.0.0
 
-## From "./Request"
+## From "effect/Request"
 
-Re-exports all named exports from the "./Request" module as "Request".
+Re-exports all named exports from the "effect/Request" module as "Request".
 
 **Signature**
 
 ```ts
-export * as Request from './Request'
+export * as Request from 'effect/Request'
 ```
 
 Added in v2.0.0
 
-## From "./RequestBlock"
+## From "effect/RequestBlock"
 
-Re-exports all named exports from the "./RequestBlock" module as "RequestBlock".
+Re-exports all named exports from the "effect/RequestBlock" module as "RequestBlock".
 
 **Signature**
 
 ```ts
-export * as RequestBlock from './RequestBlock'
+export * as RequestBlock from 'effect/RequestBlock'
 ```
 
 Added in v2.0.0
 
-## From "./RequestResolver"
+## From "effect/RequestResolver"
 
-Re-exports all named exports from the "./RequestResolver" module as "RequestResolver".
+Re-exports all named exports from the "effect/RequestResolver" module as "RequestResolver".
 
 **Signature**
 
 ```ts
-export * as RequestResolver from './RequestResolver'
+export * as RequestResolver from 'effect/RequestResolver'
 ```
 
 Added in v2.0.0
 
-## From "./Resource"
+## From "effect/Resource"
 
-Re-exports all named exports from the "./Resource" module as "Resource".
+Re-exports all named exports from the "effect/Resource" module as "Resource".
 
 **Signature**
 
 ```ts
-export * as Resource from './Resource'
+export * as Resource from 'effect/Resource'
 ```
 
 Added in v2.0.0
 
-## From "./Runtime"
+## From "effect/Runtime"
 
-Re-exports all named exports from the "./Runtime" module as "Runtime".
+Re-exports all named exports from the "effect/Runtime" module as "Runtime".
 
 **Signature**
 
 ```ts
-export * as Runtime from './Runtime'
+export * as Runtime from 'effect/Runtime'
 ```
 
 Added in v2.0.0
 
-## From "./RuntimeFlags"
+## From "effect/RuntimeFlags"
 
-Re-exports all named exports from the "./RuntimeFlags" module as "RuntimeFlags".
+Re-exports all named exports from the "effect/RuntimeFlags" module as "RuntimeFlags".
 
 **Signature**
 
 ```ts
-export * as RuntimeFlags from './RuntimeFlags'
+export * as RuntimeFlags from 'effect/RuntimeFlags'
 ```
 
 Added in v2.0.0
 
-## From "./RuntimeFlagsPatch"
+## From "effect/RuntimeFlagsPatch"
 
-Re-exports all named exports from the "./RuntimeFlagsPatch" module as "RuntimeFlagsPatch".
+Re-exports all named exports from the "effect/RuntimeFlagsPatch" module as "RuntimeFlagsPatch".
 
 **Signature**
 
 ```ts
-export * as RuntimeFlagsPatch from './RuntimeFlagsPatch'
+export * as RuntimeFlagsPatch from 'effect/RuntimeFlagsPatch'
 ```
 
 Added in v2.0.0
 
-## From "./STM"
+## From "effect/STM"
 
-Re-exports all named exports from the "./STM" module as "STM".
+Re-exports all named exports from the "effect/STM" module as "STM".
 
 **Signature**
 
 ```ts
-export * as STM from './STM'
+export * as STM from 'effect/STM'
 ```
 
 Added in v2.0.0
 
-## From "./Schedule"
+## From "effect/Schedule"
 
-Re-exports all named exports from the "./Schedule" module as "Schedule".
+Re-exports all named exports from the "effect/Schedule" module as "Schedule".
 
 **Signature**
 
 ```ts
-export * as Schedule from './Schedule'
+export * as Schedule from 'effect/Schedule'
 ```
 
 Added in v2.0.0
 
-## From "./ScheduleDecision"
+## From "effect/ScheduleDecision"
 
-Re-exports all named exports from the "./ScheduleDecision" module as "ScheduleDecision".
+Re-exports all named exports from the "effect/ScheduleDecision" module as "ScheduleDecision".
 
 **Signature**
 
 ```ts
-export * as ScheduleDecision from './ScheduleDecision'
+export * as ScheduleDecision from 'effect/ScheduleDecision'
 ```
 
 Added in v2.0.0
 
-## From "./ScheduleInterval"
+## From "effect/ScheduleInterval"
 
-Re-exports all named exports from the "./ScheduleInterval" module as "ScheduleInterval".
+Re-exports all named exports from the "effect/ScheduleInterval" module as "ScheduleInterval".
 
 **Signature**
 
 ```ts
-export * as ScheduleInterval from './ScheduleInterval'
+export * as ScheduleInterval from 'effect/ScheduleInterval'
 ```
 
 Added in v2.0.0
 
-## From "./ScheduleIntervals"
+## From "effect/ScheduleIntervals"
 
-Re-exports all named exports from the "./ScheduleIntervals" module as "ScheduleIntervals".
+Re-exports all named exports from the "effect/ScheduleIntervals" module as "ScheduleIntervals".
 
 **Signature**
 
 ```ts
-export * as ScheduleIntervals from './ScheduleIntervals'
+export * as ScheduleIntervals from 'effect/ScheduleIntervals'
 ```
 
 Added in v2.0.0
 
-## From "./Scheduler"
+## From "effect/Scheduler"
 
-Re-exports all named exports from the "./Scheduler" module as "Scheduler".
+Re-exports all named exports from the "effect/Scheduler" module as "Scheduler".
 
 **Signature**
 
 ```ts
-export * as Scheduler from './Scheduler'
+export * as Scheduler from 'effect/Scheduler'
 ```
 
 Added in v2.0.0
 
-## From "./Scope"
+## From "effect/Scope"
 
-Re-exports all named exports from the "./Scope" module as "Scope".
+Re-exports all named exports from the "effect/Scope" module as "Scope".
 
 **Signature**
 
 ```ts
-export * as Scope from './Scope'
+export * as Scope from 'effect/Scope'
 ```
 
 Added in v2.0.0
 
-## From "./ScopedCache"
+## From "effect/ScopedCache"
 
-Re-exports all named exports from the "./ScopedCache" module as "ScopedCache".
+Re-exports all named exports from the "effect/ScopedCache" module as "ScopedCache".
 
 **Signature**
 
 ```ts
-export * as ScopedCache from './ScopedCache'
+export * as ScopedCache from 'effect/ScopedCache'
 ```
 
 Added in v2.0.0
 
-## From "./ScopedRef"
+## From "effect/ScopedRef"
 
-Re-exports all named exports from the "./ScopedRef" module as "ScopedRef".
+Re-exports all named exports from the "effect/ScopedRef" module as "ScopedRef".
 
 **Signature**
 
 ```ts
-export * as ScopedRef from './ScopedRef'
+export * as ScopedRef from 'effect/ScopedRef'
 ```
 
 Added in v2.0.0
 
-## From "./Sink"
+## From "effect/Sink"
 
-Re-exports all named exports from the "./Sink" module as "Sink".
+Re-exports all named exports from the "effect/Sink" module as "Sink".
 
 **Signature**
 
 ```ts
-export * as Sink from './Sink'
+export * as Sink from 'effect/Sink'
 ```
 
 Added in v2.0.0
 
-## From "./SortedMap"
+## From "effect/SortedMap"
 
-Re-exports all named exports from the "./SortedMap" module as "SortedMap".
+Re-exports all named exports from the "effect/SortedMap" module as "SortedMap".
 
 **Signature**
 
 ```ts
-export * as SortedMap from './SortedMap'
+export * as SortedMap from 'effect/SortedMap'
 ```
 
 Added in v2.0.0
 
-## From "./SortedSet"
+## From "effect/SortedSet"
 
-Re-exports all named exports from the "./SortedSet" module as "SortedSet".
+Re-exports all named exports from the "effect/SortedSet" module as "SortedSet".
 
 **Signature**
 
 ```ts
-export * as SortedSet from './SortedSet'
+export * as SortedSet from 'effect/SortedSet'
 ```
 
 Added in v2.0.0
 
-## From "./Stream"
+## From "effect/Stream"
 
-Re-exports all named exports from the "./Stream" module as "Stream".
+Re-exports all named exports from the "effect/Stream" module as "Stream".
 
 **Signature**
 
 ```ts
-export * as Stream from './Stream'
+export * as Stream from 'effect/Stream'
 ```
 
 Added in v2.0.0
 
-## From "./StreamEmit"
+## From "effect/StreamEmit"
 
-Re-exports all named exports from the "./StreamEmit" module as "StreamEmit".
+Re-exports all named exports from the "effect/StreamEmit" module as "StreamEmit".
 
 **Signature**
 
 ```ts
-export * as StreamEmit from './StreamEmit'
+export * as StreamEmit from 'effect/StreamEmit'
 ```
 
 Added in v2.0.0
 
-## From "./StreamHaltStrategy"
+## From "effect/StreamHaltStrategy"
 
-Re-exports all named exports from the "./StreamHaltStrategy" module as "StreamHaltStrategy".
+Re-exports all named exports from the "effect/StreamHaltStrategy" module as "StreamHaltStrategy".
 
 **Signature**
 
 ```ts
-export * as StreamHaltStrategy from './StreamHaltStrategy'
+export * as StreamHaltStrategy from 'effect/StreamHaltStrategy'
 ```
 
 Added in v2.0.0
 
-## From "./String"
+## From "effect/String"
 
 This module provides utility functions and type class instances for working with the `string` type in TypeScript.
 It includes functions for basic string manipulation, as well as type class instances for
@@ -1551,36 +1551,36 @@ It includes functions for basic string manipulation, as well as type class insta
 **Signature**
 
 ```ts
-export * as String from './String'
+export * as String from 'effect/String'
 ```
 
 Added in v2.0.0
 
-## From "./Struct"
+## From "effect/Struct"
 
 This module provides utility functions for working with structs in TypeScript.
 
 **Signature**
 
 ```ts
-export * as Struct from './Struct'
+export * as Struct from 'effect/Struct'
 ```
 
 Added in v2.0.0
 
-## From "./SubscriptionRef"
+## From "effect/SubscriptionRef"
 
-Re-exports all named exports from the "./SubscriptionRef" module as "SubscriptionRef".
+Re-exports all named exports from the "effect/SubscriptionRef" module as "SubscriptionRef".
 
 **Signature**
 
 ```ts
-export * as SubscriptionRef from './SubscriptionRef'
+export * as SubscriptionRef from 'effect/SubscriptionRef'
 ```
 
 Added in v2.0.0
 
-## From "./Supervisor"
+## From "effect/Supervisor"
 
 A `Supervisor<T>` is allowed to supervise the launching and termination of
 fibers, producing some visible value of type `T` from the supervision.
@@ -1588,343 +1588,343 @@ fibers, producing some visible value of type `T` from the supervision.
 **Signature**
 
 ```ts
-export * as Supervisor from './Supervisor'
+export * as Supervisor from 'effect/Supervisor'
 ```
 
 Added in v2.0.0
 
-## From "./Symbol"
+## From "effect/Symbol"
 
-Re-exports all named exports from the "./Symbol" module as "Symbol".
+Re-exports all named exports from the "effect/Symbol" module as "Symbol".
 
 **Signature**
 
 ```ts
-export * as Symbol from './Symbol'
+export * as Symbol from 'effect/Symbol'
 ```
 
 Added in v2.0.0
 
-## From "./SynchronizedRef"
+## From "effect/SynchronizedRef"
 
-Re-exports all named exports from the "./SynchronizedRef" module as "SynchronizedRef".
+Re-exports all named exports from the "effect/SynchronizedRef" module as "SynchronizedRef".
 
 **Signature**
 
 ```ts
-export * as SynchronizedRef from './SynchronizedRef'
+export * as SynchronizedRef from 'effect/SynchronizedRef'
 ```
 
 Added in v2.0.0
 
-## From "./TArray"
+## From "effect/TArray"
 
-Re-exports all named exports from the "./TArray" module as "TArray".
+Re-exports all named exports from the "effect/TArray" module as "TArray".
 
 **Signature**
 
 ```ts
-export * as TArray from './TArray'
+export * as TArray from 'effect/TArray'
 ```
 
 Added in v2.0.0
 
-## From "./TDeferred"
+## From "effect/TDeferred"
 
-Re-exports all named exports from the "./TDeferred" module as "TDeferred".
+Re-exports all named exports from the "effect/TDeferred" module as "TDeferred".
 
 **Signature**
 
 ```ts
-export * as TDeferred from './TDeferred'
+export * as TDeferred from 'effect/TDeferred'
 ```
 
 Added in v2.0.0
 
-## From "./THub"
+## From "effect/TMap"
 
-Re-exports all named exports from the "./THub" module as "THub".
+Re-exports all named exports from the "effect/TMap" module as "TMap".
 
 **Signature**
 
 ```ts
-export * as THub from './THub'
+export * as TMap from 'effect/TMap'
 ```
 
 Added in v2.0.0
 
-## From "./TMap"
+## From "effect/TPriorityQueue"
 
-Re-exports all named exports from the "./TMap" module as "TMap".
+Re-exports all named exports from the "effect/TPriorityQueue" module as "TPriorityQueue".
 
 **Signature**
 
 ```ts
-export * as TMap from './TMap'
+export * as TPriorityQueue from 'effect/TPriorityQueue'
 ```
 
 Added in v2.0.0
 
-## From "./TPriorityQueue"
+## From "effect/TPubSub"
 
-Re-exports all named exports from the "./TPriorityQueue" module as "TPriorityQueue".
+Re-exports all named exports from the "effect/TPubSub" module as "TPubSub".
 
 **Signature**
 
 ```ts
-export * as TPriorityQueue from './TPriorityQueue'
+export * as TPubSub from 'effect/TPubSub'
 ```
 
 Added in v2.0.0
 
-## From "./TQueue"
+## From "effect/TQueue"
 
-Re-exports all named exports from the "./TQueue" module as "TQueue".
+Re-exports all named exports from the "effect/TQueue" module as "TQueue".
 
 **Signature**
 
 ```ts
-export * as TQueue from './TQueue'
+export * as TQueue from 'effect/TQueue'
 ```
 
 Added in v2.0.0
 
-## From "./TRandom"
+## From "effect/TRandom"
 
-Re-exports all named exports from the "./TRandom" module as "TRandom".
+Re-exports all named exports from the "effect/TRandom" module as "TRandom".
 
 **Signature**
 
 ```ts
-export * as TRandom from './TRandom'
+export * as TRandom from 'effect/TRandom'
 ```
 
 Added in v2.0.0
 
-## From "./TReentrantLock"
+## From "effect/TReentrantLock"
 
-Re-exports all named exports from the "./TReentrantLock" module as "TReentrantLock".
+Re-exports all named exports from the "effect/TReentrantLock" module as "TReentrantLock".
 
 **Signature**
 
 ```ts
-export * as TReentrantLock from './TReentrantLock'
+export * as TReentrantLock from 'effect/TReentrantLock'
 ```
 
 Added in v2.0.0
 
-## From "./TRef"
+## From "effect/TRef"
 
-Re-exports all named exports from the "./TRef" module as "TRef".
+Re-exports all named exports from the "effect/TRef" module as "TRef".
 
 **Signature**
 
 ```ts
-export * as TRef from './TRef'
+export * as TRef from 'effect/TRef'
 ```
 
 Added in v2.0.0
 
-## From "./TSemaphore"
+## From "effect/TSemaphore"
 
-Re-exports all named exports from the "./TSemaphore" module as "TSemaphore".
+Re-exports all named exports from the "effect/TSemaphore" module as "TSemaphore".
 
 **Signature**
 
 ```ts
-export * as TSemaphore from './TSemaphore'
+export * as TSemaphore from 'effect/TSemaphore'
 ```
 
 Added in v2.0.0
 
-## From "./TSet"
+## From "effect/TSet"
 
-Re-exports all named exports from the "./TSet" module as "TSet".
+Re-exports all named exports from the "effect/TSet" module as "TSet".
 
 **Signature**
 
 ```ts
-export * as TSet from './TSet'
+export * as TSet from 'effect/TSet'
 ```
 
 Added in v2.0.0
 
-## From "./Take"
+## From "effect/Take"
 
-Re-exports all named exports from the "./Take" module as "Take".
+Re-exports all named exports from the "effect/Take" module as "Take".
 
 **Signature**
 
 ```ts
-export * as Take from './Take'
+export * as Take from 'effect/Take'
 ```
 
 Added in v2.0.0
 
-## From "./TestAnnotation"
+## From "effect/TestAnnotation"
 
-Re-exports all named exports from the "./TestAnnotation" module as "TestAnnotation".
+Re-exports all named exports from the "effect/TestAnnotation" module as "TestAnnotation".
 
 **Signature**
 
 ```ts
-export * as TestAnnotation from './TestAnnotation'
+export * as TestAnnotation from 'effect/TestAnnotation'
 ```
 
 Added in v2.0.0
 
-## From "./TestAnnotationMap"
+## From "effect/TestAnnotationMap"
 
-Re-exports all named exports from the "./TestAnnotationMap" module as "TestAnnotationMap".
+Re-exports all named exports from the "effect/TestAnnotationMap" module as "TestAnnotationMap".
 
 **Signature**
 
 ```ts
-export * as TestAnnotationMap from './TestAnnotationMap'
+export * as TestAnnotationMap from 'effect/TestAnnotationMap'
 ```
 
 Added in v2.0.0
 
-## From "./TestAnnotations"
+## From "effect/TestAnnotations"
 
-Re-exports all named exports from the "./TestAnnotations" module as "TestAnnotations".
+Re-exports all named exports from the "effect/TestAnnotations" module as "TestAnnotations".
 
 **Signature**
 
 ```ts
-export * as TestAnnotations from './TestAnnotations'
+export * as TestAnnotations from 'effect/TestAnnotations'
 ```
 
 Added in v2.0.0
 
-## From "./TestClock"
+## From "effect/TestClock"
 
-Re-exports all named exports from the "./TestClock" module as "TestClock".
+Re-exports all named exports from the "effect/TestClock" module as "TestClock".
 
 **Signature**
 
 ```ts
-export * as TestClock from './TestClock'
+export * as TestClock from 'effect/TestClock'
 ```
 
 Added in v2.0.0
 
-## From "./TestConfig"
+## From "effect/TestConfig"
 
-Re-exports all named exports from the "./TestConfig" module as "TestConfig".
+Re-exports all named exports from the "effect/TestConfig" module as "TestConfig".
 
 **Signature**
 
 ```ts
-export * as TestConfig from './TestConfig'
+export * as TestConfig from 'effect/TestConfig'
 ```
 
 Added in v2.0.0
 
-## From "./TestContext"
+## From "effect/TestContext"
 
-Re-exports all named exports from the "./TestContext" module as "TestContext".
+Re-exports all named exports from the "effect/TestContext" module as "TestContext".
 
 **Signature**
 
 ```ts
-export * as TestContext from './TestContext'
+export * as TestContext from 'effect/TestContext'
 ```
 
 Added in v2.0.0
 
-## From "./TestLive"
+## From "effect/TestLive"
 
-Re-exports all named exports from the "./TestLive" module as "TestLive".
+Re-exports all named exports from the "effect/TestLive" module as "TestLive".
 
 **Signature**
 
 ```ts
-export * as TestLive from './TestLive'
+export * as TestLive from 'effect/TestLive'
 ```
 
 Added in v2.0.0
 
-## From "./TestServices"
+## From "effect/TestServices"
 
-Re-exports all named exports from the "./TestServices" module as "TestServices".
+Re-exports all named exports from the "effect/TestServices" module as "TestServices".
 
 **Signature**
 
 ```ts
-export * as TestServices from './TestServices'
+export * as TestServices from 'effect/TestServices'
 ```
 
 Added in v2.0.0
 
-## From "./TestSized"
+## From "effect/TestSized"
 
-Re-exports all named exports from the "./TestSized" module as "TestSized".
+Re-exports all named exports from the "effect/TestSized" module as "TestSized".
 
 **Signature**
 
 ```ts
-export * as TestSized from './TestSized'
+export * as TestSized from 'effect/TestSized'
 ```
 
 Added in v2.0.0
 
-## From "./Tracer"
+## From "effect/Tracer"
 
-Re-exports all named exports from the "./Tracer" module as "Tracer".
+Re-exports all named exports from the "effect/Tracer" module as "Tracer".
 
 **Signature**
 
 ```ts
-export * as Tracer from './Tracer'
+export * as Tracer from 'effect/Tracer'
 ```
 
 Added in v2.0.0
 
-## From "./Tuple"
+## From "effect/Tuple"
 
 This module provides utility functions for working with tuples in TypeScript.
 
 **Signature**
 
 ```ts
-export * as Tuple from './Tuple'
+export * as Tuple from 'effect/Tuple'
 ```
 
 Added in v2.0.0
 
-## From "./Types"
+## From "effect/Types"
 
 A collection of types that are commonly used types.
 
 **Signature**
 
 ```ts
-export * as Types from './Types'
+export * as Types from 'effect/Types'
 ```
 
 Added in v2.0.0
 
-## From "./Unify"
+## From "effect/Unify"
 
-Re-exports all named exports from the "./Unify" module as "Unify".
+Re-exports all named exports from the "effect/Unify" module as "Unify".
 
 **Signature**
 
 ```ts
-export * as Unify from './Unify'
+export * as Unify from 'effect/Unify'
 ```
 
 Added in v2.0.0
 
-## From "./Utils"
+## From "effect/Utils"
 
-Re-exports all named exports from the "./Utils" module as "Utils".
+Re-exports all named exports from the "effect/Utils" module as "Utils".
 
 **Signature**
 
 ```ts
-export * as Utils from './Utils'
+export * as Utils from 'effect/Utils'
 ```
 
 Added in v2.0.0
@@ -1936,7 +1936,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const absurd: <A>(_: never) => A
+export declare const absurd: any
 ```
 
 Added in v2.0.0
@@ -1946,7 +1946,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const flow: typeof flow
+export declare const flow: any
 ```
 
 Added in v2.0.0
@@ -1956,7 +1956,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const hole: <T>() => T
+export declare const hole: any
 ```
 
 Added in v2.0.0
@@ -1966,7 +1966,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const identity: <A>(a: A) => A
+export declare const identity: any
 ```
 
 Added in v2.0.0
@@ -1976,7 +1976,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const pipe: typeof pipe
+export declare const pipe: any
 ```
 
 Added in v2.0.0
@@ -1986,7 +1986,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeCoerce: <A, B>(a: A) => B
+export declare const unsafeCoerce: any
 ```
 
 Added in v2.0.0
