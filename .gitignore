@@ -1,7 +1,6 @@
 coverage/
 *.tsbuildinfo
 node_modules/
-yarn-error.log
 .ultra.cache.json
 .DS_Store
 tmp/
