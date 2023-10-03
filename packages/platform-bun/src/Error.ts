@@ -10,11 +10,6 @@ export {
   BadArgument,
   /**
    * @since 1.0.0
-   * @category error
-   */
-  PlatformError,
-  /**
-   * @since 1.0.0
    * @category type id
    */
   PlatformErrorTypeId,
@@ -22,7 +17,15 @@ export {
    * @since 1.0.0
    * @category error
    */
-  SystemError,
+  SystemError
+} from "@effect/platform/Error"
+
+export type {
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  PlatformError,
   /**
    * @since 1.0.0
    * @category model

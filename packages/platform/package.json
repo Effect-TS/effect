@@ -40,11 +40,11 @@
   "devDependencies": {
     "@effect/schema": "^0.39.2",
     "@types/path-browserify": "^1.0.0",
-    "effect": "2.0.0-next.42"
+    "effect": "2.0.0-next.44"
   },
   "peerDependencies": {
     "@effect/schema": "^0.39.1",
-    "effect": "^2.0.0-next.42"
+    "effect": "^2.0.0-next.44"
   },
   "files": [
     "src",
