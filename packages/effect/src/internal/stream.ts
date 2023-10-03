@@ -2837,10 +2837,13 @@ export const fromChannel = <R, E, A>(
 export const toChannel = <R, E, A>(
   stream: Stream.Stream<R, E, A>
 ): Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown> => {
-  if (Effect.isEffect(stream)) {
+  if ("channel" in stream) {
+    return (stream as StreamImpl<R, E, A>).channel
+  } else if (Effect.isEffect(stream)) {
     return toChannel(fromEffect(stream)) as any
+  } else {
+    throw new TypeError(`Expected a Stream.`)
   }
-  return (stream as StreamImpl<R, E, A>).channel
 }
 
 /** @internal */
