@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.19.9
+
+### Patch Changes
+
+- [#181](https://github.com/Effect-TS/platform/pull/181) [`d0d5458`](https://github.com/Effect-TS/platform/commit/d0d545869baeb91d594804ab759713f424eb7a11) Thanks [@tim-smart](https://github.com/tim-smart)! - fix error type exports
+
 ## 0.19.8
 
 ### Patch Changes
