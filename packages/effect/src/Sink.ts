@@ -13,11 +13,11 @@ import type * as Exit from "./Exit"
 import type { LazyArg } from "./Function"
 import type * as HashMap from "./HashMap"
 import type * as HashSet from "./HashSet"
-import type * as Hub from "./Hub"
 import * as internal from "./internal/sink"
 import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
+import type * as PubSub from "./PubSub"
 import type * as Queue from "./Queue"
 import type * as Scope from "./Scope"
 import type * as Unify from "./Unify"
@@ -989,16 +989,16 @@ export const fromEffect: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => Sink<R, E,
   internal.fromEffect
 
 /**
- * Create a sink which publishes each element to the specified hub.
+ * Create a sink which publishes each element to the specified `PubSub`.
  *
- * @param shutdown If `true`, the hub will be shutdown after the sink is evaluated (defaults to `false`)
+ * @param shutdown If `true`, the `PubSub` will be shutdown after the sink is evaluated (defaults to `false`)
  * @since 2.0.0
  * @category constructors
  */
-export const fromHub: <In>(
-  hub: Hub.Hub<In>,
+export const fromPubSub: <In>(
+  pubsub: PubSub.PubSub<In>,
   options?: { readonly shutdown?: boolean }
-) => Sink<never, never, In, never, void> = internal.fromHub
+) => Sink<never, never, In, never, void> = internal.fromPubSub
 
 /**
  * Creates a sink from a chunk processing function.

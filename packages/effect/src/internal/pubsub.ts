@@ -2,21 +2,21 @@ import * as Chunk from "../Chunk"
 import type * as Deferred from "../Deferred"
 import type * as Effect from "../Effect"
 import { dual, pipe } from "../Function"
-import type * as Hub from "../Hub"
-import * as cause from "../internal/cause"
-import * as core from "../internal/core"
-import * as executionStrategy from "../internal/executionStrategy"
-import * as fiberRuntime from "../internal/fiberRuntime"
-import * as queue from "../internal/queue"
 import * as MutableQueue from "../MutableQueue"
 import * as MutableRef from "../MutableRef"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
+import type * as PubSub from "../PubSub"
 import type * as Queue from "../Queue"
 import type * as Scope from "../Scope"
+import * as cause from "./cause"
+import * as core from "./core"
+import * as executionStrategy from "./executionStrategy"
+import * as fiberRuntime from "./fiberRuntime"
+import * as queue from "./queue"
 
 /** @internal */
-export interface AtomicHub<A> {
+export interface AtomicPubSub<A> {
   readonly capacity: number
   isEmpty(): boolean
   isFull(): boolean
@@ -70,97 +70,98 @@ const removeSubscribers = <A>(
 }
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number): Effect.Effect<never, never, Hub.Hub<A>> =>
+export const bounded = <A>(requestedCapacity: number): Effect.Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
-    core.sync(() => makeBoundedHub<A>(requestedCapacity)),
-    core.flatMap((atomicHub) => makeHub(atomicHub, new BackPressureStrategy()))
+    core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new BackPressureStrategy()))
   )
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number): Effect.Effect<never, never, Hub.Hub<A>> =>
+export const dropping = <A>(requestedCapacity: number): Effect.Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
-    core.sync(() => makeBoundedHub<A>(requestedCapacity)),
-    core.flatMap((atomicHub) => makeHub(atomicHub, new DroppingStrategy()))
+    core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
   )
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number): Effect.Effect<never, never, Hub.Hub<A>> =>
+export const sliding = <A>(requestedCapacity: number): Effect.Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
-    core.sync(() => makeBoundedHub<A>(requestedCapacity)),
-    core.flatMap((atomicHub) => makeHub(atomicHub, new SlidingStrategy()))
+    core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new SlidingStrategy()))
   )
 
 /** @internal */
-export const unbounded = <A>(): Effect.Effect<never, never, Hub.Hub<A>> =>
+export const unbounded = <A>(): Effect.Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
-    core.sync(() => makeUnboundedHub<A>()),
-    core.flatMap((atomicHub) => makeHub(atomicHub, new DroppingStrategy()))
+    core.sync(() => makeUnboundedPubSub<A>()),
+    core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
   )
 
 /** @internal */
-export const capacity = <A>(self: Hub.Hub<A>): number => self.capacity()
+export const capacity = <A>(self: PubSub.PubSub<A>): number => self.capacity()
 
 /** @internal */
-export const size = <A>(self: Hub.Hub<A>): Effect.Effect<never, never, number> => self.size()
+export const size = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, number> => self.size()
 
 /** @internal */
-export const isFull = <A>(self: Hub.Hub<A>): Effect.Effect<never, never, boolean> => self.isFull()
+export const isFull = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isFull()
 
 /** @internal */
-export const isEmpty = <A>(self: Hub.Hub<A>): Effect.Effect<never, never, boolean> => self.isEmpty()
+export const isEmpty = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isEmpty()
 
 /** @internal */
-export const shutdown = <A>(self: Hub.Hub<A>): Effect.Effect<never, never, void> => self.shutdown()
+export const shutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.shutdown()
 
 /** @internal */
-export const isShutdown = <A>(self: Hub.Hub<A>): Effect.Effect<never, never, boolean> => self.isShutdown()
+export const isShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isShutdown()
 
 /** @internal */
-export const awaitShutdown = <A>(self: Hub.Hub<A>): Effect.Effect<never, never, void> => self.awaitShutdown()
+export const awaitShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.awaitShutdown()
 
 /** @internal */
 export const publish = dual<
-  <A>(value: A) => (self: Hub.Hub<A>) => Effect.Effect<never, never, boolean>,
-  <A>(self: Hub.Hub<A>, value: A) => Effect.Effect<never, never, boolean>
+  <A>(value: A) => (self: PubSub.PubSub<A>) => Effect.Effect<never, never, boolean>,
+  <A>(self: PubSub.PubSub<A>, value: A) => Effect.Effect<never, never, boolean>
 >(2, (self, value) => self.publish(value))
 
 /** @internal */
 export const publishAll = dual<
-  <A>(elements: Iterable<A>) => (self: Hub.Hub<A>) => Effect.Effect<never, never, boolean>,
-  <A>(self: Hub.Hub<A>, elements: Iterable<A>) => Effect.Effect<never, never, boolean>
+  <A>(elements: Iterable<A>) => (self: PubSub.PubSub<A>) => Effect.Effect<never, never, boolean>,
+  <A>(self: PubSub.PubSub<A>, elements: Iterable<A>) => Effect.Effect<never, never, boolean>
 >(2, (self, elements) => self.publishAll(elements))
 
 /** @internal */
-export const subscribe = <A>(self: Hub.Hub<A>): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> => self.subscribe()
+export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> =>
+  self.subscribe()
 
 /** @internal */
-const makeBoundedHub = <A>(requestedCapacity: number): AtomicHub<A> => {
+const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
   ensureCapacity(requestedCapacity)
   if (requestedCapacity === 1) {
-    return new BoundedHubSingle()
+    return new BoundedPubSubSingle()
   } else if (nextPow2(requestedCapacity) === requestedCapacity) {
-    return new BoundedHubPow2(requestedCapacity)
+    return new BoundedPubSubPow2(requestedCapacity)
   } else {
-    return new BoundedHubArb(requestedCapacity)
+    return new BoundedPubSubArb(requestedCapacity)
   }
 }
 
 /** @internal */
-const makeUnboundedHub = <A>(): AtomicHub<A> => {
-  return new UnboundedHub()
+const makeUnboundedPubSub = <A>(): AtomicPubSub<A> => {
+  return new UnboundedPubSub()
 }
 
 /** @internal */
 const makeSubscription = <A>(
-  hub: AtomicHub<A>,
+  pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
-  strategy: HubStrategy<A>
+  strategy: PubSubStrategy<A>
 ): Effect.Effect<never, never, Queue.Dequeue<A>> =>
   core.map(core.deferredMake<never, void>(), (deferred) =>
     unsafeMakeSubscription(
-      hub,
+      pubsub,
       subscribers,
-      hub.subscribe(),
+      pubsub.subscribe(),
       MutableQueue.unbounded<Deferred.Deferred<never, A>>(),
       deferred,
       MutableRef.make(false),
@@ -169,16 +170,16 @@ const makeSubscription = <A>(
 
 /** @internal */
 export const unsafeMakeSubscription = <A>(
-  hub: AtomicHub<A>,
+  pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   subscription: Subscription<A>,
   pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
   shutdownHook: Deferred.Deferred<never, void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
-  strategy: HubStrategy<A>
+  strategy: PubSubStrategy<A>
 ): Queue.Dequeue<A> => {
   return new SubscriptionImpl(
-    hub,
+    pubsub,
     subscribers,
     subscription,
     pollers,
@@ -189,7 +190,7 @@ export const unsafeMakeSubscription = <A>(
 }
 
 /** @internal */
-class BoundedHubArb<A> implements AtomicHub<A> {
+class BoundedPubSubArb<A> implements AtomicPubSub<A> {
   array: Array<A>
   publisherIndex = 0
   subscribers: Array<number>
@@ -234,12 +235,12 @@ class BoundedHubArb<A> implements AtomicHub<A> {
     const n = chunk.length
     const size = this.publisherIndex - this.subscribersIndex
     const available = this.capacity - size
-    const forHub = Math.min(n, available)
-    if (forHub === 0) {
+    const forPubSub = Math.min(n, available)
+    if (forPubSub === 0) {
       return chunk
     }
     let iteratorIndex = 0
-    const publishAllIndex = this.publisherIndex + forHub
+    const publishAllIndex = this.publisherIndex + forPubSub
     while (this.publisherIndex !== publishAllIndex) {
       const a = Chunk.unsafeGet(chunk, iteratorIndex++)
       const index = this.publisherIndex % this.capacity
@@ -261,13 +262,13 @@ class BoundedHubArb<A> implements AtomicHub<A> {
 
   subscribe(): Subscription<A> {
     this.subscriberCount += 1
-    return new BoundedHubArbSubscription(this, this.publisherIndex, false)
+    return new BoundedPubSubArbSubscription(this, this.publisherIndex, false)
   }
 }
 
-class BoundedHubArbSubscription<A> implements Subscription<A> {
+class BoundedPubSubArbSubscription<A> implements Subscription<A> {
   constructor(
-    private self: BoundedHubArb<A>,
+    private self: BoundedPubSubArb<A>,
     private subscriberIndex: number,
     private unsubscribed: boolean
   ) {
@@ -353,7 +354,7 @@ class BoundedHubArbSubscription<A> implements Subscription<A> {
 }
 
 /** @internal */
-class BoundedHubPow2<A> implements AtomicHub<A> {
+class BoundedPubSubPow2<A> implements AtomicPubSub<A> {
   array: Array<A>
   mask: number
   publisherIndex = 0
@@ -400,12 +401,12 @@ class BoundedHubPow2<A> implements AtomicHub<A> {
     const n = chunk.length
     const size = this.publisherIndex - this.subscribersIndex
     const available = this.capacity - size
-    const forHub = Math.min(n, available)
-    if (forHub === 0) {
+    const forPubSub = Math.min(n, available)
+    if (forPubSub === 0) {
       return chunk
     }
     let iteratorIndex = 0
-    const publishAllIndex = this.publisherIndex + forHub
+    const publishAllIndex = this.publisherIndex + forPubSub
     while (this.publisherIndex !== publishAllIndex) {
       const elem = Chunk.unsafeGet(chunk, iteratorIndex++)
       const index = this.publisherIndex & this.mask
@@ -427,14 +428,14 @@ class BoundedHubPow2<A> implements AtomicHub<A> {
 
   subscribe(): Subscription<A> {
     this.subscriberCount += 1
-    return new BoundedHubPow2Subscription(this, this.publisherIndex, false)
+    return new BoundedPubSubPow2Subscription(this, this.publisherIndex, false)
   }
 }
 
 /** @internal */
-class BoundedHubPow2Subscription<A> implements Subscription<A> {
+class BoundedPubSubPow2Subscription<A> implements Subscription<A> {
   constructor(
-    private self: BoundedHubPow2<A>,
+    private self: BoundedPubSubPow2<A>,
     private subscriberIndex: number,
     private unsubscribed: boolean
   ) {
@@ -519,7 +520,7 @@ class BoundedHubPow2Subscription<A> implements Subscription<A> {
 }
 
 /** @internal */
-class BoundedHubSingle<A> implements AtomicHub<A> {
+class BoundedPubSubSingle<A> implements AtomicPubSub<A> {
   publisherIndex = 0
   subscriberCount = 0
   subscribers = 0
@@ -576,14 +577,14 @@ class BoundedHubSingle<A> implements AtomicHub<A> {
 
   subscribe(): Subscription<A> {
     this.subscriberCount += 1
-    return new BoundedHubSingleSubscription(this, this.publisherIndex, false)
+    return new BoundedPubSubSingleSubscription(this, this.publisherIndex, false)
   }
 }
 
 /** @internal */
-class BoundedHubSingleSubscription<A> implements Subscription<A> {
+class BoundedPubSubSingleSubscription<A> implements Subscription<A> {
   constructor(
-    private self: BoundedHubSingle<A>,
+    private self: BoundedPubSubSingle<A>,
     private subscriberIndex: number,
     private unsubscribed: boolean
   ) {
@@ -652,7 +653,7 @@ class Node<A> {
 }
 
 /** @internal */
-class UnboundedHub<A> implements AtomicHub<A> {
+class UnboundedPubSub<A> implements AtomicPubSub<A> {
   publisherHead = new Node<A>(null, 0, null)
   publisherIndex = 0
   publisherTail: Node<A>
@@ -703,7 +704,7 @@ class UnboundedHub<A> implements AtomicHub<A> {
 
   subscribe(): Subscription<A> {
     this.publisherTail.subscribers += 1
-    return new UnboundedHubSubscription(
+    return new UnboundedPubSubSubscription(
       this,
       this.publisherTail,
       this.publisherIndex,
@@ -713,9 +714,9 @@ class UnboundedHub<A> implements AtomicHub<A> {
 }
 
 /** @internal */
-class UnboundedHubSubscription<A> implements Subscription<A> {
+class UnboundedPubSubSubscription<A> implements Subscription<A> {
   constructor(
-    private self: UnboundedHub<A>,
+    private self: UnboundedPubSub<A>,
     private subscriberHead: Node<A>,
     private subscriberIndex: number,
     private unsubscribed: boolean
@@ -819,13 +820,13 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
   [queue.DequeueTypeId] = queue.dequeueVariance
 
   constructor(
-    readonly hub: AtomicHub<A>,
+    readonly pubsub: AtomicPubSub<A>,
     readonly subscribers: Subscribers<A>,
     readonly subscription: Subscription<A>,
     readonly pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
     readonly shutdownHook: Deferred.Deferred<never, void>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
-    readonly strategy: HubStrategy<A>
+    readonly strategy: PubSubStrategy<A>
   ) {
   }
 
@@ -834,7 +835,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
   }
 
   capacity(): number {
-    return this.hub.capacity
+    return this.pubsub.capacity
   }
 
   isActive(): boolean {
@@ -877,7 +878,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
           core.zipRight(core.sync(() => {
             this.subscribers.delete(this.subscription)
             this.subscription.unsubscribe()
-            this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+            this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
           })),
           core.whenEffect(core.deferredSucceed(this.shutdownHook, void 0)),
           core.asUnit
@@ -909,7 +910,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
             pipe(this.pollers, MutableQueue.offer(deferred))
             pipe(this.subscribers, addSubscribers(this.subscription, this.pollers))
             this.strategy.unsafeCompletePollers(
-              this.hub,
+              this.pubsub,
               this.subscribers,
               this.subscription,
               this.pollers
@@ -919,7 +920,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
           core.onInterrupt(() => core.sync(() => unsafeRemove(this.pollers, deferred)))
         )
       } else {
-        this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+        this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
         return core.succeed(message)
       }
     })
@@ -933,7 +934,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
       const as = MutableQueue.isEmpty(this.pollers)
         ? unsafePollAllSubscription(this.subscription)
         : Chunk.empty()
-      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+      this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
       return core.succeed(as)
     })
   }
@@ -946,7 +947,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
       const as = MutableQueue.isEmpty(this.pollers)
         ? unsafePollN(this.subscription, max)
         : Chunk.empty()
-      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+      this.strategy.unsafeOnPubSubEmptySpace(this.pubsub, this.subscribers)
       return core.succeed(as)
     })
   }
@@ -992,28 +993,28 @@ const takeRemainderLoop = <A>(
 }
 
 /** @internal */
-class HubImpl<A> implements Hub.Hub<A> {
+class PubSubImpl<A> implements PubSub.PubSub<A> {
   readonly [queue.EnqueueTypeId] = queue.enqueueVariance
 
   constructor(
-    readonly hub: AtomicHub<A>,
+    readonly pubsub: AtomicPubSub<A>,
     readonly subscribers: Subscribers<A>,
     readonly scope: Scope.Scope.Closeable,
     readonly shutdownHook: Deferred.Deferred<never, void>,
     readonly shutdownFlag: MutableRef.MutableRef<boolean>,
-    readonly strategy: HubStrategy<A>
+    readonly strategy: PubSubStrategy<A>
   ) {
   }
 
   capacity(): number {
-    return this.hub.capacity
+    return this.pubsub.capacity
   }
 
   size(): Effect.Effect<never, never, number> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag) ?
         core.interrupt :
-        core.sync(() => this.hub.size())
+        core.sync(() => this.pubsub.size())
     )
   }
 
@@ -1021,7 +1022,7 @@ class HubImpl<A> implements Hub.Hub<A> {
     if (MutableRef.get(this.shutdownFlag)) {
       return Option.none()
     }
-    return Option.some(this.hub.size())
+    return Option.some(this.pubsub.size())
   }
 
   isFull(): Effect.Effect<never, never, boolean> {
@@ -1058,13 +1059,13 @@ class HubImpl<A> implements Hub.Hub<A> {
         return core.interrupt
       }
 
-      if ((this.hub as AtomicHub<unknown>).publish(value)) {
-        this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
+      if ((this.pubsub as AtomicPubSub<unknown>).publish(value)) {
+        this.strategy.unsafeCompleteSubscribers(this.pubsub, this.subscribers)
         return core.succeed(true)
       }
 
       return this.strategy.handleSurplus(
-        this.hub,
+        this.pubsub,
         this.subscribers,
         Chunk.of(value),
         this.shutdownFlag
@@ -1081,8 +1082,8 @@ class HubImpl<A> implements Hub.Hub<A> {
       return false
     }
 
-    if ((this.hub as AtomicHub<unknown>).publish(value)) {
-      this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
+    if ((this.pubsub as AtomicPubSub<unknown>).publish(value)) {
+      this.strategy.unsafeCompleteSubscribers(this.pubsub, this.subscribers)
       return true
     }
 
@@ -1094,13 +1095,13 @@ class HubImpl<A> implements Hub.Hub<A> {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
       }
-      const surplus = unsafePublishAll(this.hub, elements)
-      this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
+      const surplus = unsafePublishAll(this.pubsub, elements)
+      this.strategy.unsafeCompleteSubscribers(this.pubsub, this.subscribers)
       if (Chunk.isEmpty(surplus)) {
         return core.succeed(true)
       }
       return this.strategy.handleSurplus(
-        this.hub,
+        this.pubsub,
         this.subscribers,
         surplus,
         this.shutdownFlag
@@ -1112,7 +1113,7 @@ class HubImpl<A> implements Hub.Hub<A> {
     const acquire = core.tap(
       fiberRuntime.all([
         this.scope.fork(executionStrategy.sequential),
-        makeSubscription(this.hub, this.subscribers, this.strategy)
+        makeSubscription(this.pubsub, this.subscribers, this.strategy)
       ]),
       (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown())
     )
@@ -1136,16 +1137,16 @@ class HubImpl<A> implements Hub.Hub<A> {
 }
 
 /** @internal */
-export const makeHub = <A>(
-  hub: AtomicHub<A>,
-  strategy: HubStrategy<A>
-): Effect.Effect<never, never, Hub.Hub<A>> =>
+export const makePubSub = <A>(
+  pubsub: AtomicPubSub<A>,
+  strategy: PubSubStrategy<A>
+): Effect.Effect<never, never, PubSub.PubSub<A>> =>
   core.flatMap(
     fiberRuntime.scopeMake(),
     (scope) =>
       core.map(core.deferredMake<never, void>(), (deferred) =>
-        unsafeMakeHub(
-          hub,
+        unsafeMakePubSub(
+          pubsub,
           new Map(),
           scope,
           deferred,
@@ -1155,15 +1156,15 @@ export const makeHub = <A>(
   )
 
 /** @internal */
-export const unsafeMakeHub = <A>(
-  hub: AtomicHub<A>,
+export const unsafeMakePubSub = <A>(
+  pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   scope: Scope.Scope.Closeable,
   shutdownHook: Deferred.Deferred<never, void>,
   shutdownFlag: MutableRef.MutableRef<boolean>,
-  strategy: HubStrategy<A>
-): Hub.Hub<A> => {
-  return new HubImpl(hub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
+  strategy: PubSubStrategy<A>
+): PubSub.PubSub<A> => {
+  return new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
 }
 
 /** @internal */
@@ -1175,7 +1176,7 @@ const nextPow2 = (n: number): number => {
 /** @internal */
 const ensureCapacity = (capacity: number): void => {
   if (capacity <= 0) {
-    throw cause.InvalidHubCapacityException(`Cannot construct Hub with capacity of ${capacity}`)
+    throw cause.InvalidPubSubCapacityException(`Cannot construct PubSub with capacity of ${capacity}`)
   }
 }
 
@@ -1205,8 +1206,8 @@ const unsafePollN = <A>(subscription: Subscription<A>, max: number): Chunk.Chunk
 }
 
 /** @internal */
-const unsafePublishAll = <A>(hub: AtomicHub<A>, as: Iterable<A>): Chunk.Chunk<A> => {
-  return hub.publishAll(as)
+const unsafePublishAll = <A>(pubsub: AtomicPubSub<A>, as: Iterable<A>): Chunk.Chunk<A> => {
+  return pubsub.publishAll(as)
 }
 
 /** @internal */
@@ -1218,16 +1219,16 @@ const unsafeRemove = <A>(queue: MutableQueue.MutableQueue<A>, value: A): void =>
 }
 
 // -----------------------------------------------------------------------------
-// Hub.Strategy
+// PubSub.Strategy
 // -----------------------------------------------------------------------------
 
 /**
- * A `HubStrategy<A>` describes the protocol for how publishers and subscribers
- * will communicate with each other through the hub.
+ * A `PubSubStrategy<A>` describes the protocol for how publishers and subscribers
+ * will communicate with each other through the `PubSub`.
  *
  * @internal
  */
-export interface HubStrategy<A> {
+export interface PubSubStrategy<A> {
   /**
    * Describes any finalization logic associated with this strategy.
    */
@@ -1235,10 +1236,10 @@ export interface HubStrategy<A> {
 
   /**
    * Describes how publishers should signal to subscribers that they are
-   * waiting for space to become available in the hub.
+   * waiting for space to become available in the `PubSub`.
    */
   handleSurplus(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>
@@ -1246,20 +1247,20 @@ export interface HubStrategy<A> {
 
   /**
    * Describes how subscribers should signal to publishers waiting for space
-   * to become available in the hub that space may be available.
+   * to become available in the `PubSub` that space may be available.
    */
-  unsafeOnHubEmptySpace(
-    hub: AtomicHub<A>,
+  unsafeOnPubSubEmptySpace(
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>
   ): void
 
   /**
-   * Describes how subscribers waiting for additional values from the hub
+   * Describes how subscribers waiting for additional values from the `PubSub`
    * should take those values and signal to publishers that they are no
    * longer waiting for additional values.
    */
   unsafeCompletePollers(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
     pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
@@ -1267,24 +1268,24 @@ export interface HubStrategy<A> {
 
   /**
    * Describes how publishers should signal to subscribers waiting for
-   * additional values from the hub that new values are available.
+   * additional values from the `PubSub` that new values are available.
    */
   unsafeCompleteSubscribers(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>
   ): void
 }
 
 /**
- * A strategy that applies back pressure to publishers when the hub is at
+ * A strategy that applies back pressure to publishers when the `PubSub` is at
  * capacity. This guarantees that all subscribers will receive all messages
- * published to the hub while they are subscribed. However, it creates the
+ * published to the `PubSub` while they are subscribed. However, it creates the
  * risk that a slow subscriber will slow down the rate at which messages
  * are published and received by other subscribers.
  *
  * @internal
  */
-class BackPressureStrategy<A> implements HubStrategy<A> {
+class BackPressureStrategy<A> implements PubSubStrategy<A> {
   publishers: MutableQueue.MutableQueue<
     readonly [
       A,
@@ -1310,7 +1311,7 @@ class BackPressureStrategy<A> implements HubStrategy<A> {
   }
 
   handleSurplus(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>
@@ -1320,8 +1321,8 @@ class BackPressureStrategy<A> implements HubStrategy<A> {
       return pipe(
         core.suspend(() => {
           this.unsafeOffer(elements, deferred)
-          this.unsafeOnHubEmptySpace(hub, subscribers)
-          this.unsafeCompleteSubscribers(hub, subscribers)
+          this.unsafeOnPubSubEmptySpace(pubsub, subscribers)
+          this.unsafeCompleteSubscribers(pubsub, subscribers)
           return MutableRef.get(isShutdown) ?
             core.interrupt :
             core.deferredAwait(deferred)
@@ -1331,17 +1332,17 @@ class BackPressureStrategy<A> implements HubStrategy<A> {
     })
   }
 
-  unsafeOnHubEmptySpace(
-    hub: AtomicHub<A>,
+  unsafeOnPubSubEmptySpace(
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>
   ): void {
     let keepPolling = true
-    while (keepPolling && !hub.isFull()) {
+    while (keepPolling && !pubsub.isFull()) {
       const publisher = pipe(this.publishers, MutableQueue.poll(MutableQueue.EmptyMutableQueue))
       if (publisher === MutableQueue.EmptyMutableQueue) {
         keepPolling = false
       } else {
-        const published = hub.publish(publisher[0])
+        const published = pubsub.publish(publisher[0])
         if (published && publisher[2]) {
           unsafeCompleteDeferred(publisher[1], true)
         } else if (!published) {
@@ -1350,22 +1351,22 @@ class BackPressureStrategy<A> implements HubStrategy<A> {
             pipe(unsafePollAllQueue(this.publishers), Chunk.prepend(publisher))
           )
         }
-        this.unsafeCompleteSubscribers(hub, subscribers)
+        this.unsafeCompleteSubscribers(pubsub, subscribers)
       }
     }
   }
 
   unsafeCompletePollers(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
     pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
   ): void {
-    return unsafeStrategyCompletePollers(this, hub, subscribers, subscription, pollers)
+    return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
 
-  unsafeCompleteSubscribers(hub: AtomicHub<A>, subscribers: Subscribers<A>): void {
-    return unsafeStrategyCompleteSubscribers(this, hub, subscribers)
+  unsafeCompleteSubscribers(pubsub: AtomicPubSub<A>, subscribers: Subscribers<A>): void {
+    return unsafeStrategyCompleteSubscribers(this, pubsub, subscribers)
   }
 
   private unsafeOffer(elements: Iterable<A>, deferred: Deferred.Deferred<never, boolean>): void {
@@ -1400,22 +1401,22 @@ class BackPressureStrategy<A> implements HubStrategy<A> {
 }
 
 /**
- * A strategy that drops new messages when the hub is at capacity. This
+ * A strategy that drops new messages when the `PubSub` is at capacity. This
  * guarantees that a slow subscriber will not slow down the rate at which
  * messages are published. However, it creates the risk that a slow
  * subscriber will slow down the rate at which messages are received by
  * other subscribers and that subscribers may not receive all messages
- * published to the hub while they are subscribed.
+ * published to the `PubSub` while they are subscribed.
  *
  * @internal
  */
-export class DroppingStrategy<A> implements HubStrategy<A> {
+export class DroppingStrategy<A> implements PubSubStrategy<A> {
   shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }
 
   handleSurplus(
-    _hub: AtomicHub<A>,
+    _pubsub: AtomicPubSub<A>,
     _subscribers: Subscribers<A>,
     _elements: Iterable<A>,
     _isShutdown: MutableRef.MutableRef<boolean>
@@ -1423,83 +1424,83 @@ export class DroppingStrategy<A> implements HubStrategy<A> {
     return core.succeed(false)
   }
 
-  unsafeOnHubEmptySpace(
-    _hub: AtomicHub<A>,
+  unsafeOnPubSubEmptySpace(
+    _pubsub: AtomicPubSub<A>,
     _subscribers: Subscribers<A>
   ): void {
     //
   }
 
   unsafeCompletePollers(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
     pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
   ): void {
-    return unsafeStrategyCompletePollers(this, hub, subscribers, subscription, pollers)
+    return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
 
-  unsafeCompleteSubscribers(hub: AtomicHub<A>, subscribers: Subscribers<A>): void {
-    return unsafeStrategyCompleteSubscribers(this, hub, subscribers)
+  unsafeCompleteSubscribers(pubsub: AtomicPubSub<A>, subscribers: Subscribers<A>): void {
+    return unsafeStrategyCompleteSubscribers(this, pubsub, subscribers)
   }
 }
 
 /**
- * A strategy that adds new messages and drops old messages when the hub is
+ * A strategy that adds new messages and drops old messages when the `PubSub` is
  * at capacity. This guarantees that a slow subscriber will not slow down
  * the rate at which messages are published and received by other
  * subscribers. However, it creates the risk that a slow subscriber will
- * not receive some messages published to the hub while it is subscribed.
+ * not receive some messages published to the `PubSub` while it is subscribed.
  *
  * @internal
  */
-export class SlidingStrategy<A> implements HubStrategy<A> {
+export class SlidingStrategy<A> implements PubSubStrategy<A> {
   shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }
 
   handleSurplus(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     _isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<never, never, boolean> {
     return core.sync(() => {
-      this.unsafeSlidingPublish(hub, elements)
-      this.unsafeCompleteSubscribers(hub, subscribers)
+      this.unsafeSlidingPublish(pubsub, elements)
+      this.unsafeCompleteSubscribers(pubsub, subscribers)
       return true
     })
   }
 
-  unsafeOnHubEmptySpace(
-    _hub: AtomicHub<A>,
+  unsafeOnPubSubEmptySpace(
+    _pubsub: AtomicPubSub<A>,
     _subscribers: Subscribers<A>
   ): void {
     //
   }
 
   unsafeCompletePollers(
-    hub: AtomicHub<A>,
+    pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
     pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
   ): void {
-    return unsafeStrategyCompletePollers(this, hub, subscribers, subscription, pollers)
+    return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
 
-  unsafeCompleteSubscribers(hub: AtomicHub<A>, subscribers: Subscribers<A>): void {
-    return unsafeStrategyCompleteSubscribers(this, hub, subscribers)
+  unsafeCompleteSubscribers(pubsub: AtomicPubSub<A>, subscribers: Subscribers<A>): void {
+    return unsafeStrategyCompleteSubscribers(this, pubsub, subscribers)
   }
 
-  unsafeSlidingPublish(hub: AtomicHub<A>, elements: Iterable<A>): void {
+  unsafeSlidingPublish(pubsub: AtomicPubSub<A>, elements: Iterable<A>): void {
     const it = elements[Symbol.iterator]()
     let next = it.next()
-    if (!next.done && hub.capacity > 0) {
+    if (!next.done && pubsub.capacity > 0) {
       let a = next.value
       let loop = true
       while (loop) {
-        hub.slide()
-        const pub = hub.publish(a)
+        pubsub.slide()
+        const pub = pubsub.publish(a)
         if (pub && (next = it.next()) && !next.done) {
           a = next.value
         } else if (pub) {
@@ -1512,8 +1513,8 @@ export class SlidingStrategy<A> implements HubStrategy<A> {
 
 /** @internal */
 const unsafeStrategyCompletePollers = <A>(
-  strategy: HubStrategy<A>,
-  hub: AtomicHub<A>,
+  strategy: PubSubStrategy<A>,
+  pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   subscription: Subscription<A>,
   pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
@@ -1534,7 +1535,7 @@ const unsafeStrategyCompletePollers = <A>(
         unsafeOfferAll(pollers, pipe(unsafePollAllQueue(pollers), Chunk.prepend(poller)))
       } else {
         unsafeCompleteDeferred(poller, pollResult)
-        strategy.unsafeOnHubEmptySpace(hub, subscribers)
+        strategy.unsafeOnPubSubEmptySpace(pubsub, subscribers)
       }
     }
   }
@@ -1542,15 +1543,15 @@ const unsafeStrategyCompletePollers = <A>(
 
 /** @internal */
 const unsafeStrategyCompleteSubscribers = <A>(
-  strategy: HubStrategy<A>,
-  hub: AtomicHub<A>,
+  strategy: PubSubStrategy<A>,
+  pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>
 ): void => {
   for (
     const [subscription, pollersSet] of subscribers
   ) {
     for (const pollers of pollersSet) {
-      strategy.unsafeCompletePollers(hub, subscribers, subscription, pollers)
+      strategy.unsafeCompletePollers(pubsub, subscribers, subscription, pollers)
     }
   }
 }

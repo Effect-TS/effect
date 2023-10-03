@@ -75,7 +75,6 @@
     "Hash",
     "HashMap",
     "HashSet",
-    "Hub",
     "Inspectable",
     "KeyedPool",
     "Layer",
@@ -106,6 +105,7 @@
     "Pipeable",
     "Pool",
     "Predicate",
+    "PubSub",
     "Queue",
     "Random",
     "ReadonlyArray",
@@ -143,9 +143,9 @@
     "SynchronizedRef",
     "TArray",
     "TDeferred",
-    "THub",
     "TMap",
     "TPriorityQueue",
+    "TPubSub",
     "TQueue",
     "TRandom",
     "TReentrantLock",
@@ -224,7 +224,6 @@
       "Hash.ts",
       "HashMap.ts",
       "HashSet.ts",
-      "Hub.ts",
       "Inspectable.ts",
       "KeyedPool.ts",
       "Layer.ts",
@@ -255,6 +254,7 @@
       "Pipeable.ts",
       "Pool.ts",
       "Predicate.ts",
+      "PubSub.ts",
       "Queue.ts",
       "Random.ts",
       "ReadonlyArray.ts",
@@ -292,9 +292,9 @@
       "SynchronizedRef.ts",
       "TArray.ts",
       "TDeferred.ts",
-      "THub.ts",
       "TMap.ts",
       "TPriorityQueue.ts",
+      "TPubSub.ts",
       "TQueue.ts",
       "TRandom.ts",
       "TReentrantLock.ts",
@@ -633,12 +633,6 @@
       "import": "./HashSet/dist/effect-HashSet.cjs.mjs",
       "default": "./HashSet/dist/effect-HashSet.cjs.js"
     },
-    "./Hub": {
-      "types": "./dist/declarations/src/Hub.d.ts",
-      "module": "./Hub/dist/effect-Hub.esm.js",
-      "import": "./Hub/dist/effect-Hub.cjs.mjs",
-      "default": "./Hub/dist/effect-Hub.cjs.js"
-    },
     "./Inspectable": {
       "types": "./dist/declarations/src/Inspectable.d.ts",
       "module": "./Inspectable/dist/effect-Inspectable.esm.js",
@@ -818,6 +812,12 @@
       "module": "./Predicate/dist/effect-Predicate.esm.js",
       "import": "./Predicate/dist/effect-Predicate.cjs.mjs",
       "default": "./Predicate/dist/effect-Predicate.cjs.js"
+    },
+    "./PubSub": {
+      "types": "./dist/declarations/src/PubSub.d.ts",
+      "module": "./PubSub/dist/effect-PubSub.esm.js",
+      "import": "./PubSub/dist/effect-PubSub.cjs.mjs",
+      "default": "./PubSub/dist/effect-PubSub.cjs.js"
     },
     "./Queue": {
       "types": "./dist/declarations/src/Queue.d.ts",
@@ -1041,12 +1041,6 @@
       "import": "./TDeferred/dist/effect-TDeferred.cjs.mjs",
       "default": "./TDeferred/dist/effect-TDeferred.cjs.js"
     },
-    "./THub": {
-      "types": "./dist/declarations/src/THub.d.ts",
-      "module": "./THub/dist/effect-THub.esm.js",
-      "import": "./THub/dist/effect-THub.cjs.mjs",
-      "default": "./THub/dist/effect-THub.cjs.js"
-    },
     "./TMap": {
       "types": "./dist/declarations/src/TMap.d.ts",
       "module": "./TMap/dist/effect-TMap.esm.js",
@@ -1058,6 +1052,12 @@
       "module": "./TPriorityQueue/dist/effect-TPriorityQueue.esm.js",
       "import": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.mjs",
       "default": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.js"
+    },
+    "./TPubSub": {
+      "types": "./dist/declarations/src/TPubSub.d.ts",
+      "module": "./TPubSub/dist/effect-TPubSub.esm.js",
+      "import": "./TPubSub/dist/effect-TPubSub.cjs.mjs",
+      "default": "./TPubSub/dist/effect-TPubSub.cjs.js"
     },
     "./TQueue": {
       "types": "./dist/declarations/src/TQueue.d.ts",

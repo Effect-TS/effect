@@ -12,10 +12,10 @@ import { constTrue, dual, identity, pipe } from "../Function"
 import type { LazyArg } from "../Function"
 import * as HashMap from "../HashMap"
 import * as HashSet from "../HashSet"
-import * as Hub from "../Hub"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
 import type { Predicate, Refinement } from "../Predicate"
+import * as PubSub from "../PubSub"
 import * as Queue from "../Queue"
 import * as ReadonlyArray from "../ReadonlyArray"
 import * as Ref from "../Ref"
@@ -1449,10 +1449,10 @@ export const fromEffect = <R, E, Z>(effect: Effect.Effect<R, E, Z>): Sink.Sink<R
   new SinkImpl(core.fromEffect(effect))
 
 /** @internal */
-export const fromHub = <In>(
-  hub: Hub.Hub<In>,
+export const fromPubSub = <In>(
+  pubsub: PubSub.PubSub<In>,
   options?: { readonly shutdown?: boolean }
-): Sink.Sink<never, never, In, never, void> => fromQueue(hub, options)
+): Sink.Sink<never, never, In, never, void> => fromQueue(pubsub, options)
 
 /** @internal */
 export const fromPush = <R, E, In, L, Z>(
@@ -1688,12 +1688,12 @@ export const raceWith = dual<
     }
   ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, Z3 | Z4> => {
     const scoped = Effect.gen(function*($) {
-      const hub = yield* $(
-        Hub.bounded<Either.Either<Exit.Exit<never, unknown>, Chunk.Chunk<In & In2>>>(options?.capacity ?? 16)
+      const pubsub = yield* $(
+        PubSub.bounded<Either.Either<Exit.Exit<never, unknown>, Chunk.Chunk<In & In2>>>(options?.capacity ?? 16)
       )
-      const channel1 = yield* $(channel.fromHubScoped(hub))
-      const channel2 = yield* $(channel.fromHubScoped(hub))
-      const reader = channel.toHub(hub)
+      const channel1 = yield* $(channel.fromPubSubScoped(pubsub))
+      const channel2 = yield* $(channel.fromPubSubScoped(pubsub))
+      const reader = channel.toPubSub(pubsub)
       const writer = pipe(
         channel1,
         core.pipeTo(toChannel(self)),

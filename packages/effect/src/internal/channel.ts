@@ -14,10 +14,10 @@ import * as Exit from "../Exit"
 import * as Fiber from "../Fiber"
 import { constVoid, dual, identity, pipe } from "../Function"
 import type { LazyArg } from "../Function"
-import * as Hub from "../Hub"
 import * as Layer from "../Layer"
 import * as Option from "../Option"
 import type { Predicate } from "../Predicate"
+import * as PubSub from "../PubSub"
 import * as Queue from "../Queue"
 import * as Ref from "../Ref"
 import * as Scope from "../Scope"
@@ -691,16 +691,16 @@ export const fromInput = <Err, Elem, Done>(
   )
 
 /** @internal */
-export const fromHub = <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+export const fromPubSub = <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
-  unwrapScoped(Effect.map(Hub.subscribe(hub), fromQueue))
+  unwrapScoped(Effect.map(PubSub.subscribe(pubsub), fromQueue))
 
 /** @internal */
-export const fromHubScoped = <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+export const fromPubSubScoped = <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
 ): Effect.Effect<Scope.Scope, never, Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =>
-  Effect.map(Hub.subscribe(hub), fromQueue)
+  Effect.map(PubSub.subscribe(pubsub), fromQueue)
 
 /** @internal */
 export const fromOption = <A>(
@@ -2168,9 +2168,9 @@ export const serviceWithEffect = <T extends Context.Tag<any, any>>(tag: T) =>
   mapEffect(service(tag), f)
 
 /** @internal */
-export const toHub = <Err, Done, Elem>(
-  hub: Hub.Hub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => toQueue(hub)
+export const toPubSub = <Err, Done, Elem>(
+  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => toQueue(pubsub)
 
 /** @internal */
 export const toPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
