@@ -176,7 +176,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
       output = appendQuoted(stringMessage, output)
     }
 
-    if (cause != null && cause != Cause.empty) {
+    if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
       output = appendQuoted(Cause.pretty(cause), output)
     }
@@ -251,7 +251,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
       output = appendQuotedLogfmt(stringMessage, output)
     }
 
-    if (cause != null && cause != Cause.empty) {
+    if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
       output = appendQuotedLogfmt(Cause.pretty(cause), output)
     }

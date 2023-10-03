@@ -7,6 +7,7 @@ import type * as DefaultServices from "../DefaultServices"
 import * as Duration from "../Duration"
 import type * as Effect from "../Effect"
 import { dual, pipe } from "../Function"
+import { globalValue } from "../GlobalValue"
 import * as clock from "../internal/clock"
 import * as configProvider from "../internal/configProvider"
 import * as core from "../internal/core"
@@ -32,7 +33,10 @@ export const liveServices: Context.Context<DefaultServices.DefaultServices> = pi
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentServices = core.fiberRefUnsafeMakeContext(liveServices)
+export const currentServices = globalValue(
+  Symbol.for("effect/DefaultServices/currentServices"),
+  () => core.fiberRefUnsafeMakeContext(liveServices)
+)
 
 // circular with Clock
 
