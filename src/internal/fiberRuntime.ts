@@ -261,6 +261,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   public _scheduler: Scheduler
   private _tracer: Tracer.Tracer
   public currentOpCount: number = 0
+  private isYielding = false
 
   constructor(
     fiberId: FiberId.Runtime,
@@ -1235,6 +1236,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   }
 
   [OpCodes.OP_YIELD](op: core.Primitive & { op: OpCodes.OP_YIELD }) {
+    this.isYielding = false
     throw op
   }
 
@@ -1269,12 +1271,15 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
       if (this._queue.length > 0) {
         cur = this.drainQueueWhileRunning(this._runtimeFlags, cur)
       }
-      this.currentOpCount += 1
-      const shouldYield = this._scheduler.shouldYield(this)
-      if (shouldYield !== false) {
-        this.currentOpCount = 0
-        const oldCur = cur
-        cur = core.flatMap(core.yieldNow({ priority: shouldYield }), () => oldCur)
+      if (!this.isYielding) {
+        this.currentOpCount += 1
+        const shouldYield = this._scheduler.shouldYield(this)
+        if (shouldYield !== false) {
+          this.isYielding = true
+          this.currentOpCount = 0
+          const oldCur = cur
+          cur = core.flatMap(core.yieldNow({ priority: shouldYield }), () => oldCur)
+        }
       }
       try {
         if (!("_op" in cur)) {
