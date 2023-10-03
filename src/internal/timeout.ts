@@ -8,7 +8,7 @@
 const isBun = typeof process === "undefined" ? false : !!((process as any)?.isBun)
 
 /** @internal */
-export const clear: (id: NodeJS.Timeout) => void = isBun ? clearInterval : clearTimeout
+export const clear: (id: NodeJS.Timeout) => void = isBun ? (id) => clearInterval(id) : (id) => clearTimeout(id)
 
 /** @internal */
 export const set: (fn: () => void, ms: number) => NodeJS.Timeout = isBun ?
@@ -20,4 +20,4 @@ export const set: (fn: () => void, ms: number) => NodeJS.Timeout = isBun ?
 
     return id
   } :
-  setTimeout
+  (fn: () => void, ms: number) => setTimeout(fn, ms)

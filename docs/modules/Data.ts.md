@@ -74,11 +74,11 @@ Provides a Tagged constructor for a Case Class.
 **Signature**
 
 ```ts
-export declare const TaggedClass: <Key extends string>(
-  tag: Key
+export declare const TaggedClass: <Tag extends string>(
+  tag: Tag
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A & { _tag: Key }>
+) => Data<A & { readonly _tag: Tag }>
 ```
 
 Added in v2.0.0

@@ -3,6 +3,7 @@ import type * as Effect from "../Effect"
 import type * as Exit from "../Exit"
 import type * as Fiber from "../Fiber"
 import { pipe } from "../Function"
+import { globalValue } from "../GlobalValue"
 import * as core from "../internal/core"
 import * as MutableRef from "../MutableRef"
 import type * as Option from "../Option"
@@ -288,7 +289,7 @@ export const fromEffect = <A>(effect: Effect.Effect<never, never, A>): Superviso
 }
 
 /** @internal */
-export const none: Supervisor.Supervisor<void> = fromEffect(core.unit)
+export const none = globalValue("effect/Supervisor/none", () => fromEffect(core.unit))
 
 /** @internal */
 export const fibersIn = (

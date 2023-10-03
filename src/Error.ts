@@ -59,7 +59,7 @@ export const Class: new<A extends Record<string, any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const Tagged = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
+export const TaggedClass = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
 ) => YieldableError & { readonly _tag: Tag } & A => {
   class Base extends Class<any> {

@@ -1828,15 +1828,22 @@ export const fiberRefUnsafeMakeRuntimeFlags = (
   })
 
 /** @internal */
-export const currentContext: FiberRef.FiberRef<Context.Context<never>> = fiberRefUnsafeMakeContext(
-  Context.empty()
+export const currentContext: FiberRef.FiberRef<Context.Context<never>> = globalValue(
+  Symbol.for("effect/FiberRef/currentContext"),
+  () => fiberRefUnsafeMakeContext(Context.empty())
 )
 
 /** @internal */
-export const currentSchedulingPriority: FiberRef.FiberRef<number> = fiberRefUnsafeMake(0)
+export const currentSchedulingPriority: FiberRef.FiberRef<number> = globalValue(
+  Symbol.for("effect/FiberRef/currentSchedulingPriority"),
+  () => fiberRefUnsafeMake(0)
+)
 
 /** @internal */
-export const currentMaxOpsBeforeYield: FiberRef.FiberRef<number> = fiberRefUnsafeMake(2048)
+export const currentMaxOpsBeforeYield: FiberRef.FiberRef<number> = globalValue(
+  Symbol.for("effect/FiberRef/currentMaxOpsBeforeYield"),
+  () => fiberRefUnsafeMake(2048)
+)
 
 /** @internal */
 export const currentLogAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, Logger.AnnotationValue>> = globalValue(
@@ -1845,8 +1852,9 @@ export const currentLogAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, Lo
 )
 
 /** @internal */
-export const currentLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = fiberRefUnsafeMake<LogLevel.LogLevel>(
-  logLevelInfo
+export const currentLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = globalValue(
+  Symbol.for("effect/FiberRef/currentLogLevel"),
+  () => fiberRefUnsafeMake<LogLevel.LogLevel>(logLevelInfo)
 )
 
 /** @internal */
@@ -1894,10 +1902,10 @@ export const withUnhandledErrorLogLevel = dual<
 >(2, (self, level) => fiberRefLocally(self, currentUnhandledErrorLogLevel, level))
 
 /** @internal */
-export const currentMetricLabels: FiberRef.FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>> =
-  fiberRefUnsafeMakeHashSet(
-    HashSet.empty()
-  )
+export const currentMetricLabels: FiberRef.FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>> = globalValue(
+  Symbol.for("effect/FiberRef/currentMetricLabels"),
+  () => fiberRefUnsafeMakeHashSet(HashSet.empty())
+)
 
 /* @internal */
 export const metricLabels: Effect.Effect<never, never, HashSet.HashSet<MetricLabel.MetricLabel>> = fiberRefGet(
