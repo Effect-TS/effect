@@ -27,7 +27,7 @@ export {
    * @since 2.0.0
    */
   unsafeCoerce
-} from "./Function"
+} from "effect/Function"
 
 /**
  * This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
@@ -36,7 +36,7 @@ export {
  *
  * @since 2.0.0
  */
-export * as Bigint from "./Bigint"
+export * as Bigint from "effect/Bigint"
 
 /**
  * This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
@@ -45,7 +45,7 @@ export * as Bigint from "./Bigint"
  *
  * @since 2.0.0
  */
-export * as Boolean from "./Boolean"
+export * as Boolean from "effect/Boolean"
 
 /**
  * This module provides types and utility functions to create and work with branded types,
@@ -65,12 +65,12 @@ export * as Boolean from "./Boolean"
  *
  * @since 2.0.0
  */
-export * as Brand from "./Brand"
+export * as Brand from "effect/Brand"
 
 /**
  * @since 2.0.0
  */
-export * as Cache from "./Cache"
+export * as Cache from "effect/Cache"
 
 /**
  * The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
@@ -95,87 +95,87 @@ export * as Cache from "./Cache"
  *
  * @since 2.0.0
  */
-export * as Cause from "./Cause"
+export * as Cause from "effect/Cause"
 
 /**
  * @since 2.0.0
  */
-export * as Channel from "./Channel"
+export * as Channel from "effect/Channel"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelChildExecutorDecision from "./ChannelChildExecutorDecision"
+export * as ChannelChildExecutorDecision from "effect/ChannelChildExecutorDecision"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeDecision from "./ChannelMergeDecision"
+export * as ChannelMergeDecision from "effect/ChannelMergeDecision"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeState from "./ChannelMergeState"
+export * as ChannelMergeState from "effect/ChannelMergeState"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeStrategy from "./ChannelMergeStrategy"
+export * as ChannelMergeStrategy from "effect/ChannelMergeStrategy"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelSingleProducerAsyncInput from "./ChannelSingleProducerAsyncInput"
+export * as ChannelSingleProducerAsyncInput from "effect/ChannelSingleProducerAsyncInput"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelUpstreamPullRequest from "./ChannelUpstreamPullRequest"
+export * as ChannelUpstreamPullRequest from "effect/ChannelUpstreamPullRequest"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelUpstreamPullStrategy from "./ChannelUpstreamPullStrategy"
+export * as ChannelUpstreamPullStrategy from "effect/ChannelUpstreamPullStrategy"
 
 /**
  * @since 2.0.0
  */
-export * as Chunk from "./Chunk"
+export * as Chunk from "effect/Chunk"
 
 /**
  * @since 2.0.0
  */
-export * as Clock from "./Clock"
+export * as Clock from "effect/Clock"
 
 /**
  * @since 2.0.0
  */
-export * as Config from "./Config"
+export * as Config from "effect/Config"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigError from "./ConfigError"
+export * as ConfigError from "effect/ConfigError"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigProvider from "./ConfigProvider"
+export * as ConfigProvider from "effect/ConfigProvider"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigProviderPathPatch from "./ConfigProviderPathPatch"
+export * as ConfigProviderPathPatch from "effect/ConfigProviderPathPatch"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigSecret from "./ConfigSecret"
+export * as ConfigSecret from "effect/ConfigSecret"
 
 /**
  * @since 2.0.0
  */
-export * as Console from "./Console"
+export * as Console from "effect/Console"
 
 /**
  * This module provides a data structure called `Context` that can be used for dependency injection in effectful
@@ -186,47 +186,47 @@ export * as Console from "./Console"
  *
  * @since 2.0.0
  */
-export * as Context from "./Context"
+export * as Context from "effect/Context"
 
 /**
  * @since 2.0.0
  */
-export * as Data from "./Data"
+export * as Data from "effect/Data"
 
 /**
  * @since 2.0.0
  */
-export * as DefaultServices from "./DefaultServices"
+export * as DefaultServices from "effect/DefaultServices"
 
 /**
  * @since 2.0.0
  */
-export * as Deferred from "./Deferred"
+export * as Deferred from "effect/Deferred"
 
 /**
  * @since 2.0.0
  */
-export * as Differ from "./Differ"
+export * as Differ from "effect/Differ"
 
 /**
  * @since 2.0.0
  */
-export * as Duration from "./Duration"
+export * as Duration from "effect/Duration"
 
 /**
  * @since 2.0.0
  */
-export * as Effect from "./Effect"
+export * as Effect from "effect/Effect"
 
 /**
  * @since 2.0.0
  */
-export * as Effectable from "./Effectable"
+export * as Effectable from "effect/Effectable"
 
 /**
  * @since 2.0.0
  */
-export * as Either from "./Either"
+export * as Either from "effect/Either"
 
 /**
  * This module provides encoding & decoding functionality for:
@@ -237,12 +237,12 @@ export * as Either from "./Either"
  *
  * @since 2.0.0
  */
-export * as Encoding from "./Encoding"
+export * as Encoding from "effect/Encoding"
 
 /**
  * @since 2.0.0
  */
-export * as Equal from "./Equal"
+export * as Equal from "effect/Equal"
 
 /**
  * This module provides an implementation of the `Equivalence` type class, which defines a binary relation
@@ -251,102 +251,102 @@ export * as Equal from "./Equal"
  *
  * @since 2.0.0
  */
-export * as Equivalence from "./Equivalence"
+export * as Equivalence from "effect/Equivalence"
 
 /**
  * @since 2.0.0
  */
-export * as Error from "./Error"
+export * as Error from "effect/Error"
 
 /**
  * @since 2.0.0
  */
-export * as ExecutionStrategy from "./ExecutionStrategy"
+export * as ExecutionStrategy from "effect/ExecutionStrategy"
 
 /**
  * @since 2.0.0
  */
-export * as Exit from "./Exit"
+export * as Exit from "effect/Exit"
 
 /**
  * @since 2.0.0
  */
-export * as Fiber from "./Fiber"
+export * as Fiber from "effect/Fiber"
 
 /**
  * @since 2.0.0
  */
-export * as FiberId from "./FiberId"
+export * as FiberId from "effect/FiberId"
 
 /**
  * @since 2.0.0
  */
-export * as FiberRef from "./FiberRef"
+export * as FiberRef from "effect/FiberRef"
 
 /**
  * @since 2.0.0
  */
-export * as FiberRefs from "./FiberRefs"
+export * as FiberRefs from "effect/FiberRefs"
 
 /**
  * @since 2.0.0
  */
-export * as FiberRefsPatch from "./FiberRefsPatch"
+export * as FiberRefsPatch from "effect/FiberRefsPatch"
 
 /**
  * @since 2.0.0
  */
-export * as FiberStatus from "./FiberStatus"
+export * as FiberStatus from "effect/FiberStatus"
 
 /**
  * @since 2.0.0
  */
-export * as Function from "./Function"
+export * as Function from "effect/Function"
 
 /**
  * @since 2.0.0
  */
-export * as GlobalValue from "./GlobalValue"
+export * as GlobalValue from "effect/GlobalValue"
 
 /**
  * @since 2.0.0
  */
-export * as GroupBy from "./GroupBy"
+export * as GroupBy from "effect/GroupBy"
 
 /**
  * @since 2.0.0
  */
-export * as HKT from "./HKT"
+export * as HKT from "effect/HKT"
 
 /**
  * @since 2.0.0
  */
-export * as Hash from "./Hash"
+export * as Hash from "effect/Hash"
 
 /**
  * @since 2.0.0
  */
-export * as HashMap from "./HashMap"
+export * as HashMap from "effect/HashMap"
 
 /**
  * @since 2.0.0
  */
-export * as HashSet from "./HashSet"
+export * as HashSet from "effect/HashSet"
 
 /**
  * @since 2.0.0
  */
-export * as Hub from "./Hub"
+export * as Hub from "effect/Hub"
 
 /**
  * @since 2.0.0
  */
-export * as Inspectable from "./Inspectable"
+export * as Inspectable from "effect/Inspectable"
 
 /**
  * @since 2.0.0
  */
-export * as KeyedPool from "./KeyedPool"
+export * as KeyedPool from "effect/KeyedPool"
 
 /**
  * A `Layer<RIn, E, ROut>` describes how to build one or more services in your
@@ -367,7 +367,7 @@ export * as KeyedPool from "./KeyedPool"
  *
  * @since 2.0.0
  */
-export * as Layer from "./Layer"
+export * as Layer from "effect/Layer"
 
 /**
  * A data type for immutable linked lists representing ordered collections of elements of type `A`.
@@ -381,102 +381,102 @@ export * as Layer from "./Layer"
  *
  * @since 2.0.0
  */
-export * as List from "./List"
+export * as List from "effect/List"
 
 /**
  * @since 2.0.0
  */
-export * as LogLevel from "./LogLevel"
+export * as LogLevel from "effect/LogLevel"
 
 /**
  * @since 2.0.0
  */
-export * as LogSpan from "./LogSpan"
+export * as LogSpan from "effect/LogSpan"
 
 /**
  * @since 2.0.0
  */
-export * as Logger from "./Logger"
+export * as Logger from "effect/Logger"
 
 /**
  * @since 2.0.0
  */
-export * as Metric from "./Metric"
+export * as Metric from "effect/Metric"
 
 /**
  * @since 2.0.0
  */
-export * as MetricBoundaries from "./MetricBoundaries"
+export * as MetricBoundaries from "effect/MetricBoundaries"
 
 /**
  * @since 2.0.0
  */
-export * as MetricHook from "./MetricHook"
+export * as MetricHook from "effect/MetricHook"
 
 /**
  * @since 2.0.0
  */
-export * as MetricKey from "./MetricKey"
+export * as MetricKey from "effect/MetricKey"
 
 /**
  * @since 2.0.0
  */
-export * as MetricKeyType from "./MetricKeyType"
+export * as MetricKeyType from "effect/MetricKeyType"
 
 /**
  * @since 2.0.0
  */
-export * as MetricLabel from "./MetricLabel"
+export * as MetricLabel from "effect/MetricLabel"
 
 /**
  * @since 2.0.0
  */
-export * as MetricPair from "./MetricPair"
+export * as MetricPair from "effect/MetricPair"
 
 /**
  * @since 2.0.0
  */
-export * as MetricPolling from "./MetricPolling"
+export * as MetricPolling from "effect/MetricPolling"
 
 /**
  * @since 2.0.0
  */
-export * as MetricRegistry from "./MetricRegistry"
+export * as MetricRegistry from "effect/MetricRegistry"
 
 /**
  * @since 2.0.0
  */
-export * as MetricState from "./MetricState"
+export * as MetricState from "effect/MetricState"
 
 /**
  * @since 2.0.0
  */
-export * as MutableHashMap from "./MutableHashMap"
+export * as MutableHashMap from "effect/MutableHashMap"
 
 /**
  * @since 2.0.0
  */
-export * as MutableHashSet from "./MutableHashSet"
+export * as MutableHashSet from "effect/MutableHashSet"
 
 /**
  * @since 2.0.0
  */
-export * as MutableList from "./MutableList"
+export * as MutableList from "effect/MutableList"
 
 /**
  * @since 2.0.0
  */
-export * as MutableQueue from "./MutableQueue"
+export * as MutableQueue from "effect/MutableQueue"
 
 /**
  * @since 2.0.0
  */
-export * as MutableRef from "./MutableRef"
+export * as MutableRef from "effect/MutableRef"
 
 /**
  * @since 2.0.0
  */
-export * as NonEmptyIterable from "./NonEmptyIterable"
+export * as NonEmptyIterable from "effect/NonEmptyIterable"
 
 /**
  * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
@@ -485,186 +485,186 @@ export * as NonEmptyIterable from "./NonEmptyIterable"
  *
  * @since 2.0.0
  */
-export * as Number from "./Number"
+export * as Number from "effect/Number"
 
 /**
  * @since 2.0.0
  */
-export * as Option from "./Option"
+export * as Option from "effect/Option"
 
 /**
  * @since 2.0.0
  */
-export * as Order from "./Order"
+export * as Order from "effect/Order"
 
 /**
  * @since 2.0.0
  */
-export * as Ordering from "./Ordering"
+export * as Ordering from "effect/Ordering"
 
 /**
  * @since 2.0.0
  */
-export * as Pipeable from "./Pipeable"
+export * as Pipeable from "effect/Pipeable"
 
 /**
  * @since 2.0.0
  */
-export * as Pool from "./Pool"
+export * as Pool from "effect/Pool"
 
 /**
  * @since 2.0.0
  */
-export * as Predicate from "./Predicate"
+export * as Predicate from "effect/Predicate"
 
 /**
  * @since 2.0.0
  */
-export * as Queue from "./Queue"
+export * as Queue from "effect/Queue"
 
 /**
  * @since 2.0.0
  */
-export * as Random from "./Random"
+export * as Random from "effect/Random"
 
 /**
  * This module provides utility functions for working with arrays in TypeScript.
  *
  * @since 2.0.0
  */
-export * as ReadonlyArray from "./ReadonlyArray"
+export * as ReadonlyArray from "effect/ReadonlyArray"
 
 /**
  * This module provides utility functions for working with records in TypeScript.
  *
  * @since 2.0.0
  */
-export * as ReadonlyRecord from "./ReadonlyRecord"
+export * as ReadonlyRecord from "effect/ReadonlyRecord"
 
 /**
  * @since 2.0.0
  */
-export * as RedBlackTree from "./RedBlackTree"
+export * as RedBlackTree from "effect/RedBlackTree"
 
 /**
  * @since 2.0.0
  */
-export * as Ref from "./Ref"
+export * as Ref from "effect/Ref"
 
 /**
  * @since 2.0.0
  */
-export * as Reloadable from "./Reloadable"
+export * as Reloadable from "effect/Reloadable"
 
 /**
  * @since 2.0.0
  */
-export * as Request from "./Request"
+export * as Request from "effect/Request"
 
 /**
  * @since 2.0.0
  */
-export * as RequestBlock from "./RequestBlock"
+export * as RequestBlock from "effect/RequestBlock"
 
 /**
  * @since 2.0.0
  */
-export * as RequestResolver from "./RequestResolver"
+export * as RequestResolver from "effect/RequestResolver"
 
 /**
  * @since 2.0.0
  */
-export * as Resource from "./Resource"
+export * as Resource from "effect/Resource"
 
 /**
  * @since 2.0.0
  */
-export * as Runtime from "./Runtime"
+export * as Runtime from "effect/Runtime"
 
 /**
  * @since 2.0.0
  */
-export * as RuntimeFlags from "./RuntimeFlags"
+export * as RuntimeFlags from "effect/RuntimeFlags"
 
 /**
  * @since 2.0.0
  */
-export * as RuntimeFlagsPatch from "./RuntimeFlagsPatch"
+export * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
 
 /**
  * @since 2.0.0
  */
-export * as STM from "./STM"
+export * as STM from "effect/STM"
 
 /**
  * @since 2.0.0
  */
-export * as Schedule from "./Schedule"
+export * as Schedule from "effect/Schedule"
 
 /**
  * @since 2.0.0
  */
-export * as ScheduleDecision from "./ScheduleDecision"
+export * as ScheduleDecision from "effect/ScheduleDecision"
 
 /**
  * @since 2.0.0
  */
-export * as ScheduleInterval from "./ScheduleInterval"
+export * as ScheduleInterval from "effect/ScheduleInterval"
 
 /**
  * @since 2.0.0
  */
-export * as ScheduleIntervals from "./ScheduleIntervals"
+export * as ScheduleIntervals from "effect/ScheduleIntervals"
 
 /**
  * @since 2.0.0
  */
-export * as Scheduler from "./Scheduler"
+export * as Scheduler from "effect/Scheduler"
 
 /**
  * @since 2.0.0
  */
-export * as Scope from "./Scope"
+export * as Scope from "effect/Scope"
 
 /**
  * @since 2.0.0
  */
-export * as ScopedCache from "./ScopedCache"
+export * as ScopedCache from "effect/ScopedCache"
 
 /**
  * @since 2.0.0
  */
-export * as ScopedRef from "./ScopedRef"
+export * as ScopedRef from "effect/ScopedRef"
 
 /**
  * @since 2.0.0
  */
-export * as Sink from "./Sink"
+export * as Sink from "effect/Sink"
 
 /**
  * @since 2.0.0
  */
-export * as SortedMap from "./SortedMap"
+export * as SortedMap from "effect/SortedMap"
 
 /**
  * @since 2.0.0
  */
-export * as SortedSet from "./SortedSet"
+export * as SortedSet from "effect/SortedSet"
 
 /**
  * @since 2.0.0
  */
-export * as Stream from "./Stream"
+export * as Stream from "effect/Stream"
 
 /**
  * @since 2.0.0
  */
-export * as StreamEmit from "./StreamEmit"
+export * as StreamEmit from "effect/StreamEmit"
 
 /**
  * @since 2.0.0
  */
-export * as StreamHaltStrategy from "./StreamHaltStrategy"
+export * as StreamHaltStrategy from "effect/StreamHaltStrategy"
 
 /**
  * This module provides utility functions and type class instances for working with the `string` type in TypeScript.
@@ -673,19 +673,19 @@ export * as StreamHaltStrategy from "./StreamHaltStrategy"
  *
  * @since 2.0.0
  */
-export * as String from "./String"
+export * as String from "effect/String"
 
 /**
  * This module provides utility functions for working with structs in TypeScript.
  *
  * @since 2.0.0
  */
-export * as Struct from "./Struct"
+export * as Struct from "effect/Struct"
 
 /**
  * @since 2.0.0
  */
-export * as SubscriptionRef from "./SubscriptionRef"
+export * as SubscriptionRef from "effect/SubscriptionRef"
 
 /**
  * A `Supervisor<T>` is allowed to supervise the launching and termination of
@@ -693,148 +693,148 @@ export * as SubscriptionRef from "./SubscriptionRef"
  *
  * @since 2.0.0
  */
-export * as Supervisor from "./Supervisor"
+export * as Supervisor from "effect/Supervisor"
 
 /**
  * @since 2.0.0
  */
-export * as Symbol from "./Symbol"
+export * as Symbol from "effect/Symbol"
 
 /**
  * @since 2.0.0
  */
-export * as SynchronizedRef from "./SynchronizedRef"
+export * as SynchronizedRef from "effect/SynchronizedRef"
 
 /**
  * @since 2.0.0
  */
-export * as TArray from "./TArray"
+export * as TArray from "effect/TArray"
 
 /**
  * @since 2.0.0
  */
-export * as TDeferred from "./TDeferred"
+export * as TDeferred from "effect/TDeferred"
 
 /**
  * @since 2.0.0
  */
-export * as THub from "./THub"
+export * as THub from "effect/THub"
 
 /**
  * @since 2.0.0
  */
-export * as TMap from "./TMap"
+export * as TMap from "effect/TMap"
 
 /**
  * @since 2.0.0
  */
-export * as TPriorityQueue from "./TPriorityQueue"
+export * as TPriorityQueue from "effect/TPriorityQueue"
 
 /**
  * @since 2.0.0
  */
-export * as TQueue from "./TQueue"
+export * as TQueue from "effect/TQueue"
 
 /**
  * @since 2.0.0
  */
-export * as TRandom from "./TRandom"
+export * as TRandom from "effect/TRandom"
 
 /**
  * @since 2.0.0
  */
-export * as TReentrantLock from "./TReentrantLock"
+export * as TReentrantLock from "effect/TReentrantLock"
 
 /**
  * @since 2.0.0
  */
-export * as TRef from "./TRef"
+export * as TRef from "effect/TRef"
 
 /**
  * @since 2.0.0
  */
-export * as TSemaphore from "./TSemaphore"
+export * as TSemaphore from "effect/TSemaphore"
 
 /**
  * @since 2.0.0
  */
-export * as TSet from "./TSet"
+export * as TSet from "effect/TSet"
 
 /**
  * @since 2.0.0
  */
-export * as Take from "./Take"
+export * as Take from "effect/Take"
 
 /**
  * @since 2.0.0
  */
-export * as TestAnnotation from "./TestAnnotation"
+export * as TestAnnotation from "effect/TestAnnotation"
 
 /**
  * @since 2.0.0
  */
-export * as TestAnnotationMap from "./TestAnnotationMap"
+export * as TestAnnotationMap from "effect/TestAnnotationMap"
 
 /**
  * @since 2.0.0
  */
-export * as TestAnnotations from "./TestAnnotations"
+export * as TestAnnotations from "effect/TestAnnotations"
 
 /**
  * @since 2.0.0
  */
-export * as TestClock from "./TestClock"
+export * as TestClock from "effect/TestClock"
 
 /**
  * @since 2.0.0
  */
-export * as TestConfig from "./TestConfig"
+export * as TestConfig from "effect/TestConfig"
 
 /**
  * @since 2.0.0
  */
-export * as TestContext from "./TestContext"
+export * as TestContext from "effect/TestContext"
 
 /**
  * @since 2.0.0
  */
-export * as TestLive from "./TestLive"
+export * as TestLive from "effect/TestLive"
 
 /**
  * @since 2.0.0
  */
-export * as TestServices from "./TestServices"
+export * as TestServices from "effect/TestServices"
 
 /**
  * @since 2.0.0
  */
-export * as TestSized from "./TestSized"
+export * as TestSized from "effect/TestSized"
 
 /**
  * @since 2.0.0
  */
-export * as Tracer from "./Tracer"
+export * as Tracer from "effect/Tracer"
 
 /**
  * This module provides utility functions for working with tuples in TypeScript.
  *
  * @since 2.0.0
  */
-export * as Tuple from "./Tuple"
+export * as Tuple from "effect/Tuple"
 
 /**
  * A collection of types that are commonly used types.
  *
  * @since 2.0.0
  */
-export * as Types from "./Types"
+export * as Types from "effect/Types"
 
 /**
  * @since 2.0.0
  */
-export * as Unify from "./Unify"
+export * as Unify from "effect/Unify"
 
 /**
  * @since 2.0.0
  */
-export * as Utils from "./Utils"
+export * as Utils from "effect/Utils"
