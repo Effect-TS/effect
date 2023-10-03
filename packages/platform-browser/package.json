@@ -13,6 +13,9 @@
       "importConditionDefaultExport": "default"
     }
   },
+  "effect": {
+    "generateIndex": true
+  },
   "publishConfig": {
     "access": "public"
   },
