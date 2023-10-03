@@ -7,7 +7,7 @@ const modules = Fs.readdirSync("src")
     const content = Fs.readFileSync(`src/${module}.ts`, "utf8");
     const topComment = content.match(/\/\*\*\n.+?\*\//s)?.[0] ?? "";
     return `${topComment}
-export * as ${module} from "./${module}"`;
+export * as ${module} from "effect/${module}"`;
   })
   .join("\n\n");
 
@@ -41,7 +41,7 @@ export {
    * @since 2.0.0
    */
   unsafeCoerce
-} from "./Function"
+} from "effect/Function"
 
 ${modules}`
 );
