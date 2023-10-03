@@ -29,7 +29,7 @@
   ],
   "scripts": {
     "example": "ts-node --project tsconfig.examples.json",
-    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
+    "version": "changeset version",
     "clean": "node scripts/clean.mjs",
     "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
     "gen": "build-utils prepare-v1",
