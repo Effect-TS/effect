@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/opentelemetry/internal/metrics"
-import type { Resource } from "@effect/opentelemetry/Resource"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { MetricProducer } from "@opentelemetry/sdk-metrics/build/src/export/MetricProducer"
 import type * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type { Layer } from "effect/Layer"
 import type * as Scope from "effect/Scope"
+import * as internal from "./internal/metrics"
+import type { Resource } from "./Resource"
 
 /**
  * @since 1.0.0

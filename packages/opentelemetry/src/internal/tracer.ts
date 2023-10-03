@@ -1,4 +1,3 @@
-import { Resource } from "@effect/opentelemetry/Resource"
 import * as OtelApi from "@opentelemetry/api"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
@@ -10,6 +9,7 @@ import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
+import { Resource } from "../Resource"
 
 /** @internal */
 export class OtelSpan implements Tracer.Span {

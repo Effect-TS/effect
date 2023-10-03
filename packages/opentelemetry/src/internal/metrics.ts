@@ -1,4 +1,3 @@
-import * as Resource from "@effect/opentelemetry/Resource"
 import type { HrTime } from "@opentelemetry/api"
 import { ValueType } from "@opentelemetry/api"
 import type * as Resources from "@opentelemetry/resources"
@@ -20,6 +19,7 @@ import type * as MetricKey from "effect/MetricKey"
 import * as MetricKeyType from "effect/MetricKeyType"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
+import * as Resource from "../Resource"
 
 const sdkName = "@effect/opentelemetry/Metrics"
 
