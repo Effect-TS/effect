@@ -40,10 +40,10 @@
   "devDependencies": {
     "@effect/schema": "^0.39.2",
     "bun-types": "^1.0.3",
-    "effect": "2.0.0-next.40"
+    "effect": "2.0.0-next.42"
   },
   "peerDependencies": {
-    "effect": "^2.0.0-next.40"
+    "effect": "^2.0.0-next.42"
   },
   "files": [
     "src",
