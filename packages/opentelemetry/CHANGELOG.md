@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.14.0
+
+### Minor Changes
+
+- [#61](https://github.com/Effect-TS/opentelemetry/pull/61) [`7d1898b`](https://github.com/Effect-TS/opentelemetry/commit/7d1898b7efbab4aa6a7e43999591629cb67f80bd) Thanks [@tim-smart](https://github.com/tim-smart)! - switch to preconstruct for builds
+
 ## 0.13.1
 
 ### Patch Changes
