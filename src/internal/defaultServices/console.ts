@@ -3,7 +3,7 @@ import * as Context from "../../Context"
 import * as core from "../../internal/core"
 
 /** @internal */
-export const TypeId: Console.TypeId = Symbol("effect/Console") as Console.TypeId
+export const TypeId: Console.TypeId = Symbol.for("effect/Console") as Console.TypeId
 
 /** @internal */
 export const consoleTag: Context.Tag<Console.Console, Console.Console> = Context.Tag<Console.Console>(TypeId)

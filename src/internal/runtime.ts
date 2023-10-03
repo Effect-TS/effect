@@ -58,6 +58,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 
   const supervisor = fiberRuntime._supervisor
 
+  // we can compare by reference here as _supervisor.none is wrapped with globalValue
   if (supervisor !== _supervisor.none) {
     supervisor.onStart(runtime.context, effect, Option.none(), fiberRuntime)
 

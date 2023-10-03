@@ -1381,7 +1381,7 @@ export const tracerLogger = internalLogger.makeLogger<unknown, void>(({
   attributes["effect.fiberId"] = FiberId.threadName(fiberId)
   attributes["effect.logLevel"] = logLevel.label
 
-  if (cause !== null && cause !== internalCause.empty) {
+  if (cause !== null && cause._tag !== "Empty") {
     attributes["effect.cause"] = internalCause.pretty(cause)
   }
 
@@ -1493,7 +1493,7 @@ export const daemonChildren = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Ef
 }
 
 /** @internal */
-const _existsParFound = Symbol("effect/Effect/existsPar/found")
+const _existsParFound = Symbol.for("effect/Effect/existsPar/found")
 
 /* @internal */
 export const exists = dual<
