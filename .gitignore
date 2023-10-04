@@ -120,6 +120,7 @@ dist/
 /Stream
 /StreamEmit
 /StreamHaltStrategy
+/Streamable
 /String
 /Struct
 /SubscriptionRef

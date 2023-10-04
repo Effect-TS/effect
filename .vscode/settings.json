@@ -116,6 +116,7 @@
     "Stream": true,
     "StreamEmit": true,
     "StreamHaltStrategy": true,
+    "Streamable": true,
     "String": true,
     "Struct": true,
     "SubscriptionRef": true,
