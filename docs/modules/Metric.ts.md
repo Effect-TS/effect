@@ -87,8 +87,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const increment: <In extends number | bigint>(
-  self: Metric.Counter<In>
+export declare const increment: (
+  self: Metric.Counter<number> | Metric.Counter<bigint>
 ) => Effect.Effect<never, never, void>
 ```
 
