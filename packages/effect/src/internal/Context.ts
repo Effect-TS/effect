@@ -8,7 +8,7 @@ import type * as O from "../Option"
 import * as option from "../Option"
 import { pipeArguments } from "../Pipeable"
 import type * as STM from "../STM"
-import { EffectProto, effectVariance } from "./Effectable"
+import { EffectPrototype, effectVariance } from "./Effectable"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId
@@ -23,7 +23,7 @@ export const STMTypeId: STM.STMTypeId = Symbol.for(
 
 /** @internal */
 export const TagProto: C.Tag<unknown, unknown> = {
-  ...EffectProto,
+  ...EffectPrototype,
   _tag: "Tag",
   _op: "Tag",
   [STMTypeId]: effectVariance,
