@@ -81,15 +81,17 @@ export declare namespace Metric {
    * @since 2.0.0
    * @category models
    */
-  export interface Counter<In>
-    extends Metric<MetricKeyType.MetricKeyType.Counter, In, MetricState.MetricState.Counter>
+  export interface Counter<In extends number | bigint>
+    extends Metric<MetricKeyType.MetricKeyType.Counter<In>, In, MetricState.MetricState.Counter<In>>
   {}
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Gauge<In> extends Metric<MetricKeyType.MetricKeyType.Gauge, In, MetricState.MetricState.Gauge> {}
+  export interface Gauge<In extends number | bigint>
+    extends Metric<MetricKeyType.MetricKeyType.Gauge<In>, In, MetricState.MetricState.Gauge<In>>
+  {}
 
   /**
    * @since 2.0.0
@@ -159,7 +161,24 @@ export const mapInput: {
  * @since 2.0.0
  * @category constructors
  */
-export const counter: (name: string, description?: string) => Metric.Counter<number> = internal.counter
+export const counter: {
+  (
+    name: string,
+    options?: {
+      readonly description?: string
+      readonly bigint?: false
+      readonly incremental?: boolean
+    }
+  ): Metric.Counter<number>
+  (
+    name: string,
+    options: {
+      readonly description?: string
+      readonly bigint: true
+      readonly incremental?: boolean
+    }
+  ): Metric.Counter<bigint>
+} = internal.counter
 
 /**
  * A string histogram metric, which keeps track of the counts of different
@@ -198,7 +217,10 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
  * @since 2.0.0
  * @category constructors
  */
-export const gauge: (name: string, description?: string) => Metric.Gauge<number> = internal.gauge
+export const gauge: {
+  (name: string, options?: { readonly description?: string; readonly bigint?: false }): Metric.Gauge<number>
+  (name: string, options: { readonly description?: string; readonly bigint: true }): Metric.Gauge<bigint>
+} = internal.gauge
 
 /**
  * A numeric histogram metric, which keeps track of the count of numbers that
@@ -217,7 +239,8 @@ export const histogram: (
  * @since 2.0.0
  * @category aspects
  */
-export const increment: (self: Metric.Counter<number>) => Effect.Effect<never, never, void> = internal.increment
+export const increment: (self: Metric.Counter<number> | Metric.Counter<bigint>) => Effect.Effect<never, never, void> =
+  internal.increment
 
 /**
  * @since 2.0.0
@@ -225,7 +248,9 @@ export const increment: (self: Metric.Counter<number>) => Effect.Effect<never, n
  */
 export const incrementBy: {
   (amount: number): (self: Metric.Counter<number>) => Effect.Effect<never, never, void>
+  (amount: bigint): (self: Metric.Counter<bigint>) => Effect.Effect<never, never, void>
   (self: Metric.Counter<number>, amount: number): Effect.Effect<never, never, void>
+  (self: Metric.Counter<bigint>, amount: bigint): Effect.Effect<never, never, void>
 } = internal.incrementBy
 
 /**
@@ -255,8 +280,10 @@ export const mapType: {
  * @category aspects
  */
 export const set: {
-  <In>(value: In): (self: Metric.Gauge<In>) => Effect.Effect<never, never, void>
-  <In>(self: Metric.Gauge<In>, value: In): Effect.Effect<never, never, void>
+  (value: number): (self: Metric.Gauge<number>) => Effect.Effect<never, never, void>
+  (value: bigint): (self: Metric.Gauge<bigint>) => Effect.Effect<never, never, void>
+  (self: Metric.Gauge<number>, value: number): Effect.Effect<never, never, void>
+  (self: Metric.Gauge<bigint>, value: bigint): Effect.Effect<never, never, void>
 } = internal.set
 
 /**

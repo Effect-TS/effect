@@ -45,7 +45,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const counter: (_key: MetricKey.MetricKey.Counter) => MetricHook.Counter
+export declare const counter: <A extends number | bigint>(key: MetricKey.MetricKey.Counter<A>) => MetricHook.Counter<A>
 ```
 
 Added in v2.0.0
@@ -65,7 +65,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const gauge: (_key: MetricKey.MetricKey.Gauge, startAt: number) => MetricHook.Gauge
+export declare const gauge: {
+  (key: MetricKey.MetricKey.Gauge<number>, startAt: number): MetricHook.Gauge<number>
+  (key: MetricKey.MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.Gauge<bigint>
+}
 ```
 
 Added in v2.0.0
@@ -166,7 +169,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Counter = MetricHook<number, MetricState.MetricState.Counter>
+export type Counter<A extends number | bigint> = MetricHook<A, MetricState.MetricState.Counter<A>>
 ```
 
 Added in v2.0.0
@@ -186,7 +189,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Gauge = MetricHook<number, MetricState.MetricState.Gauge>
+export type Gauge<A extends number | bigint> = MetricHook<A, MetricState.MetricState.Gauge<A>>
 ```
 
 Added in v2.0.0

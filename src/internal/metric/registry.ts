@@ -49,10 +49,10 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
     )
     if (hook == null) {
       if (metricKeyType.isCounterKey(key.keyType)) {
-        return this.getCounter(key as unknown as MetricKey.MetricKey.Counter) as any
+        return this.getCounter(key as unknown as MetricKey.MetricKey.Counter<any>) as any
       }
       if (metricKeyType.isGaugeKey(key.keyType)) {
-        return this.getGauge(key as unknown as MetricKey.MetricKey.Gauge) as any
+        return this.getGauge(key as unknown as MetricKey.MetricKey.Gauge<any>) as any
       }
       if (metricKeyType.isFrequencyKey(key.keyType)) {
         return this.getFrequency(key as unknown as MetricKey.MetricKey.Frequency) as any
@@ -71,7 +71,7 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
     }
   }
 
-  getCounter(key: MetricKey.MetricKey.Counter): MetricHook.MetricHook.Counter {
+  getCounter<A extends (number | bigint)>(key: MetricKey.MetricKey.Counter<A>): MetricHook.MetricHook.Counter<A> {
     let value = pipe(
       this.map,
       MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
@@ -90,7 +90,7 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
       }
       value = counter
     }
-    return value as MetricHook.MetricHook.Counter
+    return value as MetricHook.MetricHook.Counter<A>
   }
 
   getFrequency(key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency {
@@ -115,14 +115,14 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
     return value as MetricHook.MetricHook.Frequency
   }
 
-  getGauge(key: MetricKey.MetricKey.Gauge): MetricHook.MetricHook.Gauge {
+  getGauge<A extends (number | bigint)>(key: MetricKey.MetricKey.Gauge<A>): MetricHook.MetricHook.Gauge<A> {
     let value = pipe(
       this.map,
       MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
       Option.getOrUndefined
     )
     if (value == null) {
-      const gauge = metricHook.gauge(key, 0)
+      const gauge = metricHook.gauge(key as any, key.keyType.bigint ? BigInt(0) as any : 0)
       if (!pipe(this.map, MutableHashMap.has(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>))) {
         pipe(
           this.map,
@@ -134,7 +134,7 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
       }
       value = gauge
     }
-    return value as MetricHook.MetricHook.Gauge
+    return value as MetricHook.MetricHook.Gauge<A>
   }
 
   getHistogram(key: MetricKey.MetricKey.Histogram): MetricHook.MetricHook.Histogram {

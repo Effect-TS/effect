@@ -105,9 +105,9 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Counter extends MetricState<MetricKeyType.MetricKeyType.Counter> {
+  export interface Counter<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
     readonly [CounterStateTypeId]: CounterStateTypeId
-    readonly count: number
+    readonly count: A
   }
 
   /**
@@ -123,9 +123,9 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Gauge extends MetricState<MetricKeyType.MetricKeyType.Gauge> {
+  export interface Gauge<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
     readonly [GaugeStateTypeId]: GaugeStateTypeId
-    readonly value: number
+    readonly value: A
   }
 
   /**
@@ -170,7 +170,10 @@ export declare namespace MetricState {
  * @since 2.0.0
  * @category constructors
  */
-export const counter: (count: number) => MetricState.Counter = internal.counter
+export const counter: {
+  (count: number): MetricState.Counter<number>
+  (count: bigint): MetricState.Counter<bigint>
+} = internal.counter
 
 /**
  * @since 2.0.0
@@ -182,7 +185,10 @@ export const frequency: (occurrences: HashMap.HashMap<string, number>) => Metric
  * @since 2.0.0
  * @category constructors
  */
-export const gauge: (value: number) => MetricState.Gauge = internal.gauge
+export const gauge: {
+  (count: number): MetricState.Gauge<number>
+  (count: bigint): MetricState.Gauge<bigint>
+} = internal.gauge
 
 /**
  * @since 2.0.0
@@ -217,13 +223,13 @@ export const summary: (
  * @since 2.0.0
  * @category refinements
  */
-export const isMetricState: (u: unknown) => u is MetricState.Counter = internal.isMetricState
+export const isMetricState: (u: unknown) => u is MetricState.Counter<number | bigint> = internal.isMetricState
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isCounterState: (u: unknown) => u is MetricState.Counter = internal.isCounterState
+export const isCounterState: (u: unknown) => u is MetricState.Counter<number | bigint> = internal.isCounterState
 
 /**
  * @since 2.0.0
@@ -235,7 +241,7 @@ export const isFrequencyState: (u: unknown) => u is MetricState.Frequency = inte
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeState: (u: unknown) => u is MetricState.Gauge = internal.isGaugeState
+export const isGaugeState: (u: unknown) => u is MetricState.Gauge<number | bigint> = internal.isGaugeState
 
 /**
  * @since 2.0.0

@@ -49,7 +49,16 @@ Creates a metric key for a counter, with the specified name.
 **Signature**
 
 ```ts
-export declare const counter: (name: string, description?: string) => MetricKey.Counter
+export declare const counter: {
+  (
+    name: string,
+    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean }
+  ): MetricKey.Counter<number>
+  (
+    name: string,
+    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean }
+  ): MetricKey.Counter<bigint>
+}
 ```
 
 Added in v2.0.0
@@ -74,7 +83,10 @@ Creates a metric key for a gauge, with the specified name.
 **Signature**
 
 ```ts
-export declare const gauge: (name: string, description?: string) => MetricKey.Gauge
+export declare const gauge: {
+  (name: string, options?: { readonly description?: string; readonly bigint?: false }): MetricKey.Gauge<number>
+  (name: string, options: { readonly description?: string; readonly bigint: true }): MetricKey.Gauge<bigint>
+}
 ```
 
 Added in v2.0.0
@@ -261,7 +273,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Counter = MetricKey<MetricKeyType.MetricKeyType.Counter>
+export type Counter<A extends number | bigint> = MetricKey<MetricKeyType.MetricKeyType.Counter<A>>
 ```
 
 Added in v2.0.0
@@ -281,7 +293,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Gauge = MetricKey<MetricKeyType.MetricKeyType.Gauge>
+export type Gauge<A extends number | bigint> = MetricKey<MetricKeyType.MetricKeyType.Gauge<A>>
 ```
 
 Added in v2.0.0

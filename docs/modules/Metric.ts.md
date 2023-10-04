@@ -87,7 +87,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const increment: (self: Metric.Counter<number>) => Effect.Effect<never, never, void>
+export declare const increment: (
+  self: Metric.Counter<number> | Metric.Counter<bigint>
+) => Effect.Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -99,7 +101,9 @@ Added in v2.0.0
 ```ts
 export declare const incrementBy: {
   (amount: number): (self: Metric.Counter<number>) => Effect.Effect<never, never, void>
+  (amount: bigint): (self: Metric.Counter<bigint>) => Effect.Effect<never, never, void>
   (self: Metric.Counter<number>, amount: number): Effect.Effect<never, never, void>
+  (self: Metric.Counter<bigint>, amount: bigint): Effect.Effect<never, never, void>
 }
 ```
 
@@ -111,8 +115,10 @@ Added in v2.0.0
 
 ```ts
 export declare const set: {
-  <In>(value: In): (self: Metric.Gauge<In>) => Effect.Effect<never, never, void>
-  <In>(self: Metric.Gauge<In>, value: In): Effect.Effect<never, never, void>
+  (value: number): (self: Metric.Gauge<number>) => Effect.Effect<never, never, void>
+  (value: bigint): (self: Metric.Gauge<bigint>) => Effect.Effect<never, never, void>
+  (self: Metric.Gauge<number>, value: number): Effect.Effect<never, never, void>
+  (self: Metric.Gauge<bigint>, value: bigint): Effect.Effect<never, never, void>
 }
 ```
 
@@ -323,7 +329,16 @@ A counter, which can be incremented by numbers.
 **Signature**
 
 ```ts
-export declare const counter: (name: string, description?: string) => Metric.Counter<number>
+export declare const counter: {
+  (
+    name: string,
+    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean }
+  ): Metric.Counter<number>
+  (
+    name: string,
+    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean }
+  ): Metric.Counter<bigint>
+}
 ```
 
 Added in v2.0.0
@@ -360,7 +375,10 @@ A gauge, which can be set to a value.
 **Signature**
 
 ```ts
-export declare const gauge: (name: string, description?: string) => Metric.Gauge<number>
+export declare const gauge: {
+  (name: string, options?: { readonly description?: string; readonly bigint?: false }): Metric.Gauge<number>
+  (name: string, options: { readonly description?: string; readonly bigint: true }): Metric.Gauge<bigint>
+}
 ```
 
 Added in v2.0.0
@@ -745,7 +763,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Counter<In> extends Metric<MetricKeyType.MetricKeyType.Counter, In, MetricState.MetricState.Counter> {}
+export interface Counter<In extends number | bigint>
+  extends Metric<MetricKeyType.MetricKeyType.Counter<In>, In, MetricState.MetricState.Counter<In>> {}
 ```
 
 Added in v2.0.0
@@ -766,7 +785,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Gauge<In> extends Metric<MetricKeyType.MetricKeyType.Gauge, In, MetricState.MetricState.Gauge> {}
+export interface Gauge<In extends number | bigint>
+  extends Metric<MetricKeyType.MetricKeyType.Gauge<In>, In, MetricState.MetricState.Gauge<In>> {}
 ```
 
 Added in v2.0.0
