@@ -1,6 +1,6 @@
 ---
 title: TPriorityQueue.ts
-nav_order: 130
+nav_order: 131
 parent: Modules
 ---
 

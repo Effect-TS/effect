@@ -31,7 +31,7 @@ export interface YieldableError extends Data.Case, Pipeable, Inspectable.Inspect
 }
 
 const YieldableErrorProto = {
-  ...Effectable.StructuralBase.prototype,
+  ...Effectable.StructuralCommitPrototype,
   commit() {
     return Effect.fail(this)
   }
