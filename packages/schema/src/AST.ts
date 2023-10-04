@@ -2,14 +2,14 @@
  * @since 1.0.0
  */
 
-import * as Internal from "@effect/schema/internal/common"
-import type * as ParseResult from "@effect/schema/ParseResult"
 import { pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Internal from "./internal/common"
+import type * as ParseResult from "./ParseResult"
 
 // -------------------------------------------------------------------------------------
 // annotations

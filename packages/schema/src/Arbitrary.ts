@@ -2,15 +2,15 @@
  * @since 1.0.0
  */
 
-import * as AST from "@effect/schema/AST"
-import * as Internal from "@effect/schema/internal/common"
-import * as Parser from "@effect/schema/Parser"
-import * as Schema from "@effect/schema/Schema"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as FastCheck from "fast-check"
+import * as AST from "./AST"
+import * as Internal from "./internal/common"
+import * as Parser from "./Parser"
+import * as Schema from "./Schema"
 
 /**
  * @category model

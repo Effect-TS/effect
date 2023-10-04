@@ -2,8 +2,7 @@
   "name": "@effect/schema",
   "version": "0.39.2",
   "publishConfig": {
-    "access": "public",
-    "directory": "dist"
+    "access": "public"
   },
   "repository": {
     "type": "git",
@@ -16,6 +15,8 @@
   },
   "homepage": "https://github.com/effect-ts/schema",
   "description": "Modeling the schema of data structures as first-class values",
+  "main": "dist/effect-schema.cjs.js",
+  "module": "dist/effect-schema.esm.js",
   "tags": [
     "typescript",
     "schema",
@@ -27,86 +28,145 @@
     "validation"
   ],
   "scripts": {
-    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
-    "release": "pnpm run build && changeset publish",
-    "clean": "rimraf build tsbuildinfo dist .ultra.cache.json",
-    "build": "pnpm build-all && pnpm build-pack",
-    "build-cjs": "babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
-    "build-mjs": "babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
-    "build-post": "build-utils pack-v1",
-    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
-    "build-all": "tsc -b tsconfig.json",
-    "build-watch": "tsc -b tsconfig.json --watch",
+    "version": "changeset version",
+    "clean": "node scripts/clean.mjs",
+    "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
+    "gen": "build-utils prepare-v1",
     "dtslint": "dtslint --expectOnly dtslint",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "pnpm lint --fix",
     "tc": "tsc --noEmit",
     "docs": "docgen",
-    "docs-update": "git add --force --all docs/modules || true",
-    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
+    "circular": "madge --ts-config ./tsconfig.json --extensions ts --circular --no-color --no-spinner --warning src",
     "test": "vitest",
     "test-all": "npm run circular && npm run lint && npm run dtslint && vitest run",
     "coverage": "vitest run --coverage",
     "test-heap": "vitest run --logHeapUsage"
   },
-  "exports": {
-    ".": {
-      "require": "./build/cjs/index.js"
+  "preconstruct": {
+    "distFilenameStrategy": "full",
+    "exports": {
+      "importConditionDefaultExport": "default"
     },
-    "./*": {
-      "require": "./build/cjs/*.js"
-    }
+    "entrypoints": [
+      "*.ts"
+    ]
   },
-  "config": {
-    "side": [],
-    "modules": [],
-    "global": []
+  "effect": {
+    "generateIndex": true,
+    "includeInternal": true
   },
   "packageManager": "pnpm@8.6.10",
   "dependencies": {
-    "fast-check": "^3.12.0"
+    "fast-check": "^3.13.1"
   },
   "peerDependencies": {
-    "effect": "^2.0.0-next.39"
+    "effect": "^2.0.0-next.45"
   },
   "devDependencies": {
-    "@babel/cli": "^7.22.9",
-    "@babel/core": "^7.22.9",
-    "@babel/plugin-transform-modules-commonjs": "^7.22.5",
+    "@babel/core": "^7.23.0",
+    "@babel/preset-typescript": "^7.23.0",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
     "@definitelytyped/dtslint": "^0.0.178",
-    "@effect/build-utils": "^0.1.4",
+    "@effect/build-utils": "^0.1.6",
     "@effect/docgen": "^0.1.8",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
-    "@types/benchmark": "^2.1.2",
-    "@types/chai": "^4.3.5",
+    "@preconstruct/cli": "^2.8.1",
+    "@types/benchmark": "^2.1.3",
+    "@types/chai": "^4.3.6",
     "@types/glob": "^8.1.0",
-    "@types/node": "^20.4.6",
-    "@typescript-eslint/eslint-plugin": "^6.2.1",
-    "@typescript-eslint/parser": "^6.2.1",
-    "@vitest/coverage-v8": "^0.34.1",
+    "@types/node": "^20.8.2",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.4",
+    "@vitest/coverage-v8": "^0.34.6",
     "ajv": "^8.12.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "benchmark": "^2.1.4",
-    "concurrently": "^8.2.0",
-    "effect": "^2.0.0-next.39",
-    "eslint": "^8.46.0",
-    "eslint-import-resolver-typescript": "^3.5.5",
+    "effect": "2.0.0-next.45",
+    "eslint": "^8.50.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-codegen": "0.17.0",
-    "eslint-plugin-deprecation": "^1.5.0",
-    "eslint-plugin-import": "^2.28.0",
+    "eslint-plugin-deprecation": "^2.0.0",
+    "eslint-plugin-import": "^2.28.1",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
     "madge": "^6.1.0",
     "prettier": "^2.8.8",
-    "rimraf": "5.0.1",
     "ts-node": "^10.9.1",
     "tslint": "^6.1.3",
     "typescript": "^5.2.2",
-    "vite": "^4.4.8",
-    "vitest": "0.34.1",
-    "zod": "^3.22.2"
+    "vite": "^4.4.10",
+    "vitest": "0.34.6",
+    "zod": "^3.22.4"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@preconstruct/cli@2.8.1": "patches/@preconstruct__cli@2.8.1.patch"
+    }
+  },
+  "files": [
+    "src",
+    "dist",
+    "internal",
+    "AST",
+    "Arbitrary",
+    "ParseResult",
+    "Parser",
+    "Pretty",
+    "Schema",
+    "TreeFormatter"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/declarations/src/index.d.ts",
+      "module": "./dist/effect-schema.esm.js",
+      "import": "./dist/effect-schema.cjs.mjs",
+      "default": "./dist/effect-schema.cjs.js"
+    },
+    "./package.json": "./package.json",
+    "./AST": {
+      "types": "./dist/declarations/src/AST.d.ts",
+      "module": "./AST/dist/effect-schema-AST.esm.js",
+      "import": "./AST/dist/effect-schema-AST.cjs.mjs",
+      "default": "./AST/dist/effect-schema-AST.cjs.js"
+    },
+    "./Arbitrary": {
+      "types": "./dist/declarations/src/Arbitrary.d.ts",
+      "module": "./Arbitrary/dist/effect-schema-Arbitrary.esm.js",
+      "import": "./Arbitrary/dist/effect-schema-Arbitrary.cjs.mjs",
+      "default": "./Arbitrary/dist/effect-schema-Arbitrary.cjs.js"
+    },
+    "./ParseResult": {
+      "types": "./dist/declarations/src/ParseResult.d.ts",
+      "module": "./ParseResult/dist/effect-schema-ParseResult.esm.js",
+      "import": "./ParseResult/dist/effect-schema-ParseResult.cjs.mjs",
+      "default": "./ParseResult/dist/effect-schema-ParseResult.cjs.js"
+    },
+    "./Parser": {
+      "types": "./dist/declarations/src/Parser.d.ts",
+      "module": "./Parser/dist/effect-schema-Parser.esm.js",
+      "import": "./Parser/dist/effect-schema-Parser.cjs.mjs",
+      "default": "./Parser/dist/effect-schema-Parser.cjs.js"
+    },
+    "./Pretty": {
+      "types": "./dist/declarations/src/Pretty.d.ts",
+      "module": "./Pretty/dist/effect-schema-Pretty.esm.js",
+      "import": "./Pretty/dist/effect-schema-Pretty.cjs.mjs",
+      "default": "./Pretty/dist/effect-schema-Pretty.cjs.js"
+    },
+    "./Schema": {
+      "types": "./dist/declarations/src/Schema.d.ts",
+      "module": "./Schema/dist/effect-schema-Schema.esm.js",
+      "import": "./Schema/dist/effect-schema-Schema.cjs.mjs",
+      "default": "./Schema/dist/effect-schema-Schema.cjs.js"
+    },
+    "./TreeFormatter": {
+      "types": "./dist/declarations/src/TreeFormatter.d.ts",
+      "module": "./TreeFormatter/dist/effect-schema-TreeFormatter.esm.js",
+      "import": "./TreeFormatter/dist/effect-schema-TreeFormatter.cjs.mjs",
+      "default": "./TreeFormatter/dist/effect-schema-TreeFormatter.cjs.js"
+    }
   }
 }

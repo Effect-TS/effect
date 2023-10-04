@@ -2,14 +2,6 @@
  * @since 1.0.0
  */
 
-import type { Arbitrary } from "@effect/schema/Arbitrary"
-import type { ParseOptions } from "@effect/schema/AST"
-import * as AST from "@effect/schema/AST"
-import * as Internal from "@effect/schema/internal/common"
-import * as Parser from "@effect/schema/Parser"
-import * as ParseResult from "@effect/schema/ParseResult"
-import type { Pretty } from "@effect/schema/Pretty"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import * as Bigint from "effect/Bigint"
 import * as Brand from "effect/Brand"
 import * as Chunk from "effect/Chunk"
@@ -27,6 +19,14 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as S from "effect/String"
 import type { Simplify } from "effect/Types"
+import type { Arbitrary } from "./Arbitrary"
+import type { ParseOptions } from "./AST"
+import * as AST from "./AST"
+import * as Internal from "./internal/common"
+import * as Parser from "./Parser"
+import * as ParseResult from "./ParseResult"
+import type { Pretty } from "./Pretty"
+import * as TreeFormatter from "./TreeFormatter"
 
 // ---------------------------------------------
 // model
@@ -210,7 +210,7 @@ export {
    * @since 1.0.0
    */
   validateSync
-} from "@effect/schema/Parser"
+} from "./Parser"
 /* c8 ignore end */
 
 // ---------------------------------------------

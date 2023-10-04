@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@effect/schema/AST"
-import * as Internal from "@effect/schema/internal/common"
-import * as Parser from "@effect/schema/Parser"
-import * as Schema from "@effect/schema/Schema"
-import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as AST from "./AST"
+import * as Internal from "./internal/common"
+import * as Parser from "./Parser"
+import * as Schema from "./Schema"
+import * as TreeFormatter from "./TreeFormatter"
 
 /**
  * @category model
