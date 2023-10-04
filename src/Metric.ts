@@ -81,7 +81,7 @@ export declare namespace Metric {
    * @since 2.0.0
    * @category models
    */
-  export interface Counter<In extends (number | bigint)>
+  export interface Counter<In extends number | bigint>
     extends Metric<MetricKeyType.MetricKeyType.Counter<In>, In, MetricState.MetricState.Counter<In>>
   {}
 
@@ -89,7 +89,7 @@ export declare namespace Metric {
    * @since 2.0.0
    * @category models
    */
-  export interface Gauge<In extends (number | bigint)>
+  export interface Gauge<In extends number | bigint>
     extends Metric<MetricKeyType.MetricKeyType.Gauge<In>, In, MetricState.MetricState.Gauge<In>>
   {}
 
@@ -239,7 +239,7 @@ export const histogram: (
  * @since 2.0.0
  * @category aspects
  */
-export const increment: <In extends number | bigint>(self: Metric.Counter<In>) => Effect.Effect<never, never, void> =
+export const increment: (self: Metric.Counter<number> | Metric.Counter<bigint>) => Effect.Effect<never, never, void> =
   internal.increment
 
 /**

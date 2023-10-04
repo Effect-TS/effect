@@ -145,9 +145,10 @@ export const histogram = (name: string, boundaries: MetricBoundaries.MetricBound
   fromMetricKey(metricKey.histogram(name, boundaries, description))
 
 /* @internal */
-export const increment = <In extends (number | bigint)>(
-  self: Metric.Metric.Counter<In>
-): Effect.Effect<never, never, void> => update(self, self.keyType.bigint ? BigInt(1) as In : 1 as In)
+export const increment = (
+  self: Metric.Metric.Counter<number> | Metric.Metric.Counter<bigint>
+): Effect.Effect<never, never, void> =>
+  update(self as Metric.Metric.Counter<number>, self.keyType.bigint ? BigInt(1) as any : 1)
 
 /* @internal */
 export const incrementBy = dual<
