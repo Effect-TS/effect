@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.40.0
+
+### Minor Changes
+
+- [#457](https://github.com/Effect-TS/schema/pull/457) [`693b81f`](https://github.com/Effect-TS/schema/commit/693b81f69e1c3a2191582165499587cbd50291b2) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- [#457](https://github.com/Effect-TS/schema/pull/457) [`693b81f`](https://github.com/Effect-TS/schema/commit/693b81f69e1c3a2191582165499587cbd50291b2) Thanks [@tim-smart](https://github.com/tim-smart)! - use preconstruct for builds
+
 ## 0.39.2
 
 ### Patch Changes
