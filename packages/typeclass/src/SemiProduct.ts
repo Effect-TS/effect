@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { Covariant } from "@effect/typeclass/Covariant"
-import type { Invariant } from "@effect/typeclass/Invariant"
-import type { SemiApplicative } from "@effect/typeclass/SemiApplicative"
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
+import type { Covariant } from "./Covariant"
+import type { Invariant } from "./Invariant"
+import type { SemiApplicative } from "./SemiApplicative"
 
 /**
  * @category type class

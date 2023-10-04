@@ -3,11 +3,11 @@
  *
  * @since 1.0.0
  */
-import type { Covariant } from "@effect/typeclass/Covariant"
 import * as Either from "effect/Either"
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
 import * as Option from "effect/Option"
+import type { Covariant } from "./Covariant"
 
 /**
  * @category models

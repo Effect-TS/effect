@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 
-import type { Coproduct } from "@effect/typeclass/Coproduct"
-import type { Monad } from "@effect/typeclass/Monad"
-import type { Monoid } from "@effect/typeclass/Monoid"
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
+import type { Coproduct } from "./Coproduct"
+import type { Monad } from "./Monad"
+import type { Monoid } from "./Monoid"
 
 /**
  * @category type class

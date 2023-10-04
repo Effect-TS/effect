@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Bounded } from "@effect/typeclass/Bounded"
-import type { Semigroup } from "@effect/typeclass/Semigroup"
-import * as semigroup from "@effect/typeclass/Semigroup"
+import type { Bounded } from "./Bounded"
+import type { Semigroup } from "./Semigroup"
+import * as semigroup from "./Semigroup"
 
 /**
  * @category type class

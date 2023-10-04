@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { FlatMap } from "@effect/typeclass/FlatMap"
-import type { Pointed } from "@effect/typeclass/Pointed"
 import type { TypeLambda } from "effect/HKT"
+import type { FlatMap } from "./FlatMap"
+import type { Pointed } from "./Pointed"
 
 /**
  * @category type class

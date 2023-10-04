@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Applicative } from "@effect/typeclass/Applicative"
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
+import type { Applicative } from "./Applicative"
 
 /**
  * @category type class

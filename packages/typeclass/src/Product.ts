@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import type { Of } from "@effect/typeclass/Of"
-import type { SemiProduct } from "@effect/typeclass/SemiProduct"
 import type { Kind, TypeLambda } from "effect/HKT"
+import type { Of } from "./Of"
+import type { SemiProduct } from "./SemiProduct"
 
 /**
  * @category type class

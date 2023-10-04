@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Covariant } from "@effect/typeclass/Covariant"
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
+import type { Covariant } from "./Covariant"
 
 /**
  * @category type class

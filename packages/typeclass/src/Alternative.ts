@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Coproduct } from "@effect/typeclass/Coproduct"
-import type { SemiAlternative } from "@effect/typeclass/SemiAlternative"
 import type { TypeLambda } from "effect/HKT"
+import type { Coproduct } from "./Coproduct"
+import type { SemiAlternative } from "./SemiAlternative"
 
 /**
  * @category type class

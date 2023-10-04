@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Covariant } from "@effect/typeclass/Covariant"
-import type { Of } from "@effect/typeclass/Of"
 import type { TypeLambda } from "effect/HKT"
+import type { Covariant } from "./Covariant"
+import type { Of } from "./Of"
 
 /**
  * @category type class

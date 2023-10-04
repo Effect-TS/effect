@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type { Covariant } from "@effect/typeclass/Covariant"
-import type { FlatMap } from "@effect/typeclass/FlatMap"
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
+import type { Covariant } from "./Covariant"
+import type { FlatMap } from "./FlatMap"
 
 /**
  * @category type class
