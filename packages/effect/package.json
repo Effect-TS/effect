@@ -156,6 +156,7 @@
     "Stream",
     "StreamEmit",
     "StreamHaltStrategy",
+    "Streamable",
     "String",
     "Struct",
     "SubscriptionRef",
@@ -852,6 +853,12 @@
       "module": "./StreamHaltStrategy/dist/effect-StreamHaltStrategy.esm.js",
       "import": "./StreamHaltStrategy/dist/effect-StreamHaltStrategy.cjs.mjs",
       "default": "./StreamHaltStrategy/dist/effect-StreamHaltStrategy.cjs.js"
+    },
+    "./Streamable": {
+      "types": "./dist/declarations/src/Streamable.d.ts",
+      "module": "./Streamable/dist/effect-Streamable.esm.js",
+      "import": "./Streamable/dist/effect-Streamable.cjs.mjs",
+      "default": "./Streamable/dist/effect-Streamable.cjs.js"
     },
     "./String": {
       "types": "./dist/declarations/src/String.d.ts",
