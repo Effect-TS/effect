@@ -122,6 +122,7 @@ Added in v2.0.0
   - [From "effect/Stream"](#from-effectstream)
   - [From "effect/StreamEmit"](#from-effectstreamemit)
   - [From "effect/StreamHaltStrategy"](#from-effectstreamhaltstrategy)
+  - [From "effect/Streamable"](#from-effectstreamable)
   - [From "effect/String"](#from-effectstring)
   - [From "effect/Struct"](#from-effectstruct)
   - [From "effect/SubscriptionRef"](#from-effectsubscriptionref)
@@ -1538,6 +1539,18 @@ Re-exports all named exports from the "effect/StreamHaltStrategy" module as "Str
 
 ```ts
 export * as StreamHaltStrategy from 'effect/StreamHaltStrategy'
+```
+
+Added in v2.0.0
+
+## From "effect/Streamable"
+
+Re-exports all named exports from the "effect/Streamable" module as "Streamable".
+
+**Signature**
+
+```ts
+export * as Streamable from 'effect/Streamable'
 ```
 
 Added in v2.0.0

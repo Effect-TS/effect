@@ -65,19 +65,30 @@ export interface CommitPrimitive {
 
 /**
  * @since 2.0.0
+ * @category prototypes
  */
-export const Base: CommitPrimitive = internal.Base
+export const EffectPrototype: Effect.Effect<never, never, never> = internal.EffectPrototype
 
 /**
  * @since 2.0.0
+ * @category prototypes
  */
-export const StructuralBase: CommitPrimitive = internal.StructuralBase
+export const CommitPrototype: Effect.Effect<never, never, never> = internal.CommitPrototype
+
+/**
+ * @since 2.0.0
+ * @category prototypes
+ */
+export const StructuralCommitPrototype: Effect.Effect<never, never, never> = internal.StructuralCommitPrototype
+
+const Base: CommitPrimitive = internal.Base
+const StructuralBase: CommitPrimitive = internal.StructuralBase
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export abstract class Effectable<R, E, A> extends Base<R, E, A> {
+export abstract class Class<R, E, A> extends Base<R, E, A> {
   /**
    * @since 2.0.0
    */
@@ -88,7 +99,7 @@ export abstract class Effectable<R, E, A> extends Base<R, E, A> {
  * @since 2.0.0
  * @category constructors
  */
-export abstract class Structural<R, E, A> extends StructuralBase<R, E, A> {
+export abstract class StructuralClass<R, E, A> extends StructuralBase<R, E, A> {
   /**
    * @since 2.0.0
    */

@@ -3742,8 +3742,10 @@ Tags each metric in this effect with the specific tag.
 
 ```ts
 export declare const tagMetrics: {
-  (key: string, value: string): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, key: string, value: string): Effect<R, E, A>
+  (key: string, value: string): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  (values: Record<string, string>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, key: string, value: string): Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, string>): Effect<R, E, A>
 }
 ```
 
