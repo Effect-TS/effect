@@ -1361,9 +1361,24 @@ export const summarized = dual<
 
 /* @internal */
 export const tagMetrics = dual<
-  (key: string, value: string) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, key: string, value: string) => Effect.Effect<R, E, A>
->(3, (self, key, value) => labelMetrics(self, [metricLabel.make(key, value)]))
+  {
+    (key: string, value: string): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+    (
+      values: Record<string, string>
+    ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  },
+  {
+    <R, E, A>(effect: Effect.Effect<R, E, A>, key: string, value: string): Effect.Effect<R, E, A>
+    <R, E, A>(effect: Effect.Effect<R, E, A>, values: Record<string, string>): Effect.Effect<R, E, A>
+  }
+>((args) => core.isEffect(args[0]), function() {
+  return labelMetrics(
+    arguments[0],
+    typeof arguments[1] === "string"
+      ? [metricLabel.make(arguments[1], arguments[2])]
+      : Object.entries<string>(arguments[1]).map(([k, v]) => metricLabel.make(k, v))
+  )
+})
 
 /* @internal */
 export const labelMetrics = dual<
