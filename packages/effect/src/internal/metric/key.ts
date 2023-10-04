@@ -60,16 +60,44 @@ export const isMetricKey = (u: unknown): u is MetricKey.MetricKey<MetricKeyType.
   typeof u === "object" && u != null && MetricKeyTypeId in u
 
 /** @internal */
-export const counter = (name: string, description?: string): MetricKey.MetricKey.Counter =>
-  new MetricKeyImpl(name, metricKeyType.counter, Option.fromNullable(description))
+export const counter: {
+  (name: string, options?: {
+    readonly description?: string
+    readonly bigint?: false
+    readonly incremental?: boolean
+  }): MetricKey.MetricKey.Counter<number>
+  (name: string, options: {
+    readonly description?: string
+    readonly bigint: true
+    readonly incremental?: boolean
+  }): MetricKey.MetricKey.Counter<bigint>
+} = (name: string, options) =>
+  new MetricKeyImpl(
+    name,
+    metricKeyType.counter(options as any),
+    Option.fromNullable(options?.description)
+  )
 
 /** @internal */
 export const frequency = (name: string, description?: string): MetricKey.MetricKey.Frequency =>
   new MetricKeyImpl(name, metricKeyType.frequency, Option.fromNullable(description))
 
 /** @internal */
-export const gauge = (name: string, description?: string): MetricKey.MetricKey.Gauge =>
-  new MetricKeyImpl(name, metricKeyType.gauge, Option.fromNullable(description))
+export const gauge: {
+  (name: string, options?: {
+    readonly description?: string
+    readonly bigint?: false
+  }): MetricKey.MetricKey.Gauge<number>
+  (name: string, options: {
+    readonly description?: string
+    readonly bigint: true
+  }): MetricKey.MetricKey.Gauge<bigint>
+} = (name, options) =>
+  new MetricKeyImpl(
+    name,
+    metricKeyType.gauge(options as any),
+    Option.fromNullable(options?.description)
+  )
 
 /** @internal */
 export const histogram = (

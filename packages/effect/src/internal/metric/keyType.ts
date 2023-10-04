@@ -62,9 +62,10 @@ const metricKeyTypeVariance = {
 }
 
 /** @internal */
-class CounterKeyType implements MetricKeyType.MetricKeyType.Counter {
+class CounterKeyType<A extends (number | bigint)> implements MetricKeyType.MetricKeyType.Counter<A> {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
-  readonly [CounterKeyTypeTypeId]: MetricKeyType.CounterKeyTypeTypeId = CounterKeyTypeTypeId;
+  readonly [CounterKeyTypeTypeId]: MetricKeyType.CounterKeyTypeTypeId = CounterKeyTypeTypeId
+  constructor(readonly incremental: boolean, readonly bigint: boolean) {}
   [Hash.symbol](): number {
     return Hash.hash(CounterKeyTypeSymbolKey)
   }
@@ -92,9 +93,10 @@ class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
 }
 
 /** @internal */
-class GaugeKeyType implements MetricKeyType.MetricKeyType.Gauge {
+class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.MetricKeyType.Gauge<A> {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
-  readonly [GaugeKeyTypeTypeId]: MetricKeyType.GaugeKeyTypeTypeId = GaugeKeyTypeTypeId;
+  readonly [GaugeKeyTypeTypeId]: MetricKeyType.GaugeKeyTypeTypeId = GaugeKeyTypeTypeId
+  constructor(readonly bigint: boolean) {}
   [Hash.symbol](): number {
     return Hash.hash(GaugeKeyTypeSymbolKey)
   }
@@ -163,7 +165,14 @@ class SummaryKeyType implements MetricKeyType.MetricKeyType.Summary {
  * @since 2.0.0
  * @category constructors
  */
-export const counter: MetricKeyType.MetricKeyType.Counter = new CounterKeyType()
+export const counter: <A extends number | bigint>(options?: {
+  readonly bigint: boolean
+  readonly incremental: boolean
+}) => CounterKeyType<A> = (options) =>
+  new CounterKeyType(
+    options?.incremental ?? false,
+    options?.bigint ?? false
+  )
 
 /**
  * @since 2.0.0
@@ -175,7 +184,12 @@ export const frequency: MetricKeyType.MetricKeyType.Frequency = new FrequencyKey
  * @since 2.0.0
  * @category constructors
  */
-export const gauge: MetricKeyType.MetricKeyType.Gauge = new GaugeKeyType()
+export const gauge: <A extends number | bigint>(options?: {
+  readonly bigint: boolean
+}) => GaugeKeyType<A> = (options) =>
+  new GaugeKeyType(
+    options?.bigint ?? false
+  )
 
 /**
  * @since 2.0.0
@@ -212,7 +226,7 @@ export const isMetricKeyType = (u: unknown): u is MetricKeyType.MetricKeyType<un
  * @since 2.0.0
  * @category refinements
  */
-export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Counter => {
+export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Counter<number | bigint> => {
   return typeof u === "object" && u != null && CounterKeyTypeTypeId in u
 }
 
@@ -228,7 +242,7 @@ export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Fre
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge => {
+export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge<number | bigint> => {
   return typeof u === "object" && u != null && GaugeKeyTypeTypeId in u
 }
 

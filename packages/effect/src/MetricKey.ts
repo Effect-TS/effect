@@ -57,13 +57,13 @@ export declare namespace MetricKey {
    * @since 2.0.0
    * @category models
    */
-  export type Counter = MetricKey<MetricKeyType.MetricKeyType.Counter>
+  export type Counter<A extends (number | bigint)> = MetricKey<MetricKeyType.MetricKeyType.Counter<A>>
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export type Gauge = MetricKey<MetricKeyType.MetricKeyType.Gauge>
+  export type Gauge<A extends (number | bigint)> = MetricKey<MetricKeyType.MetricKeyType.Gauge<A>>
 
   /**
    * @since 2.0.0
@@ -107,7 +107,24 @@ export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKey
  * @since 2.0.0
  * @category constructors
  */
-export const counter: (name: string, description?: string) => MetricKey.Counter = internal.counter
+export const counter: {
+  (
+    name: string,
+    options?: {
+      readonly description?: string
+      readonly bigint?: false
+      readonly incremental?: boolean
+    }
+  ): MetricKey.Counter<number>
+  (
+    name: string,
+    options: {
+      readonly description?: string
+      readonly bigint: true
+      readonly incremental?: boolean
+    }
+  ): MetricKey.Counter<bigint>
+} = internal.counter
 
 /**
  * Creates a metric key for a categorical frequency table, with the specified
@@ -124,7 +141,10 @@ export const frequency: (name: string, description?: string) => MetricKey.Freque
  * @since 2.0.0
  * @category constructors
  */
-export const gauge: (name: string, description?: string) => MetricKey.Gauge = internal.gauge
+export const gauge: {
+  (name: string, options?: { readonly description?: string; readonly bigint?: false }): MetricKey.Gauge<number>
+  (name: string, options: { readonly description?: string; readonly bigint: true }): MetricKey.Gauge<bigint>
+} = internal.gauge
 
 /**
  * Creates a metric key for a histogram, with the specified name and boundaries.

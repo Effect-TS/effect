@@ -101,8 +101,10 @@ export declare namespace MetricKeyType {
    * @since 2.0.0
    * @category models
    */
-  export type Counter = MetricKeyType<number, MetricState.MetricState.Counter> & {
+  export type Counter<A extends (number | bigint)> = MetricKeyType<A, MetricState.MetricState.Counter<A>> & {
     readonly [CounterKeyTypeTypeId]: CounterKeyTypeTypeId
+    readonly incremental: boolean
+    readonly bigint: boolean
   }
 
   /**
@@ -117,8 +119,9 @@ export declare namespace MetricKeyType {
    * @since 2.0.0
    * @category models
    */
-  export type Gauge = MetricKeyType<number, MetricState.MetricState.Gauge> & {
+  export type Gauge<A extends (number | bigint)> = MetricKeyType<A, MetricState.MetricState.Gauge<A>> & {
     readonly [GaugeKeyTypeTypeId]: GaugeKeyTypeTypeId
+    readonly bigint: boolean
   }
 
   /**
@@ -184,7 +187,7 @@ export declare namespace MetricKeyType {
  * @since 2.0.0
  * @category constructors
  */
-export const counter: MetricKeyType.Counter = internal.counter
+export const counter: <A extends number | bigint>() => MetricKeyType.Counter<A> = internal.counter
 
 /**
  * @since 2.0.0
@@ -196,7 +199,7 @@ export const frequency: MetricKeyType.Frequency = internal.frequency
  * @since 2.0.0
  * @category constructors
  */
-export const gauge: MetricKeyType.Gauge = internal.gauge
+export const gauge: <A extends number | bigint>() => MetricKeyType.Gauge<A> = internal.gauge
 
 /**
  * @since 2.0.0
@@ -227,7 +230,7 @@ export const isMetricKeyType: (u: unknown) => u is MetricKeyType<unknown, unknow
  * @since 2.0.0
  * @category refinements
  */
-export const isCounterKey: (u: unknown) => u is MetricKeyType.Counter = internal.isCounterKey
+export const isCounterKey: (u: unknown) => u is MetricKeyType.Counter<number | bigint> = internal.isCounterKey
 
 /**
  * @since 2.0.0
@@ -239,7 +242,7 @@ export const isFrequencyKey: (u: unknown) => u is MetricKeyType.Frequency = inte
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeKey: (u: unknown) => u is MetricKeyType.Gauge = internal.isGaugeKey
+export const isGaugeKey: (u: unknown) => u is MetricKeyType.Gauge<number | bigint> = internal.isGaugeKey
 
 /**
  * @since 2.0.0
