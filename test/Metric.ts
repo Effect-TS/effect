@@ -168,7 +168,7 @@ describe.concurrent("Metric", () => {
         const counter = Metric.counter("c9")
         const result = yield* $(
           Metric.increment(counter),
-          Effect.tagMetrics("key", "value"),
+          Effect.tagMetrics({ key: "value" }),
           Effect.zipRight(
             pipe(
               counter,
