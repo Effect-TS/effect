@@ -1,6 +1,6 @@
 ---
 title: StreamEmit.ts
-nav_order: 110
+nav_order: 109
 parent: Modules
 ---
 

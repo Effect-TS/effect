@@ -1172,21 +1172,6 @@ export const prettyErrorMessage = (u: unknown): string => {
     return u["toString"]()
   }
   // 3)
-  if (typeof u === "object" && u !== null) {
-    if ("message" in u && typeof u["message"] === "string") {
-      const raw = JSON.parse(JSON.stringify(u))
-      const keys = new Set(Object.keys(raw))
-      keys.delete("name")
-      keys.delete("message")
-      keys.delete("_tag")
-      if (keys.size === 0) {
-        const name = "name" in u && typeof u.name === "string" ? u.name : "Error"
-        const tag = "_tag" in u && typeof u["_tag"] === "string" ? `(${u._tag})` : ``
-        return `${name}${tag}: ${u.message}`
-      }
-    }
-  }
-  // 4)
   return `Error: ${JSON.stringify(u)}`
 }
 
@@ -1197,7 +1182,7 @@ const defaultRenderError = (error: unknown): PrettyError => {
   if (typeof error === "object" && error !== null && error instanceof Error) {
     return new PrettyError(
       prettyErrorMessage(error),
-      error.stack?.split("\n").filter((_) => !_.startsWith("Error")).join("\n"),
+      error.stack?.split("\n").filter((_) => _.match(/at (.*)/)).join("\n"),
       span
     )
   }

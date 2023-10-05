@@ -55,6 +55,9 @@ devDependencies:
   '@vitest/coverage-v8':
     specifier: ^0.34.6
     version: 0.34.6(vitest@0.34.6)
+  '@vitest/expect':
+    specifier: ^0.34.6
+    version: 0.34.6
   babel-plugin-annotate-pure-calls:
     specifier: ^0.4.0
     version: 0.4.0(@babel/core@7.23.0)

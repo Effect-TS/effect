@@ -80,7 +80,6 @@
     "Encoding",
     "Equal",
     "Equivalence",
-    "Error",
     "ExecutionStrategy",
     "Exit",
     "Fiber",
@@ -397,12 +396,6 @@
       "module": "./Equivalence/dist/effect-Equivalence.esm.js",
       "import": "./Equivalence/dist/effect-Equivalence.cjs.mjs",
       "default": "./Equivalence/dist/effect-Equivalence.cjs.js"
-    },
-    "./Error": {
-      "types": "./dist/declarations/src/Error.d.ts",
-      "module": "./Error/dist/effect-Error.esm.js",
-      "import": "./Error/dist/effect-Error.cjs.mjs",
-      "default": "./Error/dist/effect-Error.cjs.js"
     },
     "./ExecutionStrategy": {
       "types": "./dist/declarations/src/ExecutionStrategy.d.ts",
@@ -1079,6 +1072,7 @@
     "@typescript-eslint/parser": "^6.7.4",
     "@vitejs/plugin-react": "^4.1.0",
     "@vitest/coverage-v8": "^0.34.6",
+    "@vitest/expect": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "eslint": "^8.50.0",
     "eslint-import-resolver-typescript": "^3.6.1",

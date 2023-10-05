@@ -1,8 +1,14 @@
 /**
  * @since 2.0.0
  */
+import type * as Channel from "./Channel"
+import * as Effect from "./Effect"
+import * as Effectable from "./Effectable"
 import type * as Equal from "./Equal"
+import type * as Inspectable from "./Inspectable"
 import * as internal from "./internal/Data"
+import { type Pipeable } from "./Pipeable"
+import type * as Sink from "./Sink"
 import type * as Types from "./Types"
 
 /**
@@ -40,8 +46,7 @@ export declare namespace Case {
  * @category constructors
  * @since 2.0.0
  */
-export const struct = <As extends Readonly<Record<string, any>>>(as: As): Data<As> =>
-  Object.assign(Object.create(internal.StructProto), as)
+export const struct: <As extends Readonly<Record<string, any>>>(as: As) => Data<As> = internal.struct
 
 /**
  * @category constructors
@@ -293,3 +298,70 @@ export const taggedEnum: {
     tag: K
   ) => Case.Constructor<Extract<A, { readonly _tag: K }>, "_tag">
 } = () => tagged as any
+
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export interface YieldableError extends Case, Pipeable, Inspectable.Inspectable {
+  readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
+  readonly [Effectable.ChannelTypeId]: Channel.Channel.VarianceStruct<
+    never,
+    unknown,
+    unknown,
+    unknown,
+    this,
+    never,
+    never
+  >
+}
+
+const YieldableErrorProto = Object.setPrototypeOf(
+  {
+    ...Effectable.StructuralCommitPrototype,
+    toString() {
+      return `${this.name}: ${this.message}`
+    },
+    get message() {
+      return JSON.stringify(this)
+    },
+    commit() {
+      return Effect.fail(this)
+    }
+  },
+  globalThis.Error.prototype
+)
+
+/**
+ * Provides a constructor for a Case Class.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const Error: new<A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+) => YieldableError & A = (function() {
+  function Base(this: any, args: any) {
+    if (args) {
+      Object.assign(this, args)
+    }
+    globalThis.Error.captureStackTrace(this, this.constructor)
+  }
+  Base.prototype = YieldableErrorProto
+  return Base as any
+})()
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+) => YieldableError & { readonly _tag: Tag } & A => {
+  class Base extends Error<{}> {
+    readonly _tag = tag
+  }
+  return Base as any
+}

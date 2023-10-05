@@ -1,5 +1,4 @@
 import type * as Channel from "../Channel"
-import * as Data from "../Data"
 import type * as Effect from "../Effect"
 import type * as Effectable from "../Effectable"
 import * as Equal from "../Equal"
@@ -7,6 +6,7 @@ import * as Hash from "../Hash"
 import { pipeArguments } from "../Pipeable"
 import type * as Sink from "../Sink"
 import type * as Stream from "../Stream"
+import * as Data from "./Data"
 import * as OpCodes from "./opCodes/effect"
 
 /** @internal */
