@@ -57,11 +57,9 @@
     "includeInternal": true
   },
   "packageManager": "pnpm@8.6.10",
-  "dependencies": {
-    "fast-check": "^3.13.1"
-  },
   "peerDependencies": {
-    "effect": "^2.0.0-next.45"
+    "effect": "^2.0.0-next.45",
+    "fast-check": "^3.13.1"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
@@ -92,6 +90,7 @@
     "eslint-plugin-import": "^2.28.1",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
+    "fast-check": "^3.13.1",
     "madge": "^6.1.0",
     "prettier": "^2.8.8",
     "ts-node": "^10.9.1",
