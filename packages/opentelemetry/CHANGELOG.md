@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.15.1
+
+### Patch Changes
+
+- [#66](https://github.com/Effect-TS/opentelemetry/pull/66) [`09cf96b`](https://github.com/Effect-TS/opentelemetry/commit/09cf96b7fd29f38bcbb1fa16f736fc2f42f1a75f) Thanks [@tim-smart](https://github.com/tim-smart)! - fix root spans
+
 ## 0.15.0
 
 ### Minor Changes
