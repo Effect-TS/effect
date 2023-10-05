@@ -8,7 +8,7 @@ parent: Modules
 
 This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 Added in v2.0.0
 

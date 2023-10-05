@@ -32,7 +32,7 @@ export {
 /**
  * This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
  * It includes functions for basic arithmetic operations, as well as type class instances for
- * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ * `Equivalence` and `Order`.
  *
  * @since 2.0.0
  */
@@ -41,7 +41,7 @@ export * as Bigint from "effect/Bigint"
 /**
  * This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
  * It includes functions for basic boolean operations, as well as type class instances for
- * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ * `Equivalence` and `Order`.
  *
  * @since 2.0.0
  */
@@ -476,7 +476,7 @@ export * as NonEmptyIterable from "effect/NonEmptyIterable"
 /**
  * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
  * It includes functions for basic arithmetic operations, as well as type class instances for
- * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ * `Equivalence` and `Order`.
  *
  * @since 2.0.0
  */
@@ -674,7 +674,7 @@ export * as Streamable from "effect/Streamable"
 /**
  * This module provides utility functions and type class instances for working with the `string` type in TypeScript.
  * It includes functions for basic string manipulation, as well as type class instances for
- * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+ * `Equivalence` and `Order`.
  *
  * @since 2.0.0
  */
