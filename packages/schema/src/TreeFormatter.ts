@@ -2,11 +2,10 @@
  * @since 1.0.0
  */
 
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST"
-import type { ParseErrors } from "./ParseResult"
+import type { ParseErrors, Type } from "./ParseResult"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -21,6 +20,7 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
 })
 
 /**
+ * @category formatting
  * @since 1.0.0
  */
 export const formatErrors = (errors: NonEmptyReadonlyArray<ParseErrors>): string =>
@@ -71,27 +71,26 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
-const getMessage = AST.getAnnotation<AST.MessageAnnotation<unknown>>(
+const getMessageAnnotation = AST.getAnnotation<AST.MessageAnnotation<unknown>>(
   AST.MessageAnnotationId
 )
 
-const getTitle = AST.getAnnotation<AST.TitleAnnotation>(
+const getTitleAnnotation = AST.getAnnotation<AST.TitleAnnotation>(
   AST.TitleAnnotationId
 )
 
-const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(
+const getIdentifierAnnotation = AST.getAnnotation<AST.IdentifierAnnotation>(
   AST.IdentifierAnnotationId
 )
 
-const getDescription = AST.getAnnotation<AST.DescriptionAnnotation>(
+const getDescriptionAnnotation = AST.getAnnotation<AST.DescriptionAnnotation>(
   AST.DescriptionAnnotationId
 )
 
 const getExpected = (ast: AST.AST): Option.Option<string> =>
-  pipe(
-    getIdentifier(ast),
-    Option.orElse(() => getTitle(ast)),
-    Option.orElse(() => getDescription(ast))
+  getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => getTitleAnnotation(ast)),
+    Option.orElse(() => getDescriptionAnnotation(ast))
   )
 
 /** @internal */
@@ -143,19 +142,20 @@ export const formatExpected = (ast: AST.AST): string => {
 const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseErrors>): boolean =>
   es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "UnionMember"
 
+/** @internal */
+export const getMessage = (e: Type) =>
+  getMessageAnnotation(e.expected).pipe(
+    Option.map((annotation) => annotation(e.actual)),
+    Option.orElse(() => e.message),
+    Option.getOrElse(() =>
+      `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
+    )
+  )
+
 const go = (e: ParseErrors): Tree<string> => {
   switch (e._tag) {
     case "Type":
-      return make(
-        pipe(
-          getMessage(e.expected),
-          Option.map((f) => f(e.actual)),
-          Option.orElse(() => e.message),
-          Option.getOrElse(() =>
-            `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
-          )
-        )
-      )
+      return make(getMessage(e))
     case "Forbidden":
       return make("is forbidden")
     case "Index": {
@@ -175,8 +175,8 @@ const go = (e: ParseErrors): Tree<string> => {
       return make(`[${formatActual(e.key)}]`, es)
     }
     case "Missing":
-      return make(`is missing`)
+      return make("is missing")
     case "UnionMember":
-      return make(`union member`, e.errors.map(go))
+      return make("union member", e.errors.map(go))
   }
 }
