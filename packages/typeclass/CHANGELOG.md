@@ -1,5 +1,13 @@
 # @effect/typeclass
 
+## 0.7.0
+
+### Minor Changes
+
+- [#26](https://github.com/Effect-TS/typeclass/pull/26) [`7d0bf49`](https://github.com/Effect-TS/typeclass/commit/7d0bf49f9b3964bcdccb05e5593fb42dd9d2598c) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- [#26](https://github.com/Effect-TS/typeclass/pull/26) [`7d0bf49`](https://github.com/Effect-TS/typeclass/commit/7d0bf49f9b3964bcdccb05e5593fb42dd9d2598c) Thanks [@tim-smart](https://github.com/tim-smart)! - build with preconstruct
+
 ## 0.6.2
 
 ### Patch Changes
