@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 50
+nav_order: 49
 parent: Modules
 ---
 
@@ -46,7 +46,6 @@ Added in v2.0.0
   - [From "effect/Encoding"](#from-effectencoding)
   - [From "effect/Equal"](#from-effectequal)
   - [From "effect/Equivalence"](#from-effectequivalence)
-  - [From "effect/Error"](#from-effecterror)
   - [From "effect/ExecutionStrategy"](#from-effectexecutionstrategy)
   - [From "effect/Exit"](#from-effectexit)
   - [From "effect/Fiber"](#from-effectfiber)
@@ -604,18 +603,6 @@ These properties are also known in mathematics as an "equivalence relation".
 
 ```ts
 export * as Equivalence from 'effect/Equivalence'
-```
-
-Added in v2.0.0
-
-## From "effect/Error"
-
-Re-exports all named exports from the "effect/Error" module as "Error".
-
-**Signature**
-
-```ts
-export * as Error from 'effect/Error'
 ```
 
 Added in v2.0.0

@@ -1,6 +1,6 @@
 import * as Chunk from "../../Chunk"
-import * as Data from "../../Data"
 import type * as Differ from "../../Differ"
+import * as Data from "../Data"
 
 import * as Equal from "../../Equal"
 import * as Dual from "../../Function"

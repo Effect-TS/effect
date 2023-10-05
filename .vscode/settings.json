@@ -40,7 +40,6 @@
     "Encoding": true,
     "Equal": true,
     "Equivalence": true,
-    "Error": true,
     "ExecutionStrategy": true,
     "Exit": true,
     "Fiber": true,

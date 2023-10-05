@@ -1,6 +1,6 @@
 ---
 title: StreamHaltStrategy.ts
-nav_order: 111
+nav_order: 110
 parent: Modules
 ---
 

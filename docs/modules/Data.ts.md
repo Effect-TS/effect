@@ -14,8 +14,10 @@ Added in v2.0.0
 
 - [constructors](#constructors)
   - [Class](#class)
+  - [Error](#error)
   - [Structural](#structural)
   - [TaggedClass](#taggedclass)
+  - [TaggedError](#taggederror)
   - [array](#array)
   - [case](#case)
   - [struct](#struct)
@@ -28,6 +30,7 @@ Added in v2.0.0
   - [Case (interface)](#case-interface)
   - [Data (type alias)](#data-type-alias)
   - [TaggedEnum (type alias)](#taggedenum-type-alias)
+  - [YieldableError (interface)](#yieldableerror-interface)
 - [utils](#utils)
   - [Case (namespace)](#case-namespace)
     - [Constructor (interface)](#constructor-interface)
@@ -51,6 +54,20 @@ Provides a constructor for a Case Class.
 export declare const Class: new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
 ) => Data<A>
+```
+
+Added in v2.0.0
+
+## Error
+
+Provides a constructor for a Case Class.
+
+**Signature**
+
+```ts
+export declare const Error: new <A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+) => YieldableError & A
 ```
 
 Added in v2.0.0
@@ -79,6 +96,20 @@ export declare const TaggedClass: <Tag extends string>(
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
 ) => Data<A & { readonly _tag: Tag }>
+```
+
+Added in v2.0.0
+
+## TaggedError
+
+**Signature**
+
+```ts
+export declare const TaggedError: <Tag extends string>(
+  tag: Tag
+) => new <A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+) => YieldableError & { readonly _tag: Tag } & A
 ```
 
 Added in v2.0.0
@@ -284,6 +315,29 @@ type HttpErrorPlain =
 export type TaggedEnum<A extends Record<string, Record<string, any>>> = {
   readonly [Tag in keyof A]: Data<Readonly<Types.Simplify<A[Tag] & { _tag: Tag }>>>
 }[keyof A]
+```
+
+Added in v2.0.0
+
+## YieldableError (interface)
+
+**Signature**
+
+```ts
+export interface YieldableError extends Case, Pipeable, Inspectable.Inspectable {
+  readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
+  readonly [Effectable.ChannelTypeId]: Channel.Channel.VarianceStruct<
+    never,
+    unknown,
+    unknown,
+    unknown,
+    this,
+    never,
+    never
+  >
+}
 ```
 
 Added in v2.0.0

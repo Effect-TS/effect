@@ -1,10 +1,10 @@
 import * as Chunk from "../../Chunk"
 import type { Context, Tag } from "../../Context"
-import { Structural } from "../../Data"
 import type { Differ } from "../../Differ"
 import * as Equal from "../../Equal"
 import * as Dual from "../../Function"
 import { makeContext } from "../../internal/Context"
+import { Structural } from "../Data"
 
 /** @internal */
 export const ContextPatchTypeId: Differ.Context.TypeId = Symbol.for(

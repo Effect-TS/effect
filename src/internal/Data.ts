@@ -49,3 +49,7 @@ export const Structural: new<A>(
   Structural.prototype = StructProto
   return Structural as any
 })()
+
+/** @internal */
+export const struct = <As extends Readonly<Record<string, any>>>(as: As): Data.Data<As> =>
+  Object.assign(Object.create(StructProto), as)
