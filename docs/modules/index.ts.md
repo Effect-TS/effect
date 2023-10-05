@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 49
+nav_order: 50
 parent: Modules
 ---
 
@@ -13,6 +13,7 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [exports](#exports)
+  - [From "effect/BigDecimal"](#from-effectbigdecimal)
   - [From "effect/BigInt"](#from-effectbigint)
   - [From "effect/Boolean"](#from-effectboolean)
   - [From "effect/Brand"](#from-effectbrand)
@@ -166,6 +167,20 @@ Added in v2.0.0
 ---
 
 # exports
+
+## From "effect/BigDecimal"
+
+This module provides utility functions and type class instances for working with the `BigDecimal` type in TypeScript.
+It includes functions for basic arithmetic operations, as well as type class instances for
+`Equivalence` and `Order`.
+
+**Signature**
+
+```ts
+export * as BigDecimal from 'effect/BigDecimal'
+```
+
+Added in v2.0.0
 
 ## From "effect/BigInt"
 

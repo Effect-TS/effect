@@ -1,6 +1,6 @@
 ---
 title: MetricBoundaries.ts
-nav_order: 59
+nav_order: 60
 parent: Modules
 ---
 

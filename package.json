@@ -51,6 +51,7 @@
     "src",
     "dist",
     "internal",
+    "BigDecimal",
     "BigInt",
     "Boolean",
     "Brand",
@@ -204,6 +205,12 @@
       "default": "./dist/effect.cjs.js"
     },
     "./package.json": "./package.json",
+    "./BigDecimal": {
+      "types": "./dist/declarations/src/BigDecimal.d.ts",
+      "module": "./BigDecimal/dist/effect-BigDecimal.esm.js",
+      "import": "./BigDecimal/dist/effect-BigDecimal.cjs.mjs",
+      "default": "./BigDecimal/dist/effect-BigDecimal.cjs.js"
+    },
     "./BigInt": {
       "types": "./dist/declarations/src/BigInt.d.ts",
       "module": "./BigInt/dist/effect-BigInt.esm.js",
