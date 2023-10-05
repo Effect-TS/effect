@@ -19,7 +19,7 @@ describe.concurrent("Cause", () => {
       readonly _tag = "WithMessage"
       readonly message = "my message"
     }
-    expect(internal.prettyErrorMessage(new Error2())).toEqual(`Error(WithMessage): my message`)
+    expect(internal.prettyErrorMessage(new Error2())).toEqual(`Error: {"_tag":"WithMessage","message":"my message"}`)
     class Error3 {
       readonly _tag = "WithName"
       readonly name = "my name"
@@ -33,7 +33,7 @@ describe.concurrent("Cause", () => {
       readonly message = "my message"
     }
     expect(internal.prettyErrorMessage(new Error4())).toEqual(
-      `my name(WithName): my message`
+      `Error: {"_tag":"WithName","name":"my name","message":"my message"}`
     )
     class Error5 {
       readonly _tag = "WithToString"
@@ -60,7 +60,7 @@ describe.concurrent("Cause", () => {
         readonly _tag = "WithMessage"
         readonly message = "my message"
       }
-      expect(Cause.pretty(Cause.fail(new Error2()))).toEqual(`Error(WithMessage): my message`)
+      expect(Cause.pretty(Cause.fail(new Error2()))).toEqual(`Error: {"_tag":"WithMessage","message":"my message"}`)
       class Error3 {
         readonly _tag = "WithName"
         readonly name = "my name"
@@ -71,7 +71,9 @@ describe.concurrent("Cause", () => {
         readonly name = "my name"
         readonly message = "my message"
       }
-      expect(Cause.pretty(Cause.fail(new Error4()))).toEqual(`my name(WithName): my message`)
+      expect(Cause.pretty(Cause.fail(new Error4()))).toEqual(
+        `Error: {"_tag":"WithName","name":"my name","message":"my message"}`
+      )
       class Error5 {
         readonly _tag = "WithToString"
         toString() {

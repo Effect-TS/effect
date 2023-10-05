@@ -256,11 +256,6 @@ export * as Equivalence from "effect/Equivalence"
 /**
  * @since 2.0.0
  */
-export * as Error from "effect/Error"
-
-/**
- * @since 2.0.0
- */
 export * as ExecutionStrategy from "effect/ExecutionStrategy"
 
 /**
