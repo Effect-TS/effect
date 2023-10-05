@@ -48,7 +48,7 @@
     "src",
     "dist",
     "internal",
-    "Bigint",
+    "BigInt",
     "Boolean",
     "Brand",
     "Cache",
@@ -200,11 +200,11 @@
       "default": "./dist/effect.cjs.js"
     },
     "./package.json": "./package.json",
-    "./Bigint": {
-      "types": "./dist/declarations/src/Bigint.d.ts",
-      "module": "./Bigint/dist/effect-Bigint.esm.js",
-      "import": "./Bigint/dist/effect-Bigint.cjs.mjs",
-      "default": "./Bigint/dist/effect-Bigint.cjs.js"
+    "./BigInt": {
+      "types": "./dist/declarations/src/BigInt.d.ts",
+      "module": "./BigInt/dist/effect-BigInt.esm.js",
+      "import": "./BigInt/dist/effect-BigInt.cjs.mjs",
+      "default": "./BigInt/dist/effect-BigInt.cjs.js"
     },
     "./Boolean": {
       "types": "./dist/declarations/src/Boolean.d.ts",

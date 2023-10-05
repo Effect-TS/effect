@@ -13,7 +13,7 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [exports](#exports)
-  - [From "effect/Bigint"](#from-effectbigint)
+  - [From "effect/BigInt"](#from-effectbigint)
   - [From "effect/Boolean"](#from-effectboolean)
   - [From "effect/Brand"](#from-effectbrand)
   - [From "effect/Cache"](#from-effectcache)
@@ -166,7 +166,7 @@ Added in v2.0.0
 
 # exports
 
-## From "effect/Bigint"
+## From "effect/BigInt"
 
 This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
@@ -175,7 +175,7 @@ It includes functions for basic arithmetic operations, as well as type class ins
 **Signature**
 
 ```ts
-export * as Bigint from 'effect/Bigint'
+export * as BigInt from 'effect/BigInt'
 ```
 
 Added in v2.0.0

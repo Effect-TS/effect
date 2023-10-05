@@ -110,16 +110,16 @@ export const isBoolean = (input: unknown): input is boolean => typeof input === 
  * @param input - The value to test.
  *
  * @example
- * import { isBigint } from "effect/Predicate"
+ * import { isBigInt } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isBigint(1n), true)
+ * assert.deepStrictEqual(isBigInt(1n), true)
  *
- * assert.deepStrictEqual(isBigint(1), false)
+ * assert.deepStrictEqual(isBigInt(1), false)
  *
  * @category guards
  * @since 2.0.0
  */
-export const isBigint = (input: unknown): input is bigint => typeof input === "bigint"
+export const isBigInt = (input: unknown): input is bigint => typeof input === "bigint"
 
 /**
  * Tests if a value is a `symbol`.
