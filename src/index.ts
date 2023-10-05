@@ -36,7 +36,7 @@ export {
  *
  * @since 2.0.0
  */
-export * as BigInt from "effect/Bigint"
+export * as BigInt from "effect/BigInt"
 
 /**
  * This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.

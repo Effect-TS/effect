@@ -1,5 +1,5 @@
 import { deepStrictEqual } from "effect-test/util"
-import * as BigInt from "effect/Bigint"
+import * as BigInt from "effect/BigInt"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 
