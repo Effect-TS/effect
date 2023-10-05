@@ -1,6 +1,6 @@
 {
   "name": "@effect/platform-browser",
-  "version": "0.7.8",
+  "version": "0.8.0",
   "description": "Unified interfaces for common platform-specific services",
   "main": "dist/effect-platform-browser.cjs.js",
   "module": "dist/effect-platform-browser.esm.js",
