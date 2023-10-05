@@ -368,23 +368,21 @@ describe("HttpServer", () => {
             (_) => Http.response.json({ spanId: _.spanId, parent: _.parent })
           )
         ),
-        Http.middleware.b3Response,
         Http.server.serve(Http.middleware.tracer),
         Effect.scoped,
         Effect.fork
       )
-      const client = yield* _(makeClient)
-      const tracerClient = HttpC.client.withB3Propagation(client)
+      const client = HttpC.client.withB3Propagation(yield* _(makeClient))
       const requestSpan = yield* _(Effect.makeSpan("client request"))
       const [body, span] = yield* _(
-        tracerClient(HttpC.request.get("/")),
-        Effect.flatMap((_) =>
-          Effect.withSpan(Effect.all([_.json, Effect.flatten(Effect.currentSpan)]), "client response")
-        ),
+        client(HttpC.request.get("/")),
+        Effect.flatMap((_) => Effect.all([_.json, Effect.flatten(Effect.currentParentSpan)])),
         Effect.withParentSpan(requestSpan),
-        Effect.scoped
+        Effect.scoped,
+        Effect.repeatN(2)
       )
       expect((body as any).parent.value.spanId).toEqual(requestSpan.spanId)
-      expect(span.parent._tag === "Some" && span.parent.value.spanId).toEqual((body as any).spanId)
+      assert(span._tag === "ExternalSpan")
+      expect(span.spanId).toEqual((body as any).spanId)
     }).pipe(runPromise))
 })

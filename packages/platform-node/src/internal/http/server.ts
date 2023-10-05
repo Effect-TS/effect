@@ -1,4 +1,5 @@
 import * as FileSystem from "@effect/platform/FileSystem"
+import * as App from "@effect/platform/Http/App"
 import type * as FormData from "@effect/platform/Http/FormData"
 import type * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
@@ -112,22 +113,29 @@ export const make = (
     )
   )
 
-const respond = Middleware.make((httpApp) =>
-  Effect.flatMap(ServerRequest.ServerRequest, (request) =>
-    Effect.tapErrorCause(
-      Effect.tap(httpApp, (response) => handleResponse(request, response)),
-      (_cause) =>
-        Effect.sync(() => {
-          const nodeResponse = (request as ServerRequestImpl).response
-          if (!nodeResponse.headersSent) {
-            nodeResponse.writeHead(500)
-          }
-          if (!nodeResponse.writableEnded) {
-            nodeResponse.end()
-          }
-        })
-    ))
-)
+const respond = Middleware.make((httpApp) => {
+  return Effect.flatMap(
+    App.preResponseHandler,
+    (preResponse) =>
+      Effect.flatMap(ServerRequest.ServerRequest, (request) =>
+        Effect.tapErrorCause(
+          Effect.tap(
+            Effect.flatMap(httpApp, (response) => preResponse(request, response)),
+            (response) => handleResponse(request, response)
+          ),
+          (_cause) =>
+            Effect.sync(() => {
+              const nodeResponse = (request as ServerRequestImpl).response
+              if (!nodeResponse.headersSent) {
+                nodeResponse.writeHead(500)
+              }
+              if (!nodeResponse.writableEnded) {
+                nodeResponse.end()
+              }
+            })
+        ))
+  )
+})
 
 class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId

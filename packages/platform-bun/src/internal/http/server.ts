@@ -1,6 +1,6 @@
 import * as FormData from "@effect/platform-node/Http/FormData"
 import type * as FileSystem from "@effect/platform/FileSystem"
-import type * as App from "@effect/platform/Http/App"
+import * as App from "@effect/platform/Http/App"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
@@ -130,18 +130,22 @@ const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResp
 
 const respond = Middleware.make((httpApp) =>
   Effect.flatMap(
-    ServerRequest.ServerRequest,
-    (request) =>
-      Effect.onExit(
-        httpApp,
-        (exit) =>
-          Effect.sync(() => {
-            if (exit._tag === "Success") {
-              ;(request as ServerRequestImpl).resolve(makeResponse(request, exit.value))
-            } else {
-              ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
-            }
-          })
+    App.preResponseHandler,
+    (preResponseHandler) =>
+      Effect.flatMap(
+        ServerRequest.ServerRequest,
+        (request) =>
+          Effect.onExit(
+            Effect.flatMap(httpApp, (response) => preResponseHandler(request, response)),
+            (exit) =>
+              Effect.sync(() => {
+                if (exit._tag === "Success") {
+                  ;(request as ServerRequestImpl).resolve(makeResponse(request, exit.value))
+                } else {
+                  ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
+                }
+              })
+          )
       )
   )
 )

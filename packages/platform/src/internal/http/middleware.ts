@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect"
 import { flow } from "effect/Function"
+import * as App from "../../Http/App"
 import * as Headers from "../../Http/Headers"
 import * as IncomingMessage from "../../Http/IncomingMessage"
 import type * as Middleware from "../../Http/Middleware"
@@ -34,42 +35,43 @@ export const logger = make((httpApp) => {
 })
 
 /** @internal */
-export const tracer = make((httpApp) =>
-  Effect.flatMap(
+export const tracer = make((httpApp) => {
+  const appWithStatus = Effect.tap(
+    Effect.zipRight(
+      App.appendPreResponseHandler(b3Response),
+      httpApp
+    ),
+    (response) => Effect.annotateCurrentSpan("http.status", response.status)
+  )
+  return Effect.flatMap(
     ServerRequest.ServerRequest,
     (request) =>
       Effect.flatMap(
         Effect.orElseSucceed(IncomingMessage.schemaExternalSpan(request), () => undefined),
         (parent) =>
           Effect.withSpan(
-            Effect.tap(
-              httpApp,
-              (response) => Effect.annotateCurrentSpan("http.status", response.status)
-            ),
+            appWithStatus,
             `http ${request.method}`,
             { attributes: { "http.method": request.method, "http.url": request.url }, parent }
           )
       )
   )
-)
+})
 
-/** @internal */
-export const b3Response = make((httpApp) =>
+const b3Response: App.PreResponseHandler = (_request, response) =>
   Effect.flatMap(
     Effect.currentSpan,
     (span) =>
       span._tag === "Some"
-        ? Effect.map(httpApp, (res) =>
-          ServerResponse.setHeader(
-            res,
-            "b3",
-            `${span.value.traceId}-${span.value.spanId}-1${
-              span.value.parent._tag === "Some" ? `-${span.value.parent.value.spanId}` : ""
-            }`
-          ))
-        : httpApp
+        ? ServerResponse.setHeader(
+          response,
+          "b3",
+          `${span.value.traceId}-${span.value.spanId}-1${
+            span.value.parent._tag === "Some" ? `-${span.value.parent.value.spanId}` : ""
+          }`
+        )
+        : response
   )
-)
 
 /** @internal */
 export const xForwardedHeaders = make((httpApp) =>
