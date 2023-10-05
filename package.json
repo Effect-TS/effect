@@ -17,7 +17,8 @@
     "update-version": "changeset version && pnpm install --no-frozen-lockfile",
     "lint": "eslint src test",
     "fix": "preconstruct fix",
-    "docgen": "docgen"
+    "docgen": "docgen",
+    "dtslint": "dtslint --expectOnly dtslint"
   },
   "preconstruct": {
     "distFilenameStrategy": "full",
@@ -1061,6 +1062,7 @@
     "@babel/preset-typescript": "^7.23.0",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
+    "@definitelytyped/dtslint": "^0.0.182",
     "@effect/build-utils": "^0.1.5",
     "@effect/docgen": "^0.1.8",
     "@effect/eslint-plugin": "^0.1.2",
