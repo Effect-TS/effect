@@ -1,10 +1,10 @@
-import type * as resolver from "@effect/rpc-http/Resolver"
 import { RpcTransportError } from "@effect/rpc/Error"
 import * as Resolver from "@effect/rpc/Resolver"
 import { withConstructorTagged, withTo } from "@effect/rpc/SchemaC"
 import * as S from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import type * as resolver from "../Resolver"
 
 const RpcFetchError_ = withConstructorTagged(
   S.struct({

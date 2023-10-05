@@ -1,8 +1,8 @@
-import type * as server from "@effect/rpc-http/Server"
 import type { RpcRouter } from "@effect/rpc/Router"
 import * as Server from "@effect/rpc/Server"
 import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
+import type * as server from "../Server"
 
 /** @internal */
 export const HttpRequest = Tag<server.HttpRequest>()

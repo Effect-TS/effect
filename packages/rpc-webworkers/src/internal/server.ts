@@ -1,5 +1,3 @@
-import { getTransferables } from "@effect/rpc-webworkers/Schema"
-import type { RpcWorker, RpcWorkerHandler } from "@effect/rpc-webworkers/Server"
 import { RpcTransportError } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcRouter } from "@effect/rpc/Router"
@@ -9,6 +7,8 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import type { Scope } from "effect/Scope"
+import { getTransferables } from "../Schema"
+import type { RpcWorker, RpcWorkerHandler } from "../Server"
 
 /** @internal */
 export const makeHandler: {

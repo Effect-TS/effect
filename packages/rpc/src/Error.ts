@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { SchemaC } from "@effect/rpc/SchemaC"
-import { withConstructorTagged } from "@effect/rpc/SchemaC"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type * as ROA from "effect/ReadonlyArray"
+import type { SchemaC } from "./SchemaC"
+import { withConstructorTagged } from "./SchemaC"
 
 /**
  * @category models

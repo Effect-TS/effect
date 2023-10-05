@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/rpc-webworkers/internal/resolver"
-import * as worker from "@effect/rpc-webworkers/internal/worker"
 import type { RpcTransportError } from "@effect/rpc/Error"
 import type * as Resolver from "@effect/rpc/Resolver"
 import type { Tag } from "effect/Context"
@@ -12,6 +10,8 @@ import type { LazyArg } from "effect/Function"
 import type * as Layer from "effect/Layer"
 import type { Pool } from "effect/Pool"
 import type { Scope } from "effect/Scope"
+import * as internal from "./internal/resolver"
+import * as worker from "./internal/worker"
 
 /**
  * @category models

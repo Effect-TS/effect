@@ -1,11 +1,11 @@
-import { makeUndecodedClient } from "@effect/rpc/internal/server"
-import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
-import type { RpcService } from "@effect/rpc/Schema"
 import type { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
+import type { RpcHandler, RpcHandlers, RpcRouter } from "../Router"
+import type { RpcService } from "../Schema"
+import { makeUndecodedClient } from "./server"
 
 /** @internal */
 export const make = <

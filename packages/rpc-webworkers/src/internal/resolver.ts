@@ -1,6 +1,3 @@
-import * as WW from "@effect/rpc-webworkers/internal/worker"
-import type * as WWResolver from "@effect/rpc-webworkers/Resolver"
-import * as schema from "@effect/rpc-webworkers/Schema"
 import { RpcTransportError } from "@effect/rpc/Error"
 import * as Resolver from "@effect/rpc/Resolver"
 import { Tag } from "effect/Context"
@@ -11,6 +8,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import type { Scope } from "effect/Scope"
+import type * as WWResolver from "../Resolver"
+import * as schema from "../Schema"
+import * as WW from "./worker"
 
 /** @internal */
 export const RpcWorkerQueue = Tag<WWResolver.RpcWorkerQueue>()

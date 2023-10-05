@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/rpc-http/internal/resolver"
 import type { RpcResolver } from "@effect/rpc/Resolver"
 import type { SchemaC } from "@effect/rpc/SchemaC"
+import * as internal from "./internal/resolver"
 
 /**
  * @category models

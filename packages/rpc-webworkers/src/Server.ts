@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/rpc-webworkers/internal/server"
 import type { RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type { Effect } from "effect/Effect"
 import type { Scope } from "effect/Scope"
 import type { Span } from "effect/Tracer"
+import * as internal from "./internal/server"
 
 /**
  * @category models

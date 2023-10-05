@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Resolver from "@effect/rpc-http/Resolver"
 import * as Client from "@effect/rpc/Client"
 import type { RpcService } from "@effect/rpc/Schema"
+import * as Resolver from "./Resolver"
 
 /**
  * @since 1.0.0

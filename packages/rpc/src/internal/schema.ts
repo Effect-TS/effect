@@ -1,9 +1,9 @@
-import type { RpcEncodeFailure } from "@effect/rpc/Error"
-import { decode, encode, encodeEffect } from "@effect/rpc/internal/codec"
-import type * as schema from "@effect/rpc/Schema"
 import * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import { dual, identity } from "effect/Function"
+import type { RpcEncodeFailure } from "../Error"
+import type * as schema from "../Schema"
+import { decode, encode, encodeEffect } from "./codec"
 
 type JsonArray = ReadonlyArray<Json>
 type JsonObject = { readonly [key: string]: Json }
