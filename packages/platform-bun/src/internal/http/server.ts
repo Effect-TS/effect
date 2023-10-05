@@ -130,22 +130,21 @@ const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResp
 
 const respond = Middleware.make((httpApp) =>
   Effect.flatMap(
-    App.preResponseHandler,
-    (preResponseHandler) =>
-      Effect.flatMap(
-        ServerRequest.ServerRequest,
-        (request) =>
-          Effect.onExit(
-            Effect.flatMap(httpApp, (response) => preResponseHandler(request, response)),
-            (exit) =>
-              Effect.sync(() => {
-                if (exit._tag === "Success") {
-                  ;(request as ServerRequestImpl).resolve(makeResponse(request, exit.value))
-                } else {
-                  ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
-                }
-              })
-          )
+    ServerRequest.ServerRequest,
+    (request) =>
+      Effect.onExit(
+        Effect.flatMap(
+          httpApp,
+          (response) => Effect.flatMap(App.preResponseHandler, (f) => f(request, response))
+        ),
+        (exit) =>
+          Effect.sync(() => {
+            if (exit._tag === "Success") {
+              ;(request as ServerRequestImpl).resolve(makeResponse(request, exit.value))
+            } else {
+              ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
+            }
+          })
       )
   )
 )

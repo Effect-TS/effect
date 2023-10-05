@@ -113,29 +113,28 @@ export const make = (
     )
   )
 
-const respond = Middleware.make((httpApp) => {
-  return Effect.flatMap(
-    App.preResponseHandler,
-    (preResponse) =>
-      Effect.flatMap(ServerRequest.ServerRequest, (request) =>
-        Effect.tapErrorCause(
-          Effect.tap(
-            Effect.flatMap(httpApp, (response) => preResponse(request, response)),
-            (response) => handleResponse(request, response)
-          ),
-          (_cause) =>
-            Effect.sync(() => {
-              const nodeResponse = (request as ServerRequestImpl).response
-              if (!nodeResponse.headersSent) {
-                nodeResponse.writeHead(500)
-              }
-              if (!nodeResponse.writableEnded) {
-                nodeResponse.end()
-              }
-            })
-        ))
-  )
-})
+const respond = Middleware.make((httpApp) =>
+  Effect.flatMap(ServerRequest.ServerRequest, (request) =>
+    Effect.tapErrorCause(
+      Effect.tap(
+        Effect.flatMap(
+          httpApp,
+          (response) => Effect.flatMap(App.preResponseHandler, (f) => f(request, response))
+        ),
+        (response) => handleResponse(request, response)
+      ),
+      (_cause) =>
+        Effect.sync(() => {
+          const nodeResponse = (request as ServerRequestImpl).response
+          if (!nodeResponse.headersSent) {
+            nodeResponse.writeHead(500)
+          }
+          if (!nodeResponse.writableEnded) {
+            nodeResponse.end()
+          }
+        })
+    ))
+)
 
 class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
