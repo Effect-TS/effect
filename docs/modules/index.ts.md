@@ -171,7 +171,7 @@ Added in v2.0.0
 
 This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 
@@ -185,7 +185,7 @@ Added in v2.0.0
 
 This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
 It includes functions for basic boolean operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 
@@ -1101,7 +1101,7 @@ Added in v2.0.0
 
 This module provides utility functions and type class instances for working with the `number` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 
@@ -1559,7 +1559,7 @@ Added in v2.0.0
 
 This module provides utility functions and type class instances for working with the `string` type in TypeScript.
 It includes functions for basic string manipulation, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 
