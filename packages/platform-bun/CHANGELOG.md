@@ -1,5 +1,14 @@
 # @effect/platform-bun
 
+## 0.8.1
+
+### Patch Changes
+
+- [#187](https://github.com/Effect-TS/platform/pull/187) [`26e05da`](https://github.com/Effect-TS/platform/commit/26e05dad112fa43403b23ebc815a98f0c95e0558) Thanks [@tim-smart](https://github.com/tim-smart)! - fix order of pre response access
+
+- Updated dependencies [[`26e05da`](https://github.com/Effect-TS/platform/commit/26e05dad112fa43403b23ebc815a98f0c95e0558)]:
+  - @effect/platform-node@0.20.1
+
 ## 0.8.0
 
 ### Minor Changes
