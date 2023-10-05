@@ -40,13 +40,13 @@
   "license": "MIT",
   "sideEffects": false,
   "devDependencies": {
-    "@effect/schema": "^0.39.2",
+    "@effect/schema": "^0.40.0",
     "@types/busboy": "^1.5.1",
     "@types/mime": "^3.0.2",
-    "effect": "2.0.0-next.44"
+    "effect": "2.0.0-next.45"
   },
   "peerDependencies": {
-    "effect": "^2.0.0-next.44"
+    "effect": "^2.0.0-next.45"
   },
   "dependencies": {
     "@effect/platform": "workspace:^",

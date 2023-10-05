@@ -49,7 +49,7 @@ export const schemaParams = <I extends Readonly<Record<string, string>>, A>(sche
   )
 }
 
-class RouterImpl<R, E> extends Effectable.Effectable<
+class RouterImpl<R, E> extends Effectable.StructuralClass<
   Exclude<R, Router.RouteContext>,
   E | Error.RouteNotFound,
   ServerResponse.ServerResponse

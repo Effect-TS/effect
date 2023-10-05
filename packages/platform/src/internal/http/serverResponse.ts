@@ -15,7 +15,7 @@ import * as internalBody from "./body"
 /** @internal */
 export const TypeId: ServerResponse.TypeId = Symbol.for("@effect/platform/Http/ServerResponse") as ServerResponse.TypeId
 
-class ServerResponseImpl extends Effectable.Effectable<never, never, ServerResponse.ServerResponse>
+class ServerResponseImpl extends Effectable.StructuralClass<never, never, ServerResponse.ServerResponse>
   implements ServerResponse.ServerResponse
 {
   readonly [TypeId]: ServerResponse.TypeId
