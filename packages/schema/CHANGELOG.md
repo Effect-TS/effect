@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.40.1
+
+### Patch Changes
+
+- [#459](https://github.com/Effect-TS/schema/pull/459) [`f2d0fc5`](https://github.com/Effect-TS/schema/commit/f2d0fc5b21b8ebdbab21722cdbf5655806ea5bf9) Thanks [@gcanti](https://github.com/gcanti)! - add ArrayFormatter
+
+- [#461](https://github.com/Effect-TS/schema/pull/461) [`2d3a234`](https://github.com/Effect-TS/schema/commit/2d3a234737251e17e7cccf871579a5040aa7ceb9) Thanks [@gcanti](https://github.com/gcanti)! - move fast-check to peer dependencies, closes #458
+
 ## 0.40.0
 
 ### Minor Changes
