@@ -737,6 +737,15 @@ export const map: {
 })
 
 /**
+ * @since 2.0.0
+ * @category combinators
+ */
+export const mapNonEmpty: {
+  <A, B>(f: (a: A) => B): (self: Cons<A>) => Cons<B>
+  <A, B>(self: Cons<A>, f: (a: A) => B): Cons<B>
+} = map as any
+
+/**
  * Partition a list into two lists, where the first list contains all elements
  * that did not satisfy the specified predicate, and the second list contains
  * all elements that did satisfy the specified predicate.
