@@ -1218,24 +1218,29 @@ export const transformOrFail: {
 export const transform: {
   <C, D, B>(
     to: Schema<C, D>,
-    decode: (b: B) => unknown,
-    encode: (c: C) => unknown
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
-    decode: (b: B) => unknown,
-    encode: (c: C) => unknown
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown
   ): Schema<A, D>
 } = dual(
   4,
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
-    decode: (b: B) => unknown,
-    encode: (c: C) => unknown
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown
   ): Schema<A, D> =>
-    transformOrFail(from, to, (a) => Either.right(decode(a)), (b) => Either.right(encode(b)))
+    transformOrFail(
+      from,
+      to,
+      (a, options, ast) => Either.right(decode(a, options, ast)),
+      (b, options, ast) => Either.right(encode(b, options, ast))
+    )
 )
 
 /**
