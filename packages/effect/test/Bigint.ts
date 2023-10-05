@@ -1,6 +1,7 @@
 import { deepStrictEqual } from "effect-test/util"
 import * as Bigint from "effect/Bigint"
 import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 
 describe.concurrent("Bigint", () => {
   it("sign", () => {
@@ -102,5 +103,26 @@ describe.concurrent("Bigint", () => {
   it("multiplyAll", () => {
     assert.deepStrictEqual(Bigint.multiplyAll([2n, 0n, 4n]), 0n)
     assert.deepStrictEqual(Bigint.multiplyAll([2n, 3n, 4n]), 24n)
+  })
+
+  it("abs", () => {
+    assert.deepStrictEqual(Bigint.abs(2n), 2n)
+    assert.deepStrictEqual(Bigint.abs(-3n), 3n)
+  })
+
+  it("gcd", () => {
+    assert.deepStrictEqual(Bigint.gcd(2n, 4n), 2n)
+    assert.deepStrictEqual(Bigint.gcd(3n, 4n), 1n)
+  })
+
+  it("lcm", () => {
+    assert.deepStrictEqual(Bigint.lcm(2n, 4n), 4n)
+    assert.deepStrictEqual(Bigint.lcm(3n, 4n), 12n)
+  })
+
+  it("sqrt", () => {
+    assert.deepStrictEqual(Bigint.sqrt(16n), Option.some(4n))
+    assert.deepStrictEqual(Bigint.sqrt(81n), Option.some(9n))
+    assert.deepStrictEqual(Bigint.sqrt(-123n), Option.none())
   })
 })
