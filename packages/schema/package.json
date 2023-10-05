@@ -111,6 +111,7 @@
     "internal",
     "AST",
     "Arbitrary",
+    "ArrayFormatter",
     "ParseResult",
     "Parser",
     "Pretty",
@@ -136,6 +137,12 @@
       "module": "./Arbitrary/dist/effect-schema-Arbitrary.esm.js",
       "import": "./Arbitrary/dist/effect-schema-Arbitrary.cjs.mjs",
       "default": "./Arbitrary/dist/effect-schema-Arbitrary.cjs.js"
+    },
+    "./ArrayFormatter": {
+      "types": "./dist/declarations/src/ArrayFormatter.d.ts",
+      "module": "./ArrayFormatter/dist/effect-schema-ArrayFormatter.esm.js",
+      "import": "./ArrayFormatter/dist/effect-schema-ArrayFormatter.cjs.mjs",
+      "default": "./ArrayFormatter/dist/effect-schema-ArrayFormatter.cjs.js"
     },
     "./ParseResult": {
       "types": "./dist/declarations/src/ParseResult.d.ts",

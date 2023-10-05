@@ -1,16 +1,17 @@
 /**
  * @since 1.0.0
  */
-
-/**
- * @since 1.0.0
- */
 export * as AST from "@effect/schema/AST"
 
 /**
  * @since 1.0.0
  */
 export * as Arbitrary from "@effect/schema/Arbitrary"
+
+/**
+ * @since 1.0.0
+ */
+export * as ArrayFormatter from "@effect/schema/ArrayFormatter"
 
 /**
  * @since 1.0.0
