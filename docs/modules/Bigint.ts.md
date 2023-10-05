@@ -22,15 +22,20 @@ Added in v2.0.0
   - [Equivalence](#equivalence)
   - [Order](#order)
 - [math](#math)
+  - [abs](#abs)
   - [decrement](#decrement)
   - [divide](#divide)
+  - [gcd](#gcd)
   - [increment](#increment)
+  - [lcm](#lcm)
   - [multiply](#multiply)
   - [multiplyAll](#multiplyall)
   - [sign](#sign)
+  - [sqrt](#sqrt)
   - [subtract](#subtract)
   - [sum](#sum)
   - [sumAll](#sumall)
+  - [unsafeSqrt](#unsafesqrt)
 - [predicates](#predicates)
   - [between](#between)
   - [greaterThan](#greaterthan)
@@ -91,6 +96,28 @@ Added in v2.0.0
 
 # math
 
+## abs
+
+Determines the absolute value of a given `bigint`.
+
+**Signature**
+
+```ts
+export declare const abs: (n: bigint) => bigint
+```
+
+**Example**
+
+```ts
+import { abs } from 'effect/Bigint'
+
+assert.deepStrictEqual(abs(-5n), 5n)
+assert.deepStrictEqual(abs(0n), 0n)
+assert.deepStrictEqual(abs(5n), 5n)
+```
+
+Added in v2.0.0
+
 ## decrement
 
 Decrements a number by `1n`.
@@ -135,6 +162,28 @@ assert.deepStrictEqual(divide(6n, 4n), 1n)
 
 Added in v2.0.0
 
+## gcd
+
+Determines the greatest common divisor of two `bigint`s.
+
+**Signature**
+
+```ts
+export declare const gcd: { (that: bigint): (self: bigint) => bigint; (self: bigint, that: bigint): bigint }
+```
+
+**Example**
+
+```ts
+import { gcd } from 'effect/Bigint'
+
+assert.deepStrictEqual(gcd(2n, 3n), 1n)
+assert.deepStrictEqual(gcd(2n, 4n), 2n)
+assert.deepStrictEqual(gcd(16n, 24n), 8n)
+```
+
+Added in v2.0.0
+
 ## increment
 
 Returns the result of adding `1n` to a given number.
@@ -151,6 +200,28 @@ export declare const increment: (n: bigint) => bigint
 import { increment } from 'effect/Bigint'
 
 assert.deepStrictEqual(increment(2n), 3n)
+```
+
+Added in v2.0.0
+
+## lcm
+
+Determines the least common multiple of two `bigint`s.
+
+**Signature**
+
+```ts
+export declare const lcm: { (that: bigint): (self: bigint) => bigint; (self: bigint, that: bigint): bigint }
+```
+
+**Example**
+
+```ts
+import { lcm } from 'effect/Bigint'
+
+assert.deepStrictEqual(lcm(2n, 3n), 6n)
+assert.deepStrictEqual(lcm(2n, 4n), 4n)
+assert.deepStrictEqual(lcm(16n, 24n), 48n)
 ```
 
 Added in v2.0.0
@@ -217,6 +288,30 @@ assert.deepStrictEqual(sign(5n), 1)
 
 Added in v2.0.0
 
+## sqrt
+
+Determines the square root of a given `bigint` safely. Returns `none` if the given `bigint` is negative.
+
+**Signature**
+
+```ts
+export declare const sqrt: (n: bigint) => Option.Option<bigint>
+```
+
+**Example**
+
+```ts
+import { sqrt } from 'effect/Bigint'
+import * as Option from 'effect/Option'
+
+assert.deepStrictEqual(sqrt(4n), Option.some(2n))
+assert.deepStrictEqual(sqrt(9n), Option.some(3n))
+assert.deepStrictEqual(sqrt(16n), Option.some(4n))
+assert.deepStrictEqual(sqrt(-1n), Option.none())
+```
+
+Added in v2.0.0
+
 ## subtract
 
 Provides a subtraction operation on `bigint`s.
@@ -273,6 +368,28 @@ export declare const sumAll: (collection: Iterable<bigint>) => bigint
 import { sumAll } from 'effect/Bigint'
 
 assert.deepStrictEqual(sumAll([2n, 3n, 4n]), 9n)
+```
+
+Added in v2.0.0
+
+## unsafeSqrt
+
+Determines the square root of a given `bigint` unsafely. Throws if the given `bigint` is negative.
+
+**Signature**
+
+```ts
+export declare const unsafeSqrt: (n: bigint) => bigint
+```
+
+**Example**
+
+```ts
+import { unsafeSqrt } from 'effect/Bigint'
+
+assert.deepStrictEqual(unsafeSqrt(4n), 2n)
+assert.deepStrictEqual(unsafeSqrt(9n), 3n)
+assert.deepStrictEqual(unsafeSqrt(16n), 4n)
 ```
 
 Added in v2.0.0

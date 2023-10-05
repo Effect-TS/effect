@@ -8,6 +8,7 @@
 
 import * as equivalence from "./Equivalence"
 import { dual } from "./Function"
+import * as Option from "./Option"
 import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import * as predicate from "./Predicate"
@@ -334,6 +335,121 @@ export const max: {
  * @since 2.0.0
  */
 export const sign = (n: bigint): Ordering => Order(n, 0n)
+
+/**
+ * Determines the absolute value of a given `bigint`.
+ *
+ * @param n - The `bigint` to determine the absolute value of.
+ *
+ * @example
+ * import { abs } from 'effect/Bigint'
+ *
+ * assert.deepStrictEqual(abs(-5n), 5n)
+ * assert.deepStrictEqual(abs(0n), 0n)
+ * assert.deepStrictEqual(abs(5n), 5n)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const abs = (n: bigint): bigint => (n < 0n ? -n : n)
+
+/**
+ * Determines the greatest common divisor of two `bigint`s.
+ *
+ * @param a - The first `bigint`.
+ * @param b - The second `bigint`.
+ *
+ * @example
+ * import { gcd } from 'effect/Bigint'
+ *
+ * assert.deepStrictEqual(gcd(2n, 3n), 1n)
+ * assert.deepStrictEqual(gcd(2n, 4n), 2n)
+ * assert.deepStrictEqual(gcd(16n, 24n), 8n)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const gcd: {
+  (that: bigint): (self: bigint) => bigint
+  (self: bigint, that: bigint): bigint
+} = dual(2, (self: bigint, that: bigint): bigint => {
+  while (that !== 0n) {
+    const t = that
+    that = self % that
+    self = t
+  }
+  return self
+})
+
+/**
+ * Determines the least common multiple of two `bigint`s.
+ *
+ * @param a - The first `bigint`.
+ * @param b - The second `bigint`.
+ *
+ * @example
+ * import { lcm } from 'effect/Bigint'
+ *
+ * assert.deepStrictEqual(lcm(2n, 3n), 6n)
+ * assert.deepStrictEqual(lcm(2n, 4n), 4n)
+ * assert.deepStrictEqual(lcm(16n, 24n), 48n)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const lcm: {
+  (that: bigint): (self: bigint) => bigint
+  (self: bigint, that: bigint): bigint
+} = dual(2, (self: bigint, that: bigint): bigint => (self * that) / gcd(self, that))
+
+/**
+ * Determines the square root of a given `bigint` unsafely. Throws if the given `bigint` is negative.
+ *
+ * @param n - The `bigint` to determine the square root of.
+ *
+ * @example
+ * import { unsafeSqrt } from 'effect/Bigint'
+ *
+ * assert.deepStrictEqual(unsafeSqrt(4n), 2n)
+ * assert.deepStrictEqual(unsafeSqrt(9n), 3n)
+ * assert.deepStrictEqual(unsafeSqrt(16n), 4n)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const unsafeSqrt = (n: bigint): bigint => {
+  if (n < 0n) {
+    throw new RangeError("Cannot take the square root of a negative number")
+  }
+  if (n < 2n) {
+    return n
+  }
+  let x = n / 2n
+  while (x * x > n) {
+    x = ((n / x) + x) / 2n
+  }
+  return x
+}
+
+/**
+ * Determines the square root of a given `bigint` safely. Returns `none` if the given `bigint` is negative.
+ *
+ * @param n - The `bigint` to determine the square root of.
+ *
+ * @example
+ * import { sqrt } from 'effect/Bigint'
+ * import * as Option from 'effect/Option'
+ *
+ * assert.deepStrictEqual(sqrt(4n), Option.some(2n))
+ * assert.deepStrictEqual(sqrt(9n), Option.some(3n))
+ * assert.deepStrictEqual(sqrt(16n), Option.some(4n))
+ * assert.deepStrictEqual(sqrt(-1n), Option.none())
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const sqrt = (n: bigint): Option.Option<bigint> =>
+  greaterThanOrEqualTo(n, 0n) ? Option.some(unsafeSqrt(n)) : Option.none<bigint>()
 
 /**
  * Takes an `Iterable` of `bigint`s and returns their sum as a single `bigint
