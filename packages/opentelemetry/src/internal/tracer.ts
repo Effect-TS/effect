@@ -31,15 +31,21 @@ export class OtelSpan implements Tracer.Span {
     startTime: bigint
   ) {
     const active = contextApi.active()
-    this.span = tracer.startSpan(name, {
-      startTime: nanosToHrTime(startTime),
-      links: links.length > 0
-        ? links.map((link) => ({
-          context: makeSpanContext(link.span),
-          attributes: link.attributes
-        }))
-        : undefined
-    }, parent._tag === "Some" ? populateContext(active, parent.value, context) : active)
+    this.span = tracer.startSpan(
+      name,
+      {
+        startTime: nanosToHrTime(startTime),
+        links: links.length > 0
+          ? links.map((link) => ({
+            context: makeSpanContext(link.span),
+            attributes: link.attributes
+          }))
+          : undefined
+      },
+      parent._tag === "Some"
+        ? populateContext(active, parent.value, context)
+        : OtelApi.trace.deleteSpan(active)
+    )
     const spanContext = this.span.spanContext()
     this.spanId = spanContext.spanId
     this.traceId = spanContext.traceId
