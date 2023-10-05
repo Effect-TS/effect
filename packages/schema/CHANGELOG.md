@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.40.2
+
+### Patch Changes
+
+- [#465](https://github.com/Effect-TS/schema/pull/465) [`8452aef`](https://github.com/Effect-TS/schema/commit/8452aef39a20fa8f6a984606e0b65351e07a2d69) Thanks [@gcanti](https://github.com/gcanti)! - Add support for ParseOptions and AST to transform
+
 ## 0.40.1
 
 ### Patch Changes
