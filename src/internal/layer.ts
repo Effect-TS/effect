@@ -1135,7 +1135,7 @@ export const withSpan = dual<
     readonly root?: boolean
     readonly context?: Context.Context<never>
   }) => Layer.Layer<R, E, A>
->(2, (self, name, options) =>
+>((args) => isLayer(args[0]), (self, name, options) =>
   unwrapScoped(
     core.map(
       fiberRuntime.useSpanScoped(name, options),
