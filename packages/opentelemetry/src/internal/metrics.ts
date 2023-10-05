@@ -50,7 +50,7 @@ export class MetricProducerImpl implements MetricProducer {
             startTime: hrTimeNow,
             endTime: hrTimeNow,
             attributes,
-            value: metricState.count
+            value: Number(metricState.count)
           }]
         })
       } else if (MetricState.isGaugeState(metricState)) {
@@ -62,7 +62,7 @@ export class MetricProducerImpl implements MetricProducer {
             startTime: hrTimeNow,
             endTime: hrTimeNow,
             attributes,
-            value: metricState.value
+            value: Number(metricState.value)
           }]
         })
       } else if (MetricState.isHistogramState(metricState)) {
@@ -214,7 +214,7 @@ const descriptorFromKey = (
   ...descriptorMeta(metricKey, suffix),
   unit: tags.unit ?? tags.time_unit ?? "1",
   type: instrumentTypeFromKey(metricKey),
-  valueType: ValueType.DOUBLE
+  valueType: "bigint" in metricKey.keyType && metricKey.keyType.bigint === true ? ValueType.INT : ValueType.DOUBLE
 })
 
 const instrumentTypeFromKey = (key: MetricKey.MetricKey.Untyped): InstrumentType => {
@@ -222,9 +222,9 @@ const instrumentTypeFromKey = (key: MetricKey.MetricKey.Untyped): InstrumentType
     return InstrumentType.HISTOGRAM
   } else if (MetricKeyType.isGaugeKey(key.keyType)) {
     return InstrumentType.OBSERVABLE_GAUGE
-  } else if (MetricKeyType.isSummaryKey(key.keyType)) {
-    return InstrumentType.UP_DOWN_COUNTER
   } else if (MetricKeyType.isFrequencyKey(key.keyType)) {
+    return InstrumentType.COUNTER
+  } else if (MetricKeyType.isCounterKey(key.keyType) && key.keyType.incremental) {
     return InstrumentType.COUNTER
   }
 

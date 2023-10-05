@@ -8,7 +8,9 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
 
-const counter = Metric.counter("count", "An example counter")
+const counter = Metric.counter("count", {
+  description: "An example counter"
+})
 
 const incrementCounter = pipe(
   Metric.increment(counter),
