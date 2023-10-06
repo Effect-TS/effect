@@ -443,6 +443,12 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
   ): Effect.Effect<never, never, boolean>
 
   /**
+   * It is called when the backing queue is empty but there are some
+   * takers that can be completed
+   */
+  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void
+
+  /**
    * Determines the behavior of the `Queue.Strategy` when the `Queue` has empty
    * slots following a `take` operation.
    */
