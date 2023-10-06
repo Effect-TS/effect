@@ -1,5 +1,16 @@
 # @effect/rpc-webworkers
 
+## 0.10.0
+
+### Minor Changes
+
+- [#100](https://github.com/Effect-TS/rpc/pull/100) [`a103fa6`](https://github.com/Effect-TS/rpc/commit/a103fa694b20c35ebf214ee9d421ecdef41b0f1c) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- Updated dependencies [[`a103fa6`](https://github.com/Effect-TS/rpc/commit/a103fa694b20c35ebf214ee9d421ecdef41b0f1c)]:
+  - @effect/rpc@0.10.0
+
 ## 0.9.0
 
 ### Minor Changes

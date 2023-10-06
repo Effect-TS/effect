@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-http-node",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "",
   "main": "dist/effect-rpc-http-node.cjs.js",
   "module": "dist/effect-rpc-http-node.esm.js",
