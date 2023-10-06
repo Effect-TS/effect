@@ -273,14 +273,14 @@ export const map = <A, B>(self: ParseResult<A>, f: (self: A) => B): ParseResult<
  */
 export const mapLeft = <A>(
   self: ParseResult<A>,
-  f: (e1: ParseError) => ParseError
+  f: (error: ParseError) => ParseError
 ): ParseResult<A> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return Either.left(f(s.left))
   }
   if (s["_tag"] === "Right") {
-    s
+    return s
   }
   return Effect.mapError(self, f)
 }
@@ -291,7 +291,7 @@ export const mapLeft = <A>(
  */
 export const bimap = <A, B>(
   self: ParseResult<A>,
-  f: (e1: ParseError) => ParseError,
+  f: (error: ParseError) => ParseError,
   g: (a: A) => B
 ): ParseResult<B> => {
   const s: any = self
@@ -302,4 +302,22 @@ export const bimap = <A, B>(
     return Either.right(g(s.right))
   }
   return Effect.mapBoth(self, { onFailure: f, onSuccess: g })
+}
+
+/**
+ * @category optimisation
+ * @since 1.0.0
+ */
+export const orElse = <A>(
+  self: ParseResult<A>,
+  f: (error: ParseError) => ParseResult<A>
+): ParseResult<A> => {
+  const s: any = self
+  if (s["_tag"] === "Left") {
+    return f(s.left)
+  }
+  if (s["_tag"] === "Right") {
+    return s
+  }
+  return Effect.catchAll(self, f)
 }
