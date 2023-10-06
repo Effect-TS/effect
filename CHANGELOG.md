@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.47
+
+### Minor Changes
+
+- [#1495](https://github.com/Effect-TS/effect/pull/1495) [`01c479f0c`](https://github.com/Effect-TS/effect/commit/01c479f0c86d99344c0a5625bdc2c5564915d512) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Support rendezvous-like behaviour in Queue.bounded
+
 ## 2.0.0-next.46
 
 ### Minor Changes
