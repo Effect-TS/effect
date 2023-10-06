@@ -14,4 +14,20 @@ describe.concurrent("Effect", () => {
       expect(log).includes("test/Effect/error.ts:12:78")
       expect(log).includes("at A")
     }))
+
+  it.effect("tryPromise", () =>
+    Effect.gen(function*($) {
+      const cause = yield* $(
+        Effect.tryPromise({
+          try: () => Promise.reject("fail"),
+          catch: () => new TestError()
+        }),
+        Effect.withSpan("A"),
+        Effect.sandbox,
+        Effect.flip
+      )
+      const log = Cause.pretty(cause)
+      expect(log).includes("test/Effect/error.ts:23")
+      expect(log).includes("at A")
+    }))
 })

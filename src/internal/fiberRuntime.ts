@@ -1038,11 +1038,11 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   }
 
   ["Left"](op: core.Primitive & { _op: "Left" }) {
-    return core.exitFail(op.left)
+    return core.fail(op.left)
   }
 
   ["None"](_: core.Primitive & { _op: "None" }) {
-    return core.exitFail(internalCause.NoSuchElementException())
+    return core.fail(internalCause.NoSuchElementException())
   }
 
   ["Right"](op: core.Primitive & { _op: "Right" }) {
