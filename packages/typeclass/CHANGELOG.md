@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.9.0
+
+### Minor Changes
+
+- [#30](https://github.com/Effect-TS/typeclass/pull/30) [`893d0c6`](https://github.com/Effect-TS/typeclass/commit/893d0c6f0e5599d6a32412e28deda829c956c7cf) Thanks [@gcanti](https://github.com/gcanti)! - update effect
+
 ## 0.8.0
 
 ### Minor Changes
