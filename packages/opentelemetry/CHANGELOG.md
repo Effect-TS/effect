@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.16.0
+
+### Minor Changes
+
+- [#68](https://github.com/Effect-TS/opentelemetry/pull/68) [`6340117`](https://github.com/Effect-TS/opentelemetry/commit/6340117165cd08a36c0178cb6b48e5db86e745ea) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.15.1
 
 ### Patch Changes
