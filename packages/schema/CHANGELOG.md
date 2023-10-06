@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.42.0
+
+### Minor Changes
+
+- [#472](https://github.com/Effect-TS/schema/pull/472) [`e3d79fe`](https://github.com/Effect-TS/schema/commit/e3d79fe2cd237e55bc89046be07794447655e4e8) Thanks [@gcanti](https://github.com/gcanti)! - update effect
+
 ## 0.41.1
 
 ### Patch Changes
