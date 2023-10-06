@@ -58,7 +58,7 @@
   },
   "packageManager": "pnpm@8.6.10",
   "peerDependencies": {
-    "effect": "2.0.0-next.46",
+    "effect": "2.0.0-next.47",
     "fast-check": "^3.13.1"
   },
   "devDependencies": {
@@ -82,7 +82,7 @@
     "ajv": "^8.12.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "benchmark": "^2.1.4",
-    "effect": "2.0.0-next.46",
+    "effect": "2.0.0-next.47",
     "eslint": "^8.50.0",
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-codegen": "0.17.0",
