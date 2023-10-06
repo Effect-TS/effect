@@ -39,11 +39,11 @@
     "@effect/platform": "workspace:^"
   },
   "devDependencies": {
-    "effect": "2.0.0-next.45",
+    "effect": "2.0.0-next.46",
     "vitest-localstorage-mock": "^0.0.1"
   },
   "peerDependencies": {
-    "effect": "^2.0.0-next.45"
+    "effect": "^2.0.0-next.46"
   },
   "files": [
     "src",
