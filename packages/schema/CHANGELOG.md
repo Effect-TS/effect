@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.41.1
+
+### Patch Changes
+
+- [#470](https://github.com/Effect-TS/schema/pull/470) [`a5bf46b`](https://github.com/Effect-TS/schema/commit/a5bf46b85255f01b33e9320e7e0db53b478f38ac) Thanks [@gcanti](https://github.com/gcanti)! - ParseResult: add orElse
+
 ## 0.41.0
 
 ### Minor Changes
