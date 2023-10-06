@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "noEmit": true,
+    "skipLibCheck": true,
     "strict": true,
     "noImplicitReturns": false,
     "noUnusedLocals": false,
@@ -10,22 +11,12 @@
     "moduleResolution": "node",
     "module": "commonjs",
     "target": "ES2021",
-    "lib": [
-      "ES2021"
-    ],
+    "lib": ["ES2021"],
     "paths": {
-      "@effect/typeclass": [
-        "../src/index.ts"
-      ],
-      "@effect/typeclass/test/*": [
-        "../test/*"
-      ],
-      "@effect/typeclass/examples/*": [
-        "../examples/*"
-      ],
-      "@effect/typeclass/*": [
-        "../src/*"
-      ]
+      "@effect/typeclass": ["../src/index.ts"],
+      "@effect/typeclass/test/*": ["../test/*"],
+      "@effect/typeclass/examples/*": ["../examples/*"],
+      "@effect/typeclass/*": ["../src/*"]
     }
   }
 }
