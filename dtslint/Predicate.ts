@@ -30,11 +30,11 @@ unknowns.filter(Predicate.isNumber)
 unknowns.filter(Predicate.isBoolean)
 
 // -------------------------------------------------------------------------------------
-// isBigint
+// isBigInt
 // -------------------------------------------------------------------------------------
 
 // $ExpectType bigint[]
-unknowns.filter(Predicate.isBigint)
+unknowns.filter(Predicate.isBigInt)
 
 // -------------------------------------------------------------------------------------
 // isSymbol

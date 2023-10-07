@@ -19,15 +19,15 @@ import * as predicate from "./Predicate"
  * @param input - The value to test.
  *
  * @example
- * import { isBigint } from "effect/Bigint"
+ * import { isBigInt } from "effect/BigInt"
  *
- * assert.deepStrictEqual(isBigint(1n), true)
- * assert.deepStrictEqual(isBigint(1), false)
+ * assert.deepStrictEqual(isBigInt(1n), true)
+ * assert.deepStrictEqual(isBigInt(1), false)
  *
  * @category guards
  * @since 2.0.0
  */
-export const isBigint: (u: unknown) => u is bigint = predicate.isBigint
+export const isBigInt: (u: unknown) => u is bigint = predicate.isBigInt
 
 /**
  * Provides an addition operation on `bigint`s.
@@ -36,7 +36,7 @@ export const isBigint: (u: unknown) => u is bigint = predicate.isBigint
  * @param that - The second operand.
  *
  * @example
- * import { sum } from 'effect/Bigint'
+ * import { sum } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(sum(2n, 3n), 5n)
  *
@@ -55,7 +55,7 @@ export const sum: {
  * @param that - The second operand.
  *
  * @example
- * import { multiply } from 'effect/Bigint'
+ * import { multiply } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(multiply(2n, 3n), 6n)
  *
@@ -74,7 +74,7 @@ export const multiply: {
  * @param that - The second operand.
  *
  * @example
- * import { subtract } from 'effect/Bigint'
+ * import { subtract } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(subtract(2n, 3n), -1n)
  *
@@ -96,7 +96,7 @@ export const subtract: {
  * @param that - The divisor operand.
  *
  * @example
- * import { divide } from 'effect/Bigint'
+ * import { divide } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(divide(6n, 3n), 2n)
  * assert.deepStrictEqual(divide(6n, 4n), 1n)
@@ -116,7 +116,7 @@ export const divide: {
  * @param n - A `bigint` to be incremented.
  *
  * @example
- * import { increment } from 'effect/Bigint'
+ * import { increment } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(increment(2n), 3n)
  *
@@ -131,7 +131,7 @@ export const increment = (n: bigint): bigint => n + 1n
  * @param n - A `bigint` to be decremented.
  *
  * @example
- * import { decrement } from 'effect/Bigint'
+ * import { decrement } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(decrement(3n), 2n)
  *
@@ -159,7 +159,7 @@ export const Order: order.Order<bigint> = order.bigint
  * @param that - The second argument.
  *
  * @example
- * import { lessThan } from 'effect/Bigint'
+ * import { lessThan } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(lessThan(2n, 3n), true)
  * assert.deepStrictEqual(lessThan(3n, 3n), false)
@@ -180,7 +180,7 @@ export const lessThan: {
  * @param that - The second `bigint` to compare with.
  *
  * @example
- * import { lessThanOrEqualTo } from 'effect/Bigint'
+ * import { lessThanOrEqualTo } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(lessThanOrEqualTo(2n, 3n), true)
  * assert.deepStrictEqual(lessThanOrEqualTo(3n, 3n), true)
@@ -201,7 +201,7 @@ export const lessThanOrEqualTo: {
  * @param that - The second argument.
  *
  * @example
- * import { greaterThan } from 'effect/Bigint'
+ * import { greaterThan } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(greaterThan(2n, 3n), false)
  * assert.deepStrictEqual(greaterThan(3n, 3n), false)
@@ -222,7 +222,7 @@ export const greaterThan: {
  * @param that - The second `bigint` to compare with.
  *
  * @example
- * import { greaterThanOrEqualTo } from 'effect/Bigint'
+ * import { greaterThanOrEqualTo } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(greaterThanOrEqualTo(2n, 3n), false)
  * assert.deepStrictEqual(greaterThanOrEqualTo(3n, 3n), true)
@@ -244,7 +244,7 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
- * import { between } from 'effect/Bigint'
+ * import { between } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(between(0n, 5n)(3n), true)
  * assert.deepStrictEqual(between(0n, 5n)(-1n), false)
@@ -270,7 +270,7 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
- * import { clamp } from 'effect/Bigint'
+ * import { clamp } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(clamp(0n, 5n)(3n), 3n)
  * assert.deepStrictEqual(clamp(0n, 5n)(-1n), 0n)
@@ -290,7 +290,7 @@ export const clamp: {
  * @param that - The second `bigint`.
  *
  * @example
- * import { min } from 'effect/Bigint'
+ * import { min } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(min(2n, 3n), 2n)
  *
@@ -308,7 +308,7 @@ export const min: {
  * @param that - The second `bigint`.
  *
  * @example
- * import { max } from 'effect/Bigint'
+ * import { max } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(max(2n, 3n), 3n)
  *
@@ -325,7 +325,7 @@ export const max: {
  * @param n - The `bigint` to determine the sign of.
  *
  * @example
- * import { sign } from 'effect/Bigint'
+ * import { sign } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(sign(-5n), -1)
  * assert.deepStrictEqual(sign(0n), 0)
@@ -342,7 +342,7 @@ export const sign = (n: bigint): Ordering => Order(n, 0n)
  * @param n - The `bigint` to determine the absolute value of.
  *
  * @example
- * import { abs } from 'effect/Bigint'
+ * import { abs } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(abs(-5n), 5n)
  * assert.deepStrictEqual(abs(0n), 0n)
@@ -360,7 +360,7 @@ export const abs = (n: bigint): bigint => (n < 0n ? -n : n)
  * @param b - The second `bigint`.
  *
  * @example
- * import { gcd } from 'effect/Bigint'
+ * import { gcd } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(gcd(2n, 3n), 1n)
  * assert.deepStrictEqual(gcd(2n, 4n), 2n)
@@ -388,7 +388,7 @@ export const gcd: {
  * @param b - The second `bigint`.
  *
  * @example
- * import { lcm } from 'effect/Bigint'
+ * import { lcm } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(lcm(2n, 3n), 6n)
  * assert.deepStrictEqual(lcm(2n, 4n), 4n)
@@ -408,7 +408,7 @@ export const lcm: {
  * @param n - The `bigint` to determine the square root of.
  *
  * @example
- * import { unsafeSqrt } from 'effect/Bigint'
+ * import { unsafeSqrt } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(unsafeSqrt(4n), 2n)
  * assert.deepStrictEqual(unsafeSqrt(9n), 3n)
@@ -437,7 +437,7 @@ export const unsafeSqrt = (n: bigint): bigint => {
  * @param n - The `bigint` to determine the square root of.
  *
  * @example
- * import { sqrt } from 'effect/Bigint'
+ * import { sqrt } from 'effect/BigInt'
  * import * as Option from 'effect/Option'
  *
  * assert.deepStrictEqual(sqrt(4n), Option.some(2n))
@@ -457,7 +457,7 @@ export const sqrt = (n: bigint): Option.Option<bigint> =>
  * @param collection - The collection of `bigint`s to sum.
  *
  * @example
- * import { sumAll } from 'effect/Bigint'
+ * import { sumAll } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(sumAll([2n, 3n, 4n]), 9n)
  *
@@ -478,7 +478,7 @@ export const sumAll = (collection: Iterable<bigint>): bigint => {
  * @param collection - The collection of `bigint`s to multiply.
  *
  * @example
- * import { multiplyAll } from 'effect/Bigint'
+ * import { multiplyAll } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(multiplyAll([2n, 3n, 4n]), 24n)
  *

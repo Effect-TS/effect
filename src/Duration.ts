@@ -11,7 +11,7 @@ import * as Option from "./Option"
 import * as order from "./Order"
 import type { Pipeable } from "./Pipeable"
 import { pipeArguments } from "./Pipeable"
-import { isBigint, isNumber } from "./Predicate"
+import { isBigInt, isNumber } from "./Predicate"
 
 const TypeId: unique symbol = Symbol.for("effect/Duration")
 
@@ -75,7 +75,7 @@ export const decode = (input: DurationInput): Duration => {
     return input
   } else if (isNumber(input)) {
     return millis(input)
-  } else if (isBigint(input)) {
+  } else if (isBigInt(input)) {
     return nanos(input)
   } else {
     DURATION_REGEX.lastIndex = 0 // Reset the lastIndex before each use

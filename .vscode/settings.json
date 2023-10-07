@@ -7,7 +7,7 @@
   "files.exclude": {
     "dist": true,
     "internal": true,
-    "Bigint": true,
+    "BigInt": true,
     "Boolean": true,
     "Brand": true,
     "Cache": true,
