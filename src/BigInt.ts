@@ -342,7 +342,7 @@ export const sign = (n: bigint): Ordering => Order(n, 0n)
  * @param n - The `bigint` to determine the absolute value of.
  *
  * @example
- * import { abs } from 'effect/Bigint'
+ * import { abs } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(abs(-5n), 5n)
  * assert.deepStrictEqual(abs(0n), 0n)
@@ -360,7 +360,7 @@ export const abs = (n: bigint): bigint => (n < 0n ? -n : n)
  * @param b - The second `bigint`.
  *
  * @example
- * import { gcd } from 'effect/Bigint'
+ * import { gcd } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(gcd(2n, 3n), 1n)
  * assert.deepStrictEqual(gcd(2n, 4n), 2n)
@@ -388,7 +388,7 @@ export const gcd: {
  * @param b - The second `bigint`.
  *
  * @example
- * import { lcm } from 'effect/Bigint'
+ * import { lcm } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(lcm(2n, 3n), 6n)
  * assert.deepStrictEqual(lcm(2n, 4n), 4n)
@@ -408,7 +408,7 @@ export const lcm: {
  * @param n - The `bigint` to determine the square root of.
  *
  * @example
- * import { unsafeSqrt } from 'effect/Bigint'
+ * import { unsafeSqrt } from 'effect/BigInt'
  *
  * assert.deepStrictEqual(unsafeSqrt(4n), 2n)
  * assert.deepStrictEqual(unsafeSqrt(9n), 3n)
@@ -437,7 +437,7 @@ export const unsafeSqrt = (n: bigint): bigint => {
  * @param n - The `bigint` to determine the square root of.
  *
  * @example
- * import { sqrt } from 'effect/Bigint'
+ * import { sqrt } from 'effect/BigInt'
  * import * as Option from 'effect/Option'
  *
  * assert.deepStrictEqual(sqrt(4n), Option.some(2n))

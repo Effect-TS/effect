@@ -106,23 +106,23 @@ describe.concurrent("BigInt", () => {
   })
 
   it("abs", () => {
-    assert.deepStrictEqual(Bigint.abs(2n), 2n)
-    assert.deepStrictEqual(Bigint.abs(-3n), 3n)
+    assert.deepStrictEqual(BigInt.abs(2n), 2n)
+    assert.deepStrictEqual(BigInt.abs(-3n), 3n)
   })
 
   it("gcd", () => {
-    assert.deepStrictEqual(Bigint.gcd(2n, 4n), 2n)
-    assert.deepStrictEqual(Bigint.gcd(3n, 4n), 1n)
+    assert.deepStrictEqual(BigInt.gcd(2n, 4n), 2n)
+    assert.deepStrictEqual(BigInt.gcd(3n, 4n), 1n)
   })
 
   it("lcm", () => {
-    assert.deepStrictEqual(Bigint.lcm(2n, 4n), 4n)
-    assert.deepStrictEqual(Bigint.lcm(3n, 4n), 12n)
+    assert.deepStrictEqual(BigInt.lcm(2n, 4n), 4n)
+    assert.deepStrictEqual(BigInt.lcm(3n, 4n), 12n)
   })
 
   it("sqrt", () => {
-    assert.deepStrictEqual(Bigint.sqrt(16n), Option.some(4n))
-    assert.deepStrictEqual(Bigint.sqrt(81n), Option.some(9n))
-    assert.deepStrictEqual(Bigint.sqrt(-123n), Option.none())
+    assert.deepStrictEqual(BigInt.sqrt(16n), Option.some(4n))
+    assert.deepStrictEqual(BigInt.sqrt(81n), Option.some(9n))
+    assert.deepStrictEqual(BigInt.sqrt(-123n), Option.none())
   })
 })

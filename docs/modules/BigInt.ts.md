@@ -109,7 +109,7 @@ export declare const abs: (n: bigint) => bigint
 **Example**
 
 ```ts
-import { abs } from 'effect/Bigint'
+import { abs } from 'effect/BigInt'
 
 assert.deepStrictEqual(abs(-5n), 5n)
 assert.deepStrictEqual(abs(0n), 0n)
@@ -175,7 +175,7 @@ export declare const gcd: { (that: bigint): (self: bigint) => bigint; (self: big
 **Example**
 
 ```ts
-import { gcd } from 'effect/Bigint'
+import { gcd } from 'effect/BigInt'
 
 assert.deepStrictEqual(gcd(2n, 3n), 1n)
 assert.deepStrictEqual(gcd(2n, 4n), 2n)
@@ -217,7 +217,7 @@ export declare const lcm: { (that: bigint): (self: bigint) => bigint; (self: big
 **Example**
 
 ```ts
-import { lcm } from 'effect/Bigint'
+import { lcm } from 'effect/BigInt'
 
 assert.deepStrictEqual(lcm(2n, 3n), 6n)
 assert.deepStrictEqual(lcm(2n, 4n), 4n)
@@ -301,7 +301,7 @@ export declare const sqrt: (n: bigint) => Option.Option<bigint>
 **Example**
 
 ```ts
-import { sqrt } from 'effect/Bigint'
+import { sqrt } from 'effect/BigInt'
 import * as Option from 'effect/Option'
 
 assert.deepStrictEqual(sqrt(4n), Option.some(2n))
@@ -385,7 +385,7 @@ export declare const unsafeSqrt: (n: bigint) => bigint
 **Example**
 
 ```ts
-import { unsafeSqrt } from 'effect/Bigint'
+import { unsafeSqrt } from 'effect/BigInt'
 
 assert.deepStrictEqual(unsafeSqrt(4n), 2n)
 assert.deepStrictEqual(unsafeSqrt(9n), 3n)
