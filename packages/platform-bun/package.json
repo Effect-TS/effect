@@ -41,12 +41,12 @@
     "@effect/platform-node": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "^0.41.0",
-    "bun-types": "1.0.5-canary.20231005T140125",
-    "effect": "2.0.0-next.46"
+    "@effect/schema": "^0.42.0",
+    "bun-types": "1.0.5-canary.20231008T140131",
+    "effect": "2.0.0-next.47"
   },
   "peerDependencies": {
-    "effect": "^2.0.0-next.46"
+    "effect": "2.0.0-next.47"
   },
   "files": [
     "src",

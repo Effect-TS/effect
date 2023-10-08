@@ -27,7 +27,7 @@
   "homepage": "https://github.com/effect-ts/platform",
   "scripts": {
     "example": "ts-node --project tsconfig.examples.json",
-    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
+    "lint": "eslint src/**/*.ts test/**/*.ts",
     "tc": "tsc --noEmit",
     "test": "vitest",
     "coverage": "vitest run --coverage"
@@ -41,13 +41,13 @@
     "path-browserify": "^1.0.1"
   },
   "devDependencies": {
-    "@effect/schema": "^0.41.0",
+    "@effect/schema": "^0.42.0",
     "@types/path-browserify": "^1.0.0",
-    "effect": "2.0.0-next.46"
+    "effect": "2.0.0-next.47"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.41.0",
-    "effect": "^2.0.0-next.46"
+    "@effect/schema": "^0.42.0",
+    "effect": "2.0.0-next.47"
   },
   "files": [
     "src",
