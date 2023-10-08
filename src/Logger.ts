@@ -70,7 +70,7 @@ export declare namespace Logger {
  * @since 2.0.0
  * @category models
  */
-export type AnnotationValue = string | number | boolean
+export type AnnotationValue = unknown
 
 /**
  * @category constructors

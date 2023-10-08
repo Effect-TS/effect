@@ -207,7 +207,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuoted(String(value), output)
+        output = appendQuoted(serializeUnknown(value), output)
       }
     }
 
@@ -215,7 +215,7 @@ export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, 
   }
 )
 
-const serializeUnknown = (u: unknown): string => {
+export const serializeUnknown = (u: unknown): string => {
   try {
     return typeof u === "object" ? JSON.stringify(u) : String(u)
   } catch (_) {
@@ -282,7 +282,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
         }
         output = output + filterKeyName(key)
         output = output + "="
-        output = appendQuotedLogfmt(String(value), output)
+        output = appendQuotedLogfmt(serializeUnknown(value), output)
       }
     }
 

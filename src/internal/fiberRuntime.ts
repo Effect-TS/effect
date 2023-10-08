@@ -17,6 +17,7 @@ import * as FiberRefsPatch from "../FiberRefsPatch"
 import * as FiberStatus from "../FiberStatus"
 import type { LazyArg } from "../Function"
 import { dual, identity, pipe } from "../Function"
+import * as HashMap from "../HashMap"
 import * as HashSet from "../HashSet"
 import * as _RequestBlock from "../internal/blockedRequests"
 import * as internalCause from "../internal/cause"
@@ -1382,7 +1383,7 @@ export const tracerLogger = internalLogger.makeLogger<unknown, void>(({
     return
   }
 
-  const attributes = Object.fromEntries(annotations)
+  const attributes = Object.fromEntries(HashMap.map(annotations, (value) => internalLogger.serializeUnknown(value)))
   attributes["effect.fiberId"] = FiberId.threadName(fiberId)
   attributes["effect.logLevel"] = logLevel.label
 
