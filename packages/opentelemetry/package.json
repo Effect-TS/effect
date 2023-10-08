@@ -63,7 +63,7 @@
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.4",
-    "effect": "2.0.0-next.46"
+    "effect": "2.0.0-next.47"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
@@ -89,7 +89,7 @@
     "@vitest/expect": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.1",
-    "effect": "2.0.0-next.46",
+    "effect": "2.0.0-next.47",
     "eslint": "^8.50.0",
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-codegen": "0.17.0",
