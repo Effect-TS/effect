@@ -14,7 +14,9 @@ Added in v2.0.0
 
 - [combining](#combining)
   - [all](#all)
+  - [ap](#ap)
   - [flatMap](#flatmap)
+  - [zipWith](#zipwith)
 - [constructors](#constructors)
   - [fromNullable](#fromnullable)
   - [fromOption](#fromoption)
@@ -102,6 +104,19 @@ assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.left('error') 
 
 Added in v2.0.0
 
+## ap
+
+**Signature**
+
+```ts
+export declare const ap: {
+  <E2, A>(that: Either<E2, A>): <E, B>(self: Either<E, (a: A) => B>) => Either<E2 | E, B>
+  <E, A, B, E2>(self: Either<E, (a: A) => B>, that: Either<E2, A>): Either<E | E2, B>
+}
+```
+
+Added in v2.0.0
+
 ## flatMap
 
 **Signature**
@@ -110,6 +125,19 @@ Added in v2.0.0
 export declare const flatMap: {
   <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E2 | E1, B>
   <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
+}
+```
+
+Added in v2.0.0
+
+## zipWith
+
+**Signature**
+
+```ts
+export declare const zipWith: {
+  <E2, A2, A, B>(that: Either<E2, A2>, f: (a: A, b: A2) => B): <E>(self: Either<E, A>) => Either<E2 | E, B>
+  <E, A, E2, A2, B>(self: Either<E, A>, that: Either<E2, A2>, f: (a: A, b: A2) => B): Either<E | E2, B>
 }
 ```
 

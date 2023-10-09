@@ -54,6 +54,8 @@ Added in v2.0.0
   - [takeWhile](#takewhile)
   - [validateAll](#validateall)
   - [validateFirst](#validatefirst)
+- [combining](#combining)
+  - [ap](#ap)
 - [config](#config)
   - [config](#config-1)
   - [configProviderWith](#configproviderwith)
@@ -1128,6 +1130,21 @@ assert.deepStrictEqual(
   Effect.runSyncExit(Effect.validateFirst([-1, -2], f)),
   Exit.fail(['-1 is negative', '-2 is negative'])
 )
+```
+
+Added in v2.0.0
+
+# combining
+
+## ap
+
+**Signature**
+
+```ts
+export declare const ap: {
+  <R2, E2, A>(that: Effect<R2, E2, A>): <R, E, B>(self: Effect<R, E, (a: A) => B>) => Effect<R2 | R, E2 | E, B>
+  <R, E, A, B, R2, E2>(self: Effect<R, E, (a: A) => B>, that: Effect<R2, E2, A>): Effect<R | R2, E | E2, B>
+}
 ```
 
 Added in v2.0.0

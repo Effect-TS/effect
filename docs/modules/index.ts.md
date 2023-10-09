@@ -68,6 +68,7 @@ Added in v2.0.0
   - [From "effect/LogLevel"](#from-effectloglevel)
   - [From "effect/LogSpan"](#from-effectlogspan)
   - [From "effect/Logger"](#from-effectlogger)
+  - [From "effect/Match"](#from-effectmatch)
   - [From "effect/Metric"](#from-effectmetric)
   - [From "effect/MetricBoundaries"](#from-effectmetricboundaries)
   - [From "effect/MetricHook"](#from-effectmetrichook)
@@ -891,6 +892,18 @@ export * as Logger from 'effect/Logger'
 ```
 
 Added in v2.0.0
+
+## From "effect/Match"
+
+Re-exports all named exports from the "effect/Match" module as "Match".
+
+**Signature**
+
+```ts
+export * as Match from 'effect/Match'
+```
+
+Added in v1.0.0
 
 ## From "effect/Metric"
 
