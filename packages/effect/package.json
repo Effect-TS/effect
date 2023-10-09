@@ -16,6 +16,7 @@
     "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
     "update-version": "changeset version && pnpm install --no-frozen-lockfile",
     "lint": "eslint src test",
+    "lint-fix": "eslint src test --fix",
     "fix": "preconstruct fix",
     "docgen": "docgen",
     "dtslint": "dtslint --expectOnly dtslint"
