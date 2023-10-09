@@ -397,6 +397,12 @@ describe.concurrent("Option", () => {
     expect(pipe(_.some(1), _.zipWith(_.some(2), (a, b) => a + b))).toEqual(_.some(3))
   })
 
+  it("ap", () => {
+    expect(pipe(_.some((a: number) => (b: number) => a + b), _.ap(_.none()), _.ap(_.some(2)))).toEqual(_.none())
+    expect(pipe(_.some((a: number) => (b: number) => a + b), _.ap(_.some(1)), _.ap(_.none()))).toEqual(_.none())
+    expect(pipe(_.some((a: number) => (b: number) => a + b), _.ap(_.some(1)), _.ap(_.some(2)))).toEqual(_.some(3))
+  })
+
   it("reduceCompact", () => {
     const sumCompact = _.reduceCompact(0, N.sum)
     expect(sumCompact([])).toEqual(0)

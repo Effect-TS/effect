@@ -1,6 +1,6 @@
 ---
 title: Predicate.ts
-nav_order: 79
+nav_order: 80
 parent: Modules
 ---
 

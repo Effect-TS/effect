@@ -504,6 +504,39 @@ export const flatMap: {
 )
 
 /**
+ * @since 2.0.0
+ * @category combining
+ */
+export const zipWith: {
+  <E2, A2, A, B>(
+    that: Either<E2, A2>,
+    f: (a: A, b: A2) => B
+  ): <E>(self: Either<E, A>) => Either<E2 | E, B>
+  <E, A, E2, A2, B>(
+    self: Either<E, A>,
+    that: Either<E2, A2>,
+    f: (a: A, b: A2) => B
+  ): Either<E | E2, B>
+} = dual(
+  3,
+  <E, A, E2, A2, B>(self: Either<E, A>, that: Either<E2, A2>, f: (a: A, b: A2) => B): Either<E | E2, B> =>
+    flatMap(self, (a) => map(that, (b) => f(a, b)))
+)
+
+/**
+ * @category combining
+ * @since 2.0.0
+ */
+export const ap: {
+  <E2, A>(that: Either<E2, A>): <E, B>(self: Either<E, (a: A) => B>) => Either<E | E2, B>
+  <E, A, B, E2>(self: Either<E, (a: A) => B>, that: Either<E2, A>): Either<E | E2, B>
+} = dual(
+  2,
+  <E, A, B, E2>(self: Either<E, (a: A) => B>, that: Either<E2, A>): Either<E | E2, B> =>
+    zipWith(self, that, (f, a) => f(a))
+)
+
+/**
  * Takes a structure of `Option`s and returns an `Option` of values with the same structure.
  *
  * - If a tuple is supplied, then the returned `Option` will contain a tuple with the same length.

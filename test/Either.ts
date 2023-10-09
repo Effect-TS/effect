@@ -239,6 +239,34 @@ describe.concurrent("Either", () => {
     Util.deepStrictEqual(pipe(Either.left("maError"), f), Either.left("maError"))
   })
 
+  it("ap", () => {
+    const add = (a: number) => (b: number) => a + b
+    expect(Either.right(add).pipe(Either.ap(Either.right(1)), Either.ap(Either.right(2)))).toStrictEqual(
+      Either.right(3)
+    )
+    expect(Either.right(add).pipe(Either.ap(Either.left("b")), Either.ap(Either.right(2)))).toStrictEqual(
+      Either.left("b")
+    )
+    expect(Either.right(add).pipe(Either.ap(Either.right(1)), Either.ap(Either.left("c")))).toStrictEqual(
+      Either.left("c")
+    )
+    expect(Either.right(add).pipe(Either.ap(Either.left("b")), Either.ap(Either.left("c")))).toStrictEqual(
+      Either.left("b")
+    )
+    expect(
+      (Either.left("a") as Either.Either<string, typeof add>).pipe(
+        Either.ap(Either.right(1)),
+        Either.ap(Either.right(2))
+      )
+    ).toStrictEqual(Either.left("a"))
+  })
+
+  it("zipWith", () => {
+    expect(pipe(Either.left(0), Either.zipWith(Either.right(2), (a, b) => a + b))).toEqual(Either.left(0))
+    expect(pipe(Either.right(1), Either.zipWith(Either.left(0), (a, b) => a + b))).toEqual(Either.left(0))
+    expect(pipe(Either.right(1), Either.zipWith(Either.right(2), (a, b) => a + b))).toEqual(Either.right(3))
+  })
+
   it("all", () => {
     // tuples and arrays
     Util.deepStrictEqual(Either.all([]), Either.right([]))
