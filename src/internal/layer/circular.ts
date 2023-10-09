@@ -9,7 +9,7 @@ import * as layer from "../../internal/layer"
 import * as runtimeFlags from "../../internal/runtimeFlags"
 import * as runtimeFlagsPatch from "../../internal/runtimeFlagsPatch"
 import * as _supervisor from "../../internal/supervisor"
-import * as Layer from "../../Layer"
+import type * as Layer from "../../Layer"
 import type * as Logger from "../../Logger"
 import type * as LogLevel from "../../LogLevel"
 import type { Scope } from "../../Scope"
@@ -50,7 +50,7 @@ export const addLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<nev
 export const addLoggerEffect = <R, E, A>(
   effect: Effect.Effect<R, E, Logger.Logger<unknown, A>>
 ): Layer.Layer<R, E, never> =>
-  Layer.unwrapEffect(
+  layer.unwrapEffect(
     core.map(effect, addLogger)
   )
 
@@ -58,7 +58,7 @@ export const addLoggerEffect = <R, E, A>(
 export const addLoggerScoped = <R, E, A>(
   effect: Effect.Effect<R, E, Logger.Logger<unknown, A>>
 ): Layer.Layer<Exclude<R, Scope>, E, never> =>
-  Layer.unwrapScoped(
+  layer.unwrapScoped(
     core.map(effect, addLogger)
   )
 

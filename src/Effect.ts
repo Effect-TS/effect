@@ -25,14 +25,12 @@ import { dual, identity } from "./Function"
 import type * as HashMap from "./HashMap"
 import type * as HashSet from "./HashSet"
 import type { TypeLambda } from "./HKT"
-import { clockTag } from "./internal/clock"
 import * as core from "./internal/core"
 import * as effect from "./internal/core-effect"
 import * as defaultServices from "./internal/defaultServices"
 import * as circular from "./internal/effect/circular"
 import * as fiberRuntime from "./internal/fiberRuntime"
 import * as layer from "./internal/layer"
-import * as circularLayer from "./internal/layer/circular"
 import * as query from "./internal/query"
 import * as _runtime from "./internal/runtime"
 import * as _schedule from "./internal/schedule"
@@ -2726,15 +2724,6 @@ export const withConcurrency: {
 // ---------------------------------------------------------------------------------------
 
 /**
- * @since 2.0.0
- * @category scheduler
- */
-export const setScheduler = (scheduler: Scheduler.Scheduler): Layer.Layer<never, never, never> =>
-  layer.scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(Scheduler.currentScheduler, scheduler)
-  )
-
-/**
  * Sets the provided scheduler for usage in the wrapped effect
  *
  * @since 2.0.0
@@ -2787,15 +2776,6 @@ export const clock: Effect<never, never, Clock.Clock> = effect.clock
  * @category clock
  */
 export const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A> = effect.clockWith
-
-/**
- * @since 2.0.0
- * @category clock
- */
-export const setClock = <A extends Clock.Clock>(clock: A): Layer.Layer<never, never, never> =>
-  layer.scopedDiscard(
-    fiberRuntime.fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clockTag, clock))
-  )
 
 /**
  * Sets the implementation of the clock service to the specified value and
@@ -2986,15 +2966,6 @@ export const config: <A>(config: Config<A>) => Effect<never, ConfigError, A> = d
  */
 export const configProviderWith: <R, E, A>(f: (configProvider: ConfigProvider) => Effect<R, E, A>) => Effect<R, E, A> =
   defaultServices.configProviderWith
-
-/**
- * Sets the current `ConfigProvider`.
- *
- * @since 2.0.0
- * @category config
- */
-export const setConfigProvider: (configProvider: ConfigProvider) => Layer.Layer<never, never, never> =
-  circularLayer.setConfigProvider
 
 /**
  * Executes the specified workflow with the specified configuration provider.
@@ -4289,15 +4260,6 @@ export const withUnhandledErrorLogLevel: {
   <R, E, B>(self: Effect<R, E, B>, level: Option.Option<LogLevel>): Effect<R, E, B>
 } = core.withUnhandledErrorLogLevel
 
-/**
- * @since 2.0.0
- * @category logging
- */
-export const setUnhandledErrorLogLevel = (level: Option.Option<LogLevel>): Layer.Layer<never, never, never> =>
-  layer.scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(core.currentUnhandledErrorLogLevel, level)
-  )
-
 // -------------------------------------------------------------------------------------
 // alternatives
 // -------------------------------------------------------------------------------------
@@ -4829,42 +4791,6 @@ export const withRequestBatching: {
  * @since 2.0.0
  * @category requests & batching
  */
-export const setRequestBatching = (requestBatching: boolean) =>
-  layer.scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(core.currentRequestBatching, requestBatching)
-  )
-
-/**
- * @since 2.0.0
- * @category requests & batching
- */
-export const setRequestCaching = (requestCaching: boolean) =>
-  layer.scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(query.currentCacheEnabled, requestCaching)
-  )
-
-/**
- * @since 2.0.0
- * @category requests & batching
- */
-export const setRequestCache: {
-  <R, E>(
-    cache: Effect<R, E, Request.Cache>
-  ): Layer.Layer<Exclude<R, Scope.Scope>, E, never>
-  (
-    cache: Request.Cache
-  ): Layer.Layer<never, never, never>
-} = (<R, E>(cache: Request.Cache | Effect<R, E, Request.Cache>) =>
-  layer.scopedDiscard(
-    core.isEffect(cache) ?
-      core.flatMap(cache, (x) => fiberRuntime.fiberRefLocallyScoped(query.currentCache as any, x)) :
-      fiberRuntime.fiberRefLocallyScoped(query.currentCache as any, cache)
-  )) as any
-
-/**
- * @since 2.0.0
- * @category requests & batching
- */
 export const withRequestCaching: {
   (strategy: boolean): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A>(self: Effect<R, E, A>, strategy: boolean): Effect<R, E, A>
@@ -4882,14 +4808,6 @@ export const withRequestCache: {
 // -------------------------------------------------------------------------------------
 // tracing
 // -------------------------------------------------------------------------------------
-
-/**
- * Create a Layer that sets the current Tracer
- *
- * @since 2.0.0
- * @category tracing
- */
-export const setTracer: (tracer: Tracer.Tracer) => Layer.Layer<never, never, never> = circularLayer.setTracer
 
 /**
  * @since 2.0.0
@@ -4928,15 +4846,6 @@ export const withTracerTiming: {
   (enabled: boolean): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A>(effect: Effect<R, E, A>, enabled: boolean): Effect<R, E, A>
 } = core.withTracerTiming
-
-/**
- * @since 2.0.0
- * @category tracing
- */
-export const setTracerTiming: (enabled: boolean) => Layer.Layer<never, never, never> = (enabled: boolean) =>
-  layer.scopedDiscard(
-    fiberRuntime.fiberRefLocallyScoped(core.currentTracerTimingEnabled, enabled)
-  )
 
 /**
  * Adds an annotation to each span in this effect.
@@ -5020,33 +4929,6 @@ export const makeSpan: (
     readonly context?: Context.Context<never>
   }
 ) => Effect<never, never, Tracer.Span> = effect.makeSpan
-
-/**
- * Adds the provided span to the span stack.
- *
- * @since 2.0.0
- * @category tracing
- */
-export const setParentSpan: (span: Tracer.ParentSpan) => Layer.Layer<never, never, never> = circularLayer.setParentSpan
-
-/**
- * Create and add a span to the current span stack.
- *
- * The span is ended when the Layer is released.
- *
- * @since 2.0.0
- * @category tracing
- */
-export const setSpan: (
-  name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
-  }
-) => Layer.Layer<never, never, never> = circularLayer.setSpan
 
 /**
  * Create a new span for tracing, and automatically close it when the effect

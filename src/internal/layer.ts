@@ -18,6 +18,7 @@ import * as ref from "../internal/ref"
 import * as runtime from "../internal/runtime"
 import * as synchronized from "../internal/synchronizedRef"
 import type * as Layer from "../Layer"
+import * as List from "../List"
 import { pipeArguments } from "../Pipeable"
 import type * as Runtime from "../Runtime"
 import type * as Schedule from "../Schedule"
@@ -1139,9 +1140,15 @@ export const withSpan = dual<
   unwrapScoped(
     core.map(
       fiberRuntime.useSpanScoped(name, options),
-      (span) => locallyEffect(self, effect.withParentSpan(span))
+      (span) => withParentSpan(self, span)
     )
   ))
+
+/** @internal */
+export const withParentSpan = dual<
+  (span: Tracer.ParentSpan) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<R, E, A>,
+  <R, E, A>(self: Layer.Layer<R, E, A>, span: Tracer.ParentSpan) => Layer.Layer<R, E, A>
+>(2, (self, span) => fiberRefLocallyWith(self, core.currentTracerSpan, List.prepend(span)))
 
 // circular with Effect
 

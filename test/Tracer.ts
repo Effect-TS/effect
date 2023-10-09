@@ -179,7 +179,7 @@ describe("Tracer", () => {
         })
       ))
 
-    it.effect("setParentSpan", () =>
+    it.effect("Layer.setParentSpan", () =>
       Effect.gen(function*(_) {
         const span = yield* _(Effect.makeSpan("child"))
         assert.deepEqual(
@@ -193,12 +193,12 @@ describe("Tracer", () => {
         Effect.provide(Layer.unwrapScoped(
           Effect.map(
             Effect.useSpanScoped("parent"),
-            (span) => Effect.setParentSpan(span)
+            (span) => Layer.setParentSpan(span)
           )
         ))
       ))
 
-    it.effect("setSpan", () =>
+    it.effect("Layer.setSpan", () =>
       Effect.gen(function*(_) {
         const span = yield* _(Effect.makeSpan("child"))
         assert.deepEqual(
@@ -209,7 +209,7 @@ describe("Tracer", () => {
           Option.some("parent")
         )
       }).pipe(
-        Effect.provide(Effect.setSpan("parent"))
+        Effect.provide(Layer.setSpan("parent"))
       ))
 
     it.effect("linkSpans", () =>
