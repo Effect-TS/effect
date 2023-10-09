@@ -12,7 +12,7 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 3)
     }))
 
-  it.effect("one effect in data-last position should fail", () =>
+  it.effect("one failure in data-last position should fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         Effect.succeed(add).pipe(Effect.ap(Effect.succeed(1)), Effect.ap(Effect.fail("c"))),
@@ -24,7 +24,7 @@ describe.concurrent("Effect", () => {
       assert.deepStrictEqual(result, Either.left("c"))
     }))
 
-  it.effect("one effect in data-first position should fail", () =>
+  it.effect("one failure in data-first position should fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         Effect.succeed(add).pipe(Effect.ap(Effect.fail("b")), Effect.ap(Effect.fail("c"))),
