@@ -4752,10 +4752,13 @@ export const zipWith: {
  * @since 2.0.0
  */
 export const ap: {
-  <R, E, A>(that: Effect<R, E, A>): <B>(self: Effect<R, E, (a: A) => B>) => Effect<R, E, B>
-  <R, E, A, B>(self: Effect<R, E, (a: A) => B>, that: Effect<R, E, A>): Effect<R, E, B>
-} = dual(2, <R, E, A, B>(self: Effect<R, E, (a: A) => B>, that: Effect<R, E, A>): Effect<R, E, B> => zipWith(self, that, (f, a) => f(a)))
-
+  <R2, E2, A>(that: Effect<R2, E2, A>): <R, E, B>(self: Effect<R, E, (a: A) => B>) => Effect<R | R2, E | E2, B>
+  <R, E, A, B, R2, E2>(self: Effect<R, E, (a: A) => B>, that: Effect<R2, E2, A>): Effect<R | R2, E | E2, B>
+} = dual(
+  2,
+  <R, E, A, B, R2, E2>(self: Effect<R, E, (a: A) => B>, that: Effect<R2, E2, A>): Effect<R | R2, E | E2, B> =>
+    zipWith(self, that, (f, a) => f(a))
+)
 // -------------------------------------------------------------------------------------
 // requests & batching
 // -------------------------------------------------------------------------------------

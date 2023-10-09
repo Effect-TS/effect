@@ -398,9 +398,9 @@ describe.concurrent("Option", () => {
   })
 
   it("ap", () => {
-    expect(pipe(_.some((a: number) => (b:number) => a + b), _.ap(_.none()), _.ap(_.some(2)))).toEqual(_.none())
-    expect(pipe(_.some((a: number) => (b:number) => a + b), _.ap(_.some(1)), _.ap(_.none()))).toEqual(_.none())
-    expect(pipe(_.some((a: number) => (b:number) => a + b), _.ap(_.some(1)), _.ap(_.some(2)))).toEqual(_.some(3))
+    expect(pipe(_.some((a: number) => (b: number) => a + b), _.ap(_.none()), _.ap(_.some(2)))).toEqual(_.none())
+    expect(pipe(_.some((a: number) => (b: number) => a + b), _.ap(_.some(1)), _.ap(_.none()))).toEqual(_.none())
+    expect(pipe(_.some((a: number) => (b: number) => a + b), _.ap(_.some(1)), _.ap(_.some(2)))).toEqual(_.some(3))
   })
 
   it("reduceCompact", () => {
