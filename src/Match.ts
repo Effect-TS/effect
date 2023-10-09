@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-constraint */
 /**
  * @since 1.0.0
  */
-import type * as E from "./Either"
+import type * as Either from "./Either"
 import * as internal from "./internal/matcher"
-import type * as O from "./Option"
+import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 import * as Predicate from "./Predicate"
 import type { UnionToIntersection } from "./Types"
@@ -58,7 +57,7 @@ export interface ValueMatcher<Input, Filters, Remaining, Result, Provided> exten
     readonly _result: (_: never) => Result
   }
   readonly provided: Provided
-  readonly value: E.Either<Remaining, Provided>
+  readonly value: Either.Either<Remaining, Provided>
   readonly add: <I, R, RA, A, Pr>(_case: Case) => ValueMatcher<I, R, RA, A, Pr>
 }
 
@@ -515,8 +514,8 @@ export const orElseAbsurd: <I, R, RA, A, Pr>(
  */
 export const either: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => E.Either<R, Unify<A>>
-  : E.Either<R, Unify<A>> = internal.either
+) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>>
+  : Either.Either<R, Unify<A>> = internal.either
 
 /**
  * @category conversions
@@ -524,8 +523,8 @@ export const either: <I, F, R, A, Pr>(
  */
 export const option: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => O.Option<Unify<A>>
-  : O.Option<Unify<A>> = internal.option
+) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>>
+  : Option.Option<Unify<A>> = internal.option
 
 /**
  * @category conversions
@@ -707,11 +706,13 @@ export declare namespace Types {
   export type ExtractMatch<I, P> = [ExtractAndNarrow<I, P>] extends [infer EI] ? EI
     : never
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
   type IntersectOf<U extends unknown> = (
     U extends unknown ? (k: U) => void : never
   ) extends (k: infer I) => void ? I
     : never
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
   type Last<U extends any> = IntersectOf<
     U extends unknown ? (x: U) => void : never
   > extends (x: infer P) => void ? P
@@ -722,6 +723,7 @@ export declare namespace Types {
     1: LN
   }[[U] extends [never] ? 1 : 0]
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
   type ListOf<U extends any> = _ListOf<U> extends infer X ? X extends Array<any> ? X
     : []
     : never
