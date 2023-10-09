@@ -344,4 +344,31 @@ describe.concurrent("Stream", () => {
         [[1, 2], [3, 4]]
       )
     }))
+
+  it.effect("groupAdjacentBy - one big chunk", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(
+        Stream.fromIterable([
+          { code: 1, message: "A" },
+          { code: 1, message: "B" },
+          { code: 1, message: "D" },
+          { code: 2, message: "C" }
+        ]),
+        Stream.groupAdjacentBy((x) => x.code),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(
+        Array.from(result).map(([, chunk]) => Array.from(chunk)),
+        [
+          [
+            { code: 1, message: "A" },
+            { code: 1, message: "B" },
+            { code: 1, message: "D" }
+          ],
+          [
+            { code: 2, message: "C" }
+          ]
+        ]
+      )
+    }))
 })
