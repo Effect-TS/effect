@@ -1,0 +1,38 @@
+name: 🐛 Bug Report
+description: Report an issue that should be fixed
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for submitting a bug report. It helps make Effect better.
+
+        If you need help or support using Effect, and are not reporting a bug, please
+        join our [Discord](https://discord.gg/effect-ts) server.
+
+        Make sure you are running the latest version of Effect.
+        The bug you are experiencing may already have been fixed.
+
+        Please try to include as much information as possible.
+
+  - type: input
+    attributes:
+      label: What version of Effect is running?
+  - type: textarea
+    attributes:
+      label: What steps can reproduce the bug?
+      description: Explain the bug and provide a code snippet that can reproduce it.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What is the expected behavior?
+      description: If possible, please provide text instead of a screenshot.
+  - type: textarea
+    attributes:
+      label: What do you see instead?
+      description: If possible, please provide text instead of a screenshot.
+  - type: textarea
+    attributes:
+      label: Additional information
+      description: Is there anything else you think we should know?

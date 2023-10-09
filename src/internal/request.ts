@@ -1,9 +1,9 @@
-import * as Data from "../Data"
 import type * as Effect from "../Effect"
 import { dual } from "../Function"
 import * as completedRequestMap from "../internal/completedRequestMap"
 import * as core from "../internal/core"
 import type * as Request from "../Request"
+import * as Data from "./Data"
 
 /** @internal */
 const RequestSymbolKey = "effect/Request"

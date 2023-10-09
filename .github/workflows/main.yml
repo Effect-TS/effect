@@ -31,6 +31,7 @@ jobs:
       - run: pnpm circular
       - run: pnpm test
       - run: pnpm lint
+      - run: pnpm dtslint
       - run: pnpm docgen
       - name: Create Release Pull Request or Publish
         id: changesets

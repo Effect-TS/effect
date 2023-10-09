@@ -1,6 +1,6 @@
 ---
 title: Queue.ts
-nav_order: 82
+nav_order: 81
 parent: Modules
 ---
 
@@ -441,6 +441,12 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
     takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
     isShutdown: MutableRef.MutableRef<boolean>
   ): Effect.Effect<never, never, boolean>
+
+  /**
+   * It is called when the backing queue is empty but there are some
+   * takers that can be completed
+   */
+  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void
 
   /**
    * Determines the behavior of the `Queue.Strategy` when the `Queue` has empty

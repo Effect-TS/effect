@@ -1,5 +1,4 @@
 import type * as Channel from "../Channel"
-import * as Data from "../Data"
 import type * as Effect from "../Effect"
 import type * as Effectable from "../Effectable"
 import * as Equal from "../Equal"
@@ -7,6 +6,7 @@ import * as Hash from "../Hash"
 import { pipeArguments } from "../Pipeable"
 import type * as Sink from "../Sink"
 import type * as Stream from "../Stream"
+import * as Data from "./Data"
 import * as OpCodes from "./opCodes/effect"
 
 /** @internal */
@@ -49,7 +49,7 @@ export const channelVariance = {
 }
 
 /** @internal */
-export const EffectProto: Effect.Effect<never, never, never> = {
+export const EffectPrototype: Effect.Effect<never, never, never> = {
   [EffectTypeId]: effectVariance,
   [StreamTypeId]: effectVariance,
   [SinkTypeId]: sinkVariance,
@@ -66,27 +66,27 @@ export const EffectProto: Effect.Effect<never, never, never> = {
 }
 
 /** @internal */
-export const EffectProtoCommit = {
-  ...EffectProto,
+export const CommitPrototype = {
+  ...EffectPrototype,
   _op: OpCodes.OP_COMMIT
 }
 
 /** @internal */
-export const EffectProtoCommitStructural = {
-  ...EffectProtoCommit,
+export const StructuralCommitPrototype = {
+  ...CommitPrototype,
   ...Data.Structural.prototype
 }
 
 /** @internal */
 export const Base: Effectable.CommitPrimitive = (function() {
   function Base() {}
-  Base.prototype = EffectProtoCommit
+  Base.prototype = CommitPrototype
   return Base as any
 })()
 
 /** @internal */
 export const StructuralBase: Effectable.CommitPrimitive = (function() {
   function Base() {}
-  Base.prototype = EffectProtoCommitStructural
+  Base.prototype = StructuralCommitPrototype
   return Base as any
 })()

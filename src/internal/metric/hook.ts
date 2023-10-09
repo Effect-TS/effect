@@ -6,6 +6,7 @@ import * as HashMap from "../../HashMap"
 import * as metricState from "../../internal/metric/state"
 import type * as MetricHook from "../../MetricHook"
 import type * as MetricKey from "../../MetricKey"
+import type * as MetricState from "../../MetricState"
 import * as number from "../../Number"
 import * as Option from "../../Option"
 import { pipeArguments } from "../../Pipeable"
@@ -55,13 +56,24 @@ export const onUpdate = dual<
   }
 }))
 
+const bigint0 = BigInt(0)
+
 /** @internal */
-export const counter = (_key: MetricKey.MetricKey.Counter): MetricHook.MetricHook.Counter => {
-  let sum = 0
+export const counter = <A extends (number | bigint)>(
+  key: MetricKey.MetricKey.Counter<A>
+): MetricHook.MetricHook.Counter<A> => {
+  let sum: A = key.keyType.bigint ? bigint0 as A : 0 as A
+  const canUpdate = key.keyType.incremental
+    ? key.keyType.bigint
+      ? (value: A) => value >= bigint0
+      : (value: A) => value >= 0
+    : (_value: A) => true
   return make({
-    get: () => metricState.counter(sum),
+    get: () => metricState.counter(sum as number) as unknown as MetricState.MetricState.Counter<A>,
     update: (value) => {
-      sum = sum + value
+      if (canUpdate(value)) {
+        sum = (sum as any) + value
+      }
     }
   })
 }
@@ -83,10 +95,16 @@ export const frequency = (_key: MetricKey.MetricKey.Frequency): MetricHook.Metri
 }
 
 /** @internal */
-export const gauge = (_key: MetricKey.MetricKey.Gauge, startAt: number): MetricHook.MetricHook.Gauge => {
+export const gauge: {
+  (key: MetricKey.MetricKey.Gauge<number>, startAt: number): MetricHook.MetricHook.Gauge<number>
+  (key: MetricKey.MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.MetricHook.Gauge<bigint>
+} = <A extends (number | bigint)>(
+  _key: MetricKey.MetricKey.Gauge<A>,
+  startAt: A
+): MetricHook.MetricHook.Gauge<A> => {
   let value = startAt
   return make({
-    get: () => metricState.gauge(value),
+    get: () => metricState.gauge(value as number) as unknown as MetricState.MetricState.Gauge<A>,
     update: (v) => {
       value = v
     }

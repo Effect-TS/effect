@@ -13,12 +13,16 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [constructors](#constructors)
-  - [Effectable (class)](#effectable-class)
+  - [Class (class)](#class-class)
     - [commit (method)](#commit-method)
-  - [Structural (class)](#structural-class)
+  - [StructuralClass (class)](#structuralclass-class)
     - [commit (method)](#commit-method-1)
 - [models](#models)
   - [CommitPrimitive (interface)](#commitprimitive-interface)
+- [prototypes](#prototypes)
+  - [CommitPrototype](#commitprototype)
+  - [EffectPrototype](#effectprototype)
+  - [StructuralCommitPrototype](#structuralcommitprototype)
 - [type ids](#type-ids)
   - [ChannelTypeId](#channeltypeid)
   - [ChannelTypeId (type alias)](#channeltypeid-type-alias)
@@ -28,20 +32,17 @@ Added in v2.0.0
   - [SinkTypeId (type alias)](#sinktypeid-type-alias)
   - [StreamTypeId](#streamtypeid)
   - [StreamTypeId (type alias)](#streamtypeid-type-alias)
-- [utils](#utils)
-  - [Base](#base)
-  - [StructuralBase](#structuralbase)
 
 ---
 
 # constructors
 
-## Effectable (class)
+## Class (class)
 
 **Signature**
 
 ```ts
-export declare class Effectable<R, E, A>
+export declare class Class<R, E, A>
 ```
 
 Added in v2.0.0
@@ -56,12 +57,12 @@ abstract commit(): Effect.Effect<R, E, A>
 
 Added in v2.0.0
 
-## Structural (class)
+## StructuralClass (class)
 
 **Signature**
 
 ```ts
-export declare class Structural<R, E, A>
+export declare class StructuralClass<R, E, A>
 ```
 
 Added in v2.0.0
@@ -86,6 +87,38 @@ Added in v2.0.0
 export interface CommitPrimitive {
   new <R, E, A>(): Effect.Effect<R, E, A>
 }
+```
+
+Added in v2.0.0
+
+# prototypes
+
+## CommitPrototype
+
+**Signature**
+
+```ts
+export declare const CommitPrototype: Effect.Effect<never, never, never>
+```
+
+Added in v2.0.0
+
+## EffectPrototype
+
+**Signature**
+
+```ts
+export declare const EffectPrototype: Effect.Effect<never, never, never>
+```
+
+Added in v2.0.0
+
+## StructuralCommitPrototype
+
+**Signature**
+
+```ts
+export declare const StructuralCommitPrototype: Effect.Effect<never, never, never>
 ```
 
 Added in v2.0.0
@@ -168,28 +201,6 @@ Added in v2.0.0
 
 ```ts
 export type StreamTypeId = Stream.StreamTypeId
-```
-
-Added in v2.0.0
-
-# utils
-
-## Base
-
-**Signature**
-
-```ts
-export declare const Base: CommitPrimitive
-```
-
-Added in v2.0.0
-
-## StructuralBase
-
-**Signature**
-
-```ts
-export declare const StructuralBase: CommitPrimitive
 ```
 
 Added in v2.0.0

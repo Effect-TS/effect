@@ -1,5 +1,5 @@
 import * as Chunk from "../../Chunk"
-import { Structural } from "../../Data"
+import { Structural } from "../Data"
 
 import type { Differ } from "../../Differ"
 import * as Dual from "../../Function"

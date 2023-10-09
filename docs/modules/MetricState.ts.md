@@ -1,6 +1,6 @@
 ---
 title: MetricState.ts
-nav_order: 67
+nav_order: 66
 parent: Modules
 ---
 
@@ -59,7 +59,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const counter: (count: number) => MetricState.Counter
+export declare const counter: {
+  (count: number): MetricState.Counter<number>
+  (count: bigint): MetricState.Counter<bigint>
+}
 ```
 
 Added in v2.0.0
@@ -79,7 +82,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const gauge: (value: number) => MetricState.Gauge
+export declare const gauge: { (count: number): MetricState.Gauge<number>; (count: bigint): MetricState.Gauge<bigint> }
 ```
 
 Added in v2.0.0
@@ -140,7 +143,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const isCounterState: (u: unknown) => u is MetricState.Counter
+export declare const isCounterState: (u: unknown) => u is MetricState.Counter<number | bigint>
 ```
 
 Added in v2.0.0
@@ -160,7 +163,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const isGaugeState: (u: unknown) => u is MetricState.Gauge
+export declare const isGaugeState: (u: unknown) => u is MetricState.Gauge<number | bigint>
 ```
 
 Added in v2.0.0
@@ -180,7 +183,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const isMetricState: (u: unknown) => u is MetricState.Counter
+export declare const isMetricState: (u: unknown) => u is MetricState.Counter<number | bigint>
 ```
 
 Added in v2.0.0
@@ -328,9 +331,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Counter extends MetricState<MetricKeyType.MetricKeyType.Counter> {
+export interface Counter<A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
   readonly [CounterStateTypeId]: CounterStateTypeId
-  readonly count: number
+  readonly count: A
 }
 ```
 
@@ -354,9 +357,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Gauge extends MetricState<MetricKeyType.MetricKeyType.Gauge> {
+export interface Gauge<A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
   readonly [GaugeStateTypeId]: GaugeStateTypeId
-  readonly value: number
+  readonly value: A
 }
 ```
 

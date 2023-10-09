@@ -9,7 +9,7 @@ import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import * as option from "../internal/Option"
 import type { Option } from "../Option"
-import { EffectProto } from "./Effectable"
+import { EffectPrototype } from "./Effectable"
 
 /**
  * @internal
@@ -17,7 +17,7 @@ import { EffectProto } from "./Effectable"
 export const TypeId: Either.TypeId = Symbol.for("effect/Either") as Either.TypeId
 
 const CommonProto = {
-  ...EffectProto,
+  ...EffectPrototype,
   [TypeId]: {
     _A: (_: never) => _
   },

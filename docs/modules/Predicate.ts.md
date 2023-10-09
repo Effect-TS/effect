@@ -1,6 +1,6 @@
 ---
 title: Predicate.ts
-nav_order: 80
+nav_order: 79
 parent: Modules
 ---
 
@@ -30,7 +30,7 @@ Added in v2.0.0
   - [every](#every)
   - [some](#some)
 - [guards](#guards)
-  - [isBigint](#isbigint)
+  - [isBigInt](#isbigint)
   - [isBoolean](#isboolean)
   - [isDate](#isdate)
   - [isError](#iserror)
@@ -304,24 +304,24 @@ Added in v2.0.0
 
 # guards
 
-## isBigint
+## isBigInt
 
 Tests if a value is a `bigint`.
 
 **Signature**
 
 ```ts
-export declare const isBigint: (input: unknown) => input is bigint
+export declare const isBigInt: (input: unknown) => input is bigint
 ```
 
 **Example**
 
 ```ts
-import { isBigint } from 'effect/Predicate'
+import { isBigInt } from 'effect/Predicate'
 
-assert.deepStrictEqual(isBigint(1n), true)
+assert.deepStrictEqual(isBigInt(1n), true)
 
-assert.deepStrictEqual(isBigint(1), false)
+assert.deepStrictEqual(isBigInt(1), false)
 ```
 
 Added in v2.0.0

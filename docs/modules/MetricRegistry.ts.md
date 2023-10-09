@@ -1,6 +1,6 @@
 ---
 title: MetricRegistry.ts
-nav_order: 66
+nav_order: 65
 parent: Modules
 ---
 
@@ -50,9 +50,9 @@ export interface MetricRegistry {
     MetricKeyType.MetricKeyType.InType<(typeof key)['keyType']>,
     MetricKeyType.MetricKeyType.OutType<(typeof key)['keyType']>
   >
-  getCounter(key: MetricKey.MetricKey.Counter): MetricHook.MetricHook.Counter
+  getCounter<A extends number | bigint>(key: MetricKey.MetricKey.Counter<A>): MetricHook.MetricHook.Counter<A>
   getFrequency(key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency
-  getGauge(key: MetricKey.MetricKey.Gauge): MetricHook.MetricHook.Gauge
+  getGauge<A extends number | bigint>(key: MetricKey.MetricKey.Gauge<A>): MetricHook.MetricHook.Gauge<A>
   getHistogram(key: MetricKey.MetricKey.Histogram): MetricHook.MetricHook.Histogram
   getSummary(key: MetricKey.MetricKey.Summary): MetricHook.MetricHook.Summary
 }

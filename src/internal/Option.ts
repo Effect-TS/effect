@@ -6,12 +6,12 @@ import * as Equal from "../Equal"
 import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import type * as Option from "../Option"
-import { EffectProto } from "./Effectable"
+import { EffectPrototype } from "./Effectable"
 
 const TypeId: Option.TypeId = Symbol.for("effect/Option") as Option.TypeId
 
 const CommonProto = {
-  ...EffectProto,
+  ...EffectPrototype,
   [TypeId]: {
     _A: (_: never) => _
   },

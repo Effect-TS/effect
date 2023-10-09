@@ -26,11 +26,15 @@ const makePollingGauge = (name: string, increment: number) => {
   return [gauge, metric] as const
 }
 
+let nameCount = 0
+const nextName = () => `m${++nameCount}`
+
 describe.concurrent("Metric", () => {
   describe.concurrent("Counter", () => {
     it.effect("custom increment as aspect", () =>
       Effect.gen(function*($) {
-        const counter = Metric.counter("c1").pipe(Metric.taggedWithLabels(labels), Metric.withConstantInput(1))
+        const id = nextName()
+        const counter = Metric.counter(id).pipe(Metric.taggedWithLabels(labels), Metric.withConstantInput(1))
         const result = yield* $(
           counter(Effect.unit).pipe(Effect.zipRight(counter(Effect.unit)), Effect.zipRight(Metric.value(counter)))
         )
@@ -38,7 +42,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("direct increment", () =>
       Effect.gen(function*($) {
-        const counter = Metric.counter("c2").pipe(Metric.taggedWithLabels(labels))
+        const id = nextName()
+        const counter = Metric.counter(id).pipe(Metric.taggedWithLabels(labels))
         const result = yield* $(
           Metric.increment(counter).pipe(
             Effect.zipRight(Metric.increment(counter)),
@@ -47,9 +52,57 @@ describe.concurrent("Metric", () => {
         )
         assert.deepStrictEqual(result, MetricState.counter(2))
       }))
+
+    it.effect("direct increment bigint", () =>
+      Effect.gen(function*($) {
+        const name = nextName()
+        const counter = Metric.counter(name, {
+          bigint: true
+        }).pipe(Metric.taggedWithLabels(labels))
+        const result = yield* $(
+          Metric.increment(counter).pipe(
+            Effect.zipRight(Metric.increment(counter)),
+            Effect.zipRight(Metric.value(counter))
+          )
+        )
+        assert.deepStrictEqual(result, MetricState.counter(BigInt(2)))
+      }))
+
+    it.effect("cannot decrement incremental", () =>
+      Effect.gen(function*($) {
+        const name = nextName()
+        const counter = Metric.counter(name, { incremental: true }).pipe(Metric.taggedWithLabels(labels))
+        const result = yield* $(
+          Metric.increment(counter).pipe(
+            Effect.zipRight(Metric.increment(counter)),
+            Effect.zipRight(Metric.incrementBy(counter, -1)),
+            Effect.zipRight(Metric.value(counter))
+          )
+        )
+        assert.deepStrictEqual(result, MetricState.counter(2))
+      }))
+
+    it.effect("cannot decrement incremental bigint", () =>
+      Effect.gen(function*($) {
+        const name = nextName()
+        const counter = Metric.counter(name, {
+          incremental: true,
+          bigint: true
+        }).pipe(Metric.taggedWithLabels(labels))
+        const result = yield* $(
+          Metric.increment(counter).pipe(
+            Effect.zipRight(Metric.increment(counter)),
+            Effect.zipRight(Metric.incrementBy(counter, BigInt(-1))),
+            Effect.zipRight(Metric.value(counter))
+          )
+        )
+        assert.deepStrictEqual(result, MetricState.counter(BigInt(2)))
+      }))
+
     it.effect("custom increment by value as aspect", () =>
       Effect.gen(function*($) {
-        const counter = Metric.counter("c3").pipe(Metric.taggedWithLabels(labels))
+        const name = nextName()
+        const counter = Metric.counter(name).pipe(Metric.taggedWithLabels(labels))
         const result = yield* $(
           counter(Effect.succeed(10)).pipe(
             Effect.zipRight(counter(Effect.succeed(5))),
@@ -58,13 +111,28 @@ describe.concurrent("Metric", () => {
         )
         assert.deepStrictEqual(result, MetricState.counter(15))
       }))
+
+    it.effect("custom increment by bigint value as aspect", () =>
+      Effect.gen(function*($) {
+        const name = nextName()
+        const counter = Metric.counter(name, { bigint: true }).pipe(Metric.taggedWithLabels(labels))
+        const result = yield* $(
+          counter(Effect.succeed(BigInt(10))).pipe(
+            Effect.zipRight(counter(Effect.succeed(BigInt(5)))),
+            Effect.zipRight(Metric.value(counter))
+          )
+        )
+        assert.deepStrictEqual(result, MetricState.counter(BigInt(15)))
+      }))
+
     it.effect("direct increment referential transparency", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const result = yield* $(
           pipe(
             Effect.unit,
             Effect.withMetric(
-              Metric.counter("c4").pipe(
+              Metric.counter(name).pipe(
                 Metric.taggedWithLabels(labels),
                 Metric.withConstantInput(1)
               )
@@ -73,14 +141,14 @@ describe.concurrent("Metric", () => {
               pipe(
                 Effect.unit,
                 Effect.withMetric(pipe(
-                  Metric.counter("c4"),
+                  Metric.counter(name),
                   Metric.taggedWithLabels(labels),
                   Metric.withConstantInput(1)
                 ))
               )
             ),
             Effect.zipRight(pipe(
-              Metric.counter("c4"),
+              Metric.counter(name),
               Metric.taggedWithLabels(labels),
               Metric.withConstantInput(1),
               Metric.value
@@ -91,26 +159,28 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("custom increment referential transparency", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const result = yield* $(
           pipe(
             Effect.succeed(10),
-            Effect.withMetric(pipe(Metric.counter("c5"), Metric.taggedWithLabels(labels))),
+            Effect.withMetric(pipe(Metric.counter(name), Metric.taggedWithLabels(labels))),
             Effect.zipRight(
-              pipe(Effect.succeed(5), Effect.withMetric(pipe(Metric.counter("c5"), Metric.taggedWithLabels(labels))))
+              pipe(Effect.succeed(5), Effect.withMetric(pipe(Metric.counter(name), Metric.taggedWithLabels(labels))))
             ),
-            Effect.zipRight(pipe(Metric.counter("c5"), Metric.taggedWithLabels(labels), Metric.value))
+            Effect.zipRight(pipe(Metric.counter(name), Metric.taggedWithLabels(labels), Metric.value))
           )
         )
         assert.deepStrictEqual(result, MetricState.counter(15))
       }))
     it.effect("custom increment with mapInput", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const result = yield* $(
           pipe(
             Effect.succeed("hello"),
             Effect.withMetric(
               pipe(
-                Metric.counter("c6"),
+                Metric.counter(name),
                 Metric.taggedWithLabels(labels),
                 Metric.mapInput((input: string) => input.length)
               )
@@ -120,21 +190,22 @@ describe.concurrent("Metric", () => {
                 Effect.succeed("!"),
                 Effect.withMetric(
                   pipe(
-                    Metric.counter("c6"),
+                    Metric.counter(name),
                     Metric.taggedWithLabels(labels),
                     Metric.mapInput((input: string) => input.length)
                   )
                 )
               )
             ),
-            Effect.zipRight(pipe(Metric.counter("c6"), Metric.taggedWithLabels(labels), Metric.value))
+            Effect.zipRight(pipe(Metric.counter(name), Metric.taggedWithLabels(labels), Metric.value))
           )
         )
         assert.deepStrictEqual(result, MetricState.counter(6))
       }))
     it.effect("does not count errors", () =>
       Effect.gen(function*($) {
-        const counter = pipe(Metric.counter("c7"), Metric.withConstantInput(1))
+        const name = nextName()
+        const counter = pipe(Metric.counter(name), Metric.withConstantInput(1))
         const result = yield* $(
           pipe(
             Effect.unit,
@@ -147,7 +218,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("count + taggedWith", () =>
       Effect.gen(function*($) {
-        const base = pipe(Metric.counter("c8"), Metric.tagged("static", "0"), Metric.withConstantInput(1))
+        const name = nextName()
+        const base = pipe(Metric.counter(name), Metric.tagged("static", "0"), Metric.withConstantInput(1))
         const counter = pipe(
           base,
           Metric.taggedWithLabelsInput((input: string) => HashSet.make(MetricLabel.make("dyn", input)))
@@ -165,7 +237,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("tags are a region setting", () =>
       Effect.gen(function*($) {
-        const counter = Metric.counter("c9")
+        const name = nextName()
+        const counter = Metric.counter(name)
         const result = yield* $(
           Metric.increment(counter),
           Effect.tagMetrics({ key: "value" }),
@@ -183,7 +256,8 @@ describe.concurrent("Metric", () => {
   describe.concurrent("Frequency", () => {
     it.effect("custom occurrences as aspect", () =>
       Effect.gen(function*($) {
-        const frequency = pipe(Metric.frequency("f1"), Metric.taggedWithLabels(labels))
+        const name = nextName()
+        const frequency = pipe(Metric.frequency(name), Metric.taggedWithLabels(labels))
         const result = yield* $(
           pipe(
             Effect.succeed("hello"),
@@ -197,7 +271,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("direct occurrences", () =>
       Effect.gen(function*($) {
-        const frequency = pipe(Metric.frequency("f2"), Metric.taggedWithLabels(labels))
+        const name = nextName()
+        const frequency = pipe(Metric.frequency(name), Metric.taggedWithLabels(labels))
         const result = yield* $(
           pipe(
             frequency,
@@ -211,8 +286,9 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("custom occurrences with mapInput", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const frequency = pipe(
-          Metric.frequency("f3"),
+          Metric.frequency(name),
           Metric.taggedWithLabels(labels),
           Metric.mapInput((n: number) => `${n}`)
         )
@@ -229,7 +305,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("occurences + taggedWith", () =>
       Effect.gen(function*($) {
-        const base = pipe(Metric.frequency("f4"), Metric.taggedWithLabels(labels))
+        const name = nextName()
+        const base = pipe(Metric.frequency(name), Metric.taggedWithLabels(labels))
         const frequency = pipe(
           base,
           Metric.taggedWithLabelsInput((s: string) => HashSet.make(MetricLabel.make("dyn", s)))
@@ -255,7 +332,8 @@ describe.concurrent("Metric", () => {
   describe.concurrent("Gauge", () => {
     it.effect("custom set as aspect", () =>
       Effect.gen(function*($) {
-        const gauge = pipe(Metric.gauge("g1"), Metric.taggedWithLabels(labels))
+        const name = nextName()
+        const gauge = pipe(Metric.gauge(name), Metric.taggedWithLabels(labels))
         const result = yield* $(
           pipe(
             Effect.succeed(1),
@@ -268,7 +346,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("direct set", () =>
       Effect.gen(function*($) {
-        const gauge = pipe(Metric.gauge("g2"), Metric.taggedWithLabels(labels))
+        const name = nextName()
+        const gauge = pipe(Metric.gauge(name), Metric.taggedWithLabels(labels))
         const result = yield* $(
           pipe(gauge, Metric.set(1), Effect.zipRight(pipe(gauge, Metric.set(3))), Effect.zipRight(Metric.value(gauge)))
         )
@@ -276,7 +355,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("custom set with mapInput", () =>
       Effect.gen(function*($) {
-        const gauge = pipe(Metric.gauge("g3"), Metric.taggedWithLabels(labels), Metric.mapInput((n: number) => n * 2))
+        const name = nextName()
+        const gauge = pipe(Metric.gauge(name), Metric.taggedWithLabels(labels), Metric.mapInput((n: number) => n * 2))
         const result = yield* $(
           pipe(
             Effect.succeed(1),
@@ -289,7 +369,8 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("gauge + taggedWith", () =>
       Effect.gen(function*($) {
-        const base = pipe(Metric.gauge("g4"), Metric.tagged("static", "0"), Metric.mapInput((s: string) => s.length))
+        const name = nextName()
+        const base = pipe(Metric.gauge(name), Metric.tagged("static", "0"), Metric.mapInput((s: string) => s.length))
         const gauge = pipe(
           base,
           Metric.taggedWithLabelsInput((input: string) => HashSet.make(MetricLabel.make("dyn", input)))
@@ -309,8 +390,9 @@ describe.concurrent("Metric", () => {
   describe.concurrent("Histogram", () => {
     it.effect("custom observe as aspect", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const boundaries = MetricBoundaries.linear({ start: 0, width: 1, count: 10 })
-        const histogram = pipe(Metric.histogram("h1", boundaries), Metric.taggedWithLabels(labels))
+        const histogram = pipe(Metric.histogram(name, boundaries), Metric.taggedWithLabels(labels))
         const result = yield* $(
           pipe(
             Effect.succeed(1),
@@ -326,8 +408,9 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("direct observe", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const boundaries = MetricBoundaries.linear({ start: 0, width: 1, count: 10 })
-        const histogram = pipe(Metric.histogram("h2", boundaries), Metric.taggedWithLabels(labels))
+        const histogram = pipe(Metric.histogram(name, boundaries), Metric.taggedWithLabels(labels))
         const result = yield* $(
           pipe(
             histogram,
@@ -343,9 +426,10 @@ describe.concurrent("Metric", () => {
       }))
     it.flakyTest(
       Effect.gen(function*($) {
+        const name = nextName()
         const boundaries = MetricBoundaries.linear({ start: 0, width: 1, count: 10 })
         const histogram = pipe(
-          Metric.histogram("h3", boundaries),
+          Metric.histogram(name, boundaries),
           Metric.taggedWithLabels(labels),
           Metric.mapInput((duration: Duration.Duration) => Duration.toMillis(duration) / 1000)
         )
@@ -367,9 +451,10 @@ describe.concurrent("Metric", () => {
     )
     it.effect("custom observe with mapInput", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const boundaries = MetricBoundaries.linear({ start: 0, width: 1, count: 10 })
         const histogram = pipe(
-          Metric.histogram("h4", boundaries),
+          Metric.histogram(name, boundaries),
           Metric.taggedWithLabels(labels),
           Metric.mapInput((s: string) => s.length)
         )
@@ -388,9 +473,10 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("observe + taggedWith", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const boundaries = MetricBoundaries.linear({ start: 0, width: 1, count: 10 })
         const base = pipe(
-          Metric.histogram("h5", boundaries),
+          Metric.histogram(name, boundaries),
           Metric.taggedWithLabels(labels),
           Metric.mapInput((s: string) => s.length)
         )
@@ -415,8 +501,9 @@ describe.concurrent("Metric", () => {
   describe.concurrent("Summary", () => {
     it.effect("custom observe as aspect", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const summary = Metric.summary({
-          name: "s1",
+          name,
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
@@ -437,8 +524,9 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("direct observe", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const summary = Metric.summary({
-          name: "s2",
+          name,
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
@@ -459,8 +547,9 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("custom observe with mapInput", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const summary = Metric.summary({
-          name: "s3",
+          name,
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
@@ -482,8 +571,9 @@ describe.concurrent("Metric", () => {
       }))
     it.effect("observeSummaryWith + taggedWith", () =>
       Effect.gen(function*($) {
+        const name = nextName()
         const base = Metric.summary({
-          name: "s4",
+          name,
           maxAge: Duration.minutes(1),
           maxSize: 10,
           error: 0,
@@ -553,8 +643,8 @@ describe.concurrent("Metric", () => {
     Effect.gen(function*(_) {
       const name = "counterName"
       const counter1 = Metric.counter(name)
-      const counter2 = Metric.counter(name, "description1")
-      const counter3 = Metric.counter(name, "description2")
+      const counter2 = Metric.counter(name, { description: "description1" })
+      const counter3 = Metric.counter(name, { description: "description2" })
 
       yield* _(Metric.update(counter1, 1))
       yield* _(Metric.update(counter2, 1))
@@ -570,10 +660,22 @@ describe.concurrent("Metric", () => {
         ReadonlyArray.findFirst(values, (key) => Equal.equals(key.metricKey, MetricKey.counter(name)))
       )
       const pair2 = yield* _(
-        ReadonlyArray.findFirst(values, (key) => Equal.equals(key.metricKey, MetricKey.counter(name, "description1")))
+        ReadonlyArray.findFirst(values, (key) =>
+          Equal.equals(
+            key.metricKey,
+            MetricKey.counter(name, {
+              description: "description1"
+            })
+          ))
       )
       const pair3 = yield* _(
-        ReadonlyArray.findFirst(values, (key) => Equal.equals(key.metricKey, MetricKey.counter(name, "description2")))
+        ReadonlyArray.findFirst(values, (key) =>
+          Equal.equals(
+            key.metricKey,
+            MetricKey.counter(name, {
+              description: "description2"
+            })
+          ))
       )
 
       expect(Equal.equals(result1, MetricState.counter(1))).toBe(true)
@@ -582,8 +684,18 @@ describe.concurrent("Metric", () => {
       expect(Equal.equals(pair1.metricState, MetricState.counter(1))).toBe(true)
       expect(Option.isNone(pair1.metricKey.description)).toBe(true)
       expect(Equal.equals(pair2.metricState, MetricState.counter(1))).toBe(true)
-      expect(Equal.equals(pair2.metricKey, MetricKey.counter(name, "description1"))).toBe(true)
+      expect(Equal.equals(
+        pair2.metricKey,
+        MetricKey.counter(name, {
+          description: "description1"
+        })
+      )).toBe(true)
       expect(Equal.equals(pair3.metricState, MetricState.counter(1))).toBe(true)
-      expect(Equal.equals(pair3.metricKey, MetricKey.counter(name, "description2"))).toBe(true)
+      expect(Equal.equals(
+        pair3.metricKey,
+        MetricKey.counter(name, {
+          description: "description2"
+        })
+      )).toBe(true)
     }))
 })

@@ -1631,7 +1631,7 @@ export const tryPromise: {
           promise
             .then((a) => resolve(core.exitSucceed(a)))
             .catch((e) =>
-              resolve(core.exitFail(
+              resolve(core.fail(
                 catcher ? catcher(e) : e
               ))
             )
@@ -1652,7 +1652,7 @@ export const tryPromise: {
         promise
           .then((a) => resolve(core.exitSucceed(a)))
           .catch((e) =>
-            resolve(core.exitFail(
+            resolve(core.fail(
               catcher ? catcher(e) : e
             ))
           )

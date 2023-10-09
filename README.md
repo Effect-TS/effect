@@ -21,15 +21,15 @@ Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged
 
 For detailed information and usage examples, please visit the [Effect website](https://www.effect.website/).
 
-## Intro Talk
+## Introduction to Effect
 
-Watch our introduction to Effect on YouTube:
+To get started with Effect, watch our introductory video on YouTube. This video provides an overview of Effect and its key features, making it a great starting point for newcomers:
 
-[![Introduction to Effect](https://img.youtube.com/vi/zrNr3JVUc8I/maxresdefault.jpg)](https://youtu.be/zrNr3JVUc8I)
+[![Introduction to Effect](https://img.youtube.com/vi/SloZE4i4Zfk/maxresdefault.jpg)](https://youtu.be/SloZE4i4Zfk)
 
-## Get in touch
+## Connect with Our Community
 
-Join our community on Discord: https://discord.gg/hdt7t7jpvn
+Join our vibrant community on Discord to interact with fellow developers, ask questions, and share your experiences. Here's the invite link to our Discord server: [Join Effect's Discord Community](https://discord.gg/hdt7t7jpvn).
 
 ## API Reference
 

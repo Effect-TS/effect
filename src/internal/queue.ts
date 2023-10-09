@@ -513,6 +513,17 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
     return MutableQueue.length(this.putters)
   }
 
+  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void {
+    while (!MutableQueue.isEmpty(this.putters) && !MutableQueue.isEmpty(takers)) {
+      const taker = MutableQueue.poll(takers, void 0)!
+      const putter = MutableQueue.poll(this.putters, void 0)!
+      if (putter[2]) {
+        unsafeCompleteDeferred(putter[1], true)
+      }
+      unsafeCompleteDeferred(taker, putter[0])
+    }
+  }
+
   shutdown(): Effect.Effect<never, never, void> {
     return pipe(
       core.fiberId,
@@ -575,17 +586,12 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
   }
 
   unsafeOffer(iterable: Iterable<A>, deferred: Deferred.Deferred<never, boolean>): void {
-    const iterator = iterable[Symbol.iterator]()
-    let next: IteratorResult<A> = iterator.next()
-    if (!next.done) {
-      // eslint-disable-next-line no-constant-condition
-      while (1) {
-        const value = next.value
-        next = iterator.next()
-        if (next.done) {
-          pipe(this.putters, MutableQueue.offer([value, deferred, true as boolean] as const))
-          break
-        }
+    const stuff = Array.from(iterable)
+    for (let i = 0; i < stuff.length; i++) {
+      const value = stuff[i]
+      if (i === stuff.length - 1) {
+        pipe(this.putters, MutableQueue.offer([value, deferred, true as boolean] as const))
+      } else {
         pipe(this.putters, MutableQueue.offer([value, deferred, false as boolean] as const))
       }
     }
@@ -609,6 +615,9 @@ class DroppingStrategy<A> implements Queue.Strategy<A> {
 
   shutdown(): Effect.Effect<never, never, void> {
     return core.unit
+  }
+
+  onCompleteTakersWithEmptyQueue(): void {
   }
 
   handleSurplus(
@@ -638,6 +647,9 @@ class SlidingStrategy<A> implements Queue.Strategy<A> {
 
   shutdown(): Effect.Effect<never, never, void> {
     return core.unit
+  }
+
+  onCompleteTakersWithEmptyQueue(): void {
   }
 
   handleSurplus(
@@ -725,5 +737,8 @@ export const unsafeCompleteTakers = <A>(
     } else {
       keepPolling = false
     }
+  }
+  if (keepPolling && queue.length() === 0 && !MutableQueue.isEmpty(takers)) {
+    strategy.onCompleteTakersWithEmptyQueue(takers)
   }
 }

@@ -1,14 +1,14 @@
 ---
-title: Bigint.ts
+title: BigInt.ts
 nav_order: 1
 parent: Modules
 ---
 
-## Bigint overview
+## BigInt overview
 
 This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 Added in v2.0.0
 
@@ -17,20 +17,25 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [guards](#guards)
-  - [isBigint](#isbigint)
+  - [isBigInt](#isbigint)
 - [instances](#instances)
   - [Equivalence](#equivalence)
   - [Order](#order)
 - [math](#math)
+  - [abs](#abs)
   - [decrement](#decrement)
   - [divide](#divide)
+  - [gcd](#gcd)
   - [increment](#increment)
+  - [lcm](#lcm)
   - [multiply](#multiply)
   - [multiplyAll](#multiplyall)
   - [sign](#sign)
+  - [sqrt](#sqrt)
   - [subtract](#subtract)
   - [sum](#sum)
   - [sumAll](#sumall)
+  - [unsafeSqrt](#unsafesqrt)
 - [predicates](#predicates)
   - [between](#between)
   - [greaterThan](#greaterthan)
@@ -46,23 +51,23 @@ Added in v2.0.0
 
 # guards
 
-## isBigint
+## isBigInt
 
 Tests if a value is a `bigint`.
 
 **Signature**
 
 ```ts
-export declare const isBigint: (u: unknown) => u is bigint
+export declare const isBigInt: (u: unknown) => u is bigint
 ```
 
 **Example**
 
 ```ts
-import { isBigint } from 'effect/Bigint'
+import { isBigInt } from 'effect/BigInt'
 
-assert.deepStrictEqual(isBigint(1n), true)
-assert.deepStrictEqual(isBigint(1), false)
+assert.deepStrictEqual(isBigInt(1n), true)
+assert.deepStrictEqual(isBigInt(1), false)
 ```
 
 Added in v2.0.0
@@ -91,6 +96,28 @@ Added in v2.0.0
 
 # math
 
+## abs
+
+Determines the absolute value of a given `bigint`.
+
+**Signature**
+
+```ts
+export declare const abs: (n: bigint) => bigint
+```
+
+**Example**
+
+```ts
+import { abs } from 'effect/BigInt'
+
+assert.deepStrictEqual(abs(-5n), 5n)
+assert.deepStrictEqual(abs(0n), 0n)
+assert.deepStrictEqual(abs(5n), 5n)
+```
+
+Added in v2.0.0
+
 ## decrement
 
 Decrements a number by `1n`.
@@ -104,7 +131,7 @@ export declare const decrement: (n: bigint) => bigint
 **Example**
 
 ```ts
-import { decrement } from 'effect/Bigint'
+import { decrement } from 'effect/BigInt'
 
 assert.deepStrictEqual(decrement(3n), 2n)
 ```
@@ -127,10 +154,32 @@ export declare const divide: { (that: bigint): (self: bigint) => bigint; (self: 
 **Example**
 
 ```ts
-import { divide } from 'effect/Bigint'
+import { divide } from 'effect/BigInt'
 
 assert.deepStrictEqual(divide(6n, 3n), 2n)
 assert.deepStrictEqual(divide(6n, 4n), 1n)
+```
+
+Added in v2.0.0
+
+## gcd
+
+Determines the greatest common divisor of two `bigint`s.
+
+**Signature**
+
+```ts
+export declare const gcd: { (that: bigint): (self: bigint) => bigint; (self: bigint, that: bigint): bigint }
+```
+
+**Example**
+
+```ts
+import { gcd } from 'effect/BigInt'
+
+assert.deepStrictEqual(gcd(2n, 3n), 1n)
+assert.deepStrictEqual(gcd(2n, 4n), 2n)
+assert.deepStrictEqual(gcd(16n, 24n), 8n)
 ```
 
 Added in v2.0.0
@@ -148,9 +197,31 @@ export declare const increment: (n: bigint) => bigint
 **Example**
 
 ```ts
-import { increment } from 'effect/Bigint'
+import { increment } from 'effect/BigInt'
 
 assert.deepStrictEqual(increment(2n), 3n)
+```
+
+Added in v2.0.0
+
+## lcm
+
+Determines the least common multiple of two `bigint`s.
+
+**Signature**
+
+```ts
+export declare const lcm: { (that: bigint): (self: bigint) => bigint; (self: bigint, that: bigint): bigint }
+```
+
+**Example**
+
+```ts
+import { lcm } from 'effect/BigInt'
+
+assert.deepStrictEqual(lcm(2n, 3n), 6n)
+assert.deepStrictEqual(lcm(2n, 4n), 4n)
+assert.deepStrictEqual(lcm(16n, 24n), 48n)
 ```
 
 Added in v2.0.0
@@ -168,7 +239,7 @@ export declare const multiply: { (that: bigint): (self: bigint) => bigint; (self
 **Example**
 
 ```ts
-import { multiply } from 'effect/Bigint'
+import { multiply } from 'effect/BigInt'
 
 assert.deepStrictEqual(multiply(2n, 3n), 6n)
 ```
@@ -188,7 +259,7 @@ export declare const multiplyAll: (collection: Iterable<bigint>) => bigint
 **Example**
 
 ```ts
-import { multiplyAll } from 'effect/Bigint'
+import { multiplyAll } from 'effect/BigInt'
 
 assert.deepStrictEqual(multiplyAll([2n, 3n, 4n]), 24n)
 ```
@@ -208,11 +279,35 @@ export declare const sign: (n: bigint) => Ordering
 **Example**
 
 ```ts
-import { sign } from 'effect/Bigint'
+import { sign } from 'effect/BigInt'
 
 assert.deepStrictEqual(sign(-5n), -1)
 assert.deepStrictEqual(sign(0n), 0)
 assert.deepStrictEqual(sign(5n), 1)
+```
+
+Added in v2.0.0
+
+## sqrt
+
+Determines the square root of a given `bigint` safely. Returns `none` if the given `bigint` is negative.
+
+**Signature**
+
+```ts
+export declare const sqrt: (n: bigint) => Option.Option<bigint>
+```
+
+**Example**
+
+```ts
+import { sqrt } from 'effect/BigInt'
+import * as Option from 'effect/Option'
+
+assert.deepStrictEqual(sqrt(4n), Option.some(2n))
+assert.deepStrictEqual(sqrt(9n), Option.some(3n))
+assert.deepStrictEqual(sqrt(16n), Option.some(4n))
+assert.deepStrictEqual(sqrt(-1n), Option.none())
 ```
 
 Added in v2.0.0
@@ -230,7 +325,7 @@ export declare const subtract: { (that: bigint): (self: bigint) => bigint; (self
 **Example**
 
 ```ts
-import { subtract } from 'effect/Bigint'
+import { subtract } from 'effect/BigInt'
 
 assert.deepStrictEqual(subtract(2n, 3n), -1n)
 ```
@@ -250,7 +345,7 @@ export declare const sum: { (that: bigint): (self: bigint) => bigint; (self: big
 **Example**
 
 ```ts
-import { sum } from 'effect/Bigint'
+import { sum } from 'effect/BigInt'
 
 assert.deepStrictEqual(sum(2n, 3n), 5n)
 ```
@@ -270,9 +365,31 @@ export declare const sumAll: (collection: Iterable<bigint>) => bigint
 **Example**
 
 ```ts
-import { sumAll } from 'effect/Bigint'
+import { sumAll } from 'effect/BigInt'
 
 assert.deepStrictEqual(sumAll([2n, 3n, 4n]), 9n)
+```
+
+Added in v2.0.0
+
+## unsafeSqrt
+
+Determines the square root of a given `bigint` unsafely. Throws if the given `bigint` is negative.
+
+**Signature**
+
+```ts
+export declare const unsafeSqrt: (n: bigint) => bigint
+```
+
+**Example**
+
+```ts
+import { unsafeSqrt } from 'effect/BigInt'
+
+assert.deepStrictEqual(unsafeSqrt(4n), 2n)
+assert.deepStrictEqual(unsafeSqrt(9n), 3n)
+assert.deepStrictEqual(unsafeSqrt(16n), 4n)
 ```
 
 Added in v2.0.0
@@ -295,7 +412,7 @@ export declare const between: {
 **Example**
 
 ```ts
-import { between } from 'effect/Bigint'
+import { between } from 'effect/BigInt'
 
 assert.deepStrictEqual(between(0n, 5n)(3n), true)
 assert.deepStrictEqual(between(0n, 5n)(-1n), false)
@@ -317,7 +434,7 @@ export declare const greaterThan: { (that: bigint): (self: bigint) => boolean; (
 **Example**
 
 ```ts
-import { greaterThan } from 'effect/Bigint'
+import { greaterThan } from 'effect/BigInt'
 
 assert.deepStrictEqual(greaterThan(2n, 3n), false)
 assert.deepStrictEqual(greaterThan(3n, 3n), false)
@@ -342,7 +459,7 @@ export declare const greaterThanOrEqualTo: {
 **Example**
 
 ```ts
-import { greaterThanOrEqualTo } from 'effect/Bigint'
+import { greaterThanOrEqualTo } from 'effect/BigInt'
 
 assert.deepStrictEqual(greaterThanOrEqualTo(2n, 3n), false)
 assert.deepStrictEqual(greaterThanOrEqualTo(3n, 3n), true)
@@ -364,7 +481,7 @@ export declare const lessThan: { (that: bigint): (self: bigint) => boolean; (sel
 **Example**
 
 ```ts
-import { lessThan } from 'effect/Bigint'
+import { lessThan } from 'effect/BigInt'
 
 assert.deepStrictEqual(lessThan(2n, 3n), true)
 assert.deepStrictEqual(lessThan(3n, 3n), false)
@@ -389,7 +506,7 @@ export declare const lessThanOrEqualTo: {
 **Example**
 
 ```ts
-import { lessThanOrEqualTo } from 'effect/Bigint'
+import { lessThanOrEqualTo } from 'effect/BigInt'
 
 assert.deepStrictEqual(lessThanOrEqualTo(2n, 3n), true)
 assert.deepStrictEqual(lessThanOrEqualTo(3n, 3n), true)
@@ -420,7 +537,7 @@ export declare const clamp: {
 **Example**
 
 ```ts
-import { clamp } from 'effect/Bigint'
+import { clamp } from 'effect/BigInt'
 
 assert.deepStrictEqual(clamp(0n, 5n)(3n), 3n)
 assert.deepStrictEqual(clamp(0n, 5n)(-1n), 0n)
@@ -442,7 +559,7 @@ export declare const max: { (that: bigint): (self: bigint) => bigint; (self: big
 **Example**
 
 ```ts
-import { max } from 'effect/Bigint'
+import { max } from 'effect/BigInt'
 
 assert.deepStrictEqual(max(2n, 3n), 3n)
 ```
@@ -462,7 +579,7 @@ export declare const min: { (that: bigint): (self: bigint) => bigint; (self: big
 **Example**
 
 ```ts
-import { min } from 'effect/Bigint'
+import { min } from 'effect/BigInt'
 
 assert.deepStrictEqual(min(2n, 3n), 2n)
 ```

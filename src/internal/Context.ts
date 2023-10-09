@@ -5,10 +5,10 @@ import { globalValue } from "../GlobalValue"
 import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import type * as O from "../Option"
-import * as option from "../Option"
 import { pipeArguments } from "../Pipeable"
 import type * as STM from "../STM"
-import { EffectProto, effectVariance } from "./Effectable"
+import { EffectPrototype, effectVariance } from "./Effectable"
+import * as option from "./Option"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId
@@ -23,7 +23,7 @@ export const STMTypeId: STM.STMTypeId = Symbol.for(
 
 /** @internal */
 export const TagProto: C.Tag<unknown, unknown> = {
-  ...EffectProto,
+  ...EffectPrototype,
   _tag: "Tag",
   _op: "Tag",
   [STMTypeId]: effectVariance,
@@ -205,7 +205,7 @@ export const getOption = dual<
   <Services, S, I>(self: C.Context<Services>, tag: C.Tag<I, S>) => O.Option<S>
 >(2, (self, tag) => {
   if (!self.unsafeMap.has(tag)) {
-    return option.none()
+    return option.none
   }
   return option.some(self.unsafeMap.get(tag)! as any)
 })

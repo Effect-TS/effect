@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 50
+nav_order: 49
 parent: Modules
 ---
 
@@ -13,7 +13,7 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [exports](#exports)
-  - [From "effect/Bigint"](#from-effectbigint)
+  - [From "effect/BigInt"](#from-effectbigint)
   - [From "effect/Boolean"](#from-effectboolean)
   - [From "effect/Brand"](#from-effectbrand)
   - [From "effect/Cache"](#from-effectcache)
@@ -46,7 +46,6 @@ Added in v2.0.0
   - [From "effect/Encoding"](#from-effectencoding)
   - [From "effect/Equal"](#from-effectequal)
   - [From "effect/Equivalence"](#from-effectequivalence)
-  - [From "effect/Error"](#from-effecterror)
   - [From "effect/ExecutionStrategy"](#from-effectexecutionstrategy)
   - [From "effect/Exit"](#from-effectexit)
   - [From "effect/Fiber"](#from-effectfiber)
@@ -122,6 +121,7 @@ Added in v2.0.0
   - [From "effect/Stream"](#from-effectstream)
   - [From "effect/StreamEmit"](#from-effectstreamemit)
   - [From "effect/StreamHaltStrategy"](#from-effectstreamhaltstrategy)
+  - [From "effect/Streamable"](#from-effectstreamable)
   - [From "effect/String"](#from-effectstring)
   - [From "effect/Struct"](#from-effectstruct)
   - [From "effect/SubscriptionRef"](#from-effectsubscriptionref)
@@ -166,16 +166,16 @@ Added in v2.0.0
 
 # exports
 
-## From "effect/Bigint"
+## From "effect/BigInt"
 
 This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 
 ```ts
-export * as Bigint from 'effect/Bigint'
+export * as BigInt from 'effect/BigInt'
 ```
 
 Added in v2.0.0
@@ -184,7 +184,7 @@ Added in v2.0.0
 
 This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
 It includes functions for basic boolean operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 
@@ -603,18 +603,6 @@ These properties are also known in mathematics as an "equivalence relation".
 
 ```ts
 export * as Equivalence from 'effect/Equivalence'
-```
-
-Added in v2.0.0
-
-## From "effect/Error"
-
-Re-exports all named exports from the "effect/Error" module as "Error".
-
-**Signature**
-
-```ts
-export * as Error from 'effect/Error'
 ```
 
 Added in v2.0.0
@@ -1100,7 +1088,7 @@ Added in v2.0.0
 
 This module provides utility functions and type class instances for working with the `number` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 
@@ -1542,11 +1530,23 @@ export * as StreamHaltStrategy from 'effect/StreamHaltStrategy'
 
 Added in v2.0.0
 
+## From "effect/Streamable"
+
+Re-exports all named exports from the "effect/Streamable" module as "Streamable".
+
+**Signature**
+
+```ts
+export * as Streamable from 'effect/Streamable'
+```
+
+Added in v2.0.0
+
 ## From "effect/String"
 
 This module provides utility functions and type class instances for working with the `string` type in TypeScript.
 It includes functions for basic string manipulation, as well as type class instances for
-`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+`Equivalence` and `Order`.
 
 **Signature**
 

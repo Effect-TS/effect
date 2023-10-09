@@ -9,9 +9,10 @@ dist/
 .direnv/
 
 # files
+/src/tsconfig.json
 /dist
 /internal
-/Bigint
+/BigInt
 /Boolean
 /Brand
 /Cache
@@ -44,7 +45,6 @@ dist/
 /Encoding
 /Equal
 /Equivalence
-/Error
 /ExecutionStrategy
 /Exit
 /Fiber
@@ -67,6 +67,7 @@ dist/
 /LogLevel
 /LogSpan
 /Logger
+/Match
 /Metric
 /MetricBoundaries
 /MetricHook
