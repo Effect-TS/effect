@@ -21,7 +21,7 @@ import type * as FiberRef from "./FiberRef"
 import type * as FiberRefs from "./FiberRefs"
 import type * as FiberRefsPatch from "./FiberRefsPatch"
 import type { LazyArg } from "./Function"
-import { identity } from "./Function"
+import { dual, identity } from "./Function"
 import type * as HashMap from "./HashMap"
 import type * as HashSet from "./HashSet"
 import type { TypeLambda } from "./HKT"
@@ -4743,6 +4743,18 @@ export const zipWith: {
     options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): Effect<R | R2, E | E2, B>
 } = fiberRuntime.zipWithOptions
+
+// -------------------------------------------------------------------------------------
+// applicatives
+// -------------------------------------------------------------------------------------
+/**
+ * @category combining
+ * @since 2.0.0
+ */
+export const ap: {
+  <R, E, A>(that: Effect<R, E, A>): <B>(self: Effect<R, E, (a: A) => B>) => Effect<R, E, B>
+  <R, E, A, B>(self: Effect<R, E, (a: A) => B>, that: Effect<R, E, A>): Effect<R, E, B>
+} = dual(2, <R, E, A, B>(self: Effect<R, E, (a: A) => B>, that: Effect<R, E, A>): Effect<R, E, B> => zipWith(self, that, (f, a) => f(a)))
 
 // -------------------------------------------------------------------------------------
 // requests & batching
