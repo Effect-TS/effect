@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.11.1
+
+### Patch Changes
+
+- [#104](https://github.com/Effect-TS/rpc/pull/104) [`cb20e7e`](https://github.com/Effect-TS/rpc/commit/cb20e7efb3a729eef51d475715c6d68751546cfb) Thanks [@alex-dixon](https://github.com/alex-dixon)! - catch defect and cast to RpcTransportError
+
 ## 0.11.0
 
 ### Minor Changes
