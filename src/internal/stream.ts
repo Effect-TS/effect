@@ -3149,10 +3149,10 @@ export const groupAdjacentBy = dual<
             const input = Chunk.unsafeGet(chunk, until)
             const updatedKey = f(input)
             if (!Equal.equals(key, updatedKey)) {
-              builder.push([
-                key,
-                Chunk.unsafeFromArray(Array.from(tuple[1]).slice(from, until)) as Chunk.NonEmptyChunk<A>
-              ])
+              const previousChunk = tuple[1]
+              const additionalChunk = Chunk.unsafeFromArray(Array.from(chunk).slice(from, until))
+              const group = Chunk.appendAllNonEmpty(previousChunk, additionalChunk)
+              builder.push([key, group])
               key = updatedKey
               from = until
               loop = false
