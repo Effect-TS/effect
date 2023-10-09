@@ -3336,7 +3336,7 @@ Retrieves the log annotations associated with the current scope.
 **Signature**
 
 ```ts
-export declare const logAnnotations: Effect<never, never, HashMap.HashMap<string, Logger.AnnotationValue>>
+export declare const logAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>>
 ```
 
 Added in v2.0.0

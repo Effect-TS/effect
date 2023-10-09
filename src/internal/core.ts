@@ -28,7 +28,6 @@ import * as DeferredOpCodes from "../internal/opCodes/deferred"
 import * as OpCodes from "../internal/opCodes/effect"
 import * as _runtimeFlags from "../internal/runtimeFlags"
 import * as List from "../List"
-import type * as Logger from "../Logger"
 import type * as LogLevel from "../LogLevel"
 import type * as LogSpan from "../LogSpan"
 import type * as MetricLabel from "../MetricLabel"
@@ -1846,7 +1845,7 @@ export const currentMaxOpsBeforeYield: FiberRef.FiberRef<number> = globalValue(
 )
 
 /** @internal */
-export const currentLogAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, Logger.AnnotationValue>> = globalValue(
+export const currentLogAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, unknown>> = globalValue(
   Symbol.for("effect/FiberRef/currentLogAnnotation"),
   () => fiberRefUnsafeMake(HashMap.empty())
 )
@@ -1945,11 +1944,10 @@ export const currentTracerTimingEnabled: FiberRef.FiberRef<boolean> = globalValu
 )
 
 /** @internal */
-export const currentTracerSpanAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, Tracer.AttributeValue>> =
-  globalValue(
-    Symbol.for("effect/FiberRef/currentTracerSpanAnnotations"),
-    () => fiberRefUnsafeMake(HashMap.empty())
-  )
+export const currentTracerSpanAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, unknown>> = globalValue(
+  Symbol.for("effect/FiberRef/currentTracerSpanAnnotations"),
+  () => fiberRefUnsafeMake(HashMap.empty())
+)
 
 /** @internal */
 export const currentTracerSpanLinks: FiberRef.FiberRef<Chunk.Chunk<Tracer.SpanLink>> = globalValue(

@@ -1,4 +1,5 @@
 import * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
 import * as FiberId from "effect/FiberId"
 import * as FiberRefs from "effect/FiberRefs"
 import { identity } from "effect/Function"
@@ -24,7 +25,7 @@ describe("stringLogger", () => {
     const spans = List.make(LogSpan.make("imma span=\"", date.getTime() - 7))
     const annotations = HashMap.make(
       ["just_a_key", "just_a_value"],
-      ["I am bad key name", JSON.stringify({ coolValue: "cool value" })],
+      ["I am bad key name", { coolValue: "cool value" }],
       ["good_key", "I am a good value"],
       ["good_bool", true],
       ["good_number", 123]
@@ -51,8 +52,8 @@ describe("stringLogger", () => {
     vi.setSystemTime(date)
     const spans = List.make(LogSpan.make("imma\nspan=\"", date.getTime() - 7))
     const annotations = HashMap.make(
-      ["I am also\na bad key name", JSON.stringify({ return: "cool\nvalue" })],
-      ["good_key", JSON.stringify({ returnWithSpace: "cool\nvalue or not" })],
+      ["I am also\na bad key name", { return: "cool\nvalue" }],
+      ["good_key", { returnWithSpace: "cool\nvalue or not" }],
       ["good_key2", "I am a good value\nwith line breaks"],
       ["good_key3", "I_have=a"]
     )
@@ -90,7 +91,7 @@ describe("logfmtLogger", () => {
     const spans = List.make(LogSpan.make("imma span=\"", date.getTime() - 7))
     const annotations = HashMap.make(
       ["just_a_key", "just_a_value"],
-      ["I am bad key name", JSON.stringify({ coolValue: "cool value" })],
+      ["I am bad key name", { coolValue: "cool value" }],
       ["good_key", "I am a good value"]
     )
 
@@ -115,8 +116,8 @@ describe("logfmtLogger", () => {
     vi.setSystemTime(date)
     const spans = List.make(LogSpan.make("imma\nspan=\"", date.getTime() - 7))
     const annotations = HashMap.make(
-      ["I am also\na bad key name", JSON.stringify({ return: "cool\nvalue" })],
-      ["good_key", JSON.stringify({ returnWithSpace: "cool\nvalue or not" })],
+      ["I am also\na bad key name", { return: "cool\nvalue" }],
+      ["good_key", { returnWithSpace: "cool\nvalue or not" }],
       ["good_key2", "I am a good value\nwith line breaks"],
       ["good_key3", "I_have=a"],
       ["good_bool", true],
@@ -224,6 +225,28 @@ describe("logfmtLogger", () => {
 
     expect(result).toEqual(
       `timestamp=${date.toJSON()} level=INFO fiber= message="() => \\"hello world\\""`
+    )
+  })
+
+  test("annotations", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const annotations = HashMap.make(["hashmap", HashMap.make(["key", 2])], ["chunk", Chunk.make(1, 2)])
+
+    const result = Logger.logfmtLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: "hello world",
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations,
+      date
+    })
+
+    expect(result).toEqual(
+      `timestamp=${date.toJSON()} level=INFO fiber= message="hello world" hashmap="{\\"_id\\":\\"HashMap\\",\\"values\\":[[\\"key\\",2]]}" chunk="{\\"_id\\":\\"Chunk\\",\\"values\\":[1,2]}"`
     )
   })
 })

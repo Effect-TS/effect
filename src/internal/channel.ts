@@ -2302,7 +2302,7 @@ export const withSpan = dual<
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
@@ -2315,7 +2315,7 @@ export const withSpan = dual<
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean

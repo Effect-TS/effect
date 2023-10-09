@@ -1122,14 +1122,14 @@ export const unwrapScoped = <R, E, R1, E1, A>(
 /** @internal */
 export const withSpan = dual<
   (name: string, options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
     readonly context?: Context.Context<never>
   }) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<R, E, A>,
   <R, E, A>(self: Layer.Layer<R, E, A>, name: string, options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean

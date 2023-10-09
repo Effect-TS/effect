@@ -22,7 +22,6 @@ import * as metricLabel from "../internal/metric/label"
 import * as runtimeFlags from "../internal/runtimeFlags"
 import * as SingleShotGen from "../internal/singleShotGen"
 import * as List from "../List"
-import type * as Logger from "../Logger"
 import * as LogLevel from "../LogLevel"
 import * as LogSpan from "../LogSpan"
 import type * as Metric from "../Metric"
@@ -38,14 +37,14 @@ import * as Tracer from "../Tracer"
 /* @internal */
 export const annotateLogs = dual<
   {
-    (key: string, value: Logger.AnnotationValue): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+    (key: string, value: unknown): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
     (
-      values: Record<string, Logger.AnnotationValue>
+      values: Record<string, unknown>
     ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   },
   {
-    <R, E, A>(effect: Effect.Effect<R, E, A>, key: string, value: Logger.AnnotationValue): Effect.Effect<R, E, A>
-    <R, E, A>(effect: Effect.Effect<R, E, A>, values: Record<string, Logger.AnnotationValue>): Effect.Effect<R, E, A>
+    <R, E, A>(effect: Effect.Effect<R, E, A>, key: string, value: unknown): Effect.Effect<R, E, A>
+    <R, E, A>(effect: Effect.Effect<R, E, A>, values: Record<string, unknown>): Effect.Effect<R, E, A>
   }
 >(
   (args) => core.isEffect(args[0]),
@@ -57,7 +56,7 @@ export const annotateLogs = dual<
       typeof args[1] === "string"
         ? HashMap.set(args[1], args[2])
         : (annotations) =>
-          Object.entries(args[1] as Record<string, Logger.AnnotationValue>).reduce(
+          Object.entries(args[1] as Record<string, unknown>).reduce(
             (acc, [key, value]) => HashMap.set(acc, key, value),
             annotations
           )
@@ -942,7 +941,7 @@ export const withLogSpan = dual<
     )))
 
 /* @internal */
-export const logAnnotations: Effect.Effect<never, never, HashMap.HashMap<string, Logger.AnnotationValue>> = core
+export const logAnnotations: Effect.Effect<never, never, HashMap.HashMap<string, unknown>> = core
   .fiberRefGet(
     core.currentLogAnnotations
   )
@@ -1897,8 +1896,8 @@ export const serviceMembers = <I, S>(tag: Context.Tag<I, S>): {
 
 /* @internal */
 export const annotateCurrentSpan: {
-  (key: string, value: Tracer.AttributeValue): Effect.Effect<never, never, void>
-  (values: Record<string, Tracer.AttributeValue>): Effect.Effect<never, never, void>
+  (key: string, value: unknown): Effect.Effect<never, never, void>
+  (values: Record<string, unknown>): Effect.Effect<never, never, void>
 } = function(): Effect.Effect<never, never, void> {
   const args = arguments
   return core.flatMap(
@@ -1921,14 +1920,14 @@ export const annotateCurrentSpan: {
 /* @internal */
 export const annotateSpans = dual<
   {
-    (key: string, value: Tracer.AttributeValue): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+    (key: string, value: unknown): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
     (
-      values: Record<string, Tracer.AttributeValue>
+      values: Record<string, unknown>
     ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   },
   {
-    <R, E, A>(effect: Effect.Effect<R, E, A>, key: string, value: Tracer.AttributeValue): Effect.Effect<R, E, A>
-    <R, E, A>(effect: Effect.Effect<R, E, A>, values: Record<string, Tracer.AttributeValue>): Effect.Effect<R, E, A>
+    <R, E, A>(effect: Effect.Effect<R, E, A>, key: string, value: unknown): Effect.Effect<R, E, A>
+    <R, E, A>(effect: Effect.Effect<R, E, A>, values: Record<string, unknown>): Effect.Effect<R, E, A>
   }
 >(
   (args) => core.isEffect(args[0]),
@@ -1940,7 +1939,7 @@ export const annotateSpans = dual<
       typeof args[1] === "string"
         ? HashMap.set(args[1], args[2])
         : (annotations) =>
-          Object.entries(args[1] as Record<string, Tracer.AttributeValue>).reduce(
+          Object.entries(args[1] as Record<string, unknown>).reduce(
             (acc, [key, value]) => HashMap.set(acc, key, value),
             annotations
           )
@@ -1971,12 +1970,12 @@ export const currentTimeNanosTracing = core.fiberRefGetWith(
 export const linkSpans = dual<
   (
     span: Tracer.ParentSpan,
-    attributes?: Record<string, Tracer.AttributeValue>
+    attributes?: Record<string, unknown>
   ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(
     self: Effect.Effect<R, E, A>,
     span: Tracer.ParentSpan,
-    attributes?: Record<string, Tracer.AttributeValue>
+    attributes?: Record<string, unknown>
   ) => Effect.Effect<R, E, A>
 >(
   (args) => core.isEffect(args[0]),
@@ -1998,11 +1997,12 @@ export const linkSpans = dual<
 export const makeSpan = (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
     readonly context?: Context.Context<never>
+    readonly sampled?: boolean
   }
 ) =>
   tracerWith((tracer) =>
@@ -2031,6 +2031,7 @@ export const makeSpan = (
                         parent,
                         options?.context ?? Context.empty(),
                         linksArray,
+                        options?.sampled ?? (parent._tag === "Some" ? parent.value.sampled : true),
                         startTime
                       )
                       HashMap.forEach(annotations, (value, key) => span.attribute(key, value))
@@ -2044,7 +2045,7 @@ export const makeSpan = (
   )
 
 /* @internal */
-export const spanAnnotations: Effect.Effect<never, never, HashMap.HashMap<string, Tracer.AttributeValue>> = core
+export const spanAnnotations: Effect.Effect<never, never, HashMap.HashMap<string, unknown>> = core
   .fiberRefGet(core.currentTracerSpanAnnotations)
 
 /* @internal */
@@ -2055,7 +2056,7 @@ export const spanLinks: Effect.Effect<never, never, Chunk.Chunk<Tracer.SpanLink>
 export const useSpan: {
   <R, E, A>(name: string, evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
   <R, E, A>(name: string, options: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
@@ -2069,7 +2070,7 @@ export const useSpan: {
   ]
 ) => {
   const options: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
@@ -2102,14 +2103,14 @@ export const withParentSpan = dual<
 /** @internal */
 export const withSpan = dual<
   (name: string, options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
     readonly context?: Context.Context<never>
   }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean

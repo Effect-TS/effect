@@ -4000,7 +4000,7 @@ export const withSpan: {
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
@@ -4011,7 +4011,7 @@ export const withSpan: {
     self: Stream<R, E, A>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean

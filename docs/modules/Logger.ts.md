@@ -360,7 +360,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type AnnotationValue = string | number | boolean
+export type AnnotationValue = unknown
 ```
 
 Added in v2.0.0
