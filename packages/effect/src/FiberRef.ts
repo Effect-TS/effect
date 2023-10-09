@@ -316,8 +316,7 @@ export const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> 
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLogAnnotations: FiberRef<HashMap.HashMap<string, Logger.AnnotationValue>> =
-  core.currentLogAnnotations
+export const currentLogAnnotations: FiberRef<HashMap.HashMap<string, unknown>> = core.currentLogAnnotations
 
 /**
  * @since 2.0.0
@@ -383,7 +382,7 @@ export const currentTracerTimingEnabled: FiberRef<boolean> = core.currentTracerT
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentTracerSpanAnnotations: FiberRef<HashMap.HashMap<string, Tracer.AttributeValue>> =
+export const currentTracerSpanAnnotations: FiberRef<HashMap.HashMap<string, unknown>> =
   core.currentTracerSpanAnnotations
 
 /**

@@ -37,7 +37,6 @@ import * as query from "./internal/query"
 import * as _runtime from "./internal/runtime"
 import * as _schedule from "./internal/schedule"
 import type * as Layer from "./Layer"
-import type * as Logger from "./Logger"
 import type { LogLevel } from "./LogLevel"
 import type * as Metric from "./Metric"
 import type * as MetricLabel from "./MetricLabel"
@@ -4265,10 +4264,10 @@ export const withLogSpan: {
  * @category logging
  */
 export const annotateLogs: {
-  (key: string, value: Logger.AnnotationValue): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  (values: Record<string, Logger.AnnotationValue>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, key: string, value: Logger.AnnotationValue): Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, Logger.AnnotationValue>): Effect<R, E, A>
+  (key: string, value: unknown): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  (values: Record<string, unknown>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, key: string, value: unknown): Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, unknown>): Effect<R, E, A>
 } = effect.annotateLogs
 
 /**
@@ -4277,8 +4276,7 @@ export const annotateLogs: {
  * @since 2.0.0
  * @category logging
  */
-export const logAnnotations: Effect<never, never, HashMap.HashMap<string, Logger.AnnotationValue>> =
-  effect.logAnnotations
+export const logAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>> = effect.logAnnotations
 
 /**
  * Decides wether child fibers will report or not unhandled errors via the logger
@@ -4947,10 +4945,10 @@ export const setTracerTiming: (enabled: boolean) => Layer.Layer<never, never, ne
  * @category tracing
  */
 export const annotateSpans: {
-  (key: string, value: Tracer.AttributeValue): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  (values: Record<string, Tracer.AttributeValue>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, key: string, value: Tracer.AttributeValue): Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, Tracer.AttributeValue>): Effect<R, E, A>
+  (key: string, value: unknown): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  (values: Record<string, unknown>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, key: string, value: unknown): Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, unknown>): Effect<R, E, A>
 } = effect.annotateSpans
 
 /**
@@ -4960,8 +4958,8 @@ export const annotateSpans: {
  * @category tracing
  */
 export const annotateCurrentSpan: {
-  (key: string, value: Tracer.AttributeValue): Effect<never, never, void>
-  (values: Record<string, Tracer.AttributeValue>): Effect<never, never, void>
+  (key: string, value: unknown): Effect<never, never, void>
+  (values: Record<string, unknown>): Effect<never, never, void>
 } = effect.annotateCurrentSpan
 
 /**
@@ -4980,8 +4978,7 @@ export const currentParentSpan: Effect<never, never, Option.Option<Tracer.Parent
  * @since 2.0.0
  * @category tracing
  */
-export const spanAnnotations: Effect<never, never, HashMap.HashMap<string, Tracer.AttributeValue>> =
-  effect.spanAnnotations
+export const spanAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>> = effect.spanAnnotations
 
 /**
  * @since 2.0.0
@@ -4998,12 +4995,12 @@ export const spanLinks: Effect<never, never, Chunk.Chunk<Tracer.SpanLink>> = eff
 export const linkSpans: {
   (
     span: Tracer.ParentSpan,
-    attributes?: Record<string, Tracer.AttributeValue>
+    attributes?: Record<string, unknown>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     span: Tracer.ParentSpan,
-    attributes?: Record<string, Tracer.AttributeValue>
+    attributes?: Record<string, unknown>
   ): Effect<R, E, A>
 } = effect.linkSpans
 
@@ -5016,7 +5013,7 @@ export const linkSpans: {
 export const makeSpan: (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
@@ -5043,7 +5040,7 @@ export const setParentSpan: (span: Tracer.ParentSpan) => Layer.Layer<never, neve
 export const setSpan: (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
@@ -5066,7 +5063,7 @@ export const useSpan: {
   <R, E, A>(
     name: string,
     options: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
@@ -5089,7 +5086,7 @@ export const useSpan: {
 export const useSpanScoped: (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
@@ -5107,7 +5104,7 @@ export const withSpan: {
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
@@ -5118,7 +5115,7 @@ export const withSpan: {
     self: Effect<R, E, A>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
@@ -5138,7 +5135,7 @@ export const withSpan: {
 export const withSpanScoped: (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
