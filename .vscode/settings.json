@@ -62,6 +62,7 @@
     "LogLevel": true,
     "LogSpan": true,
     "Logger": true,
+    "Match": true,
     "Metric": true,
     "MetricBoundaries": true,
     "MetricHook": true,

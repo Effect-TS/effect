@@ -389,6 +389,11 @@ export * as LogSpan from "effect/LogSpan"
 export * as Logger from "effect/Logger"
 
 /**
+ * @since 1.0.0
+ */
+export * as Match from "effect/Match"
+
+/**
  * @since 2.0.0
  */
 export * as Metric from "effect/Metric"
