@@ -31,14 +31,15 @@ export class NativeSpan implements Tracer.Span {
   readonly traceId: string = "native"
 
   status: Tracer.SpanStatus
-  attributes: Map<string, Tracer.AttributeValue>
-  events: Array<[name: string, startTime: bigint, attributes: Record<string, Tracer.AttributeValue>]> = []
+  attributes: Map<string, unknown>
+  events: Array<[name: string, startTime: bigint, attributes: Record<string, unknown>]> = []
 
   constructor(
     readonly name: string,
     readonly parent: Option.Option<Tracer.ParentSpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
+    readonly sampled: boolean,
     readonly startTime: bigint
   ) {
     this.status = {
@@ -58,17 +59,39 @@ export class NativeSpan implements Tracer.Span {
     }
   }
 
-  attribute = (key: string, value: Tracer.AttributeValue): void => {
+  attribute = (key: string, value: unknown): void => {
     this.attributes.set(key, value)
   }
 
-  event = (name: string, startTime: bigint, attributes?: Record<string, Tracer.AttributeValue>): void => {
+  event = (name: string, startTime: bigint, attributes?: Record<string, unknown>): void => {
     this.events.push([name, startTime, attributes ?? {}])
   }
 }
 
 /** @internal */
 export const nativeTracer: Tracer.Tracer = make({
-  span: (name, parent, context, links, startTime) => new NativeSpan(name, parent, context, links, startTime),
+  span: (name, parent, context, links, sampled, startTime) =>
+    new NativeSpan(
+      name,
+      parent,
+      context,
+      links,
+      sampled,
+      startTime
+    ),
   context: (f) => f()
+})
+
+/** @internal */
+export const externalSpan = (options: {
+  readonly spanId: string
+  readonly traceId: string
+  readonly sampled?: boolean
+  readonly context?: Context.Context<never>
+}): Tracer.ExternalSpan => ({
+  _tag: "ExternalSpan",
+  spanId: options.spanId,
+  traceId: options.traceId,
+  sampled: options.sampled ?? true,
+  context: options.context ?? Context.empty()
 })

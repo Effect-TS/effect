@@ -3433,7 +3433,7 @@ export const interruptWhenPossible = dual<
 export const useSpanScoped = (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
@@ -3453,7 +3453,7 @@ export const useSpanScoped = (
 export const withSpanScoped = (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean

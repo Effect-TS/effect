@@ -44,7 +44,7 @@ export interface Logger<Message, Output> extends Logger.Variance<Message, Output
       readonly cause: Cause.Cause<unknown>
       readonly context: FiberRefs.FiberRefs
       readonly spans: List.List<LogSpan.LogSpan>
-      readonly annotations: HashMap.HashMap<string, AnnotationValue>
+      readonly annotations: HashMap.HashMap<string, unknown>
       readonly date: Date
     }
   ) => Output
@@ -67,12 +67,6 @@ export declare namespace Logger {
 }
 
 /**
- * @since 2.0.0
- * @category models
- */
-export type AnnotationValue = unknown
-
-/**
  * @category constructors
  * @since 2.0.0
  */
@@ -85,7 +79,7 @@ export const make: <Message, Output>(
       readonly cause: Cause.Cause<unknown>
       readonly context: FiberRefs.FiberRefs
       readonly spans: List.List<LogSpan.LogSpan>
-      readonly annotations: HashMap.HashMap<string, AnnotationValue>
+      readonly annotations: HashMap.HashMap<string, unknown>
       readonly date: Date
     }
   ) => Output

@@ -37,7 +37,7 @@ export const makeLogger = <Message, Output>(
       readonly cause: CauseExt.Cause<unknown>
       readonly context: FiberRefs.FiberRefs
       readonly spans: List.List<LogSpan.LogSpan>
-      readonly annotations: HashMap.HashMap<string, Logger.AnnotationValue>
+      readonly annotations: HashMap.HashMap<string, unknown>
       readonly date: Date
     }
   ) => Output

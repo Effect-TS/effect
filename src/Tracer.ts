@@ -29,6 +29,7 @@ export interface Tracer {
     parent: Option.Option<ParentSpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
+    sampled: boolean,
     startTime: bigint
   ) => Span
   readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
@@ -62,6 +63,7 @@ export interface ExternalSpan {
   readonly _tag: "ExternalSpan"
   readonly spanId: string
   readonly traceId: string
+  readonly sampled: boolean
   readonly context: Context.Context<never>
 }
 
@@ -77,17 +79,13 @@ export interface Span {
   readonly parent: Option.Option<ParentSpan>
   readonly context: Context.Context<never>
   readonly status: SpanStatus
-  readonly attributes: ReadonlyMap<string, AttributeValue>
+  readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
+  readonly sampled: boolean
   readonly end: (endTime: bigint, exit: Exit.Exit<unknown, unknown>) => void
-  readonly attribute: (key: string, value: AttributeValue) => void
-  readonly event: (name: string, startTime: bigint, attributes?: Record<string, AttributeValue>) => void
+  readonly attribute: (key: string, value: unknown) => void
+  readonly event: (name: string, startTime: bigint, attributes?: Record<string, unknown>) => void
 }
-/**
- * @since 2.0.0
- * @category models
- */
-export type AttributeValue = string | boolean | number
 
 /**
  * @since 2.0.0
@@ -96,7 +94,7 @@ export type AttributeValue = string | boolean | number
 export interface SpanLink {
   readonly _tag: "SpanLink"
   readonly span: ParentSpan
-  readonly attributes: Readonly<Record<string, AttributeValue>>
+  readonly attributes: Readonly<Record<string, unknown>>
 }
 
 /**
@@ -110,6 +108,17 @@ export const Tracer: Context.Tag<Tracer, Tracer> = internal.tracerTag
  * @category constructors
  */
 export const make: (options: Omit<Tracer, typeof TracerTypeId>) => Tracer = internal.make
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const externalSpan: (options: {
+  readonly spanId: string
+  readonly traceId: string
+  readonly sampled?: boolean | undefined
+  readonly context?: Context.Context<never> | undefined
+}) => ExternalSpan = internal.externalSpan
 
 /**
  * @since 2.0.0

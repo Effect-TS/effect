@@ -24,6 +24,7 @@ describe("Tracer", () => {
 
         assert.deepEqual(span.name, "A")
         assert.deepEqual(span.parent, Option.none())
+        assert.strictEqual(span.sampled, true)
       }))
 
     it.effect("parent", () =>
@@ -56,6 +57,7 @@ describe("Tracer", () => {
               _tag: "ExternalSpan",
               spanId: "000",
               traceId: "111",
+              sampled: true,
               context: Context.empty()
             }
           })(currentSpan)
@@ -172,6 +174,7 @@ describe("Tracer", () => {
           _tag: "ExternalSpan",
           traceId: "123",
           spanId: "456",
+          sampled: true,
           context: Context.empty()
         })
       ))
