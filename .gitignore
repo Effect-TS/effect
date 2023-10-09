@@ -9,6 +9,7 @@ dist/
 .direnv/
 
 # files
+/src/tsconfig.json
 /dist
 /internal
 /BigInt
@@ -66,6 +67,7 @@ dist/
 /LogLevel
 /LogSpan
 /Logger
+/Match
 /Metric
 /MetricBoundaries
 /MetricHook
