@@ -1,5 +1,18 @@
 # @effect/rpc-http
 
+## 0.11.0
+
+### Minor Changes
+
+- [#102](https://github.com/Effect-TS/rpc/pull/102) [`a6c9e24`](https://github.com/Effect-TS/rpc/commit/a6c9e24c93327f882933cec27480c6839ee7263b) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- [#102](https://github.com/Effect-TS/rpc/pull/102) [`a6c9e24`](https://github.com/Effect-TS/rpc/commit/a6c9e24c93327f882933cec27480c6839ee7263b) Thanks [@tim-smart](https://github.com/tim-smart)! - remove output from \_\_setup schema
+
+### Patch Changes
+
+- Updated dependencies [[`a6c9e24`](https://github.com/Effect-TS/rpc/commit/a6c9e24c93327f882933cec27480c6839ee7263b), [`a6c9e24`](https://github.com/Effect-TS/rpc/commit/a6c9e24c93327f882933cec27480c6839ee7263b)]:
+  - @effect/rpc@0.11.0
+
 ## 0.10.0
 
 ### Minor Changes
