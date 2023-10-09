@@ -1,16 +1,53 @@
 import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as Queue from "effect/Queue"
+import * as Either from "effect/Either"
 import { assert, describe } from "vitest"
 
-describe.concurrent("Queue", () => {
-  it.effect("applicative take and offer", () =>
+describe.concurrent("Effect", () => {
+  const add = (a: number) => (b: number) => a + b
+
+  it.effect("two successes should succeed", () =>
     Effect.gen(function*($) {
-      const queue = yield* $(Queue.bounded<string>(100))
-      const fiber = yield* $(Queue.take(queue), Effect.ap(Queue.take(queue), (a, b) => a + b), Effect.fork)
-      yield* $(Queue.offer(queue, "don't "), Effect.zipRight(Queue.offer(queue, "give up :D")))
-      const result = yield* $(Fiber.join(fiber))
-      assert.strictEqual(result, "don't give up :D")
+      const result = yield* $(Effect.succeed(add).pipe(Effect.ap(Effect.succeed(1)), Effect.ap(Effect.succeed(2))))
+      assert.strictEqual(result, 3)
+    }))
+
+  it.effect("one effect in data-last position should fail", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(
+        Effect.succeed(add).pipe(Effect.ap(Effect.succeed(1)), Effect.ap(Effect.fail("c"))),
+        Effect.match({
+          onFailure: Either.left,
+          onSuccess: Either.right
+        })
+      )
+      assert.deepStrictEqual(result, Either.left("c"))
+    }))
+
+  it.effect("one effect in data-first position should fail", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(
+        Effect.succeed(add).pipe(Effect.ap(Effect.fail("b")), Effect.ap(Effect.fail("c"))),
+        Effect.match({
+          onFailure: Either.left,
+          onSuccess: Either.right
+        })
+      )
+      assert.deepStrictEqual(result, Either.left("b"))
+    }))
+
+  it.effect("an applicative operation that starts with a failure should fail", () =>
+    Effect.gen(function*($) {
+      const result = yield* $(
+        (Effect.fail("a") as Effect.Effect<never, string, typeof add>).pipe(
+          Effect.ap(Effect.succeed(1)),
+          Effect.ap(Effect.succeed(2))
+        ),
+        Effect.match({
+          onFailure: Either.left,
+          onSuccess: Either.right
+        })
+      )
+      assert.deepStrictEqual(result, Either.left("a"))
     }))
 })
