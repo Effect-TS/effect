@@ -7,14 +7,6 @@ import * as S from "@effect/schema/Schema"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 
-export {
-  /**
-   * @category constructors
-   * @since 1.0.0
-   */
-  context
-} from "@effect/rpc/Schema"
-
 /**
  * @category models
  * @since 1.0.0

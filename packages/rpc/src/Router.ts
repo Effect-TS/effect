@@ -67,18 +67,14 @@ export namespace RpcHandler {
    * @category handler utils
    * @since 1.0.0
    */
-  export type FromSetupSchema<C extends RpcSchema.Any> = C extends RpcSchema.IO<
+  export type FromSetupSchema<C> = C extends RpcSchema.NoOutput<
     infer _IE,
     infer E,
     infer _II,
-    infer I,
-    infer _IO,
-    infer O
-  > ? O extends Context<infer A> ? IO<any, E, I, Context<A>> | IOLayer<any, E, I, A>
-    : never
-    : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O>
-      ? O extends Context<infer A> ? IO<any, never, I, Context<A>> | IOLayer<any, never, I, A>
-      : never
+    infer I
+  > ? IO<any, E, I, Context<any>> | IOLayer<any, E, I, any>
+    : C extends RpcSchema.NoErrorNoOutput<infer _II, infer I>
+      ? IO<any, never, I, Context<any>> | IOLayer<any, never, I, any>
     : never
 
   /**
@@ -113,8 +109,8 @@ export namespace RpcHandlers {
         string
       >
     ]: S[K] extends RpcService.DefinitionWithId ? { handlers: FromService<S[K]> }
-      : S[K] extends RpcSchema.Any ? K extends "__setup" ? RpcHandler.FromSetupSchema<S[K]>
-        : RpcHandler.FromSchema<S[K]>
+      : K extends "__setup" ? RpcHandler.FromSetupSchema<S[K]> :
+      S[K] extends RpcSchema.Any ? RpcHandler.FromSchema<S[K]>
       : never
   }
 

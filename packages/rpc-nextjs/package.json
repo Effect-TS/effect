@@ -14,7 +14,7 @@
   "homepage": "https://github.com/effect-ts/rpc",
   "scripts": {
     "example": "ts-node --project tsconfig.examples.json",
-    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
+    "lint": "eslint src/**/*.ts test/**/*.ts",
     "tc": "tsc --noEmit",
     "test": "vitest",
     "coverage": "vitest run --coverage"
@@ -40,12 +40,12 @@
     "@effect/rpc-http": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "^0.41.0",
-    "effect": "2.0.0-next.46",
+    "@effect/schema": "^0.42.0",
+    "effect": "2.0.0-next.47",
     "next": "^13.5.4"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.46",
+    "effect": "2.0.0-next.47",
     "next": "^13.4"
   },
   "files": [

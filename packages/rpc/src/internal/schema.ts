@@ -36,7 +36,7 @@ export const schemasToUnion = (
 export const methodSchemaTransform = <A>(
   f: (schema: {
     input?: Schema.Schema<any>
-    output: Schema.Schema<any>
+    output?: Schema.Schema<any>
     error: Schema.Schema<any>
   }) => A
 ) =>
@@ -83,14 +83,14 @@ export const methodSchemas = methodSchemaTransform(identity)
 /** @internal */
 export const methodCodecs = methodSchemaTransform((schema) => ({
   input: schema.input ? decode(schema.input) : undefined,
-  output: encode(schema.output),
+  output: schema.output ? encode(schema.output) : undefined,
   error: encode(schema.error)
 }))
 
 /** @internal */
 export const methodClientCodecs = methodSchemaTransform((schema) => ({
   input: schema.input ? encode(schema.input) : undefined,
-  output: decode(schema.output),
+  output: schema.output ? decode(schema.output) : undefined,
   error: decode(schema.error)
 }))
 

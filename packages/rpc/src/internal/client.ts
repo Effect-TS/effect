@@ -1,5 +1,6 @@
 import type * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import type * as client from "../Client"
 import { RpcError } from "../Error"
@@ -14,7 +15,8 @@ const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
   const map = schemaInternal.methodClientCodecs(schemas)
 
   return (method: RpcService.Methods<S>, output: unknown) => {
-    const result = map[method as string].output(output)
+    const codec = map[method as string].output
+    const result = codec ? codec(output) : Either.right(void 0)
     if (result._tag !== "Left") {
       return result.right as unknown
     }
@@ -148,7 +150,7 @@ const makeRpc = <S extends RpcSchema.Any>(
   const parseError = codec.decodeEffect(
     schemaInternal.schemasToUnion(errorSchemas)
   )
-  const parseOutput = codec.decodeEffect(schema.output)
+  const parseOutput = "output" in schema ? codec.decodeEffect(schema.output) : (_: any) => Effect.unit
 
   if ("input" in schema) {
     const encodeInput = codec.encodeEffect(schema.input as Schema.Schema<any>)

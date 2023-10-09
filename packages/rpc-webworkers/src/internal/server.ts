@@ -2,6 +2,7 @@ import { RpcTransportError } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcRouter } from "@effect/rpc/Router"
 import * as Server from "@effect/rpc/Server"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -38,20 +39,20 @@ export const makeHandler: {
             const transfer = pipe(
               Option.map(schema, (schema) =>
                 response._tag === "Success"
-                  ? getTransferables(schema.output, response.value)
+                  ? schema.output ? getTransferables(schema.output, response.value) : []
                   : getTransferables(schema.error, response.error)),
               Option.getOrUndefined
             )
             return port.postMessage([id, response], { transfer })
           })
         ),
-        Effect.catchAllDefect((error) =>
+        Effect.catchAllCause((cause) =>
           Effect.sync(() =>
             port.postMessage([
               id,
               {
                 _tag: "Error",
-                error: RpcTransportError({ error })
+                error: RpcTransportError({ error: JSON.stringify(Cause.squash(cause)) })
               } satisfies RpcResponse
             ])
           )

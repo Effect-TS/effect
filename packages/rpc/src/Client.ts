@@ -23,6 +23,9 @@ export type Rpc<C extends RpcSchema.Any, R, SE> = C extends RpcSchema.IO<
   infer O
 > ? (input: I) => Effect<R, RpcError | SE | E, O>
   : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O> ? (input: I) => Effect<R, RpcError | SE, O>
+  : C extends RpcSchema.NoOutput<infer _IE, infer E, infer _II, infer I> ?
+    (input: I) => Effect<R, RpcError | SE | E, void>
+  : C extends RpcSchema.NoErrorNoOutput<infer _II, infer I> ? (input: I) => Effect<R, RpcError | SE, void>
   : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O> ? Effect<R, RpcError | SE | E, O>
   : C extends RpcSchema.NoInputNoError<infer _IO, infer O> ? Effect<R, RpcError | SE, O>
   : never

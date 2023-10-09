@@ -119,7 +119,9 @@ export const handleSingle: {
               )
             )
             : effect,
-          Effect.map(codecs.output),
+          codecs.output ?
+            Effect.map(codecs.output) :
+            Effect.asUnit,
           Effect.catchAll((_) => Effect.succeed(Either.flatMap(codecs.error(_), Either.left)))
         ) as Effect.Effect<any, never, Either.Either<RpcError, unknown>>
       }),
@@ -323,14 +325,16 @@ export const makeUndecodedClient = <
           ...acc,
           [method]: pipe(
             definition,
-            Effect.flatMap(codec.encode(schema.output)),
+            "output" in schema ?
+              Effect.flatMap(codec.encode(schema.output)) :
+              Effect.asUnit,
             Effect.withSpan(`${options.spanPrefix}.undecoded.${method}`)
           )
         }
       }
 
       const decodeInput = codec.decodeEffect(Schema.to((schema as any).input))
-      const encodeOutput = codec.encode(schema.output)
+      const encodeOutput = "output" in schema ? codec.encode(schema.output) : (_: any) => Effect.unit
 
       return {
         ...acc,
