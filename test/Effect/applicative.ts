@@ -16,10 +16,7 @@ describe.concurrent("Effect", () => {
     Effect.gen(function*($) {
       const result = yield* $(
         Effect.succeed(add).pipe(Effect.ap(Effect.succeed(1)), Effect.ap(Effect.fail("c"))),
-        Effect.match({
-          onFailure: Either.left,
-          onSuccess: Either.right
-        })
+        Effect.either
       )
       assert.deepStrictEqual(result, Either.left("c"))
     }))
@@ -28,10 +25,7 @@ describe.concurrent("Effect", () => {
     Effect.gen(function*($) {
       const result = yield* $(
         Effect.succeed(add).pipe(Effect.ap(Effect.fail("b")), Effect.ap(Effect.fail("c"))),
-        Effect.match({
-          onFailure: Either.left,
-          onSuccess: Either.right
-        })
+        Effect.either
       )
       assert.deepStrictEqual(result, Either.left("b"))
     }))
@@ -43,10 +37,7 @@ describe.concurrent("Effect", () => {
           Effect.ap(Effect.succeed(1)),
           Effect.ap(Effect.succeed(2))
         ),
-        Effect.match({
-          onFailure: Either.left,
-          onSuccess: Either.right
-        })
+        Effect.either
       )
       assert.deepStrictEqual(result, Either.left("a"))
     }))
