@@ -1,4 +1,6 @@
 import * as Schema from "@effect/schema/Schema"
+import { identity } from "effect"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -6,6 +8,7 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
+import type * as Runtime from "effect/Runtime"
 import { Scope } from "effect/Scope"
 import type * as Tracer from "effect/Tracer"
 import { type RpcEncodeFailure, type RpcError, RpcNotFound, RpcTransportError } from "../Error"
@@ -53,7 +56,7 @@ export const handleSingle: {
   ): (
     request: unknown
   ) => Effect.Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, Tracer.Span>,
+    Exclude<RpcHandlers.Services<R["handlers"]>, Tracer.Span> | Scope,
     never,
     RpcResponse
   >
@@ -63,19 +66,32 @@ export const handleSingle: {
   const hasSetup = "__setup" in router.handlers
 
   const handler = (
-    contextRef?: Ref.Ref<Option.Option<Context.Context<unknown>>>,
+    runtimeRef?: Ref.Ref<Option.Option<Runtime.Runtime<unknown>>>,
     scope?: Scope
   ) =>
   (request: RpcRequest.Payload) =>
     pipe(
       Effect.Do,
-      Effect.bind("codecs", () =>
-        Either.fromNullable(codecsMap[request._tag], () => RpcNotFound({ method: request._tag ?? "" }))),
-      Effect.bind("handler", () =>
-        Either.fromNullable(handlerMap[request._tag], () =>
-          RpcNotFound({ method: request._tag }))),
-      Effect.bind("input", ({ codecs }) =>
-        codecs.input ? codecs.input(request.input) : Either.right(null)),
+      Effect.bind(
+        "codecs",
+        () =>
+          Either.fromNullable(
+            codecsMap[request._tag],
+            () => RpcNotFound({ method: request._tag ?? "" })
+          )
+      ),
+      Effect.bind(
+        "handler",
+        () =>
+          Either.fromNullable(
+            handlerMap[request._tag],
+            () => RpcNotFound({ method: request._tag })
+          )
+      ),
+      Effect.bind(
+        "input",
+        ({ codecs }) => codecs.input ? codecs.input(request.input) : Effect.unit
+      ),
       Effect.flatMap(({ codecs, handler, input }) => {
         const effect: Effect.Effect<any, unknown, unknown> = Effect.isEffect(
             handler
@@ -83,52 +99,59 @@ export const handleSingle: {
           ? handler
           : (handler as any)(input)
 
-        if (request._tag === "__setup" && contextRef && scope) {
+        if (request._tag === "__setup" && runtimeRef && scope) {
           return pipe(
-            Ref.get(contextRef),
+            Ref.get(runtimeRef),
             Effect.flatMap(
               Option.match({
                 onNone: () =>
-                  pipe(
-                    Layer.isLayer(effect) ? Layer.build(effect) : effect,
-                    Effect.tap((_) =>
-                      Ref.set(contextRef, Option.some(_))
-                    )
+                  Effect.tap(
+                    Layer.isLayer(effect)
+                      ? Layer.toRuntime(effect)
+                      : Effect.flatMap(
+                        effect,
+                        (context) => Effect.provide(Effect.runtime<unknown>(), context as Context.Context<unknown>)
+                      ),
+                    (_) => Ref.set(runtimeRef, Option.some(_))
                   ),
                 onSome: () => Effect.unit
               })
             ),
-            Effect.as(null),
+            Effect.asUnit,
             Effect.either,
             Effect.provideService(Scope, scope)
           ) as Effect.Effect<any, never, Either.Either<RpcError, unknown>>
         }
 
         return pipe(
-          contextRef
-            ? pipe(
-              Ref.get(contextRef),
-              Effect.flatMap(
-                Option.match({
-                  onNone: () =>
-                    Effect.fail(
-                      RpcTransportError({ error: "__setup not called" })
-                    ),
-                  onSome: (ctx) => Effect.provide(effect, ctx)
-                })
-              )
+          runtimeRef
+            ? Effect.flatMap(
+              Ref.get(runtimeRef),
+              Option.match({
+                onNone: () =>
+                  Effect.fail(
+                    RpcTransportError({ error: "__setup not called" })
+                  ),
+                onSome: (runtime) => Effect.provide(effect, runtime)
+              })
             )
             : effect,
-          codecs.output ?
-            Effect.map(codecs.output) :
-            Effect.asUnit,
-          Effect.catchAll((_) => Effect.succeed(Either.flatMap(codecs.error(_), Either.left)))
-        ) as Effect.Effect<any, never, Either.Either<RpcError, unknown>>
+          Effect.matchEffect({
+            onFailure: (error) => Effect.map(codecs.error(error), Either.left),
+            onSuccess: (value) =>
+              codecs.output ?
+                Effect.map(codecs.output(value), Either.right) :
+                Effect.succeed(Either.right(null))
+          })
+        ) as Effect.Effect<any, RpcEncodeFailure, Either.Either<RpcError, unknown>>
       }),
-      Effect.match({
-        onFailure: (error) => ({
+      Effect.matchCause({
+        onFailure: (cause) => ({
           _tag: "Error",
-          error
+          error: Either.match(Cause.failureOrCause(cause), {
+            onLeft: identity,
+            onRight: (cause) => RpcTransportError({ error: Cause.pretty(cause) })
+          })
         }),
         onSuccess: Either.match({
           onLeft: (error): RpcResponse => ({
@@ -157,7 +180,7 @@ export const handleSingle: {
 
   return Effect.map(
     Effect.zip(Ref.make(Option.none()), Effect.scope),
-    ([contextRef, scope]) => handler(contextRef, scope)
+    ([runtimeRef, scope]) => handler(runtimeRef, scope)
   )
 }
 
@@ -333,8 +356,10 @@ export const makeUndecodedClient = <
         }
       }
 
-      const decodeInput = codec.decodeEffect(Schema.to((schema as any).input))
-      const encodeOutput = "output" in schema ? codec.encode(schema.output) : (_: any) => Effect.unit
+      const decodeInput = codec.decode(Schema.to((schema as any).input))
+      const encodeOutput = "output" in schema
+        ? codec.encode(schema.output)
+        : (_: any) => Effect.unit
 
       return {
         ...acc,

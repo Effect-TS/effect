@@ -3,7 +3,7 @@ import type * as Effect from "effect/Effect"
 import { dual, identity } from "effect/Function"
 import type { RpcEncodeFailure } from "../Error"
 import type * as schema from "../Schema"
-import { decode, encode, encodeEffect } from "./codec"
+import * as Codec from "./codec"
 
 type JsonArray = ReadonlyArray<Json>
 type JsonObject = { readonly [key: string]: Json }
@@ -82,16 +82,23 @@ export const methodSchemas = methodSchemaTransform(identity)
 
 /** @internal */
 export const methodCodecs = methodSchemaTransform((schema) => ({
-  input: schema.input ? decode(schema.input) : undefined,
-  output: schema.output ? encode(schema.output) : undefined,
-  error: encode(schema.error)
+  input: schema.input ? Codec.decode(schema.input) : undefined,
+  output: schema.output ? Codec.encode(schema.output) : undefined,
+  error: Codec.encode(schema.error)
 }))
 
 /** @internal */
 export const methodClientCodecs = methodSchemaTransform((schema) => ({
-  input: schema.input ? encode(schema.input) : undefined,
-  output: schema.output ? decode(schema.output) : undefined,
-  error: decode(schema.error)
+  input: schema.input ? Codec.encode(schema.input) : undefined,
+  output: schema.output ? Codec.decode(schema.output) : undefined,
+  error: Codec.decode(schema.error)
+}))
+
+/** @internal */
+export const methodClientCodecsEither = methodSchemaTransform((schema) => ({
+  input: schema.input ? Codec.encodeEither(schema.input) : undefined,
+  output: schema.output ? Codec.decodeEither(schema.output) : undefined,
+  error: Codec.decodeEither(schema.error)
 }))
 
 /** @internal */
@@ -114,7 +121,7 @@ export const inputEncodeMap = <S extends schema.RpcService.DefinitionWithId>(
 
     return {
       ...acc,
-      [`${prefix}${method}`]: encodeEffect(Schema.to(schema.input))
+      [`${prefix}${method}`]: Codec.encode(Schema.to(schema.input))
     }
   }, {})
 

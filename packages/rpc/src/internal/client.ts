@@ -12,7 +12,7 @@ import * as resolverInternal from "./resolver"
 import * as schemaInternal from "./schema"
 
 const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
-  const map = schemaInternal.methodClientCodecs(schemas)
+  const map = schemaInternal.methodClientCodecsEither(schemas)
 
   return (method: RpcService.Methods<S>, output: unknown) => {
     const codec = map[method as string].output
@@ -147,13 +147,13 @@ const makeRpc = <S extends RpcSchema.Any>(
   const errorSchemas = "error" in schema
     ? [RpcError, schema.error, ...serviceErrors]
     : [RpcError, ...serviceErrors]
-  const parseError = codec.decodeEffect(
+  const parseError = codec.decode(
     schemaInternal.schemasToUnion(errorSchemas)
   )
-  const parseOutput = "output" in schema ? codec.decodeEffect(schema.output) : (_: any) => Effect.unit
+  const parseOutput = "output" in schema ? codec.decode(schema.output) : (_: any) => Effect.unit
 
   if ("input" in schema) {
-    const encodeInput = codec.encodeEffect(schema.input as Schema.Schema<any>)
+    const encodeInput = codec.encode(schema.input as Schema.Schema<any>)
 
     return ((input: any) => {
       const hash = resolverInternal.requestHash(method, input, spanPrefix)

@@ -6,9 +6,11 @@ import * as RS from "@effect/rpc/Schema"
 import * as Server from "@effect/rpc/Server"
 import { typeEquals } from "@effect/rpc/test/utils"
 import * as S from "@effect/schema/Schema"
+import { Cause } from "effect"
 import { Tag } from "effect/Context"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as RR from "effect/RequestResolver"
@@ -72,7 +74,12 @@ const schema = RS.make({
     output: S.number
   },
 
-  posts
+  posts,
+
+  unhandledException: {
+    input: S.string,
+    output: S.number
+  }
 })
 
 const router = Router.make(
@@ -100,7 +107,8 @@ const router = Router.make(
           id: 1,
           body: post.body
         })
-    })
+    }),
+    unhandledException: (_) => Effect.die(new Error("HEY"))
   },
   { spanPrefix: "CustomServer" }
 )
@@ -167,5 +175,13 @@ describe("Client", () => {
     expect(Effect.runSync(getA)).toEqual(0)
     expect(Effect.runSync(client.getCount("b"))).toEqual(1)
     expect(Effect.runSync(client.getCount("a"))).toEqual(2)
+  })
+
+  it("defects", async () => {
+    const exit = await Effect.runPromiseExit(client.unhandledException("a"))
+    assert(Exit.isFailure(exit))
+    assert(Cause.isFailType(exit.cause))
+    assert(exit.cause.error._tag === "RpcTransportError")
+    expect(exit.cause.error.error).includes("HEY")
   })
 })

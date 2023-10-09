@@ -8,7 +8,7 @@ import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import type { RpcError, RpcTransportError } from "../Error"
 import type * as resolver from "../Resolver"
-import { decodeEffect } from "./codec"
+import * as Codec from "./codec"
 
 const requestProto: Request.Request<any, any> = {
   [Request.RequestTypeId]: {
@@ -55,8 +55,8 @@ const RpcResponse: Schema.Schema<resolver.RpcResponse> = Schema.union(
   })
 )
 
-const decodeResponse = decodeEffect(RpcResponse)
-const decodeResponses = decodeEffect(Schema.array(RpcResponse))
+const decodeResponse = Codec.decode(RpcResponse)
+const decodeResponses = Codec.decode(Schema.array(RpcResponse))
 
 /** @internal */
 export const makeWithSchema = <R>(
