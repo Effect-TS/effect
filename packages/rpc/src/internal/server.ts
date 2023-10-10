@@ -69,8 +69,8 @@ export const handleSingle: {
     runtimeRef?: Ref.Ref<Option.Option<Runtime.Runtime<unknown>>>,
     scope?: Scope
   ) =>
-  (request: RpcRequest.Payload) =>
-    pipe(
+  (request: RpcRequest.Payload) => {
+    const responseEffect = pipe(
       Effect.Do,
       Effect.bind(
         "codecs",
@@ -123,27 +123,13 @@ export const handleSingle: {
           ) as Effect.Effect<any, never, Either.Either<RpcError, unknown>>
         }
 
-        return pipe(
-          runtimeRef
-            ? Effect.flatMap(
-              Ref.get(runtimeRef),
-              Option.match({
-                onNone: () =>
-                  Effect.fail(
-                    RpcTransportError({ error: "__setup not called" })
-                  ),
-                onSome: (runtime) => Effect.provide(effect, runtime)
-              })
-            )
-            : effect,
-          Effect.matchEffect({
-            onFailure: (error) => Effect.map(codecs.error(error), Either.left),
-            onSuccess: (value) =>
-              codecs.output ?
-                Effect.map(codecs.output(value), Either.right) :
-                Effect.succeed(Either.right(null))
-          })
-        ) as Effect.Effect<any, RpcEncodeFailure, Either.Either<RpcError, unknown>>
+        return Effect.matchEffect(effect, {
+          onFailure: (error) => Effect.map(codecs.error(error), Either.left),
+          onSuccess: (value) =>
+            codecs.output ?
+              Effect.map(codecs.output(value), Either.right) :
+              Effect.succeed(Either.right(void 0))
+        }) as Effect.Effect<any, RpcEncodeFailure, Either.Either<RpcError, unknown>>
       }),
       Effect.matchCause({
         onFailure: (cause) => ({
@@ -172,6 +158,19 @@ export const handleSingle: {
         })
       })
     )
+
+    if (request._tag !== "__setup" && runtimeRef !== undefined) {
+      return Effect.flatMap(
+        Ref.get(runtimeRef),
+        Option.match({
+          onNone: () => Effect.fail(RpcTransportError({ error: "__setup not called" })),
+          onSome: (runtime) => Effect.provide(responseEffect, runtime)
+        })
+      )
+    }
+
+    return responseEffect
+  }
 
   if (!hasSetup) {
     return handler() as any
