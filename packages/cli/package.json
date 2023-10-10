@@ -2,8 +2,7 @@
   "name": "@effect/cli",
   "version": "0.15.1",
   "publishConfig": {
-    "access": "public",
-    "directory": "dist"
+    "access": "public"
   },
   "repository": {
     "type": "git",
@@ -16,6 +15,8 @@
   },
   "homepage": "https://github.com/Effect-TS/cli",
   "description": "Functional programming in TypeScript",
+  "main": "dist/effect-cli.cjs.js",
+  "module": "dist/effect-cli.esm.js",
   "tags": [
     "typescript",
     "algebraic-data-types",
@@ -26,56 +27,56 @@
     "algebraic-data-types",
     "functional-programming"
   ],
+  "sideEffects": false,
   "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
-    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
-    "release": "pnpm run build && changeset publish",
-    "clean": "rimraf build tsbuildinfo dist .ultra.cache.json",
-    "build": "pnpm build-all && pnpm build-pack",
-    "build-cjs": "babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
-    "build-mjs": "babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
-    "build-post": "build-utils pack-v1",
-    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
-    "build-all": "tsc -b tsconfig.json",
-    "build-watch": "tsc -b tsconfig.json --watch",
-    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
-    "autofix": "pnpm lint --fix",
-    "tc": "tsc --noEmit",
-    "docs": "docgen",
-    "docs-update": "git add --force --all docs/modules || true",
-    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
+    "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
+    "gen": "build-utils prepare-v1",
+    "clean": "node scripts/clean.mjs",
     "test": "vitest",
-    "coverage": "vitest run --coverage"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "coverage": "vitest run --coverage",
+    "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
+    "update-version": "changeset version && pnpm install --no-frozen-lockfile",
+    "lint": "eslint src test",
+    "lint-fix": "eslint src test --fix",
+    "fix": "preconstruct fix",
+    "docs": "docgen",
+    "dtslint": "dtslint --expectOnly dtslint"
   },
-  "exports": {
-    ".": {
-      "require": "./build/cjs/index.js"
+  "preconstruct": {
+    "distFilenameStrategy": "full",
+    "exports": {
+      "importConditionDefaultExport": "default"
     },
-    "./*": {
-      "require": "./build/cjs/*.js"
-    }
+    "entrypoints": [
+      "*.ts",
+      "HelpDoc/*.ts",
+      "Prompt/*.ts"
+    ]
+  },
+  "effect": {
+    "generateIndex": true
   },
   "packageManager": "pnpm@8.9.0",
   "peerDependencies": {
-    "@effect/printer": "^0.17.1",
-    "@effect/printer-ansi": "^0.17.1",
+    "@effect/printer": "^0.18.0",
+    "@effect/printer-ansi": "^0.18.0",
     "@effect/schema": "^0.43.0",
     "effect": "2.0.0-next.48"
   },
   "devDependencies": {
-    "@babel/cli": "^7.23.0",
     "@babel/core": "^7.23.0",
-    "@babel/plugin-transform-modules-commonjs": "^7.23.0",
+    "@babel/preset-typescript": "^7.23.0",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
-    "@effect/babel-plugin": "^0.2.0",
     "@effect/build-utils": "^0.1.9",
     "@effect/docgen": "^0.2.0",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
-    "@effect/printer": "^0.17.1",
-    "@effect/printer-ansi": "^0.17.1",
+    "@effect/printer": "^0.18.0",
+    "@effect/printer-ansi": "^0.18.0",
     "@effect/schema": "^0.43.0",
+    "@preconstruct/cli": "^2.8.1",
     "@types/chai": "^4.3.7",
     "@types/node": "^20.8.4",
     "@typescript-eslint/eslint-plugin": "^6.7.5",
@@ -83,7 +84,6 @@
     "@vitejs/plugin-react": "^4.1.0",
     "@vitest/coverage-v8": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "concurrently": "^8.2.1",
     "effect": "2.0.0-next.48",
     "error-stack-parser": "^2.1.4",
     "eslint": "^8.51.0",
@@ -95,11 +95,147 @@
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
     "fast-check": "^3.13.1",
     "madge": "^6.1.0",
-    "rimraf": "^5.0.5",
     "stackframe": "^1.3.4",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2",
     "vite": "^4.4.11",
     "vitest": "0.34.6"
+  },
+  "files": [
+    "src",
+    "dist",
+    "Args",
+    "AutoCorrect",
+    "BuiltInOption",
+    "CliApp",
+    "CliConfig",
+    "Command",
+    "CommandDirective",
+    "Exists",
+    "HelpDoc",
+    "Options",
+    "Primitive",
+    "Prompt",
+    "ShellType",
+    "Terminal",
+    "Usage",
+    "ValidationError"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/declarations/src/index.d.ts",
+      "module": "./dist/effect-cli.esm.js",
+      "import": "./dist/effect-cli.cjs.mjs",
+      "default": "./dist/effect-cli.cjs.js"
+    },
+    "./package.json": "./package.json",
+    "./Args": {
+      "types": "./dist/declarations/src/Args.d.ts",
+      "module": "./Args/dist/effect-cli-Args.esm.js",
+      "import": "./Args/dist/effect-cli-Args.cjs.mjs",
+      "default": "./Args/dist/effect-cli-Args.cjs.js"
+    },
+    "./AutoCorrect": {
+      "types": "./dist/declarations/src/AutoCorrect.d.ts",
+      "module": "./AutoCorrect/dist/effect-cli-AutoCorrect.esm.js",
+      "import": "./AutoCorrect/dist/effect-cli-AutoCorrect.cjs.mjs",
+      "default": "./AutoCorrect/dist/effect-cli-AutoCorrect.cjs.js"
+    },
+    "./BuiltInOption": {
+      "types": "./dist/declarations/src/BuiltInOption.d.ts",
+      "module": "./BuiltInOption/dist/effect-cli-BuiltInOption.esm.js",
+      "import": "./BuiltInOption/dist/effect-cli-BuiltInOption.cjs.mjs",
+      "default": "./BuiltInOption/dist/effect-cli-BuiltInOption.cjs.js"
+    },
+    "./CliApp": {
+      "types": "./dist/declarations/src/CliApp.d.ts",
+      "module": "./CliApp/dist/effect-cli-CliApp.esm.js",
+      "import": "./CliApp/dist/effect-cli-CliApp.cjs.mjs",
+      "default": "./CliApp/dist/effect-cli-CliApp.cjs.js"
+    },
+    "./CliConfig": {
+      "types": "./dist/declarations/src/CliConfig.d.ts",
+      "module": "./CliConfig/dist/effect-cli-CliConfig.esm.js",
+      "import": "./CliConfig/dist/effect-cli-CliConfig.cjs.mjs",
+      "default": "./CliConfig/dist/effect-cli-CliConfig.cjs.js"
+    },
+    "./Command": {
+      "types": "./dist/declarations/src/Command.d.ts",
+      "module": "./Command/dist/effect-cli-Command.esm.js",
+      "import": "./Command/dist/effect-cli-Command.cjs.mjs",
+      "default": "./Command/dist/effect-cli-Command.cjs.js"
+    },
+    "./CommandDirective": {
+      "types": "./dist/declarations/src/CommandDirective.d.ts",
+      "module": "./CommandDirective/dist/effect-cli-CommandDirective.esm.js",
+      "import": "./CommandDirective/dist/effect-cli-CommandDirective.cjs.mjs",
+      "default": "./CommandDirective/dist/effect-cli-CommandDirective.cjs.js"
+    },
+    "./Exists": {
+      "types": "./dist/declarations/src/Exists.d.ts",
+      "module": "./Exists/dist/effect-cli-Exists.esm.js",
+      "import": "./Exists/dist/effect-cli-Exists.cjs.mjs",
+      "default": "./Exists/dist/effect-cli-Exists.cjs.js"
+    },
+    "./HelpDoc": {
+      "types": "./dist/declarations/src/HelpDoc.d.ts",
+      "module": "./HelpDoc/dist/effect-cli-HelpDoc.esm.js",
+      "import": "./HelpDoc/dist/effect-cli-HelpDoc.cjs.mjs",
+      "default": "./HelpDoc/dist/effect-cli-HelpDoc.cjs.js"
+    },
+    "./HelpDoc/Span": {
+      "types": "./dist/declarations/src/HelpDoc/Span.d.ts",
+      "module": "./HelpDoc/Span/dist/effect-cli-HelpDoc-Span.esm.js",
+      "import": "./HelpDoc/Span/dist/effect-cli-HelpDoc-Span.cjs.mjs",
+      "default": "./HelpDoc/Span/dist/effect-cli-HelpDoc-Span.cjs.js"
+    },
+    "./Options": {
+      "types": "./dist/declarations/src/Options.d.ts",
+      "module": "./Options/dist/effect-cli-Options.esm.js",
+      "import": "./Options/dist/effect-cli-Options.cjs.mjs",
+      "default": "./Options/dist/effect-cli-Options.cjs.js"
+    },
+    "./Primitive": {
+      "types": "./dist/declarations/src/Primitive.d.ts",
+      "module": "./Primitive/dist/effect-cli-Primitive.esm.js",
+      "import": "./Primitive/dist/effect-cli-Primitive.cjs.mjs",
+      "default": "./Primitive/dist/effect-cli-Primitive.cjs.js"
+    },
+    "./Prompt": {
+      "types": "./dist/declarations/src/Prompt.d.ts",
+      "module": "./Prompt/dist/effect-cli-Prompt.esm.js",
+      "import": "./Prompt/dist/effect-cli-Prompt.cjs.mjs",
+      "default": "./Prompt/dist/effect-cli-Prompt.cjs.js"
+    },
+    "./Prompt/Action": {
+      "types": "./dist/declarations/src/Prompt/Action.d.ts",
+      "module": "./Prompt/Action/dist/effect-cli-Prompt-Action.esm.js",
+      "import": "./Prompt/Action/dist/effect-cli-Prompt-Action.cjs.mjs",
+      "default": "./Prompt/Action/dist/effect-cli-Prompt-Action.cjs.js"
+    },
+    "./ShellType": {
+      "types": "./dist/declarations/src/ShellType.d.ts",
+      "module": "./ShellType/dist/effect-cli-ShellType.esm.js",
+      "import": "./ShellType/dist/effect-cli-ShellType.cjs.mjs",
+      "default": "./ShellType/dist/effect-cli-ShellType.cjs.js"
+    },
+    "./Terminal": {
+      "types": "./dist/declarations/src/Terminal.d.ts",
+      "module": "./Terminal/dist/effect-cli-Terminal.esm.js",
+      "import": "./Terminal/dist/effect-cli-Terminal.cjs.mjs",
+      "default": "./Terminal/dist/effect-cli-Terminal.cjs.js"
+    },
+    "./Usage": {
+      "types": "./dist/declarations/src/Usage.d.ts",
+      "module": "./Usage/dist/effect-cli-Usage.esm.js",
+      "import": "./Usage/dist/effect-cli-Usage.cjs.mjs",
+      "default": "./Usage/dist/effect-cli-Usage.cjs.js"
+    },
+    "./ValidationError": {
+      "types": "./dist/declarations/src/ValidationError.d.ts",
+      "module": "./ValidationError/dist/effect-cli-ValidationError.esm.js",
+      "import": "./ValidationError/dist/effect-cli-ValidationError.cjs.mjs",
+      "default": "./ValidationError/dist/effect-cli-ValidationError.cjs.js"
+    }
   }
 }

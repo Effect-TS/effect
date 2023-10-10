@@ -16,7 +16,7 @@ const numberPrompt = Prompt.float({
   message: `What is your favorite number?`
 })
 
-export const prompt = Prompt.all([colorPrompt, numberPrompt])
+const prompt = Prompt.all([colorPrompt, numberPrompt])
 
 const cli = CliApp.make({
   name: "Your Favorite Things",
