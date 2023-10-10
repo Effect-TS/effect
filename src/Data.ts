@@ -5,7 +5,6 @@ import type * as Channel from "./Channel"
 import * as Effect from "./Effect"
 import * as Effectable from "./Effectable"
 import type * as Equal from "./Equal"
-import type * as Inspectable from "./Inspectable"
 import * as internal from "./internal/Data"
 import { type Pipeable } from "./Pipeable"
 import type * as Sink from "./Sink"
@@ -303,7 +302,7 @@ export const taggedEnum: {
  * @since 2.0.0
  * @category models
  */
-export interface YieldableError extends Case, Pipeable, Inspectable.Inspectable {
+export interface YieldableError extends Case, Pipeable, Error {
   readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
@@ -318,21 +317,23 @@ export interface YieldableError extends Case, Pipeable, Inspectable.Inspectable 
   >
 }
 
-const YieldableErrorProto = Object.setPrototypeOf(
-  {
-    ...Effectable.StructuralCommitPrototype,
-    toString() {
-      return `${this.name}: ${this.message}`
-    },
-    get message() {
-      return JSON.stringify(this)
-    },
-    commit() {
-      return Effect.fail(this)
-    }
+const YieldableErrorMessage = Symbol.for("effect/Data/YieldableError/message")
+const YieldableErrorProto = {
+  ...Effectable.StructuralCommitPrototype,
+  __proto__: globalThis.Error.prototype,
+  commit() {
+    return Effect.fail(this)
   },
-  globalThis.Error.prototype
-)
+  toString(this: globalThis.Error) {
+    return `${this.name}: ${this.message}`
+  },
+  get message() {
+    return (this as any)[YieldableErrorMessage] ?? JSON.stringify(this)
+  },
+  set message(value: string) {
+    ;(this as any)[YieldableErrorMessage] = value
+  }
+}
 
 /**
  * Provides a constructor for a Case Class.
@@ -363,5 +364,6 @@ export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<
   class Base extends Error<{}> {
     readonly _tag = tag
   }
+  Base.prototype.name = tag
   return Base as any
 }
