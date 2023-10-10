@@ -1,7 +1,7 @@
-import type * as Color from "@effect/printer-ansi/Color"
-import * as color from "@effect/printer-ansi/internal/color"
-import type * as RenderLayer from "@effect/printer-ansi/RenderLayer"
-import type * as SGR from "@effect/printer-ansi/SGR"
+import type * as Color from "../Color"
+import type * as RenderLayer from "../RenderLayer"
+import type * as SGR from "../SGR"
+import * as color from "./color"
 
 // -----------------------------------------------------------------------------
 // Destructors

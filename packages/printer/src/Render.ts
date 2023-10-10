@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
-import type { Doc } from "@effect/printer/Doc"
-import type { DocStream } from "@effect/printer/DocStream"
-import * as internal from "@effect/printer/internal/render"
-import type { AvailablePerLine } from "@effect/printer/PageWidth"
+import type { Doc } from "./Doc"
+import type { DocStream } from "./DocStream"
+import * as internal from "./internal/render"
+import type { AvailablePerLine } from "./PageWidth"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

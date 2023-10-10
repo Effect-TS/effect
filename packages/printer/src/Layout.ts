@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 
-import type { Doc } from "@effect/printer/Doc"
-import type { DocStream } from "@effect/printer/DocStream"
-import * as internal from "@effect/printer/internal/layout"
-import type { PageWidth } from "@effect/printer/PageWidth"
-import { defaultPageWidth } from "@effect/printer/PageWidth"
 import type { Option } from "effect/Option"
 import type { Predicate } from "effect/Predicate"
+import type { Doc } from "./Doc"
+import type { DocStream } from "./DocStream"
+import * as internal from "./internal/layout"
+import { defaultPageWidth } from "./PageWidth"
+import type { PageWidth } from "./PageWidth"
 
 // -----------------------------------------------------------------------------
 // Models

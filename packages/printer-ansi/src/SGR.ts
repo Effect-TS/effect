@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import type { Color } from "@effect/printer-ansi/Color"
-import * as internal from "@effect/printer-ansi/internal/sgr"
-import type { RenderLayer } from "@effect/printer-ansi/RenderLayer"
+import type { Color } from "./Color"
+import * as internal from "./internal/sgr"
+import type { RenderLayer } from "./RenderLayer"
 
 // -----------------------------------------------------------------------------
 // Models

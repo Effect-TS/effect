@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import type { Doc } from "@effect/printer/Doc"
-import * as internal from "@effect/printer/internal/optimize"
+import type { Doc } from "./Doc"
+import * as internal from "./internal/optimize"
 
 // -----------------------------------------------------------------------------
 // Models

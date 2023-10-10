@@ -1,7 +1,7 @@
-import type * as Flatten from "@effect/printer/Flatten"
 import * as Equal from "effect/Equal"
 import { dual } from "effect/Function"
 import * as Hash from "effect/Hash"
+import type * as Flatten from "../Flatten"
 
 // -----------------------------------------------------------------------------
 // Models

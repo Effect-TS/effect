@@ -1,4 +1,4 @@
-import type * as RenderLayer from "@effect/printer-ansi/RenderLayer"
+import type * as RenderLayer from "../RenderLayer"
 
 /** @internal */
 export const foreground: RenderLayer.RenderLayer = {

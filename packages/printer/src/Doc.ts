@@ -17,15 +17,15 @@
  * @since 1.0.0
  */
 
-import type { Flatten } from "@effect/printer/Flatten"
-import * as internal from "@effect/printer/internal/doc"
-import type { PageWidth } from "@effect/printer/PageWidth"
 import type * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type { Monoid } from "@effect/typeclass/Monoid"
 import type { Semigroup } from "@effect/typeclass/Semigroup"
 import type { Equal } from "effect/Equal"
 import type { TypeLambda } from "effect/HKT"
+import type { Flatten } from "./Flatten"
+import * as internal from "./internal/doc"
+import type { PageWidth } from "./PageWidth"
 
 // -----------------------------------------------------------------------------
 // Models

@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 
-import type { Color } from "@effect/printer-ansi/Color"
-import * as internal from "@effect/printer-ansi/internal/ansiStyle"
-import type { SGR } from "@effect/printer-ansi/SGR"
 import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
 import type { Option } from "effect/Option"
+import type { Color } from "./Color"
+import * as internal from "./internal/ansiStyle"
+import type { SGR } from "./SGR"
 
 // -----------------------------------------------------------------------------
 // Models

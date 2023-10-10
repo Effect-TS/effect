@@ -1,4 +1,3 @@
-import type * as DocStream from "@effect/printer/DocStream"
 import * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
@@ -8,6 +7,7 @@ import { dual, pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as List from "effect/List"
 import * as Option from "effect/Option"
+import type * as DocStream from "../DocStream"
 
 // -----------------------------------------------------------------------------
 // Models

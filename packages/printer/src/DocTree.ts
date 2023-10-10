@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as DocStream from "@effect/printer/DocStream"
-import * as internal from "@effect/printer/internal/docTree"
 import type * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
 import type { Equal } from "effect/Equal"
 import type { TypeLambda } from "effect/HKT"
+import type * as DocStream from "./DocStream"
+import * as internal from "./internal/docTree"
 
 // -----------------------------------------------------------------------------
 // Models

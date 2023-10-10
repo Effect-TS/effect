@@ -1,12 +1,12 @@
-import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
-import type * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
-import * as ansiStyle from "@effect/printer-ansi/internal/ansiStyle"
 import type * as DocStream from "@effect/printer/DocStream"
 import * as Layout from "@effect/printer/Layout"
 import * as PageWidth from "@effect/printer/PageWidth"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as List from "effect/List"
+import type * as AnsiDoc from "../AnsiDoc"
+import type * as AnsiStyle from "../AnsiStyle"
+import * as ansiStyle from "./ansiStyle"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

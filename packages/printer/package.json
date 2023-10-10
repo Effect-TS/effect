@@ -1,10 +1,6 @@
 {
   "name": "@effect/printer",
   "version": "0.17.1",
-  "publishConfig": {
-    "access": "public",
-    "directory": "dist"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/printer.git"
@@ -16,6 +12,8 @@
   },
   "homepage": "https://github.com/Effect-TS/printer",
   "description": "Functional programming in TypeScript",
+  "main": "dist/effect-printer.cjs.js",
+  "module": "dist/effect-printer.esm.js",
   "tags": [
     "typescript",
     "algebraic-data-types",
@@ -26,44 +24,106 @@
     "algebraic-data-types",
     "functional-programming"
   ],
+  "preconstruct": {
+    "entrypoints": [
+      "*.ts"
+    ],
+    "distFilenameStrategy": "full",
+    "exports": {
+      "importConditionDefaultExport": "default"
+    }
+  },
+  "effect": {
+    "generateIndex": true,
+    "includeInternal": true
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "scripts": {
     "example": "ts-node --project tsconfig.examples.json",
-    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
-    "release": "pnpm run build && changeset publish",
-    "clean": "rimraf build dist",
-    "build": "pnpm build-all && pnpm build-pack",
-    "build-cjs": "babel build/esm --config-file ../../.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
-    "build-mjs": "babel build/esm --config-file ../../.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
-    "build-post": "build-utils pack-v1",
-    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
-    "build-all": "tsc -b tsconfig.json",
-    "build-watch": "tsc -b tsconfig.json --watch",
-    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
-    "docs": "docgen",
-    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
+    "lint": "eslint src/**/*.ts test/**/*.ts",
     "tc": "tsc --noEmit",
     "test": "vitest",
     "coverage": "vitest run --coverage"
   },
-  "exports": {
-    ".": {
-      "require": "./build/cjs/index.js"
-    },
-    "./*": {
-      "require": "./build/cjs/*.js"
-    }
-  },
-  "config": {
-    "side": [],
-    "modules": [],
-    "global": []
-  },
   "devDependencies": {
-    "@effect/typeclass": "^0.6.0",
-    "effect": "2.0.0-next.38"
+    "@effect/typeclass": "^0.10.0",
+    "effect": "2.0.0-next.48"
   },
   "peerDependencies": {
-    "@effect/typeclass": "^0.6.0",
-    "effect": "2.0.0-next.38"
+    "@effect/typeclass": "^0.10.0",
+    "effect": "2.0.0-next.48"
+  },
+  "files": [
+    "src",
+    "dist",
+    "internal",
+    "Doc",
+    "DocStream",
+    "DocTree",
+    "Flatten",
+    "Layout",
+    "Optimize",
+    "PageWidth",
+    "Render"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/declarations/src/index.d.ts",
+      "module": "./dist/effect-printer.esm.js",
+      "import": "./dist/effect-printer.cjs.mjs",
+      "default": "./dist/effect-printer.cjs.js"
+    },
+    "./package.json": "./package.json",
+    "./Doc": {
+      "types": "./dist/declarations/src/Doc.d.ts",
+      "module": "./Doc/dist/effect-printer-Doc.esm.js",
+      "import": "./Doc/dist/effect-printer-Doc.cjs.mjs",
+      "default": "./Doc/dist/effect-printer-Doc.cjs.js"
+    },
+    "./DocStream": {
+      "types": "./dist/declarations/src/DocStream.d.ts",
+      "module": "./DocStream/dist/effect-printer-DocStream.esm.js",
+      "import": "./DocStream/dist/effect-printer-DocStream.cjs.mjs",
+      "default": "./DocStream/dist/effect-printer-DocStream.cjs.js"
+    },
+    "./DocTree": {
+      "types": "./dist/declarations/src/DocTree.d.ts",
+      "module": "./DocTree/dist/effect-printer-DocTree.esm.js",
+      "import": "./DocTree/dist/effect-printer-DocTree.cjs.mjs",
+      "default": "./DocTree/dist/effect-printer-DocTree.cjs.js"
+    },
+    "./Flatten": {
+      "types": "./dist/declarations/src/Flatten.d.ts",
+      "module": "./Flatten/dist/effect-printer-Flatten.esm.js",
+      "import": "./Flatten/dist/effect-printer-Flatten.cjs.mjs",
+      "default": "./Flatten/dist/effect-printer-Flatten.cjs.js"
+    },
+    "./Layout": {
+      "types": "./dist/declarations/src/Layout.d.ts",
+      "module": "./Layout/dist/effect-printer-Layout.esm.js",
+      "import": "./Layout/dist/effect-printer-Layout.cjs.mjs",
+      "default": "./Layout/dist/effect-printer-Layout.cjs.js"
+    },
+    "./Optimize": {
+      "types": "./dist/declarations/src/Optimize.d.ts",
+      "module": "./Optimize/dist/effect-printer-Optimize.esm.js",
+      "import": "./Optimize/dist/effect-printer-Optimize.cjs.mjs",
+      "default": "./Optimize/dist/effect-printer-Optimize.cjs.js"
+    },
+    "./PageWidth": {
+      "types": "./dist/declarations/src/PageWidth.d.ts",
+      "module": "./PageWidth/dist/effect-printer-PageWidth.esm.js",
+      "import": "./PageWidth/dist/effect-printer-PageWidth.cjs.mjs",
+      "default": "./PageWidth/dist/effect-printer-PageWidth.cjs.js"
+    },
+    "./Render": {
+      "types": "./dist/declarations/src/Render.d.ts",
+      "module": "./Render/dist/effect-printer-Render.esm.js",
+      "import": "./Render/dist/effect-printer-Render.cjs.mjs",
+      "default": "./Render/dist/effect-printer-Render.cjs.js"
+    }
   }
 }

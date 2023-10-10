@@ -1,4 +1,4 @@
-import type * as Color from "@effect/printer-ansi/Color"
+import type * as Color from "../Color"
 
 // -----------------------------------------------------------------------------
 // Destructors

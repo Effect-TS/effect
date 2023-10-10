@@ -1,7 +1,3 @@
-import type * as DocStream from "@effect/printer/DocStream"
-import type * as DocTree from "@effect/printer/DocTree"
-import * as doc from "@effect/printer/internal/doc"
-import * as docTreeToken from "@effect/printer/internal/docTreeToken"
 import * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
@@ -12,6 +8,10 @@ import { dual, pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import type * as DocStream from "../DocStream"
+import type * as DocTree from "../DocTree"
+import * as doc from "./doc"
+import * as docTreeToken from "./docTreeToken"
 
 // -----------------------------------------------------------------------------
 // Models

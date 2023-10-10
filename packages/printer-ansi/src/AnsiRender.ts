@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 
-import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
-import type { AnsiStyle } from "@effect/printer-ansi/AnsiStyle"
-import * as internal from "@effect/printer-ansi/internal/ansiRender"
 import type { Doc } from "@effect/printer/Doc"
 import type { DocStream } from "@effect/printer/DocStream"
 import type { AvailablePerLine } from "@effect/printer/PageWidth"
+import type { AnsiDoc } from "./AnsiDoc"
+import type { AnsiStyle } from "./AnsiStyle"
+import * as internal from "./internal/ansiRender"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

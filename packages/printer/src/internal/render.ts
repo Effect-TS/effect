@@ -1,10 +1,10 @@
-import type * as Doc from "@effect/printer/Doc"
-import type * as DocStream from "@effect/printer/DocStream"
-import * as layout from "@effect/printer/internal/layout"
-import * as pageWidth from "@effect/printer/internal/pageWidth"
-import type * as PageWidth from "@effect/printer/PageWidth"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
+import type * as Doc from "../Doc"
+import type * as DocStream from "../DocStream"
+import type * as PageWidth from "../PageWidth"
+import * as layout from "./layout"
+import * as pageWidth from "./pageWidth"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

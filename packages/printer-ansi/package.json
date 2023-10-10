@@ -1,10 +1,6 @@
 {
   "name": "@effect/printer-ansi",
   "version": "0.17.1",
-  "publishConfig": {
-    "access": "public",
-    "directory": "dist"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/printer.git"
@@ -16,6 +12,8 @@
   },
   "homepage": "https://github.com/Effect-TS/printer",
   "description": "Functional programming in TypeScript",
+  "main": "dist/effect-printer-ansi.cjs.js",
+  "module": "dist/effect-printer-ansi.esm.js",
   "tags": [
     "typescript",
     "algebraic-data-types",
@@ -26,47 +24,95 @@
     "algebraic-data-types",
     "functional-programming"
   ],
+  "preconstruct": {
+    "entrypoints": [
+      "*.ts"
+    ],
+    "distFilenameStrategy": "full",
+    "exports": {
+      "importConditionDefaultExport": "default"
+    }
+  },
+  "effect": {
+    "generateIndex": true,
+    "includeInternal": true
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "scripts": {
     "example": "ts-node --project tsconfig.examples.json",
-    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
-    "release": "pnpm run build && changeset publish",
-    "clean": "rimraf build dist",
-    "build": "pnpm build-all && pnpm build-pack",
-    "build-cjs": "babel build/esm --config-file ../../.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
-    "build-mjs": "babel build/esm --config-file ../../.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
-    "build-post": "build-utils pack-v1",
-    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
-    "build-all": "tsc -b tsconfig.json",
-    "build-watch": "tsc -b tsconfig.json --watch",
-    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
-    "docs": "docgen",
-    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
+    "lint": "eslint src/**/*.ts test/**/*.ts",
     "tc": "tsc --noEmit",
     "test": "vitest",
     "coverage": "vitest run --coverage"
-  },
-  "exports": {
-    ".": {
-      "require": "./build/cjs/index.js"
-    },
-    "./*": {
-      "require": "./build/cjs/*.js"
-    }
-  },
-  "config": {
-    "side": [],
-    "modules": [],
-    "global": []
   },
   "dependencies": {
     "@effect/printer": "workspace:^"
   },
   "devDependencies": {
-    "@effect/typeclass": "^0.6.0",
-    "effect": "2.0.0-next.38"
+    "@effect/typeclass": "^0.10.0",
+    "effect": "2.0.0-next.48"
   },
   "peerDependencies": {
-    "@effect/typeclass": "^0.6.0",
-    "effect": "2.0.0-next.38"
+    "@effect/typeclass": "^0.10.0",
+    "effect": "2.0.0-next.48"
+  },
+  "files": [
+    "src",
+    "dist",
+    "internal",
+    "AnsiDoc",
+    "AnsiRender",
+    "AnsiStyle",
+    "Color",
+    "RenderLayer",
+    "SGR"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/declarations/src/index.d.ts",
+      "module": "./dist/effect-printer-ansi.esm.js",
+      "import": "./dist/effect-printer-ansi.cjs.mjs",
+      "default": "./dist/effect-printer-ansi.cjs.js"
+    },
+    "./package.json": "./package.json",
+    "./AnsiDoc": {
+      "types": "./dist/declarations/src/AnsiDoc.d.ts",
+      "module": "./AnsiDoc/dist/effect-printer-ansi-AnsiDoc.esm.js",
+      "import": "./AnsiDoc/dist/effect-printer-ansi-AnsiDoc.cjs.mjs",
+      "default": "./AnsiDoc/dist/effect-printer-ansi-AnsiDoc.cjs.js"
+    },
+    "./AnsiRender": {
+      "types": "./dist/declarations/src/AnsiRender.d.ts",
+      "module": "./AnsiRender/dist/effect-printer-ansi-AnsiRender.esm.js",
+      "import": "./AnsiRender/dist/effect-printer-ansi-AnsiRender.cjs.mjs",
+      "default": "./AnsiRender/dist/effect-printer-ansi-AnsiRender.cjs.js"
+    },
+    "./AnsiStyle": {
+      "types": "./dist/declarations/src/AnsiStyle.d.ts",
+      "module": "./AnsiStyle/dist/effect-printer-ansi-AnsiStyle.esm.js",
+      "import": "./AnsiStyle/dist/effect-printer-ansi-AnsiStyle.cjs.mjs",
+      "default": "./AnsiStyle/dist/effect-printer-ansi-AnsiStyle.cjs.js"
+    },
+    "./Color": {
+      "types": "./dist/declarations/src/Color.d.ts",
+      "module": "./Color/dist/effect-printer-ansi-Color.esm.js",
+      "import": "./Color/dist/effect-printer-ansi-Color.cjs.mjs",
+      "default": "./Color/dist/effect-printer-ansi-Color.cjs.js"
+    },
+    "./RenderLayer": {
+      "types": "./dist/declarations/src/RenderLayer.d.ts",
+      "module": "./RenderLayer/dist/effect-printer-ansi-RenderLayer.esm.js",
+      "import": "./RenderLayer/dist/effect-printer-ansi-RenderLayer.cjs.mjs",
+      "default": "./RenderLayer/dist/effect-printer-ansi-RenderLayer.cjs.js"
+    },
+    "./SGR": {
+      "types": "./dist/declarations/src/SGR.d.ts",
+      "module": "./SGR/dist/effect-printer-ansi-SGR.esm.js",
+      "import": "./SGR/dist/effect-printer-ansi-SGR.cjs.mjs",
+      "default": "./SGR/dist/effect-printer-ansi-SGR.cjs.js"
+    }
   }
 }

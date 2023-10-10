@@ -1,7 +1,7 @@
-import type * as PageWidth from "@effect/printer/PageWidth"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
+import type * as PageWidth from "../PageWidth"
 
 // -----------------------------------------------------------------------------
 // Models

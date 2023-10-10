@@ -1,4 +1,4 @@
-import type * as Doc from "@effect/printer/Doc"
+import type * as Doc from "../Doc"
 
 /**
  * Represents a list of nesting level/document pairs that are yet to be laid

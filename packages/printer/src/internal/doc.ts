@@ -1,7 +1,3 @@
-import type * as Doc from "@effect/printer/Doc"
-import type * as Flatten from "@effect/printer/Flatten"
-import * as _flatten from "@effect/printer/internal/flatten"
-import type * as PageWidth from "@effect/printer/PageWidth"
 import * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
@@ -11,6 +7,10 @@ import * as Equal from "effect/Equal"
 import { dual, pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import type * as Doc from "../Doc"
+import type * as Flatten from "../Flatten"
+import type * as PageWidth from "../PageWidth"
+import * as _flatten from "./flatten"
 
 const DocSymbolKey = "@effect/printer/Doc"
 
