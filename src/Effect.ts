@@ -4926,9 +4926,32 @@ export const makeSpan: (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }
 ) => Effect<never, never, Tracer.Span> = effect.makeSpan
+
+/**
+ * Create a new span for tracing, and automatically close it when the Scope
+ * finalizes.
+ *
+ * The span is not added to the current span stack, so no child spans will be
+ * created for it.
+ *
+ * @since 2.0.0
+ * @category tracing
+ */
+export const makeSpanScoped: (
+  name: string,
+  options?: {
+    readonly attributes?: Record<string, unknown>
+    readonly links?: ReadonlyArray<Tracer.SpanLink>
+    readonly parent?: Tracer.ParentSpan
+    readonly root?: boolean
+    readonly sampled?: boolean
+    readonly context?: Context.Context<never>
+  }
+) => Effect<Scope.Scope, never, Tracer.Span> = fiberRuntime.makeSpanScoped
 
 /**
  * Create a new span for tracing, and automatically close it when the effect
@@ -4949,32 +4972,12 @@ export const useSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     },
     evaluate: (span: Tracer.Span) => Effect<R, E, A>
   ): Effect<R, E, A>
 } = effect.useSpan
-
-/**
- * Create a new span for tracing, and automatically close it when the Scope
- * finalizes.
- *
- * The span is not added to the current span stack, so no child spans will be
- * created for it.
- *
- * @since 2.0.0
- * @category tracing
- */
-export const useSpanScoped: (
-  name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
-  }
-) => Effect<Scope.Scope, never, Tracer.Span> = fiberRuntime.useSpanScoped
 
 /**
  * Wraps the effect with a new span for tracing.
@@ -4990,6 +4993,7 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
@@ -5001,29 +5005,65 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): Effect<R, E, A>
 } = effect.withSpan
 
 /**
- * Create and add a span to the current span stack.
+ * Wraps the effect with a new span for tracing.
  *
  * The span is ended when the Scope is finalized.
  *
  * @since 2.0.0
  * @category tracing
  */
-export const withSpanScoped: (
+export const withSpanScoped: {
+  (
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, unknown>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly sampled?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R | Scope.Scope, E, A>
+  <R, E, A>(
+    self: Effect<R, E, A>,
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, unknown>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly sampled?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): Effect<Scope.Scope | R, E, A>
+} = fiberRuntime.withSpanScoped
+
+/**
+ * Create and add a span to the current span stack.
+ *
+ * The span is ended & removed from the stack when the Scope is finalized.
+ *
+ * @since 2.0.0
+ * @category tracing
+ */
+export const setSpan: (
   name: string,
   options?: {
     readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }
-) => Effect<Scope.Scope, never, void> = fiberRuntime.withSpanScoped
+) => Effect<Scope.Scope, never, void> = fiberRuntime.setSpan
 
 /**
  * Adds the provided span to the current span stack.
@@ -5042,8 +5082,7 @@ export const withParentSpan: {
  * @since 2.0.0
  * @category tracing
  */
-export const withParentSpanScoped: (span: Tracer.ParentSpan) => Effect<Scope.Scope, never, void> =
-  fiberRuntime.withParentSpanScoped
+export const setParentSpan: (span: Tracer.ParentSpan) => Effect<Scope.Scope, never, void> = fiberRuntime.setParentSpan
 
 // -------------------------------------------------------------------------------------
 // optionality

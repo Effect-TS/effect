@@ -22,6 +22,7 @@ import type * as Clock from "./Clock"
 import type { ConfigProvider } from "./ConfigProvider"
 import * as Context from "./Context"
 import type * as Effect from "./Effect"
+import type * as Exit from "./Exit"
 import type { FiberRef } from "./FiberRef"
 import type { LazyArg } from "./Function"
 import { clockTag } from "./internal/clock"
@@ -943,7 +944,9 @@ export const setSpan: (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }
 ) => Layer<never, never, never> = circularLayer.setSpan
 
@@ -987,7 +990,9 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
+      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
   ): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
   <R, E, A>(
@@ -998,7 +1003,9 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
+      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
   ): Layer<R, E, A>
 } = internal.withSpan

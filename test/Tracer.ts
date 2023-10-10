@@ -142,7 +142,7 @@ describe("Tracer", () => {
 
     it.effect("useSpanScoped", () =>
       Effect.gen(function*(_) {
-        const span = yield* _(Effect.scoped(Effect.useSpanScoped("A")))
+        const span = yield* _(Effect.scoped(Effect.makeSpanScoped("A")))
         assert.deepEqual(span.status._tag, "Ended")
       }))
 
@@ -192,7 +192,7 @@ describe("Tracer", () => {
       }).pipe(
         Effect.provide(Layer.unwrapScoped(
           Effect.map(
-            Effect.useSpanScoped("parent"),
+            Effect.makeSpanScoped("parent"),
             (span) => Layer.setParentSpan(span)
           )
         ))
@@ -212,6 +212,24 @@ describe("Tracer", () => {
         Effect.provide(Layer.setSpan("parent"))
       ))
 
+    it.effect("Layer.setSpan onEnd", () =>
+      Effect.gen(function*(_) {
+        let onEndCalled = false
+        const span = yield* _(
+          Effect.currentSpan,
+          Effect.flatten,
+          Effect.provide(Layer.setSpan("span", {
+            onEnd: (span, _exit) =>
+              Effect.sync(() => {
+                assert.strictEqual(span.name, "span")
+                onEndCalled = true
+              })
+          }))
+        )
+        assert.strictEqual(span.name, "span")
+        assert.strictEqual(onEndCalled, true)
+      }))
+
     it.effect("linkSpans", () =>
       Effect.gen(function*(_) {
         const childA = yield* _(Effect.makeSpan("childA"))
@@ -228,6 +246,28 @@ describe("Tracer", () => {
           ),
           [childB, childA]
         )
+      }))
+
+    it.effect("Layer.withSpan", () =>
+      Effect.gen(function*(_) {
+        let onEndCalled = false
+        const layer = Layer.effectDiscard(Effect.gen(function*(_) {
+          const span = yield* _(Effect.currentSpan, Effect.flatten)
+          assert.strictEqual(span.name, "span")
+        })).pipe(
+          Layer.withSpan("span", {
+            onEnd: (span, _exit) =>
+              Effect.sync(() => {
+                assert.strictEqual(span.name, "span")
+                onEndCalled = true
+              })
+          })
+        )
+
+        const span = yield* _(Effect.currentSpan, Effect.provide(layer))
+
+        assert.deepEqual(span, Option.none())
+        assert.strictEqual(onEndCalled, true)
       }))
   })
 })

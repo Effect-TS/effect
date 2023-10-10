@@ -6861,7 +6861,7 @@ export const withSpan = dual<
       readonly context?: Context.Context<never>
     }
   ) => Stream.Stream<R, E, A>
->(3, (self, name, options) => unwrapScoped(Effect.as(Effect.withSpanScoped(name, options), self)))
+>(3, (self, name, options) => unwrapScoped(Effect.as(Effect.setSpan(name, options), self)))
 
 /** @internal */
 export const zip = dual<
