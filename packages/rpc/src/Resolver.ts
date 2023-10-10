@@ -45,6 +45,7 @@ export namespace RpcRequest {
     readonly spanName: string
     readonly traceId: string
     readonly spanId: string
+    readonly sampled: boolean
   }
 
   /**

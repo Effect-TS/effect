@@ -1,7 +1,7 @@
 import * as Schema from "@effect/schema/Schema"
 import { identity } from "effect"
 import * as Cause from "effect/Cause"
-import * as Context from "effect/Context"
+import type * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
@@ -10,7 +10,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import type * as Runtime from "effect/Runtime"
 import { Scope } from "effect/Scope"
-import type * as Tracer from "effect/Tracer"
+import * as Tracer from "effect/Tracer"
 import { type RpcEncodeFailure, type RpcError, RpcNotFound, RpcTransportError } from "../Error"
 import type { RpcRequest, RpcResponse } from "../Resolver"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "../Router"
@@ -165,12 +165,11 @@ export const handleSingle: {
         })
       }),
       Effect.withSpan(`${router.options.spanPrefix}.${request._tag}`, {
-        parent: {
-          _tag: "ExternalSpan",
+        parent: Tracer.externalSpan({
           spanId: request.spanId,
           traceId: request.traceId,
-          context: Context.empty()
-        }
+          sampled: request.sampled
+        })
       })
     )
 

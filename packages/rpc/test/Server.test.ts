@@ -148,7 +148,8 @@ describe("Server", () => {
     const traceFields = {
       spanName: "test",
       spanId: "123",
-      traceId: "native"
+      traceId: "native",
+      sampled: true
     } as const
     const result = await Effect.runPromise(
       Effect.all([

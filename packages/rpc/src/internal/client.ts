@@ -168,7 +168,8 @@ const makeRpc = <S extends RpcSchema.Any>(
                   input,
                   spanName: span.name,
                   spanId: span.spanId,
-                  traceId: span.traceId
+                  traceId: span.traceId,
+                  sampled: span.sampled
                 },
                 hash,
                 schema
@@ -192,7 +193,8 @@ const makeRpc = <S extends RpcSchema.Any>(
             _tag: method,
             spanName: span.name,
             spanId: span.spanId,
-            traceId: span.traceId
+            traceId: span.traceId,
+            sampled: span.sampled
           },
           hash,
           schema
