@@ -29,8 +29,8 @@ devDependencies:
     specifier: ^0.1.8
     version: 0.1.8
   '@effect/docgen':
-    specifier: ^0.1.8
-    version: 0.1.8(@types/node@20.8.4)(typescript@5.2.2)
+    specifier: ^0.2.0
+    version: 0.2.0(@types/node@20.8.4)(typescript@5.2.2)
   '@effect/eslint-plugin':
     specifier: ^0.1.2
     version: 0.1.2
@@ -785,8 +785,8 @@ packages:
     hasBin: true
     dev: true
 
-  /@effect/docgen@0.1.8(@types/node@20.8.4)(typescript@5.2.2):
-    resolution: {integrity: sha512-o3iLXvbkkxEuRUnJ6hJDEXHfeDfA86iVkQm/s8heWQQgD7UBZ7TTWkDIobFaXRKU8qKoCKPSgmLlSq0F3IsBgw==}
+  /@effect/docgen@0.2.0(@types/node@20.8.4)(typescript@5.2.2):
+    resolution: {integrity: sha512-QVQmQESrw9Ayn6LCxlnK+mvFCpkGGtUOtTnp4faTjJ5cC9sfII3pzzaQFXqFoJlsYA9qioJwUb4SBL6h4s7KHA==}
     engines: {node: '>=16.17.1'}
     hasBin: true
     peerDependencies:
@@ -797,7 +797,6 @@ packages:
       glob: 10.3.7
       markdown-toc: github.com/effect-ts/markdown-toc/4bfeb0f140105440ea0d12df2fa23199cc3ec1d5
       prettier: 2.8.8
-      rimraf: 5.0.1
       ts-morph: 19.0.0
       ts-node: 10.9.1(@types/node@20.8.4)(typescript@5.2.2)
       tsconfck: 2.1.2(typescript@5.2.2)
@@ -5858,14 +5857,6 @@ packages:
     hasBin: true
     dependencies:
       glob: 7.2.3
-    dev: true
-
-  /rimraf@5.0.1:
-    resolution: {integrity: sha512-OfFZdwtd3lZ+XZzYP/6gTACubwFcHdLRqS9UX3UwpU2dnGQYkPFISRwvM3w9IiB2w7bW5qGo/uAwE4SmXXSKvg==}
-    engines: {node: '>=14'}
-    hasBin: true
-    dependencies:
-      glob: 10.3.7
     dev: true
 
   /rollup@2.79.1:

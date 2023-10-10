@@ -222,7 +222,7 @@ Added in v2.0.0
 
 ## From "effect/Cache"
 
-Re-exports all named exports from the "effect/Cache" module as "Cache".
+Re-exports all named exports from the "effect/Cache" module as `Cache`.
 
 **Signature**
 
@@ -264,7 +264,7 @@ Added in v2.0.0
 
 ## From "effect/Channel"
 
-Re-exports all named exports from the "effect/Channel" module as "Channel".
+Re-exports all named exports from the "effect/Channel" module as `Channel`.
 
 **Signature**
 
@@ -276,7 +276,7 @@ Added in v2.0.0
 
 ## From "effect/ChannelChildExecutorDecision"
 
-Re-exports all named exports from the "effect/ChannelChildExecutorDecision" module as "ChannelChildExecutorDecision".
+Re-exports all named exports from the "effect/ChannelChildExecutorDecision" module as `ChannelChildExecutorDecision`.
 
 **Signature**
 
@@ -288,7 +288,7 @@ Added in v2.0.0
 
 ## From "effect/ChannelMergeDecision"
 
-Re-exports all named exports from the "effect/ChannelMergeDecision" module as "ChannelMergeDecision".
+Re-exports all named exports from the "effect/ChannelMergeDecision" module as `ChannelMergeDecision`.
 
 **Signature**
 
@@ -300,7 +300,7 @@ Added in v2.0.0
 
 ## From "effect/ChannelMergeState"
 
-Re-exports all named exports from the "effect/ChannelMergeState" module as "ChannelMergeState".
+Re-exports all named exports from the "effect/ChannelMergeState" module as `ChannelMergeState`.
 
 **Signature**
 
@@ -312,7 +312,7 @@ Added in v2.0.0
 
 ## From "effect/ChannelMergeStrategy"
 
-Re-exports all named exports from the "effect/ChannelMergeStrategy" module as "ChannelMergeStrategy".
+Re-exports all named exports from the "effect/ChannelMergeStrategy" module as `ChannelMergeStrategy`.
 
 **Signature**
 
@@ -324,7 +324,7 @@ Added in v2.0.0
 
 ## From "effect/ChannelSingleProducerAsyncInput"
 
-Re-exports all named exports from the "effect/ChannelSingleProducerAsyncInput" module as "ChannelSingleProducerAsyncInput".
+Re-exports all named exports from the "effect/ChannelSingleProducerAsyncInput" module as `ChannelSingleProducerAsyncInput`.
 
 **Signature**
 
@@ -336,7 +336,7 @@ Added in v2.0.0
 
 ## From "effect/ChannelUpstreamPullRequest"
 
-Re-exports all named exports from the "effect/ChannelUpstreamPullRequest" module as "ChannelUpstreamPullRequest".
+Re-exports all named exports from the "effect/ChannelUpstreamPullRequest" module as `ChannelUpstreamPullRequest`.
 
 **Signature**
 
@@ -348,7 +348,7 @@ Added in v2.0.0
 
 ## From "effect/ChannelUpstreamPullStrategy"
 
-Re-exports all named exports from the "effect/ChannelUpstreamPullStrategy" module as "ChannelUpstreamPullStrategy".
+Re-exports all named exports from the "effect/ChannelUpstreamPullStrategy" module as `ChannelUpstreamPullStrategy`.
 
 **Signature**
 
@@ -360,7 +360,7 @@ Added in v2.0.0
 
 ## From "effect/Chunk"
 
-Re-exports all named exports from the "effect/Chunk" module as "Chunk".
+Re-exports all named exports from the "effect/Chunk" module as `Chunk`.
 
 **Signature**
 
@@ -372,7 +372,7 @@ Added in v2.0.0
 
 ## From "effect/Clock"
 
-Re-exports all named exports from the "effect/Clock" module as "Clock".
+Re-exports all named exports from the "effect/Clock" module as `Clock`.
 
 **Signature**
 
@@ -384,7 +384,7 @@ Added in v2.0.0
 
 ## From "effect/Config"
 
-Re-exports all named exports from the "effect/Config" module as "Config".
+Re-exports all named exports from the "effect/Config" module as `Config`.
 
 **Signature**
 
@@ -396,7 +396,7 @@ Added in v2.0.0
 
 ## From "effect/ConfigError"
 
-Re-exports all named exports from the "effect/ConfigError" module as "ConfigError".
+Re-exports all named exports from the "effect/ConfigError" module as `ConfigError`.
 
 **Signature**
 
@@ -408,7 +408,7 @@ Added in v2.0.0
 
 ## From "effect/ConfigProvider"
 
-Re-exports all named exports from the "effect/ConfigProvider" module as "ConfigProvider".
+Re-exports all named exports from the "effect/ConfigProvider" module as `ConfigProvider`.
 
 **Signature**
 
@@ -420,7 +420,7 @@ Added in v2.0.0
 
 ## From "effect/ConfigProviderPathPatch"
 
-Re-exports all named exports from the "effect/ConfigProviderPathPatch" module as "ConfigProviderPathPatch".
+Re-exports all named exports from the "effect/ConfigProviderPathPatch" module as `ConfigProviderPathPatch`.
 
 **Signature**
 
@@ -432,7 +432,7 @@ Added in v2.0.0
 
 ## From "effect/ConfigSecret"
 
-Re-exports all named exports from the "effect/ConfigSecret" module as "ConfigSecret".
+Re-exports all named exports from the "effect/ConfigSecret" module as `ConfigSecret`.
 
 **Signature**
 
@@ -444,7 +444,7 @@ Added in v2.0.0
 
 ## From "effect/Console"
 
-Re-exports all named exports from the "effect/Console" module as "Console".
+Re-exports all named exports from the "effect/Console" module as `Console`.
 
 **Signature**
 
@@ -472,7 +472,7 @@ Added in v2.0.0
 
 ## From "effect/Data"
 
-Re-exports all named exports from the "effect/Data" module as "Data".
+Re-exports all named exports from the "effect/Data" module as `Data`.
 
 **Signature**
 
@@ -484,7 +484,7 @@ Added in v2.0.0
 
 ## From "effect/DefaultServices"
 
-Re-exports all named exports from the "effect/DefaultServices" module as "DefaultServices".
+Re-exports all named exports from the "effect/DefaultServices" module as `DefaultServices`.
 
 **Signature**
 
@@ -496,7 +496,7 @@ Added in v2.0.0
 
 ## From "effect/Deferred"
 
-Re-exports all named exports from the "effect/Deferred" module as "Deferred".
+Re-exports all named exports from the "effect/Deferred" module as `Deferred`.
 
 **Signature**
 
@@ -508,7 +508,7 @@ Added in v2.0.0
 
 ## From "effect/Differ"
 
-Re-exports all named exports from the "effect/Differ" module as "Differ".
+Re-exports all named exports from the "effect/Differ" module as `Differ`.
 
 **Signature**
 
@@ -520,7 +520,7 @@ Added in v2.0.0
 
 ## From "effect/Duration"
 
-Re-exports all named exports from the "effect/Duration" module as "Duration".
+Re-exports all named exports from the "effect/Duration" module as `Duration`.
 
 **Signature**
 
@@ -532,7 +532,7 @@ Added in v2.0.0
 
 ## From "effect/Effect"
 
-Re-exports all named exports from the "effect/Effect" module as "Effect".
+Re-exports all named exports from the "effect/Effect" module as `Effect`.
 
 **Signature**
 
@@ -544,7 +544,7 @@ Added in v2.0.0
 
 ## From "effect/Effectable"
 
-Re-exports all named exports from the "effect/Effectable" module as "Effectable".
+Re-exports all named exports from the "effect/Effectable" module as `Effectable`.
 
 **Signature**
 
@@ -556,7 +556,7 @@ Added in v2.0.0
 
 ## From "effect/Either"
 
-Re-exports all named exports from the "effect/Either" module as "Either".
+Re-exports all named exports from the "effect/Either" module as `Either`.
 
 **Signature**
 
@@ -584,7 +584,7 @@ Added in v2.0.0
 
 ## From "effect/Equal"
 
-Re-exports all named exports from the "effect/Equal" module as "Equal".
+Re-exports all named exports from the "effect/Equal" module as `Equal`.
 
 **Signature**
 
@@ -610,7 +610,7 @@ Added in v2.0.0
 
 ## From "effect/ExecutionStrategy"
 
-Re-exports all named exports from the "effect/ExecutionStrategy" module as "ExecutionStrategy".
+Re-exports all named exports from the "effect/ExecutionStrategy" module as `ExecutionStrategy`.
 
 **Signature**
 
@@ -622,7 +622,7 @@ Added in v2.0.0
 
 ## From "effect/Exit"
 
-Re-exports all named exports from the "effect/Exit" module as "Exit".
+Re-exports all named exports from the "effect/Exit" module as `Exit`.
 
 **Signature**
 
@@ -634,7 +634,7 @@ Added in v2.0.0
 
 ## From "effect/Fiber"
 
-Re-exports all named exports from the "effect/Fiber" module as "Fiber".
+Re-exports all named exports from the "effect/Fiber" module as `Fiber`.
 
 **Signature**
 
@@ -646,7 +646,7 @@ Added in v2.0.0
 
 ## From "effect/FiberId"
 
-Re-exports all named exports from the "effect/FiberId" module as "FiberId".
+Re-exports all named exports from the "effect/FiberId" module as `FiberId`.
 
 **Signature**
 
@@ -658,7 +658,7 @@ Added in v2.0.0
 
 ## From "effect/FiberRef"
 
-Re-exports all named exports from the "effect/FiberRef" module as "FiberRef".
+Re-exports all named exports from the "effect/FiberRef" module as `FiberRef`.
 
 **Signature**
 
@@ -670,7 +670,7 @@ Added in v2.0.0
 
 ## From "effect/FiberRefs"
 
-Re-exports all named exports from the "effect/FiberRefs" module as "FiberRefs".
+Re-exports all named exports from the "effect/FiberRefs" module as `FiberRefs`.
 
 **Signature**
 
@@ -682,7 +682,7 @@ Added in v2.0.0
 
 ## From "effect/FiberRefsPatch"
 
-Re-exports all named exports from the "effect/FiberRefsPatch" module as "FiberRefsPatch".
+Re-exports all named exports from the "effect/FiberRefsPatch" module as `FiberRefsPatch`.
 
 **Signature**
 
@@ -694,7 +694,7 @@ Added in v2.0.0
 
 ## From "effect/FiberStatus"
 
-Re-exports all named exports from the "effect/FiberStatus" module as "FiberStatus".
+Re-exports all named exports from the "effect/FiberStatus" module as `FiberStatus`.
 
 **Signature**
 
@@ -706,7 +706,7 @@ Added in v2.0.0
 
 ## From "effect/Function"
 
-Re-exports all named exports from the "effect/Function" module as "Function".
+Re-exports all named exports from the "effect/Function" module as `Function`.
 
 **Signature**
 
@@ -718,7 +718,7 @@ Added in v2.0.0
 
 ## From "effect/GlobalValue"
 
-Re-exports all named exports from the "effect/GlobalValue" module as "GlobalValue".
+Re-exports all named exports from the "effect/GlobalValue" module as `GlobalValue`.
 
 **Signature**
 
@@ -730,7 +730,7 @@ Added in v2.0.0
 
 ## From "effect/GroupBy"
 
-Re-exports all named exports from the "effect/GroupBy" module as "GroupBy".
+Re-exports all named exports from the "effect/GroupBy" module as `GroupBy`.
 
 **Signature**
 
@@ -742,7 +742,7 @@ Added in v2.0.0
 
 ## From "effect/HKT"
 
-Re-exports all named exports from the "effect/HKT" module as "HKT".
+Re-exports all named exports from the "effect/HKT" module as `HKT`.
 
 **Signature**
 
@@ -754,7 +754,7 @@ Added in v2.0.0
 
 ## From "effect/Hash"
 
-Re-exports all named exports from the "effect/Hash" module as "Hash".
+Re-exports all named exports from the "effect/Hash" module as `Hash`.
 
 **Signature**
 
@@ -766,7 +766,7 @@ Added in v2.0.0
 
 ## From "effect/HashMap"
 
-Re-exports all named exports from the "effect/HashMap" module as "HashMap".
+Re-exports all named exports from the "effect/HashMap" module as `HashMap`.
 
 **Signature**
 
@@ -778,7 +778,7 @@ Added in v2.0.0
 
 ## From "effect/HashSet"
 
-Re-exports all named exports from the "effect/HashSet" module as "HashSet".
+Re-exports all named exports from the "effect/HashSet" module as `HashSet`.
 
 **Signature**
 
@@ -790,7 +790,7 @@ Added in v2.0.0
 
 ## From "effect/Inspectable"
 
-Re-exports all named exports from the "effect/Inspectable" module as "Inspectable".
+Re-exports all named exports from the "effect/Inspectable" module as `Inspectable`.
 
 **Signature**
 
@@ -802,7 +802,7 @@ Added in v2.0.0
 
 ## From "effect/KeyedPool"
 
-Re-exports all named exports from the "effect/KeyedPool" module as "KeyedPool".
+Re-exports all named exports from the "effect/KeyedPool" module as `KeyedPool`.
 
 **Signature**
 
@@ -859,7 +859,7 @@ Added in v2.0.0
 
 ## From "effect/LogLevel"
 
-Re-exports all named exports from the "effect/LogLevel" module as "LogLevel".
+Re-exports all named exports from the "effect/LogLevel" module as `LogLevel`.
 
 **Signature**
 
@@ -871,7 +871,7 @@ Added in v2.0.0
 
 ## From "effect/LogSpan"
 
-Re-exports all named exports from the "effect/LogSpan" module as "LogSpan".
+Re-exports all named exports from the "effect/LogSpan" module as `LogSpan`.
 
 **Signature**
 
@@ -883,7 +883,7 @@ Added in v2.0.0
 
 ## From "effect/Logger"
 
-Re-exports all named exports from the "effect/Logger" module as "Logger".
+Re-exports all named exports from the "effect/Logger" module as `Logger`.
 
 **Signature**
 
@@ -895,7 +895,7 @@ Added in v2.0.0
 
 ## From "effect/Match"
 
-Re-exports all named exports from the "effect/Match" module as "Match".
+Re-exports all named exports from the "effect/Match" module as `Match`.
 
 **Signature**
 
@@ -907,7 +907,7 @@ Added in v1.0.0
 
 ## From "effect/Metric"
 
-Re-exports all named exports from the "effect/Metric" module as "Metric".
+Re-exports all named exports from the "effect/Metric" module as `Metric`.
 
 **Signature**
 
@@ -919,7 +919,7 @@ Added in v2.0.0
 
 ## From "effect/MetricBoundaries"
 
-Re-exports all named exports from the "effect/MetricBoundaries" module as "MetricBoundaries".
+Re-exports all named exports from the "effect/MetricBoundaries" module as `MetricBoundaries`.
 
 **Signature**
 
@@ -931,7 +931,7 @@ Added in v2.0.0
 
 ## From "effect/MetricHook"
 
-Re-exports all named exports from the "effect/MetricHook" module as "MetricHook".
+Re-exports all named exports from the "effect/MetricHook" module as `MetricHook`.
 
 **Signature**
 
@@ -943,7 +943,7 @@ Added in v2.0.0
 
 ## From "effect/MetricKey"
 
-Re-exports all named exports from the "effect/MetricKey" module as "MetricKey".
+Re-exports all named exports from the "effect/MetricKey" module as `MetricKey`.
 
 **Signature**
 
@@ -955,7 +955,7 @@ Added in v2.0.0
 
 ## From "effect/MetricKeyType"
 
-Re-exports all named exports from the "effect/MetricKeyType" module as "MetricKeyType".
+Re-exports all named exports from the "effect/MetricKeyType" module as `MetricKeyType`.
 
 **Signature**
 
@@ -967,7 +967,7 @@ Added in v2.0.0
 
 ## From "effect/MetricLabel"
 
-Re-exports all named exports from the "effect/MetricLabel" module as "MetricLabel".
+Re-exports all named exports from the "effect/MetricLabel" module as `MetricLabel`.
 
 **Signature**
 
@@ -979,7 +979,7 @@ Added in v2.0.0
 
 ## From "effect/MetricPair"
 
-Re-exports all named exports from the "effect/MetricPair" module as "MetricPair".
+Re-exports all named exports from the "effect/MetricPair" module as `MetricPair`.
 
 **Signature**
 
@@ -991,7 +991,7 @@ Added in v2.0.0
 
 ## From "effect/MetricPolling"
 
-Re-exports all named exports from the "effect/MetricPolling" module as "MetricPolling".
+Re-exports all named exports from the "effect/MetricPolling" module as `MetricPolling`.
 
 **Signature**
 
@@ -1003,7 +1003,7 @@ Added in v2.0.0
 
 ## From "effect/MetricRegistry"
 
-Re-exports all named exports from the "effect/MetricRegistry" module as "MetricRegistry".
+Re-exports all named exports from the "effect/MetricRegistry" module as `MetricRegistry`.
 
 **Signature**
 
@@ -1015,7 +1015,7 @@ Added in v2.0.0
 
 ## From "effect/MetricState"
 
-Re-exports all named exports from the "effect/MetricState" module as "MetricState".
+Re-exports all named exports from the "effect/MetricState" module as `MetricState`.
 
 **Signature**
 
@@ -1027,7 +1027,7 @@ Added in v2.0.0
 
 ## From "effect/MutableHashMap"
 
-Re-exports all named exports from the "effect/MutableHashMap" module as "MutableHashMap".
+Re-exports all named exports from the "effect/MutableHashMap" module as `MutableHashMap`.
 
 **Signature**
 
@@ -1039,7 +1039,7 @@ Added in v2.0.0
 
 ## From "effect/MutableHashSet"
 
-Re-exports all named exports from the "effect/MutableHashSet" module as "MutableHashSet".
+Re-exports all named exports from the "effect/MutableHashSet" module as `MutableHashSet`.
 
 **Signature**
 
@@ -1051,7 +1051,7 @@ Added in v2.0.0
 
 ## From "effect/MutableList"
 
-Re-exports all named exports from the "effect/MutableList" module as "MutableList".
+Re-exports all named exports from the "effect/MutableList" module as `MutableList`.
 
 **Signature**
 
@@ -1063,7 +1063,7 @@ Added in v2.0.0
 
 ## From "effect/MutableQueue"
 
-Re-exports all named exports from the "effect/MutableQueue" module as "MutableQueue".
+Re-exports all named exports from the "effect/MutableQueue" module as `MutableQueue`.
 
 **Signature**
 
@@ -1075,7 +1075,7 @@ Added in v2.0.0
 
 ## From "effect/MutableRef"
 
-Re-exports all named exports from the "effect/MutableRef" module as "MutableRef".
+Re-exports all named exports from the "effect/MutableRef" module as `MutableRef`.
 
 **Signature**
 
@@ -1087,7 +1087,7 @@ Added in v2.0.0
 
 ## From "effect/NonEmptyIterable"
 
-Re-exports all named exports from the "effect/NonEmptyIterable" module as "NonEmptyIterable".
+Re-exports all named exports from the "effect/NonEmptyIterable" module as `NonEmptyIterable`.
 
 **Signature**
 
@@ -1113,7 +1113,7 @@ Added in v2.0.0
 
 ## From "effect/Option"
 
-Re-exports all named exports from the "effect/Option" module as "Option".
+Re-exports all named exports from the "effect/Option" module as `Option`.
 
 **Signature**
 
@@ -1125,7 +1125,7 @@ Added in v2.0.0
 
 ## From "effect/Order"
 
-Re-exports all named exports from the "effect/Order" module as "Order".
+Re-exports all named exports from the "effect/Order" module as `Order`.
 
 **Signature**
 
@@ -1137,7 +1137,7 @@ Added in v2.0.0
 
 ## From "effect/Ordering"
 
-Re-exports all named exports from the "effect/Ordering" module as "Ordering".
+Re-exports all named exports from the "effect/Ordering" module as `Ordering`.
 
 **Signature**
 
@@ -1149,7 +1149,7 @@ Added in v2.0.0
 
 ## From "effect/Pipeable"
 
-Re-exports all named exports from the "effect/Pipeable" module as "Pipeable".
+Re-exports all named exports from the "effect/Pipeable" module as `Pipeable`.
 
 **Signature**
 
@@ -1161,7 +1161,7 @@ Added in v2.0.0
 
 ## From "effect/Pool"
 
-Re-exports all named exports from the "effect/Pool" module as "Pool".
+Re-exports all named exports from the "effect/Pool" module as `Pool`.
 
 **Signature**
 
@@ -1173,7 +1173,7 @@ Added in v2.0.0
 
 ## From "effect/Predicate"
 
-Re-exports all named exports from the "effect/Predicate" module as "Predicate".
+Re-exports all named exports from the "effect/Predicate" module as `Predicate`.
 
 **Signature**
 
@@ -1185,7 +1185,7 @@ Added in v2.0.0
 
 ## From "effect/PubSub"
 
-Re-exports all named exports from the "effect/PubSub" module as "PubSub".
+Re-exports all named exports from the "effect/PubSub" module as `PubSub`.
 
 **Signature**
 
@@ -1197,7 +1197,7 @@ Added in v2.0.0
 
 ## From "effect/Queue"
 
-Re-exports all named exports from the "effect/Queue" module as "Queue".
+Re-exports all named exports from the "effect/Queue" module as `Queue`.
 
 **Signature**
 
@@ -1209,7 +1209,7 @@ Added in v2.0.0
 
 ## From "effect/Random"
 
-Re-exports all named exports from the "effect/Random" module as "Random".
+Re-exports all named exports from the "effect/Random" module as `Random`.
 
 **Signature**
 
@@ -1245,7 +1245,7 @@ Added in v2.0.0
 
 ## From "effect/RedBlackTree"
 
-Re-exports all named exports from the "effect/RedBlackTree" module as "RedBlackTree".
+Re-exports all named exports from the "effect/RedBlackTree" module as `RedBlackTree`.
 
 **Signature**
 
@@ -1257,7 +1257,7 @@ Added in v2.0.0
 
 ## From "effect/Ref"
 
-Re-exports all named exports from the "effect/Ref" module as "Ref".
+Re-exports all named exports from the "effect/Ref" module as `Ref`.
 
 **Signature**
 
@@ -1269,7 +1269,7 @@ Added in v2.0.0
 
 ## From "effect/Reloadable"
 
-Re-exports all named exports from the "effect/Reloadable" module as "Reloadable".
+Re-exports all named exports from the "effect/Reloadable" module as `Reloadable`.
 
 **Signature**
 
@@ -1281,7 +1281,7 @@ Added in v2.0.0
 
 ## From "effect/Request"
 
-Re-exports all named exports from the "effect/Request" module as "Request".
+Re-exports all named exports from the "effect/Request" module as `Request`.
 
 **Signature**
 
@@ -1293,7 +1293,7 @@ Added in v2.0.0
 
 ## From "effect/RequestBlock"
 
-Re-exports all named exports from the "effect/RequestBlock" module as "RequestBlock".
+Re-exports all named exports from the "effect/RequestBlock" module as `RequestBlock`.
 
 **Signature**
 
@@ -1305,7 +1305,7 @@ Added in v2.0.0
 
 ## From "effect/RequestResolver"
 
-Re-exports all named exports from the "effect/RequestResolver" module as "RequestResolver".
+Re-exports all named exports from the "effect/RequestResolver" module as `RequestResolver`.
 
 **Signature**
 
@@ -1317,7 +1317,7 @@ Added in v2.0.0
 
 ## From "effect/Resource"
 
-Re-exports all named exports from the "effect/Resource" module as "Resource".
+Re-exports all named exports from the "effect/Resource" module as `Resource`.
 
 **Signature**
 
@@ -1329,7 +1329,7 @@ Added in v2.0.0
 
 ## From "effect/Runtime"
 
-Re-exports all named exports from the "effect/Runtime" module as "Runtime".
+Re-exports all named exports from the "effect/Runtime" module as `Runtime`.
 
 **Signature**
 
@@ -1341,7 +1341,7 @@ Added in v2.0.0
 
 ## From "effect/RuntimeFlags"
 
-Re-exports all named exports from the "effect/RuntimeFlags" module as "RuntimeFlags".
+Re-exports all named exports from the "effect/RuntimeFlags" module as `RuntimeFlags`.
 
 **Signature**
 
@@ -1353,7 +1353,7 @@ Added in v2.0.0
 
 ## From "effect/RuntimeFlagsPatch"
 
-Re-exports all named exports from the "effect/RuntimeFlagsPatch" module as "RuntimeFlagsPatch".
+Re-exports all named exports from the "effect/RuntimeFlagsPatch" module as `RuntimeFlagsPatch`.
 
 **Signature**
 
@@ -1365,7 +1365,7 @@ Added in v2.0.0
 
 ## From "effect/STM"
 
-Re-exports all named exports from the "effect/STM" module as "STM".
+Re-exports all named exports from the "effect/STM" module as `STM`.
 
 **Signature**
 
@@ -1377,7 +1377,7 @@ Added in v2.0.0
 
 ## From "effect/Schedule"
 
-Re-exports all named exports from the "effect/Schedule" module as "Schedule".
+Re-exports all named exports from the "effect/Schedule" module as `Schedule`.
 
 **Signature**
 
@@ -1389,7 +1389,7 @@ Added in v2.0.0
 
 ## From "effect/ScheduleDecision"
 
-Re-exports all named exports from the "effect/ScheduleDecision" module as "ScheduleDecision".
+Re-exports all named exports from the "effect/ScheduleDecision" module as `ScheduleDecision`.
 
 **Signature**
 
@@ -1401,7 +1401,7 @@ Added in v2.0.0
 
 ## From "effect/ScheduleInterval"
 
-Re-exports all named exports from the "effect/ScheduleInterval" module as "ScheduleInterval".
+Re-exports all named exports from the "effect/ScheduleInterval" module as `ScheduleInterval`.
 
 **Signature**
 
@@ -1413,7 +1413,7 @@ Added in v2.0.0
 
 ## From "effect/ScheduleIntervals"
 
-Re-exports all named exports from the "effect/ScheduleIntervals" module as "ScheduleIntervals".
+Re-exports all named exports from the "effect/ScheduleIntervals" module as `ScheduleIntervals`.
 
 **Signature**
 
@@ -1425,7 +1425,7 @@ Added in v2.0.0
 
 ## From "effect/Scheduler"
 
-Re-exports all named exports from the "effect/Scheduler" module as "Scheduler".
+Re-exports all named exports from the "effect/Scheduler" module as `Scheduler`.
 
 **Signature**
 
@@ -1437,7 +1437,7 @@ Added in v2.0.0
 
 ## From "effect/Scope"
 
-Re-exports all named exports from the "effect/Scope" module as "Scope".
+Re-exports all named exports from the "effect/Scope" module as `Scope`.
 
 **Signature**
 
@@ -1449,7 +1449,7 @@ Added in v2.0.0
 
 ## From "effect/ScopedCache"
 
-Re-exports all named exports from the "effect/ScopedCache" module as "ScopedCache".
+Re-exports all named exports from the "effect/ScopedCache" module as `ScopedCache`.
 
 **Signature**
 
@@ -1461,7 +1461,7 @@ Added in v2.0.0
 
 ## From "effect/ScopedRef"
 
-Re-exports all named exports from the "effect/ScopedRef" module as "ScopedRef".
+Re-exports all named exports from the "effect/ScopedRef" module as `ScopedRef`.
 
 **Signature**
 
@@ -1473,7 +1473,7 @@ Added in v2.0.0
 
 ## From "effect/Sink"
 
-Re-exports all named exports from the "effect/Sink" module as "Sink".
+Re-exports all named exports from the "effect/Sink" module as `Sink`.
 
 **Signature**
 
@@ -1485,7 +1485,7 @@ Added in v2.0.0
 
 ## From "effect/SortedMap"
 
-Re-exports all named exports from the "effect/SortedMap" module as "SortedMap".
+Re-exports all named exports from the "effect/SortedMap" module as `SortedMap`.
 
 **Signature**
 
@@ -1497,7 +1497,7 @@ Added in v2.0.0
 
 ## From "effect/SortedSet"
 
-Re-exports all named exports from the "effect/SortedSet" module as "SortedSet".
+Re-exports all named exports from the "effect/SortedSet" module as `SortedSet`.
 
 **Signature**
 
@@ -1509,7 +1509,7 @@ Added in v2.0.0
 
 ## From "effect/Stream"
 
-Re-exports all named exports from the "effect/Stream" module as "Stream".
+Re-exports all named exports from the "effect/Stream" module as `Stream`.
 
 **Signature**
 
@@ -1521,7 +1521,7 @@ Added in v2.0.0
 
 ## From "effect/StreamEmit"
 
-Re-exports all named exports from the "effect/StreamEmit" module as "StreamEmit".
+Re-exports all named exports from the "effect/StreamEmit" module as `StreamEmit`.
 
 **Signature**
 
@@ -1533,7 +1533,7 @@ Added in v2.0.0
 
 ## From "effect/StreamHaltStrategy"
 
-Re-exports all named exports from the "effect/StreamHaltStrategy" module as "StreamHaltStrategy".
+Re-exports all named exports from the "effect/StreamHaltStrategy" module as `StreamHaltStrategy`.
 
 **Signature**
 
@@ -1545,7 +1545,7 @@ Added in v2.0.0
 
 ## From "effect/Streamable"
 
-Re-exports all named exports from the "effect/Streamable" module as "Streamable".
+Re-exports all named exports from the "effect/Streamable" module as `Streamable`.
 
 **Signature**
 
@@ -1583,7 +1583,7 @@ Added in v2.0.0
 
 ## From "effect/SubscriptionRef"
 
-Re-exports all named exports from the "effect/SubscriptionRef" module as "SubscriptionRef".
+Re-exports all named exports from the "effect/SubscriptionRef" module as `SubscriptionRef`.
 
 **Signature**
 
@@ -1608,7 +1608,7 @@ Added in v2.0.0
 
 ## From "effect/Symbol"
 
-Re-exports all named exports from the "effect/Symbol" module as "Symbol".
+Re-exports all named exports from the "effect/Symbol" module as `Symbol`.
 
 **Signature**
 
@@ -1620,7 +1620,7 @@ Added in v2.0.0
 
 ## From "effect/SynchronizedRef"
 
-Re-exports all named exports from the "effect/SynchronizedRef" module as "SynchronizedRef".
+Re-exports all named exports from the "effect/SynchronizedRef" module as `SynchronizedRef`.
 
 **Signature**
 
@@ -1632,7 +1632,7 @@ Added in v2.0.0
 
 ## From "effect/TArray"
 
-Re-exports all named exports from the "effect/TArray" module as "TArray".
+Re-exports all named exports from the "effect/TArray" module as `TArray`.
 
 **Signature**
 
@@ -1644,7 +1644,7 @@ Added in v2.0.0
 
 ## From "effect/TDeferred"
 
-Re-exports all named exports from the "effect/TDeferred" module as "TDeferred".
+Re-exports all named exports from the "effect/TDeferred" module as `TDeferred`.
 
 **Signature**
 
@@ -1656,7 +1656,7 @@ Added in v2.0.0
 
 ## From "effect/TMap"
 
-Re-exports all named exports from the "effect/TMap" module as "TMap".
+Re-exports all named exports from the "effect/TMap" module as `TMap`.
 
 **Signature**
 
@@ -1668,7 +1668,7 @@ Added in v2.0.0
 
 ## From "effect/TPriorityQueue"
 
-Re-exports all named exports from the "effect/TPriorityQueue" module as "TPriorityQueue".
+Re-exports all named exports from the "effect/TPriorityQueue" module as `TPriorityQueue`.
 
 **Signature**
 
@@ -1680,7 +1680,7 @@ Added in v2.0.0
 
 ## From "effect/TPubSub"
 
-Re-exports all named exports from the "effect/TPubSub" module as "TPubSub".
+Re-exports all named exports from the "effect/TPubSub" module as `TPubSub`.
 
 **Signature**
 
@@ -1692,7 +1692,7 @@ Added in v2.0.0
 
 ## From "effect/TQueue"
 
-Re-exports all named exports from the "effect/TQueue" module as "TQueue".
+Re-exports all named exports from the "effect/TQueue" module as `TQueue`.
 
 **Signature**
 
@@ -1704,7 +1704,7 @@ Added in v2.0.0
 
 ## From "effect/TRandom"
 
-Re-exports all named exports from the "effect/TRandom" module as "TRandom".
+Re-exports all named exports from the "effect/TRandom" module as `TRandom`.
 
 **Signature**
 
@@ -1716,7 +1716,7 @@ Added in v2.0.0
 
 ## From "effect/TReentrantLock"
 
-Re-exports all named exports from the "effect/TReentrantLock" module as "TReentrantLock".
+Re-exports all named exports from the "effect/TReentrantLock" module as `TReentrantLock`.
 
 **Signature**
 
@@ -1728,7 +1728,7 @@ Added in v2.0.0
 
 ## From "effect/TRef"
 
-Re-exports all named exports from the "effect/TRef" module as "TRef".
+Re-exports all named exports from the "effect/TRef" module as `TRef`.
 
 **Signature**
 
@@ -1740,7 +1740,7 @@ Added in v2.0.0
 
 ## From "effect/TSemaphore"
 
-Re-exports all named exports from the "effect/TSemaphore" module as "TSemaphore".
+Re-exports all named exports from the "effect/TSemaphore" module as `TSemaphore`.
 
 **Signature**
 
@@ -1752,7 +1752,7 @@ Added in v2.0.0
 
 ## From "effect/TSet"
 
-Re-exports all named exports from the "effect/TSet" module as "TSet".
+Re-exports all named exports from the "effect/TSet" module as `TSet`.
 
 **Signature**
 
@@ -1764,7 +1764,7 @@ Added in v2.0.0
 
 ## From "effect/Take"
 
-Re-exports all named exports from the "effect/Take" module as "Take".
+Re-exports all named exports from the "effect/Take" module as `Take`.
 
 **Signature**
 
@@ -1776,7 +1776,7 @@ Added in v2.0.0
 
 ## From "effect/TestAnnotation"
 
-Re-exports all named exports from the "effect/TestAnnotation" module as "TestAnnotation".
+Re-exports all named exports from the "effect/TestAnnotation" module as `TestAnnotation`.
 
 **Signature**
 
@@ -1788,7 +1788,7 @@ Added in v2.0.0
 
 ## From "effect/TestAnnotationMap"
 
-Re-exports all named exports from the "effect/TestAnnotationMap" module as "TestAnnotationMap".
+Re-exports all named exports from the "effect/TestAnnotationMap" module as `TestAnnotationMap`.
 
 **Signature**
 
@@ -1800,7 +1800,7 @@ Added in v2.0.0
 
 ## From "effect/TestAnnotations"
 
-Re-exports all named exports from the "effect/TestAnnotations" module as "TestAnnotations".
+Re-exports all named exports from the "effect/TestAnnotations" module as `TestAnnotations`.
 
 **Signature**
 
@@ -1812,7 +1812,7 @@ Added in v2.0.0
 
 ## From "effect/TestClock"
 
-Re-exports all named exports from the "effect/TestClock" module as "TestClock".
+Re-exports all named exports from the "effect/TestClock" module as `TestClock`.
 
 **Signature**
 
@@ -1824,7 +1824,7 @@ Added in v2.0.0
 
 ## From "effect/TestConfig"
 
-Re-exports all named exports from the "effect/TestConfig" module as "TestConfig".
+Re-exports all named exports from the "effect/TestConfig" module as `TestConfig`.
 
 **Signature**
 
@@ -1836,7 +1836,7 @@ Added in v2.0.0
 
 ## From "effect/TestContext"
 
-Re-exports all named exports from the "effect/TestContext" module as "TestContext".
+Re-exports all named exports from the "effect/TestContext" module as `TestContext`.
 
 **Signature**
 
@@ -1848,7 +1848,7 @@ Added in v2.0.0
 
 ## From "effect/TestLive"
 
-Re-exports all named exports from the "effect/TestLive" module as "TestLive".
+Re-exports all named exports from the "effect/TestLive" module as `TestLive`.
 
 **Signature**
 
@@ -1860,7 +1860,7 @@ Added in v2.0.0
 
 ## From "effect/TestServices"
 
-Re-exports all named exports from the "effect/TestServices" module as "TestServices".
+Re-exports all named exports from the "effect/TestServices" module as `TestServices`.
 
 **Signature**
 
@@ -1872,7 +1872,7 @@ Added in v2.0.0
 
 ## From "effect/TestSized"
 
-Re-exports all named exports from the "effect/TestSized" module as "TestSized".
+Re-exports all named exports from the "effect/TestSized" module as `TestSized`.
 
 **Signature**
 
@@ -1884,7 +1884,7 @@ Added in v2.0.0
 
 ## From "effect/Tracer"
 
-Re-exports all named exports from the "effect/Tracer" module as "Tracer".
+Re-exports all named exports from the "effect/Tracer" module as `Tracer`.
 
 **Signature**
 
@@ -1920,7 +1920,7 @@ Added in v2.0.0
 
 ## From "effect/Unify"
 
-Re-exports all named exports from the "effect/Unify" module as "Unify".
+Re-exports all named exports from the "effect/Unify" module as `Unify`.
 
 **Signature**
 
@@ -1932,7 +1932,7 @@ Added in v2.0.0
 
 ## From "effect/Utils"
 
-Re-exports all named exports from the "effect/Utils" module as "Utils".
+Re-exports all named exports from the "effect/Utils" module as `Utils`.
 
 **Signature**
 
