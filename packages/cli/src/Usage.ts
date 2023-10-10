@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal/usage"
 import type { Chunk } from "effect/Chunk"
 import type { Option } from "effect/Option"
+import type { HelpDoc } from "./HelpDoc"
+import * as internal from "./internal/usage"
 
 /**
  * @since 1.0.0

@@ -1,11 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { CliConfig } from "@effect/cli/CliConfig"
-import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal/options"
-import type { Usage } from "@effect/cli/Usage"
-import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Chunk, NonEmptyChunk } from "effect/Chunk"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
@@ -13,6 +8,11 @@ import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { CliConfig } from "./CliConfig"
+import type { HelpDoc } from "./HelpDoc"
+import * as internal from "./internal/options"
+import type { Usage } from "./Usage"
+import type { ValidationError } from "./ValidationError"
 
 /**
  * @since 1.0.0
@@ -133,7 +133,7 @@ export const boolean: (name: string, options?: Options.BooleanOptionConfig) => O
  * inputs. The input will be mapped to it's associated value during parsing.
  *
  * @example
- * import * as Options from "@effect/cli/Options"
+ * import * as Options from "./Options"
  *
  * export const animal: Options.Options<"dog" | "cat"> = Options.choice(
  *   "animal",
@@ -153,7 +153,7 @@ export const choice: <A extends string, C extends NonEmptyReadonlyArray<A>>(
  * inputs. The input will be mapped to it's associated value during parsing.
  *
  * @example
- * import * as Options from "@effect/cli/Options"
+ * import * as Options from "./Options"
  * import * as Data from "effect/Data"
  *
  * export type Animal = Dog | Cat

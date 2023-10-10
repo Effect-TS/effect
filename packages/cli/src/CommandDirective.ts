@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type { BuiltInOption } from "@effect/cli/BuiltInOption"
-import * as internal from "@effect/cli/internal/commandDirective"
+import type { BuiltInOption } from "./BuiltInOption"
+import * as internal from "./internal/commandDirective"
 
 /**
  * @since 1.0.0

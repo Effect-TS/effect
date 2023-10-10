@@ -1,6 +1,6 @@
-import * as options from "@effect/cli/internal/options"
-import type * as Options from "@effect/cli/Options"
-import type * as ShellType from "@effect/cli/ShellType"
+import type * as Options from "../Options"
+import type * as ShellType from "../ShellType"
+import * as options from "./options"
 
 /** @internal */
 export const bash: ShellType.ShellType = {

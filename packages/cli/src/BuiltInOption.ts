@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 
-import type { Command } from "@effect/cli/Command"
-import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal/builtInOption"
-import type { Options } from "@effect/cli/Options"
-import type { ShellType } from "@effect/cli/ShellType"
-import type { Usage } from "@effect/cli/Usage"
 import type { Option } from "effect/Option"
+import type { Command } from "./Command"
+import type { HelpDoc } from "./HelpDoc"
+import * as internal from "./internal/builtInOption"
+import type { Options } from "./Options"
+import type { ShellType } from "./ShellType"
+import type { Usage } from "./Usage"
 
 /**
  * @since 1.0.0

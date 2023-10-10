@@ -1,14 +1,14 @@
-import * as prompt from "@effect/cli/internal/prompt"
-import * as promptAction from "@effect/cli/internal/prompt/action"
-import * as ansiUtils from "@effect/cli/internal/prompt/ansi-utils"
-import * as utils from "@effect/cli/internal/prompt/utils"
-import type * as Prompt from "@effect/cli/Prompt"
 import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
 import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
 import { Effect, pipe } from "effect"
+import type * as Prompt from "../../Prompt"
+import * as prompt from "../prompt"
+import * as promptAction from "./action"
+import * as ansiUtils from "./ansi-utils"
+import * as utils from "./utils"
 
 interface State {
   readonly cursor: number

@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/cli/internal/prompt/action"
+import * as internal from "../internal/prompt/action"
 
 /**
  * @since 1.0.0

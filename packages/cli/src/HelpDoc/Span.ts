@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/cli/internal/helpDoc/span"
+import * as internal from "../internal/helpDoc/span"
 
 /**
  * @since 1.0.0

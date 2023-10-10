@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/cli/internal/shellType"
-import type { Options } from "@effect/cli/Options"
+import * as internal from "./internal/shellType"
+import type { Options } from "./Options"
 
 /**
  * @since 1.0.0

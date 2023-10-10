@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal/args"
-import type { Usage } from "@effect/cli/Usage"
-import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Chunk, NonEmptyChunk } from "effect/Chunk"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { HelpDoc } from "./HelpDoc"
+import * as internal from "./internal/args"
+import type { Usage } from "./Usage"
+import type { ValidationError } from "./ValidationError"
 
 /**
  * @since 1.0.0

@@ -1,11 +1,11 @@
-import type * as HelpDoc from "@effect/cli/HelpDoc"
-import type * as Span from "@effect/cli/HelpDoc/Span"
-import * as _helpDoc from "@effect/cli/internal/helpDoc"
-import * as span from "@effect/cli/internal/helpDoc/span"
-import type * as Usage from "@effect/cli/Usage"
 import * as Chunk from "effect/Chunk"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
+import type * as HelpDoc from "../HelpDoc"
+import type * as Span from "../HelpDoc/Span"
+import type * as Usage from "../Usage"
+import * as _helpDoc from "./helpDoc"
+import * as span from "./helpDoc/span"
 
 /** @internal */
 export const empty: Usage.Usage = {

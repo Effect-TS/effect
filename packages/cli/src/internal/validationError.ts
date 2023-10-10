@@ -1,5 +1,5 @@
-import type * as HelpDoc from "@effect/cli/HelpDoc"
-import type * as ValidationError from "@effect/cli/ValidationError"
+import type * as HelpDoc from "../HelpDoc"
+import type * as ValidationError from "../ValidationError"
 
 const ValidationErrorSymbolKey = "@effect/cli/ValidationError"
 

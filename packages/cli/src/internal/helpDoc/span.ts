@@ -1,10 +1,10 @@
-import type * as Span from "@effect/cli/HelpDoc/Span"
 import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
 import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import { dual } from "effect/Function"
 import * as RA from "effect/ReadonlyArray"
+import type * as Span from "../../HelpDoc/Span"
 
 /** @internal */
 export const text = (value: string): Span.Span => ({

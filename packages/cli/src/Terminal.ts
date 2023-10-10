@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/cli/internal/terminal"
 import type { Context, Effect, Layer } from "effect"
+import * as internal from "./internal/terminal"
 
 /**
  * Represents a teletype-style (TTY) terminal interface that allows for

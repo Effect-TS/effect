@@ -1,4 +1,4 @@
-import type * as PromptAction from "@effect/cli/Prompt/Action"
+import type * as PromptAction from "../../Prompt/Action"
 
 /** @internal */
 export const beep: PromptAction.PromptAction<never, never> = {

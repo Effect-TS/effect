@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import type { CliConfig } from "@effect/cli/CliConfig"
-import * as internal from "@effect/cli/internal/autoCorrect"
+import type { CliConfig } from "./CliConfig"
+import * as internal from "./internal/autoCorrect"
 
 /**
  * @since 1.0.0

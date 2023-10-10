@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal/validationError"
+import type { HelpDoc } from "./HelpDoc"
+import * as internal from "./internal/validationError"
 
 /**
  * @since 1.0.0

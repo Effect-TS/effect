@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type { Span } from "@effect/cli/HelpDoc/Span"
-import * as internal from "@effect/cli/internal/primitive"
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { Span } from "./HelpDoc/Span"
+import * as internal from "./internal/primitive"
 
 /**
  * @since 1.0.0

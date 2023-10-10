@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type { Span } from "@effect/cli/HelpDoc/Span"
-import * as internal from "@effect/cli/internal/helpDoc"
 import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { Span } from "./HelpDoc/Span"
+import * as internal from "./internal/helpDoc"
 
 /**
  * A `HelpDoc` models the full documentation for a command-line application.

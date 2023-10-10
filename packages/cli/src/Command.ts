@@ -1,16 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { Args } from "@effect/cli/Args"
-import type { CliConfig } from "@effect/cli/CliConfig"
-import type { CommandDirective } from "@effect/cli/CommandDirective"
-import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal/command"
-import type { Options } from "@effect/cli/Options"
-import type { Prompt } from "@effect/cli/Prompt"
-import type { Terminal } from "@effect/cli/Terminal"
-import type { Usage } from "@effect/cli/Usage"
-import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
@@ -18,6 +8,16 @@ import type { HashSet } from "effect/HashSet"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { Args } from "./Args"
+import type { CliConfig } from "./CliConfig"
+import type { CommandDirective } from "./CommandDirective"
+import type { HelpDoc } from "./HelpDoc"
+import * as internal from "./internal/command"
+import type { Options } from "./Options"
+import type { Prompt } from "./Prompt"
+import type { Terminal } from "./Terminal"
+import type { Usage } from "./Usage"
+import type { ValidationError } from "./ValidationError"
 
 /**
  * @since 1.0.0

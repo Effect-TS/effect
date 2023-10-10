@@ -1,12 +1,12 @@
-import type * as BuiltInOption from "@effect/cli/BuiltInOption"
-import type * as Command from "@effect/cli/Command"
-import type * as HelpDoc from "@effect/cli/HelpDoc"
-import * as options from "@effect/cli/internal/options"
-import * as _shellType from "@effect/cli/internal/shellType"
-import type * as Options from "@effect/cli/Options"
-import type * as ShellType from "@effect/cli/ShellType"
-import type * as Usage from "@effect/cli/Usage"
 import * as Option from "effect/Option"
+import type * as BuiltInOption from "../BuiltInOption"
+import type * as Command from "../Command"
+import type * as HelpDoc from "../HelpDoc"
+import type * as Options from "../Options"
+import type * as ShellType from "../ShellType"
+import type * as Usage from "../Usage"
+import * as options from "./options"
+import * as _shellType from "./shellType"
 
 /** @internal */
 export const showCompletions = (index: number, shellType: ShellType.ShellType): BuiltInOption.BuiltInOption => ({

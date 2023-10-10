@@ -1,8 +1,8 @@
-import type * as Terminal from "@effect/cli/Terminal"
 import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import { Context, Effect, Layer, pipe } from "effect"
 import * as readline from "node:readline"
+import type * as Terminal from "../Terminal"
 
 /** @internal */
 export const Tag = Context.Tag<Terminal.Terminal>()

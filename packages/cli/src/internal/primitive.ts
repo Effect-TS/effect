@@ -1,11 +1,11 @@
-import type * as Span from "@effect/cli/HelpDoc/Span"
-import * as span from "@effect/cli/internal/helpDoc/span"
-import type * as Primitive from "@effect/cli/Primitive"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type * as Span from "../HelpDoc/Span"
+import type * as Primitive from "../Primitive"
+import * as span from "./helpDoc/span"
 
 const PrimitiveSymbolKey = "@effect/cli/Primitive"
 

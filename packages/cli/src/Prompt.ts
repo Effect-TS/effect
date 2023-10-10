@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/cli/internal/prompt"
-import * as numberPrompt from "@effect/cli/internal/prompt/number"
-import * as selectPrompt from "@effect/cli/internal/prompt/select"
-import * as textPrompt from "@effect/cli/internal/prompt/text"
-import type { PromptAction } from "@effect/cli/Prompt/Action"
-import type { Terminal } from "@effect/cli/Terminal"
 import type { Effect, Pipeable } from "effect"
+import * as internal from "./internal/prompt"
+import * as numberPrompt from "./internal/prompt/number"
+import * as selectPrompt from "./internal/prompt/select"
+import * as textPrompt from "./internal/prompt/text"
+import type { PromptAction } from "./Prompt/Action"
+import type { Terminal } from "./Terminal"
 
 /**
  * @since 1.0.0
