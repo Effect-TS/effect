@@ -18,6 +18,7 @@ import * as ref from "../internal/ref"
 import * as runtime from "../internal/runtime"
 import * as synchronized from "../internal/synchronizedRef"
 import type * as Layer from "../Layer"
+import * as List from "../List"
 import { pipeArguments } from "../Pipeable"
 import type * as Runtime from "../Runtime"
 import type * as Schedule from "../Schedule"
@@ -1126,22 +1127,37 @@ export const withSpan = dual<
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<R, E, A>,
   <R, E, A>(self: Layer.Layer<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }) => Layer.Layer<R, E, A>
 >((args) => isLayer(args[0]), (self, name, options) =>
   unwrapScoped(
     core.map(
-      fiberRuntime.useSpanScoped(name, options),
-      (span) => locallyEffect(self, effect.withParentSpan(span))
+      options?.onEnd
+        ? core.tap(
+          fiberRuntime.makeSpanScoped(name, options),
+          (span) => fiberRuntime.addFinalizer((exit) => options.onEnd!(span, exit))
+        )
+        : fiberRuntime.makeSpanScoped(name, options),
+      (span) => withParentSpan(self, span)
     )
   ))
+
+/** @internal */
+export const withParentSpan = dual<
+  (span: Tracer.ParentSpan) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<R, E, A>,
+  <R, E, A>(self: Layer.Layer<R, E, A>, span: Tracer.ParentSpan) => Layer.Layer<R, E, A>
+>(2, (self, span) => fiberRefLocallyWith(self, core.currentTracerSpan, List.prepend(span)))
 
 // circular with Effect
 

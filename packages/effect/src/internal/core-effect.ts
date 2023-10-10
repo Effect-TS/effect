@@ -2001,8 +2001,8 @@ export const makeSpan = (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
     readonly sampled?: boolean
+    readonly context?: Context.Context<never>
   }
 ) =>
   tracerWith((tracer) =>
@@ -2060,6 +2060,7 @@ export const useSpan: {
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }, evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 } = <R, E, A>(
@@ -2074,6 +2075,7 @@ export const useSpan: {
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   } | undefined = args.length === 1 ? undefined : args[0]
   const evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A> = args[args.length - 1]
@@ -2107,6 +2109,7 @@ export const withSpan = dual<
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
@@ -2114,6 +2117,7 @@ export const withSpan = dual<
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }) => Effect.Effect<R, E, A>
 >(

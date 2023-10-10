@@ -1,6 +1,7 @@
 import type * as ConfigProvider from "../../ConfigProvider"
 import type * as Context from "../../Context"
 import type * as Effect from "../../Effect"
+import type * as Exit from "../../Exit"
 import { dual } from "../../Function"
 import * as HashSet from "../../HashSet"
 import * as core from "../../internal/core"
@@ -9,7 +10,7 @@ import * as layer from "../../internal/layer"
 import * as runtimeFlags from "../../internal/runtimeFlags"
 import * as runtimeFlagsPatch from "../../internal/runtimeFlagsPatch"
 import * as _supervisor from "../../internal/supervisor"
-import * as Layer from "../../Layer"
+import type * as Layer from "../../Layer"
 import type * as Logger from "../../Logger"
 import type * as LogLevel from "../../LogLevel"
 import type { Scope } from "../../Scope"
@@ -50,7 +51,7 @@ export const addLogger = <A>(logger: Logger.Logger<unknown, A>): Layer.Layer<nev
 export const addLoggerEffect = <R, E, A>(
   effect: Effect.Effect<R, E, Logger.Logger<unknown, A>>
 ): Layer.Layer<R, E, never> =>
-  Layer.unwrapEffect(
+  layer.unwrapEffect(
     core.map(effect, addLogger)
   )
 
@@ -58,7 +59,7 @@ export const addLoggerEffect = <R, E, A>(
 export const addLoggerScoped = <R, E, A>(
   effect: Effect.Effect<R, E, Logger.Logger<unknown, A>>
 ): Layer.Layer<Exclude<R, Scope>, E, never> =>
-  Layer.unwrapScoped(
+  layer.unwrapScoped(
     core.map(effect, addLogger)
   )
 
@@ -184,7 +185,7 @@ export const setConfigProvider = (configProvider: ConfigProvider.ConfigProvider)
 
 /** @internal */
 export const setParentSpan = (span: Tracer.ParentSpan): Layer.Layer<never, never, never> =>
-  layer.scopedDiscard(fiberRuntime.withParentSpanScoped(span))
+  layer.scopedDiscard(fiberRuntime.setParentSpan(span))
 
 /** @internal */
 export const setSpan = (
@@ -194,9 +195,23 @@ export const setSpan = (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }
-): Layer.Layer<never, never, never> => layer.scopedDiscard(fiberRuntime.withSpanScoped(name, options))
+): Layer.Layer<never, never, never> =>
+  layer.scopedDiscard(
+    options?.onEnd
+      ? core.tap(
+        fiberRuntime.makeSpanScoped(name, options),
+        (span) =>
+          core.zipRight(
+            fiberRuntime.addFinalizer((exit) => options.onEnd!(span, exit)),
+            fiberRuntime.setParentSpan(span)
+          )
+      )
+      : fiberRuntime.setSpan(name, options)
+  )
 
 /** @internal */
 export const setTracer = (tracer: Tracer.Tracer): Layer.Layer<never, never, never> =>

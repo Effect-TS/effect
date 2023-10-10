@@ -18,14 +18,27 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause"
-import type * as Context from "./Context"
+import type * as Clock from "./Clock"
+import type { ConfigProvider } from "./ConfigProvider"
+import * as Context from "./Context"
 import type * as Effect from "./Effect"
+import type * as Exit from "./Exit"
 import type { FiberRef } from "./FiberRef"
 import type { LazyArg } from "./Function"
+import { clockTag } from "./internal/clock"
+import * as core from "./internal/core"
+import * as defaultServices from "./internal/defaultServices"
+import * as fiberRuntime from "./internal/fiberRuntime"
 import * as internal from "./internal/layer"
+import * as circularLayer from "./internal/layer/circular"
+import * as query from "./internal/query"
+import type { LogLevel } from "./LogLevel"
+import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
+import type * as Request from "./Request"
 import type * as Runtime from "./Runtime"
 import type * as Schedule from "./Schedule"
+import * as Scheduler from "./Scheduler"
 import type * as Scope from "./Scope"
 import type * as Tracer from "./Tracer"
 
@@ -839,6 +852,134 @@ export const unwrapScoped: <R, E, R1, E1, A>(
 
 /**
  * @since 2.0.0
+ * @category clock
+ */
+export const setClock: <A extends Clock.Clock>(clock: A) => Layer<never, never, never> = <A extends Clock.Clock>(
+  clock: A
+): Layer<never, never, never> =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clockTag, clock))
+  )
+
+/**
+ * Sets the current `ConfigProvider`.
+ *
+ * @since 2.0.0
+ * @category config
+ */
+export const setConfigProvider: (configProvider: ConfigProvider) => Layer<never, never, never> =
+  circularLayer.setConfigProvider
+
+/**
+ * Adds the provided span to the span stack.
+ *
+ * @since 2.0.0
+ * @category tracing
+ */
+export const setParentSpan: (span: Tracer.ParentSpan) => Layer<never, never, never> = circularLayer.setParentSpan
+
+/**
+ * @since 2.0.0
+ * @category requests & batching
+ */
+export const setRequestBatching: (requestBatching: boolean) => Layer<never, never, never> = (
+  requestBatching: boolean
+) =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScoped(core.currentRequestBatching, requestBatching)
+  )
+
+/**
+ * @since 2.0.0
+ * @category requests & batching
+ */
+export const setRequestCaching: (requestCaching: boolean) => Layer<never, never, never> = (
+  requestCaching: boolean
+) =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScoped(query.currentCacheEnabled, requestCaching)
+  )
+
+/**
+ * @since 2.0.0
+ * @category requests & batching
+ */
+export const setRequestCache: {
+  <R, E>(
+    cache: Effect.Effect<R, E, Request.Cache>
+  ): Layer<Exclude<R, Scope.Scope>, E, never>
+  (
+    cache: Request.Cache
+  ): Layer<never, never, never>
+} = (<R, E>(cache: Request.Cache | Effect.Effect<R, E, Request.Cache>) =>
+  scopedDiscard(
+    core.isEffect(cache) ?
+      core.flatMap(cache, (x) => fiberRuntime.fiberRefLocallyScoped(query.currentCache as any, x)) :
+      fiberRuntime.fiberRefLocallyScoped(query.currentCache as any, cache)
+  )) as any
+
+/**
+ * @since 2.0.0
+ * @category scheduler
+ */
+export const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never, never, never> = (
+  scheduler: Scheduler.Scheduler
+): Layer<never, never, never> =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScoped(Scheduler.currentScheduler, scheduler)
+  )
+
+/**
+ * Create and add a span to the current span stack.
+ *
+ * The span is ended when the Layer is released.
+ *
+ * @since 2.0.0
+ * @category tracing
+ */
+export const setSpan: (
+  name: string,
+  options?: {
+    readonly attributes?: Record<string, unknown>
+    readonly links?: ReadonlyArray<Tracer.SpanLink>
+    readonly parent?: Tracer.ParentSpan
+    readonly root?: boolean
+    readonly sampled?: boolean
+    readonly context?: Context.Context<never>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+  }
+) => Layer<never, never, never> = circularLayer.setSpan
+
+/**
+ * Create a Layer that sets the current Tracer
+ *
+ * @since 2.0.0
+ * @category tracing
+ */
+export const setTracer: (tracer: Tracer.Tracer) => Layer<never, never, never> = circularLayer.setTracer
+
+/**
+ * @since 2.0.0
+ * @category tracing
+ */
+export const setTracerTiming: (enabled: boolean) => Layer<never, never, never> = (enabled: boolean) =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScoped(core.currentTracerTimingEnabled, enabled)
+  )
+
+/**
+ * @since 2.0.0
+ * @category logging
+ */
+export const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Layer<never, never, never> = (
+  level: Option.Option<LogLevel>
+): Layer<never, never, never> =>
+  scopedDiscard(
+    fiberRuntime.fiberRefLocallyScoped(core.currentUnhandledErrorLogLevel, level)
+  )
+
+/**
+ * @since 2.0.0
  * @category tracing
  */
 export const withSpan: {
@@ -849,7 +990,9 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
+      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
   ): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
   <R, E, A>(
@@ -860,7 +1003,18 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
+      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
   ): Layer<R, E, A>
 } = internal.withSpan
+
+/**
+ * @since 2.0.0
+ * @category tracing
+ */
+export const withParentSpan: {
+  (span: Tracer.ParentSpan): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
+  <R, E, A>(self: Layer<R, E, A>, span: Tracer.ParentSpan): Layer<R, E, A>
+} = internal.withParentSpan
