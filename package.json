@@ -13,7 +13,7 @@
     "test": "vitest",
     "check": "tsc -p tsconfig.json",
     "coverage": "vitest run --coverage",
-    "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
+    "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
     "update-version": "changeset version && pnpm install --no-frozen-lockfile",
     "lint": "eslint src test",
     "lint-fix": "eslint src test --fix",
