@@ -1,5 +1,13 @@
 # @effect/typeclass
 
+## 0.10.0
+
+### Minor Changes
+
+- [#32](https://github.com/Effect-TS/typeclass/pull/32) [`b017f8a`](https://github.com/Effect-TS/typeclass/commit/b017f8aed01e3c4c5eea0398989ca8e0c3bf7181) Thanks [@tim-smart](https://github.com/tim-smart)! - rename Bigint to BigInt
+
+- [#32](https://github.com/Effect-TS/typeclass/pull/32) [`b017f8a`](https://github.com/Effect-TS/typeclass/commit/b017f8aed01e3c4c5eea0398989ca8e0c3bf7181) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.9.0
 
 ### Minor Changes
