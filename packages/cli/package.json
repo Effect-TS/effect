@@ -36,7 +36,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "coverage": "vitest run --coverage",
     "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
-    "update-version": "changeset version && pnpm install --no-frozen-lockfile",
+    "version": "changeset version",
     "lint": "eslint src test",
     "lint-fix": "eslint src test --fix",
     "fix": "preconstruct fix",
