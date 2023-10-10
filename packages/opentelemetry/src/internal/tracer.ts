@@ -18,7 +18,7 @@ export class OtelSpan implements Tracer.Span {
   readonly span: OtelApi.Span
   readonly spanId: string
   readonly traceId: string
-  readonly attributes = new Map<string, Tracer.AttributeValue>()
+  readonly attributes = new Map<string, unknown>()
   status: Tracer.SpanStatus
 
   constructor(
@@ -28,6 +28,7 @@ export class OtelSpan implements Tracer.Span {
     readonly parent: Option.Option<Tracer.ParentSpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
+    readonly sampled: boolean,
     startTime: bigint
   ) {
     const active = contextApi.active()
@@ -38,7 +39,7 @@ export class OtelSpan implements Tracer.Span {
         links: links.length > 0
           ? links.map((link) => ({
             context: makeSpanContext(link.span),
-            attributes: link.attributes
+            attributes: recordToAttributes(link.attributes)
           }))
           : undefined
       },
@@ -55,8 +56,8 @@ export class OtelSpan implements Tracer.Span {
     }
   }
 
-  attribute(key: string, value: Tracer.AttributeValue) {
-    this.span.setAttribute(key, value)
+  attribute(key: string, value: unknown) {
+    this.span.setAttribute(key, unknownToAttributeValue(value))
     this.attributes.set(key, value)
   }
 
@@ -90,8 +91,12 @@ export class OtelSpan implements Tracer.Span {
     this.span.end(nanosToHrTime(endTime))
   }
 
-  event(name: string, startTime: bigint, attributes?: Record<string, Tracer.AttributeValue>) {
-    this.span.addEvent(name, attributes, nanosToHrTime(startTime))
+  event(name: string, startTime: bigint, attributes?: Record<string, unknown>) {
+    this.span.addEvent(
+      name,
+      attributes ? recordToAttributes(attributes) : undefined,
+      nanosToHrTime(startTime)
+    )
   }
 }
 
@@ -101,7 +106,7 @@ export const OtelTracer = Context.Tag<OtelApi.Tracer>("@effect/opentelemetry/Tra
 /** @internal */
 export const make = Effect.map(OtelTracer, (tracer) =>
   Tracer.make({
-    span(name, parent, context, links, startTime) {
+    span(name, parent, context, links, sampled, startTime) {
       return new OtelSpan(
         OtelApi.context,
         tracer,
@@ -109,6 +114,7 @@ export const make = Effect.map(OtelTracer, (tracer) =>
         parent,
         context,
         links,
+        sampled,
         startTime
       )
     },
@@ -166,6 +172,9 @@ export const makeExternalSpan = (options: {
     _tag: "ExternalSpan",
     traceId: options.traceId,
     spanId: options.spanId,
+    sampled: options.traceFlags
+      ? options.traceFlags === OtelApi.TraceFlags.SAMPLED
+      : true,
     context
   }
 }
@@ -198,7 +207,7 @@ export const layerOtelTracer = Layer.effect(
 /** @internal */
 export const layer = Layer.provide(
   layerOtelTracer,
-  Layer.unwrapEffect(Effect.map(make, Effect.setTracer))
+  Layer.unwrapEffect(Effect.map(make, Layer.setTracer))
 )
 
 // -------------------------------------------------------------------------------------
@@ -247,3 +256,28 @@ const extractTraceTag = <I, S>(
     Context.getOption(context, tag),
     () => Context.getOption(parent.context, tag)
   )
+
+const recordToAttributes = (value: Record<string, unknown>): OtelApi.Attributes => {
+  return Object.entries(value).reduce((acc, [key, value]) => {
+    acc[key] = unknownToAttributeValue(value)
+    return acc
+  }, {} as OtelApi.Attributes)
+}
+
+const unknownToAttributeValue = (value: unknown): OtelApi.AttributeValue => {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value
+  } else if (typeof value === "bigint") {
+    return Number(value)
+  }
+
+  return objectToAttribute(value)
+}
+
+const objectToAttribute = (value: unknown): string => {
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}

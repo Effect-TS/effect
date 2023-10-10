@@ -36,7 +36,7 @@ describe("Tracer", () => {
 
     it.effect("withSpan links", () =>
       Effect.gen(function*(_) {
-        const linkedSpan = yield* _(Effect.useSpanScoped("B"))
+        const linkedSpan = yield* _(Effect.makeSpanScoped("B"))
         const span = yield* _(
           Effect.currentSpan,
           Effect.flatten,
