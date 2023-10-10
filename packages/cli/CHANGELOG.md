@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.16.0
+
+### Minor Changes
+
+- [#338](https://github.com/Effect-TS/cli/pull/338) [`94b219e`](https://github.com/Effect-TS/cli/commit/94b219ed3985891dfed82e42ebc4a26a429e8169) Thanks [@tim-smart](https://github.com/tim-smart)! - use preconstruct
+
+### Patch Changes
+
+- [#336](https://github.com/Effect-TS/cli/pull/336) [`06934e8`](https://github.com/Effect-TS/cli/commit/06934e8254c93a0488ec1f3a70a61f106630215b) Thanks [@IMax153](https://github.com/IMax153)! - add Prompt module
+
 ## 0.15.1
 
 ### Patch Changes
