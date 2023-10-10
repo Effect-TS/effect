@@ -1,6 +1,7 @@
+import * as Terminal from "@effect/cli/Terminal"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -12,18 +13,19 @@ export type API = TestAPI<{}>
 
 export const it: API = V.it
 
+const testLayer = Layer.merge(TestEnvironment.TestContext, Terminal.layer)
+
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: () => Effect.Effect<TestServices.TestServices, E, A>,
+    self: () => Effect.Effect<TestServices.TestServices | Terminal.Terminal, E, A>,
     timeout = 5_000
   ) => {
     return it(
       name,
       () =>
-        pipe(
-          Effect.suspend(self),
-          Effect.provide(TestEnvironment.TestContext),
+        Effect.suspend(self).pipe(
+          Effect.provide(testLayer),
           Effect.runPromise
         ),
       timeout
@@ -32,15 +34,14 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestServices.TestServices, E, A>,
+      self: () => Effect.Effect<TestServices.TestServices | Terminal.Terminal, E, A>,
       timeout = 5_000
     ) => {
       return it.skip(
         name,
         () =>
-          pipe(
-            Effect.suspend(self),
-            Effect.provide(TestEnvironment.TestContext),
+          Effect.suspend(self).pipe(
+            Effect.provide(testLayer),
             Effect.runPromise
           ),
         timeout
@@ -48,15 +49,14 @@ export const effect = (() => {
     },
     only: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestServices.TestServices, E, A>,
+      self: () => Effect.Effect<TestServices.TestServices | Terminal.Terminal, E, A>,
       timeout = 5_000
     ) => {
       return it.only(
         name,
         () =>
-          pipe(
-            Effect.suspend(self),
-            Effect.provide(TestEnvironment.TestContext),
+          Effect.suspend(self).pipe(
+            Effect.provide(testLayer),
             Effect.runPromise
           ),
         timeout
@@ -72,11 +72,7 @@ export const live = <E, A>(
 ) => {
   return it(
     name,
-    () =>
-      pipe(
-        Effect.suspend(self),
-        Effect.runPromise
-      ),
+    () => Effect.suspend(self).pipe(Effect.runPromise),
     timeout
   )
 }
@@ -85,11 +81,9 @@ export const flakyTest = <R, E, A>(
   self: Effect.Effect<R, E, A>,
   timeout: Duration.Duration = Duration.seconds(30)
 ) => {
-  return pipe(
-    Effect.catchAllDefect(self, Effect.fail),
+  return Effect.catchAllDefect(self, Effect.fail).pipe(
     Effect.retry(
-      pipe(
-        Schedule.recurs(10),
+      Schedule.recurs(10).pipe(
         Schedule.compose(Schedule.elapsed),
         Schedule.whileOutput(Duration.lessThanOrEqualTo(timeout))
       )
@@ -100,16 +94,15 @@ export const flakyTest = <R, E, A>(
 
 export const scoped = <E, A>(
   name: string,
-  self: () => Effect.Effect<Scope.Scope | TestServices.TestServices, E, A>,
+  self: () => Effect.Effect<Scope.Scope | TestServices.TestServices | Terminal.Terminal, E, A>,
   timeout = 5_000
 ) => {
   return it(
     name,
     () =>
-      pipe(
-        Effect.suspend(self),
+      Effect.suspend(self).pipe(
         Effect.scoped,
-        Effect.provide(TestEnvironment.TestContext),
+        Effect.provide(testLayer),
         Effect.runPromise
       ),
     timeout
@@ -124,8 +117,7 @@ export const scopedLive = <E, A>(
   return it(
     name,
     () =>
-      pipe(
-        Effect.suspend(self),
+      Effect.suspend(self).pipe(
         Effect.scoped,
         Effect.runPromise
       ),

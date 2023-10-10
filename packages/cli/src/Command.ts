@@ -7,6 +7,8 @@ import type { CommandDirective } from "@effect/cli/CommandDirective"
 import type { HelpDoc } from "@effect/cli/HelpDoc"
 import * as internal from "@effect/cli/internal/command"
 import type { Options } from "@effect/cli/Options"
+import type { Prompt } from "@effect/cli/Prompt"
+import type { Terminal } from "@effect/cli/Terminal"
 import type { Usage } from "@effect/cli/Usage"
 import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Effect } from "effect/Effect"
@@ -164,13 +166,22 @@ export const parse: {
   (
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): <A>(self: Command<A>) => Effect<never, ValidationError, CommandDirective<A>>
+  ): <A>(self: Command<A>) => Effect<Terminal, ValidationError, CommandDirective<A>>
   <A>(
     self: Command<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<never, ValidationError, CommandDirective<A>>
+  ): Effect<Terminal, ValidationError, CommandDirective<A>>
 } = internal.parse
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const prompt: <Name extends string, A>(
+  name: Name,
+  prompt: Prompt<A>
+) => Command<{ readonly name: Name; readonly value: A }> = internal.prompt
 
 /**
  * @since 1.0.0

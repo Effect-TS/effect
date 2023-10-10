@@ -10,9 +10,12 @@ import * as commandDirective from "@effect/cli/internal/commandDirective"
 import * as doc from "@effect/cli/internal/helpDoc"
 import * as span from "@effect/cli/internal/helpDoc/span"
 import * as options from "@effect/cli/internal/options"
+import * as _prompt from "@effect/cli/internal/prompt"
 import * as _usage from "@effect/cli/internal/usage"
 import * as validationError from "@effect/cli/internal/validationError"
 import type * as Options from "@effect/cli/Options"
+import type * as Prompt from "@effect/cli/Prompt"
+import type * as Terminal from "@effect/cli/Terminal"
 import type * as Usage from "@effect/cli/Usage"
 import type * as ValidationError from "@effect/cli/ValidationError"
 import * as Chunk from "effect/Chunk"
@@ -60,8 +63,14 @@ export interface Single extends
   Op<"Single", {
     readonly name: string
     readonly help: HelpDoc.HelpDoc
-    readonly options: Options.Options<unknown>
-    readonly args: Args.Args<unknown>
+    readonly type: {
+      readonly _tag: "Standard"
+      readonly options: Options.Options<unknown>
+      readonly args: Args.Args<unknown>
+    } | {
+      readonly _tag: "Prompt"
+      readonly prompt: Prompt.Prompt<unknown>
+    }
   }>
 {}
 
@@ -113,15 +122,18 @@ const helpDocMap: {
     const header = doc.isEmpty(self.help)
       ? doc.empty
       : doc.sequence(doc.h1("DESCRIPTION"), self.help)
-    const argsHelp = _args.helpDoc(self.args)
-    const argsSection = doc.isEmpty(argsHelp)
-      ? doc.empty
-      : doc.sequence(doc.h1("ARGUMENTS"), argsHelp)
-    const optionsHelp = options.helpDoc(self.options)
-    const optionsSection = doc.isEmpty(optionsHelp)
-      ? doc.empty
-      : doc.sequence(doc.h1("OPTIONS"), optionsHelp)
-    return doc.sequence(header, doc.sequence(argsSection, optionsSection))
+    if (self.type._tag === "Standard") {
+      const argsHelp = _args.helpDoc(self.type.args)
+      const argsSection = doc.isEmpty(argsHelp)
+        ? doc.empty
+        : doc.sequence(doc.h1("ARGUMENTS"), argsHelp)
+      const optionsHelp = options.helpDoc(self.type.options)
+      const optionsSection = doc.isEmpty(optionsHelp)
+        ? doc.empty
+        : doc.sequence(doc.h1("OPTIONS"), optionsHelp)
+      return doc.sequence(header, doc.sequence(argsSection, optionsSection))
+    }
+    return doc.sequence(header, doc.p("This command will prompt the user for information"))
   },
   Map: (self) => helpDocMap[self.command._tag](self.command as any),
   OrElse: (self) =>
@@ -154,7 +166,7 @@ export const make = <Name extends string, OptionsType = void, ArgsType = void>(
   config: Command.Command.ConstructorConfig<OptionsType, ArgsType> = defaultConstructorConfig as any
 ): Command.Command<Command.Command.Parsed<Name, OptionsType, ArgsType>> => {
   const { args, options } = { ...defaultConstructorConfig, ...config }
-  return single(name, doc.empty, options, args) as any
+  return standardSingleCommand(name, doc.empty, options, args) as any
 }
 
 /** @internal */
@@ -220,7 +232,7 @@ const parseMap: {
     self: Extract<Instruction, { _tag: K }>,
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ) => Effect.Effect<never, ValidationError.ValidationError, CommandDirective.CommandDirective<any>>
+  ) => Effect.Effect<Terminal.Terminal, ValidationError.ValidationError, CommandDirective.CommandDirective<any>>
 } = {
   Single: (self, args, config) => {
     const parseBuiltInArgs =
@@ -247,23 +259,34 @@ const parseMap: {
           )
         )
         : Effect.fail(validationError.commandMismatch(doc.p(span.error(`Missing command name: '${self.name}'`)))),
-      Effect.flatMap((commandOptionsAndArgs) =>
-        pipe(
-          options.validate(self.options, unCluster(commandOptionsAndArgs), config),
-          Effect.flatMap(([commandArgs, options]) =>
-            pipe(
-              _args.validate(self.args, commandArgs),
-              Effect.map(([argsLeftover, args]) =>
-                commandDirective.userDefined(argsLeftover, {
-                  name: self.name,
-                  options,
-                  args
-                })
+      Effect.flatMap((commandOptionsAndArgs) => {
+        if (self.type._tag === "Standard") {
+          const standardCommand = self.type
+          return options.validate(
+            standardCommand.options,
+            unCluster(commandOptionsAndArgs),
+            config
+          ).pipe(
+            Effect.flatMap(([commandArgs, options]) =>
+              _args.validate(standardCommand.args, commandArgs).pipe(
+                Effect.map(([argsLeftover, args]) =>
+                  commandDirective.userDefined(argsLeftover, {
+                    name: self.name,
+                    options,
+                    args
+                  })
+                )
               )
             )
           )
-        )
-      )
+        }
+
+        return Effect.map(_prompt.run(self.type.prompt), (value) =>
+          commandDirective.userDefined(args.slice(1), {
+            name: self.name,
+            value
+          } as any))
+      })
     )
     return Effect.orElse(parseBuiltInArgs, () => parseUserDefinedArgs)
   },
@@ -368,13 +391,19 @@ export const parse = dual<
     config: CliConfig.CliConfig
   ) => <A>(
     self: Command.Command<A>
-  ) => Effect.Effect<never, ValidationError.ValidationError, CommandDirective.CommandDirective<A>>,
+  ) => Effect.Effect<Terminal.Terminal, ValidationError.ValidationError, CommandDirective.CommandDirective<A>>,
   <A>(
     self: Command.Command<A>,
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ) => Effect.Effect<never, ValidationError.ValidationError, CommandDirective.CommandDirective<A>>
+  ) => Effect.Effect<Terminal.Terminal, ValidationError.ValidationError, CommandDirective.CommandDirective<A>>
 >(3, (self, args, config) => parseMap[(self as Instruction)._tag](self as any, args, config))
+
+/** @internal */
+export const prompt = <Name extends string, A>(name: Name, prompt: Prompt.Prompt<A>): Command.Command<{
+  readonly name: Name
+  readonly value: A
+}> => promptSingleCommand(name, doc.empty, prompt)
 
 /** @internal */
 export const subcommands = dual<
@@ -407,14 +436,18 @@ export const subcommands = dual<
 const usageMap: {
   [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => Usage.Usage
 } = {
-  Single: (self) =>
-    _usage.concat(
-      _usage.named(Chunk.of(self.name), Option.none()),
-      _usage.concat(
-        options.usage(self.options),
-        _args.usage(self.args)
+  Single: (self) => {
+    if (self.type._tag === "Standard") {
+      return _usage.concat(
+        _usage.named(Chunk.of(self.name), Option.none()),
+        _usage.concat(
+          options.usage(self.type.options),
+          _args.usage(self.type.args)
+        )
       )
-    ),
+    }
+    return _usage.named(Chunk.of(self.name), Option.none())
+  },
   Map: (self) => usageMap[self.command._tag](self.command as any),
   OrElse: () => _usage.mixed,
   Subcommands: (self) =>
@@ -433,7 +466,21 @@ const withHelpMap: {
     help: string | HelpDoc.HelpDoc
   ) => Command.Command<any>
 } = {
-  Single: (self, help) => single(self.name, typeof help === "string" ? doc.p(help) : help, self.options, self.args),
+  Single: (self, help) => {
+    if (self.type._tag === "Standard") {
+      return standardSingleCommand(
+        self.name,
+        typeof help === "string" ? doc.p(help) : help,
+        self.type.options,
+        self.type.args
+      )
+    }
+    return promptSingleCommand(
+      self.name,
+      typeof help === "string" ? doc.p(help) : help,
+      self.type.prompt
+    )
+  },
   Map: (self, help) => map(withHelpMap[self.command._tag](self.command as any, help), self.f),
   OrElse: (self, help) =>
     orElse(
@@ -449,7 +496,7 @@ export const withHelp = dual<
   <A>(self: Command.Command<A>, help: string | HelpDoc.HelpDoc) => Command.Command<A>
 >(2, (self, help) => withHelpMap[(self as Instruction)._tag](self as any, help))
 
-const single = <Name extends string, OptionsType, ArgsType>(
+const standardSingleCommand = <Name extends string, OptionsType, ArgsType>(
   name: Name,
   help: HelpDoc.HelpDoc,
   options: Options.Options<OptionsType>,
@@ -459,8 +506,27 @@ const single = <Name extends string, OptionsType, ArgsType>(
   op._tag = "Single"
   op.name = name
   op.help = help
-  op.options = options
-  op.args = args
+  op.type = {
+    _tag: "Standard",
+    options,
+    args
+  }
+  return op
+}
+
+const promptSingleCommand = <Name extends string, A>(
+  name: Name,
+  help: HelpDoc.HelpDoc,
+  prompt: Prompt.Prompt<A>
+): Command.Command<{ readonly name: Name; readonly value: A }> => {
+  const op = Object.create(proto)
+  op._tag = "Single"
+  op.name = name
+  op.help = help
+  op.type = {
+    _tag: "Prompt",
+    prompt
+  }
   return op
 }
 
