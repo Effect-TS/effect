@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as Bigint from "effect/Bigint"
+import * as BigInt_ from "effect/BigInt"
 import * as Brand from "effect/Brand"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
@@ -2473,7 +2473,7 @@ export const clampBigint =
     transform(
       self,
       self.pipe(to, betweenBigint(min, max)),
-      (self) => Bigint.clamp(self, min, max),
+      (self) => BigInt_.clamp(self, min, max),
       identity
     )
 

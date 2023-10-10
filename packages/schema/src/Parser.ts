@@ -318,7 +318,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
     case "BooleanKeyword":
       return fromRefinement(ast, Predicate.isBoolean)
     case "BigIntKeyword":
-      return fromRefinement(ast, Predicate.isBigint)
+      return fromRefinement(ast, Predicate.isBigInt)
     case "SymbolKeyword":
       return fromRefinement(ast, Predicate.isSymbol)
     case "ObjectKeyword":
