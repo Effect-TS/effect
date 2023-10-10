@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.12.1
+
+### Patch Changes
+
+- [#108](https://github.com/Effect-TS/rpc/pull/108) [`4eacac5`](https://github.com/Effect-TS/rpc/commit/4eacac5194eaf929d98f4a8b6ed6c361f8251d17) Thanks [@tim-smart](https://github.com/tim-smart)! - provide runtime last in server
+
 ## 0.12.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "",
   "main": "dist/effect-rpc.cjs.js",
   "module": "dist/effect-rpc.esm.js",
