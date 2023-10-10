@@ -1,5 +1,13 @@
 # @effect/opentelemetry
 
+## 0.18.0
+
+### Minor Changes
+
+- [#72](https://github.com/Effect-TS/opentelemetry/pull/72) [`9e563ef`](https://github.com/Effect-TS/opentelemetry/commit/9e563ef249b0b556c03b7c3e1d9872ef9c54c8b3) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- [#74](https://github.com/Effect-TS/opentelemetry/pull/74) [`fe93fd2`](https://github.com/Effect-TS/opentelemetry/commit/fe93fd2b3e641563425fe38b56efb8c750018f02) Thanks [@tim-smart](https://github.com/tim-smart)! - use lazy arg for node sdk layer config
+
 ## 0.17.0
 
 ### Minor Changes
