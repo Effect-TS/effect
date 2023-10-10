@@ -3,13 +3,13 @@
  */
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { dual, flow } from "effect/Function"
 import * as Global from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
+import * as Tracer from "effect/Tracer"
 import type { ExternalSpan } from "effect/Tracer"
 import * as FileSystem from "../FileSystem"
 import type * as Headers from "./Headers"
@@ -74,7 +74,8 @@ export const schemaHeaders = <I extends Readonly<Record<string, string>>, A>(sch
 const SpanSchema = Schema.struct({
   traceId: Schema.string,
   spanId: Schema.string,
-  parentSpanId: Schema.union(Schema.string, Schema.undefined)
+  parentSpanId: Schema.union(Schema.string, Schema.undefined),
+  sampled: Schema.boolean
 })
 
 /**
@@ -94,6 +95,7 @@ export const schemaExternalSpan = flow(
           return ParseResult.success({
             traceId: parts[0],
             spanId: parts[1],
+            sampled: parts[2] ? parts[2] === "1" : true,
             parentSpanId: parts[3]
           })
         }
@@ -105,27 +107,31 @@ export const schemaExternalSpan = flow(
       Schema.struct({
         "x-b3-traceid": Schema.NonEmpty,
         "x-b3-spanid": Schema.NonEmpty,
-        "x-b3-parentspanid": Schema.optional(Schema.NonEmpty)
+        "x-b3-parentspanid": Schema.optional(Schema.NonEmpty),
+        "x-b3-sampled": Schema.optional(Schema.NonEmpty).withDefault(() => "1")
       }),
       SpanSchema,
       (_) => ({
         traceId: _["x-b3-traceid"],
         spanId: _["x-b3-spanid"],
-        parentSpanId: _["x-b3-parentspanid"]
+        parentSpanId: _["x-b3-parentspanid"],
+        sampled: _["x-b3-sampled"] === "1"
       }),
       (_) => ({
         "x-b3-traceid": _.traceId,
         "x-b3-spanid": _.spanId,
-        "x-b3-parentspanid": _.parentSpanId
+        "x-b3-parentspanid": _.parentSpanId,
+        "x-b3-sampled": _.sampled ? "1" : "0"
       })
     )
   )),
-  Effect.map((_): ExternalSpan => ({
-    _tag: "ExternalSpan",
-    traceId: _.traceId,
-    spanId: _.spanId,
-    context: Context.empty()
-  }))
+  Effect.map((_): ExternalSpan =>
+    Tracer.externalSpan({
+      traceId: _.traceId,
+      spanId: _.spanId,
+      sampled: _.sampled
+    })
+  )
 )
 
 /**

@@ -37,17 +37,17 @@
   "license": "MIT",
   "sideEffects": false,
   "dependencies": {
-    "find-my-way": "^7.6.2",
+    "find-my-way": "^7.7.0",
     "path-browserify": "^1.0.1"
   },
   "devDependencies": {
-    "@effect/schema": "^0.42.0",
+    "@effect/schema": "^0.43.0",
     "@types/path-browserify": "^1.0.0",
-    "effect": "2.0.0-next.47"
+    "effect": "2.0.0-next.48"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.42.0",
-    "effect": "2.0.0-next.47"
+    "@effect/schema": "^0.43.0",
+    "effect": "2.0.0-next.48"
   },
   "files": [
     "src",

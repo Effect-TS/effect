@@ -28,7 +28,7 @@
   "scripts": {
     "example": "ts-node --project tsconfig.examples.json",
     "lint": "eslint src/**/*.ts test/**/*.ts",
-    "tc": "tsc --noEmit",
+    "tc": "tsc -b",
     "test": "vitest",
     "coverage": "vitest run --coverage"
   },
@@ -41,12 +41,12 @@
     "@effect/platform-node": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "^0.42.0",
-    "bun-types": "1.0.5-canary.20231008T140131",
-    "effect": "2.0.0-next.47"
+    "@effect/schema": "^0.43.0",
+    "bun-types": "1.0.5-canary.20231009T140142",
+    "effect": "2.0.0-next.48"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.47"
+    "effect": "2.0.0-next.48"
   },
   "files": [
     "src",

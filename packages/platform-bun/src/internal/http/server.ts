@@ -65,7 +65,6 @@ export const make = (
             Effect.async<never, Error.ServeError, never>(() => {
               const runFork = Runtime.runFork(runtime)
               function handler(request: Request, _server: BunServer) {
-                console.log(request)
                 return new Promise<Response>((resolve, reject) => {
                   const fiber = runFork(Effect.provideService(
                     app,
@@ -112,7 +111,7 @@ const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResp
       })
     }
     case "FormData": {
-      return new Response(body.formData, {
+      return new Response(body.formData as any, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers
@@ -213,7 +212,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
 
   get stream(): Stream.Stream<never, Error.RequestError, Uint8Array> {
     return this.source.body
-      ? Stream.fromReadableStream(() => this.source.body!, (_) =>
+      ? Stream.fromReadableStream(() => this.source.body as any, (_) =>
         Error.RequestError({
           request: this,
           reason: "Decode",

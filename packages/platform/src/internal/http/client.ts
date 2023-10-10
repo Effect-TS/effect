@@ -401,7 +401,7 @@ export const withB3Propagation = <R, E>(
       Effect.flatMap(self),
       Effect.tap((res) =>
         Effect.ignore(
-          Effect.flatMap(IncomingMessage.schemaExternalSpan(res), Effect.withParentSpanScoped)
+          Effect.flatMap(IncomingMessage.schemaExternalSpan(res), Effect.setParentSpan)
         )
       )
     )
