@@ -9,11 +9,11 @@ import * as Layer from "effect/Layer"
 
 const ResourceLive = Resource.layer({ serviceName: "example" })
 
-const NodeSdkLive = NodeSdk.layer(Effect.sync(() =>
+const NodeSdkLive = NodeSdk.layer(() =>
   NodeSdk.config({
     traceExporter: new OTLPTraceExporter() as any
   })
-))
+)
 
 const TracingLive = Layer.provide(
   ResourceLive,

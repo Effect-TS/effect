@@ -4,6 +4,7 @@
 import type { NodeSDKConfiguration } from "@opentelemetry/sdk-node"
 import { NodeSDK } from "@opentelemetry/sdk-node"
 import * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { Resource } from "./Resource"
 
@@ -23,15 +24,15 @@ export const config: (config: Configuration) => Configuration = (config: Configu
  * @since 1.0.0
  * @category layer
  */
-export const layer = <R, E>(
-  config: Effect.Effect<R, E, Configuration>
-): Layer.Layer<Resource | R, E, never> =>
+export const layer = (
+  config: LazyArg<Configuration>
+): Layer.Layer<Resource, never, never> =>
   Layer.scopedDiscard(Effect.acquireRelease(
     Effect.flatMap(
-      Effect.all([config, Resource]),
-      ([config, resource]) =>
+      Resource,
+      (resource) =>
         Effect.sync(() => {
-          const sdk = new NodeSDK({ ...config, resource })
+          const sdk = new NodeSDK({ ...config(), resource })
           sdk.start()
           return sdk
         })

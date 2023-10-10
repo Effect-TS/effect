@@ -13,11 +13,11 @@ const TracingLive = Layer.provide(
   Resource.layer({ serviceName: "test" }),
   Layer.merge(
     Tracer.layer,
-    NodeSdk.layer(Effect.sync(() =>
+    NodeSdk.layer(() =>
       NodeSdk.config({
         traceExporter: new InMemorySpanExporter()
       })
-    ))
+    )
   )
 )
 
