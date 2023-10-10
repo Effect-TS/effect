@@ -28,6 +28,10 @@ Added in v2.0.0
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [clock](#clock)
+  - [setClock](#setclock)
+- [config](#config)
+  - [setConfigProvider](#setconfigprovider)
 - [constructors](#constructors)
   - [context](#context)
   - [die](#die)
@@ -67,14 +71,22 @@ Added in v2.0.0
 - [getters](#getters)
   - [isFresh](#isfresh)
   - [isLayer](#islayer)
+- [logging](#logging)
+  - [setUnhandledErrorLogLevel](#setunhandlederrorloglevel)
 - [mapping](#mapping)
   - [discard](#discard)
   - [map](#map)
   - [mapError](#maperror)
 - [models](#models)
   - [Layer (interface)](#layer-interface)
+- [requests & batching](#requests--batching)
+  - [setRequestBatching](#setrequestbatching)
+  - [setRequestCache](#setrequestcache)
+  - [setRequestCaching](#setrequestcaching)
 - [retrying](#retrying)
   - [retry](#retry)
+- [scheduler](#scheduler)
+  - [setScheduler](#setscheduler)
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
   - [flatten](#flatten)
@@ -85,6 +97,11 @@ Added in v2.0.0
   - [LayerTypeId](#layertypeid)
   - [LayerTypeId (type alias)](#layertypeid-type-alias)
 - [tracing](#tracing)
+  - [setParentSpan](#setparentspan)
+  - [setSpan](#setspan)
+  - [setTracer](#settracer)
+  - [setTracerTiming](#settracertiming)
+  - [withParentSpan](#withparentspan)
   - [withSpan](#withspan)
 - [utils](#utils)
   - [Layer (namespace)](#layer-namespace)
@@ -114,6 +131,32 @@ Added in v2.0.0
   - [zipWithPar](#zipwithpar)
 
 ---
+
+# clock
+
+## setClock
+
+**Signature**
+
+```ts
+export declare const setClock: <A extends Clock.Clock>(clock: A) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
+# config
+
+## setConfigProvider
+
+Sets the current `ConfigProvider`.
+
+**Signature**
+
+```ts
+export declare const setConfigProvider: (configProvider: ConfigProvider) => Layer<never, never, never>
+```
+
+Added in v2.0.0
 
 # constructors
 
@@ -634,6 +677,18 @@ export declare const isLayer: (u: unknown) => u is Layer<unknown, unknown, unkno
 
 Added in v2.0.0
 
+# logging
+
+## setUnhandledErrorLogLevel
+
+**Signature**
+
+```ts
+export declare const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
 # mapping
 
 ## discard
@@ -691,6 +746,41 @@ export interface Layer<RIn, E, ROut> extends Layer.Variance<RIn, E, ROut>, Pipea
 
 Added in v2.0.0
 
+# requests & batching
+
+## setRequestBatching
+
+**Signature**
+
+```ts
+export declare const setRequestBatching: (requestBatching: boolean) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
+## setRequestCache
+
+**Signature**
+
+```ts
+export declare const setRequestCache: {
+  <R, E>(cache: Effect.Effect<R, E, Request.Cache>): Layer<Exclude<R, Scope.Scope>, E, never>
+  (cache: Request.Cache): Layer<never, never, never>
+}
+```
+
+Added in v2.0.0
+
+## setRequestCaching
+
+**Signature**
+
+```ts
+export declare const setRequestCaching: (requestCaching: boolean) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
 # retrying
 
 ## retry
@@ -710,6 +800,18 @@ export declare const retry: {
     ROut
   >
 }
+```
+
+Added in v2.0.0
+
+# scheduler
+
+## setScheduler
+
+**Signature**
+
+```ts
+export declare const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -837,6 +939,82 @@ Added in v2.0.0
 
 # tracing
 
+## setParentSpan
+
+Adds the provided span to the span stack.
+
+**Signature**
+
+```ts
+export declare const setParentSpan: (span: Tracer.ParentSpan) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
+## setSpan
+
+Create and add a span to the current span stack.
+
+The span is ended when the Layer is released.
+
+**Signature**
+
+```ts
+export declare const setSpan: (
+  name: string,
+  options?:
+    | {
+        readonly attributes?: Record<string, unknown> | undefined
+        readonly links?: readonly Tracer.SpanLink[] | undefined
+        readonly parent?: Tracer.ParentSpan | undefined
+        readonly root?: boolean | undefined
+        readonly sampled?: boolean | undefined
+        readonly context?: Context.Context<never> | undefined
+        readonly onEnd?:
+          | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+          | undefined
+      }
+    | undefined
+) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
+## setTracer
+
+Create a Layer that sets the current Tracer
+
+**Signature**
+
+```ts
+export declare const setTracer: (tracer: Tracer.Tracer) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
+## setTracerTiming
+
+**Signature**
+
+```ts
+export declare const setTracerTiming: (enabled: boolean) => Layer<never, never, never>
+```
+
+Added in v2.0.0
+
+## withParentSpan
+
+**Signature**
+
+```ts
+export declare const withParentSpan: {
+  (span: Tracer.ParentSpan): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
+  <R, E, A>(self: Layer<R, E, A>, span: Tracer.ParentSpan): Layer<R, E, A>
+}
+```
+
+Added in v2.0.0
+
 ## withSpan
 
 **Signature**
@@ -845,24 +1023,36 @@ Added in v2.0.0
 export declare const withSpan: {
   (
     name: string,
-    options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
-    }
+    options?:
+      | {
+          readonly attributes?: Record<string, unknown> | undefined
+          readonly links?: readonly Tracer.SpanLink[] | undefined
+          readonly parent?: Tracer.ParentSpan | undefined
+          readonly root?: boolean | undefined
+          readonly sampled?: boolean | undefined
+          readonly context?: Context.Context<never> | undefined
+          readonly onEnd?:
+            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+            | undefined
+        }
+      | undefined
   ): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
   <R, E, A>(
     self: Layer<R, E, A>,
     name: string,
-    options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
-    }
+    options?:
+      | {
+          readonly attributes?: Record<string, unknown> | undefined
+          readonly links?: readonly Tracer.SpanLink[] | undefined
+          readonly parent?: Tracer.ParentSpan | undefined
+          readonly root?: boolean | undefined
+          readonly sampled?: boolean | undefined
+          readonly context?: Context.Context<never> | undefined
+          readonly onEnd?:
+            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+            | undefined
+        }
+      | undefined
   ): Layer<R, E, A>
 }
 ```

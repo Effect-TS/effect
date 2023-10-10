@@ -13,10 +13,10 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [constructors](#constructors)
+  - [externalSpan](#externalspan)
   - [make](#make)
   - [tracerWith](#tracerwith)
 - [models](#models)
-  - [AttributeValue (type alias)](#attributevalue-type-alias)
   - [ExternalSpan (interface)](#externalspan-interface)
   - [ParentSpan (type alias)](#parentspan-type-alias)
   - [Span (interface)](#span-interface)
@@ -32,6 +32,21 @@ Added in v2.0.0
 ---
 
 # constructors
+
+## externalSpan
+
+**Signature**
+
+```ts
+export declare const externalSpan: (options: {
+  readonly spanId: string
+  readonly traceId: string
+  readonly sampled?: boolean | undefined
+  readonly context?: Context.Context<never> | undefined
+}) => ExternalSpan
+```
+
+Added in v2.0.0
 
 ## make
 
@@ -55,16 +70,6 @@ Added in v2.0.0
 
 # models
 
-## AttributeValue (type alias)
-
-**Signature**
-
-```ts
-export type AttributeValue = string | boolean | number
-```
-
-Added in v2.0.0
-
 ## ExternalSpan (interface)
 
 **Signature**
@@ -74,6 +79,7 @@ export interface ExternalSpan {
   readonly _tag: 'ExternalSpan'
   readonly spanId: string
   readonly traceId: string
+  readonly sampled: boolean
   readonly context: Context.Context<never>
 }
 ```
@@ -103,11 +109,12 @@ export interface Span {
   readonly parent: Option.Option<ParentSpan>
   readonly context: Context.Context<never>
   readonly status: SpanStatus
-  readonly attributes: ReadonlyMap<string, AttributeValue>
+  readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
+  readonly sampled: boolean
   readonly end: (endTime: bigint, exit: Exit.Exit<unknown, unknown>) => void
-  readonly attribute: (key: string, value: AttributeValue) => void
-  readonly event: (name: string, startTime: bigint, attributes?: Record<string, AttributeValue>) => void
+  readonly attribute: (key: string, value: unknown) => void
+  readonly event: (name: string, startTime: bigint, attributes?: Record<string, unknown>) => void
 }
 ```
 
@@ -121,7 +128,7 @@ Added in v2.0.0
 export interface SpanLink {
   readonly _tag: 'SpanLink'
   readonly span: ParentSpan
-  readonly attributes: Readonly<Record<string, AttributeValue>>
+  readonly attributes: Readonly<Record<string, unknown>>
 }
 ```
 
@@ -173,6 +180,7 @@ export interface Tracer {
     parent: Option.Option<ParentSpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
+    sampled: boolean,
     startTime: bigint
   ) => Span
   readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X

@@ -27,7 +27,6 @@ Added in v2.0.0
 - [clock](#clock)
   - [clock](#clock-1)
   - [clockWith](#clockwith)
-  - [setClock](#setclock)
   - [withClock](#withclock)
 - [collecting & elements](#collecting--elements)
   - [all](#all)
@@ -59,7 +58,6 @@ Added in v2.0.0
 - [config](#config)
   - [config](#config-1)
   - [configProviderWith](#configproviderwith)
-  - [setConfigProvider](#setconfigprovider)
   - [withConfigProvider](#withconfigprovider)
   - [withConfigProviderScoped](#withconfigproviderscoped)
 - [constructors](#constructors)
@@ -206,7 +204,6 @@ Added in v2.0.0
   - [logInfo](#loginfo)
   - [logTrace](#logtrace)
   - [logWarning](#logwarning)
-  - [setUnhandledErrorLogLevel](#setunhandlederrorloglevel)
   - [withLogSpan](#withlogspan)
   - [withUnhandledErrorLogLevel](#withunhandlederrorloglevel)
 - [mapping](#mapping)
@@ -268,9 +265,6 @@ Added in v2.0.0
   - [flatMapStep](#flatmapstep)
   - [request](#request)
   - [runRequestBlock](#runrequestblock)
-  - [setRequestBatching](#setrequestbatching)
-  - [setRequestCache](#setrequestcache)
-  - [setRequestCaching](#setrequestcaching)
   - [step](#step)
   - [withRequestBatching](#withrequestbatching)
   - [withRequestCache](#withrequestcache)
@@ -282,7 +276,6 @@ Added in v2.0.0
   - [withRuntimeFlagsPatch](#withruntimeflagspatch)
   - [withRuntimeFlagsPatchScoped](#withruntimeflagspatchscoped)
 - [scheduler](#scheduler)
-  - [setScheduler](#setscheduler)
   - [withScheduler](#withscheduler)
 - [scoping, resources & finalization](#scoping-resources--finalization)
   - [acquireRelease](#acquirerelease)
@@ -350,18 +343,15 @@ Added in v2.0.0
   - [currentSpan](#currentspan)
   - [linkSpans](#linkspans)
   - [makeSpan](#makespan)
+  - [makeSpanScoped](#makespanscoped)
   - [setParentSpan](#setparentspan)
   - [setSpan](#setspan)
-  - [setTracer](#settracer)
-  - [setTracerTiming](#settracertiming)
   - [spanAnnotations](#spanannotations)
   - [spanLinks](#spanlinks)
   - [tracer](#tracer)
   - [tracerWith](#tracerwith)
   - [useSpan](#usespan)
-  - [useSpanScoped](#usespanscoped)
   - [withParentSpan](#withparentspan)
-  - [withParentSpanScoped](#withparentspanscoped)
   - [withSpan](#withspan)
   - [withSpanScoped](#withspanscoped)
   - [withTracer](#withtracer)
@@ -586,16 +576,6 @@ specified effectful function.
 
 ```ts
 export declare const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A>
-```
-
-Added in v2.0.0
-
-## setClock
-
-**Signature**
-
-```ts
-export declare const setClock: <A extends Clock.Clock>(clock: A) => Layer.Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -1176,18 +1156,6 @@ work or compute some value.
 export declare const configProviderWith: <R, E, A>(
   f: (configProvider: ConfigProvider) => Effect<R, E, A>
 ) => Effect<R, E, A>
-```
-
-Added in v2.0.0
-
-## setConfigProvider
-
-Sets the current `ConfigProvider`.
-
-**Signature**
-
-```ts
-export declare const setConfigProvider: (configProvider: ConfigProvider) => Layer.Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -3303,10 +3271,10 @@ Annotates each log in this effect with the specified log annotation.
 
 ```ts
 export declare const annotateLogs: {
-  (key: string, value: Logger.AnnotationValue): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  (values: Record<string, Logger.AnnotationValue>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, key: string, value: Logger.AnnotationValue): Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, Logger.AnnotationValue>): Effect<R, E, A>
+  (key: string, value: unknown): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  (values: Record<string, unknown>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, key: string, value: unknown): Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, unknown>): Effect<R, E, A>
 }
 ```
 
@@ -3427,16 +3395,6 @@ export declare const logWarning: <A>(
   messageOrCause: A,
   supplementary?: (A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>) | undefined
 ) => Effect<never, never, void>
-```
-
-Added in v2.0.0
-
-## setUnhandledErrorLogLevel
-
-**Signature**
-
-```ts
-export declare const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Layer.Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -4591,39 +4549,6 @@ export declare const runRequestBlock: <R>(blockedRequests: RequestBlock<R>) => B
 
 Added in v2.0.0
 
-## setRequestBatching
-
-**Signature**
-
-```ts
-export declare const setRequestBatching: (requestBatching: boolean) => Layer.Layer<never, never, never>
-```
-
-Added in v2.0.0
-
-## setRequestCache
-
-**Signature**
-
-```ts
-export declare const setRequestCache: {
-  <R, E>(cache: Effect<R, E, Request.Cache>): Layer.Layer<Exclude<R, Scope.Scope>, E, never>
-  (cache: Request.Cache): Layer.Layer<never, never, never>
-}
-```
-
-Added in v2.0.0
-
-## setRequestCaching
-
-**Signature**
-
-```ts
-export declare const setRequestCaching: (requestCaching: boolean) => Layer.Layer<never, never, never>
-```
-
-Added in v2.0.0
-
 ## step
 
 **Signature**
@@ -4738,16 +4663,6 @@ export declare const withRuntimeFlagsPatchScoped: (
 Added in v2.0.0
 
 # scheduler
-
-## setScheduler
-
-**Signature**
-
-```ts
-export declare const setScheduler: (scheduler: Scheduler.Scheduler) => Layer.Layer<never, never, never>
-```
-
-Added in v2.0.0
 
 ## withScheduler
 
@@ -5730,8 +5645,8 @@ Adds an annotation to the current span if available
 
 ```ts
 export declare const annotateCurrentSpan: {
-  (key: string, value: Tracer.AttributeValue): Effect<never, never, void>
-  (values: Record<string, Tracer.AttributeValue>): Effect<never, never, void>
+  (key: string, value: unknown): Effect<never, never, void>
+  (values: Record<string, unknown>): Effect<never, never, void>
 }
 ```
 
@@ -5745,10 +5660,10 @@ Adds an annotation to each span in this effect.
 
 ```ts
 export declare const annotateSpans: {
-  (key: string, value: Tracer.AttributeValue): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  (values: Record<string, Tracer.AttributeValue>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, key: string, value: Tracer.AttributeValue): Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, Tracer.AttributeValue>): Effect<R, E, A>
+  (key: string, value: unknown): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  (values: Record<string, unknown>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, key: string, value: unknown): Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, values: Record<string, unknown>): Effect<R, E, A>
 }
 ```
 
@@ -5782,14 +5697,8 @@ For all spans in this effect, add a link with the provided span.
 
 ```ts
 export declare const linkSpans: {
-  (span: Tracer.ParentSpan, attributes?: Record<string, Tracer.AttributeValue>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan, attributes?: Record<string, Tracer.AttributeValue>): Effect<
-    R,
-    E,
-    A
-  >
+  (span: Tracer.ParentSpan, attributes?: Record<string, unknown>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan, attributes?: Record<string, unknown>): Effect<R, E, A>
 }
 ```
 
@@ -5805,10 +5714,11 @@ Create a new span for tracing.
 export declare const makeSpan: (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }
 ) => Effect<never, never, Tracer.Span>
@@ -5816,14 +5726,40 @@ export declare const makeSpan: (
 
 Added in v2.0.0
 
-## setParentSpan
+## makeSpanScoped
 
-Adds the provided span to the span stack.
+Create a new span for tracing, and automatically close it when the Scope
+finalizes.
+
+The span is not added to the current span stack, so no child spans will be
+created for it.
 
 **Signature**
 
 ```ts
-export declare const setParentSpan: (span: Tracer.ParentSpan) => Layer.Layer<never, never, never>
+export declare const makeSpanScoped: (
+  name: string,
+  options?: {
+    readonly attributes?: Record<string, unknown>
+    readonly links?: ReadonlyArray<Tracer.SpanLink>
+    readonly parent?: Tracer.ParentSpan
+    readonly root?: boolean
+    readonly sampled?: boolean
+    readonly context?: Context.Context<never>
+  }
+) => Effect<Scope.Scope, never, Tracer.Span>
+```
+
+Added in v2.0.0
+
+## setParentSpan
+
+Adds the provided span to the current span stack.
+
+**Signature**
+
+```ts
+export declare const setParentSpan: (span: Tracer.ParentSpan) => Effect<Scope.Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -5832,7 +5768,7 @@ Added in v2.0.0
 
 Create and add a span to the current span stack.
 
-The span is ended when the Layer is released.
+The span is ended & removed from the stack when the Scope is finalized.
 
 **Signature**
 
@@ -5840,35 +5776,14 @@ The span is ended when the Layer is released.
 export declare const setSpan: (
   name: string,
   options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
+    readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
+    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }
-) => Layer.Layer<never, never, never>
-```
-
-Added in v2.0.0
-
-## setTracer
-
-Create a Layer that sets the current Tracer
-
-**Signature**
-
-```ts
-export declare const setTracer: (tracer: Tracer.Tracer) => Layer.Layer<never, never, never>
-```
-
-Added in v2.0.0
-
-## setTracerTiming
-
-**Signature**
-
-```ts
-export declare const setTracerTiming: (enabled: boolean) => Layer.Layer<never, never, never>
+) => Effect<Scope.Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -5878,7 +5793,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const spanAnnotations: Effect<never, never, HashMap.HashMap<string, Tracer.AttributeValue>>
+export declare const spanAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>>
 ```
 
 Added in v2.0.0
@@ -5929,40 +5844,16 @@ export declare const useSpan: {
   <R, E, A>(
     name: string,
     options: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     },
     evaluate: (span: Tracer.Span) => Effect<R, E, A>
   ): Effect<R, E, A>
 }
-```
-
-Added in v2.0.0
-
-## useSpanScoped
-
-Create a new span for tracing, and automatically close it when the Scope
-finalizes.
-
-The span is not added to the current span stack, so no child spans will be
-created for it.
-
-**Signature**
-
-```ts
-export declare const useSpanScoped: (
-  name: string,
-  options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
-  }
-) => Effect<Scope.Scope, never, Tracer.Span>
 ```
 
 Added in v2.0.0
@@ -5982,18 +5873,6 @@ export declare const withParentSpan: {
 
 Added in v2.0.0
 
-## withParentSpanScoped
-
-Adds the provided span to the current span stack.
-
-**Signature**
-
-```ts
-export declare const withParentSpanScoped: (span: Tracer.ParentSpan) => Effect<Scope.Scope, never, void>
-```
-
-Added in v2.0.0
-
 ## withSpan
 
 Wraps the effect with a new span for tracing.
@@ -6005,10 +5884,11 @@ export declare const withSpan: {
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
@@ -6016,10 +5896,11 @@ export declare const withSpan: {
     self: Effect<R, E, A>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): Effect<R, E, A>
@@ -6030,23 +5911,38 @@ Added in v2.0.0
 
 ## withSpanScoped
 
-Create and add a span to the current span stack.
+Wraps the effect with a new span for tracing.
 
 The span is ended when the Scope is finalized.
 
 **Signature**
 
 ```ts
-export declare const withSpanScoped: (
-  name: string,
-  options?: {
-    readonly attributes?: Record<string, Tracer.AttributeValue>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
-  }
-) => Effect<Scope.Scope, never, void>
+export declare const withSpanScoped: {
+  (
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, unknown>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly sampled?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | R, E, A>
+  <R, E, A>(
+    self: Effect<R, E, A>,
+    name: string,
+    options?: {
+      readonly attributes?: Record<string, unknown>
+      readonly links?: ReadonlyArray<Tracer.SpanLink>
+      readonly parent?: Tracer.ParentSpan
+      readonly root?: boolean
+      readonly sampled?: boolean
+      readonly context?: Context.Context<never>
+    }
+  ): Effect<Scope.Scope | R, E, A>
+}
 ```
 
 Added in v2.0.0

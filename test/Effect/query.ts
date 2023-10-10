@@ -108,12 +108,12 @@ const processRequest = (request: UserRequest): Effect.Effect<never, never, void>
 
 const EnvLive = Layer.provideMerge(
   Layer.mergeAll(
-    Effect.setRequestCache(Request.makeCache({
+    Layer.setRequestCache(Request.makeCache({
       capacity: 100,
       timeToLive: seconds(60)
     })),
-    Effect.setRequestCaching(true),
-    Effect.setRequestBatching(true)
+    Layer.setRequestCaching(true),
+    Layer.setRequestBatching(true)
   ),
   Layer.mergeAll(
     Layer.sync(Counter, () => ({ count: 0 })),

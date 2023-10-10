@@ -40,7 +40,6 @@ Added in v2.0.0
   - [map](#map)
   - [mapInput](#mapinput)
 - [models](#models)
-  - [AnnotationValue (type alias)](#annotationvalue-type-alias)
   - [Logger (interface)](#logger-interface)
 - [symbols](#symbols)
   - [LoggerTypeId](#loggertypeid)
@@ -100,7 +99,7 @@ export declare const make: <Message, Output>(
     readonly cause: Cause.Cause<unknown>
     readonly context: FiberRefs.FiberRefs
     readonly spans: List.List<LogSpan.LogSpan>
-    readonly annotations: HashMap.HashMap<string, AnnotationValue>
+    readonly annotations: HashMap.HashMap<string, unknown>
     readonly date: Date
   }) => Output
 ) => Logger<Message, Output>
@@ -355,16 +354,6 @@ Added in v2.0.0
 
 # models
 
-## AnnotationValue (type alias)
-
-**Signature**
-
-```ts
-export type AnnotationValue = unknown
-```
-
-Added in v2.0.0
-
 ## Logger (interface)
 
 **Signature**
@@ -378,7 +367,7 @@ export interface Logger<Message, Output> extends Logger.Variance<Message, Output
     readonly cause: Cause.Cause<unknown>
     readonly context: FiberRefs.FiberRefs
     readonly spans: List.List<LogSpan.LogSpan>
-    readonly annotations: HashMap.HashMap<string, AnnotationValue>
+    readonly annotations: HashMap.HashMap<string, unknown>
     readonly date: Date
   }) => Output
 }

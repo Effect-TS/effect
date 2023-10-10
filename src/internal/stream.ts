@@ -6847,6 +6847,7 @@ export const withSpan = dual<
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>,
@@ -6858,10 +6859,11 @@ export const withSpan = dual<
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ) => Stream.Stream<R, E, A>
->(3, (self, name, options) => unwrapScoped(Effect.as(Effect.withSpanScoped(name, options), self)))
+>(3, (self, name, options) => unwrapScoped(Effect.as(Effect.setSpan(name, options), self)))
 
 /** @internal */
 export const zip = dual<

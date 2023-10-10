@@ -1641,10 +1641,11 @@ export declare const withSpan: {
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -1654,10 +1655,11 @@ export declare const withSpan: {
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, Tracer.AttributeValue>
+      readonly attributes?: Record<string, unknown>
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
+      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
