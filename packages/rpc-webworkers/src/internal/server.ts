@@ -100,6 +100,8 @@ export const make = <Router extends RpcRouter.Base>(
                 runFork(portHandler(event as MessageEvent) as any)
               }
             })
+
+            port.postMessage("ready")
           }
 
           if ("postMessage" in self) {

@@ -50,9 +50,10 @@ export const make = <E, I, O>(
         return Deferred.succeed(deferred, response)
       })
 
-    const postMessages = (worker: Worker | MessagePort) =>
+    const postMessages = (worker: Worker | MessagePort, latch: Deferred.Deferred<never, void>) =>
       pipe(
-        semaphore.take(1),
+        Deferred.await(latch),
+        Effect.zipRight(semaphore.take(1)),
         Effect.zipRight(outbound.take),
         Effect.flatMap(([request, deferred]) =>
           Effect.sync(() => {
@@ -89,21 +90,27 @@ export const make = <E, I, O>(
           Effect.flatMap(Deferred.isDone(deferred), (done) => done ? Effect.unit : Deferred.interrupt(deferred))
       )
 
+    const openPort = Effect.map(Effect.sync(evaluate), (worker) => {
+      if ("port" in worker) {
+        const port = worker.port
+        port.start()
+        return [worker, port] as const
+      }
+      return [worker, worker] as const
+    })
     const run = Effect.acquireUseRelease(
-      Effect.map(Effect.sync(evaluate), (worker) => {
-        if ("port" in worker) {
-          const port = worker.port
-          port.start()
-          return [worker, port] as const
-        }
-        return [worker, worker] as const
-      }),
-      ([worker, port]) =>
+      Effect.zip(openPort, Deferred.make<never, void>()),
+      ([[worker, port], readyLatch]) =>
         Effect.zipRight(
           Effect.async<never, E, never>((resume, signal) => {
             port.addEventListener(
               "message",
-              (event) => Effect.runFork(handleMessage(event as MessageEvent)),
+              (event) =>
+                Effect.runFork(
+                  (event as MessageEvent).data === "ready" ?
+                    Deferred.complete(readyLatch, Effect.unit) :
+                    handleMessage(event as MessageEvent)
+                ),
               { signal }
             )
             worker.addEventListener(
@@ -112,10 +119,10 @@ export const make = <E, I, O>(
               { signal }
             )
           }),
-          postMessages(port),
+          postMessages(port, readyLatch),
           { concurrent: true }
         ),
-      ([, port], exit) =>
+      ([[, port]], exit) =>
         Effect.zipRight(
           handleExit(exit),
           Effect.sync(() => port.postMessage("close"))
