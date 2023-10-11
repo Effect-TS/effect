@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-webworkers",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "",
   "main": "dist/effect-rpc-webworkers.cjs.js",
   "module": "dist/effect-rpc-webworkers.esm.js",

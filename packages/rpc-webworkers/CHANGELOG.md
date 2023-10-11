@@ -1,5 +1,11 @@
 # @effect/rpc-webworkers
 
+## 0.12.2
+
+### Patch Changes
+
+- [#110](https://github.com/Effect-TS/rpc/pull/110) [`8163115`](https://github.com/Effect-TS/rpc/commit/8163115bb3f070f41e79f895e5b78cc3f54e25f3) Thanks [@tim-smart](https://github.com/tim-smart)! - wait for ready latch in workers
+
 ## 0.12.1
 
 ### Patch Changes
