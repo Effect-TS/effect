@@ -169,14 +169,16 @@ describe.concurrent("Cause", () => {
       expect(Cause.sequential(Cause.fail("failure 1"), Cause.fail("failure 2")).toJSON()).toStrictEqual({
         _id: "Cause",
         _tag: "Sequential",
-        errors: [
-          {
-            message: "Error: failure 1"
-          },
-          {
-            message: "Error: failure 2"
-          }
-        ]
+        left: {
+          _id: "Cause",
+          _tag: "Fail",
+          failure: "failure 1"
+        },
+        right: {
+          _id: "Cause",
+          _tag: "Fail",
+          failure: "failure 2"
+        }
       })
     })
 
@@ -184,14 +186,16 @@ describe.concurrent("Cause", () => {
       expect(Cause.parallel(Cause.fail("failure 1"), Cause.fail("failure 2")).toJSON()).toStrictEqual({
         _id: "Cause",
         _tag: "Parallel",
-        errors: [
-          {
-            message: "Error: failure 1"
-          },
-          {
-            message: "Error: failure 2"
-          }
-        ]
+        left: {
+          _id: "Cause",
+          _tag: "Fail",
+          failure: "failure 1"
+        },
+        right: {
+          _id: "Cause",
+          _tag: "Fail",
+          failure: "failure 2"
+        }
       })
     })
   })
