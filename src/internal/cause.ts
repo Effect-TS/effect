@@ -59,7 +59,7 @@ const proto = {
         return { _id: "Cause", _tag: this._tag, failure: toJSON(this.error) }
       case "Sequential":
       case "Parallel":
-        return { _id: "Cause", _tag: this._tag, errors: toJSON(prettyErrors(this)) }
+        return { _id: "Cause", _tag: this._tag, left: toJSON(this.left), right: toJSON(this.right) }
     }
   },
   toString<E>(this: Cause.Cause<E>) {
