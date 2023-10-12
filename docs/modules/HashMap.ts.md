@@ -51,7 +51,9 @@ Added in v2.0.0
   - [unsafeGet](#unsafeget)
 - [utils](#utils)
   - [HashMap (namespace)](#hashmap-namespace)
+    - [Key (type alias)](#key-type-alias)
     - [UpdateFn (type alias)](#updatefn-type-alias)
+    - [Value (type alias)](#value-type-alias)
   - [beginMutation](#beginmutation)
   - [endMutation](#endmutation)
   - [modify](#modify)
@@ -434,12 +436,58 @@ Added in v2.0.0
 
 Added in v2.0.0
 
+### Key (type alias)
+
+This type-level utility extracts the key type `K` from a `HashMap<K, V>` type.
+
+**Signature**
+
+```ts
+export type Key<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _K : never
+```
+
+**Example**
+
+```ts
+import * as HashMap from 'effect/HashMap'
+
+declare const hm: HashMap.HashMap<string, number>
+
+// $ExpectType string
+type K = HashMap.HashMap.Key<typeof hm>
+```
+
+Added in v2.0.0
+
 ### UpdateFn (type alias)
 
 **Signature**
 
 ```ts
 export type UpdateFn<V> = (option: Option<V>) => Option<V>
+```
+
+Added in v2.0.0
+
+### Value (type alias)
+
+This type-level utility extracts the value type `V` from a `HashMap<K, V>` type.
+
+**Signature**
+
+```ts
+export type Value<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _V : never
+```
+
+**Example**
+
+```ts
+import * as HashMap from 'effect/HashMap'
+
+declare const hm: HashMap.HashMap<string, number>
+
+// $ExpectType number
+type V = HashMap.HashMap.Value<typeof hm>
 ```
 
 Added in v2.0.0
