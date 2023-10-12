@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.43.1
+
+### Patch Changes
+
+- [#483](https://github.com/Effect-TS/schema/pull/483) [`c80c94f`](https://github.com/Effect-TS/schema/commit/c80c94f397668d20fa52ad929a0f25394039213d) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add jsonSchema annotation helper
+
+- [#481](https://github.com/Effect-TS/schema/pull/481) [`56f5ac0`](https://github.com/Effect-TS/schema/commit/56f5ac0653851ef667cd24d7eca5f7246eb56273) Thanks [@gcanti](https://github.com/gcanti)! - AST/Schema: add mutable combinator
+
 ## 0.43.0
 
 ### Minor Changes
