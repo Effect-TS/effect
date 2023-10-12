@@ -1942,6 +1942,16 @@ export const scoped: <R, E, A>(
 export const succeed: <A>(value: A) => Channel<never, unknown, unknown, unknown, never, never, A> = core.succeed
 
 /**
+ * Lazily constructs a channel from the given side effect.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const suspend: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+  evaluate: LazyArg<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> = core.suspend
+
+/**
  * Constructs a channel that succeeds immediately with the specified lazy value.
  *
  * @since 2.0.0
