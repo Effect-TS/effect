@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.22.1
+
+### Patch Changes
+
+- [#195](https://github.com/Effect-TS/platform/pull/195) [`25ce726`](https://github.com/Effect-TS/platform/commit/25ce72656a9addbb1f4d539ea69423b73fe43f46) Thanks [@tim-smart](https://github.com/tim-smart)! - add Stream.fromDuplex & pipeThroughDuplex/Simple
+
 ## 0.22.0
 
 ### Minor Changes
