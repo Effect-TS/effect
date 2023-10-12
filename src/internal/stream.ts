@@ -2980,10 +2980,13 @@ export const fromIteratorSucceed = <A>(
             }
             builder = []
             let count = 0
-            while (count < maxChunkSize && !next.done) {
+            while (next.done === false) {
               builder.push(next.value)
-              next = iterator.next()
               count = count + 1
+              if (count >= maxChunkSize) {
+                break
+              }
+              next = iterator.next()
             }
             if (count > 0) {
               return pipe(
