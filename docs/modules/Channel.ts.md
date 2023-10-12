@@ -38,6 +38,7 @@ Added in v2.0.0
   - [readWithCause](#readwithcause)
   - [scoped](#scoped)
   - [succeed](#succeed)
+  - [suspend](#suspend)
   - [sync](#sync)
   - [unit](#unit)
   - [unwrap](#unwrap)
@@ -545,6 +546,20 @@ Constructs a channel that succeeds immediately with the specified value.
 
 ```ts
 export declare const succeed: <A>(value: A) => Channel<never, unknown, unknown, unknown, never, never, A>
+```
+
+Added in v2.0.0
+
+## suspend
+
+Lazily constructs a channel from the given side effect.
+
+**Signature**
+
+```ts
+export declare const suspend: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+  evaluate: LazyArg<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ```
 
 Added in v2.0.0
