@@ -324,7 +324,8 @@ Added in v2.0.0
 
 ## counter
 
-A counter, which can be incremented by numbers.
+Represents a Counter metric that tracks cumulative numerical values over time.
+Counters can be incremented and decremented and provide a running total of changes.
 
 **Signature**
 
@@ -341,17 +342,40 @@ export declare const counter: {
 }
 ```
 
+**Example**
+
+```ts
+import * as Metric from 'effect/Metric'
+
+const numberCounter = Metric.counter('count', {
+  description: 'A number counter',
+})
+
+const bigintCounter = Metric.counter('count', {
+  description: 'A bigint counter',
+  bigint: true,
+})
+```
+
 Added in v2.0.0
 
 ## frequency
 
-A string histogram metric, which keeps track of the counts of different
-strings.
+Creates a Frequency metric to count occurrences of events.
+Frequency metrics are used to count the number of times specific events or incidents occur.
 
 **Signature**
 
 ```ts
 export declare const frequency: (name: string, description?: string) => Metric.Frequency<string>
+```
+
+**Example**
+
+```ts
+import * as Metric from 'effect/Metric'
+
+const errorFrequency = Metric.frequency('error_frequency', 'Counts the occurrences of errors.')
 ```
 
 Added in v2.0.0
@@ -370,7 +394,8 @@ Added in v2.0.0
 
 ## gauge
 
-A gauge, which can be set to a value.
+Represents a Gauge metric that tracks and reports a single numerical value at a specific moment.
+Gauges are suitable for metrics that represent instantaneous values, such as memory usage or CPU load.
 
 **Signature**
 
@@ -381,12 +406,27 @@ export declare const gauge: {
 }
 ```
 
+**Example**
+
+```ts
+import * as Metric from 'effect/Metric'
+
+const numberGauge = Metric.gauge('memory_usage', {
+  description: 'A gauge for memory usage',
+})
+
+const bigintGauge = Metric.gauge('cpu_load', {
+  description: 'A gauge for CPU load',
+  bigint: true,
+})
+```
+
 Added in v2.0.0
 
 ## histogram
 
-A numeric histogram metric, which keeps track of the count of numbers that
-fall in bins with the specified boundaries.
+Represents a Histogram metric that records observations in specified value boundaries.
+Histogram metrics are useful for measuring the distribution of values within a range.
 
 **Signature**
 
@@ -396,6 +436,19 @@ export declare const histogram: (
   boundaries: MetricBoundaries.MetricBoundaries,
   description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram>
+```
+
+**Example**
+
+```ts
+import * as Metric from 'effect/Metric'
+import * as MetricBoundaries from 'effect/MetricBoundaries'
+
+const latencyHistogram = Metric.histogram(
+  'latency_histogram',
+  MetricBoundaries.linear({ start: 0, width: 10, count: 11 }),
+  'Measures the distribution of request latency.'
+)
 ```
 
 Added in v2.0.0
@@ -424,6 +477,9 @@ Added in v2.0.0
 
 ## summary
 
+Creates a Summary metric that records observations and calculates quantiles.
+Summary metrics provide statistical information about a set of values, including quantiles.
+
 **Signature**
 
 ```ts
@@ -435,6 +491,22 @@ export declare const summary: (options: {
   readonly quantiles: Chunk.Chunk<number>
   readonly description?: string
 }) => Metric.Summary<number>
+```
+
+**Example**
+
+```ts
+import * as Metric from 'effect/Metric'
+import * as Chunk from 'effect/Chunk'
+
+const responseTimesSummary = Metric.summary({
+  name: 'response_times_summary',
+  maxAge: '60 seconds', // Retain observations for 60 seconds.
+  maxSize: 1000, // Keep a maximum of 1000 observations.
+  error: 0.01, // Allow a 1% error when calculating quantiles.
+  quantiles: Chunk.make(0.5, 0.9, 0.99), // Calculate 50th, 90th, and 99th percentiles.
+  description: 'Measures the distribution of response times.',
+})
 ```
 
 Added in v2.0.0
