@@ -26,8 +26,8 @@ devDependencies:
     specifier: ^0.0.182
     version: 0.0.182(typescript@5.2.2)
   '@effect/build-utils':
-    specifier: ^0.1.8
-    version: 0.1.8
+    specifier: ^0.1.9
+    version: 0.1.9
   '@effect/docgen':
     specifier: ^0.2.0
     version: 0.2.0(@types/node@20.8.4)(typescript@5.2.2)
@@ -779,8 +779,8 @@ packages:
     resolution: {integrity: sha512-rPwwm/RrFIolz6xHa8Kzpshuwpe+xu/XcEw9iUmRF2tnyIwxxaW7XoFKaQ+GfPju81cKpH4vJeq7/2IizKvyjg==}
     dev: true
 
-  /@effect/build-utils@0.1.8:
-    resolution: {integrity: sha512-RGrn0ZwUO2v4CCGDEfW3loNNdqW5zrs8h0b9JJdPHKuKYaosvuy86DRqjyr/nzuga+/0xhvfOiucNnxbgw5qMQ==}
+  /@effect/build-utils@0.1.9:
+    resolution: {integrity: sha512-PmgMZxGgk5lweaYZpR/kC09eZpXOEth9hShr8xn5a5m4S7RiMUu7O1h19Tx/i2ZgpLa/GK1405nkROT5+5z8Sg==}
     engines: {node: '>=16.17.1'}
     hasBin: true
     dev: true
