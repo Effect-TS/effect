@@ -1,61 +1,41 @@
+import * as Channel from "effect/Channel"
+import type * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
-import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import type { Writable } from "node:stream"
-import type { FromWritableOptions } from "../Sink"
+import type { FromWritableOptions } from "../Stream"
+import { writeEffect } from "./stream"
 
 /** @internal */
-export const fromWritable = <E, A>(
+export const fromWritable = <E, A = Uint8Array>(
   evaluate: LazyArg<Writable>,
   onError: (error: unknown) => E,
-  { encoding, endOnClose = true }: FromWritableOptions = {}
+  options: FromWritableOptions = {}
 ): Sink.Sink<never, E, A, never, void> =>
-  endOnClose ?
-    makeSinkWithRelease<E, A>(evaluate, onError, encoding) :
-    makeSink<E, A>(evaluate, onError, encoding)
+  Sink.suspend(() => Sink.fromChannel(writeChannel(evaluate(), onError, options)))
 
-const makeSink = <E, A>(stream: LazyArg<Writable>, onError: (error: unknown) => E, encoding?: BufferEncoding) =>
-  pipe(
-    Effect.sync(stream),
-    Effect.map((stream) => Sink.forEach(write<E, A>(stream, onError, encoding))),
-    Sink.unwrap
-  )
-
-const makeSinkWithRelease = <E, A>(
-  stream: LazyArg<Writable>,
-  onError: (error: unknown) => E,
-  encoding?: BufferEncoding
-) =>
-  pipe(
-    Effect.acquireRelease(Effect.sync(stream), endWritable),
-    Effect.map((stream) => Sink.forEach(write<E, A>(stream, onError, encoding))),
-    Sink.unwrapScoped
-  )
-
-const endWritable = (stream: Writable) =>
-  Effect.async<never, never, void>((resume) => {
-    if (stream.closed) {
-      resume(Effect.unit)
-      return
-    }
-
-    stream.end(() => resume(Effect.unit))
-  })
-
-const write = <E, A>(stream: Writable, onError: (error: unknown) => E, encoding?: BufferEncoding) => (_: A) =>
-  Effect.async<never, E, void>((resume) => {
-    const cb = (err?: Error | null) => {
-      if (err) {
-        resume(Effect.fail(onError(err)))
-      } else {
+const writeChannel = <IE, OE, A>(
+  writable: Writable,
+  onError: (error: unknown) => OE,
+  { encoding, endOnDone = true }: FromWritableOptions = {}
+): Channel.Channel<never, IE, Chunk.Chunk<A>, unknown, IE | OE, Chunk.Chunk<never>, void> => {
+  const write = writeEffect(writable, onError, encoding)
+  const close = endOnDone ?
+    Effect.async<never, never, void>((resume) => {
+      if (writable.closed) {
         resume(Effect.unit)
+      } else {
+        writable.end(() => resume(Effect.unit))
       }
-    }
+    }) :
+    Channel.unit
 
-    if (encoding) {
-      stream.write(_, encoding, cb)
-    } else {
-      stream.write(_, cb)
-    }
-  })
+  const loop: Channel.Channel<never, IE, Chunk.Chunk<A>, unknown, OE | IE, Chunk.Chunk<never>, void> = Channel
+    .readWithCause({
+      onInput: (chunk: Chunk.Chunk<A>) => Channel.flatMap(Channel.fromEffect(write(chunk)), () => loop),
+      onFailure: (cause) => Channel.zipRight(close, Channel.failCause(cause)),
+      onDone: (_done) => close
+    })
+  return loop
+}

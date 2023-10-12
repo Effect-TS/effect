@@ -6,15 +6,7 @@ import type { LazyArg } from "effect/Function"
 import type { Sink } from "effect/Sink"
 import type { Writable } from "stream"
 import * as internal from "./internal/sink"
-
-/**
- * @category model
- * @since 1.0.0
- */
-export interface FromWritableOptions {
-  readonly endOnClose?: boolean
-  readonly encoding?: BufferEncoding
-}
+import type { FromWritableOptions } from "./Stream"
 
 /**
  * @category constructor
