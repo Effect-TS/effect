@@ -35,6 +35,36 @@ export declare namespace HashMap {
    * @category models
    */
   export type UpdateFn<V> = (option: Option<V>) => Option<V>
+  /**
+   * This type-level utility extracts the key type `K` from a `HashMap<K, V>` type.
+   *
+   * @example
+   * import * as HashMap from "effect/HashMap"
+   *
+   * declare const hm: HashMap.HashMap<string, number>
+   *
+   * // $ExpectType string
+   * type K = HashMap.HashMap.Key<typeof hm>
+   *
+   * @since 2.0.0
+   * @category type-level
+   */
+  export type Key<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _K : never
+  /**
+   * This type-level utility extracts the value type `V` from a `HashMap<K, V>` type.
+   *
+   * @example
+   * import * as HashMap from "effect/HashMap"
+   *
+   * declare const hm: HashMap.HashMap<string, number>
+   *
+   * // $ExpectType number
+   * type V = HashMap.HashMap.Value<typeof hm>
+   *
+   * @since 2.0.0
+   * @category type-level
+   */
+  export type Value<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _V : never
 }
 
 /**
