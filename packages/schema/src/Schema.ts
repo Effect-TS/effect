@@ -1006,6 +1006,30 @@ export const required = <I, A>(
 ): Schema<Simplify<Required<I>>, Simplify<Required<A>>> => make(AST.required(self.ast))
 
 /**
+ * Make all properties in T mutable
+ *
+ * @since 1.0.0
+ */
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P]
+}
+
+/**
+ * Creates a new schema with shallow mutability applied to its properties.
+ *
+ * @param schema - The original schema to make properties mutable (shallowly).
+ *
+ * @category combinators
+ * @since 1.0.0
+ */
+export const mutable = <I, A>(
+  schema: Schema<I, A>
+): Schema<Simplify<Mutable<I>>, Simplify<Mutable<A>>> => {
+  const ast = AST.mutable(schema.ast)
+  return ast === schema.ast ? schema as any : make(ast)
+}
+
+/**
  * @category combinators
  * @since 1.0.0
  */

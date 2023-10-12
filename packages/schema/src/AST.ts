@@ -1322,6 +1322,42 @@ export const required = (ast: AST): AST => {
   }
 }
 
+/**
+ * Creates a new AST with shallow mutability applied to its properties.
+ *
+ * @param ast - The original AST to make properties mutable (shallowly).
+ *
+ * @since 1.0.0
+ */
+export const mutable = (ast: AST): AST => {
+  switch (ast._tag) {
+    case "Tuple":
+      return createTuple(ast.elements, ast.rest, false, ast.annotations)
+    case "TypeLiteral":
+      return createTypeLiteral(
+        ast.propertySignatures.map((ps) =>
+          createPropertySignature(ps.name, ps.type, ps.isOptional, false, ps.annotations)
+        ),
+        ast.indexSignatures.map((is) => createIndexSignature(is.parameter, is.type, false)),
+        ast.annotations
+      )
+    case "Union":
+      return createUnion(ast.types.map(mutable), ast.annotations)
+    case "Lazy":
+      return createLazy(() => mutable(ast.f()), ast.annotations)
+    case "Refinement":
+      return createRefinement(mutable(ast.from), ast.filter, ast.annotations)
+    case "Transform":
+      return createTransform(
+        mutable(ast.from),
+        mutable(ast.to),
+        ast.transformation,
+        ast.annotations
+      )
+  }
+  return ast
+}
+
 // -------------------------------------------------------------------------------------
 // compiler harness
 // -------------------------------------------------------------------------------------

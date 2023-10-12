@@ -1,5 +1,5 @@
 import * as Brand from "effect/Brand"
-import { pipe } from "effect/Function";
+import { pipe, identity } from "effect/Function";
 import * as S from "@effect/schema/Schema";
 
 // ---------------------------------------------
@@ -569,3 +569,31 @@ const Eur = Brand.nominal<Eur>()
 
 // $ExpectType Schema<number, number & Brand<"Eur">>
 S.number.pipe(S.fromBrand(Eur))
+
+// ---------------------------------------------
+// mutable
+// ---------------------------------------------
+
+// $ExpectType Schema<string, string>
+S.mutable(S.string)
+
+// $ExpectType Schema<{ a: number; }, { a: number; }>
+S.mutable(S.struct({ a: S.number }))
+
+// $ExpectType Schema<{ [x: string]: number; }, { [x: string]: number; }>
+S.mutable(S.record(S.string, S.number))
+
+// $ExpectType Schema<string[], string[]>
+S.mutable(S.array(S.string))
+
+// $ExpectType Schema<string[] | { a: number; }, string[] | { a: number; }>
+S.mutable(S.union(S.struct({ a: S.number }), S.array(S.string)))
+
+// $ExpectType Schema<string[], string[]>
+S.mutable(S.array(S.string).pipe(S.maxItems(2)))
+
+// $ExpectType Schema<string[], string[]>
+S.mutable(S.lazy(() => S.array(S.string)))
+
+// $ExpectType Schema<string[], string[]>
+S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
