@@ -1452,6 +1452,14 @@ export const documentation =
   (documentation: AST.DocumentationAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
     make(AST.setAnnotation(self.ast, AST.DocumentationAnnotationId, documentation))
 
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const jsonSchema =
+  (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
+
 // ---------------------------------------------
 // string filters
 // ---------------------------------------------

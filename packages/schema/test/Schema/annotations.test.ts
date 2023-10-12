@@ -54,6 +54,16 @@ describe("Schema/annotations", () => {
     expect(S.isSchema(schema)).toEqual(true)
   })
 
+  it("jsonSchema", () => {
+    const schema = S.string.pipe(S.jsonSchema({ type: "string" }))
+    expect(schema.ast.annotations).toEqual({
+      [AST.JSONSchemaAnnotationId]: { type: "string" },
+      [AST.TitleAnnotationId]: "string",
+      [AST.DescriptionAnnotationId]: "a string"
+    })
+    expect(S.isSchema(schema)).toEqual(true)
+  })
+
   it("message as annotation options", async () => {
     const schema =
       // initial schema, a string
