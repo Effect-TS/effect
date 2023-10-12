@@ -823,7 +823,7 @@ export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
 export const unsafeLast = <A>(self: Chunk<A>): A => unsafeGet(self, self.length - 1)
 
 /**
- * Returns an effect whose success is mapped by the specified f function.
+ * Returns a chunk with the elements mapped by the specified f function.
  *
  * @since 2.0.0
  * @category mapping
@@ -835,6 +835,17 @@ export const map: {
   self.backing._tag === "ISingleton" ?
     of(f(self.backing.a, 0)) :
     unsafeFromArray(pipe(toReadonlyArray(self), RA.map((a, i) => f(a, i)))))
+
+/**
+ * Returns a non empty chunk with the elements mapped by the specified f function.
+ *
+ * @since 2.0.0
+ * @category mapping
+ */
+export const mapNonEmpty: {
+  <A, B>(f: (a: A, i: number) => B): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
+  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => B): NonEmptyChunk<B>
+} = map as any
 
 /**
  * Statefully maps over the chunk, producing new elements of type `B`.
