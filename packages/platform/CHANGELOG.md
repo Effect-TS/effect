@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.22.0
+
+### Minor Changes
+
+- [#199](https://github.com/Effect-TS/platform/pull/199) [`1e94b15`](https://github.com/Effect-TS/platform/commit/1e94b1588e51df20f9c4fc4871b246048751506c) Thanks [@tim-smart](https://github.com/tim-smart)! - enable tracing by default
+
 ## 0.21.0
 
 ### Minor Changes

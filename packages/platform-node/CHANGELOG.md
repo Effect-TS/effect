@@ -1,5 +1,22 @@
 # @effect/platform-node
 
+## 0.23.0
+
+### Minor Changes
+
+- [#197](https://github.com/Effect-TS/platform/pull/197) [`fcc5871`](https://github.com/Effect-TS/platform/commit/fcc5871d326296334ff9a421860d69e697eea559) Thanks [@tim-smart](https://github.com/tim-smart)! - update api for Stream.toString & toUint8Array
+
+- [#199](https://github.com/Effect-TS/platform/pull/199) [`1e94b15`](https://github.com/Effect-TS/platform/commit/1e94b1588e51df20f9c4fc4871b246048751506c) Thanks [@tim-smart](https://github.com/tim-smart)! - enable tracing by default
+
+### Patch Changes
+
+- [#197](https://github.com/Effect-TS/platform/pull/197) [`fcc5871`](https://github.com/Effect-TS/platform/commit/fcc5871d326296334ff9a421860d69e697eea559) Thanks [@tim-smart](https://github.com/tim-smart)! - fix for non-compliant node steams
+
+- [#197](https://github.com/Effect-TS/platform/pull/197) [`fcc5871`](https://github.com/Effect-TS/platform/commit/fcc5871d326296334ff9a421860d69e697eea559) Thanks [@tim-smart](https://github.com/tim-smart)! - accept NodeJS.\*Stream in Stream & Sink modules
+
+- Updated dependencies [[`1e94b15`](https://github.com/Effect-TS/platform/commit/1e94b1588e51df20f9c4fc4871b246048751506c)]:
+  - @effect/platform@0.22.0
+
 ## 0.22.1
 
 ### Patch Changes
