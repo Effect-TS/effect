@@ -130,7 +130,7 @@ const entries = <R, E>(
       parser.on("entry", (entry) => {
         emit.single(entry)
       })
-      parser.on("end", () => {
+      parser.on("close", () => {
         emit.end()
       })
     })
@@ -142,8 +142,8 @@ const entries = <R, E>(
           (error) => new TarError({ error })
         )
       ),
-      Stream.zipRight(Stream.never)
+      Stream.zipRight(Stream.empty)
     )
 
-    return Stream.merge(entries, pump, { haltStrategy: "left" })
+    return Stream.merge(entries, pump)
   })

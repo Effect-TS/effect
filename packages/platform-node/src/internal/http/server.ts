@@ -79,7 +79,9 @@ export const make = (
           port: address.port
         },
       serve: (httpApp, middleware) => {
-        const handledApp = middleware ? middleware(respond(httpApp)) : respond(httpApp)
+        const handledApp = middleware
+          ? middleware(App.withDefaultMiddleware(respond(httpApp)))
+          : App.withDefaultMiddleware(respond(httpApp))
         return Effect.flatMap(Effect.all([Effect.runtime(), Effect.fiberId]), ([runtime, fiberId]) => {
           const runFork = Runtime.runFork(runtime)
           function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {

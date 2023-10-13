@@ -54,7 +54,7 @@ export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<never,
 export const agentLayer = makeAgentLayer()
 
 const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
-  Client.make((request) =>
+  Client.makeDefault((request) =>
     Effect.flatMap(
       UrlParams.makeUrl(request.url, request.urlParams, (_) =>
         Error.RequestError({

@@ -1,11 +1,8 @@
 import * as Effect from "effect/Effect"
-import { flow } from "effect/Function"
-import * as App from "../../Http/App"
 import * as Headers from "../../Http/Headers"
 import * as IncomingMessage from "../../Http/IncomingMessage"
 import type * as Middleware from "../../Http/Middleware"
 import * as ServerRequest from "../../Http/ServerRequest"
-import * as ServerResponse from "../../Http/ServerResponse"
 
 /** @internal */
 export const make = <M extends Middleware.Middleware>(middleware: M): M => middleware
@@ -37,17 +34,16 @@ export const logger = make((httpApp) => {
 /** @internal */
 export const tracer = make((httpApp) => {
   const appWithStatus = Effect.tap(
-    Effect.zipRight(
-      App.appendPreResponseHandler(b3Response),
-      httpApp
-    ),
+    httpApp,
     (response) => Effect.annotateCurrentSpan("http.status", response.status)
   )
   return Effect.flatMap(
     ServerRequest.ServerRequest,
     (request) =>
       Effect.flatMap(
-        Effect.orElseSucceed(IncomingMessage.schemaExternalSpan(request), () => undefined),
+        request.headers["x-b3-traceid"] || request.headers["b3"] ?
+          Effect.orElseSucceed(IncomingMessage.schemaExternalSpan(request), () => undefined) :
+          Effect.succeed(undefined),
         (parent) =>
           Effect.withSpan(
             appWithStatus,
@@ -57,21 +53,6 @@ export const tracer = make((httpApp) => {
       )
   )
 })
-
-const b3Response: App.PreResponseHandler = (_request, response) =>
-  Effect.flatMap(
-    Effect.currentSpan,
-    (span) =>
-      span._tag === "Some"
-        ? ServerResponse.setHeader(
-          response,
-          "b3",
-          `${span.value.traceId}-${span.value.spanId}-1${
-            span.value.parent._tag === "Some" ? `-${span.value.parent.value.spanId}` : ""
-          }`
-        )
-        : response
-  )
 
 /** @internal */
 export const xForwardedHeaders = make((httpApp) =>
@@ -87,6 +68,3 @@ export const xForwardedHeaders = make((httpApp) =>
       })
       : request)
 )
-
-/** @internal */
-export const loggerTracer = flow(tracer, logger)

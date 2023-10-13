@@ -6,6 +6,7 @@ import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as internalMiddleware from "../internal/http/middleware"
 import type * as ServerError from "./ServerError"
 import type * as ServerRequest from "./ServerRequest"
 import type * as ServerResponse from "./ServerResponse"
@@ -21,6 +22,14 @@ export interface HttpApp<R, E, A> extends Effect.Effect<R | ServerRequest.Server
  * @category models
  */
 export type Default<R, E> = HttpApp<R, E, ServerResponse.ServerResponse>
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withDefaultMiddleware = <R, E>(
+  self: Default<R, E>
+): Default<R, E> => internalMiddleware.tracer(self)
 
 /**
  * @since 1.0.0

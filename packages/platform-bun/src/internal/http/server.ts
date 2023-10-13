@@ -48,9 +48,9 @@ export const make = (
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
       serve(httpApp, middleware) {
-        const app: App.Default<never, unknown> = middleware
-          ? middleware(respond(httpApp)) as App.Default<never, unknown>
-          : respond(httpApp)
+        const app = (middleware
+          ? middleware(App.withDefaultMiddleware(respond(httpApp)))
+          : App.withDefaultMiddleware(respond(httpApp))) as App.Default<never, unknown>
         return pipe(
           Effect.all([Effect.runtime<never>(), Effect.fiberId]),
           Effect.zipLeft(

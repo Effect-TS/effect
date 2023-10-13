@@ -2,19 +2,18 @@ import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { dual, pipe } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type * as Body from "../../Http/Body"
 import type * as Client from "../../Http/Client"
 import type * as Error from "../../Http/ClientError"
 import type * as ClientRequest from "../../Http/ClientRequest"
-import * as IncomingMessage from "../../Http/IncomingMessage"
+import type * as ClientResponse from "../../Http/ClientResponse"
 import * as Method from "../../Http/Method"
 import * as UrlParams from "../../Http/UrlParams"
 import * as internalBody from "./body"
@@ -43,11 +42,41 @@ export const make = <R, E, A>(
   return f as Client.Client<R, E, A>
 }
 
+const withB3Propagation = <R, E>(
+  self: Client.Client.WithResponse<R, E>
+): Client.Client.WithResponse<R, E> =>
+  make((req) =>
+    Effect.flatMap(
+      Effect.map(
+        Effect.currentSpan,
+        Option.match({
+          onNone: () => req,
+          onSome: (span) =>
+            internalRequest.setHeader(
+              req,
+              "b3",
+              `${span.traceId}-${span.spanId}-${span.sampled ? "1" : "0"}${
+                span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
+              }`
+            )
+        })
+      ),
+      self
+    )
+  )
+
+/** @internal */
+export const makeDefault = (
+  f: (
+    request: ClientRequest.ClientRequest
+  ) => Effect.Effect<never, Error.HttpClientError, ClientResponse.ClientResponse>
+): Client.Client.Default => withB3Propagation(make(f))
+
 /** @internal */
 export const fetch = (
   options: RequestInit = {}
 ): Client.Client.Default =>
-  make((request) =>
+  makeDefault((request) =>
     Effect.flatMap(
       UrlParams.makeUrl(request.url, request.urlParams, (_) =>
         internalError.requestError({
@@ -377,35 +406,6 @@ export const mapRequestEffect = dual<
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
   ) => Client.Client<R | R2, E | E2, A>
 >(2, (self, f) => make((request) => Effect.flatMap(f(request), self)))
-
-/** @internal */
-export const withB3Propagation = <R, E>(
-  self: Client.Client.WithResponse<R, E>
-): Client.Client.WithResponse<R | Scope.Scope, E> =>
-  make((req) =>
-    pipe(
-      Effect.map(
-        Effect.currentSpan,
-        Option.match({
-          onNone: () => req,
-          onSome: (span) => {
-            const parentId = span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
-            return internalRequest.setHeader(
-              req,
-              "b3",
-              `${span.traceId}-${span.spanId}-1${parentId}`
-            )
-          }
-        })
-      ),
-      Effect.flatMap(self),
-      Effect.tap((res) =>
-        Effect.ignore(
-          Effect.flatMap(IncomingMessage.schemaExternalSpan(res), Effect.setParentSpan)
-        )
-      )
-    )
-  )
 
 /** @internal */
 export const retry: {

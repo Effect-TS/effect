@@ -9,7 +9,6 @@ import type * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
 import * as internal from "../internal/http/client"
 import type * as Error from "./ClientError"
 import type * as ClientRequest from "./ClientRequest"
@@ -208,6 +207,16 @@ export const make: <R, E, A>(f: (request: ClientRequest.ClientRequest) => Effect
 
 /**
  * @since 1.0.0
+ * @category constructors
+ */
+export const makeDefault: (
+  f: (
+    request: ClientRequest.ClientRequest
+  ) => Effect.Effect<never, Error.HttpClientError, ClientResponse.ClientResponse>
+) => Client.Default = internal.makeDefault
+
+/**
+ * @since 1.0.0
  * @category mapping & sequencing
  */
 export const transform: {
@@ -305,13 +314,6 @@ export const schemaFunction: {
     request: ClientRequest.ClientRequest
   ) => (a: SA) => Effect.Effect<R, Error.RequestError | ParseResult.ParseError | E, A>
 } = internal.schemaFunction
-
-/**
- * @since 1.0.0
- * @category tracing
- */
-export const withB3Propagation: <R, E>(self: Client.WithResponse<R, E>) => Client.WithResponse<R | Scope.Scope, E> =
-  internal.withB3Propagation
 
 /**
  * @since 1.0.0
