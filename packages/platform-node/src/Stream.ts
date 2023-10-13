@@ -34,7 +34,7 @@ export interface FromWritableOptions {
  * @since 1.0.0
  */
 export const fromReadable: <E, A = Uint8Array>(
-  evaluate: LazyArg<Readable>,
+  evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   { chunkSize }?: FromReadableOptions
 ) => Stream<never, E, A> = internal.fromReadable
@@ -81,11 +81,11 @@ export const pipeThroughSimple: {
  * @category conversions
  */
 export const toString: <E>(
+  readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options: {
-    readable: LazyArg<Readable>
-    onFailure: (error: unknown) => E
-    encoding?: BufferEncoding
-    maxBytes?: SizeInput
+    readonly onFailure: (error: unknown) => E
+    readonly encoding?: BufferEncoding | undefined
+    readonly maxBytes?: SizeInput | undefined
   }
 ) => Effect<never, E, string> = internal.toString
 
@@ -94,9 +94,6 @@ export const toString: <E>(
  * @category conversions
  */
 export const toUint8Array: <E>(
-  options: {
-    readable: LazyArg<Readable>
-    onFailure: (error: unknown) => E
-    maxBytes?: SizeInput
-  }
+  readable: LazyArg<Readable | NodeJS.ReadableStream>,
+  options: { readonly onFailure: (error: unknown) => E; readonly maxBytes?: SizeInput | undefined }
 ) => Effect<never, E, Uint8Array> = internal.toUint8Array

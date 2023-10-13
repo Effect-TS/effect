@@ -1,4 +1,5 @@
 import type { SizeInput } from "@effect/platform/FileSystem"
+import type { Cause } from "effect"
 import * as Channel from "effect/Channel"
 import type * as AsyncInput from "effect/ChannelSingleProducerAsyncInput"
 import * as Chunk from "effect/Chunk"
@@ -15,7 +16,7 @@ import type { FromReadableOptions, FromWritableOptions } from "../Stream"
 
 /** @internal */
 export const fromReadable = <E, A = Uint8Array>(
-  evaluate: LazyArg<Readable>,
+  evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   { chunkSize }: FromReadableOptions = {}
 ): Stream.Stream<never, E, A> =>
@@ -25,17 +26,17 @@ export const fromReadable = <E, A = Uint8Array>(
 
 /** @internal */
 export const toString = <E>(
+  readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options: {
-    readable: LazyArg<Readable>
-    onFailure: (error: unknown) => E
-    encoding?: BufferEncoding
-    maxBytes?: SizeInput
+    readonly onFailure: (error: unknown) => E
+    readonly encoding?: BufferEncoding
+    readonly maxBytes?: SizeInput
   }
 ): Effect.Effect<never, E, string> => {
   const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
   return Effect.acquireUseRelease(
     Effect.sync(() => {
-      const stream = options.readable()
+      const stream = readable()
       stream.setEncoding(options.encoding ?? "utf8")
       return stream
     }),
@@ -60,7 +61,7 @@ export const toString = <E>(
     (stream) =>
       Effect.sync(() => {
         stream.removeAllListeners()
-        if (!stream.closed) {
+        if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
       })
@@ -69,15 +70,15 @@ export const toString = <E>(
 
 /** @internal */
 export const toUint8Array = <E>(
+  readable: LazyArg<Readable | NodeJS.ReadableStream>,
   options: {
-    readable: LazyArg<Readable>
-    onFailure: (error: unknown) => E
-    maxBytes?: SizeInput
+    readonly onFailure: (error: unknown) => E
+    readonly maxBytes?: SizeInput
   }
 ): Effect.Effect<never, E, Uint8Array> => {
   const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
   return Effect.acquireUseRelease(
-    Effect.sync(options.readable),
+    Effect.sync(readable),
     (stream) =>
       Effect.async((resume) => {
         let buffer = Buffer.alloc(0)
@@ -99,7 +100,7 @@ export const toUint8Array = <E>(
     (stream) =>
       Effect.sync(() => {
         stream.removeAllListeners()
-        if (!stream.closed) {
+        if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
       })
@@ -107,7 +108,7 @@ export const toUint8Array = <E>(
 }
 
 /** @internal */
-export const fromDuplex = <IE, E, I = Uint8Array, O = Uint8Array>(
+export const fromDuplex = <IE, E, I = Uint8Array | string, O = Uint8Array>(
   evaluate: LazyArg<Duplex>,
   onError: (error: unknown) => E,
   options: FromReadableOptions & FromWritableOptions = {}
@@ -123,7 +124,11 @@ export const fromDuplex = <IE, E, I = Uint8Array, O = Uint8Array>(
     ([duplex, queue]) =>
       Channel.embedInput(
         readableTake(duplex, queue, options.chunkSize ? Number(options.chunkSize) : undefined),
-        writeInput(duplex, queue, onError, options)
+        writeInput(
+          duplex,
+          (cause) => Queue.offer(queue, Either.left(Exit.failCause(cause))),
+          options
+        )
       ),
     ([duplex, queue]) =>
       Effect.zipRight(
@@ -185,7 +190,7 @@ export const pipeThroughSimple = dual<
 )
 
 const readChannel = <E, A = Uint8Array>(
-  evaluate: LazyArg<Readable>,
+  evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   chunkSize: number | undefined
 ): Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> =>
@@ -202,7 +207,7 @@ const readChannel = <E, A = Uint8Array>(
       Effect.zipRight(
         Effect.sync(() => {
           readable.removeAllListeners()
-          if (!readable.closed) {
+          if ("closed" in readable && !readable.closed) {
             readable.destroy()
           }
         }),
@@ -210,65 +215,60 @@ const readChannel = <E, A = Uint8Array>(
       )
   )
 
-const writeInput = <IE, E, A>(
-  writable: Writable,
-  queue: Queue.Queue<Either.Either<Exit.Exit<IE | E, void>, void>>,
-  onError: (error: unknown) => E,
-  { encoding, endOnDone = true }: FromWritableOptions = {}
+/** @internal */
+export const writeInput = <IE, A>(
+  writable: Writable | NodeJS.WritableStream,
+  onFailure: (cause: Cause.Cause<IE>) => Effect.Effect<never, never, void>,
+  { encoding, endOnDone = true }: FromWritableOptions,
+  onDone = Effect.unit
 ): AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<A>, unknown> => {
-  const write = writeEffect(writable, onError, encoding)
-  const close = endOnDone ?
-    Effect.async<never, never, void>((resume) => {
-      if (writable.closed) {
+  const write = writeEffect(writable, encoding)
+  const close = endOnDone
+    ? Effect.async<never, never, void>((resume) => {
+      if ("closed" in writable && writable.closed) {
         resume(Effect.unit)
       } else {
-        writable.end(() => resume(Effect.unit))
+        writable.once("finish", () => resume(Effect.unit))
+        writable.end()
       }
-    }) :
-    Effect.unit
+    })
+    : Effect.unit
   return {
     awaitRead: () => Effect.unit,
-    emit: (chunk) =>
-      Effect.catchAllCause(
-        write(chunk),
-        (cause) => Queue.offer(queue, Either.left(Exit.failCause(cause)))
-      ),
-    error: (cause) =>
-      Effect.zipRight(
-        close,
-        Queue.offer(queue, Either.left(Exit.failCause(cause)))
-      ),
-    done: (_) => close
+    emit: write,
+    error: (cause) => Effect.zipRight(close, onFailure(cause)),
+    done: (_) => Effect.zipRight(close, onDone)
   }
 }
 
 /** @internal */
-export const writeEffect =
-  <E, A>(writable: Writable, onError: (error: unknown) => E, encoding?: BufferEncoding) => (chunk: Chunk.Chunk<A>) =>
-    Effect.async<never, E, void>((resume) => {
+export const writeEffect = <A>(
+  writable: Writable | NodeJS.WritableStream,
+  encoding?: BufferEncoding
+) =>
+(chunk: Chunk.Chunk<A>) =>
+  chunk.length === 0 ?
+    Effect.unit :
+    Effect.async<never, never, void>((resume) => {
       const iterator = chunk[Symbol.iterator]()
+      let next = iterator.next()
       function loop() {
-        const item = iterator.next()
-        if (item.done) {
+        const item = next
+        next = iterator.next()
+        const success = writable.write(item.value, encoding as any)
+        if (next.done) {
           resume(Effect.unit)
-        } else if (encoding) {
-          writable.write(item.value, encoding, onDone)
-        } else {
-          writable.write(item.value, onDone)
-        }
-      }
-      function onDone(err: unknown) {
-        if (err) {
-          resume(Effect.fail(onError(err)))
-        } else {
+        } else if (success) {
           loop()
+        } else {
+          writable.once("drain", loop)
         }
       }
       loop()
     })
 
 const readableOffer = <E>(
-  readable: Readable,
+  readable: Readable | NodeJS.ReadableStream,
   queue: Queue.Queue<Either.Either<Exit.Exit<E, void>, void>>,
   onError: (error: unknown) => E
 ) =>
@@ -291,7 +291,7 @@ const readableOffer = <E>(
   })
 
 const readableTake = <E, A>(
-  readable: Readable,
+  readable: Readable | NodeJS.ReadableStream,
   queue: Queue.Queue<Either.Either<Exit.Exit<E, void>, void>>,
   chunkSize: number | undefined
 ) => {
@@ -307,7 +307,7 @@ const readableTake = <E, A>(
 }
 
 const readChunkChannel = <A>(
-  readable: Readable,
+  readable: Readable | NodeJS.ReadableStream,
   chunkSize: number | undefined
 ) =>
   Channel.flatMap(

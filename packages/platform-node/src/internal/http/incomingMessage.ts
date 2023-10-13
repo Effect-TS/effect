@@ -37,8 +37,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
       Effect.flatMap(
         FiberRef.get(IncomingMessage.maxBodySize),
         (maxBodySize) =>
-          NodeStream.toString({
-            readable: () => this.source,
+          NodeStream.toString(() => this.source, {
             onFailure: this.onError,
             maxBytes: Option.getOrUndefined(maxBodySize)
           })
@@ -73,8 +72,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     return Effect.flatMap(
       FiberRef.get(IncomingMessage.maxBodySize),
       (maxBodySize) =>
-        NodeStream.toUint8Array({
-          readable: () => this.source,
+        NodeStream.toUint8Array(() => this.source, {
           onFailure: this.onError,
           maxBytes: Option.getOrUndefined(maxBodySize)
         })

@@ -88,8 +88,7 @@ export const stream = (
         (part) =>
           part._tag === "File" && Chunk.some(fieldMimeTypes, (_) => part.contentType.includes(_)) ?
             Effect.map(
-              NodeStream.toString({
-                readable: () => part.source,
+              NodeStream.toString(() => part.source, {
                 onFailure: (error) => FormData.FormDataError("InternalError", error)
               }),
               (content) => new FieldImpl(part.key, part.contentType, content)

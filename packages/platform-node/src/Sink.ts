@@ -12,8 +12,8 @@ import type { FromWritableOptions } from "./Stream"
  * @category constructor
  * @since 1.0.0
  */
-export const fromWritable: <E, A>(
-  evaluate: LazyArg<Writable>,
+export const fromWritable: <E, A = string | Uint8Array>(
+  evaluate: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => E,
   options?: FromWritableOptions
 ) => Sink<never, E, A, never, void> = internal.fromWritable
