@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.23.1
+
+### Patch Changes
+
+- [#200](https://github.com/Effect-TS/platform/pull/200) [`58a002a`](https://github.com/Effect-TS/platform/commit/58a002acaafdb31e601c0de1878f4a8dee723e13) Thanks [@tim-smart](https://github.com/tim-smart)! - fix hanging node Sink fromWritable
+
 ## 0.23.0
 
 ### Minor Changes
