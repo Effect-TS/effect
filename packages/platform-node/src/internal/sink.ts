@@ -22,7 +22,7 @@ const writeChannel = <IE, OE, A>(
   options: FromWritableOptions = {}
 ): Channel.Channel<never, IE, Chunk.Chunk<A>, unknown, IE | OE, Chunk.Chunk<never>, void> =>
   Channel.flatMap(
-    Deferred.make<IE, void>(),
+    Deferred.make<IE | OE, void>(),
     (deferred) => {
       const input = writeInput<IE, A>(
         writable,
@@ -39,18 +39,19 @@ const writeChannel = <IE, OE, A>(
 
 const writableOutput = <IE, E>(
   writable: Writable | NodeJS.WritableStream,
-  deferred: Deferred.Deferred<IE, void>,
+  deferred: Deferred.Deferred<IE | E, void>,
   onError: (error: unknown) => E
-) =>
-  Effect.raceFirst(
-    Effect.async<never, E, never>((resume) => {
-      function handleError(err: unknown) {
-        resume(Effect.fail(onError(err)))
-      }
-      writable.on("error", handleError)
-      return Effect.sync(() => {
-        writable.off("error", handleError)
+) => {
+  function handleError(err: unknown) {
+    Deferred.unsafeDone(deferred, Effect.fail(onError(err)))
+  }
+  return Effect.suspend(() => {
+    writable.on("error", handleError)
+    return Effect.ensuring(
+      Deferred.await(deferred),
+      Effect.sync(() => {
+        writable.removeListener("error", handleError)
       })
-    }),
-    Deferred.await(deferred)
-  )
+    )
+  })
+}
