@@ -164,11 +164,12 @@ export const Structural: new<A>(
  * @since 2.0.0
  * @category models
  */
-export type TaggedEnum<A extends Record<string, Record<string, any>>> = {
-  readonly [Tag in keyof A]: Data<
-    Readonly<Types.Simplify<A[Tag] & { _tag: Tag }>>
-  >
-}[keyof A]
+export type TaggedEnum<A extends Record<string, Record<string, any>>>
+  = keyof A extends | infer Tag 
+  ? Tag extends keyof A 
+  ? Data<{ readonly [K in "_tag" | keyof A[Tag]]: K extends "_tag" ? Tag : A[Tag][K] }>
+  : never
+  : never
 
 /**
  * @since 2.0.0
