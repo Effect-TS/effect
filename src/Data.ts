@@ -164,12 +164,30 @@ export const Structural: new<A>(
  * @since 2.0.0
  * @category models
  */
-export type TaggedEnum<A extends Record<string, Record<string, any>>>
-  = keyof A extends | infer Tag 
-  ? Tag extends keyof A 
-  ? Data<{ readonly [K in "_tag" | keyof A[Tag]]: K extends "_tag" ? Tag : A[Tag][K] }>
+type TaggedEnum<
+  A extends Record<string, Record<string, any>> & CheckUntagged<_>,
+  _ extends _phantom<A> = _phantom<A>
+>
+  = keyof A extends | infer Tag
+  ? Tag extends keyof A
+  ? Data<{ readonly [K in `_tag` | keyof A[Tag]]: K extends `_tag` ? Tag : A[Tag][K] }>
   : never
   : never
+  ;
+
+/** @internal */
+interface _phantom<A> {
+  _A: A
+  keys: (this[`_A`][keyof this[`_A`]]) extends infer T ? T extends T ? keyof T : never : never;
+  isTagged: `_tag` extends this[`keys`] ? true : false
+}
+
+/** @internal */
+type CheckUntagged<_ extends { isTagged: any }>
+  = [_[`isTagged`]] extends [true]
+  ? `It looks like you're trying to create a tagged enum, but one or more of its members already have a \`_tag\` property.`
+  : unknown
+  ;
 
 /**
  * @since 2.0.0
