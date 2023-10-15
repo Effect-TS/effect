@@ -175,7 +175,6 @@ type TaggedEnum<
   : never
   ;
 
-/** @internal */
 interface _phantom<A> {
   _A: A
   keys: (this[`_A`][keyof this[`_A`]]) extends infer T ? T extends T ? keyof T : never : never;
