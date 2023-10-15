@@ -371,4 +371,9 @@ describe("Arbitrary/Arbitrary", () => {
     const schema = S.string.pipe(S.pattern(regexp))
     propertyTo(schema)
   })
+
+  it("should support doubles as constraints", () => {
+    const schema = S.number.pipe(S.clamp(1.3, 3.1))
+    propertyTo(schema)
+  })
 })

@@ -241,14 +241,32 @@ interface NumberConstraints {
   readonly constraints: FastCheck.FloatConstraints
 }
 
+const numberConstraints = (constraints: NumberConstraints["constraints"]): NumberConstraints => {
+  if (Predicate.isNumber(constraints.min)) {
+    constraints.min = Math.fround(constraints.min)
+  }
+  if (Predicate.isNumber(constraints.max)) {
+    constraints.max = Math.fround(constraints.max)
+  }
+  return { _tag: "NumberConstraints", constraints }
+}
+
 interface StringConstraints {
   readonly _tag: "StringConstraints"
   readonly constraints: FastCheck.StringSharedConstraints
 }
 
+const stringConstraints = (constraints: StringConstraints["constraints"]): StringConstraints => {
+  return { _tag: "StringConstraints", constraints }
+}
+
 interface IntegerConstraints {
   readonly _tag: "IntegerConstraints"
   readonly constraints: FastCheck.IntegerConstraints
+}
+
+const integerConstraints = (constraints: IntegerConstraints["constraints"]): IntegerConstraints => {
+  return { _tag: "IntegerConstraints", constraints }
 }
 
 type Constraints = NumberConstraints | StringConstraints | IntegerConstraints
@@ -260,18 +278,12 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
   switch (TypeAnnotationId) {
     case Schema.GreaterThanTypeId:
     case Schema.GreaterThanOrEqualToTypeId:
-      return {
-        _tag: "NumberConstraints",
-        constraints: { min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum }
-      }
+      return numberConstraints({ min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum })
     case Schema.LessThanTypeId:
     case Schema.LessThanOrEqualToTypeId:
-      return {
-        _tag: "NumberConstraints",
-        constraints: { max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum }
-      }
+      return numberConstraints({ max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum })
     case Schema.IntTypeId:
-      return { _tag: "IntegerConstraints", constraints: {} }
+      return integerConstraints({})
     case Schema.BetweenTypeId: {
       const min = jsonSchema.minimum
       const max = jsonSchema.maximum
@@ -282,12 +294,12 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       if (Predicate.isNumber(max)) {
         constraints.max = max
       }
-      return { _tag: "NumberConstraints", constraints }
+      return numberConstraints(constraints)
     }
     case Schema.MinLengthTypeId:
-      return { _tag: "StringConstraints", constraints: { minLength: jsonSchema.minLength } }
+      return stringConstraints({ minLength: jsonSchema.minLength })
     case Schema.MaxLengthTypeId:
-      return { _tag: "StringConstraints", constraints: { maxLength: jsonSchema.maxLength } }
+      return stringConstraints({ maxLength: jsonSchema.maxLength })
   }
 }
 
@@ -306,19 +318,19 @@ export const combineConstraints = (
     case "NumberConstraints": {
       switch (c2._tag) {
         case "NumberConstraints": {
-          const out: NumberConstraints = {
-            _tag: "NumberConstraints",
-            constraints: { ...c1.constraints, ...c2.constraints }
+          const constraints: NumberConstraints["constraints"] = {
+            ...c1.constraints,
+            ...c2.constraints
           }
           const min = getMax(c1.constraints.min, c2.constraints.min)
           if (Predicate.isNumber(min)) {
-            out.constraints.min = min
+            constraints.min = min
           }
           const max = getMin(c1.constraints.max, c2.constraints.max)
           if (Predicate.isNumber(max)) {
-            out.constraints.max = max
+            constraints.max = max
           }
-          return out
+          return numberConstraints(constraints)
         }
         case "IntegerConstraints": {
           const out: IntegerConstraints = { ...c2 }
@@ -338,10 +350,7 @@ export const combineConstraints = (
     case "StringConstraints": {
       switch (c2._tag) {
         case "StringConstraints": {
-          const out: StringConstraints = {
-            _tag: "StringConstraints",
-            constraints: { ...c1.constraints, ...c2.constraints }
-          }
+          const out: StringConstraints = stringConstraints({ ...c1.constraints, ...c2.constraints })
           const min = getMax(c1.constraints.minLength, c2.constraints.minLength)
           if (Predicate.isNumber(min)) {
             out.constraints.minLength = min
