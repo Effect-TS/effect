@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.43.2
+
+### Patch Changes
+
+- [#485](https://github.com/Effect-TS/schema/pull/485) [`0a20788`](https://github.com/Effect-TS/schema/commit/0a2078800f05b335b30c88d9cf06d988c826bdef) Thanks [@gcanti](https://github.com/gcanti)! - Arbitrary: use Math.fround when creating number constraints, closes #484
+
 ## 0.43.1
 
 ### Patch Changes
