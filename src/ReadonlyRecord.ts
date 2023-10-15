@@ -652,10 +652,10 @@ export const keys = <A>(self: ReadonlyRecord<A>): Array<string> => Object.keys(s
  * Insert or replace a key/value pair in a `ReadonlyRecord`.
  *
  * @example
- * import { upsertAt } from "effect/ReadonlyRecord"
+ * import { upsert } from "effect/ReadonlyRecord"
  *
- * assert.deepStrictEqual(upsertAt("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
- * assert.deepStrictEqual(upsertAt("c", 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 });
+ * assert.deepStrictEqual(upsert("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
+ * assert.deepStrictEqual(upsert("c", 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 });
  *
  * @since 2.0.0
  */
@@ -678,11 +678,11 @@ export const upsert: {
  * with the entry updated, otherwise it returns `None`
  *
  * @example
- * import { updateAt } from "effect/ReadonlyRecord"
+ * import { update } from "effect/ReadonlyRecord"
  * import { some, none } from "effect/Option"
  *
- * assert.deepStrictEqual(updateAt("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
- * assert.deepStrictEqual(updateAt("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
+ * assert.deepStrictEqual(update("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
+ * assert.deepStrictEqual(update("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
  *
  * @since 2.0.0
  */

@@ -41,11 +41,16 @@ Added in v2.0.0
   - [filterMap](#filtermap)
   - [get](#get)
   - [has](#has)
+  - [isSubrecord](#issubrecord)
+  - [isSubrecordBy](#issubrecordby)
+  - [keys](#keys)
   - [map](#map)
   - [modifyOption](#modifyoption)
   - [remove](#remove)
   - [replaceOption](#replaceoption)
   - [size](#size)
+  - [update](#update)
+  - [upsert](#upsert)
 
 ---
 
@@ -214,7 +219,7 @@ Given a `ReadonlyRecord` with `Option` values, returns a `Record` with only the 
 **Signature**
 
 ```ts
-export declare const compact: <A>(self: ReadonlyRecord<Option<A>>) => Record<string, A>
+export declare const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
 ```
 
 **Example**
@@ -425,8 +430,8 @@ If the key is not present, returns `O.none`.
 
 ```ts
 export declare const pop: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option<readonly [A, ReadonlyRecord<A>]>
-  <A>(self: ReadonlyRecord<A>, key: string): Option<readonly [A, ReadonlyRecord<A>]>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<readonly [A, ReadonlyRecord<A>]>
+  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<readonly [A, ReadonlyRecord<A>]>
 }
 ```
 
@@ -467,8 +472,8 @@ If the function returns `Some`, the key-value pair is included in the output `Re
 
 ```ts
 export declare const filterMap: {
-  <K extends string, A, B>(f: (a: A, key: K) => Option<B>): (self: Record<K, A>) => Record<string, B>
-  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option<B>): Record<string, B>
+  <K extends string, A, B>(f: (a: A, key: K) => Option.Option<B>): (self: Record<K, A>) => Record<string, B>
+  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option.Option<B>): Record<string, B>
 }
 ```
 
@@ -493,8 +498,8 @@ Retrieve a value at a particular key from a `ReadonlyRecord`, returning it wrapp
 
 ```ts
 export declare const get: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option<A>
-  <A>(self: ReadonlyRecord<A>, key: string): Option<A>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<A>
+  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<A>
 }
 ```
 
@@ -532,6 +537,48 @@ import { has } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(has({ a: 1, b: 2 }, 'a'), true)
 assert.deepStrictEqual(has({ a: 1, b: 2 }, 'c'), false)
+```
+
+Added in v2.0.0
+
+## isSubrecord
+
+Test whether one `ReadonlyRecord` contains all of the keys and values
+contained in another `ReadonlyRecord` using `Equal.equivalence` as `Equivalence`.
+
+**Signature**
+
+```ts
+export declare const isSubrecord: {
+  <A>(that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => boolean
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): boolean
+}
+```
+
+Added in v2.0.0
+
+## isSubrecordBy
+
+Test whether one `ReadonlyRecord` contains all of the keys and values
+contained in another `ReadonlyRecord`.
+
+**Signature**
+
+```ts
+export declare const isSubrecordBy: <A>(equivalence: Equivalence<A>) => {
+  (that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => boolean
+  (self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): boolean
+}
+```
+
+Added in v2.0.0
+
+## keys
+
+**Signature**
+
+```ts
+export declare const keys: <A>(self: ReadonlyRecord<A>) => Array<string>
 ```
 
 Added in v2.0.0
@@ -574,8 +621,8 @@ or return `None` if the key doesn't exist.
 
 ```ts
 export declare const modifyOption: {
-  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option<Record<string, A | B>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option<Record<string, A | B>>
+  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option.Option<Record<string, A | B>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option.Option<Record<string, A | B>>
 }
 ```
 
@@ -624,8 +671,8 @@ Replaces a value in the record with the new value passed as parameter.
 
 ```ts
 export declare const replaceOption: {
-  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option<Record<string, B | A>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option<Record<string, A | B>>
+  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option.Option<Record<string, B | A>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option.Option<Record<string, A | B>>
 }
 ```
 
@@ -657,6 +704,55 @@ export declare const size: <A>(self: ReadonlyRecord<A>) => number
 import { size } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(size({ a: 'a', b: 1, c: true }), 3)
+```
+
+Added in v2.0.0
+
+## update
+
+Replace a key/value pair in a `ReadonlyRecord`.
+
+**Signature**
+
+```ts
+export declare const update: {
+  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
+  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
+}
+```
+
+**Example**
+
+```ts
+import { update } from 'effect/ReadonlyRecord'
+import { some, none } from 'effect/Option'
+
+assert.deepStrictEqual(update('a', 3)({ a: 1, b: 2 }), { a: 3, b: 2 })
+assert.deepStrictEqual(update('c', 3)({ a: 1, b: 2 }), { a: 1, b: 2 })
+```
+
+Added in v2.0.0
+
+## upsert
+
+Insert or replace a key/value pair in a `ReadonlyRecord`.
+
+**Signature**
+
+```ts
+export declare const upsert: {
+  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
+  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
+}
+```
+
+**Example**
+
+```ts
+import { upsert } from 'effect/ReadonlyRecord'
+
+assert.deepStrictEqual(upsert('a', 5)({ a: 1, b: 2 }), { a: 5, b: 2 })
+assert.deepStrictEqual(upsert('c', 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 })
 ```
 
 Added in v2.0.0
