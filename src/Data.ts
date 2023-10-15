@@ -165,7 +165,7 @@ export const Structural: new<A>(
  * @category models
  */
 type TaggedEnum<
-  A extends Record<string, Record<string, any>> & CheckUntagged<_>,
+  A extends Record<string, Record<string, any>> & Untagged<_>,
   _ extends _phantom<A> = _phantom<A>
 >
   = keyof A extends | infer Tag
@@ -183,9 +183,9 @@ interface _phantom<A> {
 }
 
 /** @internal */
-type CheckUntagged<_ extends { isTagged: any }>
+type Untagged<_ extends { isTagged: any }>
   = [_[`isTagged`]] extends [true]
-  ? `It looks like you're trying to create a tagged enum, but one or more of its members already have a \`_tag\` property.`
+  ? `It looks like you're trying to create a tagged enum, but one or more of its members already has a \`_tag\` property.`
   : unknown
   ;
 
