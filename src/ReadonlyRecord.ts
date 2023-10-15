@@ -645,3 +645,26 @@ export const partition: {
  * @since 2.0.0
  */
 export const keys = <A>(self: ReadonlyRecord<A>): Array<string> => Object.keys(self)
+
+/**
+ * Insert or replace a key/value pair in a `Record`.
+ *
+ * @example
+ * import { upsertAt } from 'effect/ReadonlyRecord'
+ *
+ * assert.deepStrictEqual(upsertAt("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
+ * assert.deepStrictEqual(upsertAt("c", 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 });
+ *
+ * @since 2.0.0
+ */
+export const upsertAt: {
+  <A>(self: ReadonlyRecord<A>, k: string, a: A): Record<string, A>
+  <A>(k: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
+} = dual(3, <A>(self: ReadonlyRecord<A>, k: string, a: A): Record<string, A> => {
+  if (has(self, k) && self[k] === a) {
+    return self
+  }
+  const out: Record<string, A> = Object.assign({}, self)
+  out[k] = a
+  return out
+})
