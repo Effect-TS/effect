@@ -639,3 +639,9 @@ export const partition: {
     return [left, right]
   }
 )
+
+/**
+ * @category conversions
+ * @since 2.0.0
+ */
+export const keys = <A>(self: ReadonlyRecord<A>): Array<string> => Object.keys(self)

@@ -144,4 +144,8 @@ describe.concurrent("ReadonlyRecord", () => {
     assert.deepStrictEqual(RR.has({ a: 1, b: 2 }, "a"), true)
     assert.deepStrictEqual(RR.has({ a: 1, b: 2 }, "c"), false)
   })
+
+  it("keys", () => {
+    assert.deepStrictEqual(RR.keys({ a: 1, b: 2 }), ["a", "b"])
+  })
 })
