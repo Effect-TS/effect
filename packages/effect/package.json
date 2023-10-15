@@ -19,7 +19,8 @@
     "lint-fix": "eslint src test --fix",
     "fix": "preconstruct fix",
     "docgen": "docgen",
-    "dtslint": "dtslint --expectOnly dtslint"
+    "dtslint": "dtslint --expectOnly dtslint",
+    "dtslint-clean": "dtslint --installAll"
   },
   "preconstruct": {
     "distFilenameStrategy": "full",
