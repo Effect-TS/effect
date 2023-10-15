@@ -98,7 +98,7 @@ export const isEmptyReadonlyRecord: <A>(self: ReadonlyRecord<A>) => self is Read
  * @param f - A projection function that maps values of the iterable to a tuple of a key and a value.
  *
  * @example
- * import { fromIterable } from 'effect/ReadonlyRecord'
+ * import { fromIterable } from "effect/ReadonlyRecord"
  *
  * const input = [1, 2, 3, 4]
  *
@@ -131,7 +131,7 @@ export const fromIterable: {
  * @param self - The iterable of key-value pairs.
  *
  * @example
- * import { fromEntries } from 'effect/ReadonlyRecord'
+ * import { fromEntries } from "effect/ReadonlyRecord"
  *
  * const input: Array<[string, number]> = [["a", 1], ["b", 2]]
  *
@@ -233,7 +233,7 @@ export const size = <A>(self: ReadonlyRecord<A>): number => Object.keys(self).le
  * @param key - the key to look for in the `ReadonlyRecord`.
  *
  * @example
- * import { has } from 'effect/ReadonlyRecord'
+ * import { has } from "effect/ReadonlyRecord"
  *
  * assert.deepStrictEqual(has({ a: 1, b: 2 }, "a"), true);
  * assert.deepStrictEqual(has({ a: 1, b: 2 }, "c"), false);
@@ -347,7 +347,7 @@ export const replaceOption: {
  * @param key - the key to remove from the `ReadonlyRecord`.
  *
  * @example
- * import { remove } from 'effect/ReadonlyRecord'
+ * import { remove } from "effect/ReadonlyRecord"
  *
  * assert.deepStrictEqual(remove({ a: 1, b: 2 }, "a"), { b: 2 })
  *
@@ -357,7 +357,7 @@ export const remove: {
   (key: string): <A>(self: ReadonlyRecord<A>) => Record<string, A>
   <A>(self: ReadonlyRecord<A>, key: string): Record<string, A>
 } = dual(2, <A>(self: ReadonlyRecord<A>, key: string): Record<string, A> => {
-  const out: Record<string, A> = { ...self }
+  const out = { ...self }
   delete out[key]
   return out
 })
@@ -371,7 +371,7 @@ export const remove: {
  * @param key - The key of the property to retrieve.
  *
  * @example
- * import { pop } from 'effect/ReadonlyRecord'
+ * import { pop } from "effect/ReadonlyRecord"
  * import { some, none } from 'effect/Option'
  *
  * assert.deepStrictEqual(pop({ a: 1, b: 2 }, "a"), some([1, { b: 2 }]))
@@ -429,7 +429,7 @@ export const map: {
  * @param f - The transformation function.
  *
  * @example
- * import { filterMap } from 'effect/ReadonlyRecord'
+ * import { filterMap } from "effect/ReadonlyRecord"
  * import { some, none } from 'effect/Option'
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -462,7 +462,7 @@ export const filterMap: {
  * @param predicate - A function that returns a `boolean` value to determine if the entry should be included in the new record.
  *
  * @example
- * import { filter } from 'effect/ReadonlyRecord'
+ * import { filter } from "effect/ReadonlyRecord"
  *
  * const x = { a: 1, b: 2, c: 3, d: 4 }
  * assert.deepStrictEqual(filter(x, (n) => n > 2), { c: 3, d: 4 })
@@ -507,7 +507,7 @@ export const filter: {
  * @param self - A `ReadonlyRecord` with `Option` values.
  *
  * @example
- * import { compact } from 'effect/ReadonlyRecord'
+ * import { compact } from "effect/ReadonlyRecord"
  * import { some, none } from 'effect/Option'
  *
  * assert.deepStrictEqual(
@@ -529,7 +529,7 @@ export const compact: <A>(self: ReadonlyRecord<Option<A>>) => Record<string, A> 
  * @param f - The predicate function to apply to each element.
  *
  * @example
- * import { partitionMap } from 'effect/ReadonlyRecord'
+ * import { partitionMap } from "effect/ReadonlyRecord"
  * import { left, right } from 'effect/Either'
  *
  * const x = { a: 1, b: 2, c: 3 }
@@ -574,7 +574,7 @@ export const partitionMap: {
  * @param self - the `ReadonlyRecord` to partition.
  *
  * @example
- * import { separate } from 'effect/ReadonlyRecord'
+ * import { separate } from "effect/ReadonlyRecord"
  * import { left, right } from 'effect/Either'
  *
  * assert.deepStrictEqual(
@@ -596,7 +596,7 @@ export const separate: <A, B>(
  * @param predicate - The partitioning function to determine the partitioning of each value of the `ReadonlyRecord`.
  *
  * @example
- * import { partition } from 'effect/ReadonlyRecord'
+ * import { partition } from "effect/ReadonlyRecord"
  *
  * assert.deepStrictEqual(
  *   partition({ a: 1, b: 3 }, (n) => n > 2),
@@ -647,24 +647,50 @@ export const partition: {
 export const keys = <A>(self: ReadonlyRecord<A>): Array<string> => Object.keys(self)
 
 /**
- * Insert or replace a key/value pair in a `Record`.
+ * Insert or replace a key/value pair in a `ReadonlyRecord`.
  *
  * @example
- * import { upsertAt } from 'effect/ReadonlyRecord'
+ * import { upsertAt } from "effect/ReadonlyRecord"
  *
  * assert.deepStrictEqual(upsertAt("a", 5)({ a: 1, b: 2 }), { a: 5, b: 2 });
  * assert.deepStrictEqual(upsertAt("c", 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 });
  *
  * @since 2.0.0
  */
-export const upsertAt: {
-  <A>(self: ReadonlyRecord<A>, k: string, a: A): Record<string, A>
-  <A>(k: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
-} = dual(3, <A>(self: ReadonlyRecord<A>, k: string, a: A): Record<string, A> => {
-  if (has(self, k) && self[k] === a) {
+export const upsert: {
+  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
+  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
+} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A> => {
+  if (has(self, key) && self[key] === a) {
     return self
   }
-  const out: Record<string, A> = Object.assign({}, self)
-  out[k] = a
+  const out = { ...self }
+  out[key] = a
+  return out
+})
+
+/**
+ * Replace a key/value pair in a `ReadonlyRecord`.
+ *
+ * @returns If the specified key exists it returns an `Option` containing a new `Record`
+ * with the entry updated, otherwise it returns `None`
+ *
+ * @example
+ * import { updateAt } from "effect/ReadonlyRecord"
+ * import { some, none } from "effect/Option"
+ *
+ * assert.deepStrictEqual(updateAt("a", 3)({ a: 1, b: 2 }), { a: 3, b: 2 });
+ * assert.deepStrictEqual(updateAt("c", 3)({ a: 1, b: 2 }), { a: 1, b: 2 });
+ *
+ * @since 2.0.0
+ */
+export const update: {
+  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
+  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
+} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A> => {
+  const out = { ...self }
+  if (has(self, key)) {
+    out[key] = a
+  }
   return out
 })

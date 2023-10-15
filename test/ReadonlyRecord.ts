@@ -150,7 +150,12 @@ describe.concurrent("ReadonlyRecord", () => {
   })
 
   it("upsertAt", () => {
-    assert.deepStrictEqual(RR.upsertAt({ a: 1, b: 2 }, "c", 3), { a: 1, b: 2, c: 3 })
-    assert.deepStrictEqual(RR.upsertAt({ a: 1, b: 2 }, "a", 3), { a: 3, b: 2 })
+    assert.deepStrictEqual(RR.upsert({ a: 1, b: 2 }, "c", 3), { a: 1, b: 2, c: 3 })
+    assert.deepStrictEqual(RR.upsert({ a: 1, b: 2 }, "a", 3), { a: 3, b: 2 })
+  })
+
+  it("update", () => {
+    expect(RR.update({ a: 1, b: 2 }, "c", 3)).toStrictEqual({ a: 1, b: 2 })
+    expect(RR.update({ a: 1, b: 2 }, "a", 3)).toStrictEqual({ a: 3, b: 2 })
   })
 })
