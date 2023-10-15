@@ -33,6 +33,7 @@
     "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
     "gen": "build-utils prepare-v1",
     "dtslint": "dtslint --expectOnly dtslint",
+    "dtslint-clean": "dtslint --installAll",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "pnpm lint --fix",
     "tc": "tsc --noEmit",
