@@ -180,7 +180,7 @@ type ChildrenUntagged<_> = [ChildHasDiscriminant<_>] extends [true]
   ? `It looks like you're trying to create a tagged enum, but one or more of its members already has a \`_tag\` property.`
   : unknown
 
-/** ,
+/**
  * @since 2.0.0
  */
 export declare namespace TaggedEnum {
