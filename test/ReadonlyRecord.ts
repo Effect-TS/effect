@@ -158,4 +158,14 @@ describe.concurrent("ReadonlyRecord", () => {
     expect(RR.update({ a: 1, b: 2 }, "c", 3)).toStrictEqual({ a: 1, b: 2 })
     expect(RR.update({ a: 1, b: 2 }, "a", 3)).toStrictEqual({ a: 3, b: 2 })
   })
+
+  it("isSubrecord", () => {
+    expect(RR.isSubrecord({}, {})).toBe(true)
+    expect(RR.isSubrecord({}, { a: 1 })).toBe(true)
+    expect(RR.isSubrecord({ a: 1 }, { a: 1 })).toBe(true)
+    expect(RR.isSubrecord({ a: 1 }, { a: 1, b: 2 })).toBe(true)
+    expect(RR.isSubrecord({ b: 2, a: 1 }, { a: 1, b: 2 })).toBe(true)
+    expect(RR.isSubrecord({ a: 1 }, { a: 2 })).toBe(false)
+    expect(RR.isSubrecord({ b: 2 }, { a: 1 })).toBe(false)
+  })
 })
