@@ -819,3 +819,37 @@ export const union: {
     return out
   }
 )
+
+/**
+ * Intersection of two `ReadonlyRecord`s.
+ * Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
+ * entries of the two inputs with the same key.
+ * It uses the provided `combine` function to combine the elements.
+ *
+ * @since 2.0.0
+ */
+export const intersection: {
+  <A>(
+    that: ReadonlyRecord<A>,
+    combine: (selfValue: A, thatValue: A) => A
+  ): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
+} = dual(
+  3,
+  <A>(
+    self: ReadonlyRecord<A>,
+    that: ReadonlyRecord<A>,
+    combine: (selfValue: A, thatValue: A) => A
+  ): ReadonlyRecord<A> => {
+    if (isEmptyRecord(self) || isEmptyRecord(that)) {
+      return empty()
+    }
+    const out: Record<string, A> = {}
+    for (const key in self) {
+      if (has(that, key)) {
+        out[key] = combine(self[key], that[key])
+      }
+    }
+    return out
+  }
+)

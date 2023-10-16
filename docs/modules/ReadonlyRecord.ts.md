@@ -44,6 +44,7 @@ Added in v2.0.0
   - [filterMap](#filtermap)
   - [get](#get)
   - [has](#has)
+  - [intersection](#intersection)
   - [isSubrecord](#issubrecord)
   - [isSubrecordBy](#issubrecordby)
   - [keys](#keys)
@@ -574,6 +575,26 @@ import { has } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(has({ a: 1, b: 2 }, 'a'), true)
 assert.deepStrictEqual(has({ a: 1, b: 2 }, 'c'), false)
+```
+
+Added in v2.0.0
+
+## intersection
+
+Intersection of two `ReadonlyRecord`s.
+Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
+entries of the two inputs with the same key.
+It uses the provided `combine` function to combine the elements.
+
+**Signature**
+
+```ts
+export declare const intersection: {
+  <A>(that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): (
+    self: ReadonlyRecord<A>
+  ) => ReadonlyRecord<A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
+}
 ```
 
 Added in v2.0.0

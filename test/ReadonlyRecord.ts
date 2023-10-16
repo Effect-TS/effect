@@ -215,4 +215,24 @@ describe.concurrent("ReadonlyRecord", () => {
       d: "d2"
     })
   })
+
+  it("intersection", () => {
+    const combine = (s1: string, s2: string) => s1 + s2
+    const x: RR.ReadonlyRecord<string> = {
+      a: "a1",
+      b: "b1",
+      c: "c1"
+    }
+    const y: RR.ReadonlyRecord<string> = {
+      b: "b2",
+      c: "c2",
+      d: "d2"
+    }
+    assert.deepStrictEqual(RR.intersection(x, {}, combine), {})
+    assert.deepStrictEqual(RR.intersection({}, y, combine), {})
+    assert.deepStrictEqual(RR.intersection(x, y, combine), {
+      b: "b1b2",
+      c: "c1c2"
+    })
+  })
 })
