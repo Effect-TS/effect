@@ -20,7 +20,8 @@
     "fix": "preconstruct fix",
     "docgen": "docgen",
     "dtslint": "dtslint --expectOnly dtslint",
-    "dtslint-clean": "dtslint --installAll"
+    "dtslint-clean": "dtslint --installAll",
+    "prepare": "pnpm run build"
   },
   "preconstruct": {
     "distFilenameStrategy": "full",
