@@ -166,17 +166,17 @@ export const Structural: new<A>(
  */
 export type TaggedEnum<
   A extends Record<string, Record<string, any>> & _,
-  _ extends ChildrenUntagged<A> = ChildrenUntagged<A>
+  _ extends ChildHasTagCheck<A> = ChildHasTagCheck<A>
 > = keyof A extends infer Tag
   ? Tag extends keyof A ? Data<{ readonly [K in `_tag` | keyof A[Tag]]: K extends `_tag` ? Tag : A[Tag][K] }>
   : never
   : never
 
-type ChildHasDiscriminant<A> = `_tag` extends ChildKeys<A> ? true : false
+type ChildHasTag<A> = `_tag` extends ChildKeys<A> ? true : false
 
 type ChildKeys<A> = A[keyof A] extends infer M ? M extends M ? keyof M : never : never
 
-type ChildrenUntagged<_> = [ChildHasDiscriminant<_>] extends [true]
+type ChildHasTagCheck<_> = [ChildHasTag<_>] extends [true]
   ? `It looks like you're trying to create a tagged enum, but one or more of its members already has a \`_tag\` property.`
   : unknown
 
