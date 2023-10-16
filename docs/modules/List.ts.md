@@ -28,6 +28,7 @@ Added in v2.0.0
   - [filterMap](#filtermap)
   - [forEach](#foreach)
   - [map](#map)
+  - [mapNonEmpty](#mapnonempty)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [splitAt](#splitat)
@@ -171,6 +172,19 @@ Applies the specified mapping function to each element of the list.
 export declare const map: {
   <A, B>(f: (a: A) => B): (self: List<A>) => List<B>
   <A, B>(self: List<A>, f: (a: A) => B): List<B>
+}
+```
+
+Added in v2.0.0
+
+## mapNonEmpty
+
+**Signature**
+
+```ts
+export declare const mapNonEmpty: {
+  <A, B>(f: (a: A) => B): (self: Cons<A>) => Cons<B>
+  <A, B>(self: Cons<A>, f: (a: A) => B): Cons<B>
 }
 ```
 
