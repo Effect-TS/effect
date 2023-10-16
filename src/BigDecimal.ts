@@ -172,10 +172,6 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  * @category constructors
  */
 export const scale = (self: BigDecimal, scale: number): BigDecimal => {
-  if (self.value === 0n) {
-    return scaled(0n, scale)
-  }
-
   if (scale > self.scale) {
     return scaled(self.value * 10n ** BigInt(scale - self.scale), scale)
   }
@@ -541,6 +537,32 @@ export const sign = (n: BigDecimal): Ordering => Order(n, zero)
  * @since 2.0.0
  */
 export const abs = (n: BigDecimal): BigDecimal => scaled(BigI.abs(n.value), n.scale)
+
+/**
+ * Returns the remainder left over when one operand is divided by a second operand.
+ *
+ * It always takes the sign of the dividend.
+ *
+ * @param self - The dividend.
+ * @param divisor - The divisor.
+ *
+ * @example
+ * import { remainder, make } from "effect/BigDecimal"
+ *
+ * assert.deepStrictEqual(remainder(make(2), make(2)), make(0))
+ * assert.deepStrictEqual(remainder(make(3), make(2)), make(1))
+ * assert.deepStrictEqual(remainder(make(-4), make(2)), make(-0))
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const remainder: {
+  (divisor: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, divisor: BigDecimal): BigDecimal
+} = dual(2, (self: BigDecimal, divisor: BigDecimal): BigDecimal => {
+  const max = Math.max(self.scale, divisor.scale)
+  return scaled(scale(self, max).value % scale(divisor, max).value, max)
+})
 
 /**
  * @category instances

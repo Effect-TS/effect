@@ -32,6 +32,7 @@ Added in v2.0.0
   - [abs](#abs)
   - [divide](#divide)
   - [multiply](#multiply)
+  - [remainder](#remainder)
   - [sign](#sign)
   - [subtract](#subtract)
   - [sum](#sum)
@@ -253,6 +254,33 @@ export declare const multiply: {
 import { multiply, make, equals } from 'effect/BigDecimal'
 
 assert.deepStrictEqual(multiply(make(2n), make(3n)), make(6n))
+```
+
+Added in v2.0.0
+
+## remainder
+
+Returns the remainder left over when one operand is divided by a second operand.
+
+It always takes the sign of the dividend.
+
+**Signature**
+
+```ts
+export declare const remainder: {
+  (divisor: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, divisor: BigDecimal): BigDecimal
+}
+```
+
+**Example**
+
+```ts
+import { remainder, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(remainder(make(2), make(2)), make(0))
+assert.deepStrictEqual(remainder(make(3), make(2)), make(1))
+assert.deepStrictEqual(remainder(make(-4), make(2)), make(-0))
 ```
 
 Added in v2.0.0
