@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.11.2
+
+### Patch Changes
+
+- [#194](https://github.com/Effect-TS/platform/pull/194) [`79b71d8`](https://github.com/Effect-TS/platform/commit/79b71d8cb3aa6520b2dcb7930850b423174e04b2) Thanks [@tim-smart](https://github.com/tim-smart)! - add Worker & WorkerRunner modules
+
+- Updated dependencies [[`79b71d8`](https://github.com/Effect-TS/platform/commit/79b71d8cb3aa6520b2dcb7930850b423174e04b2)]:
+  - @effect/platform-node@0.23.2
+  - @effect/platform@0.22.1
+
 ## 0.11.1
 
 ### Patch Changes
