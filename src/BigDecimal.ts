@@ -64,38 +64,48 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale"> = {
 export const isBigDecimal = (u: unknown): u is BigDecimal => typeof u === "object" && u !== null && TypeId in u
 
 /**
+ * Creates a `BigDecimal` from a `bigint` value and a scale.
+ *
  * @since 2.0.0
  * @category constructors
  */
-export const make = (value: bigint, scale: number = 0): BigDecimal => {
+export const scaled = (value: bigint, scale: number): BigDecimal => {
   const o = Object.create(BigDecimalProto)
   o.value = value
   o.scale = scale
   return o
 }
 
+/**
+ * Creates a `BigDecimal` from a `bigint` or `number` value.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const make = (value: bigint | number): BigDecimal => {
+  if (typeof value === "number") {
+    const [lead, trail = ""] = `${value}`.split(".")
+    return scaled(BigInt(`${lead}${trail}`), trail.length)
+  }
+
+  return scaled(value, 0)
+}
+
 const zero = make(0n)
 
 /**
- * @since 2.0.0
- * @category constructors
- */
-export const fromNumber = (n: number): BigDecimal => {
-  const [lead, trail = ""] = `${n}`.split(".")
-  return make(BigInt(`${lead}${trail}`), trail === "" ? 0 : trail.length)
-}
-
-/**
+ * Parses a numerical `string` into a `BigDecimal`.
+ *
  * @since 2.0.0
  * @category constructors
  * @example
- * import { fromString, make } from 'effect/BigDecimal'
+ * import { parse, make } from 'effect/BigDecimal'
  * import { getOrThrow } from 'effect/Either'
  *
- * assert.deepStrictEqual(getOrThrow(fromString('123')), make(123n))
- * assert.deepStrictEqual(getOrThrow(fromString('123.456')), make(123456n, 3))
+ * assert.deepStrictEqual(getOrThrow(parse('123')), make(123n))
+ * assert.deepStrictEqual(getOrThrow(parse('123.456')), make(123.456))
  */
-export const fromString = (s: string): Either.Either<Cause.IllegalArgumentException, BigDecimal> => {
+export const parse = (s: string): Either.Either<Cause.IllegalArgumentException, BigDecimal> => {
   let digits: string
   let scale: number
 
@@ -118,20 +128,60 @@ export const fromString = (s: string): Either.Either<Cause.IllegalArgumentExcept
     return Either.left(Cause.IllegalArgumentException(`Invalid numerical string ${s}`))
   }
 
-  return Either.right(make(BigInt(digits), scale))
+  return Either.right(scaled(BigInt(digits), scale))
 }
 
-const scale = (self: BigDecimal, scale: number): BigDecimal => {
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const normalize = (self: BigDecimal): BigDecimal => {
   if (self.value === 0n) {
-    return make(0n, scale)
+    return zero
+  }
+
+  const digits = `${self.value}`.split("")
+
+  let trail = 0
+  for (let i = digits.length - 1; i >= 0; i--) {
+    if (digits[i] === "0") {
+      trail++
+    } else {
+      break
+    }
+  }
+
+  if (trail === 0) {
+    return self
+  }
+
+  digits.splice(digits.length - trail)
+  const value = BigInt(digits.join(""))
+  const scale = self.scale - trail
+
+  return scaled(value, scale)
+}
+
+/**
+ * Scales a given `BigDecimal` to the specified scale.
+ *
+ * If the given scale is smaller than the current scale, the value will be rounded down to
+ * the nearest integer.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const scale = (self: BigDecimal, scale: number): BigDecimal => {
+  if (self.value === 0n) {
+    return scaled(0n, scale)
   }
 
   if (scale > self.scale) {
-    return make(self.value * 10n ** BigInt(scale - self.scale), scale)
+    return scaled(self.value * 10n ** BigInt(scale - self.scale), scale)
   }
 
   if (scale < self.scale) {
-    return make(self.value / 10n ** BigInt(self.scale - scale), scale)
+    return scaled(self.value / 10n ** BigInt(self.scale - scale), scale)
   }
 
   return self
@@ -164,16 +214,14 @@ export const sum: {
   }
 
   if (self.scale > that.scale) {
-    const scaled = scale(that, self.scale)
-    return make(scaled.value + self.value, self.scale)
+    return scaled(scale(that, self.scale).value + self.value, self.scale)
   }
 
   if (self.scale < that.scale) {
-    const scaled = scale(self, that.scale)
-    return make(scaled.value + that.value, that.scale)
+    return scaled(scale(self, that.scale).value + that.value, that.scale)
   }
 
-  return make(self.value + that.value, self.scale)
+  return scaled(self.value + that.value, self.scale)
 })
 
 /**
@@ -198,7 +246,7 @@ export const multiply: {
     return zero
   }
 
-  return make(self.value * that.value, self.scale + that.scale)
+  return scaled(self.value * that.value, self.scale + that.scale)
 })
 
 /**
@@ -224,20 +272,18 @@ export const subtract: {
   }
 
   if (self.value === 0n) {
-    return make(-that.value, that.scale)
+    return scaled(-that.value, that.scale)
   }
 
   if (self.scale > that.scale) {
-    const scaled = scale(that, self.scale)
-    return make(self.value - scaled.value, self.scale)
+    return scaled(self.value - scale(that, self.scale).value, self.scale)
   }
 
   if (self.scale < that.scale) {
-    const scaled = scale(self, that.scale)
-    return make(scaled.value - that.value, that.scale)
+    return scaled(scale(self, that.scale).value - that.value, that.scale)
   }
 
-  return make(self.value - that.value, self.scale)
+  return scaled(self.value - that.value, self.scale)
 })
 
 /**
@@ -271,25 +317,7 @@ export const divide: {
     return Either.right(zero)
   }
 
-  return Either.right(make(self.value / that.value, self.scale - that.scale))
-})
-
-/**
- * @category instances
- * @since 2.0.0
- */
-export const Equivalence: equivalence.Equivalence<BigDecimal> = equivalence.make((self, that) => {
-  if (self.scale > that.scale) {
-    const scaled = scale(that, self.scale)
-    return scaled.value === that.value
-  }
-
-  if (self.scale < that.scale) {
-    const scaled = scale(self, that.scale)
-    return scaled.value === that.value
-  }
-
-  return self.value === that.value
+  return Either.right(scaled(self.value / that.value, self.scale - that.scale))
 })
 
 /**
@@ -303,13 +331,11 @@ export const Order: order.Order<BigDecimal> = order.make((self, that) => {
   }
 
   if (self.scale > that.scale) {
-    const scaled = scale(that, self.scale)
-    return order.bigint(scaled.value, self.value)
+    return order.bigint(scale(that, self.scale).value, self.value)
   }
 
   if (self.scale < that.scale) {
-    const scaled = scale(self, that.scale)
-    return order.bigint(scaled.value, that.value)
+    return order.bigint(scale(self, that.scale).value, that.value)
   }
 
   return order.bigint(self.value, that.value)
@@ -433,11 +459,11 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
- * import { clamp, make, equals } from 'effect/BigDecimal'
+ * import { clamp, make } from 'effect/BigDecimal'
  *
- * assert.deepStrictEqual(equals(clamp(make(0n), make(5n))(make(3n)), make(3n)), true)
- * assert.deepStrictEqual(equals(clamp(make(0n), make(5n))(make(-1n)), make(0n)), true)
- * assert.deepStrictEqual(equals(clamp(make(0n), make(5n))(make(6n)), make(5n)), true)
+ * assert.deepStrictEqual(clamp(make(0n), make(5n))(make(3n)), make(3n))
+ * assert.deepStrictEqual(clamp(make(0n), make(5n))(make(-1n)), make(0n))
+ * assert.deepStrictEqual(clamp(make(0n), make(5n))(make(6n)), make(5n))
  *
  * @since 2.0.0
  */
@@ -488,7 +514,7 @@ export const max: {
  * @param n - The `BigDecimal` to determine the sign of.
  *
  * @example
- * import { sign, make, equals } from 'effect/BigDecimal'
+ * import { sign, make } from 'effect/BigDecimal'
  *
  * assert.deepStrictEqual(sign(make(-5n)), -1)
  * assert.deepStrictEqual(sign(make(0n)), 0)
@@ -514,7 +540,23 @@ export const sign = (n: BigDecimal): Ordering => Order(n, zero)
  * @category math
  * @since 2.0.0
  */
-export const abs = (n: BigDecimal): BigDecimal => make(BigI.abs(n.value), n.scale)
+export const abs = (n: BigDecimal): BigDecimal => scaled(BigI.abs(n.value), n.scale)
+
+/**
+ * @category instances
+ * @since 2.0.0
+ */
+export const Equivalence: equivalence.Equivalence<BigDecimal> = equivalence.make((self, that) => {
+  if (self.scale > that.scale) {
+    return scale(that, self.scale).value === that.value
+  }
+
+  if (self.scale < that.scale) {
+    return scale(self, that.scale).value === that.value
+  }
+
+  return self.value === that.value
+})
 
 /**
  * @since 2.0.0
@@ -524,3 +566,39 @@ export const equals: {
   (that: BigDecimal): (self: BigDecimal) => boolean
   (self: BigDecimal, that: BigDecimal): boolean
 } = dual(2, (self: BigDecimal, that: BigDecimal): boolean => Equivalence(self, that))
+
+/**
+ * @since 2.0.0
+ * @category constructor
+ * @example
+ * import { format, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(format(make(-5n)), '-5')
+ * assert.deepStrictEqual(format(make(123.456)), '123.456')
+ * assert.deepStrictEqual(format(make(-0.00000123)), '-0.00000123')
+ */
+export const format = (self: BigDecimal): string => {
+  const absolute = `${BigI.abs(self.value)}`
+  const sign = BigI.sign(self.value) === -1 ? "-" : ""
+
+  let before: string
+  let after: string
+
+  if (self.scale >= absolute.length) {
+    before = "0"
+    after = "0".repeat(self.scale - absolute.length) + absolute
+  } else {
+    const location = absolute.length - self.scale
+    if (location > absolute.length) {
+      const zeros = location - absolute.length
+      before = "0".repeat(zeros)
+      after = ""
+    } else {
+      after = absolute.slice(location)
+      before = absolute.slice(0, location)
+    }
+  }
+
+  const complete = after === "" ? before : `${before}.${after}`
+  return `${sign}${complete}`
+}

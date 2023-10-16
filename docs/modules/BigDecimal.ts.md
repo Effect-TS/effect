@@ -15,10 +15,14 @@ Added in v2.0.0
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [constructor](#constructor)
+  - [format](#format)
 - [constructors](#constructors)
-  - [fromNumber](#fromnumber)
-  - [fromString](#fromstring)
   - [make](#make)
+  - [normalize](#normalize)
+  - [parse](#parse)
+  - [scale](#scale)
+  - [scaled](#scaled)
 - [guards](#guards)
   - [isBigDecimal](#isbigdecimal)
 - [instances](#instances)
@@ -49,44 +53,97 @@ Added in v2.0.0
 
 ---
 
-# constructors
+# constructor
 
-## fromNumber
-
-**Signature**
-
-```ts
-export declare const fromNumber: (n: number) => BigDecimal
-```
-
-Added in v2.0.0
-
-## fromString
+## format
 
 **Signature**
 
 ```ts
-export declare const fromString: (s: string) => Either.Either<Cause.IllegalArgumentException, BigDecimal>
+export declare const format: (self: BigDecimal) => string
 ```
 
 **Example**
 
 ```ts
-import { fromString, make } from 'effect/BigDecimal'
-import { getOrThrow } from 'effect/Either'
+import { format, make } from 'effect/BigDecimal'
 
-assert.deepStrictEqual(getOrThrow(fromString('123')), make(123n))
-assert.deepStrictEqual(getOrThrow(fromString('123.456')), make(123456n, 3))
+assert.deepStrictEqual(format(make(-5n)), '-5')
+assert.deepStrictEqual(format(make(123.456)), '123.456')
+assert.deepStrictEqual(format(make(-0.00000123)), '-0.00000123')
 ```
 
 Added in v2.0.0
 
+# constructors
+
 ## make
+
+Creates a `BigDecimal` from a `bigint` or `number` value.
 
 **Signature**
 
 ```ts
-export declare const make: (value: bigint, scale?: number) => BigDecimal
+export declare const make: (value: bigint | number) => BigDecimal
+```
+
+Added in v2.0.0
+
+## normalize
+
+**Signature**
+
+```ts
+export declare const normalize: (self: BigDecimal) => BigDecimal
+```
+
+Added in v2.0.0
+
+## parse
+
+Parses a numerical `string` into a `BigDecimal`.
+
+**Signature**
+
+```ts
+export declare const parse: (s: string) => Either.Either<Cause.IllegalArgumentException, BigDecimal>
+```
+
+**Example**
+
+```ts
+import { parse, make } from 'effect/BigDecimal'
+import { getOrThrow } from 'effect/Either'
+
+assert.deepStrictEqual(getOrThrow(parse('123')), make(123n))
+assert.deepStrictEqual(getOrThrow(parse('123.456')), make(123.456))
+```
+
+Added in v2.0.0
+
+## scale
+
+Scales a given `BigDecimal` to the specified scale.
+
+If the given scale is smaller than the current scale, the value will be rounded down to
+the nearest integer.
+
+**Signature**
+
+```ts
+export declare const scale: (self: BigDecimal, scale: number) => BigDecimal
+```
+
+Added in v2.0.0
+
+## scaled
+
+Creates a `BigDecimal` from a `bigint` value and a scale.
+
+**Signature**
+
+```ts
+export declare const scaled: (value: bigint, scale: number) => BigDecimal
 ```
 
 Added in v2.0.0
@@ -213,7 +270,7 @@ export declare const sign: (n: BigDecimal) => Ordering
 **Example**
 
 ```ts
-import { sign, make, equals } from 'effect/BigDecimal'
+import { sign, make } from 'effect/BigDecimal'
 
 assert.deepStrictEqual(sign(make(-5n)), -1)
 assert.deepStrictEqual(sign(make(0n)), 0)
@@ -458,11 +515,11 @@ export declare const clamp: {
 **Example**
 
 ```ts
-import { clamp, make, equals } from 'effect/BigDecimal'
+import { clamp, make } from 'effect/BigDecimal'
 
-assert.deepStrictEqual(equals(clamp(make(0n), make(5n))(make(3n)), make(3n)), true)
-assert.deepStrictEqual(equals(clamp(make(0n), make(5n))(make(-1n)), make(0n)), true)
-assert.deepStrictEqual(equals(clamp(make(0n), make(5n))(make(6n)), make(5n)), true)
+assert.deepStrictEqual(clamp(make(0n), make(5n))(make(3n)), make(3n))
+assert.deepStrictEqual(clamp(make(0n), make(5n))(make(-1n)), make(0n))
+assert.deepStrictEqual(clamp(make(0n), make(5n))(make(6n)), make(5n))
 ```
 
 Added in v2.0.0
