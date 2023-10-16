@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
@@ -333,5 +333,20 @@ describe.concurrent("Stream", () => {
         Effect.exit
       )
       assert.deepStrictEqual(result, Exit.fail("fail"))
+    }))
+
+  it.effect("mapEffect with key", () =>
+    Effect.gen(function*(_) {
+      const fiber = yield* _(
+        Stream.make(10, 20, 30, 40),
+        Stream.mapEffect((n) => Effect.delay(Effect.succeed(n), n), { key: identity }),
+        Stream.runCollect,
+        Effect.fork
+      )
+      yield* _(TestClock.adjust(40))
+      const exit = fiber.unsafePoll()
+      assert(Exit.isExit(exit))
+      assert(Exit.isSuccess(exit))
+      assert.deepStrictEqual(Chunk.toReadonlyArray(exit.value), [10, 20, 30, 40])
     }))
 })
