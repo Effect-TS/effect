@@ -28,6 +28,8 @@ Added in v2.0.0
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
+- [folding](#folding)
+  - [reduce](#reduce)
 - [guards](#guards)
   - [isEmptyReadonlyRecord](#isemptyreadonlyrecord)
   - [isEmptyRecord](#isemptyrecord)
@@ -356,6 +358,23 @@ import { separate } from 'effect/ReadonlyRecord'
 import { left, right } from 'effect/Either'
 
 assert.deepStrictEqual(separate({ a: left('e'), b: right(1) }), [{ a: 'e' }, { b: 1 }])
+```
+
+Added in v2.0.0
+
+# folding
+
+## reduce
+
+Reduces the specified state over the entries of the `Record`.
+
+**Signature**
+
+```ts
+export declare const reduce: {
+  <Z, V, K extends string>(zero: Z, f: (accumulator: Z, value: V, key: K) => Z): (self: Record<K, V>) => Z
+  <K extends string, V, Z>(self: Record<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z): Z
+}
 ```
 
 Added in v2.0.0

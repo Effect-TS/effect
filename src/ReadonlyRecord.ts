@@ -726,3 +726,22 @@ export const isSubrecord: {
   <A>(that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => boolean
   <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): boolean
 } = isSubrecordBy(Equal.equivalence())
+
+/**
+ * Reduces the specified state over the entries of the `Record`.
+ *
+ * @category folding
+ * @since 2.0.0
+ */
+export const reduce: {
+  <Z, V, K extends string>(zero: Z, f: (accumulator: Z, value: V, key: K) => Z): (self: Record<K, V>) => Z
+  <K extends string, V, Z>(self: Record<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z): Z
+} = dual(3, <V, Z>(self: Record<string, V>, zero: Z, f: (accumulator: Z, value: V, key: string) => Z): Z => {
+  let out: Z = zero
+  const ks = keys(self)
+  for (let i = 0; i < ks.length; i++) {
+    const key = ks[i]
+    out = f(out, self[key], key)
+  }
+  return out
+})

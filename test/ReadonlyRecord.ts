@@ -168,4 +168,17 @@ describe.concurrent("ReadonlyRecord", () => {
     expect(RR.isSubrecord({ a: 1 }, { a: 2 })).toBe(false)
     expect(RR.isSubrecord({ b: 2 }, { a: 1 })).toBe(false)
   })
+
+  it("reduce", () => {
+    // data-first
+    assert.deepStrictEqual(
+      RR.reduce({ k1: "a", k2: "b" }, "-", (accumulator, value, key) => accumulator + key + value),
+      "-k1ak2b"
+    )
+    // data-last
+    assert.deepStrictEqual(
+      pipe({ k1: "a", k2: "b" }, RR.reduce("-", (accumulator, value, key) => accumulator + key + value)),
+      "-k1ak2b"
+    )
+  })
 })
