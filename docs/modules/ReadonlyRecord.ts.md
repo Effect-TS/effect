@@ -52,6 +52,7 @@ Added in v2.0.0
   - [remove](#remove)
   - [replaceOption](#replaceoption)
   - [size](#size)
+  - [some](#some)
   - [update](#update)
   - [upsert](#upsert)
 
@@ -485,7 +486,7 @@ Added in v2.0.0
 
 ## every
 
-Test if every entry in a `ReadonlyRecord` satisfies the predicate.
+Test if every entry in a `Record` satisfies the predicate.
 
 **Signature**
 
@@ -739,6 +740,21 @@ export declare const size: <A>(self: ReadonlyRecord<A>) => number
 import { size } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(size({ a: 'a', b: 1, c: true }), 3)
+```
+
+Added in v2.0.0
+
+## some
+
+Test if at least one entry in a `Record` satisfies the predicate.
+
+**Signature**
+
+```ts
+export declare const some: {
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
+}
 ```
 
 Added in v2.0.0

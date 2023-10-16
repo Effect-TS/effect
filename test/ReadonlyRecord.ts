@@ -186,4 +186,9 @@ describe.concurrent("ReadonlyRecord", () => {
     assert.deepStrictEqual(RR.every((n: number) => n <= 2)({ a: 1, b: 2 }), true)
     assert.deepStrictEqual(RR.every((n: number) => n <= 1)({ a: 1, b: 2 }), false)
   })
+
+  it("some", () => {
+    assert.deepStrictEqual(RR.some((n: number) => n <= 1)({ a: 1, b: 2 }), true)
+    assert.deepStrictEqual(RR.some((n: number) => n <= 0)({ a: 1, b: 2 }), false)
+  })
 })

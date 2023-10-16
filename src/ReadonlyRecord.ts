@@ -745,7 +745,7 @@ export const reduce: {
 })
 
 /**
- * Test if every entry in a `ReadonlyRecord` satisfies the predicate.
+ * Test if every entry in a `Record` satisfies the predicate.
  *
  * @since 2.0.0
  */
@@ -759,4 +759,21 @@ export const every: {
     }
   }
   return true
+})
+
+/**
+ * Test if at least one entry in a `Record` satisfies the predicate.
+ *
+ * @since 2.0.0
+ */
+export const some: {
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
+} = dual(2, <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean => {
+  for (const key in self) {
+    if (predicate(self[key], key)) {
+      return true
+    }
+  }
+  return false
 })
