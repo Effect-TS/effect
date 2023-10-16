@@ -16,6 +16,7 @@ Added in v2.0.0
 
 - [constructors](#constructors)
   - [empty](#empty)
+  - [singleton](#singleton)
 - [conversions](#conversions)
   - [collect](#collect)
   - [fromEntries](#fromentries)
@@ -73,6 +74,18 @@ Creates a new, empty record.
 
 ```ts
 export declare const empty: <A>() => Record<string, A>
+```
+
+Added in v2.0.0
+
+## singleton
+
+Create a non-empty record from a single element.
+
+**Signature**
+
+```ts
+export declare const singleton: <A>(key: string, value: A) => Record<string, A>
 ```
 
 Added in v2.0.0
@@ -373,7 +386,7 @@ Added in v2.0.0
 
 ## reduce
 
-Reduces the specified state over the entries of the `Record`.
+Reduce a record to a single value by combining its entries with a specified function.
 
 **Signature**
 
@@ -434,8 +447,7 @@ Added in v2.0.0
 
 ## getEquivalence
 
-Given an `Equivalence` for the base type, it produces an `Equivalence`
-for a `ReadonlyRecord` of that base type.
+Create an `Equivalence` for a `ReadonlyRecord` of a base type, based on the provided `Equivalence`.
 
 **Signature**
 
@@ -506,10 +518,7 @@ Added in v2.0.0
 
 ## difference
 
-Intersection of two `ReadonlyRecord`s.
-Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
-entries of the two inputs with the same key.
-It uses the provided `combine` function to combine the elements.
+Merge two records, preserving only the entries that are unique to each record.
 
 **Signature**
 
@@ -524,7 +533,7 @@ Added in v2.0.0
 
 ## every
 
-Test if every entry in a `Record` satisfies the predicate.
+Check if all entries in a `Record` meet a specific condition.
 
 **Signature**
 
@@ -617,10 +626,7 @@ Added in v2.0.0
 
 ## intersection
 
-Intersection of two `ReadonlyRecord`s.
-Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
-entries of the two inputs with the same key.
-It uses the provided `combine` function to combine the elements.
+Merge two records, retaining only the entries that exist in both records.
 
 **Signature**
 
@@ -637,8 +643,8 @@ Added in v2.0.0
 
 ## isSubrecord
 
-Test whether one `ReadonlyRecord` contains all of the keys and values
-contained in another `ReadonlyRecord` using `Equal.equivalence` as `Equivalence`.
+Check if one `ReadonlyRecord` is a subrecord of another, meaning it contains all the keys and values found in the second record.
+This comparison uses default equality checks (`Equal.equivalence()`).
 
 **Signature**
 
@@ -653,8 +659,7 @@ Added in v2.0.0
 
 ## isSubrecordBy
 
-Test whether one `ReadonlyRecord` contains all of the keys and values
-contained in another `ReadonlyRecord`.
+Check if all the keys and values in one `ReadonlyRecord` are also found in another `ReadonlyRecord`.
 
 **Signature**
 
@@ -668,6 +673,8 @@ export declare const isSubrecordBy: <A>(equivalence: Equivalence<A>) => {
 Added in v2.0.0
 
 ## keys
+
+Retrieve the keys of a given object as an array.
 
 **Signature**
 
@@ -804,7 +811,7 @@ Added in v2.0.0
 
 ## some
 
-Test if at least one entry in a `Record` satisfies the predicate.
+Check if any entry in a `Record` meets a specific condition.
 
 **Signature**
 
@@ -819,8 +826,7 @@ Added in v2.0.0
 
 ## union
 
-Union of two `ReadonlyRecord`s. Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining all the
-entries of the two inputs. It uses the provided `combine` function to combine the elements with the same key.
+Merge two records, preserving entries that exist in either of the records.
 
 **Signature**
 
@@ -837,7 +843,9 @@ Added in v2.0.0
 
 ## update
 
-Replace a key/value pair in a `ReadonlyRecord`.
+Replace a key's value in a `ReadonlyRecord` and return the updated record.
+If the specified key exists, it returns a new `Record` with the entry updated.
+If the key doesn't exist, it returns `None`.
 
 **Signature**
 
@@ -862,7 +870,7 @@ Added in v2.0.0
 
 ## upsert
 
-Insert or replace a key/value pair in a `ReadonlyRecord`.
+Add a new key-value pair or update an existing key's value in a record.
 
 **Signature**
 

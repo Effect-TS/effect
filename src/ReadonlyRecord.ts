@@ -644,12 +644,20 @@ export const partition: {
 )
 
 /**
+ * Retrieve the keys of a given object as an array.
+ *
+ * @param self - The object for which you want to get the keys.
+ *
  * @since 2.0.0
  */
 export const keys = <A>(self: ReadonlyRecord<A>): Array<string> => Object.keys(self)
 
 /**
- * Insert or replace a key/value pair in a `ReadonlyRecord`.
+ * Add a new key-value pair or update an existing key's value in a record.
+ *
+ * @param self - The record to which you want to add or update a key-value pair.
+ * @param key - The key you want to add or update.
+ * @param a - The value you want to associate with the key.
  *
  * @example
  * import { upsert } from "effect/ReadonlyRecord"
@@ -669,10 +677,13 @@ export const upsert: {
 })
 
 /**
- * Replace a key/value pair in a `ReadonlyRecord`.
+ * Replace a key's value in a `ReadonlyRecord` and return the updated record.
+ * If the specified key exists, it returns a new `Record` with the entry updated.
+ * If the key doesn't exist, it returns `None`.
  *
- * @returns If the specified key exists it returns an `Option` containing a new `Record`
- * with the entry updated, otherwise it returns `None`
+ * @param self - The original record.
+ * @param key - The key to replace.
+ * @param a - The new value to associate with the key.
  *
  * @example
  * import { update } from "effect/ReadonlyRecord"
@@ -695,8 +706,11 @@ export const update: {
 })
 
 /**
- * Test whether one `ReadonlyRecord` contains all of the keys and values
- * contained in another `ReadonlyRecord`.
+ * Check if all the keys and values in one `ReadonlyRecord` are also found in another `ReadonlyRecord`.
+ *
+ * @param equivalence - A function to compare values.
+ * @param self - The first record to check.
+ * @param that - The second record to compare against.
  *
  * @since 2.0.0
  */
@@ -714,8 +728,11 @@ export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
   })
 
 /**
- * Test whether one `ReadonlyRecord` contains all of the keys and values
- * contained in another `ReadonlyRecord` using `Equal.equivalence` as `Equivalence`.
+ * Check if one `ReadonlyRecord` is a subrecord of another, meaning it contains all the keys and values found in the second record.
+ * This comparison uses default equality checks (`Equal.equivalence()`).
+ *
+ * @param self - The first record to check.
+ * @param that - The second record to compare against.
  *
  * @since 2.0.0
  */
@@ -725,7 +742,11 @@ export const isSubrecord: {
 } = isSubrecordBy(Equal.equivalence())
 
 /**
- * Reduces the specified state over the entries of the `Record`.
+ * Reduce a record to a single value by combining its entries with a specified function.
+ *
+ * @param self - The record to reduce.
+ * @param zero - The initial value of the accumulator.
+ * @param f - The function to combine entries (accumulator, value, key).
  *
  * @category folding
  * @since 2.0.0
@@ -742,7 +763,10 @@ export const reduce: {
 })
 
 /**
- * Test if every entry in a `Record` satisfies the predicate.
+ * Check if all entries in a `Record` meet a specific condition.
+ *
+ * @param self - The record to check.
+ * @param predicate - The condition to test entries (value, key).
  *
  * @since 2.0.0
  */
@@ -759,7 +783,10 @@ export const every: {
 })
 
 /**
- * Test if at least one entry in a `Record` satisfies the predicate.
+ * Check if any entry in a `Record` meets a specific condition.
+ *
+ * @param self - The record to check.
+ * @param predicate - The condition to test entries (value, key).
  *
  * @since 2.0.0
  */
@@ -776,8 +803,11 @@ export const some: {
 })
 
 /**
- * Union of two `ReadonlyRecord`s. Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining all the
- * entries of the two inputs. It uses the provided `combine` function to combine the elements with the same key.
+ * Merge two records, preserving entries that exist in either of the records.
+ *
+ * @param self - The first record.
+ * @param that - The second record to combine with the first.
+ * @param combine - A function to specify how to merge entries with the same key.
  *
  * @since 2.0.0
  */
@@ -818,10 +848,11 @@ export const union: {
 )
 
 /**
- * Intersection of two `ReadonlyRecord`s.
- * Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
- * entries of the two inputs with the same key.
- * It uses the provided `combine` function to combine the elements.
+ * Merge two records, retaining only the entries that exist in both records.
+ *
+ * @param self - The first record.
+ * @param that - The second record to merge with the first.
+ * @param combine - A function to specify how to merge entries with the same key.
  *
  * @since 2.0.0
  */
@@ -852,10 +883,10 @@ export const intersection: {
 )
 
 /**
- * Intersection of two `ReadonlyRecord`s.
- * Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
- * entries of the two inputs with the same key.
- * It uses the provided `combine` function to combine the elements.
+ * Merge two records, preserving only the entries that are unique to each record.
+ *
+ * @param self - The first record.
+ * @param that - The second record to compare with the first.
  *
  * @since 2.0.0
  */
@@ -886,8 +917,9 @@ export const difference: {
 })
 
 /**
- * Given an `Equivalence` for the base type, it produces an `Equivalence`
- * for a `ReadonlyRecord` of that base type.
+ * Create an `Equivalence` for a `ReadonlyRecord` of a base type, based on the provided `Equivalence`.
+ *
+ * @param equivalence - An `Equivalence` for the base type.
  *
  * @category instances
  * @since 2.0.0
@@ -898,9 +930,12 @@ export const getEquivalence = <A>(equivalence: Equivalence<A>): Equivalence<Read
 }
 
 /**
- * Builds a non empty record from a single element.
+ * Create a non-empty record from a single element.
+ *
+ * @param key - The key for the element.
+ * @param value - The value associated with the key.
  *
  * @category constructors
  * @since 2.0.0
  */
-export const singleton = <A>(k: string, a: A): Record<string, A> => ({ [k]: a })
+export const singleton = <A>(key: string, value: A): Record<string, A> => ({ [key]: value })
