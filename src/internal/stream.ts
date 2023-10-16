@@ -2613,12 +2613,12 @@ export const flatMap = dual<
               )
           )
         ),
-      (n) =>
+      (_) =>
         new StreamImpl(
           pipe(
             toChannel(self),
             channel.concatMap(channel.writeChunk),
-            channel.mergeMap((out) => toChannel(f(out)), { concurrency: n, bufferSize })
+            channel.mergeMap((out) => toChannel(f(out)), options as any)
           )
         )
     )
@@ -2635,7 +2635,7 @@ export const matchConcurrency = <A>(
     case undefined:
       return sequential()
     case "unbounded":
-      return bounded(Number.POSITIVE_INFINITY)
+      return bounded(Number.MAX_SAFE_INTEGER)
     default:
       return concurrency > 1 ? bounded(concurrency) : sequential()
   }
