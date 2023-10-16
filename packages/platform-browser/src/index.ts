@@ -36,3 +36,17 @@ export * as Path from "@effect/platform-browser/Path"
  * @since 1.0.0
  */
 export * as Runtime from "@effect/platform-browser/Runtime"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
+ */
+export * as Worker from "@effect/platform-browser/Worker"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/platform/platform/WorkerRunner.ts.html).
+ */
+export * as WorkerRunner from "@effect/platform-browser/WorkerRunner"

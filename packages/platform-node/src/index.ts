@@ -64,3 +64,17 @@ export * as Sink from "@effect/platform-node/Sink"
  * @since 1.0.0
  */
 export * as Stream from "@effect/platform-node/Stream"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
+ */
+export * as Worker from "@effect/platform-node/Worker"
+
+/**
+ * @since 1.0.0
+ *
+ * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/platform/platform/WorkerRunner.ts.html).
+ */
+export * as WorkerRunner from "@effect/platform-node/WorkerRunner"

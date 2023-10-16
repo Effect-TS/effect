@@ -29,7 +29,7 @@
   },
   "homepage": "https://github.com/effect-ts/platform",
   "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
+    "example": "node -r ts-node/register",
     "lint": "eslint src/**/*.ts test/**/*.ts",
     "tc": "tsc --noEmit",
     "test": "vitest",
@@ -40,7 +40,7 @@
   "license": "MIT",
   "sideEffects": false,
   "devDependencies": {
-    "@effect/schema": "^0.43.0",
+    "@effect/schema": "^0.43.2",
     "@types/busboy": "^1.5.1",
     "@types/mime": "^3.0.2",
     "@types/tar": "^6.1.6",
@@ -71,7 +71,9 @@
     "Path",
     "Runtime",
     "Sink",
-    "Stream"
+    "Stream",
+    "Worker",
+    "WorkerRunner"
   ],
   "exports": {
     ".": {
@@ -188,6 +190,18 @@
       "module": "./Stream/dist/effect-platform-node-Stream.esm.js",
       "import": "./Stream/dist/effect-platform-node-Stream.cjs.mjs",
       "default": "./Stream/dist/effect-platform-node-Stream.cjs.js"
+    },
+    "./Worker": {
+      "types": "./dist/declarations/src/Worker.d.ts",
+      "module": "./Worker/dist/effect-platform-node-Worker.esm.js",
+      "import": "./Worker/dist/effect-platform-node-Worker.cjs.mjs",
+      "default": "./Worker/dist/effect-platform-node-Worker.cjs.js"
+    },
+    "./WorkerRunner": {
+      "types": "./dist/declarations/src/WorkerRunner.d.ts",
+      "module": "./WorkerRunner/dist/effect-platform-node-WorkerRunner.esm.js",
+      "import": "./WorkerRunner/dist/effect-platform-node-WorkerRunner.cjs.mjs",
+      "default": "./WorkerRunner/dist/effect-platform-node-WorkerRunner.cjs.js"
     }
   }
 }

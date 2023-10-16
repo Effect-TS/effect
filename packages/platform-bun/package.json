@@ -41,8 +41,8 @@
     "@effect/platform-node": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "^0.43.0",
-    "bun-types": "1.0.5-canary.20231009T140142",
+    "@effect/schema": "^0.43.2",
+    "bun-types": "1.0.6",
     "effect": "2.0.0-next.48"
   },
   "peerDependencies": {
@@ -64,7 +64,9 @@
     "Path",
     "Runtime",
     "Sink",
-    "Stream"
+    "Stream",
+    "Worker",
+    "WorkerRunner"
   ],
   "exports": {
     ".": {
@@ -163,6 +165,18 @@
       "module": "./Stream/dist/effect-platform-bun-Stream.esm.js",
       "import": "./Stream/dist/effect-platform-bun-Stream.cjs.mjs",
       "default": "./Stream/dist/effect-platform-bun-Stream.cjs.js"
+    },
+    "./Worker": {
+      "types": "./dist/declarations/src/Worker.d.ts",
+      "module": "./Worker/dist/effect-platform-bun-Worker.esm.js",
+      "import": "./Worker/dist/effect-platform-bun-Worker.cjs.mjs",
+      "default": "./Worker/dist/effect-platform-bun-Worker.cjs.js"
+    },
+    "./WorkerRunner": {
+      "types": "./dist/declarations/src/WorkerRunner.d.ts",
+      "module": "./WorkerRunner/dist/effect-platform-bun-WorkerRunner.esm.js",
+      "import": "./WorkerRunner/dist/effect-platform-bun-WorkerRunner.cjs.mjs",
+      "default": "./WorkerRunner/dist/effect-platform-bun-WorkerRunner.cjs.js"
     }
   }
 }

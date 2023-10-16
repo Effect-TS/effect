@@ -41,7 +41,7 @@
     "path-browserify": "^1.0.1"
   },
   "devDependencies": {
-    "@effect/schema": "^0.43.0",
+    "@effect/schema": "^0.43.2",
     "@types/path-browserify": "^1.0.0",
     "effect": "2.0.0-next.48"
   },
@@ -62,7 +62,10 @@
     "HttpServer",
     "KeyValueStore",
     "Path",
-    "Runtime"
+    "Runtime",
+    "Worker",
+    "WorkerError",
+    "WorkerRunner"
   ],
   "exports": {
     ".": {
@@ -245,6 +248,24 @@
       "module": "./Runtime/dist/effect-platform-Runtime.esm.js",
       "import": "./Runtime/dist/effect-platform-Runtime.cjs.mjs",
       "default": "./Runtime/dist/effect-platform-Runtime.cjs.js"
+    },
+    "./Worker": {
+      "types": "./dist/declarations/src/Worker.d.ts",
+      "module": "./Worker/dist/effect-platform-Worker.esm.js",
+      "import": "./Worker/dist/effect-platform-Worker.cjs.mjs",
+      "default": "./Worker/dist/effect-platform-Worker.cjs.js"
+    },
+    "./WorkerError": {
+      "types": "./dist/declarations/src/WorkerError.d.ts",
+      "module": "./WorkerError/dist/effect-platform-WorkerError.esm.js",
+      "import": "./WorkerError/dist/effect-platform-WorkerError.cjs.mjs",
+      "default": "./WorkerError/dist/effect-platform-WorkerError.cjs.js"
+    },
+    "./WorkerRunner": {
+      "types": "./dist/declarations/src/WorkerRunner.d.ts",
+      "module": "./WorkerRunner/dist/effect-platform-WorkerRunner.esm.js",
+      "import": "./WorkerRunner/dist/effect-platform-WorkerRunner.cjs.mjs",
+      "default": "./WorkerRunner/dist/effect-platform-WorkerRunner.cjs.js"
     }
   }
 }
