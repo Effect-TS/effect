@@ -36,6 +36,10 @@ const groupByVariance = {
 }
 
 /** @internal */
+export const isGroupBy = (u: unknown): u is GroupBy.GroupBy<unknown, unknown, unknown, unknown> =>
+  typeof u === "object" && u != null && GroupByTypeId in u
+
+/** @internal */
 export const evaluate = dual<
   <K, E, V, R2, E2, A>(
     f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
@@ -47,7 +51,7 @@ export const evaluate = dual<
     options?: { readonly bufferSize?: number }
   ) => Stream.Stream<R2 | R, E | E2, A>
 >(
-  3,
+  (args) => isGroupBy(args[0]),
   <R, K, E, V, R2, E2, A>(
     self: GroupBy.GroupBy<R, E, K, V>,
     f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
@@ -122,7 +126,7 @@ export const groupBy = dual<
     options?: { readonly bufferSize?: number }
   ) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>
 >(
-  (args) => typeof args[0] !== "function",
+  (args) => stream.isStream(args[0]),
   <R, E, A, R2, E2, K, V>(
     self: Stream.Stream<R, E, A>,
     f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
@@ -240,7 +244,7 @@ export const mapEffectOptions = dual<
     if (options?.key) {
       return evaluate(
         groupByKey(self, options.key, { bufferSize: options.bufferSize }),
-        (_, s) => pipe(s, stream.mapEffectSequential(f))
+        (_, s) => stream.mapEffectSequential(s, f)
       )
     }
 
