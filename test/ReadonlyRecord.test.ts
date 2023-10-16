@@ -205,10 +205,10 @@ describe.concurrent("ReadonlyRecord", () => {
       c: "c2",
       d: "d2"
     }
-    assert.strictEqual(RR.union(x, {}, combine), x)
-    assert.strictEqual(RR.union({}, x, combine), x)
-    assert.strictEqual(RR.union(x, {}, combine), x)
-    assert.strictEqual(RR.union({}, x, combine), x)
+    assert.deepStrictEqual(RR.union(x, {}, combine), x)
+    assert.deepStrictEqual(RR.union({}, x, combine), x)
+    assert.deepStrictEqual(RR.union(x, {}, combine), x)
+    assert.deepStrictEqual(RR.union({}, x, combine), x)
     assert.deepStrictEqual(RR.union(x, y, combine), {
       a: "a1",
       b: "b1b2",
@@ -248,10 +248,10 @@ describe.concurrent("ReadonlyRecord", () => {
       c: "c2",
       d: "d2"
     }
-    assert.strictEqual(RR.difference({}, x), x)
-    assert.strictEqual(RR.difference(x, {}), x)
-    assert.strictEqual(RR.difference({}, x), x)
-    assert.strictEqual(RR.difference(x, {}), x)
+    assert.deepStrictEqual(RR.difference({}, x), x)
+    assert.deepStrictEqual(RR.difference(x, {}), x)
+    assert.deepStrictEqual(RR.difference({}, x), x)
+    assert.deepStrictEqual(RR.difference(x, {}), x)
     assert.deepStrictEqual(RR.difference(x, y), {
       a: "a1",
       d: "d2"

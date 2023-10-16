@@ -663,9 +663,6 @@ export const upsert: {
   <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
   <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
 } = dual(3, <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A> => {
-  if (has(self, key) && self[key] === a) {
-    return self
-  }
   const out = { ...self }
   out[key] = a
   return out
@@ -798,10 +795,10 @@ export const union: {
     combine: (selfValue: A, thatValue: A) => A
   ): ReadonlyRecord<A> => {
     if (isEmptyRecord(self)) {
-      return that
+      return { ...that }
     }
     if (isEmptyRecord(that)) {
-      return self
+      return { ...self }
     }
     const out: Record<string, A> = {}
     for (const key in self) {
@@ -869,10 +866,10 @@ export const difference: {
   <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A>
 } = dual(2, <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A> => {
   if (isEmptyRecord(self)) {
-    return that
+    return { ...that }
   }
   if (isEmptyRecord(that)) {
-    return self
+    return { ...self }
   }
   const out: Record<string, A> = {}
   for (const key in self) {
