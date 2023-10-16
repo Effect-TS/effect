@@ -1,5 +1,5 @@
-import * as SortedSet from 'effect/SortedSet'
-import * as Predicate from 'effect/Predicate'
+import * as Predicate from "effect/Predicate"
+import * as SortedSet from "effect/SortedSet"
 
 declare const nss: SortedSet.SortedSet<number | string>
 

@@ -40,6 +40,7 @@ Added in v2.0.0
 - [type lambdas](#type-lambdas)
   - [ReadonlyRecordTypeLambda (interface)](#readonlyrecordtypelambda-interface)
 - [utils](#utils)
+  - [every](#every)
   - [filterMap](#filtermap)
   - [get](#get)
   - [has](#has)
@@ -481,6 +482,21 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
 Added in v2.0.0
 
 # utils
+
+## every
+
+Test if every entry in a `ReadonlyRecord` satisfies the predicate.
+
+**Signature**
+
+```ts
+export declare const every: {
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
+}
+```
+
+Added in v2.0.0
 
 ## filterMap
 

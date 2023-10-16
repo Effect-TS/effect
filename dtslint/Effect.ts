@@ -1,6 +1,6 @@
-import { pipe } from "effect/Function"
 import type { Cause } from "effect/Cause"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 
 declare const string: Effect.Effect<"dep-1", "err-1", string>
 declare const number: Effect.Effect<"dep-2", "err-2", number>

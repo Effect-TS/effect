@@ -738,10 +738,25 @@ export const reduce: {
   <K extends string, V, Z>(self: Record<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z): Z
 } = dual(3, <V, Z>(self: Record<string, V>, zero: Z, f: (accumulator: Z, value: V, key: string) => Z): Z => {
   let out: Z = zero
-  const ks = keys(self)
-  for (let i = 0; i < ks.length; i++) {
-    const key = ks[i]
+  for (const key in self) {
     out = f(out, self[key], key)
   }
   return out
+})
+
+/**
+ * Test if every entry in a `ReadonlyRecord` satisfies the predicate.
+ *
+ * @since 2.0.0
+ */
+export const every: {
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
+} = dual(2, <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean => {
+  for (const key in self) {
+    if (!predicate(self[key], key)) {
+      return false
+    }
+  }
+  return true
 })

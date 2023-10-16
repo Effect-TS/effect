@@ -1,4 +1,4 @@
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
 // -----------------------------------------------------------------------------
 // apis
@@ -36,7 +36,6 @@ S.trimEnd(` foo
 // $ExpectType "foo "
 S.trimStart(`
    \r\n\t   foo `)
-
 
 // -----------------------------------------------------------------------------
 // types
