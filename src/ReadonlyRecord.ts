@@ -777,3 +777,45 @@ export const some: {
   }
   return false
 })
+
+/**
+ * Union of two `ReadonlyRecord`s. Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining all the
+ * entries of the two inputs. It uses the provided `combine` function to combine the elements with the same key.
+ *
+ * @since 2.0.0
+ */
+export const union: {
+  <A>(
+    that: ReadonlyRecord<A>,
+    combine: (selfValue: A, thatValue: A) => A
+  ): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
+} = dual(
+  3,
+  <A>(
+    self: ReadonlyRecord<A>,
+    that: ReadonlyRecord<A>,
+    combine: (selfValue: A, thatValue: A) => A
+  ): ReadonlyRecord<A> => {
+    if (isEmptyRecord(self)) {
+      return that
+    }
+    if (isEmptyRecord(that)) {
+      return self
+    }
+    const out: Record<string, A> = {}
+    for (const key in self) {
+      if (has(that, key)) {
+        out[key] = combine(self[key], that[key])
+      } else {
+        out[key] = self[key]
+      }
+    }
+    for (const key in that) {
+      if (!has(out, key)) {
+        out[key] = that[key]
+      }
+    }
+    return out
+  }
+)

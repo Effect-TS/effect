@@ -191,4 +191,28 @@ describe.concurrent("ReadonlyRecord", () => {
     assert.deepStrictEqual(RR.some((n: number) => n <= 1)({ a: 1, b: 2 }), true)
     assert.deepStrictEqual(RR.some((n: number) => n <= 0)({ a: 1, b: 2 }), false)
   })
+
+  it("union", () => {
+    const combine = (s1: string, s2: string) => s1 + s2
+    const x: RR.ReadonlyRecord<string> = {
+      a: "a1",
+      b: "b1",
+      c: "c1"
+    }
+    const y: RR.ReadonlyRecord<string> = {
+      b: "b2",
+      c: "c2",
+      d: "d2"
+    }
+    assert.strictEqual(RR.union(x, {}, combine), x)
+    assert.strictEqual(RR.union({}, x, combine), x)
+    assert.strictEqual(RR.union(x, {}, combine), x)
+    assert.strictEqual(RR.union({}, x, combine), x)
+    assert.deepStrictEqual(RR.union(x, y, combine), {
+      a: "a1",
+      b: "b1b2",
+      c: "c1c2",
+      d: "d2"
+    })
+  })
 })

@@ -53,6 +53,7 @@ Added in v2.0.0
   - [replaceOption](#replaceoption)
   - [size](#size)
   - [some](#some)
+  - [union](#union)
   - [update](#update)
   - [upsert](#upsert)
 
@@ -754,6 +755,24 @@ Test if at least one entry in a `Record` satisfies the predicate.
 export declare const some: {
   <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
   <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
+}
+```
+
+Added in v2.0.0
+
+## union
+
+Union of two `ReadonlyRecord`s. Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining all the
+entries of the two inputs. It uses the provided `combine` function to combine the elements with the same key.
+
+**Signature**
+
+```ts
+export declare const union: {
+  <A>(that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): (
+    self: ReadonlyRecord<A>
+  ) => ReadonlyRecord<A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
 }
 ```
 
