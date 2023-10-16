@@ -235,4 +235,25 @@ describe.concurrent("ReadonlyRecord", () => {
       c: "c1c2"
     })
   })
+
+  it("difference", () => {
+    const x: RR.ReadonlyRecord<string> = {
+      a: "a1",
+      b: "b1",
+      c: "c1"
+    }
+    const y: RR.ReadonlyRecord<string> = {
+      b: "b2",
+      c: "c2",
+      d: "d2"
+    }
+    assert.strictEqual(RR.difference({}, x), x)
+    assert.strictEqual(RR.difference(x, {}), x)
+    assert.strictEqual(RR.difference({}, x), x)
+    assert.strictEqual(RR.difference(x, {}), x)
+    assert.deepStrictEqual(RR.difference(x, y), {
+      a: "a1",
+      d: "d2"
+    })
+  })
 })

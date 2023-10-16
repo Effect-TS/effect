@@ -40,6 +40,7 @@ Added in v2.0.0
 - [type lambdas](#type-lambdas)
   - [ReadonlyRecordTypeLambda (interface)](#readonlyrecordtypelambda-interface)
 - [utils](#utils)
+  - [difference](#difference)
   - [every](#every)
   - [filterMap](#filtermap)
   - [get](#get)
@@ -485,6 +486,24 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
 Added in v2.0.0
 
 # utils
+
+## difference
+
+Intersection of two `ReadonlyRecord`s.
+Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
+entries of the two inputs with the same key.
+It uses the provided `combine` function to combine the elements.
+
+**Signature**
+
+```ts
+export declare const difference: {
+  <A>(that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A>
+}
+```
+
+Added in v2.0.0
 
 ## every
 

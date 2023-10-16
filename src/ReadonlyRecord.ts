@@ -853,3 +853,37 @@ export const intersection: {
     return out
   }
 )
+
+/**
+ * Intersection of two `ReadonlyRecord`s.
+ * Takes two `ReadonlyRecord`s and produces a `ReadonlyRecord` combining only the
+ * entries of the two inputs with the same key.
+ * It uses the provided `combine` function to combine the elements.
+ *
+ * @since 2.0.0
+ */
+export const difference: {
+  <A>(
+    that: ReadonlyRecord<A>
+  ): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A>
+} = dual(2, <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A> => {
+  if (isEmptyRecord(self)) {
+    return that
+  }
+  if (isEmptyRecord(that)) {
+    return self
+  }
+  const out: Record<string, A> = {}
+  for (const key in self) {
+    if (!has(that, key)) {
+      out[key] = self[key]
+    }
+  }
+  for (const key in that) {
+    if (!has(self, key)) {
+      out[key] = that[key]
+    }
+  }
+  return out
+})
