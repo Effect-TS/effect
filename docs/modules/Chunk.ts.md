@@ -82,6 +82,7 @@ Added in v2.0.0
   - [reduceRight](#reduceright)
 - [mapping](#mapping)
   - [map](#map)
+  - [mapNonEmpty](#mapnonempty)
 - [model](#model)
   - [NonEmptyChunk (interface)](#nonemptychunk-interface)
 - [models](#models)
@@ -970,7 +971,7 @@ Added in v2.0.0
 
 ## map
 
-Returns an effect whose success is mapped by the specified f function.
+Returns a chunk with the elements mapped by the specified f function.
 
 **Signature**
 
@@ -978,6 +979,21 @@ Returns an effect whose success is mapped by the specified f function.
 export declare const map: {
   <A, B>(f: (a: A, i: number) => B): (self: Chunk<A>) => Chunk<B>
   <A, B>(self: Chunk<A>, f: (a: A, i: number) => B): Chunk<B>
+}
+```
+
+Added in v2.0.0
+
+## mapNonEmpty
+
+Returns a non empty chunk with the elements mapped by the specified f function.
+
+**Signature**
+
+```ts
+export declare const mapNonEmpty: {
+  <A, B>(f: (a: A, i: number) => B): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
+  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => B): NonEmptyChunk<B>
 }
 ```
 
