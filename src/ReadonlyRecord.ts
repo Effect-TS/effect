@@ -887,3 +887,15 @@ export const difference: {
   }
   return out
 })
+
+/**
+ * Given an `Equivalence` for the base type, it produces an `Equivalence`
+ * for a `ReadonlyRecord` of that base type.
+ *
+ * @category instances
+ * @since 2.0.0
+ */
+export const getEquivalence = <A>(equivalence: Equivalence<A>): Equivalence<ReadonlyRecord<A>> => {
+  const is = isSubrecordBy(equivalence)
+  return (self, that) => is(self, that) && is(that, self)
+}

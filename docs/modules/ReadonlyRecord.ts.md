@@ -33,6 +33,8 @@ Added in v2.0.0
 - [guards](#guards)
   - [isEmptyReadonlyRecord](#isemptyreadonlyrecord)
   - [isEmptyRecord](#isemptyrecord)
+- [instances](#instances)
+  - [getEquivalence](#getequivalence)
 - [models](#models)
   - [ReadonlyRecord (interface)](#readonlyrecord-interface)
 - [record](#record)
@@ -424,6 +426,21 @@ import { isEmptyRecord } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(isEmptyRecord({}), true)
 assert.deepStrictEqual(isEmptyRecord({ a: 3 }), false)
+```
+
+Added in v2.0.0
+
+# instances
+
+## getEquivalence
+
+Given an `Equivalence` for the base type, it produces an `Equivalence`
+for a `ReadonlyRecord` of that base type.
+
+**Signature**
+
+```ts
+export declare const getEquivalence: <A>(equivalence: Equivalence<A>) => Equivalence<ReadonlyRecord<A>>
 ```
 
 Added in v2.0.0

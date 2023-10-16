@@ -1,25 +1,26 @@
-import * as E from "effect/Either"
+import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
-import * as O from "effect/Option"
+import * as N from "effect/Number"
+import * as Option from "effect/Option"
 import * as RR from "effect/ReadonlyRecord"
 
 describe.concurrent("ReadonlyRecord", () => {
   it("get", () => {
-    expect(pipe({}, RR.get("a"))).toEqual(O.none())
-    expect(pipe({ a: 1 }, RR.get("a"))).toEqual(O.some(1))
+    expect(pipe({}, RR.get("a"))).toEqual(Option.none())
+    expect(pipe({ a: 1 }, RR.get("a"))).toEqual(Option.some(1))
   })
 
   it("modifyOption", () => {
-    expect(pipe({}, RR.replaceOption("a", 2))).toEqual(O.none())
-    expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(O.some({ a: 2 }))
-    expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(O.some({ a: true }))
+    expect(pipe({}, RR.replaceOption("a", 2))).toEqual(Option.none())
+    expect(pipe({ a: 1 }, RR.replaceOption("a", 2))).toEqual(Option.some({ a: 2 }))
+    expect(pipe({ a: 1 }, RR.replaceOption("a", true))).toEqual(Option.some({ a: true }))
   })
 
   it("modifyOption", () => {
-    expect(pipe({}, RR.modifyOption("a", (n: number) => n + 1))).toEqual(O.none())
-    expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => n + 1))).toEqual(O.some({ a: 2 }))
+    expect(pipe({}, RR.modifyOption("a", (n: number) => n + 1))).toEqual(Option.none())
+    expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => n + 1))).toEqual(Option.some({ a: 2 }))
     expect(pipe({ a: 1 }, RR.modifyOption("a", (n: number) => String(n)))).toEqual(
-      O.some({ a: "1" })
+      Option.some({ a: "1" })
     )
   })
 
@@ -71,27 +72,27 @@ describe.concurrent("ReadonlyRecord", () => {
       const record = { a: 1, b: 2 }
       const result = RR.pop("a")(record)
 
-      assert.deepStrictEqual(result, O.some([1, { b: 2 }] as const))
+      assert.deepStrictEqual(result, Option.some([1, { b: 2 }] as const))
     })
 
     it("should return none if the key is not present in the record", () => {
       const record = { a: 1, b: 2 }
       const result = RR.pop("c")(record)
 
-      assert.deepStrictEqual(result, O.none())
+      assert.deepStrictEqual(result, Option.none())
     })
   })
 
   describe.concurrent("filterMap", () => {
     it("should filter the properties of an object", () => {
       const obj = { a: 1, b: 2, c: 3 }
-      const filtered = RR.filterMap(obj, (value, key) => (value > 2 ? O.some(key) : O.none()))
+      const filtered = RR.filterMap(obj, (value, key) => (value > 2 ? Option.some(key) : Option.none()))
       expect(filtered).toEqual({ c: "c" })
     })
   })
 
   it("compact", () => {
-    const x = { a: O.some(1), b: O.none(), c: O.some(2) }
+    const x = { a: Option.some(1), b: Option.none(), c: Option.some(2) }
     assert.deepStrictEqual(RR.compact(x), { a: 1, c: 2 })
   })
 
@@ -101,7 +102,7 @@ describe.concurrent("ReadonlyRecord", () => {
   })
 
   it("partitionMap", () => {
-    const f = (n: number) => (n > 2 ? E.right(n + 1) : E.left(n - 1))
+    const f = (n: number) => (n > 2 ? Either.right(n + 1) : Either.left(n - 1))
     assert.deepStrictEqual(RR.partitionMap({}, f), [{}, {}])
     assert.deepStrictEqual(RR.partitionMap({ a: 1, b: 3 }, f), [{ a: 0 }, { b: 4 }])
   })
@@ -114,11 +115,11 @@ describe.concurrent("ReadonlyRecord", () => {
 
   it("separate", () => {
     assert.deepStrictEqual(
-      RR.separate({ a: E.left("e"), b: E.right(1) }),
+      RR.separate({ a: Either.left("e"), b: Either.right(1) }),
       [{ a: "e" }, { b: 1 }]
     )
     // should ignore non own properties
-    const o: RR.ReadonlyRecord<E.Either<string, number>> = Object.create({ a: 1 })
+    const o: RR.ReadonlyRecord<Either.Either<string, number>> = Object.create({ a: 1 })
     assert.deepStrictEqual(pipe(o, RR.separate), [{}, {}])
   })
 
@@ -255,5 +256,13 @@ describe.concurrent("ReadonlyRecord", () => {
       a: "a1",
       d: "d2"
     })
+  })
+
+  it("getEquivalence", () => {
+    assert.deepStrictEqual(RR.getEquivalence(N.Equivalence)({ a: 1 }, { a: 1 }), true)
+    assert.deepStrictEqual(RR.getEquivalence(N.Equivalence)({ a: 1 }, { a: 2 }), false)
+    assert.deepStrictEqual(RR.getEquivalence(N.Equivalence)({ a: 1 }, { b: 1 }), false)
+    const noPrototype = Object.create(null)
+    assert.deepStrictEqual(RR.getEquivalence(N.Equivalence)(noPrototype, { b: 1 }), false)
   })
 })
