@@ -265,4 +265,8 @@ describe.concurrent("ReadonlyRecord", () => {
     const noPrototype = Object.create(null)
     assert.deepStrictEqual(RR.getEquivalence(N.Equivalence)(noPrototype, { b: 1 }), false)
   })
+
+  it("singleton", () => {
+    assert.deepStrictEqual(RR.singleton("a", 1), { a: 1 })
+  })
 })

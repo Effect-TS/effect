@@ -899,3 +899,11 @@ export const getEquivalence = <A>(equivalence: Equivalence<A>): Equivalence<Read
   const is = isSubrecordBy(equivalence)
   return (self, that) => is(self, that) && is(that, self)
 }
+
+/**
+ * Builds a non empty record from a single element.
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const singleton = <A>(k: string, a: A): Record<string, A> => ({ [k]: a })
