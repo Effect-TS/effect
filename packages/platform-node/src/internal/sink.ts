@@ -28,7 +28,7 @@ const writeChannel = <IE, OE, A>(
         writableOutput(writable, deferred, onError),
         writeInput<IE, A>(
           writable,
-          (_) => Deferred.failCause(deferred, _),
+          (cause) => Deferred.failCause(deferred, cause),
           options,
           Deferred.complete(deferred, Effect.unit)
         )

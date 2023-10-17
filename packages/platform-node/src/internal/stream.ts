@@ -7,7 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import type { LazyArg } from "effect/Function"
-import { dual, pipe } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import type { Duplex, Readable, Writable } from "node:stream"
@@ -296,12 +296,15 @@ const readableTake = <E, A>(
   chunkSize: number | undefined
 ) => {
   const read = readChunkChannel<A>(readable, chunkSize)
-  const loop: Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> = pipe(
-    Channel.fromEffect(Queue.take(queue)),
-    Channel.flatMap(Either.match({
-      onLeft: Channel.fromEffect,
+  const loop: Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, void> = Channel.flatMap(
+    Queue.take(queue),
+    Either.match({
+      onLeft: Exit.match({
+        onFailure: Channel.failCause,
+        onSuccess: (_) => Channel.unit
+      }),
       onRight: (_) => Channel.flatMap(read, () => loop)
-    }))
+    })
   )
   return loop
 }
@@ -310,15 +313,12 @@ const readChunkChannel = <A>(
   readable: Readable | NodeJS.ReadableStream,
   chunkSize: number | undefined
 ) =>
-  Channel.flatMap(
-    Channel.sync(() => {
-      const arr: Array<A> = []
-      let chunk = readable.read(chunkSize)
-      while (chunk !== null) {
-        arr.push(chunk)
-        chunk = readable.read(chunkSize)
-      }
-      return Chunk.unsafeFromArray(arr)
-    }),
-    Channel.write
-  )
+  Channel.suspend(() => {
+    const arr: Array<A> = []
+    let chunk = readable.read(chunkSize)
+    while (chunk !== null) {
+      arr.push(chunk)
+      chunk = readable.read(chunkSize)
+    }
+    return Channel.write(Chunk.unsafeFromArray(arr))
+  })

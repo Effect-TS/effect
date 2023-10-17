@@ -1,3 +1,5 @@
+import * as Channel from "effect/Channel"
+import * as Chunk from "effect/Chunk"
 import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
@@ -86,27 +88,39 @@ export const make = (
 
 /** @internal */
 const stream = (file: File, {
-  bufferSize = 4,
+  bufferSize = 16,
   bytesToRead: bytesToRead_,
   chunkSize: chunkSize_ = Size(64 * 1024)
 }: StreamOptions = {}) => {
   const bytesToRead = bytesToRead_ !== undefined ? Size(bytesToRead_) : undefined
   const chunkSize = Size(chunkSize_)
+
+  function loop(
+    totalBytesRead: bigint
+  ): Channel.Channel<never, unknown, unknown, unknown, Error.PlatformError, Chunk.Chunk<Uint8Array>, void> {
+    if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
+      return Channel.unit
+    }
+
+    const toRead = bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
+      ? bytesToRead - totalBytesRead
+      : chunkSize
+
+    return Channel.flatMap(
+      file.readAlloc(toRead),
+      Option.match({
+        onNone: () => Channel.unit,
+        onSome: (buf) =>
+          Channel.flatMap(
+            Channel.write(Chunk.of(buf)),
+            (_) => loop(totalBytesRead + BigInt(buf.length))
+          )
+      })
+    )
+  }
+
   return Stream.bufferChunks(
-    Stream.unfoldEffect(BigInt(0), (totalBytesRead) => {
-      if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
-        return Effect.succeed(Option.none())
-      }
-
-      const toRead = bytesToRead !== undefined && (bytesToRead - totalBytesRead) < chunkSize
-        ? bytesToRead - totalBytesRead
-        : chunkSize
-
-      return Effect.map(
-        file.readAlloc(toRead),
-        Option.map((buf) => [buf, Size(totalBytesRead + BigInt(buf.length))] as const)
-      )
-    }),
+    Stream.fromChannel(loop(BigInt(0))),
     { capacity: bufferSize }
   )
 }
