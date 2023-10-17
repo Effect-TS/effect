@@ -49,12 +49,12 @@
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@effect/typeclass": "^0.10.0",
-    "effect": "2.0.0-next.48"
+    "@effect/typeclass": "^0.11.0",
+    "effect": "2.0.0-next.49"
   },
   "peerDependencies": {
-    "@effect/typeclass": "^0.10.0",
-    "effect": "2.0.0-next.48"
+    "@effect/typeclass": "^0.11.0",
+    "effect": "2.0.0-next.49"
   },
   "files": [
     "src",
