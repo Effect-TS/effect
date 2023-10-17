@@ -103,6 +103,17 @@ Normalizes a given `BigDecimal` by removing trailing zeros.
 export declare const normalize: (self: BigDecimal) => BigDecimal
 ```
 
+**Example**
+
+```ts
+import { normalize, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(normalize(make(123.456)), make(123.456))
+assert.deepStrictEqual(normalize(make(123.456)), make(123.456))
+assert.deepStrictEqual(normalize(make(123.000456)), make(123.000456))
+assert.deepStrictEqual(normalize(make(123.0)), make(123))
+```
+
 Added in v2.0.0
 
 ## parse

@@ -148,6 +148,14 @@ export const parse = (s: string): Either.Either<Cause.IllegalArgumentException, 
  * Normalizes a given `BigDecimal` by removing trailing zeros.
  *
  * @param self - The `BigDecimal` to normalize.
+ * 
+ * @example
+ * import { normalize, make } from 'effect/BigDecimal'
+ * 
+ * assert.deepStrictEqual(normalize(make(123.456)), make(123.456))
+ * assert.deepStrictEqual(normalize(make(123.456000)), make(123.456))
+ * assert.deepStrictEqual(normalize(make(123.000456)), make(123.000456))
+ * assert.deepStrictEqual(normalize(make(123.000000)), make(123))
  *
  * @since 2.0.0
  * @category constructors
