@@ -148,10 +148,10 @@ export const parse = (s: string): Either.Either<Cause.IllegalArgumentException, 
  * Normalizes a given `BigDecimal` by removing trailing zeros.
  *
  * @param self - The `BigDecimal` to normalize.
- * 
+ *
  * @example
  * import { normalize, make } from 'effect/BigDecimal'
- * 
+ *
  * assert.deepStrictEqual(normalize(make(123.456)), make(123.456))
  * assert.deepStrictEqual(normalize(make(123.456000)), make(123.456))
  * assert.deepStrictEqual(normalize(make(123.000456)), make(123.000456))
@@ -319,7 +319,7 @@ export const subtract: {
  * If the divisor is `0`, the result will be `None`.
  *
  * @param self - The dividend operand.
- * @param that - The divisor operand.as
+ * @param that - The divisor operand.
  *
  * @example
  * import { divide, make } from 'effect/BigDecimal'

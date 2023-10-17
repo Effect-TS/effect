@@ -1,7 +1,7 @@
 import { deepStrictEqual } from "effect-test/util"
 import * as BigDecimal from "effect/BigDecimal"
-import * as Option from "effect/Option"
 import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 
 describe.concurrent("BigDecimal", () => {
   it("sign", () => {
