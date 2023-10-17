@@ -110,10 +110,10 @@ const zero = make(0n)
  *
  * @example
  * import { parse, make } from 'effect/BigDecimal'
- * import { getOrThrow } from 'effect/Either'
+ * import { right } from 'effect/Either'
  *
- * assert.deepStrictEqual(getOrThrow(parse('123')), make(123n))
- * assert.deepStrictEqual(getOrThrow(parse('123.456')), make(123.456))
+ * assert.deepStrictEqual(parse('123'), right(make(123n)))
+ * assert.deepStrictEqual(parse('123.456'), right(make(123.456)))
  *
  * @since 2.0.0
  * @category constructors
@@ -323,10 +323,11 @@ export const subtract: {
  *
  * @example
  * import { divide, make } from 'effect/BigDecimal'
- * import { getOrThrow } from 'effect/Option'
+ * import { some, none } from 'effect/Option'
  *
- * assert.deepStrictEqual(getOrThrow(divide(make(6n), make(3n))), make(2n))
- * assert.deepStrictEqual(getOrThrow(divide(make(6n), make(4n))), make(1n))
+ * assert.deepStrictEqual(divide(make(6n), make(3n)), some(make(2n)))
+ * assert.deepStrictEqual(divide(make(6n), make(4n)), some(make(1n)))
+ * assert.deepStrictEqual(divide(make(6n), make(0n)), none())
  *
  * @since 2.0.0
  * @category math

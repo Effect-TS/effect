@@ -130,10 +130,10 @@ export declare const parse: (s: string) => Either.Either<Cause.IllegalArgumentEx
 
 ```ts
 import { parse, make } from 'effect/BigDecimal'
-import { getOrThrow } from 'effect/Either'
+import { right } from 'effect/Either'
 
-assert.deepStrictEqual(getOrThrow(parse('123')), make(123n))
-assert.deepStrictEqual(getOrThrow(parse('123.456')), make(123.456))
+assert.deepStrictEqual(parse('123'), right(make(123n)))
+assert.deepStrictEqual(parse('123.456'), right(make(123.456)))
 ```
 
 Added in v2.0.0
@@ -276,10 +276,11 @@ export declare const divide: {
 
 ```ts
 import { divide, make } from 'effect/BigDecimal'
-import { getOrThrow } from 'effect/Option'
+import { some, none } from 'effect/Option'
 
-assert.deepStrictEqual(getOrThrow(divide(make(6n), make(3n))), make(2n))
-assert.deepStrictEqual(getOrThrow(divide(make(6n), make(4n))), make(1n))
+assert.deepStrictEqual(divide(make(6n), make(3n)), some(make(2n)))
+assert.deepStrictEqual(divide(make(6n), make(4n)), some(make(1n)))
+assert.deepStrictEqual(divide(make(6n), make(0n)), none())
 ```
 
 Added in v2.0.0
