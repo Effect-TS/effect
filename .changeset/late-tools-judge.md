@@ -6,9 +6,10 @@ ReadonlyRecord: add missing APIs:
 
 - keys
 - values
-- upcert
+- upsert
 - update
 - isSubrecord
+- isSubrecordBy
 - reduce
 - every
 - some
