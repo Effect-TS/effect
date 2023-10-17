@@ -91,7 +91,7 @@ export const subtract: {
  *
  * If the dividend is not a multiple of the divisor the result will be a `bigint` value
  * which represents the integer division rounded down to the nearest integer.
- * 
+ *
  * Returns `None` if the divisor is `0n`.
  *
  * @param self - The dividend operand.
@@ -110,14 +110,17 @@ export const subtract: {
 export const divide: {
   (that: bigint): (self: bigint) => Option.Option<bigint>
   (self: bigint, that: bigint): Option.Option<bigint>
-} = dual(2, (self: bigint, that: bigint): Option.Option<bigint> => that === 0n ? Option.none() : Option.some(self / that))
+} = dual(
+  2,
+  (self: bigint, that: bigint): Option.Option<bigint> => that === 0n ? Option.none() : Option.some(self / that)
+)
 
 /**
  * Provides a division operation on `bigint`s.
  *
  * If the dividend is not a multiple of the divisor the result will be a `bigint` value
  * which represents the integer division rounded down to the nearest integer.
- * 
+ *
  * Throws a `RangeError` if the divisor is `0n`.
  *
  * @param self - The dividend operand.

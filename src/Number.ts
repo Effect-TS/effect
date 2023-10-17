@@ -7,7 +7,8 @@
  */
 import * as equivalence from "./Equivalence"
 import { dual } from "./Function"
-import * as Option from "./Option"
+import * as option from "./internal/Option"
+import type { Option } from "./Option"
 import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import * as predicate from "./Predicate"
@@ -102,13 +103,16 @@ export const subtract: {
  * @since 2.0.0
  */
 export const divide: {
-  (that: number): (self: number) => Option.Option<number>
-  (self: number, that: number): Option.Option<number>
-} = dual(2, (self: number, that: number): Option.Option<number> => that === 0 ? Option.none() : Option.some(self / that))
+  (that: number): (self: number) => Option<number>
+  (self: number, that: number): Option<number>
+} = dual(
+  2,
+  (self: number, that: number): Option<number> => that === 0 ? option.none : option.some(self / that)
+)
 
 /**
  * Provides a division operation on `number`s.
- * 
+ *
  * Throws a `RangeError` if the divisor is `0`.
  *
  * @param self - The dividend operand.
