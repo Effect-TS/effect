@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.17.0
+
+### Minor Changes
+
+- [#341](https://github.com/Effect-TS/cli/pull/341) [`263180c`](https://github.com/Effect-TS/cli/commit/263180cbdc7016f377e793de6c68c6c3a9c75cff) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.16.0
 
 ### Minor Changes
