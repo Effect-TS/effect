@@ -61,6 +61,7 @@ Added in v2.0.0
   - [union](#union)
   - [update](#update)
   - [upsert](#upsert)
+  - [values](#values)
 
 ---
 
@@ -674,7 +675,7 @@ Added in v2.0.0
 
 ## keys
 
-Retrieve the keys of a given object as an array.
+Retrieve the keys of a given record as an array.
 
 **Signature**
 
@@ -888,6 +889,18 @@ import { upsert } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(upsert('a', 5)({ a: 1, b: 2 }), { a: 5, b: 2 })
 assert.deepStrictEqual(upsert('c', 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 })
+```
+
+Added in v2.0.0
+
+## values
+
+Retrieve the values of a given record as an array.
+
+**Signature**
+
+```ts
+export declare const values: <A>(self: ReadonlyRecord<A>) => A[]
 ```
 
 Added in v2.0.0

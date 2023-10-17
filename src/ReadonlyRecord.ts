@@ -644,13 +644,22 @@ export const partition: {
 )
 
 /**
- * Retrieve the keys of a given object as an array.
+ * Retrieve the keys of a given record as an array.
  *
  * @param self - The object for which you want to get the keys.
  *
  * @since 2.0.0
  */
 export const keys = <A>(self: ReadonlyRecord<A>): Array<string> => Object.keys(self)
+
+/**
+ * Retrieve the values of a given record as an array.
+ *
+ * @param self - The object for which you want to get the values.
+ *
+ * @since 2.0.0
+ */
+export const values = <A>(self: ReadonlyRecord<A>): Array<A> => collect(self, (_, a) => a)
 
 /**
  * Add a new key-value pair or update an existing key's value in a record.
