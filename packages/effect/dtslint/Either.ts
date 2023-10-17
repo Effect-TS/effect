@@ -1,5 +1,5 @@
-import * as Either from 'effect/Either'
-import { pipe } from 'effect/Function'
+import * as Either from "effect/Either"
+import { pipe } from "effect/Function"
 
 declare const esn: Either.Either<string, number>
 declare const esb: Either.Either<string, boolean>

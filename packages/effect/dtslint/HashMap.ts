@@ -1,4 +1,4 @@
-import * as HashMap from 'effect/HashMap'
+import type * as HashMap from "effect/HashMap"
 
 declare const hmLiterals: HashMap.HashMap<"k", "v">
 
@@ -7,11 +7,11 @@ declare const hmLiterals: HashMap.HashMap<"k", "v">
 // -------------------------------------------------------------------------------------
 
 // $ExpectType "k"
-type K = HashMap.HashMap.Key<typeof hmLiterals>
+export type K = HashMap.HashMap.Key<typeof hmLiterals>
 
 // -------------------------------------------------------------------------------------
 // HashMap.Value
 // -------------------------------------------------------------------------------------
 
 // $ExpectType "v"
-type V = HashMap.HashMap.Value<typeof hmLiterals>
+export type V = HashMap.HashMap.Value<typeof hmLiterals>
