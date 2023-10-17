@@ -32,6 +32,7 @@ Added in v2.0.0
   - [subtract](#subtract)
   - [sum](#sum)
   - [sumAll](#sumall)
+  - [unsafeDivide](#unsafedivide)
 - [predicates](#predicates)
   - [between](#between)
   - [greaterThan](#greaterthan)
@@ -119,15 +120,19 @@ Provides a division operation on `number`s.
 **Signature**
 
 ```ts
-export declare const divide: { (that: number): (self: number) => number; (self: number, that: number): number }
+export declare const divide: {
+  (that: number): (self: number) => Option.Option<number>
+  (self: number, that: number): Option.Option<number>
+}
 ```
 
 **Example**
 
 ```ts
 import { divide } from 'effect/Number'
+import { getOrThrow } from 'effect/Option'
 
-assert.deepStrictEqual(divide(6, 3), 2)
+assert.deepStrictEqual(getOrThrow(divide(6, 3)), 2)
 ```
 
 Added in v2.0.0
@@ -294,6 +299,28 @@ export declare const sumAll: (collection: Iterable<number>) => number
 import { sumAll } from 'effect/Number'
 
 assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
+```
+
+Added in v2.0.0
+
+## unsafeDivide
+
+Provides a division operation on `number`s.
+
+Throws a `RangeError` if the divisor is `0`.
+
+**Signature**
+
+```ts
+export declare const unsafeDivide: { (that: number): (self: number) => number; (self: number, that: number): number }
+```
+
+**Example**
+
+```ts
+import { unsafeDivide } from 'effect/Number'
+
+assert.deepStrictEqual(unsafeDivide(6, 3), 2)
 ```
 
 Added in v2.0.0

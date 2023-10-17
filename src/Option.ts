@@ -16,6 +16,7 @@ import type { Order } from "./Order"
 import * as order from "./Order"
 import type { Pipeable } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
+import { available } from "./TSemaphore"
 import type * as Unify from "./Unify"
 import * as Gen from "./Utils"
 
@@ -1155,7 +1156,7 @@ export const subtract: {
 export const divide: {
   (self: Option<number>, that: Option<number>): Option<number>
   (that: Option<number>): (self: Option<number>) => Option<number>
-} = lift2(N.divide)
+} = dual(2, (self: Option<number>, that: Option<number>): Option<number> => zipWith(self, that, N.divide).pipe(flatten))
 
 /**
  * Sum all numbers in an iterable of `Option<number>` ignoring the `None` values.

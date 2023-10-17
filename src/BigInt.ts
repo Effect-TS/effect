@@ -91,21 +91,48 @@ export const subtract: {
  *
  * If the dividend is not a multiple of the divisor the result will be a `bigint` value
  * which represents the integer division rounded down to the nearest integer.
+ * 
+ * Returns `None` if the divisor is `0n`.
  *
  * @param self - The dividend operand.
  * @param that - The divisor operand.
  *
  * @example
  * import { divide } from 'effect/BigInt'
+ * import { getOrThrow } from 'effect/Option'
  *
- * assert.deepStrictEqual(divide(6n, 3n), 2n)
- * assert.deepStrictEqual(divide(6n, 4n), 1n)
+ * assert.deepStrictEqual(getOrThrow(divide(6n, 3n)), 2n)
+ * assert.deepStrictEqual(getOrThrow(divide(6n, 4n)), 1n)
  *
  * @category math
  * @since 2.0.0
- * @since 2.0.0
  */
 export const divide: {
+  (that: bigint): (self: bigint) => Option.Option<bigint>
+  (self: bigint, that: bigint): Option.Option<bigint>
+} = dual(2, (self: bigint, that: bigint): Option.Option<bigint> => that === 0n ? Option.none() : Option.some(self / that))
+
+/**
+ * Provides a division operation on `bigint`s.
+ *
+ * If the dividend is not a multiple of the divisor the result will be a `bigint` value
+ * which represents the integer division rounded down to the nearest integer.
+ * 
+ * Throws a `RangeError` if the divisor is `0n`.
+ *
+ * @param self - The dividend operand.
+ * @param that - The divisor operand.
+ *
+ * @example
+ * import { unsafeDivide } from 'effect/BigInt'
+ *
+ * assert.deepStrictEqual(unsafeDivide(6n, 3n), 2n)
+ * assert.deepStrictEqual(unsafeDivide(6n, 4n), 1n)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const unsafeDivide: {
   (that: bigint): (self: bigint) => bigint
   (self: bigint, that: bigint): bigint
 } = dual(2, (self: bigint, that: bigint): bigint => self / that)
