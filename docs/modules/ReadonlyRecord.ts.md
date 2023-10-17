@@ -95,7 +95,7 @@ Added in v2.0.0
 
 ## collect
 
-Transforms the values of a `ReadonlyRecord` into an `Array` with a custom mapping function.
+Transforms the values of a record into an `Array` with a custom mapping function.
 
 **Signature**
 
@@ -237,7 +237,7 @@ Added in v2.0.0
 
 ## compact
 
-Given a `ReadonlyRecord` with `Option` values, returns a `Record` with only the `Some` values, with the same keys.
+Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
 
 **Signature**
 
@@ -294,7 +294,7 @@ Added in v2.0.0
 
 ## partition
 
-Partitions a `ReadonlyRecord` into two separate `Record`s based on the result of a predicate function.
+Partitions a record into two separate records based on the result of a predicate function.
 
 **Signature**
 
@@ -332,7 +332,7 @@ Added in v2.0.0
 
 ## partitionMap
 
-Partitions the elements of a `ReadonlyRecord` into two groups: those that match a predicate, and those that don't.
+Partitions the elements of a record into two groups: those that match a predicate, and those that don't.
 
 **Signature**
 
@@ -363,7 +363,7 @@ Added in v2.0.0
 
 ## separate
 
-Partitions a `ReadonlyRecord` of `Either` values into two separate records,
+Partitions a record of `Either` values into two separate records,
 one with the `Left` values and one with the `Right` values.
 
 **Signature**
@@ -404,7 +404,7 @@ Added in v2.0.0
 
 ## isEmptyReadonlyRecord
 
-Determine if a `ReadonlyRecord` is empty.
+Determine if a record is empty.
 
 **Signature**
 
@@ -425,7 +425,7 @@ Added in v2.0.0
 
 ## isEmptyRecord
 
-Determine if a `Record` is empty.
+Determine if a record is empty.
 
 **Signature**
 
@@ -448,7 +448,7 @@ Added in v2.0.0
 
 ## getEquivalence
 
-Create an `Equivalence` for a `ReadonlyRecord` of a base type, based on the provided `Equivalence`.
+Create an `Equivalence` for records using the provided `Equivalence` for values.
 
 **Signature**
 
@@ -476,8 +476,8 @@ Added in v2.0.0
 
 ## pop
 
-Retrieves the value of the property with the given `key` from a `ReadonlyRecord` and returns an `Option`
-of a tuple with the value and the `ReadonlyRecord` with the removed property.
+Retrieves the value of the property with the given `key` from a record and returns an `Option`
+of a tuple with the value and the record with the removed property.
 If the key is not present, returns `O.none`.
 
 **Signature**
@@ -534,7 +534,7 @@ Added in v2.0.0
 
 ## every
 
-Check if all entries in a `Record` meet a specific condition.
+Check if all entries in a record meet a specific condition.
 
 **Signature**
 
@@ -549,8 +549,8 @@ Added in v2.0.0
 
 ## filterMap
 
-Transforms a `ReadonlyRecord` into a `Record` by applying the function `f` to each key and value in the original `ReadonlyRecord`.
-If the function returns `Some`, the key-value pair is included in the output `Record`.
+Transforms a record into a record by applying the function `f` to each key and value in the original record.
+If the function returns `Some`, the key-value pair is included in the output record.
 
 **Signature**
 
@@ -576,7 +576,7 @@ Added in v2.0.0
 
 ## get
 
-Retrieve a value at a particular key from a `ReadonlyRecord`, returning it wrapped in an `Option`.
+Retrieve a value at a particular key from a record, returning it wrapped in an `Option`.
 
 **Signature**
 
@@ -603,7 +603,7 @@ Added in v2.0.0
 
 ## has
 
-Check if a given `key` exists in a `ReadonlyRecord`.
+Check if a given `key` exists in a record.
 
 **Signature**
 
@@ -644,7 +644,7 @@ Added in v2.0.0
 
 ## isSubrecord
 
-Check if one `ReadonlyRecord` is a subrecord of another, meaning it contains all the keys and values found in the second record.
+Check if one record is a subrecord of another, meaning it contains all the keys and values found in the second record.
 This comparison uses default equality checks (`Equal.equivalence()`).
 
 **Signature**
@@ -660,7 +660,7 @@ Added in v2.0.0
 
 ## isSubrecordBy
 
-Check if all the keys and values in one `ReadonlyRecord` are also found in another `ReadonlyRecord`.
+Check if all the keys and values in one record are also found in another record.
 
 **Signature**
 
@@ -687,7 +687,7 @@ Added in v2.0.0
 
 ## map
 
-Maps a `ReadonlyRecord` into another `Record` by applying a transformation function to each of its values.
+Maps a record into another record by applying a transformation function to each of its values.
 
 **Signature**
 
@@ -744,7 +744,7 @@ Added in v2.0.0
 
 ## remove
 
-Removes a key from a `ReadonlyRecord` and returns a new `Record`
+Removes a key from a record and returns a new record
 
 **Signature**
 
@@ -792,7 +792,7 @@ Added in v2.0.0
 
 ## size
 
-Returns the number of key/value pairs in a `ReadonlyRecord`.
+Returns the number of key/value pairs in a record.
 
 **Signature**
 
@@ -812,7 +812,7 @@ Added in v2.0.0
 
 ## some
 
-Check if any entry in a `Record` meets a specific condition.
+Check if any entry in a record meets a specific condition.
 
 **Signature**
 
@@ -844,16 +844,14 @@ Added in v2.0.0
 
 ## update
 
-Replace a key's value in a `ReadonlyRecord` and return the updated record.
-If the specified key exists, it returns a new `Record` with the entry updated.
-If the key doesn't exist, it returns `None`.
+Replace a key's value in a record and return the updated record.
 
 **Signature**
 
 ```ts
 export declare const update: {
-  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
-  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
+  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
 }
 ```
 
@@ -877,8 +875,8 @@ Add a new key-value pair or update an existing key's value in a record.
 
 ```ts
 export declare const upsert: {
-  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
-  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
+  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
 }
 ```
 

@@ -49,9 +49,9 @@ export const empty = <A>(): Record<string, A> => ({})
 // -------------------------------------------------------------------------------------
 
 /**
- * Determine if a `Record` is empty.
+ * Determine if a record is empty.
  *
- * @param self - `Record` to test for emptiness.
+ * @param self - record to test for emptiness.
  *
  * @example
  * import { isEmptyRecord } from "effect/ReadonlyRecord"
@@ -72,9 +72,9 @@ export const isEmptyRecord = <A>(self: Record<string, A>): self is Record<string
 }
 
 /**
- * Determine if a `ReadonlyRecord` is empty.
+ * Determine if a record is empty.
  *
- * @param self - `ReadonlyRecord` to test for emptiness.
+ * @param self - record to test for emptiness.
  *
  * @example
  * import { isEmptyReadonlyRecord } from "effect/ReadonlyRecord"
@@ -144,10 +144,10 @@ export const fromIterable: {
 export const fromEntries: <A>(self: Iterable<readonly [string, A]>) => Record<string, A> = fromIterable(identity)
 
 /**
- * Transforms the values of a `ReadonlyRecord` into an `Array` with a custom mapping function.
+ * Transforms the values of a record into an `Array` with a custom mapping function.
  *
- * @param self - The `ReadonlyRecord` to transform.
- * @param f - The custom mapping function to apply to each key/value of the `ReadonlyRecord`.
+ * @param self - The record to transform.
+ * @param f - The custom mapping function to apply to each key/value of the record.
  *
  * @example
  * import { collect } from "effect/ReadonlyRecord"
@@ -214,9 +214,9 @@ export const toArray: <K extends string, A>(self: Record<K, A>) => Array<[K, A]>
 // -------------------------------------------------------------------------------------
 
 /**
- * Returns the number of key/value pairs in a `ReadonlyRecord`.
+ * Returns the number of key/value pairs in a record.
  *
- * @param self - A `ReadonlyRecord` to calculate the number of key/value pairs in.
+ * @param self - A record to calculate the number of key/value pairs in.
  *
  * @example
  * import { size } from "effect/ReadonlyRecord";
@@ -228,10 +228,10 @@ export const toArray: <K extends string, A>(self: Record<K, A>) => Array<[K, A]>
 export const size = <A>(self: ReadonlyRecord<A>): number => Object.keys(self).length
 
 /**
- * Check if a given `key` exists in a `ReadonlyRecord`.
+ * Check if a given `key` exists in a record.
  *
- * @param self - the `ReadonlyRecord` to look in.
- * @param key - the key to look for in the `ReadonlyRecord`.
+ * @param self - the record to look in.
+ * @param key - the key to look for in the record.
  *
  * @example
  * import { has } from "effect/ReadonlyRecord"
@@ -250,10 +250,10 @@ export const has: {
 )
 
 /**
- * Retrieve a value at a particular key from a `ReadonlyRecord`, returning it wrapped in an `Option`.
+ * Retrieve a value at a particular key from a record, returning it wrapped in an `Option`.
  *
- * @param self - The `ReadonlyRecord` to retrieve value from.
- * @param key - Key to retrieve from `ReadonlyRecord`.
+ * @param self - The record to retrieve value from.
+ * @param key - Key to retrieve from record.
  *
  * @example
  * import { get } from "effect/ReadonlyRecord"
@@ -278,7 +278,7 @@ export const get: {
  * Apply a function to the element at the specified key, creating a new record,
  * or return `None` if the key doesn't exist.
  *
- * @param self - The `ReadonlyRecord` to be updated.
+ * @param self - The record to be updated.
  * @param key - The key of the element to modify.
  * @param f - The function to apply to the element.
  *
@@ -317,7 +317,7 @@ export const modifyOption: {
 /**
  * Replaces a value in the record with the new value passed as parameter.
  *
- * @param self - The `ReadonlyRecord` to be updated.
+ * @param self - The record to be updated.
  * @param key - The key to search for in the record.
  * @param b - The new value to replace the existing value with.
  *
@@ -343,10 +343,10 @@ export const replaceOption: {
 )
 
 /**
- * Removes a key from a `ReadonlyRecord` and returns a new `Record`
+ * Removes a key from a record and returns a new record
  *
- * @param self - the `ReadonlyRecord` to remove the key from.
- * @param key - the key to remove from the `ReadonlyRecord`.
+ * @param self - the record to remove the key from.
+ * @param key - the key to remove from the record.
  *
  * @example
  * import { remove } from "effect/ReadonlyRecord"
@@ -365,11 +365,11 @@ export const remove: {
 })
 
 /**
- * Retrieves the value of the property with the given `key` from a `ReadonlyRecord` and returns an `Option`
- * of a tuple with the value and the `ReadonlyRecord` with the removed property.
+ * Retrieves the value of the property with the given `key` from a record and returns an `Option`
+ * of a tuple with the value and the record with the removed property.
  * If the key is not present, returns `O.none`.
  *
- * @param self - The input `ReadonlyRecord`.
+ * @param self - The input record.
  * @param key - The key of the property to retrieve.
  *
  * @example
@@ -392,10 +392,10 @@ export const pop: {
   has(self, key) ? Option.some([self[key], remove(self, key)]) : Option.none())
 
 /**
- * Maps a `ReadonlyRecord` into another `Record` by applying a transformation function to each of its values.
+ * Maps a record into another record by applying a transformation function to each of its values.
  *
- * @param self - The `ReadonlyRecord` to be mapped.
- * @param f - A transformation function that will be applied to each of the values in the `ReadonlyRecord`.
+ * @param self - The record to be mapped.
+ * @param f - A transformation function that will be applied to each of the values in the record.
  *
  * @example
  * import { map } from "effect/ReadonlyRecord"
@@ -425,10 +425,10 @@ export const map: {
 )
 
 /**
- * Transforms a `ReadonlyRecord` into a `Record` by applying the function `f` to each key and value in the original `ReadonlyRecord`.
- * If the function returns `Some`, the key-value pair is included in the output `Record`.
+ * Transforms a record into a record by applying the function `f` to each key and value in the original record.
+ * If the function returns `Some`, the key-value pair is included in the output record.
  *
- * @param self - The input `ReadonlyRecord`.
+ * @param self - The input record.
  * @param f - The transformation function.
  *
  * @example
@@ -461,7 +461,7 @@ export const filterMap: {
 /**
  * Selects properties from a record whose values match the given predicate.
  *
- * @param self - The `ReadonlyRecord` to filter.
+ * @param self - The record to filter.
  * @param predicate - A function that returns a `boolean` value to determine if the entry should be included in the new record.
  *
  * @example
@@ -505,9 +505,9 @@ export const filter: {
 )
 
 /**
- * Given a `ReadonlyRecord` with `Option` values, returns a `Record` with only the `Some` values, with the same keys.
+ * Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
  *
- * @param self - A `ReadonlyRecord` with `Option` values.
+ * @param self - A record with `Option` values.
  *
  * @example
  * import { compact } from "effect/ReadonlyRecord"
@@ -526,9 +526,9 @@ export const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<stri
 )
 
 /**
- * Partitions the elements of a `ReadonlyRecord` into two groups: those that match a predicate, and those that don't.
+ * Partitions the elements of a record into two groups: those that match a predicate, and those that don't.
  *
- * @param self - The `ReadonlyRecord` to partition.
+ * @param self - The record to partition.
  * @param f - The predicate function to apply to each element.
  *
  * @example
@@ -571,10 +571,10 @@ export const partitionMap: {
 )
 
 /**
- * Partitions a `ReadonlyRecord` of `Either` values into two separate records,
+ * Partitions a record of `Either` values into two separate records,
  * one with the `Left` values and one with the `Right` values.
  *
- * @param self - the `ReadonlyRecord` to partition.
+ * @param self - the record to partition.
  *
  * @example
  * import { separate } from "effect/ReadonlyRecord"
@@ -593,10 +593,10 @@ export const separate: <A, B>(
 ) => [Record<string, A>, Record<string, B>] = partitionMap(identity)
 
 /**
- * Partitions a `ReadonlyRecord` into two separate `Record`s based on the result of a predicate function.
+ * Partitions a record into two separate records based on the result of a predicate function.
  *
- * @param self - The input `ReadonlyRecord` to partition.
- * @param predicate - The partitioning function to determine the partitioning of each value of the `ReadonlyRecord`.
+ * @param self - The input record to partition.
+ * @param predicate - The partitioning function to determine the partitioning of each value of the record.
  *
  * @example
  * import { partition } from "effect/ReadonlyRecord"
@@ -666,7 +666,7 @@ export const values = <A>(self: ReadonlyRecord<A>): Array<A> => collect(self, (_
  *
  * @param self - The record to which you want to add or update a key-value pair.
  * @param key - The key you want to add or update.
- * @param a - The value you want to associate with the key.
+ * @param values - The value you want to associate with the key.
  *
  * @example
  * import { upsert } from "effect/ReadonlyRecord"
@@ -677,22 +677,20 @@ export const values = <A>(self: ReadonlyRecord<A>): Array<A> => collect(self, (_
  * @since 2.0.0
  */
 export const upsert: {
-  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
-  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
-} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A> => {
+  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
+  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
+} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A> => {
   const out = { ...self }
-  out[key] = a
+  out[key] = value
   return out
 })
 
 /**
- * Replace a key's value in a `ReadonlyRecord` and return the updated record.
- * If the specified key exists, it returns a new `Record` with the entry updated.
- * If the key doesn't exist, it returns `None`.
+ * Replace a key's value in a record and return the updated record.
  *
  * @param self - The original record.
  * @param key - The key to replace.
- * @param a - The new value to associate with the key.
+ * @param value - The new value to associate with the key.
  *
  * @example
  * import { update } from "effect/ReadonlyRecord"
@@ -704,22 +702,22 @@ export const upsert: {
  * @since 2.0.0
  */
 export const update: {
-  <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A>
-  <A>(key: string, a: A): (self: ReadonlyRecord<A>) => Record<string, A>
-} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, a: A): Record<string, A> => {
+  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
+  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
+} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A> => {
   const out = { ...self }
   if (has(self, key)) {
-    out[key] = a
+    out[key] = value
   }
   return out
 })
 
 /**
- * Check if all the keys and values in one `ReadonlyRecord` are also found in another `ReadonlyRecord`.
+ * Check if all the keys and values in one record are also found in another record.
  *
- * @param equivalence - A function to compare values.
  * @param self - The first record to check.
  * @param that - The second record to compare against.
+ * @param equivalence - A function to compare values.
  *
  * @since 2.0.0
  */
@@ -737,7 +735,7 @@ export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
   })
 
 /**
- * Check if one `ReadonlyRecord` is a subrecord of another, meaning it contains all the keys and values found in the second record.
+ * Check if one record is a subrecord of another, meaning it contains all the keys and values found in the second record.
  * This comparison uses default equality checks (`Equal.equivalence()`).
  *
  * @param self - The first record to check.
@@ -772,7 +770,7 @@ export const reduce: {
 })
 
 /**
- * Check if all entries in a `Record` meet a specific condition.
+ * Check if all entries in a record meet a specific condition.
  *
  * @param self - The record to check.
  * @param predicate - The condition to test entries (value, key).
@@ -792,7 +790,7 @@ export const every: {
 })
 
 /**
- * Check if any entry in a `Record` meets a specific condition.
+ * Check if any entry in a record meets a specific condition.
  *
  * @param self - The record to check.
  * @param predicate - The condition to test entries (value, key).
@@ -926,9 +924,9 @@ export const difference: {
 })
 
 /**
- * Create an `Equivalence` for a `ReadonlyRecord` of a base type, based on the provided `Equivalence`.
+ * Create an `Equivalence` for records using the provided `Equivalence` for values.
  *
- * @param equivalence - An `Equivalence` for the base type.
+ * @param equivalence - An `Equivalence` for the values contained in the records.
  *
  * @category instances
  * @since 2.0.0
