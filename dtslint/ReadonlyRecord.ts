@@ -4,23 +4,26 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as RR from "effect/ReadonlyRecord"
 
-declare const r: Record<string, number>
-declare const rr: Readonly<Record<string, number>>
+declare const record: Record<string, number>
+declare const readonlyRecord: Readonly<Record<string, number>>
 declare const struct: Record<"a" | "b", number>
+declare const struct2: Record<"c" | "d", string>
+declare const readonlyStruct: Readonly<Record<"a" | "b", number>>
+declare const readonlyStruct2: Readonly<Record<"c" | "d", string>>
 
 // -------------------------------------------------------------------------------------
 // map
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, boolean>
-RR.map(r, (
+RR.map(record, (
   value, // $ExpectType number
   _key // $ExpectType string
 ) => value > 0)
 
 // $ExpectType Record<string, boolean>
 pipe(
-  r,
+  record,
   RR.map((
     value, // $ExpectType number
     _key // $ExpectType string
@@ -28,14 +31,14 @@ pipe(
 )
 
 // $ExpectType Record<string, boolean>
-RR.map(rr, (
+RR.map(readonlyRecord, (
   value, // $ExpectType number
   _key // $ExpectType string
 ) => value > 0)
 
 // $ExpectType Record<string, boolean>
 pipe(
-  rr,
+  readonlyRecord,
   RR.map((
     value, // $ExpectType number
     _key // $ExpectType string
@@ -71,27 +74,27 @@ mapToBoolean()
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<number>
-pipe(r, RR.get("a"))
+pipe(record, RR.get("a"))
 
 // -------------------------------------------------------------------------------------
 // replaceOption
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<Record<string, number>>
-pipe(r, RR.replaceOption("a", 2))
+pipe(record, RR.replaceOption("a", 2))
 
 // $ExpectType Option<Record<string, number | boolean>>
-pipe(r, RR.replaceOption("a", true))
+pipe(record, RR.replaceOption("a", true))
 
 // -------------------------------------------------------------------------------------
 // modifyOption
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<Record<string, number>>
-pipe(r, RR.modifyOption("a", () => 2))
+pipe(record, RR.modifyOption("a", () => 2))
 
 // $ExpectType Option<Record<string, number | boolean>>
-pipe(r, RR.modifyOption("a", () => true))
+pipe(record, RR.modifyOption("a", () => true))
 
 // -------------------------------------------------------------------------------------
 // toEntries
@@ -99,7 +102,7 @@ pipe(r, RR.modifyOption("a", () => true))
 
 // baseline
 // $ExpectType [string, number][]
-RR.toEntries(r)
+RR.toEntries(record)
 // $ExpectType ["a" | "b", number][]
 RR.toEntries(struct)
 // $ExpectType ["a" | "b" | "c", string | number | boolean][]
@@ -122,10 +125,10 @@ RR.collect({ a: E.right(1), b: E.right(2), c: E.right(3) }, (_, n) => n)
 pipe({ a: E.right(1), b: E.right(2), c: E.right(3) }, RR.collect((_, n) => n))
 
 // $ExpectType number[]
-RR.collect(r, (_, a) => a)
+RR.collect(record, (_, a) => a)
 
 // $ExpectType number[]
-RR.collect(rr, (_, a) => a)
+RR.collect(readonlyRecord, (_, a) => a)
 
 // $ExpectType number[]
 pipe(
@@ -147,14 +150,14 @@ RR.collect(struct, (
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, string>
-RR.filterMap(r, (
+RR.filterMap(record, (
   value,
   // $ExpectType string
   _key
 ) => value > 0 ? Option.some("positive") : Option.none())
 
 // $ExpectType Record<string, string>
-RR.filterMap(rr, (
+RR.filterMap(readonlyRecord, (
   value,
   // $ExpectType string
   _key
@@ -182,14 +185,14 @@ RR.filterMap(struct, (
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Record<string, number>
-RR.filter(r, (
+RR.filter(record, (
   value,
   // $ExpectType string
   _key
 ) => value > 0)
 
 // $ExpectType Record<string, number>
-RR.filter(rr, (
+RR.filter(readonlyRecord, (
   value,
   // $ExpectType string
   _key
@@ -217,14 +220,14 @@ RR.filter(struct, (
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [Record<string, boolean>, Record<string, string>]
-RR.partitionMap(r, (
+RR.partitionMap(record, (
   value,
   // $ExpectType string
   _key
 ) => value > 0 ? E.right("positive") : E.left(false))
 
 // $ExpectType [Record<string, boolean>, Record<string, string>]
-RR.partitionMap(rr, (
+RR.partitionMap(readonlyRecord, (
   value,
   // $ExpectType string
   _key
@@ -252,14 +255,14 @@ RR.partitionMap(struct, (
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [Record<string, number>, Record<string, number>]
-RR.partition(r, (
+RR.partition(record, (
   value,
   // $ExpectType string
   _key
 ) => value > 0)
 
 // $ExpectType [Record<string, number>, Record<string, number>]
-RR.partition(rr, (
+RR.partition(readonlyRecord, (
   value,
   // $ExpectType string
   _key
@@ -283,6 +286,45 @@ RR.partition(struct, (
 ) => key === "a")
 
 // -------------------------------------------------------------------------------------
+// keys
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+RR.keys(struct)
+
+// -------------------------------------------------------------------------------------
+// values
+// -------------------------------------------------------------------------------------
+
+// $ExpectType number[]
+RR.values(struct)
+
+// -------------------------------------------------------------------------------------
+// upsert
+// -------------------------------------------------------------------------------------
+// $ExpectType Record<string, number | boolean>
+RR.upsert(record, "a", true)
+
+// -------------------------------------------------------------------------------------
+// update
+// -------------------------------------------------------------------------------------
+// $ExpectType Record<string, number | boolean>
+RR.update(record, "a", true)
+
+// -------------------------------------------------------------------------------------
+// reduce
+// -------------------------------------------------------------------------------------
+
+RR.reduce(struct, "", (
+  // $ExpectType string
+  _acc,
+  // $ExpectType number
+  _value,
+  // $ExpectType "a" | "b"
+  key
+) => key)
+
+// -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
 
@@ -291,3 +333,33 @@ RR.every(struct, (
   // $ExpectType "a" | "b"
   _key
 ) => false)
+
+// -------------------------------------------------------------------------------------
+// some
+// -------------------------------------------------------------------------------------
+
+RR.some(struct, (
+  _value,
+  // $ExpectType "a" | "b"
+  _key
+) => false)
+
+// -------------------------------------------------------------------------------------
+// union
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Record<string, number>
+RR.union(record, readonlyRecord, (_, b) => b)
+
+// $ExpectType Record<"a" | "b" | "c" | "d", string | number>
+RR.union(struct, struct2, (_, b) => b)
+
+// $ExpectType Record<"a" | "b" | "c" | "d", string | number>
+RR.union(readonlyStruct, readonlyStruct2, (_, b) => b)
+
+// -------------------------------------------------------------------------------------
+// singleton
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Record<"a", number>
+RR.singleton("a", 1)

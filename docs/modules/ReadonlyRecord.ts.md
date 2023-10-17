@@ -86,7 +86,7 @@ Create a non-empty record from a single element.
 **Signature**
 
 ```ts
-export declare const singleton: <A>(key: string, value: A) => Record<string, A>
+export declare const singleton: <K extends string, A>(key: K, value: A) => Record<K, A>
 ```
 
 Added in v2.0.0
@@ -484,8 +484,8 @@ If the key is not present, returns `O.none`.
 
 ```ts
 export declare const pop: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<readonly [A, ReadonlyRecord<A>]>
-  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<readonly [A, ReadonlyRecord<A>]>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<[A, Record<string, A>]>
+  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<[A, Record<string, A>]>
 }
 ```
 
@@ -525,8 +525,8 @@ Merge two records, preserving only the entries that are unique to each record.
 
 ```ts
 export declare const difference: {
-  <A>(that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
-  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A>
+  <A>(that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): Record<string, A>
 }
 ```
 
@@ -635,8 +635,8 @@ Merge two records, retaining only the entries that exist in both records.
 export declare const intersection: {
   <A>(that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): (
     self: ReadonlyRecord<A>
-  ) => ReadonlyRecord<A>
-  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
+  ) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): Record<string, A>
 }
 ```
 
@@ -833,10 +833,16 @@ Merge two records, preserving entries that exist in either of the records.
 
 ```ts
 export declare const union: {
-  <A>(that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): (
-    self: ReadonlyRecord<A>
-  ) => ReadonlyRecord<A>
-  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
+  <K1 extends string, V0, V1>(that: Record<K1, V1>, combine: (selfValue: V0, thatValue: V1) => V0 | V1): <
+    K0 extends string
+  >(
+    self: Record<K0, V0>
+  ) => Record<K1 | K0, V0 | V1>
+  <K0 extends string, V0, K1 extends string, V1>(
+    self: Record<K0, V0>,
+    that: Record<K1, V1>,
+    combine: (selfValue: V0, thatValue: V1) => V0 | V1
+  ): Record<K0 | K1, V0 | V1>
 }
 ```
 
@@ -850,8 +856,8 @@ Replace a key's value in a record and return the updated record.
 
 ```ts
 export declare const update: {
-  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
-  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
+  <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, B | A>
+  <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
 }
 ```
 
@@ -875,8 +881,8 @@ Add a new key-value pair or update an existing key's value in a record.
 
 ```ts
 export declare const upsert: {
-  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
-  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
+  <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, B | A>
+  <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
 }
 ```
 

@@ -57,11 +57,6 @@ describe.concurrent("ReadonlyRecord", () => {
     assert.deepStrictEqual(RR.toEntries(x), [["a", 1], ["b", 2], ["c", 3]])
   })
 
-  it("toArray", () => {
-    const x = { a: 1, b: 2 }
-    assert.deepStrictEqual(RR.toArray(x), [["a", 1], ["b", 2]])
-  })
-
   it("remove", () => {
     assert.deepStrictEqual(RR.remove({ a: 1, b: 2 }, "a"), { b: 2 })
     assert.deepStrictEqual(RR.remove({ a: 1, b: 2 }, "c"), { a: 1, b: 2 })
@@ -72,7 +67,7 @@ describe.concurrent("ReadonlyRecord", () => {
       const record = { a: 1, b: 2 }
       const result = RR.pop("a")(record)
 
-      assert.deepStrictEqual(result, Option.some([1, { b: 2 }] as const))
+      assert.deepStrictEqual(result, Option.some([1, { b: 2 }] as [number, Record<string, number>]))
     })
 
     it("should return none if the key is not present in the record", () => {

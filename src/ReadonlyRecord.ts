@@ -12,10 +12,6 @@ import { dual, identity } from "./Function"
 import type { TypeLambda } from "./HKT"
 import * as Option from "./Option"
 
-// -------------------------------------------------------------------------------------
-// models
-// -------------------------------------------------------------------------------------
-
 /**
  * @category models
  * @since 2.0.0
@@ -32,10 +28,6 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
   readonly type: ReadonlyRecord<this["Target"]>
 }
 
-// -------------------------------------------------------------------------------------
-// constructors
-// -------------------------------------------------------------------------------------
-
 /**
  * Creates a new, empty record.
  *
@@ -43,10 +35,6 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
  * @since 2.0.0
  */
 export const empty = <A>(): Record<string, A> => ({})
-
-// -------------------------------------------------------------------------------------
-// guards
-// -------------------------------------------------------------------------------------
 
 /**
  * Determine if a record is empty.
@@ -86,10 +74,6 @@ export const isEmptyRecord = <A>(self: Record<string, A>): self is Record<string
  * @since 2.0.0
  */
 export const isEmptyReadonlyRecord: <A>(self: ReadonlyRecord<A>) => self is ReadonlyRecord<never> = isEmptyRecord
-
-// -------------------------------------------------------------------------------------
-// conversions
-// -------------------------------------------------------------------------------------
 
 /**
  * Takes an iterable and a projection function and returns a record.
@@ -208,10 +192,6 @@ export const toEntries: <K extends string, A>(self: Record<K, A>) => Array<[K, A
  * @since 2.0.0
  */
 export const toArray: <K extends string, A>(self: Record<K, A>) => Array<[K, A]> = toEntries
-
-// -------------------------------------------------------------------------------------
-// utils
-// -------------------------------------------------------------------------------------
 
 /**
  * Returns the number of key/value pairs in a record.
@@ -334,7 +314,7 @@ export const modifyOption: {
  * @since 2.0.0
  */
 export const replaceOption: {
-  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option.Option<Record<string, B | A>>
+  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option.Option<Record<string, A | B>>
   <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option.Option<Record<string, A | B>>
 } = dual(
   3,
@@ -383,12 +363,12 @@ export const remove: {
  * @since 2.0.0
  */
 export const pop: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<readonly [A, ReadonlyRecord<A>]>
-  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<readonly [A, ReadonlyRecord<A>]>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<[A, Record<string, A>]>
+  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<[A, Record<string, A>]>
 } = dual(2, <A>(
   self: ReadonlyRecord<A>,
   key: string
-): Option.Option<readonly [A, ReadonlyRecord<A>]> =>
+): Option.Option<[A, Record<string, A>]> =>
   has(self, key) ? Option.some([self[key], remove(self, key)]) : Option.none())
 
 /**
@@ -677,10 +657,10 @@ export const values = <A>(self: ReadonlyRecord<A>): Array<A> => collect(self, (_
  * @since 2.0.0
  */
 export const upsert: {
-  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
-  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
-} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A> => {
-  const out = { ...self }
+  <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, A | B>
+  <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
+} = dual(3, <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B> => {
+  const out: Record<string, A | B> = { ...self }
   out[key] = value
   return out
 })
@@ -702,10 +682,10 @@ export const upsert: {
  * @since 2.0.0
  */
 export const update: {
-  <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A>
-  <A>(key: string, value: A): (self: ReadonlyRecord<A>) => Record<string, A>
-} = dual(3, <A>(self: ReadonlyRecord<A>, key: string, value: A): Record<string, A> => {
-  const out = { ...self }
+  <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, A | B>
+  <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
+} = dual(3, <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B> => {
+  const out: Record<string, A | B> = { ...self }
   if (has(self, key)) {
     out[key] = value
   }
@@ -819,18 +799,22 @@ export const some: {
  * @since 2.0.0
  */
 export const union: {
-  <A>(
-    that: ReadonlyRecord<A>,
-    combine: (selfValue: A, thatValue: A) => A
-  ): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
-  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
+  <K1 extends string, V0, V1>(
+    that: Record<K1, V1>,
+    combine: (selfValue: V0, thatValue: V1) => V0 | V1
+  ): <K0 extends string>(self: Record<K0, V0>) => Record<K0 | K1, V0 | V1>
+  <K0 extends string, V0, K1 extends string, V1>(
+    self: Record<K0, V0>,
+    that: Record<K1, V1>,
+    combine: (selfValue: V0, thatValue: V1) => V0 | V1
+  ): Record<K0 | K1, V0 | V1>
 } = dual(
   3,
   <A>(
-    self: ReadonlyRecord<A>,
-    that: ReadonlyRecord<A>,
+    self: Record<string, A>,
+    that: Record<string, A>,
     combine: (selfValue: A, thatValue: A) => A
-  ): ReadonlyRecord<A> => {
+  ): Record<string, A> => {
     if (isEmptyRecord(self)) {
       return { ...that }
     }
@@ -867,15 +851,15 @@ export const intersection: {
   <A>(
     that: ReadonlyRecord<A>,
     combine: (selfValue: A, thatValue: A) => A
-  ): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
-  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): ReadonlyRecord<A>
+  ): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): Record<string, A>
 } = dual(
   3,
   <A>(
     self: ReadonlyRecord<A>,
     that: ReadonlyRecord<A>,
     combine: (selfValue: A, thatValue: A) => A
-  ): ReadonlyRecord<A> => {
+  ): Record<string, A> => {
     if (isEmptyRecord(self) || isEmptyRecord(that)) {
       return empty()
     }
@@ -900,9 +884,9 @@ export const intersection: {
 export const difference: {
   <A>(
     that: ReadonlyRecord<A>
-  ): (self: ReadonlyRecord<A>) => ReadonlyRecord<A>
-  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A>
-} = dual(2, <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): ReadonlyRecord<A> => {
+  ): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): Record<string, A>
+} = dual(2, <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): Record<string, A> => {
   if (isEmptyRecord(self)) {
     return { ...that }
   }
@@ -945,4 +929,4 @@ export const getEquivalence = <A>(equivalence: Equivalence<A>): Equivalence<Read
  * @category constructors
  * @since 2.0.0
  */
-export const singleton = <A>(key: string, value: A): Record<string, A> => ({ [key]: value })
+export const singleton = <K extends string, A>(key: K, value: A): Record<K, A> => ({ [key]: value }) as Record<K, A>
