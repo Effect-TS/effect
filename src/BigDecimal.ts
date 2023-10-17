@@ -13,6 +13,7 @@ import * as equivalence from "./Equivalence"
 import { dual } from "./Function"
 import * as Hash from "./Hash"
 import { type Inspectable, NodeInspectSymbol, toString } from "./Inspectable"
+import * as Option from "./Option"
 import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import { type Pipeable, pipeArguments } from "./Pipeable"
@@ -58,6 +59,10 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale"> = {
 } as const
 
 /**
+ * Checks if a given value is a `BigDecimal`.
+ *
+ * @param u - The value to check.
+ *
  * @since 2.0.0
  * @category guards
  */
@@ -65,6 +70,9 @@ export const isBigDecimal = (u: unknown): u is BigDecimal => typeof u === "objec
 
 /**
  * Creates a `BigDecimal` from a `bigint` value and a scale.
+ *
+ * @param value - The `bigint` value to create a `BigDecimal` from.
+ * @param scale - The scale of the `BigDecimal`.
  *
  * @since 2.0.0
  * @category constructors
@@ -78,6 +86,8 @@ export const scaled = (value: bigint, scale: number): BigDecimal => {
 
 /**
  * Creates a `BigDecimal` from a `bigint` or `number` value.
+ *
+ * @param value - The `bigint` or `number` value to create a `BigDecimal` from.
  *
  * @since 2.0.0
  * @category constructors
@@ -96,14 +106,17 @@ const zero = make(0n)
 /**
  * Parses a numerical `string` into a `BigDecimal`.
  *
- * @since 2.0.0
- * @category constructors
+ * @param s - The `string` to parse.
+ *
  * @example
  * import { parse, make } from 'effect/BigDecimal'
  * import { getOrThrow } from 'effect/Either'
  *
  * assert.deepStrictEqual(getOrThrow(parse('123')), make(123n))
  * assert.deepStrictEqual(getOrThrow(parse('123.456')), make(123.456))
+ *
+ * @since 2.0.0
+ * @category constructors
  */
 export const parse = (s: string): Either.Either<Cause.IllegalArgumentException, BigDecimal> => {
   let digits: string
@@ -132,6 +145,10 @@ export const parse = (s: string): Either.Either<Cause.IllegalArgumentException, 
 }
 
 /**
+ * Normalizes a given `BigDecimal` by removing trailing zeros.
+ *
+ * @param self - The `BigDecimal` to normalize.
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -168,6 +185,9 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  * If the given scale is smaller than the current scale, the value will be rounded down to
  * the nearest integer.
  *
+ * @param self - The `BigDecimal` to scale.
+ * @param scale - The scale to scale to.
+ *
  * @since 2.0.0
  * @category constructors
  */
@@ -194,8 +214,8 @@ export const scale = (self: BigDecimal, scale: number): BigDecimal => {
  *
  * assert.deepStrictEqual(sum(make(2n), make(3n)), make(5n))
  *
- * @category math
  * @since 2.0.0
+ * @category math
  */
 export const sum: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
@@ -227,12 +247,12 @@ export const sum: {
  * @param that - The second operand.
  *
  * @example
- * import { multiply, make, equals } from 'effect/BigDecimal'
+ * import { multiply, make } from 'effect/BigDecimal'
  *
  * assert.deepStrictEqual(multiply(make(2n), make(3n)), make(6n))
  *
- * @category math
  * @since 2.0.0
+ * @category math
  */
 export const multiply: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
@@ -256,8 +276,8 @@ export const multiply: {
  *
  * assert.deepStrictEqual(subtract(make(2n), make(3n)), make(-1n))
  *
- * @category math
  * @since 2.0.0
+ * @category math
  */
 export const subtract: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
@@ -288,37 +308,74 @@ export const subtract: {
  * If the dividend is not a multiple of the divisor the result will be a `BigDecimal` value
  * which represents the integer division rounded down to the nearest integer.
  *
+ * If the divisor is `0`, the result will be `None`.
+ *
  * @param self - The dividend operand.
- * @param that - The divisor operand.
+ * @param that - The divisor operand.as
  *
  * @example
  * import { divide, make } from 'effect/BigDecimal'
- * import { getOrThrow } from 'effect/Either'
+ * import { getOrThrow } from 'effect/Option'
  *
  * assert.deepStrictEqual(getOrThrow(divide(make(6n), make(3n))), make(2n))
  * assert.deepStrictEqual(getOrThrow(divide(make(6n), make(4n))), make(1n))
  *
- * @category math
  * @since 2.0.0
+ * @category math
  */
 export const divide: {
-  (that: BigDecimal): (self: BigDecimal) => Either.Either<Cause.IllegalArgumentException, BigDecimal>
-  (self: BigDecimal, that: BigDecimal): Either.Either<Cause.IllegalArgumentException, BigDecimal>
-} = dual(2, (self: BigDecimal, that: BigDecimal): Either.Either<Cause.IllegalArgumentException, BigDecimal> => {
+  (that: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
+  (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal>
+} = dual(2, (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal> => {
   if (that.value === 0n) {
-    return Either.left(Cause.IllegalArgumentException("Division by zero"))
+    return Option.none()
   }
 
   if (self.value === 0n) {
-    return Either.right(zero)
+    return Option.some(zero)
   }
 
-  return Either.right(scaled(self.value / that.value, self.scale - that.scale))
+  return Option.some(scaled(self.value / that.value, self.scale - that.scale))
 })
 
 /**
- * @category instances
+ * Provides an unsafe division operation on `BigDecimal`s.
+ *
+ * If the dividend is not a multiple of the divisor the result will be a `BigDecimal` value
+ * which represents the integer division rounded down to the nearest integer.
+ *
+ * Throws a `RangeError` if the divisor is `0`.
+ *
+ * @param self - The dividend operand.
+ * @param that - The divisor operand.as
+ *
+ * @example
+ * import { unsafeDivide, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(unsafeDivide(make(6n), make(3n)), make(2n))
+ * assert.deepStrictEqual(unsafeDivide(make(6n), make(4n)), make(1n))
+ *
  * @since 2.0.0
+ * @category math
+ */
+export const unsafeDivide: {
+  (that: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, that: BigDecimal): BigDecimal
+} = dual(2, (self: BigDecimal, that: BigDecimal): BigDecimal => {
+  if (that.value === 0n) {
+    throw new RangeError("Division by zero")
+  }
+
+  if (self.value === 0n) {
+    return zero
+  }
+
+  return scaled(self.value / that.value, self.scale - that.scale)
+})
+
+/**
+ * @since 2.0.0
+ * @category instances
  */
 export const Order: order.Order<BigDecimal> = order.make((self, that) => {
   const scmp = order.number(BigI.sign(self.value), BigI.sign(that.value))
@@ -350,8 +407,8 @@ export const Order: order.Order<BigDecimal> = order.make((self, that) => {
  * assert.deepStrictEqual(lessThan(make(3n), make(3n)), false)
  * assert.deepStrictEqual(lessThan(make(4n), make(3n)), false)
  *
- * @category predicates
  * @since 2.0.0
+ * @category predicates
  */
 export const lessThan: {
   (that: BigDecimal): (self: BigDecimal) => boolean
@@ -359,7 +416,7 @@ export const lessThan: {
 } = order.lessThan(Order)
 
 /**
- * Returns a function that checks if a given `BigDecimal` is less than or equal to the provided one.
+ * Checks if a given `BigDecimal` is less than or equal to the provided one.
  *
  * @param self - The first `BigDecimal` to compare with.
  * @param that - The second `BigDecimal` to compare with.
@@ -371,8 +428,8 @@ export const lessThan: {
  * assert.deepStrictEqual(lessThanOrEqualTo(make(3n), make(3n)), true)
  * assert.deepStrictEqual(lessThanOrEqualTo(make(4n), make(3n)), false)
  *
- * @category predicates
  * @since 2.0.0
+ * @category predicates
  */
 export const lessThanOrEqualTo: {
   (that: BigDecimal): (self: BigDecimal) => boolean
@@ -392,8 +449,8 @@ export const lessThanOrEqualTo: {
  * assert.deepStrictEqual(greaterThan(make(3n), make(3n)), false)
  * assert.deepStrictEqual(greaterThan(make(4n), make(3n)), true)
  *
- * @category predicates
  * @since 2.0.0
+ * @category predicates
  */
 export const greaterThan: {
   (that: BigDecimal): (self: BigDecimal) => boolean
@@ -401,7 +458,7 @@ export const greaterThan: {
 } = order.greaterThan(Order)
 
 /**
- * Returns a function that checks if a given `BigDecimal` is greater than or equal to the provided one.
+ * Checks if a given `BigDecimal` is greater than or equal to the provided one.
  *
  * @param self - The first `BigDecimal` to compare with.
  * @param that - The second `BigDecimal` to compare with.
@@ -413,8 +470,8 @@ export const greaterThan: {
  * assert.deepStrictEqual(greaterThanOrEqualTo(make(3n), make(3n)), true)
  * assert.deepStrictEqual(greaterThanOrEqualTo(make(4n), make(3n)), true)
  *
- * @category predicates
  * @since 2.0.0
+ * @category predicates
  */
 export const greaterThanOrEqualTo: {
   (that: BigDecimal): (self: BigDecimal) => boolean
@@ -435,8 +492,8 @@ export const greaterThanOrEqualTo: {
  * assert.deepStrictEqual(between(make(0n), make(5n))(make(-1n)), false)
  * assert.deepStrictEqual(between(make(0n), make(5n))(make(6n)), false)
  *
- * @category predicates
  * @since 2.0.0
+ * @category predicates
  */
 export const between: {
   (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => boolean
@@ -462,6 +519,7 @@ export const between: {
  * assert.deepStrictEqual(clamp(make(0n), make(5n))(make(6n)), make(5n))
  *
  * @since 2.0.0
+ * @category math
  */
 export const clamp: {
   (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => BigDecimal
@@ -480,6 +538,7 @@ export const clamp: {
  * assert.deepStrictEqual(min(make(2n), make(3n)), make(2n))
  *
  * @since 2.0.0
+ * @category math
  */
 export const min: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
@@ -498,6 +557,7 @@ export const min: {
  * assert.deepStrictEqual(max(make(2n), make(3n)), make(3n))
  *
  * @since 2.0.0
+ * @category math
  */
 export const max: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
@@ -516,8 +576,8 @@ export const max: {
  * assert.deepStrictEqual(sign(make(0n)), 0)
  * assert.deepStrictEqual(sign(make(5n)), 1)
  *
- * @category math
  * @since 2.0.0
+ * @category math
  */
 export const sign = (n: BigDecimal): Ordering => Order(n, zero)
 
@@ -533,10 +593,26 @@ export const sign = (n: BigDecimal): Ordering => Order(n, zero)
  * assert.deepStrictEqual(abs(make(0n)), make(0n))
  * assert.deepStrictEqual(abs(make(5n)), make(5n))
  *
- * @category math
  * @since 2.0.0
+ * @category math
  */
 export const abs = (n: BigDecimal): BigDecimal => scaled(BigI.abs(n.value), n.scale)
+
+/**
+ * Provides a negate operation on `BigDecimal`s.
+ *
+ * @param n - The `BigDecimal` to negate.
+ *
+ * @example
+ * import { negate, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(negate(make(3n)), make(-3n))
+ * assert.deepStrictEqual(negate(make(-6n)), make(6n))
+ *
+ * @since 2.0.0
+ * @category math
+ */
+export const negate = (n: BigDecimal): BigDecimal => scaled(-n.value, n.scale)
 
 /**
  * Returns the remainder left over when one operand is divided by a second operand.
@@ -553,8 +629,8 @@ export const abs = (n: BigDecimal): BigDecimal => scaled(BigI.abs(n.value), n.sc
  * assert.deepStrictEqual(remainder(make(3), make(2)), make(1))
  * assert.deepStrictEqual(remainder(make(-4), make(2)), make(-0))
  *
- * @category math
  * @since 2.0.0
+ * @category math
  */
 export const remainder: {
   (divisor: BigDecimal): (self: BigDecimal) => BigDecimal
@@ -581,6 +657,8 @@ export const Equivalence: equivalence.Equivalence<BigDecimal> = equivalence.make
 })
 
 /**
+ * Checks if two `BigDecimal`s are equal.
+ *
  * @since 2.0.0
  * @category predicates
  */
@@ -590,27 +668,32 @@ export const equals: {
 } = dual(2, (self: BigDecimal, that: BigDecimal): boolean => Equivalence(self, that))
 
 /**
- * @since 2.0.0
- * @category constructor
+ * Formats a given `BigDecimal` as a `string`.
+ *
+ * @param n - The `BigDecimal` to format.
+ *
  * @example
  * import { format, make } from 'effect/BigDecimal'
  *
  * assert.deepStrictEqual(format(make(-5n)), '-5')
  * assert.deepStrictEqual(format(make(123.456)), '123.456')
  * assert.deepStrictEqual(format(make(-0.00000123)), '-0.00000123')
+ *
+ * @since 2.0.0
+ * @category constructor
  */
-export const format = (self: BigDecimal): string => {
-  const absolute = `${BigI.abs(self.value)}`
-  const sign = BigI.sign(self.value) === -1 ? "-" : ""
+export const format = (n: BigDecimal): string => {
+  const absolute = `${BigI.abs(n.value)}`
+  const sign = BigI.sign(n.value) === -1 ? "-" : ""
 
   let before: string
   let after: string
 
-  if (self.scale >= absolute.length) {
+  if (n.scale >= absolute.length) {
     before = "0"
-    after = "0".repeat(self.scale - absolute.length) + absolute
+    after = "0".repeat(n.scale - absolute.length) + absolute
   } else {
-    const location = absolute.length - self.scale
+    const location = absolute.length - n.scale
     if (location > absolute.length) {
       const zeros = location - absolute.length
       before = "0".repeat(zeros)

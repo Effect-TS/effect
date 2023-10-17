@@ -30,12 +30,17 @@ Added in v2.0.0
   - [Order](#order)
 - [math](#math)
   - [abs](#abs)
+  - [clamp](#clamp)
   - [divide](#divide)
+  - [max](#max)
+  - [min](#min)
   - [multiply](#multiply)
+  - [negate](#negate)
   - [remainder](#remainder)
   - [sign](#sign)
   - [subtract](#subtract)
   - [sum](#sum)
+  - [unsafeDivide](#unsafedivide)
 - [models](#models)
   - [BigDecimal (interface)](#bigdecimal-interface)
 - [predicates](#predicates)
@@ -47,10 +52,6 @@ Added in v2.0.0
   - [lessThanOrEqualTo](#lessthanorequalto)
 - [symbol](#symbol)
   - [TypeId (type alias)](#typeid-type-alias)
-- [utils](#utils)
-  - [clamp](#clamp)
-  - [max](#max)
-  - [min](#min)
 
 ---
 
@@ -58,10 +59,12 @@ Added in v2.0.0
 
 ## format
 
+Formats a given `BigDecimal` as a `string`.
+
 **Signature**
 
 ```ts
-export declare const format: (self: BigDecimal) => string
+export declare const format: (n: BigDecimal) => string
 ```
 
 **Example**
@@ -91,6 +94,8 @@ export declare const make: (value: bigint | number) => BigDecimal
 Added in v2.0.0
 
 ## normalize
+
+Normalizes a given `BigDecimal` by removing trailing zeros.
 
 **Signature**
 
@@ -153,6 +158,8 @@ Added in v2.0.0
 
 ## isBigDecimal
 
+Checks if a given value is a `BigDecimal`.
+
 **Signature**
 
 ```ts
@@ -207,6 +214,35 @@ assert.deepStrictEqual(abs(make(5n)), make(5n))
 
 Added in v2.0.0
 
+## clamp
+
+Restricts the given `BigDecimal` to be within the range specified by the `minimum` and `maximum` values.
+
+- If the `BigDecimal` is less than the `minimum` value, the function returns the `minimum` value.
+- If the `BigDecimal` is greater than the `maximum` value, the function returns the `maximum` value.
+- Otherwise, it returns the original `BigDecimal`.
+
+**Signature**
+
+```ts
+export declare const clamp: {
+  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): BigDecimal
+}
+```
+
+**Example**
+
+```ts
+import { clamp, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(clamp(make(0n), make(5n))(make(3n)), make(3n))
+assert.deepStrictEqual(clamp(make(0n), make(5n))(make(-1n)), make(0n))
+assert.deepStrictEqual(clamp(make(0n), make(5n))(make(6n)), make(5n))
+```
+
+Added in v2.0.0
+
 ## divide
 
 Provides a division operation on `BigDecimal`s.
@@ -214,12 +250,14 @@ Provides a division operation on `BigDecimal`s.
 If the dividend is not a multiple of the divisor the result will be a `BigDecimal` value
 which represents the integer division rounded down to the nearest integer.
 
+If the divisor is `0`, the result will be `None`.
+
 **Signature**
 
 ```ts
 export declare const divide: {
-  (that: BigDecimal): (self: BigDecimal) => Either.Either<Cause.IllegalArgumentException, BigDecimal>
-  (self: BigDecimal, that: BigDecimal): Either.Either<Cause.IllegalArgumentException, BigDecimal>
+  (that: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
+  (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal>
 }
 ```
 
@@ -227,10 +265,56 @@ export declare const divide: {
 
 ```ts
 import { divide, make } from 'effect/BigDecimal'
-import { getOrThrow } from 'effect/Either'
+import { getOrThrow } from 'effect/Option'
 
 assert.deepStrictEqual(getOrThrow(divide(make(6n), make(3n))), make(2n))
 assert.deepStrictEqual(getOrThrow(divide(make(6n), make(4n))), make(1n))
+```
+
+Added in v2.0.0
+
+## max
+
+Returns the maximum between two `BigDecimal`s.
+
+**Signature**
+
+```ts
+export declare const max: {
+  (that: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, that: BigDecimal): BigDecimal
+}
+```
+
+**Example**
+
+```ts
+import { max, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(max(make(2n), make(3n)), make(3n))
+```
+
+Added in v2.0.0
+
+## min
+
+Returns the minimum between two `BigDecimal`s.
+
+**Signature**
+
+```ts
+export declare const min: {
+  (that: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, that: BigDecimal): BigDecimal
+}
+```
+
+**Example**
+
+```ts
+import { min, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(min(make(2n), make(3n)), make(2n))
 ```
 
 Added in v2.0.0
@@ -251,9 +335,30 @@ export declare const multiply: {
 **Example**
 
 ```ts
-import { multiply, make, equals } from 'effect/BigDecimal'
+import { multiply, make } from 'effect/BigDecimal'
 
 assert.deepStrictEqual(multiply(make(2n), make(3n)), make(6n))
+```
+
+Added in v2.0.0
+
+## negate
+
+Provides a negate operation on `BigDecimal`s.
+
+**Signature**
+
+```ts
+export declare const negate: (n: BigDecimal) => BigDecimal
+```
+
+**Example**
+
+```ts
+import { negate, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(negate(make(3n)), make(-3n))
+assert.deepStrictEqual(negate(make(-6n)), make(6n))
 ```
 
 Added in v2.0.0
@@ -353,6 +458,35 @@ assert.deepStrictEqual(sum(make(2n), make(3n)), make(5n))
 
 Added in v2.0.0
 
+## unsafeDivide
+
+Provides an unsafe division operation on `BigDecimal`s.
+
+If the dividend is not a multiple of the divisor the result will be a `BigDecimal` value
+which represents the integer division rounded down to the nearest integer.
+
+Throws a `RangeError` if the divisor is `0`.
+
+**Signature**
+
+```ts
+export declare const unsafeDivide: {
+  (that: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, that: BigDecimal): BigDecimal
+}
+```
+
+**Example**
+
+```ts
+import { unsafeDivide, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(unsafeDivide(make(6n), make(3n)), make(2n))
+assert.deepStrictEqual(unsafeDivide(make(6n), make(4n)), make(1n))
+```
+
+Added in v2.0.0
+
 # models
 
 ## BigDecimal (interface)
@@ -398,6 +532,8 @@ Added in v2.0.0
 
 ## equals
 
+Checks if two `BigDecimal`s are equal.
+
 **Signature**
 
 ```ts
@@ -436,7 +572,7 @@ Added in v2.0.0
 
 ## greaterThanOrEqualTo
 
-Returns a function that checks if a given `BigDecimal` is greater than or equal to the provided one.
+Checks if a given `BigDecimal` is greater than or equal to the provided one.
 
 **Signature**
 
@@ -486,7 +622,7 @@ Added in v2.0.0
 
 ## lessThanOrEqualTo
 
-Returns a function that checks if a given `BigDecimal` is less than or equal to the provided one.
+Checks if a given `BigDecimal` is less than or equal to the provided one.
 
 **Signature**
 
@@ -517,83 +653,6 @@ Added in v2.0.0
 
 ```ts
 export type TypeId = typeof TypeId
-```
-
-Added in v2.0.0
-
-# utils
-
-## clamp
-
-Restricts the given `BigDecimal` to be within the range specified by the `minimum` and `maximum` values.
-
-- If the `BigDecimal` is less than the `minimum` value, the function returns the `minimum` value.
-- If the `BigDecimal` is greater than the `maximum` value, the function returns the `maximum` value.
-- Otherwise, it returns the original `BigDecimal`.
-
-**Signature**
-
-```ts
-export declare const clamp: {
-  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => BigDecimal
-  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): BigDecimal
-}
-```
-
-**Example**
-
-```ts
-import { clamp, make } from 'effect/BigDecimal'
-
-assert.deepStrictEqual(clamp(make(0n), make(5n))(make(3n)), make(3n))
-assert.deepStrictEqual(clamp(make(0n), make(5n))(make(-1n)), make(0n))
-assert.deepStrictEqual(clamp(make(0n), make(5n))(make(6n)), make(5n))
-```
-
-Added in v2.0.0
-
-## max
-
-Returns the maximum between two `BigDecimal`s.
-
-**Signature**
-
-```ts
-export declare const max: {
-  (that: BigDecimal): (self: BigDecimal) => BigDecimal
-  (self: BigDecimal, that: BigDecimal): BigDecimal
-}
-```
-
-**Example**
-
-```ts
-import { max, make } from 'effect/BigDecimal'
-
-assert.deepStrictEqual(max(make(2n), make(3n)), make(3n))
-```
-
-Added in v2.0.0
-
-## min
-
-Returns the minimum between two `BigDecimal`s.
-
-**Signature**
-
-```ts
-export declare const min: {
-  (that: BigDecimal): (self: BigDecimal) => BigDecimal
-  (self: BigDecimal, that: BigDecimal): BigDecimal
-}
-```
-
-**Example**
-
-```ts
-import { min, make } from 'effect/BigDecimal'
-
-assert.deepStrictEqual(min(make(2n), make(3n)), make(2n))
 ```
 
 Added in v2.0.0
