@@ -1,5 +1,5 @@
-import * as HashSet from 'effect/HashSet'
-import * as Predicate from 'effect/Predicate'
+import * as HashSet from "effect/HashSet"
+import * as Predicate from "effect/Predicate"
 
 declare const nss: HashSet.HashSet<number | string>
 

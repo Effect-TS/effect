@@ -1,5 +1,5 @@
-import * as Chunk from 'effect/Chunk'
-import * as Predicate from 'effect/Predicate'
+import * as Chunk from "effect/Chunk"
+import * as Predicate from "effect/Predicate"
 
 declare const nss: Chunk.Chunk<number | string>
 declare const nonEmptynss: Chunk.NonEmptyChunk<number | string>
@@ -52,7 +52,7 @@ Chunk.append(true)(nss)
 // mapNonEmpty
 // -------------------------------------------------------------------------------------
 
- // $ExpectType NonEmptyChunk<string>
+// $ExpectType NonEmptyChunk<string>
 Chunk.mapNonEmpty(nonEmptynss, (s) => `${s}`)
 
 // -------------------------------------------------------------------------------------

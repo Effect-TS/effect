@@ -1,5 +1,5 @@
-import { pipe } from 'effect/Function'
-import * as Option from 'effect/Option'
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 
 declare const n: number
 declare const sn: string | number
@@ -19,7 +19,7 @@ pipe(
   Option.liftPredicate(
     (
       n // $ExpectType string | number
-    ): n is number => typeof n === 'number'
+    ): n is number => typeof n === "number"
   )
 )
 
@@ -42,7 +42,7 @@ pipe(
 // -------------------------------------------------------------------------------------
 
 // $ExpectType string | null
-pipe(Option.some('a'), Option.getOrElse(() => null))
+pipe(Option.some("a"), Option.getOrElse(() => null))
 
 // -------------------------------------------------------------------------------------
 // do notation
@@ -51,8 +51,8 @@ pipe(Option.some('a'), Option.getOrElse(() => null))
 // $ExpectType Option<{ a: number; b: string; }>
 pipe(
   Option.Do,
-  Option.bind('a', () => Option.some(1)),
-  Option.bind('b', () => Option.some('b'))
+  Option.bind("a", () => Option.some(1)),
+  Option.bind("b", () => Option.some("b"))
 )
 
 // -------------------------------------------------------------------------------------
@@ -102,10 +102,10 @@ Option.all([])
 Option.all([Option.some(1)])
 
 // $ExpectType Option<[number, string]>
-Option.all([Option.some(1), Option.some('b')])
+Option.all([Option.some(1), Option.some("b")])
 
 // $ExpectType Option<[number, string]>
-pipe([Option.some(1), Option.some('b')] as const, Option.all)
+pipe([Option.some(1), Option.some("b")] as const, Option.all)
 
 // -------------------------------------------------------------------------------------
 // all - struct
@@ -118,10 +118,10 @@ Option.all({})
 Option.all({ a: Option.some(1) })
 
 // $ExpectType Option<{ a: number; b: string; }>
-Option.all({ a: Option.some(1), b: Option.some('b') })
+Option.all({ a: Option.some(1), b: Option.some("b") })
 
 // $ExpectType Option<{ a: number; b: string; }>
-pipe({ a: Option.some(1), b: Option.some('b') }, Option.all)
+pipe({ a: Option.some(1), b: Option.some("b") }, Option.all)
 
 // -------------------------------------------------------------------------------------
 // all - array
@@ -142,4 +142,4 @@ pipe(optionArray, Option.all)
 declare const optionRecord: Record<string, Option.Option<string>>
 
 // $ExpectType Option<{ [x: string]: string; }>
-const x = Option.all(optionRecord)
+Option.all(optionRecord)

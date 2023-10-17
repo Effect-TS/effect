@@ -16,11 +16,11 @@ Added in v2.0.0
 
 - [constructors](#constructors)
   - [empty](#empty)
+  - [singleton](#singleton)
 - [conversions](#conversions)
   - [collect](#collect)
   - [fromEntries](#fromentries)
   - [fromIterable](#fromiterable)
-  - [toArray](#toarray)
   - [toEntries](#toentries)
 - [filtering](#filtering)
   - [compact](#compact)
@@ -28,9 +28,13 @@ Added in v2.0.0
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
+- [folding](#folding)
+  - [reduce](#reduce)
 - [guards](#guards)
   - [isEmptyReadonlyRecord](#isemptyreadonlyrecord)
   - [isEmptyRecord](#isemptyrecord)
+- [instances](#instances)
+  - [getEquivalence](#getequivalence)
 - [models](#models)
   - [ReadonlyRecord (interface)](#readonlyrecord-interface)
 - [record](#record)
@@ -38,14 +42,25 @@ Added in v2.0.0
 - [type lambdas](#type-lambdas)
   - [ReadonlyRecordTypeLambda (interface)](#readonlyrecordtypelambda-interface)
 - [utils](#utils)
+  - [difference](#difference)
+  - [every](#every)
   - [filterMap](#filtermap)
   - [get](#get)
   - [has](#has)
+  - [intersection](#intersection)
+  - [isSubrecord](#issubrecord)
+  - [isSubrecordBy](#issubrecordby)
+  - [keys](#keys)
   - [map](#map)
   - [modifyOption](#modifyoption)
   - [remove](#remove)
   - [replaceOption](#replaceoption)
   - [size](#size)
+  - [some](#some)
+  - [union](#union)
+  - [update](#update)
+  - [upsert](#upsert)
+  - [values](#values)
 
 ---
 
@@ -63,11 +78,23 @@ export declare const empty: <A>() => Record<string, A>
 
 Added in v2.0.0
 
+## singleton
+
+Create a non-empty record from a single element.
+
+**Signature**
+
+```ts
+export declare const singleton: <K extends string, A>(key: K, value: A) => Record<K, A>
+```
+
+Added in v2.0.0
+
 # conversions
 
 ## collect
 
-Transforms the values of a `ReadonlyRecord` into an `Array` with a custom mapping function.
+Transforms the values of a record into an `Array` with a custom mapping function.
 
 **Signature**
 
@@ -153,33 +180,6 @@ assert.deepStrictEqual(
 
 Added in v2.0.0
 
-## toArray
-
-Takes a record and returns an array of tuples containing its keys and values.
-
-Alias of {@link toEntries}.
-
-**Signature**
-
-```ts
-export declare const toArray: <K extends string, A>(self: Record<K, A>) => [K, A][]
-```
-
-**Example**
-
-```ts
-import { toArray } from 'effect/ReadonlyRecord'
-
-const x = { a: 1, b: 2, c: 3 }
-assert.deepStrictEqual(toArray(x), [
-  ['a', 1],
-  ['b', 2],
-  ['c', 3],
-])
-```
-
-Added in v2.0.0
-
 ## toEntries
 
 Takes a record and returns an array of tuples containing its keys and values.
@@ -209,12 +209,12 @@ Added in v2.0.0
 
 ## compact
 
-Given a `ReadonlyRecord` with `Option` values, returns a `Record` with only the `Some` values, with the same keys.
+Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
 
 **Signature**
 
 ```ts
-export declare const compact: <A>(self: ReadonlyRecord<Option<A>>) => Record<string, A>
+export declare const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
 ```
 
 **Example**
@@ -266,7 +266,7 @@ Added in v2.0.0
 
 ## partition
 
-Partitions a `ReadonlyRecord` into two separate `Record`s based on the result of a predicate function.
+Partitions a record into two separate records based on the result of a predicate function.
 
 **Signature**
 
@@ -304,7 +304,7 @@ Added in v2.0.0
 
 ## partitionMap
 
-Partitions the elements of a `ReadonlyRecord` into two groups: those that match a predicate, and those that don't.
+Partitions the elements of a record into two groups: those that match a predicate, and those that don't.
 
 **Signature**
 
@@ -335,7 +335,7 @@ Added in v2.0.0
 
 ## separate
 
-Partitions a `ReadonlyRecord` of `Either` values into two separate records,
+Partitions a record of `Either` values into two separate records,
 one with the `Left` values and one with the `Right` values.
 
 **Signature**
@@ -355,11 +355,28 @@ assert.deepStrictEqual(separate({ a: left('e'), b: right(1) }), [{ a: 'e' }, { b
 
 Added in v2.0.0
 
+# folding
+
+## reduce
+
+Reduce a record to a single value by combining its entries with a specified function.
+
+**Signature**
+
+```ts
+export declare const reduce: {
+  <Z, V, K extends string>(zero: Z, f: (accumulator: Z, value: V, key: K) => Z): (self: Record<K, V>) => Z
+  <K extends string, V, Z>(self: Record<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z): Z
+}
+```
+
+Added in v2.0.0
+
 # guards
 
 ## isEmptyReadonlyRecord
 
-Determine if a `ReadonlyRecord` is empty.
+Determine if a record is empty.
 
 **Signature**
 
@@ -380,7 +397,7 @@ Added in v2.0.0
 
 ## isEmptyRecord
 
-Determine if a `Record` is empty.
+Determine if a record is empty.
 
 **Signature**
 
@@ -395,6 +412,20 @@ import { isEmptyRecord } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(isEmptyRecord({}), true)
 assert.deepStrictEqual(isEmptyRecord({ a: 3 }), false)
+```
+
+Added in v2.0.0
+
+# instances
+
+## getEquivalence
+
+Create an `Equivalence` for records using the provided `Equivalence` for values.
+
+**Signature**
+
+```ts
+export declare const getEquivalence: <A>(equivalence: Equivalence<A>) => Equivalence<ReadonlyRecord<A>>
 ```
 
 Added in v2.0.0
@@ -417,16 +448,16 @@ Added in v2.0.0
 
 ## pop
 
-Retrieves the value of the property with the given `key` from a `ReadonlyRecord` and returns an `Option`
-of a tuple with the value and the `ReadonlyRecord` with the removed property.
+Retrieves the value of the property with the given `key` from a record and returns an `Option`
+of a tuple with the value and the record with the removed property.
 If the key is not present, returns `O.none`.
 
 **Signature**
 
 ```ts
 export declare const pop: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option<readonly [A, ReadonlyRecord<A>]>
-  <A>(self: ReadonlyRecord<A>, key: string): Option<readonly [A, ReadonlyRecord<A>]>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<[A, Record<string, A>]>
+  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<[A, Record<string, A>]>
 }
 ```
 
@@ -458,17 +489,47 @@ Added in v2.0.0
 
 # utils
 
+## difference
+
+Merge two records, preserving only the entries that are unique to each record.
+
+**Signature**
+
+```ts
+export declare const difference: {
+  <A>(that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): Record<string, A>
+}
+```
+
+Added in v2.0.0
+
+## every
+
+Check if all entries in a record meet a specific condition.
+
+**Signature**
+
+```ts
+export declare const every: {
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
+}
+```
+
+Added in v2.0.0
+
 ## filterMap
 
-Transforms a `ReadonlyRecord` into a `Record` by applying the function `f` to each key and value in the original `ReadonlyRecord`.
-If the function returns `Some`, the key-value pair is included in the output `Record`.
+Transforms a record into a record by applying the function `f` to each key and value in the original record.
+If the function returns `Some`, the key-value pair is included in the output record.
 
 **Signature**
 
 ```ts
 export declare const filterMap: {
-  <K extends string, A, B>(f: (a: A, key: K) => Option<B>): (self: Record<K, A>) => Record<string, B>
-  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option<B>): Record<string, B>
+  <K extends string, A, B>(f: (a: A, key: K) => Option.Option<B>): (self: Record<K, A>) => Record<string, B>
+  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option.Option<B>): Record<string, B>
 }
 ```
 
@@ -487,14 +548,14 @@ Added in v2.0.0
 
 ## get
 
-Retrieve a value at a particular key from a `ReadonlyRecord`, returning it wrapped in an `Option`.
+Retrieve a value at a particular key from a record, returning it wrapped in an `Option`.
 
 **Signature**
 
 ```ts
 export declare const get: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option<A>
-  <A>(self: ReadonlyRecord<A>, key: string): Option<A>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<A>
+  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<A>
 }
 ```
 
@@ -514,7 +575,7 @@ Added in v2.0.0
 
 ## has
 
-Check if a given `key` exists in a `ReadonlyRecord`.
+Check if a given `key` exists in a record.
 
 **Signature**
 
@@ -536,9 +597,69 @@ assert.deepStrictEqual(has({ a: 1, b: 2 }, 'c'), false)
 
 Added in v2.0.0
 
+## intersection
+
+Merge two records, retaining only the entries that exist in both records.
+
+**Signature**
+
+```ts
+export declare const intersection: {
+  <A>(that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): (
+    self: ReadonlyRecord<A>
+  ) => Record<string, A>
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): Record<string, A>
+}
+```
+
+Added in v2.0.0
+
+## isSubrecord
+
+Check if one record is a subrecord of another, meaning it contains all the keys and values found in the second record.
+This comparison uses default equality checks (`Equal.equivalence()`).
+
+**Signature**
+
+```ts
+export declare const isSubrecord: {
+  <A>(that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => boolean
+  <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): boolean
+}
+```
+
+Added in v2.0.0
+
+## isSubrecordBy
+
+Check if all the keys and values in one record are also found in another record.
+
+**Signature**
+
+```ts
+export declare const isSubrecordBy: <A>(equivalence: Equivalence<A>) => {
+  (that: ReadonlyRecord<A>): (self: ReadonlyRecord<A>) => boolean
+  (self: ReadonlyRecord<A>, that: ReadonlyRecord<A>): boolean
+}
+```
+
+Added in v2.0.0
+
+## keys
+
+Retrieve the keys of a given record as an array.
+
+**Signature**
+
+```ts
+export declare const keys: <A>(self: ReadonlyRecord<A>) => Array<string>
+```
+
+Added in v2.0.0
+
 ## map
 
-Maps a `ReadonlyRecord` into another `Record` by applying a transformation function to each of its values.
+Maps a record into another record by applying a transformation function to each of its values.
 
 **Signature**
 
@@ -574,8 +695,8 @@ or return `None` if the key doesn't exist.
 
 ```ts
 export declare const modifyOption: {
-  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option<Record<string, A | B>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option<Record<string, A | B>>
+  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option.Option<Record<string, A | B>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option.Option<Record<string, A | B>>
 }
 ```
 
@@ -595,7 +716,7 @@ Added in v2.0.0
 
 ## remove
 
-Removes a key from a `ReadonlyRecord` and returns a new `Record`
+Removes a key from a record and returns a new record
 
 **Signature**
 
@@ -624,8 +745,8 @@ Replaces a value in the record with the new value passed as parameter.
 
 ```ts
 export declare const replaceOption: {
-  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option<Record<string, B | A>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option<Record<string, A | B>>
+  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option.Option<Record<string, B | A>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option.Option<Record<string, A | B>>
 }
 ```
 
@@ -643,7 +764,7 @@ Added in v2.0.0
 
 ## size
 
-Returns the number of key/value pairs in a `ReadonlyRecord`.
+Returns the number of key/value pairs in a record.
 
 **Signature**
 
@@ -657,6 +778,105 @@ export declare const size: <A>(self: ReadonlyRecord<A>) => number
 import { size } from 'effect/ReadonlyRecord'
 
 assert.deepStrictEqual(size({ a: 'a', b: 1, c: true }), 3)
+```
+
+Added in v2.0.0
+
+## some
+
+Check if any entry in a record meets a specific condition.
+
+**Signature**
+
+```ts
+export declare const some: {
+  <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
+}
+```
+
+Added in v2.0.0
+
+## union
+
+Merge two records, preserving entries that exist in either of the records.
+
+**Signature**
+
+```ts
+export declare const union: {
+  <K1 extends string, V0, V1>(that: Record<K1, V1>, combine: (selfValue: V0, thatValue: V1) => V0 | V1): <
+    K0 extends string
+  >(
+    self: Record<K0, V0>
+  ) => Record<K1 | K0, V0 | V1>
+  <K0 extends string, V0, K1 extends string, V1>(
+    self: Record<K0, V0>,
+    that: Record<K1, V1>,
+    combine: (selfValue: V0, thatValue: V1) => V0 | V1
+  ): Record<K0 | K1, V0 | V1>
+}
+```
+
+Added in v2.0.0
+
+## update
+
+Replace a key's value in a record and return the updated record.
+
+**Signature**
+
+```ts
+export declare const update: {
+  <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, B | A>
+  <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
+}
+```
+
+**Example**
+
+```ts
+import { update } from 'effect/ReadonlyRecord'
+import { some, none } from 'effect/Option'
+
+assert.deepStrictEqual(update('a', 3)({ a: 1, b: 2 }), { a: 3, b: 2 })
+assert.deepStrictEqual(update('c', 3)({ a: 1, b: 2 }), { a: 1, b: 2 })
+```
+
+Added in v2.0.0
+
+## upsert
+
+Add a new key-value pair or update an existing key's value in a record.
+
+**Signature**
+
+```ts
+export declare const upsert: {
+  <B>(key: string, value: B): <A>(self: ReadonlyRecord<A>) => Record<string, B | A>
+  <A, B>(self: ReadonlyRecord<A>, key: string, value: B): Record<string, A | B>
+}
+```
+
+**Example**
+
+```ts
+import { upsert } from 'effect/ReadonlyRecord'
+
+assert.deepStrictEqual(upsert('a', 5)({ a: 1, b: 2 }), { a: 5, b: 2 })
+assert.deepStrictEqual(upsert('c', 5)({ a: 1, b: 2 }), { a: 1, b: 2, c: 5 })
+```
+
+Added in v2.0.0
+
+## values
+
+Retrieve the values of a given record as an array.
+
+**Signature**
+
+```ts
+export declare const values: <A>(self: ReadonlyRecord<A>) => A[]
 ```
 
 Added in v2.0.0

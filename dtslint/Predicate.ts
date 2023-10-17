@@ -1,5 +1,5 @@
-import { pipe } from 'effect/Function'
-import * as Predicate from 'effect/Predicate'
+import { pipe } from "effect/Function"
+import * as Predicate from "effect/Predicate"
 
 declare const u: unknown
 declare const anys: Array<any>
@@ -105,7 +105,6 @@ anys.filter(Predicate.isObject)
 // $ExpectType { _tag: "a"; }[]
 anys.filter(Predicate.isTagged("a"))
 
-
 // -------------------------------------------------------------------------------------
 // isNullable
 // -------------------------------------------------------------------------------------
@@ -196,9 +195,12 @@ pipe(Predicate.isString, Predicate.compose(isNonEmptyString))
 Predicate.compose(Predicate.isString, isNonEmptyString)
 
 // $ExpectType Refinement<unknown, NonEmptyString>
-pipe(Predicate.isString, Predicate.compose((
-  s // $ExpectType string
-): s is NonEmptyString => s.length > 0))
+pipe(
+  Predicate.isString,
+  Predicate.compose((
+    s // $ExpectType string
+  ): s is NonEmptyString => s.length > 0)
+)
 
 // $ExpectType Refinement<unknown, NonEmptyString>
 Predicate.compose(Predicate.isString, (

@@ -1,7 +1,7 @@
-import { pipe } from 'effect/Function'
-import * as RA from 'effect/ReadonlyArray'
-import * as Option from 'effect/Option'
-import * as Predicate from 'effect/Predicate'
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
+import * as RA from "effect/ReadonlyArray"
 
 declare const nerns: RA.NonEmptyReadonlyArray<number>
 declare const nens: RA.NonEmptyArray<number>
@@ -63,32 +63,32 @@ Option.liftPredicate(RA.isNonEmptyArray)
 // -------------------------------------------------------------------------------------
 
 // $ExpectType number[]
-RA.map(rns, n => n + 1)
+RA.map(rns, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(rns, RA.map(n => n + 1))
+pipe(rns, RA.map((n) => n + 1))
 
 // $ExpectType number[]
-RA.map(ns, n => n + 1)
+RA.map(ns, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(ns, RA.map(n => n + 1))
+pipe(ns, RA.map((n) => n + 1))
 
 // -------------------------------------------------------------------------------------
 // mapNonEmpty
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [number, ...number[]]
-RA.mapNonEmpty(nerns, n => n + 1)
+RA.mapNonEmpty(nerns, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nerns, RA.mapNonEmpty(n => n + 1))
+pipe(nerns, RA.mapNonEmpty((n) => n + 1))
 
 // $ExpectType [number, ...number[]]
-RA.mapNonEmpty(nens, n => n + 1)
+RA.mapNonEmpty(nens, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nens, RA.mapNonEmpty(n => n + 1))
+pipe(nens, RA.mapNonEmpty((n) => n + 1))
 
 // -------------------------------------------------------------------------------------
 // groupBy
@@ -100,7 +100,7 @@ RA.groupBy([1, 2, 3], String)
 
 // should not return a struct (Record<'positive' | 'negative', ...>) when using string type literals
 // $ExpectType Record<string, [number, ...number[]]>
-RA.groupBy([1, 2, 3], n => n > 0 ? 'positive' as const : 'negative' as const)
+RA.groupBy([1, 2, 3], (n) => n > 0 ? "positive" as const : "negative" as const)
 
 // -------------------------------------------------------------------------------------
 // some
