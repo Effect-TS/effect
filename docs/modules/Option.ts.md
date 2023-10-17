@@ -63,15 +63,7 @@ Added in v2.0.0
   - [isOption](#isoption)
   - [isSome](#issome)
 - [lifting](#lifting)
-  - [lift2](#lift2)
   - [liftPredicate](#liftpredicate)
-- [math](#math)
-  - [divide](#divide)
-  - [multiply](#multiply)
-  - [multiplyCompact](#multiplycompact)
-  - [subtract](#subtract)
-  - [sum](#sum)
-  - [sumCompact](#sumcompact)
 - [models](#models)
   - [None (interface)](#none-interface)
   - [Option (type alias)](#option-type-alias)
@@ -973,20 +965,6 @@ Added in v2.0.0
 
 # lifting
 
-## lift2
-
-Lifts a binary function into `Option`.
-
-**Signature**
-
-```ts
-export declare const lift2: <A, B, C>(
-  f: (a: A, b: B) => C
-) => { (that: Option<B>): (self: Option<A>) => Option<C>; (self: Option<A>, that: Option<B>): Option<C> }
-```
-
-Added in v2.0.0
-
 ## liftPredicate
 
 Transforms a `Predicate` function into a `Some` of the input value if the predicate returns `true` or `None`
@@ -1010,102 +988,6 @@ const getOption = O.liftPredicate((n: number) => n >= 0)
 
 assert.deepStrictEqual(getOption(-1), O.none())
 assert.deepStrictEqual(getOption(1), O.some(1))
-```
-
-Added in v2.0.0
-
-# math
-
-## divide
-
-**Signature**
-
-```ts
-export declare const divide: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-}
-```
-
-Added in v2.0.0
-
-## multiply
-
-**Signature**
-
-```ts
-export declare const multiply: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-}
-```
-
-Added in v2.0.0
-
-## multiplyCompact
-
-Multiply all numbers in an iterable of `Option<number>` ignoring the `None` values.
-
-**Signature**
-
-```ts
-export declare const multiplyCompact: (self: Iterable<Option<number>>) => number
-```
-
-**Example**
-
-```ts
-import { multiplyCompact, some, none } from 'effect/Option'
-
-const iterable = [some(2), none(), some(3), none()]
-assert.deepStrictEqual(multiplyCompact(iterable), 6)
-```
-
-Added in v2.0.0
-
-## subtract
-
-**Signature**
-
-```ts
-export declare const subtract: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-}
-```
-
-Added in v2.0.0
-
-## sum
-
-**Signature**
-
-```ts
-export declare const sum: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-}
-```
-
-Added in v2.0.0
-
-## sumCompact
-
-Sum all numbers in an iterable of `Option<number>` ignoring the `None` values.
-
-**Signature**
-
-```ts
-export declare const sumCompact: (self: Iterable<Option<number>>) => number
-```
-
-**Example**
-
-```ts
-import { sumCompact, some, none } from 'effect/Option'
-
-const iterable = [some(2), none(), some(3), none()]
-assert.deepStrictEqual(sumCompact(iterable), 5)
 ```
 
 Added in v2.0.0
