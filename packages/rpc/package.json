@@ -37,12 +37,12 @@
   "license": "MIT",
   "sideEffects": false,
   "devDependencies": {
-    "@effect/schema": "^0.43.0",
-    "effect": "2.0.0-next.48"
+    "@effect/schema": "^0.44.0",
+    "effect": "2.0.0-next.49"
   },
   "peerDependencies": {
-    "@effect/schema": "^0.43.0",
-    "effect": "2.0.0-next.48"
+    "@effect/schema": "^0.44.0",
+    "effect": "2.0.0-next.49"
   },
   "files": [
     "src",
