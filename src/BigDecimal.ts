@@ -6,8 +6,6 @@
  */
 
 import * as BigI from "./BigInt"
-import * as Cause from "./Cause"
-import * as Either from "./Either"
 import * as Equal from "./Equal"
 import * as equivalence from "./Equivalence"
 import { dual } from "./Function"
@@ -110,15 +108,16 @@ const zero = make(0n)
  *
  * @example
  * import { parse, make } from 'effect/BigDecimal'
- * import { right } from 'effect/Either'
+ * import { some, none } from 'effect/Option'
  *
- * assert.deepStrictEqual(parse('123'), right(make(123n)))
- * assert.deepStrictEqual(parse('123.456'), right(make(123.456)))
+ * assert.deepStrictEqual(parse('123'), some(make(123n)))
+ * assert.deepStrictEqual(parse('123.456'), some(make(123.456)))
+ * assert.deepStrictEqual(parse('123.abc'), none())
  *
  * @since 2.0.0
  * @category constructors
  */
-export const parse = (s: string): Either.Either<Cause.IllegalArgumentException, BigDecimal> => {
+export const parse = (s: string): Option.Option<BigDecimal> => {
   let digits: string
   let scale: number
 
@@ -134,14 +133,14 @@ export const parse = (s: string): Either.Either<Cause.IllegalArgumentException, 
   }
 
   if (digits === "") {
-    return Either.right(zero)
+    return Option.some(zero)
   }
 
   if (!/^(?:\+|-)?\d+$/.test(digits)) {
-    return Either.left(Cause.IllegalArgumentException(`Invalid numerical string ${s}`))
+    return Option.none()
   }
 
-  return Either.right(scaled(BigInt(digits), scale))
+  return Option.some(scaled(BigInt(digits), scale))
 }
 
 /**

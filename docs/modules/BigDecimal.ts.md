@@ -123,17 +123,18 @@ Parses a numerical `string` into a `BigDecimal`.
 **Signature**
 
 ```ts
-export declare const parse: (s: string) => Either.Either<Cause.IllegalArgumentException, BigDecimal>
+export declare const parse: (s: string) => Option.Option<BigDecimal>
 ```
 
 **Example**
 
 ```ts
 import { parse, make } from 'effect/BigDecimal'
-import { right } from 'effect/Either'
+import { some, none } from 'effect/Option'
 
-assert.deepStrictEqual(parse('123'), right(make(123n)))
-assert.deepStrictEqual(parse('123.456'), right(make(123.456)))
+assert.deepStrictEqual(parse('123'), some(make(123n)))
+assert.deepStrictEqual(parse('123.456'), some(make(123.456)))
+assert.deepStrictEqual(parse('123.abc'), none())
 ```
 
 Added in v2.0.0
