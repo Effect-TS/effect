@@ -35,6 +35,7 @@ Added in v2.0.0
   - [subtract](#subtract)
   - [sum](#sum)
   - [sumAll](#sumall)
+  - [unsafeDivide](#unsafedivide)
   - [unsafeSqrt](#unsafesqrt)
 - [predicates](#predicates)
   - [between](#between)
@@ -145,19 +146,25 @@ Provides a division operation on `bigint`s.
 If the dividend is not a multiple of the divisor the result will be a `bigint` value
 which represents the integer division rounded down to the nearest integer.
 
+Returns `None` if the divisor is `0n`.
+
 **Signature**
 
 ```ts
-export declare const divide: { (that: bigint): (self: bigint) => bigint; (self: bigint, that: bigint): bigint }
+export declare const divide: {
+  (that: bigint): (self: bigint) => Option.Option<bigint>
+  (self: bigint, that: bigint): Option.Option<bigint>
+}
 ```
 
 **Example**
 
 ```ts
 import { divide } from 'effect/BigInt'
+import { some, none } from 'effect/Option'
 
-assert.deepStrictEqual(divide(6n, 3n), 2n)
-assert.deepStrictEqual(divide(6n, 4n), 1n)
+assert.deepStrictEqual(divide(6n, 3n), some(2n))
+assert.deepStrictEqual(divide(6n, 0n), none())
 ```
 
 Added in v2.0.0
@@ -368,6 +375,32 @@ export declare const sumAll: (collection: Iterable<bigint>) => bigint
 import { sumAll } from 'effect/BigInt'
 
 assert.deepStrictEqual(sumAll([2n, 3n, 4n]), 9n)
+```
+
+Added in v2.0.0
+
+## unsafeDivide
+
+Provides a division operation on `bigint`s.
+
+If the dividend is not a multiple of the divisor the result will be a `bigint` value
+which represents the integer division rounded down to the nearest integer.
+
+Throws a `RangeError` if the divisor is `0n`.
+
+**Signature**
+
+```ts
+export declare const unsafeDivide: { (that: bigint): (self: bigint) => bigint; (self: bigint, that: bigint): bigint }
+```
+
+**Example**
+
+```ts
+import { unsafeDivide } from 'effect/BigInt'
+
+assert.deepStrictEqual(unsafeDivide(6n, 3n), 2n)
+assert.deepStrictEqual(unsafeDivide(6n, 4n), 1n)
 ```
 
 Added in v2.0.0
