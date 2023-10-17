@@ -21,7 +21,6 @@ Added in v2.0.0
   - [collect](#collect)
   - [fromEntries](#fromentries)
   - [fromIterable](#fromiterable)
-  - [toArray](#toarray)
   - [toEntries](#toentries)
 - [filtering](#filtering)
   - [compact](#compact)
@@ -177,33 +176,6 @@ assert.deepStrictEqual(
   fromIterable(input, (a) => [String(a), a * 2]),
   { '1': 2, '2': 4, '3': 6, '4': 8 }
 )
-```
-
-Added in v2.0.0
-
-## toArray
-
-Takes a record and returns an array of tuples containing its keys and values.
-
-Alias of {@link toEntries}.
-
-**Signature**
-
-```ts
-export declare const toArray: <K extends string, A>(self: Record<K, A>) => [K, A][]
-```
-
-**Example**
-
-```ts
-import { toArray } from 'effect/ReadonlyRecord'
-
-const x = { a: 1, b: 2, c: 3 }
-assert.deepStrictEqual(toArray(x), [
-  ['a', 1],
-  ['b', 2],
-  ['c', 3],
-])
 ```
 
 Added in v2.0.0

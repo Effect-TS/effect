@@ -176,24 +176,6 @@ export const toEntries: <K extends string, A>(self: Record<K, A>) => Array<[K, A
 ) => [key, value])
 
 /**
- * Takes a record and returns an array of tuples containing its keys and values.
- *
- * Alias of {@link toEntries}.
- *
- * @param self - The record to transform.
- *
- * @example
- * import { toArray } from "effect/ReadonlyRecord"
- *
- * const x = { a: 1, b: 2, c: 3 }
- * assert.deepStrictEqual(toArray(x), [["a", 1], ["b", 2], ["c", 3]])
- *
- * @category conversions
- * @since 2.0.0
- */
-export const toArray: <K extends string, A>(self: Record<K, A>) => Array<[K, A]> = toEntries
-
-/**
  * Returns the number of key/value pairs in a record.
  *
  * @param self - A record to calculate the number of key/value pairs in.
