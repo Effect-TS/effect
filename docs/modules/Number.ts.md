@@ -130,9 +130,10 @@ export declare const divide: {
 
 ```ts
 import { divide } from 'effect/Number'
-import { getOrThrow } from 'effect/Option'
+import { some, none } from 'effect/Option'
 
-assert.deepStrictEqual(getOrThrow(divide(6, 3)), 2)
+assert.deepStrictEqual(divide(6, 3), some(2))
+assert.deepStrictEqual(divide(6, 0), none())
 ```
 
 Added in v2.0.0

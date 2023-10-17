@@ -99,10 +99,10 @@ export const subtract: {
  *
  * @example
  * import { divide } from 'effect/BigInt'
- * import { getOrThrow } from 'effect/Option'
+ * import { some, none } from 'effect/Option'
  *
- * assert.deepStrictEqual(getOrThrow(divide(6n, 3n)), 2n)
- * assert.deepStrictEqual(getOrThrow(divide(6n, 4n)), 1n)
+ * assert.deepStrictEqual(divide(6n, 3n), some(2n))
+ * assert.deepStrictEqual(divide(6n, 0n), none())
  *
  * @category math
  * @since 2.0.0
