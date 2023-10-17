@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.13.0
+
+### Minor Changes
+
+- [#115](https://github.com/Effect-TS/rpc/pull/115) [`3d1c365`](https://github.com/Effect-TS/rpc/commit/3d1c365a458c5dfccc2e945376615370cea43cd5) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.12.1
 
 ### Patch Changes
