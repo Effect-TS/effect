@@ -1,6 +1,6 @@
 import { deepStrictEqual } from "effect-test/util"
 import * as BigDecimal from "effect/BigDecimal"
-import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 import { pipe } from "effect/Function"
 
 describe.concurrent("BigDecimal", () => {
@@ -32,7 +32,18 @@ describe.concurrent("BigDecimal", () => {
   it("divide", () => {
     deepStrictEqual(
       pipe(BigDecimal.make(6n), BigDecimal.divide(BigDecimal.make(2n))),
-      Either.right(BigDecimal.make(3n))
+      Option.some(BigDecimal.make(3n))
+    )
+    deepStrictEqual(
+      pipe(BigDecimal.make(6n), BigDecimal.divide(BigDecimal.make(0n))),
+      Option.none()
+    )
+  })
+
+  it("unsafeDivide", () => {
+    deepStrictEqual(
+      pipe(BigDecimal.make(6n), BigDecimal.unsafeDivide(BigDecimal.make(2n))),
+      BigDecimal.make(3n)
     )
   })
 
