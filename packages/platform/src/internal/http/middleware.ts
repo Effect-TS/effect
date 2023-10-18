@@ -1,4 +1,6 @@
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
+import { globalValue } from "effect/GlobalValue"
 import * as Headers from "../../Http/Headers"
 import * as IncomingMessage from "../../Http/IncomingMessage"
 import type * as Middleware from "../../Http/Middleware"
@@ -8,6 +10,19 @@ import * as ServerRequest from "../../Http/ServerRequest"
 export const make = <M extends Middleware.Middleware>(middleware: M): M => middleware
 
 /** @internal */
+export const loggerDisabled = globalValue(
+  Symbol.for("@effect/platform/Http/Middleware/loggerDisabled"),
+  () => FiberRef.unsafeMake(false)
+)
+
+/** @internal */
+export const withLoggerDisabled = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+  Effect.zipRight(
+    FiberRef.set(loggerDisabled, true),
+    self
+  )
+
+/** @internal */
 export const logger = make((httpApp) => {
   let counter = 0
   return Effect.flatMap(
@@ -15,17 +30,25 @@ export const logger = make((httpApp) => {
     (request) =>
       Effect.withLogSpan(
         Effect.onExit(httpApp, (exit) =>
-          exit._tag === "Failure" ?
-            Effect.annotateLogs(Effect.log(exit.cause), {
-              "http.method": request.method,
-              "http.url": request.url,
-              "http.status": 500
-            }) :
-            Effect.annotateLogs(Effect.log(""), {
-              "http.method": request.method,
-              "http.url": request.url,
-              "http.status": exit.value.status
-            })),
+          Effect.flatMap(
+            FiberRef.get(loggerDisabled),
+            (disabled) => {
+              if (disabled) {
+                return Effect.unit
+              }
+              return exit._tag === "Failure" ?
+                Effect.annotateLogs(Effect.log(exit.cause), {
+                  "http.method": request.method,
+                  "http.url": request.url,
+                  "http.status": 500
+                }) :
+                Effect.annotateLogs(Effect.log(""), {
+                  "http.method": request.method,
+                  "http.url": request.url,
+                  "http.status": exit.value.status
+                })
+            }
+          )),
         `http.span.${++counter}`
       )
   )

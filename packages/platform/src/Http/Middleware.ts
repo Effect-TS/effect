@@ -1,6 +1,8 @@
 /**
  * @since 1.0.0
  */
+import type * as Effect from "effect/Effect"
+import type * as FiberRef from "effect/FiberRef"
 import * as internal from "../internal/http/middleware"
 import type * as App from "./App"
 
@@ -35,6 +37,19 @@ export const make: <M extends Middleware>(middleware: M) => M = internal.make
  * @category constructors
  */
 export const logger: <R, E>(httpApp: App.Default<R, E>) => App.Default<R, E> = internal.logger
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const loggerDisabled: FiberRef.FiberRef<boolean> = internal.loggerDisabled
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withLoggerDisabled: <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =
+  internal.withLoggerDisabled
 
 /**
  * @since 1.0.0

@@ -1,6 +1,6 @@
-import * as Effect from "effect/Effect"
 import * as Http from "@effect/platform-node/HttpServer"
 import { runMain } from "@effect/platform-node/Runtime"
+import * as Effect from "effect/Effect"
 import { createServer } from "node:http"
 
 const ServerLive = Http.server.layer(() => createServer(), { port: 3000 })
