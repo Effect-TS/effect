@@ -658,7 +658,7 @@ export const remainder: {
  */
 export const Equivalence: equivalence.Equivalence<BigDecimal> = equivalence.make((self, that) => {
   if (self.scale > that.scale) {
-    return scale(that, self.scale).value === that.value
+    return scale(that, self.scale).value === self.value
   }
 
   if (self.scale < that.scale) {
