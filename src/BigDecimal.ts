@@ -8,7 +8,7 @@
 import * as BigI from "./BigInt"
 import * as Equal from "./Equal"
 import * as equivalence from "./Equivalence"
-import { dual } from "./Function"
+import { dual, pipe } from "./Function"
 import * as Hash from "./Hash"
 import { type Inspectable, NodeInspectSymbol, toString } from "./Inspectable"
 import * as Option from "./Option"
@@ -103,7 +103,9 @@ export const make = (value: bigint | number): BigDecimal => {
   return scaled(value, 0)
 }
 
-const zero = make(0n)
+const bigint0 = BigInt(0)
+const bigint10 = BigInt(10)
+const zero = make(bigint0)
 
 /**
  * Parses a numerical `string` into a `BigDecimal`.
@@ -164,7 +166,7 @@ export const parse = (s: string): Option.Option<BigDecimal> => {
  * @category constructors
  */
 export const normalize = (self: BigDecimal): BigDecimal => {
-  if (self.value === 0n) {
+  if (self.value === bigint0) {
     return zero
   }
 
@@ -204,11 +206,11 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  */
 export const scale = (self: BigDecimal, scale: number): BigDecimal => {
   if (scale > self.scale) {
-    return scaled(self.value * 10n ** BigInt(scale - self.scale), scale)
+    return scaled(self.value * bigint10 ** BigInt(scale - self.scale), scale)
   }
 
   if (scale < self.scale) {
-    return scaled(self.value / 10n ** BigInt(self.scale - scale), scale)
+    return scaled(self.value / bigint10 ** BigInt(self.scale - scale), scale)
   }
 
   return self
@@ -232,11 +234,11 @@ export const sum: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
   (self: BigDecimal, that: BigDecimal): BigDecimal
 } = dual(2, (self: BigDecimal, that: BigDecimal): BigDecimal => {
-  if (that.value === 0n) {
+  if (that.value === bigint0) {
     return self
   }
 
-  if (self.value === 0n) {
+  if (self.value === bigint0) {
     return that
   }
 
@@ -269,7 +271,7 @@ export const multiply: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
   (self: BigDecimal, that: BigDecimal): BigDecimal
 } = dual(2, (self: BigDecimal, that: BigDecimal): BigDecimal => {
-  if (that.value === 0n || self.value === 0n) {
+  if (that.value === bigint0 || self.value === bigint0) {
     return zero
   }
 
@@ -294,11 +296,11 @@ export const subtract: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
   (self: BigDecimal, that: BigDecimal): BigDecimal
 } = dual(2, (self: BigDecimal, that: BigDecimal): BigDecimal => {
-  if (that.value === 0n) {
+  if (that.value === bigint0) {
     return self
   }
 
-  if (self.value === 0n) {
+  if (self.value === bigint0) {
     return scaled(-that.value, that.scale)
   }
 
@@ -339,11 +341,11 @@ export const divide: {
   (that: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
   (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal>
 } = dual(2, (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal> => {
-  if (that.value === 0n) {
+  if (that.value === bigint0) {
     return Option.none()
   }
 
-  if (self.value === 0n) {
+  if (self.value === bigint0) {
     return Option.some(zero)
   }
 
@@ -374,11 +376,11 @@ export const unsafeDivide: {
   (that: BigDecimal): (self: BigDecimal) => BigDecimal
   (self: BigDecimal, that: BigDecimal): BigDecimal
 } = dual(2, (self: BigDecimal, that: BigDecimal): BigDecimal => {
-  if (that.value === 0n) {
+  if (that.value === bigint0) {
     throw new RangeError("Division by zero")
   }
 
-  if (self.value === 0n) {
+  if (self.value === bigint0) {
     return zero
   }
 
