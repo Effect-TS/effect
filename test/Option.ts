@@ -34,7 +34,7 @@ describe.concurrent("Option", () => {
       return yield* $(_.some(2))
     })
     expect(a).toEqual(_.some(3))
-    expect(b).toEqual(_.some(undefined))
+    expect(b).toEqual(_.some(10))
     expect(c).toEqual(_.some(undefined))
     expect(d).toEqual(_.some(2))
     expect(e).toEqual(_.none())

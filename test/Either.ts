@@ -32,7 +32,7 @@ describe.concurrent("Either", () => {
       return yield* $(Either.right(2))
     })
     expect(a).toEqual(Either.right(3))
-    expect(b).toEqual(Either.right(undefined))
+    expect(b).toEqual(Either.right(10))
     expect(c).toEqual(Either.right(undefined))
     expect(d).toEqual(Either.right(2))
     expect(e).toEqual(Either.left("err"))
