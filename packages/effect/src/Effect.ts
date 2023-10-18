@@ -7,7 +7,7 @@ import type * as Clock from "./Clock"
 import type { Config } from "./Config"
 import type { ConfigError } from "./ConfigError"
 import type { ConfigProvider } from "./ConfigProvider"
-import * as Context from "./Context"
+import type * as Context from "./Context"
 import type * as Deferred from "./Deferred"
 import type * as Duration from "./Duration"
 import type * as Either from "./Either"
@@ -3145,8 +3145,8 @@ export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
  * @since 2.0.0
  * @category context
  */
-export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> = (tag) =>
-  contextWith((_: Context.Context<never>) => Context.getOption(_, tag))
+export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> =
+  effect.serviceOption
 
 /**
  * Updates the service with the required service entry.
@@ -4996,7 +4996,7 @@ export const withSpan: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     name: string,
@@ -5008,7 +5008,7 @@ export const withSpan: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): Effect<R, E, A>
+  ): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 } = effect.withSpan
 
 /**
@@ -5030,7 +5030,7 @@ export const withSpanScoped: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R | Scope.Scope, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     name: string,
@@ -5042,28 +5042,8 @@ export const withSpanScoped: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): Effect<Scope.Scope | R, E, A>
+  ): Effect<Scope.Scope | Exclude<R, Tracer.ParentSpan>, E, A>
 } = fiberRuntime.withSpanScoped
-
-/**
- * Create and add a span to the current span stack.
- *
- * The span is ended & removed from the stack when the Scope is finalized.
- *
- * @since 2.0.0
- * @category tracing
- */
-export const setSpan: (
-  name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly sampled?: boolean
-    readonly context?: Context.Context<never>
-  }
-) => Effect<Scope.Scope, never, void> = fiberRuntime.setSpan
 
 /**
  * Adds the provided span to the current span stack.
@@ -5072,17 +5052,9 @@ export const setSpan: (
  * @category tracing
  */
 export const withParentSpan: {
-  (span: Tracer.ParentSpan): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan): Effect<R, E, A>
+  (span: Tracer.ParentSpan): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 } = effect.withParentSpan
-
-/**
- * Adds the provided span to the current span stack.
- *
- * @since 2.0.0
- * @category tracing
- */
-export const setParentSpan: (span: Tracer.ParentSpan) => Effect<Scope.Scope, never, void> = fiberRuntime.setParentSpan
 
 // -------------------------------------------------------------------------------------
 // optionality

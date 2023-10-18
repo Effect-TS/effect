@@ -18,7 +18,6 @@ import * as ref from "../internal/ref"
 import * as runtime from "../internal/runtime"
 import * as synchronized from "../internal/synchronizedRef"
 import type * as Layer from "../Layer"
-import * as List from "../List"
 import { pipeArguments } from "../Pipeable"
 import type * as Runtime from "../Runtime"
 import type * as Schedule from "../Schedule"
@@ -28,6 +27,7 @@ import * as Scope from "../Scope"
 import type * as Synchronized from "../SynchronizedRef"
 import type * as Tracer from "../Tracer"
 import * as runtimeFlags from "./runtimeFlags"
+import * as tracer from "./tracer"
 
 /** @internal */
 const LayerSymbolKey = "effect/Layer"
@@ -1130,7 +1130,7 @@ export const withSpan = dual<
     readonly sampled?: boolean
     readonly context?: Context.Context<never>
     readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
-  }) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<R, E, A>,
+  }) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Layer.Layer<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
@@ -1139,7 +1139,7 @@ export const withSpan = dual<
     readonly sampled?: boolean
     readonly context?: Context.Context<never>
     readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
-  }) => Layer.Layer<R, E, A>
+  }) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 >((args) => isLayer(args[0]), (self, name, options) =>
   unwrapScoped(
     core.map(
@@ -1155,9 +1155,11 @@ export const withSpan = dual<
 
 /** @internal */
 export const withParentSpan = dual<
-  (span: Tracer.ParentSpan) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<R, E, A>,
-  <R, E, A>(self: Layer.Layer<R, E, A>, span: Tracer.ParentSpan) => Layer.Layer<R, E, A>
->(2, (self, span) => fiberRefLocallyWith(self, core.currentTracerSpan, List.prepend(span)))
+  (
+    span: Tracer.ParentSpan
+  ) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>,
+  <R, E, A>(self: Layer.Layer<R, E, A>, span: Tracer.ParentSpan) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>
+>(2, (self, span) => provide(succeedContext(Context.make(tracer.spanTag, span)), self))
 
 // circular with Effect
 

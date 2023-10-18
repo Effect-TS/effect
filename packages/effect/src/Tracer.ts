@@ -57,6 +57,12 @@ export type ParentSpan = Span | ExternalSpan
 
 /**
  * @since 2.0.0
+ * @category tags
+ */
+export const ParentSpan: Context.Tag<ParentSpan, ParentSpan> = internal.spanTag
+
+/**
+ * @since 2.0.0
  * @category models
  */
 export interface ExternalSpan {

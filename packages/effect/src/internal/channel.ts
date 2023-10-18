@@ -32,6 +32,7 @@ import * as core from "./core-stream"
 import * as MergeDecisionOpCodes from "./opCodes/channelMergeDecision"
 import * as MergeStateOpCodes from "./opCodes/channelMergeState"
 import * as ChannelStateOpCodes from "./opCodes/channelState"
+import * as tracer from "./tracer"
 
 /** @internal */
 export const acquireUseRelease = <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
@@ -2304,7 +2305,7 @@ export const withSpan = dual<
     }
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  ) => Channel.Channel<Exclude<Env, Tracer.ParentSpan>, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     name: string,
@@ -2316,8 +2317,18 @@ export const withSpan = dual<
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
->(3, (self, name, options) => unwrapScoped(Effect.as(Effect.setSpan(name, options), self)))
+  ) => Channel.Channel<Exclude<Env, Tracer.ParentSpan>, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+>(3, (self, name, options) =>
+  unwrapScoped(
+    Effect.flatMap(
+      Effect.context(),
+      (context) =>
+        Effect.map(
+          Effect.makeSpanScoped(name, options),
+          (span) => core.provideContext(self, Context.add(context, tracer.spanTag, span))
+        )
+    )
+  ) as any)
 
 /** @internal */
 export const writeAll = <OutElem>(
