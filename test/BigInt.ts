@@ -30,7 +30,12 @@ describe.concurrent("BigInt", () => {
   })
 
   it("divide", () => {
-    deepStrictEqual(pipe(6n, BigInt.divide(2n)), 3n)
+    deepStrictEqual(pipe(6n, BigInt.divide(2n)), Option.some(3n))
+    deepStrictEqual(pipe(6n, BigInt.divide(0n)), Option.none())
+  })
+
+  it("unsafeDivide", () => {
+    deepStrictEqual(pipe(6n, BigInt.unsafeDivide(2n)), 3n)
   })
 
   it("increment", () => {

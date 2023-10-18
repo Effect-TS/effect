@@ -1181,7 +1181,7 @@ export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f)
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {
-    return some(void 0)
+    return some(state.value)
   } else {
     let current = state.value.value
     if (isNone(current)) {

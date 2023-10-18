@@ -1,4 +1,4 @@
-import * as _ from "effect/HKT"
+import type * as _ from "effect/HKT"
 
 // issue #536
 export function testIssue536<F extends _.TypeLambda, G extends _.TypeLambda, R, W, E, A>(

@@ -1,5 +1,5 @@
 import type * as ConfigProvider from "../../ConfigProvider"
-import type * as Context from "../../Context"
+import * as Context from "../../Context"
 import type * as Effect from "../../Effect"
 import type * as Exit from "../../Exit"
 import { dual } from "../../Function"
@@ -16,6 +16,7 @@ import type * as LogLevel from "../../LogLevel"
 import type { Scope } from "../../Scope"
 import type * as Supervisor from "../../Supervisor"
 import type * as Tracer from "../../Tracer"
+import * as tracer from "../tracer"
 
 // circular with Logger
 
@@ -184,11 +185,11 @@ export const setConfigProvider = (configProvider: ConfigProvider.ConfigProvider)
   layer.scopedDiscard(fiberRuntime.withConfigProviderScoped(configProvider))
 
 /** @internal */
-export const setParentSpan = (span: Tracer.ParentSpan): Layer.Layer<never, never, never> =>
-  layer.scopedDiscard(fiberRuntime.setParentSpan(span))
+export const parentSpan = (span: Tracer.ParentSpan): Layer.Layer<never, never, Tracer.ParentSpan> =>
+  layer.succeedContext(Context.make(tracer.spanTag, span))
 
 /** @internal */
-export const setSpan = (
+export const span = (
   name: string,
   options?: {
     readonly attributes?: Record<string, unknown>
@@ -199,18 +200,15 @@ export const setSpan = (
     readonly context?: Context.Context<never>
     readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }
-): Layer.Layer<never, never, never> =>
-  layer.scopedDiscard(
+): Layer.Layer<never, never, Tracer.Span> =>
+  layer.scoped(
+    tracer.spanTag,
     options?.onEnd
       ? core.tap(
         fiberRuntime.makeSpanScoped(name, options),
-        (span) =>
-          core.zipRight(
-            fiberRuntime.addFinalizer((exit) => options.onEnd!(span, exit)),
-            fiberRuntime.setParentSpan(span)
-          )
+        (span) => fiberRuntime.addFinalizer((exit) => options.onEnd!(span, exit))
       )
-      : fiberRuntime.setSpan(name, options)
+      : fiberRuntime.makeSpanScoped(name, options)
   )
 
 /** @internal */

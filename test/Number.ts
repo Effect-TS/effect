@@ -1,6 +1,7 @@
 import { deepStrictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
 import * as Number from "effect/Number"
+import * as Option from "effect/Option"
 
 describe.concurrent("Number", () => {
   it("isNumber", () => {
@@ -22,11 +23,12 @@ describe.concurrent("Number", () => {
   })
 
   it("divide", () => {
-    deepStrictEqual(pipe(6, Number.divide(2)), 3)
+    deepStrictEqual(pipe(6, Number.divide(2)), Option.some(3))
+    deepStrictEqual(pipe(6, Number.divide(0)), Option.none())
   })
 
-  it("increment", () => {
-    deepStrictEqual(Number.increment(2), 3)
+  it("unsafeDivide", () => {
+    deepStrictEqual(pipe(6, Number.unsafeDivide(2)), 3)
   })
 
   it("decrement", () => {

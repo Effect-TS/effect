@@ -7,6 +7,8 @@
  */
 import * as equivalence from "./Equivalence"
 import { dual } from "./Function"
+import * as option from "./internal/Option"
+import type { Option } from "./Option"
 import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import * as predicate from "./Predicate"
@@ -92,13 +94,39 @@ export const subtract: {
  *
  * @example
  * import { divide } from 'effect/Number'
+ * import { some, none } from 'effect/Option'
  *
- * assert.deepStrictEqual(divide(6, 3), 2)
+ * assert.deepStrictEqual(divide(6, 3), some(2))
+ * assert.deepStrictEqual(divide(6, 0), none())
  *
  * @category math
  * @since 2.0.0
  */
 export const divide: {
+  (that: number): (self: number) => Option<number>
+  (self: number, that: number): Option<number>
+} = dual(
+  2,
+  (self: number, that: number): Option<number> => that === 0 ? option.none : option.some(self / that)
+)
+
+/**
+ * Provides a division operation on `number`s.
+ *
+ * Throws a `RangeError` if the divisor is `0`.
+ *
+ * @param self - The dividend operand.
+ * @param that - The divisor operand.
+ *
+ * @example
+ * import { unsafeDivide } from 'effect/Number'
+ *
+ * assert.deepStrictEqual(unsafeDivide(6, 3), 2)
+ *
+ * @category math
+ * @since 2.0.0
+ */
+export const unsafeDivide: {
   (that: number): (self: number) => number
   (self: number, that: number): number
 } = dual(2, (self: number, that: number): number => self / that)

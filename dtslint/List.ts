@@ -1,5 +1,5 @@
-import * as List from 'effect/List'
-import * as Predicate from 'effect/Predicate'
+import * as List from "effect/List"
+import * as Predicate from "effect/Predicate"
 
 declare const nss: List.List<number | string>
 declare const nonEmptynss: List.Cons<number | string>
@@ -52,8 +52,8 @@ List.append(true)(nss)
 // mapNonEmpty
 // -------------------------------------------------------------------------------------
 
- // $ExpectType Cons<string>
- List.mapNonEmpty(nonEmptynss, (s) => `${s}`)
+// $ExpectType Cons<string>
+List.mapNonEmpty(nonEmptynss, (s) => `${s}`)
 
 // -------------------------------------------------------------------------------------
 // appendAllNonEmpty

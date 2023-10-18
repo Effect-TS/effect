@@ -6853,7 +6853,7 @@ export const withSpan = dual<
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>,
+  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(
     self: Stream.Stream<R, E, A>,
     name: string,
@@ -6865,8 +6865,8 @@ export const withSpan = dual<
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ) => Stream.Stream<R, E, A>
->(3, (self, name, options) => unwrapScoped(Effect.as(Effect.setSpan(name, options), self)))
+  ) => Stream.Stream<Exclude<R, Tracer.ParentSpan>, E, A>
+>(3, (self, name, options) => new StreamImpl(channel.withSpan(toChannel(self), name, options)))
 
 /** @internal */
 export const zip = dual<

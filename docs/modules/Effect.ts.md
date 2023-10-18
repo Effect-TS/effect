@@ -344,8 +344,6 @@ Added in v2.0.0
   - [linkSpans](#linkspans)
   - [makeSpan](#makespan)
   - [makeSpanScoped](#makespanscoped)
-  - [setParentSpan](#setparentspan)
-  - [setSpan](#setspan)
   - [spanAnnotations](#spanannotations)
   - [spanLinks](#spanlinks)
   - [tracer](#tracer)
@@ -5752,42 +5750,6 @@ export declare const makeSpanScoped: (
 
 Added in v2.0.0
 
-## setParentSpan
-
-Adds the provided span to the current span stack.
-
-**Signature**
-
-```ts
-export declare const setParentSpan: (span: Tracer.ParentSpan) => Effect<Scope.Scope, never, void>
-```
-
-Added in v2.0.0
-
-## setSpan
-
-Create and add a span to the current span stack.
-
-The span is ended & removed from the stack when the Scope is finalized.
-
-**Signature**
-
-```ts
-export declare const setSpan: (
-  name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly sampled?: boolean
-    readonly context?: Context.Context<never>
-  }
-) => Effect<Scope.Scope, never, void>
-```
-
-Added in v2.0.0
-
 ## spanAnnotations
 
 **Signature**
@@ -5866,8 +5828,8 @@ Adds the provided span to the current span stack.
 
 ```ts
 export declare const withParentSpan: {
-  (span: Tracer.ParentSpan): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan): Effect<R, E, A>
+  (span: Tracer.ParentSpan): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+  <R, E, A>(self: Effect<R, E, A>, span: Tracer.ParentSpan): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 }
 ```
 
@@ -5891,7 +5853,7 @@ export declare const withSpan: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     name: string,
@@ -5903,7 +5865,7 @@ export declare const withSpan: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): Effect<R, E, A>
+  ): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 }
 ```
 
@@ -5929,7 +5891,7 @@ export declare const withSpanScoped: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | R, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     name: string,
@@ -5941,7 +5903,7 @@ export declare const withSpanScoped: {
       readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
-  ): Effect<Scope.Scope | R, E, A>
+  ): Effect<Scope.Scope | Exclude<R, Tracer.ParentSpan>, E, A>
 }
 ```
 

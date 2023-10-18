@@ -45,7 +45,6 @@ import { OpSupervision } from "../internal/runtimeFlags"
 import * as supervisor from "../internal/supervisor"
 import * as SupervisorPatch from "../internal/supervisor/patch"
 import * as tracer from "../internal/tracer"
-import * as List from "../List"
 import type { Logger } from "../Logger"
 import * as LogLevel from "../LogLevel"
 import type * as MetricLabel from "../MetricLabel"
@@ -1374,7 +1373,7 @@ export const tracerLogger = internalLogger.makeLogger<unknown, void>(({
   logLevel,
   message
 }) => {
-  const span = Option.flatMap(fiberRefs.get(context, core.currentTracerSpan), List.head)
+  const span = Option.flatMap(fiberRefs.get(context, core.currentContext), Context.getOption(tracer.spanTag))
   const clockService = Option.map(
     fiberRefs.get(context, defaultServices.currentServices),
     (_) => Context.get(_, clock.clockTag)
@@ -3451,29 +3450,8 @@ export const makeSpanScoped = (
   )
 
 /* @internal */
-export const setSpan = (
-  name: string,
-  options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly sampled?: boolean
-    readonly context?: Context.Context<never>
-  }
-): Effect.Effect<Scope.Scope, never, void> =>
-  core.tap(
-    makeSpanScoped(name, options),
-    (span) => setParentSpan(span)
-  )
-
-/* @internal */
 export const withTracerScoped = (value: Tracer.Tracer): Effect.Effect<Scope.Scope, never, void> =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(tracer.tracerTag, value))
-
-/* @internal */
-export const setParentSpan = (span: Tracer.ParentSpan): Effect.Effect<Scope.Scope, never, void> =>
-  fiberRefLocallyScopedWith(core.currentTracerSpan, List.prepend(span))
 
 /** @internal */
 export const withSpanScoped = dual<
@@ -3484,7 +3462,7 @@ export const withSpanScoped = dual<
     readonly root?: boolean
     readonly sampled?: boolean
     readonly context?: Context.Context<never>
-  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | Scope.Scope, E, A>,
+  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
@@ -3492,12 +3470,12 @@ export const withSpanScoped = dual<
     readonly root?: boolean
     readonly sampled?: boolean
     readonly context?: Context.Context<never>
-  }) => Effect.Effect<R | Scope.Scope, E, A>
+  }) => Effect.Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>
     core.flatMap(
       makeSpanScoped(name, options),
-      (span) => core.fiberRefLocallyWith(self, core.currentTracerSpan, List.prepend(span))
+      (span) => internalEffect.provideService(self, tracer.spanTag, span)
     )
 )

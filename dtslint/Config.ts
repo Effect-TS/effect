@@ -1,5 +1,5 @@
-import { pipe } from "effect/Function"
 import * as Config from "effect/Config"
+import { pipe } from "effect/Function"
 
 declare const string: Config.Config<string>
 declare const number: Config.Config<number>
