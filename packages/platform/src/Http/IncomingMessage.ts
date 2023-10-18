@@ -101,7 +101,7 @@ export const schemaExternalSpan = flow(
         }
         return ParseResult.failure(ParseResult.missing)
       },
-      (_) => ParseResult.success("")
+      (_) => ParseResult.success({ b3: "" })
     ),
     Schema.transform(
       Schema.struct({
