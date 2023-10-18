@@ -398,7 +398,7 @@ export const Order: order.Order<BigDecimal> = order.make((self, that) => {
   }
 
   if (self.scale > that.scale) {
-    return order.bigint(scale(that, self.scale).value, self.value)
+    return order.bigint(self.value, scale(that, self.scale).value)
   }
 
   if (self.scale < that.scale) {
@@ -710,7 +710,7 @@ export const format = (n: BigDecimal): string => {
     const location = absolute.length - n.scale
     if (location > absolute.length) {
       const zeros = location - absolute.length
-      before = "0".repeat(zeros)
+      before = `${absolute}${"0".repeat(zeros)}`
       after = ""
     } else {
       after = absolute.slice(location)

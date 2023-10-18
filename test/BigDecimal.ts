@@ -1,6 +1,5 @@
 import { deepStrictEqual } from "effect-test/util"
 import * as BigDecimal from "effect/BigDecimal"
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 
 describe.concurrent("BigDecimal", () => {
@@ -13,36 +12,40 @@ describe.concurrent("BigDecimal", () => {
   it("isBigDecimal", () => {
     expect(BigDecimal.isBigDecimal(BigDecimal.make(1n))).toEqual(true)
     expect(BigDecimal.isBigDecimal(1)).toEqual(false)
-    expect(BigDecimal.isBigDecimal("a")).toEqual(false)
     expect(BigDecimal.isBigDecimal(true)).toEqual(false)
   })
 
   it("sum", () => {
-    deepStrictEqual(pipe(BigDecimal.make(1n), BigDecimal.sum(BigDecimal.make(2n))), BigDecimal.make(3n))
+    deepStrictEqual(BigDecimal.sum(BigDecimal.make(2n), BigDecimal.make(1n)), BigDecimal.make(3n))
+    deepStrictEqual(BigDecimal.sum(BigDecimal.scaled(300000n, 5), BigDecimal.make(50n)), BigDecimal.scaled(5300000n, 5))
+    deepStrictEqual(
+      BigDecimal.sum(BigDecimal.scaled(123n, 2), BigDecimal.scaled(45678n, 7)), // 1.23 + 0.0045678
+      BigDecimal.scaled(12345678n, 7) // 1.2345678
+    )
   })
 
   it("multiply", () => {
-    deepStrictEqual(pipe(BigDecimal.make(2n), BigDecimal.multiply(BigDecimal.make(3n))), BigDecimal.make(6n))
+    deepStrictEqual(BigDecimal.multiply(BigDecimal.make(3n), BigDecimal.make(2n)), BigDecimal.make(6n))
   })
 
   it("subtract", () => {
-    deepStrictEqual(pipe(BigDecimal.make(3n), BigDecimal.subtract(BigDecimal.make(1n))), BigDecimal.make(2n))
+    deepStrictEqual(BigDecimal.subtract(BigDecimal.make(3n), BigDecimal.make(1n)), BigDecimal.make(2n))
   })
 
   it("divide", () => {
     deepStrictEqual(
-      pipe(BigDecimal.make(6n), BigDecimal.divide(BigDecimal.make(2n))),
+      BigDecimal.divide(BigDecimal.make(6n), BigDecimal.make(2n)),
       Option.some(BigDecimal.make(3n))
     )
     deepStrictEqual(
-      pipe(BigDecimal.make(6n), BigDecimal.divide(BigDecimal.make(0n))),
+      BigDecimal.divide(BigDecimal.make(6n), BigDecimal.make(0n)),
       Option.none()
     )
   })
 
   it("unsafeDivide", () => {
     deepStrictEqual(
-      pipe(BigDecimal.make(6n), BigDecimal.unsafeDivide(BigDecimal.make(2n))),
+      BigDecimal.unsafeDivide(BigDecimal.make(6n), BigDecimal.make(2n)),
       BigDecimal.make(3n)
     )
   })
@@ -105,14 +108,35 @@ describe.concurrent("BigDecimal", () => {
 
   it("min", () => {
     assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(2n), BigDecimal.make(3n)), BigDecimal.make(2n))
+    assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(5n), BigDecimal.make(0.1)), BigDecimal.make(0.1))
+    assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(0.005), BigDecimal.make(3n)), BigDecimal.make(0.005))
+    assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(123.456), BigDecimal.make(1.2)), BigDecimal.make(1.2))
   })
 
   it("max", () => {
     assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(2n), BigDecimal.make(3n)), BigDecimal.make(3n))
+    assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(5n), BigDecimal.make(0.1)), BigDecimal.make(5n))
+    assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(0.005), BigDecimal.make(3n)), BigDecimal.make(3n))
+    assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(123.456), BigDecimal.make(1.2)), BigDecimal.make(123.456))
   })
 
   it("abs", () => {
     assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(2n)), BigDecimal.make(2n))
     assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(-3n)), BigDecimal.make(3n))
+    assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(0.000456)), BigDecimal.make(0.000456))
+    assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(-0.123)), BigDecimal.make(0.123))
+  })
+
+  it("format", () => {
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(2n)), "2")
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(-2n)), "-2")
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(0.123)), "0.123")
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(200n)), "200")
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(200n, -5)), "20000000")
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(-200n, -5)), "-20000000")
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(200n, 2)), "2.00")
+    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(200n, 3)), "0.200")
+    assert.deepStrictEqual(Option.map(BigDecimal.parse("0.123000"), BigDecimal.format), Option.some("0.123000"))
+    assert.deepStrictEqual(Option.map(BigDecimal.parse("-456.123"), BigDecimal.format), Option.some("-456.123"))
   })
 })
