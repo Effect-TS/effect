@@ -606,7 +606,7 @@ export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f)
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {
-    return right(void 0) as any
+    return right(state.value) as any
   } else {
     let current = state.value.value
     if (isLeft(current)) {
