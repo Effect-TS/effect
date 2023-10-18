@@ -1,6 +1,7 @@
 import * as Brand from "effect/Brand"
 import { pipe, identity } from "effect/Function";
 import * as S from "@effect/schema/Schema";
+import * as ParseResult from "@effect/schema/ParseResult";
 
 // ---------------------------------------------
 // From
@@ -597,3 +598,35 @@ S.mutable(S.lazy(() => S.array(S.string)))
 
 // $ExpectType Schema<string[], string[]>
 S.mutable(S.transform(S.array(S.string), S.array(S.string), identity, identity))
+
+// ---------------------------------------------
+// transform
+// ---------------------------------------------
+
+// $ExpectType Schema<string, number>
+S.string.pipe(S.transform(S.number, s => s.length, n => String(n)))
+
+// $ExpectType Schema<string, number>
+S.string.pipe(S.transform(S.number, s => s, n => n, { strict: false }))
+
+// @ts-expect-error
+S.string.pipe(S.transform(S.number, s => s, n => String(n)))
+
+// @ts-expect-error
+S.string.pipe(S.transform(S.number, s => s.length, n => n))
+
+// ---------------------------------------------
+// transformOrFail
+// ---------------------------------------------
+
+// $ExpectType Schema<string, number>
+S.string.pipe(S.transformOrFail(S.number, s => ParseResult.success(s.length), n => ParseResult.success(String(n))))
+
+// $ExpectType Schema<string, number>
+S.string.pipe(S.transformOrFail(S.number, s => ParseResult.success(s), n => ParseResult.success(String(n)), { strict: false }))
+
+// @ts-expect-error
+S.string.pipe(S.transformOrFail(S.number, s => ParseResult.success(s), n => ParseResult.success(String(n))))
+
+// @ts-expect-error
+S.string.pipe(S.transformOrFail(S.number, s => ParseResult.success(s.length), n => ParseResult.success(n)))

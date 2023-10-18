@@ -1205,30 +1205,39 @@ export function filter<A>(
 export const transformOrFail: {
   <C, D, B>(
     to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<C>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<B>
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <C, D, B>(
+    to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
     encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-    annotations?: AST.Annotated["annotations"]
+    options: { strict: false }
   ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<C>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<B>
+  ): Schema<A, D>
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
     encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-    annotations?: AST.Annotated["annotations"]
+    options: { strict: false }
   ): Schema<A, D>
-} = dual(4, <A, B, C, D>(
+} = dual((args) => isSchema(args[0]) && isSchema(args[1]), <A, B, C, D>(
   from: Schema<A, B>,
   to: Schema<C, D>,
   decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-  encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
-  annotations?: AST.Annotated["annotations"]
+  encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>
 ): Schema<A, D> =>
   make(
     AST.createTransform(
       from.ast,
       to.ast,
-      AST.createFinalTransformation(decode, encode),
-      annotations
+      AST.createFinalTransformation(decode, encode)
     )
   ))
 
@@ -1242,22 +1251,35 @@ export const transformOrFail: {
 export const transform: {
   <C, D, B>(
     to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => C,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => B
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <C, D, B>(
+    to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown,
+    options: { strict: false }
   ): <A>(self: Schema<A, B>) => Schema<A, D>
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
-    decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => C,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => B
   ): Schema<A, D>
-} = dual(
-  4,
   <A, B, C, D>(
     from: Schema<A, B>,
     to: Schema<C, D>,
     decode: (b: B, options: ParseOptions, ast: AST.AST) => unknown,
-    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => unknown,
+    options: { strict: false }
+  ): Schema<A, D>
+} = dual(
+  (args) => isSchema(args[0]) && isSchema(args[1]),
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => C,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => B
   ): Schema<A, D> =>
     transformOrFail(
       from,
@@ -1734,7 +1756,8 @@ export const lowercase = <I, A extends string>(self: Schema<I, A>): Schema<I, A>
     self,
     to(self).pipe(lowercased()),
     (s) => s.toLowerCase(),
-    identity
+    identity,
+    { strict: false }
   )
 
 /**
@@ -1756,7 +1779,8 @@ export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
     self,
     to(self).pipe(trimmed()),
     (s) => s.trim(),
-    identity
+    identity,
+    { strict: false }
   )
 
 /**
@@ -1803,7 +1827,7 @@ export const parseJson = <I, A extends string>(self: Schema<I, A>, options?: {
     } catch (e: any) {
       return ParseResult.failure(ParseResult.type(ast, u, e.message))
     }
-  })
+  }, { strict: false })
 }
 
 // ---------------------------------------------
@@ -2137,7 +2161,8 @@ export const clamp =
       self,
       self.pipe(to, between(min, max)),
       (self) => N.clamp(self, min, max),
-      identity
+      identity,
+      { strict: false }
     )
 
 /**
@@ -2172,7 +2197,8 @@ export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schem
       const n = Number(s)
       return isNaN(n) ? ParseResult.failure(ParseResult.type(ast, s)) : ParseResult.success(n)
     },
-    (n) => ParseResult.success(String(n))
+    (n) => ParseResult.success(String(n)),
+    { strict: false }
   )
 }
 
@@ -2311,7 +2337,8 @@ export const symbolFromString = <I, A extends string>(self: Schema<I, A>): Schem
     self,
     symbolFromSelf,
     (s) => Symbol.for(s),
-    (sym) => sym.description
+    (sym) => sym.description,
+    { strict: false }
   )
 }
 
@@ -2506,7 +2533,8 @@ export const clampBigint =
       self,
       self.pipe(to, betweenBigint(min, max)),
       (self) => BigInt_.clamp(self, min, max),
-      identity
+      identity,
+      { strict: false }
     )
 
 /**
@@ -2534,7 +2562,8 @@ export const bigintFromString = <I, A extends string>(self: Schema<I, A>): Schem
         return ParseResult.failure(ParseResult.type(ast, s))
       }
     },
-    (n) => ParseResult.success(String(n))
+    (n) => ParseResult.success(String(n)),
+    { strict: false }
   )
 }
 
@@ -2565,7 +2594,8 @@ export const bigintFromNumber = <I, A extends number>(self: Schema<I, A>): Schem
       }
 
       return ParseResult.success(Number(b))
-    }
+    },
+    { strict: false }
   )
 }
 
@@ -2689,7 +2719,8 @@ export const uint8ArrayFromNumbers = <I, A extends ReadonlyArray<number>>(
     self,
     Uint8ArrayFromSelf,
     (a) => Uint8Array.from(a),
-    (n) => Array.from(n)
+    (n) => Array.from(n),
+    { strict: false }
   )
 
 const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = uint8ArrayFromNumbers(
@@ -2734,12 +2765,12 @@ const makeEncodingTransform = <A extends string>(
           ParseResult.parseError([ParseResult.type(ast, s, decodeException.message)])
       ),
     (u) => ParseResult.success(encode(u)),
-    {
-      [AST.IdentifierAnnotationId]: id,
-      [Internal.PrettyHookId]: (): Pretty<Uint8Array> => (u) => `${id}(${encode(u)})`,
-      [Internal.ArbitraryHookId]: () => arbitrary
-    }
-  )
+    { strict: false }
+  ).pipe(annotations({
+    [AST.IdentifierAnnotationId]: id,
+    [Internal.PrettyHookId]: (): Pretty<Uint8Array> => (u) => `${id}(${encode(u)})`,
+    [Internal.ArbitraryHookId]: () => arbitrary
+  }))
 
 /**
  * Transforms a base64 `string` into a `Uint8Array`.
@@ -2954,7 +2985,8 @@ export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<
     self,
     ValidDateFromSelf,
     (s) => new Date(s),
-    (n) => n.toISOString()
+    (n) => n.toISOString(),
+    { strict: false }
   )
 
 const _Date: Schema<string, Date> = dateFromString(string)
@@ -3365,7 +3397,8 @@ export const data = <
     item,
     to(dataFromSelf(item)),
     toData,
-    (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a)
+    (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a),
+    { strict: false }
   )
 
 // ---------------------------------------------
