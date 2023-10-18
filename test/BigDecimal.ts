@@ -1,142 +1,197 @@
 import { deepStrictEqual } from "effect-test/util"
-import * as BigDecimal from "effect/BigDecimal"
+import * as BD from "effect/BigDecimal"
+import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+
+const parse = (s: string) => pipe(BD.parse(s), Option.getOrThrow)
 
 describe.concurrent("BigDecimal", () => {
   it("sign", () => {
-    assert.deepStrictEqual(BigDecimal.sign(BigDecimal.make(-5n)), -1)
-    assert.deepStrictEqual(BigDecimal.sign(BigDecimal.make(0n)), 0)
-    assert.deepStrictEqual(BigDecimal.sign(BigDecimal.make(5n)), 1)
+    deepStrictEqual(BD.sign(BD.make(-5n)), -1)
+    deepStrictEqual(BD.sign(BD.make(0n)), 0)
+    deepStrictEqual(BD.sign(BD.make(5n)), 1)
   })
 
   it("isBigDecimal", () => {
-    expect(BigDecimal.isBigDecimal(BigDecimal.make(1n))).toEqual(true)
-    expect(BigDecimal.isBigDecimal(1)).toEqual(false)
-    expect(BigDecimal.isBigDecimal(true)).toEqual(false)
+    deepStrictEqual(BD.isBigDecimal(BD.make(1n)), true)
+    deepStrictEqual(BD.isBigDecimal(1), false)
+    deepStrictEqual(BD.isBigDecimal(true), false)
+  })
+
+  it("equals", () => {
+    deepStrictEqual(BD.equals(BD.make(1n), BD.make(1)), true)
+    deepStrictEqual(BD.equals(BD.make(1n), BD.make(2n)), false)
+    deepStrictEqual(BD.equals(BD.make(1n), BD.make(1.1)), false)
+    deepStrictEqual(BD.equals(parse("0.00012300"), BD.scaled(12300n, 8)), true)
+    deepStrictEqual(BD.equals(BD.make(5n), BD.scaled(500n, 2)), true)
+    deepStrictEqual(BD.equals(BD.scaled(50000n, 4), BD.scaled(500n, 2)), true)
+    deepStrictEqual(BD.equals(BD.scaled(50000n, 4), BD.scaled(500n, 3)), false)
   })
 
   it("sum", () => {
-    deepStrictEqual(BigDecimal.sum(BigDecimal.make(2n), BigDecimal.make(1n)), BigDecimal.make(3n))
-    deepStrictEqual(BigDecimal.sum(BigDecimal.scaled(300000n, 5), BigDecimal.make(50n)), BigDecimal.scaled(5300000n, 5))
-    deepStrictEqual(
-      BigDecimal.sum(BigDecimal.scaled(123n, 2), BigDecimal.scaled(45678n, 7)), // 1.23 + 0.0045678
-      BigDecimal.scaled(12345678n, 7) // 1.2345678
-    )
+    deepStrictEqual(BD.sum(BD.make(2n), BD.make(1n)), BD.make(3n))
+    deepStrictEqual(BD.sum(BD.scaled(300000n, 5), BD.make(50n)), BD.scaled(5300000n, 5)) // 3.00000 + 50 = 53.00000
+    deepStrictEqual(BD.sum(BD.scaled(123n, 2), BD.scaled(45678n, 7)), BD.scaled(12345678n, 7)) // 1.23 + 0.0045678 = 1.2345678
+    deepStrictEqual(BD.sum(BD.make(0n), BD.make(0n)), BD.make(0n))
+    deepStrictEqual(BD.sum(BD.make(123.456), BD.make(-123.456)), BD.scaled(0n, 3))
   })
 
   it("multiply", () => {
-    deepStrictEqual(BigDecimal.multiply(BigDecimal.make(3n), BigDecimal.make(2n)), BigDecimal.make(6n))
+    deepStrictEqual(BD.multiply(BD.make(3n), BD.make(2n)), BD.make(6n))
+    deepStrictEqual(BD.multiply(BD.make(3n), BD.make(0n)), BD.make(0n))
+    deepStrictEqual(BD.multiply(BD.make(3n), BD.make(-1n)), BD.make(-3n))
+    deepStrictEqual(BD.multiply(BD.make(3n), BD.make(0.5)), BD.make(1.5))
+    deepStrictEqual(BD.multiply(BD.make(3n), BD.make(-2.5)), BD.make(-7.5))
   })
 
   it("subtract", () => {
-    deepStrictEqual(BigDecimal.subtract(BigDecimal.make(3n), BigDecimal.make(1n)), BigDecimal.make(2n))
+    deepStrictEqual(BD.subtract(BD.make(3n), BD.make(1n)), BD.make(2n))
+    deepStrictEqual(BD.subtract(BD.make(3n), BD.make(0n)), BD.make(3n))
+    deepStrictEqual(BD.subtract(BD.make(3n), BD.make(-1n)), BD.make(4n))
+    deepStrictEqual(BD.subtract(BD.make(3n), BD.make(0.5)), BD.make(2.5))
+    deepStrictEqual(BD.subtract(BD.make(3n), BD.make(-2.5)), BD.make(5.5))
   })
 
   it("divide", () => {
-    deepStrictEqual(
-      BigDecimal.divide(BigDecimal.make(6n), BigDecimal.make(2n)),
-      Option.some(BigDecimal.make(3n))
-    )
-    deepStrictEqual(
-      BigDecimal.divide(BigDecimal.make(6n), BigDecimal.make(0n)),
-      Option.none()
-    )
+    deepStrictEqual(BD.divide(BD.make(6n), BD.make(2n)), Option.some(BD.make(3n)))
+    deepStrictEqual(BD.divide(BD.make(6n), BD.make(-2n)), Option.some(BD.make(-3n)))
+    deepStrictEqual(BD.divide(BD.make(123.456), BD.make(5)), Option.some(BD.make(24.691))) // 123.456 / 5 = 24.691[2] (rounded)
+    deepStrictEqual(BD.divide(BD.make(123.456), BD.make(0.2)), Option.some(BD.make(617.28))) // 123.456 / 0.2 = 617.28
+    deepStrictEqual(BD.divide(BD.make(6n), BD.make(0n)), Option.none())
   })
 
   it("unsafeDivide", () => {
-    deepStrictEqual(
-      BigDecimal.unsafeDivide(BigDecimal.make(6n), BigDecimal.make(2n)),
-      BigDecimal.make(3n)
-    )
+    deepStrictEqual(BD.unsafeDivide(BD.make(6n), BD.make(2n)), BD.make(3n))
+    deepStrictEqual(BD.unsafeDivide(BD.make(6n), BD.make(-2n)), BD.make(-3n))
+    deepStrictEqual(BD.unsafeDivide(BD.make(123.456), BD.make(5)), BD.make(24.691)) // 123.456 / 5 = 24.691[2] (rounded)
+    deepStrictEqual(BD.unsafeDivide(BD.make(123.456), BD.make(0.2)), BD.make(617.28)) // 123.456 / 0.2 = 617.28
+    expect(() => BD.unsafeDivide(BD.make(6n), BD.make(0n))).toThrow("Division by zero")
   })
 
   it("Equivalence", () => {
-    expect(BigDecimal.Equivalence(BigDecimal.make(1n), BigDecimal.make(1n))).toBe(true)
-    expect(BigDecimal.Equivalence(BigDecimal.make(1n), BigDecimal.make(2n))).toBe(false)
+    deepStrictEqual(BD.Equivalence(BD.make(1n), BD.make(1n)), true)
+    deepStrictEqual(BD.Equivalence(BD.make(1n), BD.make(2n)), false)
+    deepStrictEqual(BD.Equivalence(BD.make(1n), BD.make(1.1)), false)
+    deepStrictEqual(BD.Equivalence(parse("0.00012300"), BD.scaled(12300n, 8)), true)
+    deepStrictEqual(BD.Equivalence(BD.make(5n), BD.scaled(500n, 2)), true)
   })
 
   it("Order", () => {
-    deepStrictEqual(BigDecimal.Order(BigDecimal.make(1n), BigDecimal.make(2n)), -1)
-    deepStrictEqual(BigDecimal.Order(BigDecimal.make(2n), BigDecimal.make(1n)), 1)
-    deepStrictEqual(BigDecimal.Order(BigDecimal.make(2n), BigDecimal.make(2n)), 0)
+    deepStrictEqual(BD.Order(BD.make(1n), BD.make(2n)), -1)
+    deepStrictEqual(BD.Order(BD.make(2n), BD.make(1n)), 1)
+    deepStrictEqual(BD.Order(BD.make(2n), BD.make(2n)), 0)
+    deepStrictEqual(BD.Order(BD.make(1n), BD.make(1.1)), -1)
+    deepStrictEqual(BD.Order(BD.make(1.1), BD.make(1n)), 1)
+    deepStrictEqual(BD.Order(parse("0.00012300"), BD.scaled(12300n, 8)), 0)
+    deepStrictEqual(BD.Order(BD.make(5n), BD.scaled(500n, 2)), 0)
+    deepStrictEqual(BD.Order(BD.make(5n), BD.scaled(500n, 3)), 1)
+    deepStrictEqual(BD.Order(BD.make(5n), BD.scaled(500n, 1)), -1)
   })
 
   it("lessThan", () => {
-    assert.deepStrictEqual(BigDecimal.lessThan(BigDecimal.make(2n), BigDecimal.make(3n)), true)
-    assert.deepStrictEqual(BigDecimal.lessThan(BigDecimal.make(3n), BigDecimal.make(3n)), false)
-    assert.deepStrictEqual(BigDecimal.lessThan(BigDecimal.make(4n), BigDecimal.make(3n)), false)
+    deepStrictEqual(BD.lessThan(BD.make(2n), BD.make(3n)), true)
+    deepStrictEqual(BD.lessThan(BD.make(3n), BD.make(3n)), false)
+    deepStrictEqual(BD.lessThan(BD.make(4n), BD.make(3n)), false)
   })
 
   it("lessThanOrEqualTo", () => {
-    assert.deepStrictEqual(BigDecimal.lessThanOrEqualTo(BigDecimal.make(2n), BigDecimal.make(3n)), true)
-    assert.deepStrictEqual(BigDecimal.lessThanOrEqualTo(BigDecimal.make(3n), BigDecimal.make(3n)), true)
-    assert.deepStrictEqual(BigDecimal.lessThanOrEqualTo(BigDecimal.make(4n), BigDecimal.make(3n)), false)
+    deepStrictEqual(BD.lessThanOrEqualTo(BD.make(2n), BD.make(3n)), true)
+    deepStrictEqual(BD.lessThanOrEqualTo(BD.make(3n), BD.make(3n)), true)
+    deepStrictEqual(BD.lessThanOrEqualTo(BD.make(4n), BD.make(3n)), false)
   })
 
   it("greaterThan", () => {
-    assert.deepStrictEqual(BigDecimal.greaterThan(BigDecimal.make(2n), BigDecimal.make(3n)), false)
-    assert.deepStrictEqual(BigDecimal.greaterThan(BigDecimal.make(3n), BigDecimal.make(3n)), false)
-    assert.deepStrictEqual(BigDecimal.greaterThan(BigDecimal.make(4n), BigDecimal.make(3n)), true)
+    deepStrictEqual(BD.greaterThan(BD.make(2n), BD.make(3n)), false)
+    deepStrictEqual(BD.greaterThan(BD.make(3n), BD.make(3n)), false)
+    deepStrictEqual(BD.greaterThan(BD.make(4n), BD.make(3n)), true)
   })
 
   it("greaterThanOrEqualTo", () => {
-    assert.deepStrictEqual(BigDecimal.greaterThanOrEqualTo(BigDecimal.make(2n), BigDecimal.make(3n)), false)
-    assert.deepStrictEqual(BigDecimal.greaterThanOrEqualTo(BigDecimal.make(3n), BigDecimal.make(3n)), true)
-    assert.deepStrictEqual(BigDecimal.greaterThanOrEqualTo(BigDecimal.make(4n), BigDecimal.make(3n)), true)
+    deepStrictEqual(BD.greaterThanOrEqualTo(BD.make(2n), BD.make(3n)), false)
+    deepStrictEqual(BD.greaterThanOrEqualTo(BD.make(3n), BD.make(3n)), true)
+    deepStrictEqual(BD.greaterThanOrEqualTo(BD.make(4n), BD.make(3n)), true)
   })
 
   it("between", () => {
-    assert.deepStrictEqual(BigDecimal.between(BigDecimal.make(0n), BigDecimal.make(5n))(BigDecimal.make(3n)), true)
-    assert.deepStrictEqual(BigDecimal.between(BigDecimal.make(0n), BigDecimal.make(5n))(BigDecimal.make(-1n)), false)
-    assert.deepStrictEqual(BigDecimal.between(BigDecimal.make(0n), BigDecimal.make(5n))(BigDecimal.make(6n)), false)
+    deepStrictEqual(BD.between(BD.make(0n), BD.make(5n))(BD.make(3n)), true)
+    deepStrictEqual(BD.between(BD.make(0n), BD.make(5n))(BD.make(-1n)), false)
+    deepStrictEqual(BD.between(BD.make(0n), BD.make(5n))(BD.make(6n)), false)
+    deepStrictEqual(BD.between(BD.make(0.02), BD.make(5n))(BD.make(0.0123)), false)
+    deepStrictEqual(BD.between(BD.make(0.02), BD.make(5n))(BD.make(0.05)), true)
   })
 
   it("clamp", () => {
-    assert.deepStrictEqual(
-      BigDecimal.clamp(BigDecimal.make(0n), BigDecimal.make(5n))(BigDecimal.make(3n)),
-      BigDecimal.make(3n)
-    )
-    assert.deepStrictEqual(
-      BigDecimal.clamp(BigDecimal.make(0n), BigDecimal.make(5n))(BigDecimal.make(-1n)),
-      BigDecimal.make(0n)
-    )
-    assert.deepStrictEqual(
-      BigDecimal.clamp(BigDecimal.make(0n), BigDecimal.make(5n))(BigDecimal.make(6n)),
-      BigDecimal.make(5n)
-    )
+    deepStrictEqual(BD.clamp(BD.make(0n), BD.make(5n))(BD.make(3n)), BD.make(3n))
+    deepStrictEqual(BD.clamp(BD.make(0n), BD.make(5n))(BD.make(-1n)), BD.make(0n))
+    deepStrictEqual(BD.clamp(BD.make(0n), BD.make(5n))(BD.make(6n)), BD.make(5n))
+    deepStrictEqual(BD.clamp(BD.make(0.02), BD.make(5n))(BD.make(0.0123)), BD.make(0.02))
   })
 
   it("min", () => {
-    assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(2n), BigDecimal.make(3n)), BigDecimal.make(2n))
-    assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(5n), BigDecimal.make(0.1)), BigDecimal.make(0.1))
-    assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(0.005), BigDecimal.make(3n)), BigDecimal.make(0.005))
-    assert.deepStrictEqual(BigDecimal.min(BigDecimal.make(123.456), BigDecimal.make(1.2)), BigDecimal.make(1.2))
+    deepStrictEqual(BD.min(BD.make(2n), BD.make(3n)), BD.make(2n))
+    deepStrictEqual(BD.min(BD.make(5n), BD.make(0.1)), BD.make(0.1))
+    deepStrictEqual(BD.min(BD.make(0.005), BD.make(3n)), BD.make(0.005))
+    deepStrictEqual(BD.min(BD.make(123.456), BD.make(1.2)), BD.make(1.2))
   })
 
   it("max", () => {
-    assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(2n), BigDecimal.make(3n)), BigDecimal.make(3n))
-    assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(5n), BigDecimal.make(0.1)), BigDecimal.make(5n))
-    assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(0.005), BigDecimal.make(3n)), BigDecimal.make(3n))
-    assert.deepStrictEqual(BigDecimal.max(BigDecimal.make(123.456), BigDecimal.make(1.2)), BigDecimal.make(123.456))
+    deepStrictEqual(BD.max(BD.make(2n), BD.make(3n)), BD.make(3n))
+    deepStrictEqual(BD.max(BD.make(5n), BD.make(0.1)), BD.make(5n))
+    deepStrictEqual(BD.max(BD.make(0.005), BD.make(3n)), BD.make(3n))
+    deepStrictEqual(BD.max(BD.make(123.456), BD.make(1.2)), BD.make(123.456))
   })
 
   it("abs", () => {
-    assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(2n)), BigDecimal.make(2n))
-    assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(-3n)), BigDecimal.make(3n))
-    assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(0.000456)), BigDecimal.make(0.000456))
-    assert.deepStrictEqual(BigDecimal.abs(BigDecimal.make(-0.123)), BigDecimal.make(0.123))
+    deepStrictEqual(BD.abs(BD.make(2n)), BD.make(2n))
+    deepStrictEqual(BD.abs(BD.make(-3n)), BD.make(3n))
+    deepStrictEqual(BD.abs(BD.make(0.000456)), BD.make(0.000456))
+    deepStrictEqual(BD.abs(BD.make(-0.123)), BD.make(0.123))
+  })
+
+  it("negate", () => {
+    deepStrictEqual(BD.negate(BD.make(2n)), BD.make(-2n))
+    deepStrictEqual(BD.negate(BD.make(-3n)), BD.make(3n))
+    deepStrictEqual(BD.negate(BD.make(0.000456)), BD.make(-0.000456))
+    deepStrictEqual(BD.negate(BD.make(-0.123)), BD.make(0.123))
+  })
+
+  it("remainder", () => {
+    deepStrictEqual(BD.remainder(BD.make(5n), BD.make(2n)), Option.some(BD.make(1n)))
+    deepStrictEqual(BD.remainder(BD.make(4n), BD.make(2n)), Option.some(BD.make(0n)))
+    deepStrictEqual(BD.remainder(BD.make(123.456), BD.make(0.2)), Option.some(BD.make(0.056)))
+    deepStrictEqual(BD.remainder(BD.make(5n), BD.make(0n)), Option.none())
+  })
+
+  it("unsafeRemainder", () => {
+    deepStrictEqual(BD.unsafeRemainder(BD.make(5n), BD.make(2n)), BD.make(1n))
+    deepStrictEqual(BD.unsafeRemainder(BD.make(4n), BD.make(2n)), BD.make(0n))
+    deepStrictEqual(BD.unsafeRemainder(BD.make(123.456), BD.make(0.2)), BD.make(0.056))
+    expect(() => BD.unsafeRemainder(BD.make(5n), BD.make(0n))).toThrow("Division by zero")
+  })
+
+  it("parse", () => {
+    deepStrictEqual(BD.parse("2"), Option.some(BD.make(2n)))
+    deepStrictEqual(BD.parse("-2"), Option.some(BD.make(-2n)))
+    deepStrictEqual(BD.parse("0.123"), Option.some(BD.make(0.123)))
+    deepStrictEqual(BD.parse("200"), Option.some(BD.make(200n)))
+    deepStrictEqual(BD.parse("20000000"), Option.some(BD.make(20000000n)))
+    deepStrictEqual(BD.parse("-20000000"), Option.some(BD.make(-20000000n)))
+    deepStrictEqual(BD.parse("2.00"), Option.some(BD.scaled(200n, 2)))
+    deepStrictEqual(BD.parse("0.0000200"), Option.some(BD.scaled(200n, 7)))
+    deepStrictEqual(BD.parse(""), Option.some(BD.make(0n)))
+    deepStrictEqual(BD.parse("1E5"), Option.none())
   })
 
   it("format", () => {
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(2n)), "2")
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(-2n)), "-2")
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(0.123)), "0.123")
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.make(200n)), "200")
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(200n, -5)), "20000000")
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(-200n, -5)), "-20000000")
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(200n, 2)), "2.00")
-    assert.deepStrictEqual(BigDecimal.format(BigDecimal.scaled(200n, 3)), "0.200")
-    assert.deepStrictEqual(Option.map(BigDecimal.parse("0.123000"), BigDecimal.format), Option.some("0.123000"))
-    assert.deepStrictEqual(Option.map(BigDecimal.parse("-456.123"), BigDecimal.format), Option.some("-456.123"))
+    deepStrictEqual(BD.format(BD.make(2n)), "2")
+    deepStrictEqual(BD.format(BD.make(-2n)), "-2")
+    deepStrictEqual(BD.format(BD.make(0.123)), "0.123")
+    deepStrictEqual(BD.format(BD.make(200n)), "200")
+    deepStrictEqual(BD.format(BD.scaled(200n, -5)), "20000000")
+    deepStrictEqual(BD.format(BD.scaled(-200n, -5)), "-20000000")
+    deepStrictEqual(BD.format(BD.scaled(200n, 2)), "2.00")
+    deepStrictEqual(BD.format(BD.scaled(200n, 3)), "0.200")
+    deepStrictEqual(BD.format(parse("0.123000")), "0.123000")
+    deepStrictEqual(BD.format(parse("-456.123")), "-456.123")
   })
 })

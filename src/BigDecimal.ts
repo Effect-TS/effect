@@ -139,6 +139,7 @@ export const parse = (s: string): Option.Option<BigDecimal> => {
   }
 
   if (digits === "") {
+    // TODO: This mimics the BigInt constructor behavior. Should this be `Option.none()`?
     return Option.some(zero)
   }
 
@@ -631,25 +632,60 @@ export const negate = (n: BigDecimal): BigDecimal => scaled(-n.value, n.scale)
 /**
  * Returns the remainder left over when one operand is divided by a second operand.
  *
- * It always takes the sign of the dividend.
+ * If the divisor is `0`, the result will be `None`.
  *
  * @param self - The dividend.
  * @param divisor - The divisor.
  *
  * @example
- * import { remainder, make } from "effect/BigDecimal"
+ * import { remainder, make } from 'effect/BigDecimal'as
+ * import { some, none } from 'effect/Option'
  *
- * assert.deepStrictEqual(remainder(make(2), make(2)), make(0))
- * assert.deepStrictEqual(remainder(make(3), make(2)), make(1))
- * assert.deepStrictEqual(remainder(make(-4), make(2)), make(-0))
+ * assert.deepStrictEqual(remainder(make(2), make(2)), some(make(0)))
+ * assert.deepStrictEqual(remainder(make(3), make(2)), some(make(1)))
+ * assert.deepStrictEqual(remainder(make(-4), make(2)), some(make(0)))
  *
  * @since 2.0.0
  * @category math
  */
 export const remainder: {
+  (divisor: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
+  (self: BigDecimal, divisor: BigDecimal): Option.Option<BigDecimal>
+} = dual(2, (self: BigDecimal, divisor: BigDecimal): Option.Option<BigDecimal> => {
+  if (divisor.value === bigint0) {
+    return Option.none()
+  }
+
+  const max = Math.max(self.scale, divisor.scale)
+  return Option.some(scaled(scale(self, max).value % scale(divisor, max).value, max))
+})
+
+/**
+ * Returns the remainder left over when one operand is divided by a second operand.
+ *
+ * Throws a `RangeError` if the divisor is `0`.
+ *
+ * @param self - The dividend.
+ * @param divisor - The divisor.
+ *
+ * @example
+ * import { unsafeRemainder, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(unsafeRemainder(make(2), make(2)), make(0))
+ * assert.deepStrictEqual(unsafeRemainder(make(3), make(2)), make(1))
+ * assert.deepStrictEqual(unsafeRemainder(make(-4), make(2)), make(0))
+ *
+ * @since 2.0.0
+ * @category math
+ */
+export const unsafeRemainder: {
   (divisor: BigDecimal): (self: BigDecimal) => BigDecimal
   (self: BigDecimal, divisor: BigDecimal): BigDecimal
 } = dual(2, (self: BigDecimal, divisor: BigDecimal): BigDecimal => {
+  if (divisor.value === bigint0) {
+    throw new RangeError("Division by zero")
+  }
+
   const max = Math.max(self.scale, divisor.scale)
   return scaled(scale(self, max).value % scale(divisor, max).value, max)
 })
