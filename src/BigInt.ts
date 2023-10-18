@@ -13,6 +13,10 @@ import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import * as predicate from "./Predicate"
 
+const bigint0 = BigInt(0)
+const bigint1 = BigInt(1)
+const bigint2 = BigInt(2)
+
 /**
  * Tests if a value is a `bigint`.
  *
@@ -112,7 +116,7 @@ export const divide: {
   (self: bigint, that: bigint): Option.Option<bigint>
 } = dual(
   2,
-  (self: bigint, that: bigint): Option.Option<bigint> => that === 0n ? Option.none() : Option.some(self / that)
+  (self: bigint, that: bigint): Option.Option<bigint> => that === bigint0 ? Option.none() : Option.some(self / that)
 )
 
 /**
@@ -153,7 +157,7 @@ export const unsafeDivide: {
  * @category math
  * @since 2.0.0
  */
-export const increment = (n: bigint): bigint => n + 1n
+export const increment = (n: bigint): bigint => n + bigint1
 
 /**
  * Decrements a number by `1n`.
@@ -168,7 +172,7 @@ export const increment = (n: bigint): bigint => n + 1n
  * @category math
  * @since 2.0.0
  */
-export const decrement = (n: bigint): bigint => n - 1n
+export const decrement = (n: bigint): bigint => n - bigint1
 
 /**
  * @category instances
@@ -364,7 +368,7 @@ export const max: {
  * @category math
  * @since 2.0.0
  */
-export const sign = (n: bigint): Ordering => Order(n, 0n)
+export const sign = (n: bigint): Ordering => Order(n, bigint0)
 
 /**
  * Determines the absolute value of a given `bigint`.
@@ -381,7 +385,7 @@ export const sign = (n: bigint): Ordering => Order(n, 0n)
  * @category math
  * @since 2.0.0
  */
-export const abs = (n: bigint): bigint => (n < 0n ? -n : n)
+export const abs = (n: bigint): bigint => (n < bigint0 ? -n : n)
 
 /**
  * Determines the greatest common divisor of two `bigint`s.
@@ -403,7 +407,7 @@ export const gcd: {
   (that: bigint): (self: bigint) => bigint
   (self: bigint, that: bigint): bigint
 } = dual(2, (self: bigint, that: bigint): bigint => {
-  while (that !== 0n) {
+  while (that !== bigint0) {
     const t = that
     that = self % that
     self = t
@@ -448,15 +452,15 @@ export const lcm: {
  * @since 2.0.0
  */
 export const unsafeSqrt = (n: bigint): bigint => {
-  if (n < 0n) {
+  if (n < bigint0) {
     throw new RangeError("Cannot take the square root of a negative number")
   }
-  if (n < 2n) {
+  if (n < bigint2) {
     return n
   }
-  let x = n / 2n
+  let x = n / bigint2
   while (x * x > n) {
-    x = ((n / x) + x) / 2n
+    x = ((n / x) + x) / bigint2
   }
   return x
 }
@@ -479,7 +483,7 @@ export const unsafeSqrt = (n: bigint): bigint => {
  * @since 2.0.0
  */
 export const sqrt = (n: bigint): Option.Option<bigint> =>
-  greaterThanOrEqualTo(n, 0n) ? Option.some(unsafeSqrt(n)) : Option.none<bigint>()
+  greaterThanOrEqualTo(n, bigint0) ? Option.some(unsafeSqrt(n)) : Option.none<bigint>()
 
 /**
  * Takes an `Iterable` of `bigint`s and returns their sum as a single `bigint
@@ -495,7 +499,7 @@ export const sqrt = (n: bigint): Option.Option<bigint> =>
  * @since 2.0.0
  */
 export const sumAll = (collection: Iterable<bigint>): bigint => {
-  let out = 0n
+  let out = bigint0
   for (const n of collection) {
     out += n
   }
@@ -516,10 +520,10 @@ export const sumAll = (collection: Iterable<bigint>): bigint => {
  * @since 2.0.0
  */
 export const multiplyAll = (collection: Iterable<bigint>): bigint => {
-  let out = 1n
+  let out = bigint1
   for (const n of collection) {
-    if (n === 0n) {
-      return 0n
+    if (n === bigint0) {
+      return bigint0
     }
     out *= n
   }
