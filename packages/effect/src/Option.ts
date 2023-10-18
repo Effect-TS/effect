@@ -11,7 +11,6 @@ import type { TypeLambda } from "./HKT"
 import type { Inspectable } from "./Inspectable"
 import * as either from "./internal/Either"
 import * as option from "./internal/Option"
-import * as N from "./Number"
 import type { Order } from "./Order"
 import * as order from "./Order"
 import type { Pipeable } from "./Pipeable"
@@ -1116,98 +1115,6 @@ export const exists: {
   2,
   <A>(self: Option<A>, predicate: Predicate<A>): boolean => isNone(self) ? false : predicate(self.value)
 )
-
-// -------------------------------------------------------------------------------------
-// math
-// -------------------------------------------------------------------------------------
-
-/**
- * @category math
- * @since 2.0.0
- */
-export const sum: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-} = lift2(N.sum)
-
-/**
- * @category math
- * @since 2.0.0
- */
-export const multiply: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-} = lift2(N.multiply)
-
-/**
- * @category math
- * @since 2.0.0
- */
-export const subtract: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-} = lift2(N.subtract)
-
-/**
- * @category math
- * @since 2.0.0
- */
-export const divide: {
-  (self: Option<number>, that: Option<number>): Option<number>
-  (that: Option<number>): (self: Option<number>) => Option<number>
-} = dual(2, (self: Option<number>, that: Option<number>): Option<number> => zipWith(self, that, N.divide).pipe(flatten))
-
-/**
- * Sum all numbers in an iterable of `Option<number>` ignoring the `None` values.
- *
- * @param self - The iterable of `Option<number>` to be summed.
- *
- * @example
- * import { sumCompact, some, none } from 'effect/Option'
- *
- * const iterable = [some(2), none(), some(3), none()]
- * assert.deepStrictEqual(sumCompact(iterable), 5)
- *
- * @category math
- * @since 2.0.0
- */
-export const sumCompact = (self: Iterable<Option<number>>): number => {
-  let out = 0
-  for (const oa of self) {
-    if (isSome(oa)) {
-      out += oa.value
-    }
-  }
-  return out
-}
-
-/**
- * Multiply all numbers in an iterable of `Option<number>` ignoring the `None` values.
- *
- * @param self - The iterable of `Option<number>` to be multiplied.
- *
- * @example
- * import { multiplyCompact, some, none } from 'effect/Option'
- *
- * const iterable = [some(2), none(), some(3), none()]
- * assert.deepStrictEqual(multiplyCompact(iterable), 6)
- *
- * @category math
- * @since 2.0.0
- */
-export const multiplyCompact = (self: Iterable<Option<number>>): number => {
-  let out = 1
-  for (const oa of self) {
-    if (isSome(oa)) {
-      const a: number = oa.value
-      if (a === 0) {
-        return 0
-      }
-      out *= a
-    }
-  }
-  return out
-}
 
 // -------------------------------------------------------------------------------------
 // do notation
