@@ -22,6 +22,11 @@ export const tracerTag = Context.Tag<Tracer.Tracer>(
   Symbol.for("effect/Tracer")
 )
 
+/** @internal */
+export const spanTag = Context.Tag<Tracer.ParentSpan>(
+  Symbol.for("effect/ParentSpan")
+)
+
 const ids = globalValue("effect/Tracer/SpanId.ids", () => MutableRef.make(0))
 
 /** @internal */

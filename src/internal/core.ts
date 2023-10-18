@@ -27,6 +27,7 @@ import type * as fiberScope from "../internal/fiberScope"
 import * as DeferredOpCodes from "../internal/opCodes/deferred"
 import * as OpCodes from "../internal/opCodes/effect"
 import * as _runtimeFlags from "../internal/runtimeFlags"
+import * as internalTracer from "../internal/tracer"
 import * as List from "../List"
 import type * as LogLevel from "../LogLevel"
 import type * as LogSpan from "../LogSpan"
@@ -617,26 +618,23 @@ export const originalInstance = <E>(obj: E): E => {
 }
 
 /* @internal */
-const capture = <E>(obj: E & object, span: List.List<Tracer.ParentSpan>): E => {
-  if (List.isCons(span)) {
-    const head = span.head
-    if (head._tag === "Span") {
-      return new Proxy(obj, {
-        has(target, p) {
-          return p === spanSymbol || p === originalSymbol || p in target
-        },
-        get(target, p) {
-          if (p === spanSymbol) {
-            return head
-          }
-          if (p === originalSymbol) {
-            return obj
-          }
-          // @ts-expect-error
-          return target[p]
+const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
+  if (Option.isSome(span)) {
+    return new Proxy(obj, {
+      has(target, p) {
+        return p === spanSymbol || p === originalSymbol || p in target
+      },
+      get(target, p) {
+        if (p === spanSymbol) {
+          return span.value
         }
-      })
-    }
+        if (p === originalSymbol) {
+          return obj
+        }
+        // @ts-expect-error
+        return target[p]
+      }
+    })
   }
   return obj
 }
@@ -644,7 +642,7 @@ const capture = <E>(obj: E & object, span: List.List<Tracer.ParentSpan>): E => {
 /* @internal */
 export const die = (defect: unknown): Effect.Effect<never, never, never> =>
   typeof defect === "object" && defect !== null && !(spanSymbol in defect) ?
-    withFiberRuntime((fiber) => failCause(internalCause.die(capture(defect, fiber.getFiberRef(currentTracerSpan)))))
+    withFiberRuntime((fiber) => failCause(internalCause.die(capture(defect, currentSpanFromFiber(fiber)))))
     : failCause(internalCause.die(defect))
 
 /* @internal */
@@ -662,15 +660,6 @@ export const either = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, 
   })
 
 /* @internal */
-export const context = <R>(): Effect.Effect<R, never, Context.Context<R>> =>
-  suspend(() => fiberRefGet(currentContext) as Effect.Effect<never, never, Context.Context<R>>)
-
-/* @internal */
-export const contextWithEffect = <R, R0, E, A>(
-  f: (context: Context.Context<R0>) => Effect.Effect<R, E, A>
-): Effect.Effect<R | R0, E, A> => flatMap(context<R0>(), f)
-
-/* @internal */
 export const exit = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, never, Exit.Exit<E, A>> =>
   matchCause(self, {
     onFailure: exitFailCause,
@@ -680,7 +669,7 @@ export const exit = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, ne
 /* @internal */
 export const fail = <E>(error: E): Effect.Effect<never, E, never> =>
   typeof error === "object" && error !== null && !(spanSymbol in error) ?
-    withFiberRuntime((fiber) => failCause(internalCause.fail(capture(error, fiber.getFiberRef(currentTracerSpan)))))
+    withFiberRuntime((fiber) => failCause(internalCause.fail(capture(error, currentSpanFromFiber(fiber)))))
     : failCause(internalCause.fail(error))
 
 /* @internal */
@@ -1094,40 +1083,6 @@ export const partitionMap = <A, A1, A2>(
     },
     [new Array<A1>(), new Array<A2>()]
   )
-
-/* @internal */
-export const provideContext = dual<
-  <R>(context: Context.Context<R>) => <E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<never, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, context: Context.Context<R>) => Effect.Effect<never, E, A>
->(2, <R, E, A>(self: Effect.Effect<R, E, A>, context: Context.Context<R>) =>
-  fiberRefLocally(
-    currentContext,
-    context
-  )(self as Effect.Effect<never, E, A>))
-
-/* @internal */
-export const provideSomeContext = dual<
-  <R>(context: Context.Context<R>) => <R1, E, A>(self: Effect.Effect<R1, E, A>) => Effect.Effect<Exclude<R1, R>, E, A>,
-  <R, R1, E, A>(self: Effect.Effect<R1, E, A>, context: Context.Context<R>) => Effect.Effect<Exclude<R1, R>, E, A>
->(2, <R1, R, E, A>(self: Effect.Effect<R1, E, A>, context: Context.Context<R>) =>
-  fiberRefLocallyWith(
-    currentContext,
-    (parent) => Context.merge(parent, context)
-  )(self as Effect.Effect<never, E, A>))
-
-/* @internal */
-export const mapInputContext = dual<
-  <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ) => <E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R0, E, A>,
-  <R0, R, E, A>(
-    self: Effect.Effect<R, E, A>,
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ) => Effect.Effect<R0, E, A>
->(2, <R0, R, E, A>(
-  self: Effect.Effect<R, E, A>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
-) => contextWithEffect((context: Context.Context<R0>) => provideContext(self, f(context))))
 
 /* @internal */
 export const runtimeFlags: Effect.Effect<never, never, RuntimeFlags.RuntimeFlags> = withFiberRuntime<
@@ -1929,12 +1884,6 @@ export const currentInterruptedCause: FiberRef.FiberRef<Cause.Cause<never>> = gl
       fork: () => internalCause.empty,
       join: (parent, _) => parent
     })
-)
-
-/** @internal */
-export const currentTracerSpan: FiberRef.FiberRef<List.List<Tracer.ParentSpan>> = globalValue(
-  Symbol.for("effect/FiberRef/currentTracerSpan"),
-  () => fiberRefUnsafeMake(List.empty<Tracer.ParentSpan>())
 )
 
 /** @internal */
@@ -2761,3 +2710,67 @@ const deferredInterruptJoiner = <E, A>(
       )
     }
   })
+
+// -----------------------------------------------------------------------------
+// Context
+// -----------------------------------------------------------------------------
+
+const constContext = fiberRefGet(currentContext)
+
+/* @internal */
+export const context = <R>(): Effect.Effect<R, never, Context.Context<R>> =>
+  constContext as Effect.Effect<never, never, Context.Context<R>>
+
+/* @internal */
+export const contextWith = <R0, A>(
+  f: (context: Context.Context<R0>) => A
+): Effect.Effect<R0, never, A> => map(context<R0>(), f)
+
+/* @internal */
+export const contextWithEffect = <R, R0, E, A>(
+  f: (context: Context.Context<R0>) => Effect.Effect<R, E, A>
+): Effect.Effect<R | R0, E, A> => flatMap(context<R0>(), f)
+
+/* @internal */
+export const provideContext = dual<
+  <R>(context: Context.Context<R>) => <E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<never, E, A>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, context: Context.Context<R>) => Effect.Effect<never, E, A>
+>(2, <R, E, A>(self: Effect.Effect<R, E, A>, context: Context.Context<R>) =>
+  fiberRefLocally(
+    currentContext,
+    context
+  )(self as Effect.Effect<never, E, A>))
+
+/* @internal */
+export const provideSomeContext = dual<
+  <R>(context: Context.Context<R>) => <R1, E, A>(self: Effect.Effect<R1, E, A>) => Effect.Effect<Exclude<R1, R>, E, A>,
+  <R, R1, E, A>(self: Effect.Effect<R1, E, A>, context: Context.Context<R>) => Effect.Effect<Exclude<R1, R>, E, A>
+>(2, <R1, R, E, A>(self: Effect.Effect<R1, E, A>, context: Context.Context<R>) =>
+  fiberRefLocallyWith(
+    currentContext,
+    (parent) => Context.merge(parent, context)
+  )(self as Effect.Effect<never, E, A>))
+
+/* @internal */
+export const mapInputContext = dual<
+  <R0, R>(
+    f: (context: Context.Context<R0>) => Context.Context<R>
+  ) => <E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R0, E, A>,
+  <R0, R, E, A>(
+    self: Effect.Effect<R, E, A>,
+    f: (context: Context.Context<R0>) => Context.Context<R>
+  ) => Effect.Effect<R0, E, A>
+>(2, <R0, R, E, A>(
+  self: Effect.Effect<R, E, A>,
+  f: (context: Context.Context<R0>) => Context.Context<R>
+) => contextWithEffect((context: Context.Context<R0>) => provideContext(self, f(context))))
+
+// -----------------------------------------------------------------------------
+// Tracing
+// -----------------------------------------------------------------------------
+
+/** @internal */
+export const currentSpanFromFiber = <E, A>(fiber: Fiber.RuntimeFiber<E, A>): Option.Option<Tracer.Span> => {
+  const span = fiber.getFiberRef(currentContext).unsafeMap.get(internalTracer.spanTag) as Tracer.ParentSpan | undefined
+  return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
+}

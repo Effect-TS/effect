@@ -179,7 +179,7 @@ describe("Tracer", () => {
         })
       ))
 
-    it.effect("Layer.setParentSpan", () =>
+    it.effect("Layer.parentSpan", () =>
       Effect.gen(function*(_) {
         const span = yield* _(Effect.makeSpan("child"))
         assert.deepEqual(
@@ -193,12 +193,12 @@ describe("Tracer", () => {
         Effect.provide(Layer.unwrapScoped(
           Effect.map(
             Effect.makeSpanScoped("parent"),
-            (span) => Layer.setParentSpan(span)
+            (span) => Layer.parentSpan(span)
           )
         ))
       ))
 
-    it.effect("Layer.setSpan", () =>
+    it.effect("Layer.span", () =>
       Effect.gen(function*(_) {
         const span = yield* _(Effect.makeSpan("child"))
         assert.deepEqual(
@@ -209,16 +209,16 @@ describe("Tracer", () => {
           Option.some("parent")
         )
       }).pipe(
-        Effect.provide(Layer.setSpan("parent"))
+        Effect.provide(Layer.span("parent"))
       ))
 
-    it.effect("Layer.setSpan onEnd", () =>
+    it.effect("Layer.span onEnd", () =>
       Effect.gen(function*(_) {
         let onEndCalled = false
         const span = yield* _(
           Effect.currentSpan,
           Effect.flatten,
-          Effect.provide(Layer.setSpan("span", {
+          Effect.provide(Layer.span("span", {
             onEnd: (span, _exit) =>
               Effect.sync(() => {
                 assert.strictEqual(span.name, "span")
