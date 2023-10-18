@@ -2765,26 +2765,9 @@ export const mapInputContext = dual<
   f: (context: Context.Context<R0>) => Context.Context<R>
 ) => contextWithEffect((context: Context.Context<R0>) => provideContext(self, f(context))))
 
-/** @internal */
-export const serviceOption = <I, S>(tag: Context.Tag<I, S>) => map(constContext, Context.getOption(tag))
-
 // -----------------------------------------------------------------------------
 // Tracing
 // -----------------------------------------------------------------------------
-
-/** @internal */
-export const currentParentSpan: Effect.Effect<never, never, Option.Option<Tracer.ParentSpan>> = serviceOption(
-  internalTracer.spanTag
-)
-
-/** @internal */
-export const currentSpan: Effect.Effect<never, never, Option.Option<Tracer.Span>> = map(
-  constContext,
-  (context) => {
-    const span = context.unsafeMap.get(internalTracer.spanTag) as Tracer.ParentSpan | undefined
-    return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
-  }
-)
 
 /** @internal */
 export const currentSpanFromFiber = <E, A>(fiber: Fiber.RuntimeFiber<E, A>): Option.Option<Tracer.Span> => {

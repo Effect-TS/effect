@@ -1904,6 +1904,9 @@ export const serviceMembers = <I, S>(tag: Context.Tag<I, S>): {
   constants: serviceConstants(tag)
 })
 
+/** @internal */
+export const serviceOption = <I, S>(tag: Context.Tag<I, S>) => core.map(core.context<never>(), Context.getOption(tag))
+
 // -----------------------------------------------------------------------------
 // tracing
 // -----------------------------------------------------------------------------
@@ -1915,7 +1918,7 @@ export const annotateCurrentSpan: {
 } = function(): Effect.Effect<never, never, void> {
   const args = arguments
   return core.flatMap(
-    core.currentSpan,
+    currentSpan,
     (span) =>
       span._tag === "Some"
         ? core.sync(() => {
@@ -1958,6 +1961,20 @@ export const annotateSpans = dual<
             annotations
           )
     )
+  }
+)
+
+/** @internal */
+export const currentParentSpan: Effect.Effect<never, never, Option.Option<Tracer.ParentSpan>> = serviceOption(
+  internalTracer.spanTag
+)
+
+/** @internal */
+export const currentSpan: Effect.Effect<never, never, Option.Option<Tracer.Span>> = core.map(
+  core.context<never>(),
+  (context) => {
+    const span = context.unsafeMap.get(internalTracer.spanTag) as Tracer.ParentSpan | undefined
+    return span !== undefined && span._tag === "Span" ? Option.some(span) : Option.none()
   }
 )
 
@@ -2013,7 +2030,7 @@ export const makeSpan = (
         ? succeedSome(options.parent)
         : options?.root
         ? succeedNone
-        : core.currentParentSpan,
+        : currentParentSpan,
       (parent) =>
         core.flatMap(
           core.fiberRefGet(core.currentTracerSpanAnnotations),

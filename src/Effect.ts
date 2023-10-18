@@ -3146,7 +3146,7 @@ export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
  * @category context
  */
 export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> =
-  core.serviceOption
+  effect.serviceOption
 
 /**
  * Updates the service with the required service entry.
@@ -4875,13 +4875,13 @@ export const annotateCurrentSpan: {
  * @since 2.0.0
  * @category tracing
  */
-export const currentSpan: Effect<never, never, Option.Option<Tracer.Span>> = core.currentSpan
+export const currentSpan: Effect<never, never, Option.Option<Tracer.Span>> = effect.currentSpan
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const currentParentSpan: Effect<never, never, Option.Option<Tracer.ParentSpan>> = core.currentParentSpan
+export const currentParentSpan: Effect<never, never, Option.Option<Tracer.ParentSpan>> = effect.currentParentSpan
 
 /**
  * @since 2.0.0
