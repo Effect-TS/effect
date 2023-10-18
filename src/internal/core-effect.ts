@@ -2020,7 +2020,6 @@ export const makeSpan = (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }
 ) =>
@@ -2050,7 +2049,6 @@ export const makeSpan = (
                         parent,
                         options?.context ?? Context.empty(),
                         linksArray,
-                        options?.sampled ?? (parent._tag === "Some" ? parent.value.sampled : true),
                         startTime
                       )
                       HashMap.forEach(annotations, (value, key) => span.attribute(key, value))
@@ -2079,7 +2077,6 @@ export const useSpan: {
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }, evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 } = <R, E, A>(
@@ -2094,7 +2091,6 @@ export const useSpan: {
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   } | undefined = args.length === 1 ? undefined : args[0]
   const evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A> = args[args.length - 1]
@@ -2125,7 +2121,6 @@ export const withSpan = dual<
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
@@ -2133,7 +2128,6 @@ export const withSpan = dual<
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 >(

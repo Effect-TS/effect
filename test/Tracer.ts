@@ -24,7 +24,6 @@ describe("Tracer", () => {
 
         assert.deepEqual(span.name, "A")
         assert.deepEqual(span.parent, Option.none())
-        assert.strictEqual(span.sampled, true)
       }))
 
     it.effect("parent", () =>

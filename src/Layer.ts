@@ -944,7 +944,6 @@ export const span: (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
     readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }
@@ -990,7 +989,6 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
       readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
@@ -1003,7 +1001,6 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
       readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
