@@ -4,9 +4,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { Exit } from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
-import * as FiberRefs from "effect/FiberRefs"
 import * as Layer from "effect/Layer"
-import * as List from "effect/List"
 import * as Option from "effect/Option"
 import * as Tracer from "effect/Tracer"
 import { Resource } from "../Resource"
@@ -19,6 +17,7 @@ export class OtelSpan implements Tracer.Span {
   readonly spanId: string
   readonly traceId: string
   readonly attributes = new Map<string, unknown>()
+  readonly sampled: boolean
   status: Tracer.SpanStatus
 
   constructor(
@@ -28,7 +27,6 @@ export class OtelSpan implements Tracer.Span {
     readonly parent: Option.Option<Tracer.ParentSpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
-    readonly sampled: boolean,
     startTime: bigint
   ) {
     const active = contextApi.active()
@@ -54,6 +52,7 @@ export class OtelSpan implements Tracer.Span {
       _tag: "Started",
       startTime
     }
+    this.sampled = (spanContext.traceFlags & OtelApi.TraceFlags.SAMPLED) === OtelApi.TraceFlags.SAMPLED
   }
 
   attribute(key: string, value: unknown) {
@@ -106,7 +105,7 @@ export const OtelTracer = Context.Tag<OtelApi.Tracer>("@effect/opentelemetry/Tra
 /** @internal */
 export const make = Effect.map(OtelTracer, (tracer) =>
   Tracer.make({
-    span(name, parent, context, links, sampled, startTime) {
+    span(name, parent, context, links, startTime) {
       return new OtelSpan(
         OtelApi.context,
         tracer,
@@ -114,31 +113,24 @@ export const make = Effect.map(OtelTracer, (tracer) =>
         parent,
         context,
         links,
-        sampled,
         startTime
       )
     },
     context(execution, fiber) {
-      const currentSpan = Option.flatMap(
-        FiberRefs.get(
-          fiber.getFiberRefs(),
-          FiberRef.currentTracerSpan
-        ),
-        List.head
-      )
+      const currentSpan = fiber.getFiberRef(FiberRef.currentContext).unsafeMap.get(Tracer.ParentSpan) as
+        | Tracer.ParentSpan
+        | undefined
 
-      if (currentSpan._tag === "None") {
+      if (currentSpan === undefined) {
         return execution()
       }
 
       return OtelApi.context.with(
-        populateContext(OtelApi.context.active(), currentSpan.value),
+        populateContext(OtelApi.context.active(), currentSpan),
         execution
       )
     }
   }))
-
-/** @internal */
 
 /** @internal */
 export const traceFlagsTag = Context.Tag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
@@ -173,7 +165,7 @@ export const makeExternalSpan = (options: {
     traceId: options.traceId,
     spanId: options.spanId,
     sampled: options.traceFlags
-      ? options.traceFlags === OtelApi.TraceFlags.SAMPLED
+      ? (options.traceFlags & OtelApi.TraceFlags.SAMPLED) === OtelApi.TraceFlags.SAMPLED
       : true,
     context
   }

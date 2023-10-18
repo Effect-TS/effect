@@ -43,9 +43,8 @@ describe("Tracer", () => {
           Effect.withSpan("A"),
           Effect.linkSpans(linkedSpan)
         )
-        expect(span).instanceOf(OtelSpan)
-        const otelSpan = span as OtelSpan
-        expect(otelSpan.links.length).toBe(1)
+        assert(span instanceof OtelSpan)
+        expect(span.links.length).toBe(1)
       }).pipe(
         Effect.scoped,
         Effect.provide(TracingLive)

@@ -1,4 +1,4 @@
-import * as OtelMetrics from "@effect/opentelemetry/Metrics"
+import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus"
 import * as Chunk from "effect/Chunk"
@@ -72,7 +72,11 @@ const program = Effect.gen(function*(_) {
 
 const MetricsLive = Layer.provide(
   Resource.layer({ serviceName: "example" }),
-  OtelMetrics.layer(() => new PrometheusExporter({ port: 9464 }))
+  NodeSdk.layer(() =>
+    NodeSdk.config({
+      metricReader: new PrometheusExporter({ port: 9464 })
+    })
+  )
 )
 
 pipe(
