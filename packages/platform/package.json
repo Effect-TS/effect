@@ -1,6 +1,6 @@
 {
   "name": "@effect/platform",
-  "version": "0.23.0",
+  "version": "0.23.1",
   "description": "Unified interfaces for common platform-specific services",
   "main": "dist/effect-platform.cjs.js",
   "module": "dist/effect-platform.esm.js",
