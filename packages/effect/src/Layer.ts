@@ -948,7 +948,7 @@ export const span: (
     readonly context?: Context.Context<never>
     readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }
-) => Layer<never, never, Tracer.Span> = circularLayer.span
+) => Layer<never, never, Tracer.ParentSpan> = circularLayer.span
 
 /**
  * Create a Layer that sets the current Tracer
