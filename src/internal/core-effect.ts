@@ -21,6 +21,7 @@ import * as fiberRefsPatch from "../internal/fiberRefs/patch"
 import * as metricLabel from "../internal/metric/label"
 import * as runtimeFlags from "../internal/runtimeFlags"
 import * as SingleShotGen from "../internal/singleShotGen"
+import * as internalTracer from "../internal/tracer"
 import * as List from "../List"
 import * as LogLevel from "../LogLevel"
 import * as LogSpan from "../LogSpan"
@@ -1189,7 +1190,20 @@ export const provideService = dual<
     tag: T,
     service: Context.Tag.Service<T>
   ) => Effect.Effect<Exclude<R, Context.Tag.Identifier<T>>, E, A>
->(3, (self, tag, service) => provideServiceEffect(self, tag, core.succeed(service)))
+>(
+  3,
+  <R, E, A, T extends Context.Tag<any, any>>(
+    self: Effect.Effect<R, E, A>,
+    tag: T,
+    service: Context.Tag.Service<T>
+  ): Effect.Effect<Exclude<R, Context.Tag.Identifier<T>>, E, A> =>
+    core.contextWithEffect((env) =>
+      core.provideContext(
+        self as Effect.Effect<Context.Tag.Identifier<T> | Exclude<R, Context.Tag.Identifier<T>>, E, A>,
+        Context.add(env, tag, service)
+      )
+    )
+)
 
 /* @internal */
 export const provideServiceEffect = dual<
@@ -1901,7 +1915,7 @@ export const annotateCurrentSpan: {
 } = function(): Effect.Effect<never, never, void> {
   const args = arguments
   return core.flatMap(
-    currentSpan,
+    core.currentSpan,
     (span) =>
       span._tag === "Some"
         ? core.sync(() => {
@@ -1945,18 +1959,6 @@ export const annotateSpans = dual<
           )
     )
   }
-)
-
-/* @internal */
-export const currentParentSpan: Effect.Effect<never, never, Option.Option<Tracer.ParentSpan>> = core.map(
-  core.fiberRefGet(core.currentTracerSpan),
-  List.head
-)
-
-/* @internal */
-export const currentSpan: Effect.Effect<never, never, Option.Option<Tracer.Span>> = core.map(
-  core.fiberRefGet(core.currentTracerSpan),
-  List.findFirst((span): span is Tracer.Span => span._tag === "Span")
 )
 
 const bigint0 = BigInt(0)
@@ -2011,7 +2013,7 @@ export const makeSpan = (
         ? succeedSome(options.parent)
         : options?.root
         ? succeedNone
-        : currentParentSpan,
+        : core.currentParentSpan,
       (parent) =>
         core.flatMap(
           core.fiberRefGet(core.currentTracerSpanAnnotations),
@@ -2093,14 +2095,11 @@ export const useSpan: {
 
 /** @internal */
 export const withParentSpan = dual<
-  (span: Tracer.ParentSpan) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, span: Tracer.ParentSpan) => Effect.Effect<R, E, A>
->(2, (self, span) =>
-  core.fiberRefLocallyWith(
-    self,
-    core.currentTracerSpan,
-    List.prepend(span)
-  ))
+  (
+    span: Tracer.ParentSpan
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, span: Tracer.ParentSpan) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>
+>(2, (self, span) => provideService(self, internalTracer.spanTag, span))
 
 /** @internal */
 export const withSpan = dual<
@@ -2111,7 +2110,7 @@ export const withSpan = dual<
     readonly root?: boolean
     readonly sampled?: boolean
     readonly context?: Context.Context<never>
-  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
@@ -2119,7 +2118,7 @@ export const withSpan = dual<
     readonly root?: boolean
     readonly sampled?: boolean
     readonly context?: Context.Context<never>
-  }) => Effect.Effect<R, E, A>
+  }) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>

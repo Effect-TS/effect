@@ -876,7 +876,7 @@ export const setConfigProvider: (configProvider: ConfigProvider) => Layer<never,
  * @since 2.0.0
  * @category tracing
  */
-export const setParentSpan: (span: Tracer.ParentSpan) => Layer<never, never, never> = circularLayer.setParentSpan
+export const parentSpan: (span: Tracer.ParentSpan) => Layer<never, never, Tracer.ParentSpan> = circularLayer.parentSpan
 
 /**
  * @since 2.0.0
@@ -937,7 +937,7 @@ export const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never, neve
  * @since 2.0.0
  * @category tracing
  */
-export const setSpan: (
+export const span: (
   name: string,
   options?: {
     readonly attributes?: Record<string, unknown>
@@ -948,7 +948,7 @@ export const setSpan: (
     readonly context?: Context.Context<never>
     readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }
-) => Layer<never, never, never> = circularLayer.setSpan
+) => Layer<never, never, Tracer.Span> = circularLayer.span
 
 /**
  * Create a Layer that sets the current Tracer
@@ -994,7 +994,7 @@ export const withSpan: {
       readonly context?: Context.Context<never>
       readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
-  ): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
+  ): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
     self: Layer<R, E, A>,
     name: string,
@@ -1007,7 +1007,7 @@ export const withSpan: {
       readonly context?: Context.Context<never>
       readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
     }
-  ): Layer<R, E, A>
+  ): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 } = internal.withSpan
 
 /**
@@ -1015,6 +1015,6 @@ export const withSpan: {
  * @category tracing
  */
 export const withParentSpan: {
-  (span: Tracer.ParentSpan): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
-  <R, E, A>(self: Layer<R, E, A>, span: Tracer.ParentSpan): Layer<R, E, A>
+  (span: Tracer.ParentSpan): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
+  <R, E, A>(self: Layer<R, E, A>, span: Tracer.ParentSpan): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 } = internal.withParentSpan
