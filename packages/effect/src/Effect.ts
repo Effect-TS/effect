@@ -4926,7 +4926,6 @@ export const makeSpan: (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }
 ) => Effect<never, never, Tracer.Span> = effect.makeSpan
@@ -4948,7 +4947,6 @@ export const makeSpanScoped: (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly sampled?: boolean
     readonly context?: Context.Context<never>
   }
 ) => Effect<Scope.Scope, never, Tracer.Span> = fiberRuntime.makeSpanScoped
@@ -4972,7 +4970,6 @@ export const useSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     },
     evaluate: (span: Tracer.Span) => Effect<R, E, A>
@@ -4993,7 +4990,6 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
@@ -5005,7 +5001,6 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
@@ -5027,7 +5022,6 @@ export const withSpanScoped: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
@@ -5039,7 +5033,6 @@ export const withSpanScoped: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): Effect<Scope.Scope | Exclude<R, Tracer.ParentSpan>, E, A>

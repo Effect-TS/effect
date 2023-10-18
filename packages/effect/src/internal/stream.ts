@@ -6850,7 +6850,6 @@ export const withSpan = dual<
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<Exclude<R, Tracer.ParentSpan>, E, A>,
@@ -6862,7 +6861,6 @@ export const withSpan = dual<
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ) => Stream.Stream<Exclude<R, Tracer.ParentSpan>, E, A>
