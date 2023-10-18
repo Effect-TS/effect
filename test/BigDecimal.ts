@@ -169,6 +169,13 @@ describe.concurrent("BigDecimal", () => {
     expect(() => BD.unsafeRemainder(BD.make(5n), BD.make(0n))).toThrow("Division by zero")
   })
 
+  it("normalize", () => {
+    deepStrictEqual(BD.normalize(parse("0.123000")), BD.make(0.123))
+    deepStrictEqual(BD.normalize(parse("123.000")), BD.make(123))
+    deepStrictEqual(BD.normalize(parse("-0.000123000")), BD.make(-0.000123))
+    deepStrictEqual(BD.normalize(parse("-123.000")), BD.make(-123))
+  })
+
   it("parse", () => {
     deepStrictEqual(BD.parse("2"), Option.some(BD.make(2n)))
     deepStrictEqual(BD.parse("-2"), Option.some(BD.make(-2n)))
