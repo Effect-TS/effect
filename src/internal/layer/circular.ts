@@ -200,7 +200,7 @@ export const span = (
     readonly context?: Context.Context<never>
     readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
   }
-): Layer.Layer<never, never, Tracer.Span> =>
+): Layer.Layer<never, never, Tracer.ParentSpan> =>
   layer.scoped(
     tracer.spanTag,
     options?.onEnd
