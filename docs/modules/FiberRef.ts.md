@@ -38,7 +38,6 @@ Added in v2.0.0
   - [currentScheduler](#currentscheduler)
   - [currentSchedulingPriority](#currentschedulingpriority)
   - [currentSupervisor](#currentsupervisor)
-  - [currentTracerSpan](#currenttracerspan)
   - [currentTracerSpanAnnotations](#currenttracerspanannotations)
   - [currentTracerSpanLinks](#currenttracerspanlinks)
   - [currentTracerTimingEnabled](#currenttracertimingenabled)
@@ -336,16 +335,6 @@ Added in v2.0.0
 
 ```ts
 export declare const currentSupervisor: FiberRef<Supervisor.Supervisor<any>>
-```
-
-Added in v2.0.0
-
-## currentTracerSpan
-
-**Signature**
-
-```ts
-export declare const currentTracerSpan: FiberRef<List.List<Tracer.ParentSpan>>
 ```
 
 Added in v2.0.0

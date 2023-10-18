@@ -97,10 +97,10 @@ Added in v2.0.0
   - [LayerTypeId](#layertypeid)
   - [LayerTypeId (type alias)](#layertypeid-type-alias)
 - [tracing](#tracing)
-  - [setParentSpan](#setparentspan)
-  - [setSpan](#setspan)
+  - [parentSpan](#parentspan)
   - [setTracer](#settracer)
   - [setTracerTiming](#settracertiming)
+  - [span](#span)
   - [withParentSpan](#withparentspan)
   - [withSpan](#withspan)
 - [utils](#utils)
@@ -939,43 +939,14 @@ Added in v2.0.0
 
 # tracing
 
-## setParentSpan
+## parentSpan
 
 Adds the provided span to the span stack.
 
 **Signature**
 
 ```ts
-export declare const setParentSpan: (span: Tracer.ParentSpan) => Layer<never, never, never>
-```
-
-Added in v2.0.0
-
-## setSpan
-
-Create and add a span to the current span stack.
-
-The span is ended when the Layer is released.
-
-**Signature**
-
-```ts
-export declare const setSpan: (
-  name: string,
-  options?:
-    | {
-        readonly attributes?: Record<string, unknown> | undefined
-        readonly links?: readonly Tracer.SpanLink[] | undefined
-        readonly parent?: Tracer.ParentSpan | undefined
-        readonly root?: boolean | undefined
-        readonly sampled?: boolean | undefined
-        readonly context?: Context.Context<never> | undefined
-        readonly onEnd?:
-          | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
-          | undefined
-      }
-    | undefined
-) => Layer<never, never, never>
+export declare const parentSpan: (span: Tracer.ParentSpan) => Layer<never, never, Tracer.ParentSpan>
 ```
 
 Added in v2.0.0
@@ -1002,14 +973,43 @@ export declare const setTracerTiming: (enabled: boolean) => Layer<never, never, 
 
 Added in v2.0.0
 
+## span
+
+Create and add a span to the current span stack.
+
+The span is ended when the Layer is released.
+
+**Signature**
+
+```ts
+export declare const span: (
+  name: string,
+  options?:
+    | {
+        readonly attributes?: Record<string, unknown> | undefined
+        readonly links?: readonly Tracer.SpanLink[] | undefined
+        readonly parent?: Tracer.ParentSpan | undefined
+        readonly root?: boolean | undefined
+        readonly sampled?: boolean | undefined
+        readonly context?: Context.Context<never> | undefined
+        readonly onEnd?:
+          | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+          | undefined
+      }
+    | undefined
+) => Layer<never, never, Tracer.Span>
+```
+
+Added in v2.0.0
+
 ## withParentSpan
 
 **Signature**
 
 ```ts
 export declare const withParentSpan: {
-  (span: Tracer.ParentSpan): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
-  <R, E, A>(self: Layer<R, E, A>, span: Tracer.ParentSpan): Layer<R, E, A>
+  (span: Tracer.ParentSpan): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
+  <R, E, A>(self: Layer<R, E, A>, span: Tracer.ParentSpan): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 }
 ```
 
@@ -1036,7 +1036,7 @@ export declare const withSpan: {
             | undefined
         }
       | undefined
-  ): <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
+  ): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
     self: Layer<R, E, A>,
     name: string,
@@ -1053,7 +1053,7 @@ export declare const withSpan: {
             | undefined
         }
       | undefined
-  ): Layer<R, E, A>
+  ): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 }
 ```
 

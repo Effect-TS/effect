@@ -23,6 +23,7 @@ Added in v2.0.0
   - [SpanLink (interface)](#spanlink-interface)
   - [SpanStatus (type alias)](#spanstatus-type-alias)
 - [tags](#tags)
+  - [ParentSpan](#parentspan)
   - [Tracer](#tracer)
 - [utils](#utils)
   - [Tracer (interface)](#tracer-interface)
@@ -155,6 +156,16 @@ export type SpanStatus =
 Added in v2.0.0
 
 # tags
+
+## ParentSpan
+
+**Signature**
+
+```ts
+export declare const ParentSpan: Context.Tag<ParentSpan, ParentSpan>
+```
+
+Added in v2.0.0
 
 ## Tracer
 

@@ -121,8 +121,8 @@ Provides a division operation on `number`s.
 
 ```ts
 export declare const divide: {
-  (that: number): (self: number) => Option.Option<number>
-  (self: number, that: number): Option.Option<number>
+  (that: number): (self: number) => Option<number>
+  (self: number, that: number): Option<number>
 }
 ```
 

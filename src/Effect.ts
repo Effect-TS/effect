@@ -7,7 +7,7 @@ import type * as Clock from "./Clock"
 import type { Config } from "./Config"
 import type { ConfigError } from "./ConfigError"
 import type { ConfigProvider } from "./ConfigProvider"
-import * as Context from "./Context"
+import type * as Context from "./Context"
 import type * as Deferred from "./Deferred"
 import type * as Duration from "./Duration"
 import type * as Either from "./Either"
@@ -3145,8 +3145,8 @@ export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
  * @since 2.0.0
  * @category context
  */
-export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> = (tag) =>
-  contextWith((_: Context.Context<never>) => Context.getOption(_, tag))
+export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> =
+  core.serviceOption
 
 /**
  * Updates the service with the required service entry.
