@@ -410,43 +410,6 @@ describe.concurrent("Option", () => {
     expect(sumCompact([_.some(2), _.none(), _.some(3)])).toEqual(5)
   })
 
-  it("sum", () => {
-    expect(pipe(_.none(), _.sum(_.some(2)))).toEqual(_.none())
-    expect(pipe(_.some(1), _.sum(_.none()))).toEqual(_.none())
-    expect(pipe(_.some(2), _.sum(_.some(3)))).toEqual(_.some(5))
-  })
-
-  it("multiply", () => {
-    expect(pipe(_.none(), _.multiply(_.some(2)))).toEqual(_.none())
-    expect(pipe(_.some(1), _.multiply(_.none()))).toEqual(_.none())
-    expect(pipe(_.some(2), _.multiply(_.some(3)))).toEqual(_.some(6))
-  })
-
-  it("subtract", () => {
-    expect(pipe(_.none(), _.subtract(_.some(2)))).toEqual(_.none())
-    expect(pipe(_.some(1), _.subtract(_.none()))).toEqual(_.none())
-    expect(pipe(_.some(2), _.subtract(_.some(3)))).toEqual(_.some(-1))
-  })
-
-  it("divide", () => {
-    expect(pipe(_.none(), _.divide(_.some(2)))).toEqual(_.none())
-    expect(pipe(_.some(1), _.divide(_.none()))).toEqual(_.none())
-    expect(pipe(_.some(6), _.divide(_.some(3)))).toEqual(_.some(2))
-  })
-
-  it("sumCompact", () => {
-    expect(_.sumCompact([])).toEqual(0)
-    expect(_.sumCompact([_.some(2), _.some(3)])).toEqual(5)
-    expect(_.sumCompact([_.some(2), _.none(), _.some(3)])).toEqual(5)
-  })
-
-  it("multiplyCompact", () => {
-    expect(_.multiplyCompact([])).toEqual(1)
-    expect(_.multiplyCompact([_.some(2), _.some(3)])).toEqual(6)
-    expect(_.multiplyCompact([_.some(2), _.none(), _.some(3)])).toEqual(6)
-    expect(_.multiplyCompact([_.some(2), _.some(0), _.some(3)])).toEqual(0)
-  })
-
   it("getEquivalence", () => {
     const isEquivalent = _.getEquivalence(N.Equivalence)
     expect(isEquivalent(_.none(), _.none())).toEqual(true)
