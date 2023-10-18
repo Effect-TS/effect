@@ -1019,6 +1019,19 @@ export const getOrder = <A>(O: Order<A>): Order<Option<A>> =>
   order.make((self, that) => isSome(self) ? (isSome(that) ? O(self.value, that.value) : 1) : -1)
 
 /**
+ * Lifts a binary function into `Option`.
+ *
+ * @param f - The function to lift.
+ *
+ * @category lifting
+ * @since 2.0.0
+ */
+export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
+  (that: Option<B>): (self: Option<A>) => Option<C>
+  (self: Option<A>, that: Option<B>): Option<C>
+} => dual(2, (self: Option<A>, that: Option<B>): Option<C> => zipWith(self, that, f))
+
+/**
  * Transforms a `Predicate` function into a `Some` of the input value if the predicate returns `true` or `None`
  * if the predicate returns `false`.
  *

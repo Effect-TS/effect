@@ -63,6 +63,7 @@ Added in v2.0.0
   - [isOption](#isoption)
   - [isSome](#issome)
 - [lifting](#lifting)
+  - [lift2](#lift2)
   - [liftPredicate](#liftpredicate)
 - [models](#models)
   - [None (interface)](#none-interface)
@@ -964,6 +965,20 @@ assert.deepStrictEqual(isSome(none()), false)
 Added in v2.0.0
 
 # lifting
+
+## lift2
+
+Lifts a binary function into `Option`.
+
+**Signature**
+
+```ts
+export declare const lift2: <A, B, C>(
+  f: (a: A, b: B) => C
+) => { (that: Option<B>): (self: Option<A>) => Option<C>; (self: Option<A>, that: Option<B>): Option<C> }
+```
+
+Added in v2.0.0
 
 ## liftPredicate
 
