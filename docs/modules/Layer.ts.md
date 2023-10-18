@@ -990,14 +990,13 @@ export declare const span: (
         readonly links?: readonly Tracer.SpanLink[] | undefined
         readonly parent?: Tracer.ParentSpan | undefined
         readonly root?: boolean | undefined
-        readonly sampled?: boolean | undefined
         readonly context?: Context.Context<never> | undefined
         readonly onEnd?:
           | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
           | undefined
       }
     | undefined
-) => Layer<never, never, Tracer.Span>
+) => Layer<never, never, Tracer.ParentSpan>
 ```
 
 Added in v2.0.0
@@ -1029,7 +1028,6 @@ export declare const withSpan: {
           readonly links?: readonly Tracer.SpanLink[] | undefined
           readonly parent?: Tracer.ParentSpan | undefined
           readonly root?: boolean | undefined
-          readonly sampled?: boolean | undefined
           readonly context?: Context.Context<never> | undefined
           readonly onEnd?:
             | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
@@ -1046,7 +1044,6 @@ export declare const withSpan: {
           readonly links?: readonly Tracer.SpanLink[] | undefined
           readonly parent?: Tracer.ParentSpan | undefined
           readonly root?: boolean | undefined
-          readonly sampled?: boolean | undefined
           readonly context?: Context.Context<never> | undefined
           readonly onEnd?:
             | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)

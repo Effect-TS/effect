@@ -1660,7 +1660,6 @@ export declare const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -1674,7 +1673,6 @@ export declare const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly sampled?: boolean
       readonly context?: Context.Context<never>
     }
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>

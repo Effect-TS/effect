@@ -34,6 +34,7 @@ export class NativeSpan implements Tracer.Span {
   readonly _tag = "Span"
   readonly spanId: string
   readonly traceId: string = "native"
+  readonly sampled = true
 
   status: Tracer.SpanStatus
   attributes: Map<string, unknown>
@@ -44,7 +45,6 @@ export class NativeSpan implements Tracer.Span {
     readonly parent: Option.Option<Tracer.ParentSpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
-    readonly sampled: boolean,
     readonly startTime: bigint
   ) {
     this.status = {
@@ -75,13 +75,12 @@ export class NativeSpan implements Tracer.Span {
 
 /** @internal */
 export const nativeTracer: Tracer.Tracer = make({
-  span: (name, parent, context, links, sampled, startTime) =>
+  span: (name, parent, context, links, startTime) =>
     new NativeSpan(
       name,
       parent,
       context,
       links,
-      sampled,
       startTime
     ),
   context: (f) => f()
