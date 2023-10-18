@@ -1,5 +1,17 @@
 # @effect/schema
 
+## 0.45.0
+
+### Minor Changes
+
+- [#491](https://github.com/Effect-TS/schema/pull/491) [`135072e`](https://github.com/Effect-TS/schema/commit/135072e16f64f4ac6752f5496a2c40468dcc7cdb) Thanks [@gcanti](https://github.com/gcanti)! - Make transformations strict by default (and allow relaxing constraints with `strict: false` option)
+
+- [#495](https://github.com/Effect-TS/schema/pull/495) [`c02334c`](https://github.com/Effect-TS/schema/commit/c02334c9bf4d40a2fa594433a11fd730662fbb4d) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#475](https://github.com/Effect-TS/schema/pull/475) [`46dcfeb`](https://github.com/Effect-TS/schema/commit/46dcfeba229ccb7a17555691856d066b22ea1d8d) Thanks [@tim-smart](https://github.com/tim-smart)! - memoize the Parser per AST
+
 ## 0.44.0
 
 ### Minor Changes
