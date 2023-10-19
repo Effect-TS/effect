@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.45.2
+
+### Patch Changes
+
+- [#498](https://github.com/Effect-TS/schema/pull/498) [`4b522a3`](https://github.com/Effect-TS/schema/commit/4b522a3d6d724aa5dbb6e4d9166f249900dfe3fb) Thanks [@gcanti](https://github.com/gcanti)! - fix regexp for numeric template literals
+
 ## 0.45.1
 
 ### Patch Changes

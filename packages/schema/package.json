@@ -1,6 +1,6 @@
 {
   "name": "@effect/schema",
-  "version": "0.45.1",
+  "version": "0.45.2",
   "publishConfig": {
     "access": "public"
   },
