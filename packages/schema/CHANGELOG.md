@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.45.1
+
+### Patch Changes
+
+- [#496](https://github.com/Effect-TS/schema/pull/496) [`ff360c6`](https://github.com/Effect-TS/schema/commit/ff360c6a5c68d4c9541f4d6678e24671245eaa87) Thanks [@gcanti](https://github.com/gcanti)! - Arbitrary: fix issue with generating optional tuple elements
+
 ## 0.45.0
 
 ### Minor Changes
