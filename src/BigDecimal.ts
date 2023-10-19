@@ -47,6 +47,8 @@ export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number
+  /** @internal */
+  normalized?: BigDecimal
 }
 
 const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
@@ -135,31 +137,35 @@ const zero = make(bigint0)
  * assert.deepStrictEqual(normalize(make(12300000)), scaled(123n, -5))
  *
  * @since 2.0.0
- * @category constructors
+ * @category scaling
  */
 export const normalize = (self: BigDecimal): BigDecimal => {
-  if (self.value === bigint0) {
-    return zero
-  }
-
-  const digits = `${self.value}`
-
-  let trail = 0
-  for (let i = digits.length - 1; i >= 0; i--) {
-    if (digits[i] === "0") {
-      trail++
+  if (self.normalized === undefined) {
+    if (self.value === bigint0) {
+      self.normalized = zero
     } else {
-      break
+      const digits = `${self.value}`
+
+      let trail = 0
+      for (let i = digits.length - 1; i >= 0; i--) {
+        if (digits[i] === "0") {
+          trail++
+        } else {
+          break
+        }
+      }
+
+      if (trail === 0) {
+        self.normalized = self
+      }
+
+      const value = BigInt(digits.substring(0, digits.length - trail))
+      const scale = self.scale - trail
+      self.normalized = scaled(value, scale)
     }
   }
 
-  if (trail === 0) {
-    return self
-  }
-
-  const value = BigInt(digits.substring(0, digits.length - trail))
-  const scale = self.scale - trail
-  return scaled(value, scale)
+  return self.normalized
 }
 
 /**
@@ -172,7 +178,7 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  * @param scale - The scale to scale to.
  *
  * @since 2.0.0
- * @category constructors
+ * @category scaling
  */
 export const scale = (self: BigDecimal, scale: number): BigDecimal => {
   if (scale > self.scale) {
@@ -810,7 +816,6 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
     return Option.none()
   }
 
-  // return Option.some(normalize(scaled(BigInt(digits), scale)))
   return Option.some(scaled(BigInt(digits), scale))
 }
 
@@ -830,19 +835,17 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
  * @category conversions
  */
 export const toString = (n: BigDecimal): string => {
-  // const normalized = normalize(n)
-  const normalized = n
-  const negative = normalized.value < bigint0
-  const absolute = negative ? `${normalized.value}`.substring(1) : `${normalized.value}`
+  const negative = n.value < bigint0
+  const absolute = negative ? `${n.value}`.substring(1) : `${n.value}`
 
   let before: string
   let after: string
 
-  if (normalized.scale >= absolute.length) {
+  if (n.scale >= absolute.length) {
     before = "0"
-    after = "0".repeat(normalized.scale - absolute.length) + absolute
+    after = "0".repeat(n.scale - absolute.length) + absolute
   } else {
-    const location = absolute.length - normalized.scale
+    const location = absolute.length - n.scale
     if (location > absolute.length) {
       const zeros = location - absolute.length
       before = `${absolute}${"0".repeat(zeros)}`
