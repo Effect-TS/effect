@@ -9,6 +9,15 @@ parent: Modules
 This module provides utility functions and type class instances for working with the `BigDecimal` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for `Equivalence` and `Order`.
 
+A `BigDecimal` allows storing any real number to arbitrary precision; which avoids common floating point errors
+(such as 0.1 + 0.2 ≠ 0.3) at the cost of complexity.
+
+Internally, `BigDecimal` uses a `BigInt` object, paired with a 64-bit integer which determines the position of the
+decimal point. Therefore, the precision _is not_ actually arbitrary, but limited to 2<sup>63</sup> decimal places.
+
+It is not recommended to convert a floating point number to a decimal directly, as the floating point representation
+may be unexpected.
+
 Added in v2.0.0
 
 ---
@@ -50,6 +59,10 @@ Added in v2.0.0
   - [equals](#equals)
   - [greaterThan](#greaterthan)
   - [greaterThanOrEqualTo](#greaterthanorequalto)
+  - [isInteger](#isinteger)
+  - [isNegative](#isnegative)
+  - [isPositive](#ispositive)
+  - [isZero](#iszero)
   - [lessThan](#lessthan)
   - [lessThanOrEqualTo](#lessthanorequalto)
 - [symbol](#symbol)
@@ -304,7 +317,7 @@ import { divide, make } from 'effect/BigDecimal'
 import { some, none } from 'effect/Option'
 
 assert.deepStrictEqual(divide(make(6n), make(3n)), some(make(2n)))
-assert.deepStrictEqual(divide(make(6n), make(4n)), some(make(1n)))
+assert.deepStrictEqual(divide(make(6n), make(4n)), some(make(1.5)))
 assert.deepStrictEqual(divide(make(6n), make(0n)), none())
 ```
 
@@ -520,7 +533,7 @@ export declare const unsafeDivide: {
 import { unsafeDivide, make } from 'effect/BigDecimal'
 
 assert.deepStrictEqual(unsafeDivide(make(6n), make(3n)), make(2n))
-assert.deepStrictEqual(unsafeDivide(make(6n), make(4n)), make(1n))
+assert.deepStrictEqual(unsafeDivide(make(6n), make(4n)), make(1.5))
 ```
 
 Added in v2.0.0
@@ -563,8 +576,6 @@ export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number
-  /** @internal */
-  normalized?: BigDecimal | undefined
 }
 ```
 
@@ -658,6 +669,93 @@ import { greaterThanOrEqualTo, make } from 'effect/BigDecimal'
 assert.deepStrictEqual(greaterThanOrEqualTo(make(2n), make(3n)), false)
 assert.deepStrictEqual(greaterThanOrEqualTo(make(3n), make(3n)), true)
 assert.deepStrictEqual(greaterThanOrEqualTo(make(4n), make(3n)), true)
+```
+
+Added in v2.0.0
+
+## isInteger
+
+Checks if a given `BigDecimal` is an integer.
+
+**Signature**
+
+```ts
+export declare const isInteger: (n: BigDecimal) => boolean
+```
+
+**Example**
+
+```ts
+import { isInteger, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(isInteger(make(0)), true)
+assert.deepStrictEqual(isInteger(make(1)), true)
+assert.deepStrictEqual(isInteger(make(1.1)), false)
+```
+
+Added in v2.0.0
+
+## isNegative
+
+Checks if a given `BigDecimal` is negative.
+
+**Signature**
+
+```ts
+export declare const isNegative: (n: BigDecimal) => boolean
+```
+
+**Example**
+
+```ts
+import { isNegative, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(isNegative(make(-1)), true)
+assert.deepStrictEqual(isNegative(make(0)), false)
+assert.deepStrictEqual(isNegative(make(1)), false)
+```
+
+Added in v2.0.0
+
+## isPositive
+
+Checks if a given `BigDecimal` is positive.
+
+**Signature**
+
+```ts
+export declare const isPositive: (n: BigDecimal) => boolean
+```
+
+**Example**
+
+```ts
+import { isPositive, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(isPositive(make(-1)), false)
+assert.deepStrictEqual(isPositive(make(0)), false)
+assert.deepStrictEqual(isPositive(make(1)), true)
+```
+
+Added in v2.0.0
+
+## isZero
+
+Checks if a given `BigDecimal` is `0`.
+
+**Signature**
+
+```ts
+export declare const isZero: (n: BigDecimal) => boolean
+```
+
+**Example**
+
+```ts
+import { isZero, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(isZero(make(0)), true)
+assert.deepStrictEqual(isZero(make(1)), false)
 ```
 
 Added in v2.0.0

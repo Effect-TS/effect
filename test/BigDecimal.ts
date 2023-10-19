@@ -2,6 +2,7 @@ import { deepStrictEqual } from "effect-test/util"
 import * as BD from "effect/BigDecimal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import { describe, it } from "vitest"
 
 const fromString = (s: string) => pipe(BD.fromString(s), Option.getOrThrow)
 
@@ -53,17 +54,61 @@ describe.concurrent("BigDecimal", () => {
   })
 
   it("divide", () => {
-    deepStrictEqual(BD.divide(BD.make(6n), BD.make(2n)), Option.some(BD.make(3n)))
-    deepStrictEqual(BD.divide(BD.make(6n), BD.make(-2n)), Option.some(BD.make(-3n)))
-    deepStrictEqual(BD.divide(BD.make(123.456), BD.make(5)), Option.some(BD.make(24.691))) // 123.456 / 5 = 24.691[2] (rounded)
-    deepStrictEqual(BD.divide(BD.make(123.456), BD.make(0.2)), Option.some(BD.make(617.28))) // 123.456 / 0.2 = 617.28
-    deepStrictEqual(BD.divide(BD.make(6n), BD.make(0n)), Option.none())
+    const cases = [
+      ["0", "1", "0"],
+      ["0", "10", "0"],
+      ["2", "1", "2"],
+      ["20", "1", "20"],
+      ["10", "10", "1"],
+      ["100", "10.0", "10"],
+      ["20.0", "200", "0.1"],
+      ["4", "2", "2.0"],
+      ["15", "3", "5.0"],
+      ["1", "2", "0.5"],
+      ["1", "0.02", "50"],
+      ["1", "0.2", "5"],
+      ["1.0", "0.02", "50"],
+      ["1", "0.020", "50"],
+      ["5.0", "4.00", "1.25"],
+      ["5.0", "4.000", "1.25"],
+      ["5", "4.000", "1.25"],
+      ["5", "4", "1.25"],
+      ["100", "5", "20"],
+      ["-50", "5", "-10"],
+      ["200", "-5", "-40.0"],
+      [
+        "1",
+        "3",
+        "0.3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
+      ],
+      [
+        "-2",
+        "-3",
+        "0.6666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666667"
+      ],
+      [
+        "-12.34",
+        "1.233",
+        "-10.00811030008110300081103000811030008110300081103000811030008110300081103000811030008110300081103001"
+      ],
+      [
+        "125348",
+        "352.2283",
+        "355.8714617763535752237966114591019517738921035021887792661748076460636467881768727839301952739175132"
+      ]
+    ]
+
+    for (const [x, y, z] of cases) {
+      const result = BD.divide(fromString(x), fromString(y)).pipe(Option.getOrThrow)
+      const equality = BD.equals(result, fromString(z))
+      deepStrictEqual(equality, true)
+    }
   })
 
   it("unsafeDivide", () => {
     deepStrictEqual(BD.unsafeDivide(BD.make(6n), BD.make(2n)), BD.make(3n))
     deepStrictEqual(BD.unsafeDivide(BD.make(6n), BD.make(-2n)), BD.make(-3n))
-    deepStrictEqual(BD.unsafeDivide(BD.make(123.456), BD.make(5)), BD.make(24.691)) // 123.456 / 5 = 24.691[2] (rounded)
+    deepStrictEqual(BD.unsafeDivide(BD.make(123.456), BD.make(5)), BD.make(24.6912)) // 123.456 / 5 = 24.6912
     deepStrictEqual(BD.unsafeDivide(BD.make(123.456), BD.make(0.2)), BD.make(617.28)) // 123.456 / 0.2 = 617.28
     expect(() => BD.unsafeDivide(BD.make(6n), BD.make(0n))).toThrow("Division by zero")
   })
@@ -175,9 +220,6 @@ describe.concurrent("BigDecimal", () => {
     deepStrictEqual(BD.normalize(fromString("-0.000123000")), BD.make(-0.000123))
     deepStrictEqual(BD.normalize(fromString("-123.000")), BD.make(-123))
     deepStrictEqual(BD.normalize(BD.make(12300000)), BD.scaled(123n, -5))
-
-    const raw = BD.make(12300000)
-    deepStrictEqual(BD.normalize(raw) === BD.normalize(raw), true) // should be cached
   })
 
   it("fromString", () => {

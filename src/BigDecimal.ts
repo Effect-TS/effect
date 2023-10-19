@@ -2,6 +2,15 @@
  * This module provides utility functions and type class instances for working with the `BigDecimal` type in TypeScript.
  * It includes functions for basic arithmetic operations, as well as type class instances for `Equivalence` and `Order`.
  *
+ * A `BigDecimal` allows storing any real number to arbitrary precision; which avoids common floating point errors
+ * (such as 0.1 + 0.2 ≠ 0.3) at the cost of complexity.
+ *
+ * Internally, `BigDecimal` uses a `BigInt` object, paired with a 64-bit integer which determines the position of the
+ * decimal point. Therefore, the precision *is not* actually arbitrary, but limited to 2<sup>63</sup> decimal places.
+ *
+ * It is not recommended to convert a floating point number to a decimal directly, as the floating point representation
+ * may be unexpected.
+ *
  * @since 2.0.0
  */
 
@@ -15,6 +24,8 @@ import * as Option from "./Option"
 import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import { type Pipeable, pipeArguments } from "./Pipeable"
+
+const DEFAULT_PRECISION = 100
 
 /**
  * @since 2.0.0
@@ -36,8 +47,6 @@ export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number
-  /** @internal */
-  normalized?: BigDecimal | undefined
 }
 
 const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
@@ -110,6 +119,7 @@ export const make = (value: bigint | number): BigDecimal => {
 }
 
 const bigint0 = BigInt(0)
+const bigint1 = BigInt(1)
 const bigint10 = BigInt(10)
 const zero = make(bigint0)
 
@@ -128,35 +138,28 @@ const zero = make(bigint0)
  * @category constructors
  */
 export const normalize = (self: BigDecimal): BigDecimal => {
-  if (self.normalized !== undefined) {
-    return self.normalized
-  }
-
   if (self.value === bigint0) {
-    self.normalized = zero
-  } else {
-    const digits = `${self.value}`.split("")
+    return zero
+  }
 
-    let trail = 0
-    for (let i = digits.length - 1; i >= 0; i--) {
-      if (digits[i] === "0") {
-        trail++
-      } else {
-        break
-      }
-    }
+  const digits = `${self.value}`
 
-    if (trail === 0) {
-      self.normalized = self
+  let trail = 0
+  for (let i = digits.length - 1; i >= 0; i--) {
+    if (digits[i] === "0") {
+      trail++
     } else {
-      digits.splice(digits.length - trail)
-      const value = BigInt(digits.join(""))
-      const scale = self.scale - trail
-      self.normalized = scaled(value, scale)
+      break
     }
   }
 
-  return self.normalized
+  if (trail === 0) {
+    return self
+  }
+
+  const value = BigInt(digits.substring(0, digits.length - trail))
+  const scale = self.scale - trail
+  return scaled(value, scale)
 }
 
 /**
@@ -283,6 +286,80 @@ export const subtract: {
 })
 
 /**
+ * Internal function used for arbitrary precision division.
+ */
+const divideWithPrecision = (
+  num: bigint,
+  den: bigint,
+  scale: number,
+  precision: number
+): BigDecimal => {
+  if (num === bigint0) {
+    return zero
+  }
+
+  const numNegative = num < bigint0
+  const denNegative = den < bigint0
+  const negateResult = numNegative !== denNegative
+
+  num = numNegative ? -num : num
+  den = denNegative ? -den : den
+
+  // Shift digits until numerator is larger than denominator (set scale appropriately).
+  while (num < den) {
+    num *= bigint10
+    scale++
+  }
+
+  // First division.
+  let quotient = num / den
+  let remainder = num % den
+
+  if (remainder === bigint0) {
+    // No remainder, return immediately.
+    return scaled(negateResult ? -quotient : quotient, scale)
+  }
+
+  // The quotient is guaranteed to be non-negative at this point. No need to consider sign.
+  let count = `${quotient}`.length
+
+  // Shift the remainder by 1 decimal; The quotient will be 1 digit upon next division.
+  remainder *= bigint10
+  while (remainder !== bigint0 && count < precision) {
+    const q = remainder / den
+    const r = remainder % den
+    quotient = quotient * bigint10 + q
+    remainder = r * bigint10
+
+    count++
+    scale++
+  }
+
+  if (remainder !== bigint0) {
+    // Round final number with remainder.
+    quotient += roundTerminal(remainder / den)
+  }
+
+  return scaled(negateResult ? -quotient : quotient, scale)
+}
+
+/**
+ * Internal function used for rounding.
+ *
+ * Returns 1 if the most significant digit is >= 5, otherwise 0.
+ *
+ * This is used after dividing a number by a power of ten and rounding the last digit.
+ */
+const roundTerminal = (n: bigint): bigint => {
+  if (n === bigint0) {
+    return bigint0
+  }
+
+  const pos = n > bigint0 ? 0 : 1
+  return Number(`${n}`[pos]) < 5 ? bigint0 : bigint1
+}
+
+/**
  * Provides a division operation on `BigDecimal`s.
  *
  * If the dividend is not a multiple of the divisor the result will be a `BigDecimal` value
@@ -298,7 +375,7 @@ export const subtract: {
  * import { some, none } from 'effect/Option'
  *
  * assert.deepStrictEqual(divide(make(6n), make(3n)), some(make(2n)))
- * assert.deepStrictEqual(divide(make(6n), make(4n)), some(make(1n)))
+ * assert.deepStrictEqual(divide(make(6n), make(4n)), some(make(1.5)))
  * assert.deepStrictEqual(divide(make(6n), make(0n)), none())
  *
  * @since 2.0.0
@@ -316,7 +393,12 @@ export const divide: {
     return Option.some(zero)
   }
 
-  return Option.some(scaled(self.value / that.value, self.scale - that.scale))
+  const scale = self.scale - that.scale
+  if (self.value === that.value) {
+    return Option.some(scaled(bigint1, scale))
+  }
+
+  return Option.some(divideWithPrecision(self.value, that.value, scale, DEFAULT_PRECISION))
 })
 
 /**
@@ -334,7 +416,7 @@ export const divide: {
  * import { unsafeDivide, make } from 'effect/BigDecimal'
  *
  * assert.deepStrictEqual(unsafeDivide(make(6n), make(3n)), make(2n))
- * assert.deepStrictEqual(unsafeDivide(make(6n), make(4n)), make(1n))
+ * assert.deepStrictEqual(unsafeDivide(make(6n), make(4n)), make(1.5))
  *
  * @since 2.0.0
  * @category math
@@ -351,7 +433,12 @@ export const unsafeDivide: {
     return zero
   }
 
-  return scaled(self.value / that.value, self.scale - that.scale)
+  const scale = self.scale - that.scale
+  if (self.value === that.value) {
+    return scaled(bigint1, scale)
+  }
+
+  return divideWithPrecision(self.value, that.value, scale, DEFAULT_PRECISION)
 })
 
 /**
@@ -560,7 +647,7 @@ export const max: {
  * @since 2.0.0
  * @category math
  */
-export const sign = (n: BigDecimal): Ordering => Order(n, zero)
+export const sign = (n: BigDecimal): Ordering => BigI.sign(n.value)
 
 /**
  * Determines the absolute value of a given `BigDecimal`.
@@ -723,13 +810,14 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
     return Option.none()
   }
 
+  // return Option.some(normalize(scaled(BigInt(digits), scale)))
   return Option.some(scaled(BigInt(digits), scale))
 }
 
 /**
  * Formats a given `BigDecimal` as a `string`.
  *
- * @param n - The `BigDecimal` to format.
+ * @param normalized - The `BigDecimal` to format.
  *
  * @example
  * import { toString, make } from 'effect/BigDecimal'
@@ -742,17 +830,19 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
  * @category conversions
  */
 export const toString = (n: BigDecimal): string => {
-  const absolute = `${BigI.abs(n.value)}`
-  const sign = BigI.sign(n.value) === -1 ? "-" : ""
+  // const normalized = normalize(n)
+  const normalized = n
+  const negative = normalized.value < bigint0
+  const absolute = negative ? `${normalized.value}`.substring(1) : `${normalized.value}`
 
   let before: string
   let after: string
 
-  if (n.scale >= absolute.length) {
+  if (normalized.scale >= absolute.length) {
     before = "0"
-    after = "0".repeat(n.scale - absolute.length) + absolute
+    after = "0".repeat(normalized.scale - absolute.length) + absolute
   } else {
-    const location = absolute.length - n.scale
+    const location = absolute.length - normalized.scale
     if (location > absolute.length) {
       const zeros = location - absolute.length
       before = `${absolute}${"0".repeat(zeros)}`
@@ -764,7 +854,7 @@ export const toString = (n: BigDecimal): string => {
   }
 
   const complete = after === "" ? before : `${before}.${after}`
-  return `${sign}${complete}`
+  return negative ? `-${complete}` : complete
 }
 
 /**
@@ -783,3 +873,70 @@ export const toString = (n: BigDecimal): string => {
  * @category conversions
  */
 export const unsafeToNumber = (n: BigDecimal): number => Number(toString(n))
+
+/**
+ * Checks if a given `BigDecimal` is an integer.
+ *
+ * @param n - The `BigDecimal` to check.
+ *
+ * @example
+ * import { isInteger, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(isInteger(make(0)), true)
+ * assert.deepStrictEqual(isInteger(make(1)), true)
+ * assert.deepStrictEqual(isInteger(make(1.1)), false)
+ *
+ * @since 2.0.0
+ * @category predicates
+ */
+export const isInteger = (n: BigDecimal): boolean => normalize(n).scale <= 0
+
+/**
+ * Checks if a given `BigDecimal` is `0`.
+ *
+ * @param n - The `BigDecimal` to check.
+ *
+ * @example
+ * import { isZero, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(isZero(make(0)), true)
+ * assert.deepStrictEqual(isZero(make(1)), false)
+ *
+ * @since 2.0.0
+ * @category predicates
+ */
+export const isZero = (n: BigDecimal): boolean => n.value === bigint0
+
+/**
+ * Checks if a given `BigDecimal` is negative.
+ *
+ * @param n - The `BigDecimal` to check.
+ *
+ * @example
+ * import { isNegative, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(isNegative(make(-1)), true)
+ * assert.deepStrictEqual(isNegative(make(0)), false)
+ * assert.deepStrictEqual(isNegative(make(1)), false)
+ *
+ * @since 2.0.0
+ * @category predicates
+ */
+export const isNegative = (n: BigDecimal): boolean => n.value < bigint0
+
+/**
+ * Checks if a given `BigDecimal` is positive.
+ *
+ * @param n - The `BigDecimal` to check.
+ *
+ * @example
+ * import { isPositive, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(isPositive(make(-1)), false)
+ * assert.deepStrictEqual(isPositive(make(0)), false)
+ * assert.deepStrictEqual(isPositive(make(1)), true)
+ *
+ * @since 2.0.0
+ * @category predicates
+ */
+export const isPositive = (n: BigDecimal): boolean => n.value > bigint0
