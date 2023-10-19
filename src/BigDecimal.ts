@@ -36,9 +36,11 @@ export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number
+  /** @internal */
+  normalized?: BigDecimal | undefined
 }
 
-const BigDecimalProto: Omit<BigDecimal, "value" | "scale"> = {
+const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
   [TypeId]: TypeId,
   [Hash.symbol](this: BigDecimal): number {
     const normalized = normalize(this)
@@ -56,8 +58,8 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale"> = {
   toJSON(this: BigDecimal) {
     return toString(this)
   },
-  [NodeInspectSymbol]() {
-    return this.toJSON()
+  [NodeInspectSymbol](this: BigDecimal) {
+    return toString(this)
   },
   pipe() {
     return pipeArguments(this, arguments)
@@ -112,89 +114,49 @@ const bigint10 = BigInt(10)
 const zero = make(bigint0)
 
 /**
- * Parses a numerical `string` into a `BigDecimal`.
- *
- * @param s - The `string` to parse.
- *
- * @example
- * import { fromString, make } from 'effect/BigDecimal'
- * import { some, none } from 'effect/Option'
- *
- * assert.deepStrictEqual(fromString('123'), some(make(123n)))
- * assert.deepStrictEqual(fromString('123.456'), some(make(123.456)))
- * assert.deepStrictEqual(fromString('123.abc'), none())
- *
- * @since 2.0.0
- * @category constructors
- */
-export const fromString = (s: string): Option.Option<BigDecimal> => {
-  let digits: string
-  let scale: number
-
-  const dot = s.search(/\./)
-  if (dot !== -1) {
-    const lead = s.slice(0, dot)
-    const trail = s.slice(dot + 1)
-    digits = `${lead}${trail}`
-    scale = trail.length
-  } else {
-    digits = s
-    scale = 0
-  }
-
-  if (digits === "") {
-    // TODO: This mimics the BigInt constructor behavior. Should this be `Option.none()`?
-    return Option.some(zero)
-  }
-
-  if (!/^(?:\+|-)?\d+$/.test(digits)) {
-    return Option.none()
-  }
-
-  return Option.some(scaled(BigInt(digits), scale))
-}
-
-/**
  * Normalizes a given `BigDecimal` by removing trailing zeros.
  *
  * @param self - The `BigDecimal` to normalize.
  *
  * @example
- * import { normalize, make } from 'effect/BigDecimal'
+ * import { normalize, make, scaled } from 'effect/BigDecimal'
  *
- * assert.deepStrictEqual(normalize(make(123.456)), make(123.456))
- * assert.deepStrictEqual(normalize(make(123.456000)), make(123.456))
- * assert.deepStrictEqual(normalize(make(123.000456)), make(123.000456))
- * assert.deepStrictEqual(normalize(make(123.000000)), make(123))
+ * assert.deepStrictEqual(normalize(scaled(12300000n, 5)), scaled(123n, 0))
+ * assert.deepStrictEqual(normalize(make(12300000)), scaled(123n, -5))
  *
  * @since 2.0.0
  * @category constructors
  */
 export const normalize = (self: BigDecimal): BigDecimal => {
-  if (self.value === bigint0) {
-    return zero
+  if (self.normalized !== undefined) {
+    return self.normalized
   }
 
-  const digits = `${self.value}`.split("")
+  if (self.value === bigint0) {
+    self.normalized = zero
+  } else {
+    const digits = `${self.value}`.split("")
 
-  let trail = 0
-  for (let i = digits.length - 1; i >= 0; i--) {
-    if (digits[i] === "0") {
-      trail++
+    let trail = 0
+    for (let i = digits.length - 1; i >= 0; i--) {
+      if (digits[i] === "0") {
+        trail++
+      } else {
+        break
+      }
+    }
+
+    if (trail === 0) {
+      self.normalized = self
     } else {
-      break
+      digits.splice(digits.length - trail)
+      const value = BigInt(digits.join(""))
+      const scale = self.scale - trail
+      self.normalized = scaled(value, scale)
     }
   }
 
-  if (trail === 0) {
-    return self
-  }
-
-  digits.splice(digits.length - trail)
-  const value = BigInt(digits.join(""))
-  const scale = self.scale - trail
-
-  return scaled(value, scale)
+  return self.normalized
 }
 
 /**
@@ -642,7 +604,7 @@ export const negate = (n: BigDecimal): BigDecimal => scaled(-n.value, n.scale)
  * @param divisor - The divisor.
  *
  * @example
- * import { remainder, make } from 'effect/BigDecimal'as
+ * import { remainder, make } from 'effect/BigDecimal'
  * import { some, none } from 'effect/Option'
  *
  * assert.deepStrictEqual(remainder(make(2), make(2)), some(make(0)))
@@ -722,6 +684,49 @@ export const equals: {
 } = dual(2, (self: BigDecimal, that: BigDecimal): boolean => Equivalence(self, that))
 
 /**
+ * Parses a numerical `string` into a `BigDecimal`.
+ *
+ * @param s - The `string` to parse.
+ *
+ * @example
+ * import { fromString, make } from 'effect/BigDecimal'
+ * import { some, none } from 'effect/Option'
+ *
+ * assert.deepStrictEqual(fromString('123'), some(make(123n)))
+ * assert.deepStrictEqual(fromString('123.456'), some(make(123.456)))
+ * assert.deepStrictEqual(fromString('123.abc'), none())
+ *
+ * @since 2.0.0
+ * @category conversions
+ */
+export const fromString = (s: string): Option.Option<BigDecimal> => {
+  let digits: string
+  let scale: number
+
+  const dot = s.search(/\./)
+  if (dot !== -1) {
+    const lead = s.slice(0, dot)
+    const trail = s.slice(dot + 1)
+    digits = `${lead}${trail}`
+    scale = trail.length
+  } else {
+    digits = s
+    scale = 0
+  }
+
+  if (digits === "") {
+    // TODO: This mimics the BigInt constructor behavior. Should this be `Option.none()`?
+    return Option.some(zero)
+  }
+
+  if (!/^(?:\+|-)?\d+$/.test(digits)) {
+    return Option.none()
+  }
+
+  return Option.some(scaled(BigInt(digits), scale))
+}
+
+/**
  * Formats a given `BigDecimal` as a `string`.
  *
  * @param n - The `BigDecimal` to format.
@@ -770,9 +775,9 @@ export const toString = (n: BigDecimal): string => {
  * @param n - The `BigDecimal` to convert.
  *
  * @example
- * import { toNumber, make } from 'effect/BigDecimal'
+ * import { unsafeToNumber, make } from 'effect/BigDecimal'
  *
- * assert.deepStrictEqual(toNumber(make(123.456)), 123.456)
+ * assert.deepStrictEqual(unsafeToNumber(make(123.456)), 123.456)
  *
  * @since 2.0.0
  * @category conversions

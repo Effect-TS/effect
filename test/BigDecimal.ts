@@ -174,6 +174,10 @@ describe.concurrent("BigDecimal", () => {
     deepStrictEqual(BD.normalize(fromString("123.000")), BD.make(123))
     deepStrictEqual(BD.normalize(fromString("-0.000123000")), BD.make(-0.000123))
     deepStrictEqual(BD.normalize(fromString("-123.000")), BD.make(-123))
+    deepStrictEqual(BD.normalize(BD.make(12300000)), BD.scaled(123n, -5))
+
+    const raw = BD.make(12300000)
+    deepStrictEqual(BD.normalize(raw) === BD.normalize(raw), true) // should be cached
   })
 
   it("fromString", () => {

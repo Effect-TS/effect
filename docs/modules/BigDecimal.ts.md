@@ -15,14 +15,15 @@ Added in v2.0.0
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [constructor](#constructor)
-  - [format](#format)
 - [constructors](#constructors)
   - [make](#make)
   - [normalize](#normalize)
-  - [parse](#parse)
   - [scale](#scale)
   - [scaled](#scaled)
+- [conversions](#conversions)
+  - [fromString](#fromstring)
+  - [toString](#tostring)
+  - [unsafeToNumber](#unsafetonumber)
 - [guards](#guards)
   - [isBigDecimal](#isbigdecimal)
 - [instances](#instances)
@@ -41,6 +42,7 @@ Added in v2.0.0
   - [subtract](#subtract)
   - [sum](#sum)
   - [unsafeDivide](#unsafedivide)
+  - [unsafeRemainder](#unsaferemainder)
 - [models](#models)
   - [BigDecimal (interface)](#bigdecimal-interface)
 - [predicates](#predicates)
@@ -52,32 +54,10 @@ Added in v2.0.0
   - [lessThanOrEqualTo](#lessthanorequalto)
 - [symbol](#symbol)
   - [TypeId (type alias)](#typeid-type-alias)
+- [symbols](#symbols)
+  - [TypeId](#typeid)
 
 ---
-
-# constructor
-
-## format
-
-Formats a given `BigDecimal` as a `string`.
-
-**Signature**
-
-```ts
-export declare const format: (n: BigDecimal) => string
-```
-
-**Example**
-
-```ts
-import { format, make } from 'effect/BigDecimal'
-
-assert.deepStrictEqual(format(make(-5n)), '-5')
-assert.deepStrictEqual(format(make(123.456)), '123.456')
-assert.deepStrictEqual(format(make(-0.00000123)), '-0.00000123')
-```
-
-Added in v2.0.0
 
 # constructors
 
@@ -106,35 +86,10 @@ export declare const normalize: (self: BigDecimal) => BigDecimal
 **Example**
 
 ```ts
-import { normalize, make } from 'effect/BigDecimal'
+import { normalize, make, scaled } from 'effect/BigDecimal'
 
-assert.deepStrictEqual(normalize(make(123.456)), make(123.456))
-assert.deepStrictEqual(normalize(make(123.456)), make(123.456))
-assert.deepStrictEqual(normalize(make(123.000456)), make(123.000456))
-assert.deepStrictEqual(normalize(make(123.0)), make(123))
-```
-
-Added in v2.0.0
-
-## parse
-
-Parses a numerical `string` into a `BigDecimal`.
-
-**Signature**
-
-```ts
-export declare const parse: (s: string) => Option.Option<BigDecimal>
-```
-
-**Example**
-
-```ts
-import { parse, make } from 'effect/BigDecimal'
-import { some, none } from 'effect/Option'
-
-assert.deepStrictEqual(parse('123'), some(make(123n)))
-assert.deepStrictEqual(parse('123.456'), some(make(123.456)))
-assert.deepStrictEqual(parse('123.abc'), none())
+assert.deepStrictEqual(normalize(scaled(12300000n, 5)), scaled(123n, 0))
+assert.deepStrictEqual(normalize(make(12300000)), scaled(123n, -5))
 ```
 
 Added in v2.0.0
@@ -162,6 +117,75 @@ Creates a `BigDecimal` from a `bigint` value and a scale.
 
 ```ts
 export declare const scaled: (value: bigint, scale: number) => BigDecimal
+```
+
+Added in v2.0.0
+
+# conversions
+
+## fromString
+
+Parses a numerical `string` into a `BigDecimal`.
+
+**Signature**
+
+```ts
+export declare const fromString: (s: string) => Option.Option<BigDecimal>
+```
+
+**Example**
+
+```ts
+import { fromString, make } from 'effect/BigDecimal'
+import { some, none } from 'effect/Option'
+
+assert.deepStrictEqual(fromString('123'), some(make(123n)))
+assert.deepStrictEqual(fromString('123.456'), some(make(123.456)))
+assert.deepStrictEqual(fromString('123.abc'), none())
+```
+
+Added in v2.0.0
+
+## toString
+
+Formats a given `BigDecimal` as a `string`.
+
+**Signature**
+
+```ts
+export declare const toString: (n: BigDecimal) => string
+```
+
+**Example**
+
+```ts
+import { toString, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(toString(make(-5n)), '-5')
+assert.deepStrictEqual(toString(make(123.456)), '123.456')
+assert.deepStrictEqual(toString(make(-0.00000123)), '-0.00000123')
+```
+
+Added in v2.0.0
+
+## unsafeToNumber
+
+Converts a `BigDecimal` to a `number`.
+
+This function will produce incorrect results if the `BigDecimal` exceeds the 64-bit range of a `number`.
+
+**Signature**
+
+```ts
+export declare const unsafeToNumber: (n: BigDecimal) => number
+```
+
+**Example**
+
+```ts
+import { unsafeToNumber, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(unsafeToNumber(make(123.456)), 123.456)
 ```
 
 Added in v2.0.0
@@ -380,14 +404,14 @@ Added in v2.0.0
 
 Returns the remainder left over when one operand is divided by a second operand.
 
-It always takes the sign of the dividend.
+If the divisor is `0`, the result will be `None`.
 
 **Signature**
 
 ```ts
 export declare const remainder: {
-  (divisor: BigDecimal): (self: BigDecimal) => BigDecimal
-  (self: BigDecimal, divisor: BigDecimal): BigDecimal
+  (divisor: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
+  (self: BigDecimal, divisor: BigDecimal): Option.Option<BigDecimal>
 }
 ```
 
@@ -395,10 +419,11 @@ export declare const remainder: {
 
 ```ts
 import { remainder, make } from 'effect/BigDecimal'
+import { some, none } from 'effect/Option'
 
-assert.deepStrictEqual(remainder(make(2), make(2)), make(0))
-assert.deepStrictEqual(remainder(make(3), make(2)), make(1))
-assert.deepStrictEqual(remainder(make(-4), make(2)), make(-0))
+assert.deepStrictEqual(remainder(make(2), make(2)), some(make(0)))
+assert.deepStrictEqual(remainder(make(3), make(2)), some(make(1)))
+assert.deepStrictEqual(remainder(make(-4), make(2)), some(make(0)))
 ```
 
 Added in v2.0.0
@@ -500,6 +525,33 @@ assert.deepStrictEqual(unsafeDivide(make(6n), make(4n)), make(1n))
 
 Added in v2.0.0
 
+## unsafeRemainder
+
+Returns the remainder left over when one operand is divided by a second operand.
+
+Throws a `RangeError` if the divisor is `0`.
+
+**Signature**
+
+```ts
+export declare const unsafeRemainder: {
+  (divisor: BigDecimal): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, divisor: BigDecimal): BigDecimal
+}
+```
+
+**Example**
+
+```ts
+import { unsafeRemainder, make } from 'effect/BigDecimal'
+
+assert.deepStrictEqual(unsafeRemainder(make(2), make(2)), make(0))
+assert.deepStrictEqual(unsafeRemainder(make(3), make(2)), make(1))
+assert.deepStrictEqual(unsafeRemainder(make(-4), make(2)), make(0))
+```
+
+Added in v2.0.0
+
 # models
 
 ## BigDecimal (interface)
@@ -511,6 +563,8 @@ export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number
+  /** @internal */
+  normalized?: BigDecimal | undefined
 }
 ```
 
@@ -666,6 +720,18 @@ Added in v2.0.0
 
 ```ts
 export type TypeId = typeof TypeId
+```
+
+Added in v2.0.0
+
+# symbols
+
+## TypeId
+
+**Signature**
+
+```ts
+export declare const TypeId: typeof TypeId
 ```
 
 Added in v2.0.0
