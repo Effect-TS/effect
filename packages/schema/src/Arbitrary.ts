@@ -127,22 +127,34 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       }
     }
     case "Tuple": {
-      const elements = ast.elements.map((e) => go(e.type))
+      const elements: Array<Arbitrary<any>> = []
+      let hasOptionals = false
+      for (const element of ast.elements) {
+        elements.push(go(element.type))
+        if (element.isOptional) {
+          hasOptionals = true
+        }
+      }
       const rest = pipe(ast.rest, Option.map(ReadonlyArray.mapNonEmpty((e) => go(e))))
       return (fc) => {
         // ---------------------------------------------
         // handle elements
         // ---------------------------------------------
         let output = fc.tuple(...elements.map((arb) => arb(fc)))
-        if (elements.length > 0 && Option.isNone(rest)) {
-          const firstOptionalIndex = ast.elements.findIndex((e) => e.isOptional)
-          if (firstOptionalIndex !== -1) {
-            output = output.chain((as) =>
-              fc.integer({ min: firstOptionalIndex, max: elements.length - 1 }).map((i) =>
-                as.slice(0, i)
-              )
-            )
-          }
+        if (hasOptionals) {
+          const indexes = fc.tuple(
+            ...ast.elements.map((element) => element.isOptional ? fc.boolean() : fc.constant(true))
+          )
+          output = output.chain((tuple) =>
+            indexes.map((booleans) => {
+              for (const [i, b] of booleans.reverse().entries()) {
+                if (!b) {
+                  tuple.splice(booleans.length - i, 1)
+                }
+              }
+              return tuple
+            })
+          )
         }
 
         // ---------------------------------------------

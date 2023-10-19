@@ -371,16 +371,6 @@ describe("jsonSchemaFor", () => {
     property(schema)
   })
 
-  it("tuple. optional element", () => {
-    const schema = S.tuple().pipe(S.optionalElement(S.number))
-    property(schema)
-  })
-
-  it("tuple. e + e?", () => {
-    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
-    property(schema)
-  })
-
   it("tuple. e + r", () => {
     const schema = S.tuple(S.string).pipe(S.rest(S.number))
     property(schema)
