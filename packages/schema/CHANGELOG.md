@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.45.3
+
+### Patch Changes
+
+- [#500](https://github.com/Effect-TS/schema/pull/500) [`e9ff876`](https://github.com/Effect-TS/schema/commit/e9ff876930e4daa1aebb58ab6aaef1a45feaedca) Thanks [@gcanti](https://github.com/gcanti)! - Arbitrary: remove NaN while generating numeric template literals
+
 ## 0.45.2
 
 ### Patch Changes
