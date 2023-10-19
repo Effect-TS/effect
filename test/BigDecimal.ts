@@ -3,7 +3,7 @@ import * as BD from "effect/BigDecimal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 
-const parse = (s: string) => pipe(BD.parse(s), Option.getOrThrow)
+const fromString = (s: string) => pipe(BD.fromString(s), Option.getOrThrow)
 
 describe.concurrent("BigDecimal", () => {
   it("sign", () => {
@@ -22,7 +22,7 @@ describe.concurrent("BigDecimal", () => {
     deepStrictEqual(BD.equals(BD.make(1n), BD.make(1)), true)
     deepStrictEqual(BD.equals(BD.make(1n), BD.make(2n)), false)
     deepStrictEqual(BD.equals(BD.make(1n), BD.make(1.1)), false)
-    deepStrictEqual(BD.equals(parse("0.00012300"), BD.scaled(12300n, 8)), true)
+    deepStrictEqual(BD.equals(fromString("0.00012300"), BD.scaled(12300n, 8)), true)
     deepStrictEqual(BD.equals(BD.make(5n), BD.scaled(500n, 2)), true)
     deepStrictEqual(BD.equals(BD.scaled(50000n, 4), BD.scaled(500n, 2)), true)
     deepStrictEqual(BD.equals(BD.scaled(50000n, 4), BD.scaled(500n, 3)), false)
@@ -72,7 +72,7 @@ describe.concurrent("BigDecimal", () => {
     deepStrictEqual(BD.Equivalence(BD.make(1n), BD.make(1n)), true)
     deepStrictEqual(BD.Equivalence(BD.make(1n), BD.make(2n)), false)
     deepStrictEqual(BD.Equivalence(BD.make(1n), BD.make(1.1)), false)
-    deepStrictEqual(BD.Equivalence(parse("0.00012300"), BD.scaled(12300n, 8)), true)
+    deepStrictEqual(BD.Equivalence(fromString("0.00012300"), BD.scaled(12300n, 8)), true)
     deepStrictEqual(BD.Equivalence(BD.make(5n), BD.scaled(500n, 2)), true)
   })
 
@@ -82,7 +82,7 @@ describe.concurrent("BigDecimal", () => {
     deepStrictEqual(BD.Order(BD.make(2n), BD.make(2n)), 0)
     deepStrictEqual(BD.Order(BD.make(1n), BD.make(1.1)), -1)
     deepStrictEqual(BD.Order(BD.make(1.1), BD.make(1n)), 1)
-    deepStrictEqual(BD.Order(parse("0.00012300"), BD.scaled(12300n, 8)), 0)
+    deepStrictEqual(BD.Order(fromString("0.00012300"), BD.scaled(12300n, 8)), 0)
     deepStrictEqual(BD.Order(BD.make(5n), BD.scaled(500n, 2)), 0)
     deepStrictEqual(BD.Order(BD.make(5n), BD.scaled(500n, 3)), 1)
     deepStrictEqual(BD.Order(BD.make(5n), BD.scaled(500n, 1)), -1)
@@ -170,35 +170,35 @@ describe.concurrent("BigDecimal", () => {
   })
 
   it("normalize", () => {
-    deepStrictEqual(BD.normalize(parse("0.123000")), BD.make(0.123))
-    deepStrictEqual(BD.normalize(parse("123.000")), BD.make(123))
-    deepStrictEqual(BD.normalize(parse("-0.000123000")), BD.make(-0.000123))
-    deepStrictEqual(BD.normalize(parse("-123.000")), BD.make(-123))
+    deepStrictEqual(BD.normalize(fromString("0.123000")), BD.make(0.123))
+    deepStrictEqual(BD.normalize(fromString("123.000")), BD.make(123))
+    deepStrictEqual(BD.normalize(fromString("-0.000123000")), BD.make(-0.000123))
+    deepStrictEqual(BD.normalize(fromString("-123.000")), BD.make(-123))
   })
 
-  it("parse", () => {
-    deepStrictEqual(BD.parse("2"), Option.some(BD.make(2n)))
-    deepStrictEqual(BD.parse("-2"), Option.some(BD.make(-2n)))
-    deepStrictEqual(BD.parse("0.123"), Option.some(BD.make(0.123)))
-    deepStrictEqual(BD.parse("200"), Option.some(BD.make(200n)))
-    deepStrictEqual(BD.parse("20000000"), Option.some(BD.make(20000000n)))
-    deepStrictEqual(BD.parse("-20000000"), Option.some(BD.make(-20000000n)))
-    deepStrictEqual(BD.parse("2.00"), Option.some(BD.scaled(200n, 2)))
-    deepStrictEqual(BD.parse("0.0000200"), Option.some(BD.scaled(200n, 7)))
-    deepStrictEqual(BD.parse(""), Option.some(BD.make(0n)))
-    deepStrictEqual(BD.parse("1E5"), Option.none())
+  it("fromString", () => {
+    deepStrictEqual(BD.fromString("2"), Option.some(BD.make(2n)))
+    deepStrictEqual(BD.fromString("-2"), Option.some(BD.make(-2n)))
+    deepStrictEqual(BD.fromString("0.123"), Option.some(BD.make(0.123)))
+    deepStrictEqual(BD.fromString("200"), Option.some(BD.make(200n)))
+    deepStrictEqual(BD.fromString("20000000"), Option.some(BD.make(20000000n)))
+    deepStrictEqual(BD.fromString("-20000000"), Option.some(BD.make(-20000000n)))
+    deepStrictEqual(BD.fromString("2.00"), Option.some(BD.scaled(200n, 2)))
+    deepStrictEqual(BD.fromString("0.0000200"), Option.some(BD.scaled(200n, 7)))
+    deepStrictEqual(BD.fromString(""), Option.some(BD.make(0n)))
+    deepStrictEqual(BD.fromString("1E5"), Option.none())
   })
 
-  it("format", () => {
-    deepStrictEqual(BD.format(BD.make(2n)), "2")
-    deepStrictEqual(BD.format(BD.make(-2n)), "-2")
-    deepStrictEqual(BD.format(BD.make(0.123)), "0.123")
-    deepStrictEqual(BD.format(BD.make(200n)), "200")
-    deepStrictEqual(BD.format(BD.scaled(200n, -5)), "20000000")
-    deepStrictEqual(BD.format(BD.scaled(-200n, -5)), "-20000000")
-    deepStrictEqual(BD.format(BD.scaled(200n, 2)), "2.00")
-    deepStrictEqual(BD.format(BD.scaled(200n, 3)), "0.200")
-    deepStrictEqual(BD.format(parse("0.123000")), "0.123000")
-    deepStrictEqual(BD.format(parse("-456.123")), "-456.123")
+  it("toString", () => {
+    deepStrictEqual(BD.toString(BD.make(2n)), "2")
+    deepStrictEqual(BD.toString(BD.make(-2n)), "-2")
+    deepStrictEqual(BD.toString(BD.make(0.123)), "0.123")
+    deepStrictEqual(BD.toString(BD.make(200n)), "200")
+    deepStrictEqual(BD.toString(BD.scaled(200n, -5)), "20000000")
+    deepStrictEqual(BD.toString(BD.scaled(-200n, -5)), "-20000000")
+    deepStrictEqual(BD.toString(BD.scaled(200n, 2)), "2.00")
+    deepStrictEqual(BD.toString(BD.scaled(200n, 3)), "0.200")
+    deepStrictEqual(BD.toString(fromString("0.123000")), "0.123000")
+    deepStrictEqual(BD.toString(fromString("-456.123")), "-456.123")
   })
 })

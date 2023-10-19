@@ -10,13 +10,17 @@ import * as Equal from "./Equal"
 import * as equivalence from "./Equivalence"
 import { dual, pipe } from "./Function"
 import * as Hash from "./Hash"
-import { type Inspectable, NodeInspectSymbol, toString } from "./Inspectable"
+import { type Inspectable, NodeInspectSymbol } from "./Inspectable"
 import * as Option from "./Option"
 import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import { type Pipeable, pipeArguments } from "./Pipeable"
 
-const TypeId: unique symbol = Symbol.for("effect/BigDecimal")
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const TypeId: unique symbol = Symbol.for("effect/BigDecimal")
 
 /**
  * @since 2.0.0
@@ -47,10 +51,10 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale"> = {
     return isBigDecimal(that) && equals(this, that)
   },
   toString(this: BigDecimal) {
-    return toString(this.toJSON())
+    return toString(this)
   },
   toJSON(this: BigDecimal) {
-    return { _id: "BigDecimal", value: this.value, scale: this.scale }
+    return toString(this)
   },
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -113,17 +117,17 @@ const zero = make(bigint0)
  * @param s - The `string` to parse.
  *
  * @example
- * import { parse, make } from 'effect/BigDecimal'
+ * import { fromString, make } from 'effect/BigDecimal'
  * import { some, none } from 'effect/Option'
  *
- * assert.deepStrictEqual(parse('123'), some(make(123n)))
- * assert.deepStrictEqual(parse('123.456'), some(make(123.456)))
- * assert.deepStrictEqual(parse('123.abc'), none())
+ * assert.deepStrictEqual(fromString('123'), some(make(123n)))
+ * assert.deepStrictEqual(fromString('123.456'), some(make(123.456)))
+ * assert.deepStrictEqual(fromString('123.abc'), none())
  *
  * @since 2.0.0
  * @category constructors
  */
-export const parse = (s: string): Option.Option<BigDecimal> => {
+export const fromString = (s: string): Option.Option<BigDecimal> => {
   let digits: string
   let scale: number
 
@@ -723,16 +727,16 @@ export const equals: {
  * @param n - The `BigDecimal` to format.
  *
  * @example
- * import { format, make } from 'effect/BigDecimal'
+ * import { toString, make } from 'effect/BigDecimal'
  *
- * assert.deepStrictEqual(format(make(-5n)), '-5')
- * assert.deepStrictEqual(format(make(123.456)), '123.456')
- * assert.deepStrictEqual(format(make(-0.00000123)), '-0.00000123')
+ * assert.deepStrictEqual(toString(make(-5n)), '-5')
+ * assert.deepStrictEqual(toString(make(123.456)), '123.456')
+ * assert.deepStrictEqual(toString(make(-0.00000123)), '-0.00000123')
  *
  * @since 2.0.0
- * @category constructor
+ * @category conversions
  */
-export const format = (n: BigDecimal): string => {
+export const toString = (n: BigDecimal): string => {
   const absolute = `${BigI.abs(n.value)}`
   const sign = BigI.sign(n.value) === -1 ? "-" : ""
 
@@ -757,3 +761,20 @@ export const format = (n: BigDecimal): string => {
   const complete = after === "" ? before : `${before}.${after}`
   return `${sign}${complete}`
 }
+
+/**
+ * Converts a `BigDecimal` to a `number`.
+ *
+ * This function will produce incorrect results if the `BigDecimal` exceeds the 64-bit range of a `number`.
+ *
+ * @param n - The `BigDecimal` to convert.
+ *
+ * @example
+ * import { toNumber, make } from 'effect/BigDecimal'
+ *
+ * assert.deepStrictEqual(toNumber(make(123.456)), 123.456)
+ *
+ * @since 2.0.0
+ * @category conversions
+ */
+export const unsafeToNumber = (n: BigDecimal): number => Number(toString(n))
