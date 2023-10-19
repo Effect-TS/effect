@@ -14,7 +14,6 @@
  * @since 2.0.0
  */
 
-import * as BigI from "./BigInt"
 import * as Equal from "./Equal"
 import * as equivalence from "./Equivalence"
 import { dual, pipe } from "./Function"
@@ -452,7 +451,7 @@ export const unsafeDivide: {
  * @category instances
  */
 export const Order: order.Order<BigDecimal> = order.make((self, that) => {
-  const scmp = order.number(BigI.sign(self.value), BigI.sign(that.value))
+  const scmp = order.number(sign(self), sign(that))
   if (scmp !== 0) {
     return scmp
   }
@@ -653,7 +652,7 @@ export const max: {
  * @since 2.0.0
  * @category math
  */
-export const sign = (n: BigDecimal): Ordering => BigI.sign(n.value)
+export const sign = (n: BigDecimal): Ordering => n.value === bigint0 ? 0 : n.value < bigint0 ? -1 : 1
 
 /**
  * Determines the absolute value of a given `BigDecimal`.
@@ -670,7 +669,7 @@ export const sign = (n: BigDecimal): Ordering => BigI.sign(n.value)
  * @since 2.0.0
  * @category math
  */
-export const abs = (n: BigDecimal): BigDecimal => scaled(BigI.abs(n.value), n.scale)
+export const abs = (n: BigDecimal): BigDecimal => n.value < bigint0 ? scaled(-n.value, n.scale) : n
 
 /**
  * Provides a negate operation on `BigDecimal`s.
