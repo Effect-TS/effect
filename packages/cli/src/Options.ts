@@ -133,7 +133,7 @@ export const boolean: (name: string, options?: Options.BooleanOptionConfig) => O
  * inputs. The input will be mapped to it's associated value during parsing.
  *
  * @example
- * import * as Options from "./Options"
+ * import * as Options from "@effect/cli/Options"
  *
  * export const animal: Options.Options<"dog" | "cat"> = Options.choice(
  *   "animal",
@@ -153,7 +153,7 @@ export const choice: <A extends string, C extends NonEmptyReadonlyArray<A>>(
  * inputs. The input will be mapped to it's associated value during parsing.
  *
  * @example
- * import * as Options from "./Options"
+ * import * as Options from "@effect/cli/Options"
  * import * as Data from "effect/Data"
  *
  * export type Animal = Dog | Cat
