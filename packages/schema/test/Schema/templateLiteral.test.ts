@@ -104,8 +104,22 @@ describe("Schema/templateLiteral", () => {
 
     it("a${number}", async () => {
       const schema = S.templateLiteral(S.literal("a"), S.number)
-      await Util.expectParseSuccess(schema, "a1", "a1")
-      await Util.expectParseSuccess(schema, "a1.2", "a1.2")
+      await Util.expectParseSuccess(schema, "a1")
+      await Util.expectParseSuccess(schema, "a1.2")
+
+      await Util.expectParseSuccess(schema, "a-1.401298464324817e-45")
+      await Util.expectParseSuccess(schema, "a1.401298464324817e-45")
+      await Util.expectParseSuccess(schema, "a+1.401298464324817e-45")
+      await Util.expectParseSuccess(schema, "a-1.401298464324817e+45")
+      await Util.expectParseSuccess(schema, "a1.401298464324817e+45")
+      await Util.expectParseSuccess(schema, "a+1.401298464324817e+45")
+
+      await Util.expectParseSuccess(schema, "a-1.401298464324817E-45")
+      await Util.expectParseSuccess(schema, "a1.401298464324817E-45")
+      await Util.expectParseSuccess(schema, "a+1.401298464324817E-45")
+      await Util.expectParseSuccess(schema, "a-1.401298464324817E+45")
+      await Util.expectParseSuccess(schema, "a1.401298464324817E+45")
+      await Util.expectParseSuccess(schema, "a+1.401298464324817E+45")
 
       await Util.expectParseFailure(
         schema,

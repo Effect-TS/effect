@@ -118,9 +118,13 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       return (fc) => fc.oneof(fc.object(), fc.array(fc.anything()))
     case "TemplateLiteral": {
       return (fc) => {
-        const components = [fc.constant(ast.head)]
+        const components: Array<FastCheck.Arbitrary<string | number>> = [fc.constant(ast.head)]
         for (const span of ast.spans) {
-          components.push(fc.string({ maxLength: 5 }))
+          if (AST.isStringKeyword(span.type)) {
+            components.push(fc.string({ maxLength: 5 }))
+          } else {
+            components.push(fc.float({ noDefaultInfinity: true }))
+          }
           components.push(fc.constant(span.literal))
         }
         return fc.tuple(...components).map((spans) => spans.join(""))

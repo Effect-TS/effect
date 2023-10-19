@@ -63,6 +63,11 @@ describe("Arbitrary/Arbitrary", () => {
     propertyTo(schema)
   })
 
+  it("templateLiteral. a${number}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.number)
+    propertyTo(schema)
+  })
+
   it("templateLiteral. a", () => {
     const schema = S.templateLiteral(S.literal("a"))
     propertyTo(schema)
