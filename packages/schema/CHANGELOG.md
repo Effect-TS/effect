@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.45.4
+
+### Patch Changes
+
+- [#493](https://github.com/Effect-TS/schema/pull/493) [`b8410b7`](https://github.com/Effect-TS/schema/commit/b8410b7fefa0644e42554aa9f2144ac7718a95e4) Thanks [@gcanti](https://github.com/gcanti)! - expose JSON Schema compiler
+
 ## 0.45.3
 
 ### Patch Changes
