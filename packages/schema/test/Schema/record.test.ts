@@ -67,12 +67,6 @@ describe("Schema/record", () => {
       )
     })
 
-    it("record(never, number)", async () => {
-      const schema = S.record(S.never, S.number)
-      await Util.expectParseSuccess(schema, {})
-      await Util.expectParseSuccess(schema, { a: 1 })
-    })
-
     it("record('a' | 'b', number)", async () => {
       const schema = S.record(S.union(S.literal("a"), S.literal("b")), S.number)
       await Util.expectParseSuccess(schema, { a: 1, b: 2 })

@@ -113,6 +113,7 @@
     "AST",
     "Arbitrary",
     "ArrayFormatter",
+    "JSONSchema",
     "ParseResult",
     "Parser",
     "Pretty",
@@ -144,6 +145,12 @@
       "module": "./ArrayFormatter/dist/effect-schema-ArrayFormatter.esm.js",
       "import": "./ArrayFormatter/dist/effect-schema-ArrayFormatter.cjs.mjs",
       "default": "./ArrayFormatter/dist/effect-schema-ArrayFormatter.cjs.js"
+    },
+    "./JSONSchema": {
+      "types": "./dist/declarations/src/JSONSchema.d.ts",
+      "module": "./JSONSchema/dist/effect-schema-JSONSchema.esm.js",
+      "import": "./JSONSchema/dist/effect-schema-JSONSchema.cjs.mjs",
+      "default": "./JSONSchema/dist/effect-schema-JSONSchema.cjs.js"
     },
     "./ParseResult": {
       "types": "./dist/declarations/src/ParseResult.d.ts",

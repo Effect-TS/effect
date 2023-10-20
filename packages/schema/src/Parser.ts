@@ -1056,7 +1056,8 @@ const mutableAppend = <A>(self: Array<A>, a: A): ReadonlyArray.NonEmptyReadonlyA
   return self as any
 }
 
-const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
+/** @internal */
+export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
   let pattern = `^${ast.head}`
   for (const span of ast.spans) {
     if (AST.isStringKeyword(span.type)) {

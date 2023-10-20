@@ -71,26 +71,10 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
-const getMessageAnnotation = AST.getAnnotation<AST.MessageAnnotation<unknown>>(
-  AST.MessageAnnotationId
-)
-
-const getTitleAnnotation = AST.getAnnotation<AST.TitleAnnotation>(
-  AST.TitleAnnotationId
-)
-
-const getIdentifierAnnotation = AST.getAnnotation<AST.IdentifierAnnotation>(
-  AST.IdentifierAnnotationId
-)
-
-const getDescriptionAnnotation = AST.getAnnotation<AST.DescriptionAnnotation>(
-  AST.DescriptionAnnotationId
-)
-
 const getExpected = (ast: AST.AST): Option.Option<string> =>
-  getIdentifierAnnotation(ast).pipe(
-    Option.orElse(() => getTitleAnnotation(ast)),
-    Option.orElse(() => getDescriptionAnnotation(ast))
+  AST.getIdentifierAnnotation(ast).pipe(
+    Option.orElse(() => AST.getTitleAnnotation(ast)),
+    Option.orElse(() => AST.getDescriptionAnnotation(ast))
   )
 
 /** @internal */
@@ -144,7 +128,7 @@ const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseEr
 
 /** @internal */
 export const getMessage = (e: Type) =>
-  getMessageAnnotation(e.expected).pipe(
+  AST.getMessageAnnotation(e.expected).pipe(
     Option.map((annotation) => annotation(e.actual)),
     Option.orElse(() => e.message),
     Option.getOrElse(() =>

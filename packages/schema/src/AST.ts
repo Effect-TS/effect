@@ -148,6 +148,54 @@ export const getAnnotation = <A>(key: symbol) => (annotated: Annotated): Option.
     Option.some(annotated.annotations[key] as any) :
     Option.none()
 
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getMessageAnnotation = getAnnotation<MessageAnnotation<unknown>>(
+  MessageAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getTitleAnnotation = getAnnotation<TitleAnnotation>(
+  TitleAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getIdentifierAnnotation = getAnnotation<IdentifierAnnotation>(
+  IdentifierAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getDescriptionAnnotation = getAnnotation<DescriptionAnnotation>(
+  DescriptionAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getExamplesAnnotation = getAnnotation<ExamplesAnnotation>(
+  ExamplesAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getJSONSchemaAnnotation = getAnnotation<JSONSchemaAnnotation>(
+  JSONSchemaAnnotationId
+)
+
 // -------------------------------------------------------------------------------------
 // model
 // -------------------------------------------------------------------------------------

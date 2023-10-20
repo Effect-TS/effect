@@ -2016,7 +2016,8 @@ export const int =
     self.pipe(
       filter((a): a is A => Number.isSafeInteger(a), {
         typeId: IntTypeId,
-        description: "integer",
+        title: "integer",
+        description: "an integer",
         jsonSchema: { type: "integer" },
         ...options
       })
@@ -2195,7 +2196,9 @@ export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schem
         return ParseResult.failure(ParseResult.type(ast, s))
       }
       const n = Number(s)
-      return isNaN(n) ? ParseResult.failure(ParseResult.type(ast, s)) : ParseResult.success(n)
+      return Number.isNaN(n)
+        ? ParseResult.failure(ParseResult.type(ast, s))
+        : ParseResult.success(n)
     },
     (n) => ParseResult.success(String(n)),
     { strict: false }
@@ -2285,10 +2288,11 @@ export const JsonNumberTypeId = Symbol.for("@effect/schema/TypeId/JsonNumber")
  * @since 1.0.0
  */
 export const JsonNumber: Schema<number> = number.pipe(
-  filter((n) => !isNaN(n) && isFinite(n), {
+  filter((n) => !Number.isNaN(n) && Number.isFinite(n), {
     typeId: JsonNumberTypeId,
     title: "JsonNumber",
-    description: "a JSON number"
+    description: "a JSON number",
+    jsonSchema: { type: "number" }
   })
 )
 
@@ -2931,7 +2935,7 @@ export const ValidDateTypeId = Symbol.for("@effect/schema/TypeId/ValidDate")
 export const validDate =
   (options?: FilterAnnotations<Date>) => <I>(self: Schema<I, Date>): Schema<I, Date> =>
     self.pipe(
-      filter((a) => !isNaN(a.getTime()), {
+      filter((a) => !Number.isNaN(a.getTime()), {
         typeId: ValidDateTypeId,
         description: "a valid Date",
         ...options

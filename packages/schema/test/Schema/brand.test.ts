@@ -25,6 +25,7 @@ describe("Schema/brand", () => {
       expect(Branded.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: ["A", "B"],
+        [AST.TitleAnnotationId]: "integer",
         [AST.DescriptionAnnotationId]: "a B brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
@@ -44,6 +45,7 @@ describe("Schema/brand", () => {
       expect(Branded.ast.annotations).toEqual({
         [AST.TypeAnnotationId]: S.IntTypeId,
         [AST.BrandAnnotationId]: [A, B],
+        [AST.TitleAnnotationId]: "integer",
         [AST.DescriptionAnnotationId]: "a B brand",
         [AST.JSONSchemaAnnotationId]: { type: "integer" }
       })
