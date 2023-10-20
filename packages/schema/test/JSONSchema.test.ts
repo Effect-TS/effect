@@ -622,7 +622,7 @@ describe("JSONSchema", () => {
     })
 
     it("record(${string}-${string}, number)", () => {
-      const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number)
+      const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.JsonNumber)
       const jsonSchema = JSONSchema.to(schema)
       expect(jsonSchema).toStrictEqual({
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -633,8 +633,8 @@ describe("JSONSchema", () => {
         "patternProperties": {
           "^.*-.*$": {
             "type": "number",
-            "description": "a number",
-            "title": "number"
+            "description": "a JSON number",
+            "title": "JsonNumber"
           }
         }
       })
@@ -810,7 +810,6 @@ describe("JSONSchema", () => {
     expect(validate("a12")).toEqual(true)
     expect(validate("a")).toEqual(false)
     expect(validate("aa")).toEqual(false)
-    propertyTo(schema)
   })
 
   describe("Lazy", () => {
@@ -897,7 +896,7 @@ describe("JSONSchema", () => {
       const Expression: S.Schema<Expression> = S.lazy(() =>
         S.struct({
           type: S.literal("expression"),
-          value: S.union(S.number, Operation)
+          value: S.union(S.JsonNumber, Operation)
         })
       ).pipe(S.identifier("Expression"))
 
@@ -967,8 +966,8 @@ describe("JSONSchema", () => {
                   },
                   {
                     "type": "number",
-                    "description": "a number",
-                    "title": "number"
+                    "description": "a JSON number",
+                    "title": "JsonNumber"
                   }
                 ]
               }
@@ -1030,7 +1029,7 @@ describe("JSONSchema", () => {
           title: "foo title",
           examples: ["foo example"]
         }),
-        bar: S.propertySignature(S.number, {
+        bar: S.propertySignature(S.JsonNumber, {
           description: "bar description",
           title: "bar title",
           examples: ["bar example"]
