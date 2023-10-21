@@ -12,6 +12,7 @@ dist/
 /src/tsconfig.json
 /dist
 /internal
+/BigDecimal
 /BigInt
 /Boolean
 /Brand
