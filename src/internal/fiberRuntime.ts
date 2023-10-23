@@ -17,6 +17,7 @@ import * as FiberRefsPatch from "../FiberRefsPatch"
 import * as FiberStatus from "../FiberStatus"
 import type { LazyArg } from "../Function"
 import { dual, identity, pipe } from "../Function"
+import { globalValue } from "../GlobalValue"
 import * as HashMap from "../HashMap"
 import * as HashSet from "../HashSet"
 import * as _RequestBlock from "../internal/blockedRequests"
@@ -1335,8 +1336,9 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
 // circular with Logger
 
 /** @internal */
-export const currentMinimumLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = core.fiberRefUnsafeMake<LogLevel.LogLevel>(
-  LogLevel.fromLiteral("Info")
+export const currentMinimumLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = globalValue(
+  "effect/FiberRef/currentMinimumLogLevel",
+  () => core.fiberRefUnsafeMake<LogLevel.LogLevel>(LogLevel.fromLiteral("Info"))
 )
 
 /** @internal */
@@ -1347,60 +1349,69 @@ export const getConsole = (refs: FiberRefs.FiberRefs) => {
 }
 
 /** @internal */
-export const defaultLogger: Logger<unknown, void> = internalLogger.makeLogger((options) => {
-  const formatted = internalLogger.stringLogger.log(options)
-  getConsole(options.context).log(formatted)
-})
+export const defaultLogger: Logger<unknown, void> = globalValue(
+  Symbol.for("effect/Logger/defaultLogger"),
+  () =>
+    internalLogger.makeLogger((options) => {
+      const formatted = internalLogger.stringLogger.log(options)
+      getConsole(options.context).log(formatted)
+    })
+)
 
 /** @internal */
-export const filterMinimumLogLevel: Logger<unknown, void> = internalLogger.makeLogger((options) => {
-  const formatted = internalLogger.stringLogger.log(options)
-  getConsole(options.context).log(formatted)
-})
+export const logFmtLogger: Logger<unknown, void> = globalValue(
+  Symbol.for("effect/Logger/logFmtLogger"),
+  () =>
+    internalLogger.makeLogger((options) => {
+      const formatted = internalLogger.logfmtLogger.log(options)
+      getConsole(options.context).log(formatted)
+    })
+)
 
 /** @internal */
-export const logFmtLogger: Logger<unknown, void> = internalLogger.makeLogger((options) => {
-  const formatted = internalLogger.logfmtLogger.log(options)
-  getConsole(options.context).log(formatted)
-})
+export const tracerLogger = globalValue(
+  Symbol.for("effect/Logger/tracerLogger"),
+  () =>
+    internalLogger.makeLogger<unknown, void>(({
+      annotations,
+      cause,
+      context,
+      fiberId,
+      logLevel,
+      message
+    }) => {
+      const span = Option.flatMap(fiberRefs.get(context, core.currentContext), Context.getOption(tracer.spanTag))
+      const clockService = Option.map(
+        fiberRefs.get(context, defaultServices.currentServices),
+        (_) => Context.get(_, clock.clockTag)
+      )
+      if (span._tag === "None" || span.value._tag === "ExternalSpan" || clockService._tag === "None") {
+        return
+      }
 
-/** @internal */
-export const tracerLogger = internalLogger.makeLogger<unknown, void>(({
-  annotations,
-  cause,
-  context,
-  fiberId,
-  logLevel,
-  message
-}) => {
-  const span = Option.flatMap(fiberRefs.get(context, core.currentContext), Context.getOption(tracer.spanTag))
-  const clockService = Option.map(
-    fiberRefs.get(context, defaultServices.currentServices),
-    (_) => Context.get(_, clock.clockTag)
-  )
-  if (span._tag === "None" || span.value._tag === "ExternalSpan" || clockService._tag === "None") {
-    return
-  }
+      const attributes = Object.fromEntries(HashMap.map(annotations, (value) => internalLogger.serializeUnknown(value)))
+      attributes["effect.fiberId"] = FiberId.threadName(fiberId)
+      attributes["effect.logLevel"] = logLevel.label
 
-  const attributes = Object.fromEntries(HashMap.map(annotations, (value) => internalLogger.serializeUnknown(value)))
-  attributes["effect.fiberId"] = FiberId.threadName(fiberId)
-  attributes["effect.logLevel"] = logLevel.label
+      if (cause !== null && cause._tag !== "Empty") {
+        attributes["effect.cause"] = internalCause.pretty(cause)
+      }
 
-  if (cause !== null && cause._tag !== "Empty") {
-    attributes["effect.cause"] = internalCause.pretty(cause)
-  }
-
-  span.value.event(
-    String(message),
-    clockService.value.unsafeCurrentTimeNanos(),
-    attributes
-  )
-})
+      span.value.event(
+        String(message),
+        clockService.value.unsafeCurrentTimeNanos(),
+        attributes
+      )
+    })
+)
 
 /** @internal */
 export const currentLoggers: FiberRef.FiberRef<
   HashSet.HashSet<Logger<unknown, any>>
-> = core.fiberRefUnsafeMakeHashSet(HashSet.make(defaultLogger, tracerLogger))
+> = globalValue(
+  Symbol.for("effect/FiberRef/currentLoggers"),
+  () => core.fiberRefUnsafeMakeHashSet(HashSet.make(defaultLogger, tracerLogger))
+)
 
 // circular with Effect
 
