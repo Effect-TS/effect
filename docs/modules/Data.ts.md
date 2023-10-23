@@ -86,7 +86,9 @@ Provides a constructor for a Case Class.
 
 ```ts
 export declare const Error: new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
 ) => YieldableError & Readonly<A>
 ```
 
@@ -150,7 +152,9 @@ Added in v2.0.0
 export declare const TaggedError: <Tag extends string>(
   tag: Tag
 ) => new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
 ) => YieldableError & { readonly _tag: Tag } & Readonly<A>
 ```
 

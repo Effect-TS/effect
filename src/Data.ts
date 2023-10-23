@@ -469,7 +469,8 @@ const YieldableErrorProto = {
  * @category constructors
  */
 export const Error: new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
 ) => YieldableError & Readonly<A> = (function() {
   function Base(this: any, args: any) {
     if (args) {
@@ -486,7 +487,8 @@ export const Error: new<A extends Record<string, any>>(
  * @category constructors
  */
 export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
 ) => YieldableError & { readonly _tag: Tag } & Readonly<A> => {
   class Base extends Error<{}> {
     readonly _tag = tag
