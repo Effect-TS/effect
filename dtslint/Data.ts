@@ -1,4 +1,57 @@
-import type * as Data from "effect/Data"
+import * as Data from "effect/Data"
+
+declare const readonlyStruct: { readonly a: string }
+declare const mutableStruct: { a: string }
+
+declare const readonlyArray: ReadonlyArray<string>
+declare const mutableArray: Array<string>
+
+// -------------------------------------------------------------------------------------
+// struct
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Data<{ readonly a: string; }>
+Data.struct(mutableStruct)
+// $ExpectType Data<{ readonly a: string; }>
+Data.struct(readonlyStruct)
+
+// -------------------------------------------------------------------------------------
+// unsafeStruct
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Data<{ readonly a: string; }>
+Data.unsafeStruct(mutableStruct)
+// $ExpectType Data<{ readonly a: string; }>
+Data.unsafeStruct(readonlyStruct)
+
+// -------------------------------------------------------------------------------------
+// tuple
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Data<readonly [string, number]>
+Data.tuple("a", 1)
+
+// -------------------------------------------------------------------------------------
+// array
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Data<readonly string[]>
+Data.array(mutableArray)
+// $ExpectType Data<readonly string[]>
+Data.array(readonlyArray)
+
+// -------------------------------------------------------------------------------------
+// unsafeArray
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Data<readonly string[]>
+Data.unsafeArray(mutableArray)
+// $ExpectType Data<readonly string[]>
+Data.unsafeArray(readonlyArray)
+
+// -------------------------------------------------------------------------------------
+// TaggedEnum
+// -------------------------------------------------------------------------------------
 
 type HttpError = Data.TaggedEnum<{
   BadRequest: { status: 400; a: string }

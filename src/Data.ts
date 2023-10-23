@@ -14,8 +14,8 @@ import type * as Types from "./Types"
  * @category models
  * @since 2.0.0
  */
-export type Data<A extends Readonly<Record<string, any>> | ReadonlyArray<any>> =
-  & Readonly<A>
+export type Data<A extends Record<string, any> | ReadonlyArray<any>> =
+  & { readonly [P in keyof A]: A[P] }
   & Equal.Equal
 
 /**
@@ -45,32 +45,33 @@ export declare namespace Case {
  * @category constructors
  * @since 2.0.0
  */
-export const struct: <As extends Readonly<Record<string, any>>>(as: As) => Data<As> = internal.struct
+export const struct: <A extends Record<string, any>>(a: A) => Data<{ readonly [P in keyof A]: A[P] }> = internal.struct
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const unsafeStruct = <As extends Readonly<Record<string, any>>>(as: As): Data<As> =>
+export const unsafeStruct = <A extends Record<string, any>>(as: A): Data<{ readonly [P in keyof A]: A[P] }> =>
   Object.setPrototypeOf(as, internal.StructProto)
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<As> => unsafeArray(as)
+export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<Readonly<As>> => unsafeArray(as)
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const array = <As extends ReadonlyArray<any>>(as: As): Data<As> => unsafeArray(as.slice(0) as unknown as As)
+export const array = <As extends ReadonlyArray<any>>(as: As): Data<Readonly<As>> =>
+  unsafeArray(as.slice(0) as unknown as As)
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<As> =>
+export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<Readonly<As>> =>
   Object.setPrototypeOf(as, internal.ArrayProto)
 
 const _case = <A extends Case>(): Case.Constructor<A> => (args) =>
@@ -92,7 +93,7 @@ export {
  * @since 2.0.0
  * @category constructors
  */
-export const tagged = <A extends Case & { _tag: string }>(
+export const tagged = <A extends Case & { readonly _tag: string }>(
   tag: A["_tag"]
 ): Case.Constructor<A, "_tag"> =>
 (args) => {
