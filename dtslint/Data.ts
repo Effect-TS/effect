@@ -11,43 +11,76 @@ declare const mutableArray: Array<string>
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Data<{ readonly a: string; }>
-Data.struct(mutableStruct)
+const struct1 = Data.struct(mutableStruct)
+
+// @ts-expect-error
+struct1.a = "a"
+
 // $ExpectType Data<{ readonly a: string; }>
-Data.struct(readonlyStruct)
+const struct2 = Data.struct(readonlyStruct)
+
+// @ts-expect-error
+struct2.a = "a"
 
 // -------------------------------------------------------------------------------------
 // unsafeStruct
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Data<{ readonly a: string; }>
-Data.unsafeStruct(mutableStruct)
+const struct3 = Data.unsafeStruct(mutableStruct)
+
+// @ts-expect-error
+struct3.a = "a"
+
 // $ExpectType Data<{ readonly a: string; }>
-Data.unsafeStruct(readonlyStruct)
+const struct4 = Data.unsafeStruct(readonlyStruct)
+
+// @ts-expect-error
+struct4.a = "a"
 
 // -------------------------------------------------------------------------------------
 // tuple
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Data<readonly [string, number]>
-Data.tuple("a", 1)
+const tuple1 = Data.tuple("a", 1)
+
+// @ts-expect-error
+tuple1[0] = "a"
+// @ts-expect-error
+tuple1[1] = 1
 
 // -------------------------------------------------------------------------------------
 // array
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Data<readonly string[]>
-Data.array(mutableArray)
+const array1 = Data.array(mutableArray)
+
+// @ts-expect-error
+array1[0] = "a"
+
 // $ExpectType Data<readonly string[]>
-Data.array(readonlyArray)
+const array2 = Data.array(readonlyArray)
+
+// @ts-expect-error
+array2[0] = "a"
 
 // -------------------------------------------------------------------------------------
 // unsafeArray
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Data<readonly string[]>
-Data.unsafeArray(mutableArray)
+const array3 = Data.unsafeArray(mutableArray)
+
+// @ts-expect-error
+array3[0] = "a"
+
 // $ExpectType Data<readonly string[]>
-Data.unsafeArray(readonlyArray)
+const array4 = Data.unsafeArray(readonlyArray)
+
+// @ts-expect-error
+array4[0] = "a"
 
 // -------------------------------------------------------------------------------------
 // case
@@ -57,10 +90,13 @@ interface Person extends Data.Case {
   readonly name: string
 }
 
-const Person = Data.case<Person>()
+const person = Data.case<Person>()
 
 // $ExpectType { readonly name: string; }
-export type PersonInput = Parameters<typeof Person>[0]
+export type PersonInput = Parameters<typeof person>[0]
+
+// @ts-expect-error
+person.name = "a"
 
 // -------------------------------------------------------------------------------------
 // tagged
@@ -71,10 +107,13 @@ interface TaggedPerson extends Data.Case {
   readonly name: string
 }
 
-const TaggedPerson = Data.tagged<TaggedPerson>("Person")
+const taggedPerson = Data.tagged<TaggedPerson>("Person")
 
 // $ExpectType { readonly name: string; }
-export type TaggedPersonInput = Parameters<typeof TaggedPerson>[0]
+export type TaggedPersonInput = Parameters<typeof taggedPerson>[0]
+
+// @ts-expect-error
+taggedPerson.name = "a"
 
 // -------------------------------------------------------------------------------------
 // TaggedEnum
@@ -104,10 +143,68 @@ const HttpError = Data.taggedEnum<
   | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
 >()
 
-export const notFound = HttpError("NotFound")
+export const notFoundCtor = HttpError("NotFound")
 
 // $ExpectType { readonly message: string; readonly status: 404; }
-export type notFoundInput = Parameters<typeof notFound>[0]
+export type notFoundInput = Parameters<typeof notFoundCtor>[0]
 
 // $ExpectType Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string; }>
-export type notFoundOutput = ReturnType<typeof notFound>
+export type notFoundOutput = ReturnType<typeof notFoundCtor>
+
+const notFound = notFoundCtor({ status: 404, message: "mesage" })
+
+// @ts-expect-error
+notFound.message = "a"
+
+// -------------------------------------------------------------------------------------
+// Class
+// -------------------------------------------------------------------------------------
+
+class PersonClass extends Data.Class<{ name: string }> {}
+
+const mike1 = new PersonClass({ name: "Mike" })
+
+// @ts-expect-error
+mike1.name = "a"
+
+// -------------------------------------------------------------------------------------
+// TaggedClass
+// -------------------------------------------------------------------------------------
+
+class PersonTaggedClass extends Data.TaggedClass("Person")<{ name: string }> {}
+
+const mike2 = new PersonTaggedClass({ name: "Mike" })
+
+// @ts-expect-error
+mike2.name = "a"
+
+// -------------------------------------------------------------------------------------
+// Error
+// -------------------------------------------------------------------------------------
+
+class MyError extends Data.Error<{ message: string; a: number }> {}
+
+const myError1 = new MyError({ message: "Oh no!", a: 1 })
+
+// @ts-expect-error
+myError1.message = "a"
+// @ts-expect-error
+myError1.a = 2
+
+// -------------------------------------------------------------------------------------
+// TaggedError
+// -------------------------------------------------------------------------------------
+
+class MyTaggedError extends Data.TaggedError("Foo")<{
+  message: string
+  a: number
+}> {}
+
+const myTaggedError1 = new MyTaggedError({ message: "Oh no!", a: 1 })
+
+// @ts-expect-error
+myTaggedError1._tag = "a"
+// @ts-expect-error
+myTaggedError1.message = "a"
+// @ts-expect-error
+myError1.a = 2

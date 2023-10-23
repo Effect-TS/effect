@@ -215,7 +215,7 @@ export const TaggedClass = <Tag extends string>(
   tag: Tag
 ): new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A & { readonly _tag: Tag }> => {
+) => Data<Readonly<A> & { readonly _tag: Tag }> => {
   class Base extends Class<any> {
     readonly _tag = tag
   }
@@ -245,7 +245,7 @@ export const TaggedClass = <Tag extends string>(
  */
 export const Class: new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A> = internal.Structural as any
+) => Data<Readonly<A>> = internal.Structural as any
 
 /**
  * @since 2.0.0
@@ -431,7 +431,7 @@ export const taggedEnum: {
  * @since 2.0.0
  * @category models
  */
-export interface YieldableError extends Case, Pipeable, Error {
+export interface YieldableError extends Case, Pipeable, Readonly<Error> {
   readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
@@ -459,7 +459,7 @@ const YieldableErrorProto = {
   get message() {
     return (this as any)[YieldableErrorMessage] ?? JSON.stringify(this)
   },
-  set message(value: string) {
+  set message(value) {
     ;(this as any)[YieldableErrorMessage] = value
   }
 }
@@ -472,7 +472,7 @@ const YieldableErrorProto = {
  */
 export const Error: new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & A = (function() {
+) => YieldableError & Readonly<A> = (function() {
   function Base(this: any, args: any) {
     if (args) {
       Object.assign(this, args)
@@ -489,10 +489,10 @@ export const Error: new<A extends Record<string, any>>(
  */
 export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & { readonly _tag: Tag } & A => {
+) => YieldableError & { readonly _tag: Tag } & Readonly<A> => {
   class Base extends Error<{}> {
     readonly _tag = tag
   }
-  Base.prototype.name = tag
+  ;(Base.prototype as any).name = tag
   return Base as any
 }
