@@ -38,7 +38,7 @@ export declare namespace Case {
    */
   export interface Constructor<A extends Case, Tag extends keyof A = never> {
     (
-      args: Omit<A, Tag | keyof Equal.Equal> extends Record<PropertyKey, never> ? void
+      args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true ? void
         : { readonly [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
     ): A
   }
@@ -340,11 +340,7 @@ export declare namespace TaggedEnum {
   export type Args<
     A extends Data<{ readonly _tag: string }>,
     K extends A["_tag"]
-  > = Omit<
-    Extract<A, { readonly _tag: K }>,
-    "_tag" | keyof Case
-  > extends infer T ? {} extends T ? void
-    : T
+  > = Omit<Extract<A, { readonly _tag: K }>, "_tag" | keyof Case> extends infer T ? {} extends T ? void : T
     : never
 
   /**
