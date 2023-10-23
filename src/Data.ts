@@ -189,6 +189,32 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
 }
 
 /**
+ * Provides a constructor for a Case Class.
+ *
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * class Person extends Data.Class<{ readonly name: string }> {}
+ *
+ * // Creating instances of Person
+ * const mike1 = new Person({ name: "Mike" })
+ * const mike2 = new Person({ name: "Mike" })
+ * const john = new Person({ name: "John" })
+ *
+ * // Checking equality
+ * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+ * assert.deepStrictEqual(Equal.equals(mike1, john), false)
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const Class: new<A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => Data<Readonly<A>> = internal.Structural as any
+
+/**
  * Provides a Tagged constructor for a Case Class.
  *
  * @example
@@ -214,38 +240,14 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
 export const TaggedClass = <Tag extends string>(
   tag: Tag
 ): new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
 ) => Data<Readonly<A> & { readonly _tag: Tag }> => {
   class Base extends Class<any> {
     readonly _tag = tag
   }
   return Base as any
 }
-
-/**
- * Provides a constructor for a Case Class.
- *
- * @example
- * import * as Data from "effect/Data"
- * import * as Equal from "effect/Equal"
- *
- * class Person extends Data.Class<{ readonly name: string }> {}
- *
- * // Creating instances of Person
- * const mike1 = new Person({ name: "Mike" })
- * const mike2 = new Person({ name: "Mike" })
- * const john = new Person({ name: "John" })
- *
- * // Checking equality
- * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
- * assert.deepStrictEqual(Equal.equals(mike1, john), false)
- *
- * @since 2.0.0
- * @category constructors
- */
-export const Class: new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<Readonly<A>> = internal.Structural as any
 
 /**
  * @since 2.0.0

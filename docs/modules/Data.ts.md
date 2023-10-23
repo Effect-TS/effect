@@ -52,8 +52,10 @@ Provides a constructor for a Case Class.
 
 ```ts
 export declare const Class: new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => Data<Readonly<A>>
 ```
 
 **Example**
@@ -85,7 +87,7 @@ Provides a constructor for a Case Class.
 ```ts
 export declare const Error: new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & A
+) => YieldableError & Readonly<A>
 ```
 
 Added in v2.0.0
@@ -112,8 +114,10 @@ Provides a Tagged constructor for a Case Class.
 export declare const TaggedClass: <Tag extends string>(
   tag: Tag
 ) => new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A & { readonly _tag: Tag }>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => Data<Readonly<A> & { readonly _tag: Tag }>
 ```
 
 **Example**
@@ -147,7 +151,7 @@ export declare const TaggedError: <Tag extends string>(
   tag: Tag
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & { readonly _tag: Tag } & A
+) => YieldableError & { readonly _tag: Tag } & Readonly<A>
 ```
 
 Added in v2.0.0
@@ -456,7 +460,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface YieldableError extends Case, Pipeable, Error {
+export interface YieldableError extends Case, Pipeable, Readonly<Error> {
   readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
@@ -487,7 +491,7 @@ Added in v2.0.0
 ```ts
 export interface Constructor<A extends Case, Tag extends keyof A = never> {
   (
-    args: Omit<A, Tag | keyof Equal.Equal> extends Record<PropertyKey, never>
+    args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true
       ? void
       : { readonly [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
   ): A
