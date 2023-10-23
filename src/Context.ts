@@ -9,7 +9,7 @@
  */
 import type { Equal } from "effect/Equal"
 import type { Inspectable } from "effect/Inspectable"
-import * as C from "effect/internal/Context"
+import * as C from "effect/internal/context"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Unify from "effect/Unify"

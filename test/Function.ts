@@ -1,7 +1,7 @@
 import * as assert from "assert"
+import { deepStrictEqual, double } from "effect-test/util"
 import * as Function from "effect/Function"
 import * as String from "effect/String"
-import { deepStrictEqual, double } from "effect/test/util"
 
 const f = (n: number): number => n + 1
 const g = double

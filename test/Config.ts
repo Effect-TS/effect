@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
@@ -9,7 +10,6 @@ import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Config", () => {

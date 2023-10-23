@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -5,7 +6,6 @@ import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import { nextInt } from "effect/Random"
-import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 

@@ -1,4 +1,4 @@
-import { MASK } from "effect/internal/HashMap/config"
+import { MASK } from "effect/internal/hashMap/config"
 
 /**
  * Hamming weight.

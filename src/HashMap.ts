@@ -5,8 +5,8 @@
 import type { Equal } from "effect/Equal"
 import type { HashSet } from "effect/HashSet"
 import type { Inspectable } from "effect/Inspectable"
-import * as HM from "effect/internal/HashMap"
-import * as _keySet from "effect/internal/HashMap/keySet"
+import * as HM from "effect/internal/hashMap"
+import * as _keySet from "effect/internal/hashMap/keySet"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 

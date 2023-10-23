@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -6,7 +7,6 @@ import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
-import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

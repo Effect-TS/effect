@@ -4,7 +4,7 @@
 
 import type { Equal } from "effect/Equal"
 import type { Inspectable } from "effect/Inspectable"
-import * as HS from "effect/internal/HashSet"
+import * as HS from "effect/internal/hashSet"
 import type { Pipeable } from "effect/Pipeable"
 import type { Predicate, Refinement } from "effect/Predicate"
 

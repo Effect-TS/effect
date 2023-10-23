@@ -36,14 +36,14 @@
     "removeComments": false,
     "baseUrl": ".",
     "paths": {
-      "effect/test/*": [
-        "./test/*.js"
-      ],
       "effect": [
         "./src/index.js"
       ],
       "effect/*": [
         "./src/*.js"
+      ],
+      "effect-test/*": [
+        "./test/*.js"
       ],
     },
     "plugins": [

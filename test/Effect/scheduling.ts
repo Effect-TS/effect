@@ -1,10 +1,10 @@
+import * as it from "effect-test/utils/extend"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 

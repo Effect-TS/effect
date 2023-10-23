@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -6,7 +7,6 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import type * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import * as it from "effect/test/utils/extend"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 

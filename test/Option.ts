@@ -1,10 +1,10 @@
+import * as Util from "effect-test/util"
 import * as Chunk from "effect/Chunk"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import * as N from "effect/Number"
 import * as _ from "effect/Option"
 import * as S from "effect/String"
-import * as Util from "effect/test/util"
 import { inspect } from "node:util"
 
 const p = (n: number): boolean => n > 2

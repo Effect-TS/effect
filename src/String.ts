@@ -8,7 +8,7 @@
 
 import * as equivalence from "effect/Equivalence"
 import { dual } from "effect/Function"
-import * as readonlyArray from "effect/internal/ReadonlyArray"
+import * as readonlyArray from "effect/internal/readonlyArray"
 import * as number from "effect/Number"
 import * as Option from "effect/Option"
 import * as order from "effect/Order"

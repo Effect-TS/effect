@@ -1,9 +1,9 @@
 import * as Chunk from "effect/Chunk"
-import { Structural } from "effect/Data"
 import type * as Differ from "effect/Differ"
 import * as Equal from "effect/Equal"
 import * as Dual from "effect/Function"
 import * as HashMap from "effect/HashMap"
+import { Structural } from "effect/internal/data"
 
 /** @internal */
 export const HashMapPatchTypeId: Differ.Differ.HashMap.TypeId = Symbol.for(

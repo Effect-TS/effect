@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -5,7 +6,6 @@ import { equals } from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

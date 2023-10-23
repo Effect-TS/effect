@@ -1,7 +1,7 @@
+import { deepStrictEqual } from "effect-test/util"
 import * as BigInt from "effect/BigInt"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import { deepStrictEqual } from "effect/test/util"
 
 describe.concurrent("BigInt", () => {
   it("sign", () => {

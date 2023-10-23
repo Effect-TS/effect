@@ -1,7 +1,7 @@
+import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
-import * as it from "effect/test/utils/extend"
 import * as TSet from "effect/TSet"
 import { assert, describe } from "vitest"
 

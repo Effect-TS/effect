@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
@@ -13,7 +14,6 @@ import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as ScheduleDecision from "effect/ScheduleDecision"
 import * as Intervals from "effect/ScheduleIntervals"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 

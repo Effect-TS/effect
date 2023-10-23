@@ -1,10 +1,10 @@
 import * as Chunk from "effect/Chunk"
-import { Structural } from "effect/Data"
 import type { Differ } from "effect/Differ"
 import type { Either } from "effect/Either"
 import * as E from "effect/Either"
 import * as Equal from "effect/Equal"
 import * as Dual from "effect/Function"
+import { Structural } from "effect/internal/data"
 
 /** @internal */
 export const OrPatchTypeId: Differ.Or.TypeId = Symbol.for("effect/DifferOrPatch") as Differ.Or.TypeId

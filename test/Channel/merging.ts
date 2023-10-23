@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
 import * as MergeDecision from "effect/ChannelMergeDecision"
@@ -6,7 +7,6 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
-import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Channel", () => {

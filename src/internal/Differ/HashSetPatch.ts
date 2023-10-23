@@ -1,8 +1,8 @@
 import * as Chunk from "effect/Chunk"
-import { Structural } from "effect/Data"
 import type { Differ } from "effect/Differ"
 import * as Dual from "effect/Function"
 import * as HashSet from "effect/HashSet"
+import { Structural } from "effect/internal/data"
 
 /** @internal */
 export const HashSetPatchTypeId: Differ.HashSet.TypeId = Symbol.for(

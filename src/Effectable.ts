@@ -3,7 +3,7 @@
  */
 import type * as Channel from "effect/Channel"
 import type * as Effect from "effect/Effect"
-import * as internal from "effect/internal/Effectable"
+import * as internal from "effect/internal/effectable"
 import type * as Sink from "effect/Sink"
 import type * as Stream from "effect/Stream"
 

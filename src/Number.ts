@@ -7,7 +7,7 @@
  */
 import * as equivalence from "effect/Equivalence"
 import { dual } from "effect/Function"
-import * as option from "effect/internal/Option"
+import * as option from "effect/internal/option"
 import type { Option } from "effect/Option"
 import * as order from "effect/Order"
 import type { Ordering } from "effect/Ordering"

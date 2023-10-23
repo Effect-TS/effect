@@ -7,11 +7,11 @@ import * as Dual from "effect/Function"
 import { constant, identity } from "effect/Function"
 import type { HashMap } from "effect/HashMap"
 import type { HashSet } from "effect/HashSet"
-import * as ChunkPatch from "effect/internal/Differ/ChunkPatch"
-import * as ContextPatch from "effect/internal/Differ/ContextPatch"
-import * as HashMapPatch from "effect/internal/Differ/HashMapPatch"
-import * as HashSetPatch from "effect/internal/Differ/HashSetPatch"
-import * as OrPatch from "effect/internal/Differ/OrPatch"
+import * as ChunkPatch from "effect/internal/differ/chunkPatch"
+import * as ContextPatch from "effect/internal/differ/contextPatch"
+import * as HashMapPatch from "effect/internal/differ/hashMapPatch"
+import * as HashSetPatch from "effect/internal/differ/hashSetPatch"
+import * as OrPatch from "effect/internal/differ/orPatch"
 
 /** @internal */
 export const DifferTypeId: D.TypeId = Symbol.for("effect/Differ") as D.TypeId

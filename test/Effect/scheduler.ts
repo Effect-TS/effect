@@ -1,7 +1,7 @@
+import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
 import * as timeout from "effect/internal/timeout"
 import * as Scheduler from "effect/Scheduler"
-import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

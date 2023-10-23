@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -6,7 +7,6 @@ import * as KeyedPool from "effect/KeyedPool"
 import * as Random from "effect/Random"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { describe, expect } from "vitest"
 

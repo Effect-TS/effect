@@ -1,9 +1,9 @@
+import { assertType } from "effect-test/utils/types"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import * as M from "effect/Match"
 import * as O from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import { assertType } from "effect/test/utils/types"
 
 describe("Match", () => {
   it("exhaustive", () => {

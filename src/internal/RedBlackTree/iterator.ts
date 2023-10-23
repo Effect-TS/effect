@@ -1,5 +1,5 @@
-import type { RedBlackTreeImpl } from "effect/internal/RedBlackTree"
-import type * as Node from "effect/internal/RedBlackTree/node"
+import type { RedBlackTreeImpl } from "effect/internal/redBlackTree"
+import type * as Node from "effect/internal/redBlackTree/node"
 import * as Option from "effect/Option"
 import type * as RBT from "effect/RedBlackTree"
 

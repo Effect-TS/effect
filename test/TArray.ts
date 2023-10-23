@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
@@ -9,7 +10,6 @@ import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as STM from "effect/STM"
 import * as TArray from "effect/TArray"
-import * as it from "effect/test/utils/extend"
 import * as TRef from "effect/TRef"
 import { assert, describe } from "vitest"
 

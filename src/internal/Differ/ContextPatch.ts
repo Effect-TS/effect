@@ -1,10 +1,10 @@
 import * as Chunk from "effect/Chunk"
 import type { Context, Tag } from "effect/Context"
-import { Structural } from "effect/Data"
 import type { Differ } from "effect/Differ"
 import * as Equal from "effect/Equal"
 import * as Dual from "effect/Function"
-import { makeContext } from "effect/internal/Context"
+import { makeContext } from "effect/internal/context"
+import { Structural } from "effect/internal/data"
 
 /** @internal */
 export const ContextPatchTypeId: Differ.Context.TypeId = Symbol.for(

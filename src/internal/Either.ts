@@ -8,7 +8,7 @@ import * as Equal from "effect/Equal"
 import { dual } from "effect/Function"
 import * as Hash from "effect/Hash"
 import { NodeInspectSymbol, toJSON, toString } from "effect/Inspectable"
-import * as option from "effect/internal/Option"
+import * as option from "effect/internal/option"
 import type { Option } from "effect/Option"
 
 /**

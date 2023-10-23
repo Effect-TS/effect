@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -12,7 +13,6 @@ import * as Order from "effect/Order"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
-import * as it from "effect/test/utils/extend"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 

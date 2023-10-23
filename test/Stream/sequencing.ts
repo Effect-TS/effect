@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -11,7 +12,6 @@ import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Take from "effect/Take"
-import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>

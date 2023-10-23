@@ -1,3 +1,4 @@
+import { deepStrictEqual } from "effect-test/util"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
@@ -5,7 +6,6 @@ import * as number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as RedBlackTree from "effect/RedBlackTree"
-import { deepStrictEqual } from "effect/test/util"
 import { inspect } from "node:util"
 
 describe.concurrent("RedBlackTree", () => {

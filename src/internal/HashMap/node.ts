@@ -1,9 +1,9 @@
 import { equals } from "effect/Equal"
 import type { HashMap } from "effect/HashMap"
-import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "effect/internal/HashMap/array"
-import { fromBitmap, hashFragment, toBitmap } from "effect/internal/HashMap/bitwise"
-import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "effect/internal/HashMap/config"
-import { Stack } from "effect/internal/Stack"
+import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "effect/internal/hashMap/array"
+import { fromBitmap, hashFragment, toBitmap } from "effect/internal/hashMap/bitwise"
+import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "effect/internal/hashMap/config"
+import { Stack } from "effect/internal/stack"
 import * as O from "effect/Option"
 
 /** @internal */

@@ -2,10 +2,11 @@
  * @since 2.0.0
  */
 import type * as Channel from "effect/Channel"
-import * as Effect from "effect/Effect"
+import type * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import type * as Equal from "effect/Equal"
-import * as internal from "effect/internal/Data"
+import * as core from "effect/internal/core"
+import * as internal from "effect/internal/data"
 import { type Pipeable } from "effect/Pipeable"
 import type * as Sink from "effect/Sink"
 import type * as Types from "effect/Types"
@@ -449,7 +450,7 @@ const YieldableErrorProto = {
   ...Effectable.StructuralCommitPrototype,
   __proto__: globalThis.Error.prototype,
   commit() {
-    return Effect.fail(this)
+    return core.fail(this)
   },
   toString(this: globalThis.Error) {
     return `${this.name}: ${this.message}`

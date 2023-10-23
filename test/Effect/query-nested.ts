@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import { seconds } from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -5,7 +6,6 @@ import * as Layer from "effect/Layer"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
-import * as it from "effect/test/utils/extend"
 
 interface Counter {
   readonly _: unique symbol

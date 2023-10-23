@@ -2,7 +2,7 @@ import type * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import type * as Deferred from "effect/Deferred"
-import * as Differ from "effect/Differ"
+import type * as Differ from "effect/Differ"
 import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
@@ -22,11 +22,13 @@ import { NodeInspectSymbol, toJSON, toString } from "effect/Inspectable"
 import * as _blockedRequests from "effect/internal/blockedRequests"
 import * as internalCause from "effect/internal/cause"
 import * as deferred from "effect/internal/deferred"
+import * as internalDiffer from "effect/internal/differ"
 import type * as FiberRuntime from "effect/internal/fiberRuntime"
 import type * as fiberScope from "effect/internal/fiberScope"
 import * as DeferredOpCodes from "effect/internal/opCodes/deferred"
 import * as OpCodes from "effect/internal/opCodes/effect"
 import * as _runtimeFlags from "effect/internal/runtimeFlags"
+import * as runtimeFlagsPatch from "effect/internal/runtimeFlagsPatch"
 import * as internalTracer from "effect/internal/tracer"
 import * as List from "effect/List"
 import type * as LogLevel from "effect/LogLevel"
@@ -41,7 +43,7 @@ import type * as Request from "effect/Request"
 import type * as BlockedRequests from "effect/RequestBlock"
 import type * as RequestResolver from "effect/RequestResolver"
 import type * as RuntimeFlags from "effect/RuntimeFlags"
-import * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
+import type * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
 import type * as Scope from "effect/Scope"
 import type * as Tracer from "effect/Tracer"
 
@@ -898,7 +900,7 @@ export const interruptWith = (fiberId: FiberId.FiberId): Effect.Effect<never, ne
 /* @internal */
 export const interruptible = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
+  effect.i0 = runtimeFlagsPatch.enable(_runtimeFlags.Interruption)
   const _continue = (orBlock: any) => {
     if (orBlock._tag === "Blocked") {
       return blocked(orBlock.i0, interruptible(orBlock.i1))
@@ -915,7 +917,7 @@ export const interruptibleMask = <R, E, A>(
   f: (restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
+  effect.i0 = runtimeFlagsPatch.enable(_runtimeFlags.Interruption)
   const _continue = (step: Exit.Exit<E, A> | Effect.Blocked<R, E, A>): Exit.Exit<E, A> | Effect.Blocked<R, E, A> => {
     if (step._op === "Blocked") {
       return blocked(step.i0, interruptible(step.i1))
@@ -1158,7 +1160,7 @@ export const uninterruptible: <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.
   self: Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
+  effect.i0 = runtimeFlagsPatch.disable(_runtimeFlags.Interruption)
   effect.i1 = () => flatMapStep(self, _continue)
   const _continue = (orBlock: any) => {
     if (orBlock._tag === "Blocked") {
@@ -1175,7 +1177,7 @@ export const uninterruptibleMask = <R, E, A>(
   f: (restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
-  effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
+  effect.i0 = runtimeFlagsPatch.disable(_runtimeFlags.Interruption)
   const _continue = (step: Exit.Exit<E, A> | Effect.Blocked<R, E, A>): Exit.Exit<E, A> | Effect.Blocked<R, E, A> => {
     if (step._op === "Blocked") {
       return blocked(step.i0, uninterruptible(step.i1))
@@ -1724,7 +1726,7 @@ export const fiberRefUnsafeMake = <Value>(
   }
 ): FiberRef.FiberRef<Value> =>
   fiberRefUnsafeMakePatch(initial, {
-    differ: Differ.update(),
+    differ: internalDiffer.update(),
     fork: options?.fork ?? identity,
     join: options?.join
   })
@@ -1733,7 +1735,7 @@ export const fiberRefUnsafeMake = <Value>(
 export const fiberRefUnsafeMakeHashSet = <A>(
   initial: HashSet.HashSet<A>
 ): FiberRef.FiberRef<HashSet.HashSet<A>> => {
-  const differ = Differ.hashSet<A>()
+  const differ = internalDiffer.hashSet<A>()
   return fiberRefUnsafeMakePatch(initial, {
     differ,
     fork: differ.empty
@@ -1744,7 +1746,7 @@ export const fiberRefUnsafeMakeHashSet = <A>(
 export const fiberRefUnsafeMakeContext = <A>(
   initial: Context.Context<A>
 ): FiberRef.FiberRef<Context.Context<A>> => {
-  const differ = Differ.environment<A>()
+  const differ = internalDiffer.environment<A>()
   return fiberRefUnsafeMakePatch(initial, {
     differ,
     fork: differ.empty

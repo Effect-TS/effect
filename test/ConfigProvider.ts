@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
@@ -12,7 +13,6 @@ import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
-import * as it from "effect/test/utils/extend"
 import { assert, describe, expect } from "vitest"
 
 interface HostPort {

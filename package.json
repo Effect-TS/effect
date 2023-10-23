@@ -1,7 +1,7 @@
 {
   "name": "effect",
   "version": "2.0.0-next.50",
-  "packageManager": "pnpm@8.7.3",
+  "packageManager": "pnpm@8.9.2",
   "publishConfig": {
     "access": "public"
   },
@@ -11,7 +11,7 @@
     "test": "vitest",
     "build": "tsc --build",
     "coverage": "vitest run --coverage",
-    "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
+    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
     "update-version": "changeset version && pnpm install --no-frozen-lockfile",
     "lint": "eslint src test dtslint",
     "lint-fix": "eslint src test dtslint --fix",

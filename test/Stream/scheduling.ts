@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -5,7 +6,6 @@ import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
-import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 

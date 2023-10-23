@@ -1,3 +1,4 @@
+import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -8,7 +9,6 @@ import * as Fiber from "effect/Fiber"
 import { constVoid, identity, pipe } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
-import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

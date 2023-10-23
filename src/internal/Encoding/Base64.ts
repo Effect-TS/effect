@@ -1,6 +1,6 @@
 import * as Either from "effect/Either"
 import type * as Encoding from "effect/Encoding"
-import { DecodeException } from "effect/internal/Encoding/Common"
+import { DecodeException } from "effect/internal/encoding/common"
 
 /** @internal */
 export const encode = (bytes: Uint8Array) => {
