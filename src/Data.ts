@@ -36,8 +36,11 @@ export declare namespace Case {
    * @since 2.0.0
    * @category models
    */
-  export interface Constructor<A extends Case, T extends keyof A = never> {
-    (args: Omit<A, T | keyof Equal.Equal> extends Record<PropertyKey, never> ? void : Omit<A, T | keyof Equal.Equal>): A
+  export interface Constructor<A extends Case, Tag extends keyof A = never> {
+    (
+      args: Omit<A, Tag | keyof Equal.Equal> extends Record<PropertyKey, never> ? void
+        : Omit<A, Tag | keyof Equal.Equal>
+    ): A
   }
 }
 
