@@ -487,7 +487,9 @@ Added in v2.0.0
 ```ts
 export interface Constructor<A extends Case, Tag extends keyof A = never> {
   (
-    args: Omit<A, Tag | keyof Equal.Equal> extends Record<PropertyKey, never> ? void : Omit<A, Tag | keyof Equal.Equal>
+    args: Omit<A, Tag | keyof Equal.Equal> extends Record<PropertyKey, never>
+      ? void
+      : { [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
   ): A
 }
 ```

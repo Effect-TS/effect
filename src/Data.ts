@@ -39,7 +39,7 @@ export declare namespace Case {
   export interface Constructor<A extends Case, Tag extends keyof A = never> {
     (
       args: Omit<A, Tag | keyof Equal.Equal> extends Record<PropertyKey, never> ? void
-        : Omit<A, Tag | keyof Equal.Equal>
+        : { [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
     ): A
   }
 }
