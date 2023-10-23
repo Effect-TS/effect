@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.45.6
+
+### Patch Changes
+
+- [#508](https://github.com/Effect-TS/schema/pull/508) [`618b1b5`](https://github.com/Effect-TS/schema/commit/618b1b5cb9f41cbe6410d5deaf266f6be4b2d552) Thanks [@matheuspuel](https://github.com/matheuspuel)! - fix encode discriminated union with transformation
+
 ## 0.45.5
 
 ### Patch Changes
