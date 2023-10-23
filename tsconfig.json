@@ -10,7 +10,6 @@
     "skipLibCheck": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "preserveSymlinks": true,
     "moduleResolution": "node",
     "noEmit": true,
     "lib": ["ES2021", "DOM"],
