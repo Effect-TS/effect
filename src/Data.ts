@@ -14,8 +14,8 @@ import type * as Types from "./Types"
  * @category models
  * @since 2.0.0
  */
-export type Data<A extends Readonly<Record<string, any>> | ReadonlyArray<any>> =
-  & Readonly<A>
+export type Data<A extends Record<string, any> | ReadonlyArray<any>> =
+  & { readonly [P in keyof A]: A[P] }
   & Equal.Equal
 
 /**
@@ -36,41 +36,93 @@ export declare namespace Case {
    * @since 2.0.0
    * @category models
    */
-  export interface Constructor<A extends Case, T extends keyof A = never> {
-    (args: Omit<A, T | keyof Equal.Equal> extends Record<PropertyKey, never> ? void : Omit<A, T | keyof Equal.Equal>): A
+  export interface Constructor<A extends Case, Tag extends keyof A = never> {
+    (
+      args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true ? void
+        : { readonly [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
+    ): A
   }
 }
 
 /**
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * const alice = Data.struct({ name: "Alice", age: 30 })
+ *
+ * const bob = Data.struct({ name: "Bob", age: 40 })
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, alice), true)
+ * assert.deepStrictEqual(Equal.equals(alice, Data.struct({ name: "Alice", age: 30 })), true)
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, { name: "Alice", age: 30 }), false)
+ * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ *
  * @category constructors
  * @since 2.0.0
  */
-export const struct: <As extends Readonly<Record<string, any>>>(as: As) => Data<As> = internal.struct
+export const struct: <A extends Record<string, any>>(a: A) => Data<{ readonly [P in keyof A]: A[P] }> = internal.struct
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const unsafeStruct = <As extends Readonly<Record<string, any>>>(as: As): Data<As> =>
+export const unsafeStruct = <A extends Record<string, any>>(as: A): Data<{ readonly [P in keyof A]: A[P] }> =>
   Object.setPrototypeOf(as, internal.StructProto)
 
 /**
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * const alice = Data.tuple("Alice", 30)
+ *
+ * const bob = Data.tuple("Bob", 40)
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, alice), true)
+ * assert.deepStrictEqual(Equal.equals(alice, Data.tuple("Alice", 30)), true)
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, ["Alice", 30]), false)
+ * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ *
  * @category constructors
  * @since 2.0.0
  */
-export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<As> => unsafeArray(as)
+export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<Readonly<As>> => unsafeArray(as)
+
+/**
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * const alice = Data.struct({ name: "Alice", age: 30 })
+ * const bob = Data.struct({ name: "Bob", age: 40 })
+ *
+ * const persons = Data.array([alice, bob])
+ *
+ * assert.deepStrictEqual(
+ *   Equal.equals(
+ *     persons,
+ *     Data.array([
+ *       Data.struct({ name: "Alice", age: 30 }),
+ *       Data.struct({ name: "Bob", age: 40 })
+ *     ])
+ *   ),
+ *   true
+ * )
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const array = <As extends ReadonlyArray<any>>(as: As): Data<Readonly<As>> =>
+  unsafeArray(as.slice(0) as unknown as As)
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const array = <As extends ReadonlyArray<any>>(as: As): Data<As> => unsafeArray(as.slice(0) as unknown as As)
-
-/**
- * @category constructors
- * @since 2.0.0
- */
-export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<As> =>
+export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<Readonly<As>> =>
   Object.setPrototypeOf(as, internal.ArrayProto)
 
 const _case = <A extends Case>(): Case.Constructor<A> => (args) =>
@@ -79,6 +131,27 @@ const _case = <A extends Case>(): Case.Constructor<A> => (args) =>
 export {
   /**
    * Provides a constructor for the specified `Case`.
+   *
+   * @example
+   * import * as Data from "effect/Data"
+   * import * as Equal from "effect/Equal"
+   *
+   * // Extending Data.Case to implement Equal
+   * interface Person extends Data.Case {
+   *   readonly name: string
+   * }
+   *
+   * // Creating a constructor for the specified Case
+   * const Person = Data.case<Person>()
+   *
+   * // Creating instances of Person
+   * const mike1 = Person({ name: "Mike" })
+   * const mike2 = Person({ name: "Mike" })
+   * const john = Person({ name: "John" })
+   *
+   * // Checking equality
+   * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+   * assert.deepStrictEqual(Equal.equals(mike1, john), false)
    *
    * @since 2.0.0
    * @category constructors
@@ -89,10 +162,24 @@ export {
 /**
  * Provides a tagged constructor for the specified `Case`.
  *
+ * @example
+ * import * as Data from "effect/Data"
+ *
+ * interface Person extends Data.Case {
+ *   readonly _tag: "Person" // the tag
+ *   readonly name: string
+ * }
+ *
+ * const Person = Data.tagged<Person>("Person")
+ *
+ * const mike = Person({ name: "Mike" })
+ *
+ * assert.deepEqual(mike, { _tag: "Person", name: "Mike" })
+ *
  * @since 2.0.0
  * @category constructors
  */
-export const tagged = <A extends Case & { _tag: string }>(
+export const tagged = <A extends Case & { readonly _tag: string }>(
   tag: A["_tag"]
 ): Case.Constructor<A, "_tag"> =>
 (args) => {
@@ -102,7 +189,50 @@ export const tagged = <A extends Case & { _tag: string }>(
 }
 
 /**
+ * Provides a constructor for a Case Class.
+ *
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * class Person extends Data.Class<{ readonly name: string }> {}
+ *
+ * // Creating instances of Person
+ * const mike1 = new Person({ name: "Mike" })
+ * const mike2 = new Person({ name: "Mike" })
+ * const john = new Person({ name: "John" })
+ *
+ * // Checking equality
+ * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+ * assert.deepStrictEqual(Equal.equals(mike1, john), false)
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const Class: new<A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => Data<Readonly<A>> = internal.Structural as any
+
+/**
  * Provides a Tagged constructor for a Case Class.
+ *
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * class Person extends Data.TaggedClass("Person")<{ readonly name: string }> {}
+ *
+ * // Creating instances of Person
+ * const mike1 = new Person({ name: "Mike" })
+ * const mike2 = new Person({ name: "Mike" })
+ * const john = new Person({ name: "John" })
+ *
+ * // Checking equality
+ * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+ * assert.deepStrictEqual(Equal.equals(mike1, john), false)
+ *
+ * assert.deepStrictEqual(mike1._tag, "Person")
  *
  * @since 2.0.0
  * @category constructors
@@ -110,23 +240,14 @@ export const tagged = <A extends Case & { _tag: string }>(
 export const TaggedClass = <Tag extends string>(
   tag: Tag
 ): new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A & { readonly _tag: Tag }> => {
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => Data<Readonly<A> & { readonly _tag: Tag }> => {
   class Base extends Class<any> {
     readonly _tag = tag
   }
   return Base as any
 }
-
-/**
- * Provides a constructor for a Case Class.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const Class: new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A> = internal.Structural as any
 
 /**
  * @since 2.0.0
@@ -143,8 +264,8 @@ export const Structural: new<A>(
  * import * as Data from "effect/Data"
  *
  * type HttpError = Data.TaggedEnum<{
- *   BadRequest: { status: 400, message: string }
- *   NotFound: { status: 404, message: string }
+ *   BadRequest: { readonly status: 400, readonly message: string }
+ *   NotFound: { readonly status: 404, readonly message: string }
  * }>
  *
  * // Equivalent to:
@@ -221,11 +342,7 @@ export declare namespace TaggedEnum {
   export type Args<
     A extends Data<{ readonly _tag: string }>,
     K extends A["_tag"]
-  > = Omit<
-    Extract<A, { readonly _tag: K }>,
-    "_tag" | keyof Case
-  > extends infer T ? {} extends T ? void
-    : T
+  > = Omit<Extract<A, { readonly _tag: K }>, "_tag" | keyof Case> extends infer T ? {} extends T ? void : T
     : never
 
   /**
@@ -247,8 +364,8 @@ export declare namespace TaggedEnum {
  * import * as Data from "effect/Data"
  *
  * const HttpError = Data.taggedEnum<
- *   | Data.Data<{ _tag: "BadRequest"; status: 400; message: string }>
- *   | Data.Data<{ _tag: "NotFound"; status: 404; message: string }>
+ *   | Data.Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }>
+ *   | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
  * >()
  *
  * const notFound = HttpError("NotFound")({ status: 404, message: "Not Found" })
@@ -257,8 +374,8 @@ export declare namespace TaggedEnum {
  * import * as Data from "effect/Data"
  *
  * type MyResult<E, A> = Data.TaggedEnum<{
- *   Failure: { error: E }
- *   Success: { value: A }
+ *   Failure: { readonly error: E }
+ *   Success: { readonly value: A }
  * }>
  * interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
  *   readonly taggedEnum: MyResult<this["A"], this["B"]>
@@ -312,7 +429,7 @@ export const taggedEnum: {
  * @since 2.0.0
  * @category models
  */
-export interface YieldableError extends Case, Pipeable, Error {
+export interface YieldableError extends Case, Pipeable, Readonly<Error> {
   readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
@@ -340,7 +457,7 @@ const YieldableErrorProto = {
   get message() {
     return (this as any)[YieldableErrorMessage] ?? JSON.stringify(this)
   },
-  set message(value: string) {
+  set message(value) {
     ;(this as any)[YieldableErrorMessage] = value
   }
 }
@@ -352,8 +469,9 @@ const YieldableErrorProto = {
  * @category constructors
  */
 export const Error: new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & A = (function() {
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => YieldableError & Readonly<A> = (function() {
   function Base(this: any, args: any) {
     if (args) {
       Object.assign(this, args)
@@ -369,11 +487,12 @@ export const Error: new<A extends Record<string, any>>(
  * @category constructors
  */
 export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & { readonly _tag: Tag } & A => {
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => YieldableError & { readonly _tag: Tag } & Readonly<A> => {
   class Base extends Error<{}> {
     readonly _tag = tag
   }
-  Base.prototype.name = tag
+  ;(Base.prototype as any).name = tag
   return Base as any
 }

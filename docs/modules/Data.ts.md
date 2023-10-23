@@ -52,8 +52,28 @@ Provides a constructor for a Case Class.
 
 ```ts
 export declare const Class: new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => Data<Readonly<A>>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+class Person extends Data.Class<{ readonly name: string }> {}
+
+// Creating instances of Person
+const mike1 = new Person({ name: 'Mike' })
+const mike2 = new Person({ name: 'Mike' })
+const john = new Person({ name: 'John' })
+
+// Checking equality
+assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+assert.deepStrictEqual(Equal.equals(mike1, john), false)
 ```
 
 Added in v2.0.0
@@ -66,8 +86,10 @@ Provides a constructor for a Case Class.
 
 ```ts
 export declare const Error: new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & A
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => YieldableError & Readonly<A>
 ```
 
 Added in v2.0.0
@@ -94,8 +116,30 @@ Provides a Tagged constructor for a Case Class.
 export declare const TaggedClass: <Tag extends string>(
   tag: Tag
 ) => new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A & { readonly _tag: Tag }>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => Data<Readonly<A> & { readonly _tag: Tag }>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+class Person extends Data.TaggedClass('Person')<{ readonly name: string }> {}
+
+// Creating instances of Person
+const mike1 = new Person({ name: 'Mike' })
+const mike2 = new Person({ name: 'Mike' })
+const john = new Person({ name: 'John' })
+
+// Checking equality
+assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+assert.deepStrictEqual(Equal.equals(mike1, john), false)
+
+assert.deepStrictEqual(mike1._tag, 'Person')
 ```
 
 Added in v2.0.0
@@ -108,8 +152,10 @@ Added in v2.0.0
 export declare const TaggedError: <Tag extends string>(
   tag: Tag
 ) => new <A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => YieldableError & { readonly _tag: Tag } & A
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+) => YieldableError & { readonly _tag: Tag } & Readonly<A>
 ```
 
 Added in v2.0.0
@@ -119,7 +165,24 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const array: <As extends readonly any[]>(as: As) => Data<As>
+export declare const array: <As extends readonly any[]>(as: As) => Data<Readonly<As>>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+const alice = Data.struct({ name: 'Alice', age: 30 })
+const bob = Data.struct({ name: 'Bob', age: 40 })
+
+const persons = Data.array([alice, bob])
+
+assert.deepStrictEqual(
+  Equal.equals(persons, Data.array([Data.struct({ name: 'Alice', age: 30 }), Data.struct({ name: 'Bob', age: 40 })])),
+  true
+)
 ```
 
 Added in v2.0.0
@@ -134,6 +197,30 @@ Provides a constructor for the specified `Case`.
 export declare const case: <A extends Case>() => Case.Constructor<A, never>
 ```
 
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+// Extending Data.Case to implement Equal
+interface Person extends Data.Case {
+  readonly name: string
+}
+
+// Creating a constructor for the specified Case
+const Person = Data.case<Person>()
+
+// Creating instances of Person
+const mike1 = Person({ name: 'Mike' })
+const mike2 = Person({ name: 'Mike' })
+const john = Person({ name: 'John' })
+
+// Checking equality
+assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+assert.deepStrictEqual(Equal.equals(mike1, john), false)
+```
+
 Added in v2.0.0
 
 ## struct
@@ -141,7 +228,24 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const struct: <As extends Readonly<Record<string, any>>>(as: As) => Data<As>
+export declare const struct: <A extends Record<string, any>>(a: A) => Data<{ readonly [P in keyof A]: A[P] }>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+const alice = Data.struct({ name: 'Alice', age: 30 })
+
+const bob = Data.struct({ name: 'Bob', age: 40 })
+
+assert.deepStrictEqual(Equal.equals(alice, alice), true)
+assert.deepStrictEqual(Equal.equals(alice, Data.struct({ name: 'Alice', age: 30 })), true)
+
+assert.deepStrictEqual(Equal.equals(alice, { name: 'Alice', age: 30 }), false)
+assert.deepStrictEqual(Equal.equals(alice, bob), false)
 ```
 
 Added in v2.0.0
@@ -153,7 +257,24 @@ Provides a tagged constructor for the specified `Case`.
 **Signature**
 
 ```ts
-export declare const tagged: <A extends Case & { _tag: string }>(tag: A['_tag']) => Case.Constructor<A, '_tag'>
+export declare const tagged: <A extends Case & { readonly _tag: string }>(tag: A['_tag']) => Case.Constructor<A, '_tag'>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+
+interface Person extends Data.Case {
+  readonly _tag: 'Person' // the tag
+  readonly name: string
+}
+
+const Person = Data.tagged<Person>('Person')
+
+const mike = Person({ name: 'Mike' })
+
+assert.deepEqual(mike, { _tag: 'Person', name: 'Mike' })
 ```
 
 Added in v2.0.0
@@ -201,8 +322,8 @@ export declare const taggedEnum: {
 import * as Data from 'effect/Data'
 
 const HttpError = Data.taggedEnum<
-  | Data.Data<{ _tag: 'BadRequest'; status: 400; message: string }>
-  | Data.Data<{ _tag: 'NotFound'; status: 404; message: string }>
+  | Data.Data<{ readonly _tag: 'BadRequest'; readonly status: 400; readonly message: string }>
+  | Data.Data<{ readonly _tag: 'NotFound'; readonly status: 404; readonly message: string }>
 >()
 
 const notFound = HttpError('NotFound')({ status: 404, message: 'Not Found' })
@@ -214,8 +335,8 @@ const notFound = HttpError('NotFound')({ status: 404, message: 'Not Found' })
 import * as Data from 'effect/Data'
 
 type MyResult<E, A> = Data.TaggedEnum<{
-  Failure: { error: E }
-  Success: { value: A }
+  Failure: { readonly error: E }
+  Success: { readonly value: A }
 }>
 interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
   readonly taggedEnum: MyResult<this['A'], this['B']>
@@ -232,7 +353,24 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const tuple: <As extends readonly any[]>(...as: As) => Data<As>
+export declare const tuple: <As extends readonly any[]>(...as: As) => Data<Readonly<As>>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+const alice = Data.tuple('Alice', 30)
+
+const bob = Data.tuple('Bob', 40)
+
+assert.deepStrictEqual(Equal.equals(alice, alice), true)
+assert.deepStrictEqual(Equal.equals(alice, Data.tuple('Alice', 30)), true)
+
+assert.deepStrictEqual(Equal.equals(alice, ['Alice', 30]), false)
+assert.deepStrictEqual(Equal.equals(alice, bob), false)
 ```
 
 Added in v2.0.0
@@ -242,7 +380,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeArray: <As extends readonly any[]>(as: As) => Data<As>
+export declare const unsafeArray: <As extends readonly any[]>(as: As) => Data<Readonly<As>>
 ```
 
 Added in v2.0.0
@@ -252,7 +390,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeStruct: <As extends Readonly<Record<string, any>>>(as: As) => Data<As>
+export declare const unsafeStruct: <A extends Record<string, any>>(as: A) => Data<{ readonly [P in keyof A]: A[P] }>
 ```
 
 Added in v2.0.0
@@ -278,7 +416,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Data<A extends Readonly<Record<string, any>> | ReadonlyArray<any>> = Readonly<A> & Equal.Equal
+export type Data<A extends Record<string, any> | ReadonlyArray<any>> = { readonly [P in keyof A]: A[P] } & Equal.Equal
 ```
 
 Added in v2.0.0
@@ -291,8 +429,8 @@ Create a tagged enum data type, which is a union of `Data` structs.
 import * as Data from 'effect/Data'
 
 type HttpError = Data.TaggedEnum<{
-  BadRequest: { status: 400; message: string }
-  NotFound: { status: 404; message: string }
+  BadRequest: { readonly status: 400; readonly message: string }
+  NotFound: { readonly status: 404; readonly message: string }
 }>
 
 // Equivalent to:
@@ -326,7 +464,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface YieldableError extends Case, Pipeable, Error {
+export interface YieldableError extends Case, Pipeable, Readonly<Error> {
   readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
@@ -355,8 +493,12 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Constructor<A extends Case, T extends keyof A = never> {
-  (args: Omit<A, T | keyof Equal.Equal> extends Record<PropertyKey, never> ? void : Omit<A, T | keyof Equal.Equal>): A
+export interface Constructor<A extends Case, Tag extends keyof A = never> {
+  (
+    args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true
+      ? void
+      : { readonly [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
+  ): A
 }
 ```
 
