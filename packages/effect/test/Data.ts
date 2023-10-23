@@ -220,4 +220,13 @@ describe.concurrent("Data", () => {
     expect(Equal.equals(a, b)).toBe(false)
     expect(Equal.equals(a, c)).toBe(true)
   })
+
+  describe("Error", () => {
+    it("should support a message field", () => {
+      class MyError extends Data.Error<{ message: string; a: number }> {}
+      const e = new MyError({ message: "Oh no!", a: 1 })
+      expect(e.message).toStrictEqual("Oh no!")
+      expect(e.a).toStrictEqual(1)
+    })
+  })
 })
