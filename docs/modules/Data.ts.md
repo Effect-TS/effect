@@ -56,6 +56,24 @@ export declare const Class: new <A extends Record<string, any>>(
 ) => Data<A>
 ```
 
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+class Person extends Data.Class<{ name: string }> {}
+
+// Creating instances of Person
+const mike1 = new Person({ name: 'Mike' })
+const mike2 = new Person({ name: 'Mike' })
+const john = new Person({ name: 'John' })
+
+// Checking equality
+assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+assert.deepStrictEqual(Equal.equals(mike1, john), false)
+```
+
 Added in v2.0.0
 
 ## Error
@@ -98,6 +116,26 @@ export declare const TaggedClass: <Tag extends string>(
 ) => Data<A & { readonly _tag: Tag }>
 ```
 
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+class Person extends Data.TaggedClass('Person')<{ name: string }> {}
+
+// Creating instances of Person
+const mike1 = new Person({ name: 'Mike' })
+const mike2 = new Person({ name: 'Mike' })
+const john = new Person({ name: 'John' })
+
+// Checking equality
+assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+assert.deepStrictEqual(Equal.equals(mike1, john), false)
+
+assert.deepStrictEqual(mike1._tag, 'Person')
+```
+
 Added in v2.0.0
 
 ## TaggedError
@@ -122,6 +160,23 @@ Added in v2.0.0
 export declare const array: <As extends readonly any[]>(as: As) => Data<Readonly<As>>
 ```
 
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+const alice = Data.struct({ name: 'Alice', age: 30 })
+const bob = Data.struct({ name: 'Bob', age: 40 })
+
+const persons = Data.array([alice, bob])
+
+assert.deepStrictEqual(
+  Equal.equals(persons, Data.array([Data.struct({ name: 'Alice', age: 30 }), Data.struct({ name: 'Bob', age: 40 })])),
+  true
+)
+```
+
 Added in v2.0.0
 
 ## case
@@ -134,6 +189,30 @@ Provides a constructor for the specified `Case`.
 export declare const case: <A extends Case>() => Case.Constructor<A, never>
 ```
 
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+// Extending Data.Case to implement Equal
+interface Person extends Data.Case {
+  readonly name: string
+}
+
+// Creating a constructor for the specified Case
+const Person = Data.case<Person>()
+
+// Creating instances of Person
+const mike1 = Person({ name: 'Mike' })
+const mike2 = Person({ name: 'Mike' })
+const john = Person({ name: 'John' })
+
+// Checking equality
+assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+assert.deepStrictEqual(Equal.equals(mike1, john), false)
+```
+
 Added in v2.0.0
 
 ## struct
@@ -142,6 +221,23 @@ Added in v2.0.0
 
 ```ts
 export declare const struct: <A extends Record<string, any>>(a: A) => Data<{ readonly [P in keyof A]: A[P] }>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+const alice = Data.struct({ name: 'Alice', age: 30 })
+
+const bob = Data.struct({ name: 'Bob', age: 40 })
+
+assert.deepStrictEqual(Equal.equals(alice, alice), true)
+assert.deepStrictEqual(Equal.equals(alice, Data.struct({ name: 'Alice', age: 30 })), true)
+
+assert.deepStrictEqual(Equal.equals(alice, { name: 'Alice', age: 30 }), false)
+assert.deepStrictEqual(Equal.equals(alice, bob), false)
 ```
 
 Added in v2.0.0
@@ -154,6 +250,23 @@ Provides a tagged constructor for the specified `Case`.
 
 ```ts
 export declare const tagged: <A extends Case & { readonly _tag: string }>(tag: A['_tag']) => Case.Constructor<A, '_tag'>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+
+interface Person extends Data.Case {
+  readonly _tag: 'Person' // the tag
+  readonly name: string
+}
+
+const Person = Data.tagged<Person>('Person')
+
+const mike = Person({ name: 'Mike' })
+
+assert.deepEqual(mike, { _tag: 'Person', name: 'Mike' })
 ```
 
 Added in v2.0.0
@@ -233,6 +346,23 @@ Added in v2.0.0
 
 ```ts
 export declare const tuple: <As extends readonly any[]>(...as: As) => Data<Readonly<As>>
+```
+
+**Example**
+
+```ts
+import * as Data from 'effect/Data'
+import * as Equal from 'effect/Equal'
+
+const alice = Data.tuple('Alice', 30)
+
+const bob = Data.tuple('Bob', 40)
+
+assert.deepStrictEqual(Equal.equals(alice, alice), true)
+assert.deepStrictEqual(Equal.equals(alice, Data.tuple('Alice', 30)), true)
+
+assert.deepStrictEqual(Equal.equals(alice, ['Alice', 30]), false)
+assert.deepStrictEqual(Equal.equals(alice, bob), false)
 ```
 
 Added in v2.0.0

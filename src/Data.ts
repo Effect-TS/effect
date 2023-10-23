@@ -45,6 +45,20 @@ export declare namespace Case {
 }
 
 /**
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * const alice = Data.struct({ name: "Alice", age: 30 })
+ *
+ * const bob = Data.struct({ name: "Bob", age: 40 })
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, alice), true)
+ * assert.deepStrictEqual(Equal.equals(alice, Data.struct({ name: "Alice", age: 30 })), true)
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, { name: "Alice", age: 30 }), false)
+ * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ *
  * @category constructors
  * @since 2.0.0
  */
@@ -58,12 +72,46 @@ export const unsafeStruct = <A extends Record<string, any>>(as: A): Data<{ reado
   Object.setPrototypeOf(as, internal.StructProto)
 
 /**
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * const alice = Data.tuple("Alice", 30)
+ *
+ * const bob = Data.tuple("Bob", 40)
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, alice), true)
+ * assert.deepStrictEqual(Equal.equals(alice, Data.tuple("Alice", 30)), true)
+ *
+ * assert.deepStrictEqual(Equal.equals(alice, ["Alice", 30]), false)
+ * assert.deepStrictEqual(Equal.equals(alice, bob), false)
+ *
  * @category constructors
  * @since 2.0.0
  */
 export const tuple = <As extends ReadonlyArray<any>>(...as: As): Data<Readonly<As>> => unsafeArray(as)
 
 /**
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * const alice = Data.struct({ name: "Alice", age: 30 })
+ * const bob = Data.struct({ name: "Bob", age: 40 })
+ *
+ * const persons = Data.array([alice, bob])
+ *
+ * assert.deepStrictEqual(
+ *   Equal.equals(
+ *     persons,
+ *     Data.array([
+ *       Data.struct({ name: "Alice", age: 30 }),
+ *       Data.struct({ name: "Bob", age: 40 })
+ *     ])
+ *   ),
+ *   true
+ * )
+ *
  * @category constructors
  * @since 2.0.0
  */
@@ -84,6 +132,27 @@ export {
   /**
    * Provides a constructor for the specified `Case`.
    *
+   * @example
+   * import * as Data from "effect/Data"
+   * import * as Equal from "effect/Equal"
+   *
+   * // Extending Data.Case to implement Equal
+   * interface Person extends Data.Case {
+   *   readonly name: string
+   * }
+   *
+   * // Creating a constructor for the specified Case
+   * const Person = Data.case<Person>()
+   *
+   * // Creating instances of Person
+   * const mike1 = Person({ name: "Mike" })
+   * const mike2 = Person({ name: "Mike" })
+   * const john = Person({ name: "John" })
+   *
+   * // Checking equality
+   * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+   * assert.deepStrictEqual(Equal.equals(mike1, john), false)
+   *
    * @since 2.0.0
    * @category constructors
    */
@@ -92,6 +161,20 @@ export {
 
 /**
  * Provides a tagged constructor for the specified `Case`.
+ *
+ * @example
+ * import * as Data from "effect/Data"
+ *
+ * interface Person extends Data.Case {
+ *   readonly _tag: "Person" // the tag
+ *   readonly name: string
+ * }
+ *
+ * const Person = Data.tagged<Person>("Person")
+ *
+ * const mike = Person({ name: "Mike" })
+ *
+ * assert.deepEqual(mike, { _tag: "Person", name: "Mike" })
  *
  * @since 2.0.0
  * @category constructors
@@ -107,6 +190,23 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
 
 /**
  * Provides a Tagged constructor for a Case Class.
+ *
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * class Person extends Data.TaggedClass("Person")<{ name: string }> {}
+ *
+ * // Creating instances of Person
+ * const mike1 = new Person({ name: "Mike" })
+ * const mike2 = new Person({ name: "Mike" })
+ * const john = new Person({ name: "John" })
+ *
+ * // Checking equality
+ * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+ * assert.deepStrictEqual(Equal.equals(mike1, john), false)
+ *
+ * assert.deepStrictEqual(mike1._tag, "Person")
  *
  * @since 2.0.0
  * @category constructors
@@ -124,6 +224,21 @@ export const TaggedClass = <Tag extends string>(
 
 /**
  * Provides a constructor for a Case Class.
+ *
+ * @example
+ * import * as Data from "effect/Data"
+ * import * as Equal from "effect/Equal"
+ *
+ * class Person extends Data.Class<{ name: string }> {}
+ *
+ * // Creating instances of Person
+ * const mike1 = new Person({ name: "Mike" })
+ * const mike2 = new Person({ name: "Mike" })
+ * const john = new Person({ name: "John" })
+ *
+ * // Checking equality
+ * assert.deepStrictEqual(Equal.equals(mike1, mike2), true)
+ * assert.deepStrictEqual(Equal.equals(mike1, john), false)
  *
  * @since 2.0.0
  * @category constructors
