@@ -39,7 +39,7 @@ export declare namespace Case {
   export interface Constructor<A extends Case, Tag extends keyof A = never> {
     (
       args: Omit<A, Tag | keyof Equal.Equal> extends Record<PropertyKey, never> ? void
-        : { [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
+        : { readonly [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
     ): A
   }
 }
@@ -195,7 +195,7 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
  * import * as Data from "effect/Data"
  * import * as Equal from "effect/Equal"
  *
- * class Person extends Data.TaggedClass("Person")<{ name: string }> {}
+ * class Person extends Data.TaggedClass("Person")<{ readonly name: string }> {}
  *
  * // Creating instances of Person
  * const mike1 = new Person({ name: "Mike" })
@@ -229,7 +229,7 @@ export const TaggedClass = <Tag extends string>(
  * import * as Data from "effect/Data"
  * import * as Equal from "effect/Equal"
  *
- * class Person extends Data.Class<{ name: string }> {}
+ * class Person extends Data.Class<{ readonly name: string }> {}
  *
  * // Creating instances of Person
  * const mike1 = new Person({ name: "Mike" })
@@ -262,8 +262,8 @@ export const Structural: new<A>(
  * import * as Data from "effect/Data"
  *
  * type HttpError = Data.TaggedEnum<{
- *   BadRequest: { status: 400, message: string }
- *   NotFound: { status: 404, message: string }
+ *   BadRequest: { readonly status: 400, readonly message: string }
+ *   NotFound: { readonly status: 404, readonly message: string }
  * }>
  *
  * // Equivalent to:
@@ -366,8 +366,8 @@ export declare namespace TaggedEnum {
  * import * as Data from "effect/Data"
  *
  * const HttpError = Data.taggedEnum<
- *   | Data.Data<{ _tag: "BadRequest"; status: 400; message: string }>
- *   | Data.Data<{ _tag: "NotFound"; status: 404; message: string }>
+ *   | Data.Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }>
+ *   | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
  * >()
  *
  * const notFound = HttpError("NotFound")({ status: 404, message: "Not Found" })
@@ -376,8 +376,8 @@ export declare namespace TaggedEnum {
  * import * as Data from "effect/Data"
  *
  * type MyResult<E, A> = Data.TaggedEnum<{
- *   Failure: { error: E }
- *   Success: { value: A }
+ *   Failure: { readonly error: E }
+ *   Success: { readonly value: A }
  * }>
  * interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
  *   readonly taggedEnum: MyResult<this["A"], this["B"]>

@@ -59,10 +59,8 @@ interface Person extends Data.Case {
 
 const Person = Data.case<Person>()
 
-Person(
-  // $ExpectType { name: string; }
-  { name: "name" }
-)
+// $ExpectType { readonly name: string; }
+export type PersonInput = Parameters<typeof Person>[0]
 
 // -------------------------------------------------------------------------------------
 // tagged
@@ -75,18 +73,16 @@ interface TaggedPerson extends Data.Case {
 
 const TaggedPerson = Data.tagged<TaggedPerson>("Person")
 
-TaggedPerson(
-  // $ExpectType { name: string; }
-  { name: "name" }
-)
+// $ExpectType { readonly name: string; }
+export type TaggedPersonInput = Parameters<typeof TaggedPerson>[0]
 
 // -------------------------------------------------------------------------------------
 // TaggedEnum
 // -------------------------------------------------------------------------------------
 
 type HttpError = Data.TaggedEnum<{
-  BadRequest: { status: 400; a: string }
-  NotFound: { status: 404; b: number }
+  BadRequest: { readonly status: 400; readonly a: string }
+  NotFound: { readonly status: 404; readonly b: number }
 }>
 // $ExpectType Data<{ readonly a: string; readonly status: 400; readonly _tag: "BadRequest"; }>
 export type BadRequest = Extract<HttpError, { _tag: "BadRequest" }>
@@ -95,6 +91,23 @@ export type NotFound = Extract<HttpError, { _tag: "NotFound" }>
 
 // @ts-expect-error
 export type Err = Data.TaggedEnum<{
-  A: { _tag: "A" }
-  B: { tag: "B" }
+  A: { readonly _tag: "A" }
+  B: { readonly tag: "B" }
 }>
+
+// -------------------------------------------------------------------------------------
+// taggedEnum
+// -------------------------------------------------------------------------------------
+
+const HttpError = Data.taggedEnum<
+  | Data.Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }>
+  | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
+>()
+
+export const notFound = HttpError("NotFound")
+
+// $ExpectType { readonly message: string; readonly status: 404; }
+export type notFoundInput = Parameters<typeof notFound>[0]
+
+// $ExpectType Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string; }>
+export type notFoundOutput = ReturnType<typeof notFound>
