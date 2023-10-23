@@ -808,7 +808,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       }
     }
     case "Union": {
-      const searchTree = _getSearchTree(ast.types)
+      const searchTree = _getSearchTree(ast.types, isDecoding)
       const ownKeys = Internal.ownKeys(searchTree.keys)
       const len = ownKeys.length
       const map = new Map<any, Parser<any, any>>()
@@ -942,16 +942,17 @@ const fromRefinement =
 
 /** @internal */
 export const _getLiterals = (
-  ast: AST.AST
+  ast: AST.AST,
+  isDecoding: boolean
 ): ReadonlyArray<[PropertyKey, AST.Literal]> => {
   switch (ast._tag) {
     case "Declaration":
-      return _getLiterals(ast.type)
+      return _getLiterals(ast.type, isDecoding)
     case "TypeLiteral": {
       const out: Array<[PropertyKey, AST.Literal]> = []
       for (let i = 0; i < ast.propertySignatures.length; i++) {
         const propertySignature = ast.propertySignatures[i]
-        const type = AST.from(propertySignature.type)
+        const type = isDecoding ? AST.from(propertySignature.type) : AST.to(propertySignature.type)
         if (AST.isLiteral(type) && !propertySignature.isOptional) {
           out.push([propertySignature.name, type])
         }
@@ -959,8 +960,9 @@ export const _getLiterals = (
       return out
     }
     case "Refinement":
+      return _getLiterals(ast.from, isDecoding)
     case "Transform":
-      return _getLiterals(ast.from)
+      return _getLiterals(isDecoding ? ast.from : ast.to, isDecoding)
   }
   return []
 }
@@ -980,7 +982,8 @@ export const _getLiterals = (
  * @internal
  */
 export const _getSearchTree = (
-  members: ReadonlyArray<AST.AST>
+  members: ReadonlyArray<AST.AST>,
+  isDecoding: boolean
 ): {
   keys: {
     readonly [key: PropertyKey]: {
@@ -999,7 +1002,7 @@ export const _getSearchTree = (
   const otherwise: Array<AST.AST> = []
   for (let i = 0; i < members.length; i++) {
     const member = members[i]
-    const tags = _getLiterals(member)
+    const tags = _getLiterals(member, isDecoding)
     if (tags.length > 0) {
       for (let j = 0; j < tags.length; j++) {
         const [key, literal] = tags[j]
