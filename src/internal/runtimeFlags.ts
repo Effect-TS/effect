@@ -1,8 +1,8 @@
-import * as Differ from "../Differ"
-import { dual } from "../Function"
-import * as runtimeFlagsPatch from "../internal/runtimeFlagsPatch"
-import type * as RuntimeFlags from "../RuntimeFlags"
-import type * as RuntimeFlagsPatch from "../RuntimeFlagsPatch"
+import * as Differ from "effect/Differ"
+import { dual } from "effect/Function"
+import * as runtimeFlagsPatch from "effect/internal/runtimeFlagsPatch"
+import type * as RuntimeFlags from "effect/RuntimeFlags"
+import type * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
 
 /** @internal */
 export const None: RuntimeFlags.RuntimeFlag = 0 as RuntimeFlags.RuntimeFlag

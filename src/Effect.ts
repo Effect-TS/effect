@@ -1,61 +1,61 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as Chunk from "./Chunk"
-import type * as Clock from "./Clock"
-import type { Config } from "./Config"
-import type { ConfigError } from "./ConfigError"
-import type { ConfigProvider } from "./ConfigProvider"
-import type * as Context from "./Context"
-import type * as Deferred from "./Deferred"
-import type * as Duration from "./Duration"
-import type * as Either from "./Either"
-import type * as Equal from "./Equal"
-import type { Equivalence } from "./Equivalence"
-import type { ExecutionStrategy } from "./ExecutionStrategy"
-import type * as Exit from "./Exit"
-import type * as Fiber from "./Fiber"
-import type * as FiberId from "./FiberId"
-import type * as FiberRef from "./FiberRef"
-import type * as FiberRefs from "./FiberRefs"
-import type * as FiberRefsPatch from "./FiberRefsPatch"
-import type { LazyArg } from "./Function"
-import { dual, identity } from "./Function"
-import type * as HashMap from "./HashMap"
-import type * as HashSet from "./HashSet"
-import type { TypeLambda } from "./HKT"
-import * as core from "./internal/core"
-import * as effect from "./internal/core-effect"
-import * as defaultServices from "./internal/defaultServices"
-import * as circular from "./internal/effect/circular"
-import * as fiberRuntime from "./internal/fiberRuntime"
-import * as layer from "./internal/layer"
-import * as query from "./internal/query"
-import * as _runtime from "./internal/runtime"
-import * as _schedule from "./internal/schedule"
-import type * as Layer from "./Layer"
-import type { LogLevel } from "./LogLevel"
-import type * as Metric from "./Metric"
-import type * as MetricLabel from "./MetricLabel"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
-import type * as Random from "./Random"
-import type * as Ref from "./Ref"
-import type * as Request from "./Request"
-import type { RequestBlock } from "./RequestBlock"
-import type { RequestResolver } from "./RequestResolver"
-import type * as Runtime from "./Runtime"
-import type * as RuntimeFlags from "./RuntimeFlags"
-import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch"
-import type * as Schedule from "./Schedule"
-import * as Scheduler from "./Scheduler"
-import type * as Scope from "./Scope"
-import type * as Supervisor from "./Supervisor"
-import type * as Tracer from "./Tracer"
-import type { Concurrency } from "./Types"
-import type * as Unify from "./Unify"
+import type * as Cause from "effect/Cause"
+import type * as Chunk from "effect/Chunk"
+import type * as Clock from "effect/Clock"
+import type { Config } from "effect/Config"
+import type { ConfigError } from "effect/ConfigError"
+import type { ConfigProvider } from "effect/ConfigProvider"
+import type * as Context from "effect/Context"
+import type * as Deferred from "effect/Deferred"
+import type * as Duration from "effect/Duration"
+import type * as Either from "effect/Either"
+import type * as Equal from "effect/Equal"
+import type { Equivalence } from "effect/Equivalence"
+import type { ExecutionStrategy } from "effect/ExecutionStrategy"
+import type * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
+import type * as FiberId from "effect/FiberId"
+import type * as FiberRef from "effect/FiberRef"
+import type * as FiberRefs from "effect/FiberRefs"
+import type * as FiberRefsPatch from "effect/FiberRefsPatch"
+import type { LazyArg } from "effect/Function"
+import { dual, identity } from "effect/Function"
+import type * as HashMap from "effect/HashMap"
+import type * as HashSet from "effect/HashSet"
+import type { TypeLambda } from "effect/HKT"
+import * as core from "effect/internal/core"
+import * as effect from "effect/internal/core-effect"
+import * as defaultServices from "effect/internal/defaultServices"
+import * as circular from "effect/internal/effect/circular"
+import * as fiberRuntime from "effect/internal/fiberRuntime"
+import * as layer from "effect/internal/layer"
+import * as query from "effect/internal/query"
+import * as _runtime from "effect/internal/runtime"
+import * as _schedule from "effect/internal/schedule"
+import type * as Layer from "effect/Layer"
+import type { LogLevel } from "effect/LogLevel"
+import type * as Metric from "effect/Metric"
+import type * as MetricLabel from "effect/MetricLabel"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { Predicate, Refinement } from "effect/Predicate"
+import type * as Random from "effect/Random"
+import type * as Ref from "effect/Ref"
+import type * as Request from "effect/Request"
+import type { RequestBlock } from "effect/RequestBlock"
+import type { RequestResolver } from "effect/RequestResolver"
+import type * as Runtime from "effect/Runtime"
+import type * as RuntimeFlags from "effect/RuntimeFlags"
+import type * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
+import type * as Schedule from "effect/Schedule"
+import * as Scheduler from "effect/Scheduler"
+import type * as Scope from "effect/Scope"
+import type * as Supervisor from "effect/Supervisor"
+import type * as Tracer from "effect/Tracer"
+import type { Concurrency } from "effect/Types"
+import type * as Unify from "effect/Unify"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -147,7 +147,7 @@ export interface Blocked<R, E, A> extends Effect<R, E, A> {
  * @since 2.0.0
  * @category models
  */
-declare module "./Context" {
+declare module "effect/Context" {
   interface Tag<Identifier, Service> extends Effect<Identifier, never, Service> {}
   interface TagUnifyBlacklist {
     Effect?: true
@@ -160,7 +160,7 @@ declare module "./Context" {
  * @since 2.0.0
  * @category models
  */
-declare module "./Either" {
+declare module "effect/Either" {
   interface Left<E, A> extends Effect<never, E, A> {
     readonly _tag: "Left"
   }
@@ -178,7 +178,7 @@ declare module "./Either" {
  * @since 2.0.0
  * @category models
  */
-declare module "./Option" {
+declare module "effect/Option" {
   interface None<A> extends Effect<never, Cause.NoSuchElementException, A> {
     readonly _tag: "None"
   }

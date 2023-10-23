@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import { dual, pipe } from "./Function"
-import type * as TestAnnotation from "./TestAnnotation"
+import { dual, pipe } from "effect/Function"
+import type * as TestAnnotation from "effect/TestAnnotation"
 
 /**
  * @since 2.0.0

@@ -1,5 +1,5 @@
 import * as _ from "effect/Ordering"
-import { deepStrictEqual } from "./util"
+import { deepStrictEqual } from "effect/test/util"
 
 describe.concurrent("Ordering", () => {
   it("match", () => {

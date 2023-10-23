@@ -1,17 +1,17 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "./Equal"
-import type * as equivalence from "./Equivalence"
-import { dual } from "./Function"
-import * as Hash from "./Hash"
-import type { Inspectable } from "./Inspectable"
-import { NodeInspectSymbol, toString } from "./Inspectable"
-import * as Option from "./Option"
-import * as order from "./Order"
-import type { Pipeable } from "./Pipeable"
-import { pipeArguments } from "./Pipeable"
-import { isBigInt, isNumber } from "./Predicate"
+import * as Equal from "effect/Equal"
+import type * as equivalence from "effect/Equivalence"
+import { dual } from "effect/Function"
+import * as Hash from "effect/Hash"
+import type { Inspectable } from "effect/Inspectable"
+import { NodeInspectSymbol, toString } from "effect/Inspectable"
+import * as Option from "effect/Option"
+import * as order from "effect/Order"
+import type { Pipeable } from "effect/Pipeable"
+import { pipeArguments } from "effect/Pipeable"
+import { isBigInt, isNumber } from "effect/Predicate"
 
 const TypeId: unique symbol = Symbol.for("effect/Duration")
 

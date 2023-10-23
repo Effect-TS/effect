@@ -7,11 +7,11 @@
  *
  * @since 2.0.0
  */
-import * as Either from "./Either"
-import * as Base64 from "./internal/Encoding/Base64"
-import * as Base64Url from "./internal/Encoding/Base64Url"
-import * as Common from "./internal/Encoding/Common"
-import * as Hex from "./internal/Encoding/Hex"
+import * as Either from "effect/Either"
+import * as Base64 from "effect/internal/Encoding/Base64"
+import * as Base64Url from "effect/internal/Encoding/Base64Url"
+import * as Common from "effect/internal/Encoding/Common"
+import * as Hex from "effect/internal/Encoding/Hex"
 
 /**
  * Encodes the given value into a base64 (RFC4648) `string`.

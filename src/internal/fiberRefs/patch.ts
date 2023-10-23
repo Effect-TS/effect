@@ -1,10 +1,10 @@
-import { equals } from "../../Equal"
-import type * as FiberId from "../../FiberId"
-import type * as FiberRefs from "../../FiberRefs"
-import type * as FiberRefsPatch from "../../FiberRefsPatch"
-import { dual } from "../../Function"
-import * as _fiberRefs from "../../internal/fiberRefs"
-import * as Arr from "../../ReadonlyArray"
+import { equals } from "effect/Equal"
+import type * as FiberId from "effect/FiberId"
+import type * as FiberRefs from "effect/FiberRefs"
+import type * as FiberRefsPatch from "effect/FiberRefsPatch"
+import { dual } from "effect/Function"
+import * as _fiberRefs from "effect/internal/fiberRefs"
+import * as Arr from "effect/ReadonlyArray"
 
 /** @internal */
 export const OP_EMPTY = "Empty" as const

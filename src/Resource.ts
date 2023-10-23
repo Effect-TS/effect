@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import * as internal from "./internal/resource"
-import type * as Schedule from "./Schedule"
-import type * as Scope from "./Scope"
-import type * as ScopedRef from "./ScopedRef"
+import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import * as internal from "effect/internal/resource"
+import type * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
+import type * as ScopedRef from "effect/ScopedRef"
 
 /**
  * @since 2.0.0

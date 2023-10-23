@@ -1,9 +1,9 @@
-import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {

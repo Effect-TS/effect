@@ -5,13 +5,13 @@
  *
  * @since 2.0.0
  */
-import * as equivalence from "./Equivalence"
-import { dual } from "./Function"
-import * as option from "./internal/Option"
-import type { Option } from "./Option"
-import * as order from "./Order"
-import type { Ordering } from "./Ordering"
-import * as predicate from "./Predicate"
+import * as equivalence from "effect/Equivalence"
+import { dual } from "effect/Function"
+import * as option from "effect/internal/Option"
+import type { Option } from "effect/Option"
+import * as order from "effect/Order"
+import type { Ordering } from "effect/Ordering"
+import * as predicate from "effect/Predicate"
 
 /**
  * Tests if a value is a `number`.

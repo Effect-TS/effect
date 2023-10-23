@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -11,6 +10,7 @@ import { identity, pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import * as it from "effect/test/utils/extend"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 

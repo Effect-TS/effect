@@ -1,5 +1,5 @@
-import * as Either from "../Either"
-import { identity } from "../Function"
+import * as Either from "effect/Either"
+import { identity } from "effect/Function"
 import type {
   Case,
   Matcher,
@@ -10,11 +10,11 @@ import type {
   Types,
   ValueMatcher,
   When
-} from "../Match"
-import * as Option from "../Option"
-import { pipeArguments } from "../Pipeable"
-import type * as Predicate from "../Predicate"
-import type { Unify } from "../Unify"
+} from "effect/Match"
+import * as Option from "effect/Option"
+import { pipeArguments } from "effect/Pipeable"
+import type * as Predicate from "effect/Predicate"
+import type { Unify } from "effect/Unify"
 
 /** @internal */
 export const TypeId: MatcherTypeId = Symbol.for(

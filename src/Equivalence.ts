@@ -5,8 +5,8 @@
  *
  * @since 2.0.0
  */
-import { dual } from "./Function"
-import type { TypeLambda } from "./HKT"
+import { dual } from "effect/Function"
+import type { TypeLambda } from "effect/HKT"
 
 /**
  * @category type class

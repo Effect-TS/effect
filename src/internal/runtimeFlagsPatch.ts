@@ -1,6 +1,6 @@
-import { dual } from "../Function"
-import type * as RuntimeFlags from "../RuntimeFlags"
-import type * as RuntimeFlagsPatch from "../RuntimeFlagsPatch"
+import { dual } from "effect/Function"
+import type * as RuntimeFlags from "effect/RuntimeFlags"
+import type * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
 
 /** @internal */
 const BIT_MASK = 0xff

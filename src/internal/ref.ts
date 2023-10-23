@@ -1,10 +1,10 @@
-import type * as Effect from "../Effect"
-import { dual } from "../Function"
-import * as core from "../internal/core"
-import * as MutableRef from "../MutableRef"
-import * as Option from "../Option"
-import { pipeArguments } from "../Pipeable"
-import type * as Ref from "../Ref"
+import type * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
+import * as core from "effect/internal/core"
+import * as MutableRef from "effect/MutableRef"
+import * as Option from "effect/Option"
+import { pipeArguments } from "effect/Pipeable"
+import type * as Ref from "effect/Ref"
 
 /** @internal */
 export const RefTypeId: Ref.RefTypeId = Symbol.for("effect/Ref") as Ref.RefTypeId

@@ -1,8 +1,8 @@
-import * as Equal from "../../../Equal"
-import type * as FiberId from "../../../FiberId"
-import { pipe } from "../../../Function"
-import * as Hash from "../../../Hash"
-import * as OpCodes from "../../../internal/stm/opCodes/tExit"
+import * as Equal from "effect/Equal"
+import type * as FiberId from "effect/FiberId"
+import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
+import * as OpCodes from "effect/internal/stm/opCodes/tExit"
 
 /** @internal */
 const TExitSymbolKey = "effect/TExit"

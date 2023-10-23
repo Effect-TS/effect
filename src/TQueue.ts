@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/stm/tQueue"
-import type * as Option from "./Option"
-import type { Predicate } from "./Predicate"
-import type * as STM from "./STM"
+import * as internal from "effect/internal/stm/tQueue"
+import type * as Option from "effect/Option"
+import type { Predicate } from "effect/Predicate"
+import type * as STM from "effect/STM"
 
 /**
  * @since 2.0.0

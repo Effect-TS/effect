@@ -1,8 +1,8 @@
-import type * as MetricKey from "../../MetricKey"
-import type * as MetricKeyType from "../../MetricKeyType"
-import type * as MetricPair from "../../MetricPair"
-import type * as MetricState from "../../MetricState"
-import { pipeArguments } from "../../Pipeable"
+import type * as MetricKey from "effect/MetricKey"
+import type * as MetricKeyType from "effect/MetricKeyType"
+import type * as MetricPair from "effect/MetricPair"
+import type * as MetricState from "effect/MetricState"
+import { pipeArguments } from "effect/Pipeable"
 
 /** @internal */
 const MetricPairSymbolKey = "effect/MetricPair"

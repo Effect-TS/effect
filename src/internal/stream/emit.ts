@@ -1,10 +1,10 @@
-import * as Cause from "../../Cause"
-import * as Chunk from "../../Chunk"
-import * as Effect from "../../Effect"
-import * as Exit from "../../Exit"
-import { pipe } from "../../Function"
-import * as Option from "../../Option"
-import type * as Emit from "../../StreamEmit"
+import * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
+import type * as Emit from "effect/StreamEmit"
 
 /** @internal */
 export const make = <R, E, A, B>(

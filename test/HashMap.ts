@@ -1,9 +1,9 @@
-import { deepStrictEqual } from "effect-test/util"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HM from "effect/HashMap"
 import * as Option from "effect/Option"
+import { deepStrictEqual } from "effect/test/util"
 import { inspect } from "node:util"
 
 class Key implements Equal.Equal {

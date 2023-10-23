@@ -2,18 +2,18 @@
  * @since 2.0.0
  */
 
-import type * as Data from "./Data"
-import * as Equivalence from "./Equivalence"
-import type { LazyArg } from "./Function"
-import { constNull, constUndefined, dual, identity } from "./Function"
-import type { TypeLambda } from "./HKT"
-import type { Inspectable } from "./Inspectable"
-import * as either from "./internal/Either"
-import type { Option } from "./Option"
-import type { Pipeable } from "./Pipeable"
-import { isFunction } from "./Predicate"
-import type * as Unify from "./Unify"
-import * as Gen from "./Utils"
+import type * as Data from "effect/Data"
+import * as Equivalence from "effect/Equivalence"
+import type { LazyArg } from "effect/Function"
+import { constNull, constUndefined, dual, identity } from "effect/Function"
+import type { TypeLambda } from "effect/HKT"
+import type { Inspectable } from "effect/Inspectable"
+import * as either from "effect/internal/Either"
+import type { Option } from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import { isFunction } from "effect/Predicate"
+import type * as Unify from "effect/Unify"
+import * as Gen from "effect/Utils"
 
 /**
  * @category models

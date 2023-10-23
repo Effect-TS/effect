@@ -1,7 +1,7 @@
-import * as Duration from "../../Duration"
-import { dual } from "../../Function"
-import * as Option from "../../Option"
-import type * as Interval from "../../ScheduleInterval"
+import * as Duration from "effect/Duration"
+import { dual } from "effect/Function"
+import * as Option from "effect/Option"
+import type * as Interval from "effect/ScheduleInterval"
 
 /** @internal */
 const IntervalSymbolKey = "effect/ScheduleInterval"

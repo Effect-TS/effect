@@ -4,17 +4,17 @@
  *
  * @since 2.0.0
  */
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import type * as Fiber from "./Fiber"
-import * as core from "./internal/core"
-import * as circular from "./internal/layer/circular"
-import * as internal from "./internal/supervisor"
-import type * as Layer from "./Layer"
-import type * as MutableRef from "./MutableRef"
-import type * as Option from "./Option"
-import type * as SortedSet from "./SortedSet"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
+import * as core from "effect/internal/core"
+import * as circular from "effect/internal/layer/circular"
+import * as internal from "effect/internal/supervisor"
+import type * as Layer from "effect/Layer"
+import type * as MutableRef from "effect/MutableRef"
+import type * as Option from "effect/Option"
+import type * as SortedSet from "effect/SortedSet"
 
 /**
  * @since 2.0.0

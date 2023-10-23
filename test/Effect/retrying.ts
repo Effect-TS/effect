@@ -1,7 +1,7 @@
-import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
 import { constFalse, constTrue } from "effect/Function"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

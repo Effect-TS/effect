@@ -1,19 +1,19 @@
 /**
  * @since 2.0.0
  */
-import type { Chunk } from "./Chunk"
-import type { Context } from "./Context"
-import type { Either } from "./Either"
-import type { Equal } from "./Equal"
-import * as Dual from "./Function"
-import type { HashMap } from "./HashMap"
-import type { HashSet } from "./HashSet"
-import * as D from "./internal/Differ"
-import * as ChunkPatch from "./internal/Differ/ChunkPatch"
-import * as ContextPatch from "./internal/Differ/ContextPatch"
-import * as HashMapPatch from "./internal/Differ/HashMapPatch"
-import * as HashSetPatch from "./internal/Differ/HashSetPatch"
-import * as OrPatch from "./internal/Differ/OrPatch"
+import type { Chunk } from "effect/Chunk"
+import type { Context } from "effect/Context"
+import type { Either } from "effect/Either"
+import type { Equal } from "effect/Equal"
+import * as Dual from "effect/Function"
+import type { HashMap } from "effect/HashMap"
+import type { HashSet } from "effect/HashSet"
+import * as D from "effect/internal/Differ"
+import * as ChunkPatch from "effect/internal/Differ/ChunkPatch"
+import * as ContextPatch from "effect/internal/Differ/ContextPatch"
+import * as HashMapPatch from "effect/internal/Differ/HashMapPatch"
+import * as HashSetPatch from "effect/internal/Differ/HashSetPatch"
+import * as OrPatch from "effect/internal/Differ/OrPatch"
 
 /**
  * @since 2.0.0

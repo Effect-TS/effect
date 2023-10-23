@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as Exit from "./Exit"
-import * as internal from "./internal/channel/singleProducerAsyncInput"
+import type * as Cause from "effect/Cause"
+import type * as Effect from "effect/Effect"
+import type * as Either from "effect/Either"
+import type * as Exit from "effect/Exit"
+import * as internal from "effect/internal/channel/singleProducerAsyncInput"
 
 /**
  * An MVar-like abstraction for sending data to channels asynchronously which is

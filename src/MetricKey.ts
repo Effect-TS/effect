@@ -1,16 +1,16 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Duration from "./Duration"
-import type * as Equal from "./Equal"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/metric/key"
-import type * as MetricBoundaries from "./MetricBoundaries"
-import type * as MetricKeyType from "./MetricKeyType"
-import type * as MetricLabel from "./MetricLabel"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
+import type * as Chunk from "effect/Chunk"
+import type * as Duration from "effect/Duration"
+import type * as Equal from "effect/Equal"
+import type * as HashSet from "effect/HashSet"
+import * as internal from "effect/internal/metric/key"
+import type * as MetricBoundaries from "effect/MetricBoundaries"
+import type * as MetricKeyType from "effect/MetricKeyType"
+import type * as MetricLabel from "effect/MetricLabel"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
 
 /**
  * @since 2.0.0

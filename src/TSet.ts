@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/stm/tSet"
-import type * as Option from "./Option"
-import type { Predicate } from "./Predicate"
-import type * as STM from "./STM"
-import type * as TMap from "./TMap"
+import type * as HashSet from "effect/HashSet"
+import * as internal from "effect/internal/stm/tSet"
+import type * as Option from "effect/Option"
+import type { Predicate } from "effect/Predicate"
+import type * as STM from "effect/STM"
+import type * as TMap from "effect/TMap"
 
 /**
  * @since 2.0.0

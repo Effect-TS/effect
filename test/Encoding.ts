@@ -1,6 +1,6 @@
-import { deepStrictEqual, strictEqual } from "effect-test/util"
 import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
+import { deepStrictEqual, strictEqual } from "effect/test/util"
 
 describe.concurrent("Base64", () => {
   const valid: Array<[string, string]> = [

@@ -1,13 +1,13 @@
-import type * as Channel from "../Channel"
-import type * as Effect from "../Effect"
-import type * as Effectable from "../Effectable"
-import * as Equal from "../Equal"
-import * as Hash from "../Hash"
-import { pipeArguments } from "../Pipeable"
-import type * as Sink from "../Sink"
-import type * as Stream from "../Stream"
-import * as Data from "./Data"
-import * as OpCodes from "./opCodes/effect"
+import type * as Channel from "effect/Channel"
+import type * as Effect from "effect/Effect"
+import type * as Effectable from "effect/Effectable"
+import * as Equal from "effect/Equal"
+import * as Hash from "effect/Hash"
+import * as Data from "effect/internal/Data"
+import * as OpCodes from "effect/internal/opCodes/effect"
+import { pipeArguments } from "effect/Pipeable"
+import type * as Sink from "effect/Sink"
+import type * as Stream from "effect/Stream"
 
 /** @internal */
 export const EffectTypeId: Effect.EffectTypeId = Symbol.for("effect/Effect") as Effect.EffectTypeId

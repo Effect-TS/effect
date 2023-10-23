@@ -1,8 +1,8 @@
-import type * as MergeDecision from "../../ChannelMergeDecision"
-import type * as Effect from "../../Effect"
-import type * as Exit from "../../Exit"
-import { dual } from "../../Function"
-import * as OpCodes from "../opCodes/channelMergeDecision"
+import type * as MergeDecision from "effect/ChannelMergeDecision"
+import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import { dual } from "effect/Function"
+import * as OpCodes from "effect/internal/opCodes/channelMergeDecision"
 
 /** @internal */
 const MergeDecisionSymbolKey = "effect/ChannelMergeDecision"

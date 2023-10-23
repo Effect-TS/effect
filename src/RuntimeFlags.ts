@@ -2,11 +2,11 @@
  * @since 2.0.0
  */
 
-import type * as Differ from "./Differ"
-import * as circular from "./internal/layer/circular"
-import * as internal from "./internal/runtimeFlags"
-import type * as Layer from "./Layer"
-import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch"
+import type * as Differ from "effect/Differ"
+import * as circular from "effect/internal/layer/circular"
+import * as internal from "effect/internal/runtimeFlags"
+import type * as Layer from "effect/Layer"
+import type * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
 
 /**
  * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of

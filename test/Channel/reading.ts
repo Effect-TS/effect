@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import * as MergeDecision from "effect/ChannelMergeDecision"
 import * as Effect from "effect/Effect"
@@ -10,6 +9,7 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 export const mapper = <A, B>(

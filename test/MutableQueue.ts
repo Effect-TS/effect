@@ -1,5 +1,5 @@
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect-test/util"
 import * as MutableQueue from "effect/MutableQueue"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect/test/util"
 import { inspect } from "node:util"
 
 describe.concurrent("MutableQueue", () => {

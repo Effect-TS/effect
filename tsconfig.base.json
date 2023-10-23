@@ -1,0 +1,58 @@
+{
+  "include": [],
+  "compilerOptions": {
+    "composite": true,
+    "downlevelIteration": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "skipLibCheck": true,
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "sourceMap": true,
+    "declarationMap": true,
+    "strict": true,
+    "noImplicitReturns": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "noEmitOnError": false,
+    "noErrorTruncation": false,
+    "allowJs": false,
+    "checkJs": false,
+    "forceConsistentCasingInFileNames": true,
+    "stripInternal": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": false,
+    "strictNullChecks": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "incremental": true,
+    "removeComments": false,
+    "baseUrl": ".",
+    "paths": {
+      "effect/test/*": [
+        "./test/*.js"
+      ],
+      "effect": [
+        "./src/index.js"
+      ],
+      "effect/*": [
+        "./src/*.js"
+      ],
+    },
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnostics": {
+          "1002": "none"
+        }
+      }
+    ]
+  },
+}

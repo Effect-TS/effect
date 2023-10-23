@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Equal from "./Equal"
-import type * as HashMap from "./HashMap"
-import * as internal from "./internal/metric/state"
-import type * as MetricKeyType from "./MetricKeyType"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
+import type * as Chunk from "effect/Chunk"
+import type * as Equal from "effect/Equal"
+import type * as HashMap from "effect/HashMap"
+import * as internal from "effect/internal/metric/state"
+import type * as MetricKeyType from "effect/MetricKeyType"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
 
 /**
  * @since 2.0.0

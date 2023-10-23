@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Equal from "./Equal"
-import * as internal from "./internal/metric/label"
-import type { Pipeable } from "./Pipeable"
+import type * as Equal from "effect/Equal"
+import * as internal from "effect/internal/metric/label"
+import type { Pipeable } from "effect/Pipeable"
 
 /**
  * @since 2.0.0

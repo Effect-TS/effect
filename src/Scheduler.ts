@@ -2,13 +2,13 @@
  * @since 2.0.0
  */
 
-import type { Effect } from "./Effect"
-import type { RuntimeFiber } from "./Fiber"
-import type { FiberRef } from "./FiberRef"
-import { dual } from "./Function"
-import { globalValue } from "./GlobalValue"
-import * as core from "./internal/core"
-import * as timeout from "./internal/timeout"
+import type { Effect } from "effect/Effect"
+import type { RuntimeFiber } from "effect/Fiber"
+import type { FiberRef } from "effect/FiberRef"
+import { dual } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
+import * as core from "effect/internal/core"
+import * as timeout from "effect/internal/timeout"
 
 /**
  * @since 2.0.0

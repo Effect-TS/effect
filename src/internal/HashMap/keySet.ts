@@ -1,6 +1,6 @@
-import type { HashMap } from "../../HashMap"
-import type { HashSet } from "../../HashSet"
-import { makeImpl } from "../../internal/HashSet"
+import type { HashMap } from "effect/HashMap"
+import type { HashSet } from "effect/HashSet"
+import { makeImpl } from "effect/internal/HashSet"
 
 /** @internal */
 export function keySet<K, V>(self: HashMap<K, V>): HashSet<K> {

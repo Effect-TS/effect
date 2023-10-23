@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -6,6 +5,7 @@ import { pipe } from "effect/Function"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("PubSub", () => {

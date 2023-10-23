@@ -1,4 +1,4 @@
-import type * as Encoding from "../../Encoding"
+import type * as Encoding from "effect/Encoding"
 
 /** @internal */
 export const DecodeExceptionTypeId: Encoding.DecodeExceptionTypeId = Symbol.for(

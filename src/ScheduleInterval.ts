@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration"
-import * as internal from "./internal/schedule/interval"
-import type * as Option from "./Option"
+import type * as Duration from "effect/Duration"
+import * as internal from "effect/internal/schedule/interval"
+import type * as Option from "effect/Option"
 
 /**
  * @since 2.0.0

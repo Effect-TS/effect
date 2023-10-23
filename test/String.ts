@@ -1,8 +1,8 @@
-import { deepStrictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as S from "effect/String"
+import { deepStrictEqual } from "effect/test/util"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("String", () => {

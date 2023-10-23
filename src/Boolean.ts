@@ -5,11 +5,11 @@
  *
  * @since 2.0.0
  */
-import * as equivalence from "./Equivalence"
-import type { LazyArg } from "./Function"
-import { dual } from "./Function"
-import * as order from "./Order"
-import * as predicate from "./Predicate"
+import * as equivalence from "effect/Equivalence"
+import type { LazyArg } from "effect/Function"
+import { dual } from "effect/Function"
+import * as order from "effect/Order"
+import * as predicate from "effect/Predicate"
 
 /**
  * Tests if a value is a `boolean`.

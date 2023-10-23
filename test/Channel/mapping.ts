@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import * as ChildExecutorDecision from "effect/ChannelChildExecutorDecision"
 import * as UpstreamPullRequest from "effect/ChannelUpstreamPullRequest"
@@ -10,6 +9,7 @@ import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 interface First {

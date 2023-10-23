@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Equal from "./Equal"
-import * as internal from "./internal/metric/boundaries"
-import type { Pipeable } from "./Pipeable"
+import type * as Chunk from "effect/Chunk"
+import type * as Equal from "effect/Equal"
+import * as internal from "effect/internal/metric/boundaries"
+import type { Pipeable } from "effect/Pipeable"
 
 /**
  * @since 2.0.0

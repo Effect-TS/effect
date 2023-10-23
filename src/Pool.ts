@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Data from "./Data"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import * as internal from "./internal/pool"
-import type { Pipeable } from "./Pipeable"
-import type * as Scope from "./Scope"
+import type * as Data from "effect/Data"
+import type * as Duration from "effect/Duration"
+import type * as Effect from "effect/Effect"
+import * as internal from "effect/internal/pool"
+import type { Pipeable } from "effect/Pipeable"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 2.0.0
@@ -93,11 +93,11 @@ export const make: <R, E, A>(
  * unspecified order.
  *
  * ```ts
- * import * as Duration from "./Duration"
+ * import * as Duration from "effect/Duration"
  * import * as Effect from "effect/Effect"
  * import * as Pool from "effect/Pool"
  * import * as Scope from "effect/Scope"
- * import { pipe } from "./Function"
+ * import { pipe } from "effect/Function"
  *
  * Effect.scoped(
  *   pipe(

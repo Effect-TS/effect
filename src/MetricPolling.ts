@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import type * as Fiber from "./Fiber"
-import * as internal from "./internal/metric/polling"
-import type * as Metric from "./Metric"
-import type { Pipeable } from "./Pipeable"
-import type * as Schedule from "./Schedule"
-import type * as Scope from "./Scope"
+import type * as Effect from "effect/Effect"
+import type * as Fiber from "effect/Fiber"
+import * as internal from "effect/internal/metric/polling"
+import type * as Metric from "effect/Metric"
+import type { Pipeable } from "effect/Pipeable"
+import type * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 2.0.0

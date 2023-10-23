@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import type * as Either from "./Either"
-import * as internal from "./internal/matcher"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import * as Predicate from "./Predicate"
-import type { UnionToIntersection } from "./Types"
-import type { Unify } from "./Unify"
+import type * as Either from "effect/Either"
+import * as internal from "effect/internal/matcher"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
+import type { UnionToIntersection } from "effect/Types"
+import type { Unify } from "effect/Unify"
 
 /**
  * @category type ids
@@ -538,7 +538,7 @@ export const exhaustive: <I, F, A, Pr>(
  * @since 1.0.0
  * @category type ids
  */
-export const SafeRefinementId = Symbol.for("./SafeRefinement")
+export const SafeRefinementId = Symbol.for("effect/SafeRefinement")
 
 /**
  * @since 1.0.0
@@ -554,7 +554,7 @@ export interface SafeRefinement<A, R = A> {
   readonly [SafeRefinementId]: (a: A) => R
 }
 
-const Fail = Symbol.for("./Fail")
+const Fail = Symbol.for("effect/Fail")
 type Fail = typeof Fail
 
 /**

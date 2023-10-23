@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type * as Equal from "./Equal"
-import type * as FiberId from "./FiberId"
-import * as internal from "./internal/fiberStatus"
-import type * as RuntimeFlags from "./RuntimeFlags"
+import type * as Equal from "effect/Equal"
+import type * as FiberId from "effect/FiberId"
+import * as internal from "effect/internal/fiberStatus"
+import type * as RuntimeFlags from "effect/RuntimeFlags"
 
 /**
  * @since 2.0.0

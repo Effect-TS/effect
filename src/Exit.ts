@@ -1,16 +1,16 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as FiberId from "./FiberId"
-import type { Inspectable } from "./Inspectable"
-import * as core from "./internal/core"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate } from "./Predicate"
-import type * as Unify from "./Unify"
+import type * as Cause from "effect/Cause"
+import type * as Effect from "effect/Effect"
+import type * as Either from "effect/Either"
+import type * as FiberId from "effect/FiberId"
+import type { Inspectable } from "effect/Inspectable"
+import * as core from "effect/internal/core"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { Predicate } from "effect/Predicate"
+import type * as Unify from "effect/Unify"
 
 /**
  * An `Exit<E, A>` describes the result of a executing an `Effect` workflow.

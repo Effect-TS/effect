@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/stm/tPubSub"
-import type * as tQueue from "./internal/stm/tQueue"
-import type * as Scope from "./Scope"
-import type * as STM from "./STM"
-import type * as TQueue from "./TQueue"
-import type * as TRef from "./TRef"
+import type * as Effect from "effect/Effect"
+import type * as HashSet from "effect/HashSet"
+import * as internal from "effect/internal/stm/tPubSub"
+import type * as tQueue from "effect/internal/stm/tQueue"
+import type * as Scope from "effect/Scope"
+import type * as STM from "effect/STM"
+import type * as TQueue from "effect/TQueue"
+import type * as TRef from "effect/TRef"
 
 /**
  * @since 2.0.0

@@ -1,4 +1,3 @@
-import * as Util from "effect-test/util"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as E from "effect/Either"
@@ -8,6 +7,7 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import type { Predicate } from "effect/Predicate"
 import * as RA from "effect/ReadonlyArray"
+import * as Util from "effect/test/util"
 import * as fc from "fast-check"
 import { inspect } from "node:util"
 

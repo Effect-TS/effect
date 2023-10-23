@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -9,6 +8,7 @@ import { constFalse, constTrue, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

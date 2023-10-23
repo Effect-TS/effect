@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Clock from "./Clock"
-import type * as ConfigProvider from "./ConfigProvider"
-import type * as Console from "./Console"
-import type * as Context from "./Context"
-import type * as FiberRef from "./FiberRef"
-import * as internal from "./internal/defaultServices"
-import type * as Random from "./Random"
-import type * as Tracer from "./Tracer"
+import type * as Clock from "effect/Clock"
+import type * as ConfigProvider from "effect/ConfigProvider"
+import type * as Console from "effect/Console"
+import type * as Context from "effect/Context"
+import type * as FiberRef from "effect/FiberRef"
+import * as internal from "effect/internal/defaultServices"
+import type * as Random from "effect/Random"
+import type * as Tracer from "effect/Tracer"
 
 /**
  * @since 2.0.0

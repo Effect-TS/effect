@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type { Equivalence } from "./Equivalence"
-import * as Hash from "./Hash"
+import type { Equivalence } from "effect/Equivalence"
+import * as Hash from "effect/Hash"
 
 /**
  * @since 2.0.0

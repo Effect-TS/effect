@@ -1,8 +1,8 @@
-import * as Deferred from "../../Deferred"
-import * as Effect from "../../Effect"
-import { dual, pipe } from "../../Function"
-import * as Option from "../../Option"
-import * as Ref from "../../Ref"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
+import { dual, pipe } from "effect/Function"
+import * as Option from "effect/Option"
+import * as Ref from "effect/Ref"
 
 /** @internal */
 export const HandoffTypeId = Symbol.for("effect/Stream/Handoff")

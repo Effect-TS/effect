@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type { NonEmptyReadonlyArray } from "../ReadonlyArray"
+import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 
 // -------------------------------------------------------------------------------------
 // ReadonlyArray

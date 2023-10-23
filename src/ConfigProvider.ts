@@ -1,15 +1,15 @@
 /**
  * @since 2.0.0
  */
-import type * as Config from "./Config"
-import type * as ConfigError from "./ConfigError"
-import type * as PathPatch from "./ConfigProviderPathPatch"
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type { LazyArg } from "./Function"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/configProvider"
-import type { Pipeable } from "./Pipeable"
+import type * as Config from "effect/Config"
+import type * as ConfigError from "effect/ConfigError"
+import type * as PathPatch from "effect/ConfigProviderPathPatch"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
+import type * as HashSet from "effect/HashSet"
+import * as internal from "effect/internal/configProvider"
+import type { Pipeable } from "effect/Pipeable"
 
 /**
  * @since 2.0.0

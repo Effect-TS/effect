@@ -3,10 +3,10 @@
  *
  * @since 2.0.0
  */
-import * as Equivalence from "./Equivalence"
-import { dual } from "./Function"
-import type { TypeLambda } from "./HKT"
-import * as order from "./Order"
+import * as Equivalence from "effect/Equivalence"
+import { dual } from "effect/Function"
+import type { TypeLambda } from "effect/HKT"
+import * as order from "effect/Order"
 
 /**
  * @category type lambdas

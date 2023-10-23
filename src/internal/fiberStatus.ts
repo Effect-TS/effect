@@ -1,9 +1,9 @@
-import * as Equal from "../Equal"
-import type { FiberId } from "../FiberId"
-import type * as FiberStatus from "../FiberStatus"
-import { pipe } from "../Function"
-import * as Hash from "../Hash"
-import type { RuntimeFlags } from "../RuntimeFlags"
+import * as Equal from "effect/Equal"
+import type { FiberId } from "effect/FiberId"
+import type * as FiberStatus from "effect/FiberStatus"
+import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
+import type { RuntimeFlags } from "effect/RuntimeFlags"
 
 const FiberStatusSymbolKey = "effect/FiberStatus"
 

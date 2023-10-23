@@ -1,10 +1,10 @@
-import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { constFalse, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

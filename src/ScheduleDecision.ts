@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/schedule/decision"
-import type * as Interval from "./ScheduleInterval"
-import type * as Intervals from "./ScheduleIntervals"
+import * as internal from "effect/internal/schedule/decision"
+import type * as Interval from "effect/ScheduleInterval"
+import type * as Intervals from "effect/ScheduleIntervals"
 
 /**
  * @since 2.0.0

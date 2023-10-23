@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import * as internal from "./internal/stm/tReentrantLock"
-import type * as Scope from "./Scope"
-import type * as STM from "./STM"
-import type * as TRef from "./TRef"
+import type * as Effect from "effect/Effect"
+import * as internal from "effect/internal/stm/tReentrantLock"
+import type * as Scope from "effect/Scope"
+import type * as STM from "effect/STM"
+import type * as TRef from "effect/TRef"
 
 /**
  * @since 2.0.0

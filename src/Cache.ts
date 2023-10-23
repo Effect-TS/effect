@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import type { Either } from "./Either"
-import type * as Exit from "./Exit"
-import * as internal from "./internal/cache"
-import type * as Option from "./Option"
+import type * as Duration from "effect/Duration"
+import type * as Effect from "effect/Effect"
+import type { Either } from "effect/Either"
+import type * as Exit from "effect/Exit"
+import * as internal from "effect/internal/cache"
+import type * as Option from "effect/Option"
 
 /**
  * @since 2.0.0

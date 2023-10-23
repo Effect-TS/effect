@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context"
-import * as internal from "./internal/stm/tRandom"
-import type * as Layer from "./Layer"
-import type * as STM from "./STM"
-import type * as TRef from "./TRef"
-import type * as Random from "./Utils"
+import type * as Context from "effect/Context"
+import * as internal from "effect/internal/stm/tRandom"
+import type * as Layer from "effect/Layer"
+import type * as STM from "effect/STM"
+import type * as TRef from "effect/TRef"
+import type * as Random from "effect/Utils"
 
 /**
  * @since 2.0.0

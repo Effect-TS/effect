@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 
-import { identity } from "./Function"
+import { identity } from "effect/Function"
 
 /**
  * @since 2.0.0

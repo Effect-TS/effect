@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import { pipe } from "./Function"
-import { globalValue } from "./GlobalValue"
-import { PCGRandom } from "./Utils"
+import { pipe } from "effect/Function"
+import { globalValue } from "effect/GlobalValue"
+import { PCGRandom } from "effect/Utils"
 
 /** @internal */
 const randomHashCache = globalValue(

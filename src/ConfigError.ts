@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import * as internal from "./internal/configError"
+import type * as Cause from "effect/Cause"
+import * as internal from "effect/internal/configError"
 
 /**
  * @since 2.0.0

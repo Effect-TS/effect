@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type { LazyArg } from "./Function"
-import { dual } from "./Function"
+import type { LazyArg } from "effect/Function"
+import { dual } from "effect/Function"
 
 /**
  * @category model

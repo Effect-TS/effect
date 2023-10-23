@@ -4,19 +4,19 @@
  * @since 2.0.0
  */
 
-import type { Either } from "./Either"
-import * as E from "./Either"
-import * as Equal from "./Equal"
-import * as Equivalence from "./Equivalence"
-import { dual, identity } from "./Function"
-import type { LazyArg } from "./Function"
-import type { TypeLambda } from "./HKT"
-import * as readonlyArray from "./internal/ReadonlyArray"
-import type { Option } from "./Option"
-import * as O from "./Option"
-import * as Order from "./Order"
-import type { Predicate, Refinement } from "./Predicate"
-import * as RR from "./ReadonlyRecord"
+import type { Either } from "effect/Either"
+import * as E from "effect/Either"
+import * as Equal from "effect/Equal"
+import * as Equivalence from "effect/Equivalence"
+import { dual, identity } from "effect/Function"
+import type { LazyArg } from "effect/Function"
+import type { TypeLambda } from "effect/HKT"
+import * as readonlyArray from "effect/internal/ReadonlyArray"
+import type { Option } from "effect/Option"
+import * as O from "effect/Option"
+import * as Order from "effect/Order"
+import type { Predicate, Refinement } from "effect/Predicate"
+import * as RR from "effect/ReadonlyRecord"
 
 /**
  * @category type lambdas

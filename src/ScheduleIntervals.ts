@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Check from "./Chunk"
-import * as internal from "./internal/schedule/intervals"
-import type * as Interval from "./ScheduleInterval"
+import type * as Check from "effect/Chunk"
+import * as internal from "effect/internal/schedule/intervals"
+import type * as Interval from "effect/ScheduleInterval"
 
 /**
  * @since 2.0.0

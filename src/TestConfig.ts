@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context"
+import * as Context from "effect/Context"
 
 /**
  * The `TestConfig` service provides access to default configuration settings

@@ -1,47 +1,11 @@
 {
-  "compilerOptions": {
-    "strict": true,
-    "moduleDetection": "force",
-    "composite": true,
-    "downlevelIteration": true,
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "declaration": true,
-    "skipLibCheck": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "moduleResolution": "node",
-    "noEmit": true,
-    "lib": ["ES2021", "DOM"],
-    "isolatedModules": true,
-    "sourceMap": true,
-    "declarationMap": true,
-    "noImplicitReturns": false,
-    "noUnusedLocals": true,
-    "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true,
-    "noEmitOnError": false,
-    "noErrorTruncation": false,
-    "allowJs": false,
-    "checkJs": false,
-    "forceConsistentCasingInFileNames": true,
-    "stripInternal": true,
-    "noImplicitAny": true,
-    "noImplicitThis": true,
-    "noUncheckedIndexedAccess": false,
-    "strictNullChecks": true,
-    "baseUrl": ".",
-    "target": "ES2021",
-    "module": "ES6",
-    "incremental": true,
-    "removeComments": false,
-    "paths": {
-      "effect": ["./src/index.ts"],
-      "effect/*": ["./src/*.ts"],
-      "effect-test/*": ["./test/*.ts"]
+  "extends": "./tsconfig.base.json",
+  "references": [
+    {
+      "path": "./tsconfig.build.json"
     },
-    "types": ["vitest/globals", "node"],
-    "plugins": [{ "name": "@effect/language-service" }]
-  },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+    {
+      "path": "./tsconfig.test.json"
+    }
+  ]
 }

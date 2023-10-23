@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Channel from "./Channel"
-import type * as Effect from "./Effect"
-import * as internal from "./internal/Effectable"
-import type * as Sink from "./Sink"
-import type * as Stream from "./Stream"
+import type * as Channel from "effect/Channel"
+import type * as Effect from "effect/Effect"
+import * as internal from "effect/internal/Effectable"
+import type * as Sink from "effect/Sink"
+import type * as Stream from "effect/Stream"
 
 /**
  * @since 2.0.0

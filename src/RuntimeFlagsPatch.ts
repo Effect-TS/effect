@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import * as runtimeFlags from "./internal/runtimeFlags"
-import * as internal from "./internal/runtimeFlagsPatch"
-import type * as RuntimeFlags from "./RuntimeFlags"
+import * as runtimeFlags from "effect/internal/runtimeFlags"
+import * as internal from "effect/internal/runtimeFlagsPatch"
+import type * as RuntimeFlags from "effect/RuntimeFlags"
 
 /**
  * @since 2.0.0

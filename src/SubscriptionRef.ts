@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import * as internal from "./internal/subscriptionRef"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type * as PubSub from "./PubSub"
-import * as Ref from "./Ref"
-import type * as Stream from "./Stream"
-import * as Synchronized from "./SynchronizedRef"
+import type * as Effect from "effect/Effect"
+import * as internal from "effect/internal/subscriptionRef"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type * as PubSub from "effect/PubSub"
+import * as Ref from "effect/Ref"
+import type * as Stream from "effect/Stream"
+import * as Synchronized from "effect/SynchronizedRef"
 
 /**
  * @since 2.0.0

@@ -1,4 +1,4 @@
-import type * as Chunk from "../../Chunk"
+import type * as Chunk from "effect/Chunk"
 
 /** @internal */
 export type ZipAllState<A, A2> = DrainLeft | DrainRight | PullBoth | PullLeft<A2> | PullRight<A>

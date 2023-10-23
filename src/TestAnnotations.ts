@@ -1,20 +1,20 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context"
-import type * as Effect from "./Effect"
-import * as Equal from "./Equal"
-import type * as Fiber from "./Fiber"
-import { pipe } from "./Function"
-import * as core from "./internal/core"
-import * as effect from "./internal/core-effect"
-import * as fiber from "./internal/fiber"
-import * as MutableRef from "./MutableRef"
-import * as RA from "./ReadonlyArray"
-import * as Ref from "./Ref"
-import * as SortedSet from "./SortedSet"
-import * as TestAnnotation from "./TestAnnotation"
-import * as TestAnnotationMap from "./TestAnnotationMap"
+import * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
+import type * as Fiber from "effect/Fiber"
+import { pipe } from "effect/Function"
+import * as core from "effect/internal/core"
+import * as effect from "effect/internal/core-effect"
+import * as fiber from "effect/internal/fiber"
+import * as MutableRef from "effect/MutableRef"
+import * as RA from "effect/ReadonlyArray"
+import * as Ref from "effect/Ref"
+import * as SortedSet from "effect/SortedSet"
+import * as TestAnnotation from "effect/TestAnnotation"
+import * as TestAnnotationMap from "effect/TestAnnotationMap"
 
 /**
  * @since 2.0.0

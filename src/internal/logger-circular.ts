@@ -1,11 +1,11 @@
-import * as Cause from "../Cause"
-import { dual } from "../Function"
-import * as HashMap from "../HashMap"
-import * as core from "../internal/core"
-import * as _fiberId from "../internal/fiberId"
-import * as fiberRefs from "../internal/fiberRefs"
-import * as List from "../List"
-import type * as Logger from "../Logger"
+import * as Cause from "effect/Cause"
+import { dual } from "effect/Function"
+import * as HashMap from "effect/HashMap"
+import * as core from "effect/internal/core"
+import * as _fiberId from "effect/internal/fiberId"
+import * as fiberRefs from "effect/internal/fiberRefs"
+import * as List from "effect/List"
+import type * as Logger from "effect/Logger"
 
 /** @internal */
 export const test = dual<

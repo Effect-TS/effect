@@ -1,36 +1,36 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as ChildExecutorDecision from "./ChannelChildExecutorDecision"
-import type * as MergeDecision from "./ChannelMergeDecision"
-import type * as MergeStrategy from "./ChannelMergeStrategy"
-import type * as SingleProducerAsyncInput from "./ChannelSingleProducerAsyncInput"
-import type * as UpstreamPullRequest from "./ChannelUpstreamPullRequest"
-import type * as UpstreamPullStrategy from "./ChannelUpstreamPullStrategy"
-import type * as Chunk from "./Chunk"
-import type * as Context from "./Context"
-import type * as Deferred from "./Deferred"
-import type * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as Exit from "./Exit"
-import type { LazyArg } from "./Function"
-import * as channel from "./internal/channel"
-import * as core from "./internal/core-stream"
-import * as sink from "./internal/sink"
-import * as stream from "./internal/stream"
-import type * as Layer from "./Layer"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate } from "./Predicate"
-import type * as PubSub from "./PubSub"
-import type * as Queue from "./Queue"
-import type * as Ref from "./Ref"
-import type * as Scope from "./Scope"
-import type * as Sink from "./Sink"
-import type * as Stream from "./Stream"
-import type * as Tracer from "./Tracer"
-import type * as Unify from "./Unify"
+import type * as Cause from "effect/Cause"
+import type * as ChildExecutorDecision from "effect/ChannelChildExecutorDecision"
+import type * as MergeDecision from "effect/ChannelMergeDecision"
+import type * as MergeStrategy from "effect/ChannelMergeStrategy"
+import type * as SingleProducerAsyncInput from "effect/ChannelSingleProducerAsyncInput"
+import type * as UpstreamPullRequest from "effect/ChannelUpstreamPullRequest"
+import type * as UpstreamPullStrategy from "effect/ChannelUpstreamPullStrategy"
+import type * as Chunk from "effect/Chunk"
+import type * as Context from "effect/Context"
+import type * as Deferred from "effect/Deferred"
+import type * as Effect from "effect/Effect"
+import type * as Either from "effect/Either"
+import type * as Exit from "effect/Exit"
+import type { LazyArg } from "effect/Function"
+import * as channel from "effect/internal/channel"
+import * as core from "effect/internal/core-stream"
+import * as sink from "effect/internal/sink"
+import * as stream from "effect/internal/stream"
+import type * as Layer from "effect/Layer"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { Predicate } from "effect/Predicate"
+import type * as PubSub from "effect/PubSub"
+import type * as Queue from "effect/Queue"
+import type * as Ref from "effect/Ref"
+import type * as Scope from "effect/Scope"
+import type * as Sink from "effect/Sink"
+import type * as Stream from "effect/Stream"
+import type * as Tracer from "effect/Tracer"
+import type * as Unify from "effect/Unify"
 
 /**
  * @since 2.0.0
@@ -109,7 +109,7 @@ export interface ChannelUnifyBlacklist extends Effect.EffectUnifyBlacklist {
  * @since 2.0.0
  * @category models
  */
-declare module "./Effect" {
+declare module "effect/Effect" {
   interface Effect<R, E, A> extends Channel<R, unknown, unknown, unknown, E, never, A> {}
   interface EffectUnifyBlacklist {
     Channel?: true

@@ -16,12 +16,12 @@
  *
  * @since 2.0.0
  */
-import * as Either from "./Either"
-import { identity } from "./Function"
-import * as Option from "./Option"
-import type { Predicate, Refinement } from "./Predicate"
-import * as ReadonlyArray from "./ReadonlyArray"
-import type * as Types from "./Types"
+import * as Either from "effect/Either"
+import { identity } from "effect/Function"
+import * as Option from "effect/Option"
+import type { Predicate, Refinement } from "effect/Predicate"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import type * as Types from "effect/Types"
 
 /**
  * @since 2.0.0

@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/groupBy"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate } from "./Predicate"
-import type * as Queue from "./Queue"
-import type * as Stream from "./Stream"
-import type * as Take from "./Take"
+import * as internal from "effect/internal/groupBy"
+import type { Pipeable } from "effect/Pipeable"
+import type { Predicate } from "effect/Predicate"
+import type * as Queue from "effect/Queue"
+import type * as Stream from "effect/Stream"
+import type * as Take from "effect/Take"
 
 /**
  * @since 2.0.0

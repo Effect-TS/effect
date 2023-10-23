@@ -1,18 +1,18 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as ConfigError from "./ConfigError"
-import type * as ConfigSecret from "./ConfigSecret"
-import type * as Either from "./Either"
-import type { LazyArg } from "./Function"
-import type * as HashMap from "./HashMap"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/config"
-import type * as LogLevel from "./LogLevel"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
+import type * as Chunk from "effect/Chunk"
+import type * as ConfigError from "effect/ConfigError"
+import type * as ConfigSecret from "effect/ConfigSecret"
+import type * as Either from "effect/Either"
+import type { LazyArg } from "effect/Function"
+import type * as HashMap from "effect/HashMap"
+import type * as HashSet from "effect/HashSet"
+import * as internal from "effect/internal/config"
+import type * as LogLevel from "effect/LogLevel"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { Predicate, Refinement } from "effect/Predicate"
 
 /**
  * @since 2.0.0
@@ -356,7 +356,7 @@ export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Confi
  * For example:
  *
  * ```
- * import { Config, unwrap } from "./Config"
+ * import { Config, unwrap } from "effect/Config"
  *
  * interface Options { key: string }
  *

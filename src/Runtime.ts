@@ -1,18 +1,18 @@
 /**
  * @since 2.0.0
  */
-import type { Cause } from "./Cause"
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import type * as Fiber from "./Fiber"
-import type * as FiberId from "./FiberId"
-import type * as FiberRefs from "./FiberRefs"
-import type { Inspectable } from "./Inspectable"
-import * as internal from "./internal/runtime"
-import type { Pipeable } from "./Pipeable"
-import type * as RuntimeFlags from "./RuntimeFlags"
-import type { Scheduler } from "./Scheduler"
+import type { Cause } from "effect/Cause"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
+import type * as FiberId from "effect/FiberId"
+import type * as FiberRefs from "effect/FiberRefs"
+import type { Inspectable } from "effect/Inspectable"
+import * as internal from "effect/internal/runtime"
+import type { Pipeable } from "effect/Pipeable"
+import type * as RuntimeFlags from "effect/RuntimeFlags"
+import type { Scheduler } from "effect/Scheduler"
 
 /**
  * @since 2.0.0

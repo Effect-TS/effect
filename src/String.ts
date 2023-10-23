@@ -6,16 +6,16 @@
  * @since 2.0.0
  */
 
-import * as equivalence from "./Equivalence"
-import { dual } from "./Function"
-import * as readonlyArray from "./internal/ReadonlyArray"
-import * as number from "./Number"
-import * as Option from "./Option"
-import * as order from "./Order"
-import type * as Ordering from "./Ordering"
-import type { Refinement } from "./Predicate"
-import * as predicate from "./Predicate"
-import type { NonEmptyArray } from "./ReadonlyArray"
+import * as equivalence from "effect/Equivalence"
+import { dual } from "effect/Function"
+import * as readonlyArray from "effect/internal/ReadonlyArray"
+import * as number from "effect/Number"
+import * as Option from "effect/Option"
+import * as order from "effect/Order"
+import type * as Ordering from "effect/Ordering"
+import type { Refinement } from "effect/Predicate"
+import * as predicate from "effect/Predicate"
+import type { NonEmptyArray } from "effect/ReadonlyArray"
 
 /**
  * Tests if a value is a `string`.

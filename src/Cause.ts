@@ -21,17 +21,17 @@
  *
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Either from "./Either"
-import type * as Equal from "./Equal"
-import type * as FiberId from "./FiberId"
-import type * as HashSet from "./HashSet"
-import type { Inspectable } from "./Inspectable"
-import * as internal from "./internal/cause"
-import { originalInstance } from "./internal/core"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate } from "./Predicate"
+import type * as Chunk from "effect/Chunk"
+import type * as Either from "effect/Either"
+import type * as Equal from "effect/Equal"
+import type * as FiberId from "effect/FiberId"
+import type * as HashSet from "effect/HashSet"
+import type { Inspectable } from "effect/Inspectable"
+import * as internal from "effect/internal/cause"
+import { originalInstance } from "effect/internal/core"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { Predicate } from "effect/Predicate"
 
 /**
  * @since 2.0.0

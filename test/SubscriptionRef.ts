@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -10,6 +9,7 @@ import * as Number from "effect/Number"
 import * as Random from "effect/Random"
 import * as Stream from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("SubscriptionRef", () => {

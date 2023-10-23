@@ -1,9 +1,9 @@
-import * as Chunk from "../../Chunk"
-import type * as Differ from "../../Differ"
-import * as Equal from "../../Equal"
-import * as Dual from "../../Function"
-import * as HashMap from "../../HashMap"
-import { Structural } from "../Data"
+import * as Chunk from "effect/Chunk"
+import { Structural } from "effect/Data"
+import type * as Differ from "effect/Differ"
+import * as Equal from "effect/Equal"
+import * as Dual from "effect/Function"
+import * as HashMap from "effect/HashMap"
 
 /** @internal */
 export const HashMapPatchTypeId: Differ.Differ.HashMap.TypeId = Symbol.for(

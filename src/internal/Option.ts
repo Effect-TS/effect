@@ -2,11 +2,11 @@
  * @since 2.0.0
  */
 
-import * as Equal from "../Equal"
-import * as Hash from "../Hash"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
-import type * as Option from "../Option"
-import { EffectPrototype } from "./Effectable"
+import { EffectPrototype } from "effect/Effectable"
+import * as Equal from "effect/Equal"
+import * as Hash from "effect/Hash"
+import { NodeInspectSymbol, toJSON, toString } from "effect/Inspectable"
+import type * as Option from "effect/Option"
 
 const TypeId: Option.TypeId = Symbol.for("effect/Option") as Option.TypeId
 

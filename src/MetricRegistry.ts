@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/metric/registry"
-import type * as MetricHook from "./MetricHook"
-import type * as MetricKey from "./MetricKey"
-import type * as MetricKeyType from "./MetricKeyType"
-import type * as MetricPair from "./MetricPair"
+import type * as HashSet from "effect/HashSet"
+import * as internal from "effect/internal/metric/registry"
+import type * as MetricHook from "effect/MetricHook"
+import type * as MetricKey from "effect/MetricKey"
+import type * as MetricKeyType from "effect/MetricKeyType"
+import type * as MetricPair from "effect/MetricPair"
 
 /**
  * @since 2.0.0

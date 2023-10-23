@@ -1,7 +1,7 @@
-import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
+import * as it from "effect/test/utils/extend"
 
 describe.concurrent("Stream", () => {
   it.effect("decodeText/encodeText round trip", () =>

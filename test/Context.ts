@@ -33,8 +33,8 @@ describe.concurrent("Context", () => {
   })
 
   it("global tag", () => {
-    const a = Context.Tag<number>("effect-test/Context/Tag")
-    const b = Context.Tag<number>("effect-test/Context/Tag")
+    const a = Context.Tag<number>("effect/test/Context/Tag")
+    const b = Context.Tag<number>("effect/test/Context/Tag")
     expect(a).toBe(b)
   })
 

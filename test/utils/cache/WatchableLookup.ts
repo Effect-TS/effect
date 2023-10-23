@@ -1,4 +1,3 @@
-import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -8,6 +7,7 @@ import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
+import * as ObservableResource from "effect/test/utils/cache/ObservableResource"
 import * as TestServices from "effect/TestServices"
 
 export interface WatchableLookup<Key, Error, Value> {

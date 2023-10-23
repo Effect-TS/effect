@@ -1,6 +1,6 @@
-import type * as Cause from "../../Cause"
-import type * as Chunk from "../../Chunk"
-import type * as SinkEndReason from "./sinkEndReason"
+import type * as Cause from "effect/Cause"
+import type * as Chunk from "effect/Chunk"
+import type * as SinkEndReason from "effect/internal/stream/sinkEndReason"
 
 /** @internal */
 export type HandoffSignal<E, A> = Emit<A> | Halt<E> | End

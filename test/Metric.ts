@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
@@ -17,6 +16,7 @@ import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Schedule from "effect/Schedule"
+import * as it from "effect/test/utils/extend"
 
 const labels = Chunk.make(MetricLabel.make("x", "a"), MetricLabel.make("y", "b"))
 

@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/metric/pair"
-import type * as MetricKey from "./MetricKey"
-import type * as MetricKeyType from "./MetricKeyType"
-import type * as MetricState from "./MetricState"
-import type { Pipeable } from "./Pipeable"
+import * as internal from "effect/internal/metric/pair"
+import type * as MetricKey from "effect/MetricKey"
+import type * as MetricKeyType from "effect/MetricKeyType"
+import type * as MetricState from "effect/MetricState"
+import type { Pipeable } from "effect/Pipeable"
 
 /**
  * @since 2.0.0

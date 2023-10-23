@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import { dual, pipe } from "./Function"
-import * as core from "./internal/core"
-import * as number from "./Number"
-import * as order from "./Order"
-import type { Pipeable } from "./Pipeable"
+import type * as Effect from "effect/Effect"
+import { dual, pipe } from "effect/Function"
+import * as core from "effect/internal/core"
+import * as number from "effect/Number"
+import * as order from "effect/Order"
+import type { Pipeable } from "effect/Pipeable"
 
 /**
  * A `LogLevel` represents the log level associated with an individual logging

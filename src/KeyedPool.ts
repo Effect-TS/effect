@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import * as internal from "./internal/keyedPool"
-import type { Pipeable } from "./Pipeable"
-import type * as Scope from "./Scope"
+import type * as Duration from "effect/Duration"
+import type * as Effect from "effect/Effect"
+import * as internal from "effect/internal/keyedPool"
+import type { Pipeable } from "effect/Pipeable"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 2.0.0

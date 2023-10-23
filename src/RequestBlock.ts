@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context"
-import type { FiberRef } from "./FiberRef"
-import * as _RequestBlock from "./internal/blockedRequests"
-import * as core from "./internal/core"
-import * as _dataSource from "./internal/dataSource"
-import type * as Request from "./Request"
-import type * as RequestResolver from "./RequestResolver"
+import type * as Context from "effect/Context"
+import type { FiberRef } from "effect/FiberRef"
+import * as _RequestBlock from "effect/internal/blockedRequests"
+import * as core from "effect/internal/core"
+import * as _dataSource from "effect/internal/dataSource"
+import type * as Request from "effect/Request"
+import type * as RequestResolver from "effect/RequestResolver"
 
 /**
  * `RequestBlock` captures a collection of blocked requests as a data

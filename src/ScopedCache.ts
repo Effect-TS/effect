@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Cache from "./Cache"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import * as internal from "./internal/scopedCache"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type * as Scope from "./Scope"
+import type * as Cache from "effect/Cache"
+import type * as Duration from "effect/Duration"
+import type * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import * as internal from "effect/internal/scopedCache"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 2.0.0

@@ -1,9 +1,9 @@
-import type * as Cause from "../Cause"
-import type * as ConfigError from "../ConfigError"
-import * as Either from "../Either"
-import { constFalse, constTrue, dual, pipe } from "../Function"
-import * as OpCodes from "../internal/opCodes/configError"
-import * as RA from "../ReadonlyArray"
+import type * as Cause from "effect/Cause"
+import type * as ConfigError from "effect/ConfigError"
+import * as Either from "effect/Either"
+import { constFalse, constTrue, dual, pipe } from "effect/Function"
+import * as OpCodes from "effect/internal/opCodes/configError"
+import * as RA from "effect/ReadonlyArray"
 
 /** @internal */
 const ConfigErrorSymbolKey = "effect/ConfigError"

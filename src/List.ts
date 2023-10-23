@@ -21,19 +21,19 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
-import * as Chunk from "./Chunk"
-import * as Either from "./Either"
-import * as Equal from "./Equal"
-import * as Equivalence from "./Equivalence"
-import { dual, identity, unsafeCoerce } from "./Function"
-import * as Hash from "./Hash"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable"
-import * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import { pipeArguments } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
-import { isObject } from "./Predicate"
-import * as ReadonlyArray from "./ReadonlyArray"
+import * as Chunk from "effect/Chunk"
+import * as Either from "effect/Either"
+import * as Equal from "effect/Equal"
+import * as Equivalence from "effect/Equivalence"
+import { dual, identity, unsafeCoerce } from "effect/Function"
+import * as Hash from "effect/Hash"
+import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "effect/Inspectable"
+import * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import { pipeArguments } from "effect/Pipeable"
+import type { Predicate, Refinement } from "effect/Predicate"
+import { isObject } from "effect/Predicate"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
 /**
  * Represents an immutable linked list of elements of type `A`.

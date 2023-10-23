@@ -1,26 +1,26 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as Channel from "./Channel"
-import type * as MergeDecision from "./ChannelMergeDecision"
-import type * as Chunk from "./Chunk"
-import type * as Context from "./Context"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as Exit from "./Exit"
-import type { LazyArg } from "./Function"
-import type * as HashMap from "./HashMap"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/sink"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
-import type * as PubSub from "./PubSub"
-import type * as Queue from "./Queue"
-import type * as Scope from "./Scope"
-import type * as Unify from "./Unify"
+import type * as Cause from "effect/Cause"
+import type * as Channel from "effect/Channel"
+import type * as MergeDecision from "effect/ChannelMergeDecision"
+import type * as Chunk from "effect/Chunk"
+import type * as Context from "effect/Context"
+import type * as Duration from "effect/Duration"
+import type * as Effect from "effect/Effect"
+import type * as Either from "effect/Either"
+import type * as Exit from "effect/Exit"
+import type { LazyArg } from "effect/Function"
+import type * as HashMap from "effect/HashMap"
+import type * as HashSet from "effect/HashSet"
+import * as internal from "effect/internal/sink"
+import type * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { Predicate, Refinement } from "effect/Predicate"
+import type * as PubSub from "effect/PubSub"
+import type * as Queue from "effect/Queue"
+import type * as Scope from "effect/Scope"
+import type * as Unify from "effect/Unify"
 
 /**
  * @since 2.0.0
@@ -75,7 +75,7 @@ export interface SinkUnifyBlacklist extends Effect.EffectUnifyBlacklist {
  * @since 2.0.0
  * @category models
  */
-declare module "./Effect" {
+declare module "effect/Effect" {
   interface Effect<R, E, A> extends Sink<R, E, unknown, never, A> {}
   interface EffectUnifyBlacklist {
     Sink?: true

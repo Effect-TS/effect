@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import type * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -14,6 +13,7 @@ import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
+import * as it from "effect/test/utils/extend"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {

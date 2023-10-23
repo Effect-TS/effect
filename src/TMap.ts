@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type { LazyArg } from "./Function"
-import type * as HashMap from "./HashMap"
-import * as internal from "./internal/stm/tMap"
-import type * as Option from "./Option"
-import type * as STM from "./STM"
-import type * as TArray from "./TArray"
-import type * as TRef from "./TRef"
+import type * as Chunk from "effect/Chunk"
+import type { LazyArg } from "effect/Function"
+import type * as HashMap from "effect/HashMap"
+import * as internal from "effect/internal/stm/tMap"
+import type * as Option from "effect/Option"
+import type * as STM from "effect/STM"
+import type * as TArray from "effect/TArray"
+import type * as TRef from "effect/TRef"
 
 /**
  * @since 2.0.0

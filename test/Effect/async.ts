@@ -1,4 +1,3 @@
-import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
@@ -10,6 +9,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Runtime from "effect/Runtime"
+import * as it from "effect/test/utils/extend"
 import * as os from "node:os"
 import { assert, describe } from "vitest"
 

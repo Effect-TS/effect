@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Either from "./Either"
-import * as internal from "./internal/stm/tDeferred"
-import type * as Option from "./Option"
-import type * as STM from "./STM"
-import type * as TRef from "./TRef"
+import type * as Either from "effect/Either"
+import * as internal from "effect/internal/stm/tDeferred"
+import type * as Option from "effect/Option"
+import type * as STM from "effect/STM"
+import type * as TRef from "effect/TRef"
 
 /**
  * @since 2.0.0

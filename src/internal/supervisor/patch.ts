@@ -1,10 +1,10 @@
-import * as Chunk from "../../Chunk"
-import * as Differ from "../../Differ"
-import * as Equal from "../../Equal"
-import { pipe } from "../../Function"
-import * as HashSet from "../../HashSet"
-import * as supervisor from "../../internal/supervisor"
-import type * as Supervisor from "../../Supervisor"
+import * as Chunk from "effect/Chunk"
+import * as Differ from "effect/Differ"
+import * as Equal from "effect/Equal"
+import { pipe } from "effect/Function"
+import * as HashSet from "effect/HashSet"
+import * as supervisor from "effect/internal/supervisor"
+import type * as Supervisor from "effect/Supervisor"
 
 /** @internal */
 export type SupervisorPatch = Empty | AddSupervisor | RemoveSupervisor | AndThen
