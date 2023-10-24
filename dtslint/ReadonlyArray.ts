@@ -3,20 +3,20 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as RA from "effect/ReadonlyArray"
 
-declare const nerns: RA.NonEmptyReadonlyArray<number>
-declare const nens: RA.NonEmptyArray<number>
-declare const rns: ReadonlyArray<number>
-declare const ns: Array<number>
-declare const nss: Array<number | string>
-declare const nonEmptynss: RA.NonEmptyReadonlyArray<number | string>
+declare const nonEmptyReadonlyNumbers: RA.NonEmptyReadonlyArray<number>
+declare const nonEmptyNumbers: RA.NonEmptyArray<number>
+declare const readonlyNumbers: ReadonlyArray<number>
+declare const numbers: Array<number>
+declare const numbersOrStrings: Array<number | string>
+declare const nonEmptyReadonlyNumbersOrStrings: RA.NonEmptyReadonlyArray<number | string>
 
 // -------------------------------------------------------------------------------------
 // isEmptyReadonlyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isEmptyReadonlyArray(rns)) {
+if (RA.isEmptyReadonlyArray(readonlyNumbers)) {
   // $ExpectType readonly []
-  rns
+  readonlyNumbers
 }
 
 // $ExpectType <A>(c: readonly A[]) => Option<readonly []>
@@ -26,9 +26,9 @@ Option.liftPredicate(RA.isEmptyReadonlyArray)
 // isEmptyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isEmptyArray(ns)) {
+if (RA.isEmptyArray(numbers)) {
   // $ExpectType []
-  ns
+  numbers
 }
 
 // $ExpectType <A>(c: A[]) => Option<[]>
@@ -38,9 +38,9 @@ Option.liftPredicate(RA.isEmptyArray)
 // isNonEmptyReadonlyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isNonEmptyReadonlyArray(rns)) {
+if (RA.isNonEmptyReadonlyArray(readonlyNumbers)) {
   // $ExpectType readonly [number, ...number[]]
-  rns
+  readonlyNumbers
 }
 
 // $ExpectType <A>(c: readonly A[]) => Option<readonly [A, ...A[]]>
@@ -50,9 +50,9 @@ Option.liftPredicate(RA.isNonEmptyReadonlyArray)
 // isNonEmptyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isNonEmptyArray(ns)) {
+if (RA.isNonEmptyArray(numbers)) {
   // $ExpectType [number, ...number[]]
-  ns
+  numbers
 }
 
 // $ExpectType <A>(c: A[]) => Option<[A, ...A[]]>
@@ -63,32 +63,28 @@ Option.liftPredicate(RA.isNonEmptyArray)
 // -------------------------------------------------------------------------------------
 
 // $ExpectType number[]
-RA.map(rns, (n) => n + 1)
+RA.map(readonlyNumbers, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(rns, RA.map((n) => n + 1))
+pipe(readonlyNumbers, RA.map((n) => n + 1))
 
 // $ExpectType number[]
-RA.map(ns, (n) => n + 1)
+RA.map(numbers, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(ns, RA.map((n) => n + 1))
-
-// -------------------------------------------------------------------------------------
-// mapNonEmpty
-// -------------------------------------------------------------------------------------
+pipe(numbers, RA.map((n) => n + 1))
 
 // $ExpectType [number, ...number[]]
-RA.mapNonEmpty(nerns, (n) => n + 1)
+RA.map(nonEmptyReadonlyNumbers, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nerns, RA.mapNonEmpty((n) => n + 1))
+pipe(nonEmptyReadonlyNumbers, RA.map((n) => n + 1))
 
 // $ExpectType [number, ...number[]]
-RA.mapNonEmpty(nens, (n) => n + 1)
+RA.map(nonEmptyNumbers, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nens, RA.mapNonEmpty((n) => n + 1))
+pipe(nonEmptyNumbers, RA.map((n) => n + 1))
 
 // -------------------------------------------------------------------------------------
 // groupBy
@@ -106,24 +102,24 @@ RA.groupBy([1, 2, 3], (n) => n > 0 ? "positive" as const : "negative" as const)
 // some
 // -------------------------------------------------------------------------------------
 
-if (RA.some(nss, Predicate.isString)) {
-  nss // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
+if (RA.some(numbersOrStrings, Predicate.isString)) {
+  numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
 }
 
-if (RA.some(Predicate.isString)(nss)) {
-  nss // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
+if (RA.some(Predicate.isString)(numbersOrStrings)) {
+  numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
 }
 
 // -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
 
-if (RA.every(nss, Predicate.isString)) {
-  nss // $ExpectType (string | number)[] & readonly string[]
+if (RA.every(numbersOrStrings, Predicate.isString)) {
+  numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
 
-if (RA.every(Predicate.isString)(nss)) {
-  nss // $ExpectType (string | number)[] & readonly string[]
+if (RA.every(Predicate.isString)(numbersOrStrings)) {
+  numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
 
 // -------------------------------------------------------------------------------------
@@ -131,49 +127,49 @@ if (RA.every(Predicate.isString)(nss)) {
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.append(nss, true)
+RA.append(numbersOrStrings, true)
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.append(true)(nss)
+RA.append(true)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // appendAllNonEmpty
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(nss, nonEmptynss)
+RA.appendAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(nss)(nonEmptynss)
+RA.appendAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(nonEmptynss, nss)
+RA.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(nonEmptynss)(nss)
+RA.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // prepend
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.prepend(nss, true)
+RA.prepend(numbersOrStrings, true)
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.prepend(true)(nss)
+RA.prepend(true)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // prependAllNonEmpty
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(nss, nonEmptynss)
+RA.prependAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(nss)(nonEmptynss)
+RA.prependAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(nonEmptynss, nss)
+RA.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(nonEmptynss)(nss)
+RA.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
