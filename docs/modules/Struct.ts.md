@@ -125,7 +125,7 @@ Create a new object by omitting properties of an existing object.
 ```ts
 export declare const omit: <S, Keys extends readonly [keyof S, ...(keyof S)[]]>(
   ...keys: Keys
-) => (s: S) => { [K in Exclude<keyof S, Keys[number]>]: S[K] }
+) => (s: S) => Simplify<Omit<S, Keys[number]>>
 ```
 
 **Example**
@@ -148,7 +148,7 @@ Create a new object by picking properties of an existing object.
 ```ts
 export declare const pick: <S, Keys extends readonly [keyof S, ...(keyof S)[]]>(
   ...keys: Keys
-) => (s: S) => { [K in Keys[number]]: S[K] }
+) => (s: S) => Simplify<Pick<S, Keys[number]>>
 ```
 
 **Example**
