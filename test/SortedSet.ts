@@ -5,6 +5,7 @@ import * as Order from "effect/Order"
 import * as SortedSet from "effect/SortedSet"
 import * as Str from "effect/String"
 import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 class Member implements Eq.Equal {
   constructor(readonly id: string) {}

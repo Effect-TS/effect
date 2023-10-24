@@ -1,6 +1,7 @@
 import { deepStrictEqual } from "effect-test/util"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as _ from "effect/Predicate"
+import { assert, describe, expect, it } from "vitest"
 
 const isPositive: _.Predicate<number> = (n) => n > 0
 const isNegative: _.Predicate<number> = (n) => n < 0

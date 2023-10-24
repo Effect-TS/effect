@@ -1,4 +1,5 @@
 import * as S from "effect/Symbol"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Symbol", () => {
   it("isSymbol", () => {

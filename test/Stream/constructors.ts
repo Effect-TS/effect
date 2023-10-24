@@ -14,7 +14,7 @@ import * as Schedule from "effect/Schedule"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/TestClock"
 import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { assert, describe, expect } from "vitest"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,

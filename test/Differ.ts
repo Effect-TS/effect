@@ -5,7 +5,7 @@ import { pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as RA from "effect/ReadonlyArray"
-import { it as it_ } from "vitest"
+import { assert, describe, it as it_ } from "vitest"
 
 function diffLaws<Value, Patch>(
   differ: Differ.Differ<Value, Patch>,

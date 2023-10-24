@@ -7,7 +7,7 @@ import * as internal from "effect/internal/cause"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Cause", () => {
   it("[internal] prettyErrorMessage", () => {

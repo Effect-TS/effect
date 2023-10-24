@@ -1,4 +1,3 @@
-import * as assert from "assert"
 import { deepStrictEqual, double, strictEqual } from "effect-test/util"
 import * as E from "effect/Either"
 import { identity, pipe } from "effect/Function"
@@ -9,6 +8,7 @@ import type { Predicate } from "effect/Predicate"
 import * as RA from "effect/ReadonlyArray"
 import * as String from "effect/String"
 import * as fc from "fast-check"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("ReadonlyArray", () => {
   it("exports", () => {

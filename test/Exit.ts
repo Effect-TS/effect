@@ -1,4 +1,5 @@
 import * as Exit from "effect/Exit"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Exit", () => {
   describe.concurrent("toJSON", () => {

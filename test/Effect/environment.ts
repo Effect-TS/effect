@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import { assert, describe } from "vitest"
+import { assert, describe, expect } from "vitest"
 
 interface NumberService {
   readonly n: number

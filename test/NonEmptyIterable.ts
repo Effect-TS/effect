@@ -1,5 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as NonEmpty from "effect/NonEmptyIterable"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("NonEmptyIterable", () => {
   it("should get head and rest", () => {

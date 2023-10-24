@@ -6,6 +6,7 @@ import * as N from "effect/Number"
 import * as _ from "effect/Option"
 import * as S from "effect/String"
 import { inspect } from "node:util"
+import { assert, assertType, describe, expect, it } from "vitest"
 
 const p = (n: number): boolean => n > 2
 

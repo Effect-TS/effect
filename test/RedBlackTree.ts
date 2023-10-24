@@ -7,6 +7,7 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as RedBlackTree from "effect/RedBlackTree"
 import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("RedBlackTree", () => {
   it("toString", () => {

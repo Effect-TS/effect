@@ -5,6 +5,7 @@ import * as N from "effect/Number"
 import * as O from "effect/Option"
 import * as SM from "effect/SortedMap"
 import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 class Key implements Eq.Equal {
   constructor(readonly id: number) {}
@@ -50,7 +51,7 @@ function makeNumericSortedMap(
 }
 
 describe.concurrent("SortedMap", () => {
-  test("toString", () => {
+  it("toString", () => {
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
     expect(String(map)).toEqual(`{
@@ -72,7 +73,7 @@ describe.concurrent("SortedMap", () => {
 }`)
   })
 
-  test("toJSON", () => {
+  it("toJSON", () => {
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
     expect(map.toJSON()).toEqual(
@@ -80,7 +81,7 @@ describe.concurrent("SortedMap", () => {
     )
   })
 
-  test("inspect", () => {
+  it("inspect", () => {
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
     expect(inspect(map)).toEqual(
@@ -88,7 +89,7 @@ describe.concurrent("SortedMap", () => {
     )
   })
 
-  test("entries", () => {
+  it("entries", () => {
     const map = makeSortedMap([0, 10], [1, 20], [2, 30])
 
     const result = Array.from(map)

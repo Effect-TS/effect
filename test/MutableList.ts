@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
 import * as MutableList from "effect/MutableList"
 import { inspect } from "node:util"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("MutableList", () => {
   it("toString", () => {

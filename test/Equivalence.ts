@@ -1,5 +1,6 @@
 import * as _ from "effect/Equivalence"
 import { pipe } from "effect/Function"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Equivalence", () => {
   it("array", () => {
@@ -11,7 +12,7 @@ describe.concurrent("Equivalence", () => {
     expect(eq([1, 2, 3], [1, 2])).toEqual(false)
   })
 
-  test("strict returns an Equivalence that uses strict equality (===) to compare values", () => {
+  it("strict returns an Equivalence that uses strict equality (===) to compare values", () => {
     const eq = _.strict<{ a: number }>()
     const a = { a: 1 }
     expect(eq(a, a)).toBe(true)

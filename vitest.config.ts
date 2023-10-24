@@ -10,8 +10,7 @@ export default defineConfig({
   plugins: [babel({ babel: babelConfig })],
   test: {
     include: ["./test/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    exclude: ["./test/util.ts", "./test/utils/**/*.ts", "./test/**/*.init.ts"],
-    globals: true
+    exclude: ["./test/util.ts", "./test/utils/**/*.ts", "./test/**/*.init.ts"]
   },
   resolve: {
     alias: {

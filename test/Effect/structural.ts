@@ -3,7 +3,7 @@ import { assertType, satisfies } from "effect-test/utils/types"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
-import { describe } from "vitest"
+import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
   describe("all", () => {
