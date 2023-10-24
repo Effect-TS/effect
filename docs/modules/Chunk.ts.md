@@ -82,7 +82,6 @@ Added in v2.0.0
   - [reduceRight](#reduceright)
 - [mapping](#mapping)
   - [map](#map)
-  - [mapNonEmpty](#mapnonempty)
 - [model](#model)
   - [NonEmptyChunk (interface)](#nonemptychunk-interface)
 - [models](#models)
@@ -103,6 +102,9 @@ Added in v2.0.0
   - [unsafeHead](#unsafehead)
   - [unsafeLast](#unsafelast)
 - [utils](#utils)
+  - [Chunk (namespace)](#chunk-namespace)
+    - [Infer (type alias)](#infer-type-alias)
+    - [With (type alias)](#with-type-alias)
   - [drop](#drop)
   - [dropRight](#dropright)
   - [dropWhile](#dropwhile)
@@ -977,23 +979,8 @@ Returns a chunk with the elements mapped by the specified f function.
 
 ```ts
 export declare const map: {
-  <A, B>(f: (a: A, i: number) => B): (self: Chunk<A>) => Chunk<B>
-  <A, B>(self: Chunk<A>, f: (a: A, i: number) => B): Chunk<B>
-}
-```
-
-Added in v2.0.0
-
-## mapNonEmpty
-
-Returns a non empty chunk with the elements mapped by the specified f function.
-
-**Signature**
-
-```ts
-export declare const mapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => B): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
-  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => B): NonEmptyChunk<B>
+  <T extends Chunk<any>, B>(f: (a: Chunk.Infer<T>, i: number) => B): (self: T) => Chunk.With<T, B>
+  <T extends Chunk<any>, B>(self: T, f: (a: Chunk.Infer<T>, i: number) => B): Chunk.With<T, B>
 }
 ```
 
@@ -1177,6 +1164,30 @@ export declare const unsafeLast: <A>(self: Chunk<A>) => A
 Added in v2.0.0
 
 # utils
+
+## Chunk (namespace)
+
+Added in v2.0.0
+
+### Infer (type alias)
+
+**Signature**
+
+```ts
+export type Infer<T extends Chunk<any>> = T extends Chunk<infer A> ? A : never
+```
+
+Added in v2.0.0
+
+### With (type alias)
+
+**Signature**
+
+```ts
+export type With<T extends Chunk<any>, A> = T extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
+```
+
+Added in v2.0.0
 
 ## drop
 
