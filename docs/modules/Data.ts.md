@@ -293,24 +293,40 @@ export declare const taggedEnum: {
   <Z extends TaggedEnum.WithGenerics<1>>(): <K extends Z['taggedEnum']['_tag']>(
     tag: K
   ) => <A>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, K>
+    args: TaggedEnum.Args<
+      TaggedEnum.Kind<Z, A, unknown, unknown, unknown>,
+      K,
+      Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: K }>
+    >
   ) => Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: K }>
   <Z extends TaggedEnum.WithGenerics<2>>(): <K extends Z['taggedEnum']['_tag']>(
     tag: K
   ) => <A, B>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B, unknown, unknown>, K>
+    args: TaggedEnum.Args<
+      TaggedEnum.Kind<Z, A, B, unknown, unknown>,
+      K,
+      Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: K }>
+    >
   ) => Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: K }>
   <Z extends TaggedEnum.WithGenerics<3>>(): <K extends Z['taggedEnum']['_tag']>(
     tag: K
   ) => <A, B, C>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B, C, unknown>, K>
+    args: TaggedEnum.Args<
+      TaggedEnum.Kind<Z, A, B, C, unknown>,
+      K,
+      Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: K }>
+    >
   ) => Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: K }>
   <Z extends TaggedEnum.WithGenerics<4>>(): <K extends Z['taggedEnum']['_tag']>(
     tag: K
   ) => <A, B, C, D>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B, C, D>, K>
+    args: TaggedEnum.Args<
+      TaggedEnum.Kind<Z, A, B, C, D>,
+      K,
+      Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: K }>
+    >
   ) => Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: K }>
-  <A extends Data<{ readonly _tag: string }>>(): <K extends A['_tag']>(
+  <A extends { readonly _tag: string } & Equal.Equal>(): <K extends A['_tag']>(
     tag: K
   ) => Case.Constructor<Extract<A, { readonly _tag: K }>, '_tag'>
 }
@@ -416,7 +432,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Data<A extends Record<string, any> | ReadonlyArray<any>> = { readonly [P in keyof A]: A[P] } & Equal.Equal
+export type Data<A> = A extends Record<string, any> | ReadonlyArray<any>
+  ? { readonly [P in keyof A]: A[P] } & Equal.Equal
+  : A
 ```
 
 Added in v2.0.0
@@ -452,7 +470,7 @@ type HttpErrorPlain =
 ```ts
 export type TaggedEnum<A extends Record<string, Record<string, any>> & UntaggedChildren<A>> = keyof A extends infer Tag
   ? Tag extends keyof A
-    ? Data<{ readonly [K in `_tag` | keyof A[Tag]]: K extends `_tag` ? Tag : A[Tag][K] }>
+    ? Data<Types.Simplify<{ readonly _tag: Tag } & { readonly [K in keyof A[Tag]]: A[Tag][K] }>>
     : never
   : never
 ```
@@ -497,7 +515,7 @@ export interface Constructor<A extends Case, Tag extends keyof A = never> {
   (
     args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true
       ? void
-      : { readonly [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
+      : { readonly [P in keyof A as P extends Tag | keyof Equal.Equal ? never : P]: A[P] }
   ): A
 }
 ```
@@ -531,10 +549,11 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Args<A extends Data<{ readonly _tag: string }>, K extends A['_tag']> = Omit<
-  Extract<A, { readonly _tag: K }>,
-  '_tag' | keyof Case
-> extends infer T
+export type Args<
+  A extends Data<{ readonly _tag: string }>,
+  K extends A['_tag'],
+  E = Extract<A, { readonly _tag: K }>
+> = { readonly [k in keyof E as k extends '_tag' | keyof Case ? never : k]: E[k] } extends infer T
   ? {} extends T
     ? void
     : T
