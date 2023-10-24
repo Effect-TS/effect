@@ -1,6 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { describe, expect, it } from "vitest"
 
 describe("Schema/templateLiteral", () => {
   it("should throw on unsupported template literal spans", () => {

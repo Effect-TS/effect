@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { describe, expect, it } from "vitest"
 
 describe("Uint8Array/Uint8Array", () => {
   const schema = S.Uint8Array

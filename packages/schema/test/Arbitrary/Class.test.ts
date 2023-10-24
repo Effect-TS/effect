@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import { propertyTo } from "@effect/schema/test/util"
+import { describe, it } from "vitest"
 
 describe("class", () => {
   it("required property signature", () => {

@@ -3,6 +3,7 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import { identity } from "effect/Function"
 import * as O from "effect/Option"
+import { describe, it } from "vitest"
 
 describe("Schema/PropertySignatureTransformations", () => {
   it("default", async () => {

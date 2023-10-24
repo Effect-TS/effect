@@ -3,6 +3,7 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as E from "effect/Either"
+import { describe, expect, it } from "vitest"
 
 describe("Either/eitherFromSelf", () => {
   it("property tests", () => {

@@ -1,5 +1,6 @@
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
+import { describe, expect, it } from "vitest"
 
 describe("AST/createUnion", () => {
   it("should remove never from members", () => {

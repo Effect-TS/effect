@@ -5,6 +5,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
+import { describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>()({
   id: S.number,

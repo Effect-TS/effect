@@ -4,6 +4,7 @@ import { dual, pipe } from "effect/Function"
 import * as O from "effect/Option"
 import * as RA from "effect/ReadonlyArray"
 import ts from "typescript"
+import { describe, expect, it } from "vitest"
 
 const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions): string => {
   const sourceFile = ts.createSourceFile(

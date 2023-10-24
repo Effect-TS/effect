@@ -1,5 +1,6 @@
 import * as AST from "@effect/schema/AST"
 import * as Option from "effect/Option"
+import { describe, expect, it } from "vitest"
 
 describe("AST/appendElement", () => {
   it("should append an element (rest element)", () => {

@@ -1,6 +1,7 @@
 import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import type * as FastCheck from "fast-check"
+import { describe, expect, it } from "vitest"
 
 interface NumberConstraints {
   readonly _tag: "NumberConstraints"

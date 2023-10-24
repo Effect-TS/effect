@@ -1,6 +1,7 @@
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
+import { describe, expect, it } from "vitest"
 
 describe("Pretty", () => {
   it("exports", () => {

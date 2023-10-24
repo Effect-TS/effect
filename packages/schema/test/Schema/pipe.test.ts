@@ -1,4 +1,5 @@
 import * as S from "@effect/schema/Schema"
+import { describe, expect, it } from "vitest"
 
 describe("Schema/pipe", () => {
   it("schemas should be pipeable", () => {

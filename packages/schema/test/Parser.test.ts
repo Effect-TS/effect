@@ -6,6 +6,7 @@ import * as Util from "@effect/schema/test/util"
 import * as Effect from "effect/Effect"
 import * as E from "effect/Either"
 import * as O from "effect/Option"
+import { describe, expect, it } from "vitest"
 
 describe("Parser", () => {
   it("asserts", () => {

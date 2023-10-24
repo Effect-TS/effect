@@ -1,5 +1,6 @@
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
+import { describe, expect, it } from "vitest"
 
 // raises an error while encoding from a number if the string is not a char
 const NumberFromChar = S.string.pipe(S.length(1), S.numberFromString)

@@ -3,6 +3,7 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as O from "effect/Option"
+import { describe, expect, it } from "vitest"
 
 describe("Option/optionFromSelf", () => {
   it("property tests", () => {

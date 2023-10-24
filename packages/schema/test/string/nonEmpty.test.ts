@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { describe, it } from "vitest"
 
 describe("string/nonEmpty", () => {
   const schema = S.string.pipe(S.nonEmpty())

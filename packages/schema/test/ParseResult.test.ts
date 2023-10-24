@@ -1,5 +1,6 @@
 import * as ParseResult from "@effect/schema/ParseResult"
 import { Effect, Either, Exit } from "effect"
+import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
   const forbiddenParseError = ParseResult.parseError([ParseResult.forbidden])

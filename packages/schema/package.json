@@ -74,7 +74,6 @@
     "@effect/language-service": "^0.0.21",
     "@preconstruct/cli": "^2.8.1",
     "@types/benchmark": "^2.1.4",
-    "@types/chai": "^4.3.9",
     "@types/glob": "^8.1.0",
     "@types/node": "^20.8.7",
     "@typescript-eslint/eslint-plugin": "^6.8.0",

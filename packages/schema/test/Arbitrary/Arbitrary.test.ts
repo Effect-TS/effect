@@ -2,6 +2,7 @@ import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import { propertyFrom, propertyTo } from "@effect/schema/test/util"
 import * as fc from "fast-check"
+import { describe, expect, it } from "vitest"
 
 describe("Arbitrary/Arbitrary", () => {
   it("exports", () => {

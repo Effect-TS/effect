@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { describe, it } from "vitest"
 
 describe("bigint/lessThanBigint", () => {
   const schema = S.bigintFromSelf.pipe(S.lessThanBigint(0n))

@@ -1,5 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { describe, it } from "vitest"
 
 describe("ReadonlyArray/minItems", () => {
   const schema = S.array(S.number).pipe(S.minItems(2))

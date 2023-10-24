@@ -1,6 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as E from "effect/Either"
+import { describe, expect, it } from "vitest"
 
 describe("Schema/attachPropertySignature", () => {
   it("baseline", () => {

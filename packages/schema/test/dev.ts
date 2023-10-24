@@ -1,5 +1,6 @@
 import * as JSONSchema from "@effect/schema/JSONSchema"
 import * as S from "@effect/schema/Schema"
+import { describe, it } from "vitest"
 
 describe("dev", () => {
   it.skip("tmp", async () => {

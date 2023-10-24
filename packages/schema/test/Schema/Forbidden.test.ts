@@ -2,6 +2,7 @@ import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as E from "effect/Either"
+import { describe, expect, it } from "vitest"
 
 const expectMessage = <I, A>(
   schema: S.Schema<I, A>,

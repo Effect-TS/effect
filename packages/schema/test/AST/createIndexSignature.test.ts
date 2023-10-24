@@ -1,4 +1,5 @@
 import * as AST from "@effect/schema/AST"
+import { describe, expect, it } from "vitest"
 
 describe("AST/createIndexSignature", () => {
   it("createIndexSignature/ should throw on unsupported ASTs", () => {

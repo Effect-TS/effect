@@ -4,6 +4,7 @@ import { ParseResult } from "@effect/schema/index"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as Either from "effect/Either"
+import { describe, expect, it } from "vitest"
 
 const options: ParseOptions = { errors: "all", onExcessProperty: "error" }
 

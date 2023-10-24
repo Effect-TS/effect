@@ -1,6 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as E from "effect/Either"
+import { describe, it } from "vitest"
 
 describe("Either/either", () => {
   it("property tests", () => {

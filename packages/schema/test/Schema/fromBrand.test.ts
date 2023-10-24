@@ -1,6 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as Brand from "effect/Brand"
+import { describe, expect, it } from "vitest"
 
 type Int = number & Brand.Brand<"Int">
 const Int = Brand.refined<Int>(

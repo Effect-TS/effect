@@ -1,6 +1,7 @@
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { describe, expect, it } from "vitest"
 
 describe("string/trim", () => {
   it("property tests", () => {
