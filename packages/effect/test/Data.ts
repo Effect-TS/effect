@@ -198,7 +198,10 @@ describe.concurrent("Data", () => {
   it("taggedEnum - generics", () => {
     type Result<E, A> = Data.TaggedEnum<{
       Success: { value: A }
-      Failure: { error: E }
+      Failure: {
+        error: E
+        message?: string
+      }
     }>
     interface ResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
       readonly taggedEnum: Result<this["A"], this["B"]>
