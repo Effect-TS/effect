@@ -19,14 +19,18 @@ type RequestCache = Cache.Cache<Request.Request<any, any>, never, {
 }>
 
 /** @internal */
-export const currentCache = core.fiberRefUnsafeMake<RequestCache>(unsafeMakeWith<Request.Request<any, any>, never, {
-  listeners: Request.Listeners
-  handle: Deferred<any, any>
-}>(
-  65536,
-  () => core.map(core.deferredMake<any, any>(), (handle) => ({ listeners: new Listeners(), handle })),
-  () => seconds(60)
-))
+export const currentCache = globalValue(
+  Symbol.for("effect/FiberRef/currentCache"),
+  () =>
+    core.fiberRefUnsafeMake<RequestCache>(unsafeMakeWith<Request.Request<any, any>, never, {
+      listeners: Request.Listeners
+      handle: Deferred<any, any>
+    }>(
+      65536,
+      () => core.map(core.deferredMake<any, any>(), (handle) => ({ listeners: new Listeners(), handle })),
+      () => seconds(60)
+    ))
+)
 
 /** @internal */
 export const currentCacheEnabled = globalValue(
