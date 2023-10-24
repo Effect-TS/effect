@@ -7,6 +7,7 @@
 import * as Equivalence from "./Equivalence"
 import { dual } from "./Function"
 import * as order from "./Order"
+import type { Simplify } from "./Types"
 
 /**
  * Create a new object by picking properties of an existing object.
@@ -22,7 +23,7 @@ import * as order from "./Order"
 export const pick = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
   ...keys: Keys
 ) =>
-(s: S): { [K in Keys[number]]: S[K] } => {
+(s: S): Simplify<Pick<S, Keys[number]>> => {
   const out: any = {}
   for (const k of keys) {
     out[k] = s[k]
@@ -44,7 +45,7 @@ export const pick = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
 export const omit = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
   ...keys: Keys
 ) =>
-(s: S): { [K in Exclude<keyof S, Keys[number]>]: S[K] } => {
+(s: S): Simplify<Omit<S, Keys[number]>> => {
   const out: any = { ...s }
   for (const k of keys) {
     delete out[k]
