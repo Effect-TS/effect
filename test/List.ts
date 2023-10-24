@@ -111,10 +111,6 @@ describe.concurrent("List", () => {
     expect(List.map(List.make(1, 2, 3, 4), (n) => n + 1)).toEqual(List.make(2, 3, 4, 5))
   })
 
-  it("mapNonEmpty", () => {
-    expect(List.mapNonEmpty(List.make(1, 2, 3, 4), (n) => n + 1)).toEqual(List.make(2, 3, 4, 5))
-  })
-
   it("partition", () => {
     expect(List.partition(List.make(1, 2, 3, 4), (n) => n > 2)).toEqual([
       List.make(1, 2),
