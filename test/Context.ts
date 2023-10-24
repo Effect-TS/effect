@@ -213,7 +213,7 @@ describe.concurrent("Context", () => {
     } catch (e) {
       assert.match(
         String(e),
-        new RegExp(/Error: Service not found: C \(defined at (.*)Context.ts:19:19\)/)
+        new RegExp(/Error: Service not found: C \(defined at (.*)Context.ts:20:19\)/)
       )
     }
   })
