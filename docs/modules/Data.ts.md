@@ -290,45 +290,45 @@ the constructor.
 
 ```ts
 export declare const taggedEnum: {
-  <Z extends TaggedEnum.WithGenerics<1>>(): <K extends Z['taggedEnum']['_tag']>(
-    tag: K
-  ) => <A>(
-    args: TaggedEnum.Args<
-      TaggedEnum.Kind<Z, A, unknown, unknown, unknown>,
-      K,
-      Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: K }>
-    >
-  ) => Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: K }>
-  <Z extends TaggedEnum.WithGenerics<2>>(): <K extends Z['taggedEnum']['_tag']>(
-    tag: K
-  ) => <A, B>(
-    args: TaggedEnum.Args<
-      TaggedEnum.Kind<Z, A, B, unknown, unknown>,
-      K,
-      Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: K }>
-    >
-  ) => Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: K }>
-  <Z extends TaggedEnum.WithGenerics<3>>(): <K extends Z['taggedEnum']['_tag']>(
-    tag: K
-  ) => <A, B, C>(
-    args: TaggedEnum.Args<
-      TaggedEnum.Kind<Z, A, B, C, unknown>,
-      K,
-      Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: K }>
-    >
-  ) => Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: K }>
-  <Z extends TaggedEnum.WithGenerics<4>>(): <K extends Z['taggedEnum']['_tag']>(
-    tag: K
-  ) => <A, B, C, D>(
-    args: TaggedEnum.Args<
-      TaggedEnum.Kind<Z, A, B, C, D>,
-      K,
-      Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: K }>
-    >
-  ) => Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: K }>
-  <A extends { readonly _tag: string } & Equal.Equal>(): <K extends A['_tag']>(
-    tag: K
-  ) => Case.Constructor<Extract<A, { readonly _tag: K }>, '_tag'>
+  <Z extends TaggedEnum.WithGenerics<1>>(): {
+    readonly [Tag in Z['taggedEnum']['_tag']]: <A>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A, unknown, unknown, unknown>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: Tag }>
+      >
+    ) => Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: Tag }>
+  }
+  <Z extends TaggedEnum.WithGenerics<2>>(): {
+    readonly [Tag in Z['taggedEnum']['_tag']]: <A, B>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A, B, unknown, unknown>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: Tag }>
+      >
+    ) => Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: Tag }>
+  }
+  <Z extends TaggedEnum.WithGenerics<3>>(): {
+    readonly [Tag in Z['taggedEnum']['_tag']]: <A, B, C>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A, B, C, unknown>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: Tag }>
+      >
+    ) => Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: Tag }>
+  }
+  <Z extends TaggedEnum.WithGenerics<4>>(): {
+    readonly [Tag in Z['taggedEnum']['_tag']]: <A, B, C, D>(
+      args: TaggedEnum.Args<
+        TaggedEnum.Kind<Z, A, B, C, D>,
+        Tag,
+        Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
+      >
+    ) => Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
+  }
+  <A extends { readonly _tag: string } & Equal.Equal>(): {
+    readonly [Tag in A['_tag']]: Case.Constructor<Extract<A, { readonly _tag: Tag }>, '_tag'>
+  }
 }
 ```
 
@@ -337,12 +337,12 @@ export declare const taggedEnum: {
 ```ts
 import * as Data from 'effect/Data'
 
-const HttpError = Data.taggedEnum<
+const { BadRequest, NotFound } = Data.taggedEnum<
   | Data.Data<{ readonly _tag: 'BadRequest'; readonly status: 400; readonly message: string }>
   | Data.Data<{ readonly _tag: 'NotFound'; readonly status: 404; readonly message: string }>
 >()
 
-const notFound = HttpError('NotFound')({ status: 404, message: 'Not Found' })
+const notFound = NotFound({ status: 404, message: 'Not Found' })
 ```
 
 **Example**
@@ -357,9 +357,9 @@ type MyResult<E, A> = Data.TaggedEnum<{
 interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
   readonly taggedEnum: MyResult<this['A'], this['B']>
 }
-const MyResult = Data.taggedEnum<MyResultDefinition>()
+const { Failure, Success } = Data.taggedEnum<MyResultDefinition>()
 
-const success = MyResult('Success')({ value: 1 })
+const success = Success({ value: 1 })
 ```
 
 Added in v2.0.0
@@ -432,9 +432,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Data<A> = A extends Record<string, any> | ReadonlyArray<any>
-  ? { readonly [P in keyof A]: A[P] } & Equal.Equal
-  : A
+export type Data<A> = { readonly [P in keyof A]: A[P] } & Equal.Equal
 ```
 
 Added in v2.0.0
@@ -550,10 +548,10 @@ Added in v2.0.0
 
 ```ts
 export type Args<
-  A extends Data<{ readonly _tag: string }>,
+  A extends { readonly _tag: string } & Equal.Equal,
   K extends A['_tag'],
   E = Extract<A, { readonly _tag: K }>
-> = { readonly [k in keyof E as k extends '_tag' | keyof Case ? never : k]: E[k] } extends infer T
+> = { readonly [K in keyof E as K extends '_tag' | keyof Case ? never : K]: E[K] } extends infer T
   ? {} extends T
     ? void
     : T
@@ -582,7 +580,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Value<A extends Data<{ readonly _tag: string }>, K extends A['_tag']> = Extract<A, { readonly _tag: K }>
+export type Value<A extends { readonly _tag: string } & Equal.Equal, K extends A['_tag']> = Extract<
+  A,
+  { readonly _tag: K }
+>
 ```
 
 Added in v2.0.0
