@@ -6,7 +6,7 @@ import type * as Either from "../Either"
 import { dual, pipe } from "../Function"
 import * as core from "../internal/core"
 import { invokeWithInterrupt, zipWithOptions } from "../internal/fiberRuntime"
-import { complete } from "../internal/request"
+import { complete, succeed } from "../internal/request"
 import * as RA from "../ReadonlyArray"
 import type * as Request from "../Request"
 import type * as RequestResolver from "../RequestResolver"
@@ -193,7 +193,7 @@ export const fromFunction = <A extends Request.Request<never, any>>(
 
 /** @internal */
 export const fromFunctionBatched = <A extends Request.Request<never, any>>(
-  f: (chunk: Array<A>) => Array<Request.Request.Success<A>>
+  f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
 ): RequestResolver.RequestResolver<A> =>
   makeBatched((as: Array<A>) =>
     Effect.forEach(
@@ -204,7 +204,7 @@ export const fromFunctionBatched = <A extends Request.Request<never, any>>(
   ).identified("FromFunctionBatched", f)
 
 /** @internal */
-export const fromFunctionEffect = <R, A extends Request.Request<any, any>>(
+export const fromEffect = <R, A extends Request.Request<any, any>>(
   f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
 ): RequestResolver.RequestResolver<A, R> =>
   makeBatched((requests: Array<A>) =>
@@ -213,7 +213,19 @@ export const fromFunctionEffect = <R, A extends Request.Request<any, any>>(
       (a) => Effect.flatMap(Effect.exit(f(a)), (e) => complete(a, e as any)),
       { concurrency: "unbounded", discard: true }
     )
-  ).identified("FromFunctionEffect", f)
+  ).identified("FromEffect", f)
+
+/** @internal */
+export const fromEffectBatched = <R, A extends Request.Request<any, any>>(
+  f: (a: Array<A>) => Effect.Effect<R, Request.Request.Error<A>, Iterable<Request.Request.Success<A>>>
+): RequestResolver.RequestResolver<A, R> =>
+  makeBatched((requests: Array<A>) =>
+    Effect.matchCauseEffect(f(requests), {
+      onSuccess: Effect.forEach((a, i) => succeed(requests[i], a), { discard: true }),
+      onFailure: (cause) =>
+        Effect.forEach(requests, (request) => complete(request, core.exitFail(cause) as any), { discard: true })
+    })
+  ).identified("FromEffectBatched", f)
 
 /** @internal */
 export const never: RequestResolver.RequestResolver<never> = make(() => Effect.never).identified("Never")

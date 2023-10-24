@@ -67,11 +67,30 @@ const UserResolver = Resolver.makeBatched((requests: Array<UserRequest>) => {
   Resolver.contextFromServices(Counter, Requests)
 )
 
+const GetNameByIdResolver = Resolver.fromEffectBatched((requests: Array<GetNameById>) =>
+  Effect.flatMap(Requests, (r) => {
+    r.count += requests.length
+    return counted(Effect.forEach(requests, (request) =>
+      delay(Effect.suspend(() => {
+        if (userNames.has(request.id)) {
+          const userName = userNames.get(request.id)!
+          console.log(userName)
+          return Effect.succeed(userName)
+        }
+        return Effect.fail("Not Found")
+      })), { concurrency: "unbounded" }))
+  })
+).pipe(
+  Resolver.batchN(15),
+  Resolver.contextFromServices(Counter, Requests)
+)
+
 export const getAllUserIds = Effect.request(GetAllIds({}), UserResolver)
 
 export const interrupts = FiberRef.unsafeMake({ interrupts: 0 })
 
 export const getUserNameById = (id: number) => Effect.request(GetNameById({ id }), UserResolver)
+export const getUserNameByIdEffect = (id: number) => Effect.request(GetNameById({ id }), GetNameByIdResolver)
 
 export const getAllUserNamesN = (concurrency: Concurrency) =>
   getAllUserIds.pipe(
@@ -80,6 +99,10 @@ export const getAllUserNamesN = (concurrency: Concurrency) =>
   )
 
 export const getAllUserNames = getAllUserNamesN("unbounded")
+
+export const getAllUserNamesEffect = getAllUserIds.pipe(
+  Effect.flatMap(Effect.forEach(getUserNameByIdEffect, { batching: true }))
+)
 
 export const print = (request: UserRequest): string => {
   switch (request._tag) {
@@ -129,6 +152,16 @@ describe.concurrent("Effect", () => {
     provideEnv(
       Effect.gen(function*($) {
         const names = yield* $(getAllUserNames)
+        const count = yield* $(Counter)
+        expect(count.count).toEqual(3)
+        expect(names.length).toBeGreaterThan(2)
+        expect(names).toEqual(userIds.map((id) => userNames.get(id)))
+      })
+    ))
+  it.effect("requests are executed correctly with fromEffectBatched", () =>
+    provideEnv(
+      Effect.gen(function*($) {
+        const names = yield* $(getAllUserNamesEffect)
         const count = yield* $(Counter)
         expect(count.count).toEqual(3)
         expect(names.length).toBeGreaterThan(2)

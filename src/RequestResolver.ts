@@ -231,7 +231,7 @@ export const fromFunction: <A extends Request.Request<never, any>>(
  * @category constructors
  */
 export const fromFunctionBatched: <A extends Request.Request<never, any>>(
-  f: (chunk: Array<A>) => Array<Request.Request.Success<A>>
+  f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
 ) => RequestResolver<A, never> = internal.fromFunctionBatched
 
 /**
@@ -240,9 +240,21 @@ export const fromFunctionBatched: <A extends Request.Request<never, any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromFunctionEffect: <R, A extends Request.Request<any, any>>(
+export const fromEffect: <R, A extends Request.Request<any, any>>(
   f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
-) => RequestResolver<A, R> = internal.fromFunctionEffect
+) => RequestResolver<A, R> = internal.fromEffect
+
+/**
+ * Constructs a data source from an effectual function that takes a list of requests
+ * and returns a list of results of the same size. Each item in the result
+ * list must correspond to the item at the same index in the request list.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const fromEffectBatched: <R, A extends Request.Request<any, any>>(
+  f: (a: Array<A>) => Effect.Effect<R, Request.Request.Error<A>, Iterable<Request.Request.Success<A>>>
+) => RequestResolver<A, R> = internal.fromEffectBatched
 
 /**
  * A data source that never executes requests.
