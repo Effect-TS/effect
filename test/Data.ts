@@ -177,9 +177,7 @@ describe.concurrent("Data", () => {
       NotFound: {}
       InternalServerError: { reason: string }
     }>
-    const HttpError = Data.taggedEnum<HttpError>()
-    const NotFound = HttpError("NotFound")
-    const InternalServerError = HttpError.InternalServerError
+    const { InternalServerError, NotFound } = Data.taggedEnum<HttpError>()
 
     const a = NotFound()
     const b = InternalServerError({ reason: "test" })
@@ -206,23 +204,18 @@ describe.concurrent("Data", () => {
     interface ResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
       readonly taggedEnum: Result<this["A"], this["B"]>
     }
-    const Result = Data.taggedEnum<ResultDefinition>()
-    const { Failure, Success } = Result
-    const Failure2 = Result("Failure")
+    const { Failure, Success } = Data.taggedEnum<ResultDefinition>()
 
     const a = Success({ value: 1 }) satisfies Result<unknown, number>
     const b = Failure({ error: "test" }) satisfies Result<string, unknown>
     const c = Success({ value: 1 }) satisfies Result<string, number>
-    const d = Failure2({ error: "test" }) satisfies Result<string, unknown>
 
     expect(a._tag).toBe("Success")
     expect(b._tag).toBe("Failure")
     expect(c._tag).toBe("Success")
-    expect(d._tag).toBe("Failure")
 
     expect(a.value).toBe(1)
     expect(b.error).toBe("test")
-    expect(d.error).toBe("test")
 
     expect(Equal.equals(a, b)).toBe(false)
     expect(Equal.equals(a, c)).toBe(true)
