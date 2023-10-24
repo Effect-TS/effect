@@ -5,7 +5,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
-import { describe } from "vitest"
+import { assert, describe } from "vitest"
 
 const ref = FiberRef.unsafeMake(List.empty<string>())
 const env = Tag<"context", number>()

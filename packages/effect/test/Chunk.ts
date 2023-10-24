@@ -10,6 +10,7 @@ import type { Predicate } from "effect/Predicate"
 import * as RA from "effect/ReadonlyArray"
 import * as fc from "fast-check"
 import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Chunk", () => {
   it("exports", () => {

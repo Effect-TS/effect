@@ -4,6 +4,7 @@ import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashSet from "effect/HashSet"
 import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 class Value implements Equal.Equal {
   constructor(readonly n: number) {}

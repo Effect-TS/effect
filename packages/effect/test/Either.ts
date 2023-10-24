@@ -6,6 +6,7 @@ import * as N from "effect/Number"
 import * as O from "effect/Option"
 import * as S from "effect/String"
 import { inspect } from "node:util"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Either", () => {
   it("gen", () => {

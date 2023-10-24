@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import * as Streamable from "effect/Streamable"
-import { describe } from "vitest"
+import { describe, expect } from "vitest"
 
 describe("Streamable", () => {
   it.effect(

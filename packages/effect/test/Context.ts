@@ -2,6 +2,7 @@ import * as Context from "effect/Context"
 import * as Differ from "effect/Differ"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
+import { assert, describe, expect, it } from "vitest"
 
 interface A {
   a: number
@@ -212,7 +213,7 @@ describe.concurrent("Context", () => {
     } catch (e) {
       assert.match(
         String(e),
-        new RegExp(/Error: Service not found: C \(defined at (.*)Context.ts:19:19\)/)
+        new RegExp(/Error: Service not found: C \(defined at (.*)Context.ts:20:19\)/)
       )
     }
   })

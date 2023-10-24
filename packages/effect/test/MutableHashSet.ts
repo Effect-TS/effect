@@ -2,6 +2,7 @@ import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import * as MutableHashSet from "effect/MutableHashSet"
 import { inspect } from "node:util"
+import { describe, expect, it } from "vitest"
 
 class Value implements Equal.Equal {
   constructor(readonly a: number, readonly b: number) {}

@@ -8,8 +8,7 @@ import { logLevelInfo } from "effect/internal/core"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as LogSpan from "effect/LogSpan"
-
-import { vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 describe("stringLogger", () => {
   beforeEach(() => {
@@ -19,7 +18,7 @@ describe("stringLogger", () => {
     vi.useRealTimers()
   })
 
-  test("keys with special chars", () => {
+  it("keys with special chars", () => {
     const date = new Date()
     vi.setSystemTime(date)
     const spans = List.make(LogSpan.make("imma span=\"", date.getTime() - 7))
@@ -47,7 +46,7 @@ describe("stringLogger", () => {
     )
   })
 
-  test("with linebreaks", () => {
+  it("with linebreaks", () => {
     const date = new Date()
     vi.setSystemTime(date)
     const spans = List.make(LogSpan.make("imma\nspan=\"", date.getTime() - 7))
@@ -85,7 +84,7 @@ describe("logfmtLogger", () => {
     vi.useRealTimers()
   })
 
-  test("keys with special chars", () => {
+  it("keys with special chars", () => {
     const date = new Date()
     vi.setSystemTime(date)
     const spans = List.make(LogSpan.make("imma span=\"", date.getTime() - 7))
@@ -111,7 +110,7 @@ describe("logfmtLogger", () => {
     )
   })
 
-  test("with linebreaks", () => {
+  it("with linebreaks", () => {
     const date = new Date()
     vi.setSystemTime(date)
     const spans = List.make(LogSpan.make("imma\nspan=\"", date.getTime() - 7))
@@ -140,12 +139,12 @@ describe("logfmtLogger", () => {
     )
   })
 
-  test(".pipe", () => {
+  it(".pipe", () => {
     expect(Logger.stringLogger.pipe(identity)).toBe(Logger.stringLogger)
     expect(logLevelInfo.pipe(identity)).toBe(logLevelInfo)
   })
 
-  test("objects", () => {
+  it("objects", () => {
     const date = new Date()
     vi.setSystemTime(date)
 
@@ -165,7 +164,7 @@ describe("logfmtLogger", () => {
     )
   })
 
-  test("circular objects", () => {
+  it("circular objects", () => {
     const date = new Date()
     vi.setSystemTime(date)
 
@@ -188,7 +187,7 @@ describe("logfmtLogger", () => {
     )
   })
 
-  test("symbols", () => {
+  it("symbols", () => {
     const date = new Date()
     vi.setSystemTime(date)
 
@@ -208,7 +207,7 @@ describe("logfmtLogger", () => {
     )
   })
 
-  test("functions", () => {
+  it("functions", () => {
     const date = new Date()
     vi.setSystemTime(date)
 
@@ -228,7 +227,7 @@ describe("logfmtLogger", () => {
     )
   })
 
-  test("annotations", () => {
+  it("annotations", () => {
     const date = new Date()
     vi.setSystemTime(date)
 

@@ -1,4 +1,4 @@
-import * as assert from "assert"
+import { assert } from "vitest"
 
 export const assertTrue = (self: boolean) => {
   assert.strictEqual(self, true)

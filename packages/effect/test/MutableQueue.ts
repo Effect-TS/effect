@@ -1,6 +1,7 @@
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect-test/util"
 import * as MutableQueue from "effect/MutableQueue"
 import { inspect } from "node:util"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("MutableQueue", () => {
   it("toString", () => {

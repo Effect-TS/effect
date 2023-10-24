@@ -11,7 +11,7 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
-import { assert, describe } from "vitest"
+import { assert, describe, expect } from "vitest"
 
 export const waitForValue = <A>(ref: Effect.Effect<never, never, A>, value: A): Effect.Effect<never, never, A> => {
   return ref.pipe(Effect.zipLeft(Effect.yieldNow()), Effect.repeatUntil((a) => value === a))

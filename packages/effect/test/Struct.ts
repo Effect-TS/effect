@@ -2,6 +2,7 @@ import { pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as String from "effect/String"
 import * as Struct from "effect/Struct"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Struct", () => {
   it("exports", () => {

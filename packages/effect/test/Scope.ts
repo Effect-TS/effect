@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
-import { assert, describe } from "vitest"
+import { assert, describe, expect } from "vitest"
 
 type Action = Acquire | Use | Release
 

@@ -4,6 +4,7 @@ import { pipe } from "effect/Function"
 import * as M from "effect/Match"
 import * as O from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import { describe, expect, it } from "vitest"
 
 describe("Match", () => {
   it("exhaustive", () => {

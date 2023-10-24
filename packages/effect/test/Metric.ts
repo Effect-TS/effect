@@ -17,6 +17,7 @@ import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Schedule from "effect/Schedule"
+import { assert, describe, expect } from "vitest"
 
 const labels = Chunk.make(MetricLabel.make("x", "a"), MetricLabel.make("y", "b"))
 
