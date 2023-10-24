@@ -74,7 +74,6 @@ const GetNameByIdResolver = Resolver.fromEffectBatched((requests: Array<GetNameB
       delay(Effect.suspend(() => {
         if (userNames.has(request.id)) {
           const userName = userNames.get(request.id)!
-          console.log(userName)
           return Effect.succeed(userName)
         }
         return Effect.fail("Not Found")

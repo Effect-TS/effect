@@ -6,7 +6,7 @@ import type * as Either from "../Either"
 import { dual, pipe } from "../Function"
 import * as core from "../internal/core"
 import { invokeWithInterrupt, zipWithOptions } from "../internal/fiberRuntime"
-import { complete, succeed } from "../internal/request"
+import { complete } from "../internal/request"
 import * as RA from "../ReadonlyArray"
 import type * as Request from "../Request"
 import type * as RequestResolver from "../RequestResolver"
@@ -221,7 +221,7 @@ export const fromEffectBatched = <R, A extends Request.Request<any, any>>(
 ): RequestResolver.RequestResolver<A, R> =>
   makeBatched((requests: Array<A>) =>
     Effect.matchCauseEffect(f(requests), {
-      onSuccess: Effect.forEach((a, i) => succeed(requests[i], a), { discard: true }),
+      onSuccess: Effect.forEach((a, i) => complete(requests[i], core.exitSucceed(a) as any), { discard: true }),
       onFailure: (cause) =>
         Effect.forEach(
           requests,
