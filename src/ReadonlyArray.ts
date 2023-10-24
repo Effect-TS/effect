@@ -1531,10 +1531,7 @@ export const map: {
   <T extends ReadonlyArray<any>, B>(
     f: (a: ReadonlyArray.Infer<T>, i: number) => B
   ): (self: T) => ReadonlyArray.With<T, B>
-  <T extends ReadonlyArray<any>, B>(
-    self: T,
-    f: (a: ReadonlyArray.Infer<T>, i: number) => B
-  ): ReadonlyArray.With<T, B>
+  <T extends ReadonlyArray<any>, B>(self: T, f: (a: ReadonlyArray.Infer<T>, i: number) => B): ReadonlyArray.With<T, B>
 } = dual(2, <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => B): Array<B> => self.map(f))
 
 /**
