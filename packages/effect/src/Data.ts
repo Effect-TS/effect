@@ -444,21 +444,13 @@ export interface YieldableError extends Case, Pipeable, Readonly<Error> {
   >
 }
 
-const YieldableErrorMessage = Symbol.for("effect/Data/YieldableError/message")
 const YieldableErrorProto = {
   ...Effectable.StructuralCommitPrototype,
-  __proto__: globalThis.Error.prototype,
   commit() {
     return Effect.fail(this)
   },
   toString(this: globalThis.Error) {
     return `${this.name}: ${this.message}`
-  },
-  get message() {
-    return (this as any)[YieldableErrorMessage] ?? JSON.stringify(this)
-  },
-  set message(value) {
-    ;(this as any)[YieldableErrorMessage] = value
   }
 }
 
@@ -472,13 +464,13 @@ export const Error: new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
 ) => YieldableError & Readonly<A> = (function() {
-  function Base(this: any, args: any) {
-    if (args) {
+  class Base extends globalThis.Error {
+    constructor(args: any) {
+      super()
       Object.assign(this, args)
     }
-    globalThis.Error.captureStackTrace(this, this.constructor)
   }
-  Base.prototype = YieldableErrorProto
+  Object.assign(Base.prototype, YieldableErrorProto)
   return Base as any
 })()
 
