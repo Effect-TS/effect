@@ -1,5 +1,6 @@
 import { pipe } from "effect/Function"
 import * as T from "effect/Tuple"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Tuple", () => {
   it("exports", () => {

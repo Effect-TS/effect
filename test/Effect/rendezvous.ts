@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Queue from "effect/Queue"
 import * as TestClock from "effect/TestClock"
-import { describe } from "vitest"
+import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
   it.effect("bounded 0 is rendezvous", () =>

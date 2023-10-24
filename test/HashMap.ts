@@ -5,6 +5,7 @@ import * as Hash from "effect/Hash"
 import * as HM from "effect/HashMap"
 import * as Option from "effect/Option"
 import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 class Key implements Equal.Equal {
   constructor(readonly n: number) {}

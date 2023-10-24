@@ -1,4 +1,5 @@
 import * as _ from "effect/Option"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Pipeable", () => {
   it("pipeArguments", () => {

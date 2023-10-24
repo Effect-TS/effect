@@ -13,6 +13,7 @@ import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import * as TestClock from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
+import { describe, expect } from "vitest"
 
 interface Counter {
   readonly _: unique symbol

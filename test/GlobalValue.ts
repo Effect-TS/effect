@@ -1,4 +1,5 @@
 import * as G from "effect/GlobalValue"
+import { assert, describe, it } from "vitest"
 
 const a = G.globalValue("id", () => ({}))
 const b = G.globalValue("id", () => ({}))

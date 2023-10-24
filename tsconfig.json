@@ -40,7 +40,9 @@
       "effect/*": ["./src/*.ts"],
       "effect-test/*": ["./test/*.ts"]
     },
-    "types": ["vitest/globals", "node"],
+    "types": [
+      "node"
+    ],
     "plugins": [{ "name": "@effect/language-service" }]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]

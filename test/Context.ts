@@ -2,6 +2,7 @@ import * as Context from "effect/Context"
 import * as Differ from "effect/Differ"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
+import { assert, describe, expect, it } from "vitest"
 
 interface A {
   a: number

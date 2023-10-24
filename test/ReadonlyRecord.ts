@@ -3,6 +3,7 @@ import { pipe } from "effect/Function"
 import * as N from "effect/Number"
 import * as Option from "effect/Option"
 import * as RR from "effect/ReadonlyRecord"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("ReadonlyRecord", () => {
   it("get", () => {

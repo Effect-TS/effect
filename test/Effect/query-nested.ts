@@ -6,6 +6,7 @@ import * as Layer from "effect/Layer"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
+import { describe, expect } from "vitest"
 
 interface Counter {
   readonly _: unique symbol

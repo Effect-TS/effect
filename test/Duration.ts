@@ -4,6 +4,7 @@ import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Duration", () => {
   it("exports", () => {

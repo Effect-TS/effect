@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Stream from "effect/Stream"
 import type * as Tracer from "effect/Tracer"
-import { assert, describe } from "vitest"
+import { assert, describe, expect } from "vitest"
 
 interface StringService {
   readonly string: string
