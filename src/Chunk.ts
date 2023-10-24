@@ -823,29 +823,33 @@ export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
 export const unsafeLast = <A>(self: Chunk<A>): A => unsafeGet(self, self.length - 1)
 
 /**
+ * @since 2.0.0
+ */
+export declare namespace Chunk {
+  /**
+   * @since 2.0.0
+   */
+  export type Infer<T extends Chunk<any>> = T extends Chunk<infer A> ? A : never
+
+  /**
+   * @since 2.0.0
+   */
+  export type With<T extends Chunk<any>, A> = T extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
+}
+
+/**
  * Returns a chunk with the elements mapped by the specified f function.
  *
  * @since 2.0.0
  * @category mapping
  */
 export const map: {
-  <A, B>(f: (a: A, i: number) => B): (self: Chunk<A>) => Chunk<B>
-  <A, B>(self: Chunk<A>, f: (a: A, i: number) => B): Chunk<B>
+  <T extends Chunk<any>, B>(f: (a: Chunk.Infer<T>, i: number) => B): (self: T) => Chunk.With<T, B>
+  <T extends Chunk<any>, B>(self: T, f: (a: Chunk.Infer<T>, i: number) => B): Chunk.With<T, B>
 } = dual(2, <A, B>(self: Chunk<A>, f: (a: A, i: number) => B): Chunk<B> =>
   self.backing._tag === "ISingleton" ?
     of(f(self.backing.a, 0)) :
     unsafeFromArray(pipe(toReadonlyArray(self), RA.map((a, i) => f(a, i)))))
-
-/**
- * Returns a non empty chunk with the elements mapped by the specified f function.
- *
- * @since 2.0.0
- * @category mapping
- */
-export const mapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => B): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
-  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => B): NonEmptyChunk<B>
-} = map as any
 
 /**
  * Statefully maps over the chunk, producing new elements of type `B`.
