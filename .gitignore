@@ -9,6 +9,7 @@ dist/
 .direnv/
 
 # files
+/src/tsconfig.json
 /dist
 /internal
 /BigDecimal

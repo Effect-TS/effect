@@ -287,10 +287,13 @@ export const Structural: new<A>(
  */
 export type TaggedEnum<
   A extends Record<string, Record<string, any>> & UntaggedChildren<A>
-> = keyof A extends infer Tag
-  ? Tag extends keyof A ? Data<{ readonly [K in `_tag` | keyof A[Tag]]: K extends `_tag` ? Tag : A[Tag][K] }>
-  : never
-  : never
+> = {
+  readonly [Tag in keyof A]: Data<
+    {
+      readonly [K in keyof ({ readonly _tag: Tag } & A[Tag])]: K extends "_tag" ? Tag : A[Tag][K]
+    }
+  >
+}[keyof A]
 
 type ChildrenAreTagged<A> = keyof A extends infer K ? K extends keyof A ? "_tag" extends keyof A[K] ? true
     : false

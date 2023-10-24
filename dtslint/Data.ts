@@ -121,11 +121,11 @@ taggedPerson.name = "a"
 
 type HttpError = Data.TaggedEnum<{
   BadRequest: { readonly status: 400; readonly a: string }
-  NotFound: { readonly status: 404; readonly b: number }
+  NotFound: { readonly status: 404; readonly b?: number }
 }>
-// $ExpectType Data<{ readonly a: string; readonly status: 400; readonly _tag: "BadRequest"; }>
+// $ExpectType Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly a: string; }>
 export type BadRequest = Extract<HttpError, { _tag: "BadRequest" }>
-// $ExpectType Data<{ readonly b: number; readonly status: 404; readonly _tag: "NotFound"; }>
+// $ExpectType Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly b?: number | undefined; }>
 export type NotFound = Extract<HttpError, { _tag: "NotFound" }>
 
 // @ts-expect-error
