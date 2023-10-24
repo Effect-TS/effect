@@ -391,42 +391,39 @@ export declare namespace TaggedEnum {
  * @since 2.0.0
  */
 export const taggedEnum: {
-  <Z extends TaggedEnum.WithGenerics<1>>(): <
-    K extends Z["taggedEnum"]["_tag"]
-  >(
-    tag: K
-  ) => <A>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A>, K>
-  ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A>, K>
+  <Z extends TaggedEnum.WithGenerics<1>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A>(
+      args: TaggedEnum.Args<TaggedEnum.Kind<Z, A>, Tag>
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A>, Tag>
+  }
 
-  <Z extends TaggedEnum.WithGenerics<2>>(): <
-    K extends Z["taggedEnum"]["_tag"]
-  >(
-    tag: K
-  ) => <A, B>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B>, K>
-  ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B>, K>
+  <Z extends TaggedEnum.WithGenerics<2>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B>(
+      args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B>, Tag>
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B>, Tag>
+  }
 
-  <Z extends TaggedEnum.WithGenerics<3>>(): <
-    K extends Z["taggedEnum"]["_tag"]
-  >(
-    tag: K
-  ) => <A, B, C>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B, C>, K>
-  ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C>, K>
+  <Z extends TaggedEnum.WithGenerics<3>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C>(
+      args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B, C>, Tag>
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C>, Tag>
+  }
 
-  <Z extends TaggedEnum.WithGenerics<4>>(): <
-    K extends Z["taggedEnum"]["_tag"]
-  >(
-    tag: K
-  ) => <A, B, C, D>(
-    args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B, C, D>, K>
-  ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C, D>, K>
+  <Z extends TaggedEnum.WithGenerics<4>>(): {
+    readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C, D>(
+      args: TaggedEnum.Args<TaggedEnum.Kind<Z, A, B, C, D>, Tag>
+    ) => TaggedEnum.Value<TaggedEnum.Kind<Z, A, B, C, D>, Tag>
+  }
 
-  <A extends Data<{ readonly _tag: string }>>(): <K extends A["_tag"]>(
-    tag: K
-  ) => Case.Constructor<Extract<A, { readonly _tag: K }>, "_tag">
-} = () => tagged as any
+  <A extends Data<{ readonly _tag: string }>>(): {
+    readonly [Tag in A["_tag"]]: Case.Constructor<Extract<A, { readonly _tag: Tag }>, "_tag">
+  }
+} = () =>
+  new Proxy({}, {
+    get(_target, tag, _receiver) {
+      return tagged(tag as string)
+    }
+  }) as any
 
 /**
  * @since 2.0.0

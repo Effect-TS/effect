@@ -143,7 +143,7 @@ const HttpError = Data.taggedEnum<
   | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
 >()
 
-export const notFoundCtor = HttpError("NotFound")
+export const notFoundCtor = HttpError.NotFound
 
 // $ExpectType { readonly status: 404; readonly message: string; }
 export type notFoundInput = Parameters<typeof notFoundCtor>[0]

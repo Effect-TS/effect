@@ -178,8 +178,8 @@ describe.concurrent("Data", () => {
       InternalServerError: { reason: string }
     }>
     const HttpError = Data.taggedEnum<HttpError>()
-    const NotFound = HttpError("NotFound")
-    const InternalServerError = HttpError("InternalServerError")
+    const NotFound = HttpError.NotFound
+    const InternalServerError = HttpError.InternalServerError
 
     const a = NotFound()
     const b = InternalServerError({ reason: "test" })
@@ -207,8 +207,8 @@ describe.concurrent("Data", () => {
       readonly taggedEnum: Result<this["A"], this["B"]>
     }
     const Result = Data.taggedEnum<ResultDefinition>()
-    const Success = Result("Success")
-    const Failure = Result("Failure")
+    const Success = Result.Success
+    const Failure = Result.Failure
 
     const a = Success({ value: 1 }) satisfies Result<unknown, number>
     const b = Failure({ error: "test" }) satisfies Result<string, unknown>
