@@ -14,7 +14,7 @@ import type * as Types from "./Types"
  * @category models
  * @since 2.0.0
  */
-export type Data<A extends Record<string, any> | ReadonlyArray<any>> =
+export type Data<A> =
   & { readonly [P in keyof A]: A[P] }
   & Equal.Equal
 
@@ -39,7 +39,7 @@ export declare namespace Case {
   export interface Constructor<A extends Case, Tag extends keyof A = never> {
     (
       args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true ? void
-        : { readonly [P in Exclude<keyof A, Tag | keyof Equal.Equal>]: A[P] }
+        : { readonly [P in keyof A as P extends Tag | keyof Equal.Equal ? never : P]: A[P] }
     ): A
   }
 }
@@ -287,8 +287,9 @@ export const Structural: new<A>(
  */
 export type TaggedEnum<
   A extends Record<string, Record<string, any>> & UntaggedChildren<A>
-> = keyof A extends infer Tag
-  ? Tag extends keyof A ? Data<{ readonly [K in `_tag` | keyof A[Tag]]: K extends `_tag` ? Tag : A[Tag][K] }>
+> = keyof A extends infer Tag ? Tag extends keyof A ? Data<
+      Types.Simplify<{ readonly _tag: Tag } & { readonly [K in keyof A[Tag]]: A[Tag][K] }>
+    >
   : never
   : never
 
@@ -341,8 +342,10 @@ export declare namespace TaggedEnum {
    */
   export type Args<
     A extends Data<{ readonly _tag: string }>,
-    K extends A["_tag"]
-  > = Omit<Extract<A, { readonly _tag: K }>, "_tag" | keyof Case> extends infer T ? {} extends T ? void : T
+    K extends A["_tag"],
+    E = Extract<A, { readonly _tag: K }>
+  > = { readonly [k in keyof E as k extends "_tag" | keyof Case ? never : k]: E[k] } extends infer T ?
+    {} extends T ? void : T
     : never
 
   /**

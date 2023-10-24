@@ -123,9 +123,9 @@ type HttpError = Data.TaggedEnum<{
   BadRequest: { readonly status: 400; readonly a: string }
   NotFound: { readonly status: 404; readonly b: number }
 }>
-// $ExpectType Data<{ readonly a: string; readonly status: 400; readonly _tag: "BadRequest"; }>
+// $ExpectType Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly a: string; }>
 export type BadRequest = Extract<HttpError, { _tag: "BadRequest" }>
-// $ExpectType Data<{ readonly b: number; readonly status: 404; readonly _tag: "NotFound"; }>
+// $ExpectType Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly b: number; }>
 export type NotFound = Extract<HttpError, { _tag: "NotFound" }>
 
 // @ts-expect-error
@@ -145,7 +145,7 @@ const HttpError = Data.taggedEnum<
 
 export const notFoundCtor = HttpError("NotFound")
 
-// $ExpectType { readonly message: string; readonly status: 404; }
+// $ExpectType { readonly status: 404; readonly message: string; }
 export type notFoundInput = Parameters<typeof notFoundCtor>[0]
 
 // $ExpectType Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string; }>
