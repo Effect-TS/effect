@@ -538,7 +538,7 @@ export const exhaustive: <I, F, A, Pr>(
  * @since 1.0.0
  * @category type ids
  */
-export const SafeRefinementId = Symbol.for("./SafeRefinement")
+export const SafeRefinementId = Symbol.for("effect/SafeRefinement")
 
 /**
  * @since 1.0.0
@@ -554,7 +554,7 @@ export interface SafeRefinement<A, R = A> {
   readonly [SafeRefinementId]: (a: A) => R
 }
 
-const Fail = Symbol.for("./Fail")
+const Fail = Symbol.for("effect/Fail")
 type Fail = typeof Fail
 
 /**
