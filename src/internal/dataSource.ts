@@ -223,7 +223,11 @@ export const fromEffectBatched = <R, A extends Request.Request<any, any>>(
     Effect.matchCauseEffect(f(requests), {
       onSuccess: Effect.forEach((a, i) => succeed(requests[i], a), { discard: true }),
       onFailure: (cause) =>
-        Effect.forEach(requests, (request) => complete(request, core.exitFail(cause) as any), { discard: true })
+        Effect.forEach(
+          requests,
+          (request) => complete(request, core.exitFailCause(cause) as any),
+          { discard: true }
+        )
     })
   ).identified("FromEffectBatched", f)
 
