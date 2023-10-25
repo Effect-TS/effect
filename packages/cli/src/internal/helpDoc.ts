@@ -123,7 +123,7 @@ export const mapDescriptionList = dual<
   ) => HelpDoc.HelpDoc
 >(2, (self, f) =>
   isDescriptionList(self)
-    ? descriptionList(RA.mapNonEmpty(self.definitions, ([span, helpDoc]) => f(span, helpDoc)))
+    ? descriptionList(RA.map(self.definitions, ([span, helpDoc]) => f(span, helpDoc)))
     : self)
 
 const helpDocToAnsiDoc: {

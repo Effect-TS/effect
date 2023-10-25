@@ -190,7 +190,7 @@ export const choice = <A extends string, C extends RA.NonEmptyReadonlyArray<A>>(
   single(
     name,
     Chunk.empty(),
-    primitive.choice(RA.mapNonEmpty(choices, (choice) => [choice, choice] as const))
+    primitive.choice(RA.map(choices, (choice) => [choice, choice] as const))
   )
 
 /** @internal */
