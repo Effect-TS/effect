@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.46.0
+
+### Minor Changes
+
+- [#515](https://github.com/Effect-TS/schema/pull/515) [`c9bf451`](https://github.com/Effect-TS/schema/commit/c9bf4513236f9ef3985d96219c0c3d2b9037d636) Thanks [@sukovanej](https://github.com/sukovanej)! - Update effect and fast-check.
+
 ## 0.45.8
 
 ### Patch Changes
