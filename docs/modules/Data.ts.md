@@ -54,7 +54,7 @@ Provides a constructor for a Case Class.
 export declare const Class: new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A>>
 ```
 
@@ -88,7 +88,7 @@ Provides a constructor for a Case Class.
 export declare const Error: new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => YieldableError & Readonly<A>
 ```
 
@@ -100,7 +100,9 @@ Added in v2.0.0
 
 ```ts
 export declare const Structural: new <A>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
+    ? void
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => Case
 ```
 
@@ -118,7 +120,7 @@ export declare const TaggedClass: <Tag extends string>(
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends '_tag' | keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A> & { readonly _tag: Tag }>
 ```
 
@@ -154,7 +156,7 @@ export declare const TaggedError: <Tag extends string>(
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends '_tag' | keyof Equal.Equal ? never : P]: A[P] }
 ) => YieldableError & { readonly _tag: Tag } & Readonly<A>
 ```
 
