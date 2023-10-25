@@ -1790,16 +1790,17 @@ export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
  * @since 1.0.0
  */
 export const split: {
-  (separator: string): <I>(self: Schema<I, string>) => Schema<I, ReadonlyArray<string>>
-  <I>(self: Schema<I, string>, separator: string): Schema<I, ReadonlyArray<string>>
+  (separator: string): <I, A extends string>(self: Schema<I, A>) => Schema<I, ReadonlyArray<string>>
+  <I, A extends string>(self: Schema<I, A>, separator: string): Schema<I, ReadonlyArray<string>>
 } = dual(
   2,
-  <I>(self: Schema<I, string>, separator: string): Schema<I, ReadonlyArray<string>> =>
+  <I, A extends string>(self: Schema<I, A>, separator: string): Schema<I, ReadonlyArray<string>> =>
     transform(
       self,
       array(string),
       S.split(separator),
-      ReadonlyArray.join(separator)
+      ReadonlyArray.join(separator),
+      { strict: false }
     )
 )
 

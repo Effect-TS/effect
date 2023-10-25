@@ -630,3 +630,11 @@ S.string.pipe(S.transformOrFail(S.number, s => ParseResult.success(s), n => Pars
 
 // @ts-expect-error
 S.string.pipe(S.transformOrFail(S.number, s => ParseResult.success(s.length), n => ParseResult.success(n)))
+
+// ---------------------------------------------
+// split
+// ---------------------------------------------
+
+// should support subtypes of `string`
+// $ExpectType Schema<`a${string}`, readonly string[]>
+S.templateLiteral(S.literal('a'), S.string).pipe(S.split(':'))
