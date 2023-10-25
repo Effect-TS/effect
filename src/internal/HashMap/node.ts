@@ -40,7 +40,7 @@ export class EmptyNode<K, V> {
 
 /** @internal */
 export function isEmptyNode(a: unknown): a is EmptyNode<unknown, unknown> {
-  return a instanceof EmptyNode
+  return typeof a === "object" && a !== null && "_tag" in a && a._tag === "EmptyNode"
 }
 
 /** @internal */
