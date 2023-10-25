@@ -211,7 +211,7 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
  */
 export const Class: new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A>> = internal.Structural as any
 
 /**
@@ -241,7 +241,7 @@ export const TaggedClass = <Tag extends string>(
   tag: Tag
 ): new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A> & { readonly _tag: Tag }> => {
   class Base extends Class<any> {
     readonly _tag = tag
@@ -254,8 +254,9 @@ export const TaggedClass = <Tag extends string>(
  * @category constructors
  */
 export const Structural: new<A>(
-  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Case = internal.Structural
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
+) => Case = internal.Structural as any
 
 /**
  * Create a tagged enum data type, which is a union of `Data` structs.
@@ -478,7 +479,7 @@ const YieldableErrorProto = {
  */
 export const Error: new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => YieldableError & Readonly<A> = (function() {
   class Base extends globalThis.Error {
     constructor(args: any) {
@@ -496,7 +497,7 @@ export const Error: new<A extends Record<string, any>>(
  */
 export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
-    : { readonly [P in Exclude<keyof A, keyof Equal.Equal>]: A[P] }
+    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
 ) => YieldableError & { readonly _tag: Tag } & Readonly<A> => {
   class Base extends Error<{}> {
     readonly _tag = tag

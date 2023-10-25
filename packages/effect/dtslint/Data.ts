@@ -105,11 +105,12 @@ person.name = "a"
 interface TaggedPerson extends Data.Case {
   readonly _tag: "Person"
   readonly name: string
+  readonly optional?: string
 }
 
 const taggedPerson = Data.tagged<TaggedPerson>("Person")
 
-// $ExpectType { readonly name: string; }
+// $ExpectType { readonly name: string; readonly optional?: string | undefined; }
 export type TaggedPersonInput = Parameters<typeof taggedPerson>[0]
 
 // @ts-expect-error
@@ -158,7 +159,7 @@ notFound.message = "a"
 // Class
 // -------------------------------------------------------------------------------------
 
-class PersonClass extends Data.Class<{ name: string }> {}
+class PersonClass extends Data.Class<{ name: string; age?: number }> {}
 
 const mike1 = new PersonClass({ name: "Mike" })
 
@@ -169,7 +170,7 @@ mike1.name = "a"
 // TaggedClass
 // -------------------------------------------------------------------------------------
 
-class PersonTaggedClass extends Data.TaggedClass("Person")<{ name: string }> {}
+class PersonTaggedClass extends Data.TaggedClass("Person")<{ name: string; age?: number }> {}
 
 const mike2 = new PersonTaggedClass({ name: "Mike" })
 
@@ -180,7 +181,7 @@ mike2.name = "a"
 // Error
 // -------------------------------------------------------------------------------------
 
-class MyError extends Data.Error<{ message: string; a: number }> {}
+class MyError extends Data.Error<{ message: string; a: number; optional?: string }> {}
 
 const myError1 = new MyError({ message: "Oh no!", a: 1 })
 
@@ -194,15 +195,16 @@ myError1.a = 2
 // -------------------------------------------------------------------------------------
 
 class MyTaggedError extends Data.TaggedError("Foo")<{
-  message: string
+  message?: string
   a: number
 }> {}
 
 const myTaggedError1 = new MyTaggedError({ message: "Oh no!", a: 1 })
 
+// test optional props
+new MyTaggedError({ a: 1 })
+
 // @ts-expect-error
 myTaggedError1._tag = "a"
 // @ts-expect-error
 myTaggedError1.message = "a"
-// @ts-expect-error
-myError1.a = 2
