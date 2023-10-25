@@ -155,10 +155,7 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
           hasOptionals = true
         }
       }
-      const rest = pipe(
-        ast.rest,
-        Option.map(ReadonlyArray.mapNonEmpty((e) => go(e, options)))
-      )
+      const rest = Option.map(ast.rest, ReadonlyArray.map((e) => go(e, options)))
       return (fc) => {
         // ---------------------------------------------
         // handle elements

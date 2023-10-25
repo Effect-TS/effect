@@ -39,7 +39,7 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     case "Tuple":
       return AST.createTuple(
         ast.elements.map((e) => AST.createElement(effectifyAST(e.type, mode), e.isOptional)),
-        O.map(ast.rest, RA.mapNonEmpty((ast) => effectifyAST(ast, mode))),
+        O.map(ast.rest, RA.map((ast) => effectifyAST(ast, mode))),
         ast.isReadonly,
         ast.annotations
       )

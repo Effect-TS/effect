@@ -1343,7 +1343,7 @@ export const required = (ast: AST): AST => {
           ast.rest,
           Option.map((rest) => {
             const u = createUnion([...rest])
-            return ReadonlyArray.mapNonEmpty(rest, () => u)
+            return ReadonlyArray.map(rest, () => u)
           })
         ),
         ast.isReadonly
@@ -1459,7 +1459,7 @@ export const to = (ast: AST): AST => {
     case "Tuple":
       return createTuple(
         ast.elements.map((e) => createElement(to(e.type), e.isOptional)),
-        Option.map(ast.rest, ReadonlyArray.mapNonEmpty(to)),
+        Option.map(ast.rest, ReadonlyArray.map(to)),
         ast.isReadonly,
         ast.annotations
       )
@@ -1496,7 +1496,7 @@ export const from = (ast: AST): AST => {
     case "Tuple":
       return createTuple(
         ast.elements.map((e) => createElement(from(e.type), e.isOptional)),
-        Option.map(ast.rest, ReadonlyArray.mapNonEmpty(from)),
+        Option.map(ast.rest, ReadonlyArray.map(from)),
         ast.isReadonly
       )
     case "TypeLiteral":

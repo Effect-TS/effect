@@ -354,7 +354,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))
       const rest = pipe(
         ast.rest,
-        Option.map(ReadonlyArray.mapNonEmpty((ast) => goMemo(ast, isDecoding)))
+        Option.map(ReadonlyArray.map((ast) => goMemo(ast, isDecoding)))
       )
       let requiredLen = ast.elements.filter((e) => !e.isOptional).length
       if (Option.isSome(ast.rest)) {

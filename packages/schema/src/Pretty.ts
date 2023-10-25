@@ -81,7 +81,7 @@ export const match: AST.Match<Pretty<any>> = {
   "Enums": stringify,
   "Tuple": (ast, go) => {
     const elements = ast.elements.map((e) => go(e.type))
-    const rest = pipe(ast.rest, Option.map(ReadonlyArray.mapNonEmpty(go)))
+    const rest = pipe(ast.rest, Option.map(ReadonlyArray.map(go)))
     return (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0

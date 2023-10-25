@@ -214,7 +214,7 @@ const go = (ast: AST.AST, definitions: Record<string, JsonSchema7>): JsonSchema7
       const elements = ast.elements.map((e) => goWithIdentifier(e.type, definitions))
       const rest = Option.map(
         ast.rest,
-        ReadonlyArray.mapNonEmpty((ast) => goWithIdentifier(ast, definitions))
+        ReadonlyArray.map((ast) => goWithIdentifier(ast, definitions))
       )
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
