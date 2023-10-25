@@ -711,14 +711,29 @@ export const head = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option
 export const last = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option.none() : Option.some(unsafeLast(self)!)
 
 /**
+ * @since 2.0.0
+ */
+export declare namespace List {
+  /**
+   * @since 2.0.0
+   */
+  export type Infer<T extends List<any>> = T extends List<infer A> ? A : never
+
+  /**
+   * @since 2.0.0
+   */
+  export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
+}
+
+/**
  * Applies the specified mapping function to each element of the list.
  *
  * @since 2.0.0
  * @category combinators
  */
 export const map: {
-  <A, B>(f: (a: A) => B): (self: List<A>) => List<B>
-  <A, B>(self: List<A>, f: (a: A) => B): List<B>
+  <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
+  <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A) => B): List<B> => {
   if (isNil(self)) {
     return self as unknown as List<B>
@@ -735,15 +750,6 @@ export const map: {
     return head
   }
 })
-
-/**
- * @since 2.0.0
- * @category combinators
- */
-export const mapNonEmpty: {
-  <A, B>(f: (a: A) => B): (self: Cons<A>) => Cons<B>
-  <A, B>(self: Cons<A>, f: (a: A) => B): Cons<B>
-} = map as any
 
 /**
  * Partition a list into two lists, where the first list contains all elements

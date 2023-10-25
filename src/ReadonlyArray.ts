@@ -1508,22 +1508,31 @@ export const empty: <A = never>() => Array<A> = () => []
 export const of = <A>(a: A): NonEmptyArray<A> => [a]
 
 /**
- * @category mapping
  * @since 2.0.0
  */
-export const map: {
-  <A, B>(f: (a: A, i: number) => B): (self: ReadonlyArray<A>) => Array<B>
-  <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => B): Array<B>
-} = dual(2, <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => B): Array<B> => self.map(f))
+export declare namespace ReadonlyArray {
+  /**
+   * @since 2.0.0
+   */
+  export type Infer<T extends ReadonlyArray<any>> = T[number]
+
+  /**
+   * @since 2.0.0
+   */
+  export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
+    : Array<A>
+}
 
 /**
  * @category mapping
  * @since 2.0.0
  */
-export const mapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => B): (self: readonly [A, ...Array<A>]) => [B, ...Array<B>]
-  <A, B>(self: readonly [A, ...Array<A>], f: (a: A, i: number) => B): [B, ...Array<B>]
-} = map as any
+export const map: {
+  <T extends ReadonlyArray<any>, B>(
+    f: (a: ReadonlyArray.Infer<T>, i: number) => B
+  ): (self: T) => ReadonlyArray.With<T, B>
+  <T extends ReadonlyArray<any>, B>(self: T, f: (a: ReadonlyArray.Infer<T>, i: number) => B): ReadonlyArray.With<T, B>
+} = dual(2, <A, B>(self: ReadonlyArray<A>, f: (a: A, i: number) => B): Array<B> => self.map(f))
 
 /**
  * @category sequencing

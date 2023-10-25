@@ -108,7 +108,6 @@ Added in v2.0.0
   - [liftPredicate](#liftpredicate)
 - [mapping](#mapping)
   - [map](#map)
-  - [mapNonEmpty](#mapnonempty)
 - [models](#models)
   - [NonEmptyArray (type alias)](#nonemptyarray-type-alias)
   - [NonEmptyReadonlyArray (type alias)](#nonemptyreadonlyarray-type-alias)
@@ -131,6 +130,9 @@ Added in v2.0.0
 - [unsafe](#unsafe)
   - [unsafeGet](#unsafeget)
 - [utils](#utils)
+  - [ReadonlyArray (namespace)](#readonlyarray-namespace)
+    - [Infer (type alias)](#infer-type-alias)
+    - [With (type alias)](#with-type-alias)
   - [chop](#chop)
   - [chopNonEmpty](#chopnonempty)
   - [copy](#copy)
@@ -1363,21 +1365,8 @@ Added in v2.0.0
 
 ```ts
 export declare const map: {
-  <A, B>(f: (a: A, i: number) => B): (self: readonly A[]) => B[]
-  <A, B>(self: readonly A[], f: (a: A, i: number) => B): B[]
-}
-```
-
-Added in v2.0.0
-
-## mapNonEmpty
-
-**Signature**
-
-```ts
-export declare const mapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => B): (self: readonly [A, ...A[]]) => [B, ...B[]]
-  <A, B>(self: readonly [A, ...A[]], f: (a: A, i: number) => B): [B, ...B[]]
+  <T extends readonly any[], B>(f: (a: ReadonlyArray.Infer<T>, i: number) => B): (self: T) => ReadonlyArray.With<T, B>
+  <T extends readonly any[], B>(self: T, f: (a: ReadonlyArray.Infer<T>, i: number) => B): ReadonlyArray.With<T, B>
 }
 ```
 
@@ -1600,6 +1589,30 @@ export declare const unsafeGet: {
 Added in v2.0.0
 
 # utils
+
+## ReadonlyArray (namespace)
+
+Added in v2.0.0
+
+### Infer (type alias)
+
+**Signature**
+
+```ts
+export type Infer<T extends ReadonlyArray<any>> = T[number]
+```
+
+Added in v2.0.0
+
+### With (type alias)
+
+**Signature**
+
+```ts
+export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A> : Array<A>
+```
+
+Added in v2.0.0
 
 ## chop
 

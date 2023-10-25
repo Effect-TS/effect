@@ -28,7 +28,6 @@ Added in v2.0.0
   - [filterMap](#filtermap)
   - [forEach](#foreach)
   - [map](#map)
-  - [mapNonEmpty](#mapnonempty)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [splitAt](#splitat)
@@ -84,6 +83,10 @@ Added in v2.0.0
   - [unsafeHead](#unsafehead)
   - [unsafeLast](#unsafelast)
   - [unsafeTail](#unsafetail)
+- [utils](#utils)
+  - [List (namespace)](#list-namespace)
+    - [Infer (type alias)](#infer-type-alias)
+    - [With (type alias)](#with-type-alias)
 
 ---
 
@@ -170,21 +173,8 @@ Applies the specified mapping function to each element of the list.
 
 ```ts
 export declare const map: {
-  <A, B>(f: (a: A) => B): (self: List<A>) => List<B>
-  <A, B>(self: List<A>, f: (a: A) => B): List<B>
-}
-```
-
-Added in v2.0.0
-
-## mapNonEmpty
-
-**Signature**
-
-```ts
-export declare const mapNonEmpty: {
-  <A, B>(f: (a: A) => B): (self: Cons<A>) => Cons<B>
-  <A, B>(self: Cons<A>, f: (a: A) => B): Cons<B>
+  <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
+  <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
 }
 ```
 
@@ -796,6 +786,32 @@ Unsafely returns the tail of the specified `List`.
 
 ```ts
 export declare const unsafeTail: <A>(self: List<A>) => List<A>
+```
+
+Added in v2.0.0
+
+# utils
+
+## List (namespace)
+
+Added in v2.0.0
+
+### Infer (type alias)
+
+**Signature**
+
+```ts
+export type Infer<T extends List<any>> = T extends List<infer A> ? A : never
+```
+
+Added in v2.0.0
+
+### With (type alias)
+
+**Signature**
+
+```ts
+export type With<T extends List<any>, A> = T extends Cons<any> ? Cons<A> : List<A>
 ```
 
 Added in v2.0.0

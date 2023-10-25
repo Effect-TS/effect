@@ -909,16 +909,6 @@ describe.concurrent("ReadonlyArray", () => {
     expect(RA.flattenNonEmpty(RA.make(RA.make(1, 2), RA.make(3, 4)))).toEqual([1, 2, 3, 4])
   })
 
-  it("mapNonEmpty", () => {
-    deepStrictEqual(
-      pipe(
-        RA.make(1, 2),
-        RA.mapNonEmpty((n) => n * 2)
-      ),
-      [2, 4]
-    )
-  })
-
   it("min", () => {
     deepStrictEqual(RA.min(Number.Order)([2, 1, 3]), 1)
     deepStrictEqual(RA.min(Number.Order)([3]), 3)
