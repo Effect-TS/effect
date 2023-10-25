@@ -1,5 +1,17 @@
 # @effect/rpc-nextjs
 
+## 0.15.0
+
+### Minor Changes
+
+- [#120](https://github.com/Effect-TS/rpc/pull/120) [`5e9a51d`](https://github.com/Effect-TS/rpc/commit/5e9a51d25306ef06fd1a8d2871723b114c724034) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- Updated dependencies [[`5e9a51d`](https://github.com/Effect-TS/rpc/commit/5e9a51d25306ef06fd1a8d2871723b114c724034)]:
+  - @effect/rpc-http@0.15.0
+  - @effect/rpc@0.15.0
+
 ## 0.14.0
 
 ### Minor Changes
