@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.45.7
+
+### Patch Changes
+
+- [#512](https://github.com/Effect-TS/schema/pull/512) [`c1beed7`](https://github.com/Effect-TS/schema/commit/c1beed71328876f942665800888f98e738693380) Thanks [@gcanti](https://github.com/gcanti)! - Schema: `split` should support subtypes of `string`
+
 ## 0.45.6
 
 ### Patch Changes
