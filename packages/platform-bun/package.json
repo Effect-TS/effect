@@ -41,12 +41,12 @@
     "@effect/platform-node": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "^0.45.0",
-    "bun-types": "1.0.6",
-    "effect": "2.0.0-next.50"
+    "@effect/schema": "^0.46.0",
+    "bun-types": "1.0.7",
+    "effect": "2.0.0-next.51"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.50"
+    "effect": "2.0.0-next.51"
   },
   "files": [
     "src",
