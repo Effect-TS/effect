@@ -667,12 +667,6 @@ describe.concurrent("Chunk", () => {
     expect(Chunk.map(Chunk.make(1, 2, 3), (n, i) => n + i)).toEqual(Chunk.make(1, 3, 5))
   })
 
-  it("mapNonEmpty", () => {
-    expect(Chunk.mapNonEmpty(Chunk.of(1), (n) => n + 1)).toEqual(Chunk.of(2))
-    expect(Chunk.mapNonEmpty(Chunk.make(1, 2, 3), (n) => n + 1)).toEqual(Chunk.make(2, 3, 4))
-    expect(Chunk.mapNonEmpty(Chunk.make(1, 2, 3), (n, i) => n + i)).toEqual(Chunk.make(1, 3, 5))
-  })
-
   it("mapAccum", () => {
     expect(Chunk.mapAccum(Chunk.make(1, 2, 3), "-", (s, a) => [s + a, a + 1])).toEqual(["-123", Chunk.make(2, 3, 4)])
   })
