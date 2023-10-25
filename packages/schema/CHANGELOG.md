@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.45.8
+
+### Patch Changes
+
+- [#514](https://github.com/Effect-TS/schema/pull/514) [`3acbc38`](https://github.com/Effect-TS/schema/commit/3acbc381dbf9bc6636a611efed073ff79878427c) Thanks [@gcanti](https://github.com/gcanti)! - Arbitrary: handle array constraints
+
+- [#514](https://github.com/Effect-TS/schema/pull/514) [`3acbc38`](https://github.com/Effect-TS/schema/commit/3acbc381dbf9bc6636a611efed073ff79878427c) Thanks [@gcanti](https://github.com/gcanti)! - Arbitrary: fix recursive generation (memory issues)
+
 ## 0.45.7
 
 ### Patch Changes
