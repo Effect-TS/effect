@@ -40,12 +40,12 @@
     "@effect/rpc-http": "workspace:^"
   },
   "devDependencies": {
-    "@effect/schema": "^0.46.0",
-    "effect": "2.0.0-next.51",
+    "@effect/schema": "^0.46.1",
+    "effect": "2.0.0-next.52",
     "next": "^13.5.6"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.51",
+    "effect": "2.0.0-next.52",
     "next": "^13.4"
   },
   "files": [
