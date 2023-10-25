@@ -44,6 +44,7 @@ import type * as RuntimeFlags from "../RuntimeFlags"
 import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch"
 import type * as Scope from "../Scope"
 import type * as Tracer from "../Tracer"
+import { effectVariance } from "./Effectable"
 
 // -----------------------------------------------------------------------------
 // Effect
@@ -251,13 +252,6 @@ class EffectPrimitiveSuccess {
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
-}
-
-/** @internal */
-const effectVariance = {
-  _R: (_: never) => _,
-  _E: (_: never) => _,
-  _A: (_: never) => _
 }
 
 /** @internal */

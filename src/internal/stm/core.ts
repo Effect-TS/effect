@@ -25,6 +25,7 @@ import type * as Scheduler from "../../Scheduler"
 import type * as STM from "../../STM"
 import { StreamTypeId } from "../../Stream"
 import { ChannelTypeId } from "../core-stream"
+import { effectVariance } from "../Effectable"
 import { SinkTypeId } from "../sink"
 
 /** @internal */
@@ -155,7 +156,7 @@ class STMPrimitive implements STM.STM<any, any, any> {
     return stmVariance
   }
   constructor(readonly i0: Primitive["i0"]) {
-    this[Effect.EffectTypeId] = stmVariance
+    this[Effect.EffectTypeId] = effectVariance
     this[StreamTypeId] = stmVariance
     this[SinkTypeId] = stmVariance
     this[ChannelTypeId] = stmVariance

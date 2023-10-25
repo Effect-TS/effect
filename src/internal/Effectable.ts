@@ -8,6 +8,7 @@ import type * as Sink from "../Sink"
 import type * as Stream from "../Stream"
 import * as Data from "./Data"
 import * as OpCodes from "./opCodes/effect"
+import { moduleVersion } from "./version"
 
 /** @internal */
 export const EffectTypeId: Effect.EffectTypeId = Symbol.for("effect/Effect") as Effect.EffectTypeId
@@ -25,7 +26,8 @@ export const ChannelTypeId: Channel.ChannelTypeId = Symbol.for("effect/Channel")
 export const effectVariance = {
   _R: (_: never) => _,
   _E: (_: never) => _,
-  _A: (_: never) => _
+  _A: (_: never) => _,
+  _V: moduleVersion
 }
 
 /** @internal */
