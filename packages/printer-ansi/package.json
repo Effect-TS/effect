@@ -52,12 +52,12 @@
     "@effect/printer": "workspace:^"
   },
   "devDependencies": {
-    "@effect/typeclass": "^0.12.0",
-    "effect": "2.0.0-next.50"
+    "@effect/typeclass": "^0.13.0",
+    "effect": "2.0.0-next.51"
   },
   "peerDependencies": {
-    "@effect/typeclass": "^0.12.0",
-    "effect": "2.0.0-next.50"
+    "@effect/typeclass": "^0.13.0",
+    "effect": "2.0.0-next.51"
   },
   "files": [
     "src",
