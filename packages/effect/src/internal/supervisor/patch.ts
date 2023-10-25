@@ -131,7 +131,7 @@ const removeSupervisor = (
   if (Equal.equals(self, that)) {
     return supervisor.none
   } else {
-    if (self instanceof supervisor.Zip) {
+    if (supervisor.isZip(self)) {
       return removeSupervisor(self.left, that).zip(removeSupervisor(self.right, that))
     } else {
       return self
@@ -144,7 +144,7 @@ const toSet = (self: Supervisor.Supervisor<any>): HashSet.HashSet<Supervisor.Sup
   if (Equal.equals(self, supervisor.none)) {
     return HashSet.empty()
   } else {
-    if (self instanceof supervisor.Zip) {
+    if (supervisor.isZip(self)) {
       return pipe(toSet(self.left), HashSet.union(toSet(self.right)))
     } else {
       return HashSet.make(self)
