@@ -1,22 +1,16 @@
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as Resource from "@effect/opentelemetry/Resource"
-import * as Tracer from "@effect/opentelemetry/Tracer"
-import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base"
+import { ConsoleSpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 
 const ResourceLive = Resource.layer({ serviceName: "example" })
 
-const NodeSdkLive = NodeSdk.layer(() =>
-  NodeSdk.config({
-    traceExporter: new ConsoleSpanExporter()
-  })
-)
-
-const TracingLive = Layer.provide(
-  ResourceLive,
-  Layer.merge(NodeSdkLive, Tracer.layer)
+const NodeSdkLive = NodeSdk.layer(() => ({
+  spanProcessor: new SimpleSpanProcessor(new ConsoleSpanExporter())
+})).pipe(
+  Layer.use(ResourceLive)
 )
 
 const program = pipe(
@@ -28,7 +22,7 @@ const program = pipe(
 
 pipe(
   program,
-  Effect.provide(TracingLive),
+  Effect.provide(NodeSdkLive),
   Effect.catchAllCause(Effect.logError),
   Effect.runFork
 )

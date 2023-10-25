@@ -4,7 +4,7 @@
 import type { TracerProvider } from "@opentelemetry/api"
 import type { MetricReader } from "@opentelemetry/sdk-metrics"
 import type { SpanProcessor, TracerConfig } from "@opentelemetry/sdk-trace-base"
-import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
+import { WebTracerProvider } from "@opentelemetry/sdk-trace-web"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -37,7 +37,7 @@ export const layerTracerProvider = (
       (resource) =>
         Effect.acquireRelease(
           Effect.sync(() => {
-            const provider = new NodeTracerProvider({
+            const provider = new WebTracerProvider({
               ...(config ?? {}),
               resource
             })

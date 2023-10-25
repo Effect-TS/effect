@@ -72,11 +72,9 @@ const program = Effect.gen(function*(_) {
 
 const MetricsLive = Layer.provide(
   Resource.layer({ serviceName: "example" }),
-  NodeSdk.layer(() =>
-    NodeSdk.config({
-      metricReader: new PrometheusExporter({ port: 9464 })
-    })
-  )
+  NodeSdk.layer(() => ({
+    metricReader: new PrometheusExporter({ port: 9464 })
+  }))
 )
 
 pipe(

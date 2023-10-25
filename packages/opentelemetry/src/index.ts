@@ -17,3 +17,8 @@ export * as Resource from "@effect/opentelemetry/Resource"
  * @since 1.0.0
  */
 export * as Tracer from "@effect/opentelemetry/Tracer"
+
+/**
+ * @since 1.0.0
+ */
+export * as WebSdk from "@effect/opentelemetry/WebSdk"

@@ -6,7 +6,7 @@ import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type * as Option from "effect/Option"
-import type { ExternalSpan, Tracer } from "effect/Tracer"
+import type { ExternalSpan, Tracer as EffectTracer } from "effect/Tracer"
 import * as internal from "./internal/tracer"
 import type { Resource } from "./Resource"
 
@@ -14,7 +14,7 @@ import type { Resource } from "./Resource"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect<Otel.Tracer, never, Tracer> = internal.make
+export const make: Effect<Otel.Tracer, never, EffectTracer> = internal.make
 
 /**
  * @since 1.0.0
@@ -39,19 +39,37 @@ export const currentOtelSpan: Effect<never, never, Option.Option<Otel.Span>> = i
  * @since 1.0.0
  * @category layers
  */
-export const layer: Layer<Resource, never, never> = internal.layer
+export const layer: Layer<Resource | Otel.TracerProvider, never, never> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerOtelTracer: Layer<Resource, never, Otel.Tracer> = internal.layerOtelTracer
+export const layerGlobal: Layer<Resource, never, never> = internal.layerGlobal
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerTracer: Layer<Resource | Otel.TracerProvider, never, Otel.Tracer> = internal.layerTracer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerGlobalTracer: Layer<Resource, never, Otel.Tracer> = internal.layerGlobalTracer
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const OtelTracer: Tag<Otel.Tracer, Otel.Tracer> = internal.OtelTracer
+export const TracerProvider: Tag<Otel.TracerProvider, Otel.TracerProvider> = internal.TracerProvider
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const Tracer: Tag<Otel.Tracer, Otel.Tracer> = internal.Tracer
 
 /**
  * @since 1.0.0

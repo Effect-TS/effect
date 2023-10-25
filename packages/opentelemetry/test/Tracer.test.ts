@@ -2,24 +2,22 @@ import { OtelSpan } from "@effect/opentelemetry/internal/tracer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as Resource from "@effect/opentelemetry/Resource"
 import * as it from "@effect/opentelemetry/test/utils/extend"
-import * as Tracer from "@effect/opentelemetry/Tracer"
 import * as OtelApi from "@opentelemetry/api"
-import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base"
+import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
+import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 
-const TracingLive = Layer.provide(
-  Resource.layer({ serviceName: "test" }),
-  Layer.merge(
-    Tracer.layer,
-    NodeSdk.layer(() =>
-      NodeSdk.config({
-        traceExporter: new InMemorySpanExporter()
-      })
-    )
-  )
+const TracingLive = NodeSdk.layer(() => ({
+  spanProcessor: new SimpleSpanProcessor(new InMemorySpanExporter())
+})).pipe(
+  Layer.use(Resource.layer({ serviceName: "test" }))
 )
+
+// needed to test context propagation
+const contextManager = new AsyncHooksContextManager()
+OtelApi.context.setGlobalContextManager(contextManager)
 
 describe("Tracer", () => {
   describe("provided", () => {

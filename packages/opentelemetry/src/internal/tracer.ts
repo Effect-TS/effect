@@ -6,11 +6,11 @@ import type { Exit } from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as Tracer from "effect/Tracer"
+import * as EffectTracer from "effect/Tracer"
 import { Resource } from "../Resource"
 
 /** @internal */
-export class OtelSpan implements Tracer.Span {
+export class OtelSpan implements EffectTracer.Span {
   readonly _tag = "Span"
 
   readonly span: OtelApi.Span
@@ -18,15 +18,15 @@ export class OtelSpan implements Tracer.Span {
   readonly traceId: string
   readonly attributes = new Map<string, unknown>()
   readonly sampled: boolean
-  status: Tracer.SpanStatus
+  status: EffectTracer.SpanStatus
 
   constructor(
     contextApi: OtelApi.ContextAPI,
     tracer: OtelApi.Tracer,
     readonly name: string,
-    readonly parent: Option.Option<Tracer.ParentSpan>,
+    readonly parent: Option.Option<EffectTracer.ParentSpan>,
     readonly context: Context.Context<never>,
-    readonly links: ReadonlyArray<Tracer.SpanLink>,
+    readonly links: ReadonlyArray<EffectTracer.SpanLink>,
     startTime: bigint
   ) {
     const active = contextApi.active()
@@ -100,11 +100,14 @@ export class OtelSpan implements Tracer.Span {
 }
 
 /** @internal */
-export const OtelTracer = Context.Tag<OtelApi.Tracer>("@effect/opentelemetry/Tracer/OtelTracer")
+export const TracerProvider = Context.Tag<OtelApi.TracerProvider>("@effect/opentelemetry/Tracer/TracerProvider")
 
 /** @internal */
-export const make = Effect.map(OtelTracer, (tracer) =>
-  Tracer.make({
+export const Tracer = Context.Tag<OtelApi.Tracer>("@effect/opentelemetry/Tracer/Tracer")
+
+/** @internal */
+export const make = Effect.map(Tracer, (tracer) =>
+  EffectTracer.make({
     span(name, parent, context, links, startTime) {
       return new OtelSpan(
         OtelApi.context,
@@ -117,8 +120,8 @@ export const make = Effect.map(OtelTracer, (tracer) =>
       )
     },
     context(execution, fiber) {
-      const currentSpan = fiber.getFiberRef(FiberRef.currentContext).unsafeMap.get(Tracer.ParentSpan) as
-        | Tracer.ParentSpan
+      const currentSpan = fiber.getFiberRef(FiberRef.currentContext).unsafeMap.get(EffectTracer.ParentSpan) as
+        | EffectTracer.ParentSpan
         | undefined
 
       if (currentSpan === undefined) {
@@ -144,7 +147,7 @@ export const makeExternalSpan = (options: {
   readonly spanId: string
   readonly traceFlags?: number
   readonly traceState?: string | OtelApi.TraceState
-}): Tracer.ExternalSpan => {
+}): EffectTracer.ExternalSpan => {
   let context = Context.empty()
 
   if (options.traceFlags) {
@@ -182,13 +185,19 @@ export const currentOtelSpan = Effect.map(
 )
 
 /** @internal */
-export const layerOtelTracer = Layer.effect(
-  OtelTracer,
+export const layerGlobalProvider = Layer.sync(
+  TracerProvider,
+  () => OtelApi.trace.getTracerProvider()
+)
+
+/** @internal */
+export const layerTracer = Layer.effect(
+  Tracer,
   Effect.flatMap(
-    Resource,
-    (resource) =>
+    Effect.zip(Resource, TracerProvider),
+    ([resource, provider]) =>
       Effect.sync(() =>
-        OtelApi.trace.getTracer(
+        provider.getTracer(
           resource.attributes["service.name"] as string,
           resource.attributes["service.version"] as string
         )
@@ -197,9 +206,18 @@ export const layerOtelTracer = Layer.effect(
 )
 
 /** @internal */
-export const layer = Layer.provide(
-  layerOtelTracer,
-  Layer.unwrapEffect(Effect.map(make, Layer.setTracer))
+export const layerGlobalTracer = layerTracer.pipe(
+  Layer.use(layerGlobalProvider)
+)
+
+/** @internal */
+export const layerGlobal = Layer.unwrapEffect(Effect.map(make, Layer.setTracer)).pipe(
+  Layer.use(layerGlobalTracer)
+)
+
+/** @internal */
+export const layer = Layer.unwrapEffect(Effect.map(make, Layer.setTracer)).pipe(
+  Layer.use(layerTracer)
 )
 
 // -------------------------------------------------------------------------------------
@@ -215,14 +233,14 @@ const createTraceState = Option.liftThrowable(OtelApi.createTraceState)
 
 const populateContext = (
   otelContext: OtelApi.Context,
-  span: Tracer.ParentSpan,
+  span: EffectTracer.ParentSpan,
   context?: Context.Context<never>
 ): OtelApi.Context =>
   span instanceof OtelSpan ?
     OtelApi.trace.setSpan(otelContext, span.span) :
     OtelApi.trace.setSpanContext(otelContext, makeSpanContext(span, context))
 
-const makeSpanContext = (span: Tracer.ParentSpan, context?: Context.Context<never>): OtelApi.SpanContext => ({
+const makeSpanContext = (span: EffectTracer.ParentSpan, context?: Context.Context<never>): OtelApi.SpanContext => ({
   spanId: span.spanId,
   traceId: span.traceId,
   isRemote: span._tag === "ExternalSpan",
@@ -240,7 +258,7 @@ const makeSpanContext = (span: Tracer.ParentSpan, context?: Context.Context<neve
 })
 
 const extractTraceTag = <I, S>(
-  parent: Tracer.ParentSpan,
+  parent: EffectTracer.ParentSpan,
   context: Context.Context<never>,
   tag: Context.Tag<I, S>
 ) =>
