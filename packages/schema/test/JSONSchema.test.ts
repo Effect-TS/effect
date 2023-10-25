@@ -19,17 +19,15 @@ type Json =
   | JsonArray
   | JsonObject
 
-const propertyTo = <I, A>(schema: S.Schema<I, A>) => {
+const propertyTo = <I, A>(schema: S.Schema<I, A>, params?: fc.Parameters<[A]>) => {
   const arbitrary = A.to(schema)
   const is = S.is(schema)
   const jsonSchema = JSONSchema.to(schema)
   // console.log(JSON.stringify(jsonSchema, null, 2))
   const validate = new Ajv({ strictTuples: false, allowUnionTypes: true }).compile(jsonSchema)
   const arb = arbitrary(fc)
-  // console.log(fc.sample(arb, 10))
-  fc.assert(fc.property(arb, (a) => {
-    return is(a) && validate(a)
-  }))
+  // console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
+  fc.assert(fc.property(arb, (a) => is(a) && validate(a)), params)
 }
 
 const propertyFrom = <I, A>(schema: S.Schema<I, A>) => {
@@ -879,6 +877,7 @@ describe("JSONSchema", () => {
       expect(
         validate({ a: "a1", as: [{ a: "a2", as: [] }, { a: "a3", as: [{ a: "a4", as: [1] }] }] })
       ).toEqual(false)
+      propertyTo(schema)
     })
 
     it("should support mutually recursive schemas", () => {
@@ -1001,6 +1000,7 @@ describe("JSONSchema", () => {
           }
         }
       })).toEqual(true)
+      propertyTo(Operation, { numRuns: 10 })
     })
   })
 

@@ -1,4 +1,4 @@
-import * as A from "@effect/schema/Arbitrary"
+import * as Arbitrary from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import { propertyFrom, propertyTo } from "@effect/schema/test/util"
 import * as fc from "fast-check"
@@ -6,12 +6,12 @@ import { describe, expect, it } from "vitest"
 
 describe("Arbitrary/Arbitrary", () => {
   it("exports", () => {
-    expect(A.ArbitraryHookId).exist
+    expect(Arbitrary.ArbitraryHookId).exist
   })
 
   it("should throw on transformations", () => {
     const schema = S.NumberFromString
-    expect(() => A.go(schema.ast)).toThrow(
+    expect(() => Arbitrary.go(schema.ast, {})).toThrow(
       new Error("cannot build an Arbitrary for transformations")
     )
   })
@@ -30,22 +30,6 @@ describe("Arbitrary/Arbitrary", () => {
       d: NumberFromString.pipe(S.positive()),
       e: S.optionFromSelf(NumberFromString)
     })
-    propertyFrom(schema)
-  })
-
-  it("from/ lazy", () => {
-    const NumberFromString = S.NumberFromString
-    interface I {
-      readonly a: string | I
-    }
-    interface A {
-      readonly a: number | A
-    }
-    const schema: S.Schema<I, A> = S.lazy(() =>
-      S.struct({
-        a: S.union(NumberFromString, schema)
-      })
-    )
     propertyFrom(schema)
   })
 
@@ -85,7 +69,7 @@ describe("Arbitrary/Arbitrary", () => {
   })
 
   it("never", () => {
-    expect(() => A.to(S.never)(fc)).toThrow(
+    expect(() => Arbitrary.to(S.never)(fc)).toThrow(
       new Error("cannot build an Arbitrary for `never`")
     )
   })
@@ -118,6 +102,14 @@ describe("Arbitrary/Arbitrary", () => {
     propertyTo(S.object)
   })
 
+  it("any", () => {
+    propertyTo(S.any)
+  })
+
+  it("unknown", () => {
+    propertyTo(S.unknown)
+  })
+
   it("literal 1 member", () => {
     const schema = S.literal(1)
     propertyTo(schema)
@@ -137,7 +129,7 @@ describe("Arbitrary/Arbitrary", () => {
   it("empty enums should throw", () => {
     enum Fruits {}
     const schema = S.enums(Fruits)
-    expect(() => A.to(schema)(fc)).toThrow(
+    expect(() => Arbitrary.to(schema)(fc)).toThrow(
       new Error("cannot build an Arbitrary for an empty enum")
     )
   })
@@ -226,36 +218,108 @@ describe("Arbitrary/Arbitrary", () => {
     propertyTo(schema)
   })
 
-  it("lazy/to tuple", () => {
-    type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.lazy<A>(
-      () => S.tuple(S.number, S.union(schema, S.literal(null)))
-    )
-    propertyTo(schema)
-  })
-
-  // 71 MB heap used
-  it.skip("lazy/to struct", () => {
-    interface A {
-      readonly a: string
-      readonly as: ReadonlyArray<A>
-    }
-    const schema: S.Schema<A> = S.lazy(() =>
-      S.struct({
-        a: S.string,
-        as: S.array(schema)
+  describe("lazy", () => {
+    it("should support an arbitrary annotation", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const arb: fc.Arbitrary<any> = fc.letrec((tie) => ({
+        root: fc.record({
+          a: fc.string(),
+          as: fc.oneof(
+            { depthSize: "small" },
+            fc.constant([]),
+            fc.array(tie("root"))
+          )
+        })
+      })).root
+      const schema: S.Schema<A> = S.lazy<A>(() =>
+        S.struct({
+          a: S.string,
+          as: S.array(schema)
+        }), {
+        [Arbitrary.ArbitraryHookId]: () => () => arb
       })
-    )
-    propertyTo(schema)
-  })
+      propertyTo(schema)
+    })
 
-  // 37 MB heap used
-  it.skip("lazy/to record", () => {
-    type A = {
-      [_: string]: A
-    }
-    const schema: S.Schema<A> = S.lazy(() => S.record(S.string, schema))
-    propertyTo(schema)
+    it("struct", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const schema: S.Schema<A> = S.lazy(() =>
+        S.struct({
+          a: S.string,
+          as: S.array(schema)
+        })
+      )
+      propertyTo(schema)
+    })
+
+    it("from", () => {
+      const NumberFromString = S.NumberFromString
+      interface I {
+        readonly a: string | I
+      }
+      interface A {
+        readonly a: number | A
+      }
+      const schema: S.Schema<I, A> = S.lazy(() =>
+        S.struct({
+          a: S.union(NumberFromString, schema)
+        })
+      )
+      propertyFrom(schema)
+    })
+
+    it("tuple", () => {
+      type A = readonly [number, A | null]
+      const schema: S.Schema<A> = S.lazy<A>(
+        () => S.tuple(S.number, S.union(schema, S.literal(null)))
+      )
+      propertyTo(schema)
+    })
+
+    it("record", () => {
+      type A = {
+        [_: string]: A
+      }
+      const schema: S.Schema<A> = S.lazy(() => S.record(S.string, schema))
+      propertyTo(schema)
+    })
+
+    it("should support mutually recursive schemas", () => {
+      interface Expression {
+        readonly type: "expression"
+        readonly value: number | Operation
+      }
+
+      interface Operation {
+        readonly type: "operation"
+        readonly operator: "+" | "-"
+        readonly left: Expression
+        readonly right: Expression
+      }
+
+      const Expression: S.Schema<Expression> = S.lazy(() =>
+        S.struct({
+          type: S.literal("expression"),
+          value: S.union(S.JsonNumber, Operation)
+        })
+      )
+
+      const Operation: S.Schema<Operation> = S.lazy(() =>
+        S.struct({
+          type: S.literal("operation"),
+          operator: S.union(S.literal("+"), S.literal("-")),
+          left: Expression,
+          right: Expression
+        })
+      )
+      propertyTo(Operation, { numRuns: 10 })
+    })
   })
 
   describe("struct", () => {
@@ -300,6 +364,21 @@ describe("Arbitrary/Arbitrary", () => {
     propertyTo(schema)
   })
 
+  it("minItems", () => {
+    const schema = S.array(S.string).pipe(S.minItems(2))
+    propertyTo(schema)
+  })
+
+  it("maxItems", () => {
+    const schema = S.array(S.string).pipe(S.maxItems(5))
+    propertyTo(schema)
+  })
+
+  it("itemsCount", () => {
+    const schema = S.array(S.string).pipe(S.itemsCount(3))
+    propertyTo(schema)
+  })
+
   it("minLength", () => {
     const schema = S.string.pipe(S.minLength(1))
     propertyTo(schema)
@@ -307,6 +386,11 @@ describe("Arbitrary/Arbitrary", () => {
 
   it("maxLength", () => {
     const schema = S.string.pipe(S.maxLength(2))
+    propertyTo(schema)
+  })
+
+  it("length", () => {
+    const schema = S.string.pipe(S.length(10))
     propertyTo(schema)
   })
 

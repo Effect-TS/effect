@@ -308,13 +308,15 @@ export const X3 = S.transform(
 
 const doProperty = true
 
-export const propertyTo = <I, A>(schema: S.Schema<I, A>) => {
+export const propertyTo = <I, A>(schema: S.Schema<I, A>, params?: fc.Parameters<[A]>) => {
   if (!doProperty) {
     return
   }
   const arbitrary = A.to(schema)
+  const arb = arbitrary(fc)
+  // console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
   const is = S.is(schema)
-  fc.assert(fc.property(arbitrary(fc), (a) => is(a)))
+  fc.assert(fc.property(arb, (a) => is(a)), params)
 }
 
 export const propertyFrom = <I, A>(schema: S.Schema<I, A>) => {
@@ -322,8 +324,10 @@ export const propertyFrom = <I, A>(schema: S.Schema<I, A>) => {
     return
   }
   const arbitrary = A.from(schema)
+  const arb = arbitrary(fc)
+  // console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
   const is = S.is(S.from(schema))
-  fc.assert(fc.property(arbitrary(fc), (a) => is(a)))
+  fc.assert(fc.property(arb, (a) => is(a)))
 }
 
 export const isBun = "Bun" in globalThis

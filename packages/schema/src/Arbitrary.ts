@@ -32,7 +32,7 @@ export const ArbitraryHookId = Internal.ArbitraryHookId
  */
 export const to = <I, A>(
   schema: Schema.Schema<I, A>
-): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(AST.to(schema.ast))
+): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(AST.to(schema.ast), {})
 
 /**
  * @category arbitrary
@@ -40,34 +40,49 @@ export const to = <I, A>(
  */
 export const from = <I, A>(
   schema: Schema.Schema<I, A>
-): (fc: typeof FastCheck) => FastCheck.Arbitrary<I> => go(AST.from(schema.ast))
+): (fc: typeof FastCheck) => FastCheck.Arbitrary<I> => go(AST.from(schema.ast), {})
+
+const depthSize = 1
 
 const record = <K extends PropertyKey, V>(
   fc: typeof FastCheck,
   key: FastCheck.Arbitrary<K>,
-  value: FastCheck.Arbitrary<V>
-): FastCheck.Arbitrary<{ readonly [k in K]: V }> =>
-  fc.array(fc.tuple(key, value), { maxLength: 2 }).map((tuples) => {
-    const out: { [k in K]: V } = {} as any
-    for (const [k, v] of tuples) {
-      out[k] = v
-    }
-    return out
-  })
+  value: FastCheck.Arbitrary<V>,
+  options: Options
+): FastCheck.Arbitrary<{ readonly [k in K]: V }> => {
+  return (options.isLazy ?
+    fc.oneof(
+      { depthSize },
+      fc.constant([]),
+      fc.array(fc.tuple(key, value), { minLength: 1, maxLength: 2 })
+    ) :
+    fc.array(fc.tuple(key, value))).map((tuples) => {
+      const out: { [k in K]: V } = {} as any
+      for (const [k, v] of tuples) {
+        out[k] = v
+      }
+      return out
+    })
+}
 
 const getHook = AST.getAnnotation<
   (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
 >(ArbitraryHookId)
 
+type Options = {
+  readonly constraints?: Constraints
+  readonly isLazy?: boolean
+}
+
 /** @internal */
-export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
+export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration":
       return pipe(
         getHook(ast),
         Option.match({
-          onNone: () => go(ast.type),
-          onSome: (handler) => handler(...ast.typeParameters.map((p) => go(p)))
+          onNone: () => go(ast.type, options),
+          onSome: (handler) => handler(...ast.typeParameters.map((p) => go(p, options)))
         })
       )
     case "Literal":
@@ -83,27 +98,26 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
         throw new Error("cannot build an Arbitrary for `never`")
       }
     case "UnknownKeyword":
-      return (fc) => fc.anything()
     case "AnyKeyword":
       return (fc) => fc.anything()
     case "StringKeyword":
       return (fc) => {
-        if (constraints) {
-          switch (constraints._tag) {
+        if (options.constraints) {
+          switch (options.constraints._tag) {
             case "StringConstraints":
-              return fc.string(constraints.constraints)
+              return fc.string(options.constraints.constraints)
           }
         }
         return fc.string()
       }
     case "NumberKeyword":
       return (fc) => {
-        if (constraints) {
-          switch (constraints._tag) {
+        if (options.constraints) {
+          switch (options.constraints._tag) {
             case "NumberConstraints":
-              return fc.float(constraints.constraints)
+              return fc.float(options.constraints.constraints)
             case "IntegerConstraints":
-              return fc.integer(constraints.constraints)
+              return fc.integer(options.constraints.constraints)
           }
         }
         return fc.float()
@@ -136,12 +150,15 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       const elements: Array<Arbitrary<any>> = []
       let hasOptionals = false
       for (const element of ast.elements) {
-        elements.push(go(element.type))
+        elements.push(go(element.type, options))
         if (element.isOptional) {
           hasOptionals = true
         }
       }
-      const rest = pipe(ast.rest, Option.map(ReadonlyArray.mapNonEmpty((e) => go(e))))
+      const rest = pipe(
+        ast.rest,
+        Option.map(ReadonlyArray.mapNonEmpty((e) => go(e, options)))
+      )
       return (fc) => {
         // ---------------------------------------------
         // handle elements
@@ -169,9 +186,21 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
         if (Option.isSome(rest)) {
           const head = ReadonlyArray.headNonEmpty(rest.value)
           const tail = ReadonlyArray.tailNonEmpty(rest.value)
-          output = output.chain((as) =>
-            fc.array(head(fc), { maxLength: 2 }).map((rest) => [...as, ...rest])
-          )
+          const arb = head(fc)
+          const constraints = options.constraints
+          output = output.chain((as) => {
+            let out = fc.array(arb)
+            if (options.isLazy) {
+              out = fc.oneof(
+                { depthSize },
+                fc.constant([]),
+                fc.array(arb, { minLength: 1, maxLength: 2 })
+              )
+            } else if (constraints && constraints._tag === "ArrayConstraints") {
+              out = fc.array(arb, constraints.constraints)
+            }
+            return out.map((rest) => [...as, ...rest])
+          })
           // ---------------------------------------------
           // handle post rest elements
           // ---------------------------------------------
@@ -184,9 +213,9 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       }
     }
     case "TypeLiteral": {
-      const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
+      const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type, options))
       const indexSignatures = ast.indexSignatures.map((is) =>
-        [go(is.parameter), go(is.type)] as const
+        [go(is.parameter, options), go(is.type, options)] as const
       )
       return (fc) => {
         const arbs: any = {}
@@ -210,7 +239,7 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
           const parameter = indexSignatures[i][0](fc)
           const type = indexSignatures[i][1](fc)
           output = output.chain((o) => {
-            return record(fc, parameter, type).map((d) => ({ ...d, ...o }))
+            return record(fc, parameter, type, options).map((d) => ({ ...d, ...o }))
           })
         }
 
@@ -218,20 +247,9 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       }
     }
     case "Union": {
-      const types = ast.types.map((t) => go(t))
-      return (fc) => fc.oneof(...types.map((arb) => arb(fc)))
+      const types = ast.types.map((t) => go(t, options))
+      return (fc) => fc.oneof({ depthSize }, ...types.map((arb) => arb(fc)))
     }
-    case "Lazy":
-      return pipe(
-        getHook(ast),
-        Option.match({
-          onNone: () => {
-            const get = Internal.memoizeThunk(() => go(ast.f()))
-            return (fc) => fc.constant(null).chain(() => get()(fc))
-          },
-          onSome: (handler) => handler()
-        })
-      )
     case "Enums": {
       if (ast.enums.length === 0) {
         throw new Error("cannot build an Arbitrary for an empty enum")
@@ -239,13 +257,26 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }
     case "Refinement": {
-      const from = go(ast.from, combineConstraints(constraints, getConstraints(ast)))
+      const constraints = combineConstraints(options.constraints, getConstraints(ast))
+      const from = go(ast.from, constraints ? { ...options, constraints } : options)
       return pipe(
         getHook(ast),
         Option.match({
           onNone: () => (fc) =>
             from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast))),
           onSome: (handler) => handler(from)
+        })
+      )
+    }
+    case "Lazy": {
+      return pipe(
+        getHook(ast),
+        Option.match({
+          onNone: () => {
+            const get = Internal.memoizeThunk(() => go(ast.f(), { ...options, isLazy: true }))
+            return (fc) => fc.constant(null).chain(() => get()(fc))
+          },
+          onSome: (handler) => handler()
         })
       )
     }
@@ -287,13 +318,23 @@ const integerConstraints = (constraints: IntegerConstraints["constraints"]): Int
   return { _tag: "IntegerConstraints", constraints }
 }
 
-type Constraints = NumberConstraints | StringConstraints | IntegerConstraints
+interface ArrayConstraints {
+  readonly _tag: "ArrayConstraints"
+  readonly constraints: FastCheck.ArrayConstraints
+}
+
+const arrayConstraints = (constraints: ArrayConstraints["constraints"]): ArrayConstraints => {
+  return { _tag: "ArrayConstraints", constraints }
+}
+
+type Constraints = NumberConstraints | StringConstraints | IntegerConstraints | ArrayConstraints
 
 /** @internal */
 export const getConstraints = (ast: AST.Refinement): Constraints | undefined => {
   const TypeAnnotationId = ast.annotations[AST.TypeAnnotationId]
   const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
   switch (TypeAnnotationId) {
+    // number
     case Schema.GreaterThanTypeId:
     case Schema.GreaterThanOrEqualToTypeId:
       return numberConstraints({ min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum })
@@ -314,10 +355,20 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
       }
       return numberConstraints(constraints)
     }
+    // string
     case Schema.MinLengthTypeId:
       return stringConstraints({ minLength: jsonSchema.minLength })
     case Schema.MaxLengthTypeId:
       return stringConstraints({ maxLength: jsonSchema.maxLength })
+    case Schema.LengthTypeId:
+      return stringConstraints({ minLength: jsonSchema.minLength, maxLength: jsonSchema.maxLength })
+    // array
+    case Schema.MinItemsTypeId:
+      return arrayConstraints({ minLength: jsonSchema.minItems })
+    case Schema.MaxItemsTypeId:
+      return arrayConstraints({ maxLength: jsonSchema.maxItems })
+    case Schema.ItemsCountTypeId:
+      return arrayConstraints({ minLength: jsonSchema.minItems, maxLength: jsonSchema.maxItems })
   }
 }
 
