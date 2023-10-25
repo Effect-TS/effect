@@ -1,11 +1,9 @@
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
-import * as Resource from "@effect/opentelemetry/Resource"
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus"
 import * as Chunk from "effect/Chunk"
 import { millis, seconds } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
 import * as Metric from "effect/Metric"
 
 const counter = Metric.counter("count", {
@@ -70,12 +68,12 @@ const program = Effect.gen(function*(_) {
   yield* _(Effect.fork(spawner))
 })
 
-const MetricsLive = Layer.provide(
-  Resource.layer({ serviceName: "example" }),
-  NodeSdk.layer(() => ({
-    metricReader: new PrometheusExporter({ port: 9464 })
-  }))
-)
+const MetricsLive = NodeSdk.layer(() => ({
+  resource: {
+    serviceName: "example"
+  },
+  metricReader: new PrometheusExporter({ port: 9464 })
+}))
 
 pipe(
   program,

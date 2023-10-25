@@ -82,6 +82,7 @@
     "@opentelemetry/exporter-metrics-otlp-http": "0.43.0",
     "@opentelemetry/exporter-prometheus": "0.43.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.43.0",
+    "@opentelemetry/otlp-exporter-base": "0.43.0",
     "@preconstruct/cli": "^2.8.1",
     "@types/chai": "^4.3.9",
     "@types/node": "^20.8.8",
