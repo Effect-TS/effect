@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.52
+
+### Patch Changes
+
+- [#1565](https://github.com/Effect-TS/effect/pull/1565) [`98de6fe6e`](https://github.com/Effect-TS/effect/commit/98de6fe6e0cb89750cbc4ca795a880c56488a1e8) Thanks [@tim-smart](https://github.com/tim-smart)! - fix support for optional props in Data classes
+
 ## 2.0.0-next.51
 
 ### Minor Changes
