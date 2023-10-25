@@ -60,13 +60,7 @@ export const layer = (
     Effect.sync(() => {
       const config = evaluate()
       const TracerLive = config.spanProcessor ?
-        Layer.unwrapScoped(
-          Effect.addFinalizer(() => Effect.promise(() => config.spanProcessor!.shutdown())).pipe(
-            Effect.as(Tracer.layer.pipe(
-              Layer.use(layerTracerProvider(config.spanProcessor, config.tracerConfig))
-            ))
-          )
-        )
+        Tracer.layer.pipe(Layer.use(layerTracerProvider(config.spanProcessor, config.tracerConfig)))
         : Layer.effectDiscard(Effect.unit)
       const MetricsLive = config.metricReader
         ? Metrics.layer(() => config.metricReader!)
