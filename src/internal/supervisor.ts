@@ -73,6 +73,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
 
 /** @internal */
 export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
+  readonly _tag = "Zip"
   readonly [SupervisorTypeId] = supervisorVariance
 
   constructor(
@@ -122,6 +123,10 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<readonly [readonly [T0, T1], A]> {
     return new Zip(this, right)
   }
+}
+
+export const isZip = (self: unknown): self is Zip<any, any> => {
+  return typeof self === "object" && self !== null && SupervisorTypeId in self && "_tag" in self && self._tag === "Zip"
 }
 
 export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>> {
