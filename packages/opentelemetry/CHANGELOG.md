@@ -1,5 +1,21 @@
 # @effect/opentelemetry
 
+## 0.21.0
+
+### Minor Changes
+
+- [#82](https://github.com/Effect-TS/opentelemetry/pull/82) [`8e1b9f6`](https://github.com/Effect-TS/opentelemetry/commit/8e1b9f6509e108cc145313bc7dea8f4d1629cc53) Thanks [@tim-smart](https://github.com/tim-smart)! - add Resource config to sdk layers
+
+- [#83](https://github.com/Effect-TS/opentelemetry/pull/83) [`fab878b`](https://github.com/Effect-TS/opentelemetry/commit/fab878bbd99e9c7163f87ba5ef40986b3cb33eaf) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+- [#79](https://github.com/Effect-TS/opentelemetry/pull/79) [`fca35c8`](https://github.com/Effect-TS/opentelemetry/commit/fca35c8cec7760b6e172fdb9890972f36dc2ebc5) Thanks [@tim-smart](https://github.com/tim-smart)! - use scoped TracerProvider
+
+- [#79](https://github.com/Effect-TS/opentelemetry/pull/79) [`fca35c8`](https://github.com/Effect-TS/opentelemetry/commit/fca35c8cec7760b6e172fdb9890972f36dc2ebc5) Thanks [@tim-smart](https://github.com/tim-smart)! - update Sdk apis
+
+### Patch Changes
+
+- [#79](https://github.com/Effect-TS/opentelemetry/pull/79) [`fca35c8`](https://github.com/Effect-TS/opentelemetry/commit/fca35c8cec7760b6e172fdb9890972f36dc2ebc5) Thanks [@tim-smart](https://github.com/tim-smart)! - add WebSdk module
+
 ## 0.20.0
 
 ### Minor Changes
