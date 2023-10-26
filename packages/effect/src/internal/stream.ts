@@ -84,6 +84,29 @@ export const isStream = (u: unknown): u is Stream.Stream<unknown, unknown, unkno
 export const DefaultChunkSize = 4096
 
 /** @internal */
+export const accumulate = <R, E, A>(self: Stream.Stream<R, E, A>): Stream.Stream<R, E, Chunk.Chunk<A>> =>
+  chunks(accumulateChunks(self))
+
+/** @internal */
+export const accumulateChunks = <R, E, A>(self: Stream.Stream<R, E, A>): Stream.Stream<R, E, A> => {
+  const accumulator = (
+    s: Chunk.Chunk<A>
+  ): Channel.Channel<never, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A>, void> =>
+    core.readWith({
+      onInput: (input: Chunk.Chunk<A>) => {
+        const next = Chunk.appendAll(s, input)
+        return core.flatMap(
+          core.write(next),
+          () => accumulator(next)
+        )
+      },
+      onFailure: core.fail,
+      onDone: () => core.unit
+    })
+  return new StreamImpl(core.pipeTo(toChannel(self), accumulator(Chunk.empty())))
+}
+
+/** @internal */
 export const acquireRelease = <R, E, A, R2, _>(
   acquire: Effect.Effect<R, E, A>,
   release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, _>
