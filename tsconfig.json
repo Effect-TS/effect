@@ -12,7 +12,10 @@
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "noEmit": true,
-    "lib": ["ES2021", "DOM"],
+    "lib": [
+      "ES2021",
+      "DOM"
+    ],
     "isolatedModules": true,
     "sourceMap": true,
     "declarationMap": true,
@@ -34,16 +37,30 @@
     "target": "ES2021",
     "module": "ES6",
     "incremental": true,
+    "traceResolution": false,
     "removeComments": false,
     "paths": {
-      "effect": ["./src/index.ts"],
-      "effect/*": ["./src/*.ts"],
-      "effect-test/*": ["./test/*.ts"]
+      "effect": [
+        "./src/index.ts"
+      ],
+      "effect/*": [
+        "./src/*.ts"
+      ],
+      "effect-test/*": [
+        "./test/*.ts"
+      ]
     },
     "types": [
       "node"
     ],
-    "plugins": [{ "name": "@effect/language-service" }]
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ]
 }

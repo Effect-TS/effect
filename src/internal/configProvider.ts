@@ -1,3 +1,5 @@
+// @ts-expect-error
+import { getEnv } from "effect/env"
 import type * as Config from "../Config"
 import type * as ConfigError from "../ConfigError"
 import type * as ConfigProvider from "../ConfigProvider"
@@ -102,9 +104,6 @@ export const fromEnv = (
   const { pathDelim, seqDelim } = Object.assign({}, { pathDelim: "_", seqDelim: "," }, config)
   const makePathString = (path: ReadonlyArray<string>): string => pipe(path, RA.join(pathDelim))
   const unmakePathString = (pathString: string): ReadonlyArray<string> => pathString.split(pathDelim)
-
-  const getEnv = () =>
-    typeof process !== "undefined" && "env" in process && typeof process.env === "object" ? process.env : {}
 
   const load = <A>(
     path: ReadonlyArray<string>,

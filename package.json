@@ -8,7 +8,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
-    "gen": "build-utils prepare-v1",
+    "gen": "build-utils prepare-v1 && node scripts/add-env.mjs",
     "clean": "node scripts/clean.mjs",
     "test": "vitest",
     "check": "tsc -p tsconfig.json",
@@ -198,6 +198,12 @@
   "main": "dist/effect.cjs.js",
   "module": "dist/effect.esm.js",
   "exports": {
+    "./env": {
+      "types": "./env/index.d.ts",
+      "module": "./env/index.cjs.mjs",
+      "import": "./env/index.mjs",
+      "default": "./env/index.cjs"
+    },
     ".": {
       "types": "./dist/declarations/src/index.d.ts",
       "module": "./dist/effect.esm.js",
