@@ -84,6 +84,10 @@ export const isStream = (u: unknown): u is Stream.Stream<unknown, unknown, unkno
 export const DefaultChunkSize = 4096
 
 /** @internal */
+export const accumulate = <R, E, A>(self: Stream.Stream<R, E, A>): Stream.Stream<R, E, Chunk.Chunk<A>> =>
+  chunks(accumulateChunks(self))
+
+/** @internal */
 export const accumulateChunks = <R, E, A>(self: Stream.Stream<R, E, A>): Stream.Stream<R, E, A> => {
   const accumulator = (
     s: Chunk.Chunk<A>

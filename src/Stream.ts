@@ -145,6 +145,15 @@ export declare namespace Stream {
 export const DefaultChunkSize: number = internal.DefaultChunkSize
 
 /**
+ * Collects each underlying Chunk of the stream into a new chunk, and emits it
+ * on each pull.
+ *
+ * @since 2.0.0
+ * @category utils
+ */
+export const accumulate: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, Chunk.Chunk<A>> = internal.accumulate
+
+/**
  * Re-chunks the elements of the stream by accumulating each underlying chunk.
  *
  * @since 2.0.0
