@@ -92,4 +92,18 @@ describe("HttpClient", () => {
       const response = yield* _(Http.request.get("/todos/1"), client)
       expect(response.id).toBe(1)
     }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
+
+  it("request processing order", () =>
+    Effect.gen(function*(_) {
+      const defaultClient = yield* _(Http.client.Client)
+      const client = defaultClient.pipe(
+        Http.client.mapRequest(Http.request.prependUrl("jsonplaceholder.typicode.com")),
+        Http.client.mapRequest(Http.request.prependUrl("https://"))
+      )
+      const todoClient = client.pipe(
+        Http.client.mapEffect(Http.response.schemaBodyJson(Todo))
+      )
+      const response = yield* _(Http.request.get("/todos/1"), todoClient)
+      expect(response.id).toBe(1)
+    }).pipe(Effect.provide(Http.client.layer), Effect.runPromise))
 })

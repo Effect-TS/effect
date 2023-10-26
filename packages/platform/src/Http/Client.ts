@@ -31,14 +31,32 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface Client<R, E, A> extends Pipeable {
-  readonly [TypeId]: TypeId
   (request: ClientRequest.ClientRequest): Effect.Effect<R, E, A>
+  readonly [TypeId]: TypeId
+  readonly preprocess: Client.Preprocess<R, E>
+  readonly execute: Client.Execute<R, E, A>
 }
 
 /**
  * @since 1.0.0
  */
 export declare namespace Client {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Preprocess<R, E> = (
+    request: ClientRequest.ClientRequest
+  ) => Effect.Effect<R, E, ClientRequest.ClientRequest>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Execute<R, E, A> = (
+    request: Effect.Effect<R, E, ClientRequest.ClientRequest>
+  ) => Effect.Effect<R, E, A>
+
   /**
    * @since 1.0.0
    * @category models
@@ -202,8 +220,10 @@ export const filterStatusOk: <R, E>(
  * @since 1.0.0
  * @category constructors
  */
-export const make: <R, E, A>(f: (request: ClientRequest.ClientRequest) => Effect.Effect<R, E, A>) => Client<R, E, A> =
-  internal.make
+export const make: <R, E, A, R2, E2>(
+  execute: (request: Effect.Effect<R2, E2, ClientRequest.ClientRequest>) => Effect.Effect<R, E, A>,
+  preprocess: Client.Preprocess<R2, E2>
+) => Client<R, E, A> = internal.make
 
 /**
  * @since 1.0.0
@@ -221,12 +241,12 @@ export const makeDefault: (
  */
 export const transform: {
   <R, E, A, R1, E1, A1>(
-    f: (client: Client<R, E, A>) => (request: ClientRequest.ClientRequest) => Effect.Effect<R1, E1, A1>
-  ): (self: Client<R, E, A>) => Client<R1, E1, A1>
+    f: (effect: Effect.Effect<R, E, A>, request: ClientRequest.ClientRequest) => Effect.Effect<R1, E1, A1>
+  ): (self: Client<R, E, A>) => Client<R | R1, E | E1, A1>
   <R, E, A, R1, E1, A1>(
     self: Client<R, E, A>,
-    f: (client: Client<R, E, A>) => (request: ClientRequest.ClientRequest) => Effect.Effect<R1, E1, A1>
-  ): Client<R1, E1, A1>
+    f: (effect: Effect.Effect<R, E, A>, request: ClientRequest.ClientRequest) => Effect.Effect<R1, E1, A1>
+  ): Client<R | R1, E | E1, A1>
 } = internal.transform
 
 /**
