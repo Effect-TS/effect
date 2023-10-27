@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.26.1
+
+### Patch Changes
+
+- [#217](https://github.com/Effect-TS/platform/pull/217) [`7471ac1`](https://github.com/Effect-TS/platform/commit/7471ac139f3c6867cd0d228ec54e88abd1384f5c) Thanks [@tim-smart](https://github.com/tim-smart)! - add encode option to Worker & WorkerRunner
+
 ## 0.26.0
 
 ### Minor Changes
