@@ -1,5 +1,14 @@
 # @effect/platform-bun
 
+## 0.15.4
+
+### Patch Changes
+
+- [#223](https://github.com/Effect-TS/platform/pull/223) [`3ab8299`](https://github.com/Effect-TS/platform/commit/3ab82991a21e15b4b7f5e53bc2d6e5a807f23698) Thanks [@tim-smart](https://github.com/tim-smart)! - add apis to access underlying http request source
+
+- Updated dependencies [[`3ab8299`](https://github.com/Effect-TS/platform/commit/3ab82991a21e15b4b7f5e53bc2d6e5a807f23698), [`3ab8299`](https://github.com/Effect-TS/platform/commit/3ab82991a21e15b4b7f5e53bc2d6e5a807f23698)]:
+  - @effect/platform-node@0.27.4
+
 ## 0.15.3
 
 ### Patch Changes
