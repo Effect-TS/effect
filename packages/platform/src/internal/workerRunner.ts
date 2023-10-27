@@ -26,7 +26,7 @@ export const make = <I, R, E, O>(
 ) =>
   Effect.gen(function*(_) {
     const platform = yield* _(PlatformRunner)
-    const backing = yield* _(platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E, O>>())
+    const backing = yield* _(platform.start<Worker.Worker.Request<I>, Worker.Worker.Response<E>>())
     const fiberMap = new Map<number, Fiber.Fiber<never, void>>()
 
     const handleRequests = pipe(
@@ -52,7 +52,11 @@ export const make = <I, R, E, O>(
           }) :
           pipe(
             stream,
-            Stream.tap((item) => backing.send([id, 0, item], options?.transfers ? options.transfers(item) : undefined)),
+            Stream.tap((item) => {
+              const transfers = options?.transfers ? options.transfers(item) : undefined
+              const payload = options?.encode ? options.encode(item) : item
+              return backing.send([id, 0, payload], transfers)
+            }),
             Stream.runDrain,
             Effect.matchCauseEffect({
               onFailure: (cause) =>

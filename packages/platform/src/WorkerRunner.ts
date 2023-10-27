@@ -69,6 +69,7 @@ export declare namespace Runner {
    * @category models
    */
   export interface Options<O> {
+    readonly encode?: (message: O) => unknown
     readonly transfers?: (message: O) => ReadonlyArray<unknown>
   }
 }

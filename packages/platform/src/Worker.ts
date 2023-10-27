@@ -83,6 +83,7 @@ export declare namespace Worker {
    */
   export interface Options<I, W = unknown> {
     readonly spawn: (id: number) => W
+    readonly encode?: (message: I) => unknown
     readonly transfers?: (message: I) => ReadonlyArray<unknown>
     readonly permits?: number
     readonly queue?: WorkerQueue<I>
@@ -92,13 +93,13 @@ export declare namespace Worker {
    * @since 1.0.0
    * @category models
    */
-  export type Request<I> = readonly [id: number, data: 0, I] | readonly [id: number, interrupt: 1]
+  export type Request<I = unknown> = readonly [id: number, data: 0, I] | readonly [id: number, interrupt: 1]
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type Response<E, O> =
+  export type Response<E, O = unknown> =
     | readonly [id: number, data: 0, O]
     | readonly [id: number, end: 1]
     | readonly [id: number, end: 1, O]

@@ -48,7 +48,7 @@ export const makeManager = Effect.gen(function*(_) {
   let idCounter = 0
   return WorkerManager.of({
     [WorkerManagerTypeId]: WorkerManagerTypeId,
-    spawn<I, E, O>({ permits = 1, queue, spawn, transfers = (_) => [] }: Worker.Worker.Options<I>) {
+    spawn<I, E, O>({ encode, permits = 1, queue, spawn, transfers = (_) => [] }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
         const id = idCounter++
         const fiberId = yield* _(Effect.fiberId)
@@ -61,7 +61,7 @@ export const makeManager = Effect.gen(function*(_) {
         yield* _(Effect.addFinalizer(() => outbound.shutdown))
 
         const backing = yield* _(
-          platform.spawn<Worker.Worker.Request<I>, Worker.Worker.Response<E, O>>(spawn(id))
+          platform.spawn<Worker.Worker.Request, Worker.Worker.Response<E, O>>(spawn(id))
         )
 
         yield* _(Effect.addFinalizer(() =>
@@ -177,8 +177,9 @@ export const makeManager = Effect.gen(function*(_) {
                 const result = requestMap.get(id)
                 if (!result) return Effect.unit
                 const transferables = transfers(request)
+                const payload = encode ? encode(request) : request
                 return Effect.zipRight(
-                  backing.send([id, 0, request], transferables),
+                  backing.send([id, 0, payload], transferables),
                   Deferred.await(result[1])
                 )
               }),
