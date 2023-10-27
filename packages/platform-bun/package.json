@@ -124,6 +124,12 @@
       "import": "./Http/Server/dist/effect-platform-bun-Http-Server.cjs.mjs",
       "default": "./Http/Server/dist/effect-platform-bun-Http-Server.cjs.js"
     },
+    "./Http/ServerRequest": {
+      "types": "./dist/declarations/src/Http/ServerRequest.d.ts",
+      "module": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.esm.js",
+      "import": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.cjs.mjs",
+      "default": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.cjs.js"
+    },
     "./HttpClient": {
       "types": "./dist/declarations/src/HttpClient.d.ts",
       "module": "./HttpClient/dist/effect-platform-bun-HttpClient.esm.js",

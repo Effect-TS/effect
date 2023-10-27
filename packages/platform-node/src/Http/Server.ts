@@ -3,8 +3,11 @@
  *
  * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/platform/platform/Http/Server.ts.html).
  */
+import type * as App from "@effect/platform/Http/App"
+import type * as Middleware from "@effect/platform/Http/Middleware"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Server from "@effect/platform/Http/Server"
+import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as Config from "effect/Config"
 import type * as ConfigError from "effect/ConfigError"
 import type * as Effect from "effect/Effect"
@@ -28,6 +31,28 @@ export const make: (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
 ) => Effect.Effect<Scope.Scope, never, Server.Server> = internal.make
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeHandler: {
+  <R, E>(
+    httpApp: App.Default<R, E>
+  ): Effect.Effect<
+    Exclude<R, ServerRequest.ServerRequest>,
+    never,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void
+  >
+  <R, E, App extends App.Default<any, any>>(
+    httpApp: App.Default<R, E>,
+    middleware: Middleware.Middleware.Applied<R, E, App>
+  ): Effect.Effect<
+    Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+    never,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse<Http.IncomingMessage>) => void
+  >
+} = internal.makeHandler
 
 /**
  * @since 1.0.0

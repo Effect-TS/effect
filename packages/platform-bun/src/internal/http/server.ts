@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import * as FormData from "@effect/platform-node/Http/FormData"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as App from "@effect/platform/Http/App"
@@ -321,3 +322,6 @@ const removeHost = (url: string) => {
   const index = url.indexOf("/", url.indexOf("//") + 2)
   return index === -1 ? "/" : url.slice(index)
 }
+
+/** @internal */
+export const requestSource = (self: ServerRequest.ServerRequest) => (self as ServerRequestImpl).source

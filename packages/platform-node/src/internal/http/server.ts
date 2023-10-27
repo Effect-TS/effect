@@ -78,35 +78,15 @@ export const make = (
           hostname: address.address,
           port: address.port
         },
-      serve: (httpApp, middleware) => {
-        const handledApp = middleware
-          ? middleware(App.withDefaultMiddleware(respond(httpApp)))
-          : App.withDefaultMiddleware(respond(httpApp))
-        return Effect.flatMap(Effect.all([Effect.runtime(), Effect.fiberId]), ([runtime, fiberId]) => {
-          const runFork = Runtime.runFork(runtime)
-          function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {
-            const fiber = runFork(
-              Effect.provideService(
-                handledApp,
-                ServerRequest.ServerRequest,
-                new ServerRequestImpl(nodeRequest, nodeResponse)
-              )
-            )
-            nodeResponse.on("close", () => {
-              if (!nodeResponse.writableEnded) {
-                runFork(fiber.interruptAsFork(fiberId))
-              }
-            })
-          }
-          return Effect.all([
+      serve: (httpApp, middleware) =>
+        Effect.flatMap(makeHandler(httpApp, middleware!), (handler) =>
+          Effect.all([
             Effect.acquireRelease(
               Effect.sync(() => server.on("request", handler)),
               () => Effect.sync(() => server.off("request", handler))
             ),
             Fiber.join(serverFiber)
-          ], { discard: true, concurrency: "unbounded" }) as Effect.Effect<never, Error.ServeError, never>
-        })
-      }
+          ], { discard: true, concurrency: "unbounded" }) as Effect.Effect<never, Error.ServeError, never>)
     })
   }).pipe(
     Effect.locally(
@@ -137,6 +117,47 @@ const respond = Middleware.make((httpApp) =>
         })
     ))
 )
+
+/** @internal */
+export const makeHandler: {
+  <R, E>(httpApp: App.Default<R, E>): Effect.Effect<
+    Exclude<R, ServerRequest.ServerRequest>,
+    never,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void
+  >
+  <R, E, App extends App.Default<any, any>>(
+    httpApp: App.Default<R, E>,
+    middleware: Middleware.Middleware.Applied<R, E, App>
+  ): Effect.Effect<
+    Exclude<Effect.Effect.Context<App>, ServerRequest.ServerRequest>,
+    never,
+    (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void
+  >
+} = <R, E>(httpApp: App.Default<R, E>, middleware?: Middleware.Middleware) => {
+  const handledApp = middleware
+    ? middleware(App.withDefaultMiddleware(respond(httpApp)))
+    : App.withDefaultMiddleware(respond(httpApp))
+  return Effect.map(
+    Effect.zip(Effect.runtime<R>(), Effect.fiberId),
+    ([runtime, fiberId]) => {
+      const runFork = Runtime.runFork(runtime)
+      return function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {
+        const fiber = runFork(
+          Effect.provideService(
+            handledApp,
+            ServerRequest.ServerRequest,
+            new ServerRequestImpl(nodeRequest, nodeResponse)
+          )
+        )
+        nodeResponse.on("close", () => {
+          if (!nodeResponse.writableEnded) {
+            runFork(fiber.interruptAsFork(fiberId))
+          }
+        })
+      }
+    }
+  )
+}
 
 class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
@@ -339,3 +360,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
       }
     }
   })
+
+/** @internal */
+export const requestSource = (self: ServerRequest.ServerRequest): Http.IncomingMessage =>
+  (self as ServerRequestImpl).source
