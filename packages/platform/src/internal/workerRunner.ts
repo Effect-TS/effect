@@ -48,7 +48,11 @@ export const make = <I, R, E, O>(
                 onLeft: (error) => backing.send([id, 2, error]),
                 onRight: (cause) => backing.send([id, 3, Cause.squash(cause)])
               }),
-            onSuccess: (data) => backing.send([id, 1, data])
+            onSuccess: (data) => {
+              const transfers = options?.transfers ? options.transfers(data) : undefined
+              const payload = options?.encode ? options.encode(data) : data
+              return backing.send([id, 1, payload], transfers)
+            }
           }) :
           pipe(
             stream,
