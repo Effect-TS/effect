@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.26.2
+
+### Patch Changes
+
+- [#219](https://github.com/Effect-TS/platform/pull/219) [`f37f58c`](https://github.com/Effect-TS/platform/commit/f37f58ca21c1d5dfedc40c01cde0ffbc954d7e32) Thanks [@tim-smart](https://github.com/tim-smart)! - fix encode / transfers for effect workers
+
 ## 0.26.1
 
 ### Patch Changes
