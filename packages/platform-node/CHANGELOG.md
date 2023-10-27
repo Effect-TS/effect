@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.27.3
+
+### Patch Changes
+
+- [#221](https://github.com/Effect-TS/platform/pull/221) [`3e57e82`](https://github.com/Effect-TS/platform/commit/3e57e8224bf7b4474b21ef1dc25db13107d9b635) Thanks [@tim-smart](https://github.com/tim-smart)! - export WorkerRunner layers
+
 ## 0.27.2
 
 ### Patch Changes
