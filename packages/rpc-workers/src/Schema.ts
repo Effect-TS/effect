@@ -54,7 +54,7 @@ export const make = Schema.makeWith<"WebWorkerType", WebWorkerType>()
  * @since 1.0.0
  */
 export const TransferableAnnotationId = Symbol.for(
-  "@effect/rpc-webworkers/TransferableAnnotationId"
+  "@effect/rpc-workers/TransferableAnnotationId"
 )
 
 /**

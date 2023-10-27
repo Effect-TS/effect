@@ -15,9 +15,9 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface IO<IE, E, II, I, IO, O> {
-    input: Schema.Schema<II, I>
-    output: Schema.Schema<IO, O>
-    error: Schema.Schema<IE, E>
+    readonly input: Schema.Schema<II, I>
+    readonly output: Schema.Schema<IO, O>
+    readonly error: Schema.Schema<IE, E>
   }
 
   /**
@@ -25,8 +25,8 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoError<II, I, IO, O> {
-    input: Schema.Schema<II, I>
-    output: Schema.Schema<IO, O>
+    readonly input: Schema.Schema<II, I>
+    readonly output: Schema.Schema<IO, O>
   }
 
   /**
@@ -34,8 +34,8 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoInput<IE, E, IO, O> {
-    output: Schema.Schema<IO, O>
-    error: Schema.Schema<IE, E>
+    readonly output: Schema.Schema<IO, O>
+    readonly error: Schema.Schema<IE, E>
   }
 
   /**
@@ -43,7 +43,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoInputNoError<IO, O> {
-    output: Schema.Schema<IO, O>
+    readonly output: Schema.Schema<IO, O>
   }
 
   /**
@@ -51,8 +51,8 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoOutput<IE, E, II, I> {
-    input: Schema.Schema<II, I>
-    error: Schema.Schema<IE, E>
+    readonly input: Schema.Schema<II, I>
+    readonly error: Schema.Schema<IE, E>
   }
 
   /**
@@ -60,7 +60,7 @@ export namespace RpcSchema {
    * @since 1.0.0
    */
   export interface NoErrorNoOutput<II, I> {
-    input: Schema.Schema<II, I>
+    readonly input: Schema.Schema<II, I>
   }
 
   /**
@@ -142,9 +142,10 @@ export namespace RpcService {
    * @since 1.0.0
    */
   export interface Definition extends Record<string, RpcSchema.Any | WithId<any, any, any>> {
-    __setup?:
-      | RpcSchema.NoErrorNoOutput<any, any>
-      | RpcSchema.NoOutput<any, any, any, any>
+    readonly __setup?: {
+      readonly input: Schema.Schema<any>
+      readonly error?: Schema.Schema<any>
+    }
   }
 
   /**
@@ -219,11 +220,16 @@ export namespace RpcService {
    * @category utils
    * @since 1.0.0
    */
-  export type Methods<S extends DefinitionWithId, P extends string = ``> = {
-    [M in keyof S]: M extends string ? S[M] extends DefinitionWithId ? Methods<S[M], `${P}${M}.`>
+  export type Methods<
+    S extends DefinitionWithId,
+    P extends string = ``,
+    Depth extends ReadonlyArray<number> = []
+  > = Extract<keyof S, string> extends infer M
+    ? M extends Extract<keyof S, string> ?
+      S[M] extends DefinitionWithId ? Depth["length"] extends 3 ? never : Methods<S[M], `${P}${M}.`, [0, ...Depth]>
       : `${P}${M}`
-      : never
-  }[keyof S]
+    : never
+    : never
 
   /**
    * @category utils
@@ -232,10 +238,11 @@ export namespace RpcService {
   export type Validate<
     VL extends string,
     V,
-    S extends RpcService.Definition
+    S extends RpcService.Definition,
+    Depth extends ReadonlyArray<number> = []
   > = {
     readonly [K in keyof S]: K extends "__setup" ? S[K]
-      : S[K] extends DefinitionWithId ? Validate<VL, V, S[K]>
+      : S[K] extends DefinitionWithId ? Depth["length"] extends 3 ? never : Validate<VL, V, S[K], [0, ...Depth]>
       : S[K] extends RpcSchema.IO<
         infer IE,
         infer _E,
@@ -275,7 +282,7 @@ export namespace RpcService {
  * @since 1.0.0
  */
 export const makeWith = <VL extends string, V>() =>
-<S extends RpcService.Definition>(
+<const S extends RpcService.Definition>(
   schema: S
 ): RpcService.Simplify<RpcService.Validate<VL, V, S>, never, never> => ({
   ...(schema as any),
@@ -325,8 +332,14 @@ export namespace RpcRequestSchema {
    * @category utils
    * @since 1.0.0
    */
-  export type From<S extends RpcService.Definition, P extends string = ""> = {
-    readonly [K in keyof S]: K extends string ? S[K] extends RpcService.DefinitionWithId ? To<S[K], `${P}${K}.`>
+  export type From<
+    S extends RpcService.Definition,
+    P extends string = "",
+    Depth extends ReadonlyArray<number> = []
+  > = Extract<keyof S, string> extends infer K
+    ? K extends Extract<keyof S, string> ?
+      S[K] extends RpcService.DefinitionWithId ?
+        Depth["length"] extends 3 ? never : From<S[K], `${P}${K}.`, [0, ...Depth]>
       : S[K] extends RpcSchema.IO<
         infer _IE,
         infer _E,
@@ -349,15 +362,21 @@ export namespace RpcRequestSchema {
       > ? { readonly _tag: `${P}${K}` }
       : S[K] extends RpcSchema.NoInputNoError<infer _IO, infer _O> ? { readonly _tag: `${P}${K}` }
       : never
-      : never
-  }[keyof S]
+    : never
+    : never
 
   /**
    * @category utils
    * @since 1.0.0
    */
-  export type To<S extends RpcService.Definition, P extends string = ""> = {
-    readonly [K in keyof S]: K extends string ? S[K] extends RpcService.DefinitionWithId ? To<S[K], `${P}${K}.`>
+  export type To<
+    S extends RpcService.Definition,
+    P extends string = "",
+    Depth extends ReadonlyArray<number> = []
+  > = Extract<keyof S, string> extends infer K
+    ? K extends Extract<keyof S, string> ?
+      S[K] extends RpcService.DefinitionWithId ?
+        Depth["length"] extends 3 ? never : To<S[K], `${P}${K}.`, [0, ...Depth]>
       : S[K] extends RpcSchema.IO<
         infer _IE,
         infer _E,
@@ -380,8 +399,8 @@ export namespace RpcRequestSchema {
       > ? RpcRequest.NoInput<`${P}${K}`>
       : S[K] extends RpcSchema.NoInputNoError<infer _IO, infer _O> ? RpcRequest.NoInput<`${P}${K}`>
       : never
-      : never
-  }[keyof S]
+    : never
+    : never
 
   /**
    * @category models
@@ -413,3 +432,39 @@ export const makeRequestUnion = <S extends RpcService.Definition>(
           : Schema.struct({ _tag: Schema.literal(tag) })
     )
   )
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export const HashAnnotationId: unique symbol = internal.HashAnnotationId
+
+/**
+ * @category type ids
+ * @since 1.0.0
+ */
+export type HashAnnotationId = typeof HashAnnotationId
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const withHash: {
+  <A>(f: (a: A) => number): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
+  <I, A>(self: Schema.Schema<I, A>, f: (a: A) => number): Schema.Schema<I, A>
+} = internal.withHash
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const withHashString: {
+  <A>(f: (a: A) => string): <I>(self: Schema.Schema<I, A>) => Schema.Schema<I, A>
+  <I, A>(self: Schema.Schema<I, A>, f: (a: A) => string): Schema.Schema<I, A>
+} = internal.withHashString
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const hash: <I, A>(self: Schema.Schema<I, A>, value: A) => number = internal.hash

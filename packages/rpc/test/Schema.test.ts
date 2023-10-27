@@ -14,9 +14,9 @@ describe("Schema", () => {
       })
 
       expectTypeOf(schema.greet).toEqualTypeOf<{
-        input: S.Schema<string, string>
-        output: S.Schema<string, string>
-        error: S.Schema<never, never>
+        readonly input: S.Schema<string, string>
+        readonly output: S.Schema<string, string>
+        readonly error: S.Schema<never, never>
       }>()
     })
 
@@ -34,9 +34,9 @@ describe("Schema", () => {
       })
 
       expectTypeOf(parent.nested.greet).toEqualTypeOf<{
-        input: S.Schema<string, string>
-        output: S.Schema<string, string>
-        error: S.Schema<never, never>
+        readonly input: S.Schema<string, string>
+        readonly output: S.Schema<string, string>
+        readonly error: S.Schema<never, never>
       }>()
     })
 
@@ -49,8 +49,8 @@ describe("Schema", () => {
       })
 
       expectTypeOf(schema.greet).toEqualTypeOf<{
-        output: S.Schema<string, string>
-        error: S.Schema<never, never>
+        readonly output: S.Schema<string, string>
+        readonly error: S.Schema<never, never>
       }>()
     })
 
@@ -63,8 +63,8 @@ describe("Schema", () => {
       })
 
       expectTypeOf(schema.greet).toEqualTypeOf<{
-        input: S.Schema<string, string>
-        output: S.Schema<string, string>
+        readonly input: S.Schema<string, string>
+        readonly output: S.Schema<string, string>
       }>()
     })
 
@@ -76,7 +76,7 @@ describe("Schema", () => {
       })
 
       expectTypeOf(schema.greet).toEqualTypeOf<{
-        output: S.Schema<string, string>
+        readonly output: S.Schema<string, string>
       }>()
     })
 
@@ -98,8 +98,8 @@ describe("Schema", () => {
       ).toEqualTypeOf<"schema input does not extend Schema.Json">()
 
       expectTypeOf(schema.currentTime2).toEqualTypeOf<{
-        output: S.Schema<string, Date>
-        error: S.Schema<never, never>
+        readonly output: S.Schema<string, Date>
+        readonly error: S.Schema<never, never>
       }>()
     })
 

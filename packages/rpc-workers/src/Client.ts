@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as HttpClient from "@effect/platform/Http/Client"
 import * as Client from "@effect/rpc/Client"
 import type { RpcError } from "@effect/rpc/Error"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
@@ -21,7 +20,50 @@ export const make: {
   <const S extends RpcService.DefinitionWithSetup>(
     schemas: S,
     init: RpcSchema.Input<S["__setup"]>,
-    client: HttpClient.Client.Default,
+    options?: Client.RpcClientOptions
+  ): Effect.Effect<
+    never,
+    RpcError | RpcSchema.Error<S["__setup"]>,
+    Client.RpcClient<
+      S,
+      Resolver.RpcWorkerPool
+    >
+  >
+  <const S extends RpcService.DefinitionWithoutSetup>(
+    schemas: S,
+    options?: Client.RpcClientOptions
+  ): Client.RpcClient<
+    S,
+    Resolver.RpcWorkerPool
+  >
+} = (<S extends RpcService.DefinitionWithSetup>(
+  schemas: S,
+  init: RpcSchema.Input<S["__setup"]>,
+  options?: Client.RpcClientOptions
+): Effect.Effect<
+  never,
+  RpcError | RpcSchema.Error<S["__setup"]>,
+  Client.RpcClient<
+    S,
+    Resolver.RpcWorkerPool
+  >
+> =>
+  Client.make(
+    schemas,
+    Resolver.makeFromContext,
+    init,
+    options
+  )) as any
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeFromPool: {
+  <const S extends RpcService.DefinitionWithSetup>(
+    schemas: S,
+    pool: Resolver.RpcWorkerPool,
+    init: RpcSchema.Input<S["__setup"]>,
     options?: Client.RpcClientOptions
   ): Effect.Effect<
     never,
@@ -33,7 +75,7 @@ export const make: {
   >
   <const S extends RpcService.DefinitionWithoutSetup>(
     schemas: S,
-    client: HttpClient.Client.Default,
+    pool: Resolver.RpcWorkerPool,
     options?: Client.RpcClientOptions
   ): Client.RpcClient<
     S,
@@ -41,7 +83,7 @@ export const make: {
   >
 } = (<S extends RpcService.DefinitionWithSetup>(
   schemas: S,
-  client: HttpClient.Client.Default,
+  pool: Resolver.RpcWorkerPool,
   init: RpcSchema.Input<S["__setup"]>,
   options?: Client.RpcClientOptions
 ): Effect.Effect<
@@ -49,12 +91,12 @@ export const make: {
   RpcError | RpcSchema.Error<S["__setup"]>,
   Client.RpcClient<
     S,
-    never
+    Resolver.RpcWorkerPool
   >
 > =>
   Client.make(
     schemas,
-    Resolver.make(client),
+    Resolver.make(pool),
     init,
     options
   )) as any

@@ -1,4 +1,4 @@
-import * as Schema from "@effect/rpc-webworkers/Schema"
+import * as Schema from "@effect/rpc-workers/Schema"
 import * as S from "@effect/schema/Schema"
 import { Tag } from "effect/Context"
 

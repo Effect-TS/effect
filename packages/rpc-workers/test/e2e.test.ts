@@ -1,48 +1,45 @@
+/* eslint-disable import/no-duplicates */
 import "@vitest/web-worker"
 
-import * as Client from "@effect/rpc-webworkers/Client"
-import { RpcWorkerResolverLive } from "@effect/rpc-webworkers/internal/resolver"
-import * as Resolver from "@effect/rpc-webworkers/Resolver"
+import * as Worker from "@effect/platform-browser/Worker"
+import * as Client from "@effect/rpc-workers/Client"
+import * as Resolver from "@effect/rpc-workers/Resolver"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Pool from "effect/Pool"
 import { describe, expect, it } from "vitest"
 import { schema, schemaWithSetup } from "./e2e/schema"
+// @ts-expect-error
+import TestSharedWorker from "./e2e/worker?sharedworker"
+// @ts-expect-error
+import TestWorker from "./e2e/worker?worker"
+// @ts-expect-error
+import TestWorkerSetup from "./e2e/worker-setup?worker"
 
 // TODO: test more than one worker
-const PoolLive = Resolver.makePoolLayer((spawn) =>
-  Pool.make({
-    acquire: spawn(
-      () => new Worker(new URL("./e2e/worker.ts", import.meta.url))
-    ),
-    size: 1
-  })
+const PoolLive = Resolver.makePoolLayer({
+  spawn: () => new TestWorker(),
+  size: 1
+}).pipe(
+  Layer.use(Worker.layerManager)
 )
-const ResolverLive = Layer.provide(PoolLive, RpcWorkerResolverLive)
 
-const SetupPoolLive = Resolver.makePoolLayer((spawn) =>
-  Pool.make({
-    acquire: spawn(
-      () => new Worker(new URL("./e2e/worker-setup.ts", import.meta.url))
-    ),
-    size: 1
-  })
+const SetupPoolLive = Resolver.makePoolLayer({
+  spawn: () => new TestWorkerSetup(),
+  size: 1
+}).pipe(
+  Layer.use(Worker.layerManager)
 )
-const SetupResolverLive = Layer.provide(SetupPoolLive, RpcWorkerResolverLive)
 
-const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
-  Pool.make({
-    acquire: spawn(
-      () => new SharedWorker(new URL("./e2e/worker.ts", import.meta.url))
-    ),
-    size: 1
-  })
+const SharedPoolLive = Resolver.makePoolLayer({
+  spawn: () => new TestSharedWorker(),
+  size: 1
+}).pipe(
+  Layer.use(Worker.layerManager)
 )
-const SharedResolverLive = Layer.provide(SharedPoolLive, RpcWorkerResolverLive)
 
 const client = Client.make(schema)
 
@@ -51,7 +48,7 @@ describe("e2e", () => {
     pipe(
       client.getBinary(new Uint8Array([1, 2, 3])),
       Effect.tap((_) => Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3])))),
-      Effect.provide(ResolverLive),
+      Effect.provide(PoolLive),
       Effect.runPromise
     ))
 
@@ -59,7 +56,7 @@ describe("e2e", () => {
     pipe(
       client.getBinary(new Uint8Array([1, 2, 3])),
       Effect.tap((_) => Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3])))),
-      Effect.provide(SharedResolverLive),
+      Effect.provide(SharedPoolLive),
       Effect.runPromise
     ))
 
@@ -70,7 +67,7 @@ describe("e2e", () => {
         { concurrency: "unbounded" }
       ),
       Effect.tap((_) => Effect.sync(() => expect(_.length).toEqual(100))),
-      Effect.provide(ResolverLive),
+      Effect.provide(PoolLive),
       Effect.runPromise
     ))
 
@@ -82,7 +79,7 @@ describe("e2e", () => {
           onTimeout: () => Cause.die("boom"),
           duration: Duration.millis(100)
         }),
-        Effect.provide(ResolverLive),
+        Effect.provide(PoolLive),
         Effect.runPromise
       )
     ).rejects.toEqual(new Error("boom"))
@@ -102,7 +99,7 @@ describe("e2e", () => {
         const name = yield* $(client.getName)
         expect(name).toEqual("Tim")
       }),
-      Effect.provide(SetupResolverLive),
+      Effect.provide(SetupPoolLive),
       Effect.runPromise
     )
 

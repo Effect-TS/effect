@@ -118,8 +118,8 @@ const resolver = pipe(
   DataSource.make(handler),
   RR.provideContext(Context.make(Counter, makeCounter()))
 )
-const client = _.makeWithResolver(schema, resolver)
-const clientWithPrefix = _.makeWithResolver(schema, resolver, {
+const client = _.make(schema, resolver)
+const clientWithPrefix = _.make(schema, resolver, {
   spanPrefix: "CustomClient"
 })
 

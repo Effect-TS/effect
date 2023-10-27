@@ -13,7 +13,7 @@
   },
   "homepage": "https://github.com/effect-ts/rpc",
   "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
+    "example": "node -r ts-node/register",
     "lint": "eslint src/**/*.ts test/**/*.ts",
     "tc": "tsc --noEmit",
     "test": "vitest",
@@ -40,10 +40,13 @@
     "@effect/rpc": "workspace:^"
   },
   "devDependencies": {
+    "@effect/platform": "^0.26.2",
+    "@effect/platform-node": "^0.27.3",
     "@effect/schema": "^0.46.1",
     "effect": "2.0.0-next.52"
   },
   "peerDependencies": {
+    "@effect/platform": "^0.25.2",
     "@effect/schema": "^0.46.1",
     "effect": "2.0.0-next.52"
   },

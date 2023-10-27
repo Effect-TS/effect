@@ -4,7 +4,6 @@
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
-import type { Span } from "effect/Tracer"
 import type { RpcDecodeFailure, RpcEncodeFailure } from "./Error"
 import * as internal from "./internal/server"
 import type { RpcResponse } from "./Resolver"
@@ -16,7 +15,7 @@ import type { RpcRequestSchema, RpcSchema, RpcService } from "./Schema"
  * @since 1.0.0
  */
 export const handler: {
-  <R extends RpcRouter.WithSetup>(
+  <const R extends RpcRouter.WithSetup>(
     router: R
   ): Effect<
     Scope,
@@ -26,32 +25,32 @@ export const handler: {
     ) => Effect<
       Exclude<
         RpcHandlers.Services<R["handlers"]>,
-        RpcRouter.SetupServices<R> | Span
+        RpcRouter.SetupServices<R>
       >,
       never,
       ReadonlyArray<RpcResponse>
     >
   >
-  <R extends RpcRouter.WithoutSetup>(
+  <const R extends RpcRouter.WithoutSetup>(
     router: R
   ): (
     request: unknown
   ) => Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+    RpcHandlers.Services<R["handlers"]>,
     never,
     ReadonlyArray<RpcResponse>
   >
-} = internal.handler as any
+} = internal.handler
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const handlerRaw: <R extends RpcRouter.Base>(
+export const handlerRaw: <const R extends RpcRouter.Base>(
   router: R
 ) => <Req extends RpcRequestSchema.To<R["schema"], "">>(
   request: Req
-) => Req extends { _tag: infer M } ? RpcHandler.FromMethod<R["handlers"], M, Span, RpcEncodeFailure>
+) => Req extends { _tag: infer M } ? RpcHandler.FromMethod<R["handlers"], M, never, RpcEncodeFailure>
   : never = internal.handlerRaw as any
 
 /**
@@ -59,7 +58,7 @@ export const handlerRaw: <R extends RpcRouter.Base>(
  * @since 1.0.0
  */
 export const handleSingle: {
-  <R extends RpcRouter.WithSetup>(
+  <const R extends RpcRouter.WithSetup>(
     router: R
   ): Effect<
     Scope,
@@ -69,7 +68,7 @@ export const handleSingle: {
     ) => Effect<
       Exclude<
         RpcHandlers.Services<R["handlers"]>,
-        RpcRouter.SetupServices<R> | Span
+        RpcRouter.SetupServices<R>
       >,
       never,
       RpcResponse
@@ -80,7 +79,7 @@ export const handleSingle: {
   ): (
     request: unknown
   ) => Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+    RpcHandlers.Services<R["handlers"]>,
     never,
     RpcResponse
   >
@@ -91,7 +90,7 @@ export const handleSingle: {
  * @since 1.0.0
  */
 export const handleSingleWithSchema: {
-  <R extends RpcRouter.WithSetup>(
+  <const R extends RpcRouter.WithSetup>(
     router: R
   ): Effect<
     Scope,
@@ -101,7 +100,7 @@ export const handleSingleWithSchema: {
     ) => Effect<
       Exclude<
         RpcHandlers.Services<R["handlers"]>,
-        RpcRouter.SetupServices<R> | Span
+        RpcRouter.SetupServices<R>
       >,
       never,
       readonly [RpcResponse, Option<RpcSchema.Base>]
@@ -112,7 +111,7 @@ export const handleSingleWithSchema: {
   ): (
     request: unknown
   ) => Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+    RpcHandlers.Services<R["handlers"]>,
     never,
     readonly [RpcResponse, Option<RpcSchema.Base>]
   >
@@ -131,32 +130,33 @@ export interface UndecodedRpcResponse<M, O> {
  * @category models
  * @since 1.0.0
  */
-export type RpcUndecodedClient<H extends RpcHandlers, P extends string = ""> = {
-  readonly [K in Extract<keyof H, string>]: H[K] extends {
-    handlers: RpcHandlers
-  } ? RpcUndecodedClient<H[K]["handlers"], `${P}${K}.`>
-    : H[K] extends RpcHandler.IO<infer R, infer E, infer I, infer O> ? (
-        input: I
-      ) => Effect<
-        Exclude<R, Span>,
-        E | RpcEncodeFailure | RpcDecodeFailure,
-        UndecodedRpcResponse<`${P}${K}`, O>
-      >
-    : H[K] extends Effect<infer R, infer E, infer O> ? Effect<
-        Exclude<R, Span>,
-        E | RpcEncodeFailure | RpcDecodeFailure,
-        UndecodedRpcResponse<`${P}${K}`, O>
-      >
-    : never
-}
+export type RpcUndecodedClient<H extends RpcHandlers, P extends string = "", Depth extends ReadonlyArray<number> = []> =
+  {
+    readonly [K in Extract<keyof H, string>]: H[K] extends {
+      readonly handlers: RpcHandlers
+    } ? Depth["length"] extends 3 ? never : RpcUndecodedClient<H[K]["handlers"], `${P}${K}.`, [0, ...Depth]>
+      : H[K] extends RpcHandler.IO<infer R, infer E, infer I, infer O> ? (
+          input: I
+        ) => Effect<
+          R,
+          E | RpcEncodeFailure | RpcDecodeFailure,
+          UndecodedRpcResponse<`${P}${K}`, O>
+        >
+      : H[K] extends Effect<infer R, infer E, infer O> ? Effect<
+          R,
+          E | RpcEncodeFailure | RpcDecodeFailure,
+          UndecodedRpcResponse<`${P}${K}`, O>
+        >
+      : never
+  }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const makeUndecodedClient: <
-  S extends RpcService.DefinitionWithId,
-  H extends RpcHandlers.FromService<S>
+  const S extends RpcService.DefinitionWithId,
+  const H extends RpcHandlers.FromService<S>
 >(
   schemas: S,
   handlers: H,

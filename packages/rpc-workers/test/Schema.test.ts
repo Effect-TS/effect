@@ -1,5 +1,5 @@
-import * as _ from "@effect/rpc-webworkers/Schema"
-import { typeEquals } from "@effect/rpc-webworkers/test/utils"
+import * as _ from "@effect/rpc-workers/Schema"
+import { typeEquals } from "@effect/rpc-workers/test/utils"
 import * as S from "@effect/schema/Schema"
 import { describe, it } from "vitest"
 

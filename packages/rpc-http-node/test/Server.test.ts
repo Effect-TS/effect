@@ -1,3 +1,4 @@
+import * as HttpC from "@effect/platform/HttpClient"
 import * as Client from "@effect/rpc-http-node/Client"
 import * as Router from "@effect/rpc-http-node/Router"
 import * as _ from "@effect/rpc-http-node/Server"
@@ -34,7 +35,12 @@ describe("Server", () => {
       ),
       Effect.map((server) => {
         const port = (server.address() as any).port as number
-        return Client.make(schema, { url: `http://127.0.0.1:${port}` })
+        return Client.make(
+          schema,
+          HttpC.client.fetch().pipe(
+            HttpC.client.mapRequest(HttpC.request.prependUrl(`http://127.0.0.1:${port}`))
+          )
+        )
       }),
       Effect.flatMap((client) => client.greet("World")),
       Effect.tap((greeting) => Effect.sync(() => expect(greeting).toBe("Hello, World!"))),

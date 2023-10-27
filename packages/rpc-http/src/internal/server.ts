@@ -1,16 +1,26 @@
+import type * as App from "@effect/platform/Http/App"
+import type * as ServerError from "@effect/platform/Http/ServerError"
+import * as ServerRequest from "@effect/platform/Http/ServerRequest"
+import * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import type { RpcRouter } from "@effect/rpc/Router"
 import * as Server from "@effect/rpc/Server"
-import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
-import type * as server from "../Server"
-
-/** @internal */
-export const HttpRequest = Tag<server.HttpRequest>()
 
 /** @internal */
 export function make<R extends RpcRouter.Base>(
   router: R
-): server.RpcHttpHandler<R> {
+): App.Default<RpcRouter.Services<R>, RpcRouter.Errors<R> | ServerError.RequestError> {
   const handler = Server.handler(router)
-  return (request) => Effect.provideService(handler(request.body), HttpRequest, request) as any
+  const handlerJson = (u: unknown) =>
+    Effect.map(
+      handler(u),
+      (_) => ServerResponse.unsafeJson(_)
+    )
+  return Effect.flatMap(
+    Effect.flatMap(
+      ServerRequest.ServerRequest,
+      (request) => request.json
+    ),
+    handlerJson
+  )
 }

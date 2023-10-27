@@ -1,9 +1,9 @@
 {
-  "name": "@effect/rpc-webworkers",
+  "name": "@effect/rpc-workers",
   "version": "0.15.0",
   "description": "",
-  "main": "dist/effect-rpc-webworkers.cjs.js",
-  "module": "dist/effect-rpc-webworkers.esm.js",
+  "main": "dist/effect-rpc-workers.cjs.js",
+  "module": "dist/effect-rpc-workers.esm.js",
   "publishConfig": {
     "access": "public"
   },
@@ -40,10 +40,13 @@
     "@effect/rpc": "workspace:^"
   },
   "devDependencies": {
+    "@effect/platform": "^0.26.2",
+    "@effect/platform-browser": "^0.14.3",
     "@effect/schema": "^0.46.1",
     "effect": "2.0.0-next.52"
   },
   "peerDependencies": {
+    "@effect/platform": "^0.26.2",
     "@effect/schema": "^0.46.1",
     "effect": "2.0.0-next.52"
   },
@@ -61,46 +64,46 @@
   "exports": {
     ".": {
       "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-rpc-webworkers.esm.js",
-      "import": "./dist/effect-rpc-webworkers.cjs.mjs",
-      "default": "./dist/effect-rpc-webworkers.cjs.js"
+      "module": "./dist/effect-rpc-workers.esm.js",
+      "import": "./dist/effect-rpc-workers.cjs.mjs",
+      "default": "./dist/effect-rpc-workers.cjs.js"
     },
     "./package.json": "./package.json",
     "./Client": {
       "types": "./dist/declarations/src/Client.d.ts",
-      "module": "./Client/dist/effect-rpc-webworkers-Client.esm.js",
-      "import": "./Client/dist/effect-rpc-webworkers-Client.cjs.mjs",
-      "default": "./Client/dist/effect-rpc-webworkers-Client.cjs.js"
+      "module": "./Client/dist/effect-rpc-workers-Client.esm.js",
+      "import": "./Client/dist/effect-rpc-workers-Client.cjs.mjs",
+      "default": "./Client/dist/effect-rpc-workers-Client.cjs.js"
     },
     "./Resolver": {
       "types": "./dist/declarations/src/Resolver.d.ts",
-      "module": "./Resolver/dist/effect-rpc-webworkers-Resolver.esm.js",
-      "import": "./Resolver/dist/effect-rpc-webworkers-Resolver.cjs.mjs",
-      "default": "./Resolver/dist/effect-rpc-webworkers-Resolver.cjs.js"
+      "module": "./Resolver/dist/effect-rpc-workers-Resolver.esm.js",
+      "import": "./Resolver/dist/effect-rpc-workers-Resolver.cjs.mjs",
+      "default": "./Resolver/dist/effect-rpc-workers-Resolver.cjs.js"
     },
     "./Router": {
       "types": "./dist/declarations/src/Router.d.ts",
-      "module": "./Router/dist/effect-rpc-webworkers-Router.esm.js",
-      "import": "./Router/dist/effect-rpc-webworkers-Router.cjs.mjs",
-      "default": "./Router/dist/effect-rpc-webworkers-Router.cjs.js"
+      "module": "./Router/dist/effect-rpc-workers-Router.esm.js",
+      "import": "./Router/dist/effect-rpc-workers-Router.cjs.mjs",
+      "default": "./Router/dist/effect-rpc-workers-Router.cjs.js"
     },
     "./Schema": {
       "types": "./dist/declarations/src/Schema.d.ts",
-      "module": "./Schema/dist/effect-rpc-webworkers-Schema.esm.js",
-      "import": "./Schema/dist/effect-rpc-webworkers-Schema.cjs.mjs",
-      "default": "./Schema/dist/effect-rpc-webworkers-Schema.cjs.js"
+      "module": "./Schema/dist/effect-rpc-workers-Schema.esm.js",
+      "import": "./Schema/dist/effect-rpc-workers-Schema.cjs.mjs",
+      "default": "./Schema/dist/effect-rpc-workers-Schema.cjs.js"
     },
     "./SchemaC": {
       "types": "./dist/declarations/src/SchemaC.d.ts",
-      "module": "./SchemaC/dist/effect-rpc-webworkers-SchemaC.esm.js",
-      "import": "./SchemaC/dist/effect-rpc-webworkers-SchemaC.cjs.mjs",
-      "default": "./SchemaC/dist/effect-rpc-webworkers-SchemaC.cjs.js"
+      "module": "./SchemaC/dist/effect-rpc-workers-SchemaC.esm.js",
+      "import": "./SchemaC/dist/effect-rpc-workers-SchemaC.cjs.mjs",
+      "default": "./SchemaC/dist/effect-rpc-workers-SchemaC.cjs.js"
     },
     "./Server": {
       "types": "./dist/declarations/src/Server.d.ts",
-      "module": "./Server/dist/effect-rpc-webworkers-Server.esm.js",
-      "import": "./Server/dist/effect-rpc-webworkers-Server.cjs.mjs",
-      "default": "./Server/dist/effect-rpc-webworkers-Server.cjs.js"
+      "module": "./Server/dist/effect-rpc-workers-Server.esm.js",
+      "import": "./Server/dist/effect-rpc-workers-Server.cjs.mjs",
+      "default": "./Server/dist/effect-rpc-workers-Server.cjs.js"
     }
   }
 }

@@ -1,9 +1,13 @@
+import * as HttpC from "@effect/platform-node/HttpClient"
+import * as Http from "@effect/platform-node/HttpServer"
+import * as Client from "@effect/rpc-http/Client"
+import * as Router from "@effect/rpc-http/Router"
+import * as RS from "@effect/rpc-http/Schema"
 import * as _ from "@effect/rpc-http/Server"
-import * as Router from "@effect/rpc/Router"
-import * as RS from "@effect/rpc/Schema"
 import * as S from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
-import { describe, expect, it } from "vitest"
+import { createServer } from "http"
+import { assert, describe, it } from "vitest"
 
 const schema = RS.make({
   greet: {
@@ -19,29 +23,34 @@ const schema = RS.make({
 
 const router = Router.make(schema, {
   greet: (name) => Effect.succeed(`Hello, ${name}!`),
-
-  headers: Effect.map(_.HttpRequest, (request) => Object.fromEntries(request.headers))
+  headers: Effect.map(Http.request.ServerRequest, (request) => request.headers)
 })
 
-const handler = _.make(router)
+const server = _.make(router).pipe(Http.server.serve())
+const ServerLive = Http.server.layer(createServer, { port: 0 })
+const serverPort = Http.server.Server.pipe(Effect.map((_) => (_.address as Http.server.TcpAddress).port))
 
 describe("Server", () => {
-  it("handler/", () => {
-    const result = Effect.runSync(
-      handler({
-        url: "/",
-        headers: new Headers({ "x-foo": "bar" }),
-        body: [
-          {
-            _tag: "headers",
-            spanName: "RpcClient.headers",
-            spanId: "123",
-            traceId: "native"
-          }
-        ]
-      })
-    )
+  it("e2e", () =>
+    Effect.gen(function*(_) {
+      const port = yield* _(serverPort)
 
-    expect(result).toEqual([{ _tag: "Success", value: { "x-foo": "bar" } }])
-  })
+      yield* _(Effect.fork(server))
+      yield* _(Effect.yieldNow())
+
+      const client = Client.make(
+        schema,
+        HttpC.client.fetch().pipe(
+          HttpC.client.mapRequest(HttpC.request.prependUrl(`http://localhost:${port}`)),
+          HttpC.client.mapRequest(HttpC.request.setHeader("x-foo", "bar"))
+        )
+      )
+
+      const headers = yield* _(client.headers)
+      assert.strictEqual(headers["x-foo"], "bar")
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(ServerLive),
+      Effect.runPromise
+    ), 10000)
 })

@@ -1,23 +1,20 @@
 /**
  * @since 1.0.0
  */
-import type { HttpRequest } from "@effect/rpc-http/Server"
-import * as Server from "@effect/rpc-http/Server"
 import type { RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type { RpcServer } from "@effect/rpc/Server"
+import * as Server from "@effect/rpc/Server"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import type { Span } from "effect/Tracer"
-import type { IncomingMessage, ServerResponse } from "node:http"
+import type * as Http from "node:http"
 import type { Readable } from "node:stream"
 
-export {
-  /**
-   * @category tags
-   * @since 1.0.0
-   */
-  HttpRequest
-} from "@effect/rpc-http/Server"
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export const IncomingMessage = Context.Tag<Http.IncomingMessage>("@effect/rpc-http-node/IncomingMessage")
 
 /**
  * @category models
@@ -25,10 +22,10 @@ export {
  */
 export interface RpcNodeHttpHandler<R extends RpcRouter.Base> {
   (
-    request: IncomingMessage,
-    response: ServerResponse
+    request: Http.IncomingMessage,
+    response: Http.ServerResponse
   ): Effect.Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, HttpRequest | Span>,
+    Exclude<RpcHandlers.Services<R["handlers"]>, Http.IncomingMessage>,
     never,
     void
   >
@@ -41,21 +38,21 @@ export interface RpcNodeHttpHandler<R extends RpcRouter.Base> {
 export function make<R extends RpcRouter.Base>(
   router: R
 ): RpcNodeHttpHandler<R> {
-  const handler = Server.make(router) as unknown as RpcServer
+  const handler = Server.handler(router) as unknown as RpcServer
 
   return function handleRequestResponse(
-    request: IncomingMessage,
-    response: ServerResponse
+    request: Http.IncomingMessage,
+    response: Http.ServerResponse
   ) {
     return pipe(
       bodyToString(request),
       Effect.flatMap(parseJson),
       Effect.flatMap((body) =>
-        handler({
-          url: request.url!,
-          headers: new Headers(request.headers as any),
-          body
-        })
+        Effect.provideService(
+          handler(body),
+          IncomingMessage,
+          request
+        )
       ),
       Effect.tap((responses) =>
         Effect.sync(() => {

@@ -26,13 +26,13 @@ const requestProto: Request.Request<any, any> = {
 /** @internal */
 export const requestHash = (
   method: string,
-  input: unknown,
+  inputHash: number,
   spanPrefix: string
 ): number =>
   pipe(
     Hash.string(method),
     Hash.combine(Hash.string(spanPrefix)),
-    Hash.combine(Hash.hash(input)),
+    Hash.combine(inputHash),
     Hash.optimize
   )
 

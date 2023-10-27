@@ -1,49 +1,19 @@
+import * as Body from "@effect/platform/Http/Body"
+import type * as Client from "@effect/platform/Http/Client"
+import * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import { RpcTransportError } from "@effect/rpc/Error"
 import * as Resolver from "@effect/rpc/Resolver"
-import { withConstructorTagged, withTo } from "@effect/rpc/SchemaC"
-import * as S from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import type * as resolver from "../Resolver"
-
-const RpcFetchError_ = withConstructorTagged(
-  S.struct({
-    _tag: S.literal("RpcFetchError"),
-    reason: S.union(S.literal("FetchError"), S.literal("JsonDecodeError")),
-    error: S.unknown
-  }),
-  "RpcFetchError"
-)
-
-/** @internal */
-export const RpcFetchError = withTo<resolver.RpcFetchError>()(RpcFetchError_)
 
 /** @internal */
 export function make(
-  options: resolver.FetchResolverOptions
+  client: Client.Client.Default
 ): Resolver.RpcResolver<never> {
   return Resolver.make((requests) =>
     pipe(
-      Effect.tryPromise({
-        try: (signal) => {
-          const headers = new Headers(options.init?.headers)
-          headers.set("Content-Type", "application/json; charset=utf-8")
-          return fetch(options.url, {
-            ...(options.init || {}),
-            method: "POST",
-            headers,
-            body: JSON.stringify(requests),
-            signal
-          })
-        },
-        catch: (error) => RpcFetchError({ reason: "FetchError", error })
-      }),
-      Effect.flatMap((response) =>
-        Effect.tryPromise({
-          try: () => response.json(),
-          catch: (error) => RpcFetchError({ reason: "JsonDecodeError", error })
-        })
-      ),
+      client(ClientRequest.post("", { body: Body.unsafeJson(requests) })),
+      Effect.flatMap((response) => response.json),
       Effect.mapError((error) => RpcTransportError({ error }))
     )
   )

@@ -1,4 +1,4 @@
-# @effect/rpc-webworkers
+# @effect/rpc-workers
 
 ## 0.15.0
 

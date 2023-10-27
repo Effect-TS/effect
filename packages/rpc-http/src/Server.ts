@@ -1,45 +1,15 @@
 /**
  * @since 1.0.0
  */
-import type { RpcResponse } from "@effect/rpc/Resolver"
-import type { RpcHandlers, RpcRouter } from "@effect/rpc/Router"
-import type { Tag } from "effect/Context"
-import type { Effect } from "effect/Effect"
-import type { Span } from "effect/Tracer"
+import type * as App from "@effect/platform/Http/App"
+import type * as ServerError from "@effect/platform/Http/ServerError"
+import type { RpcRouter } from "@effect/rpc/Router"
 import * as internal from "./internal/server"
-
-/**
- * @category models
- * @since 1.0.0
- */
-export interface HttpRequest {
-  readonly url: string
-  readonly headers: Headers
-  readonly body: unknown
-}
-
-/**
- * @category tags
- * @since 1.0.0
- */
-export const HttpRequest: Tag<HttpRequest, HttpRequest> = internal.HttpRequest
-
-/**
- * @category models
- * @since 1.0.0
- */
-export interface RpcHttpHandler<R extends RpcRouter.Base> {
-  (
-    request: HttpRequest
-  ): Effect<
-    Exclude<RpcHandlers.Services<R["handlers"]>, HttpRequest | Span>,
-    never,
-    ReadonlyArray<RpcResponse>
-  >
-}
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make: <R extends RpcRouter.Base>(router: R) => RpcHttpHandler<R> = internal.make as any
+export const make: <R extends RpcRouter.Base>(
+  router: R
+) => App.Default<RpcRouter.Services<R>, RpcRouter.Errors<R> | ServerError.RequestError> = internal.make as any

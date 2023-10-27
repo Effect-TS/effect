@@ -44,7 +44,7 @@ const schema = RS.make({
 
   encodeDate: {
     input: S.string,
-    output: S.dateFromString(S.string),
+    output: S.Date,
     error: SomeError
   },
 
@@ -110,12 +110,11 @@ describe("Server", () => {
         { _tag: "encodeDate", input: date.toISOString() },
         { _tag: "refined", input: 5 },
         { _tag: "refined", input: 11 },
-        { _tag: "posts.create", input: { body: "hello" } }
-        // TODO: Enable once bug is fixed in schema
-        // { _tag: "encodeDate", input: "test" },
+        { _tag: "posts.create", input: { body: "hello" } },
+        { _tag: "encodeDate", input: "test" }
       ])
     )
-    expect(result.length).toEqual(9)
+    expect(result.length).toEqual(10)
 
     expect(result[0]).toEqual({ _tag: "Success", value: "Hello, John!" })
     expect(result[1]._tag === "Error" && result[1].error._tag).toEqual(
@@ -141,6 +140,7 @@ describe("Server", () => {
       id: 1,
       body: "hello"
     })
+    expect(result[9]._tag === "Error" && result[9].error._tag).toEqual("RpcEncodeFailure")
   })
 
   it("handlerRaw/", async () => {
@@ -180,12 +180,17 @@ describe("Server", () => {
             _tag: "posts.create",
             input: { body: "hello" }
           })
+        ),
+        Effect.either(
+          handlerRaw({
+            ...traceFields,
+            _tag: "encodeDate",
+            input: "test"
+          })
         )
-        // TODO: Enable once bug is fixed in schema
-        // { _tag: "encodeDate", input: "test" },
       ])
     )
-    expect(result.length).toEqual(8)
+    expect(result.length).toEqual(9)
 
     expect(result[0]).toEqual(Either.right("Hello, John!"))
     expect(result[1]._tag === "Left" && result[1].left._tag).toEqual(
@@ -204,6 +209,9 @@ describe("Server", () => {
       id: 1,
       body: "hello"
     })
+    expect(result[8]._tag === "Left" && result[8].left._tag).toEqual(
+      "RpcEncodeFailure"
+    )
   })
 
   it("undecodedClient/ refined success", async () => {

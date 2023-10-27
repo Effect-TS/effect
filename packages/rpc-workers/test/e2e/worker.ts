@@ -1,5 +1,6 @@
-import * as Router from "@effect/rpc-webworkers/Router"
-import * as Server from "@effect/rpc-webworkers/Server"
+import * as Runner from "@effect/platform-browser/WorkerRunner"
+import * as Router from "@effect/rpc-workers/Router"
+import * as Server from "@effect/rpc-workers/Server"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { schema } from "./schema"
@@ -11,4 +12,9 @@ const router = Router.make(schema, {
   crash: Effect.die("boom")
 })
 
-Effect.runPromise(Server.make(router))
+Server.make(router).pipe(
+  Effect.scoped,
+  Effect.provide(Runner.layer),
+  Effect.catchAllCause(Effect.logError),
+  Effect.runPromise
+)

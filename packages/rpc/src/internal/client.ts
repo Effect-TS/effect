@@ -4,14 +4,14 @@ import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import type * as client from "../Client"
 import { RpcError } from "../Error"
-import { RpcResolver } from "../Resolver"
+import type { RpcResolver } from "../Resolver"
 import type { RpcSchema, RpcService } from "../Schema"
-import { RpcServiceErrorId, RpcServiceId } from "../Schema"
+import { hash as schemaHash, RpcServiceErrorId, RpcServiceId } from "../Schema"
 import * as codec from "./codec"
 import * as resolverInternal from "./resolver"
 import * as schemaInternal from "./schema"
 
-const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
+const unsafeDecode = <const S extends RpcService.DefinitionWithId>(schemas: S) => {
   const map = schemaInternal.methodClientCodecsEither(schemas)
 
   return (method: RpcService.Methods<S>, output: unknown) => {
@@ -25,7 +25,7 @@ const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
   }
 }
 
-const makeRecursive = <S extends RpcService.DefinitionWithId>(
+const makeRecursive = <const S extends RpcService.DefinitionWithId>(
   schemas: S,
   transport: RpcResolver<never>,
   options: client.RpcClientOptions,
@@ -61,9 +61,9 @@ const makeRecursive = <S extends RpcService.DefinitionWithId>(
 }
 
 /** @internal */
-export const makeWithResolver: {
+export const make: {
   <
-    S extends RpcService.DefinitionWithSetup,
+    const S extends RpcService.DefinitionWithSetup,
     Resolver extends
       | RpcResolver<never>
       | Effect.Effect<any, never, RpcResolver<never>>
@@ -82,7 +82,7 @@ export const makeWithResolver: {
     >
   >
   <
-    S extends RpcService.DefinitionWithoutSetup,
+    const S extends RpcService.DefinitionWithoutSetup,
     Resolver extends
       | RpcResolver<never>
       | Effect.Effect<any, never, RpcResolver<never>>
@@ -116,28 +116,7 @@ export const makeWithResolver: {
   return client as any
 }
 
-/** @internal */
-export const make: {
-  <S extends RpcService.DefinitionWithSetup>(
-    schemas: S,
-    init: RpcService.SetupInput<S>,
-    options?: client.RpcClientOptions
-  ): Effect.Effect<
-    never,
-    RpcService.SetupError<S> | RpcError,
-    client.RpcClient<S, RpcResolver<never>>
-  >
-  <S extends RpcService.DefinitionWithoutSetup>(
-    schemas: S,
-    options?: client.RpcClientOptions
-  ): client.RpcClient<S, RpcResolver<never>>
-} = (
-  schemas: any,
-  initOrOptions?: unknown,
-  options?: client.RpcClientOptions
-) => makeWithResolver(schemas, RpcResolver, initOrOptions, options) as any
-
-const makeRpc = <S extends RpcSchema.Any>(
+const makeRpc = <const S extends RpcSchema.Any>(
   resolver: RpcResolver<never>,
   serviceErrors: ReadonlyArray<Schema.Schema<any>>,
   schema: S,
@@ -156,7 +135,8 @@ const makeRpc = <S extends RpcSchema.Any>(
     const encodeInput = codec.encode(schema.input as Schema.Schema<any>)
 
     return ((input: any) => {
-      const hash = resolverInternal.requestHash(method, input, spanPrefix)
+      const inputHash = schemaHash(schema.input, input)
+      const hash = resolverInternal.requestHash(method, inputHash, spanPrefix)
       return Effect.useSpan(`${spanPrefix}.${method}`, (span) =>
         pipe(
           encodeInput(input),
@@ -183,7 +163,7 @@ const makeRpc = <S extends RpcSchema.Any>(
     }) as any
   }
 
-  const hash = resolverInternal.requestHash(method, undefined, spanPrefix)
+  const hash = resolverInternal.requestHash(method, 0, spanPrefix)
 
   return Effect.useSpan(`${spanPrefix}.${method}`, (span) =>
     pipe(
