@@ -72,9 +72,8 @@ describe("Schema/brand", () => {
     const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
     expect(Int.either(1)).toEqual(Either.right(1))
     expect(Int.either(1.2)).toEqual(Either.left([{
-      meta: 1.2,
-      message: `error(s) found
-└─ Expected integer, actual 1.2`
+      meta: [],
+      message: "Expected integer, actual 1.2"
     }]))
   })
 
