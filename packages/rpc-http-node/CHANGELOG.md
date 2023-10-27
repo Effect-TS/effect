@@ -1,5 +1,19 @@
 # @effect/rpc-http-node
 
+## 0.16.0
+
+### Minor Changes
+
+- [#119](https://github.com/Effect-TS/rpc/pull/119) [`1e38404`](https://github.com/Effect-TS/rpc/commit/1e384040ef20bb0db3385f9afb94abeeba7b9c13) Thanks [@tim-smart](https://github.com/tim-smart)! - migrate to @effect/platform
+
+### Patch Changes
+
+- [#119](https://github.com/Effect-TS/rpc/pull/119) [`1e38404`](https://github.com/Effect-TS/rpc/commit/1e384040ef20bb0db3385f9afb94abeeba7b9c13) Thanks [@tim-smart](https://github.com/tim-smart)! - add schema annotation for adding custom hashes
+
+- Updated dependencies [[`1e38404`](https://github.com/Effect-TS/rpc/commit/1e384040ef20bb0db3385f9afb94abeeba7b9c13), [`1e38404`](https://github.com/Effect-TS/rpc/commit/1e384040ef20bb0db3385f9afb94abeeba7b9c13)]:
+  - @effect/rpc-http@0.16.0
+  - @effect/rpc@0.16.0
+
 ## 0.15.0
 
 ### Minor Changes
