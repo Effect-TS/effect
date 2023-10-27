@@ -1,6 +1,6 @@
 {
   "name": "@effect/platform-bun",
-  "version": "0.14.1",
+  "version": "0.15.0",
   "description": "Unified interfaces for common platform-specific services",
   "main": "dist/effect-platform-bun.cjs.js",
   "module": "dist/effect-platform-bun.esm.js",

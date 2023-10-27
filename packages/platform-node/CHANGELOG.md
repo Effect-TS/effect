@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.27.0
+
+### Minor Changes
+
+- [#215](https://github.com/Effect-TS/platform/pull/215) [`59da2a6`](https://github.com/Effect-TS/platform/commit/59da2a6877e219b2ca0433aeeecab4ad7487816b) Thanks [@tim-smart](https://github.com/tim-smart)! - seperate request processing in http client
+
+### Patch Changes
+
+- Updated dependencies [[`59da2a6`](https://github.com/Effect-TS/platform/commit/59da2a6877e219b2ca0433aeeecab4ad7487816b)]:
+  - @effect/platform@0.26.0
+
 ## 0.26.1
 
 ### Patch Changes
