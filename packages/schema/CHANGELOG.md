@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.46.2
+
+### Patch Changes
+
+- [#523](https://github.com/Effect-TS/schema/pull/523) [`dca107a`](https://github.com/Effect-TS/schema/commit/dca107a48dae48824b4f3f2888d4beecc56127aa) Thanks [@jessekelly881](https://github.com/jessekelly881)! - Replaced TreeFormatter with ArrayFormatter for BrandErrors when using Schema.brand
+
 ## 0.46.1
 
 ### Patch Changes
