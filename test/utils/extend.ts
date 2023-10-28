@@ -1,6 +1,8 @@
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
@@ -11,6 +13,8 @@ import * as V from "vitest"
 export type API = TestAPI<{}>
 
 export const it: API = V.it
+
+const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestEnvironment.TestContext)
 
 export const effect = (() => {
   const f = <E, A>(
@@ -23,7 +27,7 @@ export const effect = (() => {
       () =>
         pipe(
           Effect.suspend(self),
-          Effect.provide(TestEnvironment.TestContext),
+          Effect.provide(TestEnv),
           Effect.runPromise
         ),
       timeout
@@ -40,7 +44,7 @@ export const effect = (() => {
         () =>
           pipe(
             Effect.suspend(self),
-            Effect.provide(TestEnvironment.TestContext),
+            Effect.provide(TestEnv),
             Effect.runPromise
           ),
         timeout
@@ -56,7 +60,7 @@ export const effect = (() => {
         () =>
           pipe(
             Effect.suspend(self),
-            Effect.provide(TestEnvironment.TestContext),
+            Effect.provide(TestEnv),
             Effect.runPromise
           ),
         timeout
@@ -109,7 +113,7 @@ export const scoped = <E, A>(
       pipe(
         Effect.suspend(self),
         Effect.scoped,
-        Effect.provide(TestEnvironment.TestContext),
+        Effect.provide(TestEnv),
         Effect.runPromise
       ),
     timeout

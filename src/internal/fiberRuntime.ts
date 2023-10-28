@@ -6,6 +6,7 @@ import type { ConfigProvider } from "../ConfigProvider"
 import * as Context from "../Context"
 import * as Deferred from "../Deferred"
 import type * as Effect from "../Effect"
+import { EffectTypeId } from "../Effectable"
 import type * as Either from "../Either"
 import * as ExecutionStrategy from "../ExecutionStrategy"
 import type * as Exit from "../Exit"
@@ -64,6 +65,7 @@ import type * as Scope from "../Scope"
 import type * as Supervisor from "../Supervisor"
 import type * as Tracer from "../Tracer"
 import type { Concurrency } from "../Types"
+import { moduleVersion } from "./version"
 
 /** @internal */
 export const fiberStarted = metric.counter("effect_fiber_started")
@@ -1283,20 +1285,25 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
         }
       }
       try {
-        if (!("_op" in cur)) {
+        if (!("_op" in cur) || !((cur as core.Primitive)._op in this)) {
           console.log(cur)
-        }
-        if (!((cur as core.Primitive)._op in this)) {
-          if (typeof cur === "function") {
-            console.log((cur as any)())
-          }
           // @ts-expect-error
           absurd(cur)
         }
+
         // @ts-expect-error
         cur = this._tracer.context(
-          // @ts-expect-error
-          () => this[(cur as core.Primitive)._op](cur as core.Primitive),
+          () => {
+            if (moduleVersion !== (cur as core.Primitive)[EffectTypeId]._V) {
+              return core.dieMessage(
+                `Cannot execute an Effect versioned ${
+                  (cur as core.Primitive)[EffectTypeId]._V
+                } with a Runtime of version ${moduleVersion}`
+              )
+            }
+            // @ts-expect-error
+            return this[(cur as core.Primitive)._op](cur as core.Primitive)
+          },
           this
         )
       } catch (e) {
