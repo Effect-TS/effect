@@ -208,6 +208,7 @@ export declare namespace Effect {
    * @category models
    */
   export interface VarianceStruct<R, E, A> {
+    readonly _V: string
     readonly _R: (_: never) => R
     readonly _E: (_: never) => E
     readonly _A: (_: never) => A
