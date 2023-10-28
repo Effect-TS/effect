@@ -5,6 +5,8 @@
   "publishConfig": {
     "access": "public"
   },
+  "author": "Michael Arnaldi <michael.arnaldi@effectful.co>",
+  "license": "MIT",
   "sideEffects": false,
   "scripts": {
     "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
@@ -40,8 +42,6 @@
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git"
   },
-  "author": "Michael Arnaldi <ma@matechs.com>",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
   },
