@@ -1,90 +1,91 @@
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import type * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
-import * as RA from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
-declare const nonEmptyReadonlyNumbers: RA.NonEmptyReadonlyArray<number>
-declare const nonEmptyNumbers: RA.NonEmptyArray<number>
+declare const nonEmptyReadonlyNumbers: ReadonlyArray.NonEmptyReadonlyArray<number>
+declare const nonEmptyNumbers: ReadonlyArray.NonEmptyArray<number>
 declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const numbersOrStrings: Array<number | string>
-declare const nonEmptyReadonlyNumbersOrStrings: RA.NonEmptyReadonlyArray<number | string>
+declare const nonEmptyReadonlyNumbersOrStrings: ReadonlyArray.NonEmptyReadonlyArray<number | string>
 
 // -------------------------------------------------------------------------------------
 // isEmptyReadonlyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isEmptyReadonlyArray(readonlyNumbers)) {
+if (ReadonlyArray.isEmptyReadonlyArray(readonlyNumbers)) {
   // $ExpectType readonly []
   readonlyNumbers
 }
 
 // $ExpectType <A>(c: readonly A[]) => Option<readonly []>
-Option.liftPredicate(RA.isEmptyReadonlyArray)
+Option.liftPredicate(ReadonlyArray.isEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
 // isEmptyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isEmptyArray(numbers)) {
+if (ReadonlyArray.isEmptyArray(numbers)) {
   // $ExpectType []
   numbers
 }
 
 // $ExpectType <A>(c: A[]) => Option<[]>
-Option.liftPredicate(RA.isEmptyArray)
+Option.liftPredicate(ReadonlyArray.isEmptyArray)
 
 // -------------------------------------------------------------------------------------
 // isNonEmptyReadonlyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isNonEmptyReadonlyArray(readonlyNumbers)) {
+if (ReadonlyArray.isNonEmptyReadonlyArray(readonlyNumbers)) {
   // $ExpectType readonly [number, ...number[]]
   readonlyNumbers
 }
 
 // $ExpectType <A>(c: readonly A[]) => Option<readonly [A, ...A[]]>
-Option.liftPredicate(RA.isNonEmptyReadonlyArray)
+Option.liftPredicate(ReadonlyArray.isNonEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
 // isNonEmptyArray
 // -------------------------------------------------------------------------------------
 
-if (RA.isNonEmptyArray(numbers)) {
+if (ReadonlyArray.isNonEmptyArray(numbers)) {
   // $ExpectType [number, ...number[]]
   numbers
 }
 
 // $ExpectType <A>(c: A[]) => Option<[A, ...A[]]>
-Option.liftPredicate(RA.isNonEmptyArray)
+Option.liftPredicate(ReadonlyArray.isNonEmptyArray)
 
 // -------------------------------------------------------------------------------------
 // map
 // -------------------------------------------------------------------------------------
 
 // $ExpectType number[]
-RA.map(readonlyNumbers, (n) => n + 1)
+ReadonlyArray.map(readonlyNumbers, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(readonlyNumbers, RA.map((n) => n + 1))
+pipe(readonlyNumbers, ReadonlyArray.map((n) => n + 1))
 
 // $ExpectType number[]
-RA.map(numbers, (n) => n + 1)
+ReadonlyArray.map(numbers, (n) => n + 1)
 
 // $ExpectType number[]
-pipe(numbers, RA.map((n) => n + 1))
+pipe(numbers, ReadonlyArray.map((n) => n + 1))
 
 // $ExpectType [number, ...number[]]
-RA.map(nonEmptyReadonlyNumbers, (n) => n + 1)
+ReadonlyArray.map(nonEmptyReadonlyNumbers, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nonEmptyReadonlyNumbers, RA.map((n) => n + 1))
+pipe(nonEmptyReadonlyNumbers, ReadonlyArray.map((n) => n + 1))
 
 // $ExpectType [number, ...number[]]
-RA.map(nonEmptyNumbers, (n) => n + 1)
+ReadonlyArray.map(nonEmptyNumbers, (n) => n + 1)
 
 // $ExpectType [number, ...number[]]
-pipe(nonEmptyNumbers, RA.map((n) => n + 1))
+pipe(nonEmptyNumbers, ReadonlyArray.map((n) => n + 1))
 
 // -------------------------------------------------------------------------------------
 // groupBy
@@ -92,21 +93,21 @@ pipe(nonEmptyNumbers, RA.map((n) => n + 1))
 
 // baseline
 // $ExpectType Record<string, [number, ...number[]]>
-RA.groupBy([1, 2, 3], String)
+ReadonlyArray.groupBy([1, 2, 3], String)
 
 // should not return a struct (Record<'positive' | 'negative', ...>) when using string type literals
 // $ExpectType Record<string, [number, ...number[]]>
-RA.groupBy([1, 2, 3], (n) => n > 0 ? "positive" as const : "negative" as const)
+ReadonlyArray.groupBy([1, 2, 3], (n) => n > 0 ? "positive" as const : "negative" as const)
 
 // -------------------------------------------------------------------------------------
 // some
 // -------------------------------------------------------------------------------------
 
-if (RA.some(numbersOrStrings, Predicate.isString)) {
+if (ReadonlyArray.some(numbersOrStrings, Predicate.isString)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
 }
 
-if (RA.some(Predicate.isString)(numbersOrStrings)) {
+if (ReadonlyArray.some(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
 }
 
@@ -114,11 +115,11 @@ if (RA.some(Predicate.isString)(numbersOrStrings)) {
 // every
 // -------------------------------------------------------------------------------------
 
-if (RA.every(numbersOrStrings, Predicate.isString)) {
+if (ReadonlyArray.every(numbersOrStrings, Predicate.isString)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
 
-if (RA.every(Predicate.isString)(numbersOrStrings)) {
+if (ReadonlyArray.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
 
@@ -127,49 +128,72 @@ if (RA.every(Predicate.isString)(numbersOrStrings)) {
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.append(numbersOrStrings, true)
+ReadonlyArray.append(numbersOrStrings, true)
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.append(true)(numbersOrStrings)
+ReadonlyArray.append(true)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // appendAllNonEmpty
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
+ReadonlyArray.appendAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
+ReadonlyArray.appendAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
+ReadonlyArray.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
+ReadonlyArray.appendAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // prepend
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.prepend(numbersOrStrings, true)
+ReadonlyArray.prepend(numbersOrStrings, true)
 
 // $ExpectType [string | number | boolean, ...(string | number | boolean)[]]
-RA.prepend(true)(numbersOrStrings)
+ReadonlyArray.prepend(true)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // prependAllNonEmpty
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
+ReadonlyArray.prependAllNonEmpty(numbersOrStrings, nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
+ReadonlyArray.prependAllNonEmpty(numbersOrStrings)(nonEmptyReadonlyNumbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
+ReadonlyArray.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings, numbersOrStrings)
 
 // $ExpectType [string | number, ...(string | number)[]]
-RA.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
+ReadonlyArray.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStrings)
+
+// -------------------------------------------------------------------------------------
+// sort
+// -------------------------------------------------------------------------------------
+
+declare const ordera: Order.Order<{ readonly a: string }>
+interface AB {
+  readonly a: string
+  readonly b: number
+}
+declare const abs: ReadonlyArray<AB>
+
+// $ExpectType AB[]
+ReadonlyArray.sort(abs, ordera)
+
+// $ExpectType AB[]
+pipe(abs, ReadonlyArray.sort(ordera))
+
+// $ExpectType AB[]
+ReadonlyArray.sort(ordera)(abs)
+
+// // $ExpectType AB[]
+// pipe(abs, ReadonlyArray.sort(Order.mapInput(Order.reverse(Order.string), ({ a }) => a)))
