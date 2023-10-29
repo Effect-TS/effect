@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.16.1
+
+### Patch Changes
+
+- [#125](https://github.com/Effect-TS/rpc/pull/125) [`49a262c`](https://github.com/Effect-TS/rpc/commit/49a262c1387eda6cbdf7da1eb5e442908f4971aa) Thanks [@tim-smart](https://github.com/tim-smart)! - handle NoOutput schemas in router
+
 ## 0.16.0
 
 ### Minor Changes
