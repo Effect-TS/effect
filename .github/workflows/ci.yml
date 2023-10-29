@@ -14,21 +14,22 @@ jobs:
     name: Test (${{ matrix.label }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include: 
           - label: Node
-            node: 18
             environment: node
+            node: 18
           - label: Browser
-            node: 18
             environment: jsdom
-          - label: Edge
             node: 18
+          - label: Edge
             environment: edge-runtime
+            node: 18
           - label: Bun
+            environment: node
             node: 18
             bun: canary
-            environment: node
 
     steps: 
       - uses: actions/checkout@v3
@@ -50,20 +51,16 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [18]
-
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Install pnpm
         uses: pnpm/action-setup@v2
-      - name: Use Node.js ${{ matrix.node }}
+      - name: Install node
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 18
           cache: pnpm
       - run: pnpm install
       - run: pnpm build
@@ -77,7 +74,7 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm update-version
-          publish: pnpm exec changeset publish
+          publish: pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
