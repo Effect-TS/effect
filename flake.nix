@@ -27,6 +27,7 @@
       devShells = {
         default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            bun
             nodejs-18_x
             corepackEnable
           ];

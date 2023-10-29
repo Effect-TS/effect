@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: 
+          - label: Node
+            runtime: node
+            version: 18
+            environment: node
+          - label: Node (jsdom)
+            runtime: node
+            version: 18
+            environment: jsdom
+          - label: Node (edge)
+            runtime: node
+            version: 18
+            environment: edge-runtime
+          - label: Bun
+            runtime: bun
+            version: canary
+            environment: node
+
+    steps: 
+      - uses: actions/checkout@v3
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.version }}
+          cache: pnpm
+      - name: Install bun
+        if: matrix.runtime == 'bun'
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ matrix.version }}
+      - run: pnpm install
+      - run: pnpm vitest test --environment ${{ matrix.environment }}
+        if: matrix.runtime == 'node'
+      - run: bun vitest test --environment ${{ matrix.environment }}
+        if: matrix.runtime == 'bun'
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [18]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+      - name: Use Node.js ${{ matrix.version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.version }}
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm build
+      - run: pnpm circular
+      - run: pnpm lint
+      - run: pnpm dtslint
+      - run: pnpm docgen
+      - name: Create Release Pull Request or Publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm update-version
+          publish: pnpm exec changeset publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
