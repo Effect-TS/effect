@@ -17,20 +17,18 @@ jobs:
       matrix:
         include: 
           - label: Node
-            runtime: node
-            node-version: 18
-            vitest-environment: node
-          - label: Node (jsdom)
-            runtime: node
-            node-version: 18
-            vitest-environment: jsdom
-          - label: Node (edge)
-            runtime: node
-            node-version: 18
-            vitest-environment: edge-runtime
+            node: 18
+            environment: node
+          - label: Browser
+            node: 18
+            environment: jsdom
+          - label: Edge
+            node: 18
+            environment: edge-runtime
           - label: Bun
-            runtime: bun
-            bun-version: canary
+            node: 18
+            bun: canary
+            environment: node
 
     steps: 
       - uses: actions/checkout@v3
@@ -39,25 +37,22 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - name: Install bun
-        if: matrix.runtime == 'bun'
+        if: matrix.bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: ${{ matrix.bun-version }}
+          bun-version: ${{ matrix.bun }}
       - run: pnpm install
-      - run: pnpm vitest test --environment ${{ matrix.vitest-environment }}
-        if: matrix.runtime == 'node'
-      - run: bun vitest test
-        if: matrix.runtime == 'bun'
+      - run: ${{ matrix.bun && 'bun' || 'pnpm' }} vitest --environment ${{ matrix.environment }}
 
   build:
     name: Build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18]
+        node: [18]
 
     steps:
       - uses: actions/checkout@v3
@@ -65,10 +60,10 @@ jobs:
           fetch-depth: 0
       - name: Install pnpm
         uses: pnpm/action-setup@v2
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js ${{ matrix.node }}
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install
       - run: pnpm build
