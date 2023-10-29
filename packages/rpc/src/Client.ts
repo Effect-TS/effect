@@ -98,7 +98,7 @@ export const make: {
     >
   >
   <
-    const S extends RpcService.DefinitionWithoutSetup,
+    const S extends RpcService.DefinitionWithId,
     Resolver extends
       | RpcResolver<never>
       | Effect<any, never, RpcResolver<never>>

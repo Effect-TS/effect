@@ -61,6 +61,8 @@ export declare namespace RpcHandler {
     : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O> ? IO<any, never, I, O>
     : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O> ? NoInput<any, E, O>
     : C extends RpcSchema.NoInputNoError<infer _IO, infer O> ? NoInput<any, never, O>
+    : C extends RpcSchema.NoOutput<infer _IE, infer E, infer _II, infer I> ? IO<any, E, I, void>
+    : C extends RpcSchema.NoErrorNoOutput<infer _II, infer I> ? IO<any, never, I, void>
     : never
 
   /**

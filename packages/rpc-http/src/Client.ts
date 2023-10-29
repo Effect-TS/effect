@@ -31,7 +31,7 @@ export const make: {
       never
     >
   >
-  <const S extends RpcService.DefinitionWithoutSetup>(
+  <const S extends RpcService.DefinitionWithId>(
     schemas: S,
     client: HttpClient.Client.Default,
     options?: Client.RpcClientOptions

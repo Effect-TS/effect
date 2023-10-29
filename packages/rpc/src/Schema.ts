@@ -141,11 +141,8 @@ export namespace RpcService {
    * @category models
    * @since 1.0.0
    */
-  export interface Definition extends Record<string, RpcSchema.Any | WithId<any, any, any>> {
-    readonly __setup?: {
-      readonly input: Schema.Schema<any>
-      readonly error?: Schema.Schema<any>
-    }
+  export interface Definition {
+    readonly [method: string]: RpcSchema.Any | DefinitionWithId
   }
 
   /**
@@ -163,14 +160,6 @@ export namespace RpcService {
    * @category models
    * @since 1.0.0
    */
-  export interface DefinitionWithoutSetup extends DefinitionWithId {
-    readonly __setup?: never
-  }
-
-  /**
-   * @category models
-   * @since 1.0.0
-   */
   export interface DefinitionWithSetup extends DefinitionWithId {
     readonly __setup: Definition["__setup"] & {}
   }
@@ -179,7 +168,7 @@ export namespace RpcService {
    * @category models
    * @since 1.0.0
    */
-  export type WithId<S extends RpcService.Definition, EI, E> = S & {
+  export type WithId<S, EI, E> = S & {
     readonly [RpcServiceId]: RpcServiceId
     readonly [RpcServiceErrorId]: Schema.Schema<EI, E>
   }
@@ -266,7 +255,7 @@ export namespace RpcService {
    * @since 1.0.0
    */
   export type Simplify<
-    T extends RpcService.Definition,
+    T,
     EI,
     E
   > = T extends infer S ? RpcService.WithId<

@@ -29,7 +29,7 @@ export const make: {
       Resolver.RpcWorkerPool
     >
   >
-  <const S extends RpcService.DefinitionWithoutSetup>(
+  <const S extends RpcService.DefinitionWithId>(
     schemas: S,
     options?: Client.RpcClientOptions
   ): Client.RpcClient<
@@ -73,7 +73,7 @@ export const makeFromPool: {
       never
     >
   >
-  <const S extends RpcService.DefinitionWithoutSetup>(
+  <const S extends RpcService.DefinitionWithId>(
     schemas: S,
     pool: Resolver.RpcWorkerPool,
     options?: Client.RpcClientOptions

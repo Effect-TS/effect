@@ -65,7 +65,7 @@ export const methodSchemaTransform = <A>(
       }
     }
 
-    const errorSchemas = schema.error
+    const errorSchemas = "error" in schema
       ? [schema.error, ...serviceErrors]
       : serviceErrors
 
@@ -73,7 +73,7 @@ export const methodSchemaTransform = <A>(
       ...acc,
       [`${prefix}${method}`]: f({
         input: "input" in schema ? schema.input : undefined,
-        output: schema.output,
+        output: "output" in schema ? schema.output : Schema.void,
         error: schemasToUnion(errorSchemas)
       })
     }
@@ -129,7 +129,7 @@ export const rawClientCodecs = <S extends schema.RpcService.DefinitionWithId>(
       ...acc,
       [`${prefix}${method}`]: {
         input: Codec.encode(Schema.to(schema.input)),
-        output: Codec.encode(Schema.to(schema.output))
+        output: Codec.encode(Schema.to("output" in schema ? schema.output : Schema.void))
       }
     }
   }, {})
