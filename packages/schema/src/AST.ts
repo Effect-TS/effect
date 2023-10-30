@@ -103,6 +103,18 @@ export const ExamplesAnnotationId = Symbol.for("@effect/schema/annotation/Exampl
  * @category annotations
  * @since 1.0.0
  */
+export type DefaultAnnotation = unknown
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const DefaultAnnotationId = Symbol.for("@effect/schema/annotation/Default")
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
 export type JSONSchemaAnnotation = object
 
 /**
@@ -186,6 +198,14 @@ export const getDescriptionAnnotation = getAnnotation<DescriptionAnnotation>(
  */
 export const getExamplesAnnotation = getAnnotation<ExamplesAnnotation>(
   ExamplesAnnotationId
+)
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const getDefaultAnnotation = getAnnotation<DefaultAnnotation>(
+  DefaultAnnotationId
 )
 
 /**
@@ -281,8 +301,9 @@ export interface Literal extends Annotated {
  * @since 1.0.0
  */
 export const createLiteral = (
-  literal: LiteralValue
-): Literal => ({ _tag: "Literal", literal, annotations: {} })
+  literal: LiteralValue,
+  annotations: Annotated["annotations"] = {}
+): Literal => ({ _tag: "Literal", literal, annotations })
 
 /**
  * @category guards
@@ -610,8 +631,9 @@ export interface Enums extends Annotated {
  * @since 1.0.0
  */
 export const createEnums = (
-  enums: ReadonlyArray<readonly [string, string | number]>
-): Enums => ({ _tag: "Enums", enums, annotations: {} })
+  enums: ReadonlyArray<readonly [string, string | number]>,
+  annotations: Annotated["annotations"] = {}
+): Enums => ({ _tag: "Enums", enums, annotations })
 
 /**
  * @category guards
@@ -643,10 +665,11 @@ export interface TemplateLiteral extends Annotated {
  */
 export const createTemplateLiteral = (
   head: string,
-  spans: ReadonlyArray<TemplateLiteralSpan>
+  spans: ReadonlyArray<TemplateLiteralSpan>,
+  annotations: Annotated["annotations"] = {}
 ): TemplateLiteral | Literal =>
   ReadonlyArray.isNonEmptyReadonlyArray(spans) ?
-    { _tag: "TemplateLiteral", head, spans, annotations: {} } :
+    { _tag: "TemplateLiteral", head, spans, annotations } :
     createLiteral(head)
 
 /**

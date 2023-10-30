@@ -155,7 +155,8 @@ const getMetaData = (annotated: AST.Annotated) => {
   return ReadonlyRecord.compact<unknown>({
     description: AST.getDescriptionAnnotation(annotated),
     title: AST.getTitleAnnotation(annotated),
-    examples: AST.getExamplesAnnotation(annotated)
+    examples: AST.getExamplesAnnotation(annotated),
+    default: AST.getDefaultAnnotation(annotated)
   })
 }
 

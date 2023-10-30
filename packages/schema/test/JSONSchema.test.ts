@@ -1023,6 +1023,18 @@ describe("JSONSchema", () => {
       })
     })
 
+    it("default support", () => {
+      const schema = S.string.pipe(S.default(""))
+      const jsonSchema = JSONSchema.to(schema)
+      expect(jsonSchema).toEqual({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "string",
+        "title": "string",
+        "description": "a string",
+        "default": ""
+      })
+    })
+
     it("struct properties support", () => {
       const schema = S.struct({
         foo: S.propertySignature(S.string, {

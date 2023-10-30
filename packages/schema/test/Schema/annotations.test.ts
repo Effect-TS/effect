@@ -45,6 +45,16 @@ describe("Schema/annotations", () => {
     expect(S.isSchema(schema)).toEqual(true)
   })
 
+  it("default", () => {
+    const schema = S.string.pipe(S.default("a"))
+    expect(schema.ast.annotations).toEqual({
+      [AST.DefaultAnnotationId]: "a",
+      [AST.TitleAnnotationId]: "string",
+      [AST.DescriptionAnnotationId]: "a string"
+    })
+    expect(S.isSchema(schema)).toEqual(true)
+  })
+
   it("documentation", () => {
     const schema = S.string.pipe(S.documentation("documentation"))
     expect(schema.ast.annotations).toEqual({

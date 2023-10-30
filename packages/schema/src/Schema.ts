@@ -1393,6 +1393,7 @@ const toAnnotations = <A>(
   move("title", AST.TitleAnnotationId)
   move("description", AST.DescriptionAnnotationId)
   move("examples", AST.ExamplesAnnotationId)
+  move("default", AST.DefaultAnnotationId)
   move("documentation", AST.DocumentationAnnotationId)
   move("jsonSchema", AST.JSONSchemaAnnotationId)
   move("arbitrary", Internal.ArbitraryHookId)
@@ -1409,6 +1410,7 @@ export interface DocAnnotations<A> extends AST.Annotations {
   readonly title?: AST.TitleAnnotation
   readonly description?: AST.DescriptionAnnotation
   readonly examples?: AST.ExamplesAnnotation
+  readonly default?: AST.DefaultAnnotation
   readonly documentation?: AST.DocumentationAnnotation
   readonly message?: AST.MessageAnnotation<A>
 }
@@ -1469,6 +1471,17 @@ export const description =
 export const examples =
   (examples: AST.ExamplesAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
     make(AST.setAnnotation(self.ast, AST.ExamplesAnnotationId, examples))
+
+const _default = <A>(value: A) => <I>(self: Schema<I, A>): Schema<I, A> =>
+  make(AST.setAnnotation(self.ast, AST.DefaultAnnotationId, value))
+
+export {
+  /**
+   * @category annotations
+   * @since 1.0.0
+   */
+  _default as default
+}
 
 /**
  * @category annotations
