@@ -13,20 +13,12 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint (.ts)
+    name: Lint
     runs-on: ubuntu-latest
-    steps: 
+    steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm check
       - run: pnpm lint
-
-  dtslint:
-    name: Lint (.d.ts)
-    runs-on: ubuntu-latest
-    steps: 
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        uses: ./.github/actions/setup
       - run: pnpm dtslint

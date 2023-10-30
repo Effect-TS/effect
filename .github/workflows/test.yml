@@ -20,7 +20,7 @@ jobs:
       matrix:
         shard: [1/3, 2/3, 3/3]
 
-    steps: 
+    steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
@@ -34,7 +34,7 @@ jobs:
       matrix:
         shard: [1/3, 2/3, 3/3]
 
-    steps: 
+    steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
@@ -46,9 +46,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1/7, 2/7, 3/7, 4/7, 5/7, 6/7, 7/7]
+        shard: [1/6, 2/6, 3/6, 4/6, 5/6, 6/6]
 
-    steps: 
+    steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
@@ -62,7 +62,7 @@ jobs:
       matrix:
         shard: [1/3, 2/3, 3/3]
 
-    steps: 
+    steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
