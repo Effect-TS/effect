@@ -3,7 +3,6 @@
     "exclude": [
         "src/internal/**/*.ts"
     ],
-    "theme": "mikearnaldi/just-the-docs",
     "parseCompilerOptions": {
         "strict": true,
         "noEmit": true,
