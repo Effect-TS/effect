@@ -256,12 +256,15 @@ export const fromEffect: <R, A extends Request.Request<any, any>>(
 export const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
-      ? Req extends Request.Request<infer ReqE, infer ReqA> ?
-        (requests: Array<Req>) => Effect.Effect<any, ReqE, Iterable<ReqA>>
+      ? Req extends Request.Request<infer ReqE, infer ReqA>
+        ? (requests: Array<Req>) => Effect.Effect<any, ReqE, Iterable<ReqA>>
       : never
       : never
   }
->(fns: Fns) => RequestResolver<A, Effect.Effect.Context<Fns[keyof Fns]>> = internal.fromEffectTagged
+>(
+  fns: Fns
+) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer R, infer _E, infer _A> ? R : never> =
+  internal.fromEffectTagged
 
 /**
  * A data source that never executes requests.

@@ -231,7 +231,10 @@ export const fromEffectTagged = <
   }
 >(
   fns: Fns
-): RequestResolver.RequestResolver<A, Effect.Effect.Context<Fns[keyof Fns]>> =>
+): RequestResolver.RequestResolver<
+  A,
+  ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer R, infer _E, infer _A> ? R : never
+> =>
   makeBatched<any, A>((requests: Array<A>) => {
     const grouped: Record<string, Array<A>> = {}
     const tags: Array<A["_tag"]> = []

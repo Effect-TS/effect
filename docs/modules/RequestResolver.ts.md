@@ -192,7 +192,7 @@ export declare const fromEffectTagged: <A extends Request.Request<any, any> & { 
   }
 >(
   fns: Fns
-) => RequestResolver<A, Effect.Effect.Context<Fns[keyof Fns]>>
+) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer R, infer _E, infer _A> ? R : never>
 ```
 
 Added in v2.0.0
