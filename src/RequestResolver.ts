@@ -245,16 +245,23 @@ export const fromEffect: <R, A extends Request.Request<any, any>>(
 ) => RequestResolver<A, R> = internal.fromEffect
 
 /**
- * Constructs a data source from an effectual function that takes a list of requests
- * and returns a list of results of the same size. Each item in the result
- * list must correspond to the item at the same index in the request list.
+ * Constructs a data source from a list of tags paired to functions, that takes
+ * a list of requests and returns a list of results of the same size. Each item
+ * in the result list must correspond to the item at the same index in the
+ * request list.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffectBatched: <R, A extends Request.Request<any, any>>(
-  f: (a: Array<A>) => Effect.Effect<R, Request.Request.Error<A>, Iterable<Request.Request.Success<A>>>
-) => RequestResolver<A, R> = internal.fromEffectBatched
+export const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
+  Fns extends {
+    readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
+      ? Req extends Request.Request<infer ReqE, infer ReqA> ?
+        (requests: Array<Req>) => Effect.Effect<any, ReqE, Iterable<ReqA>>
+      : never
+      : never
+  }
+>(fns: Fns) => RequestResolver<A, Effect.Effect.Context<Fns[keyof Fns]>> = internal.fromEffectTagged
 
 /**
  * A data source that never executes requests.

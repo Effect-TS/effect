@@ -19,9 +19,10 @@ Added in v2.0.0
   - [locally](#locally)
   - [race](#race)
 - [constructors](#constructors)
+  - [fromEffect](#fromeffect)
+  - [fromEffectTagged](#fromeffecttagged)
   - [fromFunction](#fromfunction)
   - [fromFunctionBatched](#fromfunctionbatched)
-  - [fromFunctionEffect](#fromfunctioneffect)
   - [make](#make)
   - [makeBatched](#makebatched)
   - [makeWithEntry](#makewithentry)
@@ -157,6 +158,45 @@ Added in v2.0.0
 
 # constructors
 
+## fromEffect
+
+Constructs a data source from an effectual function.
+
+**Signature**
+
+```ts
+export declare const fromEffect: <R, A extends Request.Request<any, any>>(
+  f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+) => RequestResolver<A, R>
+```
+
+Added in v2.0.0
+
+## fromEffectTagged
+
+Constructs a data source from a list of tags paired to functions, that takes
+a list of requests and returns a list of results of the same size. Each item
+in the result list must correspond to the item at the same index in the
+request list.
+
+**Signature**
+
+```ts
+export declare const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
+  Fns extends {
+    readonly [Tag in A['_tag']]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
+      ? Req extends Request.Request<infer ReqE, infer ReqA>
+        ? (requests: Req[]) => Effect.Effect<any, ReqE, Iterable<ReqA>>
+        : never
+      : never
+  }
+>(
+  fns: Fns
+) => RequestResolver<A, Effect.Effect.Context<Fns[keyof Fns]>>
+```
+
+Added in v2.0.0
+
 ## fromFunction
 
 Constructs a data source from a pure function.
@@ -181,22 +221,8 @@ list must correspond to the item at the same index in the request list.
 
 ```ts
 export declare const fromFunctionBatched: <A extends Request.Request<never, any>>(
-  f: (chunk: A[]) => Request.Request.Success<A>[]
+  f: (chunk: A[]) => Iterable<Request.Request.Success<A>>
 ) => RequestResolver<A, never>
-```
-
-Added in v2.0.0
-
-## fromFunctionEffect
-
-Constructs a data source from an effectual function.
-
-**Signature**
-
-```ts
-export declare const fromFunctionEffect: <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
-) => RequestResolver<A, R>
 ```
 
 Added in v2.0.0

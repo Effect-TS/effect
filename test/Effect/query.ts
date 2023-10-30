@@ -57,27 +57,10 @@ const delay = <R, E, A>(self: Effect.Effect<R, E, A>) =>
 
 const counted = <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
 
-const UserResolver = Resolver.makeBatched((requests: Array<UserRequest>) => {
-  return Effect.flatMap(Requests, (r) => {
-    r.count += requests.length
-    return counted(Effect.forEach(requests, (request) => delay(processRequest(request)), { discard: true }))
-  })
-}).pipe(
-  Resolver.batchN(15),
-  Resolver.contextFromServices(Counter, Requests)
-)
-
-const GetNameByIdResolver = Resolver.fromEffectBatched((requests: Array<GetNameById>) =>
+const UserResolver = Resolver.makeBatched((requests: Array<UserRequest>) =>
   Effect.flatMap(Requests, (r) => {
     r.count += requests.length
-    return counted(Effect.forEach(requests, (request) =>
-      delay(Effect.suspend(() => {
-        if (userNames.has(request.id)) {
-          const userName = userNames.get(request.id)!
-          return Effect.succeed(userName)
-        }
-        return Effect.fail("Not Found")
-      })), { concurrency: "unbounded" }))
+    return counted(Effect.forEach(requests, (request) => delay(processRequest(request)), { discard: true }))
   })
 ).pipe(
   Resolver.batchN(15),
@@ -89,7 +72,6 @@ export const getAllUserIds = Effect.request(GetAllIds({}), UserResolver)
 export const interrupts = FiberRef.unsafeMake({ interrupts: 0 })
 
 export const getUserNameById = (id: number) => Effect.request(GetNameById({ id }), UserResolver)
-export const getUserNameByIdEffect = (id: number) => Effect.request(GetNameById({ id }), GetNameByIdResolver)
 
 export const getAllUserNamesN = (concurrency: Concurrency) =>
   getAllUserIds.pipe(
@@ -98,10 +80,6 @@ export const getAllUserNamesN = (concurrency: Concurrency) =>
   )
 
 export const getAllUserNames = getAllUserNamesN("unbounded")
-
-export const getAllUserNamesEffect = getAllUserIds.pipe(
-  Effect.flatMap(Effect.forEach(getUserNameByIdEffect, { batching: true }))
-)
 
 export const print = (request: UserRequest): string => {
   switch (request._tag) {
@@ -128,6 +106,33 @@ const processRequest = (request: UserRequest): Effect.Effect<never, never, void>
     }
   }
 }
+
+const UserResolverTagged = Resolver.fromEffectTagged<UserRequest>()({
+  GetAllIds: (reqs) =>
+    counted(Effect.flatMap(Requests, (_) => {
+      _.count += reqs.length
+      return Effect.forEach(reqs, () => Effect.succeed(userIds))
+    })),
+  GetNameById: (reqs) =>
+    counted(Effect.flatMap(Requests, (_) => {
+      _.count += reqs.length
+      return Effect.forEach(reqs, (req) => {
+        if (userNames.has(req.id)) {
+          const userName = userNames.get(req.id)!
+          return Effect.succeed(userName)
+        }
+        return Effect.fail("Not Found")
+      })
+    }))
+}).pipe(
+  Resolver.batchN(15),
+  Resolver.contextFromServices(Counter, Requests)
+)
+export const getAllUserIdsTagged = Effect.request(GetAllIds({}), UserResolverTagged)
+export const getUserNameByIdTagged = (id: number) => Effect.request(GetNameById({ id }), UserResolverTagged)
+export const getAllUserNamesTagged = getAllUserIdsTagged.pipe(
+  Effect.flatMap(Effect.forEach(getUserNameByIdTagged, { batching: true }))
+)
 
 const EnvLive = Layer.provideMerge(
   Layer.mergeAll(
@@ -157,10 +162,10 @@ describe.concurrent("Effect", () => {
         expect(names).toEqual(userIds.map((id) => userNames.get(id)))
       })
     ))
-  it.effect("requests are executed correctly with fromEffectBatched", () =>
+  it.effect("requests are executed correctly with fromEffectTagged", () =>
     provideEnv(
       Effect.gen(function*($) {
-        const names = yield* $(getAllUserNamesEffect)
+        const names = yield* $(getAllUserNamesTagged)
         const count = yield* $(Counter)
         expect(count.count).toEqual(3)
         expect(names.length).toBeGreaterThan(2)

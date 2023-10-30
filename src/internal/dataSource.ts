@@ -216,20 +216,45 @@ export const fromEffect = <R, A extends Request.Request<any, any>>(
   ).identified("FromEffect", f)
 
 /** @internal */
-export const fromEffectBatched = <R, A extends Request.Request<any, any>>(
-  f: (a: Array<A>) => Effect.Effect<R, Request.Request.Error<A>, Iterable<Request.Request.Success<A>>>
-): RequestResolver.RequestResolver<A, R> =>
-  makeBatched((requests: Array<A>) =>
-    Effect.matchCauseEffect(f(requests), {
-      onSuccess: Effect.forEach((a, i) => complete(requests[i], core.exitSucceed(a) as any), { discard: true }),
-      onFailure: (cause) =>
-        Effect.forEach(
-          requests,
-          (request) => complete(request, core.exitFailCause(cause) as any),
-          { discard: true }
-        )
-    })
-  ).identified("FromEffectBatched", f)
+export const fromEffectTagged = <
+  A extends Request.Request<any, any> & {
+    readonly _tag: string
+  }
+>() =>
+<
+  Fns extends {
+    readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req] ?
+      Req extends Request.Request<infer ReqE, infer ReqA> ?
+        (requests: Array<Req>) => Effect.Effect<any, ReqE, Iterable<ReqA>>
+      : never
+      : never
+  }
+>(
+  fns: Fns
+): RequestResolver.RequestResolver<A, Effect.Effect.Context<Fns[keyof Fns]>> =>
+  makeBatched<any, A>((requests: Array<A>) => {
+    const grouped: Record<string, Array<A>> = {}
+    const tags: Array<A["_tag"]> = []
+    for (let i = 0, len = requests.length; i < len; i++) {
+      if (tags.includes(requests[i]._tag)) {
+        grouped[requests[i]._tag].push(requests[i])
+      } else {
+        grouped[requests[i]._tag] = [requests[i]]
+        tags.push(requests[i]._tag)
+      }
+    }
+    return Effect.forEach(
+      tags,
+      (tag) =>
+        Effect.matchCauseEffect((fns[tag] as any)(grouped[tag]) as Effect.Effect<unknown, unknown, Array<any>>, {
+          onFailure: (cause) =>
+            Effect.forEach(grouped[tag], (req) => complete(req, core.exitFail(cause) as any), { discard: true }),
+          onSuccess: (res) =>
+            Effect.forEach(grouped[tag], (req, i) => complete(req, core.exitSucceed(res[i]) as any), { discard: true })
+        }),
+      { concurrency: "unbounded", discard: true }
+    )
+  }).identified("FromEffectTagged", fns)
 
 /** @internal */
 export const never: RequestResolver.RequestResolver<never> = make(() => Effect.never).identified("Never")

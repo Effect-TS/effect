@@ -204,6 +204,8 @@ Added in v2.0.0
     - [Variance (interface)](#variance-interface)
     - [DynamicTuple (type alias)](#dynamictuple-type-alias)
     - [DynamicTupleOf (type alias)](#dynamictupleof-type-alias)
+  - [accumulate](#accumulate)
+  - [accumulateChunks](#accumulatechunks)
   - [aggregate](#aggregate)
   - [aggregateWithin](#aggregatewithin)
   - [aggregateWithinEither](#aggregatewithineither)
@@ -3301,6 +3303,31 @@ Added in v2.0.0
 export type DynamicTupleOf<T, N extends number, R extends Array<unknown>> = R['length'] extends N
   ? R
   : DynamicTupleOf<T, N, [T, ...R]>
+```
+
+Added in v2.0.0
+
+## accumulate
+
+Collects each underlying Chunk of the stream into a new chunk, and emits it
+on each pull.
+
+**Signature**
+
+```ts
+export declare const accumulate: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, Chunk.Chunk<A>>
+```
+
+Added in v2.0.0
+
+## accumulateChunks
+
+Re-chunks the elements of the stream by accumulating each underlying chunk.
+
+**Signature**
+
+```ts
+export declare const accumulateChunks: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
