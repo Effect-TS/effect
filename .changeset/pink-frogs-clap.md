@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-add RequestResolver.fromEffectBatched
+add RequestResolver.fromEffectTagged
