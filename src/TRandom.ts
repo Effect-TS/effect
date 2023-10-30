@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context"
-import * as internal from "./internal/stm/tRandom"
-import type * as Layer from "./Layer"
-import type * as STM from "./STM"
-import type * as TRef from "./TRef"
-import type * as Random from "./Utils"
+import type * as Context from "./Context.js"
+import * as internal from "./internal/stm/tRandom.js"
+import type * as Layer from "./Layer.js"
+import type * as STM from "./STM.js"
+import type * as TRef from "./TRef.js"
+import type * as Random from "./Utils.js"
 
 /**
  * @since 2.0.0

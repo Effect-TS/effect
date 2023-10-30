@@ -1,6 +1,6 @@
-import * as Entry from "../../../internal/stm/stm/entry"
-import type * as TxnId from "../../../internal/stm/stm/txnId"
-import type * as TRef from "../../../TRef"
+import type * as TRef from "../../../TRef.js"
+import * as Entry from "./entry.js"
+import type * as TxnId from "./txnId.js"
 
 /** @internal */
 export type Journal = Map<TRef.TRef<unknown>, Entry.Entry>

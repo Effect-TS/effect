@@ -4,10 +4,10 @@
  * @since 2.0.0
  */
 
-import * as Equivalence from "./Equivalence"
-import { dual } from "./Function"
-import * as order from "./Order"
-import type { Simplify } from "./Types"
+import * as Equivalence from "./Equivalence.js"
+import { dual } from "./Function.js"
+import * as order from "./Order.js"
+import type { Simplify } from "./Types.js"
 
 /**
  * Create a new object by picking properties of an existing object.

@@ -1,7 +1,7 @@
-import type * as UpstreamPullRequest from "../../ChannelUpstreamPullRequest"
-import { dual } from "../../Function"
-import { hasProperty } from "../../Predicate"
-import * as OpCodes from "../opCodes/channelUpstreamPullRequest"
+import type * as UpstreamPullRequest from "../../ChannelUpstreamPullRequest.js"
+import { dual } from "../../Function.js"
+import { hasProperty } from "../../Predicate.js"
+import * as OpCodes from "../opCodes/channelUpstreamPullRequest.js"
 
 /** @internal */
 const UpstreamPullRequestSymbolKey = "effect/ChannelUpstreamPullRequest"

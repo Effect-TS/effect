@@ -7,12 +7,12 @@
  *
  * @since 2.0.0
  */
-import type { Equal } from "./Equal"
-import type { Inspectable } from "./Inspectable"
-import * as C from "./internal/Context"
-import type { Option } from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type * as Unify from "./Unify"
+import type { Equal } from "./Equal.js"
+import type { Inspectable } from "./Inspectable.js"
+import * as C from "./internal/Context.js"
+import type { Option } from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
+import type * as Unify from "./Unify.js"
 
 const TagTypeId: unique symbol = C.TagTypeId
 

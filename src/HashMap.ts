@@ -2,13 +2,13 @@
  * @since 2.0.0
  */
 
-import type { Equal } from "./Equal"
-import type { HashSet } from "./HashSet"
-import type { Inspectable } from "./Inspectable"
-import * as HM from "./internal/HashMap"
-import * as _keySet from "./internal/HashMap/keySet"
-import type { Option } from "./Option"
-import type { Pipeable } from "./Pipeable"
+import type { Equal } from "./Equal.js"
+import type { HashSet } from "./HashSet.js"
+import type { Inspectable } from "./Inspectable.js"
+import * as HM from "./internal/HashMap.js"
+import * as _keySet from "./internal/HashMap/keySet.js"
+import type { Option } from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
 
 const TypeId: unique symbol = HM.HashMapTypeId as TypeId
 

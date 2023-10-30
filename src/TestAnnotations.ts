@@ -1,21 +1,21 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context"
-import type * as Effect from "./Effect"
-import * as Equal from "./Equal"
-import type * as Fiber from "./Fiber"
-import { pipe } from "./Function"
-import * as core from "./internal/core"
-import * as effect from "./internal/core-effect"
-import * as fiber from "./internal/fiber"
-import * as MutableRef from "./MutableRef"
-import { hasProperty } from "./Predicate"
-import * as RA from "./ReadonlyArray"
-import * as Ref from "./Ref"
-import * as SortedSet from "./SortedSet"
-import * as TestAnnotation from "./TestAnnotation"
-import * as TestAnnotationMap from "./TestAnnotationMap"
+import * as Context from "./Context.js"
+import type * as Effect from "./Effect.js"
+import * as Equal from "./Equal.js"
+import type * as Fiber from "./Fiber.js"
+import { pipe } from "./Function.js"
+import * as effect from "./internal/core-effect.js"
+import * as core from "./internal/core.js"
+import * as fiber from "./internal/fiber.js"
+import * as MutableRef from "./MutableRef.js"
+import { hasProperty } from "./Predicate.js"
+import * as RA from "./ReadonlyArray.js"
+import * as Ref from "./Ref.js"
+import * as SortedSet from "./SortedSet.js"
+import * as TestAnnotation from "./TestAnnotation.js"
+import * as TestAnnotationMap from "./TestAnnotationMap.js"
 
 /**
  * @since 2.0.0

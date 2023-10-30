@@ -1,5 +1,5 @@
-import * as Versioned from "../../../internal/stm/stm/versioned"
-import type * as TRef from "../../../TRef"
+import type * as TRef from "../../../TRef.js"
+import * as Versioned from "./versioned.js"
 
 /** @internal */
 export interface Entry {

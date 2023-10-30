@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import * as internal from "./internal/clock"
-import * as defaultServices from "./internal/defaultServices"
+import type * as Context from "./Context.js"
+import type * as Duration from "./Duration.js"
+import type * as Effect from "./Effect.js"
+import * as internal from "./internal/clock.js"
+import * as defaultServices from "./internal/defaultServices.js"
 
 /**
  * @since 2.0.0

@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as Exit from "./Exit"
-import type * as Fiber from "./Fiber"
-import * as internal from "./internal/channel/mergeState"
+import type * as Effect from "./Effect.js"
+import type * as Either from "./Either.js"
+import type * as Exit from "./Exit.js"
+import type * as Fiber from "./Fiber.js"
+import * as internal from "./internal/channel/mergeState.js"
 
 /**
  * @since 2.0.0

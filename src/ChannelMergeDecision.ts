@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import * as internal from "./internal/channel/mergeDecision"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import * as internal from "./internal/channel/mergeDecision.js"
 
 /**
  * @since 2.0.0

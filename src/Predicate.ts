@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import { dual, isFunction as isFunction_ } from "./Function"
-import type { TypeLambda } from "./HKT"
+import { dual, isFunction as isFunction_ } from "./Function.js"
+import type { TypeLambda } from "./HKT.js"
 
 /**
  * @category models

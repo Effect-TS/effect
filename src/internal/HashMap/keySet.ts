@@ -1,6 +1,6 @@
-import type { HashMap } from "../../HashMap"
-import type { HashSet } from "../../HashSet"
-import { makeImpl } from "../../internal/HashSet"
+import type { HashMap } from "../../HashMap.js"
+import type { HashSet } from "../../HashSet.js"
+import { makeImpl } from "../HashSet.js"
 
 /** @internal */
 export function keySet<K, V>(self: HashMap<K, V>): HashSet<K> {

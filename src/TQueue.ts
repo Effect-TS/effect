@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/stm/tQueue"
-import type * as Option from "./Option"
-import type { Predicate } from "./Predicate"
-import type * as STM from "./STM"
+import * as internal from "./internal/stm/tQueue.js"
+import type * as Option from "./Option.js"
+import type { Predicate } from "./Predicate.js"
+import type * as STM from "./STM.js"
 
 /**
  * @since 2.0.0

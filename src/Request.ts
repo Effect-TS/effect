@@ -1,19 +1,19 @@
 /**
  * @since 2.0.0
  */
-import type * as _Cache from "./Cache"
-import type * as Data from "./Data"
-import type { Deferred } from "./Deferred"
-import type { DurationInput } from "./Duration"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import type { FiberId } from "./FiberId"
-import * as _RequestBlock from "./internal/blockedRequests"
-import * as cache from "./internal/cache"
-import * as core from "./internal/core"
-import * as fiberRuntime from "./internal/fiberRuntime"
-import * as internal from "./internal/request"
-import type * as Option from "./Option"
+import type * as _Cache from "./Cache.js"
+import type * as Data from "./Data.js"
+import type { Deferred } from "./Deferred.js"
+import type { DurationInput } from "./Duration.js"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import type { FiberId } from "./FiberId.js"
+import * as _RequestBlock from "./internal/blockedRequests.js"
+import * as cache from "./internal/cache.js"
+import * as core from "./internal/core.js"
+import * as fiberRuntime from "./internal/fiberRuntime.js"
+import * as internal from "./internal/request.js"
+import type * as Option from "./Option.js"
 
 /**
  * @since 2.0.0

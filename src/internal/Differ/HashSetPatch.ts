@@ -1,9 +1,9 @@
-import * as Chunk from "../../Chunk"
-import { Structural } from "../Data"
+import * as Chunk from "../../Chunk.js"
+import { Structural } from "../Data.js"
 
-import type { Differ } from "../../Differ"
-import * as Dual from "../../Function"
-import * as HashSet from "../../HashSet"
+import type { Differ } from "../../Differ.js"
+import * as Dual from "../../Function.js"
+import * as HashSet from "../../HashSet.js"
 
 /** @internal */
 export const HashSetPatchTypeId: Differ.HashSet.TypeId = Symbol.for(

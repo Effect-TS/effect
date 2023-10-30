@@ -4,13 +4,13 @@
  * @since 2.0.0
  */
 
-import type { Either } from "./Either"
-import * as E from "./Either"
-import * as Equal from "./Equal"
-import type { Equivalence } from "./Equivalence"
-import { dual, identity } from "./Function"
-import type { TypeLambda } from "./HKT"
-import * as Option from "./Option"
+import type { Either } from "./Either.js"
+import * as E from "./Either.js"
+import * as Equal from "./Equal.js"
+import type { Equivalence } from "./Equivalence.js"
+import { dual, identity } from "./Function.js"
+import type { TypeLambda } from "./HKT.js"
+import * as Option from "./Option.js"
 
 /**
  * @category models
@@ -911,4 +911,6 @@ export const getEquivalence = <A>(equivalence: Equivalence<A>): Equivalence<Read
  * @category constructors
  * @since 2.0.0
  */
-export const singleton = <K extends string, A>(key: K, value: A): Record<K, A> => ({ [key]: value }) as Record<K, A>
+export const singleton = <K extends string, A>(key: K, value: A): Record<K, A> => (({
+  [key]: value
+}) as Record<K, A>)

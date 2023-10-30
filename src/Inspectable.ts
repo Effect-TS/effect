@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 
-import { hasProperty, isFunction } from "./Predicate"
+import { hasProperty, isFunction } from "./Predicate.js"
 
 /**
  * @since 2.0.0

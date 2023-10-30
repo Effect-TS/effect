@@ -1,0 +1,18 @@
+{
+  "include": [
+    "build/esm"
+  ],
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "baseUrl": ".",
+    "paths": {
+      "effect": [
+        "./build/esm/index.js"
+      ],
+      "effect/*": [
+        "./build/esm/*"
+      ]
+    }
+  }
+}

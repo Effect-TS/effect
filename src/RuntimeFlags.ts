@@ -2,11 +2,11 @@
  * @since 2.0.0
  */
 
-import type * as Differ from "./Differ"
-import * as circular from "./internal/layer/circular"
-import * as internal from "./internal/runtimeFlags"
-import type * as Layer from "./Layer"
-import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch"
+import type * as Differ from "./Differ.js"
+import * as circular from "./internal/layer/circular.js"
+import * as internal from "./internal/runtimeFlags.js"
+import type * as Layer from "./Layer.js"
+import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch.js"
 
 /**
  * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of

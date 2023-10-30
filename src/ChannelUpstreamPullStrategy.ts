@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/channel/upstreamPullStrategy"
-import type * as Option from "./Option"
+import * as internal from "./internal/channel/upstreamPullStrategy.js"
+import type * as Option from "./Option.js"
 
 /**
  * @since 2.0.0

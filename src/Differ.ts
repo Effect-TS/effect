@@ -1,19 +1,19 @@
 /**
  * @since 2.0.0
  */
-import type { Chunk } from "./Chunk"
-import type { Context } from "./Context"
-import type { Either } from "./Either"
-import type { Equal } from "./Equal"
-import * as Dual from "./Function"
-import type { HashMap } from "./HashMap"
-import type { HashSet } from "./HashSet"
-import * as D from "./internal/Differ"
-import * as ChunkPatch from "./internal/Differ/ChunkPatch"
-import * as ContextPatch from "./internal/Differ/ContextPatch"
-import * as HashMapPatch from "./internal/Differ/HashMapPatch"
-import * as HashSetPatch from "./internal/Differ/HashSetPatch"
-import * as OrPatch from "./internal/Differ/OrPatch"
+import type { Chunk } from "./Chunk.js"
+import type { Context } from "./Context.js"
+import type { Either } from "./Either.js"
+import type { Equal } from "./Equal.js"
+import * as Dual from "./Function.js"
+import type { HashMap } from "./HashMap.js"
+import type { HashSet } from "./HashSet.js"
+import * as D from "./internal/Differ.js"
+import * as ChunkPatch from "./internal/Differ/ChunkPatch.js"
+import * as ContextPatch from "./internal/Differ/ContextPatch.js"
+import * as HashMapPatch from "./internal/Differ/HashMapPatch.js"
+import * as HashSetPatch from "./internal/Differ/HashSetPatch.js"
+import * as OrPatch from "./internal/Differ/OrPatch.js"
 
 /**
  * @since 2.0.0

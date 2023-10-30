@@ -1,35 +1,35 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as Channel from "./Channel"
-import type * as Chunk from "./Chunk"
-import type * as Context from "./Context"
-import type * as Deferred from "./Deferred"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as Exit from "./Exit"
-import type { LazyArg } from "./Function"
-import type * as GroupBy from "./GroupBy"
-import type { TypeLambda } from "./HKT"
-import * as _groupBy from "./internal/groupBy"
-import * as internal from "./internal/stream"
-import type * as Layer from "./Layer"
-import type * as Option from "./Option"
-import type * as Order from "./Order"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
-import type * as PubSub from "./PubSub"
-import type * as Queue from "./Queue"
-import type * as Schedule from "./Schedule"
-import type * as Scope from "./Scope"
-import type * as Sink from "./Sink"
-import type * as Emit from "./StreamEmit"
-import type * as HaltStrategy from "./StreamHaltStrategy"
-import type * as Take from "./Take"
-import type * as Tracer from "./Tracer"
-import type * as Unify from "./Unify"
+import type * as Cause from "./Cause.js"
+import type * as Channel from "./Channel.js"
+import type * as Chunk from "./Chunk.js"
+import type * as Context from "./Context.js"
+import type * as Deferred from "./Deferred.js"
+import type * as Duration from "./Duration.js"
+import type * as Effect from "./Effect.js"
+import type * as Either from "./Either.js"
+import type * as Exit from "./Exit.js"
+import type { LazyArg } from "./Function.js"
+import type * as GroupBy from "./GroupBy.js"
+import type { TypeLambda } from "./HKT.js"
+import * as _groupBy from "./internal/groupBy.js"
+import * as internal from "./internal/stream.js"
+import type * as Layer from "./Layer.js"
+import type * as Option from "./Option.js"
+import type * as Order from "./Order.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { Predicate, Refinement } from "./Predicate.js"
+import type * as PubSub from "./PubSub.js"
+import type * as Queue from "./Queue.js"
+import type * as Schedule from "./Schedule.js"
+import type * as Scope from "./Scope.js"
+import type * as Sink from "./Sink.js"
+import type * as Emit from "./StreamEmit.js"
+import type * as HaltStrategy from "./StreamHaltStrategy.js"
+import type * as Take from "./Take.js"
+import type * as Tracer from "./Tracer.js"
+import type * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -89,7 +89,7 @@ export interface StreamUnifyBlacklist extends Effect.EffectUnifyBlacklist {
  * @since 2.0.0
  * @category models
  */
-declare module "./Effect" {
+declare module "./Effect.js" {
   interface Effect<R, E, A> extends Stream<R, E, A> {}
   interface EffectUnifyBlacklist {
     Stream?: true

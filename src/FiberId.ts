@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Equal from "./Equal"
-import type * as HashSet from "./HashSet"
-import type { Inspectable } from "./Inspectable"
-import * as internal from "./internal/fiberId"
-import type * as Option from "./Option"
+import type * as Equal from "./Equal.js"
+import type * as HashSet from "./HashSet.js"
+import type { Inspectable } from "./Inspectable.js"
+import * as internal from "./internal/fiberId.js"
+import type * as Option from "./Option.js"
 
 /**
  * @since 2.0.0

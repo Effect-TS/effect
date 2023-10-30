@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/channel/upstreamPullRequest"
+import * as internal from "./internal/channel/upstreamPullRequest.js"
 
 /**
  * @since 2.0.0

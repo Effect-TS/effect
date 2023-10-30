@@ -1,9 +1,9 @@
-import * as FiberId from "../FiberId"
-import { globalValue } from "../GlobalValue"
-import * as FiberMessage from "../internal/fiberMessage"
-import type * as FiberRuntime from "../internal/fiberRuntime"
-import * as _runtimeFlags from "../internal/runtimeFlags"
-import type * as RuntimeFlags from "../RuntimeFlags"
+import * as FiberId from "../FiberId.js"
+import { globalValue } from "../GlobalValue.js"
+import type * as RuntimeFlags from "../RuntimeFlags.js"
+import * as FiberMessage from "./fiberMessage.js"
+import type * as FiberRuntime from "./fiberRuntime.js"
+import * as _runtimeFlags from "./runtimeFlags.js"
 
 /** @internal */
 const FiberScopeSymbolKey = "effect/FiberScope"

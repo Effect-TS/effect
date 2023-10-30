@@ -1,11 +1,11 @@
-import { equals } from "../../Equal"
-import type { HashMap } from "../../HashMap"
-import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../../internal/HashMap/array"
-import { fromBitmap, hashFragment, toBitmap } from "../../internal/HashMap/bitwise"
-import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "../../internal/HashMap/config"
-import { Stack } from "../../internal/Stack"
-import * as O from "../../Option"
-import { isTagged } from "../../Predicate"
+import { equals } from "../../Equal.js"
+import type { HashMap } from "../../HashMap.js"
+import * as O from "../../Option.js"
+import { isTagged } from "../../Predicate.js"
+import { Stack } from "../Stack.js"
+import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "./array.js"
+import { fromBitmap, hashFragment, toBitmap } from "./bitwise.js"
+import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "./config.js"
 
 /** @internal */
 export type Node<K, V> =

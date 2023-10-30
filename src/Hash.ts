@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import { pipe } from "./Function"
-import { globalValue } from "./GlobalValue"
-import { hasProperty } from "./Predicate"
-import { PCGRandom } from "./Utils"
+import { pipe } from "./Function.js"
+import { globalValue } from "./GlobalValue.js"
+import { hasProperty } from "./Predicate.js"
+import { PCGRandom } from "./Utils.js"
 
 /** @internal */
 const randomHashCache = globalValue(

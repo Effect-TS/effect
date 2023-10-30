@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/channel/childExecutorDecision"
+import * as internal from "./internal/channel/childExecutorDecision.js"
 
 /**
  * @since 2.0.0

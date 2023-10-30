@@ -1,15 +1,15 @@
 /**
  * @since 2.0.0
  */
-import type * as Config from "./Config"
-import type * as ConfigError from "./ConfigError"
-import type * as PathPatch from "./ConfigProviderPathPatch"
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type { LazyArg } from "./Function"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/configProvider"
-import type { Pipeable } from "./Pipeable"
+import type * as Config from "./Config.js"
+import type * as ConfigError from "./ConfigError.js"
+import type * as PathPatch from "./ConfigProviderPathPatch.js"
+import type * as Context from "./Context.js"
+import type * as Effect from "./Effect.js"
+import type { LazyArg } from "./Function.js"
+import type * as HashSet from "./HashSet.js"
+import * as internal from "./internal/configProvider.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

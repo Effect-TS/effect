@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Either from "./Either"
-import * as internal from "./internal/stm/tDeferred"
-import type * as Option from "./Option"
-import type * as STM from "./STM"
-import type * as TRef from "./TRef"
+import type * as Either from "./Either.js"
+import * as internal from "./internal/stm/tDeferred.js"
+import type * as Option from "./Option.js"
+import type * as STM from "./STM.js"
+import type * as TRef from "./TRef.js"
 
 /**
  * @since 2.0.0

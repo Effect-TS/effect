@@ -6,16 +6,16 @@
  * @since 2.0.0
  */
 
-import * as equivalence from "./Equivalence"
-import { dual } from "./Function"
-import * as readonlyArray from "./internal/ReadonlyArray"
-import * as number from "./Number"
-import * as Option from "./Option"
-import * as order from "./Order"
-import type * as Ordering from "./Ordering"
-import type { Refinement } from "./Predicate"
-import * as predicate from "./Predicate"
-import type { NonEmptyArray } from "./ReadonlyArray"
+import * as equivalence from "./Equivalence.js"
+import { dual } from "./Function.js"
+import * as readonlyArray from "./internal/ReadonlyArray.js"
+import * as number from "./Number.js"
+import * as Option from "./Option.js"
+import * as order from "./Order.js"
+import type * as Ordering from "./Ordering.js"
+import type { Refinement } from "./Predicate.js"
+import * as predicate from "./Predicate.js"
+import type { NonEmptyArray } from "./ReadonlyArray.js"
 
 /**
  * Tests if a value is a `string`.

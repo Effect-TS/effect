@@ -14,16 +14,16 @@
  * @since 2.0.0
  */
 
-import * as Equal from "./Equal"
-import * as equivalence from "./Equivalence"
-import { dual, pipe } from "./Function"
-import * as Hash from "./Hash"
-import { type Inspectable, NodeInspectSymbol } from "./Inspectable"
-import * as Option from "./Option"
-import * as order from "./Order"
-import type { Ordering } from "./Ordering"
-import { type Pipeable, pipeArguments } from "./Pipeable"
-import { hasProperty } from "./Predicate"
+import * as Equal from "./Equal.js"
+import * as equivalence from "./Equivalence.js"
+import { dual, pipe } from "./Function.js"
+import * as Hash from "./Hash.js"
+import { type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
+import * as Option from "./Option.js"
+import * as order from "./Order.js"
+import type { Ordering } from "./Ordering.js"
+import { type Pipeable, pipeArguments } from "./Pipeable.js"
+import { hasProperty } from "./Predicate.js"
 
 const DEFAULT_PRECISION = 100
 

@@ -1,18 +1,18 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as ConfigError from "./ConfigError"
-import type * as ConfigSecret from "./ConfigSecret"
-import type * as Either from "./Either"
-import type { LazyArg } from "./Function"
-import type * as HashMap from "./HashMap"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/config"
-import type * as LogLevel from "./LogLevel"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
+import type * as Chunk from "./Chunk.js"
+import type * as ConfigError from "./ConfigError.js"
+import type * as ConfigSecret from "./ConfigSecret.js"
+import type * as Either from "./Either.js"
+import type { LazyArg } from "./Function.js"
+import type * as HashMap from "./HashMap.js"
+import type * as HashSet from "./HashSet.js"
+import * as internal from "./internal/config.js"
+import type * as LogLevel from "./LogLevel.js"
+import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { Predicate, Refinement } from "./Predicate.js"
 
 /**
  * @since 2.0.0

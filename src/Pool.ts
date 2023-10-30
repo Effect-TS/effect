@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Data from "./Data"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import * as internal from "./internal/pool"
-import type { Pipeable } from "./Pipeable"
-import type * as Scope from "./Scope"
+import type * as Data from "./Data.js"
+import type * as Duration from "./Duration.js"
+import type * as Effect from "./Effect.js"
+import * as internal from "./internal/pool.js"
+import type { Pipeable } from "./Pipeable.js"
+import type * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0

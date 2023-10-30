@@ -1,18 +1,18 @@
 /**
  * @since 2.0.0
  */
-import type { Cause } from "./Cause"
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import type * as Fiber from "./Fiber"
-import type * as FiberId from "./FiberId"
-import type * as FiberRefs from "./FiberRefs"
-import type { Inspectable } from "./Inspectable"
-import * as internal from "./internal/runtime"
-import type { Pipeable } from "./Pipeable"
-import type * as RuntimeFlags from "./RuntimeFlags"
-import type { Scheduler } from "./Scheduler"
+import type { Cause } from "./Cause.js"
+import type * as Context from "./Context.js"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import type * as Fiber from "./Fiber.js"
+import type * as FiberId from "./FiberId.js"
+import type * as FiberRefs from "./FiberRefs.js"
+import type { Inspectable } from "./Inspectable.js"
+import * as internal from "./internal/runtime.js"
+import type { Pipeable } from "./Pipeable.js"
+import type * as RuntimeFlags from "./RuntimeFlags.js"
+import type { Scheduler } from "./Scheduler.js"
 
 /**
  * @since 2.0.0

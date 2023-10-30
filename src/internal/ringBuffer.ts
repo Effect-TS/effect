@@ -1,6 +1,6 @@
-import * as Chunk from "../Chunk"
-import { constUndefined } from "../Function"
-import * as Option from "../Option"
+import * as Chunk from "../Chunk.js"
+import { constUndefined } from "../Function.js"
+import * as Option from "../Option.js"
 
 /** @internal */
 export class RingBuffer<A> {

@@ -2,11 +2,11 @@
  * @since 2.0.0
  */
 
-import type { Equal } from "./Equal"
-import type { Inspectable } from "./Inspectable"
-import * as HS from "./internal/HashSet"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
+import type { Equal } from "./Equal.js"
+import type { Inspectable } from "./Inspectable.js"
+import * as HS from "./internal/HashSet.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { Predicate, Refinement } from "./Predicate.js"
 
 const TypeId: unique symbol = HS.HashSetTypeId as TypeId
 

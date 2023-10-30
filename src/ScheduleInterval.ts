@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration"
-import * as internal from "./internal/schedule/interval"
-import type * as Option from "./Option"
+import type * as Duration from "./Duration.js"
+import * as internal from "./internal/schedule/interval.js"
+import type * as Option from "./Option.js"
 
 /**
  * @since 2.0.0

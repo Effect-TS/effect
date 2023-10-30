@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import type * as Fiber from "./Fiber"
-import * as defaultServices from "./internal/defaultServices"
-import * as internal from "./internal/tracer"
-import type * as Option from "./Option"
+import type * as Context from "./Context.js"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import type * as Fiber from "./Fiber.js"
+import * as defaultServices from "./internal/defaultServices.js"
+import * as internal from "./internal/tracer.js"
+import type * as Option from "./Option.js"
 
 /**
  * @since 2.0.0

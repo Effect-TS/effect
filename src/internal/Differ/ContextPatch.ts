@@ -1,10 +1,10 @@
-import * as Chunk from "../../Chunk"
-import type { Context, Tag } from "../../Context"
-import type { Differ } from "../../Differ"
-import * as Equal from "../../Equal"
-import * as Dual from "../../Function"
-import { makeContext } from "../../internal/Context"
-import { Structural } from "../Data"
+import * as Chunk from "../../Chunk.js"
+import type { Context, Tag } from "../../Context.js"
+import type { Differ } from "../../Differ.js"
+import * as Equal from "../../Equal.js"
+import * as Dual from "../../Function.js"
+import { makeContext } from "../Context.js"
+import { Structural } from "../Data.js"
 
 /** @internal */
 export const ContextPatchTypeId: Differ.Context.TypeId = Symbol.for(

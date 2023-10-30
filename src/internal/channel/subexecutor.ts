@@ -1,10 +1,10 @@
-import type * as ChildExecutorDecision from "../../ChannelChildExecutorDecision"
-import type * as UpstreamPullRequest from "../../ChannelUpstreamPullRequest"
-import type * as UpstreamPullStrategy from "../../ChannelUpstreamPullStrategy"
-import * as Effect from "../../Effect"
-import * as Exit from "../../Exit"
-import { pipe } from "../../Function"
-import type { ErasedChannel, ErasedExecutor } from "./channelExecutor"
+import type * as ChildExecutorDecision from "../../ChannelChildExecutorDecision.js"
+import type * as UpstreamPullRequest from "../../ChannelUpstreamPullRequest.js"
+import type * as UpstreamPullStrategy from "../../ChannelUpstreamPullStrategy.js"
+import * as Effect from "../../Effect.js"
+import * as Exit from "../../Exit.js"
+import { pipe } from "../../Function.js"
+import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */
 export interface Subexecutor<R> {

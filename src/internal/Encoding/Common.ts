@@ -1,5 +1,5 @@
-import type * as Encoding from "../../Encoding"
-import { hasProperty } from "../../Predicate"
+import type * as Encoding from "../../Encoding.js"
+import { hasProperty } from "../../Predicate.js"
 
 /** @internal */
 export const DecodeExceptionTypeId: Encoding.DecodeExceptionTypeId = Symbol.for(

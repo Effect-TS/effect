@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Equal from "./Equal"
-import * as internal from "./internal/metric/label"
-import type { Pipeable } from "./Pipeable"
+import type * as Equal from "./Equal.js"
+import * as internal from "./internal/metric/label.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

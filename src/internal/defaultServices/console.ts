@@ -1,6 +1,6 @@
-import type * as Console from "../../Console"
-import * as Context from "../../Context"
-import * as core from "../../internal/core"
+import type * as Console from "../../Console.js"
+import * as Context from "../../Context.js"
+import * as core from "../core.js"
 
 /** @internal */
 export const TypeId: Console.TypeId = Symbol.for("effect/Console") as Console.TypeId

@@ -1,6 +1,6 @@
-import { globalValue } from "../GlobalValue"
-import type * as Request from "../Request"
-import { fiberRefUnsafeMake } from "./core"
+import { globalValue } from "../GlobalValue.js"
+import type * as Request from "../Request.js"
+import { fiberRefUnsafeMake } from "./core.js"
 
 /** @internal */
 export const currentRequestMap = globalValue(

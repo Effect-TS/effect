@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/channel/mergeStrategy"
+import * as internal from "./internal/channel/mergeStrategy.js"
 
 /**
  * @since 2.0.0

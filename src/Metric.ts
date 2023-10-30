@@ -1,21 +1,21 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import type { LazyArg } from "./Function"
-import type * as HashSet from "./HashSet"
-import * as fiberRuntime from "./internal/fiberRuntime"
-import * as internal from "./internal/metric"
-import type * as MetricBoundaries from "./MetricBoundaries"
-import type * as MetricKey from "./MetricKey"
-import type * as MetricKeyType from "./MetricKeyType"
-import type * as MetricLabel from "./MetricLabel"
-import type * as MetricPair from "./MetricPair"
-import type * as MetricRegistry from "./MetricRegistry"
-import type * as MetricState from "./MetricState"
-import type { Pipeable } from "./Pipeable"
+import type * as Chunk from "./Chunk.js"
+import type * as Duration from "./Duration.js"
+import type * as Effect from "./Effect.js"
+import type { LazyArg } from "./Function.js"
+import type * as HashSet from "./HashSet.js"
+import * as fiberRuntime from "./internal/fiberRuntime.js"
+import * as internal from "./internal/metric.js"
+import type * as MetricBoundaries from "./MetricBoundaries.js"
+import type * as MetricKey from "./MetricKey.js"
+import type * as MetricKeyType from "./MetricKeyType.js"
+import type * as MetricLabel from "./MetricLabel.js"
+import type * as MetricPair from "./MetricPair.js"
+import type * as MetricRegistry from "./MetricRegistry.js"
+import type * as MetricState from "./MetricState.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

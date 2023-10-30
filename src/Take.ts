@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as Chunk from "./Chunk"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import * as internal from "./internal/take"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
+import type * as Cause from "./Cause.js"
+import type * as Chunk from "./Chunk.js"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import * as internal from "./internal/take.js"
+import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

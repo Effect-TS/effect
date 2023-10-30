@@ -1,7 +1,7 @@
-import type * as Cause from "../Cause"
-import type * as Effect from "../Effect"
-import type * as FiberStatus from "../FiberStatus"
-import type * as FiberRuntime from "../internal/fiberRuntime"
+import type * as Cause from "../Cause.js"
+import type * as Effect from "../Effect.js"
+import type * as FiberStatus from "../FiberStatus.js"
+import type * as FiberRuntime from "./fiberRuntime.js"
 
 /** @internal */
 export type FiberMessage = InterruptSignal | Stateful | Resume | YieldNow

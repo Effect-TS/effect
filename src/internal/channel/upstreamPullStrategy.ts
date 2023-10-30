@@ -1,8 +1,8 @@
-import type * as UpstreamPullStrategy from "../../ChannelUpstreamPullStrategy"
-import { dual } from "../../Function"
-import type * as Option from "../../Option"
-import { hasProperty } from "../../Predicate"
-import * as OpCodes from "../opCodes/channelUpstreamPullStrategy"
+import type * as UpstreamPullStrategy from "../../ChannelUpstreamPullStrategy.js"
+import { dual } from "../../Function.js"
+import type * as Option from "../../Option.js"
+import { hasProperty } from "../../Predicate.js"
+import * as OpCodes from "../opCodes/channelUpstreamPullStrategy.js"
 
 /** @internal */
 const UpstreamPullStrategySymbolKey = "effect/ChannelUpstreamPullStrategy"
