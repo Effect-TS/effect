@@ -1,8 +1,8 @@
 {
+    "$schema": "node_modules/@effect/docgen/schema.json",
     "exclude": [
         "src/internal/**/*.ts"
     ],
-    "theme": "mikearnaldi/just-the-docs",
     "parseCompilerOptions": {
         "strict": true,
         "noEmit": true,
