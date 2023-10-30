@@ -20,7 +20,7 @@ export const effect = (() => {
   const f = <E, A>(
     name: string,
     self: () => Effect.Effect<TestServices.TestServices, E, A>,
-    timeout = 5_000
+    timeout: number | V.TestOptions = 5_000
   ) => {
     return it(
       name,
