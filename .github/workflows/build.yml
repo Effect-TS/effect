@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - run: pnpm build
+      - run: pnpm circular
+      - run: pnpm docgen
+      - name: Create Release Pull Request or Publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm update-version
+          publish: pnpm changeset publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
