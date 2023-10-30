@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.46.3
+
+### Patch Changes
+
+- [#527](https://github.com/Effect-TS/schema/pull/527) [`02cb140`](https://github.com/Effect-TS/schema/commit/02cb1406d258b679a3e99cb9c977237431dbdf22) Thanks [@gcanti](https://github.com/gcanti)! - add default annotation
+
 ## 0.46.2
 
 ### Patch Changes
