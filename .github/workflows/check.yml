@@ -15,4 +15,5 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm check
+      - run: pnpm lint
       - run: pnpm dtslint
