@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.26.3
+
+### Patch Changes
+
+- [#227](https://github.com/Effect-TS/platform/pull/227) [`abb6baa`](https://github.com/Effect-TS/platform/commit/abb6baa61346580f97d2ab91b84a7342b5becc60) Thanks [@patroza](https://github.com/patroza)! - feat: cache the reading of text/urlParamsBody/formData bodies so they can be reused
+
 ## 0.26.2
 
 ### Patch Changes
