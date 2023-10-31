@@ -8,7 +8,7 @@
 
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
-import * as readonlyArray from "./internal/ReadonlyArray.js"
+import * as readonlyArray from "./internal/readonlyArray.js"
 import * as number from "./Number.js"
 import * as Option from "./Option.js"
 import * as order from "./Order.js"

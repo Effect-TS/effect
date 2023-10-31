@@ -122,37 +122,37 @@ export * as Channel from "effect/Channel"
 /**
  * @since 2.0.0
  */
-export * as ChannelChildExecutorDecision from "effect/ChannelChildExecutorDecision"
+export * as ChannelChildExecutorDecision from "effect/ChildExecutorDecision"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeDecision from "effect/ChannelMergeDecision"
+export * as ChannelMergeDecision from "effect/MergeDecision"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeState from "effect/ChannelMergeState"
+export * as ChannelMergeState from "effect/MergeState"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeStrategy from "effect/ChannelMergeStrategy"
+export * as ChannelMergeStrategy from "effect/MergeStrategy"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelSingleProducerAsyncInput from "effect/ChannelSingleProducerAsyncInput"
+export * as ChannelSingleProducerAsyncInput from "effect/SingleProducerAsyncInput"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelUpstreamPullRequest from "effect/ChannelUpstreamPullRequest"
+export * as ChannelUpstreamPullRequest from "effect/UpstreamPullRequest"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelUpstreamPullStrategy from "effect/ChannelUpstreamPullStrategy"
+export * as ChannelUpstreamPullStrategy from "effect/UpstreamPullStrategy"
 
 /**
  * @since 2.0.0

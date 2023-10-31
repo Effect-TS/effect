@@ -7,7 +7,7 @@
  */
 import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
-import * as option from "./internal/Option.js"
+import * as option from "./internal/option.js"
 import type { Option } from "./Option.js"
 import * as order from "./Order.js"
 import type { Ordering } from "./Ordering.js"

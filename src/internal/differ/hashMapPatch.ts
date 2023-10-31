@@ -3,7 +3,7 @@ import type * as Differ from "../../Differ.js"
 import * as Equal from "../../Equal.js"
 import * as Dual from "../../Function.js"
 import * as HashMap from "../../HashMap.js"
-import { Structural } from "../Data.js"
+import { Structural } from "../data.js"
 
 /** @internal */
 export const HashMapPatchTypeId: Differ.Differ.HashMap.TypeId = Symbol.for(

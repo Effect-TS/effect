@@ -1,9 +1,9 @@
-import type * as MergeState from "../../ChannelMergeState.js"
 import type * as Effect from "../../Effect.js"
 import type * as Either from "../../Either.js"
 import type * as Exit from "../../Exit.js"
 import type * as Fiber from "../../Fiber.js"
 import { dual } from "../../Function.js"
+import type * as MergeState from "../../MergeState.js"
 import { hasProperty } from "../../Predicate.js"
 import * as OpCodes from "../opCodes/channelMergeState.js"
 

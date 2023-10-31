@@ -1,7 +1,8 @@
-import * as Differ from "../Differ.js"
+import type * as Differ from "../Differ.js"
 import { dual } from "../Function.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import type * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
+import * as internalDiffer from "./differ.js"
 import * as runtimeFlagsPatch from "./runtimeFlagsPatch.js"
 
 /** @internal */
@@ -168,9 +169,10 @@ export const renderPatch = (self: RuntimeFlagsPatch.RuntimeFlagsPatch): string =
 }
 
 /** @internal */
-export const differ: Differ.Differ<RuntimeFlags.RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsPatch> = Differ.make({
-  empty: runtimeFlagsPatch.empty,
-  diff: (oldValue, newValue) => diff(oldValue, newValue),
-  combine: (first, second) => runtimeFlagsPatch.andThen(second)(first),
-  patch: (_patch, oldValue) => patch(oldValue, _patch)
-})
+export const differ: Differ.Differ<RuntimeFlags.RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsPatch> = internalDiffer
+  .make({
+    empty: runtimeFlagsPatch.empty,
+    diff: (oldValue, newValue) => diff(oldValue, newValue),
+    combine: (first, second) => runtimeFlagsPatch.andThen(second)(first),
+    patch: (_patch, oldValue) => patch(oldValue, _patch)
+  })

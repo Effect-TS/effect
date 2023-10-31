@@ -2,7 +2,7 @@ import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import type * as Deferred from "../Deferred.js"
-import * as Differ from "../Differ.js"
+import type * as Differ from "../Differ.js"
 import type * as Effect from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
@@ -38,7 +38,8 @@ import type * as Tracer from "../Tracer.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
-import { effectVariance } from "./Effectable.js"
+import * as internalDiffer from "./differ.js"
+import { effectVariance } from "./effectable.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
@@ -1716,7 +1717,7 @@ export const fiberRefUnsafeMake = <Value>(
   }
 ): FiberRef.FiberRef<Value> =>
   fiberRefUnsafeMakePatch(initial, {
-    differ: Differ.update(),
+    differ: internalDiffer.update(),
     fork: options?.fork ?? identity,
     join: options?.join
   })
@@ -1725,7 +1726,7 @@ export const fiberRefUnsafeMake = <Value>(
 export const fiberRefUnsafeMakeHashSet = <A>(
   initial: HashSet.HashSet<A>
 ): FiberRef.FiberRef<HashSet.HashSet<A>> => {
-  const differ = Differ.hashSet<A>()
+  const differ = internalDiffer.hashSet<A>()
   return fiberRefUnsafeMakePatch(initial, {
     differ,
     fork: differ.empty
@@ -1736,7 +1737,7 @@ export const fiberRefUnsafeMakeHashSet = <A>(
 export const fiberRefUnsafeMakeContext = <A>(
   initial: Context.Context<A>
 ): FiberRef.FiberRef<Context.Context<A>> => {
-  const differ = Differ.environment<A>()
+  const differ = internalDiffer.environment<A>()
   return fiberRefUnsafeMakePatch(initial, {
     differ,
     fork: differ.empty

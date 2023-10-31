@@ -1,7 +1,7 @@
-import type * as MergeDecision from "../../ChannelMergeDecision.js"
 import type * as Effect from "../../Effect.js"
 import type * as Exit from "../../Exit.js"
 import { dual } from "../../Function.js"
+import type * as MergeDecision from "../../MergeDecision.js"
 import { hasProperty } from "../../Predicate.js"
 import * as OpCodes from "../opCodes/channelMergeDecision.js"
 

@@ -1,11 +1,11 @@
 import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
-import * as MergeDecision from "effect/ChannelMergeDecision"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
+import * as MergeDecision from "effect/MergeDecision"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 

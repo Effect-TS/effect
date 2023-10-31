@@ -7,7 +7,7 @@ import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import { hasProperty } from "../Predicate.js"
-import * as HM from "./HashMap.js"
+import * as HM from "./hashMap.js"
 
 /** @internal */
 export const HashSetTypeId: HS.TypeId = Symbol.for("effect/HashSet") as HS.TypeId

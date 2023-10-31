@@ -7,9 +7,9 @@ import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
-import { fromBitmap, hashFragment, toBitmap } from "./HashMap/bitwise.js"
-import { SIZE } from "./HashMap/config.js"
-import * as Node from "./HashMap/node.js"
+import { fromBitmap, hashFragment, toBitmap } from "./hashMap/bitwise.js"
+import { SIZE } from "./hashMap/config.js"
+import * as Node from "./hashMap/node.js"
 
 /** @internal */
 export const HashMapTypeId: HM.TypeId = Symbol.for("effect/HashMap") as HM.TypeId

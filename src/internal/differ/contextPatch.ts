@@ -3,8 +3,8 @@ import type { Context, Tag } from "../../Context.js"
 import type { Differ } from "../../Differ.js"
 import * as Equal from "../../Equal.js"
 import * as Dual from "../../Function.js"
-import { makeContext } from "../Context.js"
-import { Structural } from "../Data.js"
+import { makeContext } from "../context.js"
+import { Structural } from "../data.js"
 
 /** @internal */
 export const ContextPatchTypeId: Differ.Context.TypeId = Symbol.for(

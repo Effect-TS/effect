@@ -9,9 +9,9 @@ import type * as Ordering from "../Ordering.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as RBT from "../RedBlackTree.js"
-import { Direction, RedBlackTreeIterator } from "./RedBlackTree/iterator.js"
-import * as Node from "./RedBlackTree/node.js"
-import { Stack } from "./Stack.js"
+import { Direction, RedBlackTreeIterator } from "./redBlackTree/iterator.js"
+import * as Node from "./redBlackTree/node.js"
+import { Stack } from "./stack.js"
 
 const RedBlackTreeSymbolKey = "effect/RedBlackTree"
 

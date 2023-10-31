@@ -1,9 +1,9 @@
-import type * as ChildExecutorDecision from "../../ChannelChildExecutorDecision.js"
-import type * as UpstreamPullRequest from "../../ChannelUpstreamPullRequest.js"
-import type * as UpstreamPullStrategy from "../../ChannelUpstreamPullStrategy.js"
+import type * as ChildExecutorDecision from "../../ChildExecutorDecision.js"
 import * as Effect from "../../Effect.js"
 import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
+import type * as UpstreamPullRequest from "../../UpstreamPullRequest.js"
+import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
 import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */

@@ -1,8 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
-import * as ChildExecutorDecision from "effect/ChannelChildExecutorDecision"
-import * as UpstreamPullRequest from "effect/ChannelUpstreamPullRequest"
-import * as UpstreamPullStrategy from "effect/ChannelUpstreamPullStrategy"
+import * as ChildExecutorDecision from "effect/ChildExecutorDecision"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -10,6 +8,8 @@ import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
+import * as UpstreamPullRequest from "effect/UpstreamPullRequest"
+import * as UpstreamPullStrategy from "effect/UpstreamPullStrategy"
 import { assert, describe } from "vitest"
 
 interface First {

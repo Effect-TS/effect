@@ -9,12 +9,12 @@
  */
 import type { Equal } from "./Equal.js"
 import type { Inspectable } from "./Inspectable.js"
-import * as C from "./internal/Context.js"
+import * as internal from "./internal/context.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Unify from "./Unify.js"
 
-const TagTypeId: unique symbol = C.TagTypeId
+const TagTypeId: unique symbol = internal.TagTypeId
 
 /**
  * @since 2.0.0
@@ -90,9 +90,10 @@ export declare namespace Tag {
  * @since 2.0.0
  * @category constructors
  */
-export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Tag<Identifier, Service> = C.makeTag
+export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Tag<Identifier, Service> =
+  internal.makeTag
 
-const TypeId: unique symbol = C.TypeId as TypeId
+const TypeId: unique symbol = internal.TypeId as TypeId
 
 /**
  * @since 2.0.0
@@ -121,7 +122,7 @@ export interface Context<Services> extends Equal, Pipeable, Inspectable {
  * @since 2.0.0
  * @category constructors
  */
-export const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Context<Services> = C.makeContext
+export const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Context<Services> = internal.makeContext
 
 /**
  * Checks if the provided argument is a `Context`.
@@ -136,7 +137,7 @@ export const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Conte
  * @since 2.0.0
  * @category guards
  */
-export const isContext: (input: unknown) => input is Context<never> = C.isContext
+export const isContext: (input: unknown) => input is Context<never> = internal.isContext
 
 /**
  * Checks if the provided argument is a `Tag`.
@@ -151,7 +152,7 @@ export const isContext: (input: unknown) => input is Context<never> = C.isContex
  * @since 2.0.0
  * @category guards
  */
-export const isTag: (input: unknown) => input is Tag<any, any> = C.isTag
+export const isTag: (input: unknown) => input is Tag<any, any> = internal.isTag
 
 /**
  * Returns an empty `Context`.
@@ -164,7 +165,7 @@ export const isTag: (input: unknown) => input is Tag<any, any> = C.isTag
  * @since 2.0.0
  * @category constructors
  */
-export const empty: () => Context<never> = C.empty
+export const empty: () => Context<never> = internal.empty
 
 /**
  * Creates a new `Context` with a single service associated to the tag.
@@ -181,7 +182,8 @@ export const empty: () => Context<never> = C.empty
  * @since 2.0.0
  * @category constructors
  */
-export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) => Context<Tag.Identifier<T>> = C.make
+export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) => Context<Tag.Identifier<T>> =
+  internal.make
 
 /**
  * Adds a service to a given `Context`.
@@ -215,7 +217,7 @@ export const add: {
     tag: T,
     service: Tag.Service<T>
   ): Context<Services | Tag.Identifier<T>>
-} = C.add
+} = internal.add
 
 /**
  * Get a service from the context that corresponds to the given tag.
@@ -243,7 +245,7 @@ export const add: {
 export const get: {
   <Services, T extends ValidTagsById<Services>>(tag: T): (self: Context<Services>) => Tag.Service<T>
   <Services, T extends ValidTagsById<Services>>(self: Context<Services>, tag: T): Tag.Service<T>
-} = C.get
+} = internal.get
 
 /**
  * Get a service from the context that corresponds to the given tag.
@@ -271,7 +273,7 @@ export const get: {
 export const unsafeGet: {
   <S, I>(tag: Tag<I, S>): <Services>(self: Context<Services>) => S
   <Services, S, I>(self: Context<Services>, tag: Tag<I, S>): S
-} = C.unsafeGet
+} = internal.unsafeGet
 
 /**
  * Get the value associated with the specified tag from the context wrapped in an `Option` object. If the tag is not
@@ -298,7 +300,7 @@ export const unsafeGet: {
 export const getOption: {
   <S, I>(tag: Tag<I, S>): <Services>(self: Context<Services>) => Option<S>
   <Services, S, I>(self: Context<Services>, tag: Tag<I, S>): Option<S>
-} = C.getOption
+} = internal.getOption
 
 /**
  * Merges two `Context`s, returning a new `Context` containing the services of both.
@@ -325,7 +327,7 @@ export const getOption: {
 export const merge: {
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
-} = C.merge
+} = internal.merge
 
 /**
  * Returns a new `Context` that contains only the specified services.
@@ -355,11 +357,12 @@ export const merge: {
  */
 export const pick: <Services, S extends Array<ValidTagsById<Services>>>(
   ...tags: S
-) => (self: Context<Services>) => Context<{ [k in keyof S]: Tag.Identifier<S[k]> }[number]> = C.pick
+) => (self: Context<Services>) => Context<{ [k in keyof S]: Tag.Identifier<S[k]> }[number]> = internal.pick
 
 /**
  * @since 2.0.0
  */
 export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
   ...tags: S
-) => (self: Context<Services>) => Context<Exclude<Services, { [k in keyof S]: Tag.Identifier<S[k]> }[keyof S]>> = C.omit
+) => (self: Context<Services>) => Context<Exclude<Services, { [k in keyof S]: Tag.Identifier<S[k]> }[keyof S]>> =
+  internal.omit

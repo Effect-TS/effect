@@ -8,8 +8,8 @@ import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as STM from "../STM.js"
-import { EffectPrototype, effectVariance } from "./Effectable.js"
-import * as option from "./Option.js"
+import { EffectPrototype, effectVariance } from "./effectable.js"
+import * as option from "./option.js"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId

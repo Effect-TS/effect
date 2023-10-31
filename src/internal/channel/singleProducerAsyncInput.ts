@@ -1,11 +1,11 @@
 import * as Cause from "../../Cause.js"
-import type * as SingleProducerAsyncInput from "../../ChannelSingleProducerAsyncInput.js"
 import * as Deferred from "../../Deferred.js"
 import * as Effect from "../../Effect.js"
 import * as Either from "../../Either.js"
 import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
 import * as Ref from "../../Ref.js"
+import type * as SingleProducerAsyncInput from "../../SingleProducerAsyncInput.js"
 
 /** @internal */
 type State<Err, Elem, _Done> =

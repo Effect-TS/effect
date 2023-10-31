@@ -1,5 +1,5 @@
-import type * as MergeStrategy from "../../ChannelMergeStrategy.js"
 import { dual } from "../../Function.js"
+import type * as MergeStrategy from "../../MergeStrategy.js"
 import { hasProperty } from "../../Predicate.js"
 import * as OpCodes from "../opCodes/channelMergeStrategy.js"
 

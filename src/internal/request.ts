@@ -4,7 +4,7 @@ import { hasProperty } from "../Predicate.js"
 import type * as Request from "../Request.js"
 import * as completedRequestMap from "./completedRequestMap.js"
 import * as core from "./core.js"
-import * as Data from "./Data.js"
+import * as Data from "./data.js"
 
 /** @internal */
 const RequestSymbolKey = "effect/Request"

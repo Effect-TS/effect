@@ -9,8 +9,8 @@ import * as Hash from "../Hash.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import type { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
-import { EffectPrototype } from "./Effectable.js"
-import * as option from "./Option.js"
+import { EffectPrototype } from "./effectable.js"
+import * as option from "./option.js"
 
 /**
  * @internal

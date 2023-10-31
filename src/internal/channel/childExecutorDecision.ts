@@ -1,4 +1,4 @@
-import type * as ChildExecutorDecision from "../../ChannelChildExecutorDecision.js"
+import type * as ChildExecutorDecision from "../../ChildExecutorDecision.js"
 import { dual } from "../../Function.js"
 import { hasProperty } from "../../Predicate.js"
 import * as OpCodes from "../opCodes/channelChildExecutorDecision.js"

@@ -4,7 +4,7 @@ import type { Either } from "../../Either.js"
 import * as E from "../../Either.js"
 import * as Equal from "../../Equal.js"
 import * as Dual from "../../Function.js"
-import { Structural } from "../Data.js"
+import { Structural } from "../data.js"
 
 /** @internal */
 export const OrPatchTypeId: Differ.Or.TypeId = Symbol.for("effect/DifferOrPatch") as Differ.Or.TypeId
