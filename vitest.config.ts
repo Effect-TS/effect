@@ -4,7 +4,7 @@ import path from "path"
 import { defineConfig } from "vite"
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const babelConfig = require("./.babel.mjs.json")
+const babelConfig = require("./babel.config.json")
 
 export default defineConfig({
   plugins: [babel({ babel: babelConfig })],

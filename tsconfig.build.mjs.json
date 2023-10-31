@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "src"
+  ],
+  "compilerOptions": {
+    "outDir": "build/mjs",
+    "declarationDir": "build/mjs",
+    "tsBuildInfoFile": "build/tsbuildinfo/mjs.tsbuildinfo",
+    "rootDir": "src"
+  }
+}

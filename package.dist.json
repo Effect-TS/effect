@@ -1,0 +1,1472 @@
+{
+  "name": "effect",
+  "version": "2.0.0-next.52",
+  "type": "module",
+  "author": "Michael Arnaldi <michael.arnaldi@effectful.co>",
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/mjs/index.js",
+  "types": "./dist/mjs/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "homepage": "https://github.com/Effect-TS/effect",
+  "description": "Functional programming in TypeScript",
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/mjs/index.d.ts",
+        "default": "./dist/mjs/index.js"
+      },
+      "default": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./BigDecimal": {
+      "import": {
+        "types": "./dist/mjs/BigDecimal.d.ts",
+        "default": "./dist/mjs/BigDecimal.js"
+      },
+      "default": {
+        "types": "./dist/cjs/BigDecimal.d.ts",
+        "default": "./dist/cjs/BigDecimal.js"
+      }
+    },
+    "./BigInt": {
+      "import": {
+        "types": "./dist/mjs/BigInt.d.ts",
+        "default": "./dist/mjs/BigInt.js"
+      },
+      "default": {
+        "types": "./dist/cjs/BigInt.d.ts",
+        "default": "./dist/cjs/BigInt.js"
+      }
+    },
+    "./Boolean": {
+      "import": {
+        "types": "./dist/mjs/Boolean.d.ts",
+        "default": "./dist/mjs/Boolean.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Boolean.d.ts",
+        "default": "./dist/cjs/Boolean.js"
+      }
+    },
+    "./Brand": {
+      "import": {
+        "types": "./dist/mjs/Brand.d.ts",
+        "default": "./dist/mjs/Brand.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Brand.d.ts",
+        "default": "./dist/cjs/Brand.js"
+      }
+    },
+    "./Cache": {
+      "import": {
+        "types": "./dist/mjs/Cache.d.ts",
+        "default": "./dist/mjs/Cache.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Cache.d.ts",
+        "default": "./dist/cjs/Cache.js"
+      }
+    },
+    "./Cause": {
+      "import": {
+        "types": "./dist/mjs/Cause.d.ts",
+        "default": "./dist/mjs/Cause.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Cause.d.ts",
+        "default": "./dist/cjs/Cause.js"
+      }
+    },
+    "./Channel": {
+      "import": {
+        "types": "./dist/mjs/Channel.d.ts",
+        "default": "./dist/mjs/Channel.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Channel.d.ts",
+        "default": "./dist/cjs/Channel.js"
+      }
+    },
+    "./ChildExecutorDecision": {
+      "import": {
+        "types": "./dist/mjs/ChildExecutorDecision.d.ts",
+        "default": "./dist/mjs/ChildExecutorDecision.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ChildExecutorDecision.d.ts",
+        "default": "./dist/cjs/ChildExecutorDecision.js"
+      }
+    },
+    "./Chunk": {
+      "import": {
+        "types": "./dist/mjs/Chunk.d.ts",
+        "default": "./dist/mjs/Chunk.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Chunk.d.ts",
+        "default": "./dist/cjs/Chunk.js"
+      }
+    },
+    "./Clock": {
+      "import": {
+        "types": "./dist/mjs/Clock.d.ts",
+        "default": "./dist/mjs/Clock.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Clock.d.ts",
+        "default": "./dist/cjs/Clock.js"
+      }
+    },
+    "./Config": {
+      "import": {
+        "types": "./dist/mjs/Config.d.ts",
+        "default": "./dist/mjs/Config.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Config.d.ts",
+        "default": "./dist/cjs/Config.js"
+      }
+    },
+    "./ConfigError": {
+      "import": {
+        "types": "./dist/mjs/ConfigError.d.ts",
+        "default": "./dist/mjs/ConfigError.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ConfigError.d.ts",
+        "default": "./dist/cjs/ConfigError.js"
+      }
+    },
+    "./ConfigProvider": {
+      "import": {
+        "types": "./dist/mjs/ConfigProvider.d.ts",
+        "default": "./dist/mjs/ConfigProvider.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ConfigProvider.d.ts",
+        "default": "./dist/cjs/ConfigProvider.js"
+      }
+    },
+    "./ConfigProviderPathPatch": {
+      "import": {
+        "types": "./dist/mjs/ConfigProviderPathPatch.d.ts",
+        "default": "./dist/mjs/ConfigProviderPathPatch.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ConfigProviderPathPatch.d.ts",
+        "default": "./dist/cjs/ConfigProviderPathPatch.js"
+      }
+    },
+    "./ConfigSecret": {
+      "import": {
+        "types": "./dist/mjs/ConfigSecret.d.ts",
+        "default": "./dist/mjs/ConfigSecret.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ConfigSecret.d.ts",
+        "default": "./dist/cjs/ConfigSecret.js"
+      }
+    },
+    "./Console": {
+      "import": {
+        "types": "./dist/mjs/Console.d.ts",
+        "default": "./dist/mjs/Console.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Console.d.ts",
+        "default": "./dist/cjs/Console.js"
+      }
+    },
+    "./Context": {
+      "import": {
+        "types": "./dist/mjs/Context.d.ts",
+        "default": "./dist/mjs/Context.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Context.d.ts",
+        "default": "./dist/cjs/Context.js"
+      }
+    },
+    "./Data": {
+      "import": {
+        "types": "./dist/mjs/Data.d.ts",
+        "default": "./dist/mjs/Data.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Data.d.ts",
+        "default": "./dist/cjs/Data.js"
+      }
+    },
+    "./DefaultServices": {
+      "import": {
+        "types": "./dist/mjs/DefaultServices.d.ts",
+        "default": "./dist/mjs/DefaultServices.js"
+      },
+      "default": {
+        "types": "./dist/cjs/DefaultServices.d.ts",
+        "default": "./dist/cjs/DefaultServices.js"
+      }
+    },
+    "./Deferred": {
+      "import": {
+        "types": "./dist/mjs/Deferred.d.ts",
+        "default": "./dist/mjs/Deferred.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Deferred.d.ts",
+        "default": "./dist/cjs/Deferred.js"
+      }
+    },
+    "./Differ": {
+      "import": {
+        "types": "./dist/mjs/Differ.d.ts",
+        "default": "./dist/mjs/Differ.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Differ.d.ts",
+        "default": "./dist/cjs/Differ.js"
+      }
+    },
+    "./Duration": {
+      "import": {
+        "types": "./dist/mjs/Duration.d.ts",
+        "default": "./dist/mjs/Duration.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Duration.d.ts",
+        "default": "./dist/cjs/Duration.js"
+      }
+    },
+    "./Effect": {
+      "import": {
+        "types": "./dist/mjs/Effect.d.ts",
+        "default": "./dist/mjs/Effect.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Effect.d.ts",
+        "default": "./dist/cjs/Effect.js"
+      }
+    },
+    "./Effectable": {
+      "import": {
+        "types": "./dist/mjs/Effectable.d.ts",
+        "default": "./dist/mjs/Effectable.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Effectable.d.ts",
+        "default": "./dist/cjs/Effectable.js"
+      }
+    },
+    "./Either": {
+      "import": {
+        "types": "./dist/mjs/Either.d.ts",
+        "default": "./dist/mjs/Either.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Either.d.ts",
+        "default": "./dist/cjs/Either.js"
+      }
+    },
+    "./Encoding": {
+      "import": {
+        "types": "./dist/mjs/Encoding.d.ts",
+        "default": "./dist/mjs/Encoding.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Encoding.d.ts",
+        "default": "./dist/cjs/Encoding.js"
+      }
+    },
+    "./Equal": {
+      "import": {
+        "types": "./dist/mjs/Equal.d.ts",
+        "default": "./dist/mjs/Equal.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Equal.d.ts",
+        "default": "./dist/cjs/Equal.js"
+      }
+    },
+    "./Equivalence": {
+      "import": {
+        "types": "./dist/mjs/Equivalence.d.ts",
+        "default": "./dist/mjs/Equivalence.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Equivalence.d.ts",
+        "default": "./dist/cjs/Equivalence.js"
+      }
+    },
+    "./ExecutionStrategy": {
+      "import": {
+        "types": "./dist/mjs/ExecutionStrategy.d.ts",
+        "default": "./dist/mjs/ExecutionStrategy.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ExecutionStrategy.d.ts",
+        "default": "./dist/cjs/ExecutionStrategy.js"
+      }
+    },
+    "./Exit": {
+      "import": {
+        "types": "./dist/mjs/Exit.d.ts",
+        "default": "./dist/mjs/Exit.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Exit.d.ts",
+        "default": "./dist/cjs/Exit.js"
+      }
+    },
+    "./Fiber": {
+      "import": {
+        "types": "./dist/mjs/Fiber.d.ts",
+        "default": "./dist/mjs/Fiber.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Fiber.d.ts",
+        "default": "./dist/cjs/Fiber.js"
+      }
+    },
+    "./FiberId": {
+      "import": {
+        "types": "./dist/mjs/FiberId.d.ts",
+        "default": "./dist/mjs/FiberId.js"
+      },
+      "default": {
+        "types": "./dist/cjs/FiberId.d.ts",
+        "default": "./dist/cjs/FiberId.js"
+      }
+    },
+    "./FiberRef": {
+      "import": {
+        "types": "./dist/mjs/FiberRef.d.ts",
+        "default": "./dist/mjs/FiberRef.js"
+      },
+      "default": {
+        "types": "./dist/cjs/FiberRef.d.ts",
+        "default": "./dist/cjs/FiberRef.js"
+      }
+    },
+    "./FiberRefs": {
+      "import": {
+        "types": "./dist/mjs/FiberRefs.d.ts",
+        "default": "./dist/mjs/FiberRefs.js"
+      },
+      "default": {
+        "types": "./dist/cjs/FiberRefs.d.ts",
+        "default": "./dist/cjs/FiberRefs.js"
+      }
+    },
+    "./FiberRefsPatch": {
+      "import": {
+        "types": "./dist/mjs/FiberRefsPatch.d.ts",
+        "default": "./dist/mjs/FiberRefsPatch.js"
+      },
+      "default": {
+        "types": "./dist/cjs/FiberRefsPatch.d.ts",
+        "default": "./dist/cjs/FiberRefsPatch.js"
+      }
+    },
+    "./FiberStatus": {
+      "import": {
+        "types": "./dist/mjs/FiberStatus.d.ts",
+        "default": "./dist/mjs/FiberStatus.js"
+      },
+      "default": {
+        "types": "./dist/cjs/FiberStatus.d.ts",
+        "default": "./dist/cjs/FiberStatus.js"
+      }
+    },
+    "./Function": {
+      "import": {
+        "types": "./dist/mjs/Function.d.ts",
+        "default": "./dist/mjs/Function.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Function.d.ts",
+        "default": "./dist/cjs/Function.js"
+      }
+    },
+    "./GlobalValue": {
+      "import": {
+        "types": "./dist/mjs/GlobalValue.d.ts",
+        "default": "./dist/mjs/GlobalValue.js"
+      },
+      "default": {
+        "types": "./dist/cjs/GlobalValue.d.ts",
+        "default": "./dist/cjs/GlobalValue.js"
+      }
+    },
+    "./GroupBy": {
+      "import": {
+        "types": "./dist/mjs/GroupBy.d.ts",
+        "default": "./dist/mjs/GroupBy.js"
+      },
+      "default": {
+        "types": "./dist/cjs/GroupBy.d.ts",
+        "default": "./dist/cjs/GroupBy.js"
+      }
+    },
+    "./Hash": {
+      "import": {
+        "types": "./dist/mjs/Hash.d.ts",
+        "default": "./dist/mjs/Hash.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Hash.d.ts",
+        "default": "./dist/cjs/Hash.js"
+      }
+    },
+    "./HashMap": {
+      "import": {
+        "types": "./dist/mjs/HashMap.d.ts",
+        "default": "./dist/mjs/HashMap.js"
+      },
+      "default": {
+        "types": "./dist/cjs/HashMap.d.ts",
+        "default": "./dist/cjs/HashMap.js"
+      }
+    },
+    "./HashSet": {
+      "import": {
+        "types": "./dist/mjs/HashSet.d.ts",
+        "default": "./dist/mjs/HashSet.js"
+      },
+      "default": {
+        "types": "./dist/cjs/HashSet.d.ts",
+        "default": "./dist/cjs/HashSet.js"
+      }
+    },
+    "./HKT": {
+      "import": {
+        "types": "./dist/mjs/HKT.d.ts",
+        "default": "./dist/mjs/HKT.js"
+      },
+      "default": {
+        "types": "./dist/cjs/HKT.d.ts",
+        "default": "./dist/cjs/HKT.js"
+      }
+    },
+    "./Inspectable": {
+      "import": {
+        "types": "./dist/mjs/Inspectable.d.ts",
+        "default": "./dist/mjs/Inspectable.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Inspectable.d.ts",
+        "default": "./dist/cjs/Inspectable.js"
+      }
+    },
+    "./KeyedPool": {
+      "import": {
+        "types": "./dist/mjs/KeyedPool.d.ts",
+        "default": "./dist/mjs/KeyedPool.js"
+      },
+      "default": {
+        "types": "./dist/cjs/KeyedPool.d.ts",
+        "default": "./dist/cjs/KeyedPool.js"
+      }
+    },
+    "./Layer": {
+      "import": {
+        "types": "./dist/mjs/Layer.d.ts",
+        "default": "./dist/mjs/Layer.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Layer.d.ts",
+        "default": "./dist/cjs/Layer.js"
+      }
+    },
+    "./List": {
+      "import": {
+        "types": "./dist/mjs/List.d.ts",
+        "default": "./dist/mjs/List.js"
+      },
+      "default": {
+        "types": "./dist/cjs/List.d.ts",
+        "default": "./dist/cjs/List.js"
+      }
+    },
+    "./Logger": {
+      "import": {
+        "types": "./dist/mjs/Logger.d.ts",
+        "default": "./dist/mjs/Logger.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Logger.d.ts",
+        "default": "./dist/cjs/Logger.js"
+      }
+    },
+    "./LogLevel": {
+      "import": {
+        "types": "./dist/mjs/LogLevel.d.ts",
+        "default": "./dist/mjs/LogLevel.js"
+      },
+      "default": {
+        "types": "./dist/cjs/LogLevel.d.ts",
+        "default": "./dist/cjs/LogLevel.js"
+      }
+    },
+    "./LogSpan": {
+      "import": {
+        "types": "./dist/mjs/LogSpan.d.ts",
+        "default": "./dist/mjs/LogSpan.js"
+      },
+      "default": {
+        "types": "./dist/cjs/LogSpan.d.ts",
+        "default": "./dist/cjs/LogSpan.js"
+      }
+    },
+    "./Match": {
+      "import": {
+        "types": "./dist/mjs/Match.d.ts",
+        "default": "./dist/mjs/Match.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Match.d.ts",
+        "default": "./dist/cjs/Match.js"
+      }
+    },
+    "./MergeDecision": {
+      "import": {
+        "types": "./dist/mjs/MergeDecision.d.ts",
+        "default": "./dist/mjs/MergeDecision.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MergeDecision.d.ts",
+        "default": "./dist/cjs/MergeDecision.js"
+      }
+    },
+    "./MergeState": {
+      "import": {
+        "types": "./dist/mjs/MergeState.d.ts",
+        "default": "./dist/mjs/MergeState.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MergeState.d.ts",
+        "default": "./dist/cjs/MergeState.js"
+      }
+    },
+    "./MergeStrategy": {
+      "import": {
+        "types": "./dist/mjs/MergeStrategy.d.ts",
+        "default": "./dist/mjs/MergeStrategy.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MergeStrategy.d.ts",
+        "default": "./dist/cjs/MergeStrategy.js"
+      }
+    },
+    "./Metric": {
+      "import": {
+        "types": "./dist/mjs/Metric.d.ts",
+        "default": "./dist/mjs/Metric.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Metric.d.ts",
+        "default": "./dist/cjs/Metric.js"
+      }
+    },
+    "./MetricBoundaries": {
+      "import": {
+        "types": "./dist/mjs/MetricBoundaries.d.ts",
+        "default": "./dist/mjs/MetricBoundaries.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricBoundaries.d.ts",
+        "default": "./dist/cjs/MetricBoundaries.js"
+      }
+    },
+    "./MetricHook": {
+      "import": {
+        "types": "./dist/mjs/MetricHook.d.ts",
+        "default": "./dist/mjs/MetricHook.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricHook.d.ts",
+        "default": "./dist/cjs/MetricHook.js"
+      }
+    },
+    "./MetricKey": {
+      "import": {
+        "types": "./dist/mjs/MetricKey.d.ts",
+        "default": "./dist/mjs/MetricKey.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricKey.d.ts",
+        "default": "./dist/cjs/MetricKey.js"
+      }
+    },
+    "./MetricKeyType": {
+      "import": {
+        "types": "./dist/mjs/MetricKeyType.d.ts",
+        "default": "./dist/mjs/MetricKeyType.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricKeyType.d.ts",
+        "default": "./dist/cjs/MetricKeyType.js"
+      }
+    },
+    "./MetricLabel": {
+      "import": {
+        "types": "./dist/mjs/MetricLabel.d.ts",
+        "default": "./dist/mjs/MetricLabel.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricLabel.d.ts",
+        "default": "./dist/cjs/MetricLabel.js"
+      }
+    },
+    "./MetricPair": {
+      "import": {
+        "types": "./dist/mjs/MetricPair.d.ts",
+        "default": "./dist/mjs/MetricPair.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricPair.d.ts",
+        "default": "./dist/cjs/MetricPair.js"
+      }
+    },
+    "./MetricPolling": {
+      "import": {
+        "types": "./dist/mjs/MetricPolling.d.ts",
+        "default": "./dist/mjs/MetricPolling.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricPolling.d.ts",
+        "default": "./dist/cjs/MetricPolling.js"
+      }
+    },
+    "./MetricRegistry": {
+      "import": {
+        "types": "./dist/mjs/MetricRegistry.d.ts",
+        "default": "./dist/mjs/MetricRegistry.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricRegistry.d.ts",
+        "default": "./dist/cjs/MetricRegistry.js"
+      }
+    },
+    "./MetricState": {
+      "import": {
+        "types": "./dist/mjs/MetricState.d.ts",
+        "default": "./dist/mjs/MetricState.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MetricState.d.ts",
+        "default": "./dist/cjs/MetricState.js"
+      }
+    },
+    "./MutableHashMap": {
+      "import": {
+        "types": "./dist/mjs/MutableHashMap.d.ts",
+        "default": "./dist/mjs/MutableHashMap.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MutableHashMap.d.ts",
+        "default": "./dist/cjs/MutableHashMap.js"
+      }
+    },
+    "./MutableHashSet": {
+      "import": {
+        "types": "./dist/mjs/MutableHashSet.d.ts",
+        "default": "./dist/mjs/MutableHashSet.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MutableHashSet.d.ts",
+        "default": "./dist/cjs/MutableHashSet.js"
+      }
+    },
+    "./MutableList": {
+      "import": {
+        "types": "./dist/mjs/MutableList.d.ts",
+        "default": "./dist/mjs/MutableList.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MutableList.d.ts",
+        "default": "./dist/cjs/MutableList.js"
+      }
+    },
+    "./MutableQueue": {
+      "import": {
+        "types": "./dist/mjs/MutableQueue.d.ts",
+        "default": "./dist/mjs/MutableQueue.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MutableQueue.d.ts",
+        "default": "./dist/cjs/MutableQueue.js"
+      }
+    },
+    "./MutableRef": {
+      "import": {
+        "types": "./dist/mjs/MutableRef.d.ts",
+        "default": "./dist/mjs/MutableRef.js"
+      },
+      "default": {
+        "types": "./dist/cjs/MutableRef.d.ts",
+        "default": "./dist/cjs/MutableRef.js"
+      }
+    },
+    "./NonEmptyIterable": {
+      "import": {
+        "types": "./dist/mjs/NonEmptyIterable.d.ts",
+        "default": "./dist/mjs/NonEmptyIterable.js"
+      },
+      "default": {
+        "types": "./dist/cjs/NonEmptyIterable.d.ts",
+        "default": "./dist/cjs/NonEmptyIterable.js"
+      }
+    },
+    "./Number": {
+      "import": {
+        "types": "./dist/mjs/Number.d.ts",
+        "default": "./dist/mjs/Number.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Number.d.ts",
+        "default": "./dist/cjs/Number.js"
+      }
+    },
+    "./Option": {
+      "import": {
+        "types": "./dist/mjs/Option.d.ts",
+        "default": "./dist/mjs/Option.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Option.d.ts",
+        "default": "./dist/cjs/Option.js"
+      }
+    },
+    "./Order": {
+      "import": {
+        "types": "./dist/mjs/Order.d.ts",
+        "default": "./dist/mjs/Order.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Order.d.ts",
+        "default": "./dist/cjs/Order.js"
+      }
+    },
+    "./Ordering": {
+      "import": {
+        "types": "./dist/mjs/Ordering.d.ts",
+        "default": "./dist/mjs/Ordering.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Ordering.d.ts",
+        "default": "./dist/cjs/Ordering.js"
+      }
+    },
+    "./Pipeable": {
+      "import": {
+        "types": "./dist/mjs/Pipeable.d.ts",
+        "default": "./dist/mjs/Pipeable.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Pipeable.d.ts",
+        "default": "./dist/cjs/Pipeable.js"
+      }
+    },
+    "./Pool": {
+      "import": {
+        "types": "./dist/mjs/Pool.d.ts",
+        "default": "./dist/mjs/Pool.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Pool.d.ts",
+        "default": "./dist/cjs/Pool.js"
+      }
+    },
+    "./Predicate": {
+      "import": {
+        "types": "./dist/mjs/Predicate.d.ts",
+        "default": "./dist/mjs/Predicate.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Predicate.d.ts",
+        "default": "./dist/cjs/Predicate.js"
+      }
+    },
+    "./PubSub": {
+      "import": {
+        "types": "./dist/mjs/PubSub.d.ts",
+        "default": "./dist/mjs/PubSub.js"
+      },
+      "default": {
+        "types": "./dist/cjs/PubSub.d.ts",
+        "default": "./dist/cjs/PubSub.js"
+      }
+    },
+    "./Queue": {
+      "import": {
+        "types": "./dist/mjs/Queue.d.ts",
+        "default": "./dist/mjs/Queue.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Queue.d.ts",
+        "default": "./dist/cjs/Queue.js"
+      }
+    },
+    "./Random": {
+      "import": {
+        "types": "./dist/mjs/Random.d.ts",
+        "default": "./dist/mjs/Random.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Random.d.ts",
+        "default": "./dist/cjs/Random.js"
+      }
+    },
+    "./ReadonlyArray": {
+      "import": {
+        "types": "./dist/mjs/ReadonlyArray.d.ts",
+        "default": "./dist/mjs/ReadonlyArray.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ReadonlyArray.d.ts",
+        "default": "./dist/cjs/ReadonlyArray.js"
+      }
+    },
+    "./ReadonlyRecord": {
+      "import": {
+        "types": "./dist/mjs/ReadonlyRecord.d.ts",
+        "default": "./dist/mjs/ReadonlyRecord.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ReadonlyRecord.d.ts",
+        "default": "./dist/cjs/ReadonlyRecord.js"
+      }
+    },
+    "./RedBlackTree": {
+      "import": {
+        "types": "./dist/mjs/RedBlackTree.d.ts",
+        "default": "./dist/mjs/RedBlackTree.js"
+      },
+      "default": {
+        "types": "./dist/cjs/RedBlackTree.d.ts",
+        "default": "./dist/cjs/RedBlackTree.js"
+      }
+    },
+    "./Ref": {
+      "import": {
+        "types": "./dist/mjs/Ref.d.ts",
+        "default": "./dist/mjs/Ref.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Ref.d.ts",
+        "default": "./dist/cjs/Ref.js"
+      }
+    },
+    "./Reloadable": {
+      "import": {
+        "types": "./dist/mjs/Reloadable.d.ts",
+        "default": "./dist/mjs/Reloadable.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Reloadable.d.ts",
+        "default": "./dist/cjs/Reloadable.js"
+      }
+    },
+    "./Request": {
+      "import": {
+        "types": "./dist/mjs/Request.d.ts",
+        "default": "./dist/mjs/Request.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Request.d.ts",
+        "default": "./dist/cjs/Request.js"
+      }
+    },
+    "./RequestBlock": {
+      "import": {
+        "types": "./dist/mjs/RequestBlock.d.ts",
+        "default": "./dist/mjs/RequestBlock.js"
+      },
+      "default": {
+        "types": "./dist/cjs/RequestBlock.d.ts",
+        "default": "./dist/cjs/RequestBlock.js"
+      }
+    },
+    "./RequestResolver": {
+      "import": {
+        "types": "./dist/mjs/RequestResolver.d.ts",
+        "default": "./dist/mjs/RequestResolver.js"
+      },
+      "default": {
+        "types": "./dist/cjs/RequestResolver.d.ts",
+        "default": "./dist/cjs/RequestResolver.js"
+      }
+    },
+    "./Resource": {
+      "import": {
+        "types": "./dist/mjs/Resource.d.ts",
+        "default": "./dist/mjs/Resource.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Resource.d.ts",
+        "default": "./dist/cjs/Resource.js"
+      }
+    },
+    "./Runtime": {
+      "import": {
+        "types": "./dist/mjs/Runtime.d.ts",
+        "default": "./dist/mjs/Runtime.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Runtime.d.ts",
+        "default": "./dist/cjs/Runtime.js"
+      }
+    },
+    "./RuntimeFlags": {
+      "import": {
+        "types": "./dist/mjs/RuntimeFlags.d.ts",
+        "default": "./dist/mjs/RuntimeFlags.js"
+      },
+      "default": {
+        "types": "./dist/cjs/RuntimeFlags.d.ts",
+        "default": "./dist/cjs/RuntimeFlags.js"
+      }
+    },
+    "./RuntimeFlagsPatch": {
+      "import": {
+        "types": "./dist/mjs/RuntimeFlagsPatch.d.ts",
+        "default": "./dist/mjs/RuntimeFlagsPatch.js"
+      },
+      "default": {
+        "types": "./dist/cjs/RuntimeFlagsPatch.d.ts",
+        "default": "./dist/cjs/RuntimeFlagsPatch.js"
+      }
+    },
+    "./Schedule": {
+      "import": {
+        "types": "./dist/mjs/Schedule.d.ts",
+        "default": "./dist/mjs/Schedule.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Schedule.d.ts",
+        "default": "./dist/cjs/Schedule.js"
+      }
+    },
+    "./ScheduleDecision": {
+      "import": {
+        "types": "./dist/mjs/ScheduleDecision.d.ts",
+        "default": "./dist/mjs/ScheduleDecision.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ScheduleDecision.d.ts",
+        "default": "./dist/cjs/ScheduleDecision.js"
+      }
+    },
+    "./ScheduleInterval": {
+      "import": {
+        "types": "./dist/mjs/ScheduleInterval.d.ts",
+        "default": "./dist/mjs/ScheduleInterval.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ScheduleInterval.d.ts",
+        "default": "./dist/cjs/ScheduleInterval.js"
+      }
+    },
+    "./ScheduleIntervals": {
+      "import": {
+        "types": "./dist/mjs/ScheduleIntervals.d.ts",
+        "default": "./dist/mjs/ScheduleIntervals.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ScheduleIntervals.d.ts",
+        "default": "./dist/cjs/ScheduleIntervals.js"
+      }
+    },
+    "./Scheduler": {
+      "import": {
+        "types": "./dist/mjs/Scheduler.d.ts",
+        "default": "./dist/mjs/Scheduler.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Scheduler.d.ts",
+        "default": "./dist/cjs/Scheduler.js"
+      }
+    },
+    "./Scope": {
+      "import": {
+        "types": "./dist/mjs/Scope.d.ts",
+        "default": "./dist/mjs/Scope.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Scope.d.ts",
+        "default": "./dist/cjs/Scope.js"
+      }
+    },
+    "./ScopedCache": {
+      "import": {
+        "types": "./dist/mjs/ScopedCache.d.ts",
+        "default": "./dist/mjs/ScopedCache.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ScopedCache.d.ts",
+        "default": "./dist/cjs/ScopedCache.js"
+      }
+    },
+    "./ScopedRef": {
+      "import": {
+        "types": "./dist/mjs/ScopedRef.d.ts",
+        "default": "./dist/mjs/ScopedRef.js"
+      },
+      "default": {
+        "types": "./dist/cjs/ScopedRef.d.ts",
+        "default": "./dist/cjs/ScopedRef.js"
+      }
+    },
+    "./SingleProducerAsyncInput": {
+      "import": {
+        "types": "./dist/mjs/SingleProducerAsyncInput.d.ts",
+        "default": "./dist/mjs/SingleProducerAsyncInput.js"
+      },
+      "default": {
+        "types": "./dist/cjs/SingleProducerAsyncInput.d.ts",
+        "default": "./dist/cjs/SingleProducerAsyncInput.js"
+      }
+    },
+    "./Sink": {
+      "import": {
+        "types": "./dist/mjs/Sink.d.ts",
+        "default": "./dist/mjs/Sink.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Sink.d.ts",
+        "default": "./dist/cjs/Sink.js"
+      }
+    },
+    "./SortedMap": {
+      "import": {
+        "types": "./dist/mjs/SortedMap.d.ts",
+        "default": "./dist/mjs/SortedMap.js"
+      },
+      "default": {
+        "types": "./dist/cjs/SortedMap.d.ts",
+        "default": "./dist/cjs/SortedMap.js"
+      }
+    },
+    "./SortedSet": {
+      "import": {
+        "types": "./dist/mjs/SortedSet.d.ts",
+        "default": "./dist/mjs/SortedSet.js"
+      },
+      "default": {
+        "types": "./dist/cjs/SortedSet.d.ts",
+        "default": "./dist/cjs/SortedSet.js"
+      }
+    },
+    "./STM": {
+      "import": {
+        "types": "./dist/mjs/STM.d.ts",
+        "default": "./dist/mjs/STM.js"
+      },
+      "default": {
+        "types": "./dist/cjs/STM.d.ts",
+        "default": "./dist/cjs/STM.js"
+      }
+    },
+    "./Stream": {
+      "import": {
+        "types": "./dist/mjs/Stream.d.ts",
+        "default": "./dist/mjs/Stream.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Stream.d.ts",
+        "default": "./dist/cjs/Stream.js"
+      }
+    },
+    "./Streamable": {
+      "import": {
+        "types": "./dist/mjs/Streamable.d.ts",
+        "default": "./dist/mjs/Streamable.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Streamable.d.ts",
+        "default": "./dist/cjs/Streamable.js"
+      }
+    },
+    "./StreamEmit": {
+      "import": {
+        "types": "./dist/mjs/StreamEmit.d.ts",
+        "default": "./dist/mjs/StreamEmit.js"
+      },
+      "default": {
+        "types": "./dist/cjs/StreamEmit.d.ts",
+        "default": "./dist/cjs/StreamEmit.js"
+      }
+    },
+    "./StreamHaltStrategy": {
+      "import": {
+        "types": "./dist/mjs/StreamHaltStrategy.d.ts",
+        "default": "./dist/mjs/StreamHaltStrategy.js"
+      },
+      "default": {
+        "types": "./dist/cjs/StreamHaltStrategy.d.ts",
+        "default": "./dist/cjs/StreamHaltStrategy.js"
+      }
+    },
+    "./String": {
+      "import": {
+        "types": "./dist/mjs/String.d.ts",
+        "default": "./dist/mjs/String.js"
+      },
+      "default": {
+        "types": "./dist/cjs/String.d.ts",
+        "default": "./dist/cjs/String.js"
+      }
+    },
+    "./Struct": {
+      "import": {
+        "types": "./dist/mjs/Struct.d.ts",
+        "default": "./dist/mjs/Struct.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Struct.d.ts",
+        "default": "./dist/cjs/Struct.js"
+      }
+    },
+    "./SubscriptionRef": {
+      "import": {
+        "types": "./dist/mjs/SubscriptionRef.d.ts",
+        "default": "./dist/mjs/SubscriptionRef.js"
+      },
+      "default": {
+        "types": "./dist/cjs/SubscriptionRef.d.ts",
+        "default": "./dist/cjs/SubscriptionRef.js"
+      }
+    },
+    "./Supervisor": {
+      "import": {
+        "types": "./dist/mjs/Supervisor.d.ts",
+        "default": "./dist/mjs/Supervisor.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Supervisor.d.ts",
+        "default": "./dist/cjs/Supervisor.js"
+      }
+    },
+    "./Symbol": {
+      "import": {
+        "types": "./dist/mjs/Symbol.d.ts",
+        "default": "./dist/mjs/Symbol.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Symbol.d.ts",
+        "default": "./dist/cjs/Symbol.js"
+      }
+    },
+    "./SynchronizedRef": {
+      "import": {
+        "types": "./dist/mjs/SynchronizedRef.d.ts",
+        "default": "./dist/mjs/SynchronizedRef.js"
+      },
+      "default": {
+        "types": "./dist/cjs/SynchronizedRef.d.ts",
+        "default": "./dist/cjs/SynchronizedRef.js"
+      }
+    },
+    "./Take": {
+      "import": {
+        "types": "./dist/mjs/Take.d.ts",
+        "default": "./dist/mjs/Take.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Take.d.ts",
+        "default": "./dist/cjs/Take.js"
+      }
+    },
+    "./TArray": {
+      "import": {
+        "types": "./dist/mjs/TArray.d.ts",
+        "default": "./dist/mjs/TArray.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TArray.d.ts",
+        "default": "./dist/cjs/TArray.js"
+      }
+    },
+    "./TDeferred": {
+      "import": {
+        "types": "./dist/mjs/TDeferred.d.ts",
+        "default": "./dist/mjs/TDeferred.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TDeferred.d.ts",
+        "default": "./dist/cjs/TDeferred.js"
+      }
+    },
+    "./TestAnnotation": {
+      "import": {
+        "types": "./dist/mjs/TestAnnotation.d.ts",
+        "default": "./dist/mjs/TestAnnotation.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestAnnotation.d.ts",
+        "default": "./dist/cjs/TestAnnotation.js"
+      }
+    },
+    "./TestAnnotationMap": {
+      "import": {
+        "types": "./dist/mjs/TestAnnotationMap.d.ts",
+        "default": "./dist/mjs/TestAnnotationMap.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestAnnotationMap.d.ts",
+        "default": "./dist/cjs/TestAnnotationMap.js"
+      }
+    },
+    "./TestAnnotations": {
+      "import": {
+        "types": "./dist/mjs/TestAnnotations.d.ts",
+        "default": "./dist/mjs/TestAnnotations.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestAnnotations.d.ts",
+        "default": "./dist/cjs/TestAnnotations.js"
+      }
+    },
+    "./TestClock": {
+      "import": {
+        "types": "./dist/mjs/TestClock.d.ts",
+        "default": "./dist/mjs/TestClock.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestClock.d.ts",
+        "default": "./dist/cjs/TestClock.js"
+      }
+    },
+    "./TestConfig": {
+      "import": {
+        "types": "./dist/mjs/TestConfig.d.ts",
+        "default": "./dist/mjs/TestConfig.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestConfig.d.ts",
+        "default": "./dist/cjs/TestConfig.js"
+      }
+    },
+    "./TestContext": {
+      "import": {
+        "types": "./dist/mjs/TestContext.d.ts",
+        "default": "./dist/mjs/TestContext.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestContext.d.ts",
+        "default": "./dist/cjs/TestContext.js"
+      }
+    },
+    "./TestLive": {
+      "import": {
+        "types": "./dist/mjs/TestLive.d.ts",
+        "default": "./dist/mjs/TestLive.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestLive.d.ts",
+        "default": "./dist/cjs/TestLive.js"
+      }
+    },
+    "./TestServices": {
+      "import": {
+        "types": "./dist/mjs/TestServices.d.ts",
+        "default": "./dist/mjs/TestServices.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestServices.d.ts",
+        "default": "./dist/cjs/TestServices.js"
+      }
+    },
+    "./TestSized": {
+      "import": {
+        "types": "./dist/mjs/TestSized.d.ts",
+        "default": "./dist/mjs/TestSized.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TestSized.d.ts",
+        "default": "./dist/cjs/TestSized.js"
+      }
+    },
+    "./TMap": {
+      "import": {
+        "types": "./dist/mjs/TMap.d.ts",
+        "default": "./dist/mjs/TMap.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TMap.d.ts",
+        "default": "./dist/cjs/TMap.js"
+      }
+    },
+    "./TPriorityQueue": {
+      "import": {
+        "types": "./dist/mjs/TPriorityQueue.d.ts",
+        "default": "./dist/mjs/TPriorityQueue.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TPriorityQueue.d.ts",
+        "default": "./dist/cjs/TPriorityQueue.js"
+      }
+    },
+    "./TPubSub": {
+      "import": {
+        "types": "./dist/mjs/TPubSub.d.ts",
+        "default": "./dist/mjs/TPubSub.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TPubSub.d.ts",
+        "default": "./dist/cjs/TPubSub.js"
+      }
+    },
+    "./TQueue": {
+      "import": {
+        "types": "./dist/mjs/TQueue.d.ts",
+        "default": "./dist/mjs/TQueue.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TQueue.d.ts",
+        "default": "./dist/cjs/TQueue.js"
+      }
+    },
+    "./Tracer": {
+      "import": {
+        "types": "./dist/mjs/Tracer.d.ts",
+        "default": "./dist/mjs/Tracer.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Tracer.d.ts",
+        "default": "./dist/cjs/Tracer.js"
+      }
+    },
+    "./TRandom": {
+      "import": {
+        "types": "./dist/mjs/TRandom.d.ts",
+        "default": "./dist/mjs/TRandom.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TRandom.d.ts",
+        "default": "./dist/cjs/TRandom.js"
+      }
+    },
+    "./TReentrantLock": {
+      "import": {
+        "types": "./dist/mjs/TReentrantLock.d.ts",
+        "default": "./dist/mjs/TReentrantLock.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TReentrantLock.d.ts",
+        "default": "./dist/cjs/TReentrantLock.js"
+      }
+    },
+    "./TRef": {
+      "import": {
+        "types": "./dist/mjs/TRef.d.ts",
+        "default": "./dist/mjs/TRef.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TRef.d.ts",
+        "default": "./dist/cjs/TRef.js"
+      }
+    },
+    "./TSemaphore": {
+      "import": {
+        "types": "./dist/mjs/TSemaphore.d.ts",
+        "default": "./dist/mjs/TSemaphore.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TSemaphore.d.ts",
+        "default": "./dist/cjs/TSemaphore.js"
+      }
+    },
+    "./TSet": {
+      "import": {
+        "types": "./dist/mjs/TSet.d.ts",
+        "default": "./dist/mjs/TSet.js"
+      },
+      "default": {
+        "types": "./dist/cjs/TSet.d.ts",
+        "default": "./dist/cjs/TSet.js"
+      }
+    },
+    "./Tuple": {
+      "import": {
+        "types": "./dist/mjs/Tuple.d.ts",
+        "default": "./dist/mjs/Tuple.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Tuple.d.ts",
+        "default": "./dist/cjs/Tuple.js"
+      }
+    },
+    "./Types": {
+      "import": {
+        "types": "./dist/mjs/Types.d.ts",
+        "default": "./dist/mjs/Types.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Types.d.ts",
+        "default": "./dist/cjs/Types.js"
+      }
+    },
+    "./Unify": {
+      "import": {
+        "types": "./dist/mjs/Unify.d.ts",
+        "default": "./dist/mjs/Unify.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Unify.d.ts",
+        "default": "./dist/cjs/Unify.js"
+      }
+    },
+    "./UpstreamPullRequest": {
+      "import": {
+        "types": "./dist/mjs/UpstreamPullRequest.d.ts",
+        "default": "./dist/mjs/UpstreamPullRequest.js"
+      },
+      "default": {
+        "types": "./dist/cjs/UpstreamPullRequest.d.ts",
+        "default": "./dist/cjs/UpstreamPullRequest.js"
+      }
+    },
+    "./UpstreamPullStrategy": {
+      "import": {
+        "types": "./dist/mjs/UpstreamPullStrategy.d.ts",
+        "default": "./dist/mjs/UpstreamPullStrategy.js"
+      },
+      "default": {
+        "types": "./dist/cjs/UpstreamPullStrategy.d.ts",
+        "default": "./dist/cjs/UpstreamPullStrategy.js"
+      }
+    },
+    "./Utils": {
+      "import": {
+        "types": "./dist/mjs/Utils.d.ts",
+        "default": "./dist/mjs/Utils.js"
+      },
+      "default": {
+        "types": "./dist/cjs/Utils.d.ts",
+        "default": "./dist/cjs/Utils.js"
+      }
+    }
+  }
+}

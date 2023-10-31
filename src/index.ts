@@ -27,7 +27,7 @@ export {
    * @since 2.0.0
    */
   unsafeCoerce
-} from "effect/Function"
+} from "./Function.js"
 
 /**
  * This module provides utility functions and type class instances for working with the `BigDecimal` type in TypeScript.
@@ -44,7 +44,7 @@ export {
  *
  * @since 2.0.0
  */
-export * as BigDecimal from "effect/BigDecimal"
+export * as BigDecimal from "./BigDecimal.js"
 
 /**
  * This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
@@ -53,7 +53,7 @@ export * as BigDecimal from "effect/BigDecimal"
  *
  * @since 2.0.0
  */
-export * as BigInt from "effect/BigInt"
+export * as BigInt from "./BigInt.js"
 
 /**
  * This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
@@ -62,7 +62,7 @@ export * as BigInt from "effect/BigInt"
  *
  * @since 2.0.0
  */
-export * as Boolean from "effect/Boolean"
+export * as Boolean from "./Boolean.js"
 
 /**
  * This module provides types and utility functions to create and work with branded types,
@@ -82,12 +82,12 @@ export * as Boolean from "effect/Boolean"
  *
  * @since 2.0.0
  */
-export * as Brand from "effect/Brand"
+export * as Brand from "./Brand.js"
 
 /**
  * @since 2.0.0
  */
-export * as Cache from "effect/Cache"
+export * as Cache from "./Cache.js"
 
 /**
  * The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
@@ -112,87 +112,87 @@ export * as Cache from "effect/Cache"
  *
  * @since 2.0.0
  */
-export * as Cause from "effect/Cause"
+export * as Cause from "./Cause.js"
 
 /**
  * @since 2.0.0
  */
-export * as Channel from "effect/Channel"
+export * as Channel from "./Channel.js"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelChildExecutorDecision from "effect/ChildExecutorDecision"
+export * as ChannelChildExecutorDecision from "./ChildExecutorDecision.js"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeDecision from "effect/MergeDecision"
+export * as ChannelMergeDecision from "./MergeDecision.js"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeState from "effect/MergeState"
+export * as ChannelMergeState from "./MergeState.js"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelMergeStrategy from "effect/MergeStrategy"
+export * as ChannelMergeStrategy from "./MergeStrategy.js"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelSingleProducerAsyncInput from "effect/SingleProducerAsyncInput"
+export * as ChannelSingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelUpstreamPullRequest from "effect/UpstreamPullRequest"
+export * as ChannelUpstreamPullRequest from "./UpstreamPullRequest.js"
 
 /**
  * @since 2.0.0
  */
-export * as ChannelUpstreamPullStrategy from "effect/UpstreamPullStrategy"
+export * as ChannelUpstreamPullStrategy from "./UpstreamPullStrategy.js"
 
 /**
  * @since 2.0.0
  */
-export * as Chunk from "effect/Chunk"
+export * as Chunk from "./Chunk.js"
 
 /**
  * @since 2.0.0
  */
-export * as Clock from "effect/Clock"
+export * as Clock from "./Clock.js"
 
 /**
  * @since 2.0.0
  */
-export * as Config from "effect/Config"
+export * as Config from "./Config.js"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigError from "effect/ConfigError"
+export * as ConfigError from "./ConfigError.js"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigProvider from "effect/ConfigProvider"
+export * as ConfigProvider from "./ConfigProvider.js"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigProviderPathPatch from "effect/ConfigProviderPathPatch"
+export * as ConfigProviderPathPatch from "./ConfigProviderPathPatch.js"
 
 /**
  * @since 2.0.0
  */
-export * as ConfigSecret from "effect/ConfigSecret"
+export * as ConfigSecret from "./ConfigSecret.js"
 
 /**
  * @since 2.0.0
  */
-export * as Console from "effect/Console"
+export * as Console from "./Console.js"
 
 /**
  * This module provides a data structure called `Context` that can be used for dependency injection in effectful
@@ -203,47 +203,47 @@ export * as Console from "effect/Console"
  *
  * @since 2.0.0
  */
-export * as Context from "effect/Context"
+export * as Context from "./Context.js"
 
 /**
  * @since 2.0.0
  */
-export * as Data from "effect/Data"
+export * as Data from "./Data.js"
 
 /**
  * @since 2.0.0
  */
-export * as DefaultServices from "effect/DefaultServices"
+export * as DefaultServices from "./DefaultServices.js"
 
 /**
  * @since 2.0.0
  */
-export * as Deferred from "effect/Deferred"
+export * as Deferred from "./Deferred.js"
 
 /**
  * @since 2.0.0
  */
-export * as Differ from "effect/Differ"
+export * as Differ from "./Differ.js"
 
 /**
  * @since 2.0.0
  */
-export * as Duration from "effect/Duration"
+export * as Duration from "./Duration.js"
 
 /**
  * @since 2.0.0
  */
-export * as Effect from "effect/Effect"
+export * as Effect from "./Effect.js"
 
 /**
  * @since 2.0.0
  */
-export * as Effectable from "effect/Effectable"
+export * as Effectable from "./Effectable.js"
 
 /**
  * @since 2.0.0
  */
-export * as Either from "effect/Either"
+export * as Either from "./Either.js"
 
 /**
  * This module provides encoding & decoding functionality for:
@@ -254,12 +254,12 @@ export * as Either from "effect/Either"
  *
  * @since 2.0.0
  */
-export * as Encoding from "effect/Encoding"
+export * as Encoding from "./Encoding.js"
 
 /**
  * @since 2.0.0
  */
-export * as Equal from "effect/Equal"
+export * as Equal from "./Equal.js"
 
 /**
  * This module provides an implementation of the `Equivalence` type class, which defines a binary relation
@@ -268,92 +268,92 @@ export * as Equal from "effect/Equal"
  *
  * @since 2.0.0
  */
-export * as Equivalence from "effect/Equivalence"
+export * as Equivalence from "./Equivalence.js"
 
 /**
  * @since 2.0.0
  */
-export * as ExecutionStrategy from "effect/ExecutionStrategy"
+export * as ExecutionStrategy from "./ExecutionStrategy.js"
 
 /**
  * @since 2.0.0
  */
-export * as Exit from "effect/Exit"
+export * as Exit from "./Exit.js"
 
 /**
  * @since 2.0.0
  */
-export * as Fiber from "effect/Fiber"
+export * as Fiber from "./Fiber.js"
 
 /**
  * @since 2.0.0
  */
-export * as FiberId from "effect/FiberId"
+export * as FiberId from "./FiberId.js"
 
 /**
  * @since 2.0.0
  */
-export * as FiberRef from "effect/FiberRef"
+export * as FiberRef from "./FiberRef.js"
 
 /**
  * @since 2.0.0
  */
-export * as FiberRefs from "effect/FiberRefs"
+export * as FiberRefs from "./FiberRefs.js"
 
 /**
  * @since 2.0.0
  */
-export * as FiberRefsPatch from "effect/FiberRefsPatch"
+export * as FiberRefsPatch from "./FiberRefsPatch.js"
 
 /**
  * @since 2.0.0
  */
-export * as FiberStatus from "effect/FiberStatus"
+export * as FiberStatus from "./FiberStatus.js"
 
 /**
  * @since 2.0.0
  */
-export * as Function from "effect/Function"
+export * as Function from "./Function.js"
 
 /**
  * @since 2.0.0
  */
-export * as GlobalValue from "effect/GlobalValue"
+export * as GlobalValue from "./GlobalValue.js"
 
 /**
  * @since 2.0.0
  */
-export * as GroupBy from "effect/GroupBy"
+export * as GroupBy from "./GroupBy.js"
 
 /**
  * @since 2.0.0
  */
-export * as HKT from "effect/HKT"
+export * as HKT from "./HKT.js"
 
 /**
  * @since 2.0.0
  */
-export * as Hash from "effect/Hash"
+export * as Hash from "./Hash.js"
 
 /**
  * @since 2.0.0
  */
-export * as HashMap from "effect/HashMap"
+export * as HashMap from "./HashMap.js"
 
 /**
  * @since 2.0.0
  */
-export * as HashSet from "effect/HashSet"
+export * as HashSet from "./HashSet.js"
 
 /**
  * @since 2.0.0
  */
-export * as Inspectable from "effect/Inspectable"
+export * as Inspectable from "./Inspectable.js"
 
 /**
  * @since 2.0.0
  */
-export * as KeyedPool from "effect/KeyedPool"
+export * as KeyedPool from "./KeyedPool.js"
 
 /**
  * A `Layer<RIn, E, ROut>` describes how to build one or more services in your
@@ -374,7 +374,7 @@ export * as KeyedPool from "effect/KeyedPool"
  *
  * @since 2.0.0
  */
-export * as Layer from "effect/Layer"
+export * as Layer from "./Layer.js"
 
 /**
  * A data type for immutable linked lists representing ordered collections of elements of type `A`.
@@ -388,107 +388,107 @@ export * as Layer from "effect/Layer"
  *
  * @since 2.0.0
  */
-export * as List from "effect/List"
+export * as List from "./List.js"
 
 /**
  * @since 2.0.0
  */
-export * as LogLevel from "effect/LogLevel"
+export * as LogLevel from "./LogLevel.js"
 
 /**
  * @since 2.0.0
  */
-export * as LogSpan from "effect/LogSpan"
+export * as LogSpan from "./LogSpan.js"
 
 /**
  * @since 2.0.0
  */
-export * as Logger from "effect/Logger"
+export * as Logger from "./Logger.js"
 
 /**
  * @since 1.0.0
  */
-export * as Match from "effect/Match"
+export * as Match from "./Match.js"
 
 /**
  * @since 2.0.0
  */
-export * as Metric from "effect/Metric"
+export * as Metric from "./Metric.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricBoundaries from "effect/MetricBoundaries"
+export * as MetricBoundaries from "./MetricBoundaries.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricHook from "effect/MetricHook"
+export * as MetricHook from "./MetricHook.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricKey from "effect/MetricKey"
+export * as MetricKey from "./MetricKey.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricKeyType from "effect/MetricKeyType"
+export * as MetricKeyType from "./MetricKeyType.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricLabel from "effect/MetricLabel"
+export * as MetricLabel from "./MetricLabel.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricPair from "effect/MetricPair"
+export * as MetricPair from "./MetricPair.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricPolling from "effect/MetricPolling"
+export * as MetricPolling from "./MetricPolling.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricRegistry from "effect/MetricRegistry"
+export * as MetricRegistry from "./MetricRegistry.js"
 
 /**
  * @since 2.0.0
  */
-export * as MetricState from "effect/MetricState"
+export * as MetricState from "./MetricState.js"
 
 /**
  * @since 2.0.0
  */
-export * as MutableHashMap from "effect/MutableHashMap"
+export * as MutableHashMap from "./MutableHashMap.js"
 
 /**
  * @since 2.0.0
  */
-export * as MutableHashSet from "effect/MutableHashSet"
+export * as MutableHashSet from "./MutableHashSet.js"
 
 /**
  * @since 2.0.0
  */
-export * as MutableList from "effect/MutableList"
+export * as MutableList from "./MutableList.js"
 
 /**
  * @since 2.0.0
  */
-export * as MutableQueue from "effect/MutableQueue"
+export * as MutableQueue from "./MutableQueue.js"
 
 /**
  * @since 2.0.0
  */
-export * as MutableRef from "effect/MutableRef"
+export * as MutableRef from "./MutableRef.js"
 
 /**
  * @since 2.0.0
  */
-export * as NonEmptyIterable from "effect/NonEmptyIterable"
+export * as NonEmptyIterable from "./NonEmptyIterable.js"
 
 /**
  * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
@@ -497,196 +497,196 @@ export * as NonEmptyIterable from "effect/NonEmptyIterable"
  *
  * @since 2.0.0
  */
-export * as Number from "effect/Number"
+export * as Number from "./Number.js"
 
 /**
  * @since 2.0.0
  */
-export * as Option from "effect/Option"
+export * as Option from "./Option.js"
 
 /**
  * @since 2.0.0
  */
-export * as Order from "effect/Order"
+export * as Order from "./Order.js"
 
 /**
  * @since 2.0.0
  */
-export * as Ordering from "effect/Ordering"
+export * as Ordering from "./Ordering.js"
 
 /**
  * @since 2.0.0
  */
-export * as Pipeable from "effect/Pipeable"
+export * as Pipeable from "./Pipeable.js"
 
 /**
  * @since 2.0.0
  */
-export * as Pool from "effect/Pool"
+export * as Pool from "./Pool.js"
 
 /**
  * @since 2.0.0
  */
-export * as Predicate from "effect/Predicate"
+export * as Predicate from "./Predicate.js"
 
 /**
  * @since 2.0.0
  */
-export * as PubSub from "effect/PubSub"
+export * as PubSub from "./PubSub.js"
 
 /**
  * @since 2.0.0
  */
-export * as Queue from "effect/Queue"
+export * as Queue from "./Queue.js"
 
 /**
  * @since 2.0.0
  */
-export * as Random from "effect/Random"
+export * as Random from "./Random.js"
 
 /**
  * This module provides utility functions for working with arrays in TypeScript.
  *
  * @since 2.0.0
  */
-export * as ReadonlyArray from "effect/ReadonlyArray"
+export * as ReadonlyArray from "./ReadonlyArray.js"
 
 /**
  * This module provides utility functions for working with records in TypeScript.
  *
  * @since 2.0.0
  */
-export * as ReadonlyRecord from "effect/ReadonlyRecord"
+export * as ReadonlyRecord from "./ReadonlyRecord.js"
 
 /**
  * @since 2.0.0
  */
-export * as RedBlackTree from "effect/RedBlackTree"
+export * as RedBlackTree from "./RedBlackTree.js"
 
 /**
  * @since 2.0.0
  */
-export * as Ref from "effect/Ref"
+export * as Ref from "./Ref.js"
 
 /**
  * @since 2.0.0
  */
-export * as Reloadable from "effect/Reloadable"
+export * as Reloadable from "./Reloadable.js"
 
 /**
  * @since 2.0.0
  */
-export * as Request from "effect/Request"
+export * as Request from "./Request.js"
 
 /**
  * @since 2.0.0
  */
-export * as RequestBlock from "effect/RequestBlock"
+export * as RequestBlock from "./RequestBlock.js"
 
 /**
  * @since 2.0.0
  */
-export * as RequestResolver from "effect/RequestResolver"
+export * as RequestResolver from "./RequestResolver.js"
 
 /**
  * @since 2.0.0
  */
-export * as Resource from "effect/Resource"
+export * as Resource from "./Resource.js"
 
 /**
  * @since 2.0.0
  */
-export * as Runtime from "effect/Runtime"
+export * as Runtime from "./Runtime.js"
 
 /**
  * @since 2.0.0
  */
-export * as RuntimeFlags from "effect/RuntimeFlags"
+export * as RuntimeFlags from "./RuntimeFlags.js"
 
 /**
  * @since 2.0.0
  */
-export * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
+export * as RuntimeFlagsPatch from "./RuntimeFlagsPatch.js"
 
 /**
  * @since 2.0.0
  */
-export * as STM from "effect/STM"
+export * as STM from "./STM.js"
 
 /**
  * @since 2.0.0
  */
-export * as Schedule from "effect/Schedule"
+export * as Schedule from "./Schedule.js"
 
 /**
  * @since 2.0.0
  */
-export * as ScheduleDecision from "effect/ScheduleDecision"
+export * as ScheduleDecision from "./ScheduleDecision.js"
 
 /**
  * @since 2.0.0
  */
-export * as ScheduleInterval from "effect/ScheduleInterval"
+export * as ScheduleInterval from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0
  */
-export * as ScheduleIntervals from "effect/ScheduleIntervals"
+export * as ScheduleIntervals from "./ScheduleIntervals.js"
 
 /**
  * @since 2.0.0
  */
-export * as Scheduler from "effect/Scheduler"
+export * as Scheduler from "./Scheduler.js"
 
 /**
  * @since 2.0.0
  */
-export * as Scope from "effect/Scope"
+export * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0
  */
-export * as ScopedCache from "effect/ScopedCache"
+export * as ScopedCache from "./ScopedCache.js"
 
 /**
  * @since 2.0.0
  */
-export * as ScopedRef from "effect/ScopedRef"
+export * as ScopedRef from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
  */
-export * as Sink from "effect/Sink"
+export * as Sink from "./Sink.js"
 
 /**
  * @since 2.0.0
  */
-export * as SortedMap from "effect/SortedMap"
+export * as SortedMap from "./SortedMap.js"
 
 /**
  * @since 2.0.0
  */
-export * as SortedSet from "effect/SortedSet"
+export * as SortedSet from "./SortedSet.js"
 
 /**
  * @since 2.0.0
  */
-export * as Stream from "effect/Stream"
+export * as Stream from "./Stream.js"
 
 /**
  * @since 2.0.0
  */
-export * as StreamEmit from "effect/StreamEmit"
+export * as StreamEmit from "./StreamEmit.js"
 
 /**
  * @since 2.0.0
  */
-export * as StreamHaltStrategy from "effect/StreamHaltStrategy"
+export * as StreamHaltStrategy from "./StreamHaltStrategy.js"
 
 /**
  * @since 2.0.0
  */
-export * as Streamable from "effect/Streamable"
+export * as Streamable from "./Streamable.js"
 
 /**
  * This module provides utility functions and type class instances for working with the `string` type in TypeScript.
@@ -695,19 +695,19 @@ export * as Streamable from "effect/Streamable"
  *
  * @since 2.0.0
  */
-export * as String from "effect/String"
+export * as String from "./String.js"
 
 /**
  * This module provides utility functions for working with structs in TypeScript.
  *
  * @since 2.0.0
  */
-export * as Struct from "effect/Struct"
+export * as Struct from "./Struct.js"
 
 /**
  * @since 2.0.0
  */
-export * as SubscriptionRef from "effect/SubscriptionRef"
+export * as SubscriptionRef from "./SubscriptionRef.js"
 
 /**
  * A `Supervisor<T>` is allowed to supervise the launching and termination of
@@ -715,148 +715,148 @@ export * as SubscriptionRef from "effect/SubscriptionRef"
  *
  * @since 2.0.0
  */
-export * as Supervisor from "effect/Supervisor"
+export * as Supervisor from "./Supervisor.js"
 
 /**
  * @since 2.0.0
  */
-export * as Symbol from "effect/Symbol"
+export * as Symbol from "./Symbol.js"
 
 /**
  * @since 2.0.0
  */
-export * as SynchronizedRef from "effect/SynchronizedRef"
+export * as SynchronizedRef from "./SynchronizedRef.js"
 
 /**
  * @since 2.0.0
  */
-export * as TArray from "effect/TArray"
+export * as TArray from "./TArray.js"
 
 /**
  * @since 2.0.0
  */
-export * as TDeferred from "effect/TDeferred"
+export * as TDeferred from "./TDeferred.js"
 
 /**
  * @since 2.0.0
  */
-export * as TMap from "effect/TMap"
+export * as TMap from "./TMap.js"
 
 /**
  * @since 2.0.0
  */
-export * as TPriorityQueue from "effect/TPriorityQueue"
+export * as TPriorityQueue from "./TPriorityQueue.js"
 
 /**
  * @since 2.0.0
  */
-export * as TPubSub from "effect/TPubSub"
+export * as TPubSub from "./TPubSub.js"
 
 /**
  * @since 2.0.0
  */
-export * as TQueue from "effect/TQueue"
+export * as TQueue from "./TQueue.js"
 
 /**
  * @since 2.0.0
  */
-export * as TRandom from "effect/TRandom"
+export * as TRandom from "./TRandom.js"
 
 /**
  * @since 2.0.0
  */
-export * as TReentrantLock from "effect/TReentrantLock"
+export * as TReentrantLock from "./TReentrantLock.js"
 
 /**
  * @since 2.0.0
  */
-export * as TRef from "effect/TRef"
+export * as TRef from "./TRef.js"
 
 /**
  * @since 2.0.0
  */
-export * as TSemaphore from "effect/TSemaphore"
+export * as TSemaphore from "./TSemaphore.js"
 
 /**
  * @since 2.0.0
  */
-export * as TSet from "effect/TSet"
+export * as TSet from "./TSet.js"
 
 /**
  * @since 2.0.0
  */
-export * as Take from "effect/Take"
+export * as Take from "./Take.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestAnnotation from "effect/TestAnnotation"
+export * as TestAnnotation from "./TestAnnotation.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestAnnotationMap from "effect/TestAnnotationMap"
+export * as TestAnnotationMap from "./TestAnnotationMap.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestAnnotations from "effect/TestAnnotations"
+export * as TestAnnotations from "./TestAnnotations.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestClock from "effect/TestClock"
+export * as TestClock from "./TestClock.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestConfig from "effect/TestConfig"
+export * as TestConfig from "./TestConfig.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestContext from "effect/TestContext"
+export * as TestContext from "./TestContext.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestLive from "effect/TestLive"
+export * as TestLive from "./TestLive.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestServices from "effect/TestServices"
+export * as TestServices from "./TestServices.js"
 
 /**
  * @since 2.0.0
  */
-export * as TestSized from "effect/TestSized"
+export * as TestSized from "./TestSized.js"
 
 /**
  * @since 2.0.0
  */
-export * as Tracer from "effect/Tracer"
+export * as Tracer from "./Tracer.js"
 
 /**
  * This module provides utility functions for working with tuples in TypeScript.
  *
  * @since 2.0.0
  */
-export * as Tuple from "effect/Tuple"
+export * as Tuple from "./Tuple.js"
 
 /**
  * A collection of types that are commonly used types.
  *
  * @since 2.0.0
  */
-export * as Types from "effect/Types"
+export * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
  */
-export * as Unify from "effect/Unify"
+export * as Unify from "./Unify.js"
 
 /**
  * @since 2.0.0
  */
-export * as Utils from "effect/Utils"
+export * as Utils from "./Utils.js"

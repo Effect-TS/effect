@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "src"
+  ],
+  "compilerOptions": {
+    "outDir": "build/cjs",
+    "declarationDir": "build/cjs",
+    "tsBuildInfoFile": "build/tsbuildinfo/cjs.tsbuildinfo",
+    "rootDir": "src",
+    "module": "CommonJS",
+    "moduleResolution": "Node"
+  }
+}
