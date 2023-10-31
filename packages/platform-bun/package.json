@@ -69,120 +69,101 @@
     "WorkerRunner"
   ],
   "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-platform-bun.esm.js",
-      "import": "./dist/effect-platform-bun.cjs.mjs",
-      "default": "./dist/effect-platform-bun.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./BunContext": {
-      "types": "./dist/declarations/src/BunContext.d.ts",
-      "module": "./BunContext/dist/effect-platform-bun-BunContext.esm.js",
-      "import": "./BunContext/dist/effect-platform-bun-BunContext.cjs.mjs",
-      "default": "./BunContext/dist/effect-platform-bun-BunContext.cjs.js"
-    },
-    "./Command": {
-      "types": "./dist/declarations/src/Command.d.ts",
-      "module": "./Command/dist/effect-platform-bun-Command.esm.js",
-      "import": "./Command/dist/effect-platform-bun-Command.cjs.mjs",
-      "default": "./Command/dist/effect-platform-bun-Command.cjs.js"
-    },
-    "./CommandExecutor": {
-      "types": "./dist/declarations/src/CommandExecutor.d.ts",
-      "module": "./CommandExecutor/dist/effect-platform-bun-CommandExecutor.esm.js",
-      "import": "./CommandExecutor/dist/effect-platform-bun-CommandExecutor.cjs.mjs",
-      "default": "./CommandExecutor/dist/effect-platform-bun-CommandExecutor.cjs.js"
-    },
-    "./Effectify": {
-      "types": "./dist/declarations/src/Effectify.d.ts",
-      "module": "./Effectify/dist/effect-platform-bun-Effectify.esm.js",
-      "import": "./Effectify/dist/effect-platform-bun-Effectify.cjs.mjs",
-      "default": "./Effectify/dist/effect-platform-bun-Effectify.cjs.js"
-    },
-    "./Error": {
-      "types": "./dist/declarations/src/Error.d.ts",
-      "module": "./Error/dist/effect-platform-bun-Error.esm.js",
-      "import": "./Error/dist/effect-platform-bun-Error.cjs.mjs",
-      "default": "./Error/dist/effect-platform-bun-Error.cjs.js"
-    },
-    "./FileSystem": {
-      "types": "./dist/declarations/src/FileSystem.d.ts",
-      "module": "./FileSystem/dist/effect-platform-bun-FileSystem.esm.js",
-      "import": "./FileSystem/dist/effect-platform-bun-FileSystem.cjs.mjs",
-      "default": "./FileSystem/dist/effect-platform-bun-FileSystem.cjs.js"
-    },
-    "./Http/Platform": {
-      "types": "./dist/declarations/src/Http/Platform.d.ts",
-      "module": "./Http/Platform/dist/effect-platform-bun-Http-Platform.esm.js",
-      "import": "./Http/Platform/dist/effect-platform-bun-Http-Platform.cjs.mjs",
-      "default": "./Http/Platform/dist/effect-platform-bun-Http-Platform.cjs.js"
-    },
-    "./Http/Server": {
-      "types": "./dist/declarations/src/Http/Server.d.ts",
-      "module": "./Http/Server/dist/effect-platform-bun-Http-Server.esm.js",
-      "import": "./Http/Server/dist/effect-platform-bun-Http-Server.cjs.mjs",
-      "default": "./Http/Server/dist/effect-platform-bun-Http-Server.cjs.js"
-    },
-    "./Http/ServerRequest": {
-      "types": "./dist/declarations/src/Http/ServerRequest.d.ts",
-      "module": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.esm.js",
-      "import": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.cjs.mjs",
-      "default": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.cjs.js"
-    },
-    "./HttpClient": {
-      "types": "./dist/declarations/src/HttpClient.d.ts",
-      "module": "./HttpClient/dist/effect-platform-bun-HttpClient.esm.js",
-      "import": "./HttpClient/dist/effect-platform-bun-HttpClient.cjs.mjs",
-      "default": "./HttpClient/dist/effect-platform-bun-HttpClient.cjs.js"
-    },
-    "./HttpServer": {
-      "types": "./dist/declarations/src/HttpServer.d.ts",
-      "module": "./HttpServer/dist/effect-platform-bun-HttpServer.esm.js",
-      "import": "./HttpServer/dist/effect-platform-bun-HttpServer.cjs.mjs",
-      "default": "./HttpServer/dist/effect-platform-bun-HttpServer.cjs.js"
-    },
-    "./KeyValueStore": {
-      "types": "./dist/declarations/src/KeyValueStore.d.ts",
-      "module": "./KeyValueStore/dist/effect-platform-bun-KeyValueStore.esm.js",
-      "import": "./KeyValueStore/dist/effect-platform-bun-KeyValueStore.cjs.mjs",
-      "default": "./KeyValueStore/dist/effect-platform-bun-KeyValueStore.cjs.js"
-    },
     "./Path": {
-      "types": "./dist/declarations/src/Path.d.ts",
       "module": "./Path/dist/effect-platform-bun-Path.esm.js",
       "import": "./Path/dist/effect-platform-bun-Path.cjs.mjs",
       "default": "./Path/dist/effect-platform-bun-Path.cjs.js"
     },
-    "./Runtime": {
-      "types": "./dist/declarations/src/Runtime.d.ts",
-      "module": "./Runtime/dist/effect-platform-bun-Runtime.esm.js",
-      "import": "./Runtime/dist/effect-platform-bun-Runtime.cjs.mjs",
-      "default": "./Runtime/dist/effect-platform-bun-Runtime.cjs.js"
-    },
     "./Sink": {
-      "types": "./dist/declarations/src/Sink.d.ts",
       "module": "./Sink/dist/effect-platform-bun-Sink.esm.js",
       "import": "./Sink/dist/effect-platform-bun-Sink.cjs.mjs",
       "default": "./Sink/dist/effect-platform-bun-Sink.cjs.js"
     },
+    "./Error": {
+      "module": "./Error/dist/effect-platform-bun-Error.esm.js",
+      "import": "./Error/dist/effect-platform-bun-Error.cjs.mjs",
+      "default": "./Error/dist/effect-platform-bun-Error.cjs.js"
+    },
+    ".": {
+      "module": "./dist/effect-platform-bun.esm.js",
+      "import": "./dist/effect-platform-bun.cjs.mjs",
+      "default": "./dist/effect-platform-bun.cjs.js"
+    },
     "./Stream": {
-      "types": "./dist/declarations/src/Stream.d.ts",
       "module": "./Stream/dist/effect-platform-bun-Stream.esm.js",
       "import": "./Stream/dist/effect-platform-bun-Stream.cjs.mjs",
       "default": "./Stream/dist/effect-platform-bun-Stream.cjs.js"
     },
     "./Worker": {
-      "types": "./dist/declarations/src/Worker.d.ts",
       "module": "./Worker/dist/effect-platform-bun-Worker.esm.js",
       "import": "./Worker/dist/effect-platform-bun-Worker.cjs.mjs",
       "default": "./Worker/dist/effect-platform-bun-Worker.cjs.js"
     },
+    "./Command": {
+      "module": "./Command/dist/effect-platform-bun-Command.esm.js",
+      "import": "./Command/dist/effect-platform-bun-Command.cjs.mjs",
+      "default": "./Command/dist/effect-platform-bun-Command.cjs.js"
+    },
+    "./Runtime": {
+      "module": "./Runtime/dist/effect-platform-bun-Runtime.esm.js",
+      "import": "./Runtime/dist/effect-platform-bun-Runtime.cjs.mjs",
+      "default": "./Runtime/dist/effect-platform-bun-Runtime.cjs.js"
+    },
+    "./Effectify": {
+      "module": "./Effectify/dist/effect-platform-bun-Effectify.esm.js",
+      "import": "./Effectify/dist/effect-platform-bun-Effectify.cjs.mjs",
+      "default": "./Effectify/dist/effect-platform-bun-Effectify.cjs.js"
+    },
+    "./BunContext": {
+      "module": "./BunContext/dist/effect-platform-bun-BunContext.esm.js",
+      "import": "./BunContext/dist/effect-platform-bun-BunContext.cjs.mjs",
+      "default": "./BunContext/dist/effect-platform-bun-BunContext.cjs.js"
+    },
+    "./FileSystem": {
+      "module": "./FileSystem/dist/effect-platform-bun-FileSystem.esm.js",
+      "import": "./FileSystem/dist/effect-platform-bun-FileSystem.cjs.mjs",
+      "default": "./FileSystem/dist/effect-platform-bun-FileSystem.cjs.js"
+    },
+    "./HttpClient": {
+      "module": "./HttpClient/dist/effect-platform-bun-HttpClient.esm.js",
+      "import": "./HttpClient/dist/effect-platform-bun-HttpClient.cjs.mjs",
+      "default": "./HttpClient/dist/effect-platform-bun-HttpClient.cjs.js"
+    },
+    "./HttpServer": {
+      "module": "./HttpServer/dist/effect-platform-bun-HttpServer.esm.js",
+      "import": "./HttpServer/dist/effect-platform-bun-HttpServer.cjs.mjs",
+      "default": "./HttpServer/dist/effect-platform-bun-HttpServer.cjs.js"
+    },
+    "./Http/Server": {
+      "module": "./Http/Server/dist/effect-platform-bun-Http-Server.esm.js",
+      "import": "./Http/Server/dist/effect-platform-bun-Http-Server.cjs.mjs",
+      "default": "./Http/Server/dist/effect-platform-bun-Http-Server.cjs.js"
+    },
     "./WorkerRunner": {
-      "types": "./dist/declarations/src/WorkerRunner.d.ts",
       "module": "./WorkerRunner/dist/effect-platform-bun-WorkerRunner.esm.js",
       "import": "./WorkerRunner/dist/effect-platform-bun-WorkerRunner.cjs.mjs",
       "default": "./WorkerRunner/dist/effect-platform-bun-WorkerRunner.cjs.js"
-    }
+    },
+    "./Http/Platform": {
+      "module": "./Http/Platform/dist/effect-platform-bun-Http-Platform.esm.js",
+      "import": "./Http/Platform/dist/effect-platform-bun-Http-Platform.cjs.mjs",
+      "default": "./Http/Platform/dist/effect-platform-bun-Http-Platform.cjs.js"
+    },
+    "./KeyValueStore": {
+      "module": "./KeyValueStore/dist/effect-platform-bun-KeyValueStore.esm.js",
+      "import": "./KeyValueStore/dist/effect-platform-bun-KeyValueStore.cjs.mjs",
+      "default": "./KeyValueStore/dist/effect-platform-bun-KeyValueStore.cjs.js"
+    },
+    "./CommandExecutor": {
+      "module": "./CommandExecutor/dist/effect-platform-bun-CommandExecutor.esm.js",
+      "import": "./CommandExecutor/dist/effect-platform-bun-CommandExecutor.cjs.mjs",
+      "default": "./CommandExecutor/dist/effect-platform-bun-CommandExecutor.cjs.js"
+    },
+    "./Http/ServerRequest": {
+      "module": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.esm.js",
+      "import": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.cjs.mjs",
+      "default": "./Http/ServerRequest/dist/effect-platform-bun-Http-ServerRequest.cjs.js"
+    },
+    "./package.json": "./package.json"
   }
 }

@@ -21,7 +21,6 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
           })
         })
       ))
-      const fiberId = yield* _(Effect.fiberId)
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
       yield* _(Effect.addFinalizer(() => Queue.shutdown(queue)))
       const fiber = yield* _(
@@ -39,9 +38,8 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             resume(Effect.fail(WorkerError("unknown", new Error(`exited with code ${code}`))))
           })
         }),
-        Effect.forkDaemon
+        Effect.forkScoped
       )
-      yield* _(Effect.addFinalizer(() => fiber.interruptAsFork(fiberId)))
       const join = Fiber.join(fiber)
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => worker.postMessage([0, message], transfers as any))

@@ -3,7 +3,6 @@
  */
 import type { Effect } from "effect"
 import type * as Context from "effect/Context"
-import type * as Duration from "effect/Duration"
 import type * as Layer from "effect/Layer"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
@@ -130,10 +129,10 @@ export declare namespace WorkerPool {
     & Worker.Options<I, W>
     & ({
       readonly size: number
-    } | {
-      readonly minSize: number
-      readonly maxSize: number
-      readonly timeToLive: Duration.DurationInput
+      // } | {
+      //   readonly minSize: number
+      //   readonly maxSize: number
+      //   readonly timeToLive: Duration.DurationInput
     })
 }
 

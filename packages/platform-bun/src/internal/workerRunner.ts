@@ -53,4 +53,4 @@ export const layer = Layer.succeed(Runner.PlatformRunner, platformRunnerImpl)
 export const make = <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O>,
   options?: Runner.Runner.Options<O>
-): Effect.Effect<Scope.Scope | R, WorkerError, void> => Effect.provide(Runner.make(process, options), layer)
+): Effect.Effect<Scope.Scope | R, WorkerError, never> => Effect.provide(Runner.make(process, options), layer)

@@ -1,3 +1,5 @@
+import { Cause, Chunk } from "effect"
+import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -51,7 +53,6 @@ export const makeManager = Effect.gen(function*(_) {
     spawn<I, E, O>({ encode, permits = 1, queue, spawn, transfers = (_) => [] }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
         const id = idCounter++
-        const fiberId = yield* _(Effect.fiberId)
         let requestIdCounter = 0
         const readyLatch = yield* _(Deferred.make<never, void>())
         const semaphore = yield* _(Effect.makeSemaphore(permits))
@@ -66,7 +67,9 @@ export const makeManager = Effect.gen(function*(_) {
 
         yield* _(Effect.addFinalizer(() =>
           Effect.zipRight(
-            Effect.forEach(requestMap.values(), ([queue]) => Queue.shutdown(queue), { discard: true }),
+            Effect.forEach(requestMap.values(), ([queue]) => Queue.offer(queue, Exit.failCause(Cause.empty)), {
+              discard: true
+            }),
             Effect.sync(() => requestMap.clear())
           )
         ))
@@ -90,23 +93,20 @@ export const makeManager = Effect.gen(function*(_) {
                   // end
                   case 1: {
                     return response.length === 2 ?
-                      Queue.shutdown(queue[0]) :
+                      Queue.offer(queue[0], Exit.failCause(Cause.empty)) :
                       Effect.zipRight(
                         Queue.offer(queue[0], Exit.succeed(response[2])),
-                        Queue.shutdown(queue[0])
+                        Queue.offer(queue[0], Exit.failCause(Cause.empty))
                       )
                   }
                   // error / defect
                   case 2:
                   case 3: {
-                    return Effect.zipRight(
-                      Queue.offer(
-                        queue[0],
-                        response[1] === 2
-                          ? Exit.fail(response[2])
-                          : Exit.die(response[2])
-                      ),
-                      Queue.shutdown(queue[0])
+                    return Queue.offer(
+                      queue[0],
+                      response[1] === 2
+                        ? Exit.fail(response[2])
+                        : Exit.die(response[2])
                     )
                   }
                 }
@@ -150,7 +150,16 @@ export const makeManager = Effect.gen(function*(_) {
               executeAcquire(request),
               executeRelease
             ),
-            ([, queue]) => Stream.flatten(Stream.fromQueue(queue))
+            ([, queue]) => {
+              const loop: Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<O>, void> = Channel.flatMap(
+                Queue.take(queue),
+                Exit.match({
+                  onFailure: (cause) => Cause.isEmpty(cause) ? Channel.unit : Channel.failCause(cause),
+                  onSuccess: (value) => Channel.flatMap(Channel.write(Chunk.of(value)), () => loop)
+                })
+              )
+              return Stream.fromChannel(loop)
+            }
           )
 
         const executeEffect = (request: I) =>
@@ -164,9 +173,8 @@ export const makeManager = Effect.gen(function*(_) {
           Queue.take(backing.queue),
           Effect.flatMap(handleMessage),
           Effect.forever,
-          Effect.forkDaemon
+          Effect.forkScoped
         )
-        yield* _(Effect.addFinalizer(() => handleMessages.interruptAsFork(fiberId)))
 
         const postMessages = yield* _(
           semaphore.take(1),
@@ -188,9 +196,8 @@ export const makeManager = Effect.gen(function*(_) {
             )
           ),
           Effect.forever,
-          Effect.forkDaemon
+          Effect.forkScoped
         )
-        yield* _(Effect.addFinalizer(() => postMessages.interruptAsFork(fiberId)))
 
         const join = Effect.race(
           Fiber.joinAll([
@@ -217,17 +224,17 @@ export const makePool = <W>() =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
     const backing = yield* _(
-      "timeToLive" in options ?
-        Pool.makeWithTTL({
-          acquire: manager.spawn<I, E, O>(options),
-          min: options.minSize,
-          max: options.maxSize,
-          timeToLive: options.timeToLive
-        }) :
-        Pool.make({
-          acquire: manager.spawn<I, E, O>(options),
-          size: options.size
-        })
+      // "timeToLive" in options ?
+      //   Pool.makeWithTTL({
+      //     acquire: manager.spawn<I, E, O>(options),
+      //     min: options.minSize,
+      //     max: options.maxSize,
+      //     timeToLive: options.timeToLive
+      //   }) :
+      Pool.make({
+        acquire: manager.spawn<I, E, O>(options),
+        size: options.size
+      })
     )
     const pool: Worker.WorkerPool<I, E, O> = {
       backing,

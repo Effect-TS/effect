@@ -7,6 +7,7 @@ import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import type * as Worker from "../Worker"
+import type * as WorkerError from "../WorkerError"
 import type * as WorkerRunner from "../WorkerRunner"
 
 /** @internal */
@@ -86,6 +87,6 @@ export const make = <I, R, E, O>(
       Effect.all([
         handleRequests,
         Fiber.join(backing.fiber)
-      ], { concurrency: "unbounded", discard: true })
+      ], { concurrency: "unbounded", discard: true }) as Effect.Effect<R, WorkerError.WorkerError, never>
     )
   })

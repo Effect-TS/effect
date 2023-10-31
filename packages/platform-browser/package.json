@@ -60,66 +60,56 @@
     "WorkerRunner"
   ],
   "exports": {
+    "./Path": {
+      "module": "./Path/dist/effect-platform-browser-Path.esm.js",
+      "import": "./Path/dist/effect-platform-browser-Path.cjs.mjs",
+      "default": "./Path/dist/effect-platform-browser-Path.cjs.js"
+    },
+    "./Error": {
+      "module": "./Error/dist/effect-platform-browser-Error.esm.js",
+      "import": "./Error/dist/effect-platform-browser-Error.cjs.mjs",
+      "default": "./Error/dist/effect-platform-browser-Error.cjs.js"
+    },
     ".": {
-      "types": "./dist/declarations/src/index.d.ts",
       "module": "./dist/effect-platform-browser.esm.js",
       "import": "./dist/effect-platform-browser.cjs.mjs",
       "default": "./dist/effect-platform-browser.cjs.js"
     },
-    "./package.json": "./package.json",
+    "./Worker": {
+      "module": "./Worker/dist/effect-platform-browser-Worker.esm.js",
+      "import": "./Worker/dist/effect-platform-browser-Worker.cjs.mjs",
+      "default": "./Worker/dist/effect-platform-browser-Worker.cjs.js"
+    },
+    "./Runtime": {
+      "module": "./Runtime/dist/effect-platform-browser-Runtime.esm.js",
+      "import": "./Runtime/dist/effect-platform-browser-Runtime.cjs.mjs",
+      "default": "./Runtime/dist/effect-platform-browser-Runtime.cjs.js"
+    },
     "./Clipboard": {
-      "types": "./dist/declarations/src/Clipboard.d.ts",
       "module": "./Clipboard/dist/effect-platform-browser-Clipboard.esm.js",
       "import": "./Clipboard/dist/effect-platform-browser-Clipboard.cjs.mjs",
       "default": "./Clipboard/dist/effect-platform-browser-Clipboard.cjs.js"
     },
     "./Effectify": {
-      "types": "./dist/declarations/src/Effectify.d.ts",
       "module": "./Effectify/dist/effect-platform-browser-Effectify.esm.js",
       "import": "./Effectify/dist/effect-platform-browser-Effectify.cjs.mjs",
       "default": "./Effectify/dist/effect-platform-browser-Effectify.cjs.js"
     },
-    "./Error": {
-      "types": "./dist/declarations/src/Error.d.ts",
-      "module": "./Error/dist/effect-platform-browser-Error.esm.js",
-      "import": "./Error/dist/effect-platform-browser-Error.cjs.mjs",
-      "default": "./Error/dist/effect-platform-browser-Error.cjs.js"
-    },
     "./HttpClient": {
-      "types": "./dist/declarations/src/HttpClient.d.ts",
       "module": "./HttpClient/dist/effect-platform-browser-HttpClient.esm.js",
       "import": "./HttpClient/dist/effect-platform-browser-HttpClient.cjs.mjs",
       "default": "./HttpClient/dist/effect-platform-browser-HttpClient.cjs.js"
     },
+    "./WorkerRunner": {
+      "module": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.esm.js",
+      "import": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.cjs.mjs",
+      "default": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.cjs.js"
+    },
     "./KeyValueStore": {
-      "types": "./dist/declarations/src/KeyValueStore.d.ts",
       "module": "./KeyValueStore/dist/effect-platform-browser-KeyValueStore.esm.js",
       "import": "./KeyValueStore/dist/effect-platform-browser-KeyValueStore.cjs.mjs",
       "default": "./KeyValueStore/dist/effect-platform-browser-KeyValueStore.cjs.js"
     },
-    "./Path": {
-      "types": "./dist/declarations/src/Path.d.ts",
-      "module": "./Path/dist/effect-platform-browser-Path.esm.js",
-      "import": "./Path/dist/effect-platform-browser-Path.cjs.mjs",
-      "default": "./Path/dist/effect-platform-browser-Path.cjs.js"
-    },
-    "./Runtime": {
-      "types": "./dist/declarations/src/Runtime.d.ts",
-      "module": "./Runtime/dist/effect-platform-browser-Runtime.esm.js",
-      "import": "./Runtime/dist/effect-platform-browser-Runtime.cjs.mjs",
-      "default": "./Runtime/dist/effect-platform-browser-Runtime.cjs.js"
-    },
-    "./Worker": {
-      "types": "./dist/declarations/src/Worker.d.ts",
-      "module": "./Worker/dist/effect-platform-browser-Worker.esm.js",
-      "import": "./Worker/dist/effect-platform-browser-Worker.cjs.mjs",
-      "default": "./Worker/dist/effect-platform-browser-Worker.cjs.js"
-    },
-    "./WorkerRunner": {
-      "types": "./dist/declarations/src/WorkerRunner.d.ts",
-      "module": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.esm.js",
-      "import": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.cjs.mjs",
-      "default": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.cjs.js"
-    }
+    "./package.json": "./package.json"
   }
 }

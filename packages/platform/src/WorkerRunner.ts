@@ -15,7 +15,7 @@ import type { WorkerError } from "./WorkerError"
  * @category models
  */
 export interface BackingRunner<I, O> {
-  readonly fiber: Fiber.Fiber<WorkerError, void>
+  readonly fiber: Fiber.Fiber<WorkerError, never>
   readonly queue: Queue.Dequeue<I>
   readonly send: (message: O, transfers?: ReadonlyArray<unknown>) => Effect.Effect<never, never, void>
 }
@@ -81,4 +81,4 @@ export declare namespace Runner {
 export const make: <I, R, E, O>(
   process: (request: I) => Stream.Stream<R, E, O> | Effect.Effect<R, E, O>,
   options?: Runner.Options<O> | undefined
-) => Effect.Effect<Scope.Scope | R | PlatformRunner, WorkerError, void> = internal.make
+) => Effect.Effect<Scope.Scope | R | PlatformRunner, WorkerError, never> = internal.make
