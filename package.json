@@ -17,6 +17,7 @@
     "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
     "build-all": "tsc -b tsconfig.json",
     "build-watch": "tsc -b tsconfig.json --watch",
+    "attw": "attw --pack dist",
     "clean": "rimraf build dist tsconfig.tsbuildinfo",
     "test": "vitest",
     "check": "tsc -p tsconfig.json",
@@ -54,6 +55,7 @@
     "./*": "./src/*.ts"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.13.0",
     "@babel/cli": "^7.23.0",
     "@babel/core": "^7.23.0",
     "@babel/plugin-transform-export-namespace-from": "^7.22.11",
