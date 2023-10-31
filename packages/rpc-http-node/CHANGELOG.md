@@ -1,5 +1,15 @@
 # @effect/rpc-http-node
 
+## 0.16.2
+
+### Patch Changes
+
+- [#127](https://github.com/Effect-TS/rpc/pull/127) [`4967ed9`](https://github.com/Effect-TS/rpc/commit/4967ed97923df281777c4eb87b307cedd6cdb56f) Thanks [@tim-smart](https://github.com/tim-smart)! - fix worker server types
+
+- Updated dependencies [[`4967ed9`](https://github.com/Effect-TS/rpc/commit/4967ed97923df281777c4eb87b307cedd6cdb56f)]:
+  - @effect/rpc-http@0.16.2
+  - @effect/rpc@0.16.2
+
 ## 0.16.1
 
 ### Patch Changes
