@@ -1,3 +1,4 @@
+import type * as Error from "@effect/platform/WorkerError"
 import * as Runner from "@effect/platform/WorkerRunner"
 import type { RpcTransportError } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
@@ -6,10 +7,15 @@ import type * as Schema from "@effect/rpc/Schema"
 import * as Server from "@effect/rpc/Server"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import type * as Scope from "effect/Scope"
 import { getTransferables } from "../Schema"
 
 /** @internal */
-export const make = (router: RpcRouter.Base) => {
+export const make = <R extends RpcRouter.Base>(router: R): Effect.Effect<
+  Scope.Scope | Runner.PlatformRunner | RpcRouter.Services<R>,
+  Error.WorkerError,
+  never
+> => {
   const run = (handler: Server.RpcServerSingleWithSchema) =>
     Runner.make<
       RpcRequest.Payload,

@@ -5,7 +5,6 @@ import type * as Worker from "@effect/platform/Worker"
 import type { RpcTransportError } from "@effect/rpc/Error"
 import type * as Resolver from "@effect/rpc/Resolver"
 import type { Tag } from "effect/Context"
-import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
@@ -32,10 +31,6 @@ export declare namespace RpcWorkerPool {
     & Omit<Worker.Worker.Options<Resolver.RpcRequest>, "transfers" | "encode">
     & ({
       readonly size: number
-    } | {
-      readonly minSize: number
-      readonly maxSize: number
-      readonly timeToLive: Duration.DurationInput
     })
 }
 
