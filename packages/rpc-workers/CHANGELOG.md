@@ -1,5 +1,11 @@
 # @effect/rpc-workers
 
+## 0.16.3
+
+### Patch Changes
+
+- [#129](https://github.com/Effect-TS/rpc/pull/129) [`7b032b2`](https://github.com/Effect-TS/rpc/commit/7b032b2f1ee822f285c9a9478d68beb68d918270) Thanks [@tim-smart](https://github.com/tim-smart)! - fix workers exported types
+
 ## 0.16.2
 
 ### Patch Changes
