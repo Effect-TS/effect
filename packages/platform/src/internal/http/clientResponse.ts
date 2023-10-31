@@ -74,8 +74,9 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     })
   }
 
+  private textBody?: Effect.Effect<never, Error.ResponseError, string>
   get text(): Effect.Effect<never, Error.ResponseError, string> {
-    return Effect.tryPromise({
+    return this.textBody ??= Effect.tryPromise({
       try: () => this.source.text(),
       catch: (_) =>
         internalError.responseError({
@@ -84,7 +85,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
           reason: "Decode",
           error: _
         })
-    })
+    }).pipe(Effect.cached, Effect.runSync)
   }
 
   get urlParamsBody(): Effect.Effect<never, Error.ResponseError, UrlParams.UrlParams> {
@@ -101,8 +102,9 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
       }))
   }
 
+  private formDataBody?: Effect.Effect<never, Error.ResponseError, FormData>
   get formData(): Effect.Effect<never, Error.ResponseError, FormData> {
-    return Effect.tryPromise({
+    return this.formDataBody ??= Effect.tryPromise({
       try: () => this.source.formData(),
       catch: (_) =>
         internalError.responseError({
@@ -111,11 +113,12 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
           reason: "Decode",
           error: _
         })
-    })
+    }).pipe(Effect.cached, Effect.runSync)
   }
 
+  private arrayBufferBody?: Effect.Effect<never, Error.ResponseError, ArrayBuffer>
   get arrayBuffer(): Effect.Effect<never, Error.ResponseError, ArrayBuffer> {
-    return Effect.tryPromise({
+    return this.arrayBufferBody ??= Effect.tryPromise({
       try: () => this.source.arrayBuffer(),
       catch: (_) =>
         internalError.responseError({
@@ -124,7 +127,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
           reason: "Decode",
           error: _
         })
-    })
+    }).pipe(Effect.cached, Effect.runSync)
   }
 }
 
