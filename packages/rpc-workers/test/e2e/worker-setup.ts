@@ -22,6 +22,7 @@ const router = Router.make(schemaWithSetup, {
 
 Server.make(router).pipe(
   Effect.scoped,
+  Effect.provideService(Name, { name: "John" }),
   Effect.provide(Runner.layer),
   Effect.catchAllCause(Effect.logError),
   Effect.runPromise
