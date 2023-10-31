@@ -287,7 +287,10 @@ interface NumberConstraints {
   readonly constraints: FastCheck.FloatConstraints
 }
 
-const numberConstraints = (constraints: NumberConstraints["constraints"]): NumberConstraints => {
+/** @internal */
+export const numberConstraints = (
+  constraints: NumberConstraints["constraints"]
+): NumberConstraints => {
   if (Predicate.isNumber(constraints.min)) {
     constraints.min = Math.fround(constraints.min)
   }
@@ -302,7 +305,10 @@ interface StringConstraints {
   readonly constraints: FastCheck.StringSharedConstraints
 }
 
-const stringConstraints = (constraints: StringConstraints["constraints"]): StringConstraints => {
+/** @internal */
+export const stringConstraints = (
+  constraints: StringConstraints["constraints"]
+): StringConstraints => {
   return { _tag: "StringConstraints", constraints }
 }
 
@@ -311,7 +317,10 @@ interface IntegerConstraints {
   readonly constraints: FastCheck.IntegerConstraints
 }
 
-const integerConstraints = (constraints: IntegerConstraints["constraints"]): IntegerConstraints => {
+/** @internal */
+export const integerConstraints = (
+  constraints: IntegerConstraints["constraints"]
+): IntegerConstraints => {
   return { _tag: "IntegerConstraints", constraints }
 }
 
@@ -320,11 +329,19 @@ interface ArrayConstraints {
   readonly constraints: FastCheck.ArrayConstraints
 }
 
-const arrayConstraints = (constraints: ArrayConstraints["constraints"]): ArrayConstraints => {
+/** @internal */
+export const arrayConstraints = (
+  constraints: ArrayConstraints["constraints"]
+): ArrayConstraints => {
   return { _tag: "ArrayConstraints", constraints }
 }
 
-type Constraints = NumberConstraints | StringConstraints | IntegerConstraints | ArrayConstraints
+/** @internal */
+export type Constraints =
+  | NumberConstraints
+  | StringConstraints
+  | IntegerConstraints
+  | ArrayConstraints
 
 /** @internal */
 export const getConstraints = (ast: AST.Refinement): Constraints | undefined => {
@@ -381,34 +398,54 @@ export const combineConstraints = (
     return c1
   }
   switch (c1._tag) {
+    case "ArrayConstraints": {
+      switch (c2._tag) {
+        case "ArrayConstraints": {
+          const c: ArrayConstraints["constraints"] = {
+            ...c1.constraints,
+            ...c2.constraints
+          }
+          const minLength = getMax(c1.constraints.minLength, c2.constraints.minLength)
+          if (Predicate.isNumber(minLength)) {
+            c.minLength = minLength
+          }
+          const maxLength = getMin(c1.constraints.maxLength, c2.constraints.maxLength)
+          if (Predicate.isNumber(maxLength)) {
+            c.maxLength = maxLength
+          }
+          return arrayConstraints(c)
+        }
+      }
+      break
+    }
     case "NumberConstraints": {
       switch (c2._tag) {
         case "NumberConstraints": {
-          const constraints: NumberConstraints["constraints"] = {
+          const c: NumberConstraints["constraints"] = {
             ...c1.constraints,
             ...c2.constraints
           }
           const min = getMax(c1.constraints.min, c2.constraints.min)
           if (Predicate.isNumber(min)) {
-            constraints.min = min
+            c.min = min
           }
           const max = getMin(c1.constraints.max, c2.constraints.max)
           if (Predicate.isNumber(max)) {
-            constraints.max = max
+            c.max = max
           }
-          return numberConstraints(constraints)
+          return numberConstraints(c)
         }
         case "IntegerConstraints": {
-          const out: IntegerConstraints = { ...c2 }
+          const c: IntegerConstraints["constraints"] = { ...c2.constraints }
           const min = getMax(c1.constraints.min, c2.constraints.min)
           if (Predicate.isNumber(min)) {
-            out.constraints.min = min
+            c.min = min
           }
           const max = getMin(c1.constraints.max, c2.constraints.max)
           if (Predicate.isNumber(max)) {
-            out.constraints.max = max
+            c.max = max
           }
-          return out
+          return integerConstraints(c)
         }
       }
       break
@@ -416,16 +453,19 @@ export const combineConstraints = (
     case "StringConstraints": {
       switch (c2._tag) {
         case "StringConstraints": {
-          const out: StringConstraints = stringConstraints({ ...c1.constraints, ...c2.constraints })
-          const min = getMax(c1.constraints.minLength, c2.constraints.minLength)
-          if (Predicate.isNumber(min)) {
-            out.constraints.minLength = min
+          const c: StringConstraints["constraints"] = {
+            ...c1.constraints,
+            ...c2.constraints
           }
-          const max = getMin(c1.constraints.maxLength, c2.constraints.maxLength)
-          if (Predicate.isNumber(max)) {
-            out.constraints.maxLength = max
+          const minLength = getMax(c1.constraints.minLength, c2.constraints.minLength)
+          if (Predicate.isNumber(minLength)) {
+            c.minLength = minLength
           }
-          return out
+          const maxLength = getMin(c1.constraints.maxLength, c2.constraints.maxLength)
+          if (Predicate.isNumber(maxLength)) {
+            c.maxLength = maxLength
+          }
+          return stringConstraints(c)
         }
       }
       break
@@ -434,16 +474,16 @@ export const combineConstraints = (
       switch (c2._tag) {
         case "NumberConstraints":
         case "IntegerConstraints": {
-          const out: IntegerConstraints = { ...c1 }
+          const c: IntegerConstraints["constraints"] = { ...c1.constraints }
           const min = getMax(c1.constraints.min, c2.constraints.min)
           if (Predicate.isNumber(min)) {
-            out.constraints.min = min
+            c.min = min
           }
           const max = getMin(c1.constraints.max, c2.constraints.max)
           if (Predicate.isNumber(max)) {
-            out.constraints.max = max
+            c.max = max
           }
-          return out
+          return integerConstraints(c)
         }
       }
       break

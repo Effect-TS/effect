@@ -1,194 +1,127 @@
 import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
-import type * as FastCheck from "fast-check"
 import { describe, expect, it } from "vitest"
 
-interface NumberConstraints {
-  readonly _tag: "NumberConstraints"
-  readonly constraints: FastCheck.FloatConstraints
-}
-
-interface StringConstraints {
-  readonly _tag: "StringConstraints"
-  readonly constraints: FastCheck.StringSharedConstraints
-}
-
-interface IntegerConstraints {
-  readonly _tag: "IntegerConstraints"
-  readonly constraints: FastCheck.IntegerConstraints
-}
-
-type Constraints = NumberConstraints | StringConstraints | IntegerConstraints
-
-const expectConstraints = <I, A>(schema: S.Schema<I, A>, constraints: Constraints) => {
+const expectConstraints = <I, A>(schema: S.Schema<I, A>, constraints: A.Constraints) => {
   expect(A.getConstraints(schema.ast as any)).toEqual(constraints)
 }
 
 describe("Arbitrary/getConstraints", () => {
   it("GreaterThanTypeId", () => {
-    expectConstraints(S.number.pipe(S.greaterThan(0)), {
-      _tag: "NumberConstraints",
-      constraints: { min: 0 }
-    })
+    expectConstraints(S.number.pipe(S.greaterThan(0)), A.numberConstraints({ min: 0 }))
   })
 
   it("GreaterThanOrEqualToTypeId", () => {
-    expectConstraints(S.number.pipe(S.greaterThanOrEqualTo(0)), {
-      _tag: "NumberConstraints",
-      constraints: { min: 0 }
-    })
+    expectConstraints(S.number.pipe(S.greaterThanOrEqualTo(0)), A.numberConstraints({ min: 0 }))
   })
 
   it("LessThanTypeId", () => {
-    expectConstraints(S.number.pipe(S.lessThan(0)), {
-      _tag: "NumberConstraints",
-      constraints: { max: 0 }
-    })
+    expectConstraints(S.number.pipe(S.lessThan(0)), A.numberConstraints({ max: 0 }))
   })
 
   it("LessThanOrEqualToTypeId", () => {
-    expectConstraints(S.number.pipe(S.lessThanOrEqualTo(0)), {
-      _tag: "NumberConstraints",
-      constraints: { max: 0 }
-    })
+    expectConstraints(S.number.pipe(S.lessThanOrEqualTo(0)), A.numberConstraints({ max: 0 }))
   })
 
   it("PositiveTypeId", () => {
-    expectConstraints(S.number.pipe(S.positive()), {
-      _tag: "NumberConstraints",
-      constraints: { min: 0 }
-    })
+    expectConstraints(S.number.pipe(S.positive()), A.numberConstraints({ min: 0 }))
   })
 
   it("NonNegativeTypeId", () => {
-    expectConstraints(S.number.pipe(S.nonNegative()), {
-      _tag: "NumberConstraints",
-      constraints: { min: 0 }
-    })
+    expectConstraints(S.number.pipe(S.nonNegative()), A.numberConstraints({ min: 0 }))
   })
 
   it("NegativeTypeId", () => {
-    expectConstraints(S.number.pipe(S.negative()), {
-      _tag: "NumberConstraints",
-      constraints: { max: 0 }
-    })
+    expectConstraints(S.number.pipe(S.negative()), A.numberConstraints({ max: 0 }))
   })
 
   it("NonPositiveTypeId", () => {
-    expectConstraints(S.number.pipe(S.nonPositive()), {
-      _tag: "NumberConstraints",
-      constraints: { max: 0 }
-    })
-  })
-
-  it("IntTypeId", () => {
-    expectConstraints(S.number.pipe(S.int()), { _tag: "IntegerConstraints", constraints: {} })
+    expectConstraints(S.number.pipe(S.nonPositive()), A.numberConstraints({ max: 0 }))
   })
 
   it("BetweenTypeId", () => {
-    expectConstraints(S.number.pipe(S.between(0, 10)), {
-      _tag: "NumberConstraints",
-      constraints: { min: 0, max: 10 }
-    })
+    expectConstraints(S.number.pipe(S.between(0, 10)), A.numberConstraints({ min: 0, max: 10 }))
+  })
+
+  it("IntTypeId", () => {
+    expectConstraints(S.number.pipe(S.int()), A.integerConstraints({}))
   })
 
   it("MinLengthTypeId", () => {
-    expectConstraints(S.string.pipe(S.minLength(5)), {
-      _tag: "StringConstraints",
-      constraints: { minLength: 5 }
-    })
+    expectConstraints(S.string.pipe(S.minLength(5)), A.stringConstraints({ minLength: 5 }))
   })
 
   it("MaxLengthTypeId", () => {
-    expectConstraints(S.string.pipe(S.maxLength(5)), {
-      _tag: "StringConstraints",
-      constraints: { maxLength: 5 }
-    })
+    expectConstraints(S.string.pipe(S.maxLength(5)), A.stringConstraints({ maxLength: 5 }))
+  })
+
+  it("ItemsCountTypeId", () => {
+    expectConstraints(
+      S.array(S.string).pipe(S.itemsCount(5)),
+      A.arrayConstraints({ minLength: 5, maxLength: 5 })
+    )
+  })
+
+  it("MinItemsTypeId", () => {
+    expectConstraints(S.array(S.string).pipe(S.minItems(4)), A.arrayConstraints({ minLength: 4 }))
+  })
+
+  it("MaxItemsTypeId", () => {
+    expectConstraints(S.array(S.string).pipe(S.maxItems(6)), A.arrayConstraints({ maxLength: 6 }))
   })
 })
 
-describe("Arbitrary.combineConstraints", () => {
+describe("Arbitrary/combineConstraints", () => {
   it("Number <> Number", () => {
-    const c1: NumberConstraints = {
-      _tag: "NumberConstraints",
-      constraints: { min: 0, max: 10, noNaN: true }
-    }
-    const c2: NumberConstraints = {
-      _tag: "NumberConstraints",
-      constraints: { min: 1, max: 9, noDefaultInfinity: true }
-    }
-    const c3: NumberConstraints = {
-      _tag: "NumberConstraints",
-      constraints: { min: 1, max: 9, noNaN: true, noDefaultInfinity: true }
-    }
+    const c1 = A.numberConstraints({ min: 0, max: 10, noNaN: true })
+    const c2 = A.numberConstraints({ min: 1, max: 9, noDefaultInfinity: true })
+    const c3 = A.numberConstraints({ min: 1, max: 9, noNaN: true, noDefaultInfinity: true })
     expect(A.combineConstraints(c1, c2)).toEqual(c3)
     expect(A.combineConstraints(c2, c1)).toEqual(c3)
   })
 
   it("Number <> Integer", () => {
-    const c1: NumberConstraints = {
-      _tag: "NumberConstraints",
-      constraints: { min: 0, max: 10, noNaN: true }
-    }
-    const c2: IntegerConstraints = {
-      _tag: "IntegerConstraints",
-      constraints: { min: 1, max: 9 }
-    }
-    const c3: IntegerConstraints = {
-      _tag: "IntegerConstraints",
-      constraints: { min: 1, max: 9 }
-    }
-    expect(A.combineConstraints(c1, c2)).toEqual(c3)
-    expect(A.combineConstraints(c2, c1)).toEqual(c3)
+    const c1 = A.numberConstraints({ min: 0, max: 10, noNaN: true })
+    const c2 = A.integerConstraints({ min: 1, max: 9 })
+    expect(A.combineConstraints(c1, c2)).toEqual(c2)
+    expect(A.combineConstraints(c2, c1)).toEqual(c2)
   })
 
   it("String <> String", () => {
-    const c1: StringConstraints = {
-      _tag: "StringConstraints",
-      constraints: { minLength: 0, maxLength: 10 }
-    }
-    const c2: StringConstraints = {
-      _tag: "StringConstraints",
-      constraints: { minLength: 1, maxLength: 9 }
-    }
-    const c3: StringConstraints = {
-      _tag: "StringConstraints",
-      constraints: { minLength: 1, maxLength: 9 }
-    }
-    expect(A.combineConstraints(c1, c2)).toEqual(c3)
-    expect(A.combineConstraints(c2, c1)).toEqual(c3)
+    const c1 = A.stringConstraints({ minLength: 0, maxLength: 10 })
+    const c2 = A.stringConstraints({ minLength: 1, maxLength: 9 })
+    expect(A.combineConstraints(c1, c2)).toEqual(c2)
+    expect(A.combineConstraints(c2, c1)).toEqual(c2)
   })
 
   it("Number <> undefined", () => {
     expect(
-      A.combineConstraints({ _tag: "NumberConstraints", constraints: {} }, undefined)
-    ).toEqual({ _tag: "NumberConstraints", constraints: {} })
+      A.combineConstraints(A.numberConstraints({}), undefined)
+    ).toEqual(A.numberConstraints({}))
   })
 
   it("Number <> String", () => {
     expect(
-      A.combineConstraints({ _tag: "NumberConstraints", constraints: {} }, {
-        _tag: "StringConstraints",
-        constraints: {}
-      })
+      A.combineConstraints(A.numberConstraints({}), A.stringConstraints({}))
     ).toEqual(undefined)
   })
 
   it("String <> Number", () => {
     expect(
-      A.combineConstraints({ _tag: "StringConstraints", constraints: {} }, {
-        _tag: "NumberConstraints",
-        constraints: {}
-      })
+      A.combineConstraints(A.stringConstraints({}), A.numberConstraints({}))
     ).toEqual(undefined)
   })
 
   it("Integer <> String", () => {
     expect(
-      A.combineConstraints({ _tag: "IntegerConstraints", constraints: {} }, {
-        _tag: "StringConstraints",
-        constraints: {}
-      })
+      A.combineConstraints(A.integerConstraints({}), A.stringConstraints({}))
     ).toEqual(undefined)
+  })
+
+  it("Array <> Array", () => {
+    const c1 = A.arrayConstraints({ minLength: 0, maxLength: 10 })
+    const c2 = A.arrayConstraints({ minLength: 1, maxLength: 9 })
+    expect(A.combineConstraints(c1, c2)).toEqual(c2)
+    expect(A.combineConstraints(c2, c1)).toEqual(c2)
   })
 })
