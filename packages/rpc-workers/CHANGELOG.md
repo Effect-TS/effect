@@ -1,5 +1,11 @@
 # @effect/rpc-workers
 
+## 0.16.4
+
+### Patch Changes
+
+- [#132](https://github.com/Effect-TS/rpc/pull/132) [`6011b53`](https://github.com/Effect-TS/rpc/commit/6011b53a481eacb9392ef0538a00677c64c55ebb) Thanks [@tim-smart](https://github.com/tim-smart)! - fix WebWorker schema validation
+
 ## 0.16.3
 
 ### Patch Changes
