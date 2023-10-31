@@ -125,7 +125,15 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
     case "BooleanKeyword":
       return (fc) => fc.boolean()
     case "BigIntKeyword":
-      return (fc) => fc.bigInt()
+      return (fc) => {
+        if (options.constraints) {
+          switch (options.constraints._tag) {
+            case "BigIntConstraints":
+              return fc.bigInt(options.constraints.constraints)
+          }
+        }
+        return fc.bigInt()
+      }
     case "SymbolKeyword":
       return (fc) => fc.string().map((s) => Symbol.for(s))
     case "ObjectKeyword":
@@ -336,12 +344,25 @@ export const arrayConstraints = (
   return { _tag: "ArrayConstraints", constraints }
 }
 
+interface BigIntConstraints {
+  readonly _tag: "BigIntConstraints"
+  readonly constraints: FastCheck.BigIntConstraints
+}
+
+/** @internal */
+export const bigintConstraints = (
+  constraints: BigIntConstraints["constraints"]
+): BigIntConstraints => {
+  return { _tag: "BigIntConstraints", constraints }
+}
+
 /** @internal */
 export type Constraints =
   | NumberConstraints
   | StringConstraints
   | IntegerConstraints
   | ArrayConstraints
+  | BigIntConstraints
 
 /** @internal */
 export const getConstraints = (ast: AST.Refinement): Constraints | undefined => {
@@ -368,6 +389,30 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
         constraints.max = max
       }
       return numberConstraints(constraints)
+    }
+    // bigint
+    case Schema.GreaterThanBigintTypeId:
+    case Schema.GreaterThanOrEqualToBigintTypeId: {
+      const params: any = ast.annotations[TypeAnnotationId]
+      return bigintConstraints({ min: params.min })
+    }
+    case Schema.LessThanBigintTypeId:
+    case Schema.LessThanOrEqualToBigintTypeId: {
+      const params: any = ast.annotations[TypeAnnotationId]
+      return bigintConstraints({ max: params.max })
+    }
+    case Schema.BetweenBigintTypeId: {
+      const params: any = ast.annotations[TypeAnnotationId]
+      const min = params.min
+      const max = params.max
+      const constraints: BigIntConstraints["constraints"] = {}
+      if (Predicate.isBigInt(min)) {
+        constraints.min = min
+      }
+      if (Predicate.isBigInt(max)) {
+        constraints.max = max
+      }
+      return bigintConstraints(constraints)
     }
     // string
     case Schema.MinLengthTypeId:
@@ -450,6 +495,26 @@ export const combineConstraints = (
       }
       break
     }
+    case "BigIntConstraints": {
+      switch (c2._tag) {
+        case "BigIntConstraints": {
+          const c: BigIntConstraints["constraints"] = {
+            ...c1.constraints,
+            ...c2.constraints
+          }
+          const min = getMax(c1.constraints.min, c2.constraints.min)
+          if (Predicate.isBigInt(min)) {
+            c.min = min
+          }
+          const max = getMin(c1.constraints.max, c2.constraints.max)
+          if (Predicate.isBigInt(max)) {
+            c.max = max
+          }
+          return bigintConstraints(c)
+        }
+      }
+      break
+    }
     case "StringConstraints": {
       switch (c2._tag) {
         case "StringConstraints": {
@@ -491,8 +556,20 @@ export const combineConstraints = (
   }
 }
 
-const getMax = (n1: number | undefined, n2: number | undefined): number | undefined =>
-  n1 === undefined ? n2 : n2 === undefined ? n1 : Math.max(n1, n2)
+function getMax(n1: bigint | undefined, n2: bigint | undefined): bigint | undefined
+function getMax(n1: number | undefined, n2: number | undefined): number | undefined
+function getMax(
+  n1: bigint | number | undefined,
+  n2: bigint | number | undefined
+): bigint | number | undefined {
+  return n1 === undefined ? n2 : n2 === undefined ? n1 : n1 <= n2 ? n2 : n1
+}
 
-const getMin = (n1: number | undefined, n2: number | undefined): number | undefined =>
-  n1 === undefined ? n2 : n2 === undefined ? n1 : Math.min(n1, n2)
+function getMin(n1: bigint | undefined, n2: bigint | undefined): bigint | undefined
+function getMin(n1: number | undefined, n2: number | undefined): number | undefined
+function getMin(
+  n1: bigint | number | undefined,
+  n2: bigint | number | undefined
+): bigint | number | undefined {
+  return n1 === undefined ? n2 : n2 === undefined ? n1 : n1 <= n2 ? n1 : n2
+}

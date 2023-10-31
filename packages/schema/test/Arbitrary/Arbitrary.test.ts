@@ -394,26 +394,6 @@ describe("Arbitrary/Arbitrary", () => {
     propertyTo(schema)
   })
 
-  it("lessThanOrEqualTo", () => {
-    const schema = S.number.pipe(S.lessThanOrEqualTo(1))
-    propertyTo(schema)
-  })
-
-  it("greaterThanOrEqualTo", () => {
-    const schema = S.number.pipe(S.greaterThanOrEqualTo(1))
-    propertyTo(schema)
-  })
-
-  it("lessThan", () => {
-    const schema = S.number.pipe(S.lessThan(1))
-    propertyTo(schema)
-  })
-
-  it("greaterThan", () => {
-    const schema = S.number.pipe(S.greaterThan(1))
-    propertyTo(schema)
-  })
-
   it("startsWith", () => {
     const schema = S.string.pipe(S.startsWith("a"))
     propertyTo(schema)
@@ -426,16 +406,6 @@ describe("Arbitrary/Arbitrary", () => {
 
   it("int", () => {
     const schema = S.number.pipe(S.int())
-    propertyTo(schema)
-  })
-
-  it("nonNaN", () => {
-    const schema = S.number.pipe(S.nonNaN())
-    propertyTo(schema)
-  })
-
-  it("finite", () => {
-    const schema = S.number.pipe(S.finite())
     propertyTo(schema)
   })
 
@@ -462,8 +432,72 @@ describe("Arbitrary/Arbitrary", () => {
     propertyTo(schema)
   })
 
-  it("should support doubles as constraints", () => {
-    const schema = S.number.pipe(S.clamp(1.3, 3.1))
-    propertyTo(schema)
+  describe("number", () => {
+    it("lessThanOrEqualTo", () => {
+      const schema = S.number.pipe(S.lessThanOrEqualTo(1))
+      propertyTo(schema)
+    })
+
+    it("greaterThanOrEqualTo", () => {
+      const schema = S.number.pipe(S.greaterThanOrEqualTo(1))
+      propertyTo(schema)
+    })
+
+    it("lessThan", () => {
+      const schema = S.number.pipe(S.lessThan(1))
+      propertyTo(schema)
+    })
+
+    it("greaterThan", () => {
+      const schema = S.number.pipe(S.greaterThan(1))
+      propertyTo(schema)
+    })
+
+    it("between", () => {
+      const schema = S.number.pipe(S.between(1, 10))
+      propertyTo(schema)
+    })
+
+    it("nonNaN", () => {
+      const schema = S.number.pipe(S.nonNaN())
+      propertyTo(schema)
+    })
+
+    it("finite", () => {
+      const schema = S.number.pipe(S.finite())
+      propertyTo(schema)
+    })
+
+    it("NumberConstraints should support doubles as constraints", () => {
+      const schema = S.number.pipe(S.clamp(1.3, 3.1))
+      propertyTo(schema)
+    })
+  })
+
+  describe("bigint", () => {
+    it("lessThanOrEqualTo", () => {
+      const schema = S.bigint.pipe(S.lessThanOrEqualToBigint(BigInt(1)))
+      propertyTo(schema)
+    })
+
+    it("greaterThanOrEqualTo", () => {
+      const schema = S.bigint.pipe(S.greaterThanOrEqualToBigint(BigInt(1)))
+      propertyTo(schema)
+    })
+
+    it("lessThan", () => {
+      const schema = S.bigint.pipe(S.lessThanBigint(BigInt(1)))
+      propertyTo(schema)
+    })
+
+    it("greaterThan", () => {
+      const schema = S.bigint.pipe(S.greaterThanBigint(BigInt(1)))
+      propertyTo(schema)
+    })
+
+    it("between", () => {
+      const schema = S.bigint.pipe(S.betweenBigint(BigInt(1), BigInt(10)))
+      propertyTo(schema)
+    })
   })
 })

@@ -2397,9 +2397,8 @@ export const greaterThanBigint = <A extends bigint>(
 <I>(self: Schema<I, A>): Schema<I, A> =>
   self.pipe(
     filter((a): a is A => a > min, {
-      typeId: GreaterThanBigintTypeId,
+      typeId: { id: GreaterThanBigintTypeId, params: { min } },
       description: min === 0n ? "a positive bigint" : `a bigint greater than ${min}n`,
-      jsonSchema: { exclusiveMinimum: min },
       ...options
     })
   )
@@ -2423,11 +2422,10 @@ export const greaterThanOrEqualToBigint = <A extends bigint>(
 <I>(self: Schema<I, A>): Schema<I, A> =>
   self.pipe(
     filter((a): a is A => a >= min, {
-      typeId: GreaterThanOrEqualToBigintTypeId,
+      typeId: { id: GreaterThanOrEqualToBigintTypeId, params: { min } },
       description: min === 0n
         ? "a non-negative bigint"
         : `a bigint greater than or equal to ${min}n`,
-      jsonSchema: { minimum: min },
       ...options
     })
   )
@@ -2449,9 +2447,8 @@ export const lessThanBigint = <A extends bigint>(
 <I>(self: Schema<I, A>): Schema<I, A> =>
   self.pipe(
     filter((a): a is A => a < max, {
-      typeId: LessThanBigintTypeId,
+      typeId: { id: LessThanBigintTypeId, params: { max } },
       description: max === 0n ? "a negative bigint" : `a bigint less than ${max}n`,
-      jsonSchema: { exclusiveMaximum: max },
       ...options
     })
   )
@@ -2475,9 +2472,8 @@ export const lessThanOrEqualToBigint = <A extends bigint>(
 <I>(self: Schema<I, A>): Schema<I, A> =>
   self.pipe(
     filter((a): a is A => a <= max, {
-      typeId: LessThanOrEqualToBigintTypeId,
+      typeId: { id: LessThanOrEqualToBigintTypeId, params: { max } },
       description: max === 0n ? "a non-positive bigint" : `a bigint less than or equal to ${max}n`,
-      jsonSchema: { maximum: max },
       ...options
     })
   )
@@ -2500,9 +2496,8 @@ export const betweenBigint = <A extends bigint>(
 <I>(self: Schema<I, A>): Schema<I, A> =>
   self.pipe(
     filter((a): a is A => a >= min && a <= max, {
-      typeId: BetweenBigintTypeId,
+      typeId: { id: BetweenBigintTypeId, params: { max, min } },
       description: `a bigint between ${min}n and ${max}n`,
-      jsonSchema: { maximum: max, minimum: min },
       ...options
     })
   )
