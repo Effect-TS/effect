@@ -116,7 +116,9 @@ const emptyArray: ReadonlyArray<never> = []
  * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Chunk<A>> =>
-  Equivalence.make((self, that) => toReadonlyArray(self).every((value, i) => isEquivalent(value, unsafeGet(that, i))))
+  Equivalence.make((self, that) =>
+    self.length === that.length && toReadonlyArray(self).every((value, i) => isEquivalent(value, unsafeGet(that, i)))
+  )
 
 const _equivalence = getEquivalence(Equal.equals)
 
