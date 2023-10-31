@@ -12,11 +12,16 @@ describe("Schema", () => {
 
       binary: {
         output: S.instanceOf(Uint8Array)
+      },
+
+      array: {
+        output: S.array(S.struct({}))
       }
     })
 
     typeEquals(schema.currentTime)<{ output: S.Schema<Date> }>() satisfies true
     typeEquals(schema.binary)<{ output: S.Schema<Uint8Array> }>() satisfies true
+    typeEquals(schema.array)<{ output: S.Schema<ReadonlyArray<{}>> }>() satisfies true
   })
 
   it("transferable", () => {

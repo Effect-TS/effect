@@ -33,22 +33,27 @@ export type Primitive =
   | BigInt64Array
   | BigUint64Array
 
+type PrimitiveArray = ReadonlyArray<WorkerType>
+type PrimitiveRecord = { readonly [key: string]: WorkerType }
+type PrimitiveMap = Map<WorkerType, WorkerType>
+type PrimitiveSet = Set<WorkerType>
+
 /**
  * @category models
  * @since 1.0.0
  */
-export type WebWorkerType =
+export type WorkerType =
   | Primitive
-  | Map<Primitive, Primitive>
-  | Set<Primitive>
-  | ReadonlyArray<Primitive>
-  | Record<string, Primitive>
+  | PrimitiveArray
+  | PrimitiveRecord
+  | PrimitiveMap
+  | PrimitiveSet
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make = Schema.makeWith<"WebWorkerType", WebWorkerType>()
+export const make = Schema.makeWith<"WebWorkerType", WorkerType>()
 
 /**
  * @since 1.0.0
