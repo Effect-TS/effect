@@ -4,6 +4,7 @@ import * as Duration from "effect/Duration"
 import * as E from "effect/Either"
 import * as Equal from "effect/Equal"
 import { identity, pipe } from "effect/Function"
+import * as N from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import type { Predicate } from "effect/Predicate"
@@ -26,7 +27,6 @@ describe.concurrent("Chunk", () => {
     expect(Chunk.reduce).exist
     expect(Chunk.reduceRight).exist
     expect(Chunk.some).exist
-    expect(Chunk.getEquivalence).exist
   })
 
   it("toString", () => {
@@ -853,5 +853,13 @@ describe.concurrent("Chunk", () => {
     }
     const chunk: Chunk.Chunk<X> = Chunk.make({ a: "a", b: 2 }, { a: "b", b: 1 })
     expect(Chunk.sortWith(chunk, (x) => x.b, Order.number)).toEqual(Chunk.make({ a: "b", b: 1 }, { a: "a", b: 2 }))
+  })
+
+  it("getEquivalence", () => {
+    const equivalence = Chunk.getEquivalence(N.Equivalence)
+    expect(equivalence(Chunk.empty(), Chunk.empty())).toBe(true)
+    expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 3))).toBe(true)
+    expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2))).toBe(false)
+    expect(equivalence(Chunk.make(1, 2, 3), Chunk.make(1, 2, 4))).toBe(false)
   })
 })
