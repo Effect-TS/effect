@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-workers",
-  "version": "0.16.4",
+  "version": "0.16.5",
   "description": "",
   "main": "dist/effect-rpc-workers.cjs.js",
   "module": "dist/effect-rpc-workers.esm.js",

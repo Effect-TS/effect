@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.16.3
+
+### Patch Changes
+
+- [#134](https://github.com/Effect-TS/rpc/pull/134) [`f6e13f2`](https://github.com/Effect-TS/rpc/commit/f6e13f288e1841815be3f0eed7fc42b0c22d5c6c) Thanks [@tim-smart](https://github.com/tim-smart)! - fix \_\_setup service exclude
+
 ## 0.16.2
 
 ### Patch Changes
