@@ -28,7 +28,7 @@ export declare namespace RpcWorkerPool {
    * @since 1.0.0
    */
   export type Options =
-    & Omit<Worker.Worker.Options<Resolver.RpcRequest>, "transfers" | "encode">
+    & Omit<Worker.Worker.Options<Resolver.RpcRequest>, "transfers" | "encode" | "onCreate">
     & ({
       readonly size: number
     })
