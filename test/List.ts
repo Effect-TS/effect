@@ -113,7 +113,7 @@ describe.concurrent("List", () => {
 
   it("mapWithIndex", () => {
     expect(List.map(List.empty(), (n, i) => [i, n + 1])).toEqual(List.empty())
-    expect(List.map(List.make(1, 2, 3), (n, i) => [i, n ** 2])).toEqual(List.make([1, 2], [2, 4], [3, 9]))
+    expect(List.map(List.make(1, 2, 3, 4), (n, i) => [i, n ** 2])).toEqual(List.make([0, 1], [1, 4], [2, 9], [3, 16]))
   })
 
   it("partition", () => {
