@@ -671,8 +671,8 @@ export const flatMap: {
  * @since 2.0.0
  */
 export const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => Cons<B>): (self: Cons<A>) => Cons<B>
-  <A, B>(self: Cons<A>, f: (a: A, i: number) => Cons<B>): Cons<B>
+  <A, B>(f: (a: A) => Cons<B>): (self: Cons<A>) => Cons<B>
+  <A, B>(self: Cons<A>, f: (a: A) => Cons<B>): Cons<B>
 } = flatMap as any
 
 /**
@@ -734,15 +734,16 @@ export declare namespace List {
 export const map: {
   <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
   <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
-} = dual(2, <A, B>(self: List<A>, f: (a: A) => B): List<B> => {
+} = dual(2, <A, B>(self: List<A>, f: (a: A, i: number) => B): List<B> => {
   if (isNil(self)) {
     return self as unknown as List<B>
   } else {
-    const head = makeCons(f(self.head), _Nil)
+    let i = 0;
+    const head = makeCons(f(self.head, i++), _Nil)
     let nextHead = head
     let rest = self.tail
     while (!isNil(rest)) {
-      const next = makeCons(f(rest.head), _Nil)
+      const next = makeCons(f(rest.head, i++), _Nil)
       nextHead.tail = next
       nextHead = next
       rest = rest.tail
