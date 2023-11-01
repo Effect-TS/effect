@@ -22,5 +22,5 @@ export function make<R extends RpcRouter.Base>(
       (request) => request.json
     ),
     handlerJson
-  )
+  ) as any
 }
