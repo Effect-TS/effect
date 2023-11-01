@@ -274,7 +274,9 @@ export declare namespace RpcRouter {
    * @category router utils
    * @since 1.0.0
    */
-  export type Services<R extends Base> = RpcHandlers.Services<R["handlers"]>
+  export type Services<R extends Base> = R extends WithSetup
+    ? Exclude<RpcHandlers.Services<R["handlers"]>, SetupServices<R>>
+    : RpcHandlers.Services<R["handlers"]>
 
   /**
    * @category router utils
