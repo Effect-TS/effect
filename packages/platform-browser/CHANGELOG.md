@@ -1,5 +1,14 @@
 # @effect/platform-browser
 
+## 0.14.7
+
+### Patch Changes
+
+- [#233](https://github.com/Effect-TS/platform/pull/233) [`71947e0`](https://github.com/Effect-TS/platform/commit/71947e0e0aa9dccf9aad6f63dd98a6b6c89f23b4) Thanks [@tim-smart](https://github.com/tim-smart)! - fix worker scope hanging on close
+
+- Updated dependencies [[`71947e0`](https://github.com/Effect-TS/platform/commit/71947e0e0aa9dccf9aad6f63dd98a6b6c89f23b4)]:
+  - @effect/platform@0.26.6
+
 ## 0.14.6
 
 ### Patch Changes
