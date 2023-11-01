@@ -1,5 +1,11 @@
 # @effect/rpc-workers
 
+## 0.16.6
+
+### Patch Changes
+
+- [#137](https://github.com/Effect-TS/rpc/pull/137) [`fd125f9`](https://github.com/Effect-TS/rpc/commit/fd125f9df1ac1bb37f2f4a80057c1a18ea426438) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure \_\_setup is called for every worker
+
 ## 0.16.5
 
 ### Patch Changes

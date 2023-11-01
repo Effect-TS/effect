@@ -1,5 +1,14 @@
 # @effect/rpc-http-node
 
+## 0.16.4
+
+### Patch Changes
+
+- [#137](https://github.com/Effect-TS/rpc/pull/137) [`fd125f9`](https://github.com/Effect-TS/rpc/commit/fd125f9df1ac1bb37f2f4a80057c1a18ea426438) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure \_\_setup is called for every worker
+
+- Updated dependencies [[`fd125f9`](https://github.com/Effect-TS/rpc/commit/fd125f9df1ac1bb37f2f4a80057c1a18ea426438)]:
+  - @effect/rpc-http@0.16.4
+
 ## 0.16.3
 
 ### Patch Changes
