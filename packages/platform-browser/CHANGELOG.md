@@ -1,5 +1,14 @@
 # @effect/platform-browser
 
+## 0.14.6
+
+### Patch Changes
+
+- [#231](https://github.com/Effect-TS/platform/pull/231) [`a3cbba4`](https://github.com/Effect-TS/platform/commit/a3cbba4a0fa0f1ef99a6d7e54f5ab46c6813ef00) Thanks [@tim-smart](https://github.com/tim-smart)! - add onCreate and broadcast to pool options
+
+- Updated dependencies [[`a3cbba4`](https://github.com/Effect-TS/platform/commit/a3cbba4a0fa0f1ef99a6d7e54f5ab46c6813ef00)]:
+  - @effect/platform@0.26.5
+
 ## 0.14.5
 
 ### Patch Changes
