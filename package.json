@@ -14,7 +14,7 @@
       "build-esm": "tsc -b tsconfig.build.json",
       "build-cjs": "babel dist/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir dist/cjs --source-maps",
       "build-annotate": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-      "attw": "attw --pack dist --ignore-rules no-resolution false-cjs",
+      "attw": "attw --pack --ignore-rules no-resolution false-esm",
       "clean": "rimraf build dist",
       "test": "vitest",
       "check": "tsc -b tsconfig.json",
