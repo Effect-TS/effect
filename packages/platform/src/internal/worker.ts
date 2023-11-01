@@ -5,7 +5,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import { pipe } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Pool from "effect/Pool"
 import * as Queue from "effect/Queue"
@@ -223,6 +223,7 @@ export const makePool = <W>() =>
 ) =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
+    const workers = new Set<Worker.Worker<I, E, O>>()
     const backing = yield* _(
       // "timeToLive" in options ?
       //   Pool.makeWithTTL({
@@ -232,12 +233,22 @@ export const makePool = <W>() =>
       //     timeToLive: options.timeToLive
       //   }) :
       Pool.make({
-        acquire: manager.spawn<I, E, O>(options),
+        acquire: pipe(
+          manager.spawn<I, E, O>(options),
+          Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
+          Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
+          options.onCreate ? Effect.tap(options.onCreate) : identity
+        ),
         size: options.size
       })
     )
     const pool: Worker.WorkerPool<I, E, O> = {
       backing,
+      broadcast: (message: I) =>
+        Effect.forEach(workers, (worker) => worker.executeEffect(message), {
+          concurrency: "unbounded",
+          discard: true
+        }),
       execute: (message: I) =>
         Stream.unwrap(
           Effect.map(
