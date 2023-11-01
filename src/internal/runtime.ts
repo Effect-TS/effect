@@ -167,7 +167,7 @@ export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => 
     const head = prettyErrors[0]
     error.name = head.message.split(":")[0]
     error.message = head.message.substring(error.name.length + 2)
-    error.stack = `${error.name}: ${error.message}\n${head.stack}`
+    error.stack = InternalCause.pretty(cause)
   }
   error[FiberFailureId] = FiberFailureId
   error[FiberFailureCauseId] = cause
