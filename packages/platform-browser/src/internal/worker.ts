@@ -1,6 +1,5 @@
 import * as Worker from "@effect/platform/Worker"
 import { WorkerError } from "@effect/platform/WorkerError"
-import { Fiber } from "effect"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
@@ -22,23 +21,19 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
 
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
 
-      const fiber = yield* _(
-        Effect.async<never, WorkerError, never>((resume, signal) => {
-          port.addEventListener("message", function(event) {
-            queue.unsafeOffer((event as MessageEvent).data)
-          }, { signal })
-          port.addEventListener("error", function(event) {
-            resume(Effect.fail(WorkerError("unknown", (event as ErrorEvent).message)))
-          }, { signal })
-        }),
-        Effect.forkScoped
-      )
-      const join = Fiber.join(fiber)
+      const run = Effect.async<never, WorkerError, never>((resume, signal) => {
+        port.addEventListener("message", function(event) {
+          queue.unsafeOffer((event as MessageEvent).data)
+        }, { signal })
+        port.addEventListener("error", function(event) {
+          resume(Effect.fail(WorkerError("unknown", (event as ErrorEvent).message)))
+        }, { signal })
+      })
 
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => port.postMessage([0, message], transfers as any))
 
-      return { join, queue, send }
+      return { run, queue, send }
     })
   }
 })

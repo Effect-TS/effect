@@ -3,6 +3,7 @@
  */
 import type { Effect } from "effect"
 import type * as Context from "effect/Context"
+import type * as Duration from "effect/Duration"
 import type * as Layer from "effect/Layer"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
@@ -16,7 +17,7 @@ import type { WorkerError } from "./WorkerError"
  * @category models
  */
 export interface BackingWorker<I, O> {
-  readonly join: Effect.Effect<never, WorkerError, never>
+  readonly run: Effect.Effect<never, WorkerError, never>
   readonly send: (message: I, transfers?: ReadonlyArray<unknown>) => Effect.Effect<never, never, void>
   readonly queue: Queue.Dequeue<BackingWorker.Message<O>>
 }
@@ -131,10 +132,11 @@ export declare namespace WorkerPool {
     & ({
       readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<never, WorkerError, void>
       readonly size: number
-      // } | {
-      //   readonly minSize: number
-      //   readonly maxSize: number
-      //   readonly timeToLive: Duration.DurationInput
+    } | {
+      readonly onCreate?: (worker: Worker<I, unknown, unknown>) => Effect.Effect<never, WorkerError, void>
+      readonly minSize: number
+      readonly maxSize: number
+      readonly timeToLive: Duration.DurationInput
     })
 }
 

@@ -53,6 +53,7 @@ export const makeManager = Effect.gen(function*(_) {
     spawn<I, E, O>({ encode, permits = 1, queue, spawn, transfers = (_) => [] }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
         const id = idCounter++
+        const fiberId = yield* _(Effect.fiberId)
         let requestIdCounter = 0
         const readyLatch = yield* _(Deferred.make<never, void>())
         const semaphore = yield* _(Effect.makeSemaphore(permits))
@@ -169,14 +170,13 @@ export const makeManager = Effect.gen(function*(_) {
             executeRelease
           )
 
-        const handleMessages = yield* _(
+        const handleMessages = pipe(
           Queue.take(backing.queue),
           Effect.flatMap(handleMessage),
-          Effect.forever,
-          Effect.forkScoped
+          Effect.forever
         )
 
-        const postMessages = yield* _(
+        const postMessages = pipe(
           semaphore.take(1),
           Effect.zipRight(outbound.take),
           Effect.flatMap(([id, request]) =>
@@ -195,17 +195,23 @@ export const makeManager = Effect.gen(function*(_) {
               Effect.fork
             )
           ),
-          Effect.forever,
-          Effect.forkScoped
+          Effect.forever
         )
 
-        const join = Effect.race(
-          Fiber.joinAll([
-            handleMessages,
-            postMessages
-          ]),
-          backing.join
-        ) as Effect.Effect<never, WorkerError, never>
+        const fiber = yield* _(
+          Effect.all([backing.run, handleMessages, postMessages], {
+            concurrency: "unbounded",
+            discard: true
+          }) as Effect.Effect<
+            never,
+            WorkerError,
+            never
+          >,
+          Effect.forkDaemon
+        )
+        yield* _(Effect.addFinalizer(() => fiber.interruptAsFork(fiberId)))
+
+        const join = Fiber.join(fiber)
 
         return { id, join, execute, executeEffect }
       })
@@ -224,23 +230,24 @@ export const makePool = <W>() =>
   Effect.gen(function*(_) {
     const manager = yield* _(WorkerManager)
     const workers = new Set<Worker.Worker<I, E, O>>()
+    const acquire = pipe(
+      manager.spawn<I, E, O>(options),
+      Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
+      Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
+      options.onCreate ? Effect.tap(options.onCreate) : identity
+    )
     const backing = yield* _(
-      // "timeToLive" in options ?
-      //   Pool.makeWithTTL({
-      //     acquire: manager.spawn<I, E, O>(options),
-      //     min: options.minSize,
-      //     max: options.maxSize,
-      //     timeToLive: options.timeToLive
-      //   }) :
-      Pool.make({
-        acquire: pipe(
-          manager.spawn<I, E, O>(options),
-          Effect.tap((worker) => Effect.sync(() => workers.add(worker))),
-          Effect.tap((worker) => Effect.addFinalizer(() => Effect.sync(() => workers.delete(worker)))),
-          options.onCreate ? Effect.tap(options.onCreate) : identity
-        ),
-        size: options.size
-      })
+      "timeToLive" in options ?
+        Pool.makeWithTTL({
+          acquire,
+          min: options.minSize,
+          max: options.maxSize,
+          timeToLive: options.timeToLive
+        }) :
+        Pool.make({
+          acquire,
+          size: options.size
+        })
     )
     const pool: Worker.WorkerPool<I, E, O> = {
       backing,
