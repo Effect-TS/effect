@@ -63,7 +63,7 @@
     "@opentelemetry/sdk-trace-node": "^1.17",
     "@opentelemetry/sdk-trace-web": "^1.17",
     "@opentelemetry/semantic-conventions": "^1.17",
-    "effect": "2.0.0-next.52"
+    "effect": "2.0.0-next.53"
   },
   "peerDependenciesMeta": {
     "@opentelemetry/sdk-metrics": {
@@ -111,7 +111,7 @@
     "@vitest/expect": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.2",
-    "effect": "2.0.0-next.52",
+    "effect": "2.0.0-next.53",
     "eslint": "^8.52.0",
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-codegen": "0.17.0",
