@@ -738,7 +738,7 @@ export const map: {
   if (isNil(self)) {
     return self as unknown as List<B>
   } else {
-    let i = 0;
+    let i = 0
     const head = makeCons(f(self.head, i++), _Nil)
     let nextHead = head
     let rest = self.tail

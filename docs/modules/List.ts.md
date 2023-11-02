@@ -723,8 +723,8 @@ Added in v2.0.0
 
 ```ts
 export declare const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => Cons<B>): (self: Cons<A>) => Cons<B>
-  <A, B>(self: Cons<A>, f: (a: A, i: number) => Cons<B>): Cons<B>
+  <A, B>(f: (a: A) => Cons<B>): (self: Cons<A>) => Cons<B>
+  <A, B>(self: Cons<A>, f: (a: A) => Cons<B>): Cons<B>
 }
 ```
 
