@@ -100,7 +100,7 @@ export const makeSingleWithSchema = <R>(
     request: resolver.RpcRequest
   ) => Effect.Effect<R, RpcTransportError, unknown>
 ): resolver.RpcResolver<R> =>
-  Resolver.fromFunctionEffect<R, resolver.RpcRequest>((request) =>
+  Resolver.fromEffect<R, resolver.RpcRequest>((request) =>
     pipe(
       send(request),
       Effect.flatMap(decodeResponse),
