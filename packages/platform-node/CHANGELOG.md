@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.27.9
+
+### Patch Changes
+
+- [#235](https://github.com/Effect-TS/platform/pull/235) [`6e14c02`](https://github.com/Effect-TS/platform/commit/6e14c02db668f380bb92f19037685fe40592a8fe) Thanks [@tim-smart](https://github.com/tim-smart)! - fix for hanging worker shutdown
+
+- Updated dependencies [[`6e14c02`](https://github.com/Effect-TS/platform/commit/6e14c02db668f380bb92f19037685fe40592a8fe)]:
+  - @effect/platform@0.26.7
+
 ## 0.27.8
 
 ### Patch Changes
