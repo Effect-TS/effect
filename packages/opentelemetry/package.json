@@ -55,17 +55,29 @@
     "includeInternal": true
   },
   "packageManager": "pnpm@8.6.10",
-  "dependencies": {
-    "@opentelemetry/resources": "^1.17.1",
-    "@opentelemetry/sdk-metrics": "^1.17.1",
-    "@opentelemetry/sdk-trace-base": "^1.17.1",
-    "@opentelemetry/sdk-trace-node": "^1.17.1",
-    "@opentelemetry/sdk-trace-web": "^1.17.1",
-    "@opentelemetry/semantic-conventions": "^1.17.1"
-  },
   "peerDependencies": {
-    "@opentelemetry/api": "^1.4",
+    "@opentelemetry/api": "^1.6",
+    "@opentelemetry/resources": "^1.17",
+    "@opentelemetry/sdk-metrics": "^1.17",
+    "@opentelemetry/sdk-trace-base": "^1.17",
+    "@opentelemetry/sdk-trace-node": "^1.17",
+    "@opentelemetry/sdk-trace-web": "^1.17",
+    "@opentelemetry/semantic-conventions": "^1.17",
     "effect": "2.0.0-next.52"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/sdk-metrics": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-trace-base": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-trace-node": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-trace-web": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@babel/core": "^7.23.2",
@@ -74,7 +86,7 @@
     "@changesets/cli": "^2.26.2",
     "@effect/babel-plugin": "^0.2.0",
     "@effect/build-utils": "^0.1.9",
-    "@effect/docgen": "^0.2.0",
+    "@effect/docgen": "^0.2.1",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@opentelemetry/api": "^1.6.0",
@@ -83,12 +95,18 @@
     "@opentelemetry/exporter-prometheus": "0.43.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.43.0",
     "@opentelemetry/otlp-exporter-base": "0.43.0",
+    "@opentelemetry/resources": "^1.17.1",
+    "@opentelemetry/sdk-metrics": "^1.17.1",
+    "@opentelemetry/sdk-trace-base": "^1.17.1",
+    "@opentelemetry/sdk-trace-node": "^1.17.1",
+    "@opentelemetry/sdk-trace-web": "^1.17.1",
+    "@opentelemetry/semantic-conventions": "^1.17.1",
     "@preconstruct/cli": "^2.8.1",
     "@types/chai": "^4.3.9",
-    "@types/node": "^20.8.9",
-    "@typescript-eslint/eslint-plugin": "^6.9.0",
-    "@typescript-eslint/parser": "^6.9.0",
-    "@vitejs/plugin-react": "^4.1.0",
+    "@types/node": "^20.8.10",
+    "@typescript-eslint/eslint-plugin": "^6.9.1",
+    "@typescript-eslint/parser": "^6.9.1",
+    "@vitejs/plugin-react": "^4.1.1",
     "@vitest/coverage-v8": "^0.34.6",
     "@vitest/expect": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
