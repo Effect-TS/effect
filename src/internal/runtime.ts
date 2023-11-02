@@ -187,8 +187,7 @@ export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => 
 }
 
 /** @internal */
-export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure =>
-  typeof u === "object" && u !== null && FiberFailureId in u
+export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure => Predicate.hasProperty(u, FiberFailureId)
 
 const fastPath = <R, E, A>(effect: Effect.Effect<R, E, A>): Exit.Exit<E, A> | undefined => {
   const op = effect as core.Primitive

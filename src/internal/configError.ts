@@ -3,6 +3,7 @@ import type * as ConfigError from "../ConfigError"
 import * as Either from "../Either"
 import { constFalse, constTrue, dual, pipe } from "../Function"
 import * as OpCodes from "../internal/opCodes/configError"
+import { hasProperty } from "../Predicate"
 import * as RA from "../ReadonlyArray"
 
 /** @internal */
@@ -131,8 +132,7 @@ export const Unsupported = (
 }
 
 /** @internal */
-export const isConfigError = (u: unknown): u is ConfigError.ConfigError =>
-  typeof u === "object" && u != null && ConfigErrorTypeId in u
+export const isConfigError = (u: unknown): u is ConfigError.ConfigError => hasProperty(u, ConfigErrorTypeId)
 
 /** @internal */
 export const isAnd = (self: ConfigError.ConfigError): self is ConfigError.And => self._tag === OpCodes.OP_AND

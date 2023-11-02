@@ -143,7 +143,7 @@ export const _catch = dual<
   3,
   (self, tag, options) =>
     core.catchAll(self, (e) => {
-      if (typeof e === "object" && e != null && tag in e && e[tag] === options.failure) {
+      if (Predicate.hasProperty(e, tag) && e[tag] === options.failure) {
         return options.onFailure(e as any)
       }
       return core.fail(e as any)
@@ -303,9 +303,9 @@ export const catchTags: {
     self,
     (e): e is { readonly _tag: string } => {
       keys ??= Object.keys(cases)
-      return Predicate.isObject(e) && "_tag" in e && keys.includes(e["_tag"] as any)
+      return Predicate.hasProperty(e, "_tag") && Predicate.isString(e["_tag"]) && keys.includes(e["_tag"])
     },
-    (e) => cases[e["_tag"] as any](e as any)
+    (e) => cases[e["_tag"]](e)
   )
 })
 

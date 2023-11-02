@@ -35,7 +35,7 @@ import type * as MetricLabel from "../MetricLabel"
 import * as MutableRef from "../MutableRef"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import type { Predicate, Refinement } from "../Predicate"
+import { hasProperty, isObject, type Predicate, type Refinement } from "../Predicate"
 import * as ReadonlyArray from "../ReadonlyArray"
 import type * as Request from "../Request"
 import type * as BlockedRequests from "../RequestBlock"
@@ -67,8 +67,7 @@ export interface EffectError<E> {
 }
 
 /** @internal */
-export const isEffectError = (u: unknown): u is EffectError<unknown> =>
-  typeof u === "object" && u != null && EffectErrorTypeId in u
+export const isEffectError = (u: unknown): u is EffectError<unknown> => hasProperty(u, EffectErrorTypeId)
 
 /** @internal */
 export const makeEffectError = <E>(cause: Cause.Cause<E>): EffectError<E> => ({
@@ -373,8 +372,7 @@ export interface WithRuntime extends
 export interface Yield extends Op<OpCodes.OP_YIELD> {}
 
 /** @internal */
-export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> =>
-  typeof u === "object" && u != null && EffectTypeId in u
+export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> => hasProperty(u, EffectTypeId)
 
 /* @internal */
 export const withFiberRuntime = <R, E, A>(
@@ -604,7 +602,7 @@ const originalSymbol = Symbol.for("effect/OriginalAnnotation")
 
 /* @internal */
 export const originalInstance = <E>(obj: E): E => {
-  if (typeof obj === "object" && obj !== null && originalSymbol in obj) {
+  if (hasProperty(obj, originalSymbol)) {
     // @ts-expect-error
     return obj[originalSymbol]
   }
@@ -635,7 +633,7 @@ const capture = <E>(obj: E & object, span: Option.Option<Tracer.Span>): E => {
 
 /* @internal */
 export const die = (defect: unknown): Effect.Effect<never, never, never> =>
-  typeof defect === "object" && defect !== null && !(spanSymbol in defect) ?
+  isObject(defect) && !(spanSymbol in defect) ?
     withFiberRuntime((fiber) => failCause(internalCause.die(capture(defect, currentSpanFromFiber(fiber)))))
     : failCause(internalCause.die(defect))
 
@@ -662,7 +660,7 @@ export const exit = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, ne
 
 /* @internal */
 export const fail = <E>(error: E): Effect.Effect<never, E, never> =>
-  typeof error === "object" && error !== null && !(spanSymbol in error) ?
+  isObject(error) && !(spanSymbol in error) ?
     withFiberRuntime((fiber) => failCause(internalCause.fail(capture(error, currentSpanFromFiber(fiber)))))
     : failCause(internalCause.fail(error))
 
@@ -1628,7 +1626,7 @@ export class RequestResolverImpl<R, A> implements RequestResolver.RequestResolve
 
 /** @internal */
 export const isRequestResolver = (u: unknown): u is RequestResolver.RequestResolver<unknown, unknown> =>
-  typeof u === "object" && u != null && RequestResolverTypeId in u
+  hasProperty(u, RequestResolverTypeId)
 
 // end
 

@@ -1,5 +1,6 @@
 import type * as UpstreamPullRequest from "../../ChannelUpstreamPullRequest"
 import { dual } from "../../Function"
+import { hasProperty } from "../../Predicate"
 import * as OpCodes from "../opCodes/channelUpstreamPullRequest"
 
 /** @internal */
@@ -38,7 +39,7 @@ export const NoUpstream = (activeDownstreamCount: number): UpstreamPullRequest.U
 
 /** @internal */
 export const isUpstreamPullRequest = (u: unknown): u is UpstreamPullRequest.UpstreamPullRequest<unknown> =>
-  typeof u === "object" && u != null && UpstreamPullRequestTypeId in u
+  hasProperty(u, UpstreamPullRequestTypeId)
 
 /** @internal */
 export const isPulled = <A>(

@@ -2,6 +2,8 @@
  * @since 2.0.0
  */
 
+import { hasProperty, isFunction } from "./Predicate"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -29,7 +31,7 @@ export interface Inspectable {
  */
 export const toJSON = (x: unknown): unknown => {
   if (
-    typeof x === "object" && x !== null && "toJSON" in x && typeof x["toJSON"] === "function" &&
+    hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
     x["toJSON"].length === 0
   ) {
     return x.toJSON()

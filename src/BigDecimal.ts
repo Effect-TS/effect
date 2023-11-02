@@ -23,6 +23,7 @@ import * as Option from "./Option"
 import * as order from "./Order"
 import type { Ordering } from "./Ordering"
 import { type Pipeable, pipeArguments } from "./Pipeable"
+import { hasProperty } from "./Predicate"
 
 const DEFAULT_PRECISION = 100
 
@@ -84,7 +85,7 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
  * @since 2.0.0
  * @category guards
  */
-export const isBigDecimal = (u: unknown): u is BigDecimal => typeof u === "object" && u !== null && TypeId in u
+export const isBigDecimal = (u: unknown): u is BigDecimal => hasProperty(u, TypeId)
 
 /**
  * Creates a `BigDecimal` from a `bigint` value and a scale.

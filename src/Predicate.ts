@@ -282,7 +282,25 @@ export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown
  * @since 2.0.0
  */
 export const isObject = (input: unknown): input is object =>
-  (typeof input === "object" && input != null) || isFunction(input)
+  (typeof input === "object" && input !== null) || isFunction(input)
+
+/**
+ * Checks whether a value is an `object` containing a specified property key.
+ *
+ * @param property - The field to check within the object.
+ * @param self - The value to examine.
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const hasProperty: {
+  <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
+  <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
+} = dual(
+  2,
+  <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown } =>
+    isObject(self) && (property in self)
+)
 
 /**
  * Tests if a value is an `object` with a property `_tag` that matches the given tag.
@@ -308,8 +326,7 @@ export const isTagged: {
   <K extends string>(self: unknown, tag: K): self is { _tag: K }
 } = dual(
   2,
-  <K extends string>(self: unknown, tag: K): self is { _tag: K } =>
-    isObject(self) && "_tag" in self && self["_tag"] === tag
+  <K extends string>(self: unknown, tag: K): self is { _tag: K } => hasProperty(self, "_tag") && self["_tag"] === tag
 )
 
 /**
@@ -421,7 +438,7 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
  * @category guards
  * @since 2.0.0
  */
-export const isIterable = (input: unknown): input is Iterable<unknown> => isObject(input) && Symbol.iterator in input
+export const isIterable = (input: unknown): input is Iterable<unknown> => hasProperty(input, Symbol.iterator)
 
 /**
  * A guard that succeeds when the input is a record.

@@ -3,6 +3,7 @@
  */
 import type { Equivalence } from "./Equivalence"
 import * as Hash from "./Hash"
+import { hasProperty } from "./Predicate"
 
 /**
  * @since 2.0.0
@@ -55,7 +56,7 @@ function compareBoth(self: unknown, that: unknown) {
  * @since 2.0.0
  * @category guards
  */
-export const isEqual = (u: unknown): u is Equal => typeof u === "object" && u !== null && symbol in u
+export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
 
 /**
  * @since 2.0.0

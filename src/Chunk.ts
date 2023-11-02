@@ -15,7 +15,7 @@ import * as Order from "./Order"
 import type { Pipeable } from "./Pipeable"
 import { pipeArguments } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
-import { isObject } from "./Predicate"
+import { hasProperty } from "./Predicate"
 import * as RA from "./ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "./ReadonlyArray"
 
@@ -214,7 +214,7 @@ const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
 export const isChunk: {
   <A>(u: Iterable<A>): u is Chunk<A>
   (u: unknown): u is Chunk<unknown>
-} = (u: unknown): u is Chunk<unknown> => isObject(u) && TypeId in u
+} = (u: unknown): u is Chunk<unknown> => hasProperty(u, TypeId)
 
 const _empty = makeChunk<never>({ _tag: "IEmpty" })
 

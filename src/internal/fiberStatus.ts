@@ -3,6 +3,7 @@ import type { FiberId } from "../FiberId"
 import type * as FiberStatus from "../FiberStatus"
 import { pipe } from "../Function"
 import * as Hash from "../Hash"
+import { hasProperty } from "../Predicate"
 import type { RuntimeFlags } from "../RuntimeFlags"
 
 const FiberStatusSymbolKey = "effect/FiberStatus"
@@ -105,8 +106,7 @@ export const suspended = (
 ): FiberStatus.FiberStatus => new Suspended(runtimeFlags, blockingOn)
 
 /** @internal */
-export const isFiberStatus = (u: unknown): u is FiberStatus.FiberStatus =>
-  typeof u === "object" && u != null && FiberStatusTypeId in u
+export const isFiberStatus = (u: unknown): u is FiberStatus.FiberStatus => hasProperty(u, FiberStatusTypeId)
 
 /** @internal */
 export const isDone = (self: FiberStatus.FiberStatus): self is FiberStatus.Done => self._tag === OP_DONE

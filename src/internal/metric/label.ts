@@ -3,6 +3,7 @@ import { pipe } from "../../Function"
 import * as Hash from "../../Hash"
 import type * as MetricLabel from "../../MetricLabel"
 import { pipeArguments } from "../../Pipeable"
+import { hasProperty } from "../../Predicate"
 
 /** @internal */
 const MetricLabelSymbolKey = "effect/MetricLabel"
@@ -39,6 +40,4 @@ export const make = (key: string, value: string): MetricLabel.MetricLabel => {
 }
 
 /** @internal */
-export const isMetricLabel = (u: unknown): u is MetricLabel.MetricLabel => {
-  return typeof u === "object" && u != null && MetricLabelTypeId in u
-}
+export const isMetricLabel = (u: unknown): u is MetricLabel.MetricLabel => hasProperty(u, MetricLabelTypeId)

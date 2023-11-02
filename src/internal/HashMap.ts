@@ -9,7 +9,7 @@ import { SIZE } from "../internal/HashMap/config"
 import * as Node from "../internal/HashMap/node"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import { isObject } from "../Predicate"
+import { hasProperty } from "../Predicate"
 
 /** @internal */
 export const HashMapTypeId: HM.TypeId = Symbol.for("effect/HashMap") as HM.TypeId
@@ -199,7 +199,7 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HM.HashM
 export const isHashMap: {
   <K, V>(u: Iterable<readonly [K, V]>): u is HM.HashMap<K, V>
   (u: unknown): u is HM.HashMap<unknown, unknown>
-} = (u: unknown): u is HM.HashMap<unknown, unknown> => isObject(u) && HashMapTypeId in u
+} = (u: unknown): u is HM.HashMap<unknown, unknown> => hasProperty(u, HashMapTypeId)
 
 /** @internal */
 export const isEmpty = <K, V>(self: HM.HashMap<K, V>): boolean =>

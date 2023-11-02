@@ -5,7 +5,7 @@ import * as OpCodes from "../../internal/stm/opCodes/strategy"
 import * as stm from "../../internal/stm/stm"
 import * as tRef from "../../internal/stm/tRef"
 import * as Option from "../../Option"
-import type { Predicate } from "../../Predicate"
+import { hasProperty, type Predicate } from "../../Predicate"
 import * as RA from "../../ReadonlyArray"
 import * as STM from "../../STM"
 import type * as TQueue from "../../TQueue"
@@ -244,14 +244,10 @@ export const isTQueue = (u: unknown): u is TQueue.TQueue<unknown> => {
 }
 
 /** @internal */
-export const isTEnqueue = (u: unknown): u is TQueue.TEnqueue<unknown> => {
-  return typeof u === "object" && u != null && TEnqueueTypeId in u
-}
+export const isTEnqueue = (u: unknown): u is TQueue.TEnqueue<unknown> => hasProperty(u, TEnqueueTypeId)
 
 /** @internal */
-export const isTDequeue = (u: unknown): u is TQueue.TDequeue<unknown> => {
-  return typeof u === "object" && u != null && TDequeueTypeId in u
-}
+export const isTDequeue = (u: unknown): u is TQueue.TDequeue<unknown> => hasProperty(u, TDequeueTypeId)
 
 /** @internal */
 export const awaitShutdown = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<never, never, void> =>
