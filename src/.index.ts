@@ -28,3 +28,8 @@ export {
    */
   unsafeCoerce
 } from "effect/Function"
+
+/**
+ * @since 2.0.0
+ */
+export const foo = "this is just a test"
