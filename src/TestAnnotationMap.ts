@@ -36,9 +36,7 @@ class TestAnnotationMapImpl implements TestAnnotationMap {
 /**
  * @since 2.0.0
  */
-export const isTestAnnotationMap = (u: unknown): u is TestAnnotationMap => {
-  return hasProperty(u, TestAnnotationMapTypeId)
-}
+export const isTestAnnotationMap = (u: unknown): u is TestAnnotationMap => hasProperty(u, TestAnnotationMapTypeId)
 
 /**
  * @since 2.0.0

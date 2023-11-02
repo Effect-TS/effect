@@ -34,9 +34,8 @@ class MetricBoundariesImpl implements MetricBoundaries.MetricBoundaries {
 }
 
 /** @internal */
-export const isMetricBoundaries = (u: unknown): u is MetricBoundaries.MetricBoundaries => {
-  return hasProperty(u, MetricBoundariesTypeId)
-}
+export const isMetricBoundaries = (u: unknown): u is MetricBoundaries.MetricBoundaries =>
+  hasProperty(u, MetricBoundariesTypeId)
 
 /** @internal */
 export const fromChunk = (chunk: Chunk.Chunk<number>): MetricBoundaries.MetricBoundaries => {

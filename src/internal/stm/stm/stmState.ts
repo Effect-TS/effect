@@ -39,9 +39,7 @@ export interface Running extends Equal.Equal {
 }
 
 /** @internal */
-export const isSTMState = (u: unknown): u is STMState<unknown, unknown> => {
-  return hasProperty(u, STMStateTypeId)
-}
+export const isSTMState = (u: unknown): u is STMState<unknown, unknown> => hasProperty(u, STMStateTypeId)
 
 /** @internal */
 export const isRunning = <E, A>(self: STMState<E, A>): self is Running => {

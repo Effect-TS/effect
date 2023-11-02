@@ -244,14 +244,10 @@ export const isTQueue = (u: unknown): u is TQueue.TQueue<unknown> => {
 }
 
 /** @internal */
-export const isTEnqueue = (u: unknown): u is TQueue.TEnqueue<unknown> => {
-  return hasProperty(u, TEnqueueTypeId)
-}
+export const isTEnqueue = (u: unknown): u is TQueue.TEnqueue<unknown> => hasProperty(u, TEnqueueTypeId)
 
 /** @internal */
-export const isTDequeue = (u: unknown): u is TQueue.TDequeue<unknown> => {
-  return hasProperty(u, TDequeueTypeId)
-}
+export const isTDequeue = (u: unknown): u is TQueue.TDequeue<unknown> => hasProperty(u, TDequeueTypeId)
 
 /** @internal */
 export const awaitShutdown = <A>(self: TQueue.TDequeue<A> | TQueue.TEnqueue<A>): STM.STM<never, never, void> =>

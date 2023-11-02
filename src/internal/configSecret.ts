@@ -29,9 +29,7 @@ export const proto = {
 }
 
 /** @internal */
-export const isConfigSecret = (u: unknown): u is ConfigSecret.ConfigSecret => {
-  return hasProperty(u, ConfigSecretTypeId)
-}
+export const isConfigSecret = (u: unknown): u is ConfigSecret.ConfigSecret => hasProperty(u, ConfigSecretTypeId)
 
 /** @internal */
 export const make = (bytes: Array<number>): ConfigSecret.ConfigSecret => {

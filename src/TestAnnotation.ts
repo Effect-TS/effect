@@ -63,9 +63,7 @@ class TestAnnotationImpl<A> implements Equal.Equal {
 /**
  * @since 2.0.0
  */
-export const isTestAnnotation = (u: unknown): u is TestAnnotation<unknown> => {
-  return hasProperty(u, TestAnnotationTypeId)
-}
+export const isTestAnnotation = (u: unknown): u is TestAnnotation<unknown> => hasProperty(u, TestAnnotationTypeId)
 
 /**
  * @since 2.0.0

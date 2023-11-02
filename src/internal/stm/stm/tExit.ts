@@ -64,9 +64,7 @@ export interface Retry extends TExit.Variance<never, never>, Equal.Equal {
 }
 
 /** @internal */
-export const isExit = (u: unknown): u is TExit<unknown, unknown> => {
-  return hasProperty(u, TExitTypeId)
-}
+export const isExit = (u: unknown): u is TExit<unknown, unknown> => hasProperty(u, TExitTypeId)
 
 /** @internal */
 export const isFail = <E, A>(self: TExit<E, A>): self is Fail<E> => {

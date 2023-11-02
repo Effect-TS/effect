@@ -152,9 +152,7 @@ export const composite = (left: FiberId.FiberId, right: FiberId.FiberId): FiberI
 }
 
 /** @internal */
-export const isFiberId = (self: unknown): self is FiberId.FiberId => {
-  return hasProperty(self, FiberIdTypeId)
-}
+export const isFiberId = (self: unknown): self is FiberId.FiberId => hasProperty(self, FiberIdTypeId)
 
 /** @internal */
 export const isNone = (self: FiberId.FiberId): self is FiberId.None => {

@@ -102,9 +102,7 @@ export const TestAnnotations: Context.Tag<TestAnnotations, TestAnnotations> = Co
 /**
  * @since 2.0.0
  */
-export const isTestAnnotations = (u: unknown): u is TestAnnotations => {
-  return hasProperty(u, TestAnnotationsTypeId)
-}
+export const isTestAnnotations = (u: unknown): u is TestAnnotations => hasProperty(u, TestAnnotationsTypeId)
 
 /**
  * @since 2.0.0

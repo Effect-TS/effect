@@ -9,7 +9,7 @@ import * as HashSet from "../HashSet"
 import { NodeInspectSymbol, toJSON } from "../Inspectable"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import { hasProperty, type Predicate } from "../Predicate"
+import { hasProperty, isFunction, type Predicate } from "../Predicate"
 import * as ReadonlyArray from "../ReadonlyArray"
 import * as OpCodes from "./opCodes/cause"
 
@@ -1015,9 +1015,7 @@ export const RuntimeException = makeException<Cause.RuntimeException>({
 }, "RuntimeException")
 
 /** @internal */
-export const isRuntimeException = (u: unknown): u is Cause.RuntimeException => {
-  return hasProperty(u, RuntimeExceptionTypeId)
-}
+export const isRuntimeException = (u: unknown): u is Cause.RuntimeException => hasProperty(u, RuntimeExceptionTypeId)
 
 /** @internal */
 export const InterruptedExceptionTypeId: Cause.InterruptedExceptionTypeId = Symbol.for(
@@ -1030,9 +1028,8 @@ export const InterruptedException = makeException<Cause.InterruptedException>({
 }, "InterruptedException")
 
 /** @internal */
-export const isInterruptedException = (u: unknown): u is Cause.InterruptedException => {
-  return hasProperty(u, InterruptedExceptionTypeId)
-}
+export const isInterruptedException = (u: unknown): u is Cause.InterruptedException =>
+  hasProperty(u, InterruptedExceptionTypeId)
 
 /** @internal */
 export const IllegalArgumentExceptionTypeId: Cause.IllegalArgumentExceptionTypeId = Symbol.for(
@@ -1045,9 +1042,8 @@ export const IllegalArgumentException = makeException<Cause.IllegalArgumentExcep
 }, "IllegalArgumentException")
 
 /** @internal */
-export const isIllegalArgumentException = (u: unknown): u is Cause.IllegalArgumentException => {
-  return hasProperty(u, IllegalArgumentExceptionTypeId)
-}
+export const isIllegalArgumentException = (u: unknown): u is Cause.IllegalArgumentException =>
+  hasProperty(u, IllegalArgumentExceptionTypeId)
 
 /** @internal */
 export const NoSuchElementExceptionTypeId: Cause.NoSuchElementExceptionTypeId = Symbol.for(
@@ -1060,9 +1056,8 @@ export const NoSuchElementException = makeException<Cause.NoSuchElementException
 }, "NoSuchElementException")
 
 /** @internal */
-export const isNoSuchElementException = (u: unknown): u is Cause.NoSuchElementException => {
-  return hasProperty(u, NoSuchElementExceptionTypeId)
-}
+export const isNoSuchElementException = (u: unknown): u is Cause.NoSuchElementException =>
+  hasProperty(u, NoSuchElementExceptionTypeId)
 
 /** @internal */
 export const InvalidPubSubCapacityExceptionTypeId: Cause.InvalidPubSubCapacityExceptionTypeId = Symbol.for(
@@ -1075,9 +1070,8 @@ export const InvalidPubSubCapacityException = makeException<Cause.InvalidPubSubC
 }, "InvalidPubSubCapacityException")
 
 /** @internal */
-export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException => {
-  return hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
-}
+export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException =>
+  hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
 
 // -----------------------------------------------------------------------------
 // Pretty Printing
@@ -1164,7 +1158,7 @@ export const prettyErrorMessage = (u: unknown): string => {
   // 2)
   if (
     hasProperty(u, "toString") &&
-    typeof u["toString"] === "function" &&
+    isFunction(u["toString"]) &&
     u["toString"] !== Object.prototype.toString
   ) {
     return u["toString"]()

@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 
-import { hasProperty } from "./Predicate"
+import { hasProperty, isFunction } from "./Predicate"
 
 /**
  * @since 2.0.0
@@ -31,7 +31,7 @@ export interface Inspectable {
  */
 export const toJSON = (x: unknown): unknown => {
   if (
-    hasProperty(x, "toJSON") && typeof x["toJSON"] === "function" &&
+    hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
     x["toJSON"].length === 0
   ) {
     return x.toJSON()

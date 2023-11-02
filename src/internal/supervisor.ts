@@ -7,7 +7,7 @@ import { globalValue } from "../GlobalValue"
 import * as core from "../internal/core"
 import * as MutableRef from "../MutableRef"
 import type * as Option from "../Option"
-import { hasProperty } from "../Predicate"
+import { hasProperty, isTagged } from "../Predicate"
 import * as SortedSet from "../SortedSet"
 import type * as Supervisor from "../Supervisor"
 
@@ -126,9 +126,8 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   }
 }
 
-export const isZip = (self: unknown): self is Zip<any, any> => {
-  return hasProperty(self, SupervisorTypeId) && "_tag" in self && self._tag === "Zip"
-}
+export const isZip = (self: unknown): self is Zip<any, any> =>
+  hasProperty(self, SupervisorTypeId) && isTagged(self, "Zip")
 
 export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>> {
   readonly [SupervisorTypeId] = supervisorVariance

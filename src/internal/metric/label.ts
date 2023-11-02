@@ -40,6 +40,4 @@ export const make = (key: string, value: string): MetricLabel.MetricLabel => {
 }
 
 /** @internal */
-export const isMetricLabel = (u: unknown): u is MetricLabel.MetricLabel => {
-  return hasProperty(u, MetricLabelTypeId)
-}
+export const isMetricLabel = (u: unknown): u is MetricLabel.MetricLabel => hasProperty(u, MetricLabelTypeId)

@@ -245,43 +245,36 @@ export const summary = (
   )
 
 /** @internal */
-export const isMetricState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> => {
-  return hasProperty(u, MetricStateTypeId)
-}
+export const isMetricState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> =>
+  hasProperty(u, MetricStateTypeId)
 
 /** @internal */
-export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> => {
-  return hasProperty(u, CounterStateTypeId)
-}
+export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> =>
+  hasProperty(u, CounterStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequency => {
-  return hasProperty(u, FrequencyStateTypeId)
-}
+export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequency =>
+  hasProperty(u, FrequencyStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge<number | bigint> => {
-  return hasProperty(u, GaugeStateTypeId)
-}
+export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge<number | bigint> =>
+  hasProperty(u, GaugeStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histogram => {
-  return hasProperty(u, HistogramStateTypeId)
-}
+export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histogram =>
+  hasProperty(u, HistogramStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary => {
-  return hasProperty(u, SummaryStateTypeId)
-}
+export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary => hasProperty(u, SummaryStateTypeId)

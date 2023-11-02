@@ -156,9 +156,7 @@ export interface ZipWithPar extends
 {}
 
 /** @internal */
-export const isLayer = (u: unknown): u is Layer.Layer<unknown, unknown, unknown> => {
-  return hasProperty(u, LayerTypeId)
-}
+export const isLayer = (u: unknown): u is Layer.Layer<unknown, unknown, unknown> => hasProperty(u, LayerTypeId)
 
 /** @internal */
 export const isFresh = <R, E, A>(self: Layer.Layer<R, E, A>): boolean => {

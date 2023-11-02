@@ -55,9 +55,8 @@ export const RightDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 /** @internal */
 export const isMergeState = (
   u: unknown
-): u is MergeState.MergeState<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown> => {
-  return hasProperty(u, MergeStateTypeId)
-}
+): u is MergeState.MergeState<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown> =>
+  hasProperty(u, MergeStateTypeId)
 
 /** @internal */
 export const isBothRunning = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(

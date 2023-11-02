@@ -330,9 +330,7 @@ const blockedRequestVariance = {
 }
 
 /** @internal */
-export const isEntry = (u: unknown): u is Request.Entry<unknown> => {
-  return hasProperty(u, EntryTypeId)
-}
+export const isEntry = (u: unknown): u is Request.Entry<unknown> => hasProperty(u, EntryTypeId)
 
 /** @internal */
 export const makeEntry = <A extends Request.Request<any, any>>(
