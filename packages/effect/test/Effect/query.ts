@@ -57,12 +57,12 @@ const delay = <R, E, A>(self: Effect.Effect<R, E, A>) =>
 
 const counted = <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
 
-const UserResolver = Resolver.makeBatched((requests: Array<UserRequest>) => {
-  return Effect.flatMap(Requests, (r) => {
+const UserResolver = Resolver.makeBatched((requests: Array<UserRequest>) =>
+  Effect.flatMap(Requests, (r) => {
     r.count += requests.length
     return counted(Effect.forEach(requests, (request) => delay(processRequest(request)), { discard: true }))
   })
-}).pipe(
+).pipe(
   Resolver.batchN(15),
   Resolver.contextFromServices(Counter, Requests)
 )
@@ -107,6 +107,33 @@ const processRequest = (request: UserRequest): Effect.Effect<never, never, void>
   }
 }
 
+const UserResolverTagged = Resolver.fromEffectTagged<UserRequest>()({
+  GetAllIds: (reqs) =>
+    counted(Effect.flatMap(Requests, (_) => {
+      _.count += reqs.length
+      return Effect.forEach(reqs, () => Effect.succeed(userIds))
+    })),
+  GetNameById: (reqs) =>
+    counted(Effect.flatMap(Requests, (_) => {
+      _.count += reqs.length
+      return Effect.forEach(reqs, (req) => {
+        if (userNames.has(req.id)) {
+          const userName = userNames.get(req.id)!
+          return Effect.succeed(userName)
+        }
+        return Effect.fail("Not Found")
+      })
+    }))
+}).pipe(
+  Resolver.batchN(15),
+  Resolver.contextFromServices(Counter, Requests)
+)
+export const getAllUserIdsTagged = Effect.request(GetAllIds({}), UserResolverTagged)
+export const getUserNameByIdTagged = (id: number) => Effect.request(GetNameById({ id }), UserResolverTagged)
+export const getAllUserNamesTagged = getAllUserIdsTagged.pipe(
+  Effect.flatMap(Effect.forEach(getUserNameByIdTagged, { batching: true }))
+)
+
 const EnvLive = Layer.provideMerge(
   Layer.mergeAll(
     Layer.setRequestCache(Request.makeCache({
@@ -129,6 +156,16 @@ describe.concurrent("Effect", () => {
     provideEnv(
       Effect.gen(function*($) {
         const names = yield* $(getAllUserNames)
+        const count = yield* $(Counter)
+        expect(count.count).toEqual(3)
+        expect(names.length).toBeGreaterThan(2)
+        expect(names).toEqual(userIds.map((id) => userNames.get(id)))
+      })
+    ))
+  it.effect("requests are executed correctly with fromEffectTagged", () =>
+    provideEnv(
+      Effect.gen(function*($) {
+        const names = yield* $(getAllUserNamesTagged)
         const count = yield* $(Counter)
         expect(count.count).toEqual(3)
         expect(names.length).toBeGreaterThan(2)
