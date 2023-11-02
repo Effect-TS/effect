@@ -1,5 +1,13 @@
 # @effect/opentelemetry
 
+## 0.22.0
+
+### Minor Changes
+
+- [#86](https://github.com/Effect-TS/opentelemetry/pull/86) [`ac41f21`](https://github.com/Effect-TS/opentelemetry/commit/ac41f21b691299d1472f0ecfacca9ba274b71afb) Thanks [@fubhy](https://github.com/fubhy)! - Switch to peer dependencies
+
+- [#88](https://github.com/Effect-TS/opentelemetry/pull/88) [`10be3aa`](https://github.com/Effect-TS/opentelemetry/commit/10be3aa6ded8a028eec1a46830ab68bceaf41ca3) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.21.1
 
 ### Patch Changes
