@@ -166,14 +166,14 @@ describe("Parser", () => {
     await Util.resolves(P.encodePromise(schema)(1), "1")
   })
 
-  it("_getLiterals", () => {
-    expect(P._getLiterals(S.string.ast, true)).toEqual([])
+  it("getLiterals", () => {
+    expect(P.getLiterals(S.string.ast, true)).toEqual([])
     // TypeLiteral
-    expect(P._getLiterals(S.struct({ _tag: S.literal("a") }).ast, true))
+    expect(P.getLiterals(S.struct({ _tag: S.literal("a") }).ast, true))
       .toEqual([["_tag", AST.createLiteral("a")]])
     // Refinement
     expect(
-      P._getLiterals(
+      P.getLiterals(
         S.struct({ _tag: S.literal("a") }).pipe(
           S.filter(() => true)
         ).ast,
@@ -182,7 +182,7 @@ describe("Parser", () => {
     ).toEqual([["_tag", AST.createLiteral("a")]])
     // declare
     expect(
-      P._getLiterals(
+      P.getLiterals(
         S.declare(
           [],
           S.struct({ _tag: S.literal("a") }),
@@ -194,21 +194,21 @@ describe("Parser", () => {
 
     // Transform
     expect(
-      P._getLiterals(
+      P.getLiterals(
         S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
         true
       )
     ).toEqual([])
     // Transform encode
     expect(
-      P._getLiterals(
+      P.getLiterals(
         S.struct({ radius: S.number }).pipe(S.attachPropertySignature("kind", "circle")).ast,
         false
       )
     ).toEqual([["kind", AST.createLiteral("circle")]])
     // property Transform encode
     expect(
-      P._getLiterals(
+      P.getLiterals(
         S.struct({
           _tag: S.transform(
             S.literal("a"),
@@ -223,13 +223,13 @@ describe("Parser", () => {
     ).toEqual([["_tag", AST.createLiteral("b")]])
   })
 
-  it("_getSearchTree", () => {
-    expect(P._getSearchTree([S.string.ast, S.number.ast], true)).toEqual({
+  it("getSearchTree", () => {
+    expect(P.getSearchTree([S.string.ast, S.number.ast], true)).toEqual({
       keys: {},
       otherwise: [S.string.ast, S.number.ast]
     })
 
-    expect(P._getSearchTree([S.struct({ _tag: S.literal("a") }).ast, S.number.ast], true)).toEqual(
+    expect(P.getSearchTree([S.struct({ _tag: S.literal("a") }).ast, S.number.ast], true)).toEqual(
       {
         keys: {
           _tag: {
@@ -244,7 +244,7 @@ describe("Parser", () => {
     )
 
     expect(
-      P._getSearchTree([
+      P.getSearchTree([
         S.struct({ _tag: S.literal("a") }).ast,
         S.struct({ _tag: S.literal("b") }).ast
       ], true)
@@ -262,7 +262,7 @@ describe("Parser", () => {
     })
 
     expect(
-      P._getSearchTree([
+      P.getSearchTree([
         S.struct({ a: S.literal("A"), c: S.string }).ast,
         S.struct({ b: S.literal("B"), d: S.number }).ast
       ], true)
@@ -286,7 +286,7 @@ describe("Parser", () => {
 
     // should handle multiple tags
     expect(
-      P._getSearchTree([
+      P.getSearchTree([
         S.struct({ category: S.literal("catA"), tag: S.literal("a") }).ast,
         S.struct({ category: S.literal("catA"), tag: S.literal("b") }).ast,
         S.struct({ category: S.literal("catA"), tag: S.literal("c") }).ast
@@ -311,7 +311,7 @@ describe("Parser", () => {
     })
   })
 
-  it("_getSearchTree", () => {
+  it("getSearchTree", () => {
     const schema = S.union(
       S.struct({ type: S.literal("a"), value: S.string }),
       S.struct({ type: S.literal("b"), value: S.string }),
@@ -325,7 +325,7 @@ describe("Parser", () => {
     )
     const types = (schema.ast as AST.Union).types
     expect(
-      P._getSearchTree(types, true)
+      P.getSearchTree(types, true)
     ).toEqual({
       keys: {
         type: {

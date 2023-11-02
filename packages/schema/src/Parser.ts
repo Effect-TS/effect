@@ -4,7 +4,6 @@
 
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
@@ -15,7 +14,8 @@ import * as ParseResult from "./ParseResult"
 import type * as Schema from "./Schema"
 import * as TreeFormatter from "./TreeFormatter"
 
-const getEither = (
+/** @internal */
+export const getEither = (
   ast: AST.AST,
   isDecoding: boolean
 ): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, any> =>
@@ -352,10 +352,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
     }
     case "Tuple": {
       const elements = ast.elements.map((e) => goMemo(e.type, isDecoding))
-      const rest = pipe(
-        ast.rest,
-        Option.map(ReadonlyArray.map((ast) => goMemo(ast, isDecoding)))
-      )
+      const rest = Option.map(ast.rest, ReadonlyArray.map((ast) => goMemo(ast, isDecoding)))
       let requiredLen = ast.elements.filter((e) => !e.isOptional).length
       if (Option.isSome(ast.rest)) {
         requiredLen += ast.rest.value.length - 1
@@ -411,8 +408,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         for (; i < elements.length; i++) {
           if (len < i + 1) {
-            // the input element is missing...
             if (ast.elements[i].isOptional) {
+              // the input element is missing
               continue
             }
           } else {
@@ -460,8 +457,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // handle rest element
         // ---------------------------------------------
         if (Option.isSome(rest)) {
-          const head = ReadonlyArray.headNonEmpty(rest.value)
-          const tail = ReadonlyArray.tailNonEmpty(rest.value)
+          const [head, ...tail] = rest.value
           for (; i < len - tail.length; i++) {
             const te = head(input[i], options)
             const eu = ParseResult.eitherOrUndefined(te)
@@ -808,7 +804,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       }
     }
     case "Union": {
-      const searchTree = _getSearchTree(ast.types, isDecoding)
+      const searchTree = getSearchTree(ast.types, isDecoding)
       const ownKeys = Internal.ownKeys(searchTree.keys)
       const len = ownKeys.length
       const map = new Map<any, Parser<any, any>>()
@@ -941,13 +937,13 @@ const fromRefinement =
     refinement(u) ? ParseResult.success(u) : ParseResult.failure(ParseResult.type(ast, u))
 
 /** @internal */
-export const _getLiterals = (
+export const getLiterals = (
   ast: AST.AST,
   isDecoding: boolean
 ): ReadonlyArray<[PropertyKey, AST.Literal]> => {
   switch (ast._tag) {
     case "Declaration":
-      return _getLiterals(ast.type, isDecoding)
+      return getLiterals(ast.type, isDecoding)
     case "TypeLiteral": {
       const out: Array<[PropertyKey, AST.Literal]> = []
       for (let i = 0; i < ast.propertySignatures.length; i++) {
@@ -960,9 +956,9 @@ export const _getLiterals = (
       return out
     }
     case "Refinement":
-      return _getLiterals(ast.from, isDecoding)
+      return getLiterals(ast.from, isDecoding)
     case "Transform":
-      return _getLiterals(isDecoding ? ast.from : ast.to, isDecoding)
+      return getLiterals(isDecoding ? ast.from : ast.to, isDecoding)
   }
   return []
 }
@@ -981,7 +977,7 @@ export const _getLiterals = (
  *
  * @internal
  */
-export const _getSearchTree = (
+export const getSearchTree = (
   members: ReadonlyArray<AST.AST>,
   isDecoding: boolean
 ): {
@@ -1002,7 +998,7 @@ export const _getSearchTree = (
   const otherwise: Array<AST.AST> = []
   for (let i = 0; i < members.length; i++) {
     const member = members[i]
-    const tags = _getLiterals(member, isDecoding)
+    const tags = getLiterals(member, isDecoding)
     if (tags.length > 0) {
       for (let j = 0; j < tags.length; j++) {
         const [key, literal] = tags[j]

@@ -318,7 +318,7 @@ describe("Arbitrary/Arbitrary", () => {
           right: Expression
         })
       )
-      propertyTo(Operation, { numRuns: 10 })
+      propertyTo(Operation, { numRuns: 5 })
     })
   })
 

@@ -9,6 +9,7 @@ import * as Data from "effect/Data"
 import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import * as Equal from "effect/Equal"
+import * as Equivalence from "effect/Equivalence"
 import type { LazyArg } from "effect/Function"
 import { dual, identity } from "effect/Function"
 import * as N from "effect/Number"
@@ -418,7 +419,7 @@ export const InstanceOfTypeId = Symbol.for("@effect/schema/TypeId/InstanceOf")
  */
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
-  options?: FilterAnnotations<object>
+  options?: FilterAnnotations<InstanceType<A>>
 ): Schema<InstanceType<A>, InstanceType<A>> => {
   return declare(
     [],
@@ -1398,6 +1399,7 @@ const toAnnotations = <A>(
   move("jsonSchema", AST.JSONSchemaAnnotationId)
   move("arbitrary", Internal.ArbitraryHookId)
   move("pretty", Internal.PrettyHookId)
+  move("equivalence", Internal.EquivalenceHookId)
 
   return out
 }
@@ -1423,6 +1425,7 @@ export interface FilterAnnotations<A> extends DocAnnotations<A> {
   readonly jsonSchema?: AST.JSONSchemaAnnotation
   readonly arbitrary?: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
   readonly pretty?: (...args: ReadonlyArray<Pretty<any>>) => Pretty<any>
+  readonly equivalence?: () => Equivalence.Equivalence<A>
 }
 
 /**
@@ -1498,6 +1501,14 @@ export const documentation =
 export const jsonSchema =
   (jsonSchema: AST.JSONSchemaAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
     make(AST.setAnnotation(self.ast, AST.JSONSchemaAnnotationId, jsonSchema))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const equivalence =
+  <A>(equivalence: Equivalence.Equivalence<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, Internal.EquivalenceHookId, () => equivalence))
 
 // ---------------------------------------------
 // string filters
@@ -2715,7 +2726,8 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
     [AST.IdentifierAnnotationId]: "Uint8Array",
     [Internal.PrettyHookId]: (): Pretty<Uint8Array> => (u8arr) =>
       `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
-    [Internal.ArbitraryHookId]: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array()
+    [Internal.ArbitraryHookId]: (): Arbitrary<Uint8Array> => (fc) => fc.uint8Array(),
+    [Internal.EquivalenceHookId]: () => ReadonlyArray.getEquivalence(Equivalence.strict())
   }
 )
 
@@ -2963,6 +2975,8 @@ const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date()
 
 const datePretty = (): Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
 
+const dateEquivalence = (): Equivalence.Equivalence<Date> => (a, b) => a.getTime() === b.getTime()
+
 /**
  * @category Date constructors
  * @since 1.0.0
@@ -2975,7 +2989,8 @@ export const DateFromSelf: Schema<Date> = declare(
   {
     [AST.IdentifierAnnotationId]: "Date",
     [Internal.PrettyHookId]: datePretty,
-    [Internal.ArbitraryHookId]: dateArbitrary
+    [Internal.ArbitraryHookId]: dateArbitrary,
+    [Internal.EquivalenceHookId]: dateEquivalence
   }
 )
 
@@ -3039,6 +3054,10 @@ const optionPretty = <A>(value: Pretty<A>): Pretty<Option.Option<A>> =>
     onSome: (a) => `some(${value(a)})`
   })
 
+const optionEquivalence = <A>(
+  value: Equivalence.Equivalence<A>
+): Equivalence.Equivalence<Option.Option<A>> => Option.getEquivalence(value)
+
 const optionInline = <I, A>(value: Schema<I, A>) =>
   union(
     struct({
@@ -3072,7 +3091,8 @@ export const optionFromSelf = <I, A>(
     {
       [AST.IdentifierAnnotationId]: "Option",
       [Internal.PrettyHookId]: optionPretty,
-      [Internal.ArbitraryHookId]: optionArbitrary
+      [Internal.ArbitraryHookId]: optionArbitrary,
+      [Internal.EquivalenceHookId]: optionEquivalence
     }
   )
 }
@@ -3122,6 +3142,11 @@ const eitherPretty = <E, A>(left: Pretty<E>, right: Pretty<A>): Pretty<Either.Ei
     onRight: (a) => `right(${right(a)})`
   })
 
+const eitherEquivalence = <E, A>(
+  left: Equivalence.Equivalence<E>,
+  right: Equivalence.Equivalence<A>
+): Equivalence.Equivalence<Either.Either<E, A>> => Either.getEquivalence(left, right)
+
 const eitherInline = <IE, E, IA, A>(left: Schema<IE, E>, right: Schema<IA, A>) =>
   union(
     struct({
@@ -3158,7 +3183,8 @@ export const eitherFromSelf = <IE, E, IA, A>(
     {
       [AST.IdentifierAnnotationId]: "Either",
       [Internal.PrettyHookId]: eitherPretty,
-      [Internal.ArbitraryHookId]: eitherArbitrary
+      [Internal.ArbitraryHookId]: eitherArbitrary,
+      [Internal.EquivalenceHookId]: eitherEquivalence
     }
   )
 }
@@ -3207,6 +3233,16 @@ const readonlyMapPretty = <K, V>(
       .join(", ")
   }])`
 
+const readonlyMapEquivalence = <K, V>(
+  key: Equivalence.Equivalence<K>,
+  value: Equivalence.Equivalence<V>
+): Equivalence.Equivalence<ReadonlyMap<K, V>> => {
+  const eq = ReadonlyArray.getEquivalence(
+    Equivalence.make<[K, V]>(([ka, va], [kb, vb]) => key(ka, kb) && value(va, vb))
+  )
+  return Equivalence.make((a, b) => eq(Array.from(a.entries()), Array.from(b.entries())))
+}
+
 /**
  * @category ReadonlyMap transformations
  * @since 1.0.0
@@ -3232,7 +3268,8 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
     {
       [AST.IdentifierAnnotationId]: "ReadonlyMap",
       [Internal.PrettyHookId]: readonlyMapPretty,
-      [Internal.ArbitraryHookId]: readonlyMapArbitrary
+      [Internal.ArbitraryHookId]: readonlyMapArbitrary,
+      [Internal.EquivalenceHookId]: readonlyMapEquivalence
     }
   )
 }
@@ -3264,6 +3301,13 @@ const readonlySetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> 
 const readonlySetPretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> => (set) =>
   `new Set([${Array.from(set.values()).map((a) => item(a)).join(", ")}])`
 
+const readonlySetEquivalence = <A>(
+  item: Equivalence.Equivalence<A>
+): Equivalence.Equivalence<ReadonlySet<A>> => {
+  const eq = ReadonlyArray.getEquivalence(item)
+  return Equivalence.make((a, b) => eq(Array.from(a.values()), Array.from(b.values())))
+}
+
 /**
  * @category ReadonlySet transformations
  * @since 1.0.0
@@ -3286,7 +3330,8 @@ export const readonlySetFromSelf = <I, A>(
     {
       [AST.IdentifierAnnotationId]: "ReadonlySet",
       [Internal.PrettyHookId]: readonlySetPretty,
-      [Internal.ArbitraryHookId]: readonlySetArbitrary
+      [Internal.ArbitraryHookId]: readonlySetArbitrary,
+      [Internal.EquivalenceHookId]: readonlySetEquivalence
     }
   )
 }
@@ -3313,6 +3358,15 @@ const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc
 const chunkPretty = <A>(item: Pretty<A>): Pretty<Chunk.Chunk<A>> => (c) =>
   `Chunk(${Chunk.toReadonlyArray(c).map(item).join(", ")})`
 
+const chunkEquivalence = <A>(
+  item: Equivalence.Equivalence<A>
+): Equivalence.Equivalence<Chunk.Chunk<A>> =>
+  // TODO: replace with Chunk.getEquivalence when https://github.com/Effect-TS/effect/pull/1585 is released
+  Equivalence.make((self, that) =>
+    self.length === that.length &&
+    Chunk.toReadonlyArray(self).every((value, i) => item(value, Chunk.unsafeGet(that, i)))
+  )
+
 /**
  * @category Chunk transformations
  * @since 1.0.0
@@ -3338,7 +3392,8 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
     {
       [AST.IdentifierAnnotationId]: "Chunk",
       [Internal.PrettyHookId]: chunkPretty,
-      [Internal.ArbitraryHookId]: chunkArbitrary
+      [Internal.ArbitraryHookId]: chunkArbitrary,
+      [Internal.EquivalenceHookId]: chunkEquivalence
     }
   )
 }
@@ -3395,7 +3450,8 @@ export const dataFromSelf = <
     {
       [AST.IdentifierAnnotationId]: "Data",
       [Internal.PrettyHookId]: dataPretty,
-      [Internal.ArbitraryHookId]: dataArbitrary
+      [Internal.ArbitraryHookId]: dataArbitrary,
+      [Internal.EquivalenceHookId]: () => Equal.equals
     }
   )
 }

@@ -189,8 +189,7 @@ export const go = (ast: AST.AST, options: Options): Arbitrary<any> => {
         // handle rest element
         // ---------------------------------------------
         if (Option.isSome(rest)) {
-          const head = ReadonlyArray.headNonEmpty(rest.value)
-          const tail = ReadonlyArray.tailNonEmpty(rest.value)
+          const [head, ...tail] = rest.value
           const arb = head(fc)
           const constraints = options.constraints
           output = output.chain((as) => {

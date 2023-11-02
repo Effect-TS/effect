@@ -14,6 +14,9 @@ export const ArbitraryHookId = Symbol.for("@effect/schema/ArbitraryHookId")
 /** @internal */
 export const PrettyHookId = Symbol.for("@effect/schema/PrettyHookId")
 
+/** @internal */
+export const EquivalenceHookId = Symbol.for("@effect/schema/EquivalenceHookId")
+
 // ---------------------------------------------
 // Schema APIs
 // ---------------------------------------------

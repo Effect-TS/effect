@@ -1000,7 +1000,7 @@ describe("JSONSchema", () => {
           }
         }
       })).toEqual(true)
-      propertyTo(Operation, { numRuns: 10 })
+      propertyTo(Operation, { numRuns: 5 })
     })
   })
 

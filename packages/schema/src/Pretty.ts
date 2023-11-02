@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as AST from "./AST"
@@ -52,13 +51,10 @@ const format = () => TreeFormatter.formatActual
  */
 export const match: AST.Match<Pretty<any>> = {
   "Declaration": (ast, go) =>
-    pipe(
-      getHook(ast),
-      Option.match({
-        onNone: () => go(ast.type),
-        onSome: (handler) => handler(...ast.typeParameters.map(go))
-      })
-    ),
+    Option.match(getHook(ast), {
+      onNone: () => go(ast.type),
+      onSome: (handler) => handler(...ast.typeParameters.map(go))
+    }),
   "VoidKeyword": () => () => "void(0)",
   "NeverKeyword": () => () => {
     throw new Error("cannot pretty print a `never` value")
@@ -81,7 +77,7 @@ export const match: AST.Match<Pretty<any>> = {
   "Enums": stringify,
   "Tuple": (ast, go) => {
     const elements = ast.elements.map((e) => go(e.type))
-    const rest = pipe(ast.rest, Option.map(ReadonlyArray.map(go)))
+    const rest = Option.map(ast.rest, ReadonlyArray.map(go))
     return (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0
@@ -101,8 +97,7 @@ export const match: AST.Match<Pretty<any>> = {
       // handle rest element
       // ---------------------------------------------
       if (Option.isSome(rest)) {
-        const head = ReadonlyArray.headNonEmpty(rest.value)
-        const tail = ReadonlyArray.tailNonEmpty(rest.value)
+        const [head, ...tail] = rest.value
         for (; i < input.length - tail.length; i++) {
           output.push(head(input[i]))
         }
