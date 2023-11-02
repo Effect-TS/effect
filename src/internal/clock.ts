@@ -50,7 +50,7 @@ const performanceNowNanos = (function() {
 
   const origin = "timeOrigin" in performance && typeof performance.timeOrigin === "number" ?
     BigInt(Math.round(performance.timeOrigin * 1_000_000)) :
-    BigInt(Date.now()) * bigint1e6
+    (BigInt(Date.now()) * bigint1e6) - BigInt(Math.round(performance.now() * 1_000_000))
 
   return () => origin + BigInt(Math.round(performance.now() * 1_000_000))
 })()
