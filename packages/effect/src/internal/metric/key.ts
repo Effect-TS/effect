@@ -12,6 +12,7 @@ import type * as MetricKeyType from "../../MetricKeyType"
 import type * as MetricLabel from "../../MetricLabel"
 import * as Option from "../../Option"
 import { pipeArguments } from "../../Pipeable"
+import { hasProperty } from "../../Predicate"
 
 /** @internal */
 const MetricKeySymbolKey = "effect/MetricKey"
@@ -57,7 +58,7 @@ class MetricKeyImpl<Type extends MetricKeyType.MetricKeyType<any, any>> implemen
 
 /** @internal */
 export const isMetricKey = (u: unknown): u is MetricKey.MetricKey<MetricKeyType.MetricKeyType<unknown, unknown>> =>
-  typeof u === "object" && u != null && MetricKeyTypeId in u
+  hasProperty(u, MetricKeyTypeId)
 
 /** @internal */
 export const counter: {

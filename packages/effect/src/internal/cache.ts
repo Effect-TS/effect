@@ -14,6 +14,7 @@ import * as MutableHashMap from "../MutableHashMap"
 import * as MutableQueue from "../MutableQueue"
 import * as MutableRef from "../MutableRef"
 import * as Option from "../Option"
+import { hasProperty } from "../Predicate"
 import * as core from "./core"
 import * as effect from "./core-effect"
 import * as Data from "./Data"
@@ -140,7 +141,7 @@ class MapKeyImpl<K> implements MapKey<K> {
 export const makeMapKey = <K>(current: K): MapKey<K> => new MapKeyImpl(current)
 
 /** @internal */
-export const isMapKey = (u: unknown): u is MapKey<unknown> => typeof u === "object" && u != null && MapKeyTypeId in u
+export const isMapKey = (u: unknown): u is MapKey<unknown> => hasProperty(u, MapKeyTypeId)
 
 /**
  * A `KeySet` is a sorted set of keys in the cache ordered by last access.

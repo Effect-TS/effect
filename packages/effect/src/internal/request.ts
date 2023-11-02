@@ -2,6 +2,7 @@ import type * as Effect from "../Effect"
 import { dual } from "../Function"
 import * as completedRequestMap from "../internal/completedRequestMap"
 import * as core from "../internal/core"
+import { hasProperty } from "../Predicate"
 import type * as Request from "../Request"
 import * as Data from "./Data"
 
@@ -20,8 +21,7 @@ const requestVariance = {
 }
 
 /** @internal */
-export const isRequest = (u: unknown): u is Request.Request<unknown, unknown> =>
-  typeof u === "object" && u != null && RequestTypeId in u
+export const isRequest = (u: unknown): u is Request.Request<unknown, unknown> => hasProperty(u, RequestTypeId)
 
 /** @internal */
 export const of = <R extends Request.Request<any, any>>(): Request.Request.Constructor<R> => (args) =>

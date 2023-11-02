@@ -1,5 +1,6 @@
 import type * as ChildExecutorDecision from "../../ChannelChildExecutorDecision"
 import { dual } from "../../Function"
+import { hasProperty } from "../../Predicate"
 import * as OpCodes from "../opCodes/channelChildExecutorDecision"
 
 /** @internal */
@@ -39,7 +40,7 @@ export const Yield = (_: void): ChildExecutorDecision.ChildExecutorDecision => {
 
 /** @internal */
 export const isChildExecutorDecision = (u: unknown): u is ChildExecutorDecision.ChildExecutorDecision =>
-  typeof u === "object" && u != null && ChildExecutorDecisionTypeId in u
+  hasProperty(u, ChildExecutorDecisionTypeId)
 
 /** @internal */
 export const isContinue = (

@@ -10,7 +10,7 @@ import * as Option from "./Option"
 import type { Order } from "./Order"
 import type { Pipeable } from "./Pipeable"
 import { pipeArguments } from "./Pipeable"
-import { isObject } from "./Predicate"
+import { hasProperty } from "./Predicate"
 import * as RBT from "./RedBlackTree"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedMap")
@@ -72,7 +72,7 @@ const makeImpl = <K, V>(tree: RBT.RedBlackTree<K, V>): SortedMap<K, V> => {
 export const isSortedMap: {
   <K, V>(u: Iterable<readonly [K, V]>): u is SortedMap<K, V>
   (u: unknown): u is SortedMap<unknown, unknown>
-} = (u: unknown): u is SortedMap<unknown, unknown> => isObject(u) && TypeId in u
+} = (u: unknown): u is SortedMap<unknown, unknown> => hasProperty(u, TypeId)
 
 /**
  * @since 2.0.0

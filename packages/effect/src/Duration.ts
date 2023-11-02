@@ -11,7 +11,7 @@ import * as Option from "./Option"
 import * as order from "./Order"
 import type { Pipeable } from "./Pipeable"
 import { pipeArguments } from "./Pipeable"
-import { isBigInt, isNumber } from "./Predicate"
+import { hasProperty, isBigInt, isNumber } from "./Predicate"
 
 const TypeId: unique symbol = Symbol.for("effect/Duration")
 
@@ -162,7 +162,7 @@ const make = (input: number | bigint): Duration => {
  * @since 2.0.0
  * @category guards
  */
-export const isDuration = (u: unknown): u is Duration => typeof u === "object" && u !== null && TypeId in u
+export const isDuration = (u: unknown): u is Duration => hasProperty(u, TypeId)
 
 /**
  * @since 2.0.0

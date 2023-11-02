@@ -16,7 +16,7 @@ import { constVoid, dual, identity, pipe } from "../Function"
 import type { LazyArg } from "../Function"
 import * as Layer from "../Layer"
 import * as Option from "../Option"
-import type { Predicate } from "../Predicate"
+import { hasProperty, type Predicate } from "../Predicate"
 import * as PubSub from "../PubSub"
 import * as Queue from "../Queue"
 import * as Ref from "../Ref"
@@ -2517,4 +2517,4 @@ export const ChannelException = <E>(error: E): Channel.ChannelException<E> => ({
 
 /** @internal */
 export const isChannelException = (u: unknown): u is Channel.ChannelException<unknown> =>
-  typeof u === "object" && u != null && ChannelExceptionTypeId in u
+  hasProperty(u, ChannelExceptionTypeId)

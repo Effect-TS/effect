@@ -6,6 +6,7 @@ import * as Equal from "../Equal"
 import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import type * as Option from "../Option"
+import { hasProperty } from "../Predicate"
 import { EffectPrototype } from "./Effectable"
 
 const TypeId: Option.TypeId = Symbol.for("effect/Option") as Option.TypeId
@@ -59,8 +60,7 @@ const NoneProto = Object.assign(Object.create(CommonProto), {
 })
 
 /** @internal */
-export const isOption = (input: unknown): input is Option.Option<unknown> =>
-  typeof input === "object" && input != null && TypeId in input
+export const isOption = (input: unknown): input is Option.Option<unknown> => hasProperty(input, TypeId)
 
 /** @internal */
 export const isNone = <A>(fa: Option.Option<A>): fa is Option.None<A> => fa._tag === "None"

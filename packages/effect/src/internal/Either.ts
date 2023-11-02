@@ -9,6 +9,7 @@ import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import * as option from "../internal/Option"
 import type { Option } from "../Option"
+import { hasProperty } from "../Predicate"
 import { EffectPrototype } from "./Effectable"
 
 /**
@@ -66,8 +67,7 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
 })
 
 /** @internal */
-export const isEither = (input: unknown): input is Either.Either<unknown, unknown> =>
-  typeof input === "object" && input != null && TypeId in input
+export const isEither = (input: unknown): input is Either.Either<unknown, unknown> => hasProperty(input, TypeId)
 
 /** @internal */
 export const isLeft = <E, A>(ma: Either.Either<E, A>): ma is Either.Left<E, A> => ma._tag === "Left"

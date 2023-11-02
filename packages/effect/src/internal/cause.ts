@@ -9,7 +9,7 @@ import * as HashSet from "../HashSet"
 import { NodeInspectSymbol, toJSON } from "../Inspectable"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import type { Predicate } from "../Predicate"
+import { hasProperty, isFunction, type Predicate } from "../Predicate"
 import * as ReadonlyArray from "../ReadonlyArray"
 import * as OpCodes from "./opCodes/cause"
 
@@ -128,7 +128,7 @@ export const sequential = <E, E2>(left: Cause.Cause<E>, right: Cause.Cause<E2>):
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const isCause = (u: unknown): u is Cause.Cause<never> => typeof u === "object" && u != null && CauseTypeId in u
+export const isCause = (u: unknown): u is Cause.Cause<never> => hasProperty(u, CauseTypeId)
 
 /** @internal */
 export const isEmptyType = <E>(self: Cause.Cause<E>): self is Cause.Empty => self._tag === OpCodes.OP_EMPTY
@@ -1015,9 +1015,7 @@ export const RuntimeException = makeException<Cause.RuntimeException>({
 }, "RuntimeException")
 
 /** @internal */
-export const isRuntimeException = (u: unknown): u is Cause.RuntimeException => {
-  return typeof u === "object" && u != null && RuntimeExceptionTypeId in u
-}
+export const isRuntimeException = (u: unknown): u is Cause.RuntimeException => hasProperty(u, RuntimeExceptionTypeId)
 
 /** @internal */
 export const InterruptedExceptionTypeId: Cause.InterruptedExceptionTypeId = Symbol.for(
@@ -1030,9 +1028,8 @@ export const InterruptedException = makeException<Cause.InterruptedException>({
 }, "InterruptedException")
 
 /** @internal */
-export const isInterruptedException = (u: unknown): u is Cause.InterruptedException => {
-  return typeof u === "object" && u != null && InterruptedExceptionTypeId in u
-}
+export const isInterruptedException = (u: unknown): u is Cause.InterruptedException =>
+  hasProperty(u, InterruptedExceptionTypeId)
 
 /** @internal */
 export const IllegalArgumentExceptionTypeId: Cause.IllegalArgumentExceptionTypeId = Symbol.for(
@@ -1045,9 +1042,8 @@ export const IllegalArgumentException = makeException<Cause.IllegalArgumentExcep
 }, "IllegalArgumentException")
 
 /** @internal */
-export const isIllegalArgumentException = (u: unknown): u is Cause.IllegalArgumentException => {
-  return typeof u === "object" && u != null && IllegalArgumentExceptionTypeId in u
-}
+export const isIllegalArgumentException = (u: unknown): u is Cause.IllegalArgumentException =>
+  hasProperty(u, IllegalArgumentExceptionTypeId)
 
 /** @internal */
 export const NoSuchElementExceptionTypeId: Cause.NoSuchElementExceptionTypeId = Symbol.for(
@@ -1060,9 +1056,8 @@ export const NoSuchElementException = makeException<Cause.NoSuchElementException
 }, "NoSuchElementException")
 
 /** @internal */
-export const isNoSuchElementException = (u: unknown): u is Cause.NoSuchElementException => {
-  return typeof u === "object" && u != null && NoSuchElementExceptionTypeId in u
-}
+export const isNoSuchElementException = (u: unknown): u is Cause.NoSuchElementException =>
+  hasProperty(u, NoSuchElementExceptionTypeId)
 
 /** @internal */
 export const InvalidPubSubCapacityExceptionTypeId: Cause.InvalidPubSubCapacityExceptionTypeId = Symbol.for(
@@ -1075,9 +1070,8 @@ export const InvalidPubSubCapacityException = makeException<Cause.InvalidPubSubC
 }, "InvalidPubSubCapacityException")
 
 /** @internal */
-export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException => {
-  return typeof u === "object" && u != null && InvalidPubSubCapacityExceptionTypeId in u
-}
+export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException =>
+  hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
 
 // -----------------------------------------------------------------------------
 // Pretty Printing
@@ -1163,10 +1157,8 @@ export const prettyErrorMessage = (u: unknown): string => {
   }
   // 2)
   if (
-    typeof u === "object" &&
-    u != null &&
-    "toString" in u &&
-    typeof u["toString"] === "function" &&
+    hasProperty(u, "toString") &&
+    isFunction(u["toString"]) &&
     u["toString"] !== Object.prototype.toString
   ) {
     return u["toString"]()
@@ -1178,8 +1170,8 @@ export const prettyErrorMessage = (u: unknown): string => {
 const spanSymbol = Symbol.for("effect/SpanAnnotation")
 
 const defaultRenderError = (error: unknown): PrettyError => {
-  const span = typeof error === "object" && error !== null && spanSymbol in error && (error as any)[spanSymbol]
-  if (typeof error === "object" && error !== null && error instanceof Error) {
+  const span: any = hasProperty(error, spanSymbol) && error[spanSymbol]
+  if (error instanceof Error) {
     return new PrettyError(
       prettyErrorMessage(error),
       error.stack?.split("\n").filter((_) => _.match(/at (.*)/)).join("\n"),

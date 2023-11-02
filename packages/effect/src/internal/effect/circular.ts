@@ -296,7 +296,7 @@ class Key<A> implements Equal.Equal {
   [memoKeySymbol] = memoKeySymbol
   constructor(readonly a: A, readonly eq?: Equivalence<A>) {}
   [Equal.symbol](that: Equal.Equal) {
-    if (typeof that === "object" && that !== null && memoKeySymbol in that) {
+    if (Predicate.hasProperty(that, memoKeySymbol)) {
       if (this.eq) {
         return this.eq(this.a, (that as unknown as Key<A>).a)
       } else {
