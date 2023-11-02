@@ -1,7 +1,9 @@
 import * as Worker from "@effect/platform/Worker"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 
 const platformWorkerImpl = Worker.PlatformWorker.of({
@@ -11,10 +13,17 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const port = worker_ as globalThis.Worker
 
       yield* _(Effect.addFinalizer(() =>
-        Effect.async<never, never, void>((resume) => {
-          port.addEventListener("close", () => resume(Effect.unit), { once: true })
-          port.postMessage([1])
-        })
+        pipe(
+          Effect.async<never, never, void>((resume, signal) => {
+            port.addEventListener("close", () => resume(Effect.unit), { once: true, signal })
+            port.postMessage([1])
+          }),
+          Effect.timeout(5000),
+          Effect.tap(Option.match({
+            onNone: () => Effect.sync(() => port.terminate()),
+            onSome: (_) => Effect.unit
+          }))
+        )
       ))
 
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())

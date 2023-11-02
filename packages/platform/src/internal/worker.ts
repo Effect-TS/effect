@@ -271,7 +271,9 @@ export const makePool = <W>() =>
     }
 
     return pool
-  })
+  }).pipe(
+    Effect.parallelFinalizers
+  )
 
 /** @internal */
 export const makePoolLayer = <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>

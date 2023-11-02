@@ -1,7 +1,9 @@
 import * as Worker from "@effect/platform/Worker"
 import { WorkerError } from "@effect/platform/WorkerError"
 import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import type * as WorkerThreads from "node:worker_threads"
 
@@ -11,14 +13,19 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
     return Effect.gen(function*(_) {
       const worker = worker_ as WorkerThreads.Worker
       yield* _(Effect.addFinalizer(() =>
-        Effect.suspend(() => {
-          worker.postMessage([1])
-          return Effect.async<never, never, void>((resume) => {
+        pipe(
+          Effect.async<never, never, void>((resume) => {
             worker.once("exit", () => {
               resume(Effect.unit)
             })
-          })
-        })
+            worker.postMessage([1])
+          }),
+          Effect.timeout(5000),
+          Effect.tap(Option.match({
+            onNone: () => Effect.promise(() => worker.terminate()),
+            onSome: (_) => Effect.unit
+          }))
+        )
       ))
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
       yield* _(Effect.addFinalizer(() => Queue.shutdown(queue)))

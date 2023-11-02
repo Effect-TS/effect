@@ -20,6 +20,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           }, { once: true, signal })
         })))
       const queue = yield* _(Queue.unbounded<I>())
+      const fiberId = yield* _(Effect.fiberId)
       const fiber = yield* _(
         Effect.async<never, WorkerError, never>((resume, signal) => {
           port.addEventListener("message", function(event) {
@@ -37,8 +38,9 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             resume(Effect.fail(WorkerError("unknown", (error as ErrorEvent).message)))
           }, { signal })
         }),
-        Effect.forkScoped
+        Effect.forkDaemon
       )
+      yield* _(Effect.addFinalizer(() => fiber.interruptAsFork(fiberId)))
       const send = (message: O, transfer?: ReadonlyArray<unknown>) =>
         Effect.sync(() =>
           port.postMessage([1, message], {
