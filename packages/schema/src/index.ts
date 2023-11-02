@@ -16,6 +16,11 @@ export * as ArrayFormatter from "@effect/schema/ArrayFormatter"
 /**
  * @since 1.0.0
  */
+export * as Equivalence from "@effect/schema/Equivalence"
+
+/**
+ * @since 1.0.0
+ */
 export * as JSONSchema from "@effect/schema/JSONSchema"
 
 /**
