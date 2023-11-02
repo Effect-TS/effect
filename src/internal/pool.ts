@@ -14,6 +14,7 @@ import * as queue from "../internal/queue"
 import * as ref from "../internal/ref"
 import { pipeArguments } from "../Pipeable"
 import type * as Pool from "../Pool"
+import { hasProperty } from "../Predicate"
 import type * as Queue from "../Queue"
 import type * as Ref from "../Ref"
 import type * as Scope from "../Scope"
@@ -456,8 +457,7 @@ const makeWith = <R, E, A, S, R2>(
   )
 
 /** @internal */
-export const isPool = (u: unknown): u is Pool.Pool<unknown, unknown> =>
-  typeof u === "object" && u != null && PoolTypeId in u
+export const isPool = (u: unknown): u is Pool.Pool<unknown, unknown> => hasProperty(u, PoolTypeId)
 
 /** @internal */
 export const make = <R, E, A>(

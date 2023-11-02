@@ -3,6 +3,7 @@
  */
 import { pipe } from "./Function"
 import { globalValue } from "./GlobalValue"
+import { hasProperty } from "./Predicate"
 import { PCGRandom } from "./Utils"
 
 /** @internal */
@@ -98,7 +99,7 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  * @since 2.0.0
  * @category guards
  */
-export const isHash = (u: unknown): u is Hash => typeof u === "object" && u !== null && symbol in u
+export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
 
 /**
  * @since 2.0.0

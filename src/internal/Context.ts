@@ -6,6 +6,7 @@ import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import type * as O from "../Option"
 import { pipeArguments } from "../Pipeable"
+import { hasProperty } from "../Predicate"
 import type * as STM from "../STM"
 import { EffectPrototype, effectVariance } from "./Effectable"
 import * as option from "./Option"
@@ -147,10 +148,10 @@ const serviceNotFoundError = (tag: C.Tag<any, any>) => {
 }
 
 /** @internal */
-export const isContext = (u: unknown): u is C.Context<never> => typeof u === "object" && u !== null && TypeId in u
+export const isContext = (u: unknown): u is C.Context<never> => hasProperty(u, TypeId)
 
 /** @internal */
-export const isTag = (u: unknown): u is C.Tag<any, any> => typeof u === "object" && u !== null && TagTypeId in u
+export const isTag = (u: unknown): u is C.Tag<any, any> => hasProperty(u, TagTypeId)
 
 const _empty = makeContext(new Map())
 

@@ -2,6 +2,7 @@ import type * as MergeDecision from "../../ChannelMergeDecision"
 import type * as Effect from "../../Effect"
 import type * as Exit from "../../Exit"
 import { dual } from "../../Function"
+import { hasProperty } from "../../Predicate"
 import * as OpCodes from "../opCodes/channelMergeDecision"
 
 /** @internal */
@@ -78,8 +79,7 @@ export const AwaitConst = <R, E, Z>(
 /** @internal */
 export const isMergeDecision = (
   u: unknown
-): u is MergeDecision.MergeDecision<unknown, unknown, unknown, unknown, unknown> =>
-  typeof u === "object" && u != null && MergeDecisionTypeId in u
+): u is MergeDecision.MergeDecision<unknown, unknown, unknown, unknown, unknown> => hasProperty(u, MergeDecisionTypeId)
 
 /** @internal */
 export const match = dual<

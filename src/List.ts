@@ -32,7 +32,7 @@ import * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 import { pipeArguments } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
-import { isObject } from "./Predicate"
+import { hasProperty } from "./Predicate"
 import * as ReadonlyArray from "./ReadonlyArray"
 
 /**
@@ -206,7 +206,7 @@ const _Nil = Object.create(NilProto) as Nil<never>
 export const isList: {
   <A>(u: Iterable<A>): u is List<A>
   (u: unknown): u is List<unknown>
-} = (u: unknown): u is List<unknown> => isObject(u) && TypeId in u
+} = (u: unknown): u is List<unknown> => hasProperty(u, TypeId)
 
 /**
  * Returns `true` if the specified value is a `List.Nil<A>`, `false` otherwise.

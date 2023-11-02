@@ -15,7 +15,7 @@ import * as Order from "./Order"
 import type { Pipeable } from "./Pipeable"
 import { pipeArguments } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
-import { isObject } from "./Predicate"
+import { hasProperty } from "./Predicate"
 import * as RA from "./ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "./ReadonlyArray"
 
@@ -116,7 +116,9 @@ const emptyArray: ReadonlyArray<never> = []
  * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Chunk<A>> =>
-  Equivalence.make((self, that) => toReadonlyArray(self).every((value, i) => isEquivalent(value, unsafeGet(that, i))))
+  Equivalence.make((self, that) =>
+    self.length === that.length && toReadonlyArray(self).every((value, i) => isEquivalent(value, unsafeGet(that, i)))
+  )
 
 const _equivalence = getEquivalence(Equal.equals)
 
@@ -212,7 +214,7 @@ const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
 export const isChunk: {
   <A>(u: Iterable<A>): u is Chunk<A>
   (u: unknown): u is Chunk<unknown>
-} = (u: unknown): u is Chunk<unknown> => isObject(u) && TypeId in u
+} = (u: unknown): u is Chunk<unknown> => hasProperty(u, TypeId)
 
 const _empty = makeChunk<never>({ _tag: "IEmpty" })
 

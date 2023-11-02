@@ -17,7 +17,7 @@ import * as Layer from "../Layer"
 import * as Option from "../Option"
 import type * as Order from "../Order"
 import { pipeArguments } from "../Pipeable"
-import type { Predicate, Refinement } from "../Predicate"
+import { hasProperty, isTagged, type Predicate, type Refinement } from "../Predicate"
 import * as PubSub from "../PubSub"
 import * as Queue from "../Queue"
 import * as Ref from "../Ref"
@@ -78,7 +78,7 @@ export class StreamImpl<R, E, A> implements Stream.Stream<R, E, A> {
 
 /** @internal */
 export const isStream = (u: unknown): u is Stream.Stream<unknown, unknown, unknown> =>
-  (typeof u === "object" && u != null && StreamTypeId in u) || Effect.isEffect(u)
+  hasProperty(u, StreamTypeId) || Effect.isEffect(u)
 
 /** @internal */
 export const DefaultChunkSize = 4096
@@ -3100,10 +3100,7 @@ export const fromReadableStreamByob = <E>(
     (reader) =>
       catchAll(
         forever(readChunkStreamByobReader(reader, onError, allocSize)),
-        (error) =>
-          typeof error === "object" && error !== null && "_tag" in error && error._tag === "EOF" ?
-            empty :
-            fail(error as E)
+        (error) => isTagged(error, "EOF") ? empty : fail(error as E)
       )
   ))
 

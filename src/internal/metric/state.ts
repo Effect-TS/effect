@@ -6,6 +6,7 @@ import type * as HashMap from "../../HashMap"
 import type * as MetricState from "../../MetricState"
 import type * as Option from "../../Option"
 import { pipeArguments } from "../../Pipeable"
+import { hasProperty } from "../../Predicate"
 
 /** @internal */
 const MetricStateSymbolKey = "effect/MetricState"
@@ -244,43 +245,36 @@ export const summary = (
   )
 
 /** @internal */
-export const isMetricState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> => {
-  return typeof u === "object" && u != null && MetricStateTypeId in u
-}
+export const isMetricState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> =>
+  hasProperty(u, MetricStateTypeId)
 
 /** @internal */
-export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> => {
-  return typeof u === "object" && u != null && CounterStateTypeId in u
-}
+export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> =>
+  hasProperty(u, CounterStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequency => {
-  return typeof u === "object" && u != null && FrequencyStateTypeId in u
-}
+export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequency =>
+  hasProperty(u, FrequencyStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge<number | bigint> => {
-  return typeof u === "object" && u != null && GaugeStateTypeId in u
-}
+export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge<number | bigint> =>
+  hasProperty(u, GaugeStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histogram => {
-  return typeof u === "object" && u != null && HistogramStateTypeId in u
-}
+export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histogram =>
+  hasProperty(u, HistogramStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary => {
-  return typeof u === "object" && u != null && SummaryStateTypeId in u
-}
+export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary => hasProperty(u, SummaryStateTypeId)

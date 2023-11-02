@@ -14,7 +14,7 @@ import * as HashMap from "../HashMap"
 import * as HashSet from "../HashSet"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import type { Predicate, Refinement } from "../Predicate"
+import { hasProperty, type Predicate, type Refinement } from "../Predicate"
 import * as PubSub from "../PubSub"
 import * as Queue from "../Queue"
 import * as ReadonlyArray from "../ReadonlyArray"
@@ -51,7 +51,7 @@ export class SinkImpl<R, E, In, L, Z> implements Sink.Sink<R, E, In, L, Z> {
 
 /** @internal */
 export const isSink = (u: unknown): u is Sink.Sink<unknown, unknown, unknown, unknown, unknown> =>
-  typeof u === "object" && u != null && SinkTypeId in u
+  hasProperty(u, SinkTypeId)
 
 /** @internal */
 export const suspend = <R, E, In, L, Z>(evaluate: LazyArg<Sink.Sink<R, E, In, L, Z>>): Sink.Sink<R, E, In, L, Z> =>

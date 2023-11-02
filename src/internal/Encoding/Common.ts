@@ -1,4 +1,5 @@
 import type * as Encoding from "../../Encoding"
+import { hasProperty } from "../../Predicate"
 
 /** @internal */
 export const DecodeExceptionTypeId: Encoding.DecodeExceptionTypeId = Symbol.for(
@@ -14,8 +15,7 @@ export const DecodeException = (input: string, message?: string): Encoding.Decod
 })
 
 /** @internal */
-export const isDecodeException = (u: unknown): u is Encoding.DecodeException =>
-  typeof u === "object" && u != null && DecodeExceptionTypeId in u
+export const isDecodeException = (u: unknown): u is Encoding.DecodeException => hasProperty(u, DecodeExceptionTypeId)
 
 /** @interal */
 export const encoder = new TextEncoder()

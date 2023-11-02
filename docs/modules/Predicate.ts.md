@@ -30,6 +30,7 @@ Added in v2.0.0
   - [every](#every)
   - [some](#some)
 - [guards](#guards)
+  - [hasProperty](#hasproperty)
   - [isBigInt](#isbigint)
   - [isBoolean](#isboolean)
   - [isDate](#isdate)
@@ -303,6 +304,21 @@ export declare const some: <A>(collection: Iterable<Predicate<A>>) => Predicate<
 Added in v2.0.0
 
 # guards
+
+## hasProperty
+
+Checks whether a value is an `object` containing a specified property key.
+
+**Signature**
+
+```ts
+export declare const hasProperty: {
+  <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
+  <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
+}
+```
+
+Added in v2.0.0
 
 ## isBigInt
 

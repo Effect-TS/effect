@@ -4,6 +4,7 @@ import * as Duration from "../Duration"
 import type * as Effect from "../Effect"
 import * as Either from "../Either"
 import { constFalse } from "../Function"
+import { hasProperty, isFunction } from "../Predicate"
 import * as core from "./core"
 import * as timeout from "./timeout"
 
@@ -49,15 +50,14 @@ const performanceNowNanos = (function() {
 
   const origin = "timeOrigin" in performance && typeof performance.timeOrigin === "number" ?
     BigInt(Math.round(performance.timeOrigin * 1_000_000)) :
-    BigInt(Date.now()) * bigint1e6
+    (BigInt(Date.now()) * bigint1e6) - BigInt(Math.round(performance.now() * 1_000_000))
 
   return () => origin + BigInt(Math.round(performance.now() * 1_000_000))
 })()
 const processOrPerformanceNow = (function() {
-  const processHrtime =
-    typeof process === "object" && "hrtime" in process && typeof process.hrtime.bigint === "function" ?
-      process.hrtime :
-      undefined
+  const processHrtime = hasProperty(process, "hrtime") && isFunction(process.hrtime.bigint) ?
+    process.hrtime :
+    undefined
   if (!processHrtime) {
     return performanceNowNanos
   }
