@@ -1,5 +1,16 @@
 # @effect/rpc-workers
 
+## 0.17.0
+
+### Minor Changes
+
+- [#139](https://github.com/Effect-TS/rpc/pull/139) [`8b5e8c7`](https://github.com/Effect-TS/rpc/commit/8b5e8c7c84f60e6ce0a40a1533f1e258ec5a643d) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- Updated dependencies [[`8b5e8c7`](https://github.com/Effect-TS/rpc/commit/8b5e8c7c84f60e6ce0a40a1533f1e258ec5a643d)]:
+  - @effect/rpc@0.17.0
+
 ## 0.16.6
 
 ### Patch Changes
