@@ -3,9 +3,6 @@
  */
 import { moduleVersion } from "./internal/version"
 
-/**
- * @since 2.0.0
- */
 const globalStoreId = Symbol.for(`effect/GlobalValue/globalStoreId/${moduleVersion}`)
 
 if (!(globalStoreId in globalThis)) {
