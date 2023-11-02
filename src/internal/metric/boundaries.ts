@@ -4,6 +4,7 @@ import { pipe } from "../../Function"
 import * as Hash from "../../Hash"
 import type * as MetricBoundaries from "../../MetricBoundaries"
 import { pipeArguments } from "../../Pipeable"
+import { hasProperty } from "../../Predicate"
 import * as ReadonlyArray from "../../ReadonlyArray"
 
 /** @internal */
@@ -34,7 +35,7 @@ class MetricBoundariesImpl implements MetricBoundaries.MetricBoundaries {
 
 /** @internal */
 export const isMetricBoundaries = (u: unknown): u is MetricBoundaries.MetricBoundaries => {
-  return typeof u === "object" && u != null && MetricBoundariesTypeId in u
+  return hasProperty(u, MetricBoundariesTypeId)
 }
 
 /** @internal */

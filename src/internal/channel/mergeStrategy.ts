@@ -1,5 +1,6 @@
 import type * as MergeStrategy from "../../ChannelMergeStrategy"
 import { dual } from "../../Function"
+import { hasProperty } from "../../Predicate"
 import * as OpCodes from "../opCodes/channelMergeStrategy"
 
 /** @internal */
@@ -30,8 +31,7 @@ export const BufferSliding = (_: void): MergeStrategy.MergeStrategy => {
 }
 
 /** @internal */
-export const isMergeStrategy = (u: unknown): u is MergeStrategy.MergeStrategy =>
-  typeof u === "object" && u != null && MergeStrategyTypeId in u
+export const isMergeStrategy = (u: unknown): u is MergeStrategy.MergeStrategy => hasProperty(u, MergeStrategyTypeId)
 
 /** @internal */
 export const isBackPressure = (self: MergeStrategy.MergeStrategy): self is MergeStrategy.BackPressure =>

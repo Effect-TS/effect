@@ -11,7 +11,7 @@ import type { Order } from "./Order"
 import type { Pipeable } from "./Pipeable"
 import { pipeArguments } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
-import { isObject } from "./Predicate"
+import { hasProperty } from "./Predicate"
 import * as RBT from "./RedBlackTree"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedSet")
@@ -77,7 +77,7 @@ const fromTree = <A>(keyTree: RBT.RedBlackTree<A, boolean>): SortedSet<A> => {
 export const isSortedSet: {
   <A>(u: Iterable<A>): u is SortedSet<A>
   (u: unknown): u is SortedSet<unknown>
-} = (u: unknown): u is SortedSet<unknown> => isObject(u) && TypeId in u
+} = (u: unknown): u is SortedSet<unknown> => hasProperty(u, TypeId)
 
 /**
  * @since 2.0.0

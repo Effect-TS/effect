@@ -10,6 +10,7 @@ import * as core from "./internal/core"
 import * as effect from "./internal/core-effect"
 import * as fiber from "./internal/fiber"
 import * as MutableRef from "./MutableRef"
+import { hasProperty } from "./Predicate"
 import * as RA from "./ReadonlyArray"
 import * as Ref from "./Ref"
 import * as SortedSet from "./SortedSet"
@@ -102,7 +103,7 @@ export const TestAnnotations: Context.Tag<TestAnnotations, TestAnnotations> = Co
  * @since 2.0.0
  */
 export const isTestAnnotations = (u: unknown): u is TestAnnotations => {
-  return typeof u === "object" && u != null && TestAnnotationsTypeId in u
+  return hasProperty(u, TestAnnotationsTypeId)
 }
 
 /**

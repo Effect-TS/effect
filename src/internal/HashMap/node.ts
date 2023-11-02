@@ -5,6 +5,7 @@ import { fromBitmap, hashFragment, toBitmap } from "../../internal/HashMap/bitwi
 import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "../../internal/HashMap/config"
 import { Stack } from "../../internal/Stack"
 import * as O from "../../Option"
+import { isTagged } from "../../Predicate"
 
 /** @internal */
 export type Node<K, V> =
@@ -40,7 +41,7 @@ export class EmptyNode<K, V> {
 
 /** @internal */
 export function isEmptyNode(a: unknown): a is EmptyNode<unknown, unknown> {
-  return typeof a === "object" && a !== null && "_tag" in a && a._tag === "EmptyNode"
+  return isTagged(a, "EmptyNode")
 }
 
 /** @internal */

@@ -14,7 +14,7 @@ import * as OpCodes from "../internal/opCodes/config"
 import type * as LogLevel from "../LogLevel"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import type { Predicate, Refinement } from "../Predicate"
+import { hasProperty, type Predicate, type Refinement } from "../Predicate"
 
 /** @internal */
 const ConfigSymbolKey = "effect/Config"
@@ -483,8 +483,7 @@ export const hashMap = <A>(config: Config.Config<A>, name?: string): Config.Conf
 }
 
 /** @internal */
-export const isConfig = (u: unknown): u is Config.Config<unknown> =>
-  typeof u === "object" && u != null && ConfigTypeId in u
+export const isConfig = (u: unknown): u is Config.Config<unknown> => hasProperty(u, ConfigTypeId)
 
 /** @internal */
 const tuple = <T extends ArrayLike<Config.Config<any>>>(tuple: T): Config.Config<

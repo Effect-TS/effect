@@ -6,6 +6,7 @@ import * as Hash from "../../Hash"
 import type * as MetricBoundaries from "../../MetricBoundaries"
 import type * as MetricKeyType from "../../MetricKeyType"
 import { pipeArguments } from "../../Pipeable"
+import { hasProperty } from "../../Predicate"
 
 /** @internal */
 const MetricKeyTypeSymbolKey = "effect/MetricKeyType"
@@ -219,7 +220,7 @@ export const summary = (
  * @category refinements
  */
 export const isMetricKeyType = (u: unknown): u is MetricKeyType.MetricKeyType<unknown, unknown> => {
-  return typeof u === "object" && u != null && MetricKeyTypeTypeId in u
+  return hasProperty(u, MetricKeyTypeTypeId)
 }
 
 /**
@@ -227,7 +228,7 @@ export const isMetricKeyType = (u: unknown): u is MetricKeyType.MetricKeyType<un
  * @category refinements
  */
 export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Counter<number | bigint> => {
-  return typeof u === "object" && u != null && CounterKeyTypeTypeId in u
+  return hasProperty(u, CounterKeyTypeTypeId)
 }
 
 /**
@@ -235,7 +236,7 @@ export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Count
  * @category refinements
  */
 export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Frequency => {
-  return typeof u === "object" && u != null && FrequencyKeyTypeTypeId in u
+  return hasProperty(u, FrequencyKeyTypeTypeId)
 }
 
 /**
@@ -243,7 +244,7 @@ export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Fre
  * @category refinements
  */
 export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge<number | bigint> => {
-  return typeof u === "object" && u != null && GaugeKeyTypeTypeId in u
+  return hasProperty(u, GaugeKeyTypeTypeId)
 }
 
 /**
@@ -251,7 +252,7 @@ export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge<n
  * @category refinements
  */
 export const isHistogramKey = (u: unknown): u is MetricKeyType.MetricKeyType.Histogram => {
-  return typeof u === "object" && u != null && HistogramKeyTypeTypeId in u
+  return hasProperty(u, HistogramKeyTypeTypeId)
 }
 
 /**
@@ -259,5 +260,5 @@ export const isHistogramKey = (u: unknown): u is MetricKeyType.MetricKeyType.His
  * @category refinements
  */
 export const isSummaryKey = (u: unknown): u is MetricKeyType.MetricKeyType.Summary => {
-  return typeof u === "object" && u != null && SummaryKeyTypeTypeId in u
+  return hasProperty(u, SummaryKeyTypeTypeId)
 }

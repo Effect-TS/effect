@@ -15,6 +15,7 @@ import * as number from "../Number"
 import * as Option from "../Option"
 import * as order from "../Order"
 import { pipeArguments } from "../Pipeable"
+import { hasProperty } from "../Predicate"
 
 /** @internal */
 const FiberSymbolKey = "effect/Fiber"
@@ -58,8 +59,7 @@ export const Order: order.Order<Fiber.RuntimeFiber<unknown, unknown>> = pipe(
 )
 
 /** @internal */
-export const isFiber = (u: unknown): u is Fiber.Fiber<unknown, unknown> =>
-  typeof u === "object" && u != null && FiberTypeId in u
+export const isFiber = (u: unknown): u is Fiber.Fiber<unknown, unknown> => hasProperty(u, FiberTypeId)
 
 /** @internal */
 export const isRuntimeFiber = <E, A>(self: Fiber.Fiber<E, A>): self is Fiber.RuntimeFiber<E, A> =>

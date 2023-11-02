@@ -21,6 +21,7 @@ import * as TryCommit from "../../internal/stm/stm/tryCommit"
 import * as TxnId from "../../internal/stm/stm/txnId"
 import type * as Option from "../../Option"
 import { pipeArguments } from "../../Pipeable"
+import { hasProperty } from "../../Predicate"
 import type * as Scheduler from "../../Scheduler"
 import type * as STM from "../../STM"
 import { StreamTypeId } from "../../Stream"
@@ -176,8 +177,7 @@ class STMPrimitive implements STM.STM<any, any, any> {
 }
 
 /** @internal */
-export const isSTM = (u: unknown): u is STM.STM<unknown, unknown, unknown> =>
-  typeof u === "object" && u != null && STMTypeId in u
+export const isSTM = (u: unknown): u is STM.STM<unknown, unknown, unknown> => hasProperty(u, STMTypeId)
 
 /** @internal */
 export const commit = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<R, E, A> =>

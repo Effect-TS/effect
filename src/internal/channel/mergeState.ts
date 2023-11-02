@@ -4,6 +4,7 @@ import type * as Either from "../../Either"
 import type * as Exit from "../../Exit"
 import type * as Fiber from "../../Fiber"
 import { dual } from "../../Function"
+import { hasProperty } from "../../Predicate"
 import * as OpCodes from "../opCodes/channelMergeState"
 
 /** @internal */
@@ -55,7 +56,7 @@ export const RightDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 export const isMergeState = (
   u: unknown
 ): u is MergeState.MergeState<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown> => {
-  return typeof u === "object" && u != null && MergeStateTypeId in u
+  return hasProperty(u, MergeStateTypeId)
 }
 
 /** @internal */

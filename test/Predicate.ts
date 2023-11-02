@@ -206,6 +206,27 @@ describe.concurrent("Predicate", () => {
     assert.deepStrictEqual(_.isObject(Symbol.for("a")), false)
   })
 
+  it("hasProperty", () => {
+    const a = Symbol.for("effect/test/a")
+
+    assert.deepStrictEqual(_.hasProperty({ a: 1 }, "a"), true)
+    assert.deepStrictEqual(_.hasProperty("a")({ a: 1 }), true)
+    assert.deepStrictEqual(_.hasProperty({ [a]: 1 }, a), true)
+    assert.deepStrictEqual(_.hasProperty(a)({ [a]: 1 }), true)
+
+    assert.deepStrictEqual(_.hasProperty({}, "a"), false)
+    assert.deepStrictEqual(_.hasProperty(null, "a"), false)
+    assert.deepStrictEqual(_.hasProperty(undefined, "a"), false)
+    assert.deepStrictEqual(_.hasProperty({}, "a"), false)
+    assert.deepStrictEqual(_.hasProperty(() => {}, "a"), false)
+
+    assert.deepStrictEqual(_.hasProperty({}, a), false)
+    assert.deepStrictEqual(_.hasProperty(null, a), false)
+    assert.deepStrictEqual(_.hasProperty(undefined, a), false)
+    assert.deepStrictEqual(_.hasProperty({}, a), false)
+    assert.deepStrictEqual(_.hasProperty(() => {}, a), false)
+  })
+
   it("isTagged", () => {
     assert.deepStrictEqual(_.isTagged(1, "a"), false)
     assert.deepStrictEqual(_.isTagged("", "a"), false)

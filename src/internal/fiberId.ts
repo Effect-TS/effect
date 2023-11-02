@@ -7,6 +7,7 @@ import * as HashSet from "../HashSet"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import * as MutableRef from "../MutableRef"
 import * as Option from "../Option"
+import { hasProperty } from "../Predicate"
 
 /** @internal */
 const FiberIdSymbolKey = "effect/FiberId"
@@ -152,7 +153,7 @@ export const composite = (left: FiberId.FiberId, right: FiberId.FiberId): FiberI
 
 /** @internal */
 export const isFiberId = (self: unknown): self is FiberId.FiberId => {
-  return typeof self === "object" && self != null && FiberIdTypeId in self
+  return hasProperty(self, FiberIdTypeId)
 }
 
 /** @internal */

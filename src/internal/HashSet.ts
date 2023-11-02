@@ -7,7 +7,7 @@ import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
 import * as HM from "../internal/HashMap"
 import { pipeArguments } from "../Pipeable"
 import type { Predicate, Refinement } from "../Predicate"
-import { isObject } from "../Predicate"
+import { hasProperty } from "../Predicate"
 
 /** @internal */
 export const HashSetTypeId: HS.TypeId = Symbol.for("effect/HashSet") as HS.TypeId
@@ -62,7 +62,7 @@ export const makeImpl = <A>(keyMap: HashMap<A, unknown>): HashSetImpl<A> => {
 export const isHashSet: {
   <A>(u: Iterable<A>): u is HS.HashSet<A>
   (u: unknown): u is HS.HashSet<unknown>
-} = (u: unknown): u is HS.HashSet<unknown> => isObject(u) && HashSetTypeId in u
+} = (u: unknown): u is HS.HashSet<unknown> => hasProperty(u, HashSetTypeId)
 
 const _empty = makeImpl<never>(HM.empty())
 

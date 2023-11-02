@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import { dual, pipe } from "./Function"
+import { hasProperty } from "./Predicate"
 import type * as TestAnnotation from "./TestAnnotation"
 
 /**
@@ -36,7 +37,7 @@ class TestAnnotationMapImpl implements TestAnnotationMap {
  * @since 2.0.0
  */
 export const isTestAnnotationMap = (u: unknown): u is TestAnnotationMap => {
-  return typeof u === "object" && u != null && TestAnnotationMapTypeId in u
+  return hasProperty(u, TestAnnotationMapTypeId)
 }
 
 /**

@@ -10,7 +10,7 @@ import * as Option from "../Option"
 import type * as Order from "../Order"
 import type * as Ordering from "../Ordering"
 import { pipeArguments } from "../Pipeable"
-import { isObject } from "../Predicate"
+import { hasProperty } from "../Predicate"
 import type * as RBT from "../RedBlackTree"
 
 const RedBlackTreeSymbolKey = "effect/RedBlackTree"
@@ -75,7 +75,7 @@ const makeImpl = <K, V>(ord: Order.Order<K>, root: Node.Node<K, V> | undefined):
 export const isRedBlackTree: {
   <K, V>(u: Iterable<readonly [K, V]>): u is RBT.RedBlackTree<K, V>
   (u: unknown): u is RBT.RedBlackTree<unknown, unknown>
-} = (u: unknown): u is RBT.RedBlackTree<unknown, unknown> => isObject(u) && RedBlackTreeTypeId in u
+} = (u: unknown): u is RBT.RedBlackTree<unknown, unknown> => hasProperty(u, RedBlackTreeTypeId)
 
 /** @internal */
 export const empty = <K, V = never>(ord: Order.Order<K>): RBT.RedBlackTree<K, V> => makeImpl<K, V>(ord, undefined)

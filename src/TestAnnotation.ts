@@ -10,6 +10,7 @@ import { pipe } from "./Function"
 import * as Hash from "./Hash"
 import * as HashSet from "./HashSet"
 import type * as MutableRef from "./MutableRef"
+import { hasProperty } from "./Predicate"
 import type * as SortedSet from "./SortedSet"
 
 /** @internal */
@@ -63,7 +64,7 @@ class TestAnnotationImpl<A> implements Equal.Equal {
  * @since 2.0.0
  */
 export const isTestAnnotation = (u: unknown): u is TestAnnotation<unknown> => {
-  return typeof u === "object" && u != null && TestAnnotationTypeId in u
+  return hasProperty(u, TestAnnotationTypeId)
 }
 
 /**

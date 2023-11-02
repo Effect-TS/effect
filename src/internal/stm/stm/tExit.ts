@@ -3,6 +3,7 @@ import type * as FiberId from "../../../FiberId"
 import { pipe } from "../../../Function"
 import * as Hash from "../../../Hash"
 import * as OpCodes from "../../../internal/stm/opCodes/tExit"
+import { hasProperty } from "../../../Predicate"
 
 /** @internal */
 const TExitSymbolKey = "effect/TExit"
@@ -64,7 +65,7 @@ export interface Retry extends TExit.Variance<never, never>, Equal.Equal {
 
 /** @internal */
 export const isExit = (u: unknown): u is TExit<unknown, unknown> => {
-  return typeof u === "object" && u != null && TExitTypeId in u
+  return hasProperty(u, TExitTypeId)
 }
 
 /** @internal */

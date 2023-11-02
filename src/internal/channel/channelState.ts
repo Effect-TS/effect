@@ -1,5 +1,6 @@
 import * as Effect from "../../Effect"
 import type * as Exit from "../../Exit"
+import { hasProperty } from "../../Predicate"
 import * as OpCodes from "../opCodes/channelState"
 import type { ErasedExecutor } from "./channelExecutor"
 
@@ -107,8 +108,7 @@ export const Read = <R>(
 }
 
 /** @internal */
-export const isChannelState = (u: unknown): u is ChannelState<unknown, unknown> =>
-  typeof u === "object" && u != null && ChannelStateTypeId in u
+export const isChannelState = (u: unknown): u is ChannelState<unknown, unknown> => hasProperty(u, ChannelStateTypeId)
 
 /** @internal */
 export const isDone = <R, E>(self: ChannelState<R, E>): self is Done => (self as Primitive)._tag === OpCodes.OP_DONE

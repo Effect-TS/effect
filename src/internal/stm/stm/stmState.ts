@@ -5,6 +5,7 @@ import * as Hash from "../../../Hash"
 import * as OpCodes from "../../../internal/stm/opCodes/stmState"
 import * as TExitOpCodes from "../../../internal/stm/opCodes/tExit"
 import type * as TExit from "../../../internal/stm/stm/tExit"
+import { hasProperty } from "../../../Predicate"
 
 /** @internal */
 const STMStateSymbolKey = "effect/STM/State"
@@ -39,7 +40,7 @@ export interface Running extends Equal.Equal {
 
 /** @internal */
 export const isSTMState = (u: unknown): u is STMState<unknown, unknown> => {
-  return typeof u === "object" && u != null && STMStateTypeId in u
+  return hasProperty(u, STMStateTypeId)
 }
 
 /** @internal */

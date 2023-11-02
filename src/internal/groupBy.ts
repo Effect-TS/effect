@@ -8,7 +8,7 @@ import { dual, pipe } from "../Function"
 import type * as GroupBy from "../GroupBy"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import type { Predicate } from "../Predicate"
+import { hasProperty, type Predicate } from "../Predicate"
 import * as Queue from "../Queue"
 import * as Ref from "../Ref"
 import type * as Stream from "../Stream"
@@ -37,7 +37,7 @@ const groupByVariance = {
 
 /** @internal */
 export const isGroupBy = (u: unknown): u is GroupBy.GroupBy<unknown, unknown, unknown, unknown> =>
-  typeof u === "object" && u != null && GroupByTypeId in u
+  hasProperty(u, GroupByTypeId)
 
 /** @internal */
 export const evaluate = dual<

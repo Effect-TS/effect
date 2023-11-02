@@ -19,6 +19,7 @@ import * as runtime from "../internal/runtime"
 import * as synchronized from "../internal/synchronizedRef"
 import type * as Layer from "../Layer"
 import { pipeArguments } from "../Pipeable"
+import { hasProperty } from "../Predicate"
 import type * as Runtime from "../Runtime"
 import type * as Schedule from "../Schedule"
 import * as ScheduleDecision from "../ScheduleDecision"
@@ -156,7 +157,7 @@ export interface ZipWithPar extends
 
 /** @internal */
 export const isLayer = (u: unknown): u is Layer.Layer<unknown, unknown, unknown> => {
-  return typeof u === "object" && u != null && LayerTypeId in u
+  return hasProperty(u, LayerTypeId)
 }
 
 /** @internal */

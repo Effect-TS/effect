@@ -8,6 +8,7 @@ import * as MutableQueue from "../MutableQueue"
 import * as MutableRef from "../MutableRef"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
+import { hasProperty } from "../Predicate"
 import type * as Queue from "../Queue"
 import * as ReadonlyArray from "../ReadonlyArray"
 
@@ -322,12 +323,10 @@ const takeRemainderLoop = <A>(
 export const isQueue = (u: unknown): u is Queue.Queue<unknown> => isEnqueue(u) && isDequeue(u)
 
 /** @internal */
-export const isEnqueue = (u: unknown): u is Queue.Enqueue<unknown> =>
-  typeof u === "object" && u != null && EnqueueTypeId in u
+export const isEnqueue = (u: unknown): u is Queue.Enqueue<unknown> => hasProperty(u, EnqueueTypeId)
 
 /** @internal */
-export const isDequeue = (u: unknown): u is Queue.Dequeue<unknown> =>
-  typeof u === "object" && u != null && DequeueTypeId in u
+export const isDequeue = (u: unknown): u is Queue.Dequeue<unknown> => hasProperty(u, DequeueTypeId)
 
 /** @internal */
 export const bounded = <A>(requestedCapacity: number): Effect.Effect<never, never, Queue.Queue<A>> =>

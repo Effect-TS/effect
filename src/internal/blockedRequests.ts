@@ -5,6 +5,7 @@ import type { FiberId } from "../FiberId"
 import * as HashMap from "../HashMap"
 import * as List from "../List"
 import * as Option from "../Option"
+import { hasProperty } from "../Predicate"
 import type * as Request from "../Request"
 import type * as RequestBlock from "../RequestBlock"
 import type * as RequestResolver from "../RequestResolver"
@@ -330,7 +331,7 @@ const blockedRequestVariance = {
 
 /** @internal */
 export const isEntry = (u: unknown): u is Request.Entry<unknown> => {
-  return typeof u === "object" && u != null && EntryTypeId in u
+  return hasProperty(u, EntryTypeId)
 }
 
 /** @internal */

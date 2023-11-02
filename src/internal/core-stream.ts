@@ -13,6 +13,7 @@ import { constVoid, dual, identity } from "../Function"
 import type { LazyArg } from "../Function"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
+import { hasProperty } from "../Predicate"
 import * as childExecutorDecision from "./channel/childExecutorDecision"
 import type { ErasedContinuationK } from "./channel/continuation"
 import { ContinuationKImpl } from "./channel/continuation"
@@ -195,7 +196,7 @@ export const isChannel = (u: unknown): u is Channel.Channel<
   unknown,
   unknown,
   unknown
-> => (typeof u === "object" && u != null && ChannelTypeId in u) || Effect.isEffect(u)
+> => hasProperty(u, ChannelTypeId) || Effect.isEffect(u)
 
 /** @internal */
 export const acquireReleaseOut = dual<

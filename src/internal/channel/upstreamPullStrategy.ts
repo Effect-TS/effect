@@ -1,6 +1,7 @@
 import type * as UpstreamPullStrategy from "../../ChannelUpstreamPullStrategy"
 import { dual } from "../../Function"
 import type * as Option from "../../Option"
+import { hasProperty } from "../../Predicate"
 import * as OpCodes from "../opCodes/channelUpstreamPullStrategy"
 
 /** @internal */
@@ -41,7 +42,7 @@ export const PullAfterAllEnqueued = <A>(
 
 /** @internal */
 export const isUpstreamPullStrategy = (u: unknown): u is UpstreamPullStrategy.UpstreamPullStrategy<unknown> =>
-  typeof u === "object" && u != null && UpstreamPullStrategyTypeId in u
+  hasProperty(u, UpstreamPullStrategyTypeId)
 
 /** @internal */
 export const isPullAfterNext = <A>(

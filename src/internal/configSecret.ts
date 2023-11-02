@@ -3,6 +3,7 @@ import type * as ConfigSecret from "../ConfigSecret"
 import * as Equal from "../Equal"
 import { pipe } from "../Function"
 import * as Hash from "../Hash"
+import { hasProperty } from "../Predicate"
 
 /** @internal */
 const ConfigSecretSymbolKey = "effect/ConfigSecret"
@@ -29,7 +30,7 @@ export const proto = {
 
 /** @internal */
 export const isConfigSecret = (u: unknown): u is ConfigSecret.ConfigSecret => {
-  return typeof u === "object" && u != null && ConfigSecretTypeId in u
+  return hasProperty(u, ConfigSecretTypeId)
 }
 
 /** @internal */
