@@ -4,7 +4,7 @@ inputs:
   node-version:
     description: The version of Node.js to install
     required: true
-    default: 18
+    default: 20.9.0
 
 runs:
   using: composite
