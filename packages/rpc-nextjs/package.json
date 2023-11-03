@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-nextjs",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "",
   "main": "dist/effect-rpc-nextjs.cjs.js",
   "module": "dist/effect-rpc-nextjs.esm.js",
