@@ -3713,16 +3713,22 @@ export const tapErrorCause: {
 export const forever: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, never> = effect.forever
 
 /**
- * Iterates with the specified effectual function. The moral equivalent of:
+ * The `Effect.iterate` function allows you to iterate with an effectful operation. It uses an effectful `body` operation to change the state during each iteration and continues the iteration as long as the `while` function evaluates to `true`:
  *
  * ```ts
- * let s = initial
+ * Effect.iterate(initial, options: { while, body })
+ * ```
  *
- * while (cont(s)) {
- *   s = body(s)
+ * We can think of `Effect.iterate` as equivalent to a `while` loop in JavaScript:
+ *
+ * ```ts
+ * let result = initial
+ *
+ * while (options.while(result)) {
+ *   result = options.body(result)
  * }
  *
- * return s
+ * return result
  * ```
  *
  * @since 2.0.0
