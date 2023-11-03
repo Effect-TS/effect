@@ -40,15 +40,15 @@
     "@effect/rpc": "workspace:^"
   },
   "devDependencies": {
-    "@effect/platform": "^0.27.0",
-    "@effect/platform-browser": "^0.15.0",
-    "@effect/schema": "^0.47.0",
-    "effect": "2.0.0-next.53"
+    "@effect/platform": "^0.27.1",
+    "@effect/platform-browser": "^0.15.1",
+    "@effect/schema": "^0.47.1",
+    "effect": "2.0.0-next.54"
   },
   "peerDependencies": {
-    "@effect/platform": "^0.27.0",
-    "@effect/schema": "^0.47.0",
-    "effect": "2.0.0-next.53"
+    "@effect/platform": "^0.27.1",
+    "@effect/schema": "^0.47.1",
+    "effect": "2.0.0-next.54"
   },
   "files": [
     "src",
