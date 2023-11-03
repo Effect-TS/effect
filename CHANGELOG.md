@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.54
+
+### Patch Changes
+
+- [#1594](https://github.com/Effect-TS/effect/pull/1594) [`a3a31c722`](https://github.com/Effect-TS/effect/commit/a3a31c722dbf006f612f5909ff9b1a1f2d99c050) Thanks [@tim-smart](https://github.com/tim-smart)! - fix regression in process.hrtime detection
+
 ## 2.0.0-next.53
 
 ### Minor Changes
