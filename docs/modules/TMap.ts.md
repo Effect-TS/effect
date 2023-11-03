@@ -1,6 +1,6 @@
 ---
 title: TMap.ts
-nav_order: 131
+nav_order: 129
 parent: Modules
 ---
 
@@ -217,14 +217,13 @@ provided effectful function to extract a value out of it.
 
 ```ts
 export declare const findSTM: {
-  <K, V, R, E, A>(f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): (
-    self: TMap<K, V>
-  ) => STM.STM<R, E, Option.Option<A>>
-  <K, V, R, E, A>(self: TMap<K, V>, f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): STM.STM<
-    R,
-    E,
-    Option.Option<A>
-  >
+  <K, V, R, E, A>(
+    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>,
+  ): (self: TMap<K, V>) => STM.STM<R, E, Option.Option<A>>
+  <K, V, R, E, A>(
+    self: TMap<K, V>,
+    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>,
+  ): STM.STM<R, E, Option.Option<A>>
 }
 ```
 
@@ -610,14 +609,13 @@ Takes all matching values, or retries until there is at least one.
 
 ```ts
 export declare const takeSomeSTM: {
-  <K, V, R, E, A>(pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): (
-    self: TMap<K, V>
-  ) => STM.STM<R, E, [A, ...A[]]>
-  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): STM.STM<
-    R,
-    E,
-    [A, ...A[]]
-  >
+  <K, V, R, E, A>(
+    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>,
+  ): (self: TMap<K, V>) => STM.STM<R, E, [A, ...A[]]>
+  <K, V, R, E, A>(
+    self: TMap<K, V>,
+    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>,
+  ): STM.STM<R, E, [A, ...A[]]>
 }
 ```
 
@@ -695,14 +693,15 @@ updated value or `None` if the value was removed from the map.
 
 ```ts
 export declare const updateWith: {
-  <K, V>(key: K, f: (value: Option.Option<V>) => Option.Option<V>): (
-    self: TMap<K, V>
-  ) => STM.STM<never, never, Option.Option<V>>
-  <K, V>(self: TMap<K, V>, key: K, f: (value: Option.Option<V>) => Option.Option<V>): STM.STM<
-    never,
-    never,
-    Option.Option<V>
-  >
+  <K, V>(
+    key: K,
+    f: (value: Option.Option<V>) => Option.Option<V>,
+  ): (self: TMap<K, V>) => STM.STM<never, never, Option.Option<V>>
+  <K, V>(
+    self: TMap<K, V>,
+    key: K,
+    f: (value: Option.Option<V>) => Option.Option<V>,
+  ): STM.STM<never, never, Option.Option<V>>
 }
 ```
 

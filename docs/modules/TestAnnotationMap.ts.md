@@ -1,6 +1,6 @@
 ---
 title: TestAnnotationMap.ts
-nav_order: 123
+nav_order: 121
 parent: Modules
 ---
 
@@ -74,7 +74,7 @@ Appends the specified annotation to the annotation map.
 ```ts
 export declare const annotate: (<A>(
   key: TestAnnotation.TestAnnotation<A>,
-  value: A
+  value: A,
 ) => (self: TestAnnotationMap) => TestAnnotationMap) &
   (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap)
 ```
@@ -143,7 +143,7 @@ Added in v2.0.0
 ```ts
 export declare const overwrite: (<A>(
   key: TestAnnotation.TestAnnotation<A>,
-  value: A
+  value: A,
 ) => (self: TestAnnotationMap) => TestAnnotationMap) &
   (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap)
 ```
@@ -157,7 +157,7 @@ Added in v2.0.0
 ```ts
 export declare const update: (<A>(
   key: TestAnnotation.TestAnnotation<A>,
-  f: (value: A) => A
+  f: (value: A) => A,
 ) => (self: TestAnnotationMap) => TestAnnotationMap) &
   (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap)
 ```

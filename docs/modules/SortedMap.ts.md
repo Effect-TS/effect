@@ -1,6 +1,6 @@
 ---
 title: SortedMap.ts
-nav_order: 106
+nav_order: 104
 parent: Modules
 ---
 
@@ -72,7 +72,7 @@ Added in v2.0.0
 
 ```ts
 export declare const make: <K>(
-  ord: Order<K>
+  ord: Order<K>,
 ) => <Entries extends readonly (readonly [K, any])[]>(
   ...entries: Entries
 ) => SortedMap<K, Entries[number] extends readonly [any, infer V] ? V : never>

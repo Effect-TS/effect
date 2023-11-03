@@ -1,6 +1,6 @@
 ---
 title: Unify.ts
-nav_order: 143
+nav_order: 141
 parent: Modules
 ---
 
@@ -62,17 +62,17 @@ Added in v2.0.0
 ```ts
 export declare const unify: {
   <Args extends any[], Args2 extends any[], Args3 extends any[], Args4 extends any[], Args5 extends any[], T>(
-    x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => (...args: Args5) => T
+    x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => (...args: Args5) => T,
   ): (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => (...args: Args5) => Unify<T>
   <Args extends any[], Args2 extends any[], Args3 extends any[], Args4 extends any[], T>(
-    x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => T
+    x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => T,
   ): (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => Unify<T>
   <Args extends any[], Args2 extends any[], Args3 extends any[], T>(
-    x: (...args: Args) => (...args: Args2) => (...args: Args3) => T
+    x: (...args: Args) => (...args: Args2) => (...args: Args3) => T,
   ): (...args: Args) => (...args: Args2) => (...args: Args3) => Unify<T>
-  <Args extends any[], Args2 extends any[], T>(x: (...args: Args) => (...args: Args2) => T): (
-    ...args: Args
-  ) => (...args: Args2) => Unify<T>
+  <Args extends any[], Args2 extends any[], T>(
+    x: (...args: Args) => (...args: Args2) => T,
+  ): (...args: Args) => (...args: Args2) => Unify<T>
   <Args extends any[], T>(x: (...args: Args) => T): (...args: Args) => Unify<T>
   <T>(x: T): Unify<T>
 }

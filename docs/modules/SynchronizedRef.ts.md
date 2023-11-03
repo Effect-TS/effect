@@ -1,6 +1,6 @@
 ---
 title: SynchronizedRef.ts
-nav_order: 118
+nav_order: 116
 parent: Modules
 ---
 
@@ -237,9 +237,10 @@ Added in v2.0.0
 
 ```ts
 export declare const modifySome: {
-  <B, A>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): (
-    self: Ref.Ref<A>
-  ) => Effect.Effect<never, never, B>
+  <B, A>(
+    fallback: B,
+    pf: (a: A) => Option.Option<readonly [B, A]>,
+  ): (self: Ref.Ref<A>) => Effect.Effect<never, never, B>
   <A, B>(self: Ref.Ref<A>, fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): Effect.Effect<never, never, B>
 }
 ```
@@ -252,13 +253,14 @@ Added in v2.0.0
 
 ```ts
 export declare const modifySomeEffect: {
-  <A, B, R, E>(fallback: B, pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>): (
-    self: SynchronizedRef<A>
-  ) => Effect.Effect<R, E, B>
+  <A, B, R, E>(
+    fallback: B,
+    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>,
+  ): (self: SynchronizedRef<A>) => Effect.Effect<R, E, B>
   <A, B, R, E>(
     self: SynchronizedRef<A>,
     fallback: B,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
+    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>,
   ): Effect.Effect<R, E, B>
 }
 ```
@@ -388,9 +390,9 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeEffect: {
-  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): (
-    self: SynchronizedRef<A>
-  ) => Effect.Effect<R, E, void>
+  <A, R, E>(
+    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>,
+  ): (self: SynchronizedRef<A>) => Effect.Effect<R, E, void>
   <A, R, E>(self: SynchronizedRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, void>
 }
 ```

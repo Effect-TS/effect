@@ -1,6 +1,6 @@
 ---
 title: Tracer.ts
-nav_order: 135
+nav_order: 133
 parent: Modules
 ---
 
@@ -77,7 +77,7 @@ Added in v2.0.0
 
 ```ts
 export interface ExternalSpan {
-  readonly _tag: 'ExternalSpan'
+  readonly _tag: "ExternalSpan"
   readonly spanId: string
   readonly traceId: string
   readonly sampled: boolean
@@ -103,7 +103,7 @@ Added in v2.0.0
 
 ```ts
 export interface Span {
-  readonly _tag: 'Span'
+  readonly _tag: "Span"
   readonly name: string
   readonly spanId: string
   readonly traceId: string
@@ -127,7 +127,7 @@ Added in v2.0.0
 
 ```ts
 export interface SpanLink {
-  readonly _tag: 'SpanLink'
+  readonly _tag: "SpanLink"
   readonly span: ParentSpan
   readonly attributes: Readonly<Record<string, unknown>>
 }
@@ -142,11 +142,11 @@ Added in v2.0.0
 ```ts
 export type SpanStatus =
   | {
-      _tag: 'Started'
+      _tag: "Started"
       startTime: bigint
     }
   | {
-      _tag: 'Ended'
+      _tag: "Ended"
       startTime: bigint
       endTime: bigint
       exit: Exit.Exit<unknown, unknown>
@@ -191,7 +191,7 @@ export interface Tracer {
     parent: Option.Option<ParentSpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
-    startTime: bigint
+    startTime: bigint,
   ) => Span
   readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
 }

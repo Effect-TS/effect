@@ -1,6 +1,6 @@
 ---
 title: Exit.ts
-nav_order: 36
+nav_order: 30
 parent: Modules
 ---
 
@@ -78,7 +78,7 @@ the provided iterable contains no elements, `None` will be returned.
 ```ts
 export declare const all: <E, A>(
   exits: Iterable<Exit<E, A>>,
-  options?: { readonly parallel?: boolean } | undefined
+  options?: { readonly parallel?: boolean } | undefined,
 ) => Option.Option<Exit<E, A[]>>
 ```
 
@@ -210,12 +210,13 @@ Added in v2.0.0
 
 ```ts
 export declare const match: {
-  <E, A, Z1, Z2>(options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }): (
-    self: Exit<E, A>
-  ) => Z1 | Z2
+  <E, A, Z1, Z2>(options: {
+    readonly onFailure: (cause: Cause.Cause<E>) => Z1
+    readonly onSuccess: (a: A) => Z2
+  }): (self: Exit<E, A>) => Z1 | Z2
   <E, A, Z1, Z2>(
     self: Exit<E, A>,
-    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
+    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 },
   ): Z1 | Z2
 }
 ```
@@ -237,7 +238,7 @@ export declare const matchEffect: {
     options: {
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
       readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
-    }
+    },
   ): Effect.Effect<R | R2, E2 | E3, A2 | A3>
 }
 ```
@@ -344,12 +345,13 @@ provided functions.
 
 ```ts
 export declare const mapBoth: {
-  <E, A, E2, A2>(options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }): (
-    self: Exit<E, A>
-  ) => Exit<E2, A2>
+  <E, A, E2, A2>(options: {
+    readonly onFailure: (e: E) => E2
+    readonly onSuccess: (a: A) => A2
+  }): (self: Exit<E, A>) => Exit<E2, A2>
   <E, A, E2, A2>(
     self: Exit<E, A>,
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 },
   ): Exit<E2, A2>
 }
 ```
@@ -440,8 +442,8 @@ of type `E`.
 
 ```ts
 export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
-  readonly _tag: 'Failure'
-  readonly _op: 'Failure'
+  readonly _tag: "Failure"
+  readonly _op: "Failure"
   readonly cause: Cause.Cause<E>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
@@ -462,8 +464,8 @@ of type `A`.
 
 ```ts
 export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
-  readonly _tag: 'Success'
-  readonly _op: 'Success'
+  readonly _tag: "Success"
+  readonly _op: "Success"
   readonly value: A
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
@@ -534,9 +536,9 @@ Added in v2.0.0
 
 ```ts
 export declare const flatMapEffect: {
-  <E, A, R, E2, A2>(f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>): (
-    self: Exit<E, A>
-  ) => Effect.Effect<R, E2, Exit<E, A2>>
+  <E, A, R, E2, A2>(
+    f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>,
+  ): (self: Exit<E, A>) => Effect.Effect<R, E2, Exit<E, A2>>
   <E, A, R, E2, A2>(self: Exit<E, A>, f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>): Effect.Effect<R, E2, Exit<E, A2>>
 }
 ```
@@ -680,7 +682,7 @@ export declare const zipWith: {
     options: {
       readonly onSuccess: (a: A, b: B) => C
       readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
-    }
+    },
   ): (self: Exit<E, A>) => Exit<E | E2, C>
   <E, E2, A, B, C>(
     self: Exit<E, A>,
@@ -688,7 +690,7 @@ export declare const zipWith: {
     options: {
       readonly onSuccess: (a: A, b: B) => C
       readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
-    }
+    },
   ): Exit<E | E2, C>
 }
 ```

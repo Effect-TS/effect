@@ -1,6 +1,6 @@
 ---
 title: TestServices.ts
-nav_order: 129
+nav_order: 127
 parent: Modules
 ---
 
@@ -108,7 +108,7 @@ specified workflow.
 
 ```ts
 export declare const annotationsWith: <R, E, A>(
-  f: (annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>
+  f: (annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>,
 ) => Effect.Effect<R, E, A>
 ```
 
@@ -207,11 +207,11 @@ ensuring that the workflow itself is run with the test services.
 
 ```ts
 export declare const provideWithLive: (<R, E, A, R2, E2, A2>(
-  f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R2, E2, A2>
+  f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R2, E2, A2>,
 ) => (self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A2>) &
   (<R, E, A, R2, E2, A2>(
     self: Effect.Effect<R, E, A>,
-    f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R2, E2, A2>
+    f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R2, E2, A2>,
   ) => Effect.Effect<R | R2, E | E2, A2>)
 ```
 
@@ -306,7 +306,7 @@ specified workflow.
 
 ```ts
 export declare const sizedWith: <R, E, A>(
-  f: (sized: Sized.TestSized) => Effect.Effect<R, E, A>
+  f: (sized: Sized.TestSized) => Effect.Effect<R, E, A>,
 ) => Effect.Effect<R, E, A>
 ```
 
@@ -366,7 +366,7 @@ specified workflow.
 
 ```ts
 export declare const testConfigWith: <R, E, A>(
-  f: (config: TestConfig.TestConfig) => Effect.Effect<R, E, A>
+  f: (config: TestConfig.TestConfig) => Effect.Effect<R, E, A>,
 ) => Effect.Effect<R, E, A>
 ```
 
@@ -381,7 +381,7 @@ annotations service.
 
 ```ts
 export declare const withAnnotations: ((
-  annotations: Annotations.TestAnnotations
+  annotations: Annotations.TestAnnotations,
 ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
   (<R, E, A>(effect: Effect.Effect<R, E, A>, annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>)
 ```
@@ -397,7 +397,7 @@ and restores it to its original value when the scope is closed.
 
 ```ts
 export declare const withAnnotationsScoped: (
-  annotations: Annotations.TestAnnotations
+  annotations: Annotations.TestAnnotations,
 ) => Effect.Effect<Scope.Scope, never, void>
 ```
 
@@ -412,7 +412,7 @@ live service.
 
 ```ts
 export declare const withLive: ((
-  live: Live.TestLive
+  live: Live.TestLive,
 ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
   (<R, E, A>(effect: Effect.Effect<R, E, A>, live: Live.TestLive) => Effect.Effect<R, E, A>)
 ```
@@ -452,7 +452,7 @@ sized service.
 
 ```ts
 export declare const withSized: ((
-  sized: Sized.TestSized
+  sized: Sized.TestSized,
 ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
   (<R, E, A>(effect: Effect.Effect<R, E, A>, sized: Sized.TestSized) => Effect.Effect<R, E, A>)
 ```
@@ -481,7 +481,7 @@ config service.
 
 ```ts
 export declare const withTestConfig: ((
-  config: TestConfig.TestConfig
+  config: TestConfig.TestConfig,
 ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
   (<R, E, A>(effect: Effect.Effect<R, E, A>, config: TestConfig.TestConfig) => Effect.Effect<R, E, A>)
 ```

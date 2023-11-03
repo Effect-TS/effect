@@ -1,6 +1,6 @@
 ---
 title: MetricPair.ts
-nav_order: 65
+nav_order: 62
 parent: Modules
 ---
 
@@ -37,7 +37,7 @@ Added in v2.0.0
 ```ts
 export declare const make: <Type extends MetricKeyType.MetricKeyType<any, any>>(
   metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>
+  metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>,
 ) => MetricPair.Untyped
 ```
 
@@ -91,7 +91,7 @@ Added in v2.0.0
 ```ts
 export declare const unsafeMake: <Type extends MetricKeyType.MetricKeyType<any, any>>(
   metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState.Untyped
+  metricState: MetricState.MetricState.Untyped,
 ) => MetricPair.Untyped
 ```
 

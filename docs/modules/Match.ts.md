@@ -1,6 +1,6 @@
 ---
 title: Match.ts
-nav_order: 58
+nav_order: 52
 parent: Modules
 ---
 
@@ -91,11 +91,11 @@ Added in v1.0.0
 
 ```ts
 export declare const discriminator: <D extends string>(
-  field: D
+  field: D,
 ) => <R, P extends Types.Tags<D, R> & string, B>(
   ...pattern: [first: P, ...values: P[], f: (_: Extract<R, Record<D, P>>) => B]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, P>>>,
@@ -113,12 +113,12 @@ Added in v1.0.0
 
 ```ts
 export declare const discriminatorStartsWith: <D extends string>(
-  field: D
+  field: D,
 ) => <R, P extends string, B>(
   pattern: P,
-  f: (_: Extract<R, Record<D, `${P}${string}`>>) => B
+  f: (_: Extract<R, Record<D, `${P}${string}`>>) => B,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, `${P}${string}`>>>,
@@ -136,14 +136,14 @@ Added in v1.0.0
 
 ```ts
 export declare const discriminators: <D extends string>(
-  field: D
+  field: D,
 ) => <
   R,
-  P extends { readonly [Tag in Types.Tags<D, R> & string]?: ((_: Extract<R, Record<D, Tag>>) => any) | undefined }
+  P extends { readonly [Tag in Types.Tags<D, R> & string]?: ((_: Extract<R, Record<D, Tag>>) => any) | undefined },
 >(
-  fields: P
+  fields: P,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
   Types.AddWithout<F, Extract<R, Record<D, keyof P>>>,
@@ -161,11 +161,11 @@ Added in v1.0.0
 
 ```ts
 export declare const discriminatorsExhaustive: <D extends string>(
-  field: D
+  field: D,
 ) => <R, P extends { readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => any }>(
-  fields: P
+  fields: P,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>> : Unify<A | ReturnType<P[keyof P]>>
 ```
 
@@ -179,12 +179,12 @@ Added in v1.0.0
 export declare const not: <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
-  Fn extends (_: Exclude<R, Types.ExtractMatch<R, Types.PForExclude<P>>>) => unknown
+  Fn extends (_: Exclude<R, Types.ExtractMatch<R, Types.PForExclude<P>>>) => unknown,
 >(
   pattern: P,
-  f: Fn
+  f: Fn,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
   Types.AddOnly<F, Types.WhenMatch<R, P>>,
@@ -201,14 +201,14 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const tag: <R, P extends Types.Tags<'_tag', R> & string, B>(
-  ...pattern: [first: P, ...values: P[], f: (_: Extract<R, Record<'_tag', P>>) => B]
+export declare const tag: <R, P extends Types.Tags<"_tag", R> & string, B>(
+  ...pattern: [first: P, ...values: P[], f: (_: Extract<R, Record<"_tag", P>>) => B]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<'_tag', P>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<'_tag', P>>>>,
+  Types.AddWithout<F, Extract<R, Record<"_tag", P>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", P>>>>,
   B | A,
   Pr
 >
@@ -223,13 +223,13 @@ Added in v1.0.0
 ```ts
 export declare const tagStartsWith: <R, P extends string, B>(
   pattern: P,
-  f: (_: Extract<R, Record<'_tag', `${P}${string}`>>) => B
+  f: (_: Extract<R, Record<"_tag", `${P}${string}`>>) => B,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<'_tag', `${P}${string}`>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<'_tag', `${P}${string}`>>>>,
+  Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>>,
   B | A,
   Pr
 >
@@ -245,16 +245,16 @@ Added in v1.0.0
 export declare const tags: <
   R,
   P extends {
-    readonly [Tag in Types.Tags<'_tag', R> & string]?: ((_: Extract<R, Record<'_tag', Tag>>) => any) | undefined
-  }
+    readonly [Tag in Types.Tags<"_tag", R> & string]?: ((_: Extract<R, Record<"_tag", Tag>>) => any) | undefined
+  },
 >(
-  fields: P
+  fields: P,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<'_tag', keyof P>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<'_tag', keyof P>>>>,
+  Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>>,
   A | ReturnType<P[keyof P] & {}>,
   Pr
 >
@@ -269,11 +269,11 @@ Added in v1.0.0
 ```ts
 export declare const tagsExhaustive: <
   R,
-  P extends { readonly [Tag in Types.Tags<'_tag', R> & string]: (_: Extract<R, Record<'_tag', Tag>>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => any },
 >(
-  fields: P
+  fields: P,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => [Pr] extends [never] ? (u: I) => Unify<A | ReturnType<P[keyof P]>> : Unify<A | ReturnType<P[keyof P]>>
 ```
 
@@ -287,12 +287,12 @@ Added in v1.0.0
 export declare const when: <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
-  Fn extends (_: Types.WhenMatch<R, P>) => unknown
+  Fn extends (_: Types.WhenMatch<R, P>) => unknown,
 >(
   pattern: P,
-  f: Fn
+  f: Fn,
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<P>>,
@@ -312,11 +312,11 @@ Added in v1.0.0
 export declare const whenAnd: <
   R,
   const P extends readonly (Types.PatternPrimitive<R> | Types.PatternBase<R>)[],
-  Fn extends (_: Types.WhenMatch<R, UnionToIntersection<P[number]>>) => unknown
+  Fn extends (_: Types.WhenMatch<R, UnionToIntersection<P[number]>>) => unknown,
 >(
   ...args: [...patterns: P, f: Fn]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<UnionToIntersection<P[number]>>>,
@@ -336,11 +336,11 @@ Added in v1.0.0
 export declare const whenOr: <
   R,
   const P extends readonly (Types.PatternPrimitive<R> | Types.PatternBase<R>)[],
-  Fn extends (_: Types.WhenMatch<R, P[number]>) => unknown
+  Fn extends (_: Types.WhenMatch<R, P[number]>) => unknown,
 >(
   ...args: [...patterns: P, f: Fn]
 ) => <I, F, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => Matcher<
   I,
   Types.AddWithout<F, Types.PForExclude<P[number]>>,
@@ -370,9 +370,9 @@ Added in v1.0.0
 
 ```ts
 export declare const typeTags: <I>() => <
-  P extends { readonly [Tag in Types.Tags<'_tag', I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any },
 >(
-  fields: P
+  fields: P,
 ) => (input: I) => Unify<ReturnType<P[keyof P]>>
 ```
 
@@ -395,9 +395,9 @@ Added in v1.0.0
 ```ts
 export declare const valueTags: <
   const I,
-  P extends { readonly [Tag in Types.Tags<'_tag', I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any },
 >(
-  fields: P
+  fields: P,
 ) => (input: I) => Unify<ReturnType<P[keyof P]>>
 ```
 
@@ -411,7 +411,7 @@ Added in v1.0.0
 
 ```ts
 export declare const either: <I, F, R, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>> : Either.Either<R, Unify<A>>
 ```
 
@@ -423,7 +423,7 @@ Added in v1.0.0
 
 ```ts
 export declare const exhaustive: <I, F, A, Pr>(
-  self: Matcher<I, F, never, A, Pr>
+  self: Matcher<I, F, never, A, Pr>,
 ) => [Pr] extends [never] ? (u: I) => Unify<A> : Unify<A>
 ```
 
@@ -435,7 +435,7 @@ Added in v1.0.0
 
 ```ts
 export declare const option: <I, F, R, A, Pr>(
-  self: Matcher<I, F, R, A, Pr>
+  self: Matcher<I, F, R, A, Pr>,
 ) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>> : Option.Option<Unify<A>>
 ```
 
@@ -447,7 +447,7 @@ Added in v1.0.0
 
 ```ts
 export declare const orElse: <RA, B>(
-  f: (b: RA) => B
+  f: (b: RA) => B,
 ) => <I, R, A, Pr>(self: Matcher<I, R, RA, A, Pr>) => [Pr] extends [never] ? (input: I) => Unify<B | A> : Unify<B | A>
 ```
 
@@ -459,7 +459,7 @@ Added in v1.0.0
 
 ```ts
 export declare const orElseAbsurd: <I, R, RA, A, Pr>(
-  self: Matcher<I, R, RA, A, Pr>
+  self: Matcher<I, R, RA, A, Pr>,
 ) => [Pr] extends [never] ? (input: I) => Unify<A> : Unify<A>
 ```
 
@@ -495,7 +495,7 @@ Added in v1.0.0
 
 ```ts
 export interface Not {
-  readonly _tag: 'Not'
+  readonly _tag: "Not"
   readonly guard: (u: unknown) => boolean
   readonly evaluate: (input: unknown) => any
 }
@@ -521,7 +521,7 @@ Added in v1.0.0
 
 ```ts
 export interface TypeMatcher<Input, Filters, Remaining, Result> extends Pipeable {
-  readonly _tag: 'TypeMatcher'
+  readonly _tag: "TypeMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: (_: Input) => unknown
     readonly _filters: (_: never) => Filters
@@ -541,7 +541,7 @@ Added in v1.0.0
 
 ```ts
 export interface ValueMatcher<Input, Filters, Remaining, Result, Provided> extends Pipeable {
-  readonly _tag: 'ValueMatcher'
+  readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: (_: Input) => unknown
     readonly _filters: (_: never) => Filters
@@ -561,7 +561,7 @@ Added in v1.0.0
 
 ```ts
 export interface When {
-  readonly _tag: 'When'
+  readonly _tag: "When"
   readonly guard: (u: unknown) => boolean
   readonly evaluate: (input: unknown) => any
 }
@@ -627,7 +627,7 @@ Added in v1.0.0
 
 ```ts
 export declare const instanceOf: <A extends abstract new (...args: any) => any>(
-  constructor: A
+  constructor: A,
 ) => SafeRefinement<InstanceType<A>, never>
 ```
 
@@ -639,7 +639,7 @@ Added in v1.0.0
 
 ```ts
 export declare const instanceOfUnsafe: <A extends abstract new (...args: any) => any>(
-  constructor: A
+  constructor: A,
 ) => SafeRefinement<InstanceType<A>, InstanceType<A>>
 ```
 
@@ -771,7 +771,7 @@ Added in v1.0.0
 
 ```ts
 export interface Only<X> {
-  readonly _tag: 'Only'
+  readonly _tag: "Only"
   readonly _X: X
 }
 ```
@@ -784,7 +784,7 @@ Added in v1.0.0
 
 ```ts
 export interface Without<X> {
-  readonly _tag: 'Without'
+  readonly _tag: "Without"
   readonly _X: X
 }
 ```

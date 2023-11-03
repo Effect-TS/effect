@@ -681,7 +681,7 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  *
  * @example
  * import { remainder, unsafeFromString } from "effect/BigDecimal"
- * import { some, none } from "effect/Option"
+ * import { some } from "effect/Option"
  *
  * assert.deepStrictEqual(remainder(unsafeFromString("2"), unsafeFromString("2")), some(unsafeFromString("0")))
  * assert.deepStrictEqual(remainder(unsafeFromString("3"), unsafeFromString("2")), some(unsafeFromString("1")))

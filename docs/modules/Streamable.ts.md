@@ -1,6 +1,6 @@
 ---
 title: Streamable.ts
-nav_order: 110
+nav_order: 108
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Supervisor.ts
-nav_order: 116
+nav_order: 114
 parent: Modules
 ---
 
@@ -183,7 +183,7 @@ Creates a new supervisor that tracks children in a set.
 
 ```ts
 export declare const fibersIn: (
-  ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
+  ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>,
 ) => Effect.Effect<never, never, Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>>
 ```
 
@@ -259,7 +259,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
     context: Context.Context<R>,
     effect: Effect.Effect<R, E, A>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
-    fiber: Fiber.RuntimeFiber<E, A>
+    fiber: Fiber.RuntimeFiber<E, A>,
   ): void
 
   /**

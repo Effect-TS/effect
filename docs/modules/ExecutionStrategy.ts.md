@@ -1,6 +1,6 @@
 ---
 title: ExecutionStrategy.ts
-nav_order: 35
+nav_order: 29
 parent: Modules
 ---
 
@@ -112,7 +112,7 @@ Execute effects in parallel.
 
 ```ts
 export interface Parallel {
-  readonly _tag: 'Parallel'
+  readonly _tag: "Parallel"
 }
 ```
 
@@ -126,7 +126,7 @@ Execute effects in parallel, up to the specified number of concurrent fibers.
 
 ```ts
 export interface ParallelN {
-  readonly _tag: 'ParallelN'
+  readonly _tag: "ParallelN"
   readonly parallelism: number
 }
 ```
@@ -141,7 +141,7 @@ Execute effects sequentially.
 
 ```ts
 export interface Sequential {
-  readonly _tag: 'Sequential'
+  readonly _tag: "Sequential"
 }
 ```
 

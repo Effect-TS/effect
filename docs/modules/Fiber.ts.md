@@ -1,6 +1,6 @@
 ---
 title: Fiber.ts
-nav_order: 37
+nav_order: 31
 parent: Modules
 ---
 
@@ -289,7 +289,7 @@ Added in v2.0.0
 
 ```ts
 export declare const dumpAll: (
-  fibers: Iterable<RuntimeFiber<unknown, unknown>>
+  fibers: Iterable<RuntimeFiber<unknown, unknown>>,
 ) => Effect.Effect<never, never, Array<Fiber.Dump>>
 ```
 
@@ -379,7 +379,7 @@ export declare const match: {
   }): (self: Fiber<E, A>) => Z
   <E, A, Z>(
     self: Fiber<E, A>,
-    options: { readonly onFiber: (fiber: Fiber<E, A>) => Z; readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z }
+    options: { readonly onFiber: (fiber: Fiber<E, A>) => Z; readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z },
   ): Z
 }
 ```

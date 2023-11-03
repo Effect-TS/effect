@@ -1,6 +1,6 @@
 ---
 title: Pool.ts
-nav_order: 80
+nav_order: 77
 parent: Modules
 ---
 
@@ -81,11 +81,11 @@ used, the individual items allocated by the pool will be released in some
 unspecified order.
 
 ```ts
-import * as Duration from './Duration'
-import * as Effect from 'effect/Effect'
-import * as Pool from 'effect/Pool'
-import * as Scope from 'effect/Scope'
-import { pipe } from './Function'
+import * as Duration from "./Duration"
+import * as Effect from "effect/Effect"
+import * as Pool from "effect/Pool"
+import * as Scope from "effect/Scope"
+import { pipe } from "./Function"
 
 Effect.scoped(
   pipe(
@@ -94,11 +94,11 @@ Effect.scoped(
       Effect.scoped(
         pipe(
           pool.get(),
-          Effect.flatMap((connection) => useConnection(connection))
-        )
-      )
-    )
-  )
+          Effect.flatMap((connection) => useConnection(connection)),
+        ),
+      ),
+    ),
+  ),
 )
 ```
 

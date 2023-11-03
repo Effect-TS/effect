@@ -1,6 +1,6 @@
 ---
 title: Order.ts
-nav_order: 77
+nav_order: 74
 parent: Modules
 ---
 
@@ -89,7 +89,7 @@ for each property in the struct.
 
 ```ts
 export declare const struct: <R extends { readonly [x: string]: Order<any> }>(
-  fields: R
+  fields: R,
 ) => Order<{ [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }>
 ```
 
@@ -278,7 +278,7 @@ Added in v2.0.0
 
 ```ts
 export interface OrderTypeLambda extends TypeLambda {
-  readonly type: Order<this['Target']>
+  readonly type: Order<this["Target"]>
 }
 ```
 

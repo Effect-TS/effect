@@ -1,6 +1,6 @@
 ---
 title: Pipeable.ts
-nav_order: 79
+nav_order: 76
 parent: Modules
 ---
 
@@ -37,7 +37,7 @@ export interface Pipeable {
     bc: (_: B) => C,
     cd: (_: C) => D,
     de: (_: D) => E,
-    ef: (_: E) => F
+    ef: (_: E) => F,
   ): F
   pipe<A, B, C, D, E, F, G>(
     this: A,
@@ -46,7 +46,7 @@ export interface Pipeable {
     cd: (_: C) => D,
     de: (_: D) => E,
     ef: (_: E) => F,
-    fg: (_: F) => G
+    fg: (_: F) => G,
   ): G
   pipe<A, B, C, D, E, F, G, H>(
     this: A,
@@ -56,7 +56,7 @@ export interface Pipeable {
     de: (_: D) => E,
     ef: (_: E) => F,
     fg: (_: F) => G,
-    gh: (_: G) => H
+    gh: (_: G) => H,
   ): H
   pipe<A, B, C, D, E, F, G, H, I>(
     this: A,
@@ -67,7 +67,7 @@ export interface Pipeable {
     ef: (_: E) => F,
     fg: (_: F) => G,
     gh: (_: G) => H,
-    hi: (_: H) => I
+    hi: (_: H) => I,
   ): I
   pipe<A, B, C, D, E, F, G, H, I, J>(
     this: A,
@@ -79,7 +79,7 @@ export interface Pipeable {
     fg: (_: F) => G,
     gh: (_: G) => H,
     hi: (_: H) => I,
-    ij: (_: I) => J
+    ij: (_: I) => J,
   ): J
   pipe<A, B, C, D, E, F, G, H, I, J, K>(
     this: A,
@@ -92,7 +92,7 @@ export interface Pipeable {
     gh: (_: G) => H,
     hi: (_: H) => I,
     ij: (_: I) => J,
-    jk: (_: J) => K
+    jk: (_: J) => K,
   ): K
   pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
     this: A,
@@ -106,7 +106,7 @@ export interface Pipeable {
     hi: (_: H) => I,
     ij: (_: I) => J,
     jk: (_: J) => K,
-    kl: (_: K) => L
+    kl: (_: K) => L,
   ): L
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
     this: A,
@@ -121,7 +121,7 @@ export interface Pipeable {
     ij: (_: I) => J,
     jk: (_: J) => K,
     kl: (_: K) => L,
-    lm: (_: L) => M
+    lm: (_: L) => M,
   ): M
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
     this: A,
@@ -137,7 +137,7 @@ export interface Pipeable {
     jk: (_: J) => K,
     kl: (_: K) => L,
     lm: (_: L) => M,
-    mn: (_: M) => N
+    mn: (_: M) => N,
   ): N
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
     this: A,
@@ -154,7 +154,7 @@ export interface Pipeable {
     kl: (_: K) => L,
     lm: (_: L) => M,
     mn: (_: M) => N,
-    no: (_: N) => O
+    no: (_: N) => O,
   ): O
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
     this: A,
@@ -172,7 +172,7 @@ export interface Pipeable {
     lm: (_: L) => M,
     mn: (_: M) => N,
     no: (_: N) => O,
-    op: (_: O) => P
+    op: (_: O) => P,
   ): P
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
     this: A,
@@ -191,7 +191,7 @@ export interface Pipeable {
     mn: (_: M) => N,
     no: (_: N) => O,
     op: (_: O) => P,
-    pq: (_: P) => Q
+    pq: (_: P) => Q,
   ): Q
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
     this: A,
@@ -211,7 +211,7 @@ export interface Pipeable {
     no: (_: N) => O,
     op: (_: O) => P,
     pq: (_: P) => Q,
-    qr: (_: Q) => R
+    qr: (_: Q) => R,
   ): R
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
     this: A,
@@ -232,7 +232,7 @@ export interface Pipeable {
     op: (_: O) => P,
     pq: (_: P) => Q,
     qr: (_: Q) => R,
-    rs: (_: R) => S
+    rs: (_: R) => S,
   ): S
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
     this: A,
@@ -254,7 +254,7 @@ export interface Pipeable {
     pq: (_: P) => Q,
     qr: (_: Q) => R,
     rs: (_: R) => S,
-    st: (_: S) => T
+    st: (_: S) => T,
   ): T
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>(
     this: A,
@@ -277,7 +277,7 @@ export interface Pipeable {
     qr: (_: Q) => R,
     rs: (_: R) => S,
     st: (_: S) => T,
-    tu: (_: T) => U
+    tu: (_: T) => U,
   ): U
   pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U>(
     this: A,
@@ -300,7 +300,7 @@ export interface Pipeable {
     qr: (_: Q) => R,
     rs: (_: R) => S,
     st: (_: S) => T,
-    tu: (_: T) => U
+    tu: (_: T) => U,
   ): U
 }
 ```

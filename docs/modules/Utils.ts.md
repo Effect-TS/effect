@@ -62,14 +62,12 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare class GenKindImpl<F, R, O, E, A> {
-  constructor(
+export declare class GenKindImpl<F, R, O, E, A> { constructor(
     /**
      * @since 2.0.0
      */
     readonly value: Kind<F, R, O, E, A>
-  )
-}
+  ) }
 ```
 
 Added in v2.0.0
@@ -99,9 +97,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare class SingleShotGen<T, A> {
-  constructor(readonly self: T)
-}
+export declare class SingleShotGen<T, A> { constructor(readonly self: T) }
 ```
 
 Added in v2.0.0
@@ -152,7 +148,7 @@ Added in v2.0.0
 
 ```ts
 export declare const makeGenKind: <F extends TypeLambda, R, O, E, A>(
-  kind: Kind<F, R, O, E, A>
+  kind: Kind<F, R, O, E, A>,
 ) => GenKind<F, R, O, E, A>
 ```
 
@@ -257,19 +253,18 @@ export interface Adapter<Z extends TypeLambda> {
   <_R, _O, _E, _A>(self: Kind<Z, _R, _O, _E, _A>): GenKind<Z, _R, _O, _E, _A>
   <A, _R, _O, _E, _A>(a: A, ab: (a: A) => Kind<Z, _R, _O, _E, _A>): GenKind<Z, _R, _O, _E, _A>
   <A, B, _R, _O, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => Kind<Z, _R, _O, _E, _A>): GenKind<Z, _R, _O, _E, _A>
-  <A, B, C, _R, _O, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => Kind<Z, _R, _O, _E, _A>): GenKind<
-    Z,
-    _R,
-    _O,
-    _E,
-    _A
-  >
+  <A, B, C, _R, _O, _E, _A>(
+    a: A,
+    ab: (a: A) => B,
+    bc: (b: B) => C,
+    cd: (c: C) => Kind<Z, _R, _O, _E, _A>,
+  ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, _R, _O, _E, _A>(
     a: A,
     ab: (a: A) => B,
     bc: (b: B) => C,
     cd: (c: C) => D,
-    de: (d: D) => Kind<Z, _R, _O, _E, _A>
+    de: (d: D) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, _R, _O, _E, _A>(
     a: A,
@@ -277,7 +272,7 @@ export interface Adapter<Z extends TypeLambda> {
     bc: (b: B) => C,
     cd: (c: C) => D,
     de: (d: D) => E,
-    ef: (e: E) => Kind<Z, _R, _O, _E, _A>
+    ef: (e: E) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, _R, _O, _E, _A>(
     a: A,
@@ -286,7 +281,7 @@ export interface Adapter<Z extends TypeLambda> {
     cd: (c: C) => D,
     de: (d: D) => E,
     ef: (e: E) => F,
-    fg: (f: F) => Kind<Z, _R, _O, _E, _A>
+    fg: (f: F) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, _R, _O, _E, _A>(
     a: A,
@@ -296,7 +291,7 @@ export interface Adapter<Z extends TypeLambda> {
     de: (d: D) => E,
     ef: (e: E) => F,
     fg: (f: F) => G,
-    gh: (g: F) => Kind<Z, _R, _O, _E, _A>
+    gh: (g: F) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, _R, _O, _E, _A>(
     a: A,
@@ -307,7 +302,7 @@ export interface Adapter<Z extends TypeLambda> {
     ef: (e: E) => F,
     fg: (f: F) => G,
     gh: (g: G) => H,
-    hi: (g: H) => Kind<Z, _R, _O, _E, _A>
+    hi: (g: H) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, _R, _O, _E, _A>(
     a: A,
@@ -319,7 +314,7 @@ export interface Adapter<Z extends TypeLambda> {
     fg: (f: F) => G,
     gh: (g: G) => H,
     hi: (h: H) => I,
-    ij: (i: I) => Kind<Z, _R, _O, _E, _A>
+    ij: (i: I) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, _R, _O, _E, _A>(
     a: A,
@@ -332,7 +327,7 @@ export interface Adapter<Z extends TypeLambda> {
     gh: (g: G) => H,
     hi: (h: H) => I,
     ij: (i: I) => J,
-    jk: (j: J) => Kind<Z, _R, _O, _E, _A>
+    jk: (j: J) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, _R, _O, _E, _A>(
     a: A,
@@ -346,7 +341,7 @@ export interface Adapter<Z extends TypeLambda> {
     hi: (h: H) => I,
     ij: (i: I) => J,
     jk: (j: J) => K,
-    kl: (k: K) => Kind<Z, _R, _O, _E, _A>
+    kl: (k: K) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, _R, _O, _E, _A>(
     a: A,
@@ -361,7 +356,7 @@ export interface Adapter<Z extends TypeLambda> {
     ij: (i: I) => J,
     jk: (j: J) => K,
     kl: (k: K) => L,
-    lm: (l: L) => Kind<Z, _R, _O, _E, _A>
+    lm: (l: L) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, _R, _O, _E, _A>(
     a: A,
@@ -377,7 +372,7 @@ export interface Adapter<Z extends TypeLambda> {
     jk: (j: J) => K,
     kl: (k: K) => L,
     lm: (l: L) => M,
-    mn: (m: M) => Kind<Z, _R, _O, _E, _A>
+    mn: (m: M) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, _R, _O, _E, _A>(
     a: A,
@@ -394,7 +389,7 @@ export interface Adapter<Z extends TypeLambda> {
     kl: (k: K) => L,
     lm: (l: L) => M,
     mn: (m: M) => N,
-    no: (n: N) => Kind<Z, _R, _O, _E, _A>
+    no: (n: N) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _R, _O, _E, _A>(
     a: A,
@@ -412,7 +407,7 @@ export interface Adapter<Z extends TypeLambda> {
     lm: (l: L) => M,
     mn: (m: M) => N,
     no: (n: N) => O,
-    op: (o: O) => Kind<Z, _R, _O, _E, _A>
+    op: (o: O) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _R, _O, _E, _A>(
     a: A,
@@ -431,7 +426,7 @@ export interface Adapter<Z extends TypeLambda> {
     mn: (m: M) => N,
     no: (n: N) => O,
     op: (o: O) => P,
-    pq: (p: P) => Kind<Z, _R, _O, _E, _A>
+    pq: (p: P) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _R, _O, _E, _A>(
     a: A,
@@ -451,7 +446,7 @@ export interface Adapter<Z extends TypeLambda> {
     no: (n: N) => O,
     op: (o: O) => P,
     pq: (p: P) => Q,
-    qr: (q: Q) => Kind<Z, _R, _O, _E, _A>
+    qr: (q: Q) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, _R, _O, _E, _A>(
     a: A,
@@ -472,7 +467,7 @@ export interface Adapter<Z extends TypeLambda> {
     op: (o: O) => P,
     pq: (p: P) => Q,
     qr: (q: Q) => R,
-    rs: (r: R) => Kind<Z, _R, _O, _E, _A>
+    rs: (r: R) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, _R, _O, _E, _A>(
     a: A,
@@ -494,7 +489,7 @@ export interface Adapter<Z extends TypeLambda> {
     pq: (p: P) => Q,
     qr: (q: Q) => R,
     rs: (r: R) => S,
-    st: (s: S) => Kind<Z, _R, _O, _E, _A>
+    st: (s: S) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, _R, _O, _E, _A>(
     a: A,
@@ -517,7 +512,7 @@ export interface Adapter<Z extends TypeLambda> {
     qr: (q: Q) => R,
     rs: (r: R) => S,
     st: (s: S) => T,
-    tu: (s: T) => Kind<Z, _R, _O, _E, _A>
+    tu: (s: T) => Kind<Z, _R, _O, _E, _A>,
   ): GenKind<Z, _R, _O, _E, _A>
 }
 ```
@@ -530,7 +525,9 @@ Added in v2.0.0
 
 ```ts
 export interface Gen<F extends TypeLambda, Z> {
-  <K extends Variance<F, any, any, any>, A>(body: (resume: Z) => Generator<K, A>): Kind<
+  <K extends Variance<F, any, any, any>, A>(
+    body: (resume: Z) => Generator<K, A>,
+  ): Kind<
     F,
     [K] extends [Variance<F, infer R, any, any>] ? R : never,
     [K] extends [Variance<F, any, infer O, any>] ? O : never,

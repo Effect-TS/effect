@@ -1,6 +1,6 @@
 ---
 title: Context.ts
-nav_order: 23
+nav_order: 17
 parent: Modules
 ---
 
@@ -72,10 +72,10 @@ export declare const Tag: <Identifier, Service = Identifier>(identifier?: unknow
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
+import * as Context from "effect/Context"
 
 assert.strictEqual(Context.Tag() === Context.Tag(), false)
-assert.strictEqual(Context.Tag('PORT') === Context.Tag('PORT'), true)
+assert.strictEqual(Context.Tag("PORT") === Context.Tag("PORT"), true)
 ```
 
 Added in v2.0.0
@@ -93,7 +93,7 @@ export declare const empty: () => Context<never>
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
+import * as Context from "effect/Context"
 
 assert.strictEqual(Context.isContext(Context.empty()), true)
 ```
@@ -113,7 +113,7 @@ export declare const make: <T extends Tag<any, any>>(tag: T, service: Tag.Servic
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
+import * as Context from "effect/Context"
 
 const Port = Context.Tag<{ PORT: number }>()
 
@@ -152,8 +152,8 @@ export declare const get: {
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
-import { pipe } from 'effect/Function'
+import * as Context from "effect/Context"
+import { pipe } from "effect/Function"
 
 const Port = Context.Tag<{ PORT: number }>()
 const Timeout = Context.Tag<{ TIMEOUT: number }>()
@@ -182,8 +182,8 @@ export declare const getOption: {
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
-import * as O from 'effect/Option'
+import * as Context from "effect/Context"
+import * as O from "effect/Option"
 
 const Port = Context.Tag<{ PORT: number }>()
 const Timeout = Context.Tag<{ TIMEOUT: number }>()
@@ -211,7 +211,7 @@ export declare const isContext: (input: unknown) => input is Context<never>
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
+import * as Context from "effect/Context"
 
 assert.strictEqual(Context.isContext(Context.empty()), true)
 ```
@@ -231,7 +231,7 @@ export declare const isTag: (input: unknown) => input is Tag<any, any>
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
+import * as Context from "effect/Context"
 
 assert.strictEqual(Context.isTag(Context.Tag()), true)
 ```
@@ -261,8 +261,8 @@ Added in v2.0.0
 
 ```ts
 export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
-  readonly _tag: 'Tag'
-  readonly _op: 'Tag'
+  readonly _tag: "Tag"
+  readonly _op: "Tag"
   readonly [TagTypeId]: {
     readonly _S: (_: Service) => Service
     readonly _I: (_: Identifier) => Identifier
@@ -354,7 +354,7 @@ export declare const unsafeGet: {
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
+import * as Context from "effect/Context"
 
 const Port = Context.Tag<{ PORT: number }>()
 const Timeout = Context.Tag<{ TIMEOUT: number }>()
@@ -401,20 +401,23 @@ Adds a service to a given `Context`.
 
 ```ts
 export declare const add: {
-  <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>): <Services>(
-    self: Context<Services>
-  ) => Context<Services | Tag.Identifier<T>>
-  <Services, T extends Tag<any, any>>(self: Context<Services>, tag: T, service: Tag.Service<T>): Context<
-    Services | Tag.Identifier<T>
-  >
+  <T extends Tag<any, any>>(
+    tag: T,
+    service: Tag.Service<T>,
+  ): <Services>(self: Context<Services>) => Context<Services | Tag.Identifier<T>>
+  <Services, T extends Tag<any, any>>(
+    self: Context<Services>,
+    tag: T,
+    service: Tag.Service<T>,
+  ): Context<Services | Tag.Identifier<T>>
 }
 ```
 
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
-import { pipe } from 'effect/Function'
+import * as Context from "effect/Context"
+import { pipe } from "effect/Function"
 
 const Port = Context.Tag<{ PORT: number }>()
 const Timeout = Context.Tag<{ TIMEOUT: number }>()
@@ -445,7 +448,7 @@ export declare const merge: {
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
+import * as Context from "effect/Context"
 
 const Port = Context.Tag<{ PORT: number }>()
 const Timeout = Context.Tag<{ TIMEOUT: number }>()
@@ -488,9 +491,9 @@ export declare const pick: <Services, S extends ValidTagsById<Services>[]>(
 **Example**
 
 ```ts
-import * as Context from 'effect/Context'
-import { pipe } from 'effect/Function'
-import * as O from 'effect/Option'
+import * as Context from "effect/Context"
+import { pipe } from "effect/Function"
+import * as O from "effect/Option"
 
 const Port = Context.Tag<{ PORT: number }>()
 const Timeout = Context.Tag<{ TIMEOUT: number }>()

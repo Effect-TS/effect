@@ -1,10 +1,10 @@
 ---
-title: ChannelSingleProducerAsyncInput.ts
-nav_order: 12
+title: SingleProducerAsyncInput.ts
+nav_order: 102
 parent: Modules
 ---
 
-## ChannelSingleProducerAsyncInput overview
+## SingleProducerAsyncInput overview
 
 Added in v2.0.0
 
@@ -46,7 +46,7 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
   takeWith<A>(
     onError: (cause: Cause.Cause<Err>) => A,
     onElement: (element: Elem) => A,
-    onDone: (value: Done) => A
+    onDone: (value: Done) => A,
   ): Effect.Effect<never, never, A>
 }
 ```

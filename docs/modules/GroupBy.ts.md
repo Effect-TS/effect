@@ -1,6 +1,6 @@
 ---
 title: GroupBy.ts
-nav_order: 45
+nav_order: 39
 parent: Modules
 ---
 
@@ -39,7 +39,7 @@ Constructs a `GroupBy` from a `Stream`.
 
 ```ts
 export declare const make: <R, E, K, V>(
-  grouped: Stream.Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
+  grouped: Stream.Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>,
 ) => GroupBy<R, E, K, V>
 ```
 
@@ -58,12 +58,12 @@ arbitrary order.
 export declare const evaluate: {
   <K, E, V, R2, E2, A>(
     f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
-    options?: { readonly bufferSize?: number }
+    options?: { readonly bufferSize?: number },
   ): <R>(self: GroupBy<R, E, K, V>) => Stream.Stream<R2 | R, E | E2, A>
   <R, K, E, V, R2, E2, A>(
     self: GroupBy<R, E, K, V>,
     f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
-    options?: { readonly bufferSize?: number }
+    options?: { readonly bufferSize?: number },
   ): Stream.Stream<R | R2, E | E2, A>
 }
 ```

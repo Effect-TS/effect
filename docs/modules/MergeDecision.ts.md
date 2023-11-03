@@ -1,10 +1,10 @@
 ---
-title: ChannelMergeDecision.ts
-nav_order: 9
+title: MergeDecision.ts
+nav_order: 53
 parent: Modules
 ---
 
-## ChannelMergeDecision overview
+## MergeDecision overview
 
 Added in v2.0.0
 
@@ -39,7 +39,7 @@ Added in v2.0.0
 
 ```ts
 export declare const Await: <R, E0, Z0, E, Z>(
-  f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<R, E, Z>
+  f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<R, E, Z>,
 ) => MergeDecision<R, E0, Z0, E, Z>
 ```
 
@@ -82,7 +82,7 @@ export declare const match: {
     options: {
       readonly onDone: (effect: Effect.Effect<R, E, Z>) => Z2
       readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<R, E, Z>) => Z2
-    }
+    },
   ): Z2
 }
 ```

@@ -1,6 +1,6 @@
 ---
 title: String.ts
-nav_order: 113
+nav_order: 111
 parent: Modules
 ---
 
@@ -85,9 +85,9 @@ export declare const isString: Refinement<unknown, string>
 **Example**
 
 ```ts
-import { isString } from 'effect/String'
+import { isString } from "effect/String"
 
-assert.deepStrictEqual(isString('a'), true)
+assert.deepStrictEqual(isString("a"), true)
 assert.deepStrictEqual(isString(1), false)
 ```
 
@@ -189,12 +189,12 @@ export declare const at: {
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import * as Option from "effect/Option"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abc', S.at(1)), Option.some('b'))
-assert.deepStrictEqual(pipe('abc', S.at(4)), Option.none())
+assert.deepStrictEqual(pipe("abc", S.at(1)), Option.some("b"))
+assert.deepStrictEqual(pipe("abc", S.at(4)), Option.none())
 ```
 
 Added in v2.0.0
@@ -210,10 +210,10 @@ export declare const capitalize: <T extends string>(self: T) => Capitalize<T>
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abc', S.capitalize), 'Abc')
+assert.deepStrictEqual(pipe("abc", S.capitalize), "Abc")
 ```
 
 Added in v2.0.0
@@ -232,12 +232,12 @@ export declare const charAt: {
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import * as Option from "effect/Option"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abc', S.charAt(1)), Option.some('b'))
-assert.deepStrictEqual(pipe('abc', S.charAt(4)), Option.none())
+assert.deepStrictEqual(pipe("abc", S.charAt(1)), Option.some("b"))
+assert.deepStrictEqual(pipe("abc", S.charAt(4)), Option.none())
 ```
 
 Added in v2.0.0
@@ -256,12 +256,12 @@ export declare const charCodeAt: {
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import * as Option from "effect/Option"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abc', S.charCodeAt(1)), Option.some(98))
-assert.deepStrictEqual(pipe('abc', S.charCodeAt(4)), Option.none())
+assert.deepStrictEqual(pipe("abc", S.charCodeAt(1)), Option.some(98))
+assert.deepStrictEqual(pipe("abc", S.charCodeAt(4)), Option.none())
 ```
 
 Added in v2.0.0
@@ -280,11 +280,11 @@ export declare const codePointAt: {
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import * as Option from "effect/Option"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abc', S.codePointAt(1)), Option.some(98))
+assert.deepStrictEqual(pipe("abc", S.codePointAt(1)), Option.some(98))
 ```
 
 Added in v2.0.0
@@ -311,7 +311,7 @@ The empty string `""`.
 **Signature**
 
 ```ts
-export declare const empty: ''
+export declare const empty: ""
 ```
 
 Added in v2.0.0
@@ -350,11 +350,11 @@ export declare const indexOf: (searchString: string) => (self: string) => Option
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import * as Option from "effect/Option"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abbbc', S.indexOf('b')), Option.some(1))
+assert.deepStrictEqual(pipe("abbbc", S.indexOf("b")), Option.some(1))
 ```
 
 Added in v2.0.0
@@ -366,16 +366,16 @@ Test whether a `string` is empty.
 **Signature**
 
 ```ts
-export declare const isEmpty: (self: string) => self is ''
+export declare const isEmpty: (self: string) => self is ""
 ```
 
 **Example**
 
 ```ts
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
-assert.deepStrictEqual(S.isEmpty(''), true)
-assert.deepStrictEqual(S.isEmpty('a'), false)
+assert.deepStrictEqual(S.isEmpty(""), true)
+assert.deepStrictEqual(S.isEmpty("a"), false)
 ```
 
 Added in v2.0.0
@@ -403,12 +403,12 @@ export declare const lastIndexOf: (searchString: string) => (self: string) => Op
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import * as Option from "effect/Option"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abbbc', S.lastIndexOf('b')), Option.some(3))
-assert.deepStrictEqual(pipe('abbbc', S.lastIndexOf('d')), Option.none())
+assert.deepStrictEqual(pipe("abbbc", S.lastIndexOf("b")), Option.some(3))
+assert.deepStrictEqual(pipe("abbbc", S.lastIndexOf("d")), Option.none())
 ```
 
 Added in v2.0.0
@@ -426,9 +426,9 @@ export declare const length: (self: string) => number
 **Example**
 
 ```ts
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
-assert.deepStrictEqual(S.length('abc'), 3)
+assert.deepStrictEqual(S.length("abc"), 3)
 ```
 
 Added in v2.0.0
@@ -454,19 +454,19 @@ Added in v2.0.0
 export declare const localeCompare: (
   that: string,
   locales?: Array<string>,
-  options?: Intl.CollatorOptions
+  options?: Intl.CollatorOptions,
 ) => (self: string) => Ordering.Ordering
 ```
 
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('a', S.localeCompare('b')), -1)
-assert.deepStrictEqual(pipe('b', S.localeCompare('a')), 1)
-assert.deepStrictEqual(pipe('a', S.localeCompare('a')), 0)
+assert.deepStrictEqual(pipe("a", S.localeCompare("b")), -1)
+assert.deepStrictEqual(pipe("b", S.localeCompare("a")), 1)
+assert.deepStrictEqual(pipe("a", S.localeCompare("a")), 0)
 ```
 
 Added in v2.0.0
@@ -500,21 +500,21 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const normalize: (form?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD') => (self: string) => string
+export declare const normalize: (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: string) => string
 ```
 
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-const str = '\u1E9B\u0323'
-assert.deepStrictEqual(pipe(str, S.normalize()), '\u1E9B\u0323')
-assert.deepStrictEqual(pipe(str, S.normalize('NFC')), '\u1E9B\u0323')
-assert.deepStrictEqual(pipe(str, S.normalize('NFD')), '\u017F\u0323\u0307')
-assert.deepStrictEqual(pipe(str, S.normalize('NFKC')), '\u1E69')
-assert.deepStrictEqual(pipe(str, S.normalize('NFKD')), '\u0073\u0323\u0307')
+const str = "\u1E9B\u0323"
+assert.deepStrictEqual(pipe(str, S.normalize()), "\u1E9B\u0323")
+assert.deepStrictEqual(pipe(str, S.normalize("NFC")), "\u1E9B\u0323")
+assert.deepStrictEqual(pipe(str, S.normalize("NFD")), "\u017F\u0323\u0307")
+assert.deepStrictEqual(pipe(str, S.normalize("NFKC")), "\u1E69")
+assert.deepStrictEqual(pipe(str, S.normalize("NFKD")), "\u0073\u0323\u0307")
 ```
 
 Added in v2.0.0
@@ -530,11 +530,11 @@ export declare const padEnd: (maxLength: number, fillString?: string) => (self: 
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('a', S.padEnd(5)), 'a    ')
-assert.deepStrictEqual(pipe('a', S.padEnd(5, '_')), 'a____')
+assert.deepStrictEqual(pipe("a", S.padEnd(5)), "a    ")
+assert.deepStrictEqual(pipe("a", S.padEnd(5, "_")), "a____")
 ```
 
 Added in v2.0.0
@@ -550,11 +550,11 @@ export declare const padStart: (maxLength: number, fillString?: string) => (self
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('a', S.padStart(5)), '    a')
-assert.deepStrictEqual(pipe('a', S.padStart(5, '_')), '____a')
+assert.deepStrictEqual(pipe("a", S.padStart(5)), "    a")
+assert.deepStrictEqual(pipe("a", S.padStart(5, "_")), "____a")
 ```
 
 Added in v2.0.0
@@ -570,10 +570,10 @@ export declare const repeat: (count: number) => (self: string) => string
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('a', S.repeat(5)), 'aaaaa')
+assert.deepStrictEqual(pipe("a", S.repeat(5)), "aaaaa")
 ```
 
 Added in v2.0.0
@@ -589,10 +589,10 @@ export declare const replace: (searchValue: string | RegExp, replaceValue: strin
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abc', S.replace('b', 'd')), 'adc')
+assert.deepStrictEqual(pipe("abc", S.replace("b", "d")), "adc")
 ```
 
 Added in v2.0.0
@@ -608,11 +608,11 @@ export declare const replaceAll: (searchValue: string | RegExp, replaceValue: st
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('ababb', S.replaceAll('b', 'c')), 'acacc')
-assert.deepStrictEqual(pipe('ababb', S.replaceAll(/ba/g, 'cc')), 'accbb')
+assert.deepStrictEqual(pipe("ababb", S.replaceAll("b", "c")), "acacc")
+assert.deepStrictEqual(pipe("ababb", S.replaceAll(/ba/g, "cc")), "accbb")
 ```
 
 Added in v2.0.0
@@ -631,13 +631,13 @@ export declare const search: {
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import * as Option from "effect/Option"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('ababb', S.search('b')), Option.some(1))
-assert.deepStrictEqual(pipe('ababb', S.search(/abb/)), Option.some(2))
-assert.deepStrictEqual(pipe('ababb', S.search('d')), Option.none())
+assert.deepStrictEqual(pipe("ababb", S.search("b")), Option.some(1))
+assert.deepStrictEqual(pipe("ababb", S.search(/abb/)), Option.some(2))
+assert.deepStrictEqual(pipe("ababb", S.search("d")), Option.none())
 ```
 
 Added in v2.0.0
@@ -653,10 +653,10 @@ export declare const slice: (start?: number, end?: number) => (self: string) => 
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abcd', S.slice(1, 3)), 'bc')
+assert.deepStrictEqual(pipe("abcd", S.slice(1, 3)), "bc")
 ```
 
 Added in v2.0.0
@@ -675,11 +675,11 @@ export declare const split: {
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abc', S.split('')), ['a', 'b', 'c'])
-assert.deepStrictEqual(pipe('', S.split('')), [''])
+assert.deepStrictEqual(pipe("abc", S.split("")), ["a", "b", "c"])
+assert.deepStrictEqual(pipe("", S.split("")), [""])
 ```
 
 Added in v2.0.0
@@ -735,11 +735,11 @@ export declare const substring: (start: number, end?: number) => (self: string) 
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('abcd', S.substring(1)), 'bcd')
-assert.deepStrictEqual(pipe('abcd', S.substring(1, 3)), 'bc')
+assert.deepStrictEqual(pipe("abcd", S.substring(1)), "bcd")
+assert.deepStrictEqual(pipe("abcd", S.substring(1, 3)), "bc")
 ```
 
 Added in v2.0.0
@@ -764,9 +764,9 @@ export declare const takeLeft: { (n: number): (self: string) => string; (self: s
 **Example**
 
 ```ts
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
-assert.deepStrictEqual(S.takeLeft('Hello World', 5), 'Hello')
+assert.deepStrictEqual(S.takeLeft("Hello World", 5), "Hello")
 ```
 
 Added in v2.0.0
@@ -791,9 +791,9 @@ export declare const takeRight: { (n: number): (self: string) => string; (self: 
 **Example**
 
 ```ts
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
-assert.deepStrictEqual(S.takeRight('Hello World', 5), 'World')
+assert.deepStrictEqual(S.takeRight("Hello World", 5), "World")
 ```
 
 Added in v2.0.0
@@ -809,11 +809,11 @@ export declare const toLocaleLowerCase: (locale?: string | Array<string>) => (se
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-const str = '\u0130'
-assert.deepStrictEqual(pipe(str, S.toLocaleLowerCase('tr')), 'i')
+const str = "\u0130"
+assert.deepStrictEqual(pipe(str, S.toLocaleLowerCase("tr")), "i")
 ```
 
 Added in v2.0.0
@@ -829,11 +829,11 @@ export declare const toLocaleUpperCase: (locale?: string | Array<string>) => (se
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-const str = 'i\u0307'
-assert.deepStrictEqual(pipe(str, S.toLocaleUpperCase('lt-LT')), 'I')
+const str = "i\u0307"
+assert.deepStrictEqual(pipe(str, S.toLocaleUpperCase("lt-LT")), "I")
 ```
 
 Added in v2.0.0
@@ -849,10 +849,10 @@ export declare const toLowerCase: <T extends string>(self: T) => Lowercase<T>
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('A', S.toLowerCase), 'a')
+assert.deepStrictEqual(pipe("A", S.toLowerCase), "a")
 ```
 
 Added in v2.0.0
@@ -868,10 +868,10 @@ export declare const toUpperCase: <S extends string>(self: S) => Uppercase<S>
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('a', S.toUpperCase), 'A')
+assert.deepStrictEqual(pipe("a", S.toUpperCase), "A")
 ```
 
 Added in v2.0.0
@@ -887,9 +887,9 @@ export declare const trim: <A extends string>(self: A) => TrimEnd<TrimStart<A>>
 **Example**
 
 ```ts
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
-assert.deepStrictEqual(S.trim(' a '), 'a')
+assert.deepStrictEqual(S.trim(" a "), "a")
 ```
 
 Added in v2.0.0
@@ -905,9 +905,9 @@ export declare const trimEnd: <A extends string>(self: A) => TrimEnd<A>
 **Example**
 
 ```ts
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
-assert.deepStrictEqual(S.trimEnd(' a '), ' a')
+assert.deepStrictEqual(S.trimEnd(" a "), " a")
 ```
 
 Added in v2.0.0
@@ -923,9 +923,9 @@ export declare const trimStart: <A extends string>(self: A) => TrimStart<A>
 **Example**
 
 ```ts
-import * as S from 'effect/String'
+import * as S from "effect/String"
 
-assert.deepStrictEqual(S.trimStart(' a '), 'a ')
+assert.deepStrictEqual(S.trimStart(" a "), "a ")
 ```
 
 Added in v2.0.0
@@ -941,10 +941,10 @@ export declare const uncapitalize: <T extends string>(self: T) => Uncapitalize<T
 **Example**
 
 ```ts
-import * as S from 'effect/String'
-import { pipe } from 'effect/Function'
+import * as S from "effect/String"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe('ABC', S.uncapitalize), 'aBC')
+assert.deepStrictEqual(pipe("ABC", S.uncapitalize), "aBC")
 ```
 
 Added in v2.0.0

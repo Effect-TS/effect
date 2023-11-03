@@ -1,6 +1,6 @@
 ---
 title: Runtime.ts
-nav_order: 94
+nav_order: 91
 parent: Modules
 ---
 
@@ -102,10 +102,10 @@ program.
 
 ```ts
 export declare const runCallback: <R>(
-  runtime: Runtime<R>
+  runtime: Runtime<R>,
 ) => <E, A>(
   effect: Effect.Effect<R, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
+  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined,
 ) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void
 ```
 
@@ -120,7 +120,7 @@ Scheduler if not provided
 
 ```ts
 export declare const runFork: <R>(
-  runtime: Runtime<R>
+  runtime: Runtime<R>,
 ) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
 ```
 
@@ -155,7 +155,7 @@ program.
 
 ```ts
 export declare const runPromiseExit: <R>(
-  runtime: Runtime<R>
+  runtime: Runtime<R>,
 ) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>>
 ```
 
@@ -233,7 +233,7 @@ Added in v2.0.0
 
 ```ts
 export interface AsyncFiberException<E, A> {
-  readonly _tag: 'AsyncFiberException'
+  readonly _tag: "AsyncFiberException"
   readonly fiber: Fiber.RuntimeFiber<E, A>
 }
 ```

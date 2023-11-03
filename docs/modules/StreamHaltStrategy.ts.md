@@ -1,6 +1,6 @@
 ---
 title: StreamHaltStrategy.ts
-nav_order: 112
+nav_order: 110
 parent: Modules
 ---
 
@@ -110,7 +110,7 @@ Added in v2.0.0
 
 ```ts
 export interface Both {
-  readonly _tag: 'Both'
+  readonly _tag: "Both"
 }
 ```
 
@@ -122,7 +122,7 @@ Added in v2.0.0
 
 ```ts
 export interface Either {
-  readonly _tag: 'Either'
+  readonly _tag: "Either"
 }
 ```
 
@@ -143,7 +143,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type HaltStrategyInput = HaltStrategy | 'left' | 'right' | 'both' | 'either'
+export type HaltStrategyInput = HaltStrategy | "left" | "right" | "both" | "either"
 ```
 
 Added in v2.0.0
@@ -154,7 +154,7 @@ Added in v2.0.0
 
 ```ts
 export interface Left {
-  readonly _tag: 'Left'
+  readonly _tag: "Left"
 }
 ```
 
@@ -166,7 +166,7 @@ Added in v2.0.0
 
 ```ts
 export interface Right {
-  readonly _tag: 'Right'
+  readonly _tag: "Right"
 }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: Console.ts
-nav_order: 22
+nav_order: 16
 parent: Modules
 ---
 
@@ -222,9 +222,10 @@ Added in v2.0.0
 
 ```ts
 export declare const withGroup: {
-  (options?: { readonly label?: string; readonly collapsed?: boolean }): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E, A>
+  (options?: {
+    readonly label?: string
+    readonly collapsed?: boolean
+  }): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A>(self: Effect<R, E, A>, options?: { readonly label?: string; readonly collapsed?: boolean }): Effect<R, E, A>
 }
 ```

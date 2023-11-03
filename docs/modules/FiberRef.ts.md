@@ -1,6 +1,6 @@
 ---
 title: FiberRef.ts
-nav_order: 39
+nav_order: 33
 parent: Modules
 ---
 
@@ -80,7 +80,7 @@ export declare const make: <A>(
   initial: A,
   options?:
     | { readonly fork?: ((a: A) => A) | undefined; readonly join?: ((left: A, right: A) => A) | undefined }
-    | undefined
+    | undefined,
 ) => Effect.Effect<Scope.Scope, never, FiberRef<A>>
 ```
 
@@ -92,7 +92,7 @@ Added in v2.0.0
 
 ```ts
 export declare const makeContext: <A>(
-  initial: Context.Context<A>
+  initial: Context.Context<A>,
 ) => Effect.Effect<Scope.Scope, never, FiberRef<Context.Context<A>>>
 ```
 
@@ -104,7 +104,7 @@ Added in v2.0.0
 
 ```ts
 export declare const makeRuntimeFlags: (
-  initial: RuntimeFlags.RuntimeFlags
+  initial: RuntimeFlags.RuntimeFlags,
 ) => Effect.Effect<Scope.Scope, never, FiberRef<RuntimeFlags.RuntimeFlags>>
 ```
 
@@ -116,7 +116,7 @@ Added in v2.0.0
 
 ```ts
 export declare const makeWith: <Value>(
-  ref: LazyArg<FiberRef<Value>>
+  ref: LazyArg<FiberRef<Value>>,
 ) => Effect.Effect<Scope.Scope, never, FiberRef<Value>>
 ```
 
@@ -134,7 +134,7 @@ export declare const unsafeMake: <Value>(
         readonly fork?: ((a: Value) => Value) | undefined
         readonly join?: ((left: Value, right: Value) => Value) | undefined
       }
-    | undefined
+    | undefined,
 ) => FiberRef<Value>
 ```
 
@@ -171,7 +171,7 @@ export declare const unsafeMakePatch: <Value, Patch>(
     readonly differ: Differ.Differ<Value, Patch>
     readonly fork: Patch
     readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
-  }
+  },
 ) => FiberRef<Value>
 ```
 
@@ -549,7 +549,7 @@ Added in v2.0.0
 export declare const modifySome: <A, B>(
   self: FiberRef<A>,
   def: B,
-  f: (a: A) => Option.Option<readonly [B, A]>
+  f: (a: A) => Option.Option<readonly [B, A]>,
 ) => Effect.Effect<never, never, B>
 ```
 

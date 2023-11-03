@@ -1,10 +1,10 @@
 ---
-title: ChannelChildExecutorDecision.ts
+title: ChildExecutorDecision.ts
 nav_order: 8
 parent: Modules
 ---
 
-## ChannelChildExecutorDecision overview
+## ChildExecutorDecision overview
 
 Added in v2.0.0
 
@@ -79,12 +79,14 @@ Folds over a `ChildExecutorDecision` to produce a value of type `A`.
 
 ```ts
 export declare const match: {
-  <A>(options: { readonly onContinue: () => A; readonly onClose: (value: unknown) => A; readonly onYield: () => A }): (
-    self: ChildExecutorDecision
-  ) => A
+  <A>(options: {
+    readonly onContinue: () => A
+    readonly onClose: (value: unknown) => A
+    readonly onYield: () => A
+  }): (self: ChildExecutorDecision) => A
   <A>(
     self: ChildExecutorDecision,
-    options: { readonly onContinue: () => A; readonly onClose: (value: unknown) => A; readonly onYield: () => A }
+    options: { readonly onContinue: () => A; readonly onClose: (value: unknown) => A; readonly onYield: () => A },
   ): A
 }
 ```
@@ -112,7 +114,7 @@ next substream
 
 ```ts
 export interface Close extends ChildExecutorDecision.Proto {
-  readonly _tag: 'Close'
+  readonly _tag: "Close"
   readonly value: unknown
 }
 ```
@@ -127,7 +129,7 @@ Continue executing the current substream
 
 ```ts
 export interface Continue extends ChildExecutorDecision.Proto {
-  readonly _tag: 'Continue'
+  readonly _tag: "Continue"
 }
 ```
 
@@ -142,7 +144,7 @@ from upstream, or yields to an already created active substream.
 
 ```ts
 export interface Yield extends ChildExecutorDecision.Proto {
-  readonly _tag: 'Yield'
+  readonly _tag: "Yield"
 }
 ```
 

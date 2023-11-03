@@ -1,6 +1,6 @@
 ---
 title: Effectable.ts
-nav_order: 30
+nav_order: 24
 parent: Modules
 ---
 

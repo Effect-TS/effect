@@ -1,6 +1,6 @@
 ---
 title: RedBlackTree.ts
-nav_order: 87
+nav_order: 84
 parent: Modules
 ---
 
@@ -110,7 +110,7 @@ Constructs a new `RedBlackTree` from the specified entries.
 
 ```ts
 export declare const make: <K>(
-  ord: Order<K>
+  ord: Order<K>,
 ) => <Entries extends (readonly [K, any])[]>(
   ...entries: Entries
 ) => RedBlackTree<K, Entries[number] extends readonly [any, infer V] ? V : never>
@@ -401,12 +401,14 @@ than or equal to min.
 
 ```ts
 export declare const forEachBetween: {
-  <K, V>(options: { readonly min: K; readonly max: K; readonly body: (key: K, value: V) => void }): (
-    self: RedBlackTree<K, V>
-  ) => void
+  <K, V>(options: {
+    readonly min: K
+    readonly max: K
+    readonly body: (key: K, value: V) => void
+  }): (self: RedBlackTree<K, V>) => void
   <K, V>(
     self: RedBlackTree<K, V>,
-    options: { readonly min: K; readonly max: K; readonly body: (key: K, value: V) => void }
+    options: { readonly min: K; readonly max: K; readonly body: (key: K, value: V) => void },
   ): void
 }
 ```

@@ -80,9 +80,8 @@ This API is useful when you want to validate that the input data passes multiple
 export declare const all: <Brands extends readonly [Brand.Constructor<any>, ...Brand.Constructor<any>[]]>(
   ...brands: Brand.EnsureCommonBase<Brands>
 ) => Brand.Constructor<
-  Types.UnionToIntersection<
-    { [B in keyof Brands]: Brand.FromConstructor<Brands[B]> }[number]
-  > extends infer X extends Brand<any>
+  Types.UnionToIntersection<{ [B in keyof Brands]: Brand.FromConstructor<Brands[B]> }[number]> extends infer X extends
+    Brand<any>
     ? X
     : Brand<any>
 >
@@ -91,17 +90,17 @@ export declare const all: <Brands extends readonly [Brand.Constructor<any>, ...B
 **Example**
 
 ```ts
-import * as Brand from 'effect/Brand'
+import * as Brand from "effect/Brand"
 
-type Int = number & Brand.Brand<'Int'>
+type Int = number & Brand.Brand<"Int">
 const Int = Brand.refined<Int>(
   (n) => Number.isInteger(n),
-  (n) => Brand.error(`Expected ${n} to be an integer`)
+  (n) => Brand.error(`Expected ${n} to be an integer`),
 )
-type Positive = number & Brand.Brand<'Positive'>
+type Positive = number & Brand.Brand<"Positive">
 const Positive = Brand.refined<Positive>(
   (n) => n > 0,
-  (n) => Brand.error(`Expected ${n} to be positive`)
+  (n) => Brand.error(`Expected ${n} to be positive`),
 )
 
 const PositiveInt = Brand.all(Int, Positive)
@@ -154,9 +153,9 @@ export declare const nominal: <A extends Brand<any>>() => Brand.Constructor<A>
 **Example**
 
 ```ts
-import * as Brand from 'effect/Brand'
+import * as Brand from "effect/Brand"
 
-type UserId = number & Brand.Brand<'UserId'>
+type UserId = number & Brand.Brand<"UserId">
 
 const UserId = Brand.nominal<UserId>()
 
@@ -178,20 +177,20 @@ see {@link nominal}.
 ```ts
 export declare const refined: <A extends Brand<any>>(
   refinement: Predicate<Brand.Unbranded<A>>,
-  onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors
+  onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors,
 ) => Brand.Constructor<A>
 ```
 
 **Example**
 
 ```ts
-import * as Brand from 'effect/Brand'
+import * as Brand from "effect/Brand"
 
-type Int = number & Brand.Brand<'Int'>
+type Int = number & Brand.Brand<"Int">
 
 const Int = Brand.refined<Int>(
   (n) => Number.isInteger(n),
-  (n) => Brand.error(`Expected ${n} to be an integer`)
+  (n) => Brand.error(`Expected ${n} to be an integer`),
 )
 
 assert.strictEqual(Int(1), 1)
@@ -357,7 +356,7 @@ export type EnsureCommonBase<Brands extends readonly [Brand.Constructor<any>, ..
     ? Brand.Unbranded<Brand.FromConstructor<Brands[B]>> extends Brand.Unbranded<Brand.FromConstructor<Brands[0]>>
       ? Brands[B]
       : Brands[B]
-    : 'ERROR: All brands should have the same base type'
+    : "ERROR: All brands should have the same base type"
 }
 ```
 

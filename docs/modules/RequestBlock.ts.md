@@ -1,6 +1,6 @@
 ---
 title: RequestBlock.ts
-nav_order: 91
+nav_order: 88
 parent: Modules
 ---
 
@@ -52,7 +52,7 @@ Added in v2.0.0
 ```ts
 export declare const mapRequestResolvers: <R, A, R2>(
   self: RequestBlock<R>,
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
+  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>,
 ) => RequestBlock<R | R2>
 ```
 
@@ -95,7 +95,7 @@ Added in v2.0.0
 ```ts
 export declare const single: <R, A>(
   dataSource: RequestResolver.RequestResolver<A, R>,
-  blockedRequest: Request.Entry<A>
+  blockedRequest: Request.Entry<A>,
 ) => RequestBlock<R>
 ```
 
@@ -109,7 +109,7 @@ Added in v2.0.0
 
 ```ts
 export interface Empty {
-  readonly _tag: 'Empty'
+  readonly _tag: "Empty"
 }
 ```
 
@@ -121,7 +121,7 @@ Added in v2.0.0
 
 ```ts
 export interface Par<R> {
-  readonly _tag: 'Par'
+  readonly _tag: "Par"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
 }
@@ -159,7 +159,7 @@ export interface Reducer<R, Z> {
   readonly parCase: (left: Z, right: Z) => Z
   readonly singleCase: (
     dataSource: RequestResolver.RequestResolver<unknown, R>,
-    blockedRequest: Request.Entry<unknown>
+    blockedRequest: Request.Entry<unknown>,
   ) => Z
   readonly seqCase: (left: Z, right: Z) => Z
 }
@@ -173,7 +173,7 @@ Added in v2.0.0
 
 ```ts
 export interface Seq<R> {
-  readonly _tag: 'Seq'
+  readonly _tag: "Seq"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
 }
@@ -187,7 +187,7 @@ Added in v2.0.0
 
 ```ts
 export interface Single<R> {
-  readonly _tag: 'Single'
+  readonly _tag: "Single"
   readonly dataSource: RequestResolver.RequestResolver<unknown, R>
   readonly blockedRequest: Request.Entry<unknown>
 }
@@ -218,7 +218,7 @@ Provides each data source with part of its required environment.
 ```ts
 export declare const mapInputContext: <R0, R>(
   self: RequestBlock<R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
+  f: (context: Context.Context<R0>) => Context.Context<R>,
 ) => RequestBlock<R0>
 ```
 

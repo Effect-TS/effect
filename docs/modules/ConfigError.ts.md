@@ -1,6 +1,6 @@
 ---
 title: ConfigError.ts
-nav_order: 18
+nav_order: 12
 parent: Modules
 ---
 
@@ -102,7 +102,7 @@ export declare const SourceUnavailable: (
   path: Array<string>,
   message: string,
   cause: Cause.Cause<unknown>,
-  options?: Options
+  options?: Options,
 ) => ConfigError
 ```
 
@@ -141,7 +141,7 @@ Added in v2.0.0
 
 ```ts
 export interface And extends ConfigError.Proto {
-  readonly _tag: 'And'
+  readonly _tag: "And"
   readonly left: ConfigError
   readonly right: ConfigError
 }
@@ -184,7 +184,7 @@ Added in v2.0.0
 
 ```ts
 export interface InvalidData extends ConfigError.Proto {
-  readonly _tag: 'InvalidData'
+  readonly _tag: "InvalidData"
   readonly path: Array<string>
   readonly message: string
 }
@@ -198,7 +198,7 @@ Added in v2.0.0
 
 ```ts
 export interface MissingData extends ConfigError.Proto {
-  readonly _tag: 'MissingData'
+  readonly _tag: "MissingData"
   readonly path: Array<string>
   readonly message: string
 }
@@ -224,7 +224,7 @@ Added in v2.0.0
 
 ```ts
 export interface Or extends ConfigError.Proto {
-  readonly _tag: 'Or'
+  readonly _tag: "Or"
   readonly left: ConfigError
   readonly right: ConfigError
 }
@@ -238,7 +238,7 @@ Added in v2.0.0
 
 ```ts
 export interface SourceUnavailable extends ConfigError.Proto {
-  readonly _tag: 'SourceUnavailable'
+  readonly _tag: "SourceUnavailable"
   readonly path: Array<string>
   readonly message: string
   readonly cause: Cause.Cause<unknown>
@@ -253,7 +253,7 @@ Added in v2.0.0
 
 ```ts
 export interface Unsupported extends ConfigError.Proto {
-  readonly _tag: 'Unsupported'
+  readonly _tag: "Unsupported"
   readonly path: Array<string>
   readonly message: string
 }

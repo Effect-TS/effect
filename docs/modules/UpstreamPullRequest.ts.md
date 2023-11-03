@@ -1,10 +1,10 @@
 ---
-title: ChannelUpstreamPullRequest.ts
-nav_order: 13
+title: UpstreamPullRequest.ts
+nav_order: 142
 parent: Modules
 ---
 
-## ChannelUpstreamPullRequest overview
+## UpstreamPullRequest overview
 
 Added in v2.0.0
 
@@ -72,7 +72,7 @@ export declare const match: {
   }): (self: UpstreamPullRequest<A>) => Z
   <A, Z>(
     self: UpstreamPullRequest<A>,
-    options: { readonly onPulled: (value: A) => Z; readonly onNoUpstream: (activeDownstreamCount: number) => Z }
+    options: { readonly onPulled: (value: A) => Z; readonly onNoUpstream: (activeDownstreamCount: number) => Z },
   ): Z
 }
 ```
@@ -87,7 +87,7 @@ Added in v2.0.0
 
 ```ts
 export interface NoUpstream extends UpstreamPullRequest.Variance<never> {
-  readonly _tag: 'NoUpstream'
+  readonly _tag: "NoUpstream"
   readonly activeDownstreamCount: number
 }
 ```
@@ -100,7 +100,7 @@ Added in v2.0.0
 
 ```ts
 export interface Pulled<A> extends UpstreamPullRequest.Variance<A> {
-  readonly _tag: 'Pulled'
+  readonly _tag: "Pulled"
   readonly value: A
 }
 ```

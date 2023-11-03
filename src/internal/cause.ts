@@ -1176,7 +1176,7 @@ const defaultRenderError = (error: unknown): PrettyError => {
       prettyErrorMessage(error),
       error.stack?.split("\n").filter((_) => _.match(/at (.*)/)).join("\n"),
       span
-    )
+    );
   }
   return new PrettyError(prettyErrorMessage(error), void 0, span)
 }

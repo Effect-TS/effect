@@ -1,6 +1,6 @@
 ---
 title: Equivalence.ts
-nav_order: 34
+nav_order: 28
 parent: Modules
 ---
 
@@ -81,7 +81,7 @@ by applying each `Equivalence` to the corresponding property of the struct.
 
 ```ts
 export declare const struct: <R extends Record<string, Equivalence<any>>>(
-  fields: R
+  fields: R,
 ) => Equivalence<{ readonly [K in keyof R]: [R[K]] extends [Equivalence<infer A>] ? A : never }>
 ```
 
@@ -176,7 +176,7 @@ Added in v2.0.0
 ```ts
 export declare const productMany: <A>(
   self: Equivalence<A>,
-  collection: Iterable<Equivalence<A>>
+  collection: Iterable<Equivalence<A>>,
 ) => Equivalence<readonly [A, ...A[]]>
 ```
 
@@ -290,7 +290,7 @@ Added in v2.0.0
 
 ```ts
 export interface EquivalenceTypeLambda extends TypeLambda {
-  readonly type: Equivalence<this['Target']>
+  readonly type: Equivalence<this["Target"]>
 }
 ```
 

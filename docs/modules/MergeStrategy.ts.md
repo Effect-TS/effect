@@ -1,10 +1,10 @@
 ---
-title: ChannelMergeStrategy.ts
-nav_order: 11
+title: MergeStrategy.ts
+nav_order: 55
 parent: Modules
 ---
 
-## ChannelMergeStrategy overview
+## MergeStrategy overview
 
 Added in v2.0.0
 
@@ -81,7 +81,7 @@ Added in v2.0.0
 
 ```ts
 export interface BackPressure extends MergeStrategy.Proto {
-  readonly _tag: 'BackPressure'
+  readonly _tag: "BackPressure"
 }
 ```
 
@@ -93,7 +93,7 @@ Added in v2.0.0
 
 ```ts
 export interface BufferSliding extends MergeStrategy.Proto {
-  readonly _tag: 'BufferSliding'
+  readonly _tag: "BufferSliding"
 }
 ```
 

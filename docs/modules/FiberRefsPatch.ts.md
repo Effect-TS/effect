@@ -1,6 +1,6 @@
 ---
 title: FiberRefsPatch.ts
-nav_order: 41
+nav_order: 35
 parent: Modules
 ---
 
@@ -96,7 +96,7 @@ Added in v2.0.0
 
 ```ts
 export interface Add {
-  readonly _tag: 'Add'
+  readonly _tag: "Add"
   readonly fiberRef: FiberRef.FiberRef<unknown>
   readonly value: unknown
 }
@@ -110,7 +110,7 @@ Added in v2.0.0
 
 ```ts
 export interface AndThen {
-  readonly _tag: 'AndThen'
+  readonly _tag: "AndThen"
   readonly first: FiberRefsPatch
   readonly second: FiberRefsPatch
 }
@@ -124,7 +124,7 @@ Added in v2.0.0
 
 ```ts
 export interface Empty {
-  readonly _tag: 'Empty'
+  readonly _tag: "Empty"
 }
 ```
 
@@ -151,7 +151,7 @@ Added in v2.0.0
 
 ```ts
 export interface Remove {
-  readonly _tag: 'Remove'
+  readonly _tag: "Remove"
   readonly fiberRef: FiberRef.FiberRef<unknown>
 }
 ```
@@ -164,7 +164,7 @@ Added in v2.0.0
 
 ```ts
 export interface Update {
-  readonly _tag: 'Update'
+  readonly _tag: "Update"
   readonly fiberRef: FiberRef.FiberRef<unknown>
   readonly patch: unknown
 }

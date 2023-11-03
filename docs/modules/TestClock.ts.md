@@ -1,6 +1,6 @@
 ---
 title: TestClock.ts
-nav_order: 125
+nav_order: 123
 parent: Modules
 ---
 
@@ -72,11 +72,11 @@ run in order.
 For example, here is how we can test `Effect.timeout` using `TestClock`:
 
 ```ts
-import * as Duration from 'effect/Duration'
-import * as Effect from 'effect/Effect'
-import * as Fiber from 'effect/Fiber'
-import * as TestClock from 'effect/TestClock'
-import * as Option from 'effect/Option'
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import * as TestClock from "effect/TestClock"
+import * as Option from "effect/Option"
 
 Effect.gen(function* () {
   const fiber = yield* pipe(Effect.sleep(Duration.minutes(5)), Effect.timeout(Duration.minutes(1)), Effect.fork)
@@ -128,7 +128,7 @@ Added in v2.0.0
 
 ```ts
 export declare const adjustWith: ((
-  duration: Duration.DurationInput
+  duration: Duration.DurationInput,
 ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
   (<R, E, A>(effect: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, A>)
 ```
@@ -175,7 +175,7 @@ Added in v2.0.0
 ```ts
 export declare const makeData: (
   instant: number,
-  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>,
 ) => Data
 ```
 
@@ -257,7 +257,7 @@ specified workflow.
 
 ```ts
 export declare const testClockWith: <R, E, A>(
-  f: (testClock: TestClock) => Effect.Effect<R, E, A>
+  f: (testClock: TestClock) => Effect.Effect<R, E, A>,
 ) => Effect.Effect<R, E, A>
 ```
 

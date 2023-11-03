@@ -1,6 +1,6 @@
 ---
 title: ConfigProviderPathPatch.ts
-nav_order: 20
+nav_order: 14
 parent: Modules
 ---
 
@@ -100,7 +100,7 @@ Added in v2.0.0
 
 ```ts
 export interface AndThen {
-  readonly _tag: 'AndThen'
+  readonly _tag: "AndThen"
   readonly first: PathPatch
   readonly second: PathPatch
 }
@@ -114,7 +114,7 @@ Added in v2.0.0
 
 ```ts
 export interface Empty {
-  readonly _tag: 'Empty'
+  readonly _tag: "Empty"
 }
 ```
 
@@ -126,7 +126,7 @@ Added in v2.0.0
 
 ```ts
 export interface MapName {
-  readonly _tag: 'MapName'
+  readonly _tag: "MapName"
   readonly f: (string: string) => string
 }
 ```
@@ -139,7 +139,7 @@ Added in v2.0.0
 
 ```ts
 export interface Nested {
-  readonly _tag: 'Nested'
+  readonly _tag: "Nested"
   readonly name: string
 }
 ```
@@ -165,7 +165,7 @@ Added in v2.0.0
 
 ```ts
 export interface Unnested {
-  readonly _tag: 'Unnested'
+  readonly _tag: "Unnested"
   readonly name: string
 }
 ```

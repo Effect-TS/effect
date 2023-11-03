@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 50
+nav_order: 44
 parent: Modules
 ---
 
@@ -13,149 +13,149 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [exports](#exports)
-  - [From "effect/BigDecimal"](#from-effectbigdecimal)
-  - [From "effect/BigInt"](#from-effectbigint)
-  - [From "effect/Boolean"](#from-effectboolean)
-  - [From "effect/Brand"](#from-effectbrand)
-  - [From "effect/Cache"](#from-effectcache)
-  - [From "effect/Cause"](#from-effectcause)
-  - [From "effect/Channel"](#from-effectchannel)
-  - [From "effect/ChannelChildExecutorDecision"](#from-effectchannelchildexecutordecision)
-  - [From "effect/ChannelMergeDecision"](#from-effectchannelmergedecision)
-  - [From "effect/ChannelMergeState"](#from-effectchannelmergestate)
-  - [From "effect/ChannelMergeStrategy"](#from-effectchannelmergestrategy)
-  - [From "effect/ChannelSingleProducerAsyncInput"](#from-effectchannelsingleproducerasyncinput)
-  - [From "effect/ChannelUpstreamPullRequest"](#from-effectchannelupstreampullrequest)
-  - [From "effect/ChannelUpstreamPullStrategy"](#from-effectchannelupstreampullstrategy)
-  - [From "effect/Chunk"](#from-effectchunk)
-  - [From "effect/Clock"](#from-effectclock)
-  - [From "effect/Config"](#from-effectconfig)
-  - [From "effect/ConfigError"](#from-effectconfigerror)
-  - [From "effect/ConfigProvider"](#from-effectconfigprovider)
-  - [From "effect/ConfigProviderPathPatch"](#from-effectconfigproviderpathpatch)
-  - [From "effect/ConfigSecret"](#from-effectconfigsecret)
-  - [From "effect/Console"](#from-effectconsole)
-  - [From "effect/Context"](#from-effectcontext)
-  - [From "effect/Data"](#from-effectdata)
-  - [From "effect/DefaultServices"](#from-effectdefaultservices)
-  - [From "effect/Deferred"](#from-effectdeferred)
-  - [From "effect/Differ"](#from-effectdiffer)
-  - [From "effect/Duration"](#from-effectduration)
-  - [From "effect/Effect"](#from-effecteffect)
-  - [From "effect/Effectable"](#from-effecteffectable)
-  - [From "effect/Either"](#from-effecteither)
-  - [From "effect/Encoding"](#from-effectencoding)
-  - [From "effect/Equal"](#from-effectequal)
-  - [From "effect/Equivalence"](#from-effectequivalence)
-  - [From "effect/ExecutionStrategy"](#from-effectexecutionstrategy)
-  - [From "effect/Exit"](#from-effectexit)
-  - [From "effect/Fiber"](#from-effectfiber)
-  - [From "effect/FiberId"](#from-effectfiberid)
-  - [From "effect/FiberRef"](#from-effectfiberref)
-  - [From "effect/FiberRefs"](#from-effectfiberrefs)
-  - [From "effect/FiberRefsPatch"](#from-effectfiberrefspatch)
-  - [From "effect/FiberStatus"](#from-effectfiberstatus)
-  - [From "effect/Function"](#from-effectfunction)
-  - [From "effect/GlobalValue"](#from-effectglobalvalue)
-  - [From "effect/GroupBy"](#from-effectgroupby)
-  - [From "effect/HKT"](#from-effecthkt)
-  - [From "effect/Hash"](#from-effecthash)
-  - [From "effect/HashMap"](#from-effecthashmap)
-  - [From "effect/HashSet"](#from-effecthashset)
-  - [From "effect/Inspectable"](#from-effectinspectable)
-  - [From "effect/KeyedPool"](#from-effectkeyedpool)
-  - [From "effect/Layer"](#from-effectlayer)
-  - [From "effect/List"](#from-effectlist)
-  - [From "effect/LogLevel"](#from-effectloglevel)
-  - [From "effect/LogSpan"](#from-effectlogspan)
-  - [From "effect/Logger"](#from-effectlogger)
-  - [From "effect/Match"](#from-effectmatch)
-  - [From "effect/Metric"](#from-effectmetric)
-  - [From "effect/MetricBoundaries"](#from-effectmetricboundaries)
-  - [From "effect/MetricHook"](#from-effectmetrichook)
-  - [From "effect/MetricKey"](#from-effectmetrickey)
-  - [From "effect/MetricKeyType"](#from-effectmetrickeytype)
-  - [From "effect/MetricLabel"](#from-effectmetriclabel)
-  - [From "effect/MetricPair"](#from-effectmetricpair)
-  - [From "effect/MetricPolling"](#from-effectmetricpolling)
-  - [From "effect/MetricRegistry"](#from-effectmetricregistry)
-  - [From "effect/MetricState"](#from-effectmetricstate)
-  - [From "effect/MutableHashMap"](#from-effectmutablehashmap)
-  - [From "effect/MutableHashSet"](#from-effectmutablehashset)
-  - [From "effect/MutableList"](#from-effectmutablelist)
-  - [From "effect/MutableQueue"](#from-effectmutablequeue)
-  - [From "effect/MutableRef"](#from-effectmutableref)
-  - [From "effect/NonEmptyIterable"](#from-effectnonemptyiterable)
-  - [From "effect/Number"](#from-effectnumber)
-  - [From "effect/Option"](#from-effectoption)
-  - [From "effect/Order"](#from-effectorder)
-  - [From "effect/Ordering"](#from-effectordering)
-  - [From "effect/Pipeable"](#from-effectpipeable)
-  - [From "effect/Pool"](#from-effectpool)
-  - [From "effect/Predicate"](#from-effectpredicate)
-  - [From "effect/PubSub"](#from-effectpubsub)
-  - [From "effect/Queue"](#from-effectqueue)
-  - [From "effect/Random"](#from-effectrandom)
-  - [From "effect/ReadonlyArray"](#from-effectreadonlyarray)
-  - [From "effect/ReadonlyRecord"](#from-effectreadonlyrecord)
-  - [From "effect/RedBlackTree"](#from-effectredblacktree)
-  - [From "effect/Ref"](#from-effectref)
-  - [From "effect/Reloadable"](#from-effectreloadable)
-  - [From "effect/Request"](#from-effectrequest)
-  - [From "effect/RequestBlock"](#from-effectrequestblock)
-  - [From "effect/RequestResolver"](#from-effectrequestresolver)
-  - [From "effect/Resource"](#from-effectresource)
-  - [From "effect/Runtime"](#from-effectruntime)
-  - [From "effect/RuntimeFlags"](#from-effectruntimeflags)
-  - [From "effect/RuntimeFlagsPatch"](#from-effectruntimeflagspatch)
-  - [From "effect/STM"](#from-effectstm)
-  - [From "effect/Schedule"](#from-effectschedule)
-  - [From "effect/ScheduleDecision"](#from-effectscheduledecision)
-  - [From "effect/ScheduleInterval"](#from-effectscheduleinterval)
-  - [From "effect/ScheduleIntervals"](#from-effectscheduleintervals)
-  - [From "effect/Scheduler"](#from-effectscheduler)
-  - [From "effect/Scope"](#from-effectscope)
-  - [From "effect/ScopedCache"](#from-effectscopedcache)
-  - [From "effect/ScopedRef"](#from-effectscopedref)
-  - [From "effect/Sink"](#from-effectsink)
-  - [From "effect/SortedMap"](#from-effectsortedmap)
-  - [From "effect/SortedSet"](#from-effectsortedset)
-  - [From "effect/Stream"](#from-effectstream)
-  - [From "effect/StreamEmit"](#from-effectstreamemit)
-  - [From "effect/StreamHaltStrategy"](#from-effectstreamhaltstrategy)
-  - [From "effect/Streamable"](#from-effectstreamable)
-  - [From "effect/String"](#from-effectstring)
-  - [From "effect/Struct"](#from-effectstruct)
-  - [From "effect/SubscriptionRef"](#from-effectsubscriptionref)
-  - [From "effect/Supervisor"](#from-effectsupervisor)
-  - [From "effect/Symbol"](#from-effectsymbol)
-  - [From "effect/SynchronizedRef"](#from-effectsynchronizedref)
-  - [From "effect/TArray"](#from-effecttarray)
-  - [From "effect/TDeferred"](#from-effecttdeferred)
-  - [From "effect/TMap"](#from-effecttmap)
-  - [From "effect/TPriorityQueue"](#from-effecttpriorityqueue)
-  - [From "effect/TPubSub"](#from-effecttpubsub)
-  - [From "effect/TQueue"](#from-effecttqueue)
-  - [From "effect/TRandom"](#from-effecttrandom)
-  - [From "effect/TReentrantLock"](#from-effecttreentrantlock)
-  - [From "effect/TRef"](#from-effecttref)
-  - [From "effect/TSemaphore"](#from-effecttsemaphore)
-  - [From "effect/TSet"](#from-effecttset)
-  - [From "effect/Take"](#from-effecttake)
-  - [From "effect/TestAnnotation"](#from-effecttestannotation)
-  - [From "effect/TestAnnotationMap"](#from-effecttestannotationmap)
-  - [From "effect/TestAnnotations"](#from-effecttestannotations)
-  - [From "effect/TestClock"](#from-effecttestclock)
-  - [From "effect/TestConfig"](#from-effecttestconfig)
-  - [From "effect/TestContext"](#from-effecttestcontext)
-  - [From "effect/TestLive"](#from-effecttestlive)
-  - [From "effect/TestServices"](#from-effecttestservices)
-  - [From "effect/TestSized"](#from-effecttestsized)
-  - [From "effect/Tracer"](#from-effecttracer)
-  - [From "effect/Tuple"](#from-effecttuple)
-  - [From "effect/Types"](#from-effecttypes)
-  - [From "effect/Unify"](#from-effectunify)
-  - [From "effect/Utils"](#from-effectutils)
+  - [From "./BigDecimal.js"](#from-bigdecimaljs)
+  - [From "./BigInt.js"](#from-bigintjs)
+  - [From "./Boolean.js"](#from-booleanjs)
+  - [From "./Brand.js"](#from-brandjs)
+  - [From "./Cache.js"](#from-cachejs)
+  - [From "./Cause.js"](#from-causejs)
+  - [From "./Channel.js"](#from-channeljs)
+  - [From "./ChildExecutorDecision.js"](#from-childexecutordecisionjs)
+  - [From "./Chunk.js"](#from-chunkjs)
+  - [From "./Clock.js"](#from-clockjs)
+  - [From "./Config.js"](#from-configjs)
+  - [From "./ConfigError.js"](#from-configerrorjs)
+  - [From "./ConfigProvider.js"](#from-configproviderjs)
+  - [From "./ConfigProviderPathPatch.js"](#from-configproviderpathpatchjs)
+  - [From "./ConfigSecret.js"](#from-configsecretjs)
+  - [From "./Console.js"](#from-consolejs)
+  - [From "./Context.js"](#from-contextjs)
+  - [From "./Data.js"](#from-datajs)
+  - [From "./DefaultServices.js"](#from-defaultservicesjs)
+  - [From "./Deferred.js"](#from-deferredjs)
+  - [From "./Differ.js"](#from-differjs)
+  - [From "./Duration.js"](#from-durationjs)
+  - [From "./Effect.js"](#from-effectjs)
+  - [From "./Effectable.js"](#from-effectablejs)
+  - [From "./Either.js"](#from-eitherjs)
+  - [From "./Encoding.js"](#from-encodingjs)
+  - [From "./Equal.js"](#from-equaljs)
+  - [From "./Equivalence.js"](#from-equivalencejs)
+  - [From "./ExecutionStrategy.js"](#from-executionstrategyjs)
+  - [From "./Exit.js"](#from-exitjs)
+  - [From "./Fiber.js"](#from-fiberjs)
+  - [From "./FiberId.js"](#from-fiberidjs)
+  - [From "./FiberRef.js"](#from-fiberrefjs)
+  - [From "./FiberRefs.js"](#from-fiberrefsjs)
+  - [From "./FiberRefsPatch.js"](#from-fiberrefspatchjs)
+  - [From "./FiberStatus.js"](#from-fiberstatusjs)
+  - [From "./Function.js"](#from-functionjs)
+  - [From "./GlobalValue.js"](#from-globalvaluejs)
+  - [From "./GroupBy.js"](#from-groupbyjs)
+  - [From "./HKT.js"](#from-hktjs)
+  - [From "./Hash.js"](#from-hashjs)
+  - [From "./HashMap.js"](#from-hashmapjs)
+  - [From "./HashSet.js"](#from-hashsetjs)
+  - [From "./Inspectable.js"](#from-inspectablejs)
+  - [From "./KeyedPool.js"](#from-keyedpooljs)
+  - [From "./Layer.js"](#from-layerjs)
+  - [From "./List.js"](#from-listjs)
+  - [From "./LogLevel.js"](#from-logleveljs)
+  - [From "./LogSpan.js"](#from-logspanjs)
+  - [From "./Logger.js"](#from-loggerjs)
+  - [From "./Match.js"](#from-matchjs)
+  - [From "./MergeDecision.js"](#from-mergedecisionjs)
+  - [From "./MergeState.js"](#from-mergestatejs)
+  - [From "./MergeStrategy.js"](#from-mergestrategyjs)
+  - [From "./Metric.js"](#from-metricjs)
+  - [From "./MetricBoundaries.js"](#from-metricboundariesjs)
+  - [From "./MetricHook.js"](#from-metrichookjs)
+  - [From "./MetricKey.js"](#from-metrickeyjs)
+  - [From "./MetricKeyType.js"](#from-metrickeytypejs)
+  - [From "./MetricLabel.js"](#from-metriclabeljs)
+  - [From "./MetricPair.js"](#from-metricpairjs)
+  - [From "./MetricPolling.js"](#from-metricpollingjs)
+  - [From "./MetricRegistry.js"](#from-metricregistryjs)
+  - [From "./MetricState.js"](#from-metricstatejs)
+  - [From "./MutableHashMap.js"](#from-mutablehashmapjs)
+  - [From "./MutableHashSet.js"](#from-mutablehashsetjs)
+  - [From "./MutableList.js"](#from-mutablelistjs)
+  - [From "./MutableQueue.js"](#from-mutablequeuejs)
+  - [From "./MutableRef.js"](#from-mutablerefjs)
+  - [From "./NonEmptyIterable.js"](#from-nonemptyiterablejs)
+  - [From "./Number.js"](#from-numberjs)
+  - [From "./Option.js"](#from-optionjs)
+  - [From "./Order.js"](#from-orderjs)
+  - [From "./Ordering.js"](#from-orderingjs)
+  - [From "./Pipeable.js"](#from-pipeablejs)
+  - [From "./Pool.js"](#from-pooljs)
+  - [From "./Predicate.js"](#from-predicatejs)
+  - [From "./PubSub.js"](#from-pubsubjs)
+  - [From "./Queue.js"](#from-queuejs)
+  - [From "./Random.js"](#from-randomjs)
+  - [From "./ReadonlyArray.js"](#from-readonlyarrayjs)
+  - [From "./ReadonlyRecord.js"](#from-readonlyrecordjs)
+  - [From "./RedBlackTree.js"](#from-redblacktreejs)
+  - [From "./Ref.js"](#from-refjs)
+  - [From "./Reloadable.js"](#from-reloadablejs)
+  - [From "./Request.js"](#from-requestjs)
+  - [From "./RequestBlock.js"](#from-requestblockjs)
+  - [From "./RequestResolver.js"](#from-requestresolverjs)
+  - [From "./Resource.js"](#from-resourcejs)
+  - [From "./Runtime.js"](#from-runtimejs)
+  - [From "./RuntimeFlags.js"](#from-runtimeflagsjs)
+  - [From "./RuntimeFlagsPatch.js"](#from-runtimeflagspatchjs)
+  - [From "./STM.js"](#from-stmjs)
+  - [From "./Schedule.js"](#from-schedulejs)
+  - [From "./ScheduleDecision.js"](#from-scheduledecisionjs)
+  - [From "./ScheduleInterval.js"](#from-scheduleintervaljs)
+  - [From "./ScheduleIntervals.js"](#from-scheduleintervalsjs)
+  - [From "./Scheduler.js"](#from-schedulerjs)
+  - [From "./Scope.js"](#from-scopejs)
+  - [From "./ScopedCache.js"](#from-scopedcachejs)
+  - [From "./ScopedRef.js"](#from-scopedrefjs)
+  - [From "./SingleProducerAsyncInput.js"](#from-singleproducerasyncinputjs)
+  - [From "./Sink.js"](#from-sinkjs)
+  - [From "./SortedMap.js"](#from-sortedmapjs)
+  - [From "./SortedSet.js"](#from-sortedsetjs)
+  - [From "./Stream.js"](#from-streamjs)
+  - [From "./StreamEmit.js"](#from-streamemitjs)
+  - [From "./StreamHaltStrategy.js"](#from-streamhaltstrategyjs)
+  - [From "./Streamable.js"](#from-streamablejs)
+  - [From "./String.js"](#from-stringjs)
+  - [From "./Struct.js"](#from-structjs)
+  - [From "./SubscriptionRef.js"](#from-subscriptionrefjs)
+  - [From "./Supervisor.js"](#from-supervisorjs)
+  - [From "./Symbol.js"](#from-symboljs)
+  - [From "./SynchronizedRef.js"](#from-synchronizedrefjs)
+  - [From "./TArray.js"](#from-tarrayjs)
+  - [From "./TDeferred.js"](#from-tdeferredjs)
+  - [From "./TMap.js"](#from-tmapjs)
+  - [From "./TPriorityQueue.js"](#from-tpriorityqueuejs)
+  - [From "./TPubSub.js"](#from-tpubsubjs)
+  - [From "./TQueue.js"](#from-tqueuejs)
+  - [From "./TRandom.js"](#from-trandomjs)
+  - [From "./TReentrantLock.js"](#from-treentrantlockjs)
+  - [From "./TRef.js"](#from-trefjs)
+  - [From "./TSemaphore.js"](#from-tsemaphorejs)
+  - [From "./TSet.js"](#from-tsetjs)
+  - [From "./Take.js"](#from-takejs)
+  - [From "./TestAnnotation.js"](#from-testannotationjs)
+  - [From "./TestAnnotationMap.js"](#from-testannotationmapjs)
+  - [From "./TestAnnotations.js"](#from-testannotationsjs)
+  - [From "./TestClock.js"](#from-testclockjs)
+  - [From "./TestConfig.js"](#from-testconfigjs)
+  - [From "./TestContext.js"](#from-testcontextjs)
+  - [From "./TestLive.js"](#from-testlivejs)
+  - [From "./TestServices.js"](#from-testservicesjs)
+  - [From "./TestSized.js"](#from-testsizedjs)
+  - [From "./Tracer.js"](#from-tracerjs)
+  - [From "./Tuple.js"](#from-tuplejs)
+  - [From "./Types.js"](#from-typesjs)
+  - [From "./Unify.js"](#from-unifyjs)
+  - [From "./UpstreamPullRequest.js"](#from-upstreampullrequestjs)
+  - [From "./UpstreamPullStrategy.js"](#from-upstreampullstrategyjs)
+  - [From "./Utils.js"](#from-utilsjs)
 - [utils](#utils)
   - [absurd](#absurd)
   - [flow](#flow)
@@ -168,7 +168,7 @@ Added in v2.0.0
 
 # exports
 
-## From "effect/BigDecimal"
+## From "./BigDecimal.js"
 
 This module provides utility functions and type class instances for working with the `BigDecimal` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for `Equivalence` and `Order`.
@@ -185,12 +185,12 @@ may be unexpected.
 **Signature**
 
 ```ts
-export * as BigDecimal from 'effect/BigDecimal'
+export * as BigDecimal from "./BigDecimal.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/BigInt"
+## From "./BigInt.js"
 
 This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
@@ -199,12 +199,12 @@ It includes functions for basic arithmetic operations, as well as type class ins
 **Signature**
 
 ```ts
-export * as BigInt from 'effect/BigInt'
+export * as BigInt from "./BigInt.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Boolean"
+## From "./Boolean.js"
 
 This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
 It includes functions for basic boolean operations, as well as type class instances for
@@ -213,12 +213,12 @@ It includes functions for basic boolean operations, as well as type class instan
 **Signature**
 
 ```ts
-export * as Boolean from 'effect/Boolean'
+export * as Boolean from "./Boolean.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Brand"
+## From "./Brand.js"
 
 This module provides types and utility functions to create and work with branded types,
 which are TypeScript types with an added type tag to prevent accidental usage of a value in the wrong context.
@@ -238,24 +238,24 @@ If the input data fails the validation, a `BrandErrors` is returned, which provi
 **Signature**
 
 ```ts
-export * as Brand from 'effect/Brand'
+export * as Brand from "./Brand.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Cache"
+## From "./Cache.js"
 
-Re-exports all named exports from the "effect/Cache" module as `Cache`.
+Re-exports all named exports from the "./Cache.js" module as `Cache`.
 
 **Signature**
 
 ```ts
-export * as Cache from 'effect/Cache'
+export * as Cache from "./Cache.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Cause"
+## From "./Cause.js"
 
 The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
 work with any error type that we want. However, there is a lot of information
@@ -280,204 +280,132 @@ occurring within our codebase.
 **Signature**
 
 ```ts
-export * as Cause from 'effect/Cause'
+export * as Cause from "./Cause.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Channel"
+## From "./Channel.js"
 
-Re-exports all named exports from the "effect/Channel" module as `Channel`.
+Re-exports all named exports from the "./Channel.js" module as `Channel`.
 
 **Signature**
 
 ```ts
-export * as Channel from 'effect/Channel'
+export * as Channel from "./Channel.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ChannelChildExecutorDecision"
+## From "./ChildExecutorDecision.js"
 
-Re-exports all named exports from the "effect/ChannelChildExecutorDecision" module as `ChannelChildExecutorDecision`.
+Re-exports all named exports from the "./ChildExecutorDecision.js" module as `ChildExecutorDecision`.
 
 **Signature**
 
 ```ts
-export * as ChannelChildExecutorDecision from 'effect/ChannelChildExecutorDecision'
+export * as ChildExecutorDecision from "./ChildExecutorDecision.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ChannelMergeDecision"
+## From "./Chunk.js"
 
-Re-exports all named exports from the "effect/ChannelMergeDecision" module as `ChannelMergeDecision`.
+Re-exports all named exports from the "./Chunk.js" module as `Chunk`.
 
 **Signature**
 
 ```ts
-export * as ChannelMergeDecision from 'effect/ChannelMergeDecision'
+export * as Chunk from "./Chunk.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ChannelMergeState"
+## From "./Clock.js"
 
-Re-exports all named exports from the "effect/ChannelMergeState" module as `ChannelMergeState`.
+Re-exports all named exports from the "./Clock.js" module as `Clock`.
 
 **Signature**
 
 ```ts
-export * as ChannelMergeState from 'effect/ChannelMergeState'
+export * as Clock from "./Clock.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ChannelMergeStrategy"
+## From "./Config.js"
 
-Re-exports all named exports from the "effect/ChannelMergeStrategy" module as `ChannelMergeStrategy`.
+Re-exports all named exports from the "./Config.js" module as `Config`.
 
 **Signature**
 
 ```ts
-export * as ChannelMergeStrategy from 'effect/ChannelMergeStrategy'
+export * as Config from "./Config.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ChannelSingleProducerAsyncInput"
+## From "./ConfigError.js"
 
-Re-exports all named exports from the "effect/ChannelSingleProducerAsyncInput" module as `ChannelSingleProducerAsyncInput`.
+Re-exports all named exports from the "./ConfigError.js" module as `ConfigError`.
 
 **Signature**
 
 ```ts
-export * as ChannelSingleProducerAsyncInput from 'effect/ChannelSingleProducerAsyncInput'
+export * as ConfigError from "./ConfigError.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ChannelUpstreamPullRequest"
+## From "./ConfigProvider.js"
 
-Re-exports all named exports from the "effect/ChannelUpstreamPullRequest" module as `ChannelUpstreamPullRequest`.
+Re-exports all named exports from the "./ConfigProvider.js" module as `ConfigProvider`.
 
 **Signature**
 
 ```ts
-export * as ChannelUpstreamPullRequest from 'effect/ChannelUpstreamPullRequest'
+export * as ConfigProvider from "./ConfigProvider.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ChannelUpstreamPullStrategy"
+## From "./ConfigProviderPathPatch.js"
 
-Re-exports all named exports from the "effect/ChannelUpstreamPullStrategy" module as `ChannelUpstreamPullStrategy`.
+Re-exports all named exports from the "./ConfigProviderPathPatch.js" module as `ConfigProviderPathPatch`.
 
 **Signature**
 
 ```ts
-export * as ChannelUpstreamPullStrategy from 'effect/ChannelUpstreamPullStrategy'
+export * as ConfigProviderPathPatch from "./ConfigProviderPathPatch.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Chunk"
+## From "./ConfigSecret.js"
 
-Re-exports all named exports from the "effect/Chunk" module as `Chunk`.
+Re-exports all named exports from the "./ConfigSecret.js" module as `ConfigSecret`.
 
 **Signature**
 
 ```ts
-export * as Chunk from 'effect/Chunk'
+export * as ConfigSecret from "./ConfigSecret.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Clock"
+## From "./Console.js"
 
-Re-exports all named exports from the "effect/Clock" module as `Clock`.
+Re-exports all named exports from the "./Console.js" module as `Console`.
 
 **Signature**
 
 ```ts
-export * as Clock from 'effect/Clock'
+export * as Console from "./Console.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Config"
-
-Re-exports all named exports from the "effect/Config" module as `Config`.
-
-**Signature**
-
-```ts
-export * as Config from 'effect/Config'
-```
-
-Added in v2.0.0
-
-## From "effect/ConfigError"
-
-Re-exports all named exports from the "effect/ConfigError" module as `ConfigError`.
-
-**Signature**
-
-```ts
-export * as ConfigError from 'effect/ConfigError'
-```
-
-Added in v2.0.0
-
-## From "effect/ConfigProvider"
-
-Re-exports all named exports from the "effect/ConfigProvider" module as `ConfigProvider`.
-
-**Signature**
-
-```ts
-export * as ConfigProvider from 'effect/ConfigProvider'
-```
-
-Added in v2.0.0
-
-## From "effect/ConfigProviderPathPatch"
-
-Re-exports all named exports from the "effect/ConfigProviderPathPatch" module as `ConfigProviderPathPatch`.
-
-**Signature**
-
-```ts
-export * as ConfigProviderPathPatch from 'effect/ConfigProviderPathPatch'
-```
-
-Added in v2.0.0
-
-## From "effect/ConfigSecret"
-
-Re-exports all named exports from the "effect/ConfigSecret" module as `ConfigSecret`.
-
-**Signature**
-
-```ts
-export * as ConfigSecret from 'effect/ConfigSecret'
-```
-
-Added in v2.0.0
-
-## From "effect/Console"
-
-Re-exports all named exports from the "effect/Console" module as `Console`.
-
-**Signature**
-
-```ts
-export * as Console from 'effect/Console'
-```
-
-Added in v2.0.0
-
-## From "effect/Context"
+## From "./Context.js"
 
 This module provides a data structure called `Context` that can be used for dependency injection in effectful
 programs. It is essentially a table mapping `Tag`s to their implementations (called `Service`s), and can be used to
@@ -488,108 +416,108 @@ query the contents of a `Context`, as well as a number of utility types for work
 **Signature**
 
 ```ts
-export * as Context from 'effect/Context'
+export * as Context from "./Context.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Data"
+## From "./Data.js"
 
-Re-exports all named exports from the "effect/Data" module as `Data`.
+Re-exports all named exports from the "./Data.js" module as `Data`.
 
 **Signature**
 
 ```ts
-export * as Data from 'effect/Data'
+export * as Data from "./Data.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/DefaultServices"
+## From "./DefaultServices.js"
 
-Re-exports all named exports from the "effect/DefaultServices" module as `DefaultServices`.
+Re-exports all named exports from the "./DefaultServices.js" module as `DefaultServices`.
 
 **Signature**
 
 ```ts
-export * as DefaultServices from 'effect/DefaultServices'
+export * as DefaultServices from "./DefaultServices.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Deferred"
+## From "./Deferred.js"
 
-Re-exports all named exports from the "effect/Deferred" module as `Deferred`.
+Re-exports all named exports from the "./Deferred.js" module as `Deferred`.
 
 **Signature**
 
 ```ts
-export * as Deferred from 'effect/Deferred'
+export * as Deferred from "./Deferred.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Differ"
+## From "./Differ.js"
 
-Re-exports all named exports from the "effect/Differ" module as `Differ`.
+Re-exports all named exports from the "./Differ.js" module as `Differ`.
 
 **Signature**
 
 ```ts
-export * as Differ from 'effect/Differ'
+export * as Differ from "./Differ.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Duration"
+## From "./Duration.js"
 
-Re-exports all named exports from the "effect/Duration" module as `Duration`.
+Re-exports all named exports from the "./Duration.js" module as `Duration`.
 
 **Signature**
 
 ```ts
-export * as Duration from 'effect/Duration'
+export * as Duration from "./Duration.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Effect"
+## From "./Effect.js"
 
-Re-exports all named exports from the "effect/Effect" module as `Effect`.
+Re-exports all named exports from the "./Effect.js" module as `Effect`.
 
 **Signature**
 
 ```ts
-export * as Effect from 'effect/Effect'
+export * as Effect from "./Effect.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Effectable"
+## From "./Effectable.js"
 
-Re-exports all named exports from the "effect/Effectable" module as `Effectable`.
+Re-exports all named exports from the "./Effectable.js" module as `Effectable`.
 
 **Signature**
 
 ```ts
-export * as Effectable from 'effect/Effectable'
+export * as Effectable from "./Effectable.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Either"
+## From "./Either.js"
 
-Re-exports all named exports from the "effect/Either" module as `Either`.
+Re-exports all named exports from the "./Either.js" module as `Either`.
 
 **Signature**
 
 ```ts
-export * as Either from 'effect/Either'
+export * as Either from "./Either.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Encoding"
+## From "./Encoding.js"
 
 This module provides encoding & decoding functionality for:
 
@@ -600,24 +528,24 @@ This module provides encoding & decoding functionality for:
 **Signature**
 
 ```ts
-export * as Encoding from 'effect/Encoding'
+export * as Encoding from "./Encoding.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Equal"
+## From "./Equal.js"
 
-Re-exports all named exports from the "effect/Equal" module as `Equal`.
+Re-exports all named exports from the "./Equal.js" module as `Equal`.
 
 **Signature**
 
 ```ts
-export * as Equal from 'effect/Equal'
+export * as Equal from "./Equal.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Equivalence"
+## From "./Equivalence.js"
 
 This module provides an implementation of the `Equivalence` type class, which defines a binary relation
 that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
@@ -626,216 +554,216 @@ These properties are also known in mathematics as an "equivalence relation".
 **Signature**
 
 ```ts
-export * as Equivalence from 'effect/Equivalence'
+export * as Equivalence from "./Equivalence.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ExecutionStrategy"
+## From "./ExecutionStrategy.js"
 
-Re-exports all named exports from the "effect/ExecutionStrategy" module as `ExecutionStrategy`.
+Re-exports all named exports from the "./ExecutionStrategy.js" module as `ExecutionStrategy`.
 
 **Signature**
 
 ```ts
-export * as ExecutionStrategy from 'effect/ExecutionStrategy'
+export * as ExecutionStrategy from "./ExecutionStrategy.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Exit"
+## From "./Exit.js"
 
-Re-exports all named exports from the "effect/Exit" module as `Exit`.
+Re-exports all named exports from the "./Exit.js" module as `Exit`.
 
 **Signature**
 
 ```ts
-export * as Exit from 'effect/Exit'
+export * as Exit from "./Exit.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Fiber"
+## From "./Fiber.js"
 
-Re-exports all named exports from the "effect/Fiber" module as `Fiber`.
+Re-exports all named exports from the "./Fiber.js" module as `Fiber`.
 
 **Signature**
 
 ```ts
-export * as Fiber from 'effect/Fiber'
+export * as Fiber from "./Fiber.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/FiberId"
+## From "./FiberId.js"
 
-Re-exports all named exports from the "effect/FiberId" module as `FiberId`.
+Re-exports all named exports from the "./FiberId.js" module as `FiberId`.
 
 **Signature**
 
 ```ts
-export * as FiberId from 'effect/FiberId'
+export * as FiberId from "./FiberId.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/FiberRef"
+## From "./FiberRef.js"
 
-Re-exports all named exports from the "effect/FiberRef" module as `FiberRef`.
+Re-exports all named exports from the "./FiberRef.js" module as `FiberRef`.
 
 **Signature**
 
 ```ts
-export * as FiberRef from 'effect/FiberRef'
+export * as FiberRef from "./FiberRef.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/FiberRefs"
+## From "./FiberRefs.js"
 
-Re-exports all named exports from the "effect/FiberRefs" module as `FiberRefs`.
+Re-exports all named exports from the "./FiberRefs.js" module as `FiberRefs`.
 
 **Signature**
 
 ```ts
-export * as FiberRefs from 'effect/FiberRefs'
+export * as FiberRefs from "./FiberRefs.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/FiberRefsPatch"
+## From "./FiberRefsPatch.js"
 
-Re-exports all named exports from the "effect/FiberRefsPatch" module as `FiberRefsPatch`.
+Re-exports all named exports from the "./FiberRefsPatch.js" module as `FiberRefsPatch`.
 
 **Signature**
 
 ```ts
-export * as FiberRefsPatch from 'effect/FiberRefsPatch'
+export * as FiberRefsPatch from "./FiberRefsPatch.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/FiberStatus"
+## From "./FiberStatus.js"
 
-Re-exports all named exports from the "effect/FiberStatus" module as `FiberStatus`.
+Re-exports all named exports from the "./FiberStatus.js" module as `FiberStatus`.
 
 **Signature**
 
 ```ts
-export * as FiberStatus from 'effect/FiberStatus'
+export * as FiberStatus from "./FiberStatus.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Function"
+## From "./Function.js"
 
-Re-exports all named exports from the "effect/Function" module as `Function`.
+Re-exports all named exports from the "./Function.js" module as `Function`.
 
 **Signature**
 
 ```ts
-export * as Function from 'effect/Function'
+export * as Function from "./Function.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/GlobalValue"
+## From "./GlobalValue.js"
 
-Re-exports all named exports from the "effect/GlobalValue" module as `GlobalValue`.
+Re-exports all named exports from the "./GlobalValue.js" module as `GlobalValue`.
 
 **Signature**
 
 ```ts
-export * as GlobalValue from 'effect/GlobalValue'
+export * as GlobalValue from "./GlobalValue.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/GroupBy"
+## From "./GroupBy.js"
 
-Re-exports all named exports from the "effect/GroupBy" module as `GroupBy`.
+Re-exports all named exports from the "./GroupBy.js" module as `GroupBy`.
 
 **Signature**
 
 ```ts
-export * as GroupBy from 'effect/GroupBy'
+export * as GroupBy from "./GroupBy.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/HKT"
+## From "./HKT.js"
 
-Re-exports all named exports from the "effect/HKT" module as `HKT`.
+Re-exports all named exports from the "./HKT.js" module as `HKT`.
 
 **Signature**
 
 ```ts
-export * as HKT from 'effect/HKT'
+export * as HKT from "./HKT.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Hash"
+## From "./Hash.js"
 
-Re-exports all named exports from the "effect/Hash" module as `Hash`.
+Re-exports all named exports from the "./Hash.js" module as `Hash`.
 
 **Signature**
 
 ```ts
-export * as Hash from 'effect/Hash'
+export * as Hash from "./Hash.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/HashMap"
+## From "./HashMap.js"
 
-Re-exports all named exports from the "effect/HashMap" module as `HashMap`.
+Re-exports all named exports from the "./HashMap.js" module as `HashMap`.
 
 **Signature**
 
 ```ts
-export * as HashMap from 'effect/HashMap'
+export * as HashMap from "./HashMap.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/HashSet"
+## From "./HashSet.js"
 
-Re-exports all named exports from the "effect/HashSet" module as `HashSet`.
+Re-exports all named exports from the "./HashSet.js" module as `HashSet`.
 
 **Signature**
 
 ```ts
-export * as HashSet from 'effect/HashSet'
+export * as HashSet from "./HashSet.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Inspectable"
+## From "./Inspectable.js"
 
-Re-exports all named exports from the "effect/Inspectable" module as `Inspectable`.
+Re-exports all named exports from the "./Inspectable.js" module as `Inspectable`.
 
 **Signature**
 
 ```ts
-export * as Inspectable from 'effect/Inspectable'
+export * as Inspectable from "./Inspectable.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/KeyedPool"
+## From "./KeyedPool.js"
 
-Re-exports all named exports from the "effect/KeyedPool" module as `KeyedPool`.
+Re-exports all named exports from the "./KeyedPool.js" module as `KeyedPool`.
 
 **Signature**
 
 ```ts
-export * as KeyedPool from 'effect/KeyedPool'
+export * as KeyedPool from "./KeyedPool.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Layer"
+## From "./Layer.js"
 
 A `Layer<RIn, E, ROut>` describes how to build one or more services in your
 application. Services can be injected into effects via
@@ -856,12 +784,12 @@ way in Effect-TS to create services that depend on other services.
 **Signature**
 
 ```ts
-export * as Layer from 'effect/Layer'
+export * as Layer from "./Layer.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/List"
+## From "./List.js"
 
 A data type for immutable linked lists representing ordered collections of elements of type `A`.
 
@@ -875,252 +803,288 @@ This data type is optimal for last-in-first-out (LIFO), stack-like access patter
 **Signature**
 
 ```ts
-export * as List from 'effect/List'
+export * as List from "./List.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/LogLevel"
+## From "./LogLevel.js"
 
-Re-exports all named exports from the "effect/LogLevel" module as `LogLevel`.
+Re-exports all named exports from the "./LogLevel.js" module as `LogLevel`.
 
 **Signature**
 
 ```ts
-export * as LogLevel from 'effect/LogLevel'
+export * as LogLevel from "./LogLevel.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/LogSpan"
+## From "./LogSpan.js"
 
-Re-exports all named exports from the "effect/LogSpan" module as `LogSpan`.
+Re-exports all named exports from the "./LogSpan.js" module as `LogSpan`.
 
 **Signature**
 
 ```ts
-export * as LogSpan from 'effect/LogSpan'
+export * as LogSpan from "./LogSpan.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Logger"
+## From "./Logger.js"
 
-Re-exports all named exports from the "effect/Logger" module as `Logger`.
+Re-exports all named exports from the "./Logger.js" module as `Logger`.
 
 **Signature**
 
 ```ts
-export * as Logger from 'effect/Logger'
+export * as Logger from "./Logger.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Match"
+## From "./Match.js"
 
-Re-exports all named exports from the "effect/Match" module as `Match`.
+Re-exports all named exports from the "./Match.js" module as `Match`.
 
 **Signature**
 
 ```ts
-export * as Match from 'effect/Match'
+export * as Match from "./Match.js"
 ```
 
 Added in v1.0.0
 
-## From "effect/Metric"
+## From "./MergeDecision.js"
 
-Re-exports all named exports from the "effect/Metric" module as `Metric`.
-
-**Signature**
-
-```ts
-export * as Metric from 'effect/Metric'
-```
-
-Added in v2.0.0
-
-## From "effect/MetricBoundaries"
-
-Re-exports all named exports from the "effect/MetricBoundaries" module as `MetricBoundaries`.
+Re-exports all named exports from the "./MergeDecision.js" module as `MergeDecision`.
 
 **Signature**
 
 ```ts
-export * as MetricBoundaries from 'effect/MetricBoundaries'
+export * as MergeDecision from "./MergeDecision.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricHook"
+## From "./MergeState.js"
 
-Re-exports all named exports from the "effect/MetricHook" module as `MetricHook`.
+Re-exports all named exports from the "./MergeState.js" module as `MergeState`.
 
 **Signature**
 
 ```ts
-export * as MetricHook from 'effect/MetricHook'
+export * as MergeState from "./MergeState.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricKey"
+## From "./MergeStrategy.js"
 
-Re-exports all named exports from the "effect/MetricKey" module as `MetricKey`.
+Re-exports all named exports from the "./MergeStrategy.js" module as `MergeStrategy`.
 
 **Signature**
 
 ```ts
-export * as MetricKey from 'effect/MetricKey'
+export * as MergeStrategy from "./MergeStrategy.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricKeyType"
+## From "./Metric.js"
 
-Re-exports all named exports from the "effect/MetricKeyType" module as `MetricKeyType`.
+Re-exports all named exports from the "./Metric.js" module as `Metric`.
 
 **Signature**
 
 ```ts
-export * as MetricKeyType from 'effect/MetricKeyType'
+export * as Metric from "./Metric.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricLabel"
+## From "./MetricBoundaries.js"
 
-Re-exports all named exports from the "effect/MetricLabel" module as `MetricLabel`.
+Re-exports all named exports from the "./MetricBoundaries.js" module as `MetricBoundaries`.
 
 **Signature**
 
 ```ts
-export * as MetricLabel from 'effect/MetricLabel'
+export * as MetricBoundaries from "./MetricBoundaries.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricPair"
+## From "./MetricHook.js"
 
-Re-exports all named exports from the "effect/MetricPair" module as `MetricPair`.
+Re-exports all named exports from the "./MetricHook.js" module as `MetricHook`.
 
 **Signature**
 
 ```ts
-export * as MetricPair from 'effect/MetricPair'
+export * as MetricHook from "./MetricHook.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricPolling"
+## From "./MetricKey.js"
 
-Re-exports all named exports from the "effect/MetricPolling" module as `MetricPolling`.
+Re-exports all named exports from the "./MetricKey.js" module as `MetricKey`.
 
 **Signature**
 
 ```ts
-export * as MetricPolling from 'effect/MetricPolling'
+export * as MetricKey from "./MetricKey.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricRegistry"
+## From "./MetricKeyType.js"
 
-Re-exports all named exports from the "effect/MetricRegistry" module as `MetricRegistry`.
+Re-exports all named exports from the "./MetricKeyType.js" module as `MetricKeyType`.
 
 **Signature**
 
 ```ts
-export * as MetricRegistry from 'effect/MetricRegistry'
+export * as MetricKeyType from "./MetricKeyType.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MetricState"
+## From "./MetricLabel.js"
 
-Re-exports all named exports from the "effect/MetricState" module as `MetricState`.
+Re-exports all named exports from the "./MetricLabel.js" module as `MetricLabel`.
 
 **Signature**
 
 ```ts
-export * as MetricState from 'effect/MetricState'
+export * as MetricLabel from "./MetricLabel.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MutableHashMap"
+## From "./MetricPair.js"
 
-Re-exports all named exports from the "effect/MutableHashMap" module as `MutableHashMap`.
+Re-exports all named exports from the "./MetricPair.js" module as `MetricPair`.
 
 **Signature**
 
 ```ts
-export * as MutableHashMap from 'effect/MutableHashMap'
+export * as MetricPair from "./MetricPair.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MutableHashSet"
+## From "./MetricPolling.js"
 
-Re-exports all named exports from the "effect/MutableHashSet" module as `MutableHashSet`.
+Re-exports all named exports from the "./MetricPolling.js" module as `MetricPolling`.
 
 **Signature**
 
 ```ts
-export * as MutableHashSet from 'effect/MutableHashSet'
+export * as MetricPolling from "./MetricPolling.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MutableList"
+## From "./MetricRegistry.js"
 
-Re-exports all named exports from the "effect/MutableList" module as `MutableList`.
+Re-exports all named exports from the "./MetricRegistry.js" module as `MetricRegistry`.
 
 **Signature**
 
 ```ts
-export * as MutableList from 'effect/MutableList'
+export * as MetricRegistry from "./MetricRegistry.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MutableQueue"
+## From "./MetricState.js"
 
-Re-exports all named exports from the "effect/MutableQueue" module as `MutableQueue`.
+Re-exports all named exports from the "./MetricState.js" module as `MetricState`.
 
 **Signature**
 
 ```ts
-export * as MutableQueue from 'effect/MutableQueue'
+export * as MetricState from "./MetricState.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/MutableRef"
+## From "./MutableHashMap.js"
 
-Re-exports all named exports from the "effect/MutableRef" module as `MutableRef`.
+Re-exports all named exports from the "./MutableHashMap.js" module as `MutableHashMap`.
 
 **Signature**
 
 ```ts
-export * as MutableRef from 'effect/MutableRef'
+export * as MutableHashMap from "./MutableHashMap.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/NonEmptyIterable"
+## From "./MutableHashSet.js"
 
-Re-exports all named exports from the "effect/NonEmptyIterable" module as `NonEmptyIterable`.
+Re-exports all named exports from the "./MutableHashSet.js" module as `MutableHashSet`.
 
 **Signature**
 
 ```ts
-export * as NonEmptyIterable from 'effect/NonEmptyIterable'
+export * as MutableHashSet from "./MutableHashSet.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Number"
+## From "./MutableList.js"
+
+Re-exports all named exports from the "./MutableList.js" module as `MutableList`.
+
+**Signature**
+
+```ts
+export * as MutableList from "./MutableList.js"
+```
+
+Added in v2.0.0
+
+## From "./MutableQueue.js"
+
+Re-exports all named exports from the "./MutableQueue.js" module as `MutableQueue`.
+
+**Signature**
+
+```ts
+export * as MutableQueue from "./MutableQueue.js"
+```
+
+Added in v2.0.0
+
+## From "./MutableRef.js"
+
+Re-exports all named exports from the "./MutableRef.js" module as `MutableRef`.
+
+**Signature**
+
+```ts
+export * as MutableRef from "./MutableRef.js"
+```
+
+Added in v2.0.0
+
+## From "./NonEmptyIterable.js"
+
+Re-exports all named exports from the "./NonEmptyIterable.js" module as `NonEmptyIterable`.
+
+**Signature**
+
+```ts
+export * as NonEmptyIterable from "./NonEmptyIterable.js"
+```
+
+Added in v2.0.0
+
+## From "./Number.js"
 
 This module provides utility functions and type class instances for working with the `number` type in TypeScript.
 It includes functions for basic arithmetic operations, as well as type class instances for
@@ -1129,456 +1093,468 @@ It includes functions for basic arithmetic operations, as well as type class ins
 **Signature**
 
 ```ts
-export * as Number from 'effect/Number'
+export * as Number from "./Number.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Option"
+## From "./Option.js"
 
-Re-exports all named exports from the "effect/Option" module as `Option`.
+Re-exports all named exports from the "./Option.js" module as `Option`.
 
 **Signature**
 
 ```ts
-export * as Option from 'effect/Option'
+export * as Option from "./Option.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Order"
+## From "./Order.js"
 
-Re-exports all named exports from the "effect/Order" module as `Order`.
+Re-exports all named exports from the "./Order.js" module as `Order`.
 
 **Signature**
 
 ```ts
-export * as Order from 'effect/Order'
+export * as Order from "./Order.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Ordering"
+## From "./Ordering.js"
 
-Re-exports all named exports from the "effect/Ordering" module as `Ordering`.
+Re-exports all named exports from the "./Ordering.js" module as `Ordering`.
 
 **Signature**
 
 ```ts
-export * as Ordering from 'effect/Ordering'
+export * as Ordering from "./Ordering.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Pipeable"
+## From "./Pipeable.js"
 
-Re-exports all named exports from the "effect/Pipeable" module as `Pipeable`.
+Re-exports all named exports from the "./Pipeable.js" module as `Pipeable`.
 
 **Signature**
 
 ```ts
-export * as Pipeable from 'effect/Pipeable'
+export * as Pipeable from "./Pipeable.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Pool"
+## From "./Pool.js"
 
-Re-exports all named exports from the "effect/Pool" module as `Pool`.
+Re-exports all named exports from the "./Pool.js" module as `Pool`.
 
 **Signature**
 
 ```ts
-export * as Pool from 'effect/Pool'
+export * as Pool from "./Pool.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Predicate"
+## From "./Predicate.js"
 
-Re-exports all named exports from the "effect/Predicate" module as `Predicate`.
+Re-exports all named exports from the "./Predicate.js" module as `Predicate`.
 
 **Signature**
 
 ```ts
-export * as Predicate from 'effect/Predicate'
+export * as Predicate from "./Predicate.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/PubSub"
+## From "./PubSub.js"
 
-Re-exports all named exports from the "effect/PubSub" module as `PubSub`.
+Re-exports all named exports from the "./PubSub.js" module as `PubSub`.
 
 **Signature**
 
 ```ts
-export * as PubSub from 'effect/PubSub'
+export * as PubSub from "./PubSub.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Queue"
+## From "./Queue.js"
 
-Re-exports all named exports from the "effect/Queue" module as `Queue`.
+Re-exports all named exports from the "./Queue.js" module as `Queue`.
 
 **Signature**
 
 ```ts
-export * as Queue from 'effect/Queue'
+export * as Queue from "./Queue.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Random"
+## From "./Random.js"
 
-Re-exports all named exports from the "effect/Random" module as `Random`.
+Re-exports all named exports from the "./Random.js" module as `Random`.
 
 **Signature**
 
 ```ts
-export * as Random from 'effect/Random'
+export * as Random from "./Random.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ReadonlyArray"
+## From "./ReadonlyArray.js"
 
 This module provides utility functions for working with arrays in TypeScript.
 
 **Signature**
 
 ```ts
-export * as ReadonlyArray from 'effect/ReadonlyArray'
+export * as ReadonlyArray from "./ReadonlyArray.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ReadonlyRecord"
+## From "./ReadonlyRecord.js"
 
 This module provides utility functions for working with records in TypeScript.
 
 **Signature**
 
 ```ts
-export * as ReadonlyRecord from 'effect/ReadonlyRecord'
+export * as ReadonlyRecord from "./ReadonlyRecord.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/RedBlackTree"
+## From "./RedBlackTree.js"
 
-Re-exports all named exports from the "effect/RedBlackTree" module as `RedBlackTree`.
+Re-exports all named exports from the "./RedBlackTree.js" module as `RedBlackTree`.
 
 **Signature**
 
 ```ts
-export * as RedBlackTree from 'effect/RedBlackTree'
+export * as RedBlackTree from "./RedBlackTree.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Ref"
+## From "./Ref.js"
 
-Re-exports all named exports from the "effect/Ref" module as `Ref`.
+Re-exports all named exports from the "./Ref.js" module as `Ref`.
 
 **Signature**
 
 ```ts
-export * as Ref from 'effect/Ref'
+export * as Ref from "./Ref.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Reloadable"
+## From "./Reloadable.js"
 
-Re-exports all named exports from the "effect/Reloadable" module as `Reloadable`.
+Re-exports all named exports from the "./Reloadable.js" module as `Reloadable`.
 
 **Signature**
 
 ```ts
-export * as Reloadable from 'effect/Reloadable'
+export * as Reloadable from "./Reloadable.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Request"
+## From "./Request.js"
 
-Re-exports all named exports from the "effect/Request" module as `Request`.
+Re-exports all named exports from the "./Request.js" module as `Request`.
 
 **Signature**
 
 ```ts
-export * as Request from 'effect/Request'
+export * as Request from "./Request.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/RequestBlock"
+## From "./RequestBlock.js"
 
-Re-exports all named exports from the "effect/RequestBlock" module as `RequestBlock`.
+Re-exports all named exports from the "./RequestBlock.js" module as `RequestBlock`.
 
 **Signature**
 
 ```ts
-export * as RequestBlock from 'effect/RequestBlock'
+export * as RequestBlock from "./RequestBlock.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/RequestResolver"
+## From "./RequestResolver.js"
 
-Re-exports all named exports from the "effect/RequestResolver" module as `RequestResolver`.
+Re-exports all named exports from the "./RequestResolver.js" module as `RequestResolver`.
 
 **Signature**
 
 ```ts
-export * as RequestResolver from 'effect/RequestResolver'
+export * as RequestResolver from "./RequestResolver.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Resource"
+## From "./Resource.js"
 
-Re-exports all named exports from the "effect/Resource" module as `Resource`.
+Re-exports all named exports from the "./Resource.js" module as `Resource`.
 
 **Signature**
 
 ```ts
-export * as Resource from 'effect/Resource'
+export * as Resource from "./Resource.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Runtime"
+## From "./Runtime.js"
 
-Re-exports all named exports from the "effect/Runtime" module as `Runtime`.
+Re-exports all named exports from the "./Runtime.js" module as `Runtime`.
 
 **Signature**
 
 ```ts
-export * as Runtime from 'effect/Runtime'
+export * as Runtime from "./Runtime.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/RuntimeFlags"
+## From "./RuntimeFlags.js"
 
-Re-exports all named exports from the "effect/RuntimeFlags" module as `RuntimeFlags`.
+Re-exports all named exports from the "./RuntimeFlags.js" module as `RuntimeFlags`.
 
 **Signature**
 
 ```ts
-export * as RuntimeFlags from 'effect/RuntimeFlags'
+export * as RuntimeFlags from "./RuntimeFlags.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/RuntimeFlagsPatch"
+## From "./RuntimeFlagsPatch.js"
 
-Re-exports all named exports from the "effect/RuntimeFlagsPatch" module as `RuntimeFlagsPatch`.
+Re-exports all named exports from the "./RuntimeFlagsPatch.js" module as `RuntimeFlagsPatch`.
 
 **Signature**
 
 ```ts
-export * as RuntimeFlagsPatch from 'effect/RuntimeFlagsPatch'
+export * as RuntimeFlagsPatch from "./RuntimeFlagsPatch.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/STM"
+## From "./STM.js"
 
-Re-exports all named exports from the "effect/STM" module as `STM`.
+Re-exports all named exports from the "./STM.js" module as `STM`.
 
 **Signature**
 
 ```ts
-export * as STM from 'effect/STM'
+export * as STM from "./STM.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Schedule"
+## From "./Schedule.js"
 
-Re-exports all named exports from the "effect/Schedule" module as `Schedule`.
+Re-exports all named exports from the "./Schedule.js" module as `Schedule`.
 
 **Signature**
 
 ```ts
-export * as Schedule from 'effect/Schedule'
+export * as Schedule from "./Schedule.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ScheduleDecision"
+## From "./ScheduleDecision.js"
 
-Re-exports all named exports from the "effect/ScheduleDecision" module as `ScheduleDecision`.
+Re-exports all named exports from the "./ScheduleDecision.js" module as `ScheduleDecision`.
 
 **Signature**
 
 ```ts
-export * as ScheduleDecision from 'effect/ScheduleDecision'
+export * as ScheduleDecision from "./ScheduleDecision.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ScheduleInterval"
+## From "./ScheduleInterval.js"
 
-Re-exports all named exports from the "effect/ScheduleInterval" module as `ScheduleInterval`.
+Re-exports all named exports from the "./ScheduleInterval.js" module as `ScheduleInterval`.
 
 **Signature**
 
 ```ts
-export * as ScheduleInterval from 'effect/ScheduleInterval'
+export * as ScheduleInterval from "./ScheduleInterval.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ScheduleIntervals"
+## From "./ScheduleIntervals.js"
 
-Re-exports all named exports from the "effect/ScheduleIntervals" module as `ScheduleIntervals`.
+Re-exports all named exports from the "./ScheduleIntervals.js" module as `ScheduleIntervals`.
 
 **Signature**
 
 ```ts
-export * as ScheduleIntervals from 'effect/ScheduleIntervals'
+export * as ScheduleIntervals from "./ScheduleIntervals.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Scheduler"
+## From "./Scheduler.js"
 
-Re-exports all named exports from the "effect/Scheduler" module as `Scheduler`.
+Re-exports all named exports from the "./Scheduler.js" module as `Scheduler`.
 
 **Signature**
 
 ```ts
-export * as Scheduler from 'effect/Scheduler'
+export * as Scheduler from "./Scheduler.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Scope"
+## From "./Scope.js"
 
-Re-exports all named exports from the "effect/Scope" module as `Scope`.
+Re-exports all named exports from the "./Scope.js" module as `Scope`.
 
 **Signature**
 
 ```ts
-export * as Scope from 'effect/Scope'
+export * as Scope from "./Scope.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ScopedCache"
+## From "./ScopedCache.js"
 
-Re-exports all named exports from the "effect/ScopedCache" module as `ScopedCache`.
+Re-exports all named exports from the "./ScopedCache.js" module as `ScopedCache`.
 
 **Signature**
 
 ```ts
-export * as ScopedCache from 'effect/ScopedCache'
+export * as ScopedCache from "./ScopedCache.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/ScopedRef"
+## From "./ScopedRef.js"
 
-Re-exports all named exports from the "effect/ScopedRef" module as `ScopedRef`.
+Re-exports all named exports from the "./ScopedRef.js" module as `ScopedRef`.
 
 **Signature**
 
 ```ts
-export * as ScopedRef from 'effect/ScopedRef'
+export * as ScopedRef from "./ScopedRef.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Sink"
+## From "./SingleProducerAsyncInput.js"
 
-Re-exports all named exports from the "effect/Sink" module as `Sink`.
+Re-exports all named exports from the "./SingleProducerAsyncInput.js" module as `SingleProducerAsyncInput`.
 
 **Signature**
 
 ```ts
-export * as Sink from 'effect/Sink'
+export * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/SortedMap"
+## From "./Sink.js"
 
-Re-exports all named exports from the "effect/SortedMap" module as `SortedMap`.
+Re-exports all named exports from the "./Sink.js" module as `Sink`.
 
 **Signature**
 
 ```ts
-export * as SortedMap from 'effect/SortedMap'
+export * as Sink from "./Sink.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/SortedSet"
+## From "./SortedMap.js"
 
-Re-exports all named exports from the "effect/SortedSet" module as `SortedSet`.
+Re-exports all named exports from the "./SortedMap.js" module as `SortedMap`.
 
 **Signature**
 
 ```ts
-export * as SortedSet from 'effect/SortedSet'
+export * as SortedMap from "./SortedMap.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Stream"
+## From "./SortedSet.js"
 
-Re-exports all named exports from the "effect/Stream" module as `Stream`.
+Re-exports all named exports from the "./SortedSet.js" module as `SortedSet`.
 
 **Signature**
 
 ```ts
-export * as Stream from 'effect/Stream'
+export * as SortedSet from "./SortedSet.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/StreamEmit"
+## From "./Stream.js"
 
-Re-exports all named exports from the "effect/StreamEmit" module as `StreamEmit`.
+Re-exports all named exports from the "./Stream.js" module as `Stream`.
 
 **Signature**
 
 ```ts
-export * as StreamEmit from 'effect/StreamEmit'
+export * as Stream from "./Stream.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/StreamHaltStrategy"
+## From "./StreamEmit.js"
 
-Re-exports all named exports from the "effect/StreamHaltStrategy" module as `StreamHaltStrategy`.
+Re-exports all named exports from the "./StreamEmit.js" module as `StreamEmit`.
 
 **Signature**
 
 ```ts
-export * as StreamHaltStrategy from 'effect/StreamHaltStrategy'
+export * as StreamEmit from "./StreamEmit.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Streamable"
+## From "./StreamHaltStrategy.js"
 
-Re-exports all named exports from the "effect/Streamable" module as `Streamable`.
+Re-exports all named exports from the "./StreamHaltStrategy.js" module as `StreamHaltStrategy`.
 
 **Signature**
 
 ```ts
-export * as Streamable from 'effect/Streamable'
+export * as StreamHaltStrategy from "./StreamHaltStrategy.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/String"
+## From "./Streamable.js"
+
+Re-exports all named exports from the "./Streamable.js" module as `Streamable`.
+
+**Signature**
+
+```ts
+export * as Streamable from "./Streamable.js"
+```
+
+Added in v2.0.0
+
+## From "./String.js"
 
 This module provides utility functions and type class instances for working with the `string` type in TypeScript.
 It includes functions for basic string manipulation, as well as type class instances for
@@ -1587,36 +1563,36 @@ It includes functions for basic string manipulation, as well as type class insta
 **Signature**
 
 ```ts
-export * as String from 'effect/String'
+export * as String from "./String.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Struct"
+## From "./Struct.js"
 
 This module provides utility functions for working with structs in TypeScript.
 
 **Signature**
 
 ```ts
-export * as Struct from 'effect/Struct'
+export * as Struct from "./Struct.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/SubscriptionRef"
+## From "./SubscriptionRef.js"
 
-Re-exports all named exports from the "effect/SubscriptionRef" module as `SubscriptionRef`.
+Re-exports all named exports from the "./SubscriptionRef.js" module as `SubscriptionRef`.
 
 **Signature**
 
 ```ts
-export * as SubscriptionRef from 'effect/SubscriptionRef'
+export * as SubscriptionRef from "./SubscriptionRef.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Supervisor"
+## From "./Supervisor.js"
 
 A `Supervisor<T>` is allowed to supervise the launching and termination of
 fibers, producing some visible value of type `T` from the supervision.
@@ -1624,343 +1600,367 @@ fibers, producing some visible value of type `T` from the supervision.
 **Signature**
 
 ```ts
-export * as Supervisor from 'effect/Supervisor'
+export * as Supervisor from "./Supervisor.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Symbol"
+## From "./Symbol.js"
 
-Re-exports all named exports from the "effect/Symbol" module as `Symbol`.
+Re-exports all named exports from the "./Symbol.js" module as `Symbol`.
 
 **Signature**
 
 ```ts
-export * as Symbol from 'effect/Symbol'
+export * as Symbol from "./Symbol.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/SynchronizedRef"
+## From "./SynchronizedRef.js"
 
-Re-exports all named exports from the "effect/SynchronizedRef" module as `SynchronizedRef`.
+Re-exports all named exports from the "./SynchronizedRef.js" module as `SynchronizedRef`.
 
 **Signature**
 
 ```ts
-export * as SynchronizedRef from 'effect/SynchronizedRef'
+export * as SynchronizedRef from "./SynchronizedRef.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TArray"
+## From "./TArray.js"
 
-Re-exports all named exports from the "effect/TArray" module as `TArray`.
+Re-exports all named exports from the "./TArray.js" module as `TArray`.
 
 **Signature**
 
 ```ts
-export * as TArray from 'effect/TArray'
+export * as TArray from "./TArray.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TDeferred"
+## From "./TDeferred.js"
 
-Re-exports all named exports from the "effect/TDeferred" module as `TDeferred`.
+Re-exports all named exports from the "./TDeferred.js" module as `TDeferred`.
 
 **Signature**
 
 ```ts
-export * as TDeferred from 'effect/TDeferred'
+export * as TDeferred from "./TDeferred.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TMap"
+## From "./TMap.js"
 
-Re-exports all named exports from the "effect/TMap" module as `TMap`.
+Re-exports all named exports from the "./TMap.js" module as `TMap`.
 
 **Signature**
 
 ```ts
-export * as TMap from 'effect/TMap'
+export * as TMap from "./TMap.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TPriorityQueue"
+## From "./TPriorityQueue.js"
 
-Re-exports all named exports from the "effect/TPriorityQueue" module as `TPriorityQueue`.
+Re-exports all named exports from the "./TPriorityQueue.js" module as `TPriorityQueue`.
 
 **Signature**
 
 ```ts
-export * as TPriorityQueue from 'effect/TPriorityQueue'
+export * as TPriorityQueue from "./TPriorityQueue.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TPubSub"
+## From "./TPubSub.js"
 
-Re-exports all named exports from the "effect/TPubSub" module as `TPubSub`.
+Re-exports all named exports from the "./TPubSub.js" module as `TPubSub`.
 
 **Signature**
 
 ```ts
-export * as TPubSub from 'effect/TPubSub'
+export * as TPubSub from "./TPubSub.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TQueue"
+## From "./TQueue.js"
 
-Re-exports all named exports from the "effect/TQueue" module as `TQueue`.
+Re-exports all named exports from the "./TQueue.js" module as `TQueue`.
 
 **Signature**
 
 ```ts
-export * as TQueue from 'effect/TQueue'
+export * as TQueue from "./TQueue.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TRandom"
+## From "./TRandom.js"
 
-Re-exports all named exports from the "effect/TRandom" module as `TRandom`.
+Re-exports all named exports from the "./TRandom.js" module as `TRandom`.
 
 **Signature**
 
 ```ts
-export * as TRandom from 'effect/TRandom'
+export * as TRandom from "./TRandom.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TReentrantLock"
+## From "./TReentrantLock.js"
 
-Re-exports all named exports from the "effect/TReentrantLock" module as `TReentrantLock`.
+Re-exports all named exports from the "./TReentrantLock.js" module as `TReentrantLock`.
 
 **Signature**
 
 ```ts
-export * as TReentrantLock from 'effect/TReentrantLock'
+export * as TReentrantLock from "./TReentrantLock.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TRef"
+## From "./TRef.js"
 
-Re-exports all named exports from the "effect/TRef" module as `TRef`.
+Re-exports all named exports from the "./TRef.js" module as `TRef`.
 
 **Signature**
 
 ```ts
-export * as TRef from 'effect/TRef'
+export * as TRef from "./TRef.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TSemaphore"
+## From "./TSemaphore.js"
 
-Re-exports all named exports from the "effect/TSemaphore" module as `TSemaphore`.
+Re-exports all named exports from the "./TSemaphore.js" module as `TSemaphore`.
 
 **Signature**
 
 ```ts
-export * as TSemaphore from 'effect/TSemaphore'
+export * as TSemaphore from "./TSemaphore.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TSet"
+## From "./TSet.js"
 
-Re-exports all named exports from the "effect/TSet" module as `TSet`.
+Re-exports all named exports from the "./TSet.js" module as `TSet`.
 
 **Signature**
 
 ```ts
-export * as TSet from 'effect/TSet'
+export * as TSet from "./TSet.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Take"
+## From "./Take.js"
 
-Re-exports all named exports from the "effect/Take" module as `Take`.
+Re-exports all named exports from the "./Take.js" module as `Take`.
 
 **Signature**
 
 ```ts
-export * as Take from 'effect/Take'
+export * as Take from "./Take.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestAnnotation"
+## From "./TestAnnotation.js"
 
-Re-exports all named exports from the "effect/TestAnnotation" module as `TestAnnotation`.
+Re-exports all named exports from the "./TestAnnotation.js" module as `TestAnnotation`.
 
 **Signature**
 
 ```ts
-export * as TestAnnotation from 'effect/TestAnnotation'
+export * as TestAnnotation from "./TestAnnotation.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestAnnotationMap"
+## From "./TestAnnotationMap.js"
 
-Re-exports all named exports from the "effect/TestAnnotationMap" module as `TestAnnotationMap`.
+Re-exports all named exports from the "./TestAnnotationMap.js" module as `TestAnnotationMap`.
 
 **Signature**
 
 ```ts
-export * as TestAnnotationMap from 'effect/TestAnnotationMap'
+export * as TestAnnotationMap from "./TestAnnotationMap.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestAnnotations"
+## From "./TestAnnotations.js"
 
-Re-exports all named exports from the "effect/TestAnnotations" module as `TestAnnotations`.
+Re-exports all named exports from the "./TestAnnotations.js" module as `TestAnnotations`.
 
 **Signature**
 
 ```ts
-export * as TestAnnotations from 'effect/TestAnnotations'
+export * as TestAnnotations from "./TestAnnotations.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestClock"
+## From "./TestClock.js"
 
-Re-exports all named exports from the "effect/TestClock" module as `TestClock`.
+Re-exports all named exports from the "./TestClock.js" module as `TestClock`.
 
 **Signature**
 
 ```ts
-export * as TestClock from 'effect/TestClock'
+export * as TestClock from "./TestClock.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestConfig"
+## From "./TestConfig.js"
 
-Re-exports all named exports from the "effect/TestConfig" module as `TestConfig`.
+Re-exports all named exports from the "./TestConfig.js" module as `TestConfig`.
 
 **Signature**
 
 ```ts
-export * as TestConfig from 'effect/TestConfig'
+export * as TestConfig from "./TestConfig.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestContext"
+## From "./TestContext.js"
 
-Re-exports all named exports from the "effect/TestContext" module as `TestContext`.
+Re-exports all named exports from the "./TestContext.js" module as `TestContext`.
 
 **Signature**
 
 ```ts
-export * as TestContext from 'effect/TestContext'
+export * as TestContext from "./TestContext.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestLive"
+## From "./TestLive.js"
 
-Re-exports all named exports from the "effect/TestLive" module as `TestLive`.
+Re-exports all named exports from the "./TestLive.js" module as `TestLive`.
 
 **Signature**
 
 ```ts
-export * as TestLive from 'effect/TestLive'
+export * as TestLive from "./TestLive.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestServices"
+## From "./TestServices.js"
 
-Re-exports all named exports from the "effect/TestServices" module as `TestServices`.
+Re-exports all named exports from the "./TestServices.js" module as `TestServices`.
 
 **Signature**
 
 ```ts
-export * as TestServices from 'effect/TestServices'
+export * as TestServices from "./TestServices.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/TestSized"
+## From "./TestSized.js"
 
-Re-exports all named exports from the "effect/TestSized" module as `TestSized`.
+Re-exports all named exports from the "./TestSized.js" module as `TestSized`.
 
 **Signature**
 
 ```ts
-export * as TestSized from 'effect/TestSized'
+export * as TestSized from "./TestSized.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Tracer"
+## From "./Tracer.js"
 
-Re-exports all named exports from the "effect/Tracer" module as `Tracer`.
+Re-exports all named exports from the "./Tracer.js" module as `Tracer`.
 
 **Signature**
 
 ```ts
-export * as Tracer from 'effect/Tracer'
+export * as Tracer from "./Tracer.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Tuple"
+## From "./Tuple.js"
 
 This module provides utility functions for working with tuples in TypeScript.
 
 **Signature**
 
 ```ts
-export * as Tuple from 'effect/Tuple'
+export * as Tuple from "./Tuple.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Types"
+## From "./Types.js"
 
 A collection of types that are commonly used types.
 
 **Signature**
 
 ```ts
-export * as Types from 'effect/Types'
+export * as Types from "./Types.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Unify"
+## From "./Unify.js"
 
-Re-exports all named exports from the "effect/Unify" module as `Unify`.
+Re-exports all named exports from the "./Unify.js" module as `Unify`.
 
 **Signature**
 
 ```ts
-export * as Unify from 'effect/Unify'
+export * as Unify from "./Unify.js"
 ```
 
 Added in v2.0.0
 
-## From "effect/Utils"
+## From "./UpstreamPullRequest.js"
 
-Re-exports all named exports from the "effect/Utils" module as `Utils`.
+Re-exports all named exports from the "./UpstreamPullRequest.js" module as `UpstreamPullRequest`.
 
 **Signature**
 
 ```ts
-export * as Utils from 'effect/Utils'
+export * as UpstreamPullRequest from "./UpstreamPullRequest.js"
+```
+
+Added in v2.0.0
+
+## From "./UpstreamPullStrategy.js"
+
+Re-exports all named exports from the "./UpstreamPullStrategy.js" module as `UpstreamPullStrategy`.
+
+**Signature**
+
+```ts
+export * as UpstreamPullStrategy from "./UpstreamPullStrategy.js"
+```
+
+Added in v2.0.0
+
+## From "./Utils.js"
+
+Re-exports all named exports from the "./Utils.js" module as `Utils`.
+
+**Signature**
+
+```ts
+export * as Utils from "./Utils.js"
 ```
 
 Added in v2.0.0
@@ -1972,7 +1972,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const absurd: any
+export declare const absurd: <A>(_: never) => A
 ```
 
 Added in v2.0.0
@@ -1982,7 +1982,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const flow: any
+export declare const flow: typeof flow
 ```
 
 Added in v2.0.0
@@ -1992,7 +1992,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const hole: any
+export declare const hole: <T>() => T
 ```
 
 Added in v2.0.0
@@ -2002,7 +2002,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const identity: any
+export declare const identity: <A>(a: A) => A
 ```
 
 Added in v2.0.0
@@ -2012,7 +2012,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const pipe: any
+export declare const pipe: typeof pipe
 ```
 
 Added in v2.0.0
@@ -2022,7 +2022,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeCoerce: any
+export declare const unsafeCoerce: <A, B>(a: A) => B
 ```
 
 Added in v2.0.0

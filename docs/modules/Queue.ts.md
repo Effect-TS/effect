@@ -1,6 +1,6 @@
 ---
 title: Queue.ts
-nav_order: 83
+nav_order: 80
 parent: Modules
 ---
 
@@ -439,7 +439,7 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
     iterable: Iterable<A>,
     queue: BackingQueue<A>,
     takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    isShutdown: MutableRef.MutableRef<boolean>
+    isShutdown: MutableRef.MutableRef<boolean>,
   ): Effect.Effect<never, never, boolean>
 
   /**

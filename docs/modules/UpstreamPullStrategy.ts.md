@@ -1,10 +1,10 @@
 ---
-title: ChannelUpstreamPullStrategy.ts
-nav_order: 14
+title: UpstreamPullStrategy.ts
+nav_order: 143
 parent: Modules
 ---
 
-## ChannelUpstreamPullStrategy overview
+## UpstreamPullStrategy overview
 
 Added in v2.0.0
 
@@ -75,7 +75,7 @@ export declare const match: {
     options: {
       readonly onNext: (emitSeparator: Option.Option<A>) => Z
       readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
-    }
+    },
   ): Z
 }
 ```
@@ -90,7 +90,7 @@ Added in v2.0.0
 
 ```ts
 export interface PullAfterAllEnqueued<A> extends UpstreamPullStrategy.Variance<A> {
-  readonly _tag: 'PullAfterAllEnqueued'
+  readonly _tag: "PullAfterAllEnqueued"
   readonly emitSeparator: Option.Option<A>
 }
 ```
@@ -103,7 +103,7 @@ Added in v2.0.0
 
 ```ts
 export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
-  readonly _tag: 'PullAfterNext'
+  readonly _tag: "PullAfterNext"
   readonly emitSeparator: Option.Option<A>
 }
 ```

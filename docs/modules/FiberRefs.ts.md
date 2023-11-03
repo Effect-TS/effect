@@ -1,6 +1,6 @@
 ---
 title: FiberRefs.ts
-nav_order: 40
+nav_order: 34
 parent: Modules
 ---
 
@@ -146,7 +146,7 @@ Note: it will not copy the provided Map, make sure to provide a fresh one.
 
 ```ts
 export declare const unsafeMake: (
-  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>,
 ) => FiberRefs
 ```
 
@@ -220,12 +220,14 @@ Updates the value of the specified `FiberRef` using the provided `FiberId`
 
 ```ts
 export declare const updatedAs: {
-  <A>(options: { readonly fiberId: FiberId.Runtime; readonly fiberRef: FiberRef.FiberRef<A>; readonly value: A }): (
-    self: FiberRefs
-  ) => FiberRefs
+  <A>(options: {
+    readonly fiberId: FiberId.Runtime
+    readonly fiberRef: FiberRef.FiberRef<A>
+    readonly value: A
+  }): (self: FiberRefs) => FiberRefs
   <A>(
     self: FiberRefs,
-    options: { readonly fiberId: FiberId.Runtime; readonly fiberRef: FiberRef.FiberRef<A>; readonly value: A }
+    options: { readonly fiberId: FiberId.Runtime; readonly fiberRef: FiberRef.FiberRef<A>; readonly value: A },
   ): FiberRefs
 }
 ```

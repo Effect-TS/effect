@@ -3,6 +3,6 @@ coverage/
 node_modules/
 .DS_Store
 tmp/
-build/
 dist/
+docs/examples/
 .direnv/

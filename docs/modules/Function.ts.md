@@ -1,6 +1,6 @@
 ---
 title: Function.ts
-nav_order: 43
+nav_order: 37
 parent: Modules
 ---
 
@@ -56,10 +56,10 @@ export declare const isFunction: (input: unknown) => input is Function
 **Example**
 
 ```ts
-import { isFunction } from 'effect/Predicate'
+import { isFunction } from "effect/Predicate"
 
 assert.deepStrictEqual(isFunction(isFunction), true)
-assert.deepStrictEqual(isFunction('function'), false)
+assert.deepStrictEqual(isFunction("function"), false)
 ```
 
 Added in v2.0.0
@@ -72,7 +72,7 @@ Added in v2.0.0
 
 ```ts
 export interface FunctionTypeLambda extends TypeLambda {
-  readonly type: (a: this['In']) => this['Target']
+  readonly type: (a: this["In"]) => this["Target"]
 }
 ```
 
@@ -93,7 +93,7 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
 **Example**
 
 ```ts
-import { FunctionN } from 'effect/Function'
+import { FunctionN } from "effect/Function"
 
 const sum: FunctionN<[number, number], number> = (a, b) => a + b
 ```
@@ -115,7 +115,7 @@ export interface LazyArg<A> {
 **Example**
 
 ```ts
-import { LazyArg, constant } from 'effect/Function'
+import { LazyArg, constant } from "effect/Function"
 
 const constNull: LazyArg<null> = constant(null)
 ```
@@ -138,9 +138,9 @@ export declare const SK: <A, B>(_: A, b: B) => B
 **Example**
 
 ```ts
-import { SK } from 'effect/Function'
+import { SK } from "effect/Function"
 
-assert.deepStrictEqual(SK(0, 'hello'), 'hello')
+assert.deepStrictEqual(SK(0, "hello"), "hello")
 ```
 
 Added in v2.0.0
@@ -173,10 +173,10 @@ export declare const apply: <A>(a: A) => <B>(self: (a: A) => B) => B
 **Example**
 
 ```ts
-import { pipe, apply } from 'effect/Function'
-import { length } from 'effect/String'
+import { pipe, apply } from "effect/Function"
+import { length } from "effect/String"
 
-assert.deepStrictEqual(pipe(length, apply('hello')), 5)
+assert.deepStrictEqual(pipe(length, apply("hello")), 5)
 ```
 
 Added in v2.0.0
@@ -198,7 +198,7 @@ export declare const compose: {
 **Example**
 
 ```ts
-import { compose } from 'effect/Function'
+import { compose } from "effect/Function"
 
 const increment = (n: number) => n + 1
 const square = (n: number) => n * n
@@ -221,7 +221,7 @@ export declare const constFalse: LazyArg<boolean>
 **Example**
 
 ```ts
-import { constFalse } from 'effect/Function'
+import { constFalse } from "effect/Function"
 
 assert.deepStrictEqual(constFalse(), false)
 ```
@@ -241,7 +241,7 @@ export declare const constNull: LazyArg<null>
 **Example**
 
 ```ts
-import { constNull } from 'effect/Function'
+import { constNull } from "effect/Function"
 
 assert.deepStrictEqual(constNull(), null)
 ```
@@ -261,7 +261,7 @@ export declare const constTrue: LazyArg<boolean>
 **Example**
 
 ```ts
-import { constTrue } from 'effect/Function'
+import { constTrue } from "effect/Function"
 
 assert.deepStrictEqual(constTrue(), true)
 ```
@@ -281,7 +281,7 @@ export declare const constUndefined: LazyArg<undefined>
 **Example**
 
 ```ts
-import { constUndefined } from 'effect/Function'
+import { constUndefined } from "effect/Function"
 
 assert.deepStrictEqual(constUndefined(), undefined)
 ```
@@ -301,7 +301,7 @@ export declare const constVoid: LazyArg<void>
 **Example**
 
 ```ts
-import { constVoid } from 'effect/Function'
+import { constVoid } from "effect/Function"
 
 assert.deepStrictEqual(constVoid(), undefined)
 ```
@@ -324,7 +324,7 @@ export declare const constant: <A>(value: A) => LazyArg<A>
 **Example**
 
 ```ts
-import { constant } from 'effect/Function'
+import { constant } from "effect/Function"
 
 const constNull = constant(null)
 
@@ -353,12 +353,12 @@ function is being used in a data-first or data-last style.
 ```ts
 export declare const dual: {
   <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
-    arity: Parameters<DataFirst>['length'],
-    body: DataFirst
+    arity: Parameters<DataFirst>["length"],
+    body: DataFirst,
   ): DataLast & DataFirst
   <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
     isDataFirst: (args: IArguments) => boolean,
-    body: DataFirst
+    body: DataFirst,
   ): DataLast & DataFirst
 }
 ```
@@ -366,7 +366,7 @@ export declare const dual: {
 **Example**
 
 ```ts
-import { dual, pipe } from 'effect/Function'
+import { dual, pipe } from "effect/Function"
 
 // Exampe using arity to determine data-first or data-last style
 const sum: {
@@ -383,7 +383,7 @@ const sum2: {
   (self: number, that: number): number
 } = dual(
   (args) => args.length === 1,
-  (self: number, that: number): number => self + that
+  (self: number, that: number): number => self + that,
 )
 
 assert.deepStrictEqual(sum(2, 3), 5)
@@ -400,18 +400,18 @@ Reverses the order of arguments for a curried function.
 
 ```ts
 export declare const flip: <A extends unknown[], B extends unknown[], C>(
-  f: (...a: A) => (...b: B) => C
+  f: (...a: A) => (...b: B) => C,
 ) => (...b: B) => (...a: A) => C
 ```
 
 **Example**
 
 ```ts
-import { flip } from 'effect/Function'
+import { flip } from "effect/Function"
 
 const f = (a: number) => (b: string) => a - b.length
 
-assert.deepStrictEqual(flip(f)('aaa')(2), -1)
+assert.deepStrictEqual(flip(f)("aaa")(2), -1)
 ```
 
 Added in v2.0.0
@@ -428,25 +428,25 @@ See also [`pipe`](#pipe).
 export declare function flow<A extends ReadonlyArray<unknown>, B>(ab: (...a: A) => B): (...a: A) => B
 export declare function flow<A extends ReadonlyArray<unknown>, B, C>(
   ab: (...a: A) => B,
-  bc: (b: B) => C
+  bc: (b: B) => C,
 ): (...a: A) => C
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
-  cd: (c: C) => D
+  cd: (c: C) => D,
 ): (...a: A) => D
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
-  de: (d: D) => E
+  de: (d: D) => E,
 ): (...a: A) => E
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E,
-  ef: (e: E) => F
+  ef: (e: E) => F,
 ): (...a: A) => F
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>(
   ab: (...a: A) => B,
@@ -454,7 +454,7 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>
   cd: (c: C) => D,
   de: (d: D) => E,
   ef: (e: E) => F,
-  fg: (f: F) => G
+  fg: (f: F) => G,
 ): (...a: A) => G
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H>(
   ab: (...a: A) => B,
@@ -463,7 +463,7 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G,
   de: (d: D) => E,
   ef: (e: E) => F,
   fg: (f: F) => G,
-  gh: (g: G) => H
+  gh: (g: G) => H,
 ): (...a: A) => H
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I>(
   ab: (...a: A) => B,
@@ -473,7 +473,7 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G,
   ef: (e: E) => F,
   fg: (f: F) => G,
   gh: (g: G) => H,
-  hi: (h: H) => I
+  hi: (h: H) => I,
 ): (...a: A) => I
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I, J>(
   ab: (...a: A) => B,
@@ -484,21 +484,21 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G,
   fg: (f: F) => G,
   gh: (g: G) => H,
   hi: (h: H) => I,
-  ij: (i: I) => J
+  ij: (i: I) => J,
 ): (...a: A) => J
 ```
 
 **Example**
 
 ```ts
-import { flow } from 'effect/Function'
+import { flow } from "effect/Function"
 
 const len = (s: string): number => s.length
 const double = (n: number): number => n * 2
 
 const f = flow(len, double)
 
-assert.strictEqual(f('aaa'), 6)
+assert.strictEqual(f("aaa"), 6)
 ```
 
 Added in v2.0.0
@@ -528,7 +528,7 @@ export declare const identity: <A>(a: A) => A
 **Example**
 
 ```ts
-import { identity } from 'effect/Function'
+import { identity } from "effect/Function"
 
 assert.deepStrictEqual(identity(5), 5)
 ```
@@ -559,7 +559,7 @@ export declare function pipe<A, B, C, D, E, F>(
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E,
-  ef: (e: E) => F
+  ef: (e: E) => F,
 ): F
 export declare function pipe<A, B, C, D, E, F, G>(
   a: A,
@@ -568,7 +568,7 @@ export declare function pipe<A, B, C, D, E, F, G>(
   cd: (c: C) => D,
   de: (d: D) => E,
   ef: (e: E) => F,
-  fg: (f: F) => G
+  fg: (f: F) => G,
 ): G
 export declare function pipe<A, B, C, D, E, F, G, H>(
   a: A,
@@ -578,7 +578,7 @@ export declare function pipe<A, B, C, D, E, F, G, H>(
   de: (d: D) => E,
   ef: (e: E) => F,
   fg: (f: F) => G,
-  gh: (g: G) => H
+  gh: (g: G) => H,
 ): H
 export declare function pipe<A, B, C, D, E, F, G, H, I>(
   a: A,
@@ -589,7 +589,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I>(
   ef: (e: E) => F,
   fg: (f: F) => G,
   gh: (g: G) => H,
-  hi: (h: H) => I
+  hi: (h: H) => I,
 ): I
 export declare function pipe<A, B, C, D, E, F, G, H, I, J>(
   a: A,
@@ -601,7 +601,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J>(
   fg: (f: F) => G,
   gh: (g: G) => H,
   hi: (h: H) => I,
-  ij: (i: I) => J
+  ij: (i: I) => J,
 ): J
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K>(
   a: A,
@@ -614,7 +614,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K>(
   gh: (g: G) => H,
   hi: (h: H) => I,
   ij: (i: I) => J,
-  jk: (j: J) => K
+  jk: (j: J) => K,
 ): K
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
   a: A,
@@ -628,7 +628,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
   hi: (h: H) => I,
   ij: (i: I) => J,
   jk: (j: J) => K,
-  kl: (k: K) => L
+  kl: (k: K) => L,
 ): L
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
   a: A,
@@ -643,7 +643,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
   ij: (i: I) => J,
   jk: (j: J) => K,
   kl: (k: K) => L,
-  lm: (l: L) => M
+  lm: (l: L) => M,
 ): M
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
   a: A,
@@ -659,7 +659,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
   jk: (j: J) => K,
   kl: (k: K) => L,
   lm: (l: L) => M,
-  mn: (m: M) => N
+  mn: (m: M) => N,
 ): N
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
   a: A,
@@ -676,7 +676,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
   kl: (k: K) => L,
   lm: (l: L) => M,
   mn: (m: M) => N,
-  no: (n: N) => O
+  no: (n: N) => O,
 ): O
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   a: A,
@@ -694,7 +694,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   lm: (l: L) => M,
   mn: (m: M) => N,
   no: (n: N) => O,
-  op: (o: O) => P
+  op: (o: O) => P,
 ): P
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   a: A,
@@ -713,7 +713,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   mn: (m: M) => N,
   no: (n: N) => O,
   op: (o: O) => P,
-  pq: (p: P) => Q
+  pq: (p: P) => Q,
 ): Q
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
   a: A,
@@ -733,7 +733,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, 
   no: (n: N) => O,
   op: (o: O) => P,
   pq: (p: P) => Q,
-  qr: (q: Q) => R
+  qr: (q: Q) => R,
 ): R
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
   a: A,
@@ -754,7 +754,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, 
   op: (o: O) => P,
   pq: (p: P) => Q,
   qr: (q: Q) => R,
-  rs: (r: R) => S
+  rs: (r: R) => S,
 ): S
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
   a: A,
@@ -776,20 +776,20 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, 
   pq: (p: P) => Q,
   qr: (q: Q) => R,
   rs: (r: R) => S,
-  st: (s: S) => T
+  st: (s: S) => T,
 ): T
 ```
 
 **Example**
 
 ```ts
-import { pipe } from 'effect/Function'
+import { pipe } from "effect/Function"
 
 const length = (s: string): number => s.length
 const double = (n: number): number => n * 2
 const decrement = (n: number): number => n - 1
 
-assert.deepStrictEqual(pipe(length('hello'), double, decrement), 9)
+assert.deepStrictEqual(pipe(length("hello"), double, decrement), 9)
 ```
 
 Added in v2.0.0
@@ -807,7 +807,7 @@ export declare const tupled: <A extends readonly unknown[], B>(f: (...a: A) => B
 **Example**
 
 ```ts
-import { tupled } from 'effect/Function'
+import { tupled } from "effect/Function"
 
 const sumTupled = tupled((x: number, y: number): number => x + y)
 
@@ -829,7 +829,7 @@ export declare const unsafeCoerce: <A, B>(a: A) => B
 **Example**
 
 ```ts
-import { unsafeCoerce, identity } from 'effect/Function'
+import { unsafeCoerce, identity } from "effect/Function"
 
 assert.deepStrictEqual(unsafeCoerce, identity)
 ```
@@ -849,7 +849,7 @@ export declare const untupled: <A extends readonly unknown[], B>(f: (a: A) => B)
 **Example**
 
 ```ts
-import { untupled } from 'effect/Function'
+import { untupled } from "effect/Function"
 
 const getFirst = untupled(<A, B>(tuple: [A, B]): A => tuple[0])
 

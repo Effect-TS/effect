@@ -1,6 +1,6 @@
 ---
 title: TPriorityQueue.ts
-nav_order: 132
+nav_order: 130
 parent: Modules
 ---
 
@@ -67,7 +67,7 @@ Makes a new `TPriorityQueue` initialized with provided iterable.
 
 ```ts
 export declare const fromIterable: <A>(
-  order: Order.Order<A>
+  order: Order.Order<A>,
 ) => (iterable: Iterable<A>) => STM.STM<never, never, TPriorityQueue<A>>
 ```
 

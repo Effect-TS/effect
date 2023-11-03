@@ -1,6 +1,6 @@
 ---
 title: SortedSet.ts
-nav_order: 107
+nav_order: 105
 parent: Modules
 ---
 
@@ -77,7 +77,7 @@ Added in v2.0.0
 
 ```ts
 export declare const make: <K>(
-  ord: Order<K>
+  ord: Order<K>,
 ) => <Entries extends readonly K[]>(...entries: Entries) => SortedSet<Entries[number]>
 ```
 
@@ -202,14 +202,14 @@ Added in v2.0.0
 
 ```ts
 export declare const partition: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (
-    self: SortedSet<C>
-  ) => [SortedSet<Exclude<C, B>>, SortedSet<B>]
+  <C extends A, B extends A, A = C>(
+    refinement: Refinement<A, B>,
+  ): (self: SortedSet<C>) => [SortedSet<Exclude<C, B>>, SortedSet<B>]
   <B extends A, A = B>(predicate: (a: A) => boolean): (self: SortedSet<B>) => [SortedSet<B>, SortedSet<B>]
-  <C extends A, B extends A, A = C>(self: SortedSet<C>, refinement: Refinement<A, B>): [
-    SortedSet<Exclude<C, B>>,
-    SortedSet<B>
-  ]
+  <C extends A, B extends A, A = C>(
+    self: SortedSet<C>,
+    refinement: Refinement<A, B>,
+  ): [SortedSet<Exclude<C, B>>, SortedSet<B>]
   <B extends A, A = B>(self: SortedSet<B>, predicate: (a: A) => boolean): [SortedSet<B>, SortedSet<B>]
 }
 ```

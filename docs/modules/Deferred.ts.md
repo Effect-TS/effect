@@ -1,6 +1,6 @@
 ---
 title: Deferred.ts
-nav_order: 26
+nav_order: 20
 parent: Modules
 ---
 
@@ -109,7 +109,7 @@ already been completed, `None` otherwise.
 
 ```ts
 export declare const poll: <E, A>(
-  self: Deferred<E, A>
+  self: Deferred<E, A>,
 ) => Effect.Effect<never, never, Option.Option<Effect.Effect<never, E, A>>>
 ```
 

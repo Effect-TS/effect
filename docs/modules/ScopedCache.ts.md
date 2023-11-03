@@ -1,6 +1,6 @@
 ---
 title: ScopedCache.ts
-nav_order: 103
+nav_order: 100
 parent: Modules
 ---
 
@@ -74,7 +74,7 @@ Similar to `Cache.Lookup`, but executes the lookup function within a `Scope`.
 
 ```ts
 export type Lookup<Key, Environment, Error, Value> = (
-  key: Key
+  key: Key,
 ) => Effect.Effect<Environment | Scope.Scope, Error, Value>
 ```
 

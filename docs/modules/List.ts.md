@@ -1,6 +1,6 @@
 ---
 title: List.ts
-nav_order: 54
+nav_order: 48
 parent: Modules
 ---
 
@@ -625,7 +625,7 @@ Added in v2.0.0
 ```ts
 export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
-  readonly _tag: 'Cons'
+  readonly _tag: "Cons"
   readonly head: A
   readonly tail: List<A>
 }
@@ -656,7 +656,7 @@ Added in v2.0.0
 ```ts
 export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
-  readonly _tag: 'Nil'
+  readonly _tag: "Nil"
 }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: ScopedRef.ts
-nav_order: 104
+nav_order: 101
 parent: Modules
 ---
 
@@ -40,7 +40,7 @@ value.
 
 ```ts
 export declare const fromAcquire: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
+  acquire: Effect.Effect<R, E, A>,
 ) => Effect.Effect<Scope.Scope | R, E, ScopedRef<A>>
 ```
 

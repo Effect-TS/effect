@@ -379,7 +379,7 @@ export declare const match: {
       readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
-    }
+    },
   ): Z
 }
 ```
@@ -734,7 +734,7 @@ type `E`.
 
 ```ts
 export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: 'Die'
+  readonly _tag: "Die"
   readonly defect: unknown
 }
 ```
@@ -749,7 +749,7 @@ The `Empty` cause represents a lack of errors.
 
 ```ts
 export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: 'Empty'
+  readonly _tag: "Empty"
 }
 ```
 
@@ -764,7 +764,7 @@ type `E`.
 
 ```ts
 export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: 'Fail'
+  readonly _tag: "Fail"
   readonly error: E
 }
 ```
@@ -780,7 +780,7 @@ provided to a method.
 
 ```ts
 export interface IllegalArgumentException {
-  readonly _tag: 'IllegalArgumentException'
+  readonly _tag: "IllegalArgumentException"
   readonly [IllegalArgumentExceptionTypeId]: IllegalArgumentExceptionTypeId
   readonly message?: string
 }
@@ -797,7 +797,7 @@ contains the `FiberId` of the interrupted `Fiber`.
 
 ```ts
 export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: 'Interrupt'
+  readonly _tag: "Interrupt"
   readonly fiberId: FiberId.FiberId
 }
 ```
@@ -812,7 +812,7 @@ Represents a checked exception which occurs when a `Fiber` is interrupted.
 
 ```ts
 export interface InterruptedException {
-  readonly _tag: 'InterruptedException'
+  readonly _tag: "InterruptedException"
   readonly [InterruptedExceptionTypeId]: InterruptedExceptionTypeId
   readonly message?: string
 }
@@ -829,7 +829,7 @@ Represents a checked exception which occurs when attempting to construct a
 
 ```ts
 export interface InvalidPubSubCapacityException {
-  readonly _tag: 'InvalidPubSubCapacityException'
+  readonly _tag: "InvalidPubSubCapacityException"
   readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
   readonly message?: string
 }
@@ -846,7 +846,7 @@ unable to be found.
 
 ```ts
 export interface NoSuchElementException {
-  readonly _tag: 'NoSuchElementException'
+  readonly _tag: "NoSuchElementException"
   readonly [NoSuchElementExceptionTypeId]: NoSuchElementExceptionTypeId
   readonly message?: string
 }
@@ -869,7 +869,7 @@ occurred in parallel. In these cases, the errors can be represented by the
 
 ```ts
 export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: 'Parallel'
+  readonly _tag: "Parallel"
   readonly left: Cause<E>
   readonly right: Cause<E>
 }
@@ -885,7 +885,7 @@ Represents a generic checked exception which occurs at runtime.
 
 ```ts
 export interface RuntimeException {
-  readonly _tag: 'RuntimeException'
+  readonly _tag: "RuntimeException"
   readonly [RuntimeExceptionTypeId]: RuntimeExceptionTypeId
   readonly message?: string
 }
@@ -907,7 +907,7 @@ represented by the `Sequential` cause.
 
 ```ts
 export interface Sequential<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: 'Sequential'
+  readonly _tag: "Sequential"
   readonly left: Cause<E>
   readonly right: Cause<E>
 }

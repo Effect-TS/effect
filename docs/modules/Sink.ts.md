@@ -1,6 +1,6 @@
 ---
 title: Sink.ts
-nav_order: 105
+nav_order: 103
 parent: Modules
 ---
 
@@ -178,7 +178,7 @@ same key, they are merged using the `merge` function.
 ```ts
 export declare const collectAllToMap: <In, K>(
   key: (input: In) => K,
-  merge: (x: In, y: In) => In
+  merge: (x: In, y: In) => In,
 ) => Sink<never, never, In, never, HashMap.HashMap<K, In>>
 ```
 
@@ -196,7 +196,7 @@ same key, they are merged using the `merge` function.
 export declare const collectAllToMapN: <In, K>(
   n: number,
   key: (input: In) => K,
-  merge: (x: In, y: In) => In
+  merge: (x: In, y: In) => In,
 ) => Sink<never, never, In, In, HashMap.HashMap<K, In>>
 ```
 
@@ -248,7 +248,7 @@ satisfied.
 
 ```ts
 export declare const collectAllUntilEffect: <In, R, E>(
-  p: (input: In) => Effect.Effect<R, E, boolean>
+  p: (input: In) => Effect.Effect<R, E, boolean>,
 ) => Sink<R, E, In, In, Chunk.Chunk<In>>
 ```
 
@@ -276,7 +276,7 @@ predicate `p`.
 
 ```ts
 export declare const collectAllWhileEffect: <In, R, E>(
-  predicate: (input: In) => Effect.Effect<R, E, boolean>
+  predicate: (input: In) => Effect.Effect<R, E, boolean>,
 ) => Sink<R, E, In, In, Chunk.Chunk<In>>
 ```
 
@@ -314,7 +314,7 @@ Accesses the context of the sink in the context of an effect.
 
 ```ts
 export declare const contextWithEffect: <R, R2, E, Z>(
-  f: (context: Context.Context<R>) => Effect.Effect<R2, E, Z>
+  f: (context: Context.Context<R>) => Effect.Effect<R2, E, Z>,
 ) => Sink<R | R2, E, unknown, never, Z>
 ```
 
@@ -328,7 +328,7 @@ Accesses the context of the sink in the context of a sink.
 
 ```ts
 export declare const contextWithSink: <R0, R, E, In, L, Z>(
-  f: (context: Context.Context<R0>) => Sink<R, E, In, L, Z>
+  f: (context: Context.Context<R0>) => Sink<R, E, In, L, Z>,
 ) => Sink<R0 | R, E, In, L, Z>
 ```
 
@@ -427,7 +427,7 @@ Drops incoming elements until the effectful predicate is satisfied.
 
 ```ts
 export declare const dropUntilEffect: <In, R, E>(
-  predicate: (input: In) => Effect.Effect<R, E, boolean>
+  predicate: (input: In) => Effect.Effect<R, E, boolean>,
 ) => Sink<R, E, In, In, unknown>
 ```
 
@@ -453,7 +453,7 @@ Drops incoming elements as long as the effectful predicate is satisfied.
 
 ```ts
 export declare const dropWhileEffect: <In, R, E>(
-  predicate: (input: In) => Effect.Effect<R, E, boolean>
+  predicate: (input: In) => Effect.Effect<R, E, boolean>,
 ) => Sink<R, E, In, In, unknown>
 ```
 
@@ -532,7 +532,7 @@ must preserve chunking-invariance.
 export declare const foldChunks: <S, In>(
   s: S,
   contFn: Predicate<S>,
-  f: (s: S, chunk: Chunk.Chunk<In>) => S
+  f: (s: S, chunk: Chunk.Chunk<In>) => S,
 ) => Sink<never, never, In, never, S>
 ```
 
@@ -551,7 +551,7 @@ for the initial value and at the end of processing of each chunk. `f` and
 export declare const foldChunksEffect: <S, R, E, In>(
   s: S,
   contFn: Predicate<S>,
-  f: (s: S, chunk: Chunk.Chunk<In>) => Effect.Effect<R, E, S>
+  f: (s: S, chunk: Chunk.Chunk<In>) => Effect.Effect<R, E, S>,
 ) => Sink<R, E, In, In, S>
 ```
 
@@ -568,7 +568,7 @@ termination predicate and initial state.
 export declare const foldEffect: <S, R, E, In>(
   s: S,
   contFn: Predicate<S>,
-  f: (s: S, input: In) => Effect.Effect<R, E, S>
+  f: (s: S, input: In) => Effect.Effect<R, E, S>,
 ) => Sink<R, E, In, In, S>
 ```
 
@@ -596,7 +596,7 @@ state. `f` must preserve chunking-invariance.
 ```ts
 export declare const foldLeftChunks: <S, In>(
   s: S,
-  f: (s: S, chunk: Chunk.Chunk<In>) => S
+  f: (s: S, chunk: Chunk.Chunk<In>) => S,
 ) => Sink<never, never, In, never, S>
 ```
 
@@ -612,7 +612,7 @@ and initial state. `f` must preserve chunking-invariance.
 ```ts
 export declare const foldLeftChunksEffect: <S, R, E, In>(
   s: S,
-  f: (s: S, chunk: Chunk.Chunk<In>) => Effect.Effect<R, E, S>
+  f: (s: S, chunk: Chunk.Chunk<In>) => Effect.Effect<R, E, S>,
 ) => Sink<R, E, In, never, S>
 ```
 
@@ -628,7 +628,7 @@ initial state.
 ```ts
 export declare const foldLeftEffect: <S, R, E, In>(
   s: S,
-  f: (s: S, input: In) => Effect.Effect<R, E, S>
+  f: (s: S, input: In) => Effect.Effect<R, E, S>,
 ) => Sink<R, E, In, In, S>
 ```
 
@@ -662,7 +662,7 @@ Like `Sink.foldWeightedEffect` but with a constant cost function of `1`.
 export declare const foldUntilEffect: <S, R, E, In>(
   s: S,
   max: number,
-  f: (s: S, input: In) => Effect.Effect<R, E, S>
+  f: (s: S, input: In) => Effect.Effect<R, E, S>,
 ) => Sink<R, E, In, In, S>
 ```
 
@@ -705,10 +705,10 @@ pipe(
       4,
       (n: number) => n,
       (n: number) => Chunk.make(n - 1, 1),
-      (acc, el) => pipe(acc, Chunk.append(el))
-    )
+      (acc, el) => pipe(acc, Chunk.append(el)),
+    ),
   ),
-  Stream.runCollect
+  Stream.runCollect,
 )
 ```
 
@@ -806,7 +806,7 @@ it.
 
 ```ts
 export declare const forEachChunk: <In, R, E, _>(
-  f: (input: Chunk.Chunk<In>) => Effect.Effect<R, E, _>
+  f: (input: Chunk.Chunk<In>) => Effect.Effect<R, E, _>,
 ) => Sink<R, E, In, never, void>
 ```
 
@@ -821,7 +821,7 @@ it until `f` evaluates to `false`.
 
 ```ts
 export declare const forEachChunkWhile: <In, R, E>(
-  f: (input: Chunk.Chunk<In>) => Effect.Effect<R, E, boolean>
+  f: (input: Chunk.Chunk<In>) => Effect.Effect<R, E, boolean>,
 ) => Sink<R, E, In, In, void>
 ```
 
@@ -836,7 +836,7 @@ to it until `f` evaluates to `false`.
 
 ```ts
 export declare const forEachWhile: <In, R, E>(
-  f: (input: In) => Effect.Effect<R, E, boolean>
+  f: (input: In) => Effect.Effect<R, E, boolean>,
 ) => Sink<R, E, In, In, void>
 ```
 
@@ -850,7 +850,7 @@ Creates a sink from a `Channel`.
 
 ```ts
 export declare const fromChannel: <R, E, In, L, Z>(
-  channel: Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
+  channel: Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>,
 ) => Sink<R, E, In, L, Z>
 ```
 
@@ -877,7 +877,7 @@ Create a sink which publishes each element to the specified `PubSub`.
 ```ts
 export declare const fromPubSub: <In>(
   pubsub: PubSub.PubSub<In>,
-  options?: { readonly shutdown?: boolean }
+  options?: { readonly shutdown?: boolean },
 ) => Sink<never, never, In, never, void>
 ```
 
@@ -895,7 +895,7 @@ export declare const fromPush: <R, E, In, L, Z>(
     R,
     never,
     (_: Option.Option<Chunk.Chunk<In>>) => Effect.Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
-  >
+  >,
 ) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z>
 ```
 
@@ -910,7 +910,7 @@ Create a sink which enqueues each element into the specified queue.
 ```ts
 export declare const fromQueue: <In>(
   queue: Queue.Enqueue<In>,
-  options?: { readonly shutdown?: boolean }
+  options?: { readonly shutdown?: boolean },
 ) => Sink<never, never, In, never, void>
 ```
 
@@ -1068,7 +1068,7 @@ Creates a `Channel` from a Sink.
 
 ```ts
 export declare const toChannel: <R, E, In, L, Z>(
-  self: Sink<R, E, In, L, Z>
+  self: Sink<R, E, In, L, Z>,
 ) => Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
 ```
 
@@ -1082,7 +1082,7 @@ Creates a sink produced from an effect.
 
 ```ts
 export declare const unwrap: <R, E, R2, E2, In, L, Z>(
-  effect: Effect.Effect<R, E, Sink<R2, E2, In, L, Z>>
+  effect: Effect.Effect<R, E, Sink<R2, E2, In, L, Z>>,
 ) => Sink<R | R2, E | E2, In, L, Z>
 ```
 
@@ -1096,7 +1096,7 @@ Creates a sink produced from a scoped effect.
 
 ```ts
 export declare const unwrapScoped: <R, E, In, L, Z>(
-  effect: Effect.Effect<R, E, Sink<R, E, In, L, Z>>
+  effect: Effect.Effect<R, E, Sink<R, E, In, L, Z>>,
 ) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z>
 ```
 
@@ -1130,16 +1130,13 @@ Creates a sink that produces values until one verifies the predicate `f`.
 
 ```ts
 export declare const findEffect: {
-  <Z, R2, E2>(f: (z: Z) => Effect.Effect<R2, E2, boolean>): <R, E, In, L extends In>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>
-  <R, E, In, L extends In, Z, R2, E2>(self: Sink<R, E, In, L, Z>, f: (z: Z) => Effect.Effect<R2, E2, boolean>): Sink<
-    R | R2,
-    E | E2,
-    In,
-    L,
-    Option.Option<Z>
-  >
+  <Z, R2, E2>(
+    f: (z: Z) => Effect.Effect<R2, E2, boolean>,
+  ): <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>
+  <R, E, In, L extends In, Z, R2, E2>(
+    self: Sink<R, E, In, L, Z>,
+    f: (z: Z) => Effect.Effect<R2, E2, boolean>,
+  ): Sink<R | R2, E | E2, In, L, Option.Option<Z>>
 }
 ```
 
@@ -1155,16 +1152,13 @@ Switch to another sink in case of failure
 
 ```ts
 export declare const orElse: {
-  <R2, E2, In2, L2, Z2>(that: LazyArg<Sink<R2, E2, In2, L2, Z2>>): <R, E, In, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E2 | E, In & In2, L2 | L, Z2 | Z>
-  <R, E, In, L, Z, R2, E2, In2, L2, Z2>(self: Sink<R, E, In, L, Z>, that: LazyArg<Sink<R2, E2, In2, L2, Z2>>): Sink<
-    R | R2,
-    E | E2,
-    In & In2,
-    L | L2,
-    Z | Z2
-  >
+  <R2, E2, In2, L2, Z2>(
+    that: LazyArg<Sink<R2, E2, In2, L2, Z2>>,
+  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L2 | L, Z2 | Z>
+  <R, E, In, L, Z, R2, E2, In2, L2, Z2>(
+    self: Sink<R, E, In, L, Z>,
+    that: LazyArg<Sink<R2, E2, In2, L2, Z2>>,
+  ): Sink<R | R2, E | E2, In & In2, L | L2, Z | Z2>
 }
 ```
 
@@ -1190,7 +1184,7 @@ Added in v2.0.0
 ```ts
 export declare const refineOrDieWith: <E, E2>(
   pf: (error: E) => Option.Option<E2>,
-  f: (error: E) => unknown
+  f: (error: E) => unknown,
 ) => <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z>
 ```
 
@@ -1206,9 +1200,9 @@ Filters the sink's input with the given predicate.
 
 ```ts
 export declare const filterInput: {
-  <In, In1 extends In, In2 extends In1>(f: Refinement<In1, In2>): <R, E, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R, E, In2, L, Z>
+  <In, In1 extends In, In2 extends In1>(
+    f: Refinement<In1, In2>,
+  ): <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In2, L, Z>
   <In, In1 extends In>(f: Predicate<In1>): <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In1, L, Z>
 }
 ```
@@ -1223,12 +1217,12 @@ Effectfully filter the input of this sink using the specified predicate.
 
 ```ts
 export declare const filterInputEffect: {
-  <R2, E2, In, In1 extends In>(f: (input: In1) => Effect.Effect<R2, E2, boolean>): <R, E, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E2 | E, In1, L, Z>
+  <R2, E2, In, In1 extends In>(
+    f: (input: In1) => Effect.Effect<R2, E2, boolean>,
+  ): <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In1, L, Z>
   <R, E, L, Z, R2, E2, In, In1 extends In>(
     self: Sink<R, E, In, L, Z>,
-    f: (input: In1) => Effect.Effect<R2, E2, boolean>
+    f: (input: In1) => Effect.Effect<R2, E2, boolean>,
   ): Sink<R | R2, E | E2, In1, L, Z>
 }
 ```
@@ -1247,9 +1241,9 @@ whether or not it completes).
 
 ```ts
 export declare const ensuring: {
-  <R2, _>(finalizer: Effect.Effect<R2, never, _>): <R, E, In, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E, In, L, Z>
+  <R2, _>(
+    finalizer: Effect.Effect<R2, never, _>,
+  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E, In, L, Z>
   <R, E, In, L, Z, R2, _>(self: Sink<R, E, In, L, Z>, finalizer: Effect.Effect<R2, never, _>): Sink<R | R2, E, In, L, Z>
 }
 ```
@@ -1266,12 +1260,12 @@ whether or not it completes).
 
 ```ts
 export declare const ensuringWith: {
-  <E, Z, R2, _>(finalizer: (exit: Exit.Exit<E, Z>) => Effect.Effect<R2, never, _>): <R, In, L>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E, In, L, Z>
+  <E, Z, R2, _>(
+    finalizer: (exit: Exit.Exit<E, Z>) => Effect.Effect<R2, never, _>,
+  ): <R, In, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E, In, L, Z>
   <R, In, L, E, Z, R2, _>(
     self: Sink<R, E, In, L, Z>,
-    finalizer: (exit: Exit.Exit<E, Z>) => Effect.Effect<R2, never, _>
+    finalizer: (exit: Exit.Exit<E, Z>) => Effect.Effect<R2, never, _>,
   ): Sink<R | R2, E, In, L, Z>
 }
 ```
@@ -1291,7 +1285,7 @@ predicate and initial state.
 export declare const fold: <S, In>(
   s: S,
   contFn: Predicate<S>,
-  f: (z: S, input: In) => S
+  f: (z: S, input: In) => S,
 ) => Sink<never, never, In, In, S>
 ```
 
@@ -1314,7 +1308,7 @@ export declare const foldSink: {
     options: {
       readonly onFailure: (err: E) => Sink<R1, E1, In1, L1, Z1>
       readonly onSuccess: (z: Z) => Sink<R2, E2, In2, L2, Z2>
-    }
+    },
   ): Sink<R | R1 | R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2>
 }
 ```
@@ -1347,12 +1341,13 @@ functions.
 
 ```ts
 export declare const dimap: {
-  <In0, In, Z, Z2>(options: { readonly onInput: (input: In0) => In; readonly onDone: (z: Z) => Z2 }): <R, E, L>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R, E, In0, L, Z2>
+  <In0, In, Z, Z2>(options: {
+    readonly onInput: (input: In0) => In
+    readonly onDone: (z: Z) => Z2
+  }): <R, E, L>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z2>
   <R, E, L, In0, In, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
-    options: { readonly onInput: (input: In0) => In; readonly onDone: (z: Z) => Z2 }
+    options: { readonly onInput: (input: In0) => In; readonly onDone: (z: Z) => Z2 },
   ): Sink<R, E, In0, L, Z2>
 }
 ```
@@ -1374,7 +1369,7 @@ export declare const dimapChunks: {
   }): <R, E, L>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z2>
   <R, E, L, In0, In, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
-    options: { readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>; readonly onDone: (z: Z) => Z2 }
+    options: { readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>; readonly onDone: (z: Z) => Z2 },
   ): Sink<R, E, In0, L, Z2>
 }
 ```
@@ -1399,7 +1394,7 @@ export declare const dimapChunksEffect: {
     options: {
       readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect.Effect<R2, E2, Chunk.Chunk<In>>
       readonly onDone: (z: Z) => Effect.Effect<R3, E3, Z2>
-    }
+    },
   ): Sink<R | R2 | R3, E | E2 | E3, In0, L, Z2>
 }
 ```
@@ -1424,7 +1419,7 @@ export declare const dimapEffect: {
     options: {
       readonly onInput: (input: In0) => Effect.Effect<R2, E2, In>
       readonly onDone: (z: Z) => Effect.Effect<R3, E3, Z2>
-    }
+    },
   ): Sink<R | R2 | R3, E | E2 | E3, In0, L, Z2>
 }
 ```
@@ -1454,16 +1449,13 @@ Effectfully transforms this sink's result.
 
 ```ts
 export declare const mapEffect: {
-  <Z, R2, E2, Z2>(f: (z: Z) => Effect.Effect<R2, E2, Z2>): <R, E, In, L>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E2 | E, In, L, Z2>
-  <R, E, In, L, Z, R2, E2, Z2>(self: Sink<R, E, In, L, Z>, f: (z: Z) => Effect.Effect<R2, E2, Z2>): Sink<
-    R | R2,
-    E | E2,
-    In,
-    L,
-    Z2
-  >
+  <Z, R2, E2, Z2>(
+    f: (z: Z) => Effect.Effect<R2, E2, Z2>,
+  ): <R, E, In, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, Z2>
+  <R, E, In, L, Z, R2, E2, Z2>(
+    self: Sink<R, E, In, L, Z>,
+    f: (z: Z) => Effect.Effect<R2, E2, Z2>,
+  ): Sink<R | R2, E | E2, In, L, Z2>
 }
 ```
 
@@ -1492,7 +1484,7 @@ Transforms this sink's input elements.
 
 ```ts
 export declare const mapInput: (<In0, In>(
-  f: (input: In0) => In
+  f: (input: In0) => In,
 ) => <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z>) &
   (<R, E, L, Z, In0, In>(self: Sink<R, E, In, L, Z>, f: (input: In0) => In) => Sink<R, E, In0, L, Z>)
 ```
@@ -1507,16 +1499,13 @@ Transforms this sink's input chunks. `f` must preserve chunking-invariance.
 
 ```ts
 export declare const mapInputChunks: {
-  <In0, In>(f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>): <R, E, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R, E, In0, L, Z>
-  <R, E, L, Z, In0, In>(self: Sink<R, E, In, L, Z>, f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>): Sink<
-    R,
-    E,
-    In0,
-    L,
-    Z
-  >
+  <In0, In>(
+    f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>,
+  ): <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z>
+  <R, E, L, Z, In0, In>(
+    self: Sink<R, E, In, L, Z>,
+    f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>,
+  ): Sink<R, E, In0, L, Z>
 }
 ```
 
@@ -1531,12 +1520,12 @@ chunking-invariance.
 
 ```ts
 export declare const mapInputChunksEffect: {
-  <In0, R2, E2, In>(f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<R2, E2, Chunk.Chunk<In>>): <R, E, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E2 | E, In0, L, Z>
+  <In0, R2, E2, In>(
+    f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<R2, E2, Chunk.Chunk<In>>,
+  ): <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In0, L, Z>
   <R, E, L, Z, In0, R2, E2, In>(
     self: Sink<R, E, In, L, Z>,
-    f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<R2, E2, Chunk.Chunk<In>>
+    f: (chunk: Chunk.Chunk<In0>) => Effect.Effect<R2, E2, Chunk.Chunk<In>>,
   ): Sink<R | R2, E | E2, In0, L, Z>
 }
 ```
@@ -1551,11 +1540,11 @@ Effectfully transforms this sink's input elements.
 
 ```ts
 export declare const mapInputEffect: (<In0, R2, E2, In>(
-  f: (input: In0) => Effect.Effect<R2, E2, In>
+  f: (input: In0) => Effect.Effect<R2, E2, In>,
 ) => <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In0, L, Z>) &
   (<R, E, L, Z, In0, R2, E2, In>(
     self: Sink<R, E, In, L, Z>,
-    f: (input: In0) => Effect.Effect<R2, E2, In>
+    f: (input: In0) => Effect.Effect<R2, E2, In>,
   ) => Sink<R | R2, E | E2, In0, L, Z>)
 ```
 
@@ -1634,12 +1623,12 @@ This function essentially runs sinks in sequence.
 
 ```ts
 export declare const flatMap: {
-  <R1, E1, In, In1 extends In, L, L1, Z, Z1>(f: (z: Z) => Sink<R1, E1, In1, L1, Z1>): <R, E>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R1 | R, E1 | E, In & In1, L | L1, Z1>
+  <R1, E1, In, In1 extends In, L, L1, Z, Z1>(
+    f: (z: Z) => Sink<R1, E1, In1, L1, Z1>,
+  ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R1 | R, E1 | E, In & In1, L | L1, Z1>
   <R, E, R1, E1, In, In1 extends In, L, L1, Z, Z1>(
     self: Sink<R, E, In, L, Z>,
-    f: (z: Z) => Sink<R1, E1, In1, L1, Z1>
+    f: (z: Z) => Sink<R1, E1, In1, L1, Z1>,
   ): Sink<R | R1, E | E1, In & In1, L | L1, Z1>
 }
 ```
@@ -1710,7 +1699,7 @@ Repeatedly runs the sink and accumulates its results into a `Chunk`.
 
 ```ts
 export declare const collectAllFrom: <R, E, In, L extends In, Z>(
-  self: Sink<R, E, In, L, Z>
+  self: Sink<R, E, In, L, Z>,
 ) => Sink<R, E, In, L, Chunk.Chunk<Z>>
 ```
 
@@ -1725,17 +1714,14 @@ Repeatedly runs the sink for as long as its results satisfy the predicate
 
 ```ts
 export declare const collectAllWhileWith: {
-  <Z, S>(options: { readonly initial: S; readonly while: Predicate<Z>; readonly body: (s: S, z: Z) => S }): <
-    R,
-    E,
-    In,
-    L extends In
-  >(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R, E, In, L, S>
+  <Z, S>(options: {
+    readonly initial: S
+    readonly while: Predicate<Z>
+    readonly body: (s: S, z: Z) => S
+  }): <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In, L, S>
   <R, E, In, L extends In, Z, S>(
     self: Sink<R, E, In, L, Z>,
-    options: { readonly initial: S; readonly while: Predicate<Z>; readonly body: (s: S, z: Z) => S }
+    options: { readonly initial: S; readonly while: Predicate<Z>; readonly body: (s: S, z: Z) => S },
   ): Sink<R, E, In, L, S>
 }
 ```
@@ -1751,7 +1737,7 @@ them as part of the sink's result.
 
 ```ts
 export declare const collectLeftover: <R, E, In, L, Z>(
-  self: Sink<R, E, In, L, Z>
+  self: Sink<R, E, In, L, Z>,
 ) => Sink<R, E, In, never, readonly [Z, Chunk.Chunk<L>]>
 ```
 
@@ -1778,16 +1764,13 @@ error from the one that finishes first.
 
 ```ts
 export declare const race: {
-  <R1, E1, In1, L1, Z1>(that: Sink<R1, E1, In1, L1, Z1>): <R, E, In, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Z1 | Z>
-  <R, E, In, L, Z, R1, E1, In1, L1, Z1>(self: Sink<R, E, In, L, Z>, that: Sink<R1, E1, In1, L1, Z1>): Sink<
-    R | R1,
-    E | E1,
-    In & In1,
-    L | L1,
-    Z | Z1
-  >
+  <R1, E1, In1, L1, Z1>(
+    that: Sink<R1, E1, In1, L1, Z1>,
+  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Z1 | Z>
+  <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
+    self: Sink<R, E, In, L, Z>,
+    that: Sink<R1, E1, In1, L1, Z1>,
+  ): Sink<R | R1, E | E1, In & In1, L | L1, Z | Z1>
 }
 ```
 
@@ -1802,13 +1785,14 @@ from the one that finishes first.
 
 ```ts
 export declare const raceBoth: {
-  <R1, E1, In1, L1, Z1>(that: Sink<R1, E1, In1, L1, Z1>, options?: { readonly capacity?: number }): <R, E, In, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>
+  <R1, E1, In1, L1, Z1>(
+    that: Sink<R1, E1, In1, L1, Z1>,
+    options?: { readonly capacity?: number },
+  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R1, E1, In1, L1, Z1>,
-    options?: { readonly capacity?: number }
+    options?: { readonly capacity?: number },
   ): Sink<R | R1, E | E1, In & In1, L | L1, Either.Either<Z, Z1>>
 }
 ```
@@ -1837,7 +1821,7 @@ export declare const raceWith: {
       readonly onSelfDone: (exit: Exit.Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
       readonly onOtherDone: (exit: Exit.Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number | undefined
-    }
+    },
   ): Sink<R | R2, E2 | E, In & In2, L | L2, Z3 | Z4>
 }
 ```
@@ -1870,13 +1854,14 @@ it completes.
 
 ```ts
 export declare const summarized: {
-  <R2, E2, Z2, Z3>(summary: Effect.Effect<R2, E2, Z2>, f: (start: Z2, end: Z2) => Z3): <R, E, In, L, Z>(
-    self: Sink<R, E, In, L, Z>
-  ) => Sink<R2 | R, E2 | E, In, L, readonly [Z, Z3]>
+  <R2, E2, Z2, Z3>(
+    summary: Effect.Effect<R2, E2, Z2>,
+    f: (start: Z2, end: Z2) => Z3,
+  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, readonly [Z, Z3]>
   <R, E, In, L, Z, R2, E2, Z2, Z3>(
     self: Sink<R, E, In, L, Z>,
     summary: Effect.Effect<R2, E2, Z2>,
-    f: (start: Z2, end: Z2) => Z3
+    f: (start: Z2, end: Z2) => Z3,
   ): Sink<R | R2, E | E2, In, L, readonly [Z, Z3]>
 }
 ```
@@ -1891,7 +1876,7 @@ Returns the sink that executes this one and times its execution.
 
 ```ts
 export declare const withDuration: <R, E, In, L, Z>(
-  self: Sink<R, E, In, L, Z>
+  self: Sink<R, E, In, L, Z>,
 ) => Sink<R, E, In, L, readonly [Z, Duration.Duration]>
 ```
 
@@ -1911,12 +1896,12 @@ results into a tuple.
 export declare const zip: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, readonly [Z, Z2]>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): Sink<R | R2, E | E2, In & In2, L | L2, readonly [Z, Z2]>
 }
 ```
@@ -1933,12 +1918,12 @@ Like `Sink.zip` but keeps only the result from this sink.
 export declare const zipLeft: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z>
 }
 ```
@@ -1955,12 +1940,12 @@ Like `Sink.zip` but keeps only the result from `that` sink.
 export declare const zipRight: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z2>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z2>
 }
 ```
@@ -1980,13 +1965,13 @@ export declare const zipWith: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
     that: Sink<R2, E2, In2, L2, Z2>,
     f: (z: Z, z1: Z2) => Z3,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z3>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
     f: (z: Z, z1: Z2) => Z3,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean },
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z3>
 }
 ```

@@ -1,6 +1,6 @@
 ---
 title: Duration.ts
-nav_order: 28
+nav_order: 22
 parent: Modules
 ---
 
@@ -320,7 +320,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type DurationValue = { _tag: 'Millis'; millis: number } | { _tag: 'Nanos'; nanos: bigint } | { _tag: 'Infinity' }
+export type DurationValue = { _tag: "Millis"; millis: number } | { _tag: "Nanos"; nanos: bigint } | { _tag: "Infinity" }
 ```
 
 Added in v2.0.0
@@ -330,7 +330,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Unit = 'nanos' | 'micros' | 'millis' | 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks'
+export type Unit = "nanos" | "micros" | "millis" | "seconds" | "minutes" | "hours" | "days" | "weeks"
 ```
 
 Added in v2.0.0
@@ -343,12 +343,13 @@ Added in v2.0.0
 
 ```ts
 export declare const match: {
-  <A, B>(options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B }): (
-    self: DurationInput
-  ) => A | B
+  <A, B>(options: {
+    readonly onMillis: (millis: number) => A
+    readonly onNanos: (nanos: bigint) => B
+  }): (self: DurationInput) => A | B
   <A, B>(
     self: DurationInput,
-    options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B }
+    options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B },
   ): A | B
 }
 ```
@@ -366,7 +367,7 @@ export declare const matchWith: {
     options: {
       readonly onMillis: (self: number, that: number) => A
       readonly onNanos: (self: bigint, that: bigint) => B
-    }
+    },
   ): (self: DurationInput) => A | B
   <A, B>(
     self: DurationInput,
@@ -374,7 +375,7 @@ export declare const matchWith: {
     options: {
       readonly onMillis: (self: number, that: number) => A
       readonly onNanos: (self: bigint, that: bigint) => B
-    }
+    },
   ): A | B
 }
 ```

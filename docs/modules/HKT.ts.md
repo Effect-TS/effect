@@ -1,6 +1,6 @@
 ---
 title: HKT.ts
-nav_order: 49
+nav_order: 43
 parent: Modules
 ---
 
@@ -34,7 +34,7 @@ export type Kind<F extends TypeLambda, In, Out2, Out1, Target> = F extends {
       readonly Out2: Out2
       readonly Out1: Out1
       readonly Target: Target
-    })['type']
+    })["type"]
   : {
       readonly F: F
       readonly In: (_: In) => void
