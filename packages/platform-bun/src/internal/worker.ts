@@ -18,7 +18,9 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             port.addEventListener("close", () => resume(Effect.unit), { once: true, signal })
             port.postMessage([1])
           }),
-          Effect.timeout(5000),
+          // TODO: make configurable
+          // sometimes bun doesn't fire the close event
+          Effect.timeout(1000),
           Effect.tap(Option.match({
             onNone: () => Effect.sync(() => port.terminate()),
             onSome: (_) => Effect.unit

@@ -214,7 +214,7 @@ export const makeManager = Effect.gen(function*(_) {
         const join = Fiber.join(fiber)
 
         return { id, join, execute, executeEffect }
-      })
+      }).pipe(Effect.parallelFinalizers)
     }
   })
 })
@@ -271,9 +271,7 @@ export const makePool = <W>() =>
     }
 
     return pool
-  }).pipe(
-    Effect.parallelFinalizers
-  )
+  })
 
 /** @internal */
 export const makePoolLayer = <W>(managerLayer: Layer.Layer<never, never, Worker.WorkerManager>) =>
