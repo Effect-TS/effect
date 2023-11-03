@@ -321,6 +321,23 @@ export const cachedFunction: <R, E, A, B>(
  * Returns an effect that will be executed at most once, even if it is
  * evaluated multiple times.
  *
+ * @example
+ * import * as Effect from "effect/Effect"
+ * import * as Console from "effect/Console"
+ *
+ * const program = Effect.gen(function* (_) {
+ *   const twice = Console.log("twice")
+ *   yield* _(twice, Effect.repeatN(1))
+ *   const once = yield* _(Console.log("once"), Effect.once)
+ *   yield* _(once, Effect.repeatN(1))
+ * })
+ *
+ * Effect.runFork(program)
+ * // Output:
+ * // twice
+ * // twice
+ * // once
+ *
  * @since 2.0.0
  * @category caching
  */

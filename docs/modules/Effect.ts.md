@@ -549,6 +549,26 @@ evaluated multiple times.
 export declare const once: <R, E, A>(self: Effect<R, E, A>) => Effect<never, never, Effect<R, E, void>>
 ```
 
+**Example**
+
+```ts
+import * as Effect from 'effect/Effect'
+import * as Console from 'effect/Console'
+
+const program = Effect.gen(function* (_) {
+  const twice = Console.log('twice')
+  yield* _(twice, Effect.repeatN(1))
+  const once = yield* _(Console.log('once'), Effect.once)
+  yield* _(once, Effect.repeatN(1))
+})
+
+Effect.runFork(program)
+// Output:
+// twice
+// twice
+// once
+```
+
 Added in v2.0.0
 
 # clock
