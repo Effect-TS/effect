@@ -1,6 +1,7 @@
 import type { Cause } from "effect/Cause"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import * as Predicate from "effect/Predicate"
 
 declare const string: Effect.Effect<"dep-1", "err-1", string>
 declare const number: Effect.Effect<"dep-2", "err-2", number>
@@ -409,3 +410,31 @@ pipe(
     "TestError1": (_e) => Effect.succeed(1)
   })
 )
+
+// -------------------------------------------------------------------------------------
+// iterate
+// -------------------------------------------------------------------------------------
+
+// predicate
+
+// $ExpectType Effect<never, never, number>
+Effect.iterate(100, {
+  while: (
+    n // $ExpectType number
+  ) => n > 0,
+  body: (
+    n // $ExpectType number
+  ) => Effect.succeed(n - 1)
+})
+
+// refinement
+
+// $ExpectType Effect<never, never, number | null>
+Effect.iterate(100 as null | number, {
+  while: (
+    n // $ExpectType number | null
+  ): n is number => Predicate.isNotNull(n) && n > 0,
+  body: (
+    n // $ExpectType number
+  ) => Effect.succeed(n - 1)
+})

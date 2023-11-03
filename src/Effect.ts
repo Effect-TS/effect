@@ -3713,43 +3713,65 @@ export const tapErrorCause: {
 export const forever: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, never> = effect.forever
 
 /**
- * Iterates with the specified effectual function. The moral equivalent of:
+ * The `Effect.iterate` function allows you to iterate with an effectful operation. It uses an effectful `body` operation to change the state during each iteration and continues the iteration as long as the `while` function evaluates to `true`:
  *
  * ```ts
- * let s = initial
+ * Effect.iterate(initial, options: { while, body })
+ * ```
  *
- * while (cont(s)) {
- *   s = body(s)
+ * We can think of `Effect.iterate` as equivalent to a `while` loop in JavaScript:
+ *
+ * ```ts
+ * let result = initial
+ *
+ * while (options.while(result)) {
+ *   result = options.body(result)
  * }
  *
- * return s
+ * return result
  * ```
  *
  * @since 2.0.0
  * @category repetition / recursion
  */
-export const iterate: <Z, R, E>(
-  initial: Z,
-  options: {
-    readonly while: (z: Z) => boolean
-    readonly body: (z: Z) => Effect<R, E, Z>
-  }
-) => Effect<R, E, Z> = effect.iterate
+export const iterate: {
+  <A, B extends A, R, E>(
+    initial: A,
+    options: {
+      readonly while: Refinement<A, B>
+      readonly body: (b: B) => Effect<R, E, A>
+    }
+  ): Effect<R, E, A>
+  <A, R, E>(
+    initial: A,
+    options: {
+      readonly while: (a: A) => boolean
+      readonly body: (a: A) => Effect<R, E, A>
+    }
+  ): Effect<R, E, A>
+} = effect.iterate
 
 /**
- * Loops with the specified effectual function, collecting the results into a
- * list. The moral equivalent of:
+ * The `Effect.loop` function allows you to repeatedly change the state based on an `step` function until a condition given by the `while` function is evaluated to `true`:
  *
  * ```ts
- * let s  = initial
- * let as = [] as readonly A[]
+ * Effect.loop(initial, options: { while, step, body })
+ * ```
  *
- * while (cont(s)) {
- *   as = [body(s), ...as]
- *   s  = inc(s)
+ * It collects all intermediate states in an array and returns it as the final result.
+ *
+ * We can think of Effect.loop as equivalent to a while loop in JavaScript:
+ *
+ * ```ts
+ * let state = initial
+ * const result = []
+ *
+ * while (options.while(state)) {
+ *   result.push(options.body(state))
+ *   state = options.step(state)
  * }
  *
- * A.reverse(as)
+ * return result
  * ```
  *
  * @since 2.0.0
