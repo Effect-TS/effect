@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.16.2
+
+### Patch Changes
+
+- [#241](https://github.com/Effect-TS/platform/pull/241) [`e2aa7cd`](https://github.com/Effect-TS/platform/commit/e2aa7cd606a735809fbf79327cfebc009e89d84d) Thanks [@tim-smart](https://github.com/tim-smart)! - decrease bun worker close timeout
+
+- Updated dependencies [[`e2aa7cd`](https://github.com/Effect-TS/platform/commit/e2aa7cd606a735809fbf79327cfebc009e89d84d)]:
+  - @effect/platform@0.27.2
+  - @effect/platform-node@0.28.2
+
 ## 0.16.1
 
 ### Patch Changes
