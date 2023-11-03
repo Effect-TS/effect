@@ -59,10 +59,10 @@
   },
   "packageManager": "pnpm@8.9.0",
   "peerDependencies": {
-    "@effect/printer": "^0.22.0",
-    "@effect/printer-ansi": "^0.22.0",
-    "@effect/schema": "^0.47.0",
-    "effect": "2.0.0-next.53"
+    "@effect/printer": "^0.22.1",
+    "@effect/printer-ansi": "^0.22.1",
+    "@effect/schema": "^0.47.1",
+    "effect": "2.0.0-next.54"
   },
   "devDependencies": {
     "@babel/core": "^7.23.2",
@@ -73,9 +73,9 @@
     "@effect/docgen": "^0.2.1",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
-    "@effect/printer": "^0.22.0",
-    "@effect/printer-ansi": "^0.22.0",
-    "@effect/schema": "^0.47.0",
+    "@effect/printer": "^0.22.1",
+    "@effect/printer-ansi": "^0.22.1",
+    "@effect/schema": "^0.47.1",
     "@preconstruct/cli": "^2.8.1",
     "@types/chai": "^4.3.9",
     "@types/node": "^20.8.10",
@@ -84,7 +84,7 @@
     "@vitejs/plugin-react": "^4.1.1",
     "@vitest/coverage-v8": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "effect": "2.0.0-next.53",
+    "effect": "2.0.0-next.54",
     "error-stack-parser": "^2.1.4",
     "eslint": "^8.52.0",
     "eslint-import-resolver-typescript": "^3.6.1",
