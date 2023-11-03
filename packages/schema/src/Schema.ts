@@ -2975,8 +2975,6 @@ const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date()
 
 const datePretty = (): Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
 
-const dateEquivalence = (): Equivalence.Equivalence<Date> => (a, b) => a.getTime() === b.getTime()
-
 /**
  * @category Date constructors
  * @since 1.0.0
@@ -2990,7 +2988,7 @@ export const DateFromSelf: Schema<Date> = declare(
     [AST.IdentifierAnnotationId]: "Date",
     [Internal.PrettyHookId]: datePretty,
     [Internal.ArbitraryHookId]: dateArbitrary,
-    [Internal.EquivalenceHookId]: dateEquivalence
+    [Internal.EquivalenceHookId]: () => Equivalence.Date
   }
 )
 
@@ -3054,10 +3052,6 @@ const optionPretty = <A>(value: Pretty<A>): Pretty<Option.Option<A>> =>
     onSome: (a) => `some(${value(a)})`
   })
 
-const optionEquivalence = <A>(
-  value: Equivalence.Equivalence<A>
-): Equivalence.Equivalence<Option.Option<A>> => Option.getEquivalence(value)
-
 const optionInline = <I, A>(value: Schema<I, A>) =>
   union(
     struct({
@@ -3092,7 +3086,7 @@ export const optionFromSelf = <I, A>(
       [AST.IdentifierAnnotationId]: "Option",
       [Internal.PrettyHookId]: optionPretty,
       [Internal.ArbitraryHookId]: optionArbitrary,
-      [Internal.EquivalenceHookId]: optionEquivalence
+      [Internal.EquivalenceHookId]: Option.getEquivalence
     }
   )
 }
@@ -3142,11 +3136,6 @@ const eitherPretty = <E, A>(left: Pretty<E>, right: Pretty<A>): Pretty<Either.Ei
     onRight: (a) => `right(${right(a)})`
   })
 
-const eitherEquivalence = <E, A>(
-  left: Equivalence.Equivalence<E>,
-  right: Equivalence.Equivalence<A>
-): Equivalence.Equivalence<Either.Either<E, A>> => Either.getEquivalence(left, right)
-
 const eitherInline = <IE, E, IA, A>(left: Schema<IE, E>, right: Schema<IA, A>) =>
   union(
     struct({
@@ -3184,7 +3173,7 @@ export const eitherFromSelf = <IE, E, IA, A>(
       [AST.IdentifierAnnotationId]: "Either",
       [Internal.PrettyHookId]: eitherPretty,
       [Internal.ArbitraryHookId]: eitherArbitrary,
-      [Internal.EquivalenceHookId]: eitherEquivalence
+      [Internal.EquivalenceHookId]: Either.getEquivalence
     }
   )
 }
@@ -3237,10 +3226,12 @@ const readonlyMapEquivalence = <K, V>(
   key: Equivalence.Equivalence<K>,
   value: Equivalence.Equivalence<V>
 ): Equivalence.Equivalence<ReadonlyMap<K, V>> => {
-  const eq = ReadonlyArray.getEquivalence(
+  const arrayEquivalence = ReadonlyArray.getEquivalence(
     Equivalence.make<[K, V]>(([ka, va], [kb, vb]) => key(ka, kb) && value(va, vb))
   )
-  return Equivalence.make((a, b) => eq(Array.from(a.entries()), Array.from(b.entries())))
+  return Equivalence.make((a, b) =>
+    arrayEquivalence(Array.from(a.entries()), Array.from(b.entries()))
+  )
 }
 
 /**
@@ -3304,8 +3295,10 @@ const readonlySetPretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> => (set) 
 const readonlySetEquivalence = <A>(
   item: Equivalence.Equivalence<A>
 ): Equivalence.Equivalence<ReadonlySet<A>> => {
-  const eq = ReadonlyArray.getEquivalence(item)
-  return Equivalence.make((a, b) => eq(Array.from(a.values()), Array.from(b.values())))
+  const arrayEquivalence = ReadonlyArray.getEquivalence(item)
+  return Equivalence.make((a, b) =>
+    arrayEquivalence(Array.from(a.values()), Array.from(b.values()))
+  )
 }
 
 /**
@@ -3358,15 +3351,6 @@ const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk.Chunk<A>> => (fc
 const chunkPretty = <A>(item: Pretty<A>): Pretty<Chunk.Chunk<A>> => (c) =>
   `Chunk(${Chunk.toReadonlyArray(c).map(item).join(", ")})`
 
-const chunkEquivalence = <A>(
-  item: Equivalence.Equivalence<A>
-): Equivalence.Equivalence<Chunk.Chunk<A>> =>
-  // TODO: replace with Chunk.getEquivalence when https://github.com/Effect-TS/effect/pull/1585 is released
-  Equivalence.make((self, that) =>
-    self.length === that.length &&
-    Chunk.toReadonlyArray(self).every((value, i) => item(value, Chunk.unsafeGet(that, i)))
-  )
-
 /**
  * @category Chunk transformations
  * @since 1.0.0
@@ -3393,7 +3377,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
       [AST.IdentifierAnnotationId]: "Chunk",
       [Internal.PrettyHookId]: chunkPretty,
       [Internal.ArbitraryHookId]: chunkArbitrary,
-      [Internal.EquivalenceHookId]: chunkEquivalence
+      [Internal.EquivalenceHookId]: Chunk.getEquivalence
     }
   )
 }
