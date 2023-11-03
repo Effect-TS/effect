@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.47.2
+
+### Patch Changes
+
+- [#542](https://github.com/Effect-TS/schema/pull/542) [`23c2ecc`](https://github.com/Effect-TS/schema/commit/23c2ecc8f585190aa0d5df0a7aef6a796d8fa634) Thanks [@gcanti](https://github.com/gcanti)! - Chore: use Chunk.getEquivalence
+
 ## 0.47.1
 
 ### Patch Changes
