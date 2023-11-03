@@ -4221,10 +4221,16 @@ return result
 **Signature**
 
 ```ts
-export declare const iterate: <Z, R, E>(
-  initial: Z,
-  options: { readonly while: (z: Z) => boolean; readonly body: (z: Z) => Effect<R, E, Z> }
-) => Effect<R, E, Z>
+export declare const iterate: {
+  <A, B extends A, R, E>(
+    initial: A,
+    options: { readonly while: Refinement<A, B>; readonly body: (b: B) => Effect<R, E, A> }
+  ): Effect<R, E, A>
+  <A, R, E>(
+    initial: A,
+    options: { readonly while: (a: A) => boolean; readonly body: (a: A) => Effect<R, E, A> }
+  ): Effect<R, E, A>
+}
 ```
 
 Added in v2.0.0

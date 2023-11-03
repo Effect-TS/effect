@@ -3734,13 +3734,22 @@ export const forever: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, never> = 
  * @since 2.0.0
  * @category repetition / recursion
  */
-export const iterate: <Z, R, E>(
-  initial: Z,
-  options: {
-    readonly while: (z: Z) => boolean
-    readonly body: (z: Z) => Effect<R, E, Z>
-  }
-) => Effect<R, E, Z> = effect.iterate
+export const iterate: {
+  <A, B extends A, R, E>(
+    initial: A,
+    options: {
+      readonly while: Refinement<A, B>
+      readonly body: (b: B) => Effect<R, E, A>
+    }
+  ): Effect<R, E, A>
+  <A, R, E>(
+    initial: A,
+    options: {
+      readonly while: (a: A) => boolean
+      readonly body: (a: A) => Effect<R, E, A>
+    }
+  ): Effect<R, E, A>
+} = effect.iterate
 
 /**
  * The `Effect.loop` function allows you to repeatedly change the state based on an `step` function until a condition given by the `while` function is evaluated to `true`:
