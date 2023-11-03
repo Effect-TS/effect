@@ -122,37 +122,7 @@ export * as Channel from "./Channel.js"
 /**
  * @since 2.0.0
  */
-export * as ChannelChildExecutorDecision from "./ChildExecutorDecision.js"
-
-/**
- * @since 2.0.0
- */
-export * as ChannelMergeDecision from "./MergeDecision.js"
-
-/**
- * @since 2.0.0
- */
-export * as ChannelMergeState from "./MergeState.js"
-
-/**
- * @since 2.0.0
- */
-export * as ChannelMergeStrategy from "./MergeStrategy.js"
-
-/**
- * @since 2.0.0
- */
-export * as ChannelSingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
-
-/**
- * @since 2.0.0
- */
-export * as ChannelUpstreamPullRequest from "./UpstreamPullRequest.js"
-
-/**
- * @since 2.0.0
- */
-export * as ChannelUpstreamPullStrategy from "./UpstreamPullStrategy.js"
+export * as ChildExecutorDecision from "./ChildExecutorDecision.js"
 
 /**
  * @since 2.0.0
@@ -413,6 +383,21 @@ export * as Match from "./Match.js"
 /**
  * @since 2.0.0
  */
+export * as MergeDecision from "./MergeDecision.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as MergeState from "./MergeState.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as MergeStrategy from "./MergeStrategy.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as Metric from "./Metric.js"
 
 /**
@@ -656,6 +641,11 @@ export * as ScopedRef from "./ScopedRef.js"
 /**
  * @since 2.0.0
  */
+export * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as Sink from "./Sink.js"
 
 /**
@@ -855,6 +845,16 @@ export * as Types from "./Types.js"
  * @since 2.0.0
  */
 export * as Unify from "./Unify.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as UpstreamPullRequest from "./UpstreamPullRequest.js"
+
+/**
+ * @since 2.0.0
+ */
+export * as UpstreamPullStrategy from "./UpstreamPullStrategy.js"
 
 /**
  * @since 2.0.0

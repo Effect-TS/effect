@@ -33,7 +33,8 @@
     "src"
   ],
   "scripts": {
-    "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && echo '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json",
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && echo '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json",
+    "build-prepare": "build-utils prepare-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel dist/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir dist/cjs --source-maps",
     "build-annotate": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
@@ -783,7 +784,7 @@
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
     "@edge-runtime/vm": "^3.1.6",
-    "@effect/build-utils": "^0.1.9",
+    "@effect/build-utils": "^0.2.0",
     "@effect/docgen": "^0.2.1",
     "@effect/dtslint": "^0.0.3",
     "@effect/eslint-plugin": "^0.1.2",
