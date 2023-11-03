@@ -3778,21 +3778,39 @@ export const iterate: {
  * @category repetition / recursion
  */
 export const loop: {
-  <Z, R, E, A>(
-    initial: Z,
+  <A, B extends A, R, E, C>(
+    initial: A,
     options: {
-      readonly while: (z: Z) => boolean
-      readonly step: (z: Z) => Z
-      readonly body: (z: Z) => Effect<R, E, A>
+      readonly while: Refinement<A, B>
+      readonly step: (b: B) => A
+      readonly body: (b: B) => Effect<R, E, C>
       readonly discard?: false
     }
-  ): Effect<R, E, Array<A>>
-  <Z, R, E, A>(
-    initial: Z,
+  ): Effect<R, E, Array<C>>
+  <A, R, E, C>(
+    initial: A,
     options: {
-      readonly while: (z: Z) => boolean
-      readonly step: (z: Z) => Z
-      readonly body: (z: Z) => Effect<R, E, A>
+      readonly while: (a: A) => boolean
+      readonly step: (a: A) => A
+      readonly body: (a: A) => Effect<R, E, C>
+      readonly discard?: false
+    }
+  ): Effect<R, E, Array<C>>
+  <A, B extends A, R, E, C>(
+    initial: A,
+    options: {
+      readonly while: Refinement<A, B>
+      readonly step: (b: B) => A
+      readonly body: (b: B) => Effect<R, E, C>
+      readonly discard: true
+    }
+  ): Effect<R, E, void>
+  <A, R, E, C>(
+    initial: A,
+    options: {
+      readonly while: (a: A) => boolean
+      readonly step: (a: A) => A
+      readonly body: (a: A) => Effect<R, E, C>
       readonly discard: true
     }
   ): Effect<R, E, void>
