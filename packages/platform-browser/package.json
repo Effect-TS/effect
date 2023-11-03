@@ -39,12 +39,12 @@
     "@effect/platform": "workspace:^"
   },
   "devDependencies": {
-    "effect": "2.0.0-next.53",
+    "effect": "2.0.0-next.54",
     "happy-dom": "^12.10.3",
     "vitest-localstorage-mock": "^0.0.1"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.53"
+    "effect": "2.0.0-next.54"
   },
   "files": [
     "src",
