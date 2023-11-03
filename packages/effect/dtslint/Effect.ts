@@ -438,3 +438,53 @@ Effect.iterate(100 as null | number, {
     n // $ExpectType number
   ) => Effect.succeed(n - 1)
 })
+
+// -------------------------------------------------------------------------------------
+// loop
+// -------------------------------------------------------------------------------------
+
+// predicate
+
+// $ExpectType Effect<never, never, number[]>
+Effect.loop(0, {
+  while: (n) => n < 5,
+  step: (n) => n + 1,
+  body: (n) => Effect.succeed(n * 2)
+})
+
+// $ExpectType Effect<never, never, void>
+Effect.loop(0, {
+  while: (n) => n < 5,
+  step: (n) => n + 1,
+  body: (n) => Effect.succeed(n * 2),
+  discard: true
+})
+
+// refinement
+
+// $ExpectType Effect<never, never, number[]>
+Effect.loop(0 as null | number, {
+  while: (
+    n // $ExpectType number | null
+  ): n is number => Predicate.isNotNull(n) && n < 5,
+  step: (
+    n // $ExpectType number
+  ) => n + 1,
+  body: (
+    n // $ExpectType number
+  ) => Effect.succeed(n * 2)
+})
+
+// $ExpectType Effect<never, never, void>
+Effect.loop(0 as null | number, {
+  while: (
+    n // $ExpectType number | null
+  ): n is number => Predicate.isNotNull(n) && n < 5,
+  step: (
+    n // $ExpectType number
+  ) => n + 1,
+  body: (
+    n // $ExpectType number
+  ) => Effect.succeed(n * 2),
+  discard: true
+})
