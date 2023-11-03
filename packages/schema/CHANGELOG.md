@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.47.1
+
+### Patch Changes
+
+- [#540](https://github.com/Effect-TS/schema/pull/540) [`85526bf`](https://github.com/Effect-TS/schema/commit/85526bf6e6a1e833d4ae43716c6c27a7c38fb874) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.47.0
 
 ### Minor Changes
