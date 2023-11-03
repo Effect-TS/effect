@@ -4225,19 +4225,26 @@ Added in v2.0.0
 
 ## loop
 
-Loops with the specified effectual function, collecting the results into a
-list. The moral equivalent of:
+The `Effect.loop` function allows you to repeatedly change the state based on an `step` function until a condition given by the `while` function is evaluated to `true`:
 
 ```ts
-let s = initial
-let as = [] as readonly A[]
+Effect.loop(initial, options: { while, step, body })
+```
 
-while (cont(s)) {
-  as = [body(s), ...as]
-  s = inc(s)
+It collects all intermediate states in an array and returns it as the final result.
+
+We can think of Effect.loop as equivalent to a while loop in JavaScript:
+
+```ts
+let state = initial
+const result = []
+
+while (options.while(state)) {
+  result.push(options.body(state))
+  state = options.step(state)
 }
 
-A.reverse(as)
+return result
 ```
 
 **Signature**
