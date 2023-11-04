@@ -208,13 +208,15 @@ describe.concurrent("Context", () => {
     assert.throw(() => {
       Context.get(Context.empty(), C as never)
     }, "Service not found: C")
-    try {
-      Context.get(Context.empty(), C as never)
-    } catch (e) {
-      assert.match(
-        String(e),
-        new RegExp(/Error: Service not found: C \(defined at (.*)Context.ts:20:19\)/)
-      )
+    if (typeof window === "undefined") {
+      try {
+        Context.get(Context.empty(), C as never)
+      } catch (e) {
+        assert.match(
+          String(e),
+          new RegExp(/Error: Service not found: C \(defined at (.*)Context.ts:20:19\)/)
+        )
+      }
     }
   })
 

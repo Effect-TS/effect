@@ -53,6 +53,9 @@ describe.concurrent("SortedSet", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     const set = makeNumericSortedSet(0, 1, 2)
     expect(inspect(set)).toEqual(inspect({ _id: "SortedSet", values: [0, 1, 2] }))
   })

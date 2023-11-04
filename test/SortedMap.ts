@@ -82,6 +82,9 @@ describe.concurrent("SortedMap", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     const map = makeNumericSortedMap([0, 10], [1, 20], [2, 30])
 
     expect(inspect(map)).toEqual(
