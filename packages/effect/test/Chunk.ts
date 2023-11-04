@@ -69,7 +69,9 @@ describe.concurrent("Chunk", () => {
   })
 
   it("inspect", () => {
-    expect(inspect(Chunk.make(0, 1, 2))).toEqual(inspect({ _id: "Chunk", values: [0, 1, 2] }))
+    if (typeof window === "undefined") {
+      expect(inspect(Chunk.make(0, 1, 2))).toEqual(inspect({ _id: "Chunk", values: [0, 1, 2] }))
+    }
   })
 
   it("modifyOption", () => {

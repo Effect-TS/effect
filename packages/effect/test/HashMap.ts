@@ -66,8 +66,10 @@ describe.concurrent("HashMap", () => {
   })
 
   it("inspect", () => {
-    const map = HM.make([0, "a"])
-    expect(inspect(map)).toEqual(inspect({ _id: "HashMap", values: [[0, "a"]] }))
+    if (typeof window === "undefined") {
+      const map = HM.make([0, "a"])
+      expect(inspect(map)).toEqual(inspect({ _id: "HashMap", values: [[0, "a"]] }))
+    }
   })
 
   it("has", () => {

@@ -75,6 +75,9 @@ describe.concurrent("Option", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     expect(inspect(_.none())).toEqual(inspect({ _id: "Option", _tag: "None" }))
     expect(inspect(_.some(1))).toEqual(inspect({ _id: "Option", _tag: "Some", value: 1 }))
   })

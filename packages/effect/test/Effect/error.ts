@@ -12,7 +12,9 @@ describe.concurrent("Effect", () => {
       const cause = yield* $(Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))
       const log = Cause.pretty(cause)
       expect(log).includes("TestError: ")
-      expect(log).includes("test/Effect/error.ts:12:78")
+      if (typeof window === "undefined") {
+        expect(log).includes("test/Effect/error.ts:12:78")
+      }
       expect(log).includes("at A")
     }))
 
@@ -28,7 +30,9 @@ describe.concurrent("Effect", () => {
         Effect.flip
       )
       const log = Cause.pretty(cause)
-      expect(log).includes("test/Effect/error.ts:24")
+      if (typeof window === "undefined") {
+        expect(log).includes("test/Effect/error.ts:26")
+      }
       expect(log).includes("at A")
     }))
 
@@ -49,7 +53,9 @@ describe.concurrent("Effect", () => {
       )
       const log = Cause.pretty(cause)
       expect(log).includes("Failure: some message")
-      expect(log).includes("test/Effect/error.ts:44")
+      if (typeof window === "undefined") {
+        expect(log).includes("test/Effect/error.ts:48")
+      }
       expect(log).includes("at A")
     }))
 })

@@ -56,6 +56,9 @@ describe.concurrent("MutableHashSet", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     const set = MutableHashSet.make(
       new Value(0, 1),
       new Value(2, 3)

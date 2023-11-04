@@ -34,7 +34,9 @@ describe.concurrent("Effect", () => {
         ],
         [
           300,
-          Scheduler.makeBatched(setImmediate)
+          Scheduler.makeBatched((runBatch) => {
+            timeout.set(runBatch, 0)
+          })
         ]
       )
       yield* $(

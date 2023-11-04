@@ -48,6 +48,9 @@ describe.concurrent("HashSet", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     const map = HashSet.make(0, "a")
     expect(inspect(map)).toEqual(inspect({ _id: "HashSet", values: [0, "a"] }))
   })
