@@ -23,6 +23,9 @@ describe.concurrent("MutableQueue", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     const queue = MutableQueue.bounded<number>(2)
     MutableQueue.offerAll([0, 1, 2])(queue)
     expect(inspect(queue)).toEqual(inspect({ _id: "MutableQueue", values: [0, 1] }))

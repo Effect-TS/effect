@@ -238,6 +238,9 @@ describe.concurrent("List", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     expect(inspect(List.empty())).toEqual(inspect({ _id: "List", _tag: "Nil" }))
     expect(inspect(List.make(0, 1, 2))).toEqual(inspect({ _id: "List", _tag: "Cons", values: [0, 1, 2] }))
   })

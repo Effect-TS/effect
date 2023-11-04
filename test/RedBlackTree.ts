@@ -45,6 +45,9 @@ describe.concurrent("RedBlackTree", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     const tree = pipe(
       RedBlackTree.empty<number, string>(number.Order),
       RedBlackTree.insert(1, "a"),

@@ -219,9 +219,11 @@ describe.concurrent("Duration", () => {
   })
 
   it(`inspect`, () => {
-    expect(inspect(Duration.millis(1000))).toEqual(
-      inspect({ _id: "Duration", _tag: "Millis", millis: 1000 })
-    )
+    if (typeof window === "undefined") {
+      expect(inspect(Duration.millis(1000))).toEqual(
+        inspect({ _id: "Duration", _tag: "Millis", millis: 1000 })
+      )
+    }
   })
 
   it("sum/ Infinity", () => {

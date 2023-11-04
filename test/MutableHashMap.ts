@@ -72,6 +72,9 @@ describe.concurrent("MutableHashMap", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     const map = HM.make(
       [0, "a"],
       [1, "b"]

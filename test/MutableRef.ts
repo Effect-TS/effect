@@ -25,6 +25,9 @@ describe.concurrent("MutableRef", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     expect(inspect(MutableRef.make(Chunk.make(1, 2, 3)))).toEqual(
       inspect({ _id: "MutableRef", current: { _id: "Chunk", values: [1, 2, 3] } })
     )

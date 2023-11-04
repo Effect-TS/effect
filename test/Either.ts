@@ -90,8 +90,10 @@ describe.concurrent("Either", () => {
   })
 
   it("inspect", () => {
-    expect(inspect(Either.right(1))).toEqual(inspect({ _id: "Either", _tag: "Right", right: 1 }))
-    expect(inspect(Either.left("e"))).toEqual(inspect({ _id: "Either", _tag: "Left", left: "e" }))
+    if (typeof window === "undefined") {
+      expect(inspect(Either.right(1))).toEqual(inspect({ _id: "Either", _tag: "Right", right: 1 }))
+      expect(inspect(Either.left("e"))).toEqual(inspect({ _id: "Either", _tag: "Left", left: "e" }))
+    }
   })
 
   it("isEither", () => {

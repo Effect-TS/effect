@@ -23,6 +23,9 @@ describe.concurrent("MutableList", () => {
   })
 
   it("inspect", () => {
+    if (typeof window !== "undefined") {
+      return
+    }
     expect(inspect(MutableList.make(0, 1, 2))).toEqual(
       inspect({ _id: "MutableList", values: [0, 1, 2] })
     )
