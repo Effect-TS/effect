@@ -52,7 +52,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: pnpm vitest --shard ${{ matrix.shard }} --environment jsdom
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - run: npx playwright install --with-deps chromium
+      - run: pnpm vitest --shard ${{ matrix.shard }} --browser chromium
 
   bun:
     name: Bun (${{ matrix.shard }})

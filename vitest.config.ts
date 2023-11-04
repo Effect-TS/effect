@@ -10,7 +10,12 @@ export default defineConfig({
   plugins: [babel({ babel: babelConfig })],
   test: {
     include: ["./test/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    exclude: ["./test/util.ts", "./test/utils/**/*.ts", "./test/**/*.init.ts"]
+    exclude: ["./test/util.ts", "./test/utils/**/*.ts", "./test/**/*.init.ts"],
+    browser: {
+      name: "chromium",
+      provider: "playwright",
+      headless: true
+    }
   },
   resolve: {
     alias: {
