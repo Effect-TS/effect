@@ -41,12 +41,10 @@ jobs:
       - run: pnpm vitest --shard ${{ matrix.shard }} --environment edge-runtime
 
   browser:
-    name: Browser (${{ matrix.shard }})
+    name: Browser
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        shard: [1/6, 2/6, 3/6, 4/6, 5/6, 6/6]
 
     steps:
       - uses: actions/checkout@v3
@@ -55,7 +53,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: npx playwright install --with-deps chromium
-      - run: pnpm vitest --shard ${{ matrix.shard }} --browser chromium
+      - run: pnpm vitest --browser chromium
 
   bun:
     name: Bun (${{ matrix.shard }})
