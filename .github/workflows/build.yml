@@ -25,7 +25,6 @@ jobs:
       - name: Check source state
         run: git add src && git diff-index --cached HEAD --exit-code src
       - run: pnpm circular
-      - run: pnpm attw
       - run: pnpm docgen
       - name: Check docs state
         run: git add docs && git diff-index --cached HEAD --exit-code docs

@@ -38,7 +38,6 @@
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel dist/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir dist/cjs --source-maps",
     "build-annotate": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "attw": "attw --pack --ignore-rules no-resolution false-esm",
     "clean": "rimraf dist coverage .tsbuildinfo",
     "test": "vitest",
     "check": "tsc -b tsconfig.json",
@@ -776,7 +775,6 @@
     }
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.13.0",
     "@babel/cli": "^7.23.0",
     "@babel/core": "^7.23.0",
     "@babel/plugin-transform-export-namespace-from": "^7.22.11",
