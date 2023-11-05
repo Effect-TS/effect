@@ -49,7 +49,7 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  * import { dual, pipe } from "effect/Function"
  *
  * // Exampe using arity to determine data-first or data-last style
- * export const sum: {
+ * const sum: {
  *   (that: number): (self: number) => number
  *   (self: number, that: number): number
  * } = dual(2, (self: number, that: number): number => self + that)
@@ -58,7 +58,7 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  * assert.deepStrictEqual(pipe(2, sum(3)), 5)
  *
  * // Example using a predicate to determine data-first or data-last style
- * export const sum2: {
+ * const sum2: {
  *   (that: number): (self: number) => number
  *   (self: number, that: number): number
  * } = dual((args) => args.length === 1, (self: number, that: number): number => self + that)
@@ -177,7 +177,7 @@ export const apply = <A>(a: A) => <B>(self: (a: A) => B): B => self(a)
  * @example
  * import { LazyArg, constant } from "effect/Function"
  *
- * export const constNull: LazyArg<null> = constant(null)
+ * const constNull: LazyArg<null> = constant(null)
  *
  * @since 2.0.0
  */
@@ -189,7 +189,7 @@ export interface LazyArg<A> {
  * @example
  * import { FunctionN } from "effect/Function"
  *
- * export const sum: FunctionN<[number, number], number> = (a, b) => a + b
+ * const sum: FunctionN<[number, number], number> = (a, b) => a + b
  *
  * @since 2.0.0
  */
