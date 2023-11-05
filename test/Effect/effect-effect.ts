@@ -1,5 +1,10 @@
+import * as it from "effect-test/utils/extend"
 import { Effect } from "src/Effect"
 
-export const test = Effect.succeed(1)
+export type TestType = Effect<never, never, number>
 
-type test = Effect<never, never, 1>
+it.effect("works", () =>
+  Effect.succeed(1)
+    .pipe(
+      Effect.flatMap((i) => Effect.sync(() => console.log("the answer is: " + i)))
+    ))
