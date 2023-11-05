@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Equal from "./Equal.js"
+import type { Chunk } from "./Chunk.js"
+import type { Equal } from "./Equal.js"
 import * as internal from "./internal/metric/boundaries.js"
 import type { Pipeable } from "./Pipeable.js"
 
@@ -18,13 +18,17 @@ export const MetricBoundariesTypeId: unique symbol = internal.MetricBoundariesTy
  */
 export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MetricBoundaries extends Equal.Equal, Pipeable {
-  readonly [MetricBoundariesTypeId]: MetricBoundariesTypeId
-  readonly values: Chunk.Chunk<number>
+export * as MetricBoundaries from "./MetricBoundaries.js"
+
+declare module "./MetricBoundaries.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface MetricBoundaries extends Equal, Pipeable {
+    readonly [MetricBoundariesTypeId]: MetricBoundariesTypeId
+    readonly values: Chunk<number>
+  }
 }
 
 /**
@@ -37,7 +41,7 @@ export const isMetricBoundaries: (u: unknown) => u is MetricBoundaries = interna
  * @since 2.0.0
  * @category constructors
  */
-export const fromChunk: (chunk: Chunk.Chunk<number>) => MetricBoundaries = internal.fromChunk
+export const fromChunk: (chunk: Chunk<number>) => MetricBoundaries = internal.fromChunk
 
 /**
  * A helper method to create histogram bucket boundaries for a histogram

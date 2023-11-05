@@ -412,7 +412,7 @@ Added in v1.0.0
 ```ts
 export declare const either: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>> : Either.Either<R, Unify<A>>
+) => [Pr] extends [never] ? (input: I) => Either<R, Unify<A>> : Either<R, Unify<A>>
 ```
 
 Added in v1.0.0
@@ -436,7 +436,7 @@ Added in v1.0.0
 ```ts
 export declare const option: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>> : Option.Option<Unify<A>>
+) => [Pr] extends [never] ? (input: I) => Option<Unify<A>> : Option<Unify<A>>
 ```
 
 Added in v1.0.0
@@ -548,7 +548,7 @@ export interface ValueMatcher<Input, Filters, Remaining, Result, Provided> exten
     readonly _result: (_: never) => Result
   }
   readonly provided: Provided
-  readonly value: Either.Either<Remaining, Provided>
+  readonly value: Either<Remaining, Provided>
   readonly add: <I, R, RA, A, Pr>(_case: Case) => ValueMatcher<I, R, RA, A, Pr>
 }
 ```

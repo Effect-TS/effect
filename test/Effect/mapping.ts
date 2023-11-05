@@ -1,10 +1,10 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
+import { Cause } from "effect/Cause"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
 import { identity, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
@@ -85,7 +85,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("point, bind, map", () =>
     Effect.gen(function*($) {
-      const fibEffect = (n: number): Effect.Effect<never, never, number> => {
+      const fibEffect = (n: number): Effect<never, never, number> => {
         if (n <= 1) {
           return Effect.succeed(n)
         }
@@ -96,7 +96,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("effect, bind, map", () =>
     Effect.gen(function*($) {
-      const fibEffect = (n: number): Effect.Effect<never, unknown, number> => {
+      const fibEffect = (n: number): Effect<never, unknown, number> => {
         if (n <= 1) {
           return Effect.try(() => n)
         }
@@ -107,7 +107,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("effect, bind, map, redeem", () =>
     Effect.gen(function*($) {
-      const fibEffect = (n: number): Effect.Effect<never, unknown, number> => {
+      const fibEffect = (n: number): Effect<never, unknown, number> => {
         if (n <= 1) {
           return pipe(
             Effect.try(() => {

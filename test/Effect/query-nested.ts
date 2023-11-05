@@ -1,11 +1,11 @@
 import * as it from "effect-test/utils/extend"
-import * as Context from "effect/Context"
+import { Context } from "effect/Context"
 import { seconds } from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Request from "effect/Request"
-import * as Resolver from "effect/RequestResolver"
+import { Effect } from "effect/Effect"
+import { Layer } from "effect/Layer"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Request } from "effect/Request"
+import { RequestResolver as Resolver } from "effect/RequestResolver"
 import { describe, expect } from "vitest"
 
 interface Counter {
@@ -38,27 +38,27 @@ interface ChildExtra {
   readonly extra: string
 }
 
-export interface GetAllParents extends Request.Request<never, ReadonlyArray<Parent>> {
+export interface GetAllParents extends Request<never, ReadonlyArray<Parent>> {
   readonly _tag: "GetAllParents"
 }
 
 export const GetAllParents = Request.tagged<GetAllParents>("GetAllParents")
 
-export interface GetParentChildren extends Request.Request<never, ReadonlyArray<Child>> {
+export interface GetParentChildren extends Request<never, ReadonlyArray<Child>> {
   readonly _tag: "GetParentChildren"
   readonly id: number
 }
 
 export const GetParentChildren = Request.tagged<GetParentChildren>("GetParentChildren")
 
-export interface GetChildInfo extends Request.Request<never, ChildInfo> {
+export interface GetChildInfo extends Request<never, ChildInfo> {
   readonly _tag: "GetChildInfo"
   readonly id: number
 }
 
 export const GetChildInfo = Request.tagged<GetChildInfo>("GetChildInfo")
 
-export interface GetChildExtra extends Request.Request<never, ChildExtra> {
+export interface GetChildExtra extends Request<never, ChildExtra> {
   readonly _tag: "GetChildExtra"
   readonly id: number
 }
@@ -74,7 +74,7 @@ export const children: ReadonlyMap<number, ReadonlyArray<Child>> = new Map(
   ])
 )
 
-const counted = <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
+const counted = <R, E, A>(self: Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
 
 const AllResolver = Resolver.makeBatched((
   requests: Array<GetParentChildren | GetAllParents | GetChildExtra | GetChildInfo>

@@ -1,5 +1,5 @@
-import * as Data from "effect/Data"
-import * as Equal from "effect/Equal"
+import { Data } from "effect/Data"
+import { Equal } from "effect/Equal"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("Data", () => {

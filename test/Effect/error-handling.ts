@@ -1,15 +1,15 @@
 import { causesArb } from "effect-test/utils/cause"
 import * as it from "effect-test/utils/extend"
 import { assertType, satisfies } from "effect-test/utils/types"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
+import { FiberId } from "effect/FiberId"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 
@@ -21,7 +21,7 @@ export const InterruptError3 = new Error("Oh noes 3!")
 
 const ExampleErrorFail = Effect.fail(ExampleError)
 
-const deepErrorEffect = (n: number): Effect.Effect<never, unknown, void> => {
+const deepErrorEffect = (n: number): Effect<never, unknown, void> => {
   if (n === 0) {
     return Effect.try(() => {
       throw ExampleError
@@ -30,7 +30,7 @@ const deepErrorEffect = (n: number): Effect.Effect<never, unknown, void> => {
   return pipe(Effect.unit, Effect.zipRight(deepErrorEffect(n - 1)))
 }
 
-const deepErrorFail = (n: number): Effect.Effect<never, unknown, void> => {
+const deepErrorFail = (n: number): Effect<never, unknown, void> => {
   if (n === 0) {
     return Effect.fail(ExampleError)
   }
@@ -233,7 +233,7 @@ describe.concurrent("Effect", () => {
       interface ErrorB {
         readonly _tag: "ErrorB"
       }
-      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorA" })
+      const effect: Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorA" })
       const result = yield* $(Effect.catch(effect, "_tag", {
         failure: "ErrorA",
         onFailure: Effect.succeed
@@ -248,7 +248,7 @@ describe.concurrent("Effect", () => {
       interface ErrorB {
         readonly _tag: "ErrorB"
       }
-      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
+      const effect: Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
       const result = yield* $(
         Effect.catch(effect, "_tag", {
           failure: "ErrorA",
@@ -266,13 +266,13 @@ describe.concurrent("Effect", () => {
       interface ErrorB {
         readonly _tag: "ErrorB"
       }
-      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
+      const effect: Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
       const result = yield* $(
         Effect.catchIf(effect, (e): e is ErrorA => e._tag === "ErrorA", Effect.succeed),
         Effect.exit
       )
       assert.deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
-      satisfies<true>(assertType<Exit.Exit<ErrorB, ErrorA>>()(result))
+      satisfies<true>(assertType<Exit<ErrorB, ErrorA>>()(result))
     }))
   it.effect("catchTags - recovers from one of several tagged errors", () =>
     Effect.gen(function*($) {
@@ -282,7 +282,7 @@ describe.concurrent("Effect", () => {
       interface ErrorB {
         readonly _tag: "ErrorB"
       }
-      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorA" })
+      const effect: Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorA" })
       const result = yield* $(Effect.catchTags(effect, {
         ErrorA: (e) => Effect.succeed(e)
       }))
@@ -296,7 +296,7 @@ describe.concurrent("Effect", () => {
       interface ErrorB {
         readonly _tag: "ErrorB"
       }
-      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
+      const effect: Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
       const result = yield* $(Effect.exit(
         Effect.catchTags(effect, {
           ErrorA: (e) => Effect.succeed(e)
@@ -312,7 +312,7 @@ describe.concurrent("Effect", () => {
       interface ErrorB {
         readonly _tag: "ErrorB"
       }
-      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
+      const effect: Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
       const result = yield* $(Effect.catchTags(effect, {
         ErrorA: (e) => Effect.succeed(e),
         ErrorB: (e) => Effect.succeed(e)
@@ -328,7 +328,7 @@ describe.concurrent("Effect", () => {
         Effect.sandbox,
         Effect.match({
           onFailure: Option.some,
-          onSuccess: () => Option.none() as Option.Option<Cause.Cause<never>>
+          onSuccess: () => Option.none() as Option<Cause<never>>
         })
       )
       assert.deepStrictEqual(result, Option.some(Cause.die(ExampleError)))
@@ -408,8 +408,8 @@ describe.concurrent("Effect", () => {
     const causes = causesArb(1, smallInts, fc.string())
     const successes = smallInts.map(Effect.succeed)
     const exits = fc.oneof(
-      causes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<never, never, number>> => Either.left(s)),
-      successes.map((s): Either.Either<Cause.Cause<number>, Effect.Effect<never, never, number>> => Either.right(s))
+      causes.map((s): Either<Cause<number>, Effect<never, never, number>> => Either.left(s)),
+      successes.map((s): Either<Cause<number>, Effect<never, never, number>> => Either.right(s))
     ).map(Either.match({
       onLeft: Exit.failCause,
       onRight: Exit.succeed
@@ -524,7 +524,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("no information is lost during composition", () =>
     Effect.gen(function*($) {
-      const cause = <R, E>(effect: Effect.Effect<R, E, never>): Effect.Effect<R, never, Cause.Cause<E>> => {
+      const cause = <R, E>(effect: Effect<R, E, never>): Effect<R, never, Cause<E>> => {
         return Effect.cause(effect)
       }
       const expectedCause = Cause.fail("oh no")

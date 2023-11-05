@@ -15,22 +15,26 @@ export const ChildExecutorDecisionTypeId: unique symbol = internal.ChildExecutor
  */
 export type ChildExecutorDecisionTypeId = typeof ChildExecutorDecisionTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type ChildExecutorDecision = Continue | Close | Yield
+export * as ChildExecutorDecision from "./ChildExecutorDecision.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ChildExecutorDecision {
+declare module "./ChildExecutorDecision.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [ChildExecutorDecisionTypeId]: ChildExecutorDecisionTypeId
+  export type ChildExecutorDecision = Continue | Close | Yield
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ChildExecutorDecision {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [ChildExecutorDecisionTypeId]: ChildExecutorDecisionTypeId
+    }
   }
 }
 

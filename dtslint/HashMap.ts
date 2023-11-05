@@ -1,17 +1,17 @@
-import type * as HashMap from "effect/HashMap"
+import type { HashMap } from "effect/HashMap"
 
-declare const hmLiterals: HashMap.HashMap<"k", "v">
+declare const hmLiterals: HashMap<"k", "v">
 
 // -------------------------------------------------------------------------------------
 // HashMap.Key
 // -------------------------------------------------------------------------------------
 
 // $ExpectType "k"
-export type K = HashMap.HashMap.Key<typeof hmLiterals>
+export type K = HashMap.Key<typeof hmLiterals>
 
 // -------------------------------------------------------------------------------------
 // HashMap.Value
 // -------------------------------------------------------------------------------------
 
 // $ExpectType "v"
-export type V = HashMap.HashMap.Value<typeof hmLiterals>
+export type V = HashMap.Value<typeof hmLiterals>

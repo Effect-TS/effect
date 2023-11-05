@@ -1,14 +1,14 @@
-import type * as Chunk from "../../Chunk.js"
-import type * as Duration from "../../Duration.js"
-import * as Equal from "../../Equal.js"
+import type { Chunk } from "../../Chunk.js"
+import type { Duration } from "../../Duration.js"
+import { Equal } from "../../Equal.js"
 import { dual, pipe } from "../../Function.js"
-import * as Hash from "../../Hash.js"
-import * as HashSet from "../../HashSet.js"
-import type * as MetricBoundaries from "../../MetricBoundaries.js"
-import type * as MetricKey from "../../MetricKey.js"
-import type * as MetricKeyType from "../../MetricKeyType.js"
-import type * as MetricLabel from "../../MetricLabel.js"
-import * as Option from "../../Option.js"
+import { Hash } from "../../Hash.js"
+import { HashSet } from "../../HashSet.js"
+import type { MetricBoundaries } from "../../MetricBoundaries.js"
+import type { MetricKey } from "../../MetricKey.js"
+import type { MetricKeyType } from "../../MetricKeyType.js"
+import type { MetricLabel } from "../../MetricLabel.js"
+import { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
 import * as metricKeyType from "./keyType.js"
@@ -28,13 +28,13 @@ const metricKeyVariance = {
 }
 
 /** @internal */
-class MetricKeyImpl<Type extends MetricKeyType.MetricKeyType<any, any>> implements MetricKey.MetricKey<Type> {
+class MetricKeyImpl<Type extends MetricKeyType<any, any>> implements MetricKey<Type> {
   readonly [MetricKeyTypeId] = metricKeyVariance
   constructor(
     readonly name: string,
     readonly keyType: Type,
-    readonly description: Option.Option<string>,
-    readonly tags: HashSet.HashSet<MetricLabel.MetricLabel> = HashSet.empty()
+    readonly description: Option<string>,
+    readonly tags: HashSet<MetricLabel> = HashSet.empty()
   ) {}
   [Hash.symbol](): number {
     return pipe(
@@ -57,7 +57,7 @@ class MetricKeyImpl<Type extends MetricKeyType.MetricKeyType<any, any>> implemen
 }
 
 /** @internal */
-export const isMetricKey = (u: unknown): u is MetricKey.MetricKey<MetricKeyType.MetricKeyType<unknown, unknown>> =>
+export const isMetricKey = (u: unknown): u is MetricKey<MetricKeyType<unknown, unknown>> =>
   hasProperty(u, MetricKeyTypeId)
 
 /** @internal */
@@ -66,12 +66,12 @@ export const counter: {
     readonly description?: string
     readonly bigint?: false
     readonly incremental?: boolean
-  }): MetricKey.MetricKey.Counter<number>
+  }): MetricKey.Counter<number>
   (name: string, options: {
     readonly description?: string
     readonly bigint: true
     readonly incremental?: boolean
-  }): MetricKey.MetricKey.Counter<bigint>
+  }): MetricKey.Counter<bigint>
 } = (name: string, options) =>
   new MetricKeyImpl(
     name,
@@ -80,7 +80,7 @@ export const counter: {
   )
 
 /** @internal */
-export const frequency = (name: string, description?: string): MetricKey.MetricKey.Frequency =>
+export const frequency = (name: string, description?: string): MetricKey.Frequency =>
   new MetricKeyImpl(name, metricKeyType.frequency, Option.fromNullable(description))
 
 /** @internal */
@@ -88,11 +88,11 @@ export const gauge: {
   (name: string, options?: {
     readonly description?: string
     readonly bigint?: false
-  }): MetricKey.MetricKey.Gauge<number>
+  }): MetricKey.Gauge<number>
   (name: string, options: {
     readonly description?: string
     readonly bigint: true
-  }): MetricKey.MetricKey.Gauge<bigint>
+  }): MetricKey.Gauge<bigint>
 } = (name, options) =>
   new MetricKeyImpl(
     name,
@@ -103,9 +103,9 @@ export const gauge: {
 /** @internal */
 export const histogram = (
   name: string,
-  boundaries: MetricBoundaries.MetricBoundaries,
+  boundaries: MetricBoundaries,
   description?: string
-): MetricKey.MetricKey.Histogram =>
+): MetricKey.Histogram =>
   new MetricKeyImpl(
     name,
     metricKeyType.histogram(boundaries),
@@ -119,10 +119,10 @@ export const summary = (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
     readonly description?: string
   }
-): MetricKey.MetricKey.Summary =>
+): MetricKey.Summary =>
   new MetricKeyImpl(
     options.name,
     metricKeyType.summary(options),
@@ -134,40 +134,40 @@ export const tagged = dual<
   (
     key: string,
     value: string
-  ) => <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>
-  ) => MetricKey.MetricKey<Type>,
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>,
+  ) => <Type extends MetricKeyType<any, any>>(
+    self: MetricKey<Type>
+  ) => MetricKey<Type>,
+  <Type extends MetricKeyType<any, any>>(
+    self: MetricKey<Type>,
     key: string,
     value: string
-  ) => MetricKey.MetricKey<Type>
+  ) => MetricKey<Type>
 >(3, (self, key, value) => taggedWithLabelSet(self, HashSet.make(metricLabel.make(key, value))))
 
 /** @internal */
 export const taggedWithLabels = dual<
   (
-    extraTags: Iterable<MetricLabel.MetricLabel>
-  ) => <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>
-  ) => MetricKey.MetricKey<Type>,
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>,
-    extraTags: Iterable<MetricLabel.MetricLabel>
-  ) => MetricKey.MetricKey<Type>
+    extraTags: Iterable<MetricLabel>
+  ) => <Type extends MetricKeyType<any, any>>(
+    self: MetricKey<Type>
+  ) => MetricKey<Type>,
+  <Type extends MetricKeyType<any, any>>(
+    self: MetricKey<Type>,
+    extraTags: Iterable<MetricLabel>
+  ) => MetricKey<Type>
 >(2, (self, extraTags) => taggedWithLabelSet(self, HashSet.fromIterable(extraTags)))
 
 /** @internal */
 export const taggedWithLabelSet = dual<
   (
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ) => <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>
-  ) => MetricKey.MetricKey<Type>,
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey.MetricKey<Type>,
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ) => MetricKey.MetricKey<Type>
+    extraTags: HashSet<MetricLabel>
+  ) => <Type extends MetricKeyType<any, any>>(
+    self: MetricKey<Type>
+  ) => MetricKey<Type>,
+  <Type extends MetricKeyType<any, any>>(
+    self: MetricKey<Type>,
+    extraTags: HashSet<MetricLabel>
+  ) => MetricKey<Type>
 >(2, (self, extraTags) =>
   HashSet.size(extraTags) === 0
     ? self

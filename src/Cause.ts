@@ -21,15 +21,15 @@
  *
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Either from "./Either.js"
-import type * as Equal from "./Equal.js"
-import type * as FiberId from "./FiberId.js"
-import type * as HashSet from "./HashSet.js"
+import type { Chunk } from "./Chunk.js"
+import type { Either } from "./Either.js"
+import type { Equal } from "./Equal.js"
+import type { FiberId } from "./FiberId.js"
+import type { HashSet } from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/cause.js"
 import { originalInstance } from "./internal/core.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 
@@ -105,37 +105,41 @@ export const InvalidPubSubCapacityExceptionTypeId: unique symbol = internal.Inva
  */
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
-/**
- * A `Cause` represents the full history of a failure resulting from running an
- * `Effect` workflow.
- *
- * Effect-TS uses a data structure from functional programming called a semiring
- * to represent the `Cause` data type. This allows us to take a base type `E`
- * (which represents the error type of an `Effect`) and capture the sequential
- * and parallel composition of errors in a fully lossless fashion.
- *
- * @since 2.0.0
- * @category models
- */
-export type Cause<E> =
-  | Empty
-  | Fail<E>
-  | Die
-  | Interrupt
-  | Sequential<E>
-  | Parallel<E>
+export * as Cause from "./Cause.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Cause {
+declare module "./Cause.js" {
   /**
+   * A `Cause` represents the full history of a failure resulting from running an
+   * `Effect` workflow.
+   *
+   * Effect-TS uses a data structure from functional programming called a semiring
+   * to represent the `Cause` data type. This allows us to take a base type `E`
+   * (which represents the error type of an `Effect`) and capture the sequential
+   * and parallel composition of errors in a fully lossless fashion.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E> {
-    readonly [CauseTypeId]: {
-      readonly _E: (_: never) => E
+  export type Cause<E> =
+    | Empty
+    | Fail<E>
+    | Die
+    | Interrupt
+    | Sequential<E>
+    | Parallel<E>
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Cause {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E> {
+      readonly [CauseTypeId]: {
+        readonly _E: (_: never) => E
+      }
     }
   }
 }
@@ -151,7 +155,7 @@ export interface CauseReducer<C, E, Z> {
   readonly emptyCase: (context: C) => Z
   readonly failCase: (context: C, error: E) => Z
   readonly dieCase: (context: C, defect: unknown) => Z
-  readonly interruptCase: (context: C, fiberId: FiberId.FiberId) => Z
+  readonly interruptCase: (context: C, fiberId: FiberId) => Z
   readonly sequentialCase: (context: C, left: Z, right: Z) => Z
   readonly parallelCase: (context: C, left: Z, right: Z) => Z
 }
@@ -225,7 +229,7 @@ export interface InvalidPubSubCapacityException {
  * @since 2.0.0
  * @category models
  */
-export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Empty extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Empty"
 }
 
@@ -236,7 +240,7 @@ export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Ins
  * @since 2.0.0
  * @category models
  */
-export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Fail<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Fail"
   readonly error: E
 }
@@ -249,7 +253,7 @@ export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspe
  * @since 2.0.0
  * @category models
  */
-export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Die extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Die"
   readonly defect: unknown
 }
@@ -261,9 +265,9 @@ export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspe
  * @since 2.0.0
  * @category models
  */
-export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Interrupt extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Interrupt"
-  readonly fiberId: FiberId.FiberId
+  readonly fiberId: FiberId
 }
 
 /**
@@ -279,7 +283,7 @@ export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable,
  * @since 2.0.0
  * @category models
  */
-export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Parallel<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Parallel"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -297,7 +301,7 @@ export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, I
  * @since 2.0.0
  * @category models
  */
-export interface Sequential<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Sequential<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Sequential"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -333,7 +337,7 @@ export const die: (defect: unknown) => Cause<never> = internal.die
  * @since 2.0.0
  * @category constructors
  */
-export const interrupt: (fiberId: FiberId.FiberId) => Cause<never> = internal.interrupt
+export const interrupt: (fiberId: FiberId) => Cause<never> = internal.interrupt
 
 /**
  * Constructs a new `Parallel` cause from the specified `left` and `right`
@@ -473,7 +477,7 @@ export const isInterruptedOnly: <E>(self: Cause<E>) => boolean = internal.isInte
  * @since 2.0.0
  * @category getters
  */
-export const failures: <E>(self: Cause<E>) => Chunk.Chunk<E> = internal.failures
+export const failures: <E>(self: Cause<E>) => Chunk<E> = internal.failures
 
 /**
  * Returns a `List` of all unrecoverable defects in the specified cause.
@@ -481,7 +485,7 @@ export const failures: <E>(self: Cause<E>) => Chunk.Chunk<E> = internal.failures
  * @since 2.0.0
  * @category getters
  */
-export const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown> = internal.defects
+export const defects: <E>(self: Cause<E>) => Chunk<unknown> = internal.defects
 
 /**
  * Returns a `HashSet` of `FiberId`s for all fibers that interrupted the fiber
@@ -490,7 +494,7 @@ export const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown> = internal.def
  * @since 2.0.0
  * @category getters
  */
-export const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberId> = internal.interruptors
+export const interruptors: <E>(self: Cause<E>) => HashSet<FiberId> = internal.interruptors
 
 /**
  * Returns the `E` associated with the first `Fail` in this `Cause`, if one
@@ -499,7 +503,7 @@ export const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberI
  * @since 2.0.0
  * @category getters
  */
-export const failureOption: <E>(self: Cause<E>) => Option.Option<E> = internal.failureOption
+export const failureOption: <E>(self: Cause<E>) => Option<E> = internal.failureOption
 
 /**
  * Returns the first checked error on the `Left` if available, if there are
@@ -509,7 +513,7 @@ export const failureOption: <E>(self: Cause<E>) => Option.Option<E> = internal.f
  * @since 2.0.0
  * @category getters
  */
-export const failureOrCause: <E>(self: Cause<E>) => Either.Either<E, Cause<never>> = internal.failureOrCause
+export const failureOrCause: <E>(self: Cause<E>) => Either<E, Cause<never>> = internal.failureOrCause
 
 /**
  * Converts the specified `Cause<Option<E>>` to an `Option<Cause<E>>` by
@@ -518,7 +522,7 @@ export const failureOrCause: <E>(self: Cause<E>) => Either.Either<E, Cause<never
  * @since 2.0.0
  * @category getters
  */
-export const flipCauseOption: <E>(self: Cause<Option.Option<E>>) => Option.Option<Cause<E>> = internal.flipCauseOption
+export const flipCauseOption: <E>(self: Cause<Option<E>>) => Option<Cause<E>> = internal.flipCauseOption
 
 /**
  * Returns the defect associated with the first `Die` in this `Cause`, if one
@@ -527,7 +531,7 @@ export const flipCauseOption: <E>(self: Cause<Option.Option<E>>) => Option.Optio
  * @since 2.0.0
  * @category getters
  */
-export const dieOption: <E>(self: Cause<E>) => Option.Option<unknown> = internal.dieOption
+export const dieOption: <E>(self: Cause<E>) => Option<unknown> = internal.dieOption
 
 /**
  * Returns the `FiberId` associated with the first `Interrupt` in the specified
@@ -536,7 +540,7 @@ export const dieOption: <E>(self: Cause<E>) => Option.Option<unknown> = internal
  * @since 2.0.0
  * @category getters
  */
-export const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.FiberId> = internal.interruptOption
+export const interruptOption: <E>(self: Cause<E>) => Option<FiberId> = internal.interruptOption
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from the specified cause, and return
@@ -545,7 +549,7 @@ export const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.Fiber
  * @since 2.0.0
  * @category getters
  */
-export const keepDefects: <E>(self: Cause<E>) => Option.Option<Cause<never>> = internal.keepDefects
+export const keepDefects: <E>(self: Cause<E>) => Option<Cause<never>> = internal.keepDefects
 
 /**
  * Linearizes the specified cause into a `HashSet` of parallel causes where each
@@ -554,7 +558,7 @@ export const keepDefects: <E>(self: Cause<E>) => Option.Option<Cause<never>> = i
  * @since 2.0.0
  * @category getters
  */
-export const linearize: <E>(self: Cause<E>) => HashSet.HashSet<Cause<E>> = internal.linearize
+export const linearize: <E>(self: Cause<E>) => HashSet<Cause<E>> = internal.linearize
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from the specified cause, and return
@@ -574,8 +578,8 @@ export const stripFailures: <E>(self: Cause<E>) => Cause<never> = internal.strip
  * @category getters
  */
 export const stripSomeDefects: {
-  (pf: (defect: unknown) => Option.Option<unknown>): <E>(self: Cause<E>) => Option.Option<Cause<E>>
-  <E>(self: Cause<E>, pf: (defect: unknown) => Option.Option<unknown>): Option.Option<Cause<E>>
+  (pf: (defect: unknown) => Option<unknown>): <E>(self: Cause<E>) => Option<Cause<E>>
+  <E>(self: Cause<E>, pf: (defect: unknown) => Option<unknown>): Option<Cause<E>>
 } = internal.stripSomeDefects
 
 /**
@@ -653,8 +657,8 @@ export const squashWith: {
  * @category elements
  */
 export const find: {
-  <E, Z>(pf: (cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Option.Option<Z>
-  <E, Z>(self: Cause<E>, pf: (cause: Cause<E>) => Option.Option<Z>): Option.Option<Z>
+  <E, Z>(pf: (cause: Cause<E>) => Option<Z>): (self: Cause<E>) => Option<Z>
+  <E, Z>(self: Cause<E>, pf: (cause: Cause<E>) => Option<Z>): Option<Z>
 } = internal.find
 
 /**
@@ -680,7 +684,7 @@ export const match: {
       readonly onEmpty: Z
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+      readonly onInterrupt: (fiberId: FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }
@@ -691,7 +695,7 @@ export const match: {
       readonly onEmpty: Z
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+      readonly onInterrupt: (fiberId: FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }
@@ -706,8 +710,8 @@ export const match: {
  * @category folding
  */
 export const reduce: {
-  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Z
-  <Z, E>(self: Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): Z
+  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option<Z>): (self: Cause<E>) => Z
+  <Z, E>(self: Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option<Z>): Z
 } = internal.reduce
 
 /**

@@ -45,7 +45,7 @@ these services.
 ```ts
 export interface TestLive {
   readonly [TestLiveTypeId]: TestLiveTypeId
-  provide<R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  provide<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
 ```
 
@@ -76,7 +76,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: (services: Context.Context<DefaultServices.DefaultServices>) => TestLive
+export declare const make: (services: Context<DefaultServices>) => TestLive
 ```
 
 Added in v2.0.0

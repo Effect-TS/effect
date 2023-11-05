@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Equal from "./Equal.js"
+import type { Chunk } from "./Chunk.js"
+import type { Equal } from "./Equal.js"
 import * as internal from "./internal/configSecret.js"
 
 /**
@@ -17,25 +17,29 @@ export const ConfigSecretTypeId: unique symbol = internal.ConfigSecretTypeId
  */
 export type ConfigSecretTypeId = typeof ConfigSecretTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface ConfigSecret extends ConfigSecret.Proto, Equal.Equal {
-  /** @internal */
-  readonly raw: Array<number>
-}
+export * as ConfigSecret from "./ConfigSecret.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ConfigSecret {
+declare module "./ConfigSecret.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [ConfigSecretTypeId]: ConfigSecretTypeId
+  export interface ConfigSecret extends ConfigSecret.Proto, Equal {
+    /** @internal */
+    readonly raw: Array<number>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ConfigSecret {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [ConfigSecretTypeId]: ConfigSecretTypeId
+    }
   }
 }
 
@@ -55,7 +59,7 @@ export const make: (bytes: Array<number>) => ConfigSecret = internal.make
  * @since 2.0.0
  * @category constructors
  */
-export const fromChunk: (chunk: Chunk.Chunk<string>) => ConfigSecret = internal.fromChunk
+export const fromChunk: (chunk: Chunk<string>) => ConfigSecret = internal.fromChunk
 
 /**
  * @since 2.0.0

@@ -1,5 +1,5 @@
 import { deepStrictEqual } from "effect-test/util"
-import * as Boolean from "effect/Boolean"
+import { Boolean } from "effect/Boolean"
 import { pipe } from "effect/Function"
 import { assert, describe, expect, it } from "vitest"
 

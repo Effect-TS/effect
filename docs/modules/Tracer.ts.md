@@ -43,7 +43,7 @@ export declare const externalSpan: (options: {
   readonly spanId: string
   readonly traceId: string
   readonly sampled?: boolean | undefined
-  readonly context?: Context.Context<never> | undefined
+  readonly context?: Context<never> | undefined
 }) => ExternalSpan
 ```
 
@@ -64,7 +64,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+export declare const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -81,7 +81,7 @@ export interface ExternalSpan {
   readonly spanId: string
   readonly traceId: string
   readonly sampled: boolean
-  readonly context: Context.Context<never>
+  readonly context: Context<never>
 }
 ```
 
@@ -107,13 +107,13 @@ export interface Span {
   readonly name: string
   readonly spanId: string
   readonly traceId: string
-  readonly parent: Option.Option<ParentSpan>
-  readonly context: Context.Context<never>
+  readonly parent: Option<ParentSpan>
+  readonly context: Context<never>
   readonly status: SpanStatus
   readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
   readonly sampled: boolean
-  readonly end: (endTime: bigint, exit: Exit.Exit<unknown, unknown>) => void
+  readonly end: (endTime: bigint, exit: Exit<unknown, unknown>) => void
   readonly attribute: (key: string, value: unknown) => void
   readonly event: (name: string, startTime: bigint, attributes?: Record<string, unknown>) => void
 }
@@ -149,7 +149,7 @@ export type SpanStatus =
       _tag: "Ended"
       startTime: bigint
       endTime: bigint
-      exit: Exit.Exit<unknown, unknown>
+      exit: Exit<unknown, unknown>
     }
 ```
 
@@ -188,8 +188,8 @@ export interface Tracer {
   readonly [TracerTypeId]: TracerTypeId
   readonly span: (
     name: string,
-    parent: Option.Option<ParentSpan>,
-    context: Context.Context<never>,
+    parent: Option<ParentSpan>,
+    context: Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint
   ) => Span

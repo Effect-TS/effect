@@ -71,7 +71,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const logFmt: Layer.Layer<never, never, never>
+export declare const logFmt: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -93,13 +93,13 @@ Added in v2.0.0
 ```ts
 export declare const make: <Message, Output>(
   log: (options: {
-    readonly fiberId: FiberId.FiberId
-    readonly logLevel: LogLevel.LogLevel
+    readonly fiberId: FiberId
+    readonly logLevel: LogLevel
     readonly message: Message
-    readonly cause: Cause.Cause<unknown>
-    readonly context: FiberRefs.FiberRefs
-    readonly spans: List.List<LogSpan.LogSpan>
-    readonly annotations: HashMap.HashMap<string, unknown>
+    readonly cause: Cause<unknown>
+    readonly context: FiberRefs
+    readonly spans: List<LogSpan>
+    readonly annotations: HashMap<string, unknown>
     readonly date: Date
   }) => Output
 ) => Logger<Message, Output>
@@ -189,7 +189,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const add: <B>(logger: Logger<unknown, B>) => Layer.Layer<never, never, never>
+export declare const add: <B>(logger: Logger<unknown, B>) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -199,7 +199,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const addEffect: <R, E, A>(effect: Effect<R, E, Logger<unknown, A>>) => Layer.Layer<R, E, never>
+export declare const addEffect: <R, E, A>(effect: Effect<R, E, Logger<unknown, A>>) => Layer<R, E, never>
 ```
 
 Added in v2.0.0
@@ -211,7 +211,7 @@ Added in v2.0.0
 ```ts
 export declare const addScoped: <R, E, A>(
   effect: Effect<R, E, Logger<unknown, A>>
-) => Layer.Layer<Exclude<R, Scope>, E, never>
+) => Layer<Exclude<R, Scope>, E, never>
 ```
 
 Added in v2.0.0
@@ -221,7 +221,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const minimumLogLevel: (level: LogLevel.LogLevel) => Layer.Layer<never, never, never>
+export declare const minimumLogLevel: (level: LogLevel) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -231,7 +231,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const remove: <A>(logger: Logger<unknown, A>) => Layer.Layer<never, never, never>
+export declare const remove: <A>(logger: Logger<unknown, A>) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -242,8 +242,8 @@ Added in v2.0.0
 
 ```ts
 export declare const replace: {
-  <B>(that: Logger<unknown, B>): <A>(self: Logger<unknown, A>) => Layer.Layer<never, never, never>
-  <A, B>(self: Logger<unknown, A>, that: Logger<unknown, B>): Layer.Layer<never, never, never>
+  <B>(that: Logger<unknown, B>): <A>(self: Logger<unknown, A>) => Layer<never, never, never>
+  <A, B>(self: Logger<unknown, A>, that: Logger<unknown, B>): Layer<never, never, never>
 }
 ```
 
@@ -255,8 +255,8 @@ Added in v2.0.0
 
 ```ts
 export declare const replaceEffect: {
-  <R, E, B>(that: Effect<R, E, Logger<unknown, B>>): <A>(self: Logger<unknown, A>) => Layer.Layer<R, E, never>
-  <A, R, E, B>(self: Logger<unknown, A>, that: Effect<R, E, Logger<unknown, B>>): Layer.Layer<R, E, never>
+  <R, E, B>(that: Effect<R, E, Logger<unknown, B>>): <A>(self: Logger<unknown, A>) => Layer<R, E, never>
+  <A, R, E, B>(self: Logger<unknown, A>, that: Effect<R, E, Logger<unknown, B>>): Layer<R, E, never>
 }
 ```
 
@@ -270,11 +270,11 @@ Added in v2.0.0
 export declare const replaceScoped: {
   <R, E, B>(
     that: Effect<R, E, Logger<unknown, B>>
-  ): <A>(self: Logger<unknown, A>) => Layer.Layer<Exclude<R, Scope>, E, never>
+  ): <A>(self: Logger<unknown, A>) => Layer<Exclude<R, Scope>, E, never>
   <A, R, E, B>(
     self: Logger<unknown, A>,
     that: Effect<R, E, Logger<unknown, B>>
-  ): Layer.Layer<Exclude<R, Scope>, E, never>
+  ): Layer<Exclude<R, Scope>, E, never>
 }
 ```
 
@@ -286,8 +286,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withMinimumLogLevel: {
-  (level: LogLevel.LogLevel): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, level: LogLevel.LogLevel): Effect<R, E, A>
+  (level: LogLevel): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, level: LogLevel): Effect<R, E, A>
 }
 ```
 
@@ -305,12 +305,12 @@ satisfies the specified predicate.
 ```ts
 export declare const filterLogLevel: {
   (
-    f: (logLevel: LogLevel.LogLevel) => boolean
-  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option.Option<Output>>
+    f: (logLevel: LogLevel) => boolean
+  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option<Output>>
   <Message, Output>(
     self: Logger<Message, Output>,
-    f: (logLevel: LogLevel.LogLevel) => boolean
-  ): Logger<Message, Option.Option<Output>>
+    f: (logLevel: LogLevel) => boolean
+  ): Logger<Message, Option<Output>>
 }
 ```
 
@@ -360,13 +360,13 @@ Added in v2.0.0
 ```ts
 export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
   readonly log: (options: {
-    readonly fiberId: FiberId.FiberId
-    readonly logLevel: LogLevel.LogLevel
+    readonly fiberId: FiberId
+    readonly logLevel: LogLevel
     readonly message: Message
-    readonly cause: Cause.Cause<unknown>
-    readonly context: FiberRefs.FiberRefs
-    readonly spans: List.List<LogSpan.LogSpan>
-    readonly annotations: HashMap.HashMap<string, unknown>
+    readonly cause: Cause<unknown>
+    readonly context: FiberRefs
+    readonly spans: List<LogSpan>
+    readonly annotations: HashMap<string, unknown>
     readonly date: Date
   }) => Output
 }

@@ -24,25 +24,29 @@ export type TypeId = typeof TypeId
  */
 export const Direction = RBTI.Direction
 
-/**
- * A Red-Black Tree.
- *
- * @since 2.0.0
- * @category models
- */
-export interface RedBlackTree<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
-}
+export * as RedBlackTree from "./RedBlackTree.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace RedBlackTree {
+declare module "./RedBlackTree.js" {
+  /**
+   * A Red-Black Tree.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface RedBlackTree<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+  }
+
   /**
    * @since 2.0.0
    */
-  export type Direction = number & {
-    readonly Direction: unique symbol
+  export namespace RedBlackTree {
+    /**
+     * @since 2.0.0
+     */
+    export type Direction = number & {
+      readonly Direction: unique symbol
+    }
   }
 }
 

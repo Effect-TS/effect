@@ -195,7 +195,7 @@ If the duration is infinite, returns `Option.none()`
 **Signature**
 
 ```ts
-export declare const toNanos: (self: DurationInput) => Option.Option<bigint>
+export declare const toNanos: (self: DurationInput) => Option<bigint>
 ```
 
 Added in v2.0.0
@@ -293,7 +293,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Duration extends Equal.Equal, Pipeable, Inspectable {
+export interface Duration extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: DurationValue
 }

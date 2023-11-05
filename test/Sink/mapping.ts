@@ -1,11 +1,11 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
 import { pipe } from "effect/Function"
-import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Sink } from "effect/Sink"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {
@@ -100,7 +100,7 @@ describe.concurrent("Sink", () => {
     Effect.gen(function*($) {
       const sink = pipe(
         Sink.collectAll<number>(),
-        Sink.mapInputChunksEffect((chunk: Chunk.Chunk<string>) =>
+        Sink.mapInputChunksEffect((chunk: Chunk<string>) =>
           pipe(
             chunk,
             Effect.forEach((s) => Effect.try(() => Number.parseInt(s))),
@@ -116,7 +116,7 @@ describe.concurrent("Sink", () => {
     Effect.gen(function*($) {
       const sink = pipe(
         Sink.fail("Ouch"),
-        Sink.mapInputChunksEffect((chunk: Chunk.Chunk<string>) =>
+        Sink.mapInputChunksEffect((chunk: Chunk<string>) =>
           pipe(
             chunk,
             Effect.forEach((s) => Effect.try(() => Number.parseInt(s))),
@@ -132,7 +132,7 @@ describe.concurrent("Sink", () => {
     Effect.gen(function*($) {
       const sink = pipe(
         Sink.collectAll<number>(),
-        Sink.mapInputChunksEffect((chunk: Chunk.Chunk<string>) =>
+        Sink.mapInputChunksEffect((chunk: Chunk<string>) =>
           pipe(
             chunk,
             Effect.forEach((s) =>

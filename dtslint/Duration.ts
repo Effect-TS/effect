@@ -1,4 +1,4 @@
-import * as Duration from "effect/Duration"
+import { Duration } from "effect/Duration"
 
 // -------------------------------------------------------------------------------------
 // decode

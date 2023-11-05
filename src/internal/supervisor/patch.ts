@@ -1,13 +1,17 @@
-import * as Chunk from "../../Chunk.js"
-import * as Differ from "../../Differ.js"
-import * as Equal from "../../Equal.js"
+import { Chunk } from "../../Chunk.js"
+import { Differ } from "../../Differ.js"
+import { Equal } from "../../Equal.js"
 import { pipe } from "../../Function.js"
-import * as HashSet from "../../HashSet.js"
-import type * as Supervisor from "../../Supervisor.js"
+import { HashSet } from "../../HashSet.js"
+import type { Supervisor } from "../../Supervisor.js"
 import * as supervisor from "../supervisor.js"
 
-/** @internal */
-export type SupervisorPatch = Empty | AddSupervisor | RemoveSupervisor | AndThen
+export * as SupervisorPatch from "./patch.js"
+
+declare module "./patch.js" {
+  /** @internal */
+  export type SupervisorPatch = Empty | AddSupervisor | RemoveSupervisor | AndThen
+}
 
 /** @internal */
 export const OP_EMPTY = "Empty" as const
@@ -41,13 +45,13 @@ export interface Empty {
 /** @internal */
 export interface AddSupervisor {
   readonly _tag: OP_ADD_SUPERVISOR
-  readonly supervisor: Supervisor.Supervisor<any>
+  readonly supervisor: Supervisor<any>
 }
 
 /** @internal */
 export interface RemoveSupervisor {
   readonly _tag: OP_REMOVE_SUPERVISOR
-  readonly supervisor: Supervisor.Supervisor<any>
+  readonly supervisor: Supervisor<any>
 }
 
 /** @internal */
@@ -85,16 +89,16 @@ export const combine = (self: SupervisorPatch, that: SupervisorPatch): Superviso
  */
 export const patch = (
   self: SupervisorPatch,
-  supervisor: Supervisor.Supervisor<any>
-): Supervisor.Supervisor<any> => {
+  supervisor: Supervisor<any>
+): Supervisor<any> => {
   return patchLoop(supervisor, Chunk.of(self))
 }
 
 /** @internal */
 const patchLoop = (
-  _supervisor: Supervisor.Supervisor<any>,
-  _patches: Chunk.Chunk<SupervisorPatch>
-): Supervisor.Supervisor<any> => {
+  _supervisor: Supervisor<any>,
+  _patches: Chunk<SupervisorPatch>
+): Supervisor<any> => {
   let supervisor = _supervisor
   let patches = _patches
   while (Chunk.isNonEmpty(patches)) {
@@ -125,9 +129,9 @@ const patchLoop = (
 
 /** @internal */
 const removeSupervisor = (
-  self: Supervisor.Supervisor<any>,
-  that: Supervisor.Supervisor<any>
-): Supervisor.Supervisor<any> => {
+  self: Supervisor<any>,
+  that: Supervisor<any>
+): Supervisor<any> => {
   if (Equal.equals(self, that)) {
     return supervisor.none
   } else {
@@ -140,7 +144,7 @@ const removeSupervisor = (
 }
 
 /** @internal */
-const toSet = (self: Supervisor.Supervisor<any>): HashSet.HashSet<Supervisor.Supervisor<any>> => {
+const toSet = (self: Supervisor<any>): HashSet<Supervisor<any>> => {
   if (Equal.equals(self, supervisor.none)) {
     return HashSet.empty()
   } else {
@@ -154,8 +158,8 @@ const toSet = (self: Supervisor.Supervisor<any>): HashSet.HashSet<Supervisor.Sup
 
 /** @internal */
 export const diff = (
-  oldValue: Supervisor.Supervisor<any>,
-  newValue: Supervisor.Supervisor<any>
+  oldValue: Supervisor<any>,
+  newValue: Supervisor<any>
 ): SupervisorPatch => {
   if (Equal.equals(oldValue, newValue)) {
     return empty
@@ -182,7 +186,7 @@ export const diff = (
 }
 
 /** @internal */
-export const differ = Differ.make<Supervisor.Supervisor<any>, SupervisorPatch>({
+export const differ = Differ.make<Supervisor<any>, SupervisorPatch>({
   empty,
   patch,
   combine,

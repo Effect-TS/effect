@@ -585,7 +585,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const getEquivalence: <A>(isEquivalent: Equivalence.Equivalence<A>) => Equivalence.Equivalence<Option<A>>
+export declare const getEquivalence: <A>(isEquivalent: Equivalence<A>) => Equivalence<Option<A>>
 ```
 
 **Example**
@@ -818,7 +818,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>>
+export declare const gen: Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>>
 ```
 
 Added in v2.0.0

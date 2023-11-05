@@ -1,12 +1,12 @@
 import type { Cause } from "effect/Cause"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Predicate from "effect/Predicate"
+import { Predicate } from "effect/Predicate"
 
-declare const string: Effect.Effect<"dep-1", "err-1", string>
-declare const number: Effect.Effect<"dep-2", "err-2", number>
-declare const stringArray: Array<Effect.Effect<"dep-3", "err-3", string>>
-declare const numberRecord: Record<string, Effect.Effect<"dep-4", "err-4", number>>
+declare const string: Effect<"dep-1", "err-1", string>
+declare const number: Effect<"dep-2", "err-2", number>
+declare const stringArray: Array<Effect<"dep-3", "err-3", string>>
+declare const numberRecord: Record<string, Effect<"dep-4", "err-4", number>>
 
 // -------------------------------------------------------------------------------------
 // all - tuple
@@ -283,11 +283,11 @@ pipe(numberRecord, Effect.allWith({ mode: "either", discard: true }))
 // tacit
 // -------------------------------------------------------------------------------------
 
-const tacitString = (s: string): Effect.Effect<never, never, string> => Effect.succeed(`string ${s}`)
-const tacitStringCause = (s: Cause<string>): Effect.Effect<never, never, string> => Effect.succeed(`string ${s}`)
+const tacitString = (s: string): Effect<never, never, string> => Effect.succeed(`string ${s}`)
+const tacitStringCause = (s: Cause<string>): Effect<never, never, string> => Effect.succeed(`string ${s}`)
 const tacitStringPredicate = (_s: string): boolean => true
 const tacitStringError = (_s: string): "a" => "a"
-const tacitStringErrorEffect = (_s: string): Effect.Effect<never, "a", never> => Effect.fail("a")
+const tacitStringErrorEffect = (_s: string): Effect<never, "a", never> => Effect.fail("a")
 
 // $ExpectType Effect<never, "a", "a">
 Effect.succeed("a" as const).pipe(Effect.filterOrFail(
@@ -339,7 +339,7 @@ Effect.fail("a" as const).pipe(Effect.tapDefect(tacitStringCause))
 
 // $ExpectType Effect<never, "a", "a">
 pipe(
-  Effect.succeed("a" as const) as Effect.Effect<never, "a", "a">,
+  Effect.succeed("a" as const) as Effect<never, "a", "a">,
   Effect.tapBoth({
     onFailure: tacitString,
     onSuccess: tacitString

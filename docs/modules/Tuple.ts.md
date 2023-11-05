@@ -45,10 +45,10 @@ by applying each `Equivalence` to the corresponding element of the tuple.
 **Signature**
 
 ```ts
-export declare const getEquivalence: <T extends readonly Equivalence.Equivalence<any>[]>(
+export declare const getEquivalence: <T extends readonly Equivalence<any>[]>(
   ...isEquivalents: T
-) => Equivalence.Equivalence<
-  Readonly<{ [I in keyof T]: [T[I]] extends [Equivalence.Equivalence<infer A>] ? A : never }>
+) => Equivalence<
+  Readonly<{ [I in keyof T]: [T[I]] extends [Equivalence<infer A>] ? A : never }>
 >
 ```
 

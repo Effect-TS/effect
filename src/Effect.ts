@@ -1,29 +1,29 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
-import type * as Chunk from "./Chunk.js"
-import type * as Clock from "./Clock.js"
+import type { Cause } from "./Cause.js"
+import type { Chunk } from "./Chunk.js"
+import type { Clock } from "./Clock.js"
 import type { Config } from "./Config.js"
 import type { ConfigError } from "./ConfigError.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
-import type * as Context from "./Context.js"
-import type * as Deferred from "./Deferred.js"
-import type * as Duration from "./Duration.js"
-import type * as Either from "./Either.js"
-import type * as Equal from "./Equal.js"
+import type { Context } from "./Context.js"
+import type { Deferred } from "./Deferred.js"
+import type { Duration } from "./Duration.js"
+import type { Either } from "./Either.js"
+import type { Equal } from "./Equal.js"
 import type { Equivalence } from "./Equivalence.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
-import type * as Exit from "./Exit.js"
-import type * as Fiber from "./Fiber.js"
-import type * as FiberId from "./FiberId.js"
-import type * as FiberRef from "./FiberRef.js"
-import type * as FiberRefs from "./FiberRefs.js"
-import type * as FiberRefsPatch from "./FiberRefsPatch.js"
+import type { Exit } from "./Exit.js"
+import type { Fiber } from "./Fiber.js"
+import type { FiberId } from "./FiberId.js"
+import type { FiberRef } from "./FiberRef.js"
+import type { FiberRefs } from "./FiberRefs.js"
+import type { FiberRefsPatch } from "./FiberRefsPatch.js"
 import type { LazyArg } from "./Function.js"
 import { dual, identity } from "./Function.js"
-import type * as HashMap from "./HashMap.js"
-import type * as HashSet from "./HashSet.js"
+import type { HashMap } from "./HashMap.js"
+import type { HashSet } from "./HashSet.js"
 import type { TypeLambda } from "./HKT.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
@@ -34,28 +34,30 @@ import * as layer from "./internal/layer.js"
 import * as query from "./internal/query.js"
 import * as _runtime from "./internal/runtime.js"
 import * as _schedule from "./internal/schedule.js"
-import type * as Layer from "./Layer.js"
+import type { Layer } from "./Layer.js"
 import type { LogLevel } from "./LogLevel.js"
-import type * as Metric from "./Metric.js"
-import type * as MetricLabel from "./MetricLabel.js"
-import type * as Option from "./Option.js"
+import type { Metric } from "./Metric.js"
+import type { MetricLabel } from "./MetricLabel.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Random from "./Random.js"
-import type * as Ref from "./Ref.js"
-import type * as Request from "./Request.js"
+import type { Random } from "./Random.js"
+import type { Ref } from "./Ref.js"
+import type { Request } from "./Request.js"
 import type { RequestBlock } from "./RequestBlock.js"
 import type { RequestResolver } from "./RequestResolver.js"
-import type * as Runtime from "./Runtime.js"
-import type * as RuntimeFlags from "./RuntimeFlags.js"
-import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch.js"
-import type * as Schedule from "./Schedule.js"
-import * as Scheduler from "./Scheduler.js"
-import type * as Scope from "./Scope.js"
-import type * as Supervisor from "./Supervisor.js"
-import type * as Tracer from "./Tracer.js"
+import type { Runtime } from "./Runtime.js"
+import type { RuntimeFlags } from "./RuntimeFlags.js"
+import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
+import type { Schedule } from "./Schedule.js"
+import { Scheduler } from "./Scheduler.js"
+import type { Scope } from "./Scope.js"
+import type { Supervisor } from "./Supervisor.js"
+import type { Tracer } from "./Tracer.js"
 import type { Concurrency } from "./Types.js"
-import type * as Unify from "./Unify.js"
+import type { Unify } from "./Unify.js"
+
+export * as Effect from "./Effect.js"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -83,26 +85,74 @@ export const EffectTypeId: unique symbol = core.EffectTypeId
  */
 export type EffectTypeId = typeof EffectTypeId
 
-/**
- * The `Effect` interface defines a value that lazily describes a workflow or job.
- * The workflow requires some context `R`, and may fail with an error of type `E`,
- * or succeed with a value of type `A`.
- *
- * `Effect` values model resourceful interaction with the outside world, including
- * synchronous, asynchronous, concurrent, and parallel interaction. They use a
- * fiber-based concurrency model, with built-in support for scheduling, fine-grained
- * interruption, structured concurrency, and high scalability.
- *
- * To run an `Effect` value, you need a `Runtime`, which is a type that is capable
- * of executing `Effect` values.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
-  readonly [Unify.typeSymbol]?: unknown
-  readonly [Unify.unifySymbol]?: EffectUnify<this>
-  readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
+declare module "./Effect.js" {
+  /**
+   * The `Effect` interface defines a value that lazily describes a workflow or job.
+   * The workflow requires some context `R`, and may fail with an error of type `E`,
+   * or succeed with a value of type `A`.
+   *
+   * `Effect` values model resourceful interaction with the outside world, including
+   * synchronous, asynchronous, concurrent, and parallel interaction. They use a
+   * fiber-based concurrency model, with built-in support for scheduling, fine-grained
+   * interruption, structured concurrency, and high scalability.
+   *
+   * To run an `Effect` value, you need a `Runtime`, which is a type that is capable
+   * of executing `Effect` values.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal, Pipeable {
+    readonly [Unify.typeSymbol]?: unknown
+    readonly [Unify.unifySymbol]?: EffectUnify<this>
+    readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
+  }
+
+  export namespace Effect {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<R, E, A> {
+      readonly [EffectTypeId]: VarianceStruct<R, E, A>
+    }
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface VarianceStruct<R, E, A> {
+      readonly _V: string
+      readonly _R: (_: never) => R
+      readonly _E: (_: never) => E
+      readonly _A: (_: never) => A
+    }
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Unify<Ret extends Effect<any, any, any>> = Effect<
+      Context<Ret>,
+      Error<Ret>,
+      Success<Ret>
+    >
+    /**
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Context<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _R
+      : never
+    /**
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Error<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _E : never
+    /**
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _A
+      : never
+  }
 }
 
 /**
@@ -192,53 +242,6 @@ declare module "./Option.js" {
   }
 }
 
-/**
- * @since 2.0.0
- */
-export declare namespace Effect {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<R, E, A> {
-    readonly [EffectTypeId]: VarianceStruct<R, E, A>
-  }
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface VarianceStruct<R, E, A> {
-    readonly _V: string
-    readonly _R: (_: never) => R
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
-  }
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Unify<Ret extends Effect<any, any, any>> = Effect<
-    Context<Ret>,
-    Error<Ret>,
-    Success<Ret>
-  >
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Context<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _R : never
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Error<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _E : never
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _A : never
-}
-
 // -------------------------------------------------------------------------------------
 // refinements
 // -------------------------------------------------------------------------------------
@@ -322,8 +325,8 @@ export const cachedFunction: <R, E, A, B>(
  * evaluated multiple times.
  *
  * @example
- * import * as Effect from "effect/Effect"
- * import * as Console from "effect/Console"
+ * import { Effect } from "effect/Effect"
+ * import { Console } from "effect/Console"
  *
  * const program = Effect.gen(function* (_) {
  *   const twice = Console.log("twice")
@@ -404,9 +407,9 @@ export declare namespace All {
     [Iterable<Effect.Variance<infer R, infer E, infer A>>] ? Effect<
       R,
       Mode extends "either" ? never
-        : Mode extends "validate" ? Array<Option.Option<E>>
+        : Mode extends "validate" ? Array<Option<E>>
         : E,
-      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<E, A>> : Array<A>
+      Discard extends true ? void : Mode extends "either" ? Array<Either<E, A>> : Array<A>
     >
     : never
 
@@ -420,7 +423,7 @@ export declare namespace All {
     Mode extends "either" ? never
       : T[number] extends never ? never
       : Mode extends "validate" ? {
-          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option.Option<_E>
+          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option<_E>
             : never
         }
       : [T[number]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }] ? E
@@ -428,8 +431,7 @@ export declare namespace All {
     Discard extends true ? void
       : T[number] extends never ? []
       : Mode extends "either" ? {
-          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ?
-            Either.Either<_E, _A>
+          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Either<_E, _A>
             : never
         }
       : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
@@ -445,15 +447,14 @@ export declare namespace All {
       Mode extends "either" ? never
         : keyof T extends never ? never
         : Mode extends "validate" ? {
-            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option.Option<_E>
+            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option<_E>
               : never
           }
         : [T[keyof T]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }] ? E
         : never,
       Discard extends true ? void
         : Mode extends "either" ? {
-            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ?
-              Either.Either<_E, _A>
+            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Either<_E, _A>
               : never
           }
         : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
@@ -593,8 +594,8 @@ export const filter: {
  * @category collecting & elements
  */
 export const findFirst: {
-  <A, R, E>(f: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Option.Option<A>>
-  <A, R, E>(elements: Iterable<A>, f: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Option.Option<A>>
+  <A, R, E>(f: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Option<A>>
+  <A, R, E>(elements: Iterable<A>, f: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Option<A>>
 } = effect.findFirst
 
 /**
@@ -666,7 +667,7 @@ export const forEach: {
  * @since 2.0.0
  * @category collecting & elements
  */
-export const head: <R, E, A>(self: Effect<R, E, Iterable<A>>) => Effect<R, Option.Option<E>, A> = effect.head
+export const head: <R, E, A>(self: Effect<R, E, Iterable<A>>) => Effect<R, Option<E>, A> = effect.head
 
 /**
  * Merges an `Iterable<Effect<R, E, A>>` to a single effect, working
@@ -921,8 +922,8 @@ export const validateAll: {
  * If `elements` is empty then `Effect.fail([])` is returned.
  *
  * @example
- * import * as Effect from "effect/Effect"
- * import * as Exit from "effect/Exit"
+ * import { Effect } from "effect/Effect"
+ * import { Exit } from "effect/Exit"
  *
  * const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))
  *
@@ -975,7 +976,7 @@ export const validateFirst: {
  */
 export const async: <R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void, signal: AbortSignal) => void | Effect<R, never, void>,
-  blockingOn?: FiberId.FiberId
+  blockingOn?: FiberId
 ) => Effect<R, E, A> = core.async
 
 /**
@@ -1006,8 +1007,8 @@ export const asyncEffect: <R, E, A, R2, E2, X>(
  * @category constructors
  */
 export const asyncOption: <R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Option.Option<Effect<R, E, A>>,
-  blockingOn?: FiberId.FiberId
+  register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
+  blockingOn?: FiberId
 ) => Effect<R, E, A> = effect.asyncOption
 
 /**
@@ -1029,8 +1030,8 @@ export const asyncOption: <R, E, A>(
  * @category constructors
  */
 export const asyncEither: <R, E, A>(
-  register: (callback: (effect: Effect<R, E, A>) => void) => Either.Either<Effect<R, never, void>, Effect<R, E, A>>,
-  blockingOn?: FiberId.FiberId
+  register: (callback: (effect: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
+  blockingOn?: FiberId
 ) => Effect<R, E, A> = core.asyncEither
 
 /**
@@ -1049,13 +1050,13 @@ export const failSync: <E>(evaluate: LazyArg<E>) => Effect<never, E, never> = co
  * @since 2.0.0
  * @category constructors
  */
-export const failCause: <E>(cause: Cause.Cause<E>) => Effect<never, E, never> = core.failCause
+export const failCause: <E>(cause: Cause<E>) => Effect<never, E, never> = core.failCause
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<never, E, never> = core.failCauseSync
+export const failCauseSync: <E>(evaluate: LazyArg<Cause<E>>) => Effect<never, E, never> = core.failCauseSync
 
 /**
  * @since 2.0.0
@@ -1395,7 +1396,7 @@ export const never: Effect<never, never, never> = core.never
  * @since 2.0.0
  * @category constructors
  */
-export const none: <R, E, A>(self: Effect<R, E, Option.Option<A>>) => Effect<R, Option.Option<E>, void> = effect.none
+export const none: <R, E, A>(self: Effect<R, E, Option<A>>) => Effect<R, Option<E>, void> = effect.none
 
 /**
  * Like `tryPromise` but produces a defect in case of errors.
@@ -1422,7 +1423,7 @@ export const succeed: <A>(value: A) => Effect<never, never, A> = core.succeed
  * @since 2.0.0
  * @category constructors
  */
-export const succeedNone: Effect<never, never, Option.Option<never>> = effect.succeedNone
+export const succeedNone: Effect<never, never, Option<never>> = effect.succeedNone
 
 /**
  * Returns an effect which succeeds with the value wrapped in a `Some`.
@@ -1430,7 +1431,7 @@ export const succeedNone: Effect<never, never, Option.Option<never>> = effect.su
  * @since 2.0.0
  * @category constructors
  */
-export const succeedSome: <A>(value: A) => Effect<never, never, Option.Option<A>> = effect.succeedSome
+export const succeedSome: <A>(value: A) => Effect<never, never, Option<A>> = effect.succeedSome
 
 /**
  * @since 2.0.0
@@ -1512,11 +1513,11 @@ export const catchAll: {
  */
 export const catchAllCause: {
   <E, R2, E2, A2>(
-    f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+    f: (cause: Cause<E>) => Effect<R2, E2, A2>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+    f: (cause: Cause<E>) => Effect<R2, E2, A2>
   ): Effect<R | R2, E2, A | A2>
 } = core.catchAllCause
 
@@ -1576,11 +1577,11 @@ export const catchIf: {
  */
 export const catchSome: {
   <E, R2, E2, A2>(
-    pf: (e: E) => Option.Option<Effect<R2, E2, A2>>
+    pf: (e: E) => Option<Effect<R2, E2, A2>>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: Effect<R, E, A>,
-    pf: (e: E) => Option.Option<Effect<R2, E2, A2>>
+    pf: (e: E) => Option<Effect<R2, E2, A2>>
   ): Effect<R | R2, E | E2, A | A2>
 } = core.catchSome
 
@@ -1592,11 +1593,11 @@ export const catchSome: {
  */
 export const catchSomeCause: {
   <E, R2, E2, A2>(
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+    f: (cause: Cause<E>) => Option<Effect<R2, E2, A2>>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+    f: (cause: Cause<E>) => Option<Effect<R2, E2, A2>>
   ): Effect<R | R2, E | E2, A | A2>
 } = effect.catchSomeCause
 
@@ -1613,11 +1614,11 @@ export const catchSomeCause: {
  */
 export const catchSomeDefect: {
   <R2, E2, A2>(
-    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+    pf: (defect: unknown) => Option<Effect<R2, E2, A2>>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A2 | A>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+    pf: (defect: unknown) => Option<Effect<R2, E2, A2>>
   ): Effect<R | R2, E | E2, A | A2>
 } = effect.catchSomeDefect
 
@@ -1704,7 +1705,7 @@ export const catchTags: {
  * @since 2.0.0
  * @category error handling
  */
-export const cause: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Cause.Cause<E>> = effect.cause
+export const cause: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Cause<E>> = effect.cause
 
 /**
  * Returns an effect that ignores errors and runs repeatedly until it
@@ -1747,7 +1748,7 @@ export const parallelErrors: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Array
  * @since 2.0.0
  * @category error handling
  */
-export const sandbox: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Cause.Cause<E>, A> = effect.sandbox
+export const sandbox: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Cause<E>, A> = effect.sandbox
 
 /**
  * Retries with the specified retry policy. Retries are done following the
@@ -1759,8 +1760,8 @@ export const sandbox: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Cause.Cause<
  * @category error handling
  */
 export const retry: {
-  <R1, E extends E0, E0, B>(policy: Schedule.Schedule<R1, E0, B>): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E, A>
-  <R, E extends E0, E0, A, R1, B>(self: Effect<R, E, A>, policy: Schedule.Schedule<R1, E0, B>): Effect<R | R1, E, A>
+  <R1, E extends E0, E0, B>(policy: Schedule<R1, E0, B>): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E, A>
+  <R, E extends E0, E0, A, R1, B>(self: Effect<R, E, A>, policy: Schedule<R1, E0, B>): Effect<R | R1, E, A>
 } = _schedule.retry_Effect
 
 /**
@@ -1784,12 +1785,12 @@ export const retryN: {
  */
 export const retryOrElse: {
   <R1, E extends E3, A1, R2, E2, A2, E3>(
-    policy: Schedule.Schedule<R1, E3, A1>,
+    policy: Schedule<R1, E3, A1>,
     orElse: (e: E, out: A1) => Effect<R2, E2, A2>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R2 | R, E | E2, A2 | A>
   <R, E extends E3, A, R1, A1, R2, E2, A2, E3>(
     self: Effect<R, E, A>,
-    policy: Schedule.Schedule<R1, E3, A1>,
+    policy: Schedule<R1, E3, A1>,
     orElse: (e: E, out: A1) => Effect<R2, E2, A2>
   ): Effect<R | R1 | R2, E | E2, A | A2>
 } = _schedule.retryOrElse_Effect
@@ -1931,7 +1932,7 @@ export const tryPromise: {
  * @since 2.0.0
  * @category error handling
  */
-export const unsandbox: <R, E, A>(self: Effect<R, Cause.Cause<E>, A>) => Effect<R, E, A> = effect.unsandbox
+export const unsandbox: <R, E, A>(self: Effect<R, Cause<E>, A>) => Effect<R, E, A> = effect.unsandbox
 
 // -------------------------------------------------------------------------------------
 // interuption
@@ -1989,7 +1990,7 @@ export const interrupt: Effect<never, never, never> = core.interrupt
  * @since 2.0.0
  * @category interruption
  */
-export const interruptWith: (fiberId: FiberId.FiberId) => Effect<never, never, never> = core.interruptWith
+export const interruptWith: (fiberId: FiberId) => Effect<never, never, never> = core.interruptWith
 
 /**
  * @since 2.0.0
@@ -2011,11 +2012,11 @@ export const interruptibleMask: <R, E, A>(
  */
 export const onInterrupt: {
   <R2, X>(
-    cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>
+    cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
-    cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>
+    cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>
   ): Effect<R | R2, E, A>
 } = core.onInterrupt
 
@@ -2073,7 +2074,7 @@ export const as: {
  * @category mapping
  * @since 2.0.0
  */
-export const asSome: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>> = effect.asSome
+export const asSome: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>> = effect.asSome
 
 /**
  * This function maps the error value of an `Effect` value to a `Some` value
@@ -2091,7 +2092,7 @@ export const asSome: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Opt
  * @category mapping
  * @since 2.0.0
  */
-export const asSomeError: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Option.Option<E>, A> = effect.asSomeError
+export const asSomeError: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Option<E>, A> = effect.asSomeError
 
 /**
  * This function maps the success value of an `Effect` value to `void`. If the
@@ -2203,8 +2204,8 @@ export const mapError: {
  * @category mapping
  */
 export const mapErrorCause: {
-  <E, E2>(f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): <R, A>(self: Effect<R, E, A>) => Effect<R, E2, A>
-  <R, E, A, E2>(self: Effect<R, E, A>, f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): Effect<R, E2, A>
+  <E, E2>(f: (cause: Cause<E>) => Cause<E2>): <R, A>(self: Effect<R, E, A>) => Effect<R, E2, A>
+  <R, E, A, E2>(self: Effect<R, E, A>, f: (cause: Cause<E>) => Cause<E2>): Effect<R, E2, A>
 } = effect.mapErrorCause
 
 /**
@@ -2251,12 +2252,12 @@ export const negate: <R, E>(self: Effect<R, E, boolean>) => Effect<R, E, boolean
  */
 export const acquireRelease: {
   <A, R2, X>(
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): Effect<Scope.Scope | R | R2, E, A>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
+  ): Effect<Scope | R | R2, E, A>
 } = fiberRuntime.acquireRelease
 
 /**
@@ -2284,12 +2285,12 @@ export const acquireRelease: {
  */
 export const acquireReleaseInterruptible: {
   <A, R2, X>(
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): Effect<Scope.Scope | R | R2, E, A>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
+  ): Effect<Scope | R | R2, E, A>
 } = fiberRuntime.acquireReleaseInterruptible
 
 /**
@@ -2329,12 +2330,12 @@ export const acquireReleaseInterruptible: {
 export const acquireUseRelease: {
   <A, R2, E2, A2, R3, X>(
     use: (a: A) => Effect<R2, E2, A2>,
-    release: (a: A, exit: Exit.Exit<E2, A2>) => Effect<R3, never, X>
+    release: (a: A, exit: Exit<E2, A2>) => Effect<R3, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<R2 | R3 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2, R3, X>(
     acquire: Effect<R, E, A>,
     use: (a: A) => Effect<R2, E2, A2>,
-    release: (a: A, exit: Exit.Exit<E2, A2>) => Effect<R3, never, X>
+    release: (a: A, exit: Exit<E2, A2>) => Effect<R3, never, X>
   ): Effect<R | R2 | R3, E | E2, A2>
 } = core.acquireUseRelease
 
@@ -2354,8 +2355,8 @@ export const acquireUseRelease: {
  * @category scoping, resources & finalization
  */
 export const addFinalizer: <R, X>(
-  finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<R, never, X>
-) => Effect<R | Scope.Scope, never, void> = fiberRuntime.addFinalizer
+  finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>
+) => Effect<R | Scope, never, void> = fiberRuntime.addFinalizer
 
 /**
  * Returns an effect that, if this effect _starts_ execution, then the
@@ -2385,11 +2386,11 @@ export const ensuring: {
  */
 export const onError: {
   <E, R2, X>(
-    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>
+    cleanup: (cause: Cause<E>) => Effect<R2, never, X>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, A, E, R2, X>(
     self: Effect<R, E, A>,
-    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>
+    cleanup: (cause: Cause<E>) => Effect<R2, never, X>
   ): Effect<R | R2, E, A>
 } = core.onError
 
@@ -2402,11 +2403,11 @@ export const onError: {
  */
 export const onExit: {
   <E, A, R2, X>(
-    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+    cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>
   ): <R>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
-    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+    cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>
   ): Effect<R | R2, E, A>
 } = core.onExit
 
@@ -2441,7 +2442,7 @@ export const sequentialFinalizers: <R, E, A>(self: Effect<R, E, A>) => Effect<R,
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scope: Effect<Scope.Scope, never, Scope.Scope> = fiberRuntime.scope
+export const scope: Effect<Scope, never, Scope> = fiberRuntime.scope
 
 /**
  * Accesses the current scope and uses it to perform the specified effect.
@@ -2449,7 +2450,7 @@ export const scope: Effect<Scope.Scope, never, Scope.Scope> = fiberRuntime.scope
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) => Effect<R | Scope.Scope, E, A> =
+export const scopeWith: <R, E, A>(f: (scope: Scope) => Effect<R, E, A>) => Effect<R | Scope, E, A> =
   fiberRuntime.scopeWith
 
 /**
@@ -2460,8 +2461,7 @@ export const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) =>
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope.Scope>, E, A> =
-  fiberRuntime.scopedEffect
+export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A> = fiberRuntime.scopedEffect
 
 /**
  * Scopes all resources acquired by `resource` to the lifetime of `use`
@@ -2473,11 +2473,11 @@ export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Sco
 export const using: {
   <A, R2, E2, A2>(
     use: (a: A) => Effect<R2, E2, A2>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, Scope.Scope>, E2 | E, A2>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, Scope>, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
     use: (a: A) => Effect<R2, E2, A2>
-  ): Effect<R2 | Exclude<R, Scope.Scope>, E | E2, A2>
+  ): Effect<R2 | Exclude<R, Scope>, E | E2, A2>
 } = fiberRuntime.using
 
 /**
@@ -2489,7 +2489,7 @@ export const using: {
  */
 export const withEarlyRelease: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<Scope.Scope | R, E, [Effect<never, never, void>, A]> = fiberRuntime.withEarlyRelease
+) => Effect<Scope | R, E, [Effect<never, never, void>, A]> = fiberRuntime.withEarlyRelease
 
 // -------------------------------------------------------------------------------------
 // supervision & fibers
@@ -2519,7 +2519,7 @@ export const daemonChildren: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const descriptor: Effect<never, never, Fiber.Fiber.Descriptor> = effect.descriptor
+export const descriptor: Effect<never, never, Fiber.Descriptor> = effect.descriptor
 
 /**
  * Constructs an effect based on information about the current `Fiber`.
@@ -2527,7 +2527,7 @@ export const descriptor: Effect<never, never, Fiber.Fiber.Descriptor> = effect.d
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const descriptorWith: <R, E, A>(f: (descriptor: Fiber.Fiber.Descriptor) => Effect<R, E, A>) => Effect<R, E, A> =
+export const descriptorWith: <R, E, A>(f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>) => Effect<R, E, A> =
   effect.descriptorWith
 
 /**
@@ -2539,7 +2539,7 @@ export const descriptorWith: <R, E, A>(f: (descriptor: Fiber.Fiber.Descriptor) =
  */
 export const diffFiberRefs: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<R, E, [FiberRefsPatch.FiberRefsPatch, A]> = effect.diffFiberRefs
+) => Effect<R, E, [FiberRefsPatch, A]> = effect.diffFiberRefs
 
 /**
  * Acts on the children of this fiber (collected into a single fiber),
@@ -2551,11 +2551,11 @@ export const diffFiberRefs: <R, E, A>(
  */
 export const ensuringChild: {
   <R2, X>(
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
+    f: (fiber: Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
+    f: (fiber: Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
   ): Effect<R | R2, E, A>
 } = circular.ensuringChild
 
@@ -2580,7 +2580,7 @@ export const ensuringChildren: {
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fiberId: Effect<never, never, FiberId.FiberId> = core.fiberId
+export const fiberId: Effect<never, never, FiberId> = core.fiberId
 
 /**
  * @since 2.0.0
@@ -2636,12 +2636,12 @@ export const forkDaemon: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fi
 export const forkAll: {
   (
     options?: { readonly discard?: false }
-  ): <R, E, A>(effects: Iterable<Effect<R, E, A>>) => Effect<R, never, Fiber.Fiber<E, Array<A>>>
+  ): <R, E, A>(effects: Iterable<Effect<R, E, A>>) => Effect<R, never, Fiber<E, Array<A>>>
   (options: { readonly discard: true }): <R, E, A>(effects: Iterable<Effect<R, E, A>>) => Effect<R, never, void>
   <R, E, A>(
     effects: Iterable<Effect<R, E, A>>,
     options?: { readonly discard?: false }
-  ): Effect<R, never, Fiber.Fiber<E, Array<A>>>
+  ): Effect<R, never, Fiber<E, Array<A>>>
   <R, E, A>(effects: Iterable<Effect<R, E, A>>, options: { readonly discard: true }): Effect<R, never, void>
 } = circular.forkAll
 
@@ -2653,8 +2653,8 @@ export const forkAll: {
  * @category supervision & fibers
  */
 export const forkIn: {
-  (scope: Scope.Scope): <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
-  <R, E, A>(self: Effect<R, E, A>, scope: Scope.Scope): Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  (scope: Scope): <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  <R, E, A>(self: Effect<R, E, A>, scope: Scope): Effect<R, never, Fiber.RuntimeFiber<E, A>>
 } = circular.forkIn
 
 /**
@@ -2663,7 +2663,7 @@ export const forkIn: {
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const forkScoped: <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | R, never, Fiber.RuntimeFiber<E, A>> =
+export const forkScoped: <R, E, A>(self: Effect<R, E, A>) => Effect<Scope | R, never, Fiber.RuntimeFiber<E, A>> =
   circular.forkScoped
 
 /**
@@ -2689,7 +2689,7 @@ export const forkWithErrorHandler: {
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fromFiber: <E, A>(fiber: Fiber.Fiber<E, A>) => Effect<never, E, A> = circular.fromFiber
+export const fromFiber: <E, A>(fiber: Fiber<E, A>) => Effect<never, E, A> = circular.fromFiber
 
 /**
  * Creates an `Effect` value that represents the exit value of the specified
@@ -2698,8 +2698,7 @@ export const fromFiber: <E, A>(fiber: Fiber.Fiber<E, A>) => Effect<never, E, A> 
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fromFiberEffect: <R, E, A>(fiber: Effect<R, E, Fiber.Fiber<E, A>>) => Effect<R, E, A> =
-  circular.fromFiberEffect
+export const fromFiberEffect: <R, E, A>(fiber: Effect<R, E, Fiber<E, A>>) => Effect<R, E, A> = circular.fromFiberEffect
 
 /**
  * Returns an effect with the behavior of this one, but where all child fibers
@@ -2709,8 +2708,8 @@ export const fromFiberEffect: <R, E, A>(fiber: Effect<R, E, Fiber.Fiber<E, A>>) 
  * @category supervision & fibers
  */
 export const supervised: {
-  <X>(supervisor: Supervisor.Supervisor<X>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A, X>(self: Effect<R, E, A>, supervisor: Supervisor.Supervisor<X>): Effect<R, E, A>
+  <X>(supervisor: Supervisor<X>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A, X>(self: Effect<R, E, A>, supervisor: Supervisor<X>): Effect<R, E, A>
 } = circular.supervised
 
 /**
@@ -2748,8 +2747,8 @@ export const withConcurrency: {
  * @category scheduler
  */
 export const withScheduler: {
-  (scheduler: Scheduler.Scheduler): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B>(self: Effect<R, E, B>, scheduler: Scheduler.Scheduler): Effect<R, E, B>
+  (scheduler: Scheduler): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(self: Effect<R, E, B>, scheduler: Scheduler): Effect<R, E, B>
 } = Scheduler.withScheduler
 
 /**
@@ -2784,7 +2783,7 @@ export const withMaxOpsBeforeYield: {
  * @since 2.0.0
  * @category clock
  */
-export const clock: Effect<never, never, Clock.Clock> = effect.clock
+export const clock: Effect<never, never, Clock> = effect.clock
 
 /**
  * Retreives the `Clock` service from the context and provides it to the
@@ -2793,7 +2792,7 @@ export const clock: Effect<never, never, Clock.Clock> = effect.clock
  * @since 2.0.0
  * @category clock
  */
-export const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A> = effect.clockWith
+export const clockWith: <R, E, A>(f: (clock: Clock) => Effect<R, E, A>) => Effect<R, E, A> = effect.clockWith
 
 /**
  * Sets the implementation of the clock service to the specified value and
@@ -2802,8 +2801,7 @@ export const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) =>
  * @since 2.0.0
  * @category constructors
  */
-export const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<Scope.Scope, never, void> =
-  fiberRuntime.withClockScoped
+export const withClockScoped: <A extends Clock>(value: A) => Effect<Scope, never, void> = fiberRuntime.withClockScoped
 
 /**
  * Executes the specified workflow with the specified implementation of the
@@ -2813,8 +2811,8 @@ export const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<Scope.
  * @category clock
  */
 export const withClock: {
-  <A extends Clock.Clock>(value: A): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A extends Clock.Clock>(effect: Effect<R, E, A>, value: A): Effect<R, E, A>
+  <A extends Clock>(value: A): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A extends Clock>(effect: Effect<R, E, A>, value: A): Effect<R, E, A>
 } = defaultServices.withClock
 
 // ---------------------------------------------------------------------------------------
@@ -2848,7 +2846,7 @@ export const sleep: (duration: Duration.DurationInput) => Effect<never, never, v
  * @since 2.0.0
  * @category delays & timeouts
  */
-export const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [Duration.Duration, A]> = effect.timed
+export const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [Duration, A]> = effect.timed
 
 /**
  * A more powerful variation of `timed` that allows specifying the clock.
@@ -2859,11 +2857,11 @@ export const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [Duration.D
 export const timedWith: {
   <R1, E1>(
     nanoseconds: Effect<R1, E1, bigint>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, [Duration.Duration, A]>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, [Duration, A]>
   <R, E, A, R1, E1>(
     self: Effect<R, E, A>,
     nanoseconds: Effect<R1, E1, bigint>
-  ): Effect<R | R1, E | E1, [Duration.Duration, A]>
+  ): Effect<R | R1, E | E1, [Duration, A]>
 } = effect.timedWith
 
 /**
@@ -2886,8 +2884,8 @@ export const timedWith: {
  * @category delays & timeouts
  */
 export const timeout: {
-  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, E, Option.Option<A>>
+  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, E, Option<A>>
 } = circular.timeout
 
 /**
@@ -2918,14 +2916,14 @@ export const timeoutFail: {
 export const timeoutFailCause: {
   <E1>(
     options: {
-      readonly onTimeout: LazyArg<Cause.Cause<E1>>
+      readonly onTimeout: LazyArg<Cause<E1>>
       readonly duration: Duration.DurationInput
     }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E1 | E, A>
   <R, E, A, E1>(
     self: Effect<R, E, A>,
     options: {
-      readonly onTimeout: LazyArg<Cause.Cause<E1>>
+      readonly onTimeout: LazyArg<Cause<E1>>
       readonly duration: Duration.DurationInput
     }
   ): Effect<R, E | E1, A>
@@ -3003,7 +3001,7 @@ export const withConfigProvider: {
  * @since 2.0.0
  * @category config
  */
-export const withConfigProviderScoped: (value: ConfigProvider) => Effect<Scope.Scope, never, void> =
+export const withConfigProviderScoped: (value: ConfigProvider) => Effect<Scope, never, void> =
   fiberRuntime.withConfigProviderScoped
 
 // -------------------------------------------------------------------------------------
@@ -3014,7 +3012,7 @@ export const withConfigProviderScoped: (value: ConfigProvider) => Effect<Scope.S
  * @since 2.0.0
  * @category context
  */
-export const context: <R>() => Effect<R, never, Context.Context<R>> = core.context
+export const context: <R>() => Effect<R, never, Context<R>> = core.context
 
 /**
  * Accesses the context of the effect.
@@ -3022,7 +3020,7 @@ export const context: <R>() => Effect<R, never, Context.Context<R>> = core.conte
  * @since 2.0.0
  * @category context
  */
-export const contextWith: <R, A>(f: (context: Context.Context<R>) => A) => Effect<R, never, A> = effect.contextWith
+export const contextWith: <R, A>(f: (context: Context<R>) => A) => Effect<R, never, A> = effect.contextWith
 
 /**
  * Effectually accesses the context of the effect.
@@ -3031,7 +3029,7 @@ export const contextWith: <R, A>(f: (context: Context.Context<R>) => A) => Effec
  * @category context
  */
 export const contextWithEffect: <R, R0, E, A>(
-  f: (context: Context.Context<R0>) => Effect<R, E, A>
+  f: (context: Context<R0>) => Effect<R, E, A>
 ) => Effect<R | R0, E, A> = core.contextWithEffect
 
 /**
@@ -3042,8 +3040,8 @@ export const contextWithEffect: <R, R0, E, A>(
  * @category context
  */
 export const mapInputContext: {
-  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <E, A>(self: Effect<R, E, A>) => Effect<R0, E, A>
-  <R0, R, E, A>(self: Effect<R, E, A>, f: (context: Context.Context<R0>) => Context.Context<R>): Effect<R0, E, A>
+  <R0, R>(f: (context: Context<R0>) => Context<R>): <E, A>(self: Effect<R, E, A>) => Effect<R0, E, A>
+  <R0, R, E, A>(self: Effect<R, E, A>, f: (context: Context<R0>) => Context<R>): Effect<R0, E, A>
 } = core.mapInputContext
 
 /**
@@ -3055,13 +3053,13 @@ export const mapInputContext: {
  */
 export const provide: {
   <R2, E2, A2>(
-    layer: Layer.Layer<R2, E2, A2>
+    layer: Layer<R2, E2, A2>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, A2>, E2 | E, A>
-  <R2>(context: Context.Context<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
-  <R2>(runtime: Runtime.Runtime<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
-  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, layer: Layer.Layer<R2, E2, A2>): Effect<R2 | Exclude<R, A2>, E | E2, A>
-  <R, E, A, R2>(self: Effect<R, E, A>, context: Context.Context<R2>): Effect<Exclude<R, R2>, E, A>
-  <R, E, A, R2>(self: Effect<R, E, A>, runtime: Runtime.Runtime<R2>): Effect<Exclude<R, R2>, E, A>
+  <R2>(context: Context<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
+  <R2>(runtime: Runtime<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
+  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, layer: Layer<R2, E2, A2>): Effect<R2 | Exclude<R, A2>, E | E2, A>
+  <R, E, A, R2>(self: Effect<R, E, A>, context: Context<R2>): Effect<Exclude<R, R2>, E, A>
+  <R, E, A, R2>(self: Effect<R, E, A>, runtime: Runtime<R2>): Effect<Exclude<R, R2>, E, A>
 } = layer.effect_provide
 
 /**
@@ -3163,8 +3161,7 @@ export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
  * @since 2.0.0
  * @category context
  */
-export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> =
-  effect.serviceOption
+export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option<A>> = effect.serviceOption
 
 /**
  * Updates the service with the required service entry.
@@ -3259,21 +3256,21 @@ export {
  * @since 2.0.0
  * @category conversions
  */
-export const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either.Either<E, A>> = core.either
+export const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either<E, A>> = core.either
 
 /**
  * @since 2.0.0
  * @category conversions
  */
-export const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit.Exit<E, A>> = core.exit
+export const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit<E, A>> = core.exit
 
 /**
  * @since 2.0.0
  * @category conversions
  */
 export const intoDeferred: {
-  <E, A>(deferred: Deferred.Deferred<E, A>): <R>(self: Effect<R, E, A>) => Effect<R, never, boolean>
-  <R, E, A>(self: Effect<R, E, A>, deferred: Deferred.Deferred<E, A>): Effect<R, never, boolean>
+  <E, A>(deferred: Deferred<E, A>): <R>(self: Effect<R, E, A>) => Effect<R, never, boolean>
+  <R, E, A>(self: Effect<R, E, A>, deferred: Deferred<E, A>): Effect<R, never, boolean>
 } = core.intoDeferred
 
 /**
@@ -3283,7 +3280,7 @@ export const intoDeferred: {
  * @since 2.0.0
  * @category conversions
  */
-export const option: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Option.Option<A>> = effect.option
+export const option: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Option<A>> = effect.option
 
 // -------------------------------------------------------------------------------------
 // filtering & conditionals
@@ -3417,8 +3414,8 @@ export const filterOrFail: {
  * @category filtering & conditionals
  */
 export const unless: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option<A>>
 } = effect.unless
 
 /**
@@ -3432,11 +3429,11 @@ export const unlessEffect: {
     predicate: Effect<R2, E2, boolean>
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, Option.Option<A>>
+  ) => Effect<R2 | R, E2 | E, Option<A>>
   <R, E, A, R2, E2>(
     self: Effect<R, E, A>,
     predicate: Effect<R2, E2, boolean>
-  ): Effect<R | R2, E | E2, Option.Option<A>>
+  ): Effect<R | R2, E | E2, Option<A>>
 } = effect.unlessEffect
 
 /**
@@ -3446,8 +3443,8 @@ export const unlessEffect: {
  * @category filtering & conditionals
  */
 export const when: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option<A>>
 } = effect.when
 
 /**
@@ -3459,11 +3456,11 @@ export const whenEffect: {
     predicate: Effect<R, E, boolean>
   ): <R2, E2, A>(
     effect: Effect<R2, E2, A>
-  ) => Effect<R | R2, E | E2, Option.Option<A>>
+  ) => Effect<R | R2, E | E2, Option<A>>
   <R, E, A, R2, E2>(
     self: Effect<R2, E2, A>,
     predicate: Effect<R, E, boolean>
-  ): Effect<R | R2, E | E2, Option.Option<A>>
+  ): Effect<R | R2, E | E2, Option<A>>
 } = core.whenEffect
 
 /**
@@ -3475,16 +3472,16 @@ export const whenEffect: {
  */
 export const whenFiberRef: {
   <S>(
-    fiberRef: FiberRef.FiberRef<S>,
+    fiberRef: FiberRef<S>,
     predicate: Predicate<S>
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R, E, [S, Option.Option<A>]>
+  ) => Effect<R, E, [S, Option<A>]>
   <R, E, A, S>(
     self: Effect<R, E, A>,
-    fiberRef: FiberRef.FiberRef<S>,
+    fiberRef: FiberRef<S>,
     predicate: Predicate<S>
-  ): Effect<R, E, [S, Option.Option<A>]>
+  ): Effect<R, E, [S, Option<A>]>
 } = effect.whenFiberRef
 
 /**
@@ -3495,16 +3492,16 @@ export const whenFiberRef: {
  */
 export const whenRef: {
   <S>(
-    ref: Ref.Ref<S>,
+    ref: Ref<S>,
     predicate: Predicate<S>
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R, E, [S, Option.Option<A>]>
+  ) => Effect<R, E, [S, Option<A>]>
   <R, E, A, S>(
     self: Effect<R, E, A>,
-    ref: Ref.Ref<S>,
+    ref: Ref<S>,
     predicate: Predicate<S>
-  ): Effect<R, E, [S, Option.Option<A>]>
+  ): Effect<R, E, [S, Option<A>]>
 } = effect.whenRef
 
 // -------------------------------------------------------------------------------------
@@ -3591,16 +3588,16 @@ export const raceWith: {
   <E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ): <R>(self: Effect<R, E, A>) => Effect<R1 | R2 | R3 | R, E2 | E3, A2 | A3>
   <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     self: Effect<R, E, A>,
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ): Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>
 } = fiberRuntime.raceWith
@@ -3661,11 +3658,11 @@ export const tapBoth: {
  */
 export const tapDefect: {
   <R2, E2, X>(
-    f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>
+    f: (cause: Cause<never>) => Effect<R2, E2, X>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
   <R, E, A, R2, E2, X>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>
+    f: (cause: Cause<never>) => Effect<R2, E2, X>
   ): Effect<R | R2, E | E2, A>
 } = effect.tapDefect
 
@@ -3709,11 +3706,11 @@ export const tapErrorTag: {
  */
 export const tapErrorCause: {
   <E, XE extends E, R2, E2, X>(
-    f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>
+    f: (cause: Cause<XE>) => Effect<R2, E2, X>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A>
   <R, E, A, XE extends E, R2, E2, X>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>
+    f: (cause: Cause<XE>) => Effect<R2, E2, X>
   ): Effect<R | R2, E | E2, A>
 } = effect.tapErrorCause
 
@@ -3845,9 +3842,9 @@ export const loop: {
  */
 export const repeat: {
   <R1, A extends A0, A0, B>(
-    schedule: Schedule.Schedule<R1, A, B>
+    schedule: Schedule<R1, A, B>
   ): <R, E>(self: Effect<R, E, A>) => Effect<R1 | R, E, B>
-  <R, E, A extends A0, A0, R1, B>(self: Effect<R, E, A>, schedule: Schedule.Schedule<R1, A0, B>): Effect<R | R1, E, B>
+  <R, E, A extends A0, A0, R1, B>(self: Effect<R, E, A>, schedule: Schedule<R1, A0, B>): Effect<R | R1, E, B>
 } = _schedule.repeat_Effect
 
 /**
@@ -3878,13 +3875,13 @@ export const repeatN: {
  */
 export const repeatOrElse: {
   <R2, A extends A0, A0, B, E, R3, E2>(
-    schedule: Schedule.Schedule<R2, A, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+    schedule: Schedule<R2, A, B>,
+    orElse: (error: E, option: Option<B>) => Effect<R3, E2, B>
   ): <R>(self: Effect<R, E, A>) => Effect<R2 | R3 | R, E2, B>
   <R, E, A extends A0, A0, R2, B, R3, E2>(
     self: Effect<R, E, A>,
-    schedule: Schedule.Schedule<R2, A0, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+    schedule: Schedule<R2, A0, B>,
+    orElse: (error: E, option: Option<B>) => Effect<R3, E2, B>
   ): Effect<R | R2 | R3, E2, B>
 } = _schedule.repeatOrElse_Effect
 
@@ -3948,8 +3945,8 @@ export const repeatWhileEffect: {
  * @category repetition / recursion
  */
 export const schedule: {
-  <R2, Out>(schedule: Schedule.Schedule<R2, unknown, Out>): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, Out>
-  <R, E, A, R2, Out>(self: Effect<R, E, A>, schedule: Schedule.Schedule<R2, unknown, Out>): Effect<R | R2, E, Out>
+  <R2, Out>(schedule: Schedule<R2, unknown, Out>): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, Out>
+  <R, E, A, R2, Out>(self: Effect<R, E, A>, schedule: Schedule<R2, unknown, Out>): Effect<R | R2, E, Out>
 } = _schedule.schedule_Effect
 
 /**
@@ -3961,12 +3958,12 @@ export const schedule: {
  */
 export const scheduleForked: {
   <R2, Out>(
-    schedule: Schedule.Schedule<R2, unknown, Out>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, never, Fiber.RuntimeFiber<E, Out>>
+    schedule: Schedule<R2, unknown, Out>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Scope | R2 | R, never, Fiber.RuntimeFiber<E, Out>>
   <R, E, A, R2, Out>(
     self: Effect<R, E, A>,
-    schedule: Schedule.Schedule<R2, unknown, Out>
-  ): Effect<Scope.Scope | R | R2, never, Fiber.RuntimeFiber<E, Out>>
+    schedule: Schedule<R2, unknown, Out>
+  ): Effect<Scope | R | R2, never, Fiber.RuntimeFiber<E, Out>>
 } = circular.scheduleForked
 
 /**
@@ -3979,12 +3976,12 @@ export const scheduleForked: {
 export const scheduleFrom: {
   <R2, In, Out>(
     initial: In,
-    schedule: Schedule.Schedule<R2, In, Out>
+    schedule: Schedule<R2, In, Out>
   ): <R, E>(self: Effect<R, E, In>) => Effect<R2 | R, E, Out>
   <R, E, In, R2, Out>(
     self: Effect<R, E, In>,
     initial: In,
-    schedule: Schedule.Schedule<R2, In, Out>
+    schedule: Schedule<R2, In, Out>
   ): Effect<R | R2, E, Out>
 } = _schedule.scheduleFrom_Effect
 
@@ -4011,7 +4008,7 @@ export const whileLoop: <R, E, A>(
  * @since 2.0.0
  * @category fiber refs
  */
-export const getFiberRefs: Effect<never, never, FiberRefs.FiberRefs> = effect.fiberRefs
+export const getFiberRefs: Effect<never, never, FiberRefs> = effect.fiberRefs
 
 /**
  * Inherits values from all `FiberRef` instances into current fiber.
@@ -4019,16 +4016,15 @@ export const getFiberRefs: Effect<never, never, FiberRefs.FiberRefs> = effect.fi
  * @since 2.0.0
  * @category fiber refs
  */
-export const inheritFiberRefs: (childFiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void> =
-  effect.inheritFiberRefs
+export const inheritFiberRefs: (childFiberRefs: FiberRefs) => Effect<never, never, void> = effect.inheritFiberRefs
 
 /**
  * @since 2.0.0
  * @category fiber refs
  */
 export const locally: {
-  <A>(self: FiberRef.FiberRef<A>, value: A): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef.FiberRef<A>, value: A): Effect<R, E, B>
+  <A>(self: FiberRef<A>, value: A): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef<A>, value: A): Effect<R, E, B>
 } = core.fiberRefLocally
 
 /**
@@ -4036,8 +4032,8 @@ export const locally: {
  * @category fiber refs
  */
 export const locallyWith: {
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef.FiberRef<A>, f: (a: A) => A): Effect<R, E, B>
+  <A>(self: FiberRef<A>, f: (a: A) => A): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef<A>, f: (a: A) => A): Effect<R, E, B>
 } = core.fiberRefLocallyWith
 
 /**
@@ -4045,8 +4041,8 @@ export const locallyWith: {
  * @category fiber refs
  */
 export const locallyScoped: {
-  <A>(value: A): (self: FiberRef.FiberRef<A>) => Effect<Scope.Scope, never, void>
-  <A>(self: FiberRef.FiberRef<A>, value: A): Effect<Scope.Scope, never, void>
+  <A>(value: A): (self: FiberRef<A>) => Effect<Scope, never, void>
+  <A>(self: FiberRef<A>, value: A): Effect<Scope, never, void>
 } = fiberRuntime.fiberRefLocallyScoped
 
 /**
@@ -4054,8 +4050,8 @@ export const locallyScoped: {
  * @category fiber refs
  */
 export const locallyScopedWith: {
-  <A>(f: (a: A) => A): (self: FiberRef.FiberRef<A>) => Effect<Scope.Scope, never, void>
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A): Effect<Scope.Scope, never, void>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect<Scope, never, void>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect<Scope, never, void>
 } = fiberRuntime.fiberRefLocallyScopedWith
 
 /**
@@ -4065,8 +4061,7 @@ export const locallyScopedWith: {
  * @since 2.0.0
  * @category fiber refs
  */
-export const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<never, never, void> =
-  effect.patchFiberRefs
+export const patchFiberRefs: (patch: FiberRefsPatch) => Effect<never, never, void> = effect.patchFiberRefs
 
 /**
  * Sets the `FiberRef` values for the fiber running this effect to the values
@@ -4075,7 +4070,7 @@ export const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<ne
  * @since 2.0.0
  * @category fiber refs
  */
-export const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void> = effect.setFiberRefs
+export const setFiberRefs: (fiberRefs: FiberRefs) => Effect<never, never, void> = effect.setFiberRefs
 
 /**
  * Updates the `FiberRef` values for the fiber running this effect using the
@@ -4085,7 +4080,7 @@ export const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<never, nev
  * @category fiber refs
  */
 export const updateFiberRefs: (
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => FiberRefs
 ) => Effect<never, never, void> = effect.updateFiberRefs
 
 // -------------------------------------------------------------------------------------
@@ -4139,14 +4134,14 @@ export const match: {
 export const matchCause: {
   <E, A2, A, A3>(
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => A2
+      readonly onFailure: (cause: Cause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ): <R>(self: Effect<R, E, A>) => Effect<R, never, A2 | A3>
   <R, E, A2, A, A3>(
     self: Effect<R, E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => A2
+      readonly onFailure: (cause: Cause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ): Effect<R, never, A2 | A3>
@@ -4159,14 +4154,14 @@ export const matchCause: {
 export const matchCauseEffect: {
   <E, A, R2, E2, A2, R3, E3, A3>(
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+      readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, A2>
       readonly onSuccess: (a: A) => Effect<R3, E3, A3>
     }
   ): <R>(self: Effect<R, E, A>) => Effect<R2 | R3 | R, E2 | E3, A2 | A3>
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     self: Effect<R, E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+      readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, A2>
       readonly onSuccess: (a: A) => Effect<R3, E3, A3>
     }
   ): Effect<R | R2 | R3, E2 | E3, A2 | A3>
@@ -4206,7 +4201,7 @@ export const matchEffect: {
  */
 export const log: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = effect.log
 
 /**
@@ -4217,7 +4212,7 @@ export const log: <A>(
  */
 export const logTrace: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = effect.logTrace
 
 /**
@@ -4228,7 +4223,7 @@ export const logTrace: <A>(
  */
 export const logDebug: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = effect.logDebug
 
 /**
@@ -4239,7 +4234,7 @@ export const logDebug: <A>(
  */
 export const logInfo: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = effect.logInfo
 
 /**
@@ -4250,7 +4245,7 @@ export const logInfo: <A>(
  */
 export const logWarning: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = effect.logWarning
 
 /**
@@ -4261,7 +4256,7 @@ export const logWarning: <A>(
  */
 export const logError: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = effect.logError
 
 /**
@@ -4272,7 +4267,7 @@ export const logError: <A>(
  */
 export const logFatal: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = effect.logFatal
 
 /**
@@ -4305,7 +4300,7 @@ export const annotateLogs: {
  * @since 2.0.0
  * @category logging
  */
-export const logAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>> = effect.logAnnotations
+export const logAnnotations: Effect<never, never, HashMap<string, unknown>> = effect.logAnnotations
 
 /**
  * Decides wether child fibers will report or not unhandled errors via the logger
@@ -4314,8 +4309,8 @@ export const logAnnotations: Effect<never, never, HashMap.HashMap<string, unknow
  * @category logging
  */
 export const withUnhandledErrorLogLevel: {
-  (level: Option.Option<LogLevel>): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B>(self: Effect<R, E, B>, level: Option.Option<LogLevel>): Effect<R, E, B>
+  (level: Option<LogLevel>): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(self: Effect<R, E, B>, level: Option<LogLevel>): Effect<R, E, B>
 } = core.withUnhandledErrorLogLevel
 
 // -------------------------------------------------------------------------------------
@@ -4389,7 +4384,7 @@ export const orElseSucceed: {
  * @since 2.0.0
  * @category random
  */
-export const random: Effect<never, never, Random.Random> = effect.random
+export const random: Effect<never, never, Random> = effect.random
 
 /**
  * Retreives the `Random` service from the context and uses it to run the
@@ -4398,7 +4393,7 @@ export const random: Effect<never, never, Random.Random> = effect.random
  * @since 2.0.0
  * @category random
  */
-export const randomWith: <R, E, A>(f: (random: Random.Random) => Effect<R, E, A>) => Effect<R, E, A> =
+export const randomWith: <R, E, A>(f: (random: Random) => Effect<R, E, A>) => Effect<R, E, A> =
   defaultServices.randomWith
 
 // -------------------------------------------------------------------------------------
@@ -4413,7 +4408,7 @@ export const randomWith: <R, E, A>(f: (random: Random.Random) => Effect<R, E, A>
  * @since 2.0.0
  * @category runtime
  */
-export const runtime: <R>() => Effect<R, never, Runtime.Runtime<R>> = _runtime.runtime
+export const runtime: <R>() => Effect<R, never, Runtime<R>> = _runtime.runtime
 
 /**
  * Retrieves an effect that succeeds with the current runtime flags, which
@@ -4422,22 +4417,21 @@ export const runtime: <R>() => Effect<R, never, Runtime.Runtime<R>> = _runtime.r
  * @since 2.0.0
  * @category runtime
  */
-export const getRuntimeFlags: Effect<never, never, RuntimeFlags.RuntimeFlags> = core.runtimeFlags
+export const getRuntimeFlags: Effect<never, never, RuntimeFlags> = core.runtimeFlags
 
 /**
  * @since 2.0.0
  * @category runtime
  */
-export const patchRuntimeFlags: (patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => Effect<never, never, void> =
-  core.updateRuntimeFlags
+export const patchRuntimeFlags: (patch: RuntimeFlagsPatch) => Effect<never, never, void> = core.updateRuntimeFlags
 
 /**
  * @since 2.0.0
  * @category runtime
  */
 export const withRuntimeFlagsPatch: {
-  (update: RuntimeFlagsPatch.RuntimeFlagsPatch): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch.RuntimeFlagsPatch): Effect<R, E, A>
+  (update: RuntimeFlagsPatch): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch): Effect<R, E, A>
 } = core.withRuntimeFlags
 
 /**
@@ -4445,8 +4439,8 @@ export const withRuntimeFlagsPatch: {
  * @category runtime
  */
 export const withRuntimeFlagsPatchScoped: (
-  update: RuntimeFlagsPatch.RuntimeFlagsPatch
-) => Effect<Scope.Scope, never, void> = fiberRuntime.withRuntimeFlagsScoped
+  update: RuntimeFlagsPatch
+) => Effect<Scope, never, void> = fiberRuntime.withRuntimeFlagsScoped
 
 // -------------------------------------------------------------------------------------
 // metrics
@@ -4472,8 +4466,8 @@ export const tagMetrics: {
  * @category metrics
  */
 export const labelMetrics: {
-  (labels: Iterable<MetricLabel.MetricLabel>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, labels: Iterable<MetricLabel.MetricLabel>): Effect<R, E, A>
+  (labels: Iterable<MetricLabel>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, labels: Iterable<MetricLabel>): Effect<R, E, A>
 } = effect.labelMetrics
 
 /**
@@ -4483,8 +4477,8 @@ export const labelMetrics: {
  * @category metrics
  */
 export const labelMetricsSet: {
-  (labels: HashSet.HashSet<MetricLabel.MetricLabel>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, labels: HashSet.HashSet<MetricLabel.MetricLabel>): Effect<R, E, A>
+  (labels: HashSet<MetricLabel>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, labels: HashSet<MetricLabel>): Effect<R, E, A>
 } = effect.labelMetricsSet
 
 /**
@@ -4493,7 +4487,7 @@ export const labelMetricsSet: {
  * @since 2.0.0
  * @category metrics
  */
-export const tagMetricsScoped: (key: string, value: string) => Effect<Scope.Scope, never, void> =
+export const tagMetricsScoped: (key: string, value: string) => Effect<Scope, never, void> =
   fiberRuntime.tagMetricsScoped
 
 /**
@@ -4503,8 +4497,8 @@ export const tagMetricsScoped: (key: string, value: string) => Effect<Scope.Scop
  * @category metrics
  */
 export const labelMetricsScoped: (
-  labels: ReadonlyArray<MetricLabel.MetricLabel>
-) => Effect<Scope.Scope, never, void> = fiberRuntime.labelMetricsScoped
+  labels: ReadonlyArray<MetricLabel>
+) => Effect<Scope, never, void> = fiberRuntime.labelMetricsScoped
 
 /**
  * Tags each metric in a scope with a the specific tag.
@@ -4513,8 +4507,8 @@ export const labelMetricsScoped: (
  * @category metrics
  */
 export const labelMetricsScopedSet: (
-  labels: HashSet.HashSet<MetricLabel.MetricLabel>
-) => Effect<Scope.Scope, never, void> = fiberRuntime.labelMetricsScopedSet
+  labels: HashSet<MetricLabel>
+) => Effect<Scope, never, void> = fiberRuntime.labelMetricsScopedSet
 
 /**
  * Retrieves the metric labels associated with the current scope.
@@ -4522,15 +4516,15 @@ export const labelMetricsScopedSet: (
  * @since 2.0.0
  * @category metrics
  */
-export const metricLabels: Effect<never, never, HashSet.HashSet<MetricLabel.MetricLabel>> = core.metricLabels
+export const metricLabels: Effect<never, never, HashSet<MetricLabel>> = core.metricLabels
 
 /**
  * @since 2.0.0
  * @category metrics
  */
 export const withMetric: {
-  <Type, In, Out>(metric: Metric.Metric<Type, In, Out>): <R, E, A extends In>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A extends In, Type, In, Out>(self: Effect<R, E, A>, metric: Metric.Metric<Type, In, Out>): Effect<R, E, A>
+  <Type, In, Out>(metric: Metric<Type, In, Out>): <R, E, A extends In>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A extends In, Type, In, Out>(self: Effect<R, E, A>, metric: Metric<Type, In, Out>): Effect<R, E, A>
 } = effect.withMetric
 
 // -------------------------------------------------------------------------------------
@@ -4609,7 +4603,7 @@ export const runFork: <E, A>(effect: Effect<never, E, A>) => Fiber.RuntimeFiber<
  */
 export const runCallback: <E, A>(
   effect: Effect<never, E, A>,
-  onExit?: (exit: Exit.Exit<E, A>) => void
+  onExit?: (exit: Exit<E, A>) => void
 ) => Runtime.Cancel<E, A> = _runtime.unsafeRunEffect
 
 /**
@@ -4628,7 +4622,7 @@ export const runPromise: <E, A>(effect: Effect<never, E, A>) => Promise<A> = _ru
  * @since 2.0.0
  * @category execution
  */
-export const runPromiseExit: <E, A>(effect: Effect<never, E, A>) => Promise<Exit.Exit<E, A>> =
+export const runPromiseExit: <E, A>(effect: Effect<never, E, A>) => Promise<Exit<E, A>> =
   _runtime.unsafeRunPromiseExitEffect
 
 /**
@@ -4641,7 +4635,7 @@ export const runSync: <E, A>(effect: Effect<never, E, A>) => A = _runtime.unsafe
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <E, A>(effect: Effect<never, E, A>) => Exit.Exit<E, A> = _runtime.unsafeRunSyncExitEffect
+export const runSyncExit: <E, A>(effect: Effect<never, E, A>) => Exit<E, A> = _runtime.unsafeRunSyncExitEffect
 
 // -------------------------------------------------------------------------------------
 // zipping
@@ -4798,7 +4792,7 @@ export const runRequestBlock: <R>(blockedRequests: RequestBlock<R>) => Blocked<R
  * @category requests & batching
  * @since 2.0.0
  */
-export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<R, E, A>> = core.step
+export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit<E, A> | Blocked<R, E, A>> = core.step
 
 /**
  * @category requests & batching
@@ -4806,7 +4800,7 @@ export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E,
  */
 export const flatMapStep: <R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
-  f: (step: Exit.Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
+  f: (step: Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
 ) => Effect<R | R1, E1, B> = core.flatMapStep
 
 /**
@@ -4815,15 +4809,15 @@ export const flatMapStep: <R, E, A, R1, E1, B>(
  */
 export const request: {
   <
-    A extends Request.Request<any, any>,
+    A extends Request<any, any>,
     Ds extends RequestResolver<A, never> | Effect<any, any, RequestResolver<A, never>>
   >(
     request: A,
     dataSource: Ds
   ): Effect<
     [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never,
-    Request.Request.Error<A>,
-    Request.Request.Success<A>
+    Request.Error<A>,
+    Request.Success<A>
   >
 } = query.fromRequest as any
 
@@ -4831,9 +4825,9 @@ export const request: {
  * @since 2.0.0
  * @category requests & batching
  */
-export const cacheRequestResult: <A extends Request.Request<any, any>>(
+export const cacheRequestResult: <A extends Request<any, any>>(
   request: A,
-  result: Request.Request.Result<A>
+  result: Request.Result<A>
 ) => Effect<never, never, void> = query.cacheRequest
 
 /**
@@ -4871,13 +4865,13 @@ export const withRequestCache: {
  * @since 2.0.0
  * @category tracing
  */
-export const tracer: Effect<never, never, Tracer.Tracer> = effect.tracer
+export const tracer: Effect<never, never, Tracer> = effect.tracer
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>) => Effect<R, E, A> =
+export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A> =
   defaultServices.tracerWith
 
 /**
@@ -4885,16 +4879,15 @@ export const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>
  * @category tracing
  */
 export const withTracer: {
-  (value: Tracer.Tracer): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, value: Tracer.Tracer): Effect<R, E, A>
+  (value: Tracer): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, value: Tracer): Effect<R, E, A>
 } = defaultServices.withTracer
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const withTracerScoped: (value: Tracer.Tracer) => Effect<Scope.Scope, never, void> =
-  fiberRuntime.withTracerScoped
+export const withTracerScoped: (value: Tracer) => Effect<Scope, never, void> = fiberRuntime.withTracerScoped
 
 /**
  * @since 2.0.0
@@ -4933,25 +4926,25 @@ export const annotateCurrentSpan: {
  * @since 2.0.0
  * @category tracing
  */
-export const currentSpan: Effect<never, never, Option.Option<Tracer.Span>> = effect.currentSpan
+export const currentSpan: Effect<never, never, Option<Tracer.Span>> = effect.currentSpan
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const currentParentSpan: Effect<never, never, Option.Option<Tracer.ParentSpan>> = effect.currentParentSpan
+export const currentParentSpan: Effect<never, never, Option<Tracer.ParentSpan>> = effect.currentParentSpan
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const spanAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>> = effect.spanAnnotations
+export const spanAnnotations: Effect<never, never, HashMap<string, unknown>> = effect.spanAnnotations
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const spanLinks: Effect<never, never, Chunk.Chunk<Tracer.SpanLink>> = effect.spanLinks
+export const spanLinks: Effect<never, never, Chunk<Tracer.SpanLink>> = effect.spanLinks
 
 /**
  * For all spans in this effect, add a link with the provided span.
@@ -4984,7 +4977,7 @@ export const makeSpan: (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   }
 ) => Effect<never, never, Tracer.Span> = effect.makeSpan
 
@@ -5005,9 +4998,9 @@ export const makeSpanScoped: (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   }
-) => Effect<Scope.Scope, never, Tracer.Span> = fiberRuntime.makeSpanScoped
+) => Effect<Scope, never, Tracer.Span> = fiberRuntime.makeSpanScoped
 
 /**
  * Create a new span for tracing, and automatically close it when the effect
@@ -5028,7 +5021,7 @@ export const useSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly context?: Context<never>
     },
     evaluate: (span: Tracer.Span) => Effect<R, E, A>
   ): Effect<R, E, A>
@@ -5048,7 +5041,7 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly context?: Context<never>
     }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
@@ -5059,7 +5052,7 @@ export const withSpan: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly context?: Context<never>
     }
   ): Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 } = effect.withSpan
@@ -5080,9 +5073,9 @@ export const withSpanScoped: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly context?: Context<never>
     }
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan> | Scope, E, A>
   <R, E, A>(
     self: Effect<R, E, A>,
     name: string,
@@ -5091,9 +5084,9 @@ export const withSpanScoped: {
       readonly links?: ReadonlyArray<Tracer.SpanLink>
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly context?: Context<never>
     }
-  ): Effect<Scope.Scope | Exclude<R, Tracer.ParentSpan>, E, A>
+  ): Effect<Scope | Exclude<R, Tracer.ParentSpan>, E, A>
 } = fiberRuntime.withSpanScoped
 
 /**
@@ -5130,4 +5123,4 @@ export const fromNullable: <A>(value: A) => Effect<never, Cause.NoSuchElementExc
  */
 export const optionFromOptional: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<R, Exclude<E, Cause.NoSuchElementException>, Option.Option<A>> = effect.optionFromOptional
+) => Effect<R, Exclude<E, Cause.NoSuchElementException>, Option<A>> = effect.optionFromOptional

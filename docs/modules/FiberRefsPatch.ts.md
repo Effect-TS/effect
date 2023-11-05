@@ -55,7 +55,7 @@ collections of `FiberRef`
 **Signature**
 
 ```ts
-export declare const diff: (oldValue: FiberRefs.FiberRefs, newValue: FiberRefs.FiberRefs) => FiberRefsPatch
+export declare const diff: (oldValue: FiberRefs, newValue: FiberRefs) => FiberRefsPatch
 ```
 
 Added in v2.0.0
@@ -81,8 +81,8 @@ of `FiberRef` values.
 
 ```ts
 export declare const patch: {
-  (fiberId: FiberId.Runtime, oldValue: FiberRefs.FiberRefs): (self: FiberRefsPatch) => FiberRefs.FiberRefs
-  (self: FiberRefsPatch, fiberId: FiberId.Runtime, oldValue: FiberRefs.FiberRefs): FiberRefs.FiberRefs
+  (fiberId: FiberId.Runtime, oldValue: FiberRefs): (self: FiberRefsPatch) => FiberRefs
+  (self: FiberRefsPatch, fiberId: FiberId.Runtime, oldValue: FiberRefs): FiberRefs
 }
 ```
 
@@ -97,7 +97,7 @@ Added in v2.0.0
 ```ts
 export interface Add {
   readonly _tag: "Add"
-  readonly fiberRef: FiberRef.FiberRef<unknown>
+  readonly fiberRef: FiberRef<unknown>
   readonly value: unknown
 }
 ```
@@ -152,7 +152,7 @@ Added in v2.0.0
 ```ts
 export interface Remove {
   readonly _tag: "Remove"
-  readonly fiberRef: FiberRef.FiberRef<unknown>
+  readonly fiberRef: FiberRef<unknown>
 }
 ```
 
@@ -165,7 +165,7 @@ Added in v2.0.0
 ```ts
 export interface Update {
   readonly _tag: "Update"
-  readonly fiberRef: FiberRef.FiberRef<unknown>
+  readonly fiberRef: FiberRef<unknown>
   readonly patch: unknown
 }
 ```

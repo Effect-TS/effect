@@ -173,7 +173,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const disableCooperativeYielding: Layer.Layer<never, never, never>
+export declare const disableCooperativeYielding: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -183,7 +183,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const disableInterruption: Layer.Layer<never, never, never>
+export declare const disableInterruption: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -193,7 +193,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const disableOpSupervision: Layer.Layer<never, never, never>
+export declare const disableOpSupervision: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -203,7 +203,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const disableRuntimeMetrics: Layer.Layer<never, never, never>
+export declare const disableRuntimeMetrics: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -213,7 +213,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const disableWindDown: Layer.Layer<never, never, never>
+export declare const disableWindDown: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -223,7 +223,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const enableCooperativeYielding: Layer.Layer<never, never, never>
+export declare const enableCooperativeYielding: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -233,7 +233,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const enableInterruption: Layer.Layer<never, never, never>
+export declare const enableInterruption: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -243,7 +243,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const enableOpSupervision: Layer.Layer<never, never, never>
+export declare const enableOpSupervision: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -253,7 +253,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const enableRuntimeMetrics: Layer.Layer<never, never, never>
+export declare const enableRuntimeMetrics: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -263,7 +263,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const enableWindDown: Layer.Layer<never, never, never>
+export declare const enableWindDown: Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -305,8 +305,8 @@ and `that`.
 
 ```ts
 export declare const diff: {
-  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch.RuntimeFlagsPatch
-  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch.RuntimeFlagsPatch
+  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch
+  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch
 }
 ```
 
@@ -470,7 +470,7 @@ Constructs a differ that knows how to diff `RuntimeFlags` values.
 **Signature**
 
 ```ts
-export declare const differ: Differ.Differ<RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsPatch>
+export declare const differ: Differ<RuntimeFlags, RuntimeFlagsPatch>
 ```
 
 Added in v2.0.0
@@ -544,8 +544,8 @@ patched set of `RuntimeFlag`s.
 
 ```ts
 export declare const patch: {
-  (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): (self: RuntimeFlags) => RuntimeFlags
-  (self: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch): RuntimeFlags
+  (patch: RuntimeFlagsPatch): (self: RuntimeFlags) => RuntimeFlags
+  (self: RuntimeFlags, patch: RuntimeFlagsPatch): RuntimeFlags
 }
 ```
 

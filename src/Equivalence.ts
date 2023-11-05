@@ -8,12 +8,16 @@
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
-/**
- * @category type class
- * @since 2.0.0
- */
-export interface Equivalence<A> {
-  (self: A, that: A): boolean
+export * as Equivalence from "./Equivalence.js"
+
+declare module "./Equivalence.js" {
+  /**
+   * @category type class
+   * @since 2.0.0
+   */
+  export interface Equivalence<A> {
+    (self: A, that: A): boolean
+  }
 }
 
 /**

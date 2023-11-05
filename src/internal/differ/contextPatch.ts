@@ -1,8 +1,8 @@
-import * as Chunk from "../../Chunk.js"
+import { Chunk } from "../../Chunk.js"
 import type { Context, Tag } from "../../Context.js"
 import type { Differ } from "../../Differ.js"
-import * as Equal from "../../Equal.js"
-import * as Dual from "../../Function.js"
+import { Equal } from "../../Equal.js"
+import { dual } from "../../Function.js"
 import { makeContext } from "../context.js"
 import { Structural } from "../data.js"
 
@@ -153,7 +153,7 @@ export const diff = <Input, Output>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Output, Output2>(
     that: Differ.Context.Patch<Output, Output2>
   ) => <Input>(
@@ -166,7 +166,7 @@ export const combine = Dual.dual<
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Input>(
     context: Context<Input>
   ) => <Output>(
@@ -178,7 +178,7 @@ export const patch = Dual.dual<
   ) => Context<Output>
 >(2, <Input, Output>(self: Differ.Context.Patch<Input, Output>, context: Context<Input>) => {
   let wasServiceUpdated = false
-  let patches: Chunk.Chunk<Differ.Context.Patch<unknown, unknown>> = Chunk.of(
+  let patches: Chunk<Differ.Context.Patch<unknown, unknown>> = Chunk.of(
     self as Differ.Context.Patch<unknown, unknown>
   )
   const updatedContext: Map<Tag<any, any>, unknown> = new Map(context.unsafeMap)

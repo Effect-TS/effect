@@ -1,11 +1,11 @@
-import * as Effect from "../Effect.js"
+import { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import { pipeArguments } from "../Pipeable.js"
-import * as PubSub from "../PubSub.js"
-import * as Ref from "../Ref.js"
+import { PubSub } from "../PubSub.js"
+import { Ref } from "../Ref.js"
 import type { Stream } from "../Stream.js"
-import type * as SubscriptionRef from "../SubscriptionRef.js"
-import * as Synchronized from "../SynchronizedRef.js"
+import type { SubscriptionRef } from "../SubscriptionRef.js"
+import { SynchronizedRef } from "../SynchronizedRef.js"
 import * as _circular from "./effect/circular.js"
 import * as _ref from "./ref.js"
 import * as stream from "./stream.js"
@@ -24,13 +24,13 @@ const subscriptionRefVariance = {
 }
 
 /** @internal */
-class SubscriptionRefImpl<A> implements SubscriptionRef.SubscriptionRef<A> {
+class SubscriptionRefImpl<A> implements SubscriptionRef<A> {
   readonly [Ref.RefTypeId] = _ref.refVariance
-  readonly [Synchronized.SynchronizedRefTypeId] = _circular.synchronizedVariance
+  readonly [SynchronizedRef.SynchronizedRefTypeId] = _circular.synchronizedVariance
   readonly [SubscriptionRefTypeId] = subscriptionRefVariance
   constructor(
-    readonly ref: Ref.Ref<A>,
-    readonly pubsub: PubSub.PubSub<A>,
+    readonly ref: Ref<A>,
+    readonly pubsub: PubSub<A>,
     readonly semaphore: Effect.Semaphore
   ) {
   }
@@ -54,10 +54,10 @@ class SubscriptionRefImpl<A> implements SubscriptionRef.SubscriptionRef<A> {
       stream.unwrapScoped
     )
   }
-  modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B> {
+  modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B> {
     return this.modifyEffect((a) => Effect.succeed(f(a)))
   }
-  modifyEffect<R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>): Effect.Effect<R, E, B> {
+  modifyEffect<R, E, B>(f: (a: A) => Effect<R, E, readonly [B, A]>): Effect<R, E, B> {
     return pipe(
       Ref.get(this.ref),
       Effect.flatMap(f),
@@ -74,10 +74,10 @@ class SubscriptionRefImpl<A> implements SubscriptionRef.SubscriptionRef<A> {
 }
 
 /** @internal */
-export const get = <A>(self: SubscriptionRef.SubscriptionRef<A>): Effect.Effect<never, never, A> => Ref.get(self.ref)
+export const get = <A>(self: SubscriptionRef<A>): Effect<never, never, A> => Ref.get(self.ref)
 
 /** @internal */
-export const make = <A>(value: A): Effect.Effect<never, never, SubscriptionRef.SubscriptionRef<A>> =>
+export const make = <A>(value: A): Effect<never, never, SubscriptionRef<A>> =>
   pipe(
     Effect.all([
       PubSub.unbounded<A>(),
@@ -89,41 +89,41 @@ export const make = <A>(value: A): Effect.Effect<never, never, SubscriptionRef.S
 
 /** @internal */
 export const modify = dual<
-  <A, B>(f: (a: A) => readonly [B, A]) => (self: SubscriptionRef.SubscriptionRef<A>) => Effect.Effect<never, never, B>,
+  <A, B>(f: (a: A) => readonly [B, A]) => (self: SubscriptionRef<A>) => Effect<never, never, B>,
   <A, B>(
-    self: SubscriptionRef.SubscriptionRef<A>,
+    self: SubscriptionRef<A>,
     f: (a: A) => readonly [B, A]
-  ) => Effect.Effect<never, never, B>
+  ) => Effect<never, never, B>
 >(2, <A, B>(
-  self: SubscriptionRef.SubscriptionRef<A>,
+  self: SubscriptionRef<A>,
   f: (a: A) => readonly [B, A]
-): Effect.Effect<never, never, B> => self.modify(f))
+): Effect<never, never, B> => self.modify(f))
 
 /** @internal */
 export const modifyEffect = dual<
   <A, R, E, B>(
-    f: (a: A) => Effect.Effect<R, E, readonly [B, A]>
-  ) => (self: SubscriptionRef.SubscriptionRef<A>) => Effect.Effect<R, E, B>,
+    f: (a: A) => Effect<R, E, readonly [B, A]>
+  ) => (self: SubscriptionRef<A>) => Effect<R, E, B>,
   <A, R, E, B>(
-    self: SubscriptionRef.SubscriptionRef<A>,
-    f: (a: A) => Effect.Effect<R, E, readonly [B, A]>
-  ) => Effect.Effect<R, E, B>
+    self: SubscriptionRef<A>,
+    f: (a: A) => Effect<R, E, readonly [B, A]>
+  ) => Effect<R, E, B>
 >(2, <A, R, E, B>(
-  self: SubscriptionRef.SubscriptionRef<A>,
-  f: (a: A) => Effect.Effect<R, E, readonly [B, A]>
-): Effect.Effect<R, E, B> => self.modifyEffect(f))
+  self: SubscriptionRef<A>,
+  f: (a: A) => Effect<R, E, readonly [B, A]>
+): Effect<R, E, B> => self.modifyEffect(f))
 
 /** @internal */
 export const set = dual<
-  <A>(value: A) => (self: SubscriptionRef.SubscriptionRef<A>) => Effect.Effect<never, never, void>,
+  <A>(value: A) => (self: SubscriptionRef<A>) => Effect<never, never, void>,
   <A>(
-    self: SubscriptionRef.SubscriptionRef<A>,
+    self: SubscriptionRef<A>,
     value: A
-  ) => Effect.Effect<never, never, void>
+  ) => Effect<never, never, void>
 >(2, <A>(
-  self: SubscriptionRef.SubscriptionRef<A>,
+  self: SubscriptionRef<A>,
   value: A
-): Effect.Effect<never, never, void> =>
+): Effect<never, never, void> =>
   pipe(
     Ref.set(self.ref, value),
     Effect.zipLeft(PubSub.publish(self.pubsub, value)),

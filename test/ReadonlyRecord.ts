@@ -1,8 +1,8 @@
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { pipe } from "effect/Function"
 import * as N from "effect/Number"
-import * as Option from "effect/Option"
-import * as RR from "effect/ReadonlyRecord"
+import { Option } from "effect/Option"
+import { ReadonlyRecord as RR } from "effect/ReadonlyRecord"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("ReadonlyRecord", () => {
@@ -115,7 +115,7 @@ describe.concurrent("ReadonlyRecord", () => {
       [{ a: "e" }, { b: 1 }]
     )
     // should ignore non own properties
-    const o: RR.ReadonlyRecord<Either.Either<string, number>> = Object.create({ a: 1 })
+    const o: RR.ReadonlyRecord<Either<string, number>> = Object.create({ a: 1 })
     assert.deepStrictEqual(pipe(o, RR.separate), [{}, {}])
   })
 

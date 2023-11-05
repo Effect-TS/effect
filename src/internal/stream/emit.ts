@@ -1,44 +1,44 @@
-import * as Cause from "../../Cause.js"
-import * as Chunk from "../../Chunk.js"
-import * as Effect from "../../Effect.js"
-import * as Exit from "../../Exit.js"
+import { Cause } from "../../Cause.js"
+import { Chunk } from "../../Chunk.js"
+import { Effect } from "../../Effect.js"
+import { Exit } from "../../Exit.js"
 import { pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
-import type * as Emit from "../../StreamEmit.js"
+import { Option } from "../../Option.js"
+import type { StreamEmit } from "../../StreamEmit.js"
 
 /** @internal */
 export const make = <R, E, A, B>(
-  emit: (f: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>) => Promise<B>
-): Emit.Emit<R, E, A, B> => {
-  const ops: Emit.EmitOps<R, E, A, B> = {
-    chunk(this: Emit.Emit<R, E, A, B>, as: Chunk.Chunk<A>) {
+  emit: (f: Effect<R, Option<E>, Chunk<A>>) => Promise<B>
+): StreamEmit<R, E, A, B> => {
+  const ops: StreamEmit.EmitOps<R, E, A, B> = {
+    chunk(this: StreamEmit<R, E, A, B>, as: Chunk<A>) {
       return this(Effect.succeed(as))
     },
-    die<Err>(this: Emit.Emit<R, E, A, B>, defect: Err) {
+    die<Err>(this: StreamEmit<R, E, A, B>, defect: Err) {
       return this(Effect.die(defect))
     },
-    dieMessage(this: Emit.Emit<R, E, A, B>, message: string) {
+    dieMessage(this: StreamEmit<R, E, A, B>, message: string) {
       return this(Effect.dieMessage(message))
     },
-    done(this: Emit.Emit<R, E, A, B>, exit: Exit.Exit<E, A>) {
+    done(this: StreamEmit<R, E, A, B>, exit: Exit<E, A>) {
       return this(Effect.suspend(() => Exit.mapBoth(exit, { onFailure: Option.some, onSuccess: Chunk.of })))
     },
-    end(this: Emit.Emit<R, E, A, B>) {
+    end(this: StreamEmit<R, E, A, B>) {
       return this(Effect.fail(Option.none()))
     },
-    fail(this: Emit.Emit<R, E, A, B>, e: E) {
+    fail(this: StreamEmit<R, E, A, B>, e: E) {
       return this(Effect.fail(Option.some(e)))
     },
-    fromEffect(this: Emit.Emit<R, E, A, B>, effect: Effect.Effect<R, E, A>) {
+    fromEffect(this: StreamEmit<R, E, A, B>, effect: Effect<R, E, A>) {
       return this(Effect.mapBoth(effect, { onFailure: Option.some, onSuccess: Chunk.of }))
     },
-    fromEffectChunk(this: Emit.Emit<R, E, A, B>, effect: Effect.Effect<R, E, Chunk.Chunk<A>>) {
+    fromEffectChunk(this: StreamEmit<R, E, A, B>, effect: Effect<R, E, Chunk<A>>) {
       return this(pipe(effect, Effect.mapError(Option.some)))
     },
-    halt(this: Emit.Emit<R, E, A, B>, cause: Cause.Cause<E>) {
+    halt(this: StreamEmit<R, E, A, B>, cause: Cause<E>) {
       return this(Effect.failCause(pipe(cause, Cause.map(Option.some))))
     },
-    single(this: Emit.Emit<R, E, A, B>, value: A) {
+    single(this: StreamEmit<R, E, A, B>, value: A) {
       return this(Effect.succeed(Chunk.of(value)))
     }
   }

@@ -1,13 +1,13 @@
 import { equivalentElements } from "effect-test/utils/equals"
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as number from "effect/Number"
-import * as Option from "effect/Option"
-import * as Order from "effect/Order"
-import * as RA from "effect/ReadonlyArray"
-import * as STM from "effect/STM"
-import * as TPriorityQueue from "effect/TPriorityQueue"
+import { Option } from "effect/Option"
+import { Order } from "effect/Order"
+import { ReadonlyArray as RA } from "effect/ReadonlyArray"
+import { STM } from "effect/STM"
+import { TPriorityQueue } from "effect/TPriorityQueue"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 
@@ -16,7 +16,7 @@ interface Event {
   readonly description: string
 }
 
-const orderByTime: Order.Order<Event> = pipe(
+const orderByTime: Order<Event> = pipe(
   number.Order,
   Order.mapInput((event) => event.time)
 )

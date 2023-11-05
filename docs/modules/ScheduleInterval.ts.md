@@ -100,7 +100,7 @@ interval to the end of the interval.
 **Signature**
 
 ```ts
-export declare const size: (self: Interval) => Duration.Duration
+export declare const size: (self: Interval) => Duration
 ```
 
 Added in v2.0.0
@@ -109,7 +109,7 @@ Added in v2.0.0
 
 ## Interval (interface)
 
-An `Interval` represents an interval of time. Intervals can encompass all
+An `Interval` represents an interval of time. ScheduleIntervals can encompass all
 time, or no time at all.
 
 **Signature**
@@ -240,8 +240,8 @@ form a union.
 
 ```ts
 export declare const union: {
-  (that: Interval): (self: Interval) => Option.Option<Interval>
-  (self: Interval, that: Interval): Option.Option<Interval>
+  (that: Interval): (self: Interval) => Option<Interval>
+  (self: Interval, that: Interval): Option<Interval>
 }
 ```
 

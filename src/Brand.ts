@@ -16,12 +16,12 @@
  *
  * @since 2.0.0
  */
-import * as Either from "./Either.js"
+import { Either } from "./Either.js"
 import { identity } from "./Function.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import * as ReadonlyArray from "./ReadonlyArray.js"
-import type * as Types from "./Types.js"
+import { ReadonlyArray } from "./ReadonlyArray.js"
+import type { Types } from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -47,114 +47,118 @@ export const RefinedConstructorsTypeId: unique symbol = Symbol.for("effect/Brand
  */
 export type RefinedConstructorsTypeId = typeof RefinedConstructorsTypeId
 
-/**
- * A generic interface that defines a branded type.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Brand<in out K extends string | symbol> {
-  readonly [BrandTypeId]: {
-    readonly [k in K]: K
-  }
-}
+export * as Brand from "./Brand.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Brand {
+declare module "./Brand.js" {
   /**
-   * Represents a list of refinement errors.
+   * A generic interface that defines a branded type.
    *
    * @since 2.0.0
    * @category models
    */
-  export interface BrandErrors extends ReadonlyArray<RefinementError> {}
-
-  /**
-   * Represents an error that occurs when the provided value of the branded type does not pass the refinement predicate.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface RefinementError {
-    readonly meta: unknown
-    readonly message: string
+  export interface Brand<in out K extends string | symbol> {
+    readonly [BrandTypeId]: {
+      readonly [k in K]: K
+    }
   }
 
   /**
    * @since 2.0.0
-   * @category models
    */
-  export interface Constructor<in out A extends Brand<any>> {
-    readonly [RefinedConstructorsTypeId]: RefinedConstructorsTypeId
+  export namespace Brand {
     /**
-     * Constructs a branded type from a value of type `A`, throwing an error if
-     * the provided `A` is not valid.
+     * Represents a list of refinement errors.
+     *
+     * @since 2.0.0
+     * @category models
      */
-    (args: Brand.Unbranded<A>): A
+    export interface BrandErrors extends ReadonlyArray<RefinementError> {}
+
     /**
-     * Constructs a branded type from a value of type `A`, returning `Some<A>`
-     * if the provided `A` is valid, `None` otherwise.
+     * Represents an error that occurs when the provided value of the branded type does not pass the refinement predicate.
+     *
+     * @since 2.0.0
+     * @category models
      */
-    option: (args: Brand.Unbranded<A>) => Option.Option<A>
+    export interface RefinementError {
+      readonly meta: unknown
+      readonly message: string
+    }
+
     /**
-     * Constructs a branded type from a value of type `A`, returning `Right<A>`
-     * if the provided `A` is valid, `Left<BrandError>` otherwise.
+     * @since 2.0.0
+     * @category models
      */
-    either: (args: Brand.Unbranded<A>) => Either.Either<Brand.BrandErrors, A>
+    export interface Constructor<in out A extends Brand<any>> {
+      readonly [RefinedConstructorsTypeId]: RefinedConstructorsTypeId
+      /**
+       * Constructs a branded type from a value of type `A`, throwing an error if
+       * the provided `A` is not valid.
+       */
+      (args: Brand.Unbranded<A>): A
+      /**
+       * Constructs a branded type from a value of type `A`, returning `Some<A>`
+       * if the provided `A` is valid, `None` otherwise.
+       */
+      option: (args: Brand.Unbranded<A>) => Option<A>
+      /**
+       * Constructs a branded type from a value of type `A`, returning `Right<A>`
+       * if the provided `A` is valid, `Left<BrandError>` otherwise.
+       */
+      either: (args: Brand.Unbranded<A>) => Either<Brand.BrandErrors, A>
+      /**
+       * Attempts to refine the provided value of type `A`, returning `true` if
+       * the provided `A` is valid, `false` otherwise.
+       */
+      is: Refinement<Brand.Unbranded<A>, Brand.Unbranded<A> & A>
+    }
+
     /**
-     * Attempts to refine the provided value of type `A`, returning `true` if
-     * the provided `A` is valid, `false` otherwise.
+     * A utility type to extract a branded type from a `Brand.Constructor`.
+     *
+     * @since 2.0.0
+     * @category models
      */
-    is: Refinement<Brand.Unbranded<A>, Brand.Unbranded<A> & A>
-  }
+    export type FromConstructor<A> = A extends Brand.Constructor<infer B> ? B : never
 
-  /**
-   * A utility type to extract a branded type from a `Brand.Constructor`.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type FromConstructor<A> = A extends Brand.Constructor<infer B> ? B : never
+    /**
+     * A utility type to extract the value type from a brand.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export type Unbranded<P> = P extends infer Q & Brands<P> ? Q : P
 
-  /**
-   * A utility type to extract the value type from a brand.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type Unbranded<P> = P extends infer Q & Brands<P> ? Q : P
+    /**
+     * A utility type to extract the brands from a branded type.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export type Brands<P> = P extends Brand<any> ? Types.UnionToIntersection<
+        {
+          [k in keyof P[BrandTypeId]]: k extends string | symbol ? Brand<k>
+            : never
+        }[keyof P[BrandTypeId]]
+      >
+      : never
 
-  /**
-   * A utility type to extract the brands from a branded type.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type Brands<P> = P extends Brand<any> ? Types.UnionToIntersection<
-      {
-        [k in keyof P[BrandTypeId]]: k extends string | symbol ? Brand<k>
-          : never
-      }[keyof P[BrandTypeId]]
-    >
-    : never
-
-  /**
-   * A utility type that checks that all brands have the same base type.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type EnsureCommonBase<
-    Brands extends readonly [Brand.Constructor<any>, ...Array<Brand.Constructor<any>>]
-  > = {
-    [B in keyof Brands]: Brand.Unbranded<Brand.FromConstructor<Brands[0]>> extends
-      Brand.Unbranded<Brand.FromConstructor<Brands[B]>>
-      ? Brand.Unbranded<Brand.FromConstructor<Brands[B]>> extends Brand.Unbranded<Brand.FromConstructor<Brands[0]>>
-        ? Brands[B]
-      : Brands[B]
-      : "ERROR: All brands should have the same base type"
+    /**
+     * A utility type that checks that all brands have the same base type.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export type EnsureCommonBase<
+      Brands extends readonly [Brand.Constructor<any>, ...Array<Brand.Constructor<any>>]
+    > = {
+      [B in keyof Brands]: Brand.Unbranded<Brand.FromConstructor<Brands[0]>> extends
+        Brand.Unbranded<Brand.FromConstructor<Brands[B]>>
+        ? Brand.Unbranded<Brand.FromConstructor<Brands[B]>> extends Brand.Unbranded<Brand.FromConstructor<Brands[0]>>
+          ? Brands[B]
+        : Brands[B]
+        : "ERROR: All brands should have the same base type"
+    }
   }
 }
 
@@ -199,9 +203,9 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * @param onFailure - Takes the unbranded value that did not pass the `refinement` predicate and returns a `BrandErrors`.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type Int = number & Brand.Brand<"Int">
+ * type Int = number & Brand<"Int">
  *
  * const Int = Brand.refined<Int>(
  *   (n) => Number.isInteger(n),
@@ -221,7 +225,7 @@ export const refined: <A extends Brand<any>>(
   refinement: Predicate<Brand.Unbranded<A>>,
   onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors
 ): Brand.Constructor<A> => {
-  const either = (args: Brand.Unbranded<A>): Either.Either<Brand.BrandErrors, A> =>
+  const either = (args: Brand.Unbranded<A>): Either<Brand.BrandErrors, A> =>
     refinement(args) ? Either.right(args as A) : Either.left(onFailure(args))
   // @ts-expect-error
   return Object.assign((args) =>
@@ -245,9 +249,9 @@ export const refined: <A extends Brand<any>>(
  * If you also want to perform some validation, see {@link refined}.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type UserId = number & Brand.Brand<"UserId">
+ * type UserId = number & Brand<"UserId">
  *
  * const UserId = Brand.nominal<UserId>()
  *
@@ -273,14 +277,14 @@ export const nominal: <A extends Brand<any>>() => Brand.Constructor<A> = <A exte
  * This API is useful when you want to validate that the input data passes multiple brand validators.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type Int = number & Brand.Brand<"Int">
+ * type Int = number & Brand<"Int">
  * const Int = Brand.refined<Int>(
  *   (n) => Number.isInteger(n),
  *   (n) => Brand.error(`Expected ${n} to be an integer`)
  * )
- * type Positive = number & Brand.Brand<"Positive">
+ * type Positive = number & Brand<"Positive">
  * const Positive = Brand.refined<Positive>(
  *   (n) => n > 0,
  *   (n) => Brand.error(`Expected ${n} to be positive`)
@@ -308,8 +312,8 @@ export const all: <Brands extends readonly [Brand.Constructor<any>, ...Array<Bra
     }[number]
   > extends infer X extends Brand<any> ? X : Brand<any>
 > => {
-  const either = (args: any): Either.Either<Brand.BrandErrors, any> => {
-    let result: Either.Either<Brand.BrandErrors, any> = Either.right(args)
+  const either = (args: any): Either<Brand.BrandErrors, any> => {
+    let result: Either<Brand.BrandErrors, any> = Either.right(args)
     for (const brand of brands) {
       const nextResult = brand.either(args)
       if (Either.isLeft(result) && Either.isLeft(nextResult)) {

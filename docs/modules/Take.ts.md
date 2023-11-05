@@ -56,7 +56,7 @@ Creates a `Take` with the specified chunk.
 **Signature**
 
 ```ts
-export declare const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<never, A>
+export declare const chunk: <A>(chunk: Chunk<A>) => Take<never, A>
 ```
 
 Added in v2.0.0
@@ -116,7 +116,7 @@ Creates a failing `Take` with the specified cause.
 **Signature**
 
 ```ts
-export declare const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never>
+export declare const failCause: <E>(cause: Cause<E>) => Take<E, never>
 ```
 
 Added in v2.0.0
@@ -130,7 +130,7 @@ the `Take<E, A>`. Error from stream when pulling is converted to
 **Signature**
 
 ```ts
-export declare const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Take<E, A>>
+export declare const fromEffect: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, never, Take<E, A>>
 ```
 
 Added in v2.0.0
@@ -142,7 +142,7 @@ Creates a `Take` from an `Exit`.
 **Signature**
 
 ```ts
-export declare const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A>
+export declare const fromExit: <E, A>(exit: Exit<E, A>) => Take<E, A>
 ```
 
 Added in v2.0.0
@@ -157,8 +157,8 @@ to `Take.failCause`, and the end-of-stream is converted to `Take.end`.
 
 ```ts
 export declare const fromPull: <R, E, A>(
-  pull: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>
-) => Effect.Effect<R, never, Take<E, A>>
+  pull: Effect<R, Option<E>, Chunk<A>>
+) => Effect<R, never, Take<E, A>>
 ```
 
 Added in v2.0.0
@@ -170,7 +170,7 @@ Constructs a `Take`.
 **Signature**
 
 ```ts
-export declare const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A>
+export declare const make: <E, A>(exit: Exit<Option<E>, Chunk<A>>) => Take<E, A>
 ```
 
 Added in v2.0.0
@@ -196,7 +196,7 @@ Transforms a `Take<E, A>` to an `Effect<never, E, A>`.
 **Signature**
 
 ```ts
-export declare const done: <E, A>(self: Take<E, A>) => Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>>
+export declare const done: <E, A>(self: Take<E, A>) => Effect<never, Option<E>, Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -212,15 +212,15 @@ yield a value.
 export declare const match: {
   <Z, E, Z2, A, Z3>(options: {
     readonly onEnd: () => Z
-    readonly onFailure: (cause: Cause.Cause<E>) => Z2
-    readonly onSuccess: (chunk: Chunk.Chunk<A>) => Z3
+    readonly onFailure: (cause: Cause<E>) => Z2
+    readonly onSuccess: (chunk: Chunk<A>) => Z3
   }): (self: Take<E, A>) => Z | Z2 | Z3
   <Z, E, Z2, A, Z3>(
     self: Take<E, A>,
     options: {
       readonly onEnd: () => Z
-      readonly onFailure: (cause: Cause.Cause<E>) => Z2
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Z3
+      readonly onFailure: (cause: Cause<E>) => Z2
+      readonly onSuccess: (chunk: Chunk<A>) => Z3
     }
   ): Z | Z2 | Z3
 }
@@ -240,18 +240,18 @@ yield an effect.
 ```ts
 export declare const matchEffect: {
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(options: {
-    readonly onEnd: () => Effect.Effect<R, E2, Z>
-    readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-    readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
-  }): (self: Take<E, A>) => Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+    readonly onEnd: () => Effect<R, E2, Z>
+    readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, Z2>
+    readonly onSuccess: (chunk: Chunk<A>) => Effect<R3, E3, Z3>
+  }): (self: Take<E, A>) => Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     self: Take<E, A>,
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: () => Effect<R, E2, Z>
+      readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, Z2>
+      readonly onSuccess: (chunk: Chunk<A>) => Effect<R3, E3, Z3>
     }
-  ): Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+  ): Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
 }
 ```
 
@@ -325,7 +325,7 @@ or an end-of-stream marker.
 ```ts
 export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
+  readonly exit: Exit<Option<E>, Chunk<A>>
 }
 ```
 
@@ -342,12 +342,12 @@ Returns an effect that effectfully "peeks" at the success of this take.
 ```ts
 export declare const tap: {
   <A, R, E2, _>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): <E>(self: Take<E, A>) => Effect.Effect<R, E2 | E, void>
+    f: (chunk: Chunk<A>) => Effect<R, E2, _>
+  ): <E>(self: Take<E, A>) => Effect<R, E2 | E, void>
   <E, A, R, E2, _>(
     self: Take<E, A>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): Effect.Effect<R, E | E2, void>
+    f: (chunk: Chunk<A>) => Effect<R, E2, _>
+  ): Effect<R, E | E2, void>
 }
 ```
 

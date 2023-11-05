@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/channel/upstreamPullStrategy.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -16,23 +16,27 @@ export const UpstreamPullStrategyTypeId: unique symbol = internal.UpstreamPullSt
  */
 export type UpstreamPullStrategyTypeId = typeof UpstreamPullStrategyTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type UpstreamPullStrategy<A> = PullAfterNext<A> | PullAfterAllEnqueued<A>
+export * as UpstreamPullStrategy from "./UpstreamPullStrategy.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace UpstreamPullStrategy {
+declare module "./UpstreamPullStrategy.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [UpstreamPullStrategyTypeId]: {
-      readonly _A: (_: never) => A
+  export type UpstreamPullStrategy<A> = PullAfterNext<A> | PullAfterAllEnqueued<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace UpstreamPullStrategy {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [UpstreamPullStrategyTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }
@@ -43,7 +47,7 @@ export declare namespace UpstreamPullStrategy {
  */
 export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterNext"
-  readonly emitSeparator: Option.Option<A>
+  readonly emitSeparator: Option<A>
 }
 
 /**
@@ -52,20 +56,20 @@ export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
  */
 export interface PullAfterAllEnqueued<A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterAllEnqueued"
-  readonly emitSeparator: Option.Option<A>
+  readonly emitSeparator: Option<A>
 }
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const PullAfterNext: <A>(emitSeparator: Option.Option<A>) => UpstreamPullStrategy<A> = internal.PullAfterNext
+export const PullAfterNext: <A>(emitSeparator: Option<A>) => UpstreamPullStrategy<A> = internal.PullAfterNext
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const PullAfterAllEnqueued: <A>(emitSeparator: Option.Option<A>) => UpstreamPullStrategy<A> =
+export const PullAfterAllEnqueued: <A>(emitSeparator: Option<A>) => UpstreamPullStrategy<A> =
   internal.PullAfterAllEnqueued
 
 /**
@@ -106,15 +110,15 @@ export const isPullAfterAllEnqueued: <A>(self: UpstreamPullStrategy<A>) => self 
 export const match: {
   <A, Z>(
     options: {
-      readonly onNext: (emitSeparator: Option.Option<A>) => Z
-      readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
+      readonly onNext: (emitSeparator: Option<A>) => Z
+      readonly onAllEnqueued: (emitSeparator: Option<A>) => Z
     }
   ): (self: UpstreamPullStrategy<A>) => Z
   <A, Z>(
     self: UpstreamPullStrategy<A>,
     options: {
-      readonly onNext: (emitSeparator: Option.Option<A>) => Z
-      readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
+      readonly onNext: (emitSeparator: Option<A>) => Z
+      readonly onAllEnqueued: (emitSeparator: Option<A>) => Z
     }
   ): Z
 } = internal.match

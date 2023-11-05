@@ -2,11 +2,11 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/stm/tArray.js"
-import type * as Option from "./Option.js"
-import type * as Order from "./Order.js"
+import type { Option } from "./Option.js"
+import type { Order } from "./Order.js"
 import type { Predicate } from "./Predicate.js"
-import type * as STM from "./STM.js"
-import type * as TRef from "./TRef.js"
+import type { STM } from "./STM.js"
+import type { TRef } from "./TRef.js"
 
 /**
  * @since 2.0.0
@@ -20,31 +20,35 @@ export const TArrayTypeId: unique symbol = internal.TArrayTypeId
  */
 export type TArrayTypeId = typeof TArrayTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TArray<A> extends TArray.Variance<A> {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TArray<A> {
-  /** @internal */
-  readonly chunk: Array<TRef.TRef<A>>
-}
+export * as TArray from "./TArray.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace TArray {
+declare module "./TArray.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [TArrayTypeId]: {
-      readonly _A: (_: never) => A
+  export interface TArray<A> extends TArray.Variance<A> {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TArray<A> {
+    /** @internal */
+    readonly chunk: Array<TRef<A>>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TArray {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [TArrayTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }
@@ -57,8 +61,8 @@ export declare namespace TArray {
  * @category elements
  */
 export const collectFirst: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TArray<A>) => STM.STM<never, never, Option.Option<B>>
-  <A, B>(self: TArray<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, Option.Option<B>>
+  <A, B>(pf: (a: A) => Option<B>): (self: TArray<A>) => STM<never, never, Option<B>>
+  <A, B>(self: TArray<A>, pf: (a: A) => Option<B>): STM<never, never, Option<B>>
 } = internal.collectFirst
 
 /**
@@ -69,8 +73,8 @@ export const collectFirst: {
  * @category elements
  */
 export const collectFirstSTM: {
-  <A, R, E, B>(pf: (a: A) => Option.Option<STM.STM<R, E, B>>): (self: TArray<A>) => STM.STM<R, E, Option.Option<B>>
-  <A, R, E, B>(self: TArray<A>, pf: (a: A) => Option.Option<STM.STM<R, E, B>>): STM.STM<R, E, Option.Option<B>>
+  <A, R, E, B>(pf: (a: A) => Option<STM<R, E, B>>): (self: TArray<A>) => STM<R, E, Option<B>>
+  <A, R, E, B>(self: TArray<A>, pf: (a: A) => Option<STM<R, E, B>>): STM<R, E, Option<B>>
 } = internal.collectFirstSTM
 
 /**
@@ -81,8 +85,8 @@ export const collectFirstSTM: {
  * @category elements
  */
 export const contains: {
-  <A>(value: A): (self: TArray<A>) => STM.STM<never, never, boolean>
-  <A>(self: TArray<A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): (self: TArray<A>) => STM<never, never, boolean>
+  <A>(self: TArray<A>, value: A): STM<never, never, boolean>
 } = internal.contains
 
 /**
@@ -93,8 +97,8 @@ export const contains: {
  * @category folding
  */
 export const count: {
-  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM.STM<never, never, number>
-  <A>(self: TArray<A>, predicate: Predicate<A>): STM.STM<never, never, number>
+  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM<never, never, number>
+  <A>(self: TArray<A>, predicate: Predicate<A>): STM<never, never, number>
 } = internal.count
 
 /**
@@ -105,8 +109,8 @@ export const count: {
  * @category folding
  */
 export const countSTM: {
-  <A, R, E>(predicate: (value: A) => STM.STM<R, E, boolean>): (self: TArray<A>) => STM.STM<R, E, number>
-  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>): STM.STM<R, E, number>
+  <A, R, E>(predicate: (value: A) => STM<R, E, boolean>): (self: TArray<A>) => STM<R, E, number>
+  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM<R, E, boolean>): STM<R, E, number>
 } = internal.countSTM
 
 /**
@@ -115,7 +119,7 @@ export const countSTM: {
  * @since 2.0.0
  * @category constructors
  */
-export const empty: <A>() => STM.STM<never, never, TArray<A>> = internal.empty
+export const empty: <A>() => STM<never, never, TArray<A>> = internal.empty
 
 /**
  * Atomically evaluate the conjunction of a predicate across the members of
@@ -125,8 +129,8 @@ export const empty: <A>() => STM.STM<never, never, TArray<A>> = internal.empty
  * @category elements
  */
 export const every: {
-  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM.STM<never, never, boolean>
-  <A>(self: TArray<A>, predicate: Predicate<A>): STM.STM<never, never, boolean>
+  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM<never, never, boolean>
+  <A>(self: TArray<A>, predicate: Predicate<A>): STM<never, never, boolean>
 } = internal.every
 
 /**
@@ -137,8 +141,8 @@ export const every: {
  * @category elements
  */
 export const everySTM: {
-  <A, R, E>(predicate: (value: A) => STM.STM<R, E, boolean>): (self: TArray<A>) => STM.STM<R, E, boolean>
-  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>): STM.STM<R, E, boolean>
+  <A, R, E>(predicate: (value: A) => STM<R, E, boolean>): (self: TArray<A>) => STM<R, E, boolean>
+  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM<R, E, boolean>): STM<R, E, boolean>
 } = internal.everySTM
 
 /**
@@ -148,8 +152,8 @@ export const everySTM: {
  * @category elements
  */
 export const findFirst: {
-  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM.STM<never, never, Option.Option<A>>
-  <A>(self: TArray<A>, predicate: Predicate<A>): STM.STM<never, never, Option.Option<A>>
+  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM<never, never, Option<A>>
+  <A>(self: TArray<A>, predicate: Predicate<A>): STM<never, never, Option<A>>
 } = internal.findFirst
 
 /**
@@ -159,8 +163,8 @@ export const findFirst: {
  * @category elements
  */
 export const findFirstIndex: {
-  <A>(value: A): (self: TArray<A>) => STM.STM<never, never, Option.Option<number>>
-  <A>(self: TArray<A>, value: A): STM.STM<never, never, Option.Option<number>>
+  <A>(value: A): (self: TArray<A>) => STM<never, never, Option<number>>
+  <A>(self: TArray<A>, value: A): STM<never, never, Option<number>>
 } = internal.findFirstIndex
 
 /**
@@ -171,8 +175,8 @@ export const findFirstIndex: {
  * @category elements
  */
 export const findFirstIndexFrom: {
-  <A>(value: A, from: number): (self: TArray<A>) => STM.STM<never, never, Option.Option<number>>
-  <A>(self: TArray<A>, value: A, from: number): STM.STM<never, never, Option.Option<number>>
+  <A>(value: A, from: number): (self: TArray<A>) => STM<never, never, Option<number>>
+  <A>(self: TArray<A>, value: A, from: number): STM<never, never, Option<number>>
 } = internal.findFirstIndexFrom
 
 /**
@@ -182,8 +186,8 @@ export const findFirstIndexFrom: {
  * @category elements
  */
 export const findFirstIndexWhere: {
-  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM.STM<never, never, Option.Option<number>>
-  <A>(self: TArray<A>, predicate: Predicate<A>): STM.STM<never, never, Option.Option<number>>
+  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM<never, never, Option<number>>
+  <A>(self: TArray<A>, predicate: Predicate<A>): STM<never, never, Option<number>>
 } = internal.findFirstIndexWhere
 
 /**
@@ -194,8 +198,8 @@ export const findFirstIndexWhere: {
  * @category elements
  */
 export const findFirstIndexWhereFrom: {
-  <A>(predicate: Predicate<A>, from: number): (self: TArray<A>) => STM.STM<never, never, Option.Option<number>>
-  <A>(self: TArray<A>, predicate: Predicate<A>, from: number): STM.STM<never, never, Option.Option<number>>
+  <A>(predicate: Predicate<A>, from: number): (self: TArray<A>) => STM<never, never, Option<number>>
+  <A>(self: TArray<A>, predicate: Predicate<A>, from: number): STM<never, never, Option<number>>
 } = internal.findFirstIndexWhereFrom
 
 /**
@@ -205,8 +209,8 @@ export const findFirstIndexWhereFrom: {
  * @category elements
  */
 export const findFirstIndexWhereSTM: {
-  <A, R, E>(predicate: (value: A) => STM.STM<R, E, boolean>): (self: TArray<A>) => STM.STM<R, E, Option.Option<number>>
-  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>): STM.STM<R, E, Option.Option<number>>
+  <A, R, E>(predicate: (value: A) => STM<R, E, boolean>): (self: TArray<A>) => STM<R, E, Option<number>>
+  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM<R, E, boolean>): STM<R, E, Option<number>>
 } = internal.findFirstIndexWhereSTM
 
 /**
@@ -218,14 +222,14 @@ export const findFirstIndexWhereSTM: {
  */
 export const findFirstIndexWhereFromSTM: {
   <A, R, E>(
-    predicate: (value: A) => STM.STM<R, E, boolean>,
+    predicate: (value: A) => STM<R, E, boolean>,
     from: number
-  ): (self: TArray<A>) => STM.STM<R, E, Option.Option<number>>
+  ): (self: TArray<A>) => STM<R, E, Option<number>>
   <A, R, E>(
     self: TArray<A>,
-    predicate: (value: A) => STM.STM<R, E, boolean>,
+    predicate: (value: A) => STM<R, E, boolean>,
     from: number
-  ): STM.STM<R, E, Option.Option<number>>
+  ): STM<R, E, Option<number>>
 } = internal.findFirstIndexWhereFromSTM
 
 /**
@@ -235,8 +239,8 @@ export const findFirstIndexWhereFromSTM: {
  * @category elements
  */
 export const findFirstSTM: {
-  <A, R, E>(predicate: (value: A) => STM.STM<R, E, boolean>): (self: TArray<A>) => STM.STM<R, E, Option.Option<A>>
-  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>): STM.STM<R, E, Option.Option<A>>
+  <A, R, E>(predicate: (value: A) => STM<R, E, boolean>): (self: TArray<A>) => STM<R, E, Option<A>>
+  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM<R, E, boolean>): STM<R, E, Option<A>>
 } = internal.findFirstSTM
 
 /**
@@ -246,8 +250,8 @@ export const findFirstSTM: {
  * @category elements
  */
 export const findLast: {
-  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM.STM<never, never, Option.Option<A>>
-  <A>(self: TArray<A>, predicate: Predicate<A>): STM.STM<never, never, Option.Option<A>>
+  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM<never, never, Option<A>>
+  <A>(self: TArray<A>, predicate: Predicate<A>): STM<never, never, Option<A>>
 } = internal.findLast
 
 /**
@@ -258,8 +262,8 @@ export const findLast: {
  * @category elements
  */
 export const findLastIndex: {
-  <A>(value: A): (self: TArray<A>) => STM.STM<never, never, Option.Option<number>>
-  <A>(self: TArray<A>, value: A): STM.STM<never, never, Option.Option<number>>
+  <A>(value: A): (self: TArray<A>) => STM<never, never, Option<number>>
+  <A>(self: TArray<A>, value: A): STM<never, never, Option<number>>
 } = internal.findLastIndex
 
 /**
@@ -270,8 +274,8 @@ export const findLastIndex: {
  * @category elements
  */
 export const findLastIndexFrom: {
-  <A>(value: A, end: number): (self: TArray<A>) => STM.STM<never, never, Option.Option<number>>
-  <A>(self: TArray<A>, value: A, end: number): STM.STM<never, never, Option.Option<number>>
+  <A>(value: A, end: number): (self: TArray<A>) => STM<never, never, Option<number>>
+  <A>(self: TArray<A>, value: A, end: number): STM<never, never, Option<number>>
 } = internal.findLastIndexFrom
 
 /**
@@ -281,8 +285,8 @@ export const findLastIndexFrom: {
  * @category elements
  */
 export const findLastSTM: {
-  <A, R, E>(predicate: (value: A) => STM.STM<R, E, boolean>): (self: TArray<A>) => STM.STM<R, E, Option.Option<A>>
-  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>): STM.STM<R, E, Option.Option<A>>
+  <A, R, E>(predicate: (value: A) => STM<R, E, boolean>): (self: TArray<A>) => STM<R, E, Option<A>>
+  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM<R, E, boolean>): STM<R, E, Option<A>>
 } = internal.findLastSTM
 
 /**
@@ -292,8 +296,8 @@ export const findLastSTM: {
  * @category elements
  */
 export const forEach: {
-  <A, R, E>(f: (value: A) => STM.STM<R, E, void>): (self: TArray<A>) => STM.STM<R, E, void>
-  <A, R, E>(self: TArray<A>, f: (value: A) => STM.STM<R, E, void>): STM.STM<R, E, void>
+  <A, R, E>(f: (value: A) => STM<R, E, void>): (self: TArray<A>) => STM<R, E, void>
+  <A, R, E>(self: TArray<A>, f: (value: A) => STM<R, E, void>): STM<R, E, void>
 } = internal.forEach
 
 /**
@@ -302,7 +306,7 @@ export const forEach: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, TArray<A>> = internal.fromIterable
+export const fromIterable: <A>(iterable: Iterable<A>) => STM<never, never, TArray<A>> = internal.fromIterable
 
 /**
  * Extracts value from ref in array.
@@ -311,8 +315,8 @@ export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, T
  * @category elements
  */
 export const get: {
-  (index: number): <A>(self: TArray<A>) => STM.STM<never, never, A>
-  <A>(self: TArray<A>, index: number): STM.STM<never, never, A>
+  (index: number): <A>(self: TArray<A>) => STM<never, never, A>
+  <A>(self: TArray<A>, index: number): STM<never, never, A>
 } = internal.get
 
 /**
@@ -321,7 +325,7 @@ export const get: {
  * @since 2.0.0
  * @category elements
  */
-export const headOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Option<A>> = internal.headOption
+export const headOption: <A>(self: TArray<A>) => STM<never, never, Option<A>> = internal.headOption
 
 /**
  * The last entry in the array, if it exists.
@@ -329,7 +333,7 @@ export const headOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Op
  * @since 2.0.0
  * @category elements
  */
-export const lastOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Option<A>> = internal.lastOption
+export const lastOption: <A>(self: TArray<A>) => STM<never, never, Option<A>> = internal.lastOption
 
 /**
  * Makes a new `TArray` that is initialized with specified values.
@@ -339,7 +343,7 @@ export const lastOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Op
  */
 export const make: <Elements extends [any, ...Array<any>]>(
   ...elements: Elements
-) => STM.STM<never, never, TArray<Elements[number]>> = internal.make
+) => STM<never, never, TArray<Elements[number]>> = internal.make
 
 /**
  * Atomically compute the greatest element in the array, if it exists.
@@ -348,8 +352,8 @@ export const make: <Elements extends [any, ...Array<any>]>(
  * @category elements
  */
 export const maxOption: {
-  <A>(order: Order.Order<A>): (self: TArray<A>) => STM.STM<never, never, Option.Option<A>>
-  <A>(self: TArray<A>, order: Order.Order<A>): STM.STM<never, never, Option.Option<A>>
+  <A>(order: Order<A>): (self: TArray<A>) => STM<never, never, Option<A>>
+  <A>(self: TArray<A>, order: Order<A>): STM<never, never, Option<A>>
 } = internal.maxOption
 
 /**
@@ -359,8 +363,8 @@ export const maxOption: {
  * @category elements
  */
 export const minOption: {
-  <A>(order: Order.Order<A>): (self: TArray<A>) => STM.STM<never, never, Option.Option<A>>
-  <A>(self: TArray<A>, order: Order.Order<A>): STM.STM<never, never, Option.Option<A>>
+  <A>(order: Order<A>): (self: TArray<A>) => STM<never, never, Option<A>>
+  <A>(self: TArray<A>, order: Order<A>): STM<never, never, Option<A>>
 } = internal.minOption
 
 /**
@@ -370,8 +374,8 @@ export const minOption: {
  * @category folding
  */
 export const reduce: {
-  <Z, A>(zero: Z, f: (accumulator: Z, current: A) => Z): (self: TArray<A>) => STM.STM<never, never, Z>
-  <Z, A>(self: TArray<A>, zero: Z, f: (accumulator: Z, current: A) => Z): STM.STM<never, never, Z>
+  <Z, A>(zero: Z, f: (accumulator: Z, current: A) => Z): (self: TArray<A>) => STM<never, never, Z>
+  <Z, A>(self: TArray<A>, zero: Z, f: (accumulator: Z, current: A) => Z): STM<never, never, Z>
 } = internal.reduce
 
 /**
@@ -381,8 +385,8 @@ export const reduce: {
  * @category elements
  */
 export const reduceOption: {
-  <A>(f: (x: A, y: A) => A): (self: TArray<A>) => STM.STM<never, never, Option.Option<A>>
-  <A>(self: TArray<A>, f: (x: A, y: A) => A): STM.STM<never, never, Option.Option<A>>
+  <A>(f: (x: A, y: A) => A): (self: TArray<A>) => STM<never, never, Option<A>>
+  <A>(self: TArray<A>, f: (x: A, y: A) => A): STM<never, never, Option<A>>
 } = internal.reduceOption
 
 /**
@@ -393,8 +397,8 @@ export const reduceOption: {
  * @category elements
  */
 export const reduceOptionSTM: {
-  <A, R, E>(f: (x: A, y: A) => STM.STM<R, E, A>): (self: TArray<A>) => STM.STM<R, E, Option.Option<A>>
-  <A, R, E>(self: TArray<A>, f: (x: A, y: A) => STM.STM<R, E, A>): STM.STM<R, E, Option.Option<A>>
+  <A, R, E>(f: (x: A, y: A) => STM<R, E, A>): (self: TArray<A>) => STM<R, E, Option<A>>
+  <A, R, E>(self: TArray<A>, f: (x: A, y: A) => STM<R, E, A>): STM<R, E, Option<A>>
 } = internal.reduceOptionSTM
 
 /**
@@ -405,8 +409,8 @@ export const reduceOptionSTM: {
  * @category folding
  */
 export const reduceSTM: {
-  <Z, A, R, E>(zero: Z, f: (accumulator: Z, current: A) => STM.STM<R, E, Z>): (self: TArray<A>) => STM.STM<R, E, Z>
-  <Z, A, R, E>(self: TArray<A>, zero: Z, f: (accumulator: Z, current: A) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
+  <Z, A, R, E>(zero: Z, f: (accumulator: Z, current: A) => STM<R, E, Z>): (self: TArray<A>) => STM<R, E, Z>
+  <Z, A, R, E>(self: TArray<A>, zero: Z, f: (accumulator: Z, current: A) => STM<R, E, Z>): STM<R, E, Z>
 } = internal.reduceSTM
 
 /**
@@ -424,8 +428,8 @@ export const size: <A>(self: TArray<A>) => number = internal.size
  * @category elements
  */
 export const some: {
-  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM.STM<never, never, boolean>
-  <A>(self: TArray<A>, predicate: Predicate<A>): STM.STM<never, never, boolean>
+  <A>(predicate: Predicate<A>): (self: TArray<A>) => STM<never, never, boolean>
+  <A>(self: TArray<A>, predicate: Predicate<A>): STM<never, never, boolean>
 } = internal.some
 
 /**
@@ -436,8 +440,8 @@ export const some: {
  * @category elements
  */
 export const someSTM: {
-  <A, R, E>(predicate: (value: A) => STM.STM<R, E, boolean>): (self: TArray<A>) => STM.STM<R, E, boolean>
-  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>): STM.STM<R, E, boolean>
+  <A, R, E>(predicate: (value: A) => STM<R, E, boolean>): (self: TArray<A>) => STM<R, E, boolean>
+  <A, R, E>(self: TArray<A>, predicate: (value: A) => STM<R, E, boolean>): STM<R, E, boolean>
 } = internal.someSTM
 
 /**
@@ -447,7 +451,7 @@ export const someSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const toArray: <A>(self: TArray<A>) => STM.STM<never, never, Array<A>> = internal.toArray
+export const toArray: <A>(self: TArray<A>) => STM<never, never, Array<A>> = internal.toArray
 
 /**
  * Atomically updates all elements using a pure function.
@@ -456,8 +460,8 @@ export const toArray: <A>(self: TArray<A>) => STM.STM<never, never, Array<A>> = 
  * @category elements
  */
 export const transform: {
-  <A>(f: (value: A) => A): (self: TArray<A>) => STM.STM<never, never, void>
-  <A>(self: TArray<A>, f: (value: A) => A): STM.STM<never, never, void>
+  <A>(f: (value: A) => A): (self: TArray<A>) => STM<never, never, void>
+  <A>(self: TArray<A>, f: (value: A) => A): STM<never, never, void>
 } = internal.transform
 
 /**
@@ -467,8 +471,8 @@ export const transform: {
  * @category elements
  */
 export const transformSTM: {
-  <A, R, E>(f: (value: A) => STM.STM<R, E, A>): (self: TArray<A>) => STM.STM<R, E, void>
-  <A, R, E>(self: TArray<A>, f: (value: A) => STM.STM<R, E, A>): STM.STM<R, E, void>
+  <A, R, E>(f: (value: A) => STM<R, E, A>): (self: TArray<A>) => STM<R, E, void>
+  <A, R, E>(self: TArray<A>, f: (value: A) => STM<R, E, A>): STM<R, E, void>
 } = internal.transformSTM
 
 /**
@@ -478,8 +482,8 @@ export const transformSTM: {
  * @category elements
  */
 export const update: {
-  <A>(index: number, f: (value: A) => A): (self: TArray<A>) => STM.STM<never, never, void>
-  <A>(self: TArray<A>, index: number, f: (value: A) => A): STM.STM<never, never, void>
+  <A>(index: number, f: (value: A) => A): (self: TArray<A>) => STM<never, never, void>
+  <A>(self: TArray<A>, index: number, f: (value: A) => A): STM<never, never, void>
 } = internal.update
 
 /**
@@ -489,6 +493,6 @@ export const update: {
  * @category elements
  */
 export const updateSTM: {
-  <A, R, E>(index: number, f: (value: A) => STM.STM<R, E, A>): (self: TArray<A>) => STM.STM<R, E, void>
-  <A, R, E>(self: TArray<A>, index: number, f: (value: A) => STM.STM<R, E, A>): STM.STM<R, E, void>
+  <A, R, E>(index: number, f: (value: A) => STM<R, E, A>): (self: TArray<A>) => STM<R, E, void>
+  <A, R, E>(self: TArray<A>, index: number, f: (value: A) => STM<R, E, A>): STM<R, E, void>
 } = internal.updateSTM

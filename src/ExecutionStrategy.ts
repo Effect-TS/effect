@@ -4,17 +4,21 @@
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/executionStrategy.js"
 
-/**
- * Describes a strategy for evaluating multiple effects, potentially in
- * parallel.
- *
- * There are 3 possible execution strategies: `Sequential`, `Parallel`,
- * `ParallelN`.
- *
- * @since 2.0.0
- * @category models
- */
-export type ExecutionStrategy = Sequential | Parallel | ParallelN
+export * as ExecutionStrategy from "./ExecutionStrategy.js"
+
+declare module "./ExecutionStrategy.js" {
+  /**
+   * Describes a strategy for evaluating multiple effects, potentially in
+   * parallel.
+   *
+   * There are 3 possible execution strategies: `Sequential`, `Parallel`,
+   * `ParallelN`.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export type ExecutionStrategy = Sequential | Parallel | ParallelN
+}
 
 /**
  * Execute effects sequentially.

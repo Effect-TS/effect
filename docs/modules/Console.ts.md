@@ -252,7 +252,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const setConsole: <A extends Console>(console: A) => Layer.Layer<never, never, never>
+export declare const setConsole: <A extends Console>(console: A) => Layer<never, never, never>
 ```
 
 Added in v2.0.0

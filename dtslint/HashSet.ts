@@ -1,7 +1,7 @@
-import * as HashSet from "effect/HashSet"
-import * as Predicate from "effect/Predicate"
+import { HashSet } from "effect/HashSet"
+import { Predicate } from "effect/Predicate"
 
-declare const nss: HashSet.HashSet<number | string>
+declare const nss: HashSet<number | string>
 
 // -------------------------------------------------------------------------------------
 // every

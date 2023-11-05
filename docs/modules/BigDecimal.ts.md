@@ -120,7 +120,7 @@ Parses a numerical `string` into a `BigDecimal`.
 **Signature**
 
 ```ts
-export declare const fromString: (s: string) => Option.Option<BigDecimal>
+export declare const fromString: (s: string) => Option<BigDecimal>
 ```
 
 **Example**
@@ -327,8 +327,8 @@ If the divisor is `0`, the result will be `None`.
 
 ```ts
 export declare const divide: {
-  (that: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
-  (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal>
+  (that: BigDecimal): (self: BigDecimal) => Option<BigDecimal>
+  (self: BigDecimal, that: BigDecimal): Option<BigDecimal>
 }
 ```
 
@@ -445,8 +445,8 @@ If the divisor is `0`, the result will be `None`.
 
 ```ts
 export declare const remainder: {
-  (divisor: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
-  (self: BigDecimal, divisor: BigDecimal): Option.Option<BigDecimal>
+  (divisor: BigDecimal): (self: BigDecimal) => Option<BigDecimal>
+  (self: BigDecimal, divisor: BigDecimal): Option<BigDecimal>
 }
 ```
 
@@ -594,7 +594,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
+export interface BigDecimal extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number

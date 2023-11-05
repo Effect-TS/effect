@@ -1,7 +1,7 @@
-import * as Duration from "../../Duration.js"
+import { Duration } from "../../Duration.js"
 import { dual } from "../../Function.js"
-import * as Option from "../../Option.js"
-import type * as Interval from "../../ScheduleInterval.js"
+import { Option } from "../../Option.js"
+import type { Interval } from "../../ScheduleInterval.js"
 
 /** @internal */
 const IntervalSymbolKey = "effect/ScheduleInterval"
@@ -12,14 +12,14 @@ export const IntervalTypeId: Interval.IntervalTypeId = Symbol.for(
 ) as Interval.IntervalTypeId
 
 /** @internal */
-export const empty: Interval.Interval = {
+export const empty: Interval = {
   [IntervalTypeId]: IntervalTypeId,
   startMillis: 0,
   endMillis: 0
 }
 
 /** @internal */
-export const make = (startMillis: number, endMillis: number): Interval.Interval => {
+export const make = (startMillis: number, endMillis: number): Interval => {
   if (startMillis > endMillis) {
     return empty
   }
@@ -32,14 +32,14 @@ export const make = (startMillis: number, endMillis: number): Interval.Interval 
 
 /** @internal */
 export const lessThan = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => boolean,
-  (self: Interval.Interval, that: Interval.Interval) => boolean
+  (that: Interval) => (self: Interval) => boolean,
+  (self: Interval, that: Interval) => boolean
 >(2, (self, that) => min(self, that) === self)
 
 /** @internal */
 export const min = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Interval.Interval,
-  (self: Interval.Interval, that: Interval.Interval) => Interval.Interval
+  (that: Interval) => (self: Interval) => Interval,
+  (self: Interval, that: Interval) => Interval
 >(2, (self, that) => {
   if (self.endMillis <= that.startMillis) return self
   if (that.endMillis <= self.startMillis) return that
@@ -51,24 +51,24 @@ export const min = dual<
 
 /** @internal */
 export const max = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Interval.Interval,
-  (self: Interval.Interval, that: Interval.Interval) => Interval.Interval
+  (that: Interval) => (self: Interval) => Interval,
+  (self: Interval, that: Interval) => Interval
 >(2, (self, that) => min(self, that) === self ? that : self)
 
 /** @internal */
-export const isEmpty = (self: Interval.Interval): boolean => {
+export const isEmpty = (self: Interval): boolean => {
   return self.startMillis >= self.endMillis
 }
 
 /** @internal */
-export const isNonEmpty = (self: Interval.Interval): boolean => {
+export const isNonEmpty = (self: Interval): boolean => {
   return !isEmpty(self)
 }
 
 /** @internal */
 export const intersect = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Interval.Interval,
-  (self: Interval.Interval, that: Interval.Interval) => Interval.Interval
+  (that: Interval) => (self: Interval) => Interval,
+  (self: Interval, that: Interval) => Interval
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)
@@ -76,14 +76,14 @@ export const intersect = dual<
 })
 
 /** @internal */
-export const size = (self: Interval.Interval): Duration.Duration => {
+export const size = (self: Interval): Duration => {
   return Duration.millis(self.endMillis - self.startMillis)
 }
 
 /** @internal */
 export const union = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Option.Option<Interval.Interval>,
-  (self: Interval.Interval, that: Interval.Interval) => Option.Option<Interval.Interval>
+  (that: Interval) => (self: Interval) => Option<Interval>,
+  (self: Interval, that: Interval) => Option<Interval>
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)
@@ -91,11 +91,11 @@ export const union = dual<
 })
 
 /** @internal */
-export const after = (startMilliseconds: number): Interval.Interval => {
+export const after = (startMilliseconds: number): Interval => {
   return make(startMilliseconds, Number.POSITIVE_INFINITY)
 }
 
 /** @internal */
-export const before = (endMilliseconds: number): Interval.Interval => {
+export const before = (endMilliseconds: number): Interval => {
   return make(Number.NEGATIVE_INFINITY, endMilliseconds)
 }

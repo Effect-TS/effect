@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
-import type * as Exit from "./Exit.js"
-import type * as Fiber from "./Fiber.js"
+import type { Context } from "./Context.js"
+import type { Effect } from "./Effect.js"
+import type { Exit } from "./Exit.js"
+import type { Fiber } from "./Fiber.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/tracer.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -19,19 +19,23 @@ export const TracerTypeId: unique symbol = internal.TracerTypeId
  */
 export type TracerTypeId = typeof TracerTypeId
 
-/**
- * @since 2.0.0
- */
-export interface Tracer {
-  readonly [TracerTypeId]: TracerTypeId
-  readonly span: (
-    name: string,
-    parent: Option.Option<ParentSpan>,
-    context: Context.Context<never>,
-    links: ReadonlyArray<SpanLink>,
-    startTime: bigint
-  ) => Span
-  readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
+export * as Tracer from "./Tracer.js"
+
+declare module "./Tracer.js" {
+  /**
+   * @since 2.0.0
+   */
+  export interface Tracer {
+    readonly [TracerTypeId]: TracerTypeId
+    readonly span: (
+      name: string,
+      parent: Option<ParentSpan>,
+      context: Context<never>,
+      links: ReadonlyArray<SpanLink>,
+      startTime: bigint
+    ) => Span
+    readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
+  }
 }
 
 /**
@@ -45,7 +49,7 @@ export type SpanStatus = {
   _tag: "Ended"
   startTime: bigint
   endTime: bigint
-  exit: Exit.Exit<unknown, unknown>
+  exit: Exit<unknown, unknown>
 }
 
 /**
@@ -69,7 +73,7 @@ export interface ExternalSpan {
   readonly spanId: string
   readonly traceId: string
   readonly sampled: boolean
-  readonly context: Context.Context<never>
+  readonly context: Context<never>
 }
 
 /**
@@ -81,13 +85,13 @@ export interface Span {
   readonly name: string
   readonly spanId: string
   readonly traceId: string
-  readonly parent: Option.Option<ParentSpan>
-  readonly context: Context.Context<never>
+  readonly parent: Option<ParentSpan>
+  readonly context: Context<never>
   readonly status: SpanStatus
   readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
   readonly sampled: boolean
-  readonly end: (endTime: bigint, exit: Exit.Exit<unknown, unknown>) => void
+  readonly end: (endTime: bigint, exit: Exit<unknown, unknown>) => void
   readonly attribute: (key: string, value: unknown) => void
   readonly event: (name: string, startTime: bigint, attributes?: Record<string, unknown>) => void
 }
@@ -106,7 +110,7 @@ export interface SpanLink {
  * @since 2.0.0
  * @category tags
  */
-export const Tracer: Context.Tag<Tracer, Tracer> = internal.tracerTag
+export const Tag: Context.Tag<Tracer, Tracer> = internal.tracerTag
 
 /**
  * @since 2.0.0
@@ -122,12 +126,12 @@ export const externalSpan: (options: {
   readonly spanId: string
   readonly traceId: string
   readonly sampled?: boolean | undefined
-  readonly context?: Context.Context<never> | undefined
+  readonly context?: Context<never> | undefined
 }) => ExternalSpan = internal.externalSpan
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =
+export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A> =
   defaultServices.tracerWith

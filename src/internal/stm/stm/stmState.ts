@@ -1,11 +1,11 @@
-import * as Equal from "../../../Equal.js"
-import * as Exit from "../../../Exit.js"
+import { Equal } from "../../../Equal.js"
+import { Exit } from "../../../Exit.js"
 import { pipe } from "../../../Function.js"
-import * as Hash from "../../../Hash.js"
+import { Hash } from "../../../Hash.js"
 import { hasProperty } from "../../../Predicate.js"
 import * as OpCodes from "../opCodes/stmState.js"
 import * as TExitOpCodes from "../opCodes/tExit.js"
-import type * as TExit from "./tExit.js"
+import type { TExit } from "./tExit.js"
 
 /** @internal */
 const STMStateSymbolKey = "effect/STM/State"
@@ -16,24 +16,28 @@ export const STMStateTypeId = Symbol.for(STMStateSymbolKey)
 /** @internal */
 export type STMStateTypeId = typeof STMStateTypeId
 
-/** @internal */
-export type STMState<E, A> = Done<E, A> | Interrupted | Running
+export * as STMState from "./stmState.js"
 
-/** @internal */
-export interface Done<E, A> extends Equal.Equal {
-  readonly [STMStateTypeId]: STMStateTypeId
-  readonly _tag: OpCodes.OP_DONE
-  readonly exit: Exit.Exit<E, A>
+declare module "./stmState.js" {
+  /** @internal */
+  export type STMState<E, A> = Done<E, A> | Interrupted | Running
 }
 
 /** @internal */
-export interface Interrupted extends Equal.Equal {
+export interface Done<E, A> extends Equal {
+  readonly [STMStateTypeId]: STMStateTypeId
+  readonly _tag: OpCodes.OP_DONE
+  readonly exit: Exit<E, A>
+}
+
+/** @internal */
+export interface Interrupted extends Equal {
   readonly [STMStateTypeId]: STMStateTypeId
   readonly _tag: OpCodes.OP_INTERRUPTED
 }
 
 /** @internal */
-export interface Running extends Equal.Equal {
+export interface Running extends Equal {
   readonly [STMStateTypeId]: STMStateTypeId
   readonly _tag: OpCodes.OP_RUNNING
 }
@@ -57,7 +61,7 @@ export const isInterrupted = <E, A>(self: STMState<E, A>): self is Interrupted =
 }
 
 /** @internal */
-export const done = <E, A>(exit: Exit.Exit<E, A>): STMState<E, A> => {
+export const done = <E, A>(exit: Exit<E, A>): STMState<E, A> => {
   return {
     [STMStateTypeId]: STMStateTypeId,
     _tag: OpCodes.OP_DONE,
@@ -108,7 +112,7 @@ export const running: STMState<never, never> = {
 }
 
 /** @internal */
-export const fromTExit = <E, A>(tExit: TExit.TExit<E, A>): STMState<E, A> => {
+export const fromTExit = <E, A>(tExit: TExit<E, A>): STMState<E, A> => {
   switch (tExit._tag) {
     case TExitOpCodes.OP_FAIL: {
       return done(Exit.fail(tExit.error))

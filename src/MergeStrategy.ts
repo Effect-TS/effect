@@ -15,22 +15,26 @@ export const MergeStrategyTypeId: unique symbol = internal.MergeStrategyTypeId
  */
 export type MergeStrategyTypeId = typeof MergeStrategyTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type MergeStrategy = BackPressure | BufferSliding
+export * as MergeStrategy from "./MergeStrategy.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace MergeStrategy {
+declare module "./MergeStrategy.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [MergeStrategyTypeId]: MergeStrategyTypeId
+  export type MergeStrategy = BackPressure | BufferSliding
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace MergeStrategy {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [MergeStrategyTypeId]: MergeStrategyTypeId
+    }
   }
 }
 

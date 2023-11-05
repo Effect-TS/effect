@@ -1,15 +1,15 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Duration from "./Duration.js"
-import type * as Equal from "./Equal.js"
-import type * as HashSet from "./HashSet.js"
+import type { Chunk } from "./Chunk.js"
+import type { Duration } from "./Duration.js"
+import type { Equal } from "./Equal.js"
+import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/metric/key.js"
-import type * as MetricBoundaries from "./MetricBoundaries.js"
-import type * as MetricKeyType from "./MetricKeyType.js"
-import type * as MetricLabel from "./MetricLabel.js"
-import type * as Option from "./Option.js"
+import type { MetricBoundaries } from "./MetricBoundaries.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
+import type { MetricLabel } from "./MetricLabel.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -24,72 +24,74 @@ export const MetricKeyTypeId: unique symbol = internal.MetricKeyTypeId
  */
 export type MetricKeyTypeId = typeof MetricKeyTypeId
 
-/**
- * A `MetricKey` is a unique key associated with each metric. The key is based
- * on a combination of the metric type, the name and tags associated with the
- * metric, an optional description of the key, and any other information to
- * describe a metric, such as the boundaries of a histogram. In this way, it is
- * impossible to ever create different metrics with conflicting keys.
- *
- * @since 2.0.0
- * @category models
- */
-export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
-  extends MetricKey.Variance<Type>, Equal.Equal, Pipeable
-{
-  readonly name: string
-  readonly keyType: Type
-  readonly description: Option.Option<string>
-  readonly tags: HashSet.HashSet<MetricLabel.MetricLabel>
-}
+export * as MetricKey from "./MetricKey.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace MetricKey {
+declare module "./MetricKey.js" {
   /**
+   * A `MetricKey` is a unique key associated with each metric. The key is based
+   * on a combination of the metric type, the name and tags associated with the
+   * metric, an optional description of the key, and any other information to
+   * describe a metric, such as the boundaries of a histogram. In this way, it is
+   * impossible to ever create different metrics with conflicting keys.
+   *
    * @since 2.0.0
    * @category models
    */
-  export type Untyped = MetricKey<any>
+  export interface MetricKey<Type extends MetricKeyType<any, any>> extends MetricKey.Variance<Type>, Equal, Pipeable {
+    readonly name: string
+    readonly keyType: Type
+    readonly description: Option<string>
+    readonly tags: HashSet<MetricLabel>
+  }
 
   /**
    * @since 2.0.0
-   * @category models
    */
-  export type Counter<A extends (number | bigint)> = MetricKey<MetricKeyType.MetricKeyType.Counter<A>>
+  export namespace MetricKey {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Untyped = MetricKey<any>
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Gauge<A extends (number | bigint)> = MetricKey<MetricKeyType.MetricKeyType.Gauge<A>>
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Counter<A extends (number | bigint)> = MetricKey<MetricKeyType.Counter<A>>
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Frequency = MetricKey<MetricKeyType.MetricKeyType.Frequency>
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Gauge<A extends (number | bigint)> = MetricKey<MetricKeyType.Gauge<A>>
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Histogram = MetricKey<MetricKeyType.MetricKeyType.Histogram>
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Frequency = MetricKey<MetricKeyType.Frequency>
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Summary = MetricKey<MetricKeyType.MetricKeyType.Summary>
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Histogram = MetricKey<MetricKeyType.Histogram>
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<Type> {
-    readonly [MetricKeyTypeId]: {
-      _Type: (_: never) => Type
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Summary = MetricKey<MetricKeyType.Summary>
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<Type> {
+      readonly [MetricKeyTypeId]: {
+        _Type: (_: never) => Type
+      }
     }
   }
 }
@@ -98,8 +100,7 @@ export declare namespace MetricKey {
  * @since 2.0.0
  * @category refinements
  */
-export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKeyType<unknown, unknown>> =
-  internal.isMetricKey
+export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType<unknown, unknown>> = internal.isMetricKey
 
 /**
  * Creates a metric key for a counter, with the specified name.
@@ -154,7 +155,7 @@ export const gauge: {
  */
 export const histogram: (
   name: string,
-  boundaries: MetricBoundaries.MetricBoundaries,
+  boundaries: MetricBoundaries,
   description?: string
 ) => MetricKey.Histogram = internal.histogram
 
@@ -171,7 +172,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
     readonly description?: string
   }
 ) => MetricKey.Summary = internal.summary
@@ -186,8 +187,8 @@ export const tagged: {
   (
     key: string,
     value: string
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
+  ): <Type extends MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  <Type extends MetricKeyType<any, any>>(
     self: MetricKey<Type>,
     key: string,
     value: string
@@ -202,11 +203,11 @@ export const tagged: {
  */
 export const taggedWithLabels: {
   (
-    extraTags: Iterable<MetricLabel.MetricLabel>
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
+    extraTags: Iterable<MetricLabel>
+  ): <Type extends MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  <Type extends MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: Iterable<MetricLabel>
   ): MetricKey<Type>
 } = internal.taggedWithLabels
 
@@ -218,10 +219,10 @@ export const taggedWithLabels: {
  */
 export const taggedWithLabelSet: {
   (
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
+    extraTags: HashSet<MetricLabel>
+  ): <Type extends MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  <Type extends MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
+    extraTags: HashSet<MetricLabel>
   ): MetricKey<Type>
 } = internal.taggedWithLabelSet

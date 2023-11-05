@@ -1,25 +1,25 @@
 import { chunkCoordination } from "effect-test/utils/coordination"
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Chunk } from "effect/Chunk"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Queue from "effect/Queue"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as Stream from "effect/Stream"
-import * as TestClock from "effect/TestClock"
+import { Option } from "effect/Option"
+import { Queue } from "effect/Queue"
+import { Ref } from "effect/Ref"
+import { Schedule } from "effect/Schedule"
+import { Stream } from "effect/Stream"
+import { TestClock } from "effect/TestClock"
 import * as fc from "fast-check"
 import { assert, describe, expect } from "vitest"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,
   constraints?: fc.ArrayConstraints
-): fc.Arbitrary<Chunk.Chunk<A>> => fc.array(arb, constraints).map(Chunk.fromIterable)
+): fc.Arbitrary<Chunk<A>> => fc.array(arb, constraints).map(Chunk.fromIterable)
 
 const grouped = <A>(arr: Array<A>, size: number): Array<Array<A>> => {
   const builder: Array<Array<A>> = []

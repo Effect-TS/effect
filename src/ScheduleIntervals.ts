@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Check from "./Chunk.js"
+import type { Chunk } from "./Chunk.js"
 import * as internal from "./internal/schedule/intervals.js"
-import type * as Interval from "./ScheduleInterval.js"
+import type { Interval } from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0
@@ -17,24 +17,28 @@ export const IntervalsTypeId: unique symbol = internal.IntervalsTypeId
  */
 export type IntervalsTypeId = typeof IntervalsTypeId
 
-/**
- * An `Intervals` represents a list of several `Interval`s.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Intervals {
-  readonly [IntervalsTypeId]: IntervalsTypeId
-  readonly intervals: Check.Chunk<Interval.Interval>
+export * as ScheduleIntervals from "./ScheduleIntervals.js"
+
+declare module "./ScheduleIntervals.js" {
+  /**
+   * An `ScheduleIntervals` represents a list of several `Interval`s.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface ScheduleIntervals {
+    readonly [IntervalsTypeId]: IntervalsTypeId
+    readonly intervals: Chunk<Interval>
+  }
 }
 
 /**
- * Creates a new `Intervals` from a `List` of `Interval`s.
+ * Creates a new `ScheduleIntervals` from a `List` of `Interval`s.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const make: (intervals: Check.Chunk<Interval.Interval>) => Intervals = internal.make
+export const make: (intervals: Chunk<Interval>) => ScheduleIntervals = internal.make
 
 /**
  * Constructs an empty list of `Interval`s.
@@ -42,81 +46,81 @@ export const make: (intervals: Check.Chunk<Interval.Interval>) => Intervals = in
  * @since 2.0.0
  * @category constructors
  */
-export const empty: Intervals = internal.empty
+export const empty: ScheduleIntervals = internal.empty
 
 /**
- * Constructs `Intervals` from the specified `Iterable<Interval>`.
+ * Constructs `ScheduleIntervals` from the specified `Iterable<Interval>`.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterable: (intervals: Iterable<Interval.Interval>) => Intervals = internal.fromIterable
+export const fromIterable: (intervals: Iterable<Interval>) => ScheduleIntervals = internal.fromIterable
 
 /**
- * Computes the union of this `Intervals` and  that `Intervals`
+ * Computes the union of this `ScheduleIntervals` and  that `ScheduleIntervals`
  *
  * @since 2.0.0
  * @category utils
  */
 export const union: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => ScheduleIntervals
+  (self: ScheduleIntervals, that: ScheduleIntervals): ScheduleIntervals
 } = internal.union
 
 /**
- * Produces the intersection of this `Intervals` and that `Intervals`.
+ * Produces the intersection of this `ScheduleIntervals` and that `ScheduleIntervals`.
  *
  * @since 2.0.0
  * @category utils
  */
 export const intersect: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => ScheduleIntervals
+  (self: ScheduleIntervals, that: ScheduleIntervals): ScheduleIntervals
 } = internal.intersect
 
 /**
- * The start of the earliest interval in the specified `Intervals`.
+ * The start of the earliest interval in the specified `ScheduleIntervals`.
  *
  * @since 2.0.0
  * @category getters
  */
-export const start: (self: Intervals) => number = internal.start
+export const start: (self: ScheduleIntervals) => number = internal.start
 
 /**
- * The end of the latest interval in the specified `Intervals`.
+ * The end of the latest interval in the specified `ScheduleIntervals`.
  *
  * @since 2.0.0
  * @category getters
  */
-export const end: (self: Intervals) => number = internal.end
+export const end: (self: ScheduleIntervals) => number = internal.end
 
 /**
- * Returns `true` if the start of this `Intervals` is before the start of that
- * `Intervals`, `false` otherwise.
+ * Returns `true` if the start of this `ScheduleIntervals` is before the start of that
+ * `ScheduleIntervals`, `false` otherwise.
  *
  * @since 2.0.0
  * @category ordering
  */
 export const lessThan: {
-  (that: Intervals): (self: Intervals) => boolean
-  (self: Intervals, that: Intervals): boolean
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => boolean
+  (self: ScheduleIntervals, that: ScheduleIntervals): boolean
 } = internal.lessThan
 
 /**
- * Returns `true` if this `Intervals` is non-empty, `false` otherwise.
+ * Returns `true` if this `ScheduleIntervals` is non-empty, `false` otherwise.
  *
  * @since 2.0.0
  * @category getters
  */
-export const isNonEmpty: (self: Intervals) => boolean = internal.isNonEmpty
+export const isNonEmpty: (self: ScheduleIntervals) => boolean = internal.isNonEmpty
 
 /**
- * Returns the maximum of the two `Intervals` (i.e. which has the latest start).
+ * Returns the maximum of the two `ScheduleIntervals` (i.e. which has the latest start).
  *
  * @since 2.0.0
  * @category ordering
  */
 export const max: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => ScheduleIntervals
+  (self: ScheduleIntervals, that: ScheduleIntervals): ScheduleIntervals
 } = internal.max

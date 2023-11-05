@@ -65,7 +65,7 @@ Combines a set of `FiberId`s into a single `FiberId`.
 **Signature**
 
 ```ts
-export declare const combineAll: (fiberIds: HashSet.HashSet<FiberId>) => FiberId
+export declare const combineAll: (fiberIds: HashSet<FiberId>) => FiberId
 ```
 
 Added in v2.0.0
@@ -121,7 +121,7 @@ Get the set of identifiers for this `FiberId`.
 **Signature**
 
 ```ts
-export declare const ids: (self: FiberId) => HashSet.HashSet<number>
+export declare const ids: (self: FiberId) => HashSet<number>
 ```
 
 Added in v2.0.0
@@ -146,7 +146,7 @@ Convert a `FiberId` into an `Option<FiberId>`.
 **Signature**
 
 ```ts
-export declare const toOption: (self: FiberId) => Option.Option<FiberId>
+export declare const toOption: (self: FiberId) => Option<FiberId>
 ```
 
 Added in v2.0.0
@@ -158,7 +158,7 @@ Convert a `FiberId` into a `HashSet<FiberId>`.
 **Signature**
 
 ```ts
-export declare const toSet: (self: FiberId) => HashSet.HashSet<Runtime>
+export declare const toSet: (self: FiberId) => HashSet<Runtime>
 ```
 
 Added in v2.0.0
@@ -170,7 +170,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Composite extends Equal.Equal, Inspectable {
+export interface Composite extends Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
   readonly _tag: "Composite"
   readonly left: FiberId
@@ -195,7 +195,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface None extends Equal.Equal, Inspectable {
+export interface None extends Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
   readonly _tag: "None"
 }
@@ -208,7 +208,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Runtime extends Equal.Equal, Inspectable {
+export interface Runtime extends Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
   readonly _tag: "Runtime"
   readonly id: number

@@ -81,7 +81,7 @@ export declare const make: <A>(
   options?:
     | { readonly fork?: ((a: A) => A) | undefined; readonly join?: ((left: A, right: A) => A) | undefined }
     | undefined
-) => Effect.Effect<Scope.Scope, never, FiberRef<A>>
+) => Effect<Scope, never, FiberRef<A>>
 ```
 
 Added in v2.0.0
@@ -92,8 +92,8 @@ Added in v2.0.0
 
 ```ts
 export declare const makeContext: <A>(
-  initial: Context.Context<A>
-) => Effect.Effect<Scope.Scope, never, FiberRef<Context.Context<A>>>
+  initial: Context<A>
+) => Effect<Scope, never, FiberRef<Context<A>>>
 ```
 
 Added in v2.0.0
@@ -104,8 +104,8 @@ Added in v2.0.0
 
 ```ts
 export declare const makeRuntimeFlags: (
-  initial: RuntimeFlags.RuntimeFlags
-) => Effect.Effect<Scope.Scope, never, FiberRef<RuntimeFlags.RuntimeFlags>>
+  initial: RuntimeFlags
+) => Effect<Scope, never, FiberRef<RuntimeFlags>>
 ```
 
 Added in v2.0.0
@@ -117,7 +117,7 @@ Added in v2.0.0
 ```ts
 export declare const makeWith: <Value>(
   ref: LazyArg<FiberRef<Value>>
-) => Effect.Effect<Scope.Scope, never, FiberRef<Value>>
+) => Effect<Scope, never, FiberRef<Value>>
 ```
 
 Added in v2.0.0
@@ -145,7 +145,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeMakeContext: <A>(initial: Context.Context<A>) => FiberRef<Context.Context<A>>
+export declare const unsafeMakeContext: <A>(initial: Context<A>) => FiberRef<Context<A>>
 ```
 
 Added in v2.0.0
@@ -155,7 +155,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeMakeHashSet: <A>(initial: HashSet.HashSet<A>) => FiberRef<HashSet.HashSet<A>>
+export declare const unsafeMakeHashSet: <A>(initial: HashSet<A>) => FiberRef<HashSet<A>>
 ```
 
 Added in v2.0.0
@@ -168,7 +168,7 @@ Added in v2.0.0
 export declare const unsafeMakePatch: <Value, Patch>(
   initial: Value,
   options: {
-    readonly differ: Differ.Differ<Value, Patch>
+    readonly differ: Differ<Value, Patch>
     readonly fork: Patch
     readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
   }
@@ -182,7 +182,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeMakeSupervisor: (initial: Supervisor.Supervisor<any>) => FiberRef<Supervisor.Supervisor<any>>
+export declare const unsafeMakeSupervisor: (initial: Supervisor<any>) => FiberRef<Supervisor<any>>
 ```
 
 Added in v2.0.0
@@ -194,7 +194,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentContext: FiberRef<Context.Context<never>>
+export declare const currentContext: FiberRef<Context<never>>
 ```
 
 Added in v2.0.0
@@ -204,7 +204,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentLogAnnotations: FiberRef<HashMap.HashMap<string, unknown>>
+export declare const currentLogAnnotations: FiberRef<HashMap<string, unknown>>
 ```
 
 Added in v2.0.0
@@ -214,7 +214,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentLogLevel: FiberRef<LogLevel.LogLevel>
+export declare const currentLogLevel: FiberRef<LogLevel>
 ```
 
 Added in v2.0.0
@@ -224,7 +224,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentLogSpan: FiberRef<List.List<LogSpan.LogSpan>>
+export declare const currentLogSpan: FiberRef<List<LogSpan>>
 ```
 
 Added in v2.0.0
@@ -234,7 +234,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentLoggers: FiberRef<HashSet.HashSet<Logger.Logger<unknown, any>>>
+export declare const currentLoggers: FiberRef<HashSet<Logger<unknown, any>>>
 ```
 
 Added in v2.0.0
@@ -254,7 +254,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentMetricLabels: FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>>
+export declare const currentMetricLabels: FiberRef<HashSet<MetricLabel>>
 ```
 
 Added in v2.0.0
@@ -264,7 +264,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentMinimumLogLevel: FiberRef<LogLevel.LogLevel>
+export declare const currentMinimumLogLevel: FiberRef<LogLevel>
 ```
 
 Added in v2.0.0
@@ -304,7 +304,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentRuntimeFlags: FiberRef<RuntimeFlags.RuntimeFlags>
+export declare const currentRuntimeFlags: FiberRef<RuntimeFlags>
 ```
 
 Added in v2.0.0
@@ -314,7 +314,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentScheduler: FiberRef<Scheduler.Scheduler>
+export declare const currentScheduler: FiberRef<Scheduler>
 ```
 
 Added in v2.0.0
@@ -334,7 +334,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentSupervisor: FiberRef<Supervisor.Supervisor<any>>
+export declare const currentSupervisor: FiberRef<Supervisor<any>>
 ```
 
 Added in v2.0.0
@@ -344,7 +344,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentTracerSpanAnnotations: FiberRef<HashMap.HashMap<string, unknown>>
+export declare const currentTracerSpanAnnotations: FiberRef<HashMap<string, unknown>>
 ```
 
 Added in v2.0.0
@@ -354,7 +354,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentTracerSpanLinks: FiberRef<Chunk.Chunk<Tracer.SpanLink>>
+export declare const currentTracerSpanLinks: FiberRef<Chunk<Tracer.SpanLink>>
 ```
 
 Added in v2.0.0
@@ -374,7 +374,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const interruptedCause: FiberRef<Cause.Cause<never>>
+export declare const interruptedCause: FiberRef<Cause<never>>
 ```
 
 Added in v2.0.0
@@ -384,7 +384,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>>
+export declare const unhandledErrorLogLevel: FiberRef<Option<LogLevel>>
 ```
 
 Added in v2.0.0
@@ -396,7 +396,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const get: <A>(self: FiberRef<A>) => Effect.Effect<never, never, A>
+export declare const get: <A>(self: FiberRef<A>) => Effect<never, never, A>
 ```
 
 Added in v2.0.0
@@ -471,7 +471,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const delete: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void>
+export declare const delete: <A>(self: FiberRef<A>) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -482,8 +482,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndSet: {
-  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, value: A): Effect<never, never, A>
 }
 ```
 
@@ -495,8 +495,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdate: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -508,8 +508,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 
@@ -521,8 +521,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getWith: {
-  <A, R, E, B>(f: (a: A) => Effect.Effect<R, E, B>): (self: FiberRef<A>) => Effect.Effect<R, E, B>
-  <A, R, E, B>(self: FiberRef<A>, f: (a: A) => Effect.Effect<R, E, B>): Effect.Effect<R, E, B>
+  <A, R, E, B>(f: (a: A) => Effect<R, E, B>): (self: FiberRef<A>) => Effect<R, E, B>
+  <A, R, E, B>(self: FiberRef<A>, f: (a: A) => Effect<R, E, B>): Effect<R, E, B>
 }
 ```
 
@@ -534,8 +534,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modify: {
-  <A, B>(f: (a: A) => readonly [B, A]): (self: FiberRef<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: FiberRef<A>, f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]): (self: FiberRef<A>) => Effect<never, never, B>
+  <A, B>(self: FiberRef<A>, f: (a: A) => readonly [B, A]): Effect<never, never, B>
 }
 ```
 
@@ -549,8 +549,8 @@ Added in v2.0.0
 export declare const modifySome: <A, B>(
   self: FiberRef<A>,
   def: B,
-  f: (a: A) => Option.Option<readonly [B, A]>
-) => Effect.Effect<never, never, B>
+  f: (a: A) => Option<readonly [B, A]>
+) => Effect<never, never, B>
 ```
 
 Added in v2.0.0
@@ -560,7 +560,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const reset: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void>
+export declare const reset: <A>(self: FiberRef<A>) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -571,8 +571,8 @@ Added in v2.0.0
 
 ```ts
 export declare const set: {
-  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, value: A): Effect.Effect<never, never, void>
+  <A>(value: A): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, value: A): Effect<never, never, void>
 }
 ```
 
@@ -584,8 +584,8 @@ Added in v2.0.0
 
 ```ts
 export declare const update: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect<never, never, void>
 }
 ```
 
@@ -597,8 +597,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateAndGet: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -610,8 +610,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, void>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, void>
 }
 ```
 
@@ -623,8 +623,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 

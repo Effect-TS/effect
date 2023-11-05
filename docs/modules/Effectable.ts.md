@@ -52,7 +52,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-abstract commit(): Effect.Effect<R, E, A>
+abstract commit(): Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -72,7 +72,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-abstract commit(): Effect.Effect<R, E, A>
+abstract commit(): Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -85,7 +85,7 @@ Added in v2.0.0
 
 ```ts
 export interface CommitPrimitive {
-  new <R, E, A>(): Effect.Effect<R, E, A>
+  new <R, E, A>(): Effect<R, E, A>
 }
 ```
 
@@ -98,7 +98,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const CommitPrototype: Effect.Effect<never, never, never>
+export declare const CommitPrototype: Effect<never, never, never>
 ```
 
 Added in v2.0.0
@@ -108,7 +108,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const EffectPrototype: Effect.Effect<never, never, never>
+export declare const EffectPrototype: Effect<never, never, never>
 ```
 
 Added in v2.0.0
@@ -118,7 +118,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const StructuralCommitPrototype: Effect.Effect<never, never, never>
+export declare const StructuralCommitPrototype: Effect<never, never, never>
 ```
 
 Added in v2.0.0

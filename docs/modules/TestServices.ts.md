@@ -57,7 +57,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type TestServices = Annotations.TestAnnotations | Live.TestLive | Sized.TestSized | TestConfig.TestConfig
+export type TestServices = Annotations.TestAnnotations | Live.TestLive | Sized.TestSized | TestConfig
 ```
 
 Added in v2.0.0
@@ -70,7 +70,7 @@ specified annotation to the annotation map.
 **Signature**
 
 ```ts
-export declare const annotate: <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => Effect.Effect<never, never, void>
+export declare const annotate: <A>(key: TestAnnotation<A>, value: A) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -82,7 +82,7 @@ Retrieves the `Annotations` service for this test.
 **Signature**
 
 ```ts
-export declare const annotations: () => Effect.Effect<never, never, Annotations.TestAnnotations>
+export declare const annotations: () => Effect<never, never, Annotations.TestAnnotations>
 ```
 
 Added in v2.0.0
@@ -94,7 +94,7 @@ Constructs a new `Annotations` service wrapped in a layer.
 **Signature**
 
 ```ts
-export declare const annotationsLayer: () => Layer.Layer<never, never, Annotations.TestAnnotations>
+export declare const annotationsLayer: () => Layer<never, never, Annotations.TestAnnotations>
 ```
 
 Added in v2.0.0
@@ -108,8 +108,8 @@ specified workflow.
 
 ```ts
 export declare const annotationsWith: <R, E, A>(
-  f: (annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>
-) => Effect.Effect<R, E, A>
+  f: (annotations: Annotations.TestAnnotations) => Effect<R, E, A>
+) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -119,7 +119,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentServices: FiberRef.FiberRef<Context.Context<TestServices>>
+export declare const currentServices: FiberRef<Context<TestServices>>
 ```
 
 Added in v2.0.0
@@ -132,7 +132,7 @@ annotation of the specified type, or its default value if there is none.
 **Signature**
 
 ```ts
-export declare const get: <A>(key: TestAnnotation.TestAnnotation<A>) => Effect.Effect<never, never, A>
+export declare const get: <A>(key: TestAnnotation<A>) => Effect<never, never, A>
 ```
 
 Added in v2.0.0
@@ -144,7 +144,7 @@ Retrieves the `Live` service for this test.
 **Signature**
 
 ```ts
-export declare const live: Effect.Effect<never, never, Live.TestLive>
+export declare const live: Effect<never, never, Live.TestLive>
 ```
 
 Added in v2.0.0
@@ -156,7 +156,7 @@ Constructs a new `Live` service wrapped in a layer.
 **Signature**
 
 ```ts
-export declare const liveLayer: () => Layer.Layer<DefaultServices.DefaultServices, never, Live.TestLive>
+export declare const liveLayer: () => Layer<DefaultServices, never, Live.TestLive>
 ```
 
 Added in v2.0.0
@@ -168,7 +168,7 @@ The default Effect test services.
 **Signature**
 
 ```ts
-export declare const liveServices: Context.Context<TestServices>
+export declare const liveServices: Context<TestServices>
 ```
 
 Added in v2.0.0
@@ -181,7 +181,7 @@ workflow.
 **Signature**
 
 ```ts
-export declare const liveWith: <R, E, A>(f: (live: Live.TestLive) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+export declare const liveWith: <R, E, A>(f: (live: Live.TestLive) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -193,7 +193,7 @@ Provides a workflow with the "live" default Effect services.
 **Signature**
 
 ```ts
-export declare const provideLive: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+export declare const provideLive: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -207,12 +207,12 @@ ensuring that the workflow itself is run with the test services.
 
 ```ts
 export declare const provideWithLive: (<R, E, A, R2, E2, A2>(
-  f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R2, E2, A2>
-) => (self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A2>) &
+  f: (effect: Effect<R, E, A>) => Effect<R2, E2, A2>
+) => (self: Effect<R, E, A>) => Effect<R | R2, E | E2, A2>) &
   (<R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
-    f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R2, E2, A2>
-  ) => Effect.Effect<R | R2, E | E2, A2>)
+    self: Effect<R, E, A>,
+    f: (effect: Effect<R, E, A>) => Effect<R2, E2, A2>
+  ) => Effect<R | R2, E | E2, A2>)
 ```
 
 Added in v2.0.0
@@ -224,7 +224,7 @@ The number of times to repeat tests to ensure they are stable.
 **Signature**
 
 ```ts
-export declare const repeats: Effect.Effect<never, never, number>
+export declare const repeats: Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -236,7 +236,7 @@ The number of times to retry flaky tests.
 **Signature**
 
 ```ts
-export declare const retries: Effect.Effect<never, never, number>
+export declare const retries: Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -248,7 +248,7 @@ The number of sufficient samples to check for a random variable.
 **Signature**
 
 ```ts
-export declare const samples: Effect.Effect<never, never, number>
+export declare const samples: Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -260,7 +260,7 @@ The maximum number of shrinkings to minimize large failures.
 **Signature**
 
 ```ts
-export declare const shrinks: Effect.Effect<never, never, number>
+export declare const shrinks: Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -270,7 +270,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const size: Effect.Effect<never, never, number>
+export declare const size: Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -282,7 +282,7 @@ Retrieves the `Sized` service for this test.
 **Signature**
 
 ```ts
-export declare const sized: Effect.Effect<never, never, Sized.TestSized>
+export declare const sized: Effect<never, never, Sized.TestSized>
 ```
 
 Added in v2.0.0
@@ -292,7 +292,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const sizedLayer: (size: number) => Layer.Layer<never, never, Sized.TestSized>
+export declare const sizedLayer: (size: number) => Layer<never, never, Sized.TestSized>
 ```
 
 Added in v2.0.0
@@ -306,8 +306,8 @@ specified workflow.
 
 ```ts
 export declare const sizedWith: <R, E, A>(
-  f: (sized: Sized.TestSized) => Effect.Effect<R, E, A>
-) => Effect.Effect<R, E, A>
+  f: (sized: Sized.TestSized) => Effect<R, E, A>
+) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -319,10 +319,10 @@ Returns the set of all fibers in this test.
 **Signature**
 
 ```ts
-export declare const supervisedFibers: () => Effect.Effect<
+export declare const supervisedFibers: () => Effect<
   never,
   never,
-  SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
+  SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
 >
 ```
 
@@ -335,7 +335,7 @@ Retrieves the `TestConfig` service for this test.
 **Signature**
 
 ```ts
-export declare const testConfig: Effect.Effect<never, never, TestConfig.TestConfig>
+export declare const testConfig: Effect<never, never, TestConfig>
 ```
 
 Added in v2.0.0
@@ -352,7 +352,7 @@ export declare const testConfigLayer: (params: {
   readonly retries: number
   readonly samples: number
   readonly shrinks: number
-}) => Layer.Layer<never, never, TestConfig.TestConfig>
+}) => Layer<never, never, TestConfig>
 ```
 
 Added in v2.0.0
@@ -366,8 +366,8 @@ specified workflow.
 
 ```ts
 export declare const testConfigWith: <R, E, A>(
-  f: (config: TestConfig.TestConfig) => Effect.Effect<R, E, A>
-) => Effect.Effect<R, E, A>
+  f: (config: TestConfig) => Effect<R, E, A>
+) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -382,8 +382,8 @@ annotations service.
 ```ts
 export declare const withAnnotations: ((
   annotations: Annotations.TestAnnotations
-) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
-  (<R, E, A>(effect: Effect.Effect<R, E, A>, annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>)
+) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
+  (<R, E, A>(effect: Effect<R, E, A>, annotations: Annotations.TestAnnotations) => Effect<R, E, A>)
 ```
 
 Added in v2.0.0
@@ -398,7 +398,7 @@ and restores it to its original value when the scope is closed.
 ```ts
 export declare const withAnnotationsScoped: (
   annotations: Annotations.TestAnnotations
-) => Effect.Effect<Scope.Scope, never, void>
+) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -413,8 +413,8 @@ live service.
 ```ts
 export declare const withLive: ((
   live: Live.TestLive
-) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
-  (<R, E, A>(effect: Effect.Effect<R, E, A>, live: Live.TestLive) => Effect.Effect<R, E, A>)
+) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
+  (<R, E, A>(effect: Effect<R, E, A>, live: Live.TestLive) => Effect<R, E, A>)
 ```
 
 Added in v2.0.0
@@ -427,7 +427,7 @@ restores it to its original value when the scope is closed.
 **Signature**
 
 ```ts
-export declare const withLiveScoped: (live: Live.TestLive) => Effect.Effect<Scope.Scope, never, void>
+export declare const withLiveScoped: (live: Live.TestLive) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -437,8 +437,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const withSize: ((size: number) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
-  (<R, E, A>(effect: Effect.Effect<R, E, A>, size: number) => Effect.Effect<R, E, A>)
+export declare const withSize: ((size: number) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
+  (<R, E, A>(effect: Effect<R, E, A>, size: number) => Effect<R, E, A>)
 ```
 
 Added in v2.0.0
@@ -453,8 +453,8 @@ sized service.
 ```ts
 export declare const withSized: ((
   sized: Sized.TestSized
-) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
-  (<R, E, A>(effect: Effect.Effect<R, E, A>, sized: Sized.TestSized) => Effect.Effect<R, E, A>)
+) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
+  (<R, E, A>(effect: Effect<R, E, A>, sized: Sized.TestSized) => Effect<R, E, A>)
 ```
 
 Added in v2.0.0
@@ -467,7 +467,7 @@ restores it to its original value when the scope is closed.
 **Signature**
 
 ```ts
-export declare const withSizedScoped: (sized: Sized.TestSized) => Effect.Effect<Scope.Scope, never, void>
+export declare const withSizedScoped: (sized: Sized.TestSized) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -481,9 +481,9 @@ config service.
 
 ```ts
 export declare const withTestConfig: ((
-  config: TestConfig.TestConfig
-) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
-  (<R, E, A>(effect: Effect.Effect<R, E, A>, config: TestConfig.TestConfig) => Effect.Effect<R, E, A>)
+  config: TestConfig
+) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
+  (<R, E, A>(effect: Effect<R, E, A>, config: TestConfig) => Effect<R, E, A>)
 ```
 
 Added in v2.0.0
@@ -496,7 +496,7 @@ restores it to its original value when the scope is closed.
 **Signature**
 
 ```ts
-export declare const withTestConfigScoped: (config: TestConfig.TestConfig) => Effect.Effect<Scope.Scope, never, void>
+export declare const withTestConfigScoped: (config: TestConfig) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0

@@ -1,10 +1,9 @@
-import * as Equal from "../Equal.js"
-import * as Dual from "../Function.js"
-import { identity, pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
-import type * as HM from "../HashMap.js"
+import { Equal } from "../Equal.js"
+import { dual, identity, pipe } from "../Function.js"
+import { Hash } from "../Hash.js"
+import type { HashMap as HM } from "../HashMap.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import { fromBitmap, hashFragment, toBitmap } from "./hashMap/bitwise.js"
@@ -32,14 +31,14 @@ interface VisitResult<K, V, A> {
 }
 
 /** @internal */
-export interface HashMapImpl<K, V> extends HM.HashMap<K, V> {
+export interface HashMapImpl<K, V> extends HM<K, V> {
   _editable: boolean
   _edit: number
   _root: Node.Node<K, V>
   _size: number
 }
 
-const HashMapProto: HM.HashMap<unknown, unknown> = {
+const HashMapProto: HM<unknown, unknown> = {
   [HashMapTypeId]: HashMapTypeId,
   [Symbol.iterator]<K, V>(this: HashMapImpl<K, V>): Iterator<[K, V]> {
     return new HashMapIterator(this, (k, v) => [k, v])
@@ -58,7 +57,7 @@ const HashMapProto: HM.HashMap<unknown, unknown> = {
       }
       for (const item of this) {
         const elem = pipe(
-          that as HM.HashMap<K, V>,
+          that as HM<K, V>,
           getHash(item[0], Hash.hash(item[0]))
         )
         if (Option.isNone(elem)) {
@@ -105,7 +104,7 @@ const makeImpl = <K, V>(
 }
 
 class HashMapIterator<K, V, T> implements IterableIterator<T> {
-  v: Option.Option<VisitResult<K, V, T>>
+  v: Option<VisitResult<K, V, T>>
 
   constructor(readonly map: HashMapImpl<K, V>, readonly f: TraversalFn<K, V, T>) {
     this.v = visitLazy(this.map._root, this.f, undefined)
@@ -125,7 +124,7 @@ class HashMapIterator<K, V, T> implements IterableIterator<T> {
   }
 }
 
-const applyCont = <K, V, A>(cont: Cont<K, V, A>): Option.Option<VisitResult<K, V, A>> =>
+const applyCont = <K, V, A>(cont: Cont<K, V, A>): Option<VisitResult<K, V, A>> =>
   cont
     ? visitLazyChildren(cont[0], cont[1], cont[2], cont[3], cont[4])
     : Option.none()
@@ -134,7 +133,7 @@ const visitLazy = <K, V, A>(
   node: Node.Node<K, V>,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A> = undefined
-): Option.Option<VisitResult<K, V, A>> => {
+): Option<VisitResult<K, V, A>> => {
   switch (node._tag) {
     case "LeafNode": {
       if (Option.isSome(node.value)) {
@@ -163,7 +162,7 @@ const visitLazyChildren = <K, V, A>(
   i: number,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A>
-): Option.Option<VisitResult<K, V, A>> => {
+): Option<VisitResult<K, V, A>> => {
   while (i < len) {
     const child = children[i++]
     if (child && !Node.isEmptyNode(child)) {
@@ -176,18 +175,18 @@ const visitLazyChildren = <K, V, A>(
 const _empty = makeImpl<never, never>(false, 0, new Node.EmptyNode(), 0)
 
 /** @internal */
-export const empty = <K = never, V = never>(): HM.HashMap<K, V> => _empty
+export const empty = <K = never, V = never>(): HM<K, V> => _empty
 
 /** @internal */
 export const make = <Entries extends ReadonlyArray<readonly [any, any]>>(
   ...entries: Entries
-): HM.HashMap<
+): HM<
   Entries[number] extends readonly [infer K, any] ? K : never,
   Entries[number] extends readonly [any, infer V] ? V : never
 > => fromIterable(entries)
 
 /** @internal */
-export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HM.HashMap<K, V> => {
+export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HM<K, V> => {
   const map = beginMutation(empty<K, V>())
   for (const entry of entries) {
     set(entry[0], entry[1])(map)
@@ -197,25 +196,24 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HM.HashM
 
 /** @internal */
 export const isHashMap: {
-  <K, V>(u: Iterable<readonly [K, V]>): u is HM.HashMap<K, V>
-  (u: unknown): u is HM.HashMap<unknown, unknown>
-} = (u: unknown): u is HM.HashMap<unknown, unknown> => hasProperty(u, HashMapTypeId)
+  <K, V>(u: Iterable<readonly [K, V]>): u is HM<K, V>
+  (u: unknown): u is HM<unknown, unknown>
+} = (u: unknown): u is HM<unknown, unknown> => hasProperty(u, HashMapTypeId)
 
 /** @internal */
-export const isEmpty = <K, V>(self: HM.HashMap<K, V>): boolean =>
-  self && Node.isEmptyNode((self as HashMapImpl<K, V>)._root)
+export const isEmpty = <K, V>(self: HM<K, V>): boolean => self && Node.isEmptyNode((self as HashMapImpl<K, V>)._root)
 
 /** @internal */
-export const get = Dual.dual<
-  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => Option.Option<V>,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => Option.Option<V>
+export const get = dual<
+  <K1>(key: K1) => <K, V>(self: HM<K, V>) => Option<V>,
+  <K, V, K1>(self: HM<K, V>, key: K1) => Option<V>
 >(2, (self, key) => getHash(self, key, Hash.hash(key)))
 
 /** @internal */
-export const getHash = Dual.dual<
-  <K1>(key: K1, hash: number) => <K, V>(self: HM.HashMap<K, V>) => Option.Option<V>,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => Option.Option<V>
->(3, <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => {
+export const getHash = dual<
+  <K1>(key: K1, hash: number) => <K, V>(self: HM<K, V>) => Option<V>,
+  <K, V, K1>(self: HM<K, V>, key: K1, hash: number) => Option<V>
+>(3, <K, V, K1>(self: HM<K, V>, key: K1, hash: number) => {
   let node = (self as HashMapImpl<K, V>)._root
   let shift = 0
   // eslint-disable-next-line no-constant-condition
@@ -261,9 +259,9 @@ export const getHash = Dual.dual<
 })
 
 /** @internal */
-export const unsafeGet = Dual.dual<
-  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => V,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => V
+export const unsafeGet = dual<
+  <K1>(key: K1) => <K, V>(self: HM<K, V>) => V,
+  <K, V, K1>(self: HM<K, V>, key: K1) => V
 >(2, (self, key) => {
   const element = getHash(self, key, Hash.hash(key))
   if (Option.isNone(element)) {
@@ -273,28 +271,28 @@ export const unsafeGet = Dual.dual<
 })
 
 /** @internal */
-export const has = Dual.dual<
-  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => boolean,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => boolean
+export const has = dual<
+  <K1>(key: K1) => <K, V>(self: HM<K, V>) => boolean,
+  <K, V, K1>(self: HM<K, V>, key: K1) => boolean
 >(2, (self, key) => Option.isSome(getHash(self, key, Hash.hash(key))))
 
 /** @internal */
-export const hasHash = Dual.dual<
-  <K1>(key: K1, hash: number) => <K, V>(self: HM.HashMap<K, V>) => boolean,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => boolean
+export const hasHash = dual<
+  <K1>(key: K1, hash: number) => <K, V>(self: HM<K, V>) => boolean,
+  <K, V, K1>(self: HM<K, V>, key: K1, hash: number) => boolean
 >(3, (self, key, hash) => Option.isSome(getHash(self, key, hash)))
 
 /** @internal */
-export const set = Dual.dual<
-  <K, V>(key: K, value: V) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, key: K, value: V) => HM.HashMap<K, V>
+export const set = dual<
+  <K, V>(key: K, value: V) => (self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, key: K, value: V) => HM<K, V>
 >(3, (self, key, value) => modifyAt(self, key, () => Option.some(value)))
 
 /** @internal */
-export const setTree = Dual.dual<
-  <K, V>(newRoot: Node.Node<K, V>, newSize: number) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, newRoot: Node.Node<K, V>, newSize: number) => HM.HashMap<K, V>
->(3, <K, V>(self: HM.HashMap<K, V>, newRoot: Node.Node<K, V>, newSize: number) => {
+export const setTree = dual<
+  <K, V>(newRoot: Node.Node<K, V>, newSize: number) => (self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, newRoot: Node.Node<K, V>, newSize: number) => HM<K, V>
+>(3, <K, V>(self: HM<K, V>, newRoot: Node.Node<K, V>, newSize: number) => {
   if ((self as HashMapImpl<K, V>)._editable) {
     ;(self as HashMapImpl<K, V>)._root = newRoot
     ;(self as HashMapImpl<K, V>)._size = newSize
@@ -311,22 +309,22 @@ export const setTree = Dual.dual<
 })
 
 /** @internal */
-export const keys = <K, V>(self: HM.HashMap<K, V>): IterableIterator<K> =>
+export const keys = <K, V>(self: HM<K, V>): IterableIterator<K> =>
   new HashMapIterator(self as HashMapImpl<K, V>, (key) => key)
 
 /** @internal */
-export const values = <K, V>(self: HM.HashMap<K, V>): IterableIterator<V> =>
+export const values = <K, V>(self: HM<K, V>): IterableIterator<V> =>
   new HashMapIterator(self as HashMapImpl<K, V>, (_, value) => value)
 
 /** @internal */
-export const entries = <K, V>(self: HM.HashMap<K, V>): IterableIterator<[K, V]> =>
+export const entries = <K, V>(self: HM<K, V>): IterableIterator<[K, V]> =>
   new HashMapIterator(self as HashMapImpl<K, V>, (key, value) => [key, value])
 
 /** @internal */
-export const size = <K, V>(self: HM.HashMap<K, V>): number => (self as HashMapImpl<K, V>)._size
+export const size = <K, V>(self: HM<K, V>): number => (self as HashMapImpl<K, V>)._size
 
 /** @internal */
-export const beginMutation = <K, V>(self: HM.HashMap<K, V>): HM.HashMap<K, V> =>
+export const beginMutation = <K, V>(self: HM<K, V>): HM<K, V> =>
   makeImpl(
     true,
     (self as HashMapImpl<K, V>)._edit + 1,
@@ -335,15 +333,15 @@ export const beginMutation = <K, V>(self: HM.HashMap<K, V>): HM.HashMap<K, V> =>
   )
 
 /** @internal */
-export const endMutation = <K, V>(self: HM.HashMap<K, V>): HM.HashMap<K, V> => {
+export const endMutation = <K, V>(self: HM<K, V>): HM<K, V> => {
   ;(self as HashMapImpl<K, V>)._editable = false
   return self
 }
 
 /** @internal */
-export const mutate = Dual.dual<
-  <K, V>(f: (self: HM.HashMap<K, V>) => void) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, f: (self: HM.HashMap<K, V>) => void) => HM.HashMap<K, V>
+export const mutate = dual<
+  <K, V>(f: (self: HM<K, V>) => void) => (self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, f: (self: HM<K, V>) => void) => HM<K, V>
 >(2, (self, f) => {
   const transient = beginMutation(self)
   f(transient)
@@ -351,16 +349,16 @@ export const mutate = Dual.dual<
 })
 
 /** @internal */
-export const modifyAt = Dual.dual<
-  <K, V>(key: K, f: HM.HashMap.UpdateFn<V>) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, key: K, f: HM.HashMap.UpdateFn<V>) => HM.HashMap<K, V>
+export const modifyAt = dual<
+  <K, V>(key: K, f: HM.UpdateFn<V>) => (self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, key: K, f: HM.UpdateFn<V>) => HM<K, V>
 >(3, (self, key, f) => modifyHash(self, key, Hash.hash(key), f))
 
 /** @internal */
-export const modifyHash = Dual.dual<
-  <K, V>(key: K, hash: number, f: HM.HashMap.UpdateFn<V>) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, key: K, hash: number, f: HM.HashMap.UpdateFn<V>) => HM.HashMap<K, V>
->(4, <K, V>(self: HM.HashMap<K, V>, key: K, hash: number, f: HM.HashMap.UpdateFn<V>) => {
+export const modifyHash = dual<
+  <K, V>(key: K, hash: number, f: HM.UpdateFn<V>) => (self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, key: K, hash: number, f: HM.UpdateFn<V>) => HM<K, V>
+>(4, <K, V>(self: HM<K, V>, key: K, hash: number, f: HM.UpdateFn<V>) => {
   const size = { value: (self as HashMapImpl<K, V>)._size }
   const newRoot = (self as HashMapImpl<K, V>)._root.modify(
     (self as HashMapImpl<K, V>)._editable ?
@@ -376,36 +374,36 @@ export const modifyHash = Dual.dual<
 })
 
 /** @internal */
-export const modify = Dual.dual<
-  <K, V>(key: K, f: (v: V) => V) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, key: K, f: (v: V) => V) => HM.HashMap<K, V>
+export const modify = dual<
+  <K, V>(key: K, f: (v: V) => V) => (self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, key: K, f: (v: V) => V) => HM<K, V>
 >(3, (self, key, f) => modifyAt(self, key, Option.map(f)))
 
 /** @internal */
-export const union = Dual.dual<
+export const union = dual<
   <K1, V1>(
-    that: HM.HashMap<K1, V1>
-  ) => <K0, V0>(self: HM.HashMap<K0, V0>) => HM.HashMap<K0 | K1, V0 | V1>,
+    that: HM<K1, V1>
+  ) => <K0, V0>(self: HM<K0, V0>) => HM<K0 | K1, V0 | V1>,
   <K0, V0, K1, V1>(
-    self: HM.HashMap<K0, V0>,
-    that: HM.HashMap<K1, V1>
-  ) => HM.HashMap<K0 | K1, V0 | V1>
->(2, <K0, V0, K1, V1>(self: HM.HashMap<K0, V0>, that: HM.HashMap<K1, V1>) => {
-  const result: HM.HashMap<K0 | K1, V0 | V1> = beginMutation(self)
+    self: HM<K0, V0>,
+    that: HM<K1, V1>
+  ) => HM<K0 | K1, V0 | V1>
+>(2, <K0, V0, K1, V1>(self: HM<K0, V0>, that: HM<K1, V1>) => {
+  const result: HM<K0 | K1, V0 | V1> = beginMutation(self)
   forEach(that, (v, k) => set(result, k, v))
   return endMutation(result)
 })
 
 /** @internal */
-export const remove = Dual.dual<
-  <K>(key: K) => <V>(self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, key: K) => HM.HashMap<K, V>
+export const remove = dual<
+  <K>(key: K) => <V>(self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, key: K) => HM<K, V>
 >(2, (self, key) => modifyAt(self, key, Option.none))
 
 /** @internal */
-export const removeMany = Dual.dual<
-  <K>(keys: Iterable<K>) => <V>(self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, keys: Iterable<K>) => HM.HashMap<K, V>
+export const removeMany = dual<
+  <K>(keys: Iterable<K>) => <V>(self: HM<K, V>) => HM<K, V>,
+  <K, V>(self: HM<K, V>, keys: Iterable<K>) => HM<K, V>
 >(2, (self, keys) =>
   mutate(self, (map) => {
     for (const key of keys) {
@@ -419,9 +417,9 @@ export const removeMany = Dual.dual<
  * @since 2.0.0
  * @category mapping
  */
-export const map = Dual.dual<
-  <A, V, K>(f: (value: V, key: K) => A) => (self: HM.HashMap<K, V>) => HM.HashMap<K, A>,
-  <K, V, A>(self: HM.HashMap<K, V>, f: (value: V, key: K) => A) => HM.HashMap<K, A>
+export const map = dual<
+  <A, V, K>(f: (value: V, key: K) => A) => (self: HM<K, V>) => HM<K, A>,
+  <K, V, A>(self: HM<K, V>, f: (value: V, key: K) => A) => HM<K, A>
 >(2, (self, f) =>
   reduce(
     self,
@@ -430,11 +428,11 @@ export const map = Dual.dual<
   ))
 
 /** @internal */
-export const flatMap = Dual.dual<
+export const flatMap = dual<
   <A, K, B>(
-    f: (value: A, key: K) => HM.HashMap<K, B>
-  ) => (self: HM.HashMap<K, A>) => HM.HashMap<K, B>,
-  <K, A, B>(self: HM.HashMap<K, A>, f: (value: A, key: K) => HM.HashMap<K, B>) => HM.HashMap<K, B>
+    f: (value: A, key: K) => HM<K, B>
+  ) => (self: HM<K, A>) => HM<K, B>,
+  <K, A, B>(self: HM<K, A>, f: (value: A, key: K) => HM<K, B>) => HM<K, B>
 >(
   2,
   (self, f) =>
@@ -446,16 +444,16 @@ export const flatMap = Dual.dual<
 )
 
 /** @internal */
-export const forEach = Dual.dual<
-  <V, K>(f: (value: V, key: K) => void) => (self: HM.HashMap<K, V>) => void,
-  <V, K>(self: HM.HashMap<K, V>, f: (value: V, key: K) => void) => void
+export const forEach = dual<
+  <V, K>(f: (value: V, key: K) => void) => (self: HM<K, V>) => void,
+  <V, K>(self: HM<K, V>, f: (value: V, key: K) => void) => void
 >(2, (self, f) => reduce(self, void 0 as void, (_, value, key) => f(value, key)))
 
 /** @internal */
-export const reduce = Dual.dual<
-  <Z, V, K>(zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => (self: HM.HashMap<K, V>) => Z,
-  <Z, V, K>(self: HM.HashMap<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => Z
->(3, <Z, V, K>(self: HM.HashMap<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => {
+export const reduce = dual<
+  <Z, V, K>(zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => (self: HM<K, V>) => Z,
+  <Z, V, K>(self: HM<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => Z
+>(3, <Z, V, K>(self: HM<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => {
   const root = (self as HashMapImpl<K, V>)._root
   if (root._tag === "LeafNode") {
     return Option.isSome(root.value) ? f(zero, root.value.value, root.key) : zero
@@ -483,16 +481,16 @@ export const reduce = Dual.dual<
 })
 
 /** @internal */
-export const filter = Dual.dual<
+export const filter = dual<
   {
-    <K, A, B extends A>(f: (a: A, k: K) => a is B): (self: HM.HashMap<K, A>) => HM.HashMap<K, B>
-    <K, A>(f: (a: A, k: K) => boolean): (self: HM.HashMap<K, A>) => HM.HashMap<K, A>
+    <K, A, B extends A>(f: (a: A, k: K) => a is B): (self: HM<K, A>) => HM<K, B>
+    <K, A>(f: (a: A, k: K) => boolean): (self: HM<K, A>) => HM<K, A>
   },
   {
-    <K, A, B extends A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => a is B): HM.HashMap<K, B>
-    <K, A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => boolean): HM.HashMap<K, A>
+    <K, A, B extends A>(self: HM<K, A>, f: (a: A, k: K) => a is B): HM<K, B>
+    <K, A>(self: HM<K, A>, f: (a: A, k: K) => boolean): HM<K, A>
   }
->(2, <K, A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => boolean) =>
+>(2, <K, A>(self: HM<K, A>, f: (a: A, k: K) => boolean) =>
   mutate(empty(), (map) => {
     for (const [k, a] of self) {
       if (f(a, k)) {
@@ -502,14 +500,14 @@ export const filter = Dual.dual<
   }))
 
 /** @internal */
-export const compact = <K, A>(self: HM.HashMap<K, Option.Option<A>>) => filterMap(self, identity)
+export const compact = <K, A>(self: HM<K, Option<A>>) => filterMap(self, identity)
 
 /** @internal */
-export const filterMap = Dual.dual<
+export const filterMap = dual<
   <A, K, B>(
-    f: (value: A, key: K) => Option.Option<B>
-  ) => (self: HM.HashMap<K, A>) => HM.HashMap<K, B>,
-  <K, A, B>(self: HM.HashMap<K, A>, f: (value: A, key: K) => Option.Option<B>) => HM.HashMap<K, B>
+    f: (value: A, key: K) => Option<B>
+  ) => (self: HM<K, A>) => HM<K, B>,
+  <K, A, B>(self: HM<K, A>, f: (value: A, key: K) => Option<B>) => HM<K, B>
 >(2, (self, f) =>
   mutate(empty(), (map) => {
     for (const [k, a] of self) {
@@ -522,11 +520,11 @@ export const filterMap = Dual.dual<
 
 /** @internal */
 export const findFirst: {
-  <K, A>(predicate: (k: K, a: A) => boolean): (self: HM.HashMap<K, A>) => Option.Option<[K, A]>
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]>
-} = Dual.dual(
+  <K, A>(predicate: (k: K, a: A) => boolean): (self: HM<K, A>) => Option<[K, A]>
+  <K, A>(self: HM<K, A>, predicate: (k: K, a: A) => boolean): Option<[K, A]>
+} = dual(
   2,
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]> => {
+  <K, A>(self: HM<K, A>, predicate: (k: K, a: A) => boolean): Option<[K, A]> => {
     for (const ka of self) {
       if (predicate(ka[0], ka[1])) {
         return Option.some(ka)

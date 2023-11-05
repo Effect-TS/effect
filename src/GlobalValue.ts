@@ -20,3 +20,5 @@ export const globalValue = <A>(id: unknown, compute: () => A): A => {
   }
   return globalStore.get(id)!
 }
+
+export * as GlobalValue from "./GlobalValue.js"

@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Effect } from "./Effect.js"
+import type { Exit } from "./Exit.js"
 import * as internal from "./internal/resource.js"
-import type * as Schedule from "./Schedule.js"
-import type * as Scope from "./Scope.js"
-import type * as ScopedRef from "./ScopedRef.js"
+import type { Schedule } from "./Schedule.js"
+import type { Scope } from "./Scope.js"
+import type { ScopedRef } from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
@@ -20,32 +20,36 @@ export const ResourceTypeId: unique symbol = internal.ResourceTypeId
  */
 export type ResourceTypeId = typeof ResourceTypeId
 
-/**
- * A `Resource` is a possibly resourceful value that is loaded into memory, and
- * which can be refreshed either manually or automatically.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Resource<E, A> extends Resource.Variance<E, A> {
-  /** @internal */
-  readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
-  /** @internal */
-  acquire(): Effect.Effect<Scope.Scope, E, A>
-}
+export * as Resource from "./Resource.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Resource {
+declare module "./Resource.js" {
   /**
+   * A `Resource` is a possibly resourceful value that is loaded into memory, and
+   * which can be refreshed either manually or automatically.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
-    readonly [ResourceTypeId]: {
-      _E: (_: never) => E
-      _A: (_: never) => A
+  export interface Resource<E, A> extends Resource.Variance<E, A> {
+    /** @internal */
+    readonly scopedRef: ScopedRef<Exit<E, A>>
+    /** @internal */
+    acquire(): Effect<Scope, E, A>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Resource {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E, A> {
+      readonly [ResourceTypeId]: {
+        _E: (_: never) => E
+        _A: (_: never) => A
+      }
     }
   }
 }
@@ -61,9 +65,9 @@ export declare namespace Resource {
  * @category constructors
  */
 export const auto: <R, E, A, R2, Out>(
-  acquire: Effect.Effect<R, E, A>,
-  policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect.Effect<Scope.Scope | R | R2, never, Resource<E, A>> = internal.auto
+  acquire: Effect<R, E, A>,
+  policy: Schedule<R2, unknown, Out>
+) => Effect<Scope | R | R2, never, Resource<E, A>> = internal.auto
 
 /**
  * Retrieves the current value stored in the cache.
@@ -71,7 +75,7 @@ export const auto: <R, E, A, R2, Out>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = internal.get
+export const get: <E, A>(self: Resource<E, A>) => Effect<never, E, A> = internal.get
 
 /**
  * Creates a new `Resource` value that must be manually refreshed by calling
@@ -84,8 +88,8 @@ export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = i
  * @category constructors
  */
 export const manual: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<Scope.Scope | R, never, Resource<E, A>> = internal.manual
+  acquire: Effect<R, E, A>
+) => Effect<Scope | R, never, Resource<E, A>> = internal.manual
 
 /**
  * Refreshes the cache. This method will not return until either the refresh
@@ -94,4 +98,4 @@ export const manual: <R, E, A>(
  * @since 2.0.0
  * @category utils
  */
-export const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, void> = internal.refresh
+export const refresh: <E, A>(self: Resource<E, A>) => Effect<never, E, void> = internal.refresh

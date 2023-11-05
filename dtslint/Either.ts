@@ -1,9 +1,9 @@
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { pipe } from "effect/Function"
 
-declare const esn: Either.Either<string, number>
-declare const esb: Either.Either<string, boolean>
-declare const eeb: Either.Either<Error, boolean>
+declare const esn: Either<string, number>
+declare const esb: Either<string, boolean>
+declare const eeb: Either<Error, boolean>
 
 // -------------------------------------------------------------------------------------
 // try
@@ -63,7 +63,7 @@ pipe({ a: esn, b: eeb }, Either.all)
 // all - array
 // -------------------------------------------------------------------------------------
 
-declare const eitherArray: Array<Either.Either<string, number>>
+declare const eitherArray: Array<Either<string, number>>
 
 // $ExpectType Either<string, number[]>
 Either.all(eitherArray)
@@ -75,7 +75,7 @@ pipe(eitherArray, Either.all)
 // all - record
 // -------------------------------------------------------------------------------------
 
-declare const eitherRecord: Record<string, Either.Either<string, number>>
+declare const eitherRecord: Record<string, Either<string, number>>
 
 // $ExpectType Either<string, { [x: string]: number; }>
 Either.all(eitherRecord)

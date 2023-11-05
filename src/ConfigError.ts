@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
+import type { Cause } from "./Cause.js"
 import * as internal from "./internal/configError.js"
 
 /**
@@ -16,37 +16,41 @@ export const ConfigErrorTypeId: unique symbol = internal.ConfigErrorTypeId
  */
 export type ConfigErrorTypeId = typeof ConfigErrorTypeId
 
-/**
- * The possible ways that loading configuration data may fail.
- *
- * @since 2.0.0
- * @category models
- */
-export type ConfigError =
-  | And
-  | Or
-  | InvalidData
-  | MissingData
-  | SourceUnavailable
-  | Unsupported
+export * as ConfigError from "./ConfigError.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ConfigError {
+declare module "./ConfigError.js" {
   /**
+   * The possible ways that loading configuration data may fail.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [ConfigErrorTypeId]: ConfigErrorTypeId
+  export type ConfigError =
+    | And
+    | Or
+    | InvalidData
+    | MissingData
+    | SourceUnavailable
+    | Unsupported
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ConfigError {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [ConfigErrorTypeId]: ConfigErrorTypeId
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Reducer<C, Z> = ConfigErrorReducer<C, Z>
   }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Reducer<C, Z> = ConfigErrorReducer<C, Z>
 }
 
 /**
@@ -62,7 +66,7 @@ export interface ConfigErrorReducer<C, Z> {
     context: C,
     path: Array<string>,
     message: string,
-    cause: Cause.Cause<unknown>
+    cause: Cause<unknown>
   ) => Z
   readonly unsupportedCase: (context: C, path: Array<string>, message: string) => Z
 }
@@ -115,7 +119,7 @@ export interface SourceUnavailable extends ConfigError.Proto {
   readonly _tag: "SourceUnavailable"
   readonly path: Array<string>
   readonly message: string
-  readonly cause: Cause.Cause<unknown>
+  readonly cause: Cause<unknown>
 }
 
 /**
@@ -169,7 +173,7 @@ export const InvalidData: (path: Array<string>, message: string, options?: Optio
 export const SourceUnavailable: (
   path: Array<string>,
   message: string,
-  cause: Cause.Cause<unknown>,
+  cause: Cause<unknown>,
   options?: Options
 ) => ConfigError = internal.SourceUnavailable
 

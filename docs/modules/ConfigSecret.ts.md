@@ -40,7 +40,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromChunk: (chunk: Chunk.Chunk<string>) => ConfigSecret
+export declare const fromChunk: (chunk: Chunk<string>) => ConfigSecret
 ```
 
 Added in v2.0.0
@@ -84,7 +84,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface ConfigSecret extends ConfigSecret.Proto, Equal.Equal {
+export interface ConfigSecret extends ConfigSecret.Proto, Equal {
   /** @internal */
   readonly raw: Array<number>
 }

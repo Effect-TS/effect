@@ -1,26 +1,30 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import { dual, pipe } from "./Function.js"
 import * as core from "./internal/core.js"
 import * as number from "./Number.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 
-/**
- * A `LogLevel` represents the log level associated with an individual logging
- * operation. Log levels are used both to describe the granularity (or
- * importance) of individual log statements, as well as to enable tuning
- * verbosity of log output.
- *
- * @since 2.0.0
- * @category model
- * @property ordinal - The priority of the log message. Larger values indicate higher priority.
- * @property label - A label associated with the log level.
- * @property syslog -The syslog severity level of the log level.
- */
-export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
+export * as LogLevel from "./LogLevel.js"
+
+declare module "./LogLevel.js" {
+  /**
+   * A `LogLevel` represents the log level associated with an individual logging
+   * operation. Log levels are used both to describe the granularity (or
+   * importance) of individual log statements, as well as to enable tuning
+   * verbosity of log output.
+   *
+   * @since 2.0.0
+   * @category model
+   * @property ordinal - The priority of the log message. Larger values indicate higher priority.
+   * @property label - A label associated with the log level.
+   * @property syslog -The syslog severity level of the log level.
+   */
+  export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
+}
 
 /**
  * @since 2.0.0
@@ -178,11 +182,11 @@ export const allLevels = core.allLogLevels
  * @category utils
  */
 export const locally: {
-  (self: LogLevel): <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>
-  <R, E, B>(use: Effect.Effect<R, E, B>, self: LogLevel): Effect.Effect<R, E, B>
+  (self: LogLevel): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(use: Effect<R, E, B>, self: LogLevel): Effect<R, E, B>
 } = dual<
-  (self: LogLevel) => <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>,
-  <R, E, B>(use: Effect.Effect<R, E, B>, self: LogLevel) => Effect.Effect<R, E, B>
+  (self: LogLevel) => <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>,
+  <R, E, B>(use: Effect<R, E, B>, self: LogLevel) => Effect<R, E, B>
 >(2, (use, self) => core.fiberRefLocally(use, core.currentLogLevel, self))
 
 /**

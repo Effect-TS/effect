@@ -55,7 +55,7 @@ Creates a new `SubscriptionRef` with the specified value.
 **Signature**
 
 ```ts
-export declare const make: <A>(value: A) => Effect.Effect<never, never, SubscriptionRef<A>>
+export declare const make: <A>(value: A) => Effect<never, never, SubscriptionRef<A>>
 ```
 
 Added in v2.0.0
@@ -67,7 +67,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const get: <A>(self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
+export declare const get: <A>(self: SubscriptionRef<A>) => Effect<never, never, A>
 ```
 
 Added in v2.0.0
@@ -84,16 +84,16 @@ receive the current value as well as all changes to the value.
 ```ts
 export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable {
   /** @internal */
-  readonly ref: Ref.Ref<A>
+  readonly ref: Ref<A>
   /** @internal */
-  readonly pubsub: PubSub.PubSub<A>
+  readonly pubsub: PubSub<A>
   /** @internal */
   readonly semaphore: Effect.Semaphore
   /**
    * A stream containing the current value of the `Ref` as well as all changes
    * to that value.
    */
-  readonly changes: Stream.Stream<never, never, A>
+  readonly changes: Stream<never, never, A>
 }
 ```
 
@@ -147,8 +147,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndSet: {
-  <A>(value: A): (self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: SubscriptionRef<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: SubscriptionRef<A>) => Effect<never, never, A>
+  <A>(self: SubscriptionRef<A>, value: A): Effect<never, never, A>
 }
 ```
 
@@ -160,8 +160,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdate: {
-  <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect<never, never, A>
+  <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -173,8 +173,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateEffect: {
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, A>
 }
 ```
 
@@ -186,8 +186,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: SubscriptionRef<A>) => Effect<never, never, A>
+  <A>(self: SubscriptionRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 
@@ -199,8 +199,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSomeEffect: {
-  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): (self: SubscriptionRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, A>
+  <A, R, E>(pf: (a: A) => Option<Effect<R, E, A>>): (self: SubscriptionRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SubscriptionRef<A>, pf: (a: A) => Option<Effect<R, E, A>>): Effect<R, E, A>
 }
 ```
 
@@ -212,8 +212,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modify: {
-  <A, B>(f: (a: A) => readonly [B, A]): (self: SubscriptionRef<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: SubscriptionRef<A>, f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]): (self: SubscriptionRef<A>) => Effect<never, never, B>
+  <A, B>(self: SubscriptionRef<A>, f: (a: A) => readonly [B, A]): Effect<never, never, B>
 }
 ```
 
@@ -225,8 +225,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modifyEffect: {
-  <A, R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>): (self: SubscriptionRef<A>) => Effect.Effect<R, E, B>
-  <A, R, E, B>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<R, E, readonly [B, A]>): Effect.Effect<R, E, B>
+  <A, R, E, B>(f: (a: A) => Effect<R, E, readonly [B, A]>): (self: SubscriptionRef<A>) => Effect<R, E, B>
+  <A, R, E, B>(self: SubscriptionRef<A>, f: (a: A) => Effect<R, E, readonly [B, A]>): Effect<R, E, B>
 }
 ```
 
@@ -240,13 +240,13 @@ Added in v2.0.0
 export declare const modifySome: {
   <B, A>(
     fallback: B,
-    pf: (a: A) => Option.Option<readonly [B, A]>
-  ): (self: SubscriptionRef<A>) => Effect.Effect<never, never, B>
+    pf: (a: A) => Option<readonly [B, A]>
+  ): (self: SubscriptionRef<A>) => Effect<never, never, B>
   <A, B>(
     self: SubscriptionRef<A>,
     fallback: B,
-    pf: (a: A) => Option.Option<readonly [B, A]>
-  ): Effect.Effect<never, never, B>
+    pf: (a: A) => Option<readonly [B, A]>
+  ): Effect<never, never, B>
 }
 ```
 
@@ -260,13 +260,13 @@ Added in v2.0.0
 export declare const modifySomeEffect: {
   <A, B, R, E>(
     fallback: B,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
-  ): (self: SubscriptionRef<A>) => Effect.Effect<R, E, B>
+    pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
+  ): (self: SubscriptionRef<A>) => Effect<R, E, B>
   <A, B, R, E>(
     self: SubscriptionRef<A>,
     fallback: B,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
-  ): Effect.Effect<R, E, B>
+    pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
+  ): Effect<R, E, B>
 }
 ```
 
@@ -278,8 +278,8 @@ Added in v2.0.0
 
 ```ts
 export declare const set: {
-  <A>(value: A): (self: SubscriptionRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: SubscriptionRef<A>, value: A): Effect.Effect<never, never, void>
+  <A>(value: A): (self: SubscriptionRef<A>) => Effect<never, never, void>
+  <A>(self: SubscriptionRef<A>, value: A): Effect<never, never, void>
 }
 ```
 
@@ -291,8 +291,8 @@ Added in v2.0.0
 
 ```ts
 export declare const setAndGet: {
-  <A>(value: A): (self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: SubscriptionRef<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: SubscriptionRef<A>) => Effect<never, never, A>
+  <A>(self: SubscriptionRef<A>, value: A): Effect<never, never, A>
 }
 ```
 
@@ -304,8 +304,8 @@ Added in v2.0.0
 
 ```ts
 export declare const update: {
-  <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect<never, never, void>
+  <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect<never, never, void>
 }
 ```
 
@@ -317,8 +317,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateAndGet: {
-  <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect<never, never, A>
+  <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -330,8 +330,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateAndGetEffect: {
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, A>
 }
 ```
 
@@ -343,8 +343,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateEffect: {
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect.Effect<R, E, void>
-  <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<R, E, A>): Effect.Effect<R, E, void>
+  <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect<R, E, void>
+  <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, void>
 }
 ```
 
@@ -356,8 +356,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: SubscriptionRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: SubscriptionRef<A>, f: (a: A) => Option.Option<A>): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => Option<A>): (self: SubscriptionRef<A>) => Effect<never, never, void>
+  <A>(self: SubscriptionRef<A>, f: (a: A) => Option<A>): Effect<never, never, void>
 }
 ```
 
@@ -369,8 +369,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: SubscriptionRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: SubscriptionRef<A>) => Effect<never, never, A>
+  <A>(self: SubscriptionRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 
@@ -382,8 +382,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGetEffect: {
-  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): (self: SubscriptionRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, A>
+  <A, R, E>(pf: (a: A) => Option<Effect<R, E, A>>): (self: SubscriptionRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SubscriptionRef<A>, pf: (a: A) => Option<Effect<R, E, A>>): Effect<R, E, A>
 }
 ```
 
@@ -396,9 +396,9 @@ Added in v2.0.0
 ```ts
 export declare const updateSomeEffect: {
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ): (self: SubscriptionRef<A>) => Effect.Effect<R, E, void>
-  <A, R, E>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, void>
+    pf: (a: A) => Option<Effect<R, E, A>>
+  ): (self: SubscriptionRef<A>) => Effect<R, E, void>
+  <A, R, E>(self: SubscriptionRef<A>, pf: (a: A) => Option<Effect<R, E, A>>): Effect<R, E, void>
 }
 ```
 

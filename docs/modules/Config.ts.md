@@ -114,7 +114,7 @@ Constructs a config for a sequence of values.
 **Signature**
 
 ```ts
-export declare const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk.Chunk<A>>
+export declare const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -150,7 +150,7 @@ Constructs a config for a sequence of values.
 **Signature**
 
 ```ts
-export declare const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap.HashMap<string, A>>
+export declare const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap<string, A>>
 ```
 
 Added in v2.0.0
@@ -162,7 +162,7 @@ Constructs a config for a sequence of values.
 **Signature**
 
 ```ts
-export declare const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet.HashSet<A>>
+export declare const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet<A>>
 ```
 
 Added in v2.0.0
@@ -186,7 +186,7 @@ Constructs a config for a `LogLevel` value.
 **Signature**
 
 ```ts
-export declare const logLevel: (name?: string | undefined) => Config<LogLevel.LogLevel>
+export declare const logLevel: (name?: string | undefined) => Config<LogLevel>
 ```
 
 Added in v2.0.0
@@ -212,7 +212,7 @@ Constructs a new primitive config.
 ```ts
 export declare const primitive: <A>(
   description: string,
-  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
+  parse: (text: string) => Either<ConfigError, A>
 ) => Config<A>
 ```
 
@@ -225,7 +225,7 @@ Constructs a config for a secret value.
 **Signature**
 
 ```ts
-export declare const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSecret>
+export declare const secret: (name?: string | undefined) => Config<ConfigSecret>
 ```
 
 Added in v2.0.0
@@ -369,7 +369,7 @@ Added in v2.0.0
 ```ts
 export interface Primitive<A> extends Config<A> {
   readonly description: string
-  parse(text: string): Either.Either<ConfigError.ConfigError, A>
+  parse(text: string): Either<ConfigError, A>
 }
 ```
 
@@ -454,8 +454,8 @@ function.
 
 ```ts
 export declare const mapOrFail: {
-  <A, B>(f: (a: A) => Either.Either<ConfigError.ConfigError, B>): (self: Config<A>) => Config<B>
-  <A, B>(self: Config<A>, f: (a: A) => Either.Either<ConfigError.ConfigError, B>): Config<B>
+  <A, B>(f: (a: A) => Either<ConfigError, B>): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => Either<ConfigError, B>): Config<B>
 }
 ```
 
@@ -485,7 +485,7 @@ data is missing from configuration, and `Some` otherwise.
 **Signature**
 
 ```ts
-export declare const option: <A>(self: Config<A>) => Config<Option.Option<A>>
+export declare const option: <A>(self: Config<A>) => Config<Option<A>>
 ```
 
 Added in v2.0.0
@@ -518,12 +518,12 @@ fails with an error satisfying the specified predicate.
 ```ts
 export declare const orElseIf: {
   <A2>(options: {
-    readonly if: Predicate<ConfigError.ConfigError>
+    readonly if: Predicate<ConfigError>
     readonly orElse: LazyArg<Config<A2>>
   }): <A>(self: Config<A>) => Config<A>
   <A, A2>(
     self: Config<A>,
-    options: { readonly if: Predicate<ConfigError.ConfigError>; readonly orElse: LazyArg<Config<A2>> }
+    options: { readonly if: Predicate<ConfigError>; readonly orElse: LazyArg<Config<A2>> }
   ): Config<A>
 }
 ```

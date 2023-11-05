@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as Dual from "./Function.js"
+import { dual } from "./Function.js"
 import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -15,17 +15,21 @@ const TypeId: unique symbol = Symbol.for("effect/MutableList") as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category model
- */
-export interface MutableList<A> extends Iterable<A>, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
+export * as MutableList from "./MutableList.js"
 
-  /** @internal */
-  head: LinkedListNode<A> | undefined
-  /** @internal */
-  tail: LinkedListNode<A> | undefined
+declare module "./MutableList.js" {
+  /**
+   * @since 2.0.0
+   * @category model
+   */
+  export interface MutableList<A> extends Iterable<A>, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+
+    /** @internal */
+    head: LinkedListNode<A> | undefined
+    /** @internal */
+    tail: LinkedListNode<A> | undefined
+  }
 }
 
 const MutableListProto: Omit<MutableList<unknown>, "head" | "tail"> = {
@@ -160,7 +164,7 @@ export const head = <A>(self: MutableList<A>): A | undefined => self.head === un
 export const forEach: {
   <A>(f: (element: A) => void): (self: MutableList<A>) => void
   <A>(self: MutableList<A>, f: (element: A) => void): void
-} = Dual.dual<
+} = dual<
   <A>(f: (element: A) => void) => (self: MutableList<A>) => void,
   <A>(self: MutableList<A>, f: (element: A) => void) => void
 >(2, (self, f) => {
@@ -192,7 +196,7 @@ export const reset = <A>(self: MutableList<A>): MutableList<A> => {
 export const append: {
   <A>(value: A): (self: MutableList<A>) => MutableList<A>
   <A>(self: MutableList<A>, value: A): MutableList<A>
-} = Dual.dual<
+} = dual<
   <A>(value: A) => (self: MutableList<A>) => MutableList<A>,
   <A>(self: MutableList<A>, value: A) => MutableList<A>
 >(2, <A>(self: MutableList<A>, value: A) => {
@@ -248,7 +252,7 @@ export const pop = <A>(self: MutableList<A>): A | undefined => {
 export const prepend: {
   <A>(value: A): (self: MutableList<A>) => MutableList<A>
   <A>(self: MutableList<A>, value: A): MutableList<A>
-} = Dual.dual<
+} = dual<
   <A>(value: A) => (self: MutableList<A>) => MutableList<A>,
   <A>(self: MutableList<A>, value: A) => MutableList<A>
 >(2, <A>(self: MutableList<A>, value: A) => {

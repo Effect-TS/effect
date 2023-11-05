@@ -47,10 +47,10 @@ provided schedule.
 export declare const auto: <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
-    readonly schedule: Schedule.Schedule<R, unknown, unknown>
+    readonly layer: Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly schedule: Schedule<R, unknown, unknown>
   }
-) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
+) => Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
 Added in v2.0.0
@@ -67,10 +67,10 @@ schedule, which is extracted from the input to the layer.
 export declare const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
-    readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
+    readonly layer: Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly scheduleFromConfig: (context: Context<In>) => Schedule<R, unknown, unknown>
   }
-) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
+) => Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
 Added in v2.0.0
@@ -85,8 +85,8 @@ of a static service.
 ```ts
 export declare const manual: <Out extends Context.Tag<any, any>, In, E>(
   tag: Out,
-  options: { readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>> }
-) => Layer.Layer<In, E, Reloadable<Context.Tag.Identifier<Out>>>
+  options: { readonly layer: Layer<In, E, Context.Tag.Identifier<Out>> }
+) => Layer<In, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
 Added in v2.0.0
@@ -100,7 +100,7 @@ Reloads the specified service.
 ```ts
 export declare const reload: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
 Added in v2.0.0
@@ -114,7 +114,7 @@ Forks the reload of the service in the background, ignoring any errors.
 ```ts
 export declare const reloadFork: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
 Added in v2.0.0
@@ -144,7 +144,7 @@ Retrieves the current version of the reloadable service.
 ```ts
 export declare const get: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>>
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>>
 ```
 
 Added in v2.0.0
@@ -163,11 +163,11 @@ export interface Reloadable<A> extends Reloadable.Variance<A> {
   /**
    * @internal
    */
-  readonly scopedRef: ScopedRef.ScopedRef<A>
+  readonly scopedRef: ScopedRef<A>
   /**
    * @internal
    */
-  reload(): Effect.Effect<never, unknown, void>
+  reload(): Effect<never, unknown, void>
 }
 ```
 

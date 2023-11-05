@@ -1,8 +1,8 @@
-import type * as Brand from "effect/Brand"
+import type { Brand } from "effect/Brand"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as RR from "effect/ReadonlyRecord"
+import { Option } from "effect/Option"
+import { ReadonlyRecord as RR } from "effect/ReadonlyRecord"
 
 declare const record: Record<string, number>
 declare const readonlyRecord: Readonly<Record<string, number>>
@@ -108,7 +108,7 @@ RR.toEntries(struct)
 // $ExpectType ["a" | "b" | "c", string | number | boolean][]
 RR.toEntries({ a: "a", b: 2, c: true })
 
-declare const brandedRecord: Record<string & Brand.Brand<"brandedString">, number>
+declare const brandedRecord: Record<string & Brand<"brandedString">, number>
 
 // should support brands
 // $ExpectType [string & Brand<"brandedString">, number][]

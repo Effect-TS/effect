@@ -60,17 +60,21 @@ type FilterIn<A> = A extends any ? typeSymbol extends keyof A ? A : never : neve
 
 type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : never
 
-/**
- * @since 2.0.0
- */
-export type Unify<A> = Values<
-  ExtractTypes<
-    (
-      & FilterIn<A>
-      & { [typeSymbol]: A }
-    )
-  >
-> extends infer Z ? Z | Exclude<A, Z> | FilterOut<A> : never
+export * as Unify from "./Unify.js"
+
+declare module "./Unify.js" {
+  /**
+   * @since 2.0.0
+   */
+  export type Unify<A> = Values<
+    ExtractTypes<
+      (
+        & FilterIn<A>
+        & { [typeSymbol]: A }
+      )
+    >
+  > extends infer Z ? Z | Exclude<A, Z> | FilterOut<A> : never
+}
 
 /**
  * @since 2.0.0

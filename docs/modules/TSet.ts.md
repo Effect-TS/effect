@@ -67,7 +67,7 @@ Makes an empty `TSet`.
 **Signature**
 
 ```ts
-export declare const empty: <A>() => STM.STM<never, never, TSet<A>>
+export declare const empty: <A>() => STM<never, never, TSet<A>>
 ```
 
 Added in v2.0.0
@@ -79,7 +79,7 @@ Makes a new `TSet` initialized with provided iterable.
 **Signature**
 
 ```ts
-export declare const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, TSet<A>>
+export declare const fromIterable: <A>(iterable: Iterable<A>) => STM<never, never, TSet<A>>
 ```
 
 Added in v2.0.0
@@ -93,7 +93,7 @@ Makes a new `TSet` that is initialized with specified values.
 ```ts
 export declare const make: <Elements extends any[]>(
   ...elements: Elements
-) => STM.STM<never, never, TSet<Elements[number]>>
+) => STM<never, never, TSet<Elements[number]>>
 ```
 
 Added in v2.0.0
@@ -107,7 +107,7 @@ Collects all elements into a `Chunk`.
 **Signature**
 
 ```ts
-export declare const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, A[]>
+export declare const toChunk: <A>(self: TSet<A>) => STM<never, never, A[]>
 ```
 
 Added in v2.0.0
@@ -119,7 +119,7 @@ Collects all elements into a `HashSet`.
 **Signature**
 
 ```ts
-export declare const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.HashSet<A>>
+export declare const toHashSet: <A>(self: TSet<A>) => STM<never, never, HashSet<A>>
 ```
 
 Added in v2.0.0
@@ -131,7 +131,7 @@ Collects all elements into a `ReadonlyArray`.
 **Signature**
 
 ```ts
-export declare const toReadonlyArray: <A>(self: TSet<A>) => STM.STM<never, never, readonly A[]>
+export declare const toReadonlyArray: <A>(self: TSet<A>) => STM<never, never, readonly A[]>
 ```
 
 Added in v2.0.0
@@ -143,7 +143,7 @@ Collects all elements into a `ReadonlySet`.
 **Signature**
 
 ```ts
-export declare const toReadonlySet: <A>(self: TSet<A>) => STM.STM<never, never, ReadonlySet<A>>
+export declare const toReadonlySet: <A>(self: TSet<A>) => STM<never, never, ReadonlySet<A>>
 ```
 
 Added in v2.0.0
@@ -158,8 +158,8 @@ Atomically performs transactional-effect for each element in set.
 
 ```ts
 export declare const forEach: {
-  <A, R, E>(f: (value: A) => STM.STM<R, E, void>): (self: TSet<A>) => STM.STM<R, E, void>
-  <A, R, E>(self: TSet<A>, f: (value: A) => STM.STM<R, E, void>): STM.STM<R, E, void>
+  <A, R, E>(f: (value: A) => STM<R, E, void>): (self: TSet<A>) => STM<R, E, void>
+  <A, R, E>(self: TSet<A>, f: (value: A) => STM<R, E, void>): STM<R, E, void>
 }
 ```
 
@@ -173,8 +173,8 @@ Tests whether or not set contains an element.
 
 ```ts
 export declare const has: {
-  <A>(value: A): (self: TSet<A>) => STM.STM<never, never, boolean>
-  <A>(self: TSet<A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): (self: TSet<A>) => STM<never, never, boolean>
+  <A>(self: TSet<A>, value: A): STM<never, never, boolean>
 }
 ```
 
@@ -190,8 +190,8 @@ Atomically folds using a pure function.
 
 ```ts
 export declare const reduce: {
-  <Z, A>(zero: Z, f: (accumulator: Z, value: A) => Z): (self: TSet<A>) => STM.STM<never, never, Z>
-  <Z, A>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => Z): STM.STM<never, never, Z>
+  <Z, A>(zero: Z, f: (accumulator: Z, value: A) => Z): (self: TSet<A>) => STM<never, never, Z>
+  <Z, A>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => Z): STM<never, never, Z>
 }
 ```
 
@@ -205,8 +205,8 @@ Atomically folds using a transactional function.
 
 ```ts
 export declare const reduceSTM: {
-  <Z, A, R, E>(zero: Z, f: (accumulator: Z, value: A) => STM.STM<R, E, Z>): (self: TSet<A>) => STM.STM<R, E, Z>
-  <Z, A, R, E>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
+  <Z, A, R, E>(zero: Z, f: (accumulator: Z, value: A) => STM<R, E, Z>): (self: TSet<A>) => STM<R, E, Z>
+  <Z, A, R, E>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => STM<R, E, Z>): STM<R, E, Z>
 }
 ```
 
@@ -221,7 +221,7 @@ Tests if the set is empty or not
 **Signature**
 
 ```ts
-export declare const isEmpty: <A>(self: TSet<A>) => STM.STM<never, never, boolean>
+export declare const isEmpty: <A>(self: TSet<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -233,7 +233,7 @@ Returns the set's cardinality.
 **Signature**
 
 ```ts
-export declare const size: <A>(self: TSet<A>) => STM.STM<never, never, number>
+export declare const size: <A>(self: TSet<A>) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -262,8 +262,8 @@ Stores new element in the set.
 
 ```ts
 export declare const add: {
-  <A>(value: A): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, value: A): STM<never, never, void>
 }
 ```
 
@@ -278,8 +278,8 @@ provided set.
 
 ```ts
 export declare const difference: {
-  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, other: TSet<A>): STM.STM<never, never, void>
+  <A>(other: TSet<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, other: TSet<A>): STM<never, never, void>
 }
 ```
 
@@ -294,8 +294,8 @@ provided set.
 
 ```ts
 export declare const intersection: {
-  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, other: TSet<A>): STM.STM<never, never, void>
+  <A>(other: TSet<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, other: TSet<A>): STM<never, never, void>
 }
 ```
 
@@ -309,8 +309,8 @@ Removes a single element from the set.
 
 ```ts
 export declare const remove: {
-  <A>(value: A): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, value: A): STM<never, never, void>
 }
 ```
 
@@ -324,8 +324,8 @@ Removes elements from the set.
 
 ```ts
 export declare const removeAll: {
-  <A>(iterable: Iterable<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, iterable: Iterable<A>): STM.STM<never, never, void>
+  <A>(iterable: Iterable<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, iterable: Iterable<A>): STM<never, never, void>
 }
 ```
 
@@ -339,8 +339,8 @@ Removes bindings matching predicate and returns the removed entries.
 
 ```ts
 export declare const removeIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, A[]>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, A[]>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, A[]>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, A[]>
 }
 ```
 
@@ -354,8 +354,8 @@ Removes elements matching predicate.
 
 ```ts
 export declare const removeIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, void>
 }
 ```
 
@@ -369,8 +369,8 @@ Retains bindings matching predicate and returns removed bindings.
 
 ```ts
 export declare const retainIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, A[]>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, A[]>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, A[]>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, A[]>
 }
 ```
 
@@ -384,8 +384,8 @@ Retains elements matching predicate.
 
 ```ts
 export declare const retainIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, void>
 }
 ```
 
@@ -399,8 +399,8 @@ Takes the first matching value, or retries until there is one.
 
 ```ts
 export declare const takeFirst: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, B>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, B>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM<never, never, B>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM<never, never, B>
 }
 ```
 
@@ -414,8 +414,8 @@ Takes the first matching value, or retries until there is one.
 
 ```ts
 export declare const takeFirstSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, B>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, B>
+  <A, R, E, B>(pf: (a: A) => STM<R, Option<E>, B>): (self: TSet<A>) => STM<R, E, B>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM<R, Option<E>, B>): STM<R, E, B>
 }
 ```
 
@@ -429,8 +429,8 @@ Takes all matching values, or retries until there is at least one.
 
 ```ts
 export declare const takeSome: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, [B, ...B[]]>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, [B, ...B[]]>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM<never, never, [B, ...B[]]>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM<never, never, [B, ...B[]]>
 }
 ```
 
@@ -444,8 +444,8 @@ Takes all matching values, or retries until there is at least one.
 
 ```ts
 export declare const takeSomeSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, [B, ...B[]]>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, [B, ...B[]]>
+  <A, R, E, B>(pf: (a: A) => STM<R, Option<E>, B>): (self: TSet<A>) => STM<R, E, [B, ...B[]]>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM<R, Option<E>, B>): STM<R, E, [B, ...B[]]>
 }
 ```
 
@@ -459,8 +459,8 @@ Atomically updates all elements using a pure function.
 
 ```ts
 export declare const transform: {
-  <A>(f: (a: A) => A): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, f: (a: A) => A): STM.STM<never, never, void>
+  <A>(f: (a: A) => A): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, f: (a: A) => A): STM<never, never, void>
 }
 ```
 
@@ -474,8 +474,8 @@ Atomically updates all elements using a transactional function.
 
 ```ts
 export declare const transformSTM: {
-  <A, R, E>(f: (a: A) => STM.STM<R, E, A>): (self: TSet<A>) => STM.STM<R, E, void>
-  <A, R, E>(self: TSet<A>, f: (a: A) => STM.STM<R, E, A>): STM.STM<R, E, void>
+  <A, R, E>(f: (a: A) => STM<R, E, A>): (self: TSet<A>) => STM<R, E, void>
+  <A, R, E>(self: TSet<A>, f: (a: A) => STM<R, E, A>): STM<R, E, void>
 }
 ```
 
@@ -490,8 +490,8 @@ set.
 
 ```ts
 export declare const union: {
-  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, other: TSet<A>): STM.STM<never, never, void>
+  <A>(other: TSet<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, other: TSet<A>): STM<never, never, void>
 }
 ```
 

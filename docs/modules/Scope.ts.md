@@ -50,8 +50,8 @@ If an ExecutionStrategy is not provided `sequential` will be used.
 
 ```ts
 export declare const make: (
-  executionStrategy?: ExecutionStrategy.ExecutionStrategy
-) => Effect.Effect<never, never, CloseableScope>
+  executionStrategy?: ExecutionStrategy
+) => Effect<never, never, CloseableScope>
 ```
 
 Added in v2.0.0
@@ -80,8 +80,8 @@ have been added to the scope.
 ```ts
 export declare const close: (
   self: CloseableScope,
-  exit: Exit.Exit<unknown, unknown>
-) => Effect.Effect<never, never, void>
+  exit: Exit<unknown, unknown>
+) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -97,8 +97,8 @@ interruption.
 
 ```ts
 export declare const use: {
-  (scope: CloseableScope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: CloseableScope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: CloseableScope): <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, scope: CloseableScope): Effect<Exclude<R, Scope>, E, A>
 }
 ```
 
@@ -117,7 +117,7 @@ export interface CloseableScope extends Scope, Pipeable {
   /**
    * @internal
    */
-  readonly close: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+  readonly close: (exit: Exit<unknown, unknown>) => Effect<never, never, void>
 }
 ```
 
@@ -130,15 +130,15 @@ Added in v2.0.0
 ```ts
 export interface Scope extends Pipeable {
   readonly [ScopeTypeId]: ScopeTypeId
-  readonly strategy: ExecutionStrategy.ExecutionStrategy
+  readonly strategy: ExecutionStrategy
   /**
    * @internal
    */
-  readonly fork: (strategy: ExecutionStrategy.ExecutionStrategy) => Effect.Effect<never, never, Scope.Closeable>
+  readonly fork: (strategy: ExecutionStrategy) => Effect<never, never, Scope.Closeable>
   /**
    * @internal
    */
-  readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect.Effect<never, never, void>
+  readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect<never, never, void>
 }
 ```
 
@@ -207,7 +207,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+export type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -222,8 +222,8 @@ the scope is closed.
 ```ts
 export declare const addFinalizer: (
   self: Scope,
-  finalizer: Effect.Effect<never, never, unknown>
-) => Effect.Effect<never, never, void>
+  finalizer: Effect<never, never, unknown>
+) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -236,7 +236,7 @@ depend on the `Exit` value that the scope is closed with.
 **Signature**
 
 ```ts
-export declare const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<never, never, void>
+export declare const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -252,8 +252,8 @@ larger scope.
 
 ```ts
 export declare const extend: {
-  (scope: Scope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: Scope): <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, scope: Scope): Effect<Exclude<R, Scope>, E, A>
 }
 ```
 
@@ -269,8 +269,8 @@ automatically be closed when this scope is closed.
 ```ts
 export declare const fork: (
   self: Scope,
-  strategy: ExecutionStrategy.ExecutionStrategy
-) => Effect.Effect<never, never, CloseableScope>
+  strategy: ExecutionStrategy
+) => Effect<never, never, CloseableScope>
 ```
 
 Added in v2.0.0

@@ -2,22 +2,26 @@
  * @since 2.0.0
  */
 
-import type * as Differ from "./Differ.js"
+import type { Differ } from "./Differ.js"
 import * as circular from "./internal/layer/circular.js"
 import * as internal from "./internal/runtimeFlags.js"
-import type * as Layer from "./Layer.js"
-import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch.js"
+import type { Layer } from "./Layer.js"
+import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
 
-/**
- * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of
- * the Effect runtime system. They are exposed to application-level code because
- * they affect the behavior and performance of application code.
- *
- * @since 2.0.0
- * @category models
- */
-export type RuntimeFlags = number & {
-  readonly RuntimeFlags: unique symbol
+export * as RuntimeFlags from "./RuntimeFlags.js"
+
+declare module "./RuntimeFlags.js" {
+  /**
+   * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of
+   * the Effect runtime system. They are exposed to application-level code because
+   * they affect the behavior and performance of application code.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export type RuntimeFlags = number & {
+    readonly RuntimeFlags: unique symbol
+  }
 }
 
 /**
@@ -108,8 +112,8 @@ export const cooperativeYielding: (self: RuntimeFlags) => boolean = internal.coo
  * @category diffing
  */
 export const diff: {
-  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch.RuntimeFlagsPatch
-  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch.RuntimeFlagsPatch
+  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch
+  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch
 } = internal.diff
 
 /**
@@ -118,7 +122,7 @@ export const diff: {
  * @since 2.0.0
  * @category utils
  */
-export const differ: Differ.Differ<RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsPatch> = internal.differ
+export const differ: Differ<RuntimeFlags, RuntimeFlagsPatch> = internal.differ
 
 /**
  * Disables the specified `RuntimeFlag`.
@@ -146,31 +150,31 @@ export const disableAll: {
  * @since 2.0.0
  * @category context
  */
-export const disableCooperativeYielding: Layer.Layer<never, never, never> = circular.disableCooperativeYielding
+export const disableCooperativeYielding: Layer<never, never, never> = circular.disableCooperativeYielding
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableInterruption: Layer.Layer<never, never, never> = circular.disableInterruption
+export const disableInterruption: Layer<never, never, never> = circular.disableInterruption
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableOpSupervision: Layer.Layer<never, never, never> = circular.disableOpSupervision
+export const disableOpSupervision: Layer<never, never, never> = circular.disableOpSupervision
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableRuntimeMetrics: Layer.Layer<never, never, never> = circular.disableRuntimeMetrics
+export const disableRuntimeMetrics: Layer<never, never, never> = circular.disableRuntimeMetrics
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const disableWindDown: Layer.Layer<never, never, never> = circular.disableWindDown
+export const disableWindDown: Layer<never, never, never> = circular.disableWindDown
 
 /**
  * Enables the specified `RuntimeFlag`.
@@ -198,31 +202,31 @@ export const enableAll: {
  * @since 2.0.0
  * @category context
  */
-export const enableCooperativeYielding: Layer.Layer<never, never, never> = circular.enableCooperativeYielding
+export const enableCooperativeYielding: Layer<never, never, never> = circular.enableCooperativeYielding
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableInterruption: Layer.Layer<never, never, never> = circular.enableInterruption
+export const enableInterruption: Layer<never, never, never> = circular.enableInterruption
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableOpSupervision: Layer.Layer<never, never, never> = circular.enableOpSupervision
+export const enableOpSupervision: Layer<never, never, never> = circular.enableOpSupervision
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableRuntimeMetrics: Layer.Layer<never, never, never> = circular.enableRuntimeMetrics
+export const enableRuntimeMetrics: Layer<never, never, never> = circular.enableRuntimeMetrics
 
 /**
  * @since 2.0.0
  * @category context
  */
-export const enableWindDown: Layer.Layer<never, never, never> = circular.enableWindDown
+export const enableWindDown: Layer<never, never, never> = circular.enableWindDown
 
 /**
  * Returns true only if the `Interruption` flag is **enabled** and the
@@ -297,8 +301,8 @@ export const opSupervision: (self: RuntimeFlags) => boolean = internal.opSupervi
  * @category utils
  */
 export const patch: {
-  (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): (self: RuntimeFlags) => RuntimeFlags
-  (self: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch): RuntimeFlags
+  (patch: RuntimeFlagsPatch): (self: RuntimeFlags) => RuntimeFlags
+  (self: RuntimeFlags, patch: RuntimeFlagsPatch): RuntimeFlags
 } = internal.patch
 
 /**

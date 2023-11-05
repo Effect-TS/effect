@@ -2,14 +2,18 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/schedule/decision.js"
-import type * as Interval from "./ScheduleInterval.js"
-import type * as Intervals from "./ScheduleIntervals.js"
+import type { Interval } from "./ScheduleInterval.js"
+import type { ScheduleIntervals } from "./ScheduleIntervals.js"
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type ScheduleDecision = Continue | Done
+export * as ScheduleDecision from "./ScheduleDecision.js"
+
+declare module "./ScheduleDecision.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type ScheduleDecision = Continue | Done
+}
 
 /**
  * @since 2.0.0
@@ -17,7 +21,7 @@ export type ScheduleDecision = Continue | Done
  */
 export interface Continue {
   readonly _tag: "Continue"
-  readonly intervals: Intervals.Intervals
+  readonly intervals: ScheduleIntervals
 }
 
 /**
@@ -41,7 +45,7 @@ export {
  * @since 2.0.0
  * @category constructors
  */
-export const continueWith: (interval: Interval.Interval) => ScheduleDecision = internal.continueWith
+export const continueWith: (interval: Interval) => ScheduleDecision = internal.continueWith
 
 /**
  * @since 2.0.0

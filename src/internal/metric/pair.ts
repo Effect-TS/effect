@@ -1,7 +1,7 @@
-import type * as MetricKey from "../../MetricKey.js"
-import type * as MetricKeyType from "../../MetricKeyType.js"
-import type * as MetricPair from "../../MetricPair.js"
-import type * as MetricState from "../../MetricState.js"
+import type { MetricKey } from "../../MetricKey.js"
+import type { MetricKeyType } from "../../MetricKeyType.js"
+import type { MetricPair } from "../../MetricPair.js"
+import type { MetricState } from "../../MetricState.js"
 import { pipeArguments } from "../../Pipeable.js"
 
 /** @internal */
@@ -18,10 +18,10 @@ const metricPairVariance = {
 }
 
 /** @internal */
-export const make = <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>
-): MetricPair.MetricPair.Untyped => {
+export const make = <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState<MetricKeyType.OutType<Type>>
+): MetricPair.Untyped => {
   return {
     [MetricPairTypeId]: metricPairVariance,
     metricKey,
@@ -33,10 +33,10 @@ export const make = <Type extends MetricKeyType.MetricKeyType<any, any>>(
 }
 
 /** @internal */
-export const unsafeMake = <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState.Untyped
-): MetricPair.MetricPair.Untyped => {
+export const unsafeMake = <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState.Untyped
+): MetricPair.Untyped => {
   return {
     [MetricPairTypeId]: metricPairVariance,
     metricKey,

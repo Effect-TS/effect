@@ -42,7 +42,7 @@ Added in v2.0.0
 ```ts
 export interface Data {
   readonly instant: number
-  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  readonly sleeps: Chunk<readonly [number, Deferred<never, void>]>
 }
 ```
 
@@ -72,11 +72,11 @@ run in order.
 For example, here is how we can test `Effect.timeout` using `TestClock`:
 
 ```ts
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as TestClock from "effect/TestClock"
-import * as Option from "effect/Option"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Fiber } from "effect/Fiber"
+import { TestClock } from "effect/TestClock"
+import { Option } from "effect/Option"
 
 Effect.gen(function* () {
   const fiber = yield* pipe(Effect.sleep(Duration.minutes(5)), Effect.timeout(Duration.minutes(1)), Effect.fork)
@@ -97,12 +97,12 @@ expected effects have been performed.
 **Signature**
 
 ```ts
-export interface TestClock extends Clock.Clock {
-  adjust(duration: Duration.DurationInput): Effect.Effect<never, never, void>
-  adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  save(): Effect.Effect<never, never, Effect.Effect<never, never, void>>
-  setTime(time: number): Effect.Effect<never, never, void>
-  sleeps(): Effect.Effect<never, never, Chunk.Chunk<number>>
+export interface TestClock extends Clock {
+  adjust(duration: Duration.DurationInput): Effect<never, never, void>
+  adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  save(): Effect<never, never, Effect<never, never, void>>
+  setTime(time: number): Effect<never, never, void>
+  sleeps(): Effect<never, never, Chunk<number>>
 }
 ```
 
@@ -117,7 +117,7 @@ the new time in order.
 **Signature**
 
 ```ts
-export declare const adjust: (durationInput: Duration.DurationInput) => Effect.Effect<never, never, void>
+export declare const adjust: (durationInput: Duration.DurationInput) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -129,8 +129,8 @@ Added in v2.0.0
 ```ts
 export declare const adjustWith: ((
   duration: Duration.DurationInput
-) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
-  (<R, E, A>(effect: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, A>)
+) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
+  (<R, E, A>(effect: Effect<R, E, A>, duration: Duration.DurationInput) => Effect<R, E, A>)
 ```
 
 Added in v2.0.0
@@ -143,7 +143,7 @@ milliseconds.
 **Signature**
 
 ```ts
-export declare const currentTimeMillis: Effect.Effect<never, never, number>
+export declare const currentTimeMillis: Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -153,7 +153,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
+export declare const defaultTestClock: Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
 ```
 
 Added in v2.0.0
@@ -163,7 +163,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const live: (data: Data) => Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
+export declare const live: (data: Data) => Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
 ```
 
 Added in v2.0.0
@@ -175,7 +175,7 @@ Added in v2.0.0
 ```ts
 export declare const makeData: (
   instant: number,
-  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  sleeps: Chunk<readonly [number, Deferred<never, void>]>
 ) => Data
 ```
 
@@ -190,7 +190,7 @@ saved state.
 **Signature**
 
 ```ts
-export declare const save: () => Effect.Effect<never, never, Effect.Effect<never, never, void>>
+export declare const save: () => Effect<never, never, Effect<never, never, void>>
 ```
 
 Added in v2.0.0
@@ -204,7 +204,7 @@ the new time in order.
 **Signature**
 
 ```ts
-export declare const setTime: (instant: number) => Effect.Effect<never, never, void>
+export declare const setTime: (instant: number) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -218,7 +218,7 @@ on or after the duration, the fiber will automatically be resumed.
 **Signature**
 
 ```ts
-export declare const sleep: (durationInput: Duration.DurationInput) => Effect.Effect<never, never, void>
+export declare const sleep: (durationInput: Duration.DurationInput) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -231,7 +231,7 @@ times that effects are scheduled to run.
 **Signature**
 
 ```ts
-export declare const sleeps: () => Effect.Effect<never, never, Chunk.Chunk<number>>
+export declare const sleeps: () => Effect<never, never, Chunk<number>>
 ```
 
 Added in v2.0.0
@@ -243,7 +243,7 @@ Retrieves the `TestClock` service for this test.
 **Signature**
 
 ```ts
-export declare const testClock: () => Effect.Effect<never, never, TestClock>
+export declare const testClock: () => Effect<never, never, TestClock>
 ```
 
 Added in v2.0.0
@@ -257,8 +257,8 @@ specified workflow.
 
 ```ts
 export declare const testClockWith: <R, E, A>(
-  f: (testClock: TestClock) => Effect.Effect<R, E, A>
-) => Effect.Effect<R, E, A>
+  f: (testClock: TestClock) => Effect<R, E, A>
+) => Effect<R, E, A>
 ```
 
 Added in v2.0.0

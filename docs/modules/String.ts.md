@@ -181,8 +181,8 @@ Added in v2.0.0
 
 ```ts
 export declare const at: {
-  (index: number): (self: string) => Option.Option<string>
-  (self: string, index: number): Option.Option<string>
+  (index: number): (self: string) => Option<string>
+  (self: string, index: number): Option<string>
 }
 ```
 
@@ -190,7 +190,7 @@ export declare const at: {
 
 ```ts
 import * as S from "effect/String"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe("abc", S.at(1)), Option.some("b"))
@@ -224,8 +224,8 @@ Added in v2.0.0
 
 ```ts
 export declare const charAt: {
-  (index: number): (self: string) => Option.Option<string>
-  (self: string, index: number): Option.Option<string>
+  (index: number): (self: string) => Option<string>
+  (self: string, index: number): Option<string>
 }
 ```
 
@@ -233,7 +233,7 @@ export declare const charAt: {
 
 ```ts
 import * as S from "effect/String"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe("abc", S.charAt(1)), Option.some("b"))
@@ -248,8 +248,8 @@ Added in v2.0.0
 
 ```ts
 export declare const charCodeAt: {
-  (index: number): (self: string) => Option.Option<number>
-  (self: string, index: number): Option.Option<number>
+  (index: number): (self: string) => Option<number>
+  (self: string, index: number): Option<number>
 }
 ```
 
@@ -257,7 +257,7 @@ export declare const charCodeAt: {
 
 ```ts
 import * as S from "effect/String"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe("abc", S.charCodeAt(1)), Option.some(98))
@@ -272,8 +272,8 @@ Added in v2.0.0
 
 ```ts
 export declare const codePointAt: {
-  (index: number): (self: string) => Option.Option<number>
-  (self: string, index: number): Option.Option<number>
+  (index: number): (self: string) => Option<number>
+  (self: string, index: number): Option<number>
 }
 ```
 
@@ -281,7 +281,7 @@ export declare const codePointAt: {
 
 ```ts
 import * as S from "effect/String"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe("abc", S.codePointAt(1)), Option.some(98))
@@ -344,14 +344,14 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const indexOf: (searchString: string) => (self: string) => Option.Option<number>
+export declare const indexOf: (searchString: string) => (self: string) => Option<number>
 ```
 
 **Example**
 
 ```ts
 import * as S from "effect/String"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe("abbbc", S.indexOf("b")), Option.some(1))
@@ -397,14 +397,14 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const lastIndexOf: (searchString: string) => (self: string) => Option.Option<number>
+export declare const lastIndexOf: (searchString: string) => (self: string) => Option<number>
 ```
 
 **Example**
 
 ```ts
 import * as S from "effect/String"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe("abbbc", S.lastIndexOf("b")), Option.some(3))
@@ -455,7 +455,7 @@ export declare const localeCompare: (
   that: string,
   locales?: Array<string>,
   options?: Intl.CollatorOptions
-) => (self: string) => Ordering.Ordering
+) => (self: string) => Ordering
 ```
 
 **Example**
@@ -478,7 +478,7 @@ It is the `pipe`-able version of the native `match` method.
 **Signature**
 
 ```ts
-export declare const match: (regexp: RegExp | string) => (self: string) => Option.Option<RegExpMatchArray>
+export declare const match: (regexp: RegExp | string) => (self: string) => Option<RegExpMatchArray>
 ```
 
 Added in v2.0.0
@@ -623,8 +623,8 @@ Added in v2.0.0
 
 ```ts
 export declare const search: {
-  (regexp: RegExp | string): (self: string) => Option.Option<number>
-  (self: string, regexp: RegExp | string): Option.Option<number>
+  (regexp: RegExp | string): (self: string) => Option<number>
+  (self: string, regexp: RegExp | string): Option<number>
 }
 ```
 
@@ -632,7 +632,7 @@ export declare const search: {
 
 ```ts
 import * as S from "effect/String"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe("ababb", S.search("b")), Option.some(1))

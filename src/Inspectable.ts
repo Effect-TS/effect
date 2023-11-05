@@ -16,14 +16,18 @@ export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
  */
 export type NodeInspectSymbol = typeof NodeInspectSymbol
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Inspectable {
-  readonly toString: () => string
-  readonly toJSON: () => unknown
-  readonly [NodeInspectSymbol]: () => unknown
+export * as Inspectable from "./Inspectable.js"
+
+declare module "./Inspectable.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Inspectable {
+    readonly toString: () => string
+    readonly toJSON: () => unknown
+    readonly [NodeInspectSymbol]: () => unknown
+  }
 }
 
 /**

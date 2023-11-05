@@ -8,12 +8,16 @@
  */
 export declare const nonEmpty: unique symbol
 
-/**
- * @category model
- * @since 2.0.0
- */
-export interface NonEmptyIterable<A> extends Iterable<A> {
-  readonly [nonEmpty]: A
+export * as NonEmptyIterable from "./NonEmptyIterable.js"
+
+declare module "./NonEmptyIterable.js" {
+  /**
+   * @category model
+   * @since 2.0.0
+   */
+  export interface NonEmptyIterable<A> extends Iterable<A> {
+    readonly [nonEmpty]: A
+  }
 }
 
 /**

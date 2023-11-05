@@ -1,6 +1,6 @@
 import { deepStrictEqual, double } from "effect-test/util"
-import * as Function from "effect/Function"
-import * as String from "effect/String"
+import { Function } from "effect/Function"
+import { String } from "effect/String"
 import { assert, describe, expect, it } from "vitest"
 
 const f = (n: number): number => n + 1

@@ -1,17 +1,17 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Chunk } from "effect/Chunk"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { constVoid, identity, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as Stream from "effect/Stream"
-import * as TestClock from "effect/TestClock"
-import * as TestEnvironment from "effect/TestContext"
+import { Option } from "effect/Option"
+import { Ref } from "effect/Ref"
+import { Schedule } from "effect/Schedule"
+import { Stream } from "effect/Stream"
+import { TestClock } from "effect/TestClock"
+import { TestContext } from "effect/TestContext"
 import fc from "fast-check"
 import { assert, describe } from "vitest"
 
@@ -189,7 +189,7 @@ describe.concurrent("Stream", () => {
         const stream = Stream.repeatEffectWithSchedule(effect, schedule)
         return yield* $(
           Stream.runCollect(stream),
-          Effect.provide(TestEnvironment.TestContext)
+          Effect.provide(TestContext)
         )
       })
       const result = await Effect.runPromise(effect)

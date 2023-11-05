@@ -1,7 +1,7 @@
-import * as Option from "../../Option.js"
-import type * as RBT from "../../RedBlackTree.js"
+import { Option } from "../../Option.js"
+import type { RedBlackTree as RBT } from "../../RedBlackTree.js"
 import type { RedBlackTreeImpl } from "../redBlackTree.js"
-import type * as Node from "./node.js"
+import type { Node } from "./node.js"
 
 /** @internal */
 export const Direction = {
@@ -14,8 +14,8 @@ export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
   private count = 0
 
   constructor(
-    readonly self: RBT.RedBlackTree<K, V>,
-    readonly stack: Array<Node.Node<K, V>>,
+    readonly self: RBT<K, V>,
+    readonly stack: Array<Node<K, V>>,
     readonly direction: RBT.RedBlackTree.Direction
   ) {}
 
@@ -61,7 +61,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
   /**
    * Returns the key
    */
-  get key(): Option.Option<K> {
+  get key(): Option<K> {
     if (this.stack.length > 0) {
       return Option.some(this.stack[this.stack.length - 1]!.key)
     }
@@ -71,7 +71,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
   /**
    * Returns the value
    */
-  get value(): Option.Option<V> {
+  get value(): Option<V> {
     if (this.stack.length > 0) {
       return Option.some(this.stack[this.stack.length - 1]!.value)
     }
@@ -81,7 +81,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
   /**
    * Returns the key
    */
-  get entry(): Option.Option<[K, V]> {
+  get entry(): Option<[K, V]> {
     // TODO: this is ReadonlyArray.last
     if (this.stack.length > 0) {
       const node = this.stack[this.stack.length - 1]!
@@ -124,7 +124,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
     if (stack.length === 0) {
       return
     }
-    let n: Node.Node<K, V> | undefined = stack[stack.length - 1]!
+    let n: Node<K, V> | undefined = stack[stack.length - 1]!
     if (n.right != null) {
       n = n.right
       while (n != null) {
@@ -167,7 +167,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
     if (stack.length === 0) {
       return
     }
-    let n: Node.Node<K, V> | undefined = stack[stack.length - 1]
+    let n: Node<K, V> | undefined = stack[stack.length - 1]
     if (n != null && n.left != null) {
       n = n.left
       while (n != null) {

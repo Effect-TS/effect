@@ -1,8 +1,8 @@
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import type * as Order from "effect/Order"
-import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import { Option } from "effect/Option"
+import type { Order } from "effect/Order"
+import { Predicate } from "effect/Predicate"
+import { ReadonlyArray } from "effect/ReadonlyArray"
 
 declare const nonEmptyReadonlyNumbers: ReadonlyArray.NonEmptyReadonlyArray<number>
 declare const nonEmptyNumbers: ReadonlyArray.NonEmptyArray<number>
@@ -179,7 +179,7 @@ ReadonlyArray.prependAllNonEmpty(nonEmptyReadonlyNumbersOrStrings)(numbersOrStri
 // sort
 // -------------------------------------------------------------------------------------
 
-declare const ordera: Order.Order<{ readonly a: string }>
+declare const ordera: Order<{ readonly a: string }>
 interface AB {
   readonly a: string
   readonly b: number

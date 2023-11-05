@@ -1,17 +1,17 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Context from "effect/Context"
+import { Cause } from "effect/Cause"
+import { Context } from "effect/Context"
 import { seconds } from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberRef from "effect/FiberRef"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
+import { FiberRef } from "effect/FiberRef"
 import * as timeout from "effect/internal/timeout"
-import * as Layer from "effect/Layer"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Request from "effect/Request"
-import * as Resolver from "effect/RequestResolver"
-import * as TestClock from "effect/TestClock"
+import { Layer } from "effect/Layer"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Request } from "effect/Request"
+import { RequestResolver as Resolver } from "effect/RequestResolver"
+import { TestClock } from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
 import { describe, expect } from "vitest"
 
@@ -36,26 +36,26 @@ export const userNames: ReadonlyMap<number, string> = new Map(
 
 export type UserRequest = GetAllIds | GetNameById
 
-export interface GetAllIds extends Request.Request<never, ReadonlyArray<number>> {
+export interface GetAllIds extends Request<never, ReadonlyArray<number>> {
   readonly _tag: "GetAllIds"
 }
 
 export const GetAllIds = Request.tagged<GetAllIds>("GetAllIds")
 
-export interface GetNameById extends Request.Request<string, string> {
+export interface GetNameById extends Request<string, string> {
   readonly _tag: "GetNameById"
   readonly id: number
 }
 
 export const GetNameById = Request.tagged<GetNameById>("GetNameById")
 
-const delay = <R, E, A>(self: Effect.Effect<R, E, A>) =>
+const delay = <R, E, A>(self: Effect<R, E, A>) =>
   Effect.zipRight(
     Effect.promise(() => new Promise((r) => timeout.set(() => r(0), 0))),
     self
   )
 
-const counted = <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
+const counted = <R, E, A>(self: Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
 
 const UserResolver = Resolver.makeBatched((requests: Array<UserRequest>) =>
   Effect.flatMap(Requests, (r) => {
@@ -92,7 +92,7 @@ export const print = (request: UserRequest): string => {
   }
 }
 
-const processRequest = (request: UserRequest): Effect.Effect<never, never, void> => {
+const processRequest = (request: UserRequest): Effect<never, never, void> => {
   switch (request._tag) {
     case "GetAllIds": {
       return Request.complete(request, Exit.succeed(userIds))

@@ -1,8 +1,8 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
+import { Cause } from "effect/Cause"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
 import { assert, describe } from "vitest"
 
@@ -16,7 +16,7 @@ const sum = (n: number): number => {
 describe.concurrent("Effect", () => {
   it.effect("sync - effect", () =>
     Effect.gen(function*($) {
-      const sumEffect = (n: number): Effect.Effect<never, unknown, number> => {
+      const sumEffect = (n: number): Effect<never, unknown, number> => {
         if (n < 0) {
           return Effect.sync(() => 0)
         }

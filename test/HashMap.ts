@@ -1,13 +1,13 @@
 import { deepStrictEqual } from "effect-test/util"
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HM from "effect/HashMap"
-import * as Option from "effect/Option"
+import { Hash } from "effect/Hash"
+import { HashMap as HM } from "effect/HashMap"
+import { Option } from "effect/Option"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
-class Key implements Equal.Equal {
+class Key implements Equal {
   constructor(readonly n: number) {}
 
   [Hash.symbol](): number {
@@ -19,7 +19,7 @@ class Key implements Equal.Equal {
   }
 }
 
-class Value implements Equal.Equal {
+class Value implements Equal {
   constructor(readonly s: string) {}
 
   [Hash.symbol](): number {
@@ -262,7 +262,7 @@ describe.concurrent("HashMap", () => {
     deepStrictEqual(
       HM.get(key(0))(pipe(
         map,
-        HM.modifyAt(key(0), (): Option.Option<Value> => Option.none())
+        HM.modifyAt(key(0), (): Option<Value> => Option.none())
       )),
       Option.none()
     )

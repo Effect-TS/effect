@@ -59,7 +59,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags
+export declare const defaultRuntimeFlags: RuntimeFlags
 ```
 
 Added in v2.0.0
@@ -70,9 +70,9 @@ Added in v2.0.0
 
 ```ts
 export declare const make: <R>(options: {
-  readonly context: Context.Context<R>
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-  readonly fiberRefs: FiberRefs.FiberRefs
+  readonly context: Context<R>
+  readonly runtimeFlags: RuntimeFlags
+  readonly fiberRefs: FiberRefs
 }) => Runtime<R>
 ```
 
@@ -104,9 +104,9 @@ program.
 export declare const runCallback: <R>(
   runtime: Runtime<R>
 ) => <E, A>(
-  effect: Effect.Effect<R, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
-) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void
+  effect: Effect<R, E, A>,
+  onExit?: ((exit: Exit<E, A>) => void) | undefined
+) => (fiberId?: FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void
 ```
 
 Added in v2.0.0
@@ -121,7 +121,7 @@ Scheduler if not provided
 ```ts
 export declare const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
+) => <E, A>(self: Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
 ```
 
 Added in v2.0.0
@@ -138,7 +138,7 @@ program.
 **Signature**
 
 ```ts
-export declare const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<A>
+export declare const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Promise<A>
 ```
 
 Added in v2.0.0
@@ -156,7 +156,7 @@ program.
 ```ts
 export declare const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>>
+) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit<E, A>>
 ```
 
 Added in v2.0.0
@@ -171,7 +171,7 @@ program.
 **Signature**
 
 ```ts
-export declare const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => A
+export declare const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => A
 ```
 
 Added in v2.0.0
@@ -186,7 +186,7 @@ program.
 **Signature**
 
 ```ts
-export declare const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Exit.Exit<E, A>
+export declare const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit<E, A>
 ```
 
 Added in v2.0.0
@@ -246,7 +246,7 @@ Added in v2.0.0
 
 ```ts
 export interface Cancel<E, A> {
-  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void): void
+  (fiberId?: FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
 ```
 
@@ -272,7 +272,7 @@ Added in v2.0.0
 ```ts
 export interface RunForkOptions {
   scheduler?: Scheduler
-  updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  updateRefs?: (refs: FiberRefs, fiberId: FiberId.Runtime) => FiberRefs
 }
 ```
 
@@ -287,15 +287,15 @@ export interface Runtime<R> extends Pipeable {
   /**
    * The context used as initial for forks
    */
-  readonly context: Context.Context<R>
+  readonly context: Context<R>
   /**
    * The runtime flags used as initial for forks
    */
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
+  readonly runtimeFlags: RuntimeFlags
   /**
    * The fiber references used as initial for forks
    */
-  readonly fiberRefs: FiberRefs.FiberRefs
+  readonly fiberRefs: FiberRefs
 }
 ```
 

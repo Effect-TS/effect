@@ -1,5 +1,5 @@
 import { pipe } from "effect/Function"
-import * as Predicate from "effect/Predicate"
+import { Predicate } from "effect/Predicate"
 
 declare const u: unknown
 declare const anys: Array<any>
@@ -211,8 +211,8 @@ Predicate.compose(Predicate.isString, (
 // and
 // -------------------------------------------------------------------------------------
 
-declare const isPositive: Predicate.Predicate<number>
-declare const isLessThan2: Predicate.Predicate<number>
+declare const isPositive: Predicate<number>
+declare const isLessThan2: Predicate<number>
 
 // $ExpectType Predicate<number>
 pipe(isPositive, Predicate.and(isLessThan2))

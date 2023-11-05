@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
-import type * as FiberId from "./FiberId.js"
-import type * as FiberRef from "./FiberRef.js"
-import type * as HashSet from "./HashSet.js"
+import type { Effect } from "./Effect.js"
+import type { FiberId } from "./FiberId.js"
+import type { FiberRef } from "./FiberRef.js"
+import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/fiberRefs.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Arr from "./ReadonlyArray.js"
+import type { ReadonlyArray as Arr } from "./ReadonlyArray.js"
 
 /**
  * @since 2.0.0
@@ -22,23 +22,27 @@ export const FiberRefsSym: unique symbol = internal.FiberRefsSym
  */
 export type FiberRefsSym = typeof FiberRefsSym
 
-/**
- * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
- *
- * This allows safely propagating `FiberRef` values across fiber boundaries, for
- * example between an asynchronous producer and consumer.
- *
- * @since 2.0.0
- * @category models
- */
-export interface FiberRefs extends Pipeable {
-  readonly [FiberRefsSym]: FiberRefsSym
-  readonly locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+export * as FiberRefs from "./FiberRefs.js"
+
+declare module "./FiberRefs.js" {
+  /**
+   * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
+   *
+   * This allows safely propagating `FiberRef` values across fiber boundaries, for
+   * example between an asynchronous producer and consumer.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface FiberRefs extends Pipeable {
+    readonly [FiberRefsSym]: FiberRefsSym
+    readonly locals: Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  }
 }
 
 const delete_: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => FiberRefs
-  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): FiberRefs
+  <A>(fiberRef: FiberRef<A>): (self: FiberRefs) => FiberRefs
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>): FiberRefs
 } = internal.delete_
 
 export {
@@ -57,7 +61,7 @@ export {
  * @since 2.0.0
  * @category getters
  */
-export const fiberRefs: (self: FiberRefs) => HashSet.HashSet<FiberRef.FiberRef<any>> = internal.fiberRefs
+export const fiberRefs: (self: FiberRefs) => HashSet<FiberRef<any>> = internal.fiberRefs
 
 /**
  * Forks this collection of fiber refs as the specified child fiber id. This
@@ -80,8 +84,8 @@ export const forkAs: {
  * @category getters
  */
 export const get: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => Option.Option<A>
-  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): Option.Option<A>
+  <A>(fiberRef: FiberRef<A>): (self: FiberRefs) => Option<A>
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>): Option<A>
 } = internal.get
 
 /**
@@ -92,8 +96,8 @@ export const get: {
  * @category getters
  */
 export const getOrDefault: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => A
-  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): A
+  <A>(fiberRef: FiberRef<A>): (self: FiberRefs) => A
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>): A
 } = internal.getOrDefault
 
 /**
@@ -115,7 +119,7 @@ export const joinAs: {
  * @since 2.0.0
  * @category utils
  */
-export const setAll: (self: FiberRefs) => Effect.Effect<never, never, void> = internal.setAll
+export const setAll: (self: FiberRefs) => Effect<never, never, void> = internal.setAll
 
 /**
  * Updates the value of the specified `FiberRef` using the provided `FiberId`
@@ -127,7 +131,7 @@ export const updatedAs: {
   <A>(
     options: {
       readonly fiberId: FiberId.Runtime
-      readonly fiberRef: FiberRef.FiberRef<A>
+      readonly fiberRef: FiberRef<A>
       readonly value: A
     }
   ): (self: FiberRefs) => FiberRefs
@@ -135,7 +139,7 @@ export const updatedAs: {
     self: FiberRefs,
     options: {
       readonly fiberId: FiberId.Runtime
-      readonly fiberRef: FiberRef.FiberRef<A>
+      readonly fiberRef: FiberRef<A>
       readonly value: A
     }
   ): FiberRefs
@@ -148,7 +152,7 @@ export const updatedAs: {
  * @category unsafe
  */
 export const unsafeMake: (
-  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  fiberRefLocals: Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
 ) => FiberRefs = internal.unsafeMake
 
 /**

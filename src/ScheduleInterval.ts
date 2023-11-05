@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration.js"
+import type { Duration } from "./Duration.js"
 import * as internal from "./internal/schedule/interval.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -17,17 +17,21 @@ export const IntervalTypeId: unique symbol = internal.IntervalTypeId
  */
 export type IntervalTypeId = typeof IntervalTypeId
 
-/**
- * An `Interval` represents an interval of time. Intervals can encompass all
- * time, or no time at all.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Interval {
-  readonly [IntervalTypeId]: IntervalTypeId
-  readonly startMillis: number
-  readonly endMillis: number
+export * as Interval from "./ScheduleInterval.js"
+
+declare module "./ScheduleInterval.js" {
+  /**
+   * An `Interval` represents an interval of time. ScheduleIntervals can encompass all
+   * time, or no time at all.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Interval {
+    readonly [IntervalTypeId]: IntervalTypeId
+    readonly startMillis: number
+    readonly endMillis: number
+  }
 }
 
 /**
@@ -117,7 +121,7 @@ export const intersect: {
  * @since 2.0.0
  * @category getters
  */
-export const size: (self: Interval) => Duration.Duration = internal.size
+export const size: (self: Interval) => Duration = internal.size
 
 /**
  * Computes a new `Interval` which is the union of this `Interval` and that
@@ -128,8 +132,8 @@ export const size: (self: Interval) => Duration.Duration = internal.size
  * @category utils
  */
 export const union: {
-  (that: Interval): (self: Interval) => Option.Option<Interval>
-  (self: Interval, that: Interval): Option.Option<Interval>
+  (that: Interval): (self: Interval) => Option<Interval>
+  (self: Interval, that: Interval): Option<Interval>
 } = internal.union
 
 /**

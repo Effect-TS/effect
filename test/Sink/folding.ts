@@ -1,11 +1,11 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
 import { absurd, constTrue, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Ref } from "effect/Ref"
+import { Sink } from "effect/Sink"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {
@@ -63,11 +63,11 @@ describe.concurrent("Sink", () => {
 
   it.effect("foldEffect - short circuits", () =>
     Effect.gen(function*($) {
-      const empty: Stream.Stream<never, never, number> = Stream.empty
+      const empty: Stream<never, never, number> = Stream.empty
       const single = Stream.make(1)
       const double = Stream.make(1, 2)
       const failed = Stream.fail("Ouch")
-      const run = <E>(stream: Stream.Stream<never, E, number>) =>
+      const run = <E>(stream: Stream<never, E, number>) =>
         pipe(
           Ref.make(Chunk.empty<number>()),
           Effect.flatMap((ref) =>
@@ -235,7 +235,7 @@ describe.concurrent("Sink", () => {
               Sink.collectAll<number>(),
               Sink.map((chunk) => [Array.from(chunk), err] as const)
             ),
-          onSuccess: (_) => absurd<Sink.Sink<never, string, number, never, readonly [Array<number>, string]>>(_)
+          onSuccess: (_) => absurd<Sink<never, string, number, never, readonly [Array<number>, string]>>(_)
         })
       )
       const result = yield* $(

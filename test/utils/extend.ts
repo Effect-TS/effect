@@ -1,12 +1,12 @@
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
-import * as Schedule from "effect/Schedule"
-import type * as Scope from "effect/Scope"
-import * as TestEnvironment from "effect/TestContext"
-import type * as TestServices from "effect/TestServices"
+import { Layer } from "effect/Layer"
+import { Logger } from "effect/Logger"
+import { Schedule } from "effect/Schedule"
+import type { Scope } from "effect/Scope"
+import { TestContext } from "effect/TestContext"
+import type { TestServices } from "effect/TestServices"
 import type { TestAPI } from "vitest"
 import * as V from "vitest"
 
@@ -14,12 +14,12 @@ export type API = TestAPI<{}>
 
 export const it: API = V.it
 
-const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestEnvironment.TestContext)
+const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestContext)
 
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: () => Effect.Effect<TestServices.TestServices, E, A>,
+    self: () => Effect<TestServices, E, A>,
     timeout: number | V.TestOptions = 5_000
   ) => {
     return it(
@@ -36,7 +36,7 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestServices.TestServices, E, A>,
+      self: () => Effect<TestServices, E, A>,
       timeout = 5_000
     ) => {
       return it.skip(
@@ -52,7 +52,7 @@ export const effect = (() => {
     },
     only: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestServices.TestServices, E, A>,
+      self: () => Effect<TestServices, E, A>,
       timeout = 5_000
     ) => {
       return it.only(
@@ -71,7 +71,7 @@ export const effect = (() => {
 
 export const live = <E, A>(
   name: string,
-  self: () => Effect.Effect<never, E, A>,
+  self: () => Effect<never, E, A>,
   timeout = 5_000
 ) => {
   return it(
@@ -86,8 +86,8 @@ export const live = <E, A>(
 }
 
 export const flakyTest = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
-  timeout: Duration.Duration = Duration.seconds(30)
+  self: Effect<R, E, A>,
+  timeout: Duration = Duration.seconds(30)
 ) => {
   return pipe(
     Effect.catchAllDefect(self, Effect.fail),
@@ -104,7 +104,7 @@ export const flakyTest = <R, E, A>(
 
 export const scoped = <E, A>(
   name: string,
-  self: () => Effect.Effect<Scope.Scope | TestServices.TestServices, E, A>,
+  self: () => Effect<Scope | TestServices, E, A>,
   timeout = 5_000
 ) => {
   return it(
@@ -122,7 +122,7 @@ export const scoped = <E, A>(
 
 export const scopedLive = <E, A>(
   name: string,
-  self: () => Effect.Effect<Scope.Scope, E, A>,
+  self: () => Effect<Scope, E, A>,
   timeout = 5_000
 ) => {
   return it(

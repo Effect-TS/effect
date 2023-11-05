@@ -1,43 +1,47 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context.js"
+import type { Context } from "./Context.js"
 import type { FiberRef } from "./FiberRef.js"
 import * as _RequestBlock from "./internal/blockedRequests.js"
 import * as core from "./internal/core.js"
 import * as _dataSource from "./internal/dataSource.js"
-import type * as Request from "./Request.js"
-import type * as RequestResolver from "./RequestResolver.js"
+import type { Request } from "./Request.js"
+import type { RequestResolver } from "./RequestResolver.js"
 
-/**
- * `RequestBlock` captures a collection of blocked requests as a data
- * structure. By doing this the library is able to preserve information about
- * which requests must be performed sequentially and which can be performed in
- * parallel, allowing for maximum possible batching and pipelining while
- * preserving ordering guarantees.
- *
- * @since 2.0.0
- * @category models
- */
-export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
+export * as RequestBlock from "./RequestBlock.js"
 
-/**
- * @since 2.0.0
- * @category models
- */
-export declare namespace RequestBlock {
+declare module "./RequestBlock.js" {
+  /**
+   * `RequestBlock` captures a collection of blocked requests as a data
+   * structure. By doing this the library is able to preserve information about
+   * which requests must be performed sequentially and which can be performed in
+   * parallel, allowing for maximum possible batching and pipelining while
+   * preserving ordering guarantees.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
+
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Reducer<R, Z> {
-    readonly emptyCase: () => Z
-    readonly parCase: (left: Z, right: Z) => Z
-    readonly singleCase: (
-      dataSource: RequestResolver.RequestResolver<unknown, R>,
-      blockedRequest: Request.Entry<unknown>
-    ) => Z
-    readonly seqCase: (left: Z, right: Z) => Z
+  export namespace RequestBlock {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Reducer<R, Z> {
+      readonly emptyCase: () => Z
+      readonly parCase: (left: Z, right: Z) => Z
+      readonly singleCase: (
+        dataSource: RequestResolver<unknown, R>,
+        blockedRequest: Request.Entry<unknown>
+      ) => Z
+      readonly seqCase: (left: Z, right: Z) => Z
+    }
   }
 }
 
@@ -75,7 +79,7 @@ export interface Seq<R> {
  */
 export interface Single<R> {
   readonly _tag: "Single"
-  readonly dataSource: RequestResolver.RequestResolver<unknown, R>
+  readonly dataSource: RequestResolver<unknown, R>
   readonly blockedRequest: Request.Entry<unknown>
 }
 
@@ -84,7 +88,7 @@ export interface Single<R> {
  * @category constructors
  */
 export const single: <R, A>(
-  dataSource: RequestResolver.RequestResolver<A, R>,
+  dataSource: RequestResolver<A, R>,
   blockedRequest: Request.Entry<A>
 ) => RequestBlock<R> = _RequestBlock.single
 
@@ -100,7 +104,7 @@ export const empty: RequestBlock<never> = _RequestBlock.empty
  */
 export const mapRequestResolvers: <R, A, R2>(
   self: RequestBlock<R>,
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
+  f: (dataSource: RequestResolver<A, R>) => RequestResolver<A, R2>
 ) => RequestBlock<R | R2> = _RequestBlock.mapRequestResolvers
 
 /**
@@ -131,11 +135,11 @@ export const sequential: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) 
  */
 export const mapInputContext = <R0, R>(
   self: RequestBlock<R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
+  f: (context: Context<R0>) => Context<R>
 ): RequestBlock<R0> => reduce(self, MapInputContextReducer(f))
 
 const MapInputContextReducer = <R0, R>(
-  f: (context: Context.Context<R0>) => Context.Context<R>
+  f: (context: Context<R0>) => Context<R>
 ): RequestBlock.Reducer<R, RequestBlock<R0>> => ({
   emptyCase: () => empty,
   parCase: (left, right) => parallel(left, right),

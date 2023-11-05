@@ -1,9 +1,13 @@
-import type * as TRef from "../../../TRef.js"
-import * as Entry from "./entry.js"
-import type * as TxnId from "./txnId.js"
+import type { TRef } from "../../../TRef.js"
+import { Entry } from "./entry.js"
+import type { TxnId } from "./txnId.js"
 
-/** @internal */
-export type Journal = Map<TRef.TRef<unknown>, Entry.Entry>
+export * as Journal from "./journal.js"
+
+declare module "./journal.js" {
+  /** @internal */
+  export type Journal = Map<TRef<unknown>, Entry>
+}
 
 /** @internal */
 export type Todo = () => unknown
@@ -57,7 +61,7 @@ export const analyzeJournal = (journal: Journal): JournalAnalysis => {
 
 /** @internal */
 export const prepareResetJournal = (journal: Journal): () => void => {
-  const saved: Journal = new Map<TRef.TRef<unknown>, Entry.Entry>()
+  const saved: Journal = new Map<TRef<unknown>, Entry>()
   for (const entry of journal) {
     saved.set(entry[0], Entry.copy(entry[1]))
   }
@@ -70,8 +74,8 @@ export const prepareResetJournal = (journal: Journal): () => void => {
 }
 
 /** @internal */
-export const collectTodos = (journal: Journal): Map<TxnId.TxnId, Todo> => {
-  const allTodos: Map<TxnId.TxnId, Todo> = new Map()
+export const collectTodos = (journal: Journal): Map<TxnId, Todo> => {
+  const allTodos: Map<TxnId, Todo> = new Map()
   for (const [, entry] of journal) {
     for (const todo of entry.ref.todos) {
       allTodos.set(todo[0], todo[1])
@@ -82,7 +86,7 @@ export const collectTodos = (journal: Journal): Map<TxnId.TxnId, Todo> => {
 }
 
 /** @internal */
-export const execTodos = (todos: Map<TxnId.TxnId, Todo>) => {
+export const execTodos = (todos: Map<TxnId, Todo>) => {
   const todosSorted = Array.from(todos.entries()).sort((x, y) => x[0] - y[0])
   for (const [_, todo] of todosSorted) {
     todo()
@@ -91,7 +95,7 @@ export const execTodos = (todos: Map<TxnId.TxnId, Todo>) => {
 
 /** @internal */
 export const addTodo = (
-  txnId: TxnId.TxnId,
+  txnId: TxnId,
   journal: Journal,
   todoEffect: Todo
 ): boolean => {

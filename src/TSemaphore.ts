@@ -2,11 +2,11 @@
  * @since 2.0.0
  */
 
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import * as internal from "./internal/stm/tSemaphore.js"
-import type * as Scope from "./Scope.js"
-import type * as STM from "./STM.js"
-import type * as TRef from "./TRef.js"
+import type { Scope } from "./Scope.js"
+import type { STM } from "./STM.js"
+import type { TRef } from "./TRef.js"
 
 /**
  * @since 2.0.0
@@ -20,30 +20,34 @@ export const TSemaphoreTypeId: unique symbol = internal.TSemaphoreTypeId
  */
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TSemaphore extends TSemaphore.Proto {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TSemaphore {
-  /** @internal */
-  readonly permits: TRef.TRef<number>
-}
+export * as TSemaphore from "./TSemaphore.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace TSemaphore {
+declare module "./TSemaphore.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [TSemaphoreTypeId]: TSemaphoreTypeId
+  export interface TSemaphore extends TSemaphore.Proto {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TSemaphore {
+    /** @internal */
+    readonly permits: TRef<number>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TSemaphore {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [TSemaphoreTypeId]: TSemaphoreTypeId
+    }
   }
 }
 
@@ -51,42 +55,42 @@ export declare namespace TSemaphore {
  * @since 2.0.0
  * @category mutations
  */
-export const acquire: (self: TSemaphore) => STM.STM<never, never, void> = internal.acquire
+export const acquire: (self: TSemaphore) => STM<never, never, void> = internal.acquire
 
 /**
  * @since 2.0.0
  * @category mutations
  */
 export const acquireN: {
-  (n: number): (self: TSemaphore) => STM.STM<never, never, void>
-  (self: TSemaphore, n: number): STM.STM<never, never, void>
+  (n: number): (self: TSemaphore) => STM<never, never, void>
+  (self: TSemaphore, n: number): STM<never, never, void>
 } = internal.acquireN
 
 /**
  * @since 2.0.0
  * @category getters
  */
-export const available: (self: TSemaphore) => STM.STM<never, never, number> = internal.available
+export const available: (self: TSemaphore) => STM<never, never, number> = internal.available
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const make: (permits: number) => STM.STM<never, never, TSemaphore> = internal.make
+export const make: (permits: number) => STM<never, never, TSemaphore> = internal.make
 
 /**
  * @since 2.0.0
  * @category mutations
  */
-export const release: (self: TSemaphore) => STM.STM<never, never, void> = internal.release
+export const release: (self: TSemaphore) => STM<never, never, void> = internal.release
 
 /**
  * @since 2.0.0
  * @category mutations
  */
 export const releaseN: {
-  (n: number): (self: TSemaphore) => STM.STM<never, never, void>
-  (self: TSemaphore, n: number): STM.STM<never, never, void>
+  (n: number): (self: TSemaphore) => STM<never, never, void>
+  (self: TSemaphore, n: number): STM<never, never, void>
 } = internal.releaseN
 
 /**
@@ -94,8 +98,8 @@ export const releaseN: {
  * @category mutations
  */
 export const withPermit: {
-  (semaphore: TSemaphore): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, semaphore: TSemaphore): Effect.Effect<R, E, A>
+  (semaphore: TSemaphore): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, semaphore: TSemaphore): Effect<R, E, A>
 } = internal.withPermit
 
 /**
@@ -103,23 +107,23 @@ export const withPermit: {
  * @category mutations
  */
 export const withPermits: {
-  (semaphore: TSemaphore, permits: number): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, semaphore: TSemaphore, permits: number): Effect.Effect<R, E, A>
+  (semaphore: TSemaphore, permits: number): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, semaphore: TSemaphore, permits: number): Effect<R, E, A>
 } = internal.withPermits
 
 /**
  * @since 2.0.0
  * @category mutations
  */
-export const withPermitScoped: (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void> = internal.withPermitScoped
+export const withPermitScoped: (self: TSemaphore) => Effect<Scope, never, void> = internal.withPermitScoped
 
 /**
  * @since 2.0.0
  * @category mutations
  */
 export const withPermitsScoped: {
-  (permits: number): (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void>
-  (self: TSemaphore, permits: number): Effect.Effect<Scope.Scope, never, void>
+  (permits: number): (self: TSemaphore) => Effect<Scope, never, void>
+  (self: TSemaphore, permits: number): Effect<Scope, never, void>
 } = internal.withPermitsScoped
 
 /**

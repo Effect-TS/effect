@@ -1,12 +1,12 @@
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 
 declare const n: number
 declare const sn: string | number
 declare const isString: (u: unknown) => u is string
 declare const predicate: (sn: string | number) => boolean
-declare const on: Option.Option<number>
-declare const osn: Option.Option<string | number>
+declare const on: Option<number>
+declare const osn: Option<string | number>
 
 // -------------------------------------------------------------------------------------
 // liftPredicate
@@ -127,7 +127,7 @@ pipe({ a: Option.some(1), b: Option.some("b") }, Option.all)
 // all - array
 // -------------------------------------------------------------------------------------
 
-declare const optionArray: Array<Option.Option<string>>
+declare const optionArray: Array<Option<string>>
 
 // $ExpectType Option<string[]>
 Option.all(optionArray)
@@ -139,7 +139,7 @@ pipe(optionArray, Option.all)
 // all - record
 // -------------------------------------------------------------------------------------
 
-declare const optionRecord: Record<string, Option.Option<string>>
+declare const optionRecord: Record<string, Option<string>>
 
 // $ExpectType Option<{ [x: string]: string; }>
 Option.all(optionRecord)

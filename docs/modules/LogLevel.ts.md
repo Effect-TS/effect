@@ -375,8 +375,8 @@ to the previous `LogLevel` after the `Effect` workflow completes.
 
 ```ts
 export declare const locally: {
-  (self: LogLevel): <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>
-  <R, E, B>(use: Effect.Effect<R, E, B>, self: LogLevel): Effect.Effect<R, E, B>
+  (self: LogLevel): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(use: Effect<R, E, B>, self: LogLevel): Effect<R, E, B>
 }
 ```
 

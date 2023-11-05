@@ -57,7 +57,7 @@ Returns a set of each `FiberRef` in this collection.
 **Signature**
 
 ```ts
-export declare const fiberRefs: (self: FiberRefs) => HashSet.HashSet<FiberRef.FiberRef<any>>
+export declare const fiberRefs: (self: FiberRefs) => HashSet<FiberRef<any>>
 ```
 
 Added in v2.0.0
@@ -71,8 +71,8 @@ values if it exists or `None` otherwise.
 
 ```ts
 export declare const get: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => Option.Option<A>
-  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): Option.Option<A>
+  <A>(fiberRef: FiberRef<A>): (self: FiberRefs) => Option<A>
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>): Option<A>
 }
 ```
 
@@ -87,8 +87,8 @@ values if it exists or the `initial` value of the `FiberRef` otherwise.
 
 ```ts
 export declare const getOrDefault: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => A
-  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): A
+  <A>(fiberRef: FiberRef<A>): (self: FiberRefs) => A
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>): A
 }
 ```
 
@@ -108,7 +108,7 @@ example between an asynchronous producer and consumer.
 ```ts
 export interface FiberRefs extends Pipeable {
   readonly [FiberRefsSym]: FiberRefsSym
-  readonly locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  readonly locals: Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
 }
 ```
 
@@ -146,7 +146,7 @@ Note: it will not copy the provided Map, make sure to provide a fresh one.
 
 ```ts
 export declare const unsafeMake: (
-  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  fiberRefLocals: Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
 ) => FiberRefs
 ```
 
@@ -161,7 +161,7 @@ Deletes the specified `FiberRef` from the `FibterRefs`.
 **Signature**
 
 ```ts
-export declare const delete: { <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => FiberRefs; <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): FiberRefs; }
+export declare const delete: { <A>(fiberRef: FiberRef<A>): (self: FiberRefs) => FiberRefs; <A>(self: FiberRefs, fiberRef: FiberRef<A>): FiberRefs; }
 ```
 
 Added in v2.0.0
@@ -207,7 +207,7 @@ Set each ref to either its value or its default.
 **Signature**
 
 ```ts
-export declare const setAll: (self: FiberRefs) => Effect.Effect<never, never, void>
+export declare const setAll: (self: FiberRefs) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -222,12 +222,12 @@ Updates the value of the specified `FiberRef` using the provided `FiberId`
 export declare const updatedAs: {
   <A>(options: {
     readonly fiberId: FiberId.Runtime
-    readonly fiberRef: FiberRef.FiberRef<A>
+    readonly fiberRef: FiberRef<A>
     readonly value: A
   }): (self: FiberRefs) => FiberRefs
   <A>(
     self: FiberRefs,
-    options: { readonly fiberId: FiberId.Runtime; readonly fiberRef: FiberRef.FiberRef<A>; readonly value: A }
+    options: { readonly fiberId: FiberId.Runtime; readonly fiberRef: FiberRef<A>; readonly value: A }
   ): FiberRefs
 }
 ```

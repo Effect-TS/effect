@@ -1,11 +1,11 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { constVoid, identity, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
-const deepMapEffect = (n: number): Effect.Effect<never, never, number> => {
-  const loop = (n: number, acc: Effect.Effect<never, never, number>): Effect.Effect<never, never, number> => {
+const deepMapEffect = (n: number): Effect<never, never, number> => {
+  const loop = (n: number, acc: Effect<never, never, number>): Effect<never, never, number> => {
     if (n <= 0) {
       return acc
     }
@@ -35,7 +35,7 @@ describe.concurrent("Effect", () => {
         n: number,
         a: BigInt = BigInt("0"),
         b: BigInt = BigInt("1")
-      ): Effect.Effect<never, Error, BigInt> => {
+      ): Effect<never, Error, BigInt> => {
         return pipe(
           Effect.sync(() => ((a as any) + (b as any)) as BigInt),
           Effect.flatMap((b2) => n > 0 ? fib(n - 1, b, b2) : Effect.succeed(b2))
@@ -68,13 +68,13 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("deep effects", () =>
     Effect.gen(function*($) {
-      const incLeft = (n: number, ref: Ref.Ref<number>): Effect.Effect<never, never, number> => {
+      const incLeft = (n: number, ref: Ref<number>): Effect<never, never, number> => {
         if (n <= 0) {
           return Ref.get(ref)
         }
         return pipe(incLeft(n - 1, ref), Effect.zipLeft(Ref.update(ref, (n) => n + 1)))
       }
-      const incRight = (n: number, ref: Ref.Ref<number>): Effect.Effect<never, never, number> => {
+      const incRight = (n: number, ref: Ref<number>): Effect<never, never, number> => {
         if (n <= 0) {
           return Ref.get(ref)
         }

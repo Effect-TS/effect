@@ -12,7 +12,7 @@ import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/context.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Unify from "./Unify.js"
+import type { Unify } from "./Unify.js"
 
 const TagTypeId: unique symbol = internal.TagTypeId
 
@@ -82,7 +82,7 @@ export declare namespace Tag {
  * @param key - An optional key that makes the `Tag` global.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  *
  * assert.strictEqual(Context.Tag() === Context.Tag(), false)
  * assert.strictEqual(Context.Tag("PORT") === Context.Tag("PORT"), true)
@@ -107,15 +107,19 @@ export type TypeId = typeof TypeId
  */
 export type ValidTagsById<R> = R extends infer S ? Tag<S, any> : never
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Context<Services> extends Equal, Pipeable, Inspectable {
-  readonly [TypeId]: {
-    readonly _S: (_: Services) => unknown
+export * as Context from "./Context.js"
+
+declare module "./Context.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Context<Services> extends Equal, Pipeable, Inspectable {
+    readonly [TypeId]: {
+      readonly _S: (_: Services) => unknown
+    }
+    readonly unsafeMap: Map<Tag<any, any>, any>
   }
-  readonly unsafeMap: Map<Tag<any, any>, any>
 }
 
 /**
@@ -130,7 +134,7 @@ export const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Conte
  * @param input - The value to be checked if it is a `Context`.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
  *
@@ -145,7 +149,7 @@ export const isContext: (input: unknown) => input is Context<never> = internal.i
  * @param input - The value to be checked if it is a `Tag`.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  *
  * assert.strictEqual(Context.isTag(Context.Tag()), true)
  *
@@ -158,7 +162,7 @@ export const isTag: (input: unknown) => input is Tag<any, any> = internal.isTag
  * Returns an empty `Context`.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
  *
@@ -171,7 +175,7 @@ export const empty: () => Context<never> = internal.empty
  * Creates a new `Context` with a single service associated to the tag.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  *
  * const Port = Context.Tag<{ PORT: number }>()
  *
@@ -189,7 +193,7 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  * Adds a service to a given `Context`.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  * import { pipe } from "effect/Function"
  *
  * const Port = Context.Tag<{ PORT: number }>()
@@ -226,7 +230,7 @@ export const add: {
  * @param tag - The `Tag` of the service to retrieve.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  * import { pipe } from "effect/Function"
  *
  * const Port = Context.Tag<{ PORT: number }>()
@@ -257,7 +261,7 @@ export const get: {
  * @param tag - The `Tag` of the service to retrieve.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  *
  * const Port = Context.Tag<{ PORT: number }>()
  * const Timeout = Context.Tag<{ TIMEOUT: number }>()
@@ -283,7 +287,7 @@ export const unsafeGet: {
  * @param tag - The `Tag` of the service to retrieve.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  * import * as O from "effect/Option"
  *
  * const Port = Context.Tag<{ PORT: number }>()
@@ -309,7 +313,7 @@ export const getOption: {
  * @param that - The second `Context` to merge.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  *
  * const Port = Context.Tag<{ PORT: number }>()
  * const Timeout = Context.Tag<{ TIMEOUT: number }>()
@@ -336,7 +340,7 @@ export const merge: {
  * @param tags - The list of `Tag`s to be included in the new `Context`.
  *
  * @example
- * import * as Context from "effect/Context"
+ * import { Context } from "effect/Context"
  * import { pipe } from "effect/Function"
  * import * as O from "effect/Option"
  *

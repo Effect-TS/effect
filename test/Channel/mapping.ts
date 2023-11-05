@@ -1,15 +1,15 @@
 import * as it from "effect-test/utils/extend"
-import * as Channel from "effect/Channel"
-import * as ChildExecutorDecision from "effect/ChildExecutorDecision"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Channel } from "effect/Channel"
+import { ChildExecutorDecision } from "effect/ChildExecutorDecision"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
 import { constVoid, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
-import * as UpstreamPullRequest from "effect/UpstreamPullRequest"
-import * as UpstreamPullStrategy from "effect/UpstreamPullStrategy"
+import { Option } from "effect/Option"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
+import { UpstreamPullRequest } from "effect/UpstreamPullRequest"
+import { UpstreamPullStrategy } from "effect/UpstreamPullStrategy"
 import { assert, describe } from "vitest"
 
 interface First {
@@ -209,13 +209,13 @@ describe.concurrent("Channel", () => {
         Channel.concatMapWithCustom(
           (x) =>
             Channel.writeAll(
-              Option.some([x, 1]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 2]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 3]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 4]) as Option.Option<readonly [number, number]>
+              Option.some([x, 1]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 2]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 3]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 4]) as Option<readonly [number, number]>
             ),
           constVoid,
           constVoid,
@@ -258,13 +258,13 @@ describe.concurrent("Channel", () => {
         Channel.concatMapWithCustom(
           (x) =>
             Channel.writeAll(
-              Option.some([x, 1]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 2]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 3]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 4]) as Option.Option<readonly [number, number]>
+              Option.some([x, 1]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 2]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 3]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 4]) as Option<readonly [number, number]>
             ),
           constVoid,
           constVoid,

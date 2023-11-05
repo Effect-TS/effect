@@ -1,22 +1,22 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Clock from "effect/Clock"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Fiber from "effect/Fiber"
+import { Chunk } from "effect/Chunk"
+import { Clock } from "effect/Clock"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Equal } from "effect/Equal"
+import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
-import * as Metric from "effect/Metric"
-import * as MetricBoundaries from "effect/MetricBoundaries"
-import * as MetricKey from "effect/MetricKey"
-import * as MetricLabel from "effect/MetricLabel"
-import * as PollingMetric from "effect/MetricPolling"
-import * as MetricState from "effect/MetricState"
-import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Schedule from "effect/Schedule"
+import { HashMap } from "effect/HashMap"
+import { HashSet } from "effect/HashSet"
+import { Metric } from "effect/Metric"
+import { MetricBoundaries } from "effect/MetricBoundaries"
+import { MetricKey } from "effect/MetricKey"
+import { MetricLabel } from "effect/MetricLabel"
+import { PollingMetric } from "effect/MetricPolling"
+import { MetricState } from "effect/MetricState"
+import { Option } from "effect/Option"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Schedule } from "effect/Schedule"
 import { assert, describe, expect } from "vitest"
 
 const labels = Chunk.make(MetricLabel.make("x", "a"), MetricLabel.make("y", "b"))
@@ -432,7 +432,7 @@ describe.concurrent("Metric", () => {
         const histogram = pipe(
           Metric.histogram(name, boundaries),
           Metric.taggedWithLabels(labels),
-          Metric.mapInput((duration: Duration.Duration) => Duration.toMillis(duration) / 1000)
+          Metric.mapInput((duration: Duration) => Duration.toMillis(duration) / 1000)
         )
         // NOTE: trackDuration always uses the **real** Clock
         const start = yield* $(Effect.sync(() => Date.now()))

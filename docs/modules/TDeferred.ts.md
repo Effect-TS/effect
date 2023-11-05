@@ -39,7 +39,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: <E, A>() => STM.STM<never, never, TDeferred<E, A>>
+export declare const make: <E, A>() => STM<never, never, TDeferred<E, A>>
 ```
 
 Added in v2.0.0
@@ -51,7 +51,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const await: <E, A>(self: TDeferred<E, A>) => STM.STM<never, E, A>
+export declare const await: <E, A>(self: TDeferred<E, A>) => STM<never, E, A>
 ```
 
 Added in v2.0.0
@@ -61,7 +61,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option.Option<Either.Either<E, A>>>
+export declare const poll: <E, A>(self: TDeferred<E, A>) => STM<never, never, Option<Either<E, A>>>
 ```
 
 Added in v2.0.0
@@ -86,8 +86,8 @@ Added in v2.0.0
 
 ```ts
 export declare const done: {
-  <E, A>(either: Either.Either<E, A>): (self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, either: Either.Either<E, A>): STM.STM<never, never, boolean>
+  <E, A>(either: Either<E, A>): (self: TDeferred<E, A>) => STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, either: Either<E, A>): STM<never, never, boolean>
 }
 ```
 
@@ -99,8 +99,8 @@ Added in v2.0.0
 
 ```ts
 export declare const fail: {
-  <E>(error: E): <A>(self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, error: E): STM.STM<never, never, boolean>
+  <E>(error: E): <A>(self: TDeferred<E, A>) => STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, error: E): STM<never, never, boolean>
 }
 ```
 
@@ -112,8 +112,8 @@ Added in v2.0.0
 
 ```ts
 export declare const succeed: {
-  <A>(value: A): <E>(self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): <E>(self: TDeferred<E, A>) => STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, value: A): STM<never, never, boolean>
 }
 ```
 

@@ -72,7 +72,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const frequency: (occurrences: HashMap.HashMap<string, number>) => MetricState.Frequency
+export declare const frequency: (occurrences: HashMap<string, number>) => MetricState.Frequency
 ```
 
 Added in v2.0.0
@@ -93,7 +93,7 @@ Added in v2.0.0
 
 ```ts
 export declare const histogram: (options: {
-  readonly buckets: Chunk.Chunk<readonly [number, number]>
+  readonly buckets: Chunk<readonly [number, number]>
   readonly count: number
   readonly min: number
   readonly max: number
@@ -110,7 +110,7 @@ Added in v2.0.0
 ```ts
 export declare const summary: (options: {
   readonly error: number
-  readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+  readonly quantiles: Chunk<readonly [number, Option<number>]>
   readonly count: number
   readonly min: number
   readonly max: number
@@ -131,7 +131,7 @@ This phantom type parameter is used to tie keys to their expected states.
 **Signature**
 
 ```ts
-export interface MetricState<A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
+export interface MetricState<A> extends MetricState.Variance<A>, Equal, Pipeable {}
 ```
 
 Added in v2.0.0
@@ -331,7 +331,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Counter<A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
+export interface Counter<A extends number | bigint> extends MetricState<MetricKeyType.Counter<A>> {
   readonly [CounterStateTypeId]: CounterStateTypeId
   readonly count: A
 }
@@ -344,9 +344,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Frequency extends MetricState<MetricKeyType.MetricKeyType.Frequency> {
+export interface Frequency extends MetricState<MetricKeyType.Frequency> {
   readonly [FrequencyStateTypeId]: FrequencyStateTypeId
-  readonly occurrences: HashMap.HashMap<string, number>
+  readonly occurrences: HashMap<string, number>
 }
 ```
 
@@ -357,7 +357,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Gauge<A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
+export interface Gauge<A extends number | bigint> extends MetricState<MetricKeyType.Gauge<A>> {
   readonly [GaugeStateTypeId]: GaugeStateTypeId
   readonly value: A
 }
@@ -370,9 +370,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Histogram extends MetricState<MetricKeyType.MetricKeyType.Histogram> {
+export interface Histogram extends MetricState<MetricKeyType.Histogram> {
   readonly [HistogramStateTypeId]: HistogramStateTypeId
-  readonly buckets: Chunk.Chunk<readonly [number, number]>
+  readonly buckets: Chunk<readonly [number, number]>
   readonly count: number
   readonly min: number
   readonly max: number
@@ -387,10 +387,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Summary extends MetricState<MetricKeyType.MetricKeyType.Summary> {
+export interface Summary extends MetricState<MetricKeyType.Summary> {
   readonly [SummaryStateTypeId]: SummaryStateTypeId
   readonly error: number
-  readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+  readonly quantiles: Chunk<readonly [number, Option<number>]>
   readonly count: number
   readonly min: number
   readonly max: number

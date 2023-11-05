@@ -1,26 +1,26 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
+import { Option } from "effect/Option"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
-const asyncExampleError = <A>(): Effect.Effect<never, unknown, A> => {
+const asyncExampleError = <A>(): Effect<never, unknown, A> => {
   return Effect.async((cb) => {
     cb(Effect.fail(ExampleError))
   })
 }
 
-const asyncUnit = <E>(): Effect.Effect<never, E, void> => {
+const asyncUnit = <E>(): Effect<never, E, void> => {
   return Effect.async((cb) => {
     cb(Effect.unit)
   })
@@ -74,7 +74,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("finalizer errors reported", () =>
     Effect.gen(function*($) {
-      let reported: Exit.Exit<never, number> | undefined
+      let reported: Exit<never, number> | undefined
       const result = yield* $(
         pipe(
           Effect.succeed(42),
@@ -209,8 +209,8 @@ describe.concurrent("Effect", () => {
     }))
   it.live("acquireUseRelease regression 1", () =>
     Effect.gen(function*($) {
-      const makeLogger = (ref: Ref.Ref<Chunk.Chunk<string>>) => {
-        return (line: string): Effect.Effect<never, never, void> => {
+      const makeLogger = (ref: Ref<Chunk<string>>) => {
+        return (line: string): Effect<never, never, void> => {
           return Ref.update(ref, Chunk.prepend(line))
         }
       }

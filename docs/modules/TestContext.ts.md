@@ -25,7 +25,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const LiveContext: Layer.Layer<never, never, DefaultServices.DefaultServices>
+export declare const LiveContext: Layer<never, never, DefaultServices>
 ```
 
 Added in v2.0.0
@@ -35,7 +35,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const TestContext: Layer.Layer<never, never, TestServices.TestServices>
+export declare const TestContext: Layer<never, never, TestServices>
 ```
 
 Added in v2.0.0

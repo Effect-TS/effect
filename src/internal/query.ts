@@ -1,19 +1,19 @@
-import type * as Cache from "../Cache.js"
+import type { Cache } from "../Cache.js"
 import type { Deferred } from "../Deferred.js"
 import { seconds } from "../Duration.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import { dual } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
-import type * as Request from "../Request.js"
-import type * as RequestResolver from "../RequestResolver.js"
-import * as BlockedRequests from "./blockedRequests.js"
+import type { Request } from "../Request.js"
+import type { RequestResolver } from "../RequestResolver.js"
+import { BlockedRequests } from "./blockedRequests.js"
 import { unsafeMakeWith } from "./cache.js"
 import { isInterruptedOnly } from "./cause.js"
 import * as core from "./core.js"
 import { ensuring } from "./fiberRuntime.js"
 import { Listeners } from "./request.js"
 
-type RequestCache = Cache.Cache<Request.Request<any, any>, never, {
+type RequestCache = Cache<Request<any, any>, never, {
   listeners: Request.Listeners
   handle: Deferred<any, any>
 }>
@@ -22,7 +22,7 @@ type RequestCache = Cache.Cache<Request.Request<any, any>, never, {
 export const currentCache = globalValue(
   Symbol.for("effect/FiberRef/currentCache"),
   () =>
-    core.fiberRefUnsafeMake<RequestCache>(unsafeMakeWith<Request.Request<any, any>, never, {
+    core.fiberRefUnsafeMake<RequestCache>(unsafeMakeWith<Request<any, any>, never, {
       listeners: Request.Listeners
       handle: Deferred<any, any>
     }>(
@@ -40,23 +40,23 @@ export const currentCacheEnabled = globalValue(
 
 /** @internal */
 export const fromRequest = <
-  A extends Request.Request<any, any>,
+  A extends Request<any, any>,
   Ds extends
-    | RequestResolver.RequestResolver<A, never>
-    | Effect.Effect<any, any, RequestResolver.RequestResolver<A, never>>
+    | RequestResolver<A, never>
+    | Effect<any, any, RequestResolver<A, never>>
 >(
   request: A,
   dataSource: Ds
-): Effect.Effect<
-  [Ds] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Ds> : never,
-  Request.Request.Error<A>,
-  Request.Request.Success<A>
+): Effect<
+  [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never,
+  Request.Error<A>,
+  Request.Success<A>
 > =>
   core.flatMap(
-    (core.isEffect(dataSource) ? dataSource : core.succeed(dataSource)) as Effect.Effect<
+    (core.isEffect(dataSource) ? dataSource : core.succeed(dataSource)) as Effect<
       never,
       never,
-      RequestResolver.RequestResolver<A, never>
+      RequestResolver<A, never>
     >,
     (ds) =>
       core.fiberIdWith((id) => {
@@ -92,7 +92,7 @@ export const fromRequest = <
                     orNew.right.listeners.increment()
                     return core.blocked(
                       BlockedRequests.single(
-                        ds as RequestResolver.RequestResolver<A, never>,
+                        ds as RequestResolver<A, never>,
                         BlockedRequests.makeEntry({
                           request: proxy,
                           result: orNew.right.handle,
@@ -118,11 +118,11 @@ export const fromRequest = <
           const listeners = new Listeners()
           listeners.increment()
           return core.flatMap(
-            core.deferredMake<Request.Request.Error<A>, Request.Request.Success<A>>(),
+            core.deferredMake<Request.Error<A>, Request.Success<A>>(),
             (ref) =>
               core.blocked(
                 BlockedRequests.single(
-                  ds as RequestResolver.RequestResolver<A, never>,
+                  ds as RequestResolver<A, never>,
                   BlockedRequests.makeEntry({
                     request: proxy,
                     result: ref,
@@ -142,10 +142,10 @@ export const fromRequest = <
   )
 
 /** @internal */
-export const cacheRequest = <A extends Request.Request<any, any>>(
+export const cacheRequest = <A extends Request<any, any>>(
   request: A,
-  result: Request.Request.Result<A>
-): Effect.Effect<never, never, void> => {
+  result: Request.Result<A>
+): Effect<never, never, void> => {
   return core.fiberRefGetWith(currentCacheEnabled, (cacheEnabled) => {
     if (cacheEnabled) {
       return core.fiberRefGetWith(currentCache, (cache) =>
@@ -166,36 +166,36 @@ export const cacheRequest = <A extends Request.Request<any, any>>(
 
 /** @internal */
 export const withRequestCaching: {
-  (strategy: boolean): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  (strategy: boolean): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     strategy: boolean
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = dual<
   (
     strategy: boolean
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
   <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     strategy: boolean
-  ) => Effect.Effect<R, E, A>
+  ) => Effect<R, E, A>
 >(2, (self, strategy) => core.fiberRefLocally(self, currentCacheEnabled, strategy))
 
 /** @internal */
 export const withRequestCache: {
-  (cache: Request.Cache): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  (cache: Request.Cache): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     cache: Request.Cache
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = dual<
   (
     cache: Request.Cache
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
   <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     cache: Request.Cache
-  ) => Effect.Effect<R, E, A>
+  ) => Effect<R, E, A>
 >(
   2,
   // @ts-expect-error

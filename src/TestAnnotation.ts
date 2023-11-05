@@ -1,17 +1,17 @@
 /**
  * @since 2.0.0
  */
-import * as Chunk from "./Chunk.js"
-import * as Context from "./Context.js"
-import * as Either from "./Either.js"
-import * as Equal from "./Equal.js"
-import type * as Fiber from "./Fiber.js"
+import { Chunk } from "./Chunk.js"
+import { Context } from "./Context.js"
+import { Either } from "./Either.js"
+import { Equal } from "./Equal.js"
+import type { Fiber } from "./Fiber.js"
 import { pipe } from "./Function.js"
-import * as Hash from "./Hash.js"
-import * as HashSet from "./HashSet.js"
-import type * as MutableRef from "./MutableRef.js"
+import { Hash } from "./Hash.js"
+import { HashSet } from "./HashSet.js"
+import type { MutableRef } from "./MutableRef.js"
 import { hasProperty } from "./Predicate.js"
-import type * as SortedSet from "./SortedSet.js"
+import type { SortedSet } from "./SortedSet.js"
 
 /** @internal */
 const TestAnnotationSymbolKey = "effect/TestAnnotation"
@@ -26,19 +26,23 @@ export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
  */
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 
-/**
- * @since 2.0.0
- */
-export interface TestAnnotation<A> extends Equal.Equal {
-  readonly [TestAnnotationTypeId]: TestAnnotationTypeId
-  readonly identifier: string
-  readonly tag: Context.Tag<A, A>
-  readonly initial: A
-  readonly combine: (a: A, b: A) => A
+export * as TestAnnotation from "./TestAnnotation.js"
+
+declare module "./TestAnnotation.js" {
+  /**
+   * @since 2.0.0
+   */
+  export interface TestAnnotation<A> extends Equal {
+    readonly [TestAnnotationTypeId]: TestAnnotationTypeId
+    readonly identifier: string
+    readonly tag: Context.Tag<A, A>
+    readonly initial: A
+    readonly combine: (a: A, b: A) => A
+  }
 }
 
 /** @internal */
-class TestAnnotationImpl<A> implements Equal.Equal {
+class TestAnnotationImpl<A> implements Equal {
   readonly [TestAnnotationTypeId]: TestAnnotationTypeId = TestAnnotationTypeId
   constructor(
     readonly identifier: string,
@@ -81,9 +85,9 @@ export const make = <A>(
  * @since 2.0.0
  */
 export const compose = <A>(
-  left: Either.Either<number, Chunk.Chunk<A>>,
-  right: Either.Either<number, Chunk.Chunk<A>>
-): Either.Either<number, Chunk.Chunk<A>> => {
+  left: Either<number, Chunk<A>>,
+  right: Either<number, Chunk<A>>
+): Either<number, Chunk<A>> => {
   if (Either.isLeft(left) && Either.isLeft(right)) {
     return Either.left(left.left + right.left)
   }
@@ -103,14 +107,14 @@ export const compose = <A>(
  * @since 2.0.0
  */
 export const fibers: TestAnnotation<
-  Either.Either<
+  Either<
     number,
-    Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>
+    Chunk<MutableRef<SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>
   >
 > = make(
   "fibers",
   Context.Tag<
-    Either.Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
+    Either<number, Chunk<MutableRef<SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
   >(),
   Either.left(0),
   compose
@@ -157,9 +161,9 @@ export const retried: TestAnnotation<number> = make(
  *
  * @since 2.0.0
  */
-export const tagged: TestAnnotation<HashSet.HashSet<string>> = make(
+export const tagged: TestAnnotation<HashSet<string>> = make(
   "tagged",
-  Context.Tag<HashSet.HashSet<string>>(Symbol.for("effect/TestAnnotation/tagged")),
+  Context.Tag<HashSet<string>>(Symbol.for("effect/TestAnnotation/tagged")),
   HashSet.empty(),
   (a, b) => pipe(a, HashSet.union(b))
 )

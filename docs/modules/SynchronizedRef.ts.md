@@ -55,7 +55,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: <A>(value: A) => Effect.Effect<never, never, SynchronizedRef<A>>
+export declare const make: <A>(value: A) => Effect<never, never, SynchronizedRef<A>>
 ```
 
 Added in v2.0.0
@@ -67,7 +67,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const get: <A>(self: SynchronizedRef<A>) => Effect.Effect<never, never, A>
+export declare const get: <A>(self: SynchronizedRef<A>) => Effect<never, never, A>
 ```
 
 Added in v2.0.0
@@ -79,8 +79,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref.Ref<A> {
-  modifyEffect: <R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>) => Effect.Effect<R, E, B>
+export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref<A> {
+  modifyEffect: <R, E, B>(f: (a: A) => Effect<R, E, readonly [B, A]>) => Effect<R, E, B>
 }
 ```
 
@@ -146,8 +146,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndSet: {
-  <A>(value: A): (self: Ref.Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, value: A): Effect<never, never, A>
 }
 ```
 
@@ -159,8 +159,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdate: {
-  <A>(f: (a: A) => A): (self: Ref.Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -172,8 +172,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateEffect: {
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>): (self: SynchronizedRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SynchronizedRef<A>, f: (a: A) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SynchronizedRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SynchronizedRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, A>
 }
 ```
 
@@ -185,8 +185,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: Ref.Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 
@@ -198,8 +198,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSomeEffect: {
-  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): (self: SynchronizedRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SynchronizedRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, A>
+  <A, R, E>(pf: (a: A) => Option<Effect<R, E, A>>): (self: SynchronizedRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SynchronizedRef<A>, pf: (a: A) => Option<Effect<R, E, A>>): Effect<R, E, A>
 }
 ```
 
@@ -211,8 +211,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modify: {
-  <A, B>(f: (a: A) => readonly [B, A]): (self: SynchronizedRef<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: SynchronizedRef<A>, f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]): (self: SynchronizedRef<A>) => Effect<never, never, B>
+  <A, B>(self: SynchronizedRef<A>, f: (a: A) => readonly [B, A]): Effect<never, never, B>
 }
 ```
 
@@ -224,8 +224,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modifyEffect: {
-  <A, R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>): (self: SynchronizedRef<A>) => Effect.Effect<R, E, B>
-  <A, R, E, B>(self: SynchronizedRef<A>, f: (a: A) => Effect.Effect<R, E, readonly [B, A]>): Effect.Effect<R, E, B>
+  <A, R, E, B>(f: (a: A) => Effect<R, E, readonly [B, A]>): (self: SynchronizedRef<A>) => Effect<R, E, B>
+  <A, R, E, B>(self: SynchronizedRef<A>, f: (a: A) => Effect<R, E, readonly [B, A]>): Effect<R, E, B>
 }
 ```
 
@@ -239,9 +239,9 @@ Added in v2.0.0
 export declare const modifySome: {
   <B, A>(
     fallback: B,
-    pf: (a: A) => Option.Option<readonly [B, A]>
-  ): (self: Ref.Ref<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: Ref.Ref<A>, fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): Effect.Effect<never, never, B>
+    pf: (a: A) => Option<readonly [B, A]>
+  ): (self: Ref<A>) => Effect<never, never, B>
+  <A, B>(self: Ref<A>, fallback: B, pf: (a: A) => Option<readonly [B, A]>): Effect<never, never, B>
 }
 ```
 
@@ -255,13 +255,13 @@ Added in v2.0.0
 export declare const modifySomeEffect: {
   <A, B, R, E>(
     fallback: B,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
-  ): (self: SynchronizedRef<A>) => Effect.Effect<R, E, B>
+    pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
+  ): (self: SynchronizedRef<A>) => Effect<R, E, B>
   <A, B, R, E>(
     self: SynchronizedRef<A>,
     fallback: B,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
-  ): Effect.Effect<R, E, B>
+    pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
+  ): Effect<R, E, B>
 }
 ```
 
@@ -273,8 +273,8 @@ Added in v2.0.0
 
 ```ts
 export declare const set: {
-  <A>(value: A): (self: Ref.Ref<A>) => Effect.Effect<never, never, void>
-  <A>(self: Ref.Ref<A>, value: A): Effect.Effect<never, never, void>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, value: A): Effect<never, never, void>
 }
 ```
 
@@ -286,8 +286,8 @@ Added in v2.0.0
 
 ```ts
 export declare const setAndGet: {
-  <A>(value: A): (self: Ref.Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, value: A): Effect<never, never, A>
 }
 ```
 
@@ -299,8 +299,8 @@ Added in v2.0.0
 
 ```ts
 export declare const update: {
-  <A>(f: (a: A) => A): (self: Ref.Ref<A>) => Effect.Effect<never, never, void>
-  <A>(self: Ref.Ref<A>, f: (a: A) => A): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, void>
 }
 ```
 
@@ -312,8 +312,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateAndGet: {
-  <A>(f: (a: A) => A): (self: Ref.Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -325,8 +325,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateAndGetEffect: {
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>): (self: SynchronizedRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SynchronizedRef<A>, f: (a: A) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SynchronizedRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SynchronizedRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, A>
 }
 ```
 
@@ -338,8 +338,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateEffect: {
-  <A, R, E>(f: (a: A) => Effect.Effect<R, E, A>): (self: SynchronizedRef<A>) => Effect.Effect<R, E, void>
-  <A, R, E>(self: SynchronizedRef<A>, f: (a: A) => Effect.Effect<R, E, A>): Effect.Effect<R, E, void>
+  <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SynchronizedRef<A>) => Effect<R, E, void>
+  <A, R, E>(self: SynchronizedRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, void>
 }
 ```
 
@@ -351,8 +351,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: Ref.Ref<A>) => Effect.Effect<never, never, void>
-  <A>(self: Ref.Ref<A>, f: (a: A) => Option.Option<A>): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, f: (a: A) => Option<A>): Effect<never, never, void>
 }
 ```
 
@@ -364,8 +364,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: Ref.Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 
@@ -377,8 +377,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGetEffect: {
-  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): (self: SynchronizedRef<A>) => Effect.Effect<R, E, A>
-  <A, R, E>(self: SynchronizedRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, A>
+  <A, R, E>(pf: (a: A) => Option<Effect<R, E, A>>): (self: SynchronizedRef<A>) => Effect<R, E, A>
+  <A, R, E>(self: SynchronizedRef<A>, pf: (a: A) => Option<Effect<R, E, A>>): Effect<R, E, A>
 }
 ```
 
@@ -391,9 +391,9 @@ Added in v2.0.0
 ```ts
 export declare const updateSomeEffect: {
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ): (self: SynchronizedRef<A>) => Effect.Effect<R, E, void>
-  <A, R, E>(self: SynchronizedRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, void>
+    pf: (a: A) => Option<Effect<R, E, A>>
+  ): (self: SynchronizedRef<A>) => Effect<R, E, void>
+  <A, R, E>(self: SynchronizedRef<A>, pf: (a: A) => Option<Effect<R, E, A>>): Effect<R, E, void>
 }
 ```
 

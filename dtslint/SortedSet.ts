@@ -1,9 +1,9 @@
 import { pipe } from "effect/Function"
 import type { Order } from "effect/Order"
-import * as Predicate from "effect/Predicate"
-import * as SortedSet from "effect/SortedSet"
+import { Predicate } from "effect/Predicate"
+import { SortedSet } from "effect/SortedSet"
 
-declare const numberOrString: SortedSet.SortedSet<number | string>
+declare const numberOrString: SortedSet<number | string>
 declare const stringIterable: Iterable<string>
 declare const stringOrUndefinedOrder: Order<string | undefined>
 

@@ -28,7 +28,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: <Err, Elem, Done>() => Effect.Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>>
+export declare const make: <Err, Elem, Done>() => Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>>
 ```
 
 Added in v2.0.0
@@ -44,10 +44,10 @@ Consumer-side view of `SingleProducerAsyncInput` for variance purposes.
 ```ts
 export interface AsyncInputConsumer<Err, Elem, Done> {
   takeWith<A>(
-    onError: (cause: Cause.Cause<Err>) => A,
+    onError: (cause: Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
-  ): Effect.Effect<never, never, A>
+  ): Effect<never, never, A>
 }
 ```
 
@@ -61,10 +61,10 @@ Producer-side view of `SingleProducerAsyncInput` for variance purposes.
 
 ```ts
 export interface AsyncInputProducer<Err, Elem, Done> {
-  awaitRead(): Effect.Effect<never, never, unknown>
-  done(value: Done): Effect.Effect<never, never, unknown>
-  emit(element: Elem): Effect.Effect<never, never, unknown>
-  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown>
+  awaitRead(): Effect<never, never, unknown>
+  done(value: Done): Effect<never, never, unknown>
+  emit(element: Elem): Effect<never, never, unknown>
+  error(cause: Cause<Err>): Effect<never, never, unknown>
 }
 ```
 
@@ -94,8 +94,8 @@ Features the following semantics:
 export interface SingleProducerAsyncInput<Err, Elem, Done>
   extends AsyncInputProducer<Err, Elem, Done>,
     AsyncInputConsumer<Err, Elem, Done> {
-  close(): Effect.Effect<never, never, unknown>
-  take(): Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
+  close(): Effect<never, never, unknown>
+  take(): Effect<never, never, Exit<Either<Err, Done>, Elem>>
 }
 ```
 

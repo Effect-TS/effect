@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
+import { Cause } from "effect/Cause"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
@@ -114,7 +114,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("validateFirst - runs sequentially and short circuits on first success validation", () =>
     Effect.gen(function*($) {
-      const f = (n: number): Effect.Effect<never, number, number> => {
+      const f = (n: number): Effect<never, number, number> => {
         return n === 6 ? Effect.succeed(n) : Effect.fail(n)
       }
       const array = Array.from({ length: 10 }, (_, i) => i + 1)
@@ -148,7 +148,7 @@ describe.concurrent("Effect", () => {
       }))
     it.effect("validateFirst/concurrency - returns success if valid", () =>
       Effect.gen(function*($) {
-        const f = (n: number): Effect.Effect<never, number, number> => {
+        const f = (n: number): Effect<never, number, number> => {
           return n === 6 ? Effect.succeed(n) : Effect.fail(n)
         }
         const array = Array.from({ length: 10 }, (_, i) => i + 1)

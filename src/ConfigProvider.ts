@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Config from "./Config.js"
-import type * as ConfigError from "./ConfigError.js"
-import type * as PathPatch from "./ConfigProviderPathPatch.js"
-import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
+import type { Config } from "./Config.js"
+import type { ConfigError } from "./ConfigError.js"
+import type { PathPatch } from "./ConfigProviderPathPatch.js"
+import type { Context } from "./Context.js"
+import type { Effect } from "./Effect.js"
 import type { LazyArg } from "./Function.js"
-import type * as HashSet from "./HashSet.js"
+import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/configProvider.js"
 import type { Pipeable } from "./Pipeable.js"
 
@@ -35,74 +35,78 @@ export const FlatConfigProviderTypeId: unique symbol = internal.FlatConfigProvid
  */
 export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
 
-/**
- * A ConfigProvider is a service that provides configuration given a description
- * of the structure of that configuration.
- *
- * @since 2.0.0
- * @category models
- */
-export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
-  /**
-   * Loads the specified configuration, or fails with a config error.
-   */
-  load<A>(config: Config.Config<A>): Effect.Effect<never, ConfigError.ConfigError, A>
-  /**
-   * Flattens this config provider into a simplified config provider that knows
-   * only how to deal with flat (key/value) properties.
-   */
-  flattened: ConfigProvider.Flat
-}
+export * as ConfigProvider from "./ConfigProvider.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ConfigProvider {
+declare module "./ConfigProvider.js" {
   /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Proto {
-    readonly [ConfigProviderTypeId]: ConfigProviderTypeId
-  }
-
-  /**
-   * A simplified config provider that knows only how to deal with flat
-   * (key/value) properties. Because these providers are common, there is
-   * special support for implementing them.
+   * A ConfigProvider is a service that provides configuration given a description
+   * of the structure of that configuration.
    *
    * @since 2.0.0
    * @category models
    */
-  export interface Flat {
-    readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
-    patch: PathPatch.PathPatch
-    load<A>(
-      path: ReadonlyArray<string>,
-      config: Config.Config.Primitive<A>,
-      split?: boolean
-    ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
-    enumerateChildren(
-      path: ReadonlyArray<string>
-    ): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
+    /**
+     * Loads the specified configuration, or fails with a config error.
+     */
+    load<A>(config: Config<A>): Effect<never, ConfigError, A>
+    /**
+     * Flattens this config provider into a simplified config provider that knows
+     * only how to deal with flat (key/value) properties.
+     */
+    flattened: ConfigProvider.Flat
   }
 
   /**
    * @since 2.0.0
-   * @category models
    */
-  export interface FromMapConfig {
-    readonly pathDelim: string
-    readonly seqDelim: string
-  }
+  export namespace ConfigProvider {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [ConfigProviderTypeId]: ConfigProviderTypeId
+    }
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface FromEnvConfig {
-    readonly pathDelim: string
-    readonly seqDelim: string
+    /**
+     * A simplified config provider that knows only how to deal with flat
+     * (key/value) properties. Because these providers are common, there is
+     * special support for implementing them.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Flat {
+      readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
+      patch: PathPatch
+      load<A>(
+        path: ReadonlyArray<string>,
+        config: Config.Primitive<A>,
+        split?: boolean
+      ): Effect<never, ConfigError, ReadonlyArray<A>>
+      enumerateChildren(
+        path: ReadonlyArray<string>
+      ): Effect<never, ConfigError, HashSet<string>>
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface FromMapConfig {
+      readonly pathDelim: string
+      readonly seqDelim: string
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface FromEnvConfig {
+      readonly pathDelim: string
+      readonly seqDelim: string
+    }
   }
 }
 
@@ -112,7 +116,7 @@ export declare namespace ConfigProvider {
  * @since 2.0.0
  * @category context
  */
-export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = internal.configProviderTag
+export const Tag: Context.Tag<ConfigProvider, ConfigProvider> = internal.configProviderTag
 
 /**
  * Creates a new config provider.
@@ -122,7 +126,7 @@ export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = inter
  */
 export const make: (
   options: {
-    readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
+    readonly load: <A>(config: Config<A>) => Effect<never, ConfigError, A>
     readonly flattened: ConfigProvider.Flat
   }
 ) => ConfigProvider = internal.make
@@ -136,13 +140,13 @@ export const make: (
 export const makeFlat: (options: {
   readonly load: <A>(
     path: ReadonlyArray<string>,
-    config: Config.Config.Primitive<A>,
+    config: Config.Primitive<A>,
     split: boolean
-  ) => Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+  ) => Effect<never, ConfigError, ReadonlyArray<A>>
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
-  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
-  readonly patch: PathPatch.PathPatch
+  ) => Effect<never, ConfigError, HashSet<string>>
+  readonly patch: PathPatch
 }) => ConfigProvider.Flat = internal.makeFlat
 
 /**

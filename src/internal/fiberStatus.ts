@@ -1,8 +1,8 @@
-import * as Equal from "../Equal.js"
+import { Equal } from "../Equal.js"
 import type { FiberId } from "../FiberId.js"
-import type * as FiberStatus from "../FiberStatus.js"
+import type { FiberStatus } from "../FiberStatus.js"
 import { pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
+import { Hash } from "../Hash.js"
 import { hasProperty } from "../Predicate.js"
 import type { RuntimeFlags } from "../RuntimeFlags.js"
 
@@ -94,25 +94,25 @@ class Suspended implements FiberStatus.Suspended {
 }
 
 /** @internal */
-export const done: FiberStatus.FiberStatus = new Done()
+export const done: FiberStatus = new Done()
 
 /** @internal */
-export const running = (runtimeFlags: RuntimeFlags): FiberStatus.FiberStatus => new Running(runtimeFlags)
+export const running = (runtimeFlags: RuntimeFlags): FiberStatus => new Running(runtimeFlags)
 
 /** @internal */
 export const suspended = (
   runtimeFlags: RuntimeFlags,
   blockingOn: FiberId
-): FiberStatus.FiberStatus => new Suspended(runtimeFlags, blockingOn)
+): FiberStatus => new Suspended(runtimeFlags, blockingOn)
 
 /** @internal */
-export const isFiberStatus = (u: unknown): u is FiberStatus.FiberStatus => hasProperty(u, FiberStatusTypeId)
+export const isFiberStatus = (u: unknown): u is FiberStatus => hasProperty(u, FiberStatusTypeId)
 
 /** @internal */
-export const isDone = (self: FiberStatus.FiberStatus): self is FiberStatus.Done => self._tag === OP_DONE
+export const isDone = (self: FiberStatus): self is FiberStatus.Done => self._tag === OP_DONE
 
 /** @internal */
-export const isRunning = (self: FiberStatus.FiberStatus): self is FiberStatus.Running => self._tag === OP_RUNNING
+export const isRunning = (self: FiberStatus): self is FiberStatus.Running => self._tag === OP_RUNNING
 
 /** @internal */
-export const isSuspended = (self: FiberStatus.FiberStatus): self is FiberStatus.Suspended => self._tag === OP_SUSPENDED
+export const isSuspended = (self: FiberStatus): self is FiberStatus.Suspended => self._tag === OP_SUSPENDED

@@ -1,6 +1,6 @@
-import * as Util from "effect-test/util"
-import * as Chunk from "effect/Chunk"
-import * as Either from "effect/Either"
+import { Util } from "effect-test/util"
+import { Chunk } from "effect/Chunk"
+import { Either } from "effect/Either"
 import { flow, pipe } from "effect/Function"
 import * as N from "effect/Number"
 import * as O from "effect/Option"
@@ -257,7 +257,7 @@ describe.concurrent("Either", () => {
       Either.left("b")
     )
     expect(
-      (Either.left("a") as Either.Either<string, typeof add>).pipe(
+      (Either.left("a") as Either<string, typeof add>).pipe(
         Either.ap(Either.right(1)),
         Either.ap(Either.right(2))
       )

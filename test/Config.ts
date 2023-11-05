@@ -1,15 +1,15 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Config from "effect/Config"
-import * as ConfigError from "effect/ConfigError"
-import * as ConfigProvider from "effect/ConfigProvider"
-import * as ConfigSecret from "effect/ConfigSecret"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Config } from "effect/Config"
+import { ConfigError } from "effect/ConfigError"
+import { ConfigProvider } from "effect/ConfigProvider"
+import { ConfigSecret } from "effect/ConfigSecret"
+import { Effect } from "effect/Effect"
+import { Equal } from "effect/Equal"
+import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Config", () => {
@@ -159,7 +159,7 @@ describe.concurrent("Config", () => {
     it.effect("unwrap correctly builds config", () =>
       Effect.gen(function*($) {
         const wrapper = (
-          _: Config.Config.Wrap<{
+          _: Config.Wrap<{
             key1: number
             list: ReadonlyArray<string>
             nested: {

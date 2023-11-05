@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Option from "effect/Option"
+import { Cause } from "effect/Cause"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")

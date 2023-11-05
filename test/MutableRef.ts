@@ -1,5 +1,5 @@
-import * as Chunk from "effect/Chunk"
-import * as MutableRef from "effect/MutableRef"
+import { Chunk } from "effect/Chunk"
+import { MutableRef } from "effect/MutableRef"
 import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 

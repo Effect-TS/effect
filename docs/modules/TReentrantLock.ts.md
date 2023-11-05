@@ -52,7 +52,7 @@ Makes a new reentrant read/write lock.
 **Signature**
 
 ```ts
-export declare const make: STM.STM<never, never, TReentrantLock>
+export declare const make: STM<never, never, TReentrantLock>
 ```
 
 Added in v2.0.0
@@ -95,7 +95,7 @@ fiber.
 **Signature**
 
 ```ts
-export declare const acquireRead: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const acquireRead: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -109,7 +109,7 @@ held by this fiber.
 **Signature**
 
 ```ts
-export declare const acquireWrite: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const acquireWrite: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -121,7 +121,7 @@ Retrieves the number of acquired read locks for this fiber.
 **Signature**
 
 ```ts
-export declare const fiberReadLocks: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const fiberReadLocks: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -133,7 +133,7 @@ Retrieves the number of acquired write locks for this fiber.
 **Signature**
 
 ```ts
-export declare const fiberWriteLocks: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const fiberWriteLocks: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -148,7 +148,7 @@ See `TReentrantLock.writeLock`.
 **Signature**
 
 ```ts
-export declare const lock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
+export declare const lock: (self: TReentrantLock) => Effect<Scope, never, number>
 ```
 
 Added in v2.0.0
@@ -160,7 +160,7 @@ Determines if any fiber has a read or write lock.
 **Signature**
 
 ```ts
-export declare const locked: (self: TReentrantLock) => STM.STM<never, never, boolean>
+export declare const locked: (self: TReentrantLock) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -172,7 +172,7 @@ Obtains a read lock in a scoped context.
 **Signature**
 
 ```ts
-export declare const readLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
+export declare const readLock: (self: TReentrantLock) => Effect<Scope, never, number>
 ```
 
 Added in v2.0.0
@@ -184,7 +184,7 @@ Determines if any fiber has a read lock.
 **Signature**
 
 ```ts
-export declare const readLocked: (self: TReentrantLock) => STM.STM<never, never, boolean>
+export declare const readLocked: (self: TReentrantLock) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -196,7 +196,7 @@ Retrieves the total number of acquired read locks.
 **Signature**
 
 ```ts
-export declare const readLocks: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const readLocks: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -209,7 +209,7 @@ number of read locks held by this fiber.
 **Signature**
 
 ```ts
-export declare const releaseRead: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const releaseRead: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -222,7 +222,7 @@ number of write locks held by this fiber.
 **Signature**
 
 ```ts
-export declare const releaseWrite: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const releaseWrite: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -235,8 +235,8 @@ Runs the specified workflow with a lock.
 
 ```ts
 export declare const withLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 }
 ```
 
@@ -250,8 +250,8 @@ Runs the specified workflow with a read lock.
 
 ```ts
 export declare const withReadLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 }
 ```
 
@@ -265,8 +265,8 @@ Runs the specified workflow with a write lock.
 
 ```ts
 export declare const withWriteLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 }
 ```
 
@@ -279,7 +279,7 @@ Obtains a write lock in a scoped context.
 **Signature**
 
 ```ts
-export declare const writeLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
+export declare const writeLock: (self: TReentrantLock) => Effect<Scope, never, number>
 ```
 
 Added in v2.0.0
@@ -291,7 +291,7 @@ Determines if a write lock is held by some fiber.
 **Signature**
 
 ```ts
-export declare const writeLocked: (self: TReentrantLock) => STM.STM<never, never, boolean>
+export declare const writeLocked: (self: TReentrantLock) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -303,7 +303,7 @@ Computes the number of write locks held by fibers.
 **Signature**
 
 ```ts
-export declare const writeLocks: (self: TReentrantLock) => STM.STM<never, never, number>
+export declare const writeLocks: (self: TReentrantLock) => STM<never, never, number>
 ```
 
 Added in v2.0.0

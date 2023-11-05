@@ -1,25 +1,29 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
-import type * as Chunk from "./Chunk.js"
-import type * as Effect from "./Effect.js"
-import type * as Exit from "./Exit.js"
-import type * as Option from "./Option.js"
+import type { Cause } from "./Cause.js"
+import type { Chunk } from "./Chunk.js"
+import type { Effect } from "./Effect.js"
+import type { Exit } from "./Exit.js"
+import type { Option } from "./Option.js"
 
-/**
- * An `Emit<R, E, A, B>` represents an asynchronous callback that can be
- * called multiple times. The callback can be called with a value of type
- * `Effect<R, Option<E>, Chunk<A>>`, where succeeding with a `Chunk<A>`
- * indicates to emit those elements, failing with `Some<E>` indicates to
- * terminate with that error, and failing with `None` indicates to terminate
- * with an end of stream signal.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
-  (f: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
+export * as StreamEmit from "./StreamEmit.js"
+
+declare module "./StreamEmit.js" {
+  /**
+   * An `Emit<R, E, A, B>` represents an asynchronous callback that can be
+   * called multiple times. The callback can be called with a value of type
+   * `Effect<R, Option<E>, Chunk<A>>`, where succeeding with a `Chunk<A>`
+   * indicates to emit those elements, failing with `Some<E>` indicates to
+   * terminate with that error, and failing with `None` indicates to terminate
+   * with an end of stream signal.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface StreamEmit<R, E, A, B> extends EmitOps<R, E, A, B> {
+    (f: Effect<R, Option<E>, Chunk<A>>): Promise<B>
+  }
 }
 
 /**
@@ -30,7 +34,7 @@ export interface EmitOps<R, E, A, B> {
   /**
    * Emits a chunk containing the specified values.
    */
-  readonly chunk: (chunk: Chunk.Chunk<A>) => Promise<B>
+  readonly chunk: (chunk: Chunk<A>) => Promise<B>
 
   /**
    * Terminates with a cause that dies with the specified defect.
@@ -47,7 +51,7 @@ export interface EmitOps<R, E, A, B> {
    * Either emits the specified value if this `Exit` is a `Success` or else
    * terminates with the specified cause if this `Exit` is a `Failure`.
    */
-  readonly done: (exit: Exit.Exit<E, A>) => Promise<B>
+  readonly done: (exit: Exit<E, A>) => Promise<B>
 
   /**
    * Terminates with an end of stream signal.
@@ -63,18 +67,18 @@ export interface EmitOps<R, E, A, B> {
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  readonly fromEffect: (effect: Effect.Effect<R, E, A>) => Promise<B>
+  readonly fromEffect: (effect: Effect<R, E, A>) => Promise<B>
 
   /**
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  readonly fromEffectChunk: (effect: Effect.Effect<R, E, Chunk.Chunk<A>>) => Promise<B>
+  readonly fromEffectChunk: (effect: Effect<R, E, Chunk<A>>) => Promise<B>
 
   /**
    * Terminates the stream with the specified cause.
    */
-  readonly halt: (cause: Cause.Cause<E>) => Promise<B>
+  readonly halt: (cause: Cause<E>) => Promise<B>
 
   /**
    * Emits a chunk containing the specified value.

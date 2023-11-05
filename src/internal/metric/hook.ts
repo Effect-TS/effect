@@ -1,15 +1,15 @@
-import * as Chunk from "../../Chunk.js"
-import * as Duration from "../../Duration.js"
+import { Chunk } from "../../Chunk.js"
+import { Duration } from "../../Duration.js"
 import type { LazyArg } from "../../Function.js"
 import { dual, pipe } from "../../Function.js"
-import * as HashMap from "../../HashMap.js"
-import type * as MetricHook from "../../MetricHook.js"
-import type * as MetricKey from "../../MetricKey.js"
-import type * as MetricState from "../../MetricState.js"
+import { HashMap } from "../../HashMap.js"
+import type { MetricHook } from "../../MetricHook.js"
+import type { MetricKey } from "../../MetricKey.js"
+import type { MetricState } from "../../MetricState.js"
 import * as number from "../../Number.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
-import * as ReadonlyArray from "../../ReadonlyArray.js"
+import { ReadonlyArray } from "../../ReadonlyArray.js"
 import * as metricState from "./state.js"
 
 /** @internal */
@@ -32,7 +32,7 @@ export const make = <In, Out>(
     readonly get: LazyArg<Out>
     readonly update: (input: In) => void
   }
-): MetricHook.MetricHook<In, Out> => ({
+): MetricHook<In, Out> => ({
   [MetricHookTypeId]: metricHookVariance,
   pipe() {
     return pipeArguments(this, arguments)
@@ -42,8 +42,8 @@ export const make = <In, Out>(
 
 /** @internal */
 export const onUpdate = dual<
-  <In, Out>(f: (input: In) => void) => (self: MetricHook.MetricHook<In, Out>) => MetricHook.MetricHook<In, Out>,
-  <In, Out>(self: MetricHook.MetricHook<In, Out>, f: (input: In) => void) => MetricHook.MetricHook<In, Out>
+  <In, Out>(f: (input: In) => void) => (self: MetricHook<In, Out>) => MetricHook<In, Out>,
+  <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void) => MetricHook<In, Out>
 >(2, (self, f) => ({
   [MetricHookTypeId]: metricHookVariance,
   pipe() {
@@ -60,8 +60,8 @@ const bigint0 = BigInt(0)
 
 /** @internal */
 export const counter = <A extends (number | bigint)>(
-  key: MetricKey.MetricKey.Counter<A>
-): MetricHook.MetricHook.Counter<A> => {
+  key: MetricKey.Counter<A>
+): MetricHook.Counter<A> => {
   let sum: A = key.keyType.bigint ? bigint0 as A : 0 as A
   const canUpdate = key.keyType.incremental
     ? key.keyType.bigint
@@ -69,7 +69,7 @@ export const counter = <A extends (number | bigint)>(
       : (value: A) => value >= 0
     : (_value: A) => true
   return make({
-    get: () => metricState.counter(sum as number) as unknown as MetricState.MetricState.Counter<A>,
+    get: () => metricState.counter(sum as number) as unknown as MetricState.Counter<A>,
     update: (value) => {
       if (canUpdate(value)) {
         sum = (sum as any) + value
@@ -79,7 +79,7 @@ export const counter = <A extends (number | bigint)>(
 }
 
 /** @internal */
-export const frequency = (_key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency => {
+export const frequency = (_key: MetricKey.Frequency): MetricHook.Frequency => {
   let count = 0
   const values = new Map<string, number>()
   const update = (word: string) => {
@@ -96,15 +96,15 @@ export const frequency = (_key: MetricKey.MetricKey.Frequency): MetricHook.Metri
 
 /** @internal */
 export const gauge: {
-  (key: MetricKey.MetricKey.Gauge<number>, startAt: number): MetricHook.MetricHook.Gauge<number>
-  (key: MetricKey.MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.MetricHook.Gauge<bigint>
+  (key: MetricKey.Gauge<number>, startAt: number): MetricHook.Gauge<number>
+  (key: MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.Gauge<bigint>
 } = <A extends (number | bigint)>(
-  _key: MetricKey.MetricKey.Gauge<A>,
+  _key: MetricKey.Gauge<A>,
   startAt: A
-): MetricHook.MetricHook.Gauge<A> => {
+): MetricHook.Gauge<A> => {
   let value = startAt
   return make({
-    get: () => metricState.gauge(value as number) as unknown as MetricState.MetricState.Gauge<A>,
+    get: () => metricState.gauge(value as number) as unknown as MetricState.Gauge<A>,
     update: (v) => {
       value = v
     }
@@ -112,7 +112,7 @@ export const gauge: {
 }
 
 /** @internal */
-export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.MetricHook.Histogram => {
+export const histogram = (key: MetricKey.Histogram): MetricHook.Histogram => {
   const bounds = key.keyType.boundaries.values
   const size = bounds.length
   const values = new Uint32Array(size + 1)
@@ -162,7 +162,7 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
     }
   }
 
-  const getBuckets = (): Chunk.Chunk<readonly [number, number]> => {
+  const getBuckets = (): Chunk<readonly [number, number]> => {
     const builder: Array<readonly [number, number]> = Array(size)
     let cumulated = 0
     for (let i = 0; i < size; i++) {
@@ -188,7 +188,7 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
 }
 
 /** @internal */
-export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook.Summary => {
+export const summary = (key: MetricKey.Summary): MetricHook.Summary => {
   const { error, maxAge, maxSize, quantiles } = key.keyType
   const sortedQuantiles = pipe(quantiles, Chunk.sort(number.Order))
   const values = Array<readonly [number, number]>(maxSize)
@@ -200,7 +200,7 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
   let max = Number.MIN_VALUE
 
   // Just before the snapshot we filter out all values older than maxAge
-  const snapshot = (now: number): Chunk.Chunk<readonly [number, Option.Option<number>]> => {
+  const snapshot = (now: number): Chunk<readonly [number, Option<number>]> => {
     const builder: Array<number> = []
     // If the buffer is not full yet it contains valid items at the 0..last
     // indices and null values at the rest of the positions.
@@ -273,7 +273,7 @@ interface ResolvedQuantile {
    * `Some<number>` if a value for the quantile could be found, otherwise
    * `None`.
    */
-  readonly value: Option.Option<number>
+  readonly value: Option<number>
   /**
    * How many samples have been consumed prior to this quantile.
    */
@@ -281,15 +281,15 @@ interface ResolvedQuantile {
   /**
    * The rest of the samples after the quantile has been resolved.
    */
-  readonly rest: Chunk.Chunk<number>
+  readonly rest: Chunk<number>
 }
 
 /** @internal */
 const calculateQuantiles = (
   error: number,
-  sortedQuantiles: Chunk.Chunk<number>,
-  sortedSamples: Chunk.Chunk<number>
-): Chunk.Chunk<readonly [number, Option.Option<number>]> => {
+  sortedQuantiles: Chunk<number>,
+  sortedSamples: Chunk<number>
+): Chunk<readonly [number, Option<number>]> => {
   // The number of samples examined
   const sampleCount = sortedSamples.length
   if (Chunk.isEmpty(sortedQuantiles)) {
@@ -309,7 +309,7 @@ const calculateQuantiles = (
           head,
           sortedSamples
         )
-      ) as Chunk.Chunk<ResolvedQuantile>,
+      ) as Chunk<ResolvedQuantile>,
       (accumulator, quantile) => {
         const h = Chunk.unsafeHead(accumulator)
         return pipe(
@@ -335,10 +335,10 @@ const calculateQuantiles = (
 const resolveQuantile = (
   error: number,
   sampleCount: number,
-  current: Option.Option<number>,
+  current: Option<number>,
   consumed: number,
   quantile: number,
-  rest: Chunk.Chunk<number>
+  rest: Chunk<number>
 ): ResolvedQuantile => {
   let error_1 = error
   let sampleCount_1 = sampleCount

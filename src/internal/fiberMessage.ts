@@ -1,10 +1,14 @@
-import type * as Cause from "../Cause.js"
-import type * as Effect from "../Effect.js"
-import type * as FiberStatus from "../FiberStatus.js"
-import type * as FiberRuntime from "./fiberRuntime.js"
+import type { Cause } from "../Cause.js"
+import type { Effect } from "../Effect.js"
+import type { FiberStatus } from "../FiberStatus.js"
+import type { FiberRuntime } from "./fiberRuntime.js"
 
-/** @internal */
-export type FiberMessage = InterruptSignal | Stateful | Resume | YieldNow
+export * as FiberMessage from "./fiberMessage.js"
+
+declare module "./fiberMessage.js" {
+  /** @internal */
+  export type FiberMessage = InterruptSignal | Stateful | Resume | YieldNow
+}
 
 /** @internal */
 export const OP_INTERRUPT_SIGNAL = "InterruptSignal" as const
@@ -33,22 +37,22 @@ export type OP_YIELD_NOW = typeof OP_YIELD_NOW
 /** @internal */
 export interface InterruptSignal {
   readonly _tag: OP_INTERRUPT_SIGNAL
-  readonly cause: Cause.Cause<never>
+  readonly cause: Cause<never>
 }
 
 /** @internal */
 export interface Stateful {
   readonly _tag: OP_STATEFUL
   readonly onFiber: (
-    fiber: FiberRuntime.FiberRuntime<any, any>,
-    status: FiberStatus.FiberStatus
+    fiber: FiberRuntime<any, any>,
+    status: FiberStatus
   ) => void
 }
 
 /** @internal */
 export interface Resume {
   readonly _tag: OP_RESUME
-  readonly effect: Effect.Effect<any, any, any>
+  readonly effect: Effect<any, any, any>
 }
 
 /** @internal */
@@ -57,7 +61,7 @@ export interface YieldNow {
 }
 
 /** @internal */
-export const interruptSignal = (cause: Cause.Cause<never>): FiberMessage => ({
+export const interruptSignal = (cause: Cause<never>): FiberMessage => ({
   _tag: OP_INTERRUPT_SIGNAL,
   cause
 })
@@ -65,8 +69,8 @@ export const interruptSignal = (cause: Cause.Cause<never>): FiberMessage => ({
 /** @internal */
 export const stateful = (
   onFiber: (
-    fiber: FiberRuntime.FiberRuntime<any, any>,
-    status: FiberStatus.FiberStatus
+    fiber: FiberRuntime<any, any>,
+    status: FiberStatus
   ) => void
 ): FiberMessage => ({
   _tag: OP_STATEFUL,
@@ -74,7 +78,7 @@ export const stateful = (
 })
 
 /** @internal */
-export const resume = (effect: Effect.Effect<any, any, any>): FiberMessage => ({
+export const resume = (effect: Effect<any, any, any>): FiberMessage => ({
   _tag: OP_RESUME,
   effect
 })

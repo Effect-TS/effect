@@ -39,7 +39,7 @@ Constructs a `GroupBy` from a `Stream`.
 
 ```ts
 export declare const make: <R, E, K, V>(
-  grouped: Stream.Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
+  grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
 ) => GroupBy<R, E, K, V>
 ```
 
@@ -57,14 +57,14 @@ arbitrary order.
 ```ts
 export declare const evaluate: {
   <K, E, V, R2, E2, A>(
-    f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
+    f: (key: K, stream: Stream<never, E, V>) => Stream<R2, E2, A>,
     options?: { readonly bufferSize?: number }
-  ): <R>(self: GroupBy<R, E, K, V>) => Stream.Stream<R2 | R, E | E2, A>
+  ): <R>(self: GroupBy<R, E, K, V>) => Stream<R2 | R, E | E2, A>
   <R, K, E, V, R2, E2, A>(
     self: GroupBy<R, E, K, V>,
-    f: (key: K, stream: Stream.Stream<never, E, V>) => Stream.Stream<R2, E2, A>,
+    f: (key: K, stream: Stream<never, E, V>) => Stream<R2, E2, A>,
     options?: { readonly bufferSize?: number }
-  ): Stream.Stream<R | R2, E | E2, A>
+  ): Stream<R | R2, E | E2, A>
 }
 ```
 
@@ -82,7 +82,7 @@ and the results will be merged in arbitrary order.
 
 ```ts
 export interface GroupBy<R, E, K, V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
-  readonly grouped: Stream.Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
+  readonly grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
 }
 ```
 

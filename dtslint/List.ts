@@ -1,10 +1,10 @@
 import { pipe } from "effect/Function"
-import * as List from "effect/List"
-import * as Predicate from "effect/Predicate"
+import { List } from "effect/List"
+import { Predicate } from "effect/Predicate"
 
-declare const numbers: List.List<number>
+declare const numbers: List<number>
 declare const nonEmptyNumbers: List.Cons<number>
-declare const numbersOrStrings: List.List<number | string>
+declare const numbersOrStrings: List<number | string>
 declare const nonEmptyNumbersOrStrings: List.Cons<number | string>
 
 // -------------------------------------------------------------------------------------

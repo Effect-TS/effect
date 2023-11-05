@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration.js"
-import type * as Effect from "./Effect.js"
+import type { Duration } from "./Duration.js"
+import type { Effect } from "./Effect.js"
 import * as internal from "./internal/keyedPool.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Scope from "./Scope.js"
+import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -19,43 +19,47 @@ export const KeyedPoolTypeId: unique symbol = internal.KeyedPoolTypeId
  */
 export type KeyedPoolTypeId = typeof KeyedPoolTypeId
 
-/**
- * A `KeyedPool<K, E, A>` is a pool of `Pool`s of items of type `A`. Each pool
- * in the `KeyedPool` is associated with a key of type `K`.
- *
- * @since 2.0.0
- * @category models
- */
-export interface KeyedPool<K, E, A> extends KeyedPool.Variance<K, E, A>, Pipeable {
-  /**
-   * Retrieves an item from the pool belonging to the given key in a scoped
-   * effect. Note that if acquisition fails, then the returned effect will fail
-   * for that same reason. Retrying a failed acquisition attempt will repeat the
-   * acquisition attempt.
-   */
-  get(key: K): Effect.Effect<Scope.Scope, E, A>
+export * as KeyedPool from "./KeyedPool.js"
 
+declare module "./KeyedPool.js" {
   /**
-   * Invalidates the specified item. This will cause the pool to eventually
-   * reallocate the item, although this reallocation may occur lazily rather
-   * than eagerly.
-   */
-  invalidate(item: A): Effect.Effect<never, never, void>
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace KeyedPool {
-  /**
+   * A `KeyedPool<K, E, A>` is a pool of `Pool`s of items of type `A`. Each pool
+   * in the `KeyedPool` is associated with a key of type `K`.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<K, E, A> {
-    readonly [KeyedPoolTypeId]: {
-      readonly _K: (_: K) => void
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+  export interface KeyedPool<K, E, A> extends KeyedPool.Variance<K, E, A>, Pipeable {
+    /**
+     * Retrieves an item from the pool belonging to the given key in a scoped
+     * effect. Note that if acquisition fails, then the returned effect will fail
+     * for that same reason. Retrying a failed acquisition attempt will repeat the
+     * acquisition attempt.
+     */
+    get(key: K): Effect<Scope, E, A>
+
+    /**
+     * Invalidates the specified item. This will cause the pool to eventually
+     * reallocate the item, although this reallocation may occur lazily rather
+     * than eagerly.
+     */
+    invalidate(item: A): Effect<never, never, void>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace KeyedPool {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<K, E, A> {
+      readonly [KeyedPoolTypeId]: {
+        readonly _K: (_: K) => void
+        readonly _E: (_: never) => E
+        readonly _A: (_: never) => A
+      }
     }
   }
 }
@@ -70,8 +74,8 @@ export declare namespace KeyedPool {
  * @category constructors
  */
 export const make: <K, R, E, A>(
-  options: { readonly acquire: (key: K) => Effect.Effect<R, E, A>; readonly size: number }
-) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>> = internal.make
+  options: { readonly acquire: (key: K) => Effect<R, E, A>; readonly size: number }
+) => Effect<Scope | R, never, KeyedPool<K, E, A>> = internal.make
 
 /**
  * Makes a new pool of the specified fixed size. The pool is returned in a
@@ -85,8 +89,8 @@ export const make: <K, R, E, A>(
  * @category constructors
  */
 export const makeWith: <K, R, E, A>(
-  options: { readonly acquire: (key: K) => Effect.Effect<R, E, A>; readonly size: (key: K) => number }
-) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>> = internal.makeWith
+  options: { readonly acquire: (key: K) => Effect<R, E, A>; readonly size: (key: K) => number }
+) => Effect<Scope | R, never, KeyedPool<K, E, A>> = internal.makeWith
 
 /**
  * Makes a new pool with the specified minimum and maximum sizes and time to
@@ -103,12 +107,12 @@ export const makeWith: <K, R, E, A>(
  */
 export const makeWithTTL: <K, R, E, A>(
   options: {
-    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly acquire: (key: K) => Effect<R, E, A>
     readonly min: (key: K) => number
     readonly max: (key: K) => number
     readonly timeToLive: Duration.DurationInput
   }
-) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>> = internal.makeWithTTL
+) => Effect<Scope | R, never, KeyedPool<K, E, A>> = internal.makeWithTTL
 
 /**
  * Makes a new pool with the specified minimum and maximum sizes and time to
@@ -125,12 +129,12 @@ export const makeWithTTL: <K, R, E, A>(
  */
 export const makeWithTTLBy: <K, R, E, A>(
   options: {
-    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly acquire: (key: K) => Effect<R, E, A>
     readonly min: (key: K) => number
     readonly max: (key: K) => number
     readonly timeToLive: (key: K) => Duration.DurationInput
   }
-) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>> = internal.makeWithTTLBy
+) => Effect<Scope | R, never, KeyedPool<K, E, A>> = internal.makeWithTTLBy
 
 /**
  * Retrieves an item from the pool belonging to the given key in a scoped
@@ -142,8 +146,8 @@ export const makeWithTTLBy: <K, R, E, A>(
  * @category combinators
  */
 export const get: {
-  <K>(key: K): <E, A>(self: KeyedPool<K, E, A>) => Effect.Effect<Scope.Scope, E, A>
-  <K, E, A>(self: KeyedPool<K, E, A>, key: K): Effect.Effect<Scope.Scope, E, A>
+  <K>(key: K): <E, A>(self: KeyedPool<K, E, A>) => Effect<Scope, E, A>
+  <K, E, A>(self: KeyedPool<K, E, A>, key: K): Effect<Scope, E, A>
 } = internal.get
 
 /**
@@ -155,6 +159,6 @@ export const get: {
  * @category combinators
  */
 export const invalidate: {
-  <A>(item: A): <K, E>(self: KeyedPool<K, E, A>) => Effect.Effect<never, never, void>
-  <K, E, A>(self: KeyedPool<K, E, A>, item: A): Effect.Effect<never, never, void>
+  <A>(item: A): <K, E>(self: KeyedPool<K, E, A>) => Effect<never, never, void>
+  <K, E, A>(self: KeyedPool<K, E, A>, item: A): Effect<never, never, void>
 } = internal.invalidate

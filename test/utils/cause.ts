@@ -1,13 +1,13 @@
-import * as Cause from "effect/Cause"
-import * as FiberId from "effect/FiberId"
+import { Cause } from "effect/Cause"
+import { FiberId } from "effect/FiberId"
 import * as fc from "fast-check"
 
 export const causesArb = <E>(
   n: number,
   error: fc.Arbitrary<E>,
   defect: fc.Arbitrary<unknown>
-): fc.Arbitrary<Cause.Cause<E>> => {
-  const fiberId: fc.Arbitrary<FiberId.FiberId> = fc.tuple(
+): fc.Arbitrary<Cause<E>> => {
+  const fiberId: fc.Arbitrary<FiberId> = fc.tuple(
     fc.integer(),
     fc.integer()
   ).map(([a, b]) => FiberId.make(a, b))
@@ -17,19 +17,19 @@ export const causesArb = <E>(
   const die = defect.map(Cause.die)
   const interrupt = fiberId.map(Cause.interrupt)
 
-  const sequential = (n: number): fc.Arbitrary<Cause.Cause<E>> => {
+  const sequential = (n: number): fc.Arbitrary<Cause<E>> => {
     return fc.integer({ min: 1, max: n - 1 }).chain((i) =>
       causesN(i).chain((left) => causesN(n - i).map((right) => Cause.sequential(left, right)))
     )
   }
 
-  const parallel = (n: number): fc.Arbitrary<Cause.Cause<E>> => {
+  const parallel = (n: number): fc.Arbitrary<Cause<E>> => {
     return fc.integer({ min: 1, max: n - 1 }).chain((i) =>
       causesN(i).chain((left) => causesN(n - i).map((right) => Cause.parallel(left, right)))
     )
   }
 
-  const causesN = (n: number): fc.Arbitrary<Cause.Cause<E>> => {
+  const causesN = (n: number): fc.Arbitrary<Cause<E>> => {
     if (n === 1) {
       return fc.oneof(empty, failure, die, interrupt)
     }
@@ -39,7 +39,7 @@ export const causesArb = <E>(
   return causesN(n)
 }
 
-export const causes: fc.Arbitrary<Cause.Cause<string>> = causesArb(
+export const causes: fc.Arbitrary<Cause<string>> = causesArb(
   1,
   fc.string(),
   fc.string().map((message) => new Error(message))
@@ -47,13 +47,13 @@ export const causes: fc.Arbitrary<Cause.Cause<string>> = causesArb(
 
 export const errors: fc.Arbitrary<string> = fc.string()
 
-export const errorCauseFunctions: fc.Arbitrary<(s: string) => Cause.Cause<string>> = fc.func(causes)
+export const errorCauseFunctions: fc.Arbitrary<(s: string) => Cause<string>> = fc.func(causes)
 
 export const equalCauses: fc.Arbitrary<
-  readonly [Cause.Cause<string>, Cause.Cause<string>]
+  readonly [Cause<string>, Cause<string>]
 > = fc.tuple(causes, causes, causes)
   .chain(([a, b, c]) => {
-    const causeCases: ReadonlyArray<readonly [Cause.Cause<string>, Cause.Cause<string>]> = [
+    const causeCases: ReadonlyArray<readonly [Cause<string>, Cause<string>]> = [
       [a, a],
       [
         Cause.sequential(Cause.sequential(a, b), c),

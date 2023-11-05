@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration.js"
-import type * as Effect from "./Effect.js"
+import type { Duration } from "./Duration.js"
+import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import * as internal from "./internal/cache.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -20,57 +20,78 @@ export const CacheTypeId: unique symbol = internal.CacheTypeId
  */
 export type CacheTypeId = typeof CacheTypeId
 
-/**
- * A `Cache` is defined in terms of a lookup function that, given a key of
- * type `Key`, can either fail with an error of type `Error` or succeed with a
- * value of type `Value`. Getting a value from the cache will either return
- * the previous result of the lookup function if it is available or else
- * compute a new result with the lookup function, put it in the cache, and
- * return it.
- *
- * A cache also has a specified capacity and time to live. When the cache is
- * at capacity the least recently accessed values in the cache will be
- * removed to make room for new values. Getting a value with a life older than
- * the specified time to live will result in a new value being computed with
- * the lookup function and returned when available.
- *
- * The cache is safe for concurrent access. If multiple fibers attempt to get
- * the same key the lookup function will only be computed once and the result
- * will be returned to all fibers.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Value> {
+export * as Cache from "./Cache.js"
+
+declare module "./Cache.js" {
   /**
-   * Retrieves the value associated with the specified key if it exists.
-   * Otherwise computes the value with the lookup function, puts it in the
-   * cache, and returns it.
+   * A `Cache` is defined in terms of a lookup function that, given a key of
+   * type `Key`, can either fail with an error of type `Error` or succeed with a
+   * value of type `Value`. Getting a value from the cache will either return
+   * the previous result of the lookup function if it is available or else
+   * compute a new result with the lookup function, put it in the cache, and
+   * return it.
+   *
+   * A cache also has a specified capacity and time to live. When the cache is
+   * at capacity the least recently accessed values in the cache will be
+   * removed to make room for new values. Getting a value with a life older than
+   * the specified time to live will result in a new value being computed with
+   * the lookup function and returned when available.
+   *
+   * The cache is safe for concurrent access. If multiple fibers attempt to get
+   * the same key the lookup function will only be computed once and the result
+   * will be returned to all fibers.
+   *
+   * @since 2.0.0
+   * @category models
    */
-  get(key: Key): Effect.Effect<never, Error, Value>
+  export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Value> {
+    /**
+     * Retrieves the value associated with the specified key if it exists.
+     * Otherwise computes the value with the lookup function, puts it in the
+     * cache, and returns it.
+     */
+    get(key: Key): Effect<never, Error, Value>
+
+    /**
+     * Retrieves the value associated with the specified key if it exists as a left.
+     * Otherwise computes the value with the lookup function, puts it in the
+     * cache, and returns it as a right.
+     */
+    getEither(key: Key): Effect<never, Error, Either<Value, Value>>
+
+    /**
+     * Computes the value associated with the specified key, with the lookup
+     * function, and puts it in the cache. The difference between this and
+     * `get` method is that `refresh` triggers (re)computation of the value
+     * without invalidating it in the cache, so any request to the associated
+     * key can still be served while the value is being re-computed/retrieved
+     * by the lookup function. Additionally, `refresh` always triggers the
+     * lookup function, disregarding the last `Error`.
+     */
+    refresh(key: Key): Effect<never, Error, void>
+
+    /**
+     * Associates the specified value with the specified key in the cache.
+     */
+    set<Key, Error, Value>(this: Cache<Key, Error, Value>, key: Key, value: Value): Effect<never, never, void>
+  }
 
   /**
-   * Retrieves the value associated with the specified key if it exists as a left.
-   * Otherwise computes the value with the lookup function, puts it in the
-   * cache, and returns it as a right.
+   * @since 2.0.0
    */
-  getEither(key: Key): Effect.Effect<never, Error, Either<Value, Value>>
-
-  /**
-   * Computes the value associated with the specified key, with the lookup
-   * function, and puts it in the cache. The difference between this and
-   * `get` method is that `refresh` triggers (re)computation of the value
-   * without invalidating it in the cache, so any request to the associated
-   * key can still be served while the value is being re-computed/retrieved
-   * by the lookup function. Additionally, `refresh` always triggers the
-   * lookup function, disregarding the last `Error`.
-   */
-  refresh(key: Key): Effect.Effect<never, Error, void>
-
-  /**
-   * Associates the specified value with the specified key in the cache.
-   */
-  set<Key, Error, Value>(this: Cache<Key, Error, Value>, key: Key, value: Value): Effect.Effect<never, never, void>
+  export namespace Cache {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<Key, Error, Value> {
+      readonly [CacheTypeId]: {
+        readonly _Key: (_: Key) => void
+        readonly _Error: (_: never) => Error
+        readonly _Value: (_: never) => Value
+      }
+    }
+  }
 }
 
 /**
@@ -86,81 +107,64 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect.Effect<never, Error, Option.Option<Value>>
+  getOption(key: Key): Effect<never, Error, Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect.Effect<never, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect<never, never, Option<Value>>
 
   /**
    * Returns statistics for this cache.
    */
-  cacheStats(): Effect.Effect<never, never, CacheStats>
+  cacheStats(): Effect<never, never, CacheStats>
 
   /**
    * Returns whether a value associated with the specified key exists in the
    * cache.
    */
-  contains(key: Key): Effect.Effect<never, never, boolean>
+  contains(key: Key): Effect<never, never, boolean>
 
   /**
    * Returns statistics for the specified entry.
    */
-  entryStats(key: Key): Effect.Effect<never, never, Option.Option<EntryStats>>
+  entryStats(key: Key): Effect<never, never, Option<EntryStats>>
 
   /**
    * Invalidates the value associated with the specified key.
    */
-  invalidate(key: Key): Effect.Effect<never, never, void>
+  invalidate(key: Key): Effect<never, never, void>
 
   /**
    * Invalidates the value associated with the specified key if the predicate holds.
    */
-  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect.Effect<never, never, void>
+  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect<never, never, void>
 
   /**
    * Invalidates all values in the cache.
    */
-  invalidateAll(): Effect.Effect<never, never, void>
+  invalidateAll(): Effect<never, never, void>
 
   /**
    * Returns the approximate number of values in the cache.
    */
-  size(): Effect.Effect<never, never, number>
+  size(): Effect<never, never, number>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  keys<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect.Effect<never, never, Array<Key>>
+  keys<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect<never, never, Array<Key>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  values(): Effect.Effect<never, never, Array<Value>>
+  values(): Effect<never, never, Array<Value>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  entries<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect.Effect<never, never, Array<[Key, Value]>>
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace Cache {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<Key, Error, Value> {
-    readonly [CacheTypeId]: {
-      readonly _Key: (_: Key) => void
-      readonly _Error: (_: never) => Error
-      readonly _Value: (_: never) => Value
-    }
-  }
+  entries<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect<never, never, Array<[Key, Value]>>
 }
 
 /**
@@ -176,7 +180,7 @@ export const make: <Key, Environment, Error, Value>(
     readonly timeToLive: Duration.DurationInput
     readonly lookup: Lookup<Key, Environment, Error, Value>
   }
-) => Effect.Effect<Environment, never, Cache<Key, Error, Value>> = internal.make
+) => Effect<Environment, never, Cache<Key, Error, Value>> = internal.make
 
 /**
  * Constructs a new cache with the specified capacity, time to live, and
@@ -190,9 +194,9 @@ export const makeWith: <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   }
-) => Effect.Effect<Environment, never, Cache<Key, Error, Value>> = internal.makeWith
+) => Effect<Environment, never, Cache<Key, Error, Value>> = internal.makeWith
 
 /**
  * `CacheStats` represents a snapshot of statistics for the cache as of a
@@ -247,4 +251,4 @@ export const makeEntryStats: (loadedMillis: number) => EntryStats = internal.mak
  * @since 2.0.0
  * @category models
  */
-export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect.Effect<Environment, Error, Value>
+export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect<Environment, Error, Value>

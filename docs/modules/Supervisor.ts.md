@@ -63,7 +63,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-abstract value(): Effect.Effect<never, never, T>
+abstract value(): Effect<never, never, T>
 ```
 
 Added in v2.0.0
@@ -74,9 +74,9 @@ Added in v2.0.0
 
 ```ts
 onStart<R, E, A>(
-    _context: Context.Context<R>,
-    _effect: Effect.Effect<R, E, A>,
-    _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    _context: Context<R>,
+    _effect: Effect<R, E, A>,
+    _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void
 ```
@@ -89,7 +89,7 @@ Added in v2.0.0
 
 ```ts
 onEnd<E, A>(
-    _value: Exit.Exit<E, A>,
+    _value: Exit<E, A>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void
 ```
@@ -103,7 +103,7 @@ Added in v2.0.0
 ```ts
 onEffect<E, A>(
     _fiber: Fiber.RuntimeFiber<E, A>,
-    _effect: Effect.Effect<any, any, any>
+    _effect: Effect<any, any, any>
   ): void
 ```
 
@@ -183,8 +183,8 @@ Creates a new supervisor that tracks children in a set.
 
 ```ts
 export declare const fibersIn: (
-  ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
-) => Effect.Effect<never, never, Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>>
+  ref: MutableRef<SortedSet<Fiber.RuntimeFiber<any, any>>>
+) => Effect<never, never, Supervisor<SortedSet<Fiber.RuntimeFiber<any, any>>>>
 ```
 
 Added in v2.0.0
@@ -196,7 +196,7 @@ Creates a new supervisor that constantly yields effect when polled
 **Signature**
 
 ```ts
-export declare const fromEffect: <A>(effect: Effect.Effect<never, never, A>) => Supervisor<A>
+export declare const fromEffect: <A>(effect: Effect<never, never, A>) => Supervisor<A>
 ```
 
 Added in v2.0.0
@@ -220,7 +220,7 @@ Creates a new supervisor that tracks children in a set.
 **Signature**
 
 ```ts
-export declare const track: Effect.Effect<never, never, Supervisor<Fiber.RuntimeFiber<any, any>[]>>
+export declare const track: Effect<never, never, Supervisor<Fiber.RuntimeFiber<any, any>[]>>
 ```
 
 Added in v2.0.0
@@ -232,7 +232,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never, never, never>
+export declare const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -250,27 +250,27 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * supervisor. This value may change over time, reflecting what the supervisor
    * produces as it supervises fibers.
    */
-  value(): Effect.Effect<never, never, T>
+  value(): Effect<never, never, T>
 
   /**
    * Supervises the start of a `Fiber`.
    */
   onStart<R, E, A>(
-    context: Context.Context<R>,
-    effect: Effect.Effect<R, E, A>,
-    parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    context: Context<R>,
+    effect: Effect<R, E, A>,
+    parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void
 
   /**
    * Supervises the end of a `Fiber`.
    */
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void
+  onEnd<E, A>(value: Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void
 
   /**
    * Supervises the execution of an `Effect` by a `Fiber`.
    */
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void
+  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect<any, any, any>): void
 
   /**
    * Supervises the suspension of a computation running within a `Fiber`.

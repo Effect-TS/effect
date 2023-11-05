@@ -1,4 +1,4 @@
-import type * as Fiber from "../../Fiber.js"
+import type { Fiber } from "../../Fiber.js"
 
 /** @internal */
 export type SuspendedWarningData = Start | Pending | Done
@@ -29,7 +29,7 @@ export interface Start {
 /** @internal */
 export interface Pending {
   readonly _tag: OP_SUSPENDED_WARNING_DATA_PENDING
-  readonly fiber: Fiber.Fiber<Error, void>
+  readonly fiber: Fiber<Error, void>
 }
 
 /** @internal */
@@ -53,7 +53,7 @@ export const start: SuspendedWarningData = {
  *
  * @internal
  */
-export const pending = (fiber: Fiber.Fiber<Error, void>): SuspendedWarningData => {
+export const pending = (fiber: Fiber<Error, void>): SuspendedWarningData => {
   return {
     _tag: OP_SUSPENDED_WARNING_DATA_PENDING,
     fiber

@@ -19,6 +19,8 @@ import type { Kind, TypeLambda } from "./HKT.js"
 
 import { isNullable } from "./Predicate.js"
 
+export * as Utils from "./Utils.js"
+
 /**
  * @category symbols
  * @since 2.0.0

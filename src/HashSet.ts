@@ -16,12 +16,16 @@ const TypeId: unique symbol = HS.HashSetTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface HashSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
+export * as HashSet from "./HashSet.js"
+
+declare module "./HashSet.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface HashSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+  }
 }
 
 /**

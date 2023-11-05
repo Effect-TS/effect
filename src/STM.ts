@@ -1,20 +1,20 @@
 /**
  * @since 2.0.0
  */
-import * as Cause from "./Cause.js"
-import * as Chunk from "./Chunk.js"
-import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
-import type * as Either from "./Either.js"
-import type * as FiberId from "./FiberId.js"
+import { Cause } from "./Cause.js"
+import { Chunk } from "./Chunk.js"
+import type { Context } from "./Context.js"
+import type { Effect } from "./Effect.js"
+import type { Either } from "./Either.js"
+import type { FiberId } from "./FiberId.js"
 import type { LazyArg } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as core from "./internal/stm/core.js"
 import * as stm from "./internal/stm/stm.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Unify from "./Unify.js"
+import type { Unify } from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -28,47 +28,68 @@ export const STMTypeId: unique symbol = core.STMTypeId
  */
 export type STMTypeId = typeof STMTypeId
 
-/**
- * `STM<R, E, A>` represents an effect that can be performed transactionally,
- *  resulting in a failure `E` or a value `A` that may require an environment
- *  `R` to execute.
- *
- * Software Transactional Memory is a technique which allows composition of
- * arbitrary atomic operations.  It is the software analog of transactions in
- * database systems.
- *
- * The API is lifted directly from the Haskell package Control.Concurrent.STM
- * although the implementation does not resemble the Haskell one at all.
- *
- * See http://hackage.haskell.org/package/stm-2.5.0.0/docs/Control-Concurrent-STM.html
- *
- * STM in Haskell was introduced in:
- *
- * Composable memory transactions, by Tim Harris, Simon Marlow, Simon Peyton
- * Jones, and Maurice Herlihy, in ACM Conference on Principles and Practice of
- * Parallel Programming 2005.
- *
- * See https://www.microsoft.com/en-us/research/publication/composable-memory-transactions/
- *
- * See also:
- *  Lock Free Data Structures using STMs in Haskell, by Anthony Discolo, Tim
- *  Harris, Simon Marlow, Simon Peyton Jones, Satnam Singh) FLOPS 2006: Eighth
- *  International Symposium on Functional and Logic Programming, Fuji Susono,
- *  JAPAN, April 2006
- *
- *  https://www.microsoft.com/en-us/research/publication/lock-free-data-structures-using-stms-in-haskell/
- *
- * The implemtation is based on the ZIO STM module, while JS environments have
- * no race conditions from multiple threads STM provides greater benefits for
- * synchronization of Fibers and transactional data-types can be quite useful.
- *
- * @since 2.0.0
- * @category models
- */
-export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
-  [Unify.typeSymbol]?: unknown
-  [Unify.unifySymbol]?: STMUnify<this>
-  [Unify.ignoreSymbol]?: STMUnifyIgnore
+export * as STM from "./STM.js"
+
+declare module "./STM.js" {
+  /**
+   * `STM<R, E, A>` represents an effect that can be performed transactionally,
+   *  resulting in a failure `E` or a value `A` that may require an environment
+   *  `R` to execute.
+   *
+   * Software Transactional Memory is a technique which allows composition of
+   * arbitrary atomic operations.  It is the software analog of transactions in
+   * database systems.
+   *
+   * The API is lifted directly from the Haskell package Control.Concurrent.STM
+   * although the implementation does not resemble the Haskell one at all.
+   *
+   * See http://hackage.haskell.org/package/stm-2.5.0.0/docs/Control-Concurrent-STM.html
+   *
+   * STM in Haskell was introduced in:
+   *
+   * Composable memory transactions, by Tim Harris, Simon Marlow, Simon Peyton
+   * Jones, and Maurice Herlihy, in ACM Conference on Principles and Practice of
+   * Parallel Programming 2005.
+   *
+   * See https://www.microsoft.com/en-us/research/publication/composable-memory-transactions/
+   *
+   * See also:
+   *  Lock Free Data Structures using STMs in Haskell, by Anthony Discolo, Tim
+   *  Harris, Simon Marlow, Simon Peyton Jones, Satnam Singh) FLOPS 2006: Eighth
+   *  International Symposium on Functional and Logic Programming, Fuji Susono,
+   *  JAPAN, April 2006
+   *
+   *  https://www.microsoft.com/en-us/research/publication/lock-free-data-structures-using-stms-in-haskell/
+   *
+   * The implemtation is based on the ZIO STM module, while JS environments have
+   * no race conditions from multiple threads STM provides greater benefits for
+   * synchronization of Fibers and transactional data-types can be quite useful.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface STM<R, E, A> extends Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
+    [Unify.typeSymbol]?: unknown
+    [Unify.unifySymbol]?: STMUnify<this>
+    [Unify.ignoreSymbol]?: STMUnifyIgnore
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace STM {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<R, E, A> {
+      readonly [STMTypeId]: {
+        readonly _R: (_: never) => R
+        readonly _E: (_: never) => E
+        readonly _A: (_: never) => A
+      }
+    }
+  }
 }
 
 /**
@@ -130,23 +151,6 @@ declare module "./Option.js" {
 }
 
 /**
- * @since 2.0.0
- */
-export declare namespace STM {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<R, E, A> {
-    readonly [STMTypeId]: {
-      readonly _R: (_: never) => R
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
-    }
-  }
-}
-
-/**
  * @category models
  * @since 2.0.0
  */
@@ -181,12 +185,12 @@ export const acquireUseRelease: {
     release: (resource: A) => STM<R3, E3, A3>
   ): <R, E>(
     acquire: STM<R, E, A>
-  ) => Effect.Effect<R2 | R3 | R, E2 | E3 | E, A2>
+  ) => Effect<R2 | R3 | R, E2 | E3 | E, A2>
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     acquire: STM<R, E, A>,
     use: (resource: A) => STM<R2, E2, A2>,
     release: (resource: A) => STM<R3, E3, A3>
-  ): Effect.Effect<R | R2 | R3, E | E2 | E3, A2>
+  ): Effect<R | R2 | R3, E | E2 | E3, A2>
 } = stm.acquireUseRelease
 
 /**
@@ -274,7 +278,7 @@ export const as: {
  * @since 2.0.0
  * @category mapping
  */
-export const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>> = stm.asSome
+export const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option<A>> = stm.asSome
 
 /**
  * Maps the error value of this effect to an optional value.
@@ -282,7 +286,7 @@ export const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>
  * @since 2.0.0
  * @category mapping
  */
-export const asSomeError: <R, E, A>(self: STM<R, E, A>) => STM<R, Option.Option<E>, A> = stm.asSomeError
+export const asSomeError: <R, E, A>(self: STM<R, E, A>) => STM<R, Option<E>, A> = stm.asSomeError
 
 /**
  * This function maps the success value of an `STM` to `void`. If the original
@@ -321,13 +325,13 @@ export const catchAll: {
  */
 export const catchSome: {
   <E, R2, E2, A2>(
-    pf: (error: E) => Option.Option<STM<R2, E2, A2>>
+    pf: (error: E) => Option<STM<R2, E2, A2>>
   ): <R, A>(
     self: STM<R, E, A>
   ) => STM<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: STM<R, E, A>,
-    pf: (error: E) => Option.Option<STM<R2, E2, A2>>
+    pf: (error: E) => Option<STM<R2, E2, A2>>
   ): STM<R | R2, E | E2, A | A2>
 } = stm.catchSome
 
@@ -404,8 +408,8 @@ export const check: (predicate: LazyArg<boolean>) => STM<never, never, void> = s
  * @category mutations
  */
 export const collect: {
-  <A, A2>(pf: (a: A) => Option.Option<A2>): <R, E>(self: STM<R, E, A>) => STM<R, E, A2>
-  <R, E, A, A2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<A2>): STM<R, E, A2>
+  <A, A2>(pf: (a: A) => Option<A2>): <R, E>(self: STM<R, E, A>) => STM<R, E, A2>
+  <R, E, A, A2>(self: STM<R, E, A>, pf: (a: A) => Option<A2>): STM<R, E, A2>
 } = stm.collect
 
 /**
@@ -415,8 +419,8 @@ export const collect: {
  * @category mutations
  */
 export const collectSTM: {
-  <A, R2, E2, A2>(pf: (a: A) => Option.Option<STM<R2, E2, A2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A2>
-  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<STM<R2, E2, A2>>): STM<R | R2, E | E2, A2>
+  <A, R2, E2, A2>(pf: (a: A) => Option<STM<R2, E2, A2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A2>
+  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, pf: (a: A) => Option<STM<R2, E2, A2>>): STM<R | R2, E | E2, A2>
 } = stm.collectSTM
 
 /**
@@ -425,7 +429,7 @@ export const collectSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = core.commit
+export const commit: <R, E, A>(self: STM<R, E, A>) => Effect<R, E, A> = core.commit
 
 /**
  * Commits this transaction atomically, regardless of whether the transaction
@@ -434,7 +438,7 @@ export const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = c
  * @since 2.0.0
  * @category destructors
  */
-export const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = stm.commitEither
+export const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect<R, E, A> = stm.commitEither
 
 /**
  * Similar to Either.cond, evaluate the predicate, return the given A as
@@ -452,7 +456,7 @@ export const cond: <E, A>(predicate: LazyArg<boolean>, error: LazyArg<E>, result
  * @since 2.0.0
  * @category constructors
  */
-export const context: <R>() => STM<R, never, Context.Context<R>> = core.context
+export const context: <R>() => STM<R, never, Context<R>> = core.context
 
 /**
  * Accesses the environment of the transaction to perform a transaction.
@@ -460,7 +464,7 @@ export const context: <R>() => STM<R, never, Context.Context<R>> = core.context
  * @since 2.0.0
  * @category constructors
  */
-export const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) => STM<R0, never, R> = core.contextWith
+export const contextWith: <R0, R>(f: (environment: Context<R0>) => R) => STM<R0, never, R> = core.contextWith
 
 /**
  * Accesses the environment of the transaction to perform a transaction.
@@ -469,7 +473,7 @@ export const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) =>
  * @category constructors
  */
 export const contextWithSTM: <R0, R, E, A>(
-  f: (environment: Context.Context<R0>) => STM<R, E, A>
+  f: (environment: Context<R0>) => STM<R, E, A>
 ) => STM<R0 | R, E, A> = core.contextWithSTM
 
 /**
@@ -480,8 +484,8 @@ export const contextWithSTM: <R0, R, E, A>(
  * @category context
  */
 export const mapInputContext: {
-  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <E, A>(self: STM<R, E, A>) => STM<R0, E, A>
-  <E, A, R0, R>(self: STM<R, E, A>, f: (context: Context.Context<R0>) => Context.Context<R>): STM<R0, E, A>
+  <R0, R>(f: (context: Context<R0>) => Context<R>): <E, A>(self: STM<R, E, A>) => STM<R0, E, A>
+  <E, A, R0, R>(self: STM<R, E, A>, f: (context: Context<R0>) => Context<R>): STM<R0, E, A>
 } = core.mapInputContext
 
 /**
@@ -515,7 +519,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => STM<never, never, never> =
  * @since 2.0.0
  * @category mutations
  */
-export const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either.Either<E, A>> = stm.either
+export const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either<E, A>> = stm.either
 
 /**
  * Executes the specified finalization transaction whether or not this effect
@@ -585,7 +589,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => STM<never, E, never> = core.
  * @since 2.0.0
  * @category constructors
  */
-export const fiberId: STM<never, never, FiberId.FiberId> = stm.fiberId
+export const fiberId: STM<never, never, FiberId> = stm.fiberId
 
 /**
  * Filters the collection using the specified effectual predicate.
@@ -808,7 +812,7 @@ export const forEach: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromEither: <E, A>(either: Either.Either<E, A>) => STM<never, E, A> = stm.fromEither
+export const fromEither: <E, A>(either: Either<E, A>) => STM<never, E, A> = stm.fromEither
 
 /**
  * Lifts an `Option` into a `STM`.
@@ -816,7 +820,7 @@ export const fromEither: <E, A>(either: Either.Either<E, A>) => STM<never, E, A>
  * @since 2.0.0
  * @category constructors
  */
-export const fromOption: <A>(option: Option.Option<A>) => STM<never, Option.Option<never>, A> = stm.fromOption
+export const fromOption: <A>(option: Option<A>) => STM<never, Option<never>, A> = stm.fromOption
 
 /**
  * @since 2.0.0
@@ -1103,7 +1107,7 @@ export const gen: <Eff extends STMGen<any, any, any>, AEff>(
  * @since 2.0.0
  * @category getters
  */
-export const head: <R, E, A>(self: STM<R, E, Iterable<A>>) => STM<R, Option.Option<E>, A> = stm.head
+export const head: <R, E, A>(self: STM<R, E, Iterable<A>>) => STM<R, Option<E>, A> = stm.head
 
 const if_: {
   <R1, R2, E1, E2, A, A1>(
@@ -1160,7 +1164,7 @@ export const interrupt: STM<never, never, never> = core.interrupt
  * @since 2.0.0
  * @category constructors
  */
-export const interruptAs: (fiberId: FiberId.FiberId) => STM<never, never, never> = core.interruptAs
+export const interruptAs: (fiberId: FiberId) => STM<never, never, never> = core.interruptAs
 
 /**
  * Returns whether this transactional effect is a failure.
@@ -1335,7 +1339,7 @@ export const negate: <R, E>(self: STM<R, E, boolean>) => STM<R, E, boolean> = st
  * @since 2.0.0
  * @category mutations
  */
-export const none: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, void> = stm.none
+export const none: <R, E, A>(self: STM<R, E, Option<A>>) => STM<R, Option<E>, void> = stm.none
 
 /**
  * Converts the failure channel into an `Option`.
@@ -1343,7 +1347,7 @@ export const none: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option
  * @since 2.0.0
  * @category mutations
  */
-export const option: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Option.Option<A>> = stm.option
+export const option: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Option<A>> = stm.option
 
 /**
  * Translates `STM` effect failure into death of the fiber, making all
@@ -1387,8 +1391,8 @@ export const orElse: {
  * @category error handling
  */
 export const orElseEither: {
-  <R2, E2, A2>(that: LazyArg<STM<R2, E2, A2>>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2, Either.Either<A, A2>>
-  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, that: LazyArg<STM<R2, E2, A2>>): STM<R | R2, E2, Either.Either<A, A2>>
+  <R2, E2, A2>(that: LazyArg<STM<R2, E2, A2>>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2, Either<A, A2>>
+  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, that: LazyArg<STM<R2, E2, A2>>): STM<R | R2, E2, Either<A, A2>>
 } = stm.orElseEither
 
 /**
@@ -1413,14 +1417,14 @@ export const orElseFail: {
  */
 export const orElseOptional: {
   <R2, E2, A2>(
-    that: LazyArg<STM<R2, Option.Option<E2>, A2>>
+    that: LazyArg<STM<R2, Option<E2>, A2>>
   ): <R, E, A>(
-    self: STM<R, Option.Option<E>, A>
-  ) => STM<R2 | R, Option.Option<E2 | E>, A2 | A>
+    self: STM<R, Option<E>, A>
+  ) => STM<R2 | R, Option<E2 | E>, A2 | A>
   <R, E, A, R2, E2, A2>(
-    self: STM<R, Option.Option<E>, A>,
-    that: LazyArg<STM<R2, Option.Option<E2>, A2>>
-  ): STM<R | R2, Option.Option<E | E2>, A | A2>
+    self: STM<R, Option<E>, A>,
+    that: LazyArg<STM<R2, Option<E2>, A2>>
+  ): STM<R | R2, Option<E | E2>, A | A2>
 } = stm.orElseOptional
 
 /**
@@ -1467,8 +1471,8 @@ export const partition: {
  * @category context
  */
 export const provideContext: {
-  <R>(env: Context.Context<R>): <E, A>(self: STM<R, E, A>) => STM<never, E, A>
-  <E, A, R>(self: STM<R, E, A>, env: Context.Context<R>): STM<never, E, A>
+  <R>(env: Context<R>): <E, A>(self: STM<R, E, A>) => STM<never, E, A>
+  <E, A, R>(self: STM<R, E, A>, env: Context<R>): STM<never, E, A>
 } = stm.provideContext
 
 /**
@@ -1479,8 +1483,8 @@ export const provideContext: {
  * @category context
  */
 export const provideSomeContext: {
-  <R>(context: Context.Context<R>): <R1, E, A>(self: STM<R1, E, A>) => STM<Exclude<R1, R>, E, A>
-  <R, R1, E, A>(self: STM<R1, E, A>, context: Context.Context<R>): STM<Exclude<R1, R>, E, A>
+  <R>(context: Context<R>): <R1, E, A>(self: STM<R1, E, A>) => STM<Exclude<R1, R>, E, A>
+  <R, R1, E, A>(self: STM<R1, E, A>, context: Context<R>): STM<Exclude<R1, R>, E, A>
 } = stm.provideSomeContext
 
 /**
@@ -1572,8 +1576,8 @@ export const reduceRight: {
  * @category mutations
  */
 export const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
-  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option.Option<E2>): STM<R, E2, A>
+  <E, E2>(pf: (error: E) => Option<E2>): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
+  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option<E2>): STM<R, E2, A>
 } = stm.refineOrDie
 
 /**
@@ -1584,8 +1588,8 @@ export const refineOrDie: {
  * @category mutations
  */
 export const refineOrDieWith: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
-  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): STM<R, E2, A>
+  <E, E2>(pf: (error: E) => Option<E2>, f: (error: E) => unknown): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
+  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option<E2>, f: (error: E) => unknown): STM<R, E2, A>
 } = stm.refineOrDieWith
 
 /**
@@ -1596,8 +1600,8 @@ export const refineOrDieWith: {
  * @category mutations
  */
 export const reject: {
-  <A, E2>(pf: (a: A) => Option.Option<E2>): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, A>
-  <R, E, A, E2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<E2>): STM<R, E | E2, A>
+  <A, E2>(pf: (a: A) => Option<E2>): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, A>
+  <R, E, A, E2>(self: STM<R, E, A>, pf: (a: A) => Option<E2>): STM<R, E | E2, A>
 } = stm.reject
 
 /**
@@ -1609,8 +1613,8 @@ export const reject: {
  * @category mutations
  */
 export const rejectSTM: {
-  <A, R2, E2>(pf: (a: A) => Option.Option<STM<R2, E2, E2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<STM<R2, E2, E2>>): STM<R | R2, E | E2, A>
+  <A, R2, E2>(pf: (a: A) => Option<STM<R2, E2, E2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2>(self: STM<R, E, A>, pf: (a: A) => Option<STM<R2, E2, E2>>): STM<R | R2, E | E2, A>
 } = stm.rejectSTM
 
 /**
@@ -1729,7 +1733,7 @@ export const retryWhile: {
  * @since 2.0.0
  * @category getters
  */
-export const some: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, A> = stm.some
+export const some: <R, E, A>(self: STM<R, E, Option<A>>) => STM<R, Option<E>, A> = stm.some
 
 /**
  * Returns an `STM` effect that succeeds with the specified value.
@@ -1745,7 +1749,7 @@ export const succeed: <A>(value: A) => STM<never, never, A> = core.succeed
  * @since 2.0.0
  * @category constructors
  */
-export const succeedNone: STM<never, never, Option.Option<never>> = stm.succeedNone
+export const succeedNone: STM<never, never, Option<never>> = stm.succeedNone
 
 /**
  * Returns an effect with the optional value.
@@ -1753,7 +1757,7 @@ export const succeedNone: STM<never, never, Option.Option<never>> = stm.succeedN
  * @since 2.0.0
  * @category constructors
  */
-export const succeedSome: <A>(value: A) => STM<never, never, Option.Option<A>> = stm.succeedSome
+export const succeedSome: <A>(value: A) => STM<never, never, Option<A>> = stm.succeedSome
 
 /**
  * Summarizes a `STM` effect by computing a provided value before and after
@@ -1857,8 +1861,8 @@ export {
  * @category mutations
  */
 export const unless: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>>
-  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option<A>>
+  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option<A>>
 } = stm.unless
 
 /**
@@ -1868,8 +1872,8 @@ export const unless: {
  * @category mutations
  */
 export const unlessSTM: {
-  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option.Option<A>>
-  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option.Option<A>>
+  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option<A>>
+  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option<A>>
 } = stm.unlessSTM
 
 /**
@@ -1878,7 +1882,7 @@ export const unlessSTM: {
  * @since 2.0.0
  * @category getters
  */
-export const unsome: <R, E, A>(self: STM<R, Option.Option<E>, A>) => STM<R, E, Option.Option<A>> = stm.unsome
+export const unsome: <R, E, A>(self: STM<R, Option<E>, A>) => STM<R, E, Option<A>> = stm.unsome
 
 /**
  * Returns an `STM` effect that succeeds with `Unit`.
@@ -1922,8 +1926,8 @@ export const validateFirst: {
  * @category mutations
  */
 export const when: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>>
-  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option<A>>
+  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option<A>>
 } = stm.when
 
 /**
@@ -1933,8 +1937,8 @@ export const when: {
  * @category mutations
  */
 export const whenSTM: {
-  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option.Option<A>>
-  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option.Option<A>>
+  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option<A>>
+  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option<A>>
 } = stm.whenSTM
 
 /**

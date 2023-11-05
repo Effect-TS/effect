@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
+import { Deferred } from "effect/Deferred"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
+import { Option } from "effect/Option"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Deferred", () => {

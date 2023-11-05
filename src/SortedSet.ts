@@ -1,10 +1,9 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "./Equal.js"
-import * as Dual from "./Function.js"
-import { pipe } from "./Function.js"
-import * as Hash from "./Hash.js"
+import { Equal } from "./Equal.js"
+import { dual, pipe } from "./Function.js"
+import { Hash } from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import type { Order } from "./Order.js"
@@ -12,7 +11,7 @@ import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { hasProperty } from "./Predicate.js"
-import * as RBT from "./RedBlackTree.js"
+import { RedBlackTree as RBT } from "./RedBlackTree.js"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedSet")
 
@@ -22,16 +21,20 @@ const TypeId: unique symbol = Symbol.for("effect/SortedSet")
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface SortedSet<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
-  readonly [TypeId]: {
-    readonly _A: (_: never) => A
+export * as SortedSet from "./SortedSet.js"
+
+declare module "./SortedSet.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface SortedSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
+    readonly [TypeId]: {
+      readonly _A: (_: never) => A
+    }
+    /** @internal */
+    readonly keyTree: RBT<A, boolean>
   }
-  /** @internal */
-  readonly keyTree: RBT.RedBlackTree<A, boolean>
 }
 
 const SortedSetProto: Omit<SortedSet<unknown>, "keyTree"> = {
@@ -64,7 +67,7 @@ const SortedSetProto: Omit<SortedSet<unknown>, "keyTree"> = {
   }
 }
 
-const fromTree = <A>(keyTree: RBT.RedBlackTree<A, boolean>): SortedSet<A> => {
+const fromTree = <A>(keyTree: RBT<A, boolean>): SortedSet<A> => {
   const a = Object.create(SortedSetProto)
   a.keyTree = keyTree
   return a
@@ -92,7 +95,7 @@ export const empty = <A>(O: Order<A>): SortedSet<A> => fromTree(RBT.empty(O))
 export const fromIterable: {
   <B>(ord: Order<B>): <A extends B>(iterable: Iterable<A>) => SortedSet<A>
   <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A>
-} = Dual.dual(
+} = dual(
   2,
   <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A> =>
     fromTree(RBT.fromIterable(Array.from(iterable).map((k) => [k, true]), ord))
@@ -113,7 +116,7 @@ export const make =
 export const add: {
   <A>(value: A): (self: SortedSet<A>) => SortedSet<A>
   <A>(self: SortedSet<A>, value: A): SortedSet<A>
-} = Dual.dual<
+} = dual<
   <A>(value: A) => (self: SortedSet<A>) => SortedSet<A>,
   <A>(self: SortedSet<A>, value: A) => SortedSet<A>
 >(2, (self, value) =>
@@ -127,7 +130,7 @@ export const add: {
 export const difference: {
   <A, B extends A>(that: Iterable<B>): (self: SortedSet<A>) => SortedSet<A>
   <A, B extends A>(self: SortedSet<A>, that: Iterable<B>): SortedSet<A>
-} = Dual.dual<
+} = dual<
   <A, B extends A>(that: Iterable<B>) => (self: SortedSet<A>) => SortedSet<A>,
   <A, B extends A>(self: SortedSet<A>, that: Iterable<B>) => SortedSet<A>
 >(2, <A, B extends A>(self: SortedSet<A>, that: Iterable<B>) => {
@@ -149,7 +152,7 @@ export const every: {
   <A>(predicate: Predicate<A>): (self: SortedSet<A>) => boolean
   <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): self is SortedSet<B>
   <A>(self: SortedSet<A>, predicate: Predicate<A>): boolean
-} = Dual.dual(2, <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): self is SortedSet<B> => {
+} = dual(2, <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): self is SortedSet<B> => {
   for (const value of self) {
     if (!refinement(value)) {
       return false
@@ -167,7 +170,7 @@ export const filter: {
   <A>(predicate: Predicate<A>): (self: SortedSet<A>) => SortedSet<A>
   <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): SortedSet<B>
   <A>(self: SortedSet<A>, predicate: Predicate<A>): SortedSet<A>
-} = Dual.dual<
+} = dual<
   {
     <A, B extends A>(refinement: Refinement<A, B>): (self: SortedSet<A>) => SortedSet<B>
     <A>(predicate: Predicate<A>): (self: SortedSet<A>) => SortedSet<A>
@@ -194,7 +197,7 @@ export const filter: {
 export const flatMap: {
   <B, A>(O: Order<B>, f: (a: A) => Iterable<B>): (self: SortedSet<A>) => SortedSet<B>
   <A, B>(self: SortedSet<A>, O: Order<B>, f: (a: A) => Iterable<B>): SortedSet<B>
-} = Dual.dual<
+} = dual<
   <B, A>(O: Order<B>, f: (a: A) => Iterable<B>) => (self: SortedSet<A>) => SortedSet<B>,
   <A, B>(self: SortedSet<A>, O: Order<B>, f: (a: A) => Iterable<B>) => SortedSet<B>
 >(3, (self, O, f) => {
@@ -214,7 +217,7 @@ export const flatMap: {
 export const forEach: {
   <A>(f: (a: A) => void): (self: SortedSet<A>) => void
   <A>(self: SortedSet<A>, f: (a: A) => void): void
-} = Dual.dual<
+} = dual<
   <A>(f: (a: A) => void) => (self: SortedSet<A>) => void,
   <A>(self: SortedSet<A>, f: (a: A) => void) => void
 >(2, (self, f) => RBT.forEach(self.keyTree, f))
@@ -226,7 +229,7 @@ export const forEach: {
 export const has: {
   <A>(value: A): (self: SortedSet<A>) => boolean
   <A>(self: SortedSet<A>, value: A): boolean
-} = Dual.dual<
+} = dual<
   <A>(value: A) => (self: SortedSet<A>) => boolean,
   <A>(self: SortedSet<A>, value: A) => boolean
 >(2, (self, value) => RBT.has(self.keyTree, value))
@@ -237,7 +240,7 @@ export const has: {
 export const intersection: {
   <A>(that: Iterable<A>): (self: SortedSet<A>) => SortedSet<A>
   <A>(self: SortedSet<A>, that: Iterable<A>): SortedSet<A>
-} = Dual.dual<
+} = dual<
   <A>(that: Iterable<A>) => (self: SortedSet<A>) => SortedSet<A>,
   <A>(self: SortedSet<A>, that: Iterable<A>) => SortedSet<A>
 >(2, (self, that) => {
@@ -258,7 +261,7 @@ export const intersection: {
 export const isSubset: {
   <A>(that: SortedSet<A>): (self: SortedSet<A>) => boolean
   <A>(self: SortedSet<A>, that: SortedSet<A>): boolean
-} = Dual.dual<
+} = dual<
   <A>(that: SortedSet<A>) => (self: SortedSet<A>) => boolean,
   <A>(self: SortedSet<A>, that: SortedSet<A>) => boolean
 >(2, (self, that) => every(self, (a) => has(that, a)))
@@ -270,7 +273,7 @@ export const isSubset: {
 export const map: {
   <B, A>(O: Order<B>, f: (a: A) => B): (self: SortedSet<A>) => SortedSet<B>
   <B, A>(self: SortedSet<A>, O: Order<B>, f: (a: A) => B): SortedSet<B>
-} = Dual.dual<
+} = dual<
   <B, A>(O: Order<B>, f: (a: A) => B) => (self: SortedSet<A>) => SortedSet<B>,
   <B, A>(self: SortedSet<A>, O: Order<B>, f: (a: A) => B) => SortedSet<B>
 >(3, (self, O, f) => {
@@ -298,7 +301,7 @@ export const partition: {
     refinement: Refinement<A, B>
   ): [SortedSet<Exclude<C, B>>, SortedSet<B>]
   <B extends A, A = B>(self: SortedSet<B>, predicate: (a: A) => boolean): [SortedSet<B>, SortedSet<B>]
-} = Dual.dual(2, <A>(self: SortedSet<A>, predicate: Predicate<A>) => {
+} = dual(2, <A>(self: SortedSet<A>, predicate: Predicate<A>) => {
   const ord = RBT.getOrder(self.keyTree)
   let right = empty(ord)
   let left = empty(ord)
@@ -319,7 +322,7 @@ export const partition: {
 export const remove: {
   <A>(value: A): (self: SortedSet<A>) => SortedSet<A>
   <A>(self: SortedSet<A>, value: A): SortedSet<A>
-} = Dual.dual<
+} = dual<
   <A>(value: A) => (self: SortedSet<A>) => SortedSet<A>,
   <A>(self: SortedSet<A>, value: A) => SortedSet<A>
 >(2, (self, value) => fromTree(RBT.removeFirst(self.keyTree, value)))
@@ -339,7 +342,7 @@ export const size = <A>(self: SortedSet<A>): number => RBT.size(self.keyTree)
 export const some: {
   <A>(predicate: Predicate<A>): (self: SortedSet<A>) => boolean
   <A>(self: SortedSet<A>, predicate: Predicate<A>): boolean
-} = Dual.dual<
+} = dual<
   <A>(predicate: Predicate<A>) => (self: SortedSet<A>) => boolean,
   <A>(self: SortedSet<A>, predicate: Predicate<A>) => boolean
 >(2, (self, predicate) => {
@@ -358,7 +361,7 @@ export const some: {
 export const toggle: {
   <A>(value: A): (self: SortedSet<A>) => SortedSet<A>
   <A>(self: SortedSet<A>, value: A): SortedSet<A>
-} = Dual.dual<
+} = dual<
   <A>(value: A) => (self: SortedSet<A>) => SortedSet<A>,
   <A>(self: SortedSet<A>, value: A) => SortedSet<A>
 >(2, (self, value) => has(self, value) ? remove(self, value) : add(self, value))
@@ -369,7 +372,7 @@ export const toggle: {
 export const union: {
   <A>(that: Iterable<A>): (self: SortedSet<A>) => SortedSet<A>
   <A>(self: SortedSet<A>, that: Iterable<A>): SortedSet<A>
-} = Dual.dual<
+} = dual<
   <A>(that: Iterable<A>) => (self: SortedSet<A>) => SortedSet<A>,
   <A>(self: SortedSet<A>, that: Iterable<A>) => SortedSet<A>
 >(2, <A>(self: SortedSet<A>, that: Iterable<A>) => {

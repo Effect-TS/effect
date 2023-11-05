@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
-import type * as Fiber from "./Fiber.js"
+import type { Effect } from "./Effect.js"
+import type { Fiber } from "./Fiber.js"
 import * as internal from "./internal/metric/polling.js"
-import type * as Metric from "./Metric.js"
+import type { Metric } from "./Metric.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Schedule from "./Schedule.js"
-import type * as Scope from "./Scope.js"
+import type { Schedule } from "./Schedule.js"
+import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -21,23 +21,27 @@ export const PollingMetricTypeId: unique symbol = internal.PollingMetricTypeId
  */
 export type PollingMetricTypeId = typeof PollingMetricTypeId
 
-/**
- * A `PollingMetric` is a combination of a metric and an effect that polls for
- * updates to the metric.
- *
- * @since 2.0.0
- * @category models
- */
-export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
-  readonly [PollingMetricTypeId]: PollingMetricTypeId
+export * as PollingMetric from "./MetricPolling.js"
+
+declare module "./MetricPolling.js" {
   /**
-   * The metric that this `PollingMetric` polls to update.
+   * A `PollingMetric` is a combination of a metric and an effect that polls for
+   * updates to the metric.
+   *
+   * @since 2.0.0
+   * @category models
    */
-  readonly metric: Metric.Metric<Type, In, Out>
-  /**
-   * An effect that polls a value that may be fed to the metric.
-   */
-  readonly poll: Effect.Effect<R, E, In>
+  export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
+    readonly [PollingMetricTypeId]: PollingMetricTypeId
+    /**
+     * The metric that this `PollingMetric` polls to update.
+     */
+    readonly metric: Metric<Type, In, Out>
+    /**
+     * An effect that polls a value that may be fed to the metric.
+     */
+    readonly poll: Effect<R, E, In>
+  }
 }
 
 /**
@@ -47,8 +51,8 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
  * @category constructors
  */
 export const make: <Type, In, Out, R, E>(
-  metric: Metric.Metric<Type, In, Out>,
-  poll: Effect.Effect<R, E, In>
+  metric: Metric<Type, In, Out>,
+  poll: Effect<R, E, In>
 ) => PollingMetric<Type, In, R, E, Out> = internal.make
 
 /**
@@ -71,14 +75,14 @@ export const collectAll: <R, E, Out>(
  */
 export const launch: {
   <R2, A2>(
-    schedule: Schedule.Schedule<R2, unknown, A2>
+    schedule: Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
     self: PollingMetric<Type, In, R, E, Out>
-  ) => Effect.Effect<R2 | R | Scope.Scope, never, Fiber.Fiber<E, A2>>
+  ) => Effect<R2 | R | Scope, never, Fiber<E, A2>>
   <Type, In, R, E, Out, R2, A2>(
     self: PollingMetric<Type, In, R, E, Out>,
-    schedule: Schedule.Schedule<R2, unknown, A2>
-  ): Effect.Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
+    schedule: Schedule<R2, unknown, A2>
+  ): Effect<Scope | R | R2, never, Fiber<E, A2>>
 } = internal.launch
 
 /**
@@ -87,8 +91,7 @@ export const launch: {
  * @since 2.0.0
  * @category utils
  */
-export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect.Effect<R, E, In> =
-  internal.poll
+export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect<R, E, In> = internal.poll
 
 /**
  * An effect that polls for a value and uses the value to update the metric.
@@ -98,7 +101,7 @@ export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out
  */
 export const pollAndUpdate: <Type, In, R, E, Out>(
   self: PollingMetric<Type, In, R, E, Out>
-) => Effect.Effect<R, E, void> = internal.pollAndUpdate
+) => Effect<R, E, void> = internal.pollAndUpdate
 
 /**
  * Returns a new polling metric whose poll function will be retried with the
@@ -109,11 +112,11 @@ export const pollAndUpdate: <Type, In, R, E, Out>(
  */
 export const retry: {
   <R2, E, _>(
-    policy: Schedule.Schedule<R2, E, _>
+    policy: Schedule<R2, E, _>
   ): <Type, In, R, Out>(self: PollingMetric<Type, In, R, E, Out>) => PollingMetric<Type, In, R2 | R, E, Out>
   <Type, In, R, Out, R2, E, _>(
     self: PollingMetric<Type, In, R, E, Out>,
-    policy: Schedule.Schedule<R2, E, _>
+    policy: Schedule<R2, E, _>
   ): PollingMetric<Type, In, R | R2, E, Out>
 } = internal.retry
 

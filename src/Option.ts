@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type * as Data from "./Data.js"
+import type { Data } from "./Data.js"
 import type { Either } from "./Either.js"
-import * as Equal from "./Equal.js"
-import * as Equivalence from "./Equivalence.js"
+import { Equal } from "./Equal.js"
+import { Equivalence } from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
@@ -15,14 +15,18 @@ import type { Order } from "./Order.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Unify from "./Unify.js"
-import * as Gen from "./Utils.js"
+import type { Unify } from "./Unify.js"
+import { Utils } from "./Utils.js"
 
-/**
- * @category models
- * @since 2.0.0
- */
-export type Option<A> = None<A> | Some<A>
+export * as Option from "./Option.js"
+
+declare module "./Option.js" {
+  /**
+   * @category models
+   * @since 2.0.0
+   */
+  export type Option<A> = None<A> | Some<A>
+}
 
 /**
  * @category symbols
@@ -990,7 +994,7 @@ export const filter: {
  * @category equivalence
  * @since 2.0.0
  */
-export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Option<A>> =>
+export const getEquivalence = <A>(isEquivalent: Equivalence<A>): Equivalence<Option<A>> =>
   Equivalence.make((x, y) => x === y || (isNone(x) ? isNone(y) : isNone(y) ? false : isEquivalent(x.value, y.value)))
 
 /**
@@ -1184,13 +1188,13 @@ export const bind: {
  */
 export const Do: Option<{}> = some({})
 
-const adapter = Gen.adapter<OptionTypeLambda>()
+const adapter = Utils.adapter<OptionTypeLambda>()
 
 /**
  * @category generators
  * @since 2.0.0
  */
-export const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f) => {
+export const gen: Utils.Gen<OptionTypeLambda, Utils.Adapter<OptionTypeLambda>> = (f) => {
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {

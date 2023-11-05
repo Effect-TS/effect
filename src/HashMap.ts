@@ -18,53 +18,57 @@ const TypeId: unique symbol = HM.HashMapTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface HashMap<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
-  [TypeId]: TypeId
-}
+export * as HashMap from "./HashMap.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace HashMap {
+declare module "./HashMap.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export type UpdateFn<V> = (option: Option<V>) => Option<V>
+  export interface HashMap<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
+    [TypeId]: TypeId
+  }
+
   /**
-   * This type-level utility extracts the key type `K` from a `HashMap<K, V>` type.
-   *
-   * @example
-   * import * as HashMap from "effect/HashMap"
-   *
-   * declare const hm: HashMap.HashMap<string, number>
-   *
-   * // $ExpectType string
-   * type K = HashMap.HashMap.Key<typeof hm>
-   *
    * @since 2.0.0
-   * @category type-level
    */
-  export type Key<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _K : never
-  /**
-   * This type-level utility extracts the value type `V` from a `HashMap<K, V>` type.
-   *
-   * @example
-   * import * as HashMap from "effect/HashMap"
-   *
-   * declare const hm: HashMap.HashMap<string, number>
-   *
-   * // $ExpectType number
-   * type V = HashMap.HashMap.Value<typeof hm>
-   *
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Value<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _V : never
+  export namespace HashMap {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type UpdateFn<V> = (option: Option<V>) => Option<V>
+    /**
+     * This type-level utility extracts the key type `K` from a `HashMap<K, V>` type.
+     *
+     * @example
+     * import { HashMap } from "effect/HashMap"
+     *
+     * declare const hm: HashMap<string, number>
+     *
+     * // $ExpectType string
+     * type K = HashMap.Key<typeof hm>
+     *
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Key<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _K : never
+    /**
+     * This type-level utility extracts the value type `V` from a `HashMap<K, V>` type.
+     *
+     * @example
+     * import { HashMap } from "effect/HashMap"
+     *
+     * declare const hm: HashMap<string, number>
+     *
+     * // $ExpectType number
+     * type V = HashMap.Value<typeof hm>
+     *
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Value<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, infer _V>] ? _V : never
+  }
 }
 
 /**

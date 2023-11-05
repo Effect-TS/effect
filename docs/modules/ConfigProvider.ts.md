@@ -192,7 +192,7 @@ Creates a new config provider.
 
 ```ts
 export declare const make: (options: {
-  readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
+  readonly load: <A>(config: Config<A>) => Effect<never, ConfigError, A>
   readonly flattened: ConfigProvider.Flat
 }) => ConfigProvider
 ```
@@ -209,13 +209,13 @@ Creates a new flat config provider.
 export declare const makeFlat: (options: {
   readonly load: <A>(
     path: ReadonlyArray<string>,
-    config: Config.Config.Primitive<A>,
+    config: Config.Primitive<A>,
     split: boolean
-  ) => Effect.Effect<never, ConfigError.ConfigError, readonly A[]>
+  ) => Effect<never, ConfigError, readonly A[]>
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
-  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
-  readonly patch: PathPatch.PathPatch
+  ) => Effect<never, ConfigError, HashSet<string>>
+  readonly patch: PathPatch
 }) => ConfigProvider.Flat
 ```
 
@@ -249,7 +249,7 @@ export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
   /**
    * Loads the specified configuration, or fails with a config error.
    */
-  load<A>(config: Config.Config<A>): Effect.Effect<never, ConfigError.ConfigError, A>
+  load<A>(config: Config<A>): Effect<never, ConfigError, A>
   /**
    * Flattens this config provider into a simplified config provider that knows
    * only how to deal with flat (key/value) properties.
@@ -319,13 +319,13 @@ special support for implementing them.
 ```ts
 export interface Flat {
   readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
-  patch: PathPatch.PathPatch
+  patch: PathPatch
   load<A>(
     path: ReadonlyArray<string>,
-    config: Config.Config.Primitive<A>,
+    config: Config.Primitive<A>,
     split?: boolean
-  ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
-  enumerateChildren(path: ReadonlyArray<string>): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  ): Effect<never, ConfigError, ReadonlyArray<A>>
+  enumerateChildren(path: ReadonlyArray<string>): Effect<never, ConfigError, HashSet<string>>
 }
 ```
 

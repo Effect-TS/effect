@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import * as Dual from "./Function.js"
+import { dual } from "./Function.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import * as MutableHashMap from "./MutableHashMap.js"
+import { MutableHashMap } from "./MutableHashMap.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
@@ -15,15 +15,19 @@ const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
+export * as MutableHashSet from "./MutableHashSet.js"
 
-  /** @internal */
-  readonly keyMap: MutableHashMap.MutableHashMap<V, boolean>
+declare module "./MutableHashSet.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+
+    /** @internal */
+    readonly keyMap: MutableHashMap<V, boolean>
+  }
 }
 
 const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {
@@ -48,7 +52,7 @@ const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {
   }
 }
 
-const fromHashMap = <V>(keyMap: MutableHashMap.MutableHashMap<V, boolean>): MutableHashSet<V> => {
+const fromHashMap = <V>(keyMap: MutableHashMap<V, boolean>): MutableHashSet<V> => {
   const set = Object.create(MutableHashSetProto)
   set.keyMap = keyMap
   return set
@@ -82,7 +86,7 @@ export const make = <Keys extends ReadonlyArray<unknown>>(
 export const add: {
   <V>(key: V): (self: MutableHashSet<V>) => MutableHashSet<V>
   <V>(self: MutableHashSet<V>, key: V): MutableHashSet<V>
-} = Dual.dual<
+} = dual<
   <V>(key: V) => (self: MutableHashSet<V>) => MutableHashSet<V>,
   <V>(self: MutableHashSet<V>, key: V) => MutableHashSet<V>
 >(2, (self, key) => (MutableHashMap.set(self.keyMap, key, true), self))
@@ -94,7 +98,7 @@ export const add: {
 export const has: {
   <V>(key: V): (self: MutableHashSet<V>) => boolean
   <V>(self: MutableHashSet<V>, key: V): boolean
-} = Dual.dual<
+} = dual<
   <V>(key: V) => (self: MutableHashSet<V>) => boolean,
   <V>(self: MutableHashSet<V>, key: V) => boolean
 >(2, (self, key) => MutableHashMap.has(self.keyMap, key))
@@ -106,7 +110,7 @@ export const has: {
 export const remove: {
   <V>(key: V): (self: MutableHashSet<V>) => MutableHashSet<V>
   <V>(self: MutableHashSet<V>, key: V): MutableHashSet<V>
-} = Dual.dual<
+} = dual<
   <V>(key: V) => (self: MutableHashSet<V>) => MutableHashSet<V>,
   <V>(self: MutableHashSet<V>, key: V) => MutableHashSet<V>
 >(2, (self, key) => (MutableHashMap.remove(self.keyMap, key), self))

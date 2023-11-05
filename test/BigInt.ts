@@ -1,7 +1,7 @@
 import { deepStrictEqual } from "effect-test/util"
-import * as BigInt from "effect/BigInt"
+import { BigInt } from "effect/BigInt"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("BigInt", () => {

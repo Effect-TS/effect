@@ -91,8 +91,8 @@ Added in v2.0.0
 
 ```ts
 export declare const get: {
-  <K>(key: K): <V>(self: SortedMap<K, V>) => Option.Option<V>
-  <K, V>(self: SortedMap<K, V>, key: K): Option.Option<V>
+  <K>(key: K): <V>(self: SortedMap<K, V>) => Option<V>
+  <K, V>(self: SortedMap<K, V>, key: K): Option<V>
 }
 ```
 
@@ -116,7 +116,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const headOption: <K, V>(self: SortedMap<K, V>) => Option.Option<[K, V]>
+export declare const headOption: <K, V>(self: SortedMap<K, V>) => Option<[K, V]>
 ```
 
 Added in v2.0.0
@@ -238,10 +238,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface SortedMap<K, V> extends Iterable<[K, V]>, Equal.Equal, Pipeable, Inspectable {
+export interface SortedMap<K, V> extends Iterable<[K, V]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   /** @internal */
-  readonly tree: RBT.RedBlackTree<K, V>
+  readonly tree: RBT<K, V>
 }
 ```
 

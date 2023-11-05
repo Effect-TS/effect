@@ -1,15 +1,15 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
-import * as Runtime from "effect/Runtime"
+import { Option } from "effect/Option"
+import { Ref } from "effect/Ref"
+import { Runtime } from "effect/Runtime"
 import * as os from "node:os"
 import { assert, describe } from "vitest"
 
@@ -30,7 +30,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("deep asyncEffect doesn't block", () =>
     Effect.gen(function*($) {
-      const asyncIO = (cont: Effect.Effect<never, never, number>): Effect.Effect<never, never, number> => {
+      const asyncIO = (cont: Effect<never, never, number>): Effect<never, never, number> => {
         return Effect.asyncEffect((cb) => {
           return pipe(
             Effect.sleep(Duration.millis(5)),
@@ -39,7 +39,7 @@ describe.concurrent("Effect", () => {
           )
         })
       }
-      const stackIOs = (count: number): Effect.Effect<never, never, number> => {
+      const stackIOs = (count: number): Effect<never, never, number> => {
         return count < 0 ? Effect.succeed(42) : asyncIO(stackIOs(count - 1))
       }
       const procNum = Effect.sync(() => os.cpus().length)

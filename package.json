@@ -24,6 +24,9 @@
     "algebraic-data-types",
     "functional-programming"
   ],
+  "effect": {
+    "generateIndex": false
+  },
   "keywords": [
     "typescript",
     "algebraic-data-types",

@@ -4,7 +4,7 @@
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/console.js"
 import * as defaultConsole from "./internal/defaultServices/console.js"
-import type * as Layer from "./Layer.js"
+import type { Layer } from "./Layer.js"
 import type { Scope } from "./Scope.js"
 
 /**
@@ -19,34 +19,38 @@ export const TypeId: unique symbol = defaultConsole.TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category model
- */
-export interface Console {
-  readonly [TypeId]: TypeId
-  assert(condition: boolean, ...args: ReadonlyArray<any>): Effect<never, never, void>
-  readonly clear: Effect<never, never, void>
-  count(label?: string): Effect<never, never, void>
-  countReset(label?: string): Effect<never, never, void>
-  debug(...args: ReadonlyArray<any>): Effect<never, never, void>
-  dir(item: any, options?: any): Effect<never, never, void>
-  dirxml(...args: ReadonlyArray<any>): Effect<never, never, void>
-  error(...args: ReadonlyArray<any>): Effect<never, never, void>
-  group(options?: {
-    readonly label?: string
-    readonly collapsed?: boolean
-  }): Effect<never, never, void>
-  readonly groupEnd: Effect<never, never, void>
-  info(...args: ReadonlyArray<any>): Effect<never, never, void>
-  log(...args: ReadonlyArray<any>): Effect<never, never, void>
-  table(tabularData: any, properties?: ReadonlyArray<string>): Effect<never, never, void>
-  time(label?: string): Effect<never, never, void>
-  timeEnd(label?: string): Effect<never, never, void>
-  timeLog(label?: string, ...args: ReadonlyArray<any>): Effect<never, never, void>
-  trace(...args: ReadonlyArray<any>): Effect<never, never, void>
-  warn(...args: ReadonlyArray<any>): Effect<never, never, void>
-  readonly unsafe: UnsafeConsole
+export * as Console from "./Console.js"
+
+declare module "./Console.js" {
+  /**
+   * @since 2.0.0
+   * @category model
+   */
+  export interface Console {
+    readonly [TypeId]: TypeId
+    assert(condition: boolean, ...args: ReadonlyArray<any>): Effect<never, never, void>
+    readonly clear: Effect<never, never, void>
+    count(label?: string): Effect<never, never, void>
+    countReset(label?: string): Effect<never, never, void>
+    debug(...args: ReadonlyArray<any>): Effect<never, never, void>
+    dir(item: any, options?: any): Effect<never, never, void>
+    dirxml(...args: ReadonlyArray<any>): Effect<never, never, void>
+    error(...args: ReadonlyArray<any>): Effect<never, never, void>
+    group(options?: {
+      readonly label?: string
+      readonly collapsed?: boolean
+    }): Effect<never, never, void>
+    readonly groupEnd: Effect<never, never, void>
+    info(...args: ReadonlyArray<any>): Effect<never, never, void>
+    log(...args: ReadonlyArray<any>): Effect<never, never, void>
+    table(tabularData: any, properties?: ReadonlyArray<string>): Effect<never, never, void>
+    time(label?: string): Effect<never, never, void>
+    timeEnd(label?: string): Effect<never, never, void>
+    timeLog(label?: string, ...args: ReadonlyArray<any>): Effect<never, never, void>
+    trace(...args: ReadonlyArray<any>): Effect<never, never, void>
+    warn(...args: ReadonlyArray<any>): Effect<never, never, void>
+    readonly unsafe: UnsafeConsole
+  }
 }
 
 /**
@@ -90,7 +94,7 @@ export const withConsole: {
  * @since 2.0.0
  * @category default services
  */
-export const setConsole: <A extends Console>(console: A) => Layer.Layer<never, never, never> = internal.setConsole
+export const setConsole: <A extends Console>(console: A) => Layer<never, never, never> = internal.setConsole
 
 /**
  * @since 2.0.0

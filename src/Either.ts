@@ -2,8 +2,8 @@
  * @since 2.0.0
  */
 
-import type * as Data from "./Data.js"
-import * as Equivalence from "./Equivalence.js"
+import type { Data } from "./Data.js"
+import { Equivalence } from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
@@ -12,14 +12,19 @@ import * as either from "./internal/either.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { isFunction } from "./Predicate.js"
-import type * as Unify from "./Unify.js"
-import * as Gen from "./Utils.js"
+import type { Unify } from "./Unify.js"
+import type { Gen } from "./Utils.js"
+import { Utils } from "./Utils.js"
 
-/**
- * @category models
- * @since 2.0.0
- */
-export type Either<E, A> = Left<E, A> | Right<E, A>
+export * as Either from "./Either.js"
+
+declare module "./Either.js" {
+  /**
+   * @category models
+   * @since 2.0.0
+   */
+  export type Either<E, A> = Left<E, A> | Right<E, A>
+}
 
 /**
  * @category symbols
@@ -265,9 +270,9 @@ export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
  * @since 2.0.0
  */
 export const getEquivalence = <E, A>(
-  EE: Equivalence.Equivalence<E>,
-  EA: Equivalence.Equivalence<A>
-): Equivalence.Equivalence<Either<E, A>> =>
+  EE: Equivalence<E>,
+  EA: Equivalence<A>
+): Equivalence<Either<E, A>> =>
   Equivalence.make((x, y) =>
     x === y ||
     (isLeft(x) ?
@@ -546,7 +551,7 @@ export const ap: {
  * @param fields - the struct of `Option`s to be sequenced.
  *
  * @example
- * import * as Either from "effect/Either"
+ * import { Either } from "effect/Either"
  *
  * assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
  * assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right("hello") }), Either.right({ a: 1, b: "hello" }))
@@ -596,13 +601,13 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
  */
 export const reverse = <E, A>(self: Either<E, A>): Either<A, E> => isLeft(self) ? right(self.left) : left(self.right)
 
-const adapter = Gen.adapter<EitherTypeLambda>()
+const adapter = Utils.adapter<EitherTypeLambda>()
 
 /**
  * @category generators
  * @since 2.0.0
  */
-export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
+export const gen: Gen<EitherTypeLambda, Utils.Adapter<EitherTypeLambda>> = (f) => {
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {

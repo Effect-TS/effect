@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Data from "./Data.js"
-import type * as Duration from "./Duration.js"
-import type * as Effect from "./Effect.js"
+import type { Data } from "./Data.js"
+import type { Duration } from "./Duration.js"
+import type { Effect } from "./Effect.js"
 import * as internal from "./internal/pool.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Scope from "./Scope.js"
+import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -20,42 +20,46 @@ export const PoolTypeId: unique symbol = internal.PoolTypeId
  */
 export type PoolTypeId = typeof PoolTypeId
 
-/**
- * A `Pool<E, A>` is a pool of items of type `A`, each of which may be
- * associated with the acquisition and release of resources. An attempt to get
- * an item `A` from a pool may fail with an error of type `E`.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
-  /**
-   * Retrieves an item from the pool in a scoped effect. Note that if
-   * acquisition fails, then the returned effect will fail for that same reason.
-   * Retrying a failed acquisition attempt will repeat the acquisition attempt.
-   */
-  get(): Effect.Effect<Scope.Scope, E, A>
+export * as Pool from "./Pool.js"
 
+declare module "./Pool.js" {
   /**
-   * Invalidates the specified item. This will cause the pool to eventually
-   * reallocate the item, although this reallocation may occur lazily rather
-   * than eagerly.
-   */
-  invalidate(item: A): Effect.Effect<never, never, void>
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace Pool {
-  /**
+   * A `Pool<E, A>` is a pool of items of type `A`, each of which may be
+   * associated with the acquisition and release of resources. An attempt to get
+   * an item `A` from a pool may fail with an error of type `E`.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
-    readonly [PoolTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+  export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
+    /**
+     * Retrieves an item from the pool in a scoped effect. Note that if
+     * acquisition fails, then the returned effect will fail for that same reason.
+     * Retrying a failed acquisition attempt will repeat the acquisition attempt.
+     */
+    get(): Effect<Scope, E, A>
+
+    /**
+     * Invalidates the specified item. This will cause the pool to eventually
+     * reallocate the item, although this reallocation may occur lazily rather
+     * than eagerly.
+     */
+    invalidate(item: A): Effect<never, never, void>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Pool {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E, A> {
+      readonly [PoolTypeId]: {
+        readonly _E: (_: never) => E
+        readonly _A: (_: never) => A
+      }
     }
   }
 }
@@ -79,10 +83,10 @@ export const isPool: (u: unknown) => u is Pool<unknown, unknown> = internal.isPo
  */
 export const make: <R, E, A>(
   options: {
-    readonly acquire: Effect.Effect<R, E, A>
+    readonly acquire: Effect<R, E, A>
     readonly size: number
   }
-) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>> = internal.make
+) => Effect<Scope | R, never, Pool<E, A>> = internal.make
 
 /**
  * Makes a new pool with the specified minimum and maximum sizes and time to
@@ -93,10 +97,10 @@ export const make: <R, E, A>(
  * unspecified order.
  *
  * ```ts
- * import * as Duration from "./Duration"
- * import * as Effect from "effect/Effect"
- * import * as Pool from "effect/Pool"
- * import * as Scope from "effect/Scope"
+ * import { Duration } from "./Duration"
+ * import { Effect } from "effect/Effect"
+ * import { Pool } from "effect/Pool"
+ * import { Scope } from "effect/Scope"
  * import { pipe } from "./Function"
  *
  * Effect.scoped(
@@ -118,11 +122,11 @@ export const make: <R, E, A>(
  * @category constructors
  */
 export const makeWithTTL: <R, E, A>(options: {
-  readonly acquire: Effect.Effect<R, E, A>
+  readonly acquire: Effect<R, E, A>
   readonly min: number
   readonly max: number
   readonly timeToLive: Duration.DurationInput
-}) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>> = internal.makeWithTTL
+}) => Effect<Scope | R, never, Pool<E, A>> = internal.makeWithTTL
 
 /**
  * Retrieves an item from the pool in a scoped effect. Note that if
@@ -132,7 +136,7 @@ export const makeWithTTL: <R, E, A>(options: {
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> = internal.get
+export const get: <E, A>(self: Pool<E, A>) => Effect<Scope, E, A> = internal.get
 
 /**
  * Invalidates the specified item. This will cause the pool to eventually
@@ -143,6 +147,6 @@ export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> =
  * @category combinators
  */
 export const invalidate: {
-  <A>(value: A): <E>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, never, void>
-  <E, A>(self: Pool<E, A>, value: A): Effect.Effect<Scope.Scope, never, void>
+  <A>(value: A): <E>(self: Pool<E, A>) => Effect<Scope, never, void>
+  <E, A>(self: Pool<E, A>, value: A): Effect<Scope, never, void>
 } = internal.invalidate

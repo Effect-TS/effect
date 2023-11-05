@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Equal from "./Equal.js"
-import type * as HashMap from "./HashMap.js"
+import type { Chunk } from "./Chunk.js"
+import type { Equal } from "./Equal.js"
+import type { HashMap } from "./HashMap.js"
 import * as internal from "./internal/metric/state.js"
-import type * as MetricKeyType from "./MetricKeyType.js"
-import type * as Option from "./Option.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -81,87 +81,91 @@ export const SummaryStateTypeId: unique symbol = internal.SummaryStateTypeId
  */
 export type SummaryStateTypeId = typeof SummaryStateTypeId
 
-/**
- * A `MetricState` describes the state of a metric. The type parameter of a
- * metric state corresponds to the type of the metric key (`MetricStateType`).
- * This phantom type parameter is used to tie keys to their expected states.
- *
- * @since 2.0.0
- * @category models
- */
-export interface MetricState<A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
+export * as MetricState from "./MetricState.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace MetricState {
+declare module "./MetricState.js" {
   /**
+   * A `MetricState` describes the state of a metric. The type parameter of a
+   * metric state corresponds to the type of the metric key (`MetricStateType`).
+   * This phantom type parameter is used to tie keys to their expected states.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Untyped extends MetricState<any> {}
+  export interface MetricState<A> extends MetricState.Variance<A>, Equal, Pipeable {}
 
   /**
    * @since 2.0.0
-   * @category models
    */
-  export interface Counter<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
-    readonly [CounterStateTypeId]: CounterStateTypeId
-    readonly count: A
-  }
+  export namespace MetricState {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Untyped extends MetricState<any> {}
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Frequency extends MetricState<MetricKeyType.MetricKeyType.Frequency> {
-    readonly [FrequencyStateTypeId]: FrequencyStateTypeId
-    readonly occurrences: HashMap.HashMap<string, number>
-  }
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Counter<A extends (number | bigint)> extends MetricState<MetricKeyType.Counter<A>> {
+      readonly [CounterStateTypeId]: CounterStateTypeId
+      readonly count: A
+    }
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Gauge<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
-    readonly [GaugeStateTypeId]: GaugeStateTypeId
-    readonly value: A
-  }
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Frequency extends MetricState<MetricKeyType.Frequency> {
+      readonly [FrequencyStateTypeId]: FrequencyStateTypeId
+      readonly occurrences: HashMap<string, number>
+    }
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Histogram extends MetricState<MetricKeyType.MetricKeyType.Histogram> {
-    readonly [HistogramStateTypeId]: HistogramStateTypeId
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
-    readonly count: number
-    readonly min: number
-    readonly max: number
-    readonly sum: number
-  }
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Gauge<A extends (number | bigint)> extends MetricState<MetricKeyType.Gauge<A>> {
+      readonly [GaugeStateTypeId]: GaugeStateTypeId
+      readonly value: A
+    }
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Summary extends MetricState<MetricKeyType.MetricKeyType.Summary> {
-    readonly [SummaryStateTypeId]: SummaryStateTypeId
-    readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
-    readonly count: number
-    readonly min: number
-    readonly max: number
-    readonly sum: number
-  }
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Histogram extends MetricState<MetricKeyType.Histogram> {
+      readonly [HistogramStateTypeId]: HistogramStateTypeId
+      readonly buckets: Chunk<readonly [number, number]>
+      readonly count: number
+      readonly min: number
+      readonly max: number
+      readonly sum: number
+    }
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<A> {
-    readonly [MetricStateTypeId]: {
-      readonly _A: (_: A) => void
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Summary extends MetricState<MetricKeyType.Summary> {
+      readonly [SummaryStateTypeId]: SummaryStateTypeId
+      readonly error: number
+      readonly quantiles: Chunk<readonly [number, Option<number>]>
+      readonly count: number
+      readonly min: number
+      readonly max: number
+      readonly sum: number
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [MetricStateTypeId]: {
+        readonly _A: (_: A) => void
+      }
     }
   }
 }
@@ -179,7 +183,7 @@ export const counter: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: (occurrences: HashMap.HashMap<string, number>) => MetricState.Frequency = internal.frequency
+export const frequency: (occurrences: HashMap<string, number>) => MetricState.Frequency = internal.frequency
 
 /**
  * @since 2.0.0
@@ -196,7 +200,7 @@ export const gauge: {
  */
 export const histogram: (
   options: {
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: Chunk<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -211,7 +215,7 @@ export const histogram: (
 export const summary: (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number

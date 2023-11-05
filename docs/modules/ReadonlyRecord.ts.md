@@ -214,7 +214,7 @@ Given a record with `Option` values, returns a record with only the `Some` value
 **Signature**
 
 ```ts
-export declare const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
+export declare const compact: <A>(self: ReadonlyRecord<Option<A>>) => Record<string, A>
 ```
 
 **Example**
@@ -456,8 +456,8 @@ If the key is not present, returns `O.none`.
 
 ```ts
 export declare const pop: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<[A, Record<string, A>]>
-  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<[A, Record<string, A>]>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option<[A, Record<string, A>]>
+  <A>(self: ReadonlyRecord<A>, key: string): Option<[A, Record<string, A>]>
 }
 ```
 
@@ -528,8 +528,8 @@ If the function returns `Some`, the key-value pair is included in the output rec
 
 ```ts
 export declare const filterMap: {
-  <K extends string, A, B>(f: (a: A, key: K) => Option.Option<B>): (self: Record<K, A>) => Record<string, B>
-  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option.Option<B>): Record<string, B>
+  <K extends string, A, B>(f: (a: A, key: K) => Option<B>): (self: Record<K, A>) => Record<string, B>
+  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option<B>): Record<string, B>
 }
 ```
 
@@ -554,8 +554,8 @@ Retrieve a value at a particular key from a record, returning it wrapped in an `
 
 ```ts
 export declare const get: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<A>
-  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<A>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option<A>
+  <A>(self: ReadonlyRecord<A>, key: string): Option<A>
 }
 ```
 
@@ -696,8 +696,8 @@ or return `None` if the key doesn't exist.
 
 ```ts
 export declare const modifyOption: {
-  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option.Option<Record<string, A | B>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option.Option<Record<string, A | B>>
+  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option<Record<string, A | B>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option<Record<string, A | B>>
 }
 ```
 
@@ -746,8 +746,8 @@ Replaces a value in the record with the new value passed as parameter.
 
 ```ts
 export declare const replaceOption: {
-  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option.Option<Record<string, B | A>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option.Option<Record<string, A | B>>
+  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option<Record<string, B | A>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option<Record<string, A | B>>
 }
 ```
 

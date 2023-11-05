@@ -79,7 +79,7 @@ the provided iterable contains no elements, `None` will be returned.
 export declare const all: <E, A>(
   exits: Iterable<Exit<E, A>>,
   options?: { readonly parallel?: boolean } | undefined
-) => Option.Option<Exit<E, A[]>>
+) => Option<Exit<E, A[]>>
 ```
 
 Added in v2.0.0
@@ -116,7 +116,7 @@ Constructs a new `Exit.Failure` from the specified `Cause` of type `E`.
 **Signature**
 
 ```ts
-export declare const failCause: <E>(cause: Cause.Cause<E>) => Exit<E, never>
+export declare const failCause: <E>(cause: Cause<E>) => Exit<E, never>
 ```
 
 Added in v2.0.0
@@ -129,7 +129,7 @@ the `Fiber` running an `Effect` workflow was terminated due to interruption.
 **Signature**
 
 ```ts
-export declare const interrupt: (fiberId: FiberId.FiberId) => Exit<never, never>
+export declare const interrupt: (fiberId: FiberId) => Exit<never, never>
 ```
 
 Added in v2.0.0
@@ -167,7 +167,7 @@ Converts an `Either<E, A>` into an `Exit<E, A>`.
 **Signature**
 
 ```ts
-export declare const fromEither: <E, A>(either: Either.Either<E, A>) => Exit<E, A>
+export declare const fromEither: <E, A>(either: Either<E, A>) => Exit<E, A>
 ```
 
 Added in v2.0.0
@@ -179,7 +179,7 @@ Converts an `Option<A>` into an `Exit<void, A>`.
 **Signature**
 
 ```ts
-export declare const fromOption: <A>(option: Option.Option<A>) => Exit<void, A>
+export declare const fromOption: <A>(option: Option<A>) => Exit<void, A>
 ```
 
 Added in v2.0.0
@@ -211,12 +211,12 @@ Added in v2.0.0
 ```ts
 export declare const match: {
   <E, A, Z1, Z2>(options: {
-    readonly onFailure: (cause: Cause.Cause<E>) => Z1
+    readonly onFailure: (cause: Cause<E>) => Z1
     readonly onSuccess: (a: A) => Z2
   }): (self: Exit<E, A>) => Z1 | Z2
   <E, A, Z1, Z2>(
     self: Exit<E, A>,
-    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
+    options: { readonly onFailure: (cause: Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
   ): Z1 | Z2
 }
 ```
@@ -230,16 +230,16 @@ Added in v2.0.0
 ```ts
 export declare const matchEffect: {
   <E, A, R, E2, A2, R2, E3, A3>(options: {
-    readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-    readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
-  }): (self: Exit<E, A>) => Effect.Effect<R | R2, E2 | E3, A2 | A3>
+    readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
+    readonly onSuccess: (a: A) => Effect<R2, E3, A3>
+  }): (self: Exit<E, A>) => Effect<R | R2, E2 | E3, A2 | A3>
   <E, A, R, E2, A2, R2, E3, A3>(
     self: Exit<E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-      readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
+      readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
+      readonly onSuccess: (a: A) => Effect<R2, E3, A3>
     }
-  ): Effect.Effect<R | R2, E2 | E3, A2 | A3>
+  ): Effect<R | R2, E2 | E3, A2 | A3>
 }
 ```
 
@@ -255,7 +255,7 @@ otherwise.
 **Signature**
 
 ```ts
-export declare const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<E>>
+export declare const causeOption: <E, A>(self: Exit<E, A>) => Option<Cause<E>>
 ```
 
 Added in v2.0.0
@@ -270,8 +270,8 @@ alternate `A` value computed from the specified function which receives the
 
 ```ts
 export declare const getOrElse: {
-  <E, A2>(orElse: (cause: Cause.Cause<E>) => A2): <A1>(self: Exit<E, A1>) => A2 | A1
-  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause.Cause<E>) => A2): A1 | A2
+  <E, A2>(orElse: (cause: Cause<E>) => A2): <A1>(self: Exit<E, A1>) => A2 | A1
+  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause<E>) => A2): A1 | A2
 }
 ```
 
@@ -383,8 +383,8 @@ the provided function.
 
 ```ts
 export declare const mapErrorCause: {
-  <E, E2>(f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): <A>(self: Exit<E, A>) => Exit<E2, A>
-  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): Exit<E2, A>
+  <E, E2>(f: (cause: Cause<E>) => Cause<E2>): <A>(self: Exit<E, A>) => Exit<E2, A>
+  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause<E>) => Cause<E2>): Exit<E2, A>
 }
 ```
 
@@ -441,15 +441,15 @@ of type `E`.
 **Signature**
 
 ```ts
-export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Failure<E, A> extends Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Failure"
   readonly _op: "Failure"
-  readonly cause: Cause.Cause<E>
+  readonly cause: Cause<E>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
   [Unify.ignoreSymbol]?: ExitUnifyIgnore
   /** @internal */
-  readonly i0: Cause.Cause<E>
+  readonly i0: Cause<E>
 }
 ```
 
@@ -463,7 +463,7 @@ of type `A`.
 **Signature**
 
 ```ts
-export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Success<E, A> extends Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Success"
   readonly _op: "Success"
   readonly value: A
@@ -537,9 +537,9 @@ Added in v2.0.0
 ```ts
 export declare const flatMapEffect: {
   <E, A, R, E2, A2>(
-    f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>
-  ): (self: Exit<E, A>) => Effect.Effect<R, E2, Exit<E, A2>>
-  <E, A, R, E2, A2>(self: Exit<E, A>, f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>): Effect.Effect<R, E2, Exit<E, A2>>
+    f: (a: A) => Effect<R, E2, Exit<E, A2>>
+  ): (self: Exit<E, A>) => Effect<R, E2, Exit<E, A2>>
+  <E, A, R, E2, A2>(self: Exit<E, A>, f: (a: A) => Effect<R, E2, Exit<E, A2>>): Effect<R, E2, Exit<E, A2>>
 }
 ```
 
@@ -563,8 +563,8 @@ Added in v2.0.0
 
 ```ts
 export declare const forEachEffect: {
-  <A, R, E2, B>(f: (a: A) => Effect.Effect<R, E2, B>): <E>(self: Exit<E, A>) => Effect.Effect<R, never, Exit<E2 | E, B>>
-  <E, A, R, E2, B>(self: Exit<E, A>, f: (a: A) => Effect.Effect<R, E2, B>): Effect.Effect<R, never, Exit<E | E2, B>>
+  <A, R, E2, B>(f: (a: A) => Effect<R, E2, B>): <E>(self: Exit<E, A>) => Effect<R, never, Exit<E2 | E, B>>
+  <E, A, R, E2, B>(self: Exit<E, A>, f: (a: A) => Effect<R, E2, B>): Effect<R, never, Exit<E | E2, B>>
 }
 ```
 
@@ -681,7 +681,7 @@ export declare const zipWith: {
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ): (self: Exit<E, A>) => Exit<E | E2, C>
   <E, E2, A, B, C>(
@@ -689,7 +689,7 @@ export declare const zipWith: {
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ): Exit<E | E2, C>
 }
