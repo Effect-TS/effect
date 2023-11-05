@@ -39,6 +39,7 @@ Added in v2.0.0
 - [mapping](#mapping)
   - [map](#map)
   - [mapInput](#mapinput)
+  - [mapInputOptions](#mapinputoptions)
 - [models](#models)
   - [Logger (interface)](#logger-interface)
 - [symbols](#symbols)
@@ -46,6 +47,7 @@ Added in v2.0.0
   - [LoggerTypeId (type alias)](#loggertypeid-type-alias)
 - [utils](#utils)
   - [Logger (namespace)](#logger-namespace)
+    - [Options (interface)](#options-interface)
     - [Variance (interface)](#variance-interface)
 - [zipping](#zipping)
   - [zip](#zip)
@@ -92,16 +94,7 @@ Added in v2.0.0
 
 ```ts
 export declare const make: <Message, Output>(
-  log: (options: {
-    readonly fiberId: FiberId.FiberId
-    readonly logLevel: LogLevel.LogLevel
-    readonly message: Message
-    readonly cause: Cause.Cause<unknown>
-    readonly context: FiberRefs.FiberRefs
-    readonly spans: List.List<LogSpan.LogSpan>
-    readonly annotations: HashMap.HashMap<string, unknown>
-    readonly date: Date
-  }) => Output
+  log: (options: Logger.Options<Message>) => Output
 ) => Logger<Message, Output>
 ```
 
@@ -351,6 +344,24 @@ export declare const mapInput: {
 
 Added in v2.0.0
 
+## mapInputOptions
+
+**Signature**
+
+```ts
+export declare const mapInputOptions: {
+  <Message, Message2>(f: (options: Logger.Options<Message2>) => Logger.Options<Message>): <Output>(
+    self: Logger<Message, Output>
+  ) => Logger<Message2, Output>
+  <Output, Message, Message2>(
+    self: Logger<Message, Output>,
+    f: (options: Logger.Options<Message2>) => Logger.Options<Message>
+  ): Logger<Message2, Output>
+}
+```
+
+Added in v2.0.0
+
 # models
 
 ## Logger (interface)
@@ -359,16 +370,7 @@ Added in v2.0.0
 
 ```ts
 export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
-  readonly log: (options: {
-    readonly fiberId: FiberId.FiberId
-    readonly logLevel: LogLevel.LogLevel
-    readonly message: Message
-    readonly cause: Cause.Cause<unknown>
-    readonly context: FiberRefs.FiberRefs
-    readonly spans: List.List<LogSpan.LogSpan>
-    readonly annotations: HashMap.HashMap<string, unknown>
-    readonly date: Date
-  }) => Output
+  readonly log: (options: Logger.Options<Message>) => Output
 }
 ```
 
@@ -399,6 +401,25 @@ Added in v2.0.0
 # utils
 
 ## Logger (namespace)
+
+Added in v2.0.0
+
+### Options (interface)
+
+**Signature**
+
+```ts
+export interface Options<Message> {
+  readonly fiberId: FiberId.FiberId
+  readonly logLevel: LogLevel.LogLevel
+  readonly message: Message
+  readonly cause: Cause.Cause<unknown>
+  readonly context: FiberRefs.FiberRefs
+  readonly spans: List.List<LogSpan.LogSpan>
+  readonly annotations: HashMap.HashMap<string, unknown>
+  readonly date: Date
+}
+```
 
 Added in v2.0.0
 

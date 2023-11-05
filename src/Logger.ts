@@ -36,18 +36,7 @@ export type LoggerTypeId = typeof LoggerTypeId
  * @category models
  */
 export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
-  readonly log: (
-    options: {
-      readonly fiberId: FiberId.FiberId
-      readonly logLevel: LogLevel.LogLevel
-      readonly message: Message
-      readonly cause: Cause.Cause<unknown>
-      readonly context: FiberRefs.FiberRefs
-      readonly spans: List.List<LogSpan.LogSpan>
-      readonly annotations: HashMap.HashMap<string, unknown>
-      readonly date: Date
-    }
-  ) => Output
+  readonly log: (options: Logger.Options<Message>) => Output
 }
 
 /**
@@ -64,26 +53,29 @@ export declare namespace Logger {
       readonly _Output: (_: never) => Output
     }
   }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Options<Message> {
+    readonly fiberId: FiberId.FiberId
+    readonly logLevel: LogLevel.LogLevel
+    readonly message: Message
+    readonly cause: Cause.Cause<unknown>
+    readonly context: FiberRefs.FiberRefs
+    readonly spans: List.List<LogSpan.LogSpan>
+    readonly annotations: HashMap.HashMap<string, unknown>
+    readonly date: Date
+  }
 }
 
 /**
  * @category constructors
  * @since 2.0.0
  */
-export const make: <Message, Output>(
-  log: (
-    options: {
-      readonly fiberId: FiberId.FiberId
-      readonly logLevel: LogLevel.LogLevel
-      readonly message: Message
-      readonly cause: Cause.Cause<unknown>
-      readonly context: FiberRefs.FiberRefs
-      readonly spans: List.List<LogSpan.LogSpan>
-      readonly annotations: HashMap.HashMap<string, unknown>
-      readonly date: Date
-    }
-  ) => Output
-) => Logger<Message, Output> = internal.makeLogger
+export const make: <Message, Output>(log: (options: Logger.Options<Message>) => Output) => Logger<Message, Output> =
+  internal.makeLogger
 
 /**
  * @since 2.0.0
@@ -119,6 +111,20 @@ export const mapInput: {
     f: (message: Message2) => Message
   ): Logger<Message2, Output>
 } = internal.mapInput
+
+/**
+ * @since 2.0.0
+ * @category mapping
+ */
+export const mapInputOptions: {
+  <Message, Message2>(
+    f: (options: Logger.Options<Message2>) => Logger.Options<Message>
+  ): <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>
+  <Output, Message, Message2>(
+    self: Logger<Message, Output>,
+    f: (options: Logger.Options<Message2>) => Logger.Options<Message>
+  ): Logger<Message2, Output>
+} = internal.mapInputOptions
 
 /**
  * Returns a version of this logger that only logs messages when the log level

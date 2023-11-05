@@ -1,6 +1,3 @@
-import type * as CauseExt from "../Cause.js"
-import type * as FiberId from "../FiberId.js"
-import type * as FiberRefs from "../FiberRefs.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
@@ -29,18 +26,7 @@ const loggerVariance = {
 
 /** @internal */
 export const makeLogger = <Message, Output>(
-  log: (
-    options: {
-      readonly fiberId: FiberId.FiberId
-      readonly logLevel: LogLevel.LogLevel
-      readonly message: Message
-      readonly cause: CauseExt.Cause<unknown>
-      readonly context: FiberRefs.FiberRefs
-      readonly spans: List.List<LogSpan.LogSpan>
-      readonly annotations: HashMap.HashMap<string, unknown>
-      readonly date: Date
-    }
-  ) => Output
+  log: (options: Logger.Logger.Options<Message>) => Output
 ): Logger.Logger<Message, Output> => ({
   [LoggerTypeId]: loggerVariance,
   log,
@@ -62,6 +48,17 @@ export const mapInput = dual<
   makeLogger(
     (options) => self.log({ ...options, message: f(options.message) })
   ))
+
+/** @internal */
+export const mapInputOptions = dual<
+  <Message, Message2>(
+    f: (options: Logger.Logger.Options<Message2>) => Logger.Logger.Options<Message>
+  ) => <Output>(self: Logger.Logger<Message, Output>) => Logger.Logger<Message2, Output>,
+  <Output, Message, Message2>(
+    self: Logger.Logger<Message, Output>,
+    f: (options: Logger.Logger.Options<Message2>) => Logger.Logger.Options<Message>
+  ) => Logger.Logger<Message2, Output>
+>(2, (self, f) => makeLogger((options) => self.log(f(options))))
 
 /** @internal */
 export const filterLogLevel = dual<
