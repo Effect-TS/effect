@@ -49,7 +49,7 @@ export declare const auto: <Out extends Context.Tag<any, any>, In, E, R>(
   options: {
     readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
     readonly schedule: Schedule.Schedule<R, unknown, unknown>
-  },
+  }
 ) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
@@ -69,7 +69,7 @@ export declare const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, 
   options: {
     readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
     readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
-  },
+  }
 ) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
@@ -85,7 +85,7 @@ of a static service.
 ```ts
 export declare const manual: <Out extends Context.Tag<any, any>, In, E>(
   tag: Out,
-  options: { readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>> },
+  options: { readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>> }
 ) => Layer.Layer<In, E, Reloadable<Context.Tag.Identifier<Out>>>
 ```
 
@@ -99,7 +99,7 @@ Reloads the specified service.
 
 ```ts
 export declare const reload: <T extends Context.Tag<any, any>>(
-  tag: T,
+  tag: T
 ) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
@@ -113,7 +113,7 @@ Forks the reload of the service in the background, ignoring any errors.
 
 ```ts
 export declare const reloadFork: <T extends Context.Tag<any, any>>(
-  tag: T,
+  tag: T
 ) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
@@ -127,7 +127,7 @@ Added in v2.0.0
 
 ```ts
 export declare const tag: <T extends Context.Tag<any, any>>(
-  tag: T,
+  tag: T
 ) => Context.Tag<Reloadable<Context.Tag.Identifier<T>>, Reloadable<Context.Tag.Service<T>>>
 ```
 
@@ -143,7 +143,7 @@ Retrieves the current version of the reloadable service.
 
 ```ts
 export declare const get: <T extends Context.Tag<any, any>>(
-  tag: T,
+  tag: T
 ) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>>
 ```
 

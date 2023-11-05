@@ -54,7 +54,7 @@ Provides a constructor for a Case Class.
 export declare const Class: new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] },
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A>>
 ```
 
@@ -88,7 +88,7 @@ Provides a constructor for a Case Class.
 export declare const Error: new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] },
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => YieldableError & Readonly<A>
 ```
 
@@ -102,7 +102,7 @@ Added in v2.0.0
 export declare const Structural: new <A>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] },
+    : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => Case
 ```
 
@@ -116,11 +116,11 @@ Provides a Tagged constructor for a Case Class.
 
 ```ts
 export declare const TaggedClass: <Tag extends string>(
-  tag: Tag,
+  tag: Tag
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] },
+    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A> & { readonly _tag: Tag }>
 ```
 
@@ -152,11 +152,11 @@ Added in v2.0.0
 
 ```ts
 export declare const TaggedError: <Tag extends string>(
-  tag: Tag,
+  tag: Tag
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
-    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] },
+    : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
 ) => YieldableError & { readonly _tag: Tag } & Readonly<A>
 ```
 
@@ -183,7 +183,7 @@ const persons = Data.array([alice, bob])
 
 assert.deepStrictEqual(
   Equal.equals(persons, Data.array([Data.struct({ name: "Alice", age: 30 }), Data.struct({ name: "Bob", age: 40 })])),
-  true,
+  true
 )
 ```
 
@@ -298,7 +298,7 @@ export declare const taggedEnum: {
         TaggedEnum.Kind<Z, A, unknown, unknown, unknown>,
         Tag,
         Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: Tag }>
-      >,
+      >
     ) => Extract<TaggedEnum.Kind<Z, A, unknown, unknown, unknown>, { readonly _tag: Tag }>
   }
   <Z extends TaggedEnum.WithGenerics<2>>(): {
@@ -307,7 +307,7 @@ export declare const taggedEnum: {
         TaggedEnum.Kind<Z, A, B, unknown, unknown>,
         Tag,
         Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: Tag }>
-      >,
+      >
     ) => Extract<TaggedEnum.Kind<Z, A, B, unknown, unknown>, { readonly _tag: Tag }>
   }
   <Z extends TaggedEnum.WithGenerics<3>>(): {
@@ -316,7 +316,7 @@ export declare const taggedEnum: {
         TaggedEnum.Kind<Z, A, B, C, unknown>,
         Tag,
         Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: Tag }>
-      >,
+      >
     ) => Extract<TaggedEnum.Kind<Z, A, B, C, unknown>, { readonly _tag: Tag }>
   }
   <Z extends TaggedEnum.WithGenerics<4>>(): {
@@ -325,7 +325,7 @@ export declare const taggedEnum: {
         TaggedEnum.Kind<Z, A, B, C, D>,
         Tag,
         Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
-      >,
+      >
     ) => Extract<TaggedEnum.Kind<Z, A, B, C, D>, { readonly _tag: Tag }>
   }
   <A extends { readonly _tag: string } & Equal.Equal>(): {
@@ -515,7 +515,7 @@ export interface Constructor<A extends Case, Tag extends keyof A = never> {
   (
     args: Types.Equals<Omit<A, Tag | keyof Equal.Equal>, {}> extends true
       ? void
-      : { readonly [P in keyof A as P extends Tag | keyof Equal.Equal ? never : P]: A[P] },
+      : { readonly [P in keyof A as P extends Tag | keyof Equal.Equal ? never : P]: A[P] }
   ): A
 }
 ```
@@ -552,7 +552,7 @@ Added in v2.0.0
 export type Args<
   A extends { readonly _tag: string } & Equal.Equal,
   K extends A["_tag"],
-  E = Extract<A, { readonly _tag: K }>,
+  E = Extract<A, { readonly _tag: K }>
 > = { readonly [K in keyof E as K extends "_tag" | keyof Case ? never : K]: E[K] } extends infer T
   ? {} extends T
     ? void

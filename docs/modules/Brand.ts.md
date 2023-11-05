@@ -95,12 +95,12 @@ import * as Brand from "effect/Brand"
 type Int = number & Brand.Brand<"Int">
 const Int = Brand.refined<Int>(
   (n) => Number.isInteger(n),
-  (n) => Brand.error(`Expected ${n} to be an integer`),
+  (n) => Brand.error(`Expected ${n} to be an integer`)
 )
 type Positive = number & Brand.Brand<"Positive">
 const Positive = Brand.refined<Positive>(
   (n) => n > 0,
-  (n) => Brand.error(`Expected ${n} to be positive`),
+  (n) => Brand.error(`Expected ${n} to be positive`)
 )
 
 const PositiveInt = Brand.all(Int, Positive)
@@ -177,7 +177,7 @@ see {@link nominal}.
 ```ts
 export declare const refined: <A extends Brand<any>>(
   refinement: Predicate<Brand.Unbranded<A>>,
-  onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors,
+  onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors
 ) => Brand.Constructor<A>
 ```
 
@@ -190,7 +190,7 @@ type Int = number & Brand.Brand<"Int">
 
 const Int = Brand.refined<Int>(
   (n) => Number.isInteger(n),
-  (n) => Brand.error(`Expected ${n} to be an integer`),
+  (n) => Brand.error(`Expected ${n} to be an integer`)
 )
 
 assert.strictEqual(Int(1), 1)

@@ -110,7 +110,7 @@ Constructs a new `RedBlackTree` from the specified entries.
 
 ```ts
 export declare const make: <K>(
-  ord: Order<K>,
+  ord: Order<K>
 ) => <Entries extends (readonly [K, any])[]>(
   ...entries: Entries
 ) => RedBlackTree<K, Entries[number] extends readonly [any, infer V] ? V : never>
@@ -408,7 +408,7 @@ export declare const forEachBetween: {
   }): (self: RedBlackTree<K, V>) => void
   <K, V>(
     self: RedBlackTree<K, V>,
-    options: { readonly min: K; readonly max: K; readonly body: (key: K, value: V) => void },
+    options: { readonly min: K; readonly max: K; readonly body: (key: K, value: V) => void }
   ): void
 }
 ```

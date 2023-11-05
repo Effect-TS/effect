@@ -52,11 +52,11 @@ Creates a metric key for a counter, with the specified name.
 export declare const counter: {
   (
     name: string,
-    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean },
+    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean }
   ): MetricKey.Counter<number>
   (
     name: string,
-    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean },
+    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean }
   ): MetricKey.Counter<bigint>
 }
 ```
@@ -101,7 +101,7 @@ Creates a metric key for a histogram, with the specified name and boundaries.
 export declare const histogram: (
   name: string,
   boundaries: MetricBoundaries.MetricBoundaries,
-  description?: string,
+  description?: string
 ) => MetricKey.Histogram
 ```
 
@@ -137,12 +137,12 @@ Returns a new `MetricKey` with the specified tag appended.
 export declare const tagged: {
   (
     key: string,
-    value: string,
+    value: string
   ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
     key: string,
-    value: string,
+    value: string
   ): MetricKey<Type>
 }
 ```
@@ -158,11 +158,11 @@ Returns a new `MetricKey` with the specified tags appended.
 ```ts
 export declare const taggedWithLabelSet: {
   (
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>,
+    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
   ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>,
+    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
   ): MetricKey<Type>
 }
 ```
@@ -178,11 +178,11 @@ Returns a new `MetricKey` with the specified tags appended.
 ```ts
 export declare const taggedWithLabels: {
   (
-    extraTags: Iterable<MetricLabel.MetricLabel>,
+    extraTags: Iterable<MetricLabel.MetricLabel>
   ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: Iterable<MetricLabel.MetricLabel>,
+    extraTags: Iterable<MetricLabel.MetricLabel>
   ): MetricKey<Type>
 }
 ```

@@ -128,7 +128,7 @@ Added in v2.0.0
 
 ```ts
 export declare const adjustWith: ((
-  duration: Duration.DurationInput,
+  duration: Duration.DurationInput
 ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>) &
   (<R, E, A>(effect: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, A>)
 ```
@@ -175,7 +175,7 @@ Added in v2.0.0
 ```ts
 export declare const makeData: (
   instant: number,
-  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>,
+  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
 ) => Data
 ```
 
@@ -257,7 +257,7 @@ specified workflow.
 
 ```ts
 export declare const testClockWith: <R, E, A>(
-  f: (testClock: TestClock) => Effect.Effect<R, E, A>,
+  f: (testClock: TestClock) => Effect.Effect<R, E, A>
 ) => Effect.Effect<R, E, A>
 ```
 

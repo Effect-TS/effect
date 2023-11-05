@@ -102,7 +102,7 @@ export declare const SourceUnavailable: (
   path: Array<string>,
   message: string,
   cause: Cause.Cause<unknown>,
-  options?: Options,
+  options?: Options
 ) => ConfigError
 ```
 

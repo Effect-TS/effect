@@ -72,7 +72,7 @@ export declare const match: {
   }): (self: UpstreamPullRequest<A>) => Z
   <A, Z>(
     self: UpstreamPullRequest<A>,
-    options: { readonly onPulled: (value: A) => Z; readonly onNoUpstream: (activeDownstreamCount: number) => Z },
+    options: { readonly onPulled: (value: A) => Z; readonly onNoUpstream: (activeDownstreamCount: number) => Z }
   ): Z
 }
 ```

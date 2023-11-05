@@ -354,11 +354,11 @@ function is being used in a data-first or data-last style.
 export declare const dual: {
   <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
     arity: Parameters<DataFirst>["length"],
-    body: DataFirst,
+    body: DataFirst
   ): DataLast & DataFirst
   <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
     isDataFirst: (args: IArguments) => boolean,
-    body: DataFirst,
+    body: DataFirst
   ): DataLast & DataFirst
 }
 ```
@@ -383,7 +383,7 @@ const sum2: {
   (self: number, that: number): number
 } = dual(
   (args) => args.length === 1,
-  (self: number, that: number): number => self + that,
+  (self: number, that: number): number => self + that
 )
 
 assert.deepStrictEqual(sum(2, 3), 5)
@@ -400,7 +400,7 @@ Reverses the order of arguments for a curried function.
 
 ```ts
 export declare const flip: <A extends unknown[], B extends unknown[], C>(
-  f: (...a: A) => (...b: B) => C,
+  f: (...a: A) => (...b: B) => C
 ) => (...b: B) => (...a: A) => C
 ```
 
@@ -428,25 +428,25 @@ See also [`pipe`](#pipe).
 export declare function flow<A extends ReadonlyArray<unknown>, B>(ab: (...a: A) => B): (...a: A) => B
 export declare function flow<A extends ReadonlyArray<unknown>, B, C>(
   ab: (...a: A) => B,
-  bc: (b: B) => C,
+  bc: (b: B) => C
 ): (...a: A) => C
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
-  cd: (c: C) => D,
+  cd: (c: C) => D
 ): (...a: A) => D
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
-  de: (d: D) => E,
+  de: (d: D) => E
 ): (...a: A) => E
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F>(
   ab: (...a: A) => B,
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E,
-  ef: (e: E) => F,
+  ef: (e: E) => F
 ): (...a: A) => F
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>(
   ab: (...a: A) => B,
@@ -454,7 +454,7 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G>
   cd: (c: C) => D,
   de: (d: D) => E,
   ef: (e: E) => F,
-  fg: (f: F) => G,
+  fg: (f: F) => G
 ): (...a: A) => G
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H>(
   ab: (...a: A) => B,
@@ -463,7 +463,7 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G,
   de: (d: D) => E,
   ef: (e: E) => F,
   fg: (f: F) => G,
-  gh: (g: G) => H,
+  gh: (g: G) => H
 ): (...a: A) => H
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I>(
   ab: (...a: A) => B,
@@ -473,7 +473,7 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G,
   ef: (e: E) => F,
   fg: (f: F) => G,
   gh: (g: G) => H,
-  hi: (h: H) => I,
+  hi: (h: H) => I
 ): (...a: A) => I
 export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I, J>(
   ab: (...a: A) => B,
@@ -484,7 +484,7 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G,
   fg: (f: F) => G,
   gh: (g: G) => H,
   hi: (h: H) => I,
-  ij: (i: I) => J,
+  ij: (i: I) => J
 ): (...a: A) => J
 ```
 
@@ -559,7 +559,7 @@ export declare function pipe<A, B, C, D, E, F>(
   bc: (b: B) => C,
   cd: (c: C) => D,
   de: (d: D) => E,
-  ef: (e: E) => F,
+  ef: (e: E) => F
 ): F
 export declare function pipe<A, B, C, D, E, F, G>(
   a: A,
@@ -568,7 +568,7 @@ export declare function pipe<A, B, C, D, E, F, G>(
   cd: (c: C) => D,
   de: (d: D) => E,
   ef: (e: E) => F,
-  fg: (f: F) => G,
+  fg: (f: F) => G
 ): G
 export declare function pipe<A, B, C, D, E, F, G, H>(
   a: A,
@@ -578,7 +578,7 @@ export declare function pipe<A, B, C, D, E, F, G, H>(
   de: (d: D) => E,
   ef: (e: E) => F,
   fg: (f: F) => G,
-  gh: (g: G) => H,
+  gh: (g: G) => H
 ): H
 export declare function pipe<A, B, C, D, E, F, G, H, I>(
   a: A,
@@ -589,7 +589,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I>(
   ef: (e: E) => F,
   fg: (f: F) => G,
   gh: (g: G) => H,
-  hi: (h: H) => I,
+  hi: (h: H) => I
 ): I
 export declare function pipe<A, B, C, D, E, F, G, H, I, J>(
   a: A,
@@ -601,7 +601,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J>(
   fg: (f: F) => G,
   gh: (g: G) => H,
   hi: (h: H) => I,
-  ij: (i: I) => J,
+  ij: (i: I) => J
 ): J
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K>(
   a: A,
@@ -614,7 +614,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K>(
   gh: (g: G) => H,
   hi: (h: H) => I,
   ij: (i: I) => J,
-  jk: (j: J) => K,
+  jk: (j: J) => K
 ): K
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
   a: A,
@@ -628,7 +628,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
   hi: (h: H) => I,
   ij: (i: I) => J,
   jk: (j: J) => K,
-  kl: (k: K) => L,
+  kl: (k: K) => L
 ): L
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
   a: A,
@@ -643,7 +643,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
   ij: (i: I) => J,
   jk: (j: J) => K,
   kl: (k: K) => L,
-  lm: (l: L) => M,
+  lm: (l: L) => M
 ): M
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
   a: A,
@@ -659,7 +659,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
   jk: (j: J) => K,
   kl: (k: K) => L,
   lm: (l: L) => M,
-  mn: (m: M) => N,
+  mn: (m: M) => N
 ): N
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
   a: A,
@@ -676,7 +676,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
   kl: (k: K) => L,
   lm: (l: L) => M,
   mn: (m: M) => N,
-  no: (n: N) => O,
+  no: (n: N) => O
 ): O
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   a: A,
@@ -694,7 +694,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   lm: (l: L) => M,
   mn: (m: M) => N,
   no: (n: N) => O,
-  op: (o: O) => P,
+  op: (o: O) => P
 ): P
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   a: A,
@@ -713,7 +713,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   mn: (m: M) => N,
   no: (n: N) => O,
   op: (o: O) => P,
-  pq: (p: P) => Q,
+  pq: (p: P) => Q
 ): Q
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
   a: A,
@@ -733,7 +733,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, 
   no: (n: N) => O,
   op: (o: O) => P,
   pq: (p: P) => Q,
-  qr: (q: Q) => R,
+  qr: (q: Q) => R
 ): R
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
   a: A,
@@ -754,7 +754,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, 
   op: (o: O) => P,
   pq: (p: P) => Q,
   qr: (q: Q) => R,
-  rs: (r: R) => S,
+  rs: (r: R) => S
 ): S
 export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
   a: A,
@@ -776,7 +776,7 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, 
   pq: (p: P) => Q,
   qr: (q: Q) => R,
   rs: (r: R) => S,
-  st: (s: S) => T,
+  st: (s: S) => T
 ): T
 ```
 

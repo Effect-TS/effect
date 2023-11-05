@@ -111,7 +111,7 @@ Takes a structure of `Option`s and returns an `Option` of values with the same s
 
 ```ts
 export declare const all: <const I extends Iterable<Option<any>> | Record<string, Option<any>>>(
-  input: I,
+  input: I
 ) => [I] extends [readonly Option<any>[]]
   ? Option<{ -readonly [K in keyof I]: [I[K]] extends [Option<infer A>] ? A : never }>
   : [I] extends [Iterable<Option<infer A>>]
@@ -336,7 +336,7 @@ import * as O from "effect/Option"
 
 assert.deepStrictEqual(
   O.getOrThrowWith(O.some(1), () => new Error("Unexpected None")),
-  1,
+  1
 )
 assert.throws(() => O.getOrThrowWith(O.none(), () => new Error("Unexpected None")))
 ```
@@ -375,7 +375,7 @@ This API is useful for lifting a function that returns `null` or `undefined` int
 
 ```ts
 export declare const liftNullable: <A extends readonly unknown[], B>(
-  f: (...a: A) => B | null | undefined,
+  f: (...a: A) => B | null | undefined
 ) => (...a: A) => Option<NonNullable<B>>
 ```
 
@@ -492,12 +492,12 @@ Added in v2.0.0
 export declare const bind: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => Option<B>,
+    f: (a: A) => Option<B>
   ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: Option<A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => Option<B>,
+    f: (a: A) => Option<B>
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 }
 ```
@@ -525,12 +525,12 @@ Added in v2.0.0
 export declare const let: {
   <N extends string, A extends object, B>(
     name: Exclude<N, keyof A>,
-    f: (a: A) => B,
+    f: (a: A) => B
   ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
   <A extends object, N extends string, B>(
     self: Option<A>,
     name: Exclude<N, keyof A>,
-    f: (a: A) => B,
+    f: (a: A) => B
   ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 }
 ```
@@ -648,30 +648,30 @@ import { pipe } from "effect/Function"
 assert.deepStrictEqual(
   pipe(
     O.none(),
-    O.orElse(() => O.none()),
+    O.orElse(() => O.none())
   ),
-  O.none(),
+  O.none()
 )
 assert.deepStrictEqual(
   pipe(
     O.some("a"),
-    O.orElse(() => O.none()),
+    O.orElse(() => O.none())
   ),
-  O.some("a"),
+  O.some("a")
 )
 assert.deepStrictEqual(
   pipe(
     O.none(),
-    O.orElse(() => O.some("b")),
+    O.orElse(() => O.some("b"))
   ),
-  O.some("b"),
+  O.some("b")
 )
 assert.deepStrictEqual(
   pipe(
     O.some("a"),
-    O.orElse(() => O.some("b")),
+    O.orElse(() => O.some("b"))
   ),
-  O.some("a"),
+  O.some("a")
 )
 ```
 
@@ -803,9 +803,9 @@ const iterable = [some(1), none(), some(2), none()]
 assert.deepStrictEqual(
   pipe(
     iterable,
-    reduceCompact(0, (b, a) => b + a),
+    reduceCompact(0, (b, a) => b + a)
   ),
-  3,
+  3
 )
 ```
 
@@ -847,16 +847,16 @@ import { pipe } from "effect/Function"
 assert.deepStrictEqual(
   pipe(
     some(1),
-    getOrElse(() => 0),
+    getOrElse(() => 0)
   ),
-  1,
+  1
 )
 assert.deepStrictEqual(
   pipe(
     none(),
-    getOrElse(() => 0),
+    getOrElse(() => 0)
   ),
-  0,
+  0
 )
 ```
 
@@ -980,7 +980,7 @@ Lifts a binary function into `Option`.
 
 ```ts
 export declare const lift2: <A, B, C>(
-  f: (a: A, b: B) => C,
+  f: (a: A, b: B) => C
 ) => { (that: Option<B>): (self: Option<A>) => Option<C>; (self: Option<A>, that: Option<B>): Option<C> }
 ```
 
@@ -1110,12 +1110,12 @@ import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(
   pipe(some(1), match({ onNone: () => "a none", onSome: (a) => `a some containing ${a}` })),
-  "a some containing 1",
+  "a some containing 1"
 )
 
 assert.deepStrictEqual(
   pipe(none(), match({ onNone: () => "a none", onSome: (a) => `a some containing ${a}` })),
-  "a none",
+  "a none"
 )
 ```
 
@@ -1266,9 +1266,9 @@ const employee1: Employee = { company: { address: { street: { name: "high street
 assert.deepStrictEqual(
   pipe(
     some(employee1),
-    flatMapNullable((employee) => employee.company?.address?.street?.name),
+    flatMapNullable((employee) => employee.company?.address?.street?.name)
   ),
-  some("high street"),
+  some("high street")
 )
 
 const employee2: Employee = { company: { address: { street: {} } } }
@@ -1276,9 +1276,9 @@ const employee2: Employee = { company: { address: { street: {} } } }
 assert.deepStrictEqual(
   pipe(
     some(employee2),
-    flatMapNullable((employee) => employee.company?.address?.street?.name),
+    flatMapNullable((employee) => employee.company?.address?.street?.name)
   ),
-  none(),
+  none()
 )
 ```
 

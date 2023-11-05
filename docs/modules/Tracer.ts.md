@@ -191,7 +191,7 @@ export interface Tracer {
     parent: Option.Option<ParentSpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
-    startTime: bigint,
+    startTime: bigint
   ) => Span
   readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
 }

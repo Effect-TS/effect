@@ -64,7 +64,7 @@ differ that knows how to diff the values.
 
 ```ts
 export declare const chunk: <Value, Patch>(
-  differ: Differ<Value, Patch>,
+  differ: Differ<Value, Patch>
 ) => Differ<Chunk<Value>, Differ.Chunk.Patch<Value, Patch>>
 ```
 
@@ -91,7 +91,7 @@ a differ that knows how to diff the values.
 
 ```ts
 export declare const hashMap: <Key, Value, Patch>(
-  differ: Differ<Value, Patch>,
+  differ: Differ<Value, Patch>
 ) => Differ<HashMap<Key, Value>, Differ.HashMap.Patch<Key, Value, Patch>>
 ```
 
@@ -421,13 +421,13 @@ knows how to diff the sum of their values.
 ```ts
 export declare const orElseEither: {
   <Value2, Patch2>(
-    that: Differ<Value2, Patch2>,
+    that: Differ<Value2, Patch2>
   ): <Value, Patch>(
-    self: Differ<Value, Patch>,
+    self: Differ<Value, Patch>
   ) => Differ<Either<Value, Value2>, Differ.Or.Patch<Value, Value2, Patch, Patch2>>
   <Value, Patch, Value2, Patch2>(
     self: Differ<Value, Patch>,
-    that: Differ<Value2, Patch2>,
+    that: Differ<Value2, Patch2>
   ): Differ<Either<Value, Value2>, Differ.Or.Patch<Value, Value2, Patch, Patch2>>
 }
 ```
@@ -449,7 +449,7 @@ export declare const transform: {
   }): <Patch>(self: Differ<Value, Patch>) => Differ<Value2, Patch>
   <Value, Patch, Value2>(
     self: Differ<Value, Patch>,
-    options: { readonly toNew: (value: Value) => Value2; readonly toOld: (value: Value2) => Value },
+    options: { readonly toNew: (value: Value) => Value2; readonly toOld: (value: Value2) => Value }
   ): Differ<Value2, Patch>
 }
 ```
@@ -494,11 +494,11 @@ knows how to diff the product of their values.
 ```ts
 export declare const zip: {
   <Value2, Patch2>(
-    that: Differ<Value2, Patch2>,
+    that: Differ<Value2, Patch2>
   ): <Value, Patch>(self: Differ<Value, Patch>) => Differ<readonly [Value, Value2], readonly [Patch, Patch2]>
   <Value, Patch, Value2, Patch2>(
     self: Differ<Value, Patch>,
-    that: Differ<Value2, Patch2>,
+    that: Differ<Value2, Patch2>
   ): Differ<readonly [Value, Value2], readonly [Patch, Patch2]>
 }
 ```

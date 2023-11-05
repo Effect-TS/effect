@@ -255,7 +255,7 @@ Added in v2.0.0
 ```ts
 export declare const make: (
   scheduleTask: Scheduler["scheduleTask"],
-  shouldYield?: Scheduler["shouldYield"],
+  shouldYield?: Scheduler["shouldYield"]
 ) => Scheduler
 ```
 
@@ -268,7 +268,7 @@ Added in v2.0.0
 ```ts
 export declare const makeBatched: (
   callback: (runBatch: () => void) => void,
-  shouldYield?: Scheduler["shouldYield"],
+  shouldYield?: Scheduler["shouldYield"]
 ) => Scheduler
 ```
 

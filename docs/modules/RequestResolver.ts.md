@@ -58,12 +58,12 @@ and `after`, where the result of `before` can be used by `after`.
 export declare const around: {
   <R2, A2, R3, _>(
     before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>,
+    after: (a: A2) => Effect.Effect<R3, never, _>
   ): <R, A>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
   <R, A, R2, A2, R3, _>(
     self: RequestResolver<A, R>,
     before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>,
+    after: (a: A2) => Effect.Effect<R3, never, _>
   ): RequestResolver<A, R | R2 | R3>
 }
 ```
@@ -97,18 +97,18 @@ data source or that data source can execute.
 export declare const eitherWith: {
   <A extends Request.Request<any, any>, R2, B extends Request.Request<any, any>, C extends Request.Request<any, any>>(
     that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>,
+    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<C, R2 | R>
   <
     R,
     A extends Request.Request<any, any>,
     R2,
     B extends Request.Request<any, any>,
-    C extends Request.Request<any, any>,
+    C extends Request.Request<any, any>
   >(
     self: RequestResolver<A, R>,
     that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>,
+    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
   ): RequestResolver<C, R | R2>
 }
 ```
@@ -125,12 +125,12 @@ Returns a new data source with a localized FiberRef
 export declare const locally: {
   <A>(
     self: FiberRef<A>,
-    value: A,
+    value: A
   ): <R, B extends Request.Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
   <R, B extends Request.Request<any, any>, A>(
     use: RequestResolver<B, R>,
     self: FiberRef<A>,
-    value: A,
+    value: A
   ): RequestResolver<B, R>
 }
 ```
@@ -148,11 +148,11 @@ source to complete and safely interrupting the loser.
 ```ts
 export declare const race: {
   <R2, A2 extends Request.Request<any, any>>(
-    that: RequestResolver<A2, R2>,
+    that: RequestResolver<A2, R2>
   ): <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
   <R, A extends Request.Request<any, any>, R2, A2 extends Request.Request<any, any>>(
     self: RequestResolver<A, R>,
-    that: RequestResolver<A2, R2>,
+    that: RequestResolver<A2, R2>
   ): RequestResolver<A | A2, R | R2>
 }
 ```
@@ -169,7 +169,7 @@ Constructs a data source from an effectual function.
 
 ```ts
 export declare const fromEffect: <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>,
+  f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
 ) => RequestResolver<A, R>
 ```
 
@@ -192,9 +192,9 @@ export declare const fromEffectTagged: <A extends Request.Request<any, any> & { 
         ? (requests: Req[]) => Effect.Effect<any, ReqE, Iterable<ReqA>>
         : never
       : never
-  },
+  }
 >(
-  fns: Fns,
+  fns: Fns
 ) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer R, infer _E, infer _A> ? R : never>
 ```
 
@@ -208,7 +208,7 @@ Constructs a data source from a pure function.
 
 ```ts
 export declare const fromFunction: <A extends Request.Request<never, any>>(
-  f: (request: A) => Request.Request.Success<A>,
+  f: (request: A) => Request.Request.Success<A>
 ) => RequestResolver<A, never>
 ```
 
@@ -224,7 +224,7 @@ list must correspond to the item at the same index in the request list.
 
 ```ts
 export declare const fromFunctionBatched: <A extends Request.Request<never, any>>(
-  f: (chunk: A[]) => Iterable<Request.Request.Success<A>>,
+  f: (chunk: A[]) => Iterable<Request.Request.Success<A>>
 ) => RequestResolver<A, never>
 ```
 
@@ -252,7 +252,7 @@ and returning a `RequestCompletionMap`.
 
 ```ts
 export declare const makeBatched: <R, A extends Request.Request<any, any>>(
-  run: (requests: A[]) => Effect.Effect<R, never, void>,
+  run: (requests: A[]) => Effect.Effect<R, never, void>
 ) => RequestResolver<A, R>
 ```
 
@@ -267,7 +267,7 @@ requests.
 
 ```ts
 export declare const makeWithEntry: <R, A>(
-  runAll: (requests: Request.Entry<A>[][]) => Effect.Effect<R, never, void>,
+  runAll: (requests: Request.Entry<A>[][]) => Effect.Effect<R, never, void>
 ) => RequestResolver<A, R>
 ```
 
@@ -296,11 +296,11 @@ Provides this data source with part of its required context.
 ```ts
 export declare const mapInputContext: {
   <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>,
+    f: (context: Context.Context<R0>) => Context.Context<R>
   ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
   <R, A extends Request.Request<any, any>, R0>(
     self: RequestResolver<A, R>,
-    f: (context: Context.Context<R0>) => Context.Context<R>,
+    f: (context: Context.Context<R0>) => Context.Context<R>
   ): RequestResolver<A, R0>
 }
 ```
@@ -316,11 +316,11 @@ Provides this data source with its required context.
 ```ts
 export declare const provideContext: {
   <R>(
-    context: Context.Context<R>,
+    context: Context.Context<R>
   ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, never>
   <R, A extends Request.Request<any, any>>(
     self: RequestResolver<A, R>,
-    context: Context.Context<R>,
+    context: Context.Context<R>
   ): RequestResolver<A, never>
 }
 ```
@@ -434,7 +434,7 @@ Added in v2.0.0
 
 ```ts
 export declare const contextFromEffect: <R, A extends Request.Request<any, any>>(
-  self: RequestResolver<A, R>,
+  self: RequestResolver<A, R>
 ) => Effect.Effect<R, never, RequestResolver<A, never>>
 ```
 
@@ -448,7 +448,7 @@ Added in v2.0.0
 export declare const contextFromServices: <Services extends Context.Tag<any, any>[]>(
   ...services: Services
 ) => <R, A extends Request.Request<any, any>>(
-  self: RequestResolver<A, R>,
+  self: RequestResolver<A, R>
 ) => Effect.Effect<
   { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number],
   never,

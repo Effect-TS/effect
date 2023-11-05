@@ -75,7 +75,7 @@ export declare const match: {
     options: {
       readonly onNext: (emitSeparator: Option.Option<A>) => Z
       readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
-    },
+    }
   ): Z
 }
 ```

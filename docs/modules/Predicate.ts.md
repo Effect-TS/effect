@@ -275,7 +275,7 @@ Added in v2.0.0
 ```ts
 export declare const productMany: <A>(
   self: Predicate<A>,
-  collection: Iterable<Predicate<A>>,
+  collection: Iterable<Predicate<A>>
 ) => Predicate<readonly [A, ...A[]]>
 ```
 
@@ -650,7 +650,7 @@ A guard that succeeds when the input is a readonly record.
 
 ```ts
 export declare const isReadonlyRecord: (
-  input: unknown,
+  input: unknown
 ) => input is { readonly [x: string]: unknown; readonly [x: symbol]: unknown }
 ```
 
@@ -899,7 +899,7 @@ Added in v2.0.0
 
 ```ts
 export declare const struct: <R extends Record<string, Predicate<any>>>(
-  fields: R,
+  fields: R
 ) => Predicate<{ readonly [K in keyof R]: [R[K]] extends [Predicate<infer A>] ? A : never }>
 ```
 

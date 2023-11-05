@@ -78,7 +78,7 @@ Takes a structure of `Option`s and returns an `Option` of values with the same s
 
 ```ts
 export declare const all: <const I extends Iterable<Either<any, any>> | Record<string, Either<any, any>>>(
-  input: I,
+  input: I
 ) => [I] extends [readonly Either<any, any>[]]
   ? Either<
       I[number] extends never ? never : [I[number]] extends [Either<infer E, any>] ? E : never,
@@ -166,11 +166,11 @@ import * as Either from "effect/Either"
 
 assert.deepStrictEqual(
   Either.fromNullable(1, () => "fallback"),
-  Either.right(1),
+  Either.right(1)
 )
 assert.deepStrictEqual(
   Either.fromNullable(null, () => "fallback"),
-  Either.left("fallback"),
+  Either.left("fallback")
 )
 ```
 
@@ -195,11 +195,11 @@ import * as Option from "effect/Option"
 
 assert.deepStrictEqual(
   Either.fromOption(Option.some(1), () => "error"),
-  Either.right(1),
+  Either.right(1)
 )
 assert.deepStrictEqual(
   Either.fromOption(Option.none(), () => "error"),
-  Either.left("error"),
+  Either.left("error")
 )
 ```
 
@@ -253,7 +253,7 @@ Added in v2.0.0
 ```ts
 export declare const getEquivalence: <E, A>(
   EE: Equivalence.Equivalence<E>,
-  EA: Equivalence.Equivalence<A>,
+  EA: Equivalence.Equivalence<A>
 ) => Equivalence.Equivalence<Either<E, A>>
 ```
 
@@ -332,11 +332,11 @@ import * as Either from "effect/Either"
 
 assert.deepStrictEqual(
   Either.getOrElse(Either.right(1), (error) => error + "!"),
-  1,
+  1
 )
 assert.deepStrictEqual(
   Either.getOrElse(Either.left("not a number"), (error) => error + "!"),
-  "not a number!",
+  "not a number!"
 )
 ```
 
@@ -406,7 +406,7 @@ import * as E from "effect/Either"
 
 assert.deepStrictEqual(
   E.getOrThrowWith(E.right(1), () => new Error("Unexpected Left")),
-  1,
+  1
 )
 assert.throws(() => E.getOrThrowWith(E.left("error"), () => new Error("Unexpected Left")))
 ```
@@ -561,7 +561,7 @@ export declare const mapBoth: {
   }): (self: Either<E1, A>) => Either<E2, B>
   <E1, A, E2, B>(
     self: Either<E1, A>,
-    options: { readonly onLeft: (e: E1) => E2; readonly onRight: (a: A) => B },
+    options: { readonly onLeft: (e: E1) => E2; readonly onRight: (a: A) => B }
   ): Either<E2, B>
 }
 ```
@@ -691,7 +691,7 @@ const onRight = (value: number): string => `Ok: ${value}`
 assert.deepStrictEqual(pipe(E.right(1), E.match({ onLeft, onRight })), "Ok: 1")
 assert.deepStrictEqual(
   pipe(E.left(["string 1", "string 2"]), E.match({ onLeft, onRight })),
-  "strings: string 1, string 2",
+  "strings: string 1, string 2"
 )
 ```
 

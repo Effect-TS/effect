@@ -37,7 +37,7 @@ Alias of {@link Equivalence.struct}.
 
 ```ts
 export declare const getEquivalence: <R extends Record<string, Equivalence.Equivalence<any>>>(
-  isEquivalents: R,
+  isEquivalents: R
 ) => Equivalence.Equivalence<{ readonly [K in keyof R]: [R[K]] extends [Equivalence.Equivalence<infer A>] ? A : never }>
 ```
 
@@ -50,7 +50,7 @@ import * as N from "effect/Number"
 
 const PersonEquivalence = getEquivalence({
   name: S.Equivalence,
-  age: N.Equivalence,
+  age: N.Equivalence
 })
 
 assert.deepStrictEqual(PersonEquivalence({ name: "John", age: 25 }, { name: "John", age: 25 }), true)
@@ -70,7 +70,7 @@ Alias of {@link order.struct}.
 
 ```ts
 export declare const getOrder: <R extends { readonly [x: string]: order.Order<any> }>(
-  fields: R,
+  fields: R
 ) => order.Order<{ [K in keyof R]: [R[K]] extends [order.Order<infer A>] ? A : never }>
 ```
 
@@ -88,13 +88,13 @@ If no transformation function is provided for a key, it will return the origiona
 ```ts
 export declare const evolve: {
   <O, T extends Partial<{ [K in keyof O]: (a: O[K]) => unknown }>>(
-    t: T,
+    t: T
   ): (obj: O) => {
     [K in keyof O]: K extends keyof T ? (T[K] extends (...a: any) => any ? ReturnType<T[K]> : O[K]) : O[K]
   }
   <O, T extends Partial<{ [K in keyof O]: (a: O[K]) => unknown }>>(
     obj: O,
-    t: T,
+    t: T
   ): { [K in keyof O]: K extends keyof T ? (T[K] extends (...a: any) => any ? ReturnType<T[K]> : O[K]) : O[K] }
 }
 ```
@@ -110,10 +110,10 @@ assert.deepStrictEqual(
     { a: "a", b: 1, c: 3 },
     evolve({
       a: (a) => a.length,
-      b: (b) => b * 2,
-    }),
+      b: (b) => b * 2
+    })
   ),
-  { a: 1, b: 2, c: 3 },
+  { a: 1, b: 2, c: 3 }
 )
 ```
 

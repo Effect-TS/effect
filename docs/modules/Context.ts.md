@@ -403,12 +403,12 @@ Adds a service to a given `Context`.
 export declare const add: {
   <T extends Tag<any, any>>(
     tag: T,
-    service: Tag.Service<T>,
+    service: Tag.Service<T>
   ): <Services>(self: Context<Services>) => Context<Services | Tag.Identifier<T>>
   <Services, T extends Tag<any, any>>(
     self: Context<Services>,
     tag: T,
-    service: Tag.Service<T>,
+    service: Tag.Service<T>
   ): Context<Services | Tag.Identifier<T>>
 }
 ```

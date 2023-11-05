@@ -89,7 +89,7 @@ for each property in the struct.
 
 ```ts
 export declare const struct: <R extends { readonly [x: string]: Order<any> }>(
-  fields: R,
+  fields: R
 ) => Order<{ [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }>
 ```
 

@@ -45,7 +45,7 @@ export interface MetricRegistry {
   readonly [MetricRegistryTypeId]: MetricRegistryTypeId
   snapshot(): HashSet.HashSet<MetricPair.MetricPair.Untyped>
   get<Type extends MetricKeyType.MetricKeyType<any, any>>(
-    key: MetricKey.MetricKey<Type>,
+    key: MetricKey.MetricKey<Type>
   ): MetricHook.MetricHook<
     MetricKeyType.MetricKeyType.InType<(typeof key)["keyType"]>,
     MetricKeyType.MetricKeyType.OutType<(typeof key)["keyType"]>

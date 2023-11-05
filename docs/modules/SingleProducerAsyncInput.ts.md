@@ -46,7 +46,7 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
   takeWith<A>(
     onError: (cause: Cause.Cause<Err>) => A,
     onElement: (element: Elem) => A,
-    onDone: (value: Done) => A,
+    onDone: (value: Done) => A
   ): Effect.Effect<never, never, A>
 }
 ```

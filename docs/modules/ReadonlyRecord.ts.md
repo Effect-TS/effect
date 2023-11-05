@@ -116,8 +116,8 @@ assert.deepStrictEqual(
   [
     ["a", 1],
     ["b", 2],
-    ["c", 3],
-  ],
+    ["c", 3]
+  ]
 )
 ```
 
@@ -143,7 +143,7 @@ import { fromEntries } from "effect/ReadonlyRecord"
 
 const input: Array<[string, number]> = [
   ["a", 1],
-  ["b", 2],
+  ["b", 2]
 ]
 
 assert.deepStrictEqual(fromEntries(input), { a: 1, b: 2 })
@@ -174,7 +174,7 @@ const input = [1, 2, 3, 4]
 
 assert.deepStrictEqual(
   fromIterable(input, (a) => [String(a), a * 2]),
-  { "1": 2, "2": 4, "3": 6, "4": 8 },
+  { "1": 2, "2": 4, "3": 6, "4": 8 }
 )
 ```
 
@@ -199,7 +199,7 @@ const x = { a: 1, b: 2, c: 3 }
 assert.deepStrictEqual(toEntries(x), [
   ["a", 1],
   ["b", 2],
-  ["c", 3],
+  ["c", 3]
 ])
 ```
 
@@ -237,14 +237,14 @@ Selects properties from a record whose values match the given predicate.
 ```ts
 export declare const filter: {
   <K extends string, C extends A, B extends A, A = C>(
-    refinement: (a: A, key: K) => a is B,
+    refinement: (a: A, key: K) => a is B
   ): (self: Record<K, C>) => Record<string, B>
   <K extends string, B extends A, A = B>(
-    predicate: (a: A, key: K) => boolean,
+    predicate: (a: A, key: K) => boolean
   ): (self: Record<K, B>) => Record<string, B>
   <K extends string, C extends A, B extends A, A = C>(
     self: Record<K, C>,
-    refinement: (a: A, key: K) => a is B,
+    refinement: (a: A, key: K) => a is B
   ): Record<string, B>
   <K extends string, B extends A, A = B>(self: Record<K, B>, predicate: (a: A, key: K) => boolean): Record<string, B>
 }
@@ -258,7 +258,7 @@ import { filter } from "effect/ReadonlyRecord"
 const x = { a: 1, b: 2, c: 3, d: 4 }
 assert.deepStrictEqual(
   filter(x, (n) => n > 2),
-  { c: 3, d: 4 },
+  { c: 3, d: 4 }
 )
 ```
 
@@ -273,18 +273,18 @@ Partitions a record into two separate records based on the result of a predicate
 ```ts
 export declare const partition: {
   <K extends string, C extends A, B extends A, A = C>(
-    refinement: (a: A, key: K) => a is B,
+    refinement: (a: A, key: K) => a is B
   ): (self: Record<K, C>) => [Record<string, C>, Record<string, B>]
   <K extends string, B extends A, A = B>(
-    predicate: (a: A, key: K) => boolean,
+    predicate: (a: A, key: K) => boolean
   ): (self: Record<K, B>) => [Record<string, B>, Record<string, B>]
   <K extends string, C extends A, B extends A, A = C>(
     self: Record<K, C>,
-    refinement: (a: A, key: K) => a is B,
+    refinement: (a: A, key: K) => a is B
   ): [Record<string, C>, Record<string, B>]
   <K extends string, B extends A, A = B>(
     self: Record<K, B>,
-    predicate: (a: A, key: K) => boolean,
+    predicate: (a: A, key: K) => boolean
   ): [Record<string, B>, Record<string, B>]
 }
 ```
@@ -296,7 +296,7 @@ import { partition } from "effect/ReadonlyRecord"
 
 assert.deepStrictEqual(
   partition({ a: 1, b: 3 }, (n) => n > 2),
-  [{ a: 1 }, { b: 3 }],
+  [{ a: 1 }, { b: 3 }]
 )
 ```
 
@@ -311,11 +311,11 @@ Partitions the elements of a record into two groups: those that match a predicat
 ```ts
 export declare const partitionMap: {
   <K extends string, A, B, C>(
-    f: (a: A, key: K) => Either<B, C>,
+    f: (a: A, key: K) => Either<B, C>
   ): (self: Record<K, A>) => [Record<string, B>, Record<string, C>]
   <K extends string, A, B, C>(
     self: Record<K, A>,
-    f: (a: A, key: K) => Either<B, C>,
+    f: (a: A, key: K) => Either<B, C>
   ): [Record<string, B>, Record<string, C>]
 }
 ```
@@ -607,7 +607,7 @@ Merge two records, retaining only the entries that exist in both records.
 export declare const intersection: {
   <A>(
     that: ReadonlyRecord<A>,
-    combine: (selfValue: A, thatValue: A) => A,
+    combine: (selfValue: A, thatValue: A) => A
   ): (self: ReadonlyRecord<A>) => Record<string, A>
   <A>(self: ReadonlyRecord<A>, that: ReadonlyRecord<A>, combine: (selfValue: A, thatValue: A) => A): Record<string, A>
 }
@@ -808,12 +808,12 @@ Merge two records, preserving entries that exist in either of the records.
 export declare const union: {
   <K1 extends string, V0, V1>(
     that: Record<K1, V1>,
-    combine: (selfValue: V0, thatValue: V1) => V0 | V1,
+    combine: (selfValue: V0, thatValue: V1) => V0 | V1
   ): <K0 extends string>(self: Record<K0, V0>) => Record<K1 | K0, V0 | V1>
   <K0 extends string, V0, K1 extends string, V1>(
     self: Record<K0, V0>,
     that: Record<K1, V1>,
-    combine: (selfValue: V0, thatValue: V1) => V0 | V1,
+    combine: (selfValue: V0, thatValue: V1) => V0 | V1
   ): Record<K0 | K1, V0 | V1>
 }
 ```

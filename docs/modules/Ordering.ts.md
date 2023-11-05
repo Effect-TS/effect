@@ -92,7 +92,7 @@ export declare const match: {
   }): (self: Ordering) => A | B | C
   <A, B, C = B>(
     o: Ordering,
-    options: { readonly onLessThan: LazyArg<A>; readonly onEqual: LazyArg<B>; readonly onGreaterThan: LazyArg<C> },
+    options: { readonly onLessThan: LazyArg<A>; readonly onEqual: LazyArg<B>; readonly onGreaterThan: LazyArg<C> }
   ): A | B | C
 }
 ```
@@ -106,7 +106,7 @@ import { constant } from "effect/Function"
 const toMessage = match({
   onLessThan: constant("less than"),
   onEqual: constant("equal"),
-  onGreaterThan: constant("greater than"),
+  onGreaterThan: constant("greater than")
 })
 
 assert.deepStrictEqual(toMessage(-1), "less than")

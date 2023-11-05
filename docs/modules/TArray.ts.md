@@ -291,12 +291,12 @@ transactional predicate.
 export declare const findFirstIndexWhereFromSTM: {
   <A, R, E>(
     predicate: (value: A) => STM.STM<R, E, boolean>,
-    from: number,
+    from: number
   ): (self: TArray<A>) => STM.STM<R, E, Option.Option<number>>
   <A, R, E>(
     self: TArray<A>,
     predicate: (value: A) => STM.STM<R, E, boolean>,
-    from: number,
+    from: number
   ): STM.STM<R, E, Option.Option<number>>
 }
 ```

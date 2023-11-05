@@ -69,7 +69,7 @@ Constructs a config from a tuple / struct / arguments of configs.
 
 ```ts
 export declare const all: <const Arg extends Iterable<Config<any>> | Record<string, Config<any>>>(
-  arg: Arg,
+  arg: Arg
 ) => Config<
   [Arg] extends [readonly Config<any>[]]
     ? { -readonly [K in keyof Arg]: [Arg[K]] extends [Config<infer A>] ? A : never }
@@ -212,7 +212,7 @@ Constructs a new primitive config.
 ```ts
 export declare const primitive: <A>(
   description: string,
-  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>,
+  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
 ) => Config<A>
 ```
 
@@ -523,7 +523,7 @@ export declare const orElseIf: {
   }): <A>(self: Config<A>) => Config<A>
   <A, A2>(
     self: Config<A>,
-    options: { readonly if: Predicate<ConfigError.ConfigError>; readonly orElse: LazyArg<Config<A2>> },
+    options: { readonly if: Predicate<ConfigError.ConfigError>; readonly orElse: LazyArg<Config<A2>> }
   ): Config<A>
 }
 ```
@@ -559,7 +559,7 @@ export declare const validate: {
   <A>(options: { readonly message: string; readonly validation: Predicate<A> }): (self: Config<A>) => Config<A>
   <A, B extends A>(
     self: Config<A>,
-    options: { readonly message: string; readonly validation: Refinement<A, B> },
+    options: { readonly message: string; readonly validation: Refinement<A, B> }
   ): Config<B>
   <A>(self: Config<A>, options: { readonly message: string; readonly validation: Predicate<A> }): Config<A>
 }

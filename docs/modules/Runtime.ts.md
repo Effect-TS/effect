@@ -102,10 +102,10 @@ program.
 
 ```ts
 export declare const runCallback: <R>(
-  runtime: Runtime<R>,
+  runtime: Runtime<R>
 ) => <E, A>(
   effect: Effect.Effect<R, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined,
+  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
 ) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void
 ```
 
@@ -120,7 +120,7 @@ Scheduler if not provided
 
 ```ts
 export declare const runFork: <R>(
-  runtime: Runtime<R>,
+  runtime: Runtime<R>
 ) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
 ```
 
@@ -155,7 +155,7 @@ program.
 
 ```ts
 export declare const runPromiseExit: <R>(
-  runtime: Runtime<R>,
+  runtime: Runtime<R>
 ) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>>
 ```
 

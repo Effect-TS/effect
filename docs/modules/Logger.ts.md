@@ -101,7 +101,7 @@ export declare const make: <Message, Output>(
     readonly spans: List.List<LogSpan.LogSpan>
     readonly annotations: HashMap.HashMap<string, unknown>
     readonly date: Date
-  }) => Output,
+  }) => Output
 ) => Logger<Message, Output>
 ```
 
@@ -210,7 +210,7 @@ Added in v2.0.0
 
 ```ts
 export declare const addScoped: <R, E, A>(
-  effect: Effect<R, E, Logger<unknown, A>>,
+  effect: Effect<R, E, Logger<unknown, A>>
 ) => Layer.Layer<Exclude<R, Scope>, E, never>
 ```
 
@@ -269,11 +269,11 @@ Added in v2.0.0
 ```ts
 export declare const replaceScoped: {
   <R, E, B>(
-    that: Effect<R, E, Logger<unknown, B>>,
+    that: Effect<R, E, Logger<unknown, B>>
   ): <A>(self: Logger<unknown, A>) => Layer.Layer<Exclude<R, Scope>, E, never>
   <A, R, E, B>(
     self: Logger<unknown, A>,
-    that: Effect<R, E, Logger<unknown, B>>,
+    that: Effect<R, E, Logger<unknown, B>>
   ): Layer.Layer<Exclude<R, Scope>, E, never>
 }
 ```
@@ -305,11 +305,11 @@ satisfies the specified predicate.
 ```ts
 export declare const filterLogLevel: {
   (
-    f: (logLevel: LogLevel.LogLevel) => boolean,
+    f: (logLevel: LogLevel.LogLevel) => boolean
   ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option.Option<Output>>
   <Message, Output>(
     self: Logger<Message, Output>,
-    f: (logLevel: LogLevel.LogLevel) => boolean,
+    f: (logLevel: LogLevel.LogLevel) => boolean
   ): Logger<Message, Option.Option<Output>>
 }
 ```
@@ -325,7 +325,7 @@ Added in v2.0.0
 ```ts
 export declare const map: {
   <Output, Output2>(
-    f: (output: Output) => Output2,
+    f: (output: Output) => Output2
   ): <Message>(self: Logger<Message, Output>) => Logger<Message, Output2>
   <Message, Output, Output2>(self: Logger<Message, Output>, f: (output: Output) => Output2): Logger<Message, Output2>
 }
@@ -340,11 +340,11 @@ Added in v2.0.0
 ```ts
 export declare const mapInput: {
   <Message, Message2>(
-    f: (message: Message2) => Message,
+    f: (message: Message2) => Message
   ): <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>
   <Output, Message, Message2>(
     self: Logger<Message, Output>,
-    f: (message: Message2) => Message,
+    f: (message: Message2) => Message
   ): Logger<Message2, Output>
 }
 ```
@@ -429,11 +429,11 @@ logs to both this logger and that logger.
 ```ts
 export declare const zip: {
   <Message2, Output2>(
-    that: Logger<Message2, Output2>,
+    that: Logger<Message2, Output2>
   ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, readonly [Output, Output2]>
   <Message, Output, Message2, Output2>(
     self: Logger<Message, Output>,
-    that: Logger<Message2, Output2>,
+    that: Logger<Message2, Output2>
   ): Logger<Message & Message2, readonly [Output, Output2]>
 }
 ```
@@ -447,11 +447,11 @@ Added in v2.0.0
 ```ts
 export declare const zipLeft: {
   <Message2, Output2>(
-    that: Logger<Message2, Output2>,
+    that: Logger<Message2, Output2>
   ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, Output>
   <Message, Output, Message2, Output2>(
     self: Logger<Message, Output>,
-    that: Logger<Message2, Output2>,
+    that: Logger<Message2, Output2>
   ): Logger<Message & Message2, Output>
 }
 ```
@@ -465,11 +465,11 @@ Added in v2.0.0
 ```ts
 export declare const zipRight: {
   <Message2, Output2>(
-    that: Logger<Message2, Output2>,
+    that: Logger<Message2, Output2>
   ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, Output2>
   <Message, Output, Message2, Output2>(
     self: Logger<Message, Output>,
-    that: Logger<Message2, Output2>,
+    that: Logger<Message2, Output2>
   ): Logger<Message & Message2, Output2>
 }
 ```

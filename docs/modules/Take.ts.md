@@ -157,7 +157,7 @@ to `Take.failCause`, and the end-of-stream is converted to `Take.end`.
 
 ```ts
 export declare const fromPull: <R, E, A>(
-  pull: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>,
+  pull: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>
 ) => Effect.Effect<R, never, Take<E, A>>
 ```
 
@@ -221,7 +221,7 @@ export declare const match: {
       readonly onEnd: () => Z
       readonly onFailure: (cause: Cause.Cause<E>) => Z2
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Z3
-    },
+    }
   ): Z | Z2 | Z3
 }
 ```
@@ -250,7 +250,7 @@ export declare const matchEffect: {
       readonly onEnd: () => Effect.Effect<R, E2, Z>
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
-    },
+    }
   ): Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
 }
 ```
@@ -342,11 +342,11 @@ Returns an effect that effectfully "peeks" at the success of this take.
 ```ts
 export declare const tap: {
   <A, R, E2, _>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>,
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
   ): <E>(self: Take<E, A>) => Effect.Effect<R, E2 | E, void>
   <E, A, R, E2, _>(
     self: Take<E, A>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>,
+    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
   ): Effect.Effect<R, E | E2, void>
 }
 ```

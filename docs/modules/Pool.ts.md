@@ -94,11 +94,11 @@ Effect.scoped(
       Effect.scoped(
         pipe(
           pool.get(),
-          Effect.flatMap((connection) => useConnection(connection)),
-        ),
-      ),
-    ),
-  ),
+          Effect.flatMap((connection) => useConnection(connection))
+        )
+      )
+    )
+  )
 )
 ```
 

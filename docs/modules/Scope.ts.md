@@ -50,7 +50,7 @@ If an ExecutionStrategy is not provided `sequential` will be used.
 
 ```ts
 export declare const make: (
-  executionStrategy?: ExecutionStrategy.ExecutionStrategy,
+  executionStrategy?: ExecutionStrategy.ExecutionStrategy
 ) => Effect.Effect<never, never, CloseableScope>
 ```
 
@@ -80,7 +80,7 @@ have been added to the scope.
 ```ts
 export declare const close: (
   self: CloseableScope,
-  exit: Exit.Exit<unknown, unknown>,
+  exit: Exit.Exit<unknown, unknown>
 ) => Effect.Effect<never, never, void>
 ```
 
@@ -222,7 +222,7 @@ the scope is closed.
 ```ts
 export declare const addFinalizer: (
   self: Scope,
-  finalizer: Effect.Effect<never, never, unknown>,
+  finalizer: Effect.Effect<never, never, unknown>
 ) => Effect.Effect<never, never, void>
 ```
 
@@ -269,7 +269,7 @@ automatically be closed when this scope is closed.
 ```ts
 export declare const fork: (
   self: Scope,
-  strategy: ExecutionStrategy.ExecutionStrategy,
+  strategy: ExecutionStrategy.ExecutionStrategy
 ) => Effect.Effect<never, never, CloseableScope>
 ```
 

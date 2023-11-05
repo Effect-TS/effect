@@ -168,7 +168,7 @@ export declare const mapBoth: {
   }): (self: readonly [L1, R1]) => [L2, R2]
   <L1, R1, L2, R2>(
     self: readonly [L1, R1],
-    options: { readonly onFirst: (e: L1) => L2; readonly onSecond: (a: R1) => R2 },
+    options: { readonly onFirst: (e: L1) => L2; readonly onSecond: (a: R1) => R2 }
   ): [L2, R2]
 }
 ```
@@ -180,7 +180,7 @@ import { mapBoth } from "effect/Tuple"
 
 assert.deepStrictEqual(mapBoth(["hello", 42], { onFirst: (s) => s.toUpperCase(), onSecond: (n) => n.toString() }), [
   "HELLO",
-  "42",
+  "42"
 ])
 ```
 
@@ -206,7 +206,7 @@ import { mapFirst } from "effect/Tuple"
 
 assert.deepStrictEqual(
   mapFirst(["hello", 42], (s) => s.toUpperCase()),
-  ["HELLO", 42],
+  ["HELLO", 42]
 )
 ```
 
@@ -232,7 +232,7 @@ import { mapSecond } from "effect/Tuple"
 
 assert.deepStrictEqual(
   mapSecond(["hello", 42], (n) => n.toString()),
-  ["hello", "42"],
+  ["hello", "42"]
 )
 ```
 

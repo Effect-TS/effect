@@ -390,7 +390,7 @@ export type InType<Type extends MetricKeyType<any, any>> = [Type] extends [
     readonly [MetricKeyTypeTypeId]: {
       readonly _In: (_: infer In) => void
     }
-  },
+  }
 ]
   ? In
   : never
@@ -408,7 +408,7 @@ export type OutType<Type extends MetricKeyType<any, any>> = [Type] extends [
     readonly [MetricKeyTypeTypeId]: {
       readonly _Out: (_: never) => infer Out
     }
-  },
+  }
 ]
   ? Out
   : never

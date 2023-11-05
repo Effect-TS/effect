@@ -86,7 +86,7 @@ export declare const match: {
   }): (self: ChildExecutorDecision) => A
   <A>(
     self: ChildExecutorDecision,
-    options: { readonly onContinue: () => A; readonly onClose: (value: unknown) => A; readonly onYield: () => A },
+    options: { readonly onContinue: () => A; readonly onClose: (value: unknown) => A; readonly onYield: () => A }
   ): A
 }
 ```

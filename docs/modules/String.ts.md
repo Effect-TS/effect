@@ -454,7 +454,7 @@ Added in v2.0.0
 export declare const localeCompare: (
   that: string,
   locales?: Array<string>,
-  options?: Intl.CollatorOptions,
+  options?: Intl.CollatorOptions
 ) => (self: string) => Ordering.Ordering
 ```
 

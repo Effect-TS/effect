@@ -349,7 +349,7 @@ export declare const match: {
   }): (self: DurationInput) => A | B
   <A, B>(
     self: DurationInput,
-    options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B },
+    options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B }
   ): A | B
 }
 ```
@@ -367,7 +367,7 @@ export declare const matchWith: {
     options: {
       readonly onMillis: (self: number, that: number) => A
       readonly onNanos: (self: bigint, that: bigint) => B
-    },
+    }
   ): (self: DurationInput) => A | B
   <A, B>(
     self: DurationInput,
@@ -375,7 +375,7 @@ export declare const matchWith: {
     options: {
       readonly onMillis: (self: number, that: number) => A
       readonly onNanos: (self: bigint, that: bigint) => B
-    },
+    }
   ): A | B
 }
 ```

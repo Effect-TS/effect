@@ -72,7 +72,7 @@ Added in v2.0.0
 ```ts
 export declare const compose: <A>(
   left: Either.Either<number, Chunk.Chunk<A>>,
-  right: Either.Either<number, Chunk.Chunk<A>>,
+  right: Either.Either<number, Chunk.Chunk<A>>
 ) => Either.Either<number, Chunk.Chunk<A>>
 ```
 
@@ -121,7 +121,7 @@ export declare const make: <A>(
   identifier: string,
   tag: Context.Tag<A, A>,
   initial: A,
-  combine: (a: A, b: A) => A,
+  combine: (a: A, b: A) => A
 ) => TestAnnotation<A>
 ```
 

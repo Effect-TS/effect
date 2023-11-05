@@ -186,12 +186,12 @@ executed uninterruptibly as soon as the `use` workflow completes execution.
 export declare const acquireUseRelease: {
   <A, R2, E2, A2, R3, E3, A3>(
     use: (resource: A) => STM<R2, E2, A2>,
-    release: (resource: A) => STM<R3, E3, A3>,
+    release: (resource: A) => STM<R3, E3, A3>
   ): <R, E>(acquire: STM<R, E, A>) => Effect.Effect<R2 | R3 | R, E2 | E3 | E, A2>
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     acquire: STM<R, E, A>,
     use: (resource: A) => STM<R2, E2, A2>,
-    release: (resource: A) => STM<R3, E3, A3>,
+    release: (resource: A) => STM<R3, E3, A3>
   ): Effect.Effect<R | R2 | R3, E | E2 | E3, A2>
 }
 ```
@@ -249,7 +249,7 @@ success if predicate returns true, and the given E as error otherwise
 export declare const cond: <E, A>(
   predicate: LazyArg<boolean>,
   error: LazyArg<E>,
-  result: LazyArg<A>,
+  result: LazyArg<A>
 ) => STM<never, E, A>
 ```
 
@@ -287,7 +287,7 @@ Accesses the environment of the transaction to perform a transaction.
 
 ```ts
 export declare const contextWithSTM: <R0, R, E, A>(
-  f: (environment: Context.Context<R0>) => STM<R, E, A>,
+  f: (environment: Context.Context<R0>) => STM<R, E, A>
 ) => STM<R0 | R, E, A>
 ```
 
@@ -459,7 +459,7 @@ Added in v2.0.0
 
 ```ts
 export declare const gen: <Eff extends STMGen<any, any, any>, AEff>(
-  f: (resume: Adapter) => Generator<Eff, AEff, any>,
+  f: (resume: Adapter) => Generator<Eff, AEff, any>
 ) => STM<
   [Eff] extends [never] ? never : [Eff] extends [STMGen<infer R, any, any>] ? R : never,
   [Eff] extends [never] ? never : [Eff] extends [STMGen<any, infer E, any>] ? E : never,
@@ -513,7 +513,7 @@ return s
 ```ts
 export declare const iterate: <R, E, Z>(
   initial: Z,
-  options: { readonly while: (z: Z) => boolean; readonly body: (z: Z) => STM<R, E, Z> },
+  options: { readonly while: (z: Z) => boolean; readonly body: (z: Z) => STM<R, E, Z> }
 ) => STM<R, E, Z>
 ```
 
@@ -547,7 +547,7 @@ export declare const loop: {
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => STM<R, E, A>
       readonly discard?: false | undefined
-    },
+    }
   ): STM<R, E, A[]>
   <Z, R, E, A>(
     initial: Z,
@@ -556,7 +556,7 @@ export declare const loop: {
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => STM<R, E, A>
       readonly discard: true
-    },
+    }
   ): STM<R, E, void>
 }
 ```
@@ -604,12 +604,12 @@ Reduces an `Iterable<STM>` to a single `STM`, working sequentially.
 export declare const reduceAll: {
   <R2, E2, A>(
     initial: STM<R2, E2, A>,
-    f: (x: A, y: A) => A,
+    f: (x: A, y: A) => A
   ): <R, E>(iterable: Iterable<STM<R, E, A>>) => STM<R2 | R, E2 | E, A>
   <R, E, R2, E2, A>(
     iterable: Iterable<STM<R, E, A>>,
     initial: STM<R2, E2, A>,
-    f: (x: A, y: A) => A,
+    f: (x: A, y: A) => A
   ): STM<R | R2, E | E2, A>
 }
 ```
@@ -811,12 +811,12 @@ effect requires more than one service use `provideEnvironment` instead.
 export declare const provideService: {
   <T extends Context.Tag<any, any>>(
     tag: T,
-    resource: Context.Tag.Service<T>,
+    resource: Context.Tag.Service<T>
   ): <R, E, A>(self: STM<R, E, A>) => STM<Exclude<R, Context.Tag.Identifier<T>>, E, A>
   <R, E, A, T extends Context.Tag<any, any>>(
     self: STM<R, E, A>,
     tag: T,
-    resource: Context.Tag.Service<T>,
+    resource: Context.Tag.Service<T>
   ): STM<Exclude<R, Context.Tag.Identifier<T>>, E, A>
 }
 ```
@@ -834,12 +834,12 @@ effect requires more than one service use `provideEnvironment` instead.
 export declare const provideServiceSTM: {
   <T extends Context.Tag<any, any>, R1, E1>(
     tag: T,
-    stm: STM<R1, E1, Context.Tag.Service<T>>,
+    stm: STM<R1, E1, Context.Tag.Service<T>>
   ): <R, E, A>(self: STM<R, E, A>) => STM<R1 | Exclude<R, Context.Tag.Identifier<T>>, E1 | E, A>
   <R, E, A, T extends Context.Tag<any, any>, R1, E1>(
     self: STM<R, E, A>,
     tag: T,
-    stm: STM<R1, E1, Context.Tag.Service<T>>,
+    stm: STM<R1, E1, Context.Tag.Service<T>>
   ): STM<R1 | Exclude<R, Context.Tag.Identifier<T>>, E | E1, A>
 }
 ```
@@ -909,12 +909,12 @@ Added in v2.0.0
 export declare const bind: {
   <N extends string, K, R2, E2, A>(
     tag: Exclude<N, keyof K>,
-    f: (_: K) => STM<R2, E2, A>,
+    f: (_: K) => STM<R2, E2, A>
   ): <R, E>(self: STM<R, E, K>) => STM<R2 | R, E2 | E, Effect.MergeRecord<K, { [k in N]: A }>>
   <R, E, N extends string, K, R2, E2, A>(
     self: STM<R, E, K>,
     tag: Exclude<N, keyof K>,
-    f: (_: K) => STM<R2, E2, A>,
+    f: (_: K) => STM<R2, E2, A>
   ): STM<R | R2, E | E2, Effect.MergeRecord<K, { [k in N]: A }>>
 }
 ```
@@ -942,12 +942,12 @@ Added in v2.0.0
 export declare const let: {
   <N extends string, K, A>(
     tag: Exclude<N, keyof K>,
-    f: (_: K) => A,
+    f: (_: K) => A
   ): <R, E>(self: STM<R, E, K>) => STM<R, E, Effect.MergeRecord<K, { [k in N]: A }>>
   <R, E, K, N extends string, A>(
     self: STM<R, E, K>,
     tag: Exclude<N, keyof K>,
-    f: (_: K) => A,
+    f: (_: K) => A
   ): STM<R, E, Effect.MergeRecord<K, { [k in N]: A }>>
 }
 ```
@@ -1001,11 +1001,11 @@ Recovers from some or all of the error cases.
 ```ts
 export declare const catchSome: {
   <E, R2, E2, A2>(
-    pf: (error: E) => Option.Option<STM<R2, E2, A2>>,
+    pf: (error: E) => Option.Option<STM<R2, E2, A2>>
   ): <R, A>(self: STM<R, E, A>) => STM<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: STM<R, E, A>,
-    pf: (error: E) => Option.Option<STM<R2, E2, A2>>,
+    pf: (error: E) => Option.Option<STM<R2, E2, A2>>
   ): STM<R | R2, E | E2, A | A2>
 }
 ```
@@ -1022,12 +1022,12 @@ Recovers from the specified tagged error.
 export declare const catchTag: {
   <K extends E["_tag"] & string, E extends { _tag: string }, R1, E1, A1>(
     k: K,
-    f: (e: Extract<E, { _tag: K }>) => STM<R1, E1, A1>,
+    f: (e: Extract<E, { _tag: K }>) => STM<R1, E1, A1>
   ): <R, A>(self: STM<R, E, A>) => STM<R1 | R, E1 | Exclude<E, { _tag: K }>, A1 | A>
   <R, E extends { _tag: string }, A, K extends E["_tag"] & string, R1, E1, A1>(
     self: STM<R, E, A>,
     k: K,
-    f: (e: Extract<E, { _tag: K }>) => STM<R1, E1, A1>,
+    f: (e: Extract<E, { _tag: K }>) => STM<R1, E1, A1>
   ): STM<R | R1, E1 | Exclude<E, { _tag: K }>, A | A1>
 }
 ```
@@ -1044,11 +1044,11 @@ Recovers from multiple tagged errors.
 export declare const catchTags: {
   <
     E extends { _tag: string },
-    Cases extends { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => STM<any, any, any>) | undefined },
+    Cases extends { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => STM<any, any, any>) | undefined }
   >(
-    cases: Cases,
+    cases: Cases
   ): <R, A>(
-    self: STM<R, E, A>,
+    self: STM<R, E, A>
   ) => STM<
     | R
     | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => STM<infer R, any, any> ? R : never }[keyof Cases],
@@ -1061,10 +1061,10 @@ export declare const catchTags: {
     R,
     E extends { _tag: string },
     A,
-    Cases extends { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => STM<any, any, any>) | undefined },
+    Cases extends { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => STM<any, any, any>) | undefined }
   >(
     self: STM<R, E, A>,
-    cases: Cases,
+    cases: Cases
   ): STM<
     | R
     | { [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => STM<infer R, any, any> ? R : never }[keyof Cases],
@@ -1167,11 +1167,11 @@ specified effect.
 ```ts
 export declare const orElseOptional: {
   <R2, E2, A2>(
-    that: LazyArg<STM<R2, Option.Option<E2>, A2>>,
+    that: LazyArg<STM<R2, Option.Option<E2>, A2>>
   ): <R, E, A>(self: STM<R, Option.Option<E>, A>) => STM<R2 | R, Option.Option<E2 | E>, A2 | A>
   <R, E, A, R2, E2, A2>(
     self: STM<R, Option.Option<E>, A>,
-    that: LazyArg<STM<R2, Option.Option<E2>, A2>>,
+    that: LazyArg<STM<R2, Option.Option<E2>, A2>>
   ): STM<R | R2, Option.Option<E | E2>, A | A2>
 }
 ```
@@ -1270,21 +1270,21 @@ Supplies `orElse` if the predicate fails.
 export declare const filterOrElse: {
   <A, B extends A, X extends A, R2, E2, A2>(
     refinement: Refinement<A, B>,
-    orElse: (a: X) => STM<R2, E2, A2>,
+    orElse: (a: X) => STM<R2, E2, A2>
   ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, B | A2>
   <A, X extends A, Y extends A, R2, E2, A2>(
     predicate: Predicate<X>,
-    orElse: (a: Y) => STM<R2, E2, A2>,
+    orElse: (a: Y) => STM<R2, E2, A2>
   ): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A | A2>
   <R, E, A, B extends A, X extends A, R2, E2, A2>(
     self: STM<R, E, A>,
     refinement: Refinement<A, B>,
-    orElse: (a: X) => STM<R2, E2, A2>,
+    orElse: (a: X) => STM<R2, E2, A2>
   ): STM<R | R2, E | E2, B | A2>
   <R, E, A, X extends A, Y extends A, R2, E2, A2>(
     self: STM<R, E, A>,
     predicate: Predicate<X>,
-    orElse: (a: Y) => STM<R2, E2, A2>,
+    orElse: (a: Y) => STM<R2, E2, A2>
   ): STM<R | R2, E | E2, A | A2>
 }
 ```
@@ -1301,21 +1301,21 @@ Fails with the specified error if the predicate fails.
 export declare const filterOrFail: {
   <A, B extends A, X extends A, E2>(
     refinement: Refinement<A, B>,
-    orFailWith: (a: X) => E2,
+    orFailWith: (a: X) => E2
   ): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, B>
   <A, X extends A, Y extends A, E2>(
     predicate: Predicate<X>,
-    orFailWith: (a: Y) => E2,
+    orFailWith: (a: Y) => E2
   ): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, A>
   <R, E, A, B extends A, X extends A, E2>(
     self: STM<R, E, A>,
     refinement: Refinement<A, B>,
-    orFailWith: (a: X) => E2,
+    orFailWith: (a: X) => E2
   ): STM<R, E | E2, B>
   <R, E, A, X extends A, Y extends A, E2>(
     self: STM<R, E, A>,
     predicate: Predicate<X>,
-    orFailWith: (a: Y) => E2,
+    orFailWith: (a: Y) => E2
   ): STM<R, E | E2, A>
 }
 ```
@@ -1358,7 +1358,7 @@ export declare const match: {
   }): <R>(self: STM<R, E, A>) => STM<R, never, A2 | A3>
   <R, E, A2, A, A3>(
     self: STM<R, E, A>,
-    options: { readonly onFailure: (error: E) => A2; readonly onSuccess: (value: A) => A3 },
+    options: { readonly onFailure: (error: E) => A2; readonly onSuccess: (value: A) => A3 }
   ): STM<R, never, A2 | A3>
 }
 ```
@@ -1379,7 +1379,7 @@ export declare const matchSTM: {
   }): <R>(self: STM<R, E, A>) => STM<R1 | R2 | R, E1 | E2, A1 | A2>
   <R, E, R1, E1, A1, A, R2, E2, A2>(
     self: STM<R, E, A>,
-    options: { readonly onFailure: (e: E) => STM<R1, E1, A1>; readonly onSuccess: (a: A) => STM<R2, E2, A2> },
+    options: { readonly onFailure: (e: E) => STM<R1, E1, A1>; readonly onSuccess: (a: A) => STM<R2, E2, A2> }
   ): STM<R | R1 | R2, E1 | E2, A1 | A2>
 }
 ```
@@ -1551,7 +1551,7 @@ export declare const mapBoth: {
   }): <R>(self: STM<R, E, A>) => STM<R, E2, A2>
   <R, E, E2, A, A2>(
     self: STM<R, E, A>,
-    options: { readonly onFailure: (error: E) => E2; readonly onSuccess: (value: A) => A2 },
+    options: { readonly onFailure: (error: E) => E2; readonly onSuccess: (value: A) => A2 }
   ): STM<R, E2, A2>
 }
 ```
@@ -1590,7 +1590,7 @@ export interface Adapter {
     ab: (a: A) => B,
     bc: (b: B) => C,
     cd: (c: C) => D,
-    de: (d: D) => STM<_R, _E, _A>,
+    de: (d: D) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, _R, _E, _A>(
     a: A,
@@ -1598,7 +1598,7 @@ export interface Adapter {
     bc: (b: B) => C,
     cd: (c: C) => D,
     de: (d: D) => E,
-    ef: (e: E) => STM<_R, _E, _A>,
+    ef: (e: E) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, _R, _E, _A>(
     a: A,
@@ -1607,7 +1607,7 @@ export interface Adapter {
     cd: (c: C) => D,
     de: (d: D) => E,
     ef: (e: E) => F,
-    fg: (f: F) => STM<_R, _E, _A>,
+    fg: (f: F) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, _R, _E, _A>(
     a: A,
@@ -1617,7 +1617,7 @@ export interface Adapter {
     de: (d: D) => E,
     ef: (e: E) => F,
     fg: (f: F) => G,
-    gh: (g: F) => STM<_R, _E, _A>,
+    gh: (g: F) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, _R, _E, _A>(
     a: A,
@@ -1628,7 +1628,7 @@ export interface Adapter {
     ef: (e: E) => F,
     fg: (f: F) => G,
     gh: (g: G) => H,
-    hi: (g: H) => STM<_R, _E, _A>,
+    hi: (g: H) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, _R, _E, _A>(
     a: A,
@@ -1640,7 +1640,7 @@ export interface Adapter {
     fg: (f: F) => G,
     gh: (g: G) => H,
     hi: (h: H) => I,
-    ij: (i: I) => STM<_R, _E, _A>,
+    ij: (i: I) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, _R, _E, _A>(
     a: A,
@@ -1653,7 +1653,7 @@ export interface Adapter {
     gh: (g: G) => H,
     hi: (h: H) => I,
     ij: (i: I) => J,
-    jk: (j: J) => STM<_R, _E, _A>,
+    jk: (j: J) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, _R, _E, _A>(
     a: A,
@@ -1667,7 +1667,7 @@ export interface Adapter {
     hi: (h: H) => I,
     ij: (i: I) => J,
     jk: (j: J) => K,
-    kl: (k: K) => STM<_R, _E, _A>,
+    kl: (k: K) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, _R, _E, _A>(
     a: A,
@@ -1682,7 +1682,7 @@ export interface Adapter {
     ij: (i: I) => J,
     jk: (j: J) => K,
     kl: (k: K) => L,
-    lm: (l: L) => STM<_R, _E, _A>,
+    lm: (l: L) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, _R, _E, _A>(
     a: A,
@@ -1698,7 +1698,7 @@ export interface Adapter {
     jk: (j: J) => K,
     kl: (k: K) => L,
     lm: (l: L) => M,
-    mn: (m: M) => STM<_R, _E, _A>,
+    mn: (m: M) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, _R, _E, _A>(
     a: A,
@@ -1715,7 +1715,7 @@ export interface Adapter {
     kl: (k: K) => L,
     lm: (l: L) => M,
     mn: (m: M) => N,
-    no: (n: N) => STM<_R, _E, _A>,
+    no: (n: N) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _R, _E, _A>(
     a: A,
@@ -1733,7 +1733,7 @@ export interface Adapter {
     lm: (l: L) => M,
     mn: (m: M) => N,
     no: (n: N) => O,
-    op: (o: O) => STM<_R, _E, _A>,
+    op: (o: O) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _R, _E, _A>(
     a: A,
@@ -1752,7 +1752,7 @@ export interface Adapter {
     mn: (m: M) => N,
     no: (n: N) => O,
     op: (o: O) => P,
-    pq: (p: P) => STM<_R, _E, _A>,
+    pq: (p: P) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _R, _E, _A>(
     a: A,
@@ -1772,7 +1772,7 @@ export interface Adapter {
     no: (n: N) => O,
     op: (o: O) => P,
     pq: (p: P) => Q,
-    qr: (q: Q) => STM<_R, _E, _A>,
+    qr: (q: Q) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, _R, _E, _A>(
     a: A,
@@ -1793,7 +1793,7 @@ export interface Adapter {
     op: (o: O) => P,
     pq: (p: P) => Q,
     qr: (q: Q) => R,
-    rs: (r: R) => STM<_R, _E, _A>,
+    rs: (r: R) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, _R, _E, _A>(
     a: A,
@@ -1815,7 +1815,7 @@ export interface Adapter {
     pq: (p: P) => Q,
     qr: (q: Q) => R,
     rs: (r: R) => S,
-    st: (s: S) => STM<_R, _E, _A>,
+    st: (s: S) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
   <A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, _R, _E, _A>(
     a: A,
@@ -1838,7 +1838,7 @@ export interface Adapter {
     qr: (q: Q) => R,
     rs: (r: R) => S,
     st: (s: S) => T,
-    tu: (s: T) => STM<_R, _E, _A>,
+    tu: (s: T) => STM<_R, _E, _A>
   ): STMGen<_R, _E, _A>
 }
 ```
@@ -2251,12 +2251,12 @@ with the result of execution.
 export declare const summarized: {
   <R2, E2, A2, A3>(
     summary: STM<R2, E2, A2>,
-    f: (before: A2, after: A2) => A3,
+    f: (before: A2, after: A2) => A3
   ): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, readonly [A3, A]>
   <R, E, A, R2, E2, A2, A3>(
     self: STM<R, E, A>,
     summary: STM<R2, E2, A2>,
-    f: (before: A2, after: A2) => A3,
+    f: (before: A2, after: A2) => A3
   ): STM<R | R2, E | E2, readonly [A3, A]>
 }
 ```
@@ -2431,7 +2431,7 @@ export declare const tapBoth: {
   }): <R>(self: STM<R, E, A>) => STM<R2 | R3 | R, E | E2 | E3, A>
   <R, E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
     self: STM<R, E, A>,
-    options: { readonly onFailure: (error: XE) => STM<R2, E2, A2>; readonly onSuccess: (value: XA) => STM<R3, E3, A3> },
+    options: { readonly onFailure: (error: XE) => STM<R2, E2, A2>; readonly onSuccess: (value: XA) => STM<R3, E3, A3> }
   ): STM<R | R2 | R3, E | E2 | E3, A>
 }
 ```
@@ -2488,16 +2488,16 @@ a transactional effect that produces a new `Chunk<A2>`.
 export declare const forEach: {
   <A, R, E, A2>(
     f: (a: A) => STM<R, E, A2>,
-    options?: { readonly discard?: false },
+    options?: { readonly discard?: false }
   ): (elements: Iterable<A>) => STM<R, E, A2[]>
   <A, R, E, A2>(
     f: (a: A) => STM<R, E, A2>,
-    options: { readonly discard: true },
+    options: { readonly discard: true }
   ): (elements: Iterable<A>) => STM<R, E, void>
   <A, R, E, A2>(
     elements: Iterable<A>,
     f: (a: A) => STM<R, E, A2>,
-    options?: { readonly discard?: false },
+    options?: { readonly discard?: false }
   ): STM<R, E, A2[]>
   <A, R, E, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>, options: { readonly discard: true }): STM<R, E, void>
 }
@@ -2549,7 +2549,7 @@ Added in v2.0.0
 export interface Signature {
   <Arg extends ReadonlyArray<STMAny> | Iterable<STMAny> | Record<string, STMAny>, O extends Options>(
     arg: Narrow<Arg>,
-    options?: O,
+    options?: O
   ): [Arg] extends [ReadonlyArray<STMAny>]
     ? ReturnTuple<Arg, IsDiscard<O>>
     : [Arg] extends [Iterable<STMAny>]
@@ -2652,7 +2652,7 @@ using the specified combiner function.
 export declare const zipWith: {
   <R1, E1, A1, A, A2>(
     that: STM<R1, E1, A1>,
-    f: (a: A, b: A1) => A2,
+    f: (a: A, b: A1) => A2
   ): <R, E>(self: STM<R, E, A>) => STM<R1 | R, E1 | E, A2>
   <R, E, R1, E1, A1, A, A2>(self: STM<R, E, A>, that: STM<R1, E1, A1>, f: (a: A, b: A1) => A2): STM<R | R1, E | E1, A2>
 }

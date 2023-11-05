@@ -178,7 +178,7 @@ which determines how to split the keys in the map into path segments.
 ```ts
 export declare const fromMap: (
   map: Map<string, string>,
-  config?: Partial<ConfigProvider.FromMapConfig>,
+  config?: Partial<ConfigProvider.FromMapConfig>
 ) => ConfigProvider
 ```
 
@@ -210,10 +210,10 @@ export declare const makeFlat: (options: {
   readonly load: <A>(
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
-    split: boolean,
+    split: boolean
   ) => Effect.Effect<never, ConfigError.ConfigError, readonly A[]>
   readonly enumerateChildren: (
-    path: ReadonlyArray<string>,
+    path: ReadonlyArray<string>
   ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
   readonly patch: PathPatch.PathPatch
 }) => ConfigProvider.Flat
@@ -323,7 +323,7 @@ export interface Flat {
   load<A>(
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
-    split?: boolean,
+    split?: boolean
   ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
   enumerateChildren(path: ReadonlyArray<string>): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
 }

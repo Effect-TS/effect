@@ -300,15 +300,15 @@ import { clamp, unsafeFromString } from "effect/BigDecimal"
 
 assert.deepStrictEqual(
   clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("3")),
-  unsafeFromString("3"),
+  unsafeFromString("3")
 )
 assert.deepStrictEqual(
   clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("-1")),
-  unsafeFromString("0"),
+  unsafeFromString("0")
 )
 assert.deepStrictEqual(
   clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("6")),
-  unsafeFromString("5"),
+  unsafeFromString("5")
 )
 ```
 

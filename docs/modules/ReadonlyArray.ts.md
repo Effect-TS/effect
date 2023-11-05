@@ -325,7 +325,7 @@ import { makeBy } from "effect/ReadonlyArray"
 
 assert.deepStrictEqual(
   makeBy(5, (n) => n * 2),
-  [0, 2, 4, 6, 8],
+  [0, 2, 4, 6, 8]
 )
 ```
 
@@ -446,7 +446,7 @@ const x = { a: 1, b: 2, c: 3 }
 assert.deepStrictEqual(fromRecord(x), [
   ["a", 1],
   ["b", 2],
-  ["c", 3],
+  ["c", 3]
 ])
 ```
 
@@ -1289,7 +1289,7 @@ Added in v2.0.0
 
 ```ts
 export declare const getEquivalence: <A>(
-  isEquivalent: Equivalence.Equivalence<A>,
+  isEquivalent: Equivalence.Equivalence<A>
 ) => Equivalence.Equivalence<readonly A[]>
 ```
 
@@ -1328,7 +1328,7 @@ Added in v2.0.0
 
 ```ts
 export declare const liftNullable: <A extends unknown[], B>(
-  f: (...a: A) => B | null | undefined,
+  f: (...a: A) => B | null | undefined
 ) => (...a: A) => NonNullable<B>[]
 ```
 
@@ -1408,7 +1408,7 @@ export declare const match: {
   }): (self: readonly A[]) => B | C
   <A, B, C = B>(
     self: readonly A[],
-    options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (self: readonly [A, ...A[]]) => C },
+    options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (self: readonly [A, ...A[]]) => C }
   ): B | C
 }
 ```
@@ -1427,7 +1427,7 @@ export declare const matchLeft: {
   }): (self: readonly A[]) => B | C
   <A, B, C = B>(
     self: readonly A[],
-    options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (head: A, tail: A[]) => C },
+    options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (head: A, tail: A[]) => C }
   ): B | C
 }
 ```
@@ -1446,7 +1446,7 @@ export declare const matchRight: {
   }): (self: readonly A[]) => B | C
   <A, B, C = B>(
     self: readonly A[],
-    options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (init: A[], last: A) => C },
+    options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (init: A[], last: A) => C }
   ): B | C
 }
 ```
@@ -1497,7 +1497,7 @@ Added in v2.0.0
 
 ```ts
 export declare const flattenNonEmpty: <A>(
-  self: readonly [readonly [A, ...A[]], ...(readonly [A, ...A[]])[]],
+  self: readonly [readonly [A, ...A[]], ...(readonly [A, ...A[]])[]]
 ) => [A, ...A[]]
 ```
 
@@ -2141,7 +2141,7 @@ Added in v2.0.0
 
 ```ts
 export declare const unzipNonEmpty: <A, B>(
-  self: readonly [readonly [A, B], ...(readonly [A, B])[]],
+  self: readonly [readonly [A, B], ...(readonly [A, B])[]]
 ) => [[A, ...A[]], [B, ...B[]]]
 ```
 

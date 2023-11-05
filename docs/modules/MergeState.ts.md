@@ -46,7 +46,7 @@ Added in v2.0.0
 ```ts
 export declare const BothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
   left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-  right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>,
+  right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -58,7 +58,7 @@ Added in v2.0.0
 
 ```ts
 export declare const LeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>,
+  f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -70,7 +70,7 @@ Added in v2.0.0
 
 ```ts
 export declare const RightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>,
+  f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -87,7 +87,7 @@ export declare const match: {
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(options: {
     readonly onBothRunning: (
       left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-      right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>,
+      right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
     ) => Z
     readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>) => Z
     readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>) => Z
@@ -97,11 +97,11 @@ export declare const match: {
     options: {
       readonly onBothRunning: (
         left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>,
+        right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>) => Z
-    },
+    }
   ): Z
 }
 ```
@@ -174,7 +174,7 @@ otherwise.
 
 ```ts
 export declare const isBothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
+  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ) => self is BothRunning<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -189,7 +189,7 @@ otherwise.
 
 ```ts
 export declare const isLeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
+  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ) => self is LeftDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -203,7 +203,7 @@ Returns `true` if the specified value is a `MergeState`, `false` otherwise.
 
 ```ts
 export declare const isMergeState: (
-  u: unknown,
+  u: unknown
 ) => u is MergeState<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown>
 ```
 
@@ -218,7 +218,7 @@ otherwise.
 
 ```ts
 export declare const isRightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
+  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ) => self is RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 

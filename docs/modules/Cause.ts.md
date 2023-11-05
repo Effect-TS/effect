@@ -379,7 +379,7 @@ export declare const match: {
       readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
-    },
+    }
   ): Z
 }
 ```

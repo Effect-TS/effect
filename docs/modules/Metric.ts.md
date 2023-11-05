@@ -88,7 +88,7 @@ Added in v2.0.0
 
 ```ts
 export declare const increment: (
-  self: Metric.Counter<number> | Metric.Counter<bigint>,
+  self: Metric.Counter<number> | Metric.Counter<bigint>
 ) => Effect.Effect<never, never, void>
 ```
 
@@ -135,11 +135,11 @@ that effect fails or succeeds.
 ```ts
 export declare const trackAll: {
   <In>(
-    input: In,
+    input: In
   ): <Type, Out>(self: Metric<Type, In, Out>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <Type, In, Out>(
     self: Metric<Type, In, Out>,
-    input: In,
+    input: In
   ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 }
 ```
@@ -174,12 +174,12 @@ aspect is applied to.
 export declare const trackDefectWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
-    f: (defect: unknown) => In,
+    f: (defect: unknown) => In
   ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A, Type, In, Out>(
     self: Effect.Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
-    f: (defect: unknown) => In,
+    f: (defect: unknown) => In
   ): Effect.Effect<R, E, A>
 }
 ```
@@ -197,11 +197,11 @@ must be `Duration`.
 ```ts
 export declare const trackDuration: {
   <Type, Out>(
-    metric: Metric<Type, Duration.Duration, Out>,
+    metric: Metric<Type, Duration.Duration, Out>
   ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A, Type, Out>(
     self: Effect.Effect<R, E, A>,
-    metric: Metric<Type, Duration.Duration, Out>,
+    metric: Metric<Type, Duration.Duration, Out>
   ): Effect.Effect<R, E, A>
 }
 ```
@@ -220,12 +220,12 @@ that can convert the `Duration` to the input type of this metric.
 export declare const trackDurationWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
-    f: (duration: Duration.Duration) => In,
+    f: (duration: Duration.Duration) => In
   ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A, Type, In, Out>(
     self: Effect.Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
-    f: (duration: Duration.Duration) => In,
+    f: (duration: Duration.Duration) => In
   ): Effect.Effect<R, E, A>
 }
 ```
@@ -242,11 +242,11 @@ the effects that it is applied to.
 ```ts
 export declare const trackError: {
   <Type, In, Out>(
-    metric: Metric<Type, In, Out>,
+    metric: Metric<Type, In, Out>
   ): <R, E extends In, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E extends In, A, Type, In, Out>(
     self: Effect.Effect<R, E, A>,
-    metric: Metric<Type, In, Out>,
+    metric: Metric<Type, In, Out>
   ): Effect.Effect<R, E, A>
 }
 ```
@@ -265,12 +265,12 @@ applied to.
 export declare const trackErrorWith: {
   <Type, In, Out, In2>(
     metric: Metric<Type, In, Out>,
-    f: (error: In2) => In,
+    f: (error: In2) => In
   ): <R, E extends In2, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E extends In2, A, Type, In, Out, In2>(
     self: Effect.Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
-    f: (error: In2) => In,
+    f: (error: In2) => In
   ): Effect.Effect<R, E, A>
 }
 ```
@@ -287,11 +287,11 @@ the effects that it is applied to.
 ```ts
 export declare const trackSuccess: {
   <Type, In, Out>(
-    metric: Metric<Type, In, Out>,
+    metric: Metric<Type, In, Out>
   ): <R, E, A extends In>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A extends In, Type, In, Out>(
     self: Effect.Effect<R, E, A>,
-    metric: Metric<Type, In, Out>,
+    metric: Metric<Type, In, Out>
   ): Effect.Effect<R, E, A>
 }
 ```
@@ -310,12 +310,12 @@ applied to.
 export declare const trackSuccessWith: {
   <Type, In, Out, In2>(
     metric: Metric<Type, In, Out>,
-    f: (value: In2) => In,
+    f: (value: In2) => In
   ): <R, E, A extends In2>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A extends In2, Type, In, Out, In2>(
     self: Effect.Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
-    f: (value: In2) => In,
+    f: (value: In2) => In
   ): Effect.Effect<R, E, A>
 }
 ```
@@ -335,11 +335,11 @@ Counters can be incremented and decremented and provide a running total of chang
 export declare const counter: {
   (
     name: string,
-    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean },
+    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean }
   ): Metric.Counter<number>
   (
     name: string,
-    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean },
+    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean }
   ): Metric.Counter<bigint>
 }
 ```
@@ -350,12 +350,12 @@ export declare const counter: {
 import * as Metric from "effect/Metric"
 
 const numberCounter = Metric.counter("count", {
-  description: "A number counter",
+  description: "A number counter"
 })
 
 const bigintCounter = Metric.counter("count", {
   description: "A bigint counter",
-  bigint: true,
+  bigint: true
 })
 ```
 
@@ -388,7 +388,7 @@ Added in v2.0.0
 
 ```ts
 export declare const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  key: MetricKey.MetricKey<Type>,
+  key: MetricKey.MetricKey<Type>
 ) => Metric<Type, MetricKeyType.MetricKeyType.InType<Type>, MetricKeyType.MetricKeyType.OutType<Type>>
 ```
 
@@ -414,12 +414,12 @@ export declare const gauge: {
 import * as Metric from "effect/Metric"
 
 const numberGauge = Metric.gauge("memory_usage", {
-  description: "A gauge for memory usage",
+  description: "A gauge for memory usage"
 })
 
 const bigintGauge = Metric.gauge("cpu_load", {
   description: "A gauge for CPU load",
-  bigint: true,
+  bigint: true
 })
 ```
 
@@ -436,7 +436,7 @@ Histogram metrics are useful for measuring the distribution of values within a r
 export declare const histogram: (
   name: string,
   boundaries: MetricBoundaries.MetricBoundaries,
-  description?: string,
+  description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram>
 ```
 
@@ -449,7 +449,7 @@ import * as MetricBoundaries from "effect/MetricBoundaries"
 const latencyHistogram = Metric.histogram(
   "latency_histogram",
   MetricBoundaries.linear({ start: 0, width: 10, count: 11 }),
-  "Measures the distribution of request latency.",
+  "Measures the distribution of request latency."
 )
 ```
 
@@ -507,7 +507,7 @@ const responseTimesSummary = Metric.summary({
   maxSize: 1000, // Keep a maximum of 1000 observations.
   error: 0.01, // Allow a 1% error when calculating quantiles.
   quantiles: Chunk.make(0.5, 0.9, 0.99), // Calculate 50th, 90th, and 99th percentiles.
-  description: "Measures the distribution of response times.",
+  description: "Measures the distribution of response times."
 })
 ```
 
@@ -552,7 +552,7 @@ the metric as a tag (i.e. `"time_unit: milliseconds"`).
 
 ```ts
 export declare const timer: (
-  name: string,
+  name: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
 ```
 
@@ -570,7 +570,7 @@ will automatically be added to the metric as a tag (i.e.
 ```ts
 export declare const timerWithBoundaries: (
   name: string,
-  boundaries: Chunk.Chunk<number>,
+  boundaries: Chunk.Chunk<number>
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
 ```
 
@@ -783,7 +783,7 @@ export interface MetricApply {
   <Type, In, Out>(
     keyType: Type,
     unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void,
-    unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out,
+    unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
   ): Metric<Type, In, Out>
 }
 ```
@@ -946,11 +946,11 @@ dynamic nature of the added tags.
 ```ts
 export declare const taggedWithLabelsInput: {
   <In>(
-    f: (input: In) => Iterable<MetricLabel.MetricLabel>,
+    f: (input: In) => Iterable<MetricLabel.MetricLabel>
   ): <Type, Out>(self: Metric<Type, In, Out>) => Metric<Type, In, void>
   <Type, In, Out>(
     self: Metric<Type, In, Out>,
-    f: (input: In) => Iterable<MetricLabel.MetricLabel>,
+    f: (input: In) => Iterable<MetricLabel.MetricLabel>
   ): Metric<Type, In, void>
 }
 ```
@@ -993,13 +993,13 @@ Added in v2.0.0
 ```ts
 export declare const zip: {
   <Type2, In2, Out2>(
-    that: Metric<Type2, In2, Out2>,
+    that: Metric<Type2, In2, Out2>
   ): <Type, In, Out>(
-    self: Metric<Type, In, Out>,
+    self: Metric<Type, In, Out>
   ) => Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>
   <Type, In, Out, Type2, In2, Out2>(
     self: Metric<Type, In, Out>,
-    that: Metric<Type2, In2, Out2>,
+    that: Metric<Type2, In2, Out2>
   ): Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>
 }
 ```

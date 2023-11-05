@@ -44,7 +44,7 @@ constructor.
 ```ts
 export declare const auto: <R, E, A, R2, Out>(
   acquire: Effect.Effect<R, E, A>,
-  policy: Schedule.Schedule<R2, unknown, Out>,
+  policy: Schedule.Schedule<R2, unknown, Out>
 ) => Effect.Effect<Scope.Scope | R | R2, never, Resource<E, A>>
 ```
 
@@ -62,7 +62,7 @@ constructor.
 
 ```ts
 export declare const manual: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>,
+  acquire: Effect.Effect<R, E, A>
 ) => Effect.Effect<Scope.Scope | R, never, Resource<E, A>>
 ```
 
