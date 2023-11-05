@@ -12,6 +12,17 @@ import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
+  it.effect("andThen", () =>
+    Effect.gen(function*($) {
+      const a0 = Effect.andThen(Effect.succeed(0), Effect.succeed(1))
+      const a1 = Effect.succeed(0).pipe(Effect.andThen(Effect.succeed(1)))
+      const a2 = Effect.andThen(Effect.succeed(0), (n) => Effect.succeed(n + 1))
+      const a3 = Effect.succeed(0).pipe(Effect.andThen((n) => Effect.succeed(n + 1)))
+      assert.strictEqual(yield* $(a0), 1)
+      assert.strictEqual(yield* $(a1), 1)
+      assert.strictEqual(yield* $(a2), 1)
+      assert.strictEqual(yield* $(a3), 1)
+    }))
   it.effect("flattens nested effects", () =>
     Effect.gen(function*($) {
       const effect = Effect.succeed(Effect.succeed("test"))

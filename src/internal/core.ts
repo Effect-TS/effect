@@ -708,6 +708,28 @@ export const flatMap = dual<
 })
 
 /* @internal */
+export const andThen = dual<
+  {
+    <A, R1, E1, A1>(
+      f: (a: A) => Effect.Effect<R1, E1, A1>
+    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, A1>
+    <R1, E1, A1>(
+      f: Effect.Effect<R1, E1, A1>
+    ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, A1>
+  },
+  {
+    <A, R1, E1, A1, R, E>(
+      self: Effect.Effect<R, E, A>,
+      f: (a: A) => Effect.Effect<R1, E1, A1>
+    ): Effect.Effect<R | R1, E | E1, A1>
+    <A, R1, E1, A1, R, E>(
+      self: Effect.Effect<R, E, A>,
+      f: Effect.Effect<R1, E1, A1>
+    ): Effect.Effect<R | R1, E | E1, A1>
+  }
+>(2, (self, f) => isEffect(f) ? zipRight(self, f) : flatMap(self, f))
+
+/* @internal */
 export const step = <R, E, A>(
   self: Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, Exit.Exit<E, A> | Effect.Blocked<R, E, A>> => {

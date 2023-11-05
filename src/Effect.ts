@@ -3546,6 +3546,30 @@ export const flatMap: {
 } = core.flatMap
 
 /**
+ * Runs a sequence of two effects where the second effect can be dependent on the
+ * result of the first
+ *
+ * @since 2.0.0
+ * @category sequencing
+ */
+export const andThen: {
+  <A, R1, E1, A1>(
+    f: (a: A) => Effect<R1, E1, A1>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, A1>
+  <R1, E1, A1>(
+    f: Effect<R1, E1, A1>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, A1>
+  <A, R1, E1, A1, R, E>(
+    self: Effect<R, E, A>,
+    f: (a: A) => Effect<R1, E1, A1>
+  ): Effect<R | R1, E | E1, A1>
+  <A, R1, E1, A1, R, E>(
+    self: Effect<R, E, A>,
+    f: Effect<R1, E1, A1>
+  ): Effect<R | R1, E | E1, A1>
+} = core.andThen
+
+/**
  * @since 2.0.0
  * @category sequencing
  */

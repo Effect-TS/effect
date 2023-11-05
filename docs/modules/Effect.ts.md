@@ -299,6 +299,7 @@ Added in v2.0.0
   - [makeSemaphore](#makesemaphore)
   - [unsafeMakeSemaphore](#unsafemakesemaphore)
 - [sequencing](#sequencing)
+  - [andThen](#andthen)
   - [flatMap](#flatmap)
   - [flatten](#flatten)
   - [race](#race)
@@ -5156,6 +5157,24 @@ export declare const unsafeMakeSemaphore: (permits: number) => Semaphore
 Added in v2.0.0
 
 # sequencing
+
+## andThen
+
+Runs a sequence of two effects where the second effect can be dependent on the
+result of the first
+
+**Signature**
+
+```ts
+export declare const andThen: {
+  <A, R1, E1, A1>(f: (a: A) => Effect<R1, E1, A1>): <R, E>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, A1>
+  <R1, E1, A1>(f: Effect<R1, E1, A1>): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, A1>
+  <A, R1, E1, A1, R, E>(self: Effect<R, E, A>, f: (a: A) => Effect<R1, E1, A1>): Effect<R1 | R, E1 | E, A1>
+  <A, R1, E1, A1, R, E>(self: Effect<R, E, A>, f: Effect<R1, E1, A1>): Effect<R1 | R, E1 | E, A1>
+}
+```
+
+Added in v2.0.0
 
 ## flatMap
 
