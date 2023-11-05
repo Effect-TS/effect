@@ -32,9 +32,6 @@ devDependencies:
   '@effect/build-utils':
     specifier: ^0.2.0
     version: 0.2.0
-  '@effect/docgen':
-    specifier: github:Effect-TS/docgen#modernize
-    version: github.com/Effect-TS/docgen/84b0a23cb69d6f250fe41a4f7c7719d4e1741965(fast-check@3.13.2)(tsx@3.14.0)(typescript@5.2.2)
   '@effect/dtslint':
     specifier: ^0.0.3
     version: 0.0.3(typescript@5.2.2)
@@ -44,6 +41,9 @@ devDependencies:
   '@effect/language-service':
     specifier: ^0.0.21
     version: 0.0.21
+  '@fubhy/docgen':
+    specifier: ^0.2.1
+    version: 0.2.1(fast-check@3.13.2)(tsx@3.14.0)(typescript@5.2.2)
   '@types/node':
     specifier: ^20.8.4
     version: 20.8.9
@@ -955,6 +955,33 @@ packages:
   /@eslint/js@8.52.0:
     resolution: {integrity: sha512-mjZVbpaeMZludF2fsWLD0Z9gCref1Tk4i9+wddjRvpUNqqcndPkBD09N/Mapey0b3jaXbLm2kICwFv2E64QinA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    dev: true
+
+  /@fubhy/docgen@0.2.1(fast-check@3.13.2)(tsx@3.14.0)(typescript@5.2.2):
+    resolution: {integrity: sha512-GPIqlkTCtJcmD2GxkaA3EZ6maXvGry07q0m4Miw9yzItMiUfD1CIVUwpGpD6pXPznHqtNobQ6JmwKj/vsAP5bg==}
+    engines: {node: '>=16.17.1'}
+    hasBin: true
+    peerDependencies:
+      tsx: ^3.14.0
+      typescript: ^5.2.2
+    dependencies:
+      '@babel/core': 7.23.2
+      '@effect/platform-node': 0.28.2(@effect/schema@0.47.2)(effect@2.0.0-next.54)
+      '@effect/schema': 0.47.2(effect@2.0.0-next.54)(fast-check@3.13.2)
+      chalk: 5.3.0
+      doctrine: 3.0.0
+      effect: 2.0.0-next.54
+      glob: 10.3.10
+      markdown-toc: github.com/effect-ts/markdown-toc/4bfeb0f140105440ea0d12df2fa23199cc3ec1d5
+      minimatch: 9.0.3
+      prettier: 3.0.3
+      ts-morph: 20.0.0
+      tsconfck: 3.0.0(typescript@5.2.2)
+      tsx: 3.14.0
+      typescript: 5.2.2
+    transitivePeerDependencies:
+      - fast-check
+      - supports-color
     dev: true
 
   /@humanwhocodes/config-array@0.11.13:
@@ -6301,37 +6328,6 @@ packages:
   /yocto-queue@1.0.0:
     resolution: {integrity: sha512-9bnSc/HEW2uRy67wc+T8UwauLuPJVn28jb+GtJY16iiKWyvmYJRXVT4UamsAEGQfPohgr2q4Tq0sQbQlxTfi1g==}
     engines: {node: '>=12.20'}
-    dev: true
-
-  github.com/Effect-TS/docgen/84b0a23cb69d6f250fe41a4f7c7719d4e1741965(fast-check@3.13.2)(tsx@3.14.0)(typescript@5.2.2):
-    resolution: {tarball: https://codeload.github.com/Effect-TS/docgen/tar.gz/84b0a23cb69d6f250fe41a4f7c7719d4e1741965}
-    id: github.com/Effect-TS/docgen/84b0a23cb69d6f250fe41a4f7c7719d4e1741965
-    name: '@effect/docgen'
-    version: 0.2.1
-    engines: {node: '>=16.17.1'}
-    hasBin: true
-    requiresBuild: true
-    peerDependencies:
-      tsx: ^3.14.0
-      typescript: ^5.2.2
-    dependencies:
-      '@babel/core': 7.23.2
-      '@effect/platform-node': 0.28.2(@effect/schema@0.47.2)(effect@2.0.0-next.54)
-      '@effect/schema': 0.47.2(effect@2.0.0-next.54)(fast-check@3.13.2)
-      chalk: 5.3.0
-      doctrine: 3.0.0
-      effect: 2.0.0-next.54
-      glob: 10.3.10
-      markdown-toc: github.com/effect-ts/markdown-toc/4bfeb0f140105440ea0d12df2fa23199cc3ec1d5
-      minimatch: 9.0.3
-      prettier: 3.0.3
-      ts-morph: 20.0.0
-      tsconfck: 3.0.0(typescript@5.2.2)
-      tsx: 3.14.0
-      typescript: 5.2.2
-    transitivePeerDependencies:
-      - fast-check
-      - supports-color
     dev: true
 
   github.com/effect-ts/markdown-toc/4bfeb0f140105440ea0d12df2fa23199cc3ec1d5:
