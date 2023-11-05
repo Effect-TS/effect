@@ -49,7 +49,7 @@
     "docgen": "docgen",
     "dtslint": "dtslint dtslint",
     "dtslint-clean": "dtslint --installAll",
-    "prepare": "pnpm run build"
+    "prepare": "pnpm clean && pnpm run build"
   },
   "exports": {
     "./package.json": "./package.json",
