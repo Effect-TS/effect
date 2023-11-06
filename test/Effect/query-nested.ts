@@ -5,7 +5,7 @@ import { Effect } from "effect/Effect"
 import { Layer } from "effect/Layer"
 import { ReadonlyArray } from "effect/ReadonlyArray"
 import { Request } from "effect/Request"
-import { Resolver } from "effect/RequestResolver"
+import { RequestResolver as Resolver } from "effect/RequestResolver"
 import { describe, expect } from "vitest"
 
 interface Counter {

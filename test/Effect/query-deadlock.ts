@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
 import { Request } from "effect/Request"
-import { Resolver } from "effect/RequestResolver"
+import { RequestResolver as Resolver } from "effect/RequestResolver"
 import { describe } from "vitest"
 
 export const userIds: ReadonlyArray<number> = [1, 1]

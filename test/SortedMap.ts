@@ -1,9 +1,9 @@
-import { Eq } from "effect/Equal"
+import { Equal as Eq } from "effect/Equal"
 import { pipe } from "effect/Function"
 import { Hash } from "effect/Hash"
 import * as N from "effect/Number"
 import * as O from "effect/Option"
-import { SM } from "effect/SortedMap"
+import { SortedMap as SM } from "effect/SortedMap"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
@@ -39,14 +39,14 @@ function value(n: number): Value {
   return new Value(n)
 }
 
-function makeSortedMap(...numbers: Array<readonly [number, number]>): SM.SortedMap<Key, Value> {
+function makeSortedMap(...numbers: Array<readonly [number, number]>): SM<Key, Value> {
   const entries = numbers.map(([k, v]) => [key(k), value(v)] as const)
   return SM.fromIterable((self: Key, that: Key) => self.id > that.id ? 1 : self.id < that.id ? -1 : 0)(entries)
 }
 
 function makeNumericSortedMap(
   ...numbers: Array<readonly [number, number]>
-): SM.SortedMap<number, number> {
+): SM<number, number> {
   return SM.fromIterable((self: number, that: number) => self > that ? 1 : self < that ? -1 : 0)(numbers)
 }
 

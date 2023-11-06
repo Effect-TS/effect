@@ -1,4 +1,4 @@
-import { ObservableResource } from "effect-test/utils/cache/ObservableResource"
+import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
 import { Chunk } from "effect/Chunk"
 import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
@@ -18,12 +18,12 @@ export interface WatchableLookup<Key, Error, Value> {
   createdResources(): Effect<
     never,
     never,
-    HashMap<Key, Chunk<ObservableResource<Error, Value>>>
+    HashMap<Key, Chunk<ObservableResource.ObservableResource<Error, Value>>>
   >
-  firstCreatedResource(key: Key): Effect<never, never, ObservableResource<Error, Value>>
+  firstCreatedResource(key: Key): Effect<never, never, ObservableResource.ObservableResource<Error, Value>>
   getCalledTimes(key: Key): Effect<never, never, number>
   resourcesCleaned(
-    resources: Iterable<ObservableResource<Error, Value>>
+    resources: Iterable<ObservableResource.ObservableResource<Error, Value>>
   ): Effect<never, never, void>
   assertCalledTimes(key: Key, sizeAssertion: (value: number) => void): Effect<never, never, void>
   assertFirstNCreatedResourcesCleaned(key: Key, n: number): Effect<never, never, void>
@@ -44,7 +44,7 @@ export const makeEffect = <Key, Error, Value>(
   Effect.map(
     Effect.zip(
       Ref.make(false),
-      Ref.make(HashMap.empty<Key, Chunk<ObservableResource<Error, Value>>>())
+      Ref.make(HashMap.empty<Key, Chunk<ObservableResource.ObservableResource<Error, Value>>>())
     ),
     ([blocked, resources]): WatchableLookup<Key, Error, Value> => {
       function lookup(key: Key): Effect<Scope, Error, Value> {
@@ -53,7 +53,7 @@ export const makeEffect = <Key, Error, Value>(
           yield* $(Ref.update(resources, (resourceMap) => {
             const newResource = pipe(
               HashMap.get(resourceMap, key),
-              Option.getOrElse(() => Chunk.empty<ObservableResource<Error, Value>>()),
+              Option.getOrElse(() => Chunk.empty<ObservableResource.ObservableResource<Error, Value>>()),
               Chunk.append(observableResource)
             )
             return HashMap.set(resourceMap, key, newResource)
@@ -87,7 +87,7 @@ export const makeEffect = <Key, Error, Value>(
               onSome: Chunk.size
             })
         )
-      const resourcesCleaned = (resources: Iterable<ObservableResource<Error, Value>>) =>
+      const resourcesCleaned = (resources: Iterable<ObservableResource.ObservableResource<Error, Value>>) =>
         Effect.forEach(resources, (resource) => Effect.suspend(() => resource.assertAcquiredOnceAndCleaned()))
       const assertCalledTimes = (key: Key, sizeAssertion: (value: number) => void) =>
         Effect.flatMap(getCalledTimes(key), (n) => Effect.sync(() => sizeAssertion(n)))
@@ -96,7 +96,7 @@ export const makeEffect = <Key, Error, Value>(
           resourcesCleaned(pipe(
             HashMap.get(resources, key),
             Option.match({
-              onNone: () => Chunk.empty<ObservableResource<Error, Value>>(),
+              onNone: () => Chunk.empty<ObservableResource.ObservableResource<Error, Value>>(),
               onSome: Chunk.take(n)
             })
           )))

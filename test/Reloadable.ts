@@ -1,4 +1,4 @@
-import { Counter } from "effect-test/utils/counter"
+import * as Counter from "effect-test/utils/counter"
 import * as it from "effect-test/utils/extend"
 import { Context } from "effect/Context"
 import { Effect } from "effect/Effect"
