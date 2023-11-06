@@ -49,7 +49,6 @@ const sinkRaceLaw = <E, A, L>(
   )
 
 describe.concurrent("Sink", () => {
-  // TODO: Research why this test is flaky.
   it.effect("raceBoth", () =>
     Effect.gen(function*($) {
       const ints = yield* $(unfoldEffect(
@@ -75,5 +74,5 @@ describe.concurrent("Sink", () => {
         )
       )
       assert.isTrue(result)
-    }), { retry: 3 })
+    }))
 })
