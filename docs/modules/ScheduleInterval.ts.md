@@ -240,8 +240,8 @@ form a union.
 
 ```ts
 export declare const union: {
-  (that: Interval): (self: Interval) => Option.Option<Interval>
-  (self: Interval, that: Interval): Option.Option<Interval>
+  (that: Interval): (self: Interval) => Option<Interval>
+  (self: Interval, that: Interval): Option<Interval>
 }
 ```
 

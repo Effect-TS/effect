@@ -285,7 +285,7 @@ export interface BaseQueue {
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue. Returns None if shutdown has been called
    */
-  unsafeSize(): Option.Option<number>
+  unsafeSize(): Option<number>
 
   /**
    * Returns `true` if the `Queue` contains at least one element, `false`
@@ -702,7 +702,7 @@ is empty.
 **Signature**
 
 ```ts
-export declare const poll: <A>(self: Dequeue<A>) => Effect<never, never, Option.Option<A>>
+export declare const poll: <A>(self: Dequeue<A>) => Effect<never, never, Option<A>>
 ```
 
 Added in v2.0.0

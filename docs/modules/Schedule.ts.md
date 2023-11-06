@@ -1043,7 +1043,7 @@ export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<En
   state(): Effect<never, never, unknown>
   last(): Effect<never, Cause.NoSuchElementException, Out>
   reset(): Effect<never, never, void>
-  next(input: In): Effect<Env, Option.Option<never>, Out>
+  next(input: In): Effect<Env, Option<never>, Out>
 }
 ```
 
@@ -1580,7 +1580,7 @@ partial function and then map that value with given function.
 **Signature**
 
 ```ts
-export declare const recurUntilOption: <A, B>(pf: (a: A) => Option.Option<B>) => Schedule<never, A, Option.Option<B>>
+export declare const recurUntilOption: <A, B>(pf: (a: A) => Option<B>) => Schedule<never, A, Option<B>>
 ```
 
 Added in v2.0.0

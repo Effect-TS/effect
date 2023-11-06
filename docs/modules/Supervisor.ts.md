@@ -76,7 +76,7 @@ Added in v2.0.0
 onStart<R, E, A>(
     _context: Context.Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void
 ```
@@ -258,7 +258,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
   onStart<R, E, A>(
     context: Context.Context<R>,
     effect: Effect<R, E, A>,
-    parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void
 

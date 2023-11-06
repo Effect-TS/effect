@@ -119,8 +119,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
-  <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<never, never, A>
+  <A>(f: (a: A) => Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
+  <A>(self: TRef<A>, f: (a: A) => Option<A>): STM.STM<never, never, A>
 }
 ```
 
@@ -145,8 +145,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modifySome: {
-  <A, B>(fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): (self: TRef<A>) => STM.STM<never, never, B>
-  <A, B>(self: TRef<A>, fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): STM.STM<never, never, B>
+  <A, B>(fallback: B, f: (a: A) => Option<readonly [B, A]>): (self: TRef<A>) => STM.STM<never, never, B>
+  <A, B>(self: TRef<A>, fallback: B, f: (a: A) => Option<readonly [B, A]>): STM.STM<never, never, B>
 }
 ```
 
@@ -210,8 +210,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<never, never, void>
-  <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<never, never, void>
+  <A>(f: (a: A) => Option<A>): (self: TRef<A>) => STM.STM<never, never, void>
+  <A>(self: TRef<A>, f: (a: A) => Option<A>): STM.STM<never, never, void>
 }
 ```
 
@@ -223,8 +223,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGet: {
-  <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
-  <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<never, never, A>
+  <A>(f: (a: A) => Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
+  <A>(self: TRef<A>, f: (a: A) => Option<A>): STM.STM<never, never, A>
 }
 ```
 

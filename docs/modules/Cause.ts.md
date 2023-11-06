@@ -264,8 +264,8 @@ to extract information from it.
 
 ```ts
 export declare const find: {
-  <E, Z>(pf: (cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Option.Option<Z>
-  <E, Z>(self: Cause<E>, pf: (cause: Cause<E>) => Option.Option<Z>): Option.Option<Z>
+  <E, Z>(pf: (cause: Cause<E>) => Option<Z>): (self: Cause<E>) => Option<Z>
+  <E, Z>(self: Cause<E>, pf: (cause: Cause<E>) => Option<Z>): Option<Z>
 }
 ```
 
@@ -395,8 +395,8 @@ provided `zero` value.
 
 ```ts
 export declare const reduce: {
-  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Z
-  <Z, E>(self: Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): Z
+  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option<Z>): (self: Cause<E>) => Z
+  <Z, E>(self: Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option<Z>): Z
 }
 ```
 
@@ -440,7 +440,7 @@ exists.
 **Signature**
 
 ```ts
-export declare const dieOption: <E>(self: Cause<E>) => Option.Option<unknown>
+export declare const dieOption: <E>(self: Cause<E>) => Option<unknown>
 ```
 
 Added in v2.0.0
@@ -453,7 +453,7 @@ exists.
 **Signature**
 
 ```ts
-export declare const failureOption: <E>(self: Cause<E>) => Option.Option<E>
+export declare const failureOption: <E>(self: Cause<E>) => Option<E>
 ```
 
 Added in v2.0.0
@@ -493,7 +493,7 @@ recursively stripping out any failures with the error `None`.
 **Signature**
 
 ```ts
-export declare const flipCauseOption: <E>(self: Cause<Option.Option<E>>) => Option.Option<Cause<E>>
+export declare const flipCauseOption: <E>(self: Cause<Option<E>>) => Option<Cause<E>>
 ```
 
 Added in v2.0.0
@@ -506,7 +506,7 @@ cause, if one exists.
 **Signature**
 
 ```ts
-export declare const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.FiberId>
+export declare const interruptOption: <E>(self: Cause<E>) => Option<FiberId.FiberId>
 ```
 
 Added in v2.0.0
@@ -594,7 +594,7 @@ a cause containing only `Die` cause/finalizer defects.
 **Signature**
 
 ```ts
-export declare const keepDefects: <E>(self: Cause<E>) => Option.Option<Cause<never>>
+export declare const keepDefects: <E>(self: Cause<E>) => Option<Cause<never>>
 ```
 
 Added in v2.0.0
@@ -648,8 +648,8 @@ remaining causes.
 
 ```ts
 export declare const stripSomeDefects: {
-  (pf: (defect: unknown) => Option.Option<unknown>): <E>(self: Cause<E>) => Option.Option<Cause<E>>
-  <E>(self: Cause<E>, pf: (defect: unknown) => Option.Option<unknown>): Option.Option<Cause<E>>
+  (pf: (defect: unknown) => Option<unknown>): <E>(self: Cause<E>) => Option<Cause<E>>
+  <E>(self: Cause<E>, pf: (defect: unknown) => Option<unknown>): Option<Cause<E>>
 }
 ```
 

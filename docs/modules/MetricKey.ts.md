@@ -208,7 +208,7 @@ export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
     Pipeable {
   readonly name: string
   readonly keyType: Type
-  readonly description: Option.Option<string>
+  readonly description: Option<string>
   readonly tags: HashSet.HashSet<MetricLabel.MetricLabel>
 }
 ```

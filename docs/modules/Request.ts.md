@@ -407,7 +407,7 @@ A utility type to extract the optional result type from a `Request`.
 
 ```ts
 export type OptionalResult<T extends Request<any, any>> = T extends Request<infer E, infer A>
-  ? Exit<E, Option.Option<A>>
+  ? Exit<E, Option<A>>
   : never
 ```
 

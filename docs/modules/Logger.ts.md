@@ -306,11 +306,11 @@ satisfies the specified predicate.
 export declare const filterLogLevel: {
   (
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option.Option<Output>>
+  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option<Output>>
   <Message, Output>(
     self: Logger<Message, Output>,
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ): Logger<Message, Option.Option<Output>>
+  ): Logger<Message, Option<Output>>
 }
 ```
 

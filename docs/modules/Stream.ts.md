@@ -449,7 +449,7 @@ the end of the stream, by setting it to `None`.
 
 ```ts
 export declare const asyncOption: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Option.Option<Stream<R, E, A>>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Option<Stream<R, E, A>>,
   outputBuffer?: number
 ) => Stream<R, E, A>
 ```
@@ -717,7 +717,7 @@ Creates a stream from an effect producing a value of type `A` or an empty
 **Signature**
 
 ```ts
-export declare const fromEffectOption: <R, E, A>(effect: Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
+export declare const fromEffectOption: <R, E, A>(effect: Effect<R, Option<E>, A>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -792,7 +792,7 @@ See `Stream.toPull` for reference.
 
 ```ts
 export declare const fromPull: <R, R2, E, A>(
-  effect: Effect<Scope.Scope | R, never, Effect<R2, Option.Option<E>, Chunk.Chunk<A>>>
+  effect: Effect<Scope.Scope | R, never, Effect<R2, Option<E>, Chunk.Chunk<A>>>
 ) => Stream<R2 | Exclude<R, Scope.Scope>, E, A>
 ```
 
@@ -908,7 +908,7 @@ APIs, hence the name.
 **Signature**
 
 ```ts
-export declare const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option.Option<S>]) => Stream<never, never, A>
+export declare const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option<S>]) => Stream<never, never, A>
 ```
 
 Added in v2.0.0
@@ -924,7 +924,7 @@ paginated APIs, hence the name.
 ```ts
 export declare const paginateChunk: <S, A>(
   s: S,
-  f: (s: S) => readonly [Chunk.Chunk<A>, Option.Option<S>]
+  f: (s: S) => readonly [Chunk.Chunk<A>, Option<S>]
 ) => Stream<never, never, A>
 ```
 
@@ -941,7 +941,7 @@ paginated APIs, hence the name.
 ```ts
 export declare const paginateChunkEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect<R, E, readonly [Chunk.Chunk<A>, Option.Option<S>]>
+  f: (s: S) => Effect<R, E, readonly [Chunk.Chunk<A>, Option<S>]>
 ) => Stream<R, E, A>
 ```
 
@@ -958,7 +958,7 @@ paginated APIs, hence the name.
 ```ts
 export declare const paginateEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect<R, E, readonly [A, Option.Option<S>]>
+  f: (s: S) => Effect<R, E, readonly [A, Option<S>]>
 ) => Stream<R, E, A>
 ```
 
@@ -1011,7 +1011,7 @@ fails with `None`.
 
 ```ts
 export declare const repeatEffectChunkOption: <R, E, A>(
-  effect: Effect<R, Option.Option<E>, Chunk.Chunk<A>>
+  effect: Effect<R, Option<E>, Chunk.Chunk<A>>
 ) => Stream<R, E, A>
 ```
 
@@ -1025,7 +1025,7 @@ with `None`.
 **Signature**
 
 ```ts
-export declare const repeatEffectOption: <R, E, A>(effect: Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
+export declare const repeatEffectOption: <R, E, A>(effect: Effect<R, Option<E>, A>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -1139,7 +1139,7 @@ Creates a stream by peeling off the "layers" of a value of type `S`.
 **Signature**
 
 ```ts
-export declare const unfold: <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>) => Stream<never, never, A>
+export declare const unfold: <S, A>(s: S, f: (s: S) => Option<readonly [A, S]>) => Stream<never, never, A>
 ```
 
 Added in v2.0.0
@@ -1153,7 +1153,7 @@ Creates a stream by peeling off the "layers" of a value of type `S`.
 ```ts
 export declare const unfoldChunk: <S, A>(
   s: S,
-  f: (s: S) => Option.Option<readonly [Chunk.Chunk<A>, S]>
+  f: (s: S) => Option<readonly [Chunk.Chunk<A>, S]>
 ) => Stream<never, never, A>
 ```
 
@@ -1169,7 +1169,7 @@ Creates a stream by effectfully peeling off the "layers" of a value of type
 ```ts
 export declare const unfoldChunkEffect: <R, E, A, S>(
   s: S,
-  f: (s: S) => Effect<R, E, Option.Option<readonly [Chunk.Chunk<A>, S]>>
+  f: (s: S) => Effect<R, E, Option<readonly [Chunk.Chunk<A>, S]>>
 ) => Stream<R, E, A>
 ```
 
@@ -1185,7 +1185,7 @@ Creates a stream by effectfully peeling off the "layers" of a value of type
 ```ts
 export declare const unfoldEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect<R, E, Option.Option<readonly [A, S]>>
+  f: (s: S) => Effect<R, E, Option<readonly [A, S]>>
 ) => Stream<R, E, A>
 ```
 
@@ -1241,7 +1241,7 @@ for the given value, otherwise returns an empty stream.
 ```ts
 export declare const whenCase: <A, R, E, A2>(
   evaluate: LazyArg<A>,
-  pf: (a: A) => Option.Option<Stream<R, E, A2>>
+  pf: (a: A) => Option<Stream<R, E, A2>>
 ) => Stream<R, E, A2>
 ```
 
@@ -1817,7 +1817,7 @@ discarding the rest of the elements.
 **Signature**
 
 ```ts
-export declare const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option.Option<A>>
+export declare const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option<A>>
 ```
 
 Added in v2.0.0
@@ -1882,11 +1882,11 @@ to allow for scope composition.
 ```ts
 export declare const runIntoQueueElementsScoped: {
   <E, A>(
-    queue: Queue.Enqueue<Exit<Option.Option<E>, A>>
+    queue: Queue.Enqueue<Exit<Option<E>, A>>
   ): <R>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, void>
   <R, E, A>(
     self: Stream<R, E, A>,
-    queue: Queue.Enqueue<Exit<Option.Option<E>, A>>
+    queue: Queue.Enqueue<Exit<Option<E>, A>>
   ): Effect<Scope.Scope | R, never, void>
 }
 ```
@@ -1919,7 +1919,7 @@ discarding the rest of the elements.
 **Signature**
 
 ```ts
-export declare const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option.Option<A>>
+export declare const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option<A>>
 ```
 
 Added in v2.0.0
@@ -1987,7 +1987,7 @@ the stream's output.
 ```ts
 export declare const toPull: <R, E, A>(
   self: Stream<R, E, A>
-) => Effect<Scope.Scope | R, never, Effect<R, Option.Option<E>, Chunk.Chunk<A>>>
+) => Effect<Scope.Scope | R, never, Effect<R, Option<E>, Chunk.Chunk<A>>>
 ```
 
 Added in v2.0.0
@@ -2034,11 +2034,11 @@ export declare const toQueueOfElements: {
     readonly capacity?: number
   }): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect<Scope.Scope | R, never, Queue.Dequeue<Exit<Option.Option<E>, A>>>
+  ) => Effect<Scope.Scope | R, never, Queue.Dequeue<Exit<Option<E>, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     options?: { readonly capacity?: number }
-  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Exit<Option.Option<E>, A>>>
+  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Exit<Option<E>, A>>>
 }
 ```
 
@@ -2273,11 +2273,11 @@ one fails with some typed error.
 ```ts
 export declare const catchSome: {
   <E, R2, E2, A2>(
-    pf: (error: E) => Option.Option<Stream<R2, E2, A2>>
+    pf: (error: E) => Option<Stream<R2, E2, A2>>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (error: E) => Option.Option<Stream<R2, E2, A2>>
+    pf: (error: E) => Option<Stream<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A | A2>
 }
 ```
@@ -2295,11 +2295,11 @@ including interruption if the stream is uninterruptible.
 ```ts
 export declare const catchSomeCause: {
   <E, R2, E2, A2>(
-    pf: (cause: Cause.Cause<E>) => Option.Option<Stream<R2, E2, A2>>
+    pf: (cause: Cause.Cause<E>) => Option<Stream<R2, E2, A2>>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (cause: Cause.Cause<E>) => Option.Option<Stream<R2, E2, A2>>
+    pf: (cause: Cause.Cause<E>) => Option<Stream<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A | A2>
 }
 ```
@@ -2551,8 +2551,8 @@ Keeps some of the errors, and terminates the fiber with the rest
 
 ```ts
 export declare const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, A>(self: Stream<R, E, A>) => Stream<R, E2, A>
-  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option.Option<E2>): Stream<R, E2, A>
+  <E, E2>(pf: (error: E) => Option<E2>): <R, A>(self: Stream<R, E, A>) => Stream<R, E2, A>
+  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option<E2>): Stream<R, E2, A>
 }
 ```
 
@@ -2568,10 +2568,10 @@ specified function to convert the `E` into a defect.
 ```ts
 export declare const refineOrDieWith: {
   <E, E2>(
-    pf: (error: E) => Option.Option<E2>,
+    pf: (error: E) => Option<E2>,
     f: (error: E) => unknown
   ): <R, A>(self: Stream<R, E, A>) => Stream<R, E2, A>
-  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): Stream<R, E2, A>
+  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option<E2>, f: (error: E) => unknown): Stream<R, E2, A>
 }
 ```
 
@@ -3072,7 +3072,7 @@ stream.mapZIO(ZIO.done(_))
 
 ```ts
 export declare const flattenExitOption: <R, E, E2, A>(
-  self: Stream<R, E, Exit<Option.Option<E2>, A>>
+  self: Stream<R, E, Exit<Option<E2>, A>>
 ) => Stream<R, E | E2, A>
 ```
 
@@ -3365,12 +3365,12 @@ Like `aggregateWithinEither`, but only returns the `Right` results.
 export declare const aggregateWithin: {
   <R2, E2, A, A2, B, R3, C>(
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, B>
   <R, E, R2, E2, A, A2, B, R3, C>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): Stream<R | R2 | R3, E | E2, B>
 }
 ```
@@ -3396,12 +3396,12 @@ between pulls.
 export declare const aggregateWithinEither: {
   <R2, E2, A, A2, B, R3, C>(
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, Either<C, B>>
   <R, E, R2, E2, A, A2, B, R3, C>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): Stream<R | R2 | R3, E | E2, Either<C, B>>
 }
 ```
@@ -3650,9 +3650,9 @@ export declare const combine: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, A>,
-      pullRight: Effect<R4, Option.Option<E2>, A2>
-    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+      pullLeft: Effect<R3, Option<E>, A>,
+      pullRight: Effect<R4, Option<E2>, A2>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [A3, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -3660,9 +3660,9 @@ export declare const combine: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, A>,
-      pullRight: Effect<R4, Option.Option<E2>, A2>
-    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+      pullLeft: Effect<R3, Option<E>, A>,
+      pullRight: Effect<R4, Option<E2>, A2>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [A3, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 }
 ```
@@ -3686,9 +3686,9 @@ export declare const combineChunks: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
-      pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+      pullLeft: Effect<R3, Option<E>, Chunk.Chunk<A>>,
+      pullRight: Effect<R4, Option<E2>, Chunk.Chunk<A2>>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -3696,9 +3696,9 @@ export declare const combineChunks: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
-      pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+      pullLeft: Effect<R3, Option<E>, Chunk.Chunk<A>>,
+      pullRight: Effect<R4, Option<E2>, Chunk.Chunk<A2>>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 }
 ```
@@ -3845,7 +3845,7 @@ export declare const distributedWith: {
     readonly decide: (a: A) => Effect<never, never, Predicate<number>>
   }): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit<Option.Option<E>, A>>, N>>
+  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit<Option<E>, A>>, N>>
   <R, E, N extends number, A>(
     self: Stream<R, E, A>,
     options: {
@@ -3853,7 +3853,7 @@ export declare const distributedWith: {
       readonly maximumLag: number
       readonly decide: (a: A) => Effect<never, never, Predicate<number>>
     }
-  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit<Option.Option<E>, A>>, N>>
+  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit<Option<E>, A>>, N>>
 }
 ```
 
@@ -3880,7 +3880,7 @@ export declare const distributedWithDynamic: {
   ) => Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
   >
   <R, E, A, _>(
     self: Stream<R, E, A>,
@@ -3888,7 +3888,7 @@ export declare const distributedWithDynamic: {
   ): Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
   >
 }
 ```
@@ -4086,8 +4086,8 @@ Performs a filter and map in a single step.
 
 ```ts
 export declare const filterMap: {
-  <A, B>(pf: (a: A) => Option.Option<B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <R, E, A, B>(self: Stream<R, E, A>, pf: (a: A) => Option.Option<B>): Stream<R, E, B>
+  <A, B>(pf: (a: A) => Option<B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
+  <R, E, A, B>(self: Stream<R, E, A>, pf: (a: A) => Option<B>): Stream<R, E, B>
 }
 ```
 
@@ -4102,11 +4102,11 @@ Performs an effectful filter and map in a single step.
 ```ts
 export declare const filterMapEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -4122,8 +4122,8 @@ function is defined.
 
 ```ts
 export declare const filterMapWhile: {
-  <A, A2>(pf: (a: A) => Option.Option<A2>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A2>
-  <R, E, A, A2>(self: Stream<R, E, A>, pf: (a: A) => Option.Option<A2>): Stream<R, E, A2>
+  <A, A2>(pf: (a: A) => Option<A2>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A2>
+  <R, E, A, A2>(self: Stream<R, E, A>, pf: (a: A) => Option<A2>): Stream<R, E, A2>
 }
 ```
 
@@ -4139,11 +4139,11 @@ specified partial function is defined.
 ```ts
 export declare const filterMapWhileEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -5124,7 +5124,7 @@ Converts an option on values into an option on errors.
 **Signature**
 
 ```ts
-export declare const some: <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, Option.Option<E>, A>
+export declare const some: <R, E, A>(self: Stream<R, E, Option<A>>) => Stream<R, Option<E>, A>
 ```
 
 Added in v2.0.0
@@ -5137,8 +5137,8 @@ Extracts the optional value, or returns the given 'default'.
 
 ```ts
 export declare const someOrElse: {
-  <A2>(fallback: LazyArg<A2>): <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, E, A2 | A>
-  <R, E, A, A2>(self: Stream<R, E, Option.Option<A>>, fallback: LazyArg<A2>): Stream<R, E, A | A2>
+  <A2>(fallback: LazyArg<A2>): <R, E, A>(self: Stream<R, E, Option<A>>) => Stream<R, E, A2 | A>
+  <R, E, A, A2>(self: Stream<R, E, Option<A>>, fallback: LazyArg<A2>): Stream<R, E, A | A2>
 }
 ```
 
@@ -5152,8 +5152,8 @@ Extracts the optional value, or fails with the given error 'e'.
 
 ```ts
 export declare const someOrFail: {
-  <E2>(error: LazyArg<E2>): <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, E2 | E, A>
-  <R, E, A, E2>(self: Stream<R, E, Option.Option<A>>, error: LazyArg<E2>): Stream<R, E | E2, A>
+  <E2>(error: LazyArg<E2>): <R, E, A>(self: Stream<R, E, Option<A>>) => Stream<R, E2 | E, A>
+  <R, E, A, E2>(self: Stream<R, E, Option<A>>, error: LazyArg<E2>): Stream<R, E | E2, A>
 }
 ```
 
@@ -5503,11 +5503,11 @@ effectful value, otherwise returns an empty stream.
 ```ts
 export declare const whenCaseEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Stream<R2, E2, A2>>
+    pf: (a: A) => Option<Stream<R2, E2, A2>>
   ): <R, E>(self: Effect<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    pf: (a: A) => Option.Option<Stream<R2, E2, A2>>
+    pf: (a: A) => Option<Stream<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -5972,7 +5972,7 @@ Zips each element with the next element if present.
 **Signature**
 
 ```ts
-export declare const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option.Option<A>]>
+export declare const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option<A>]>
 ```
 
 Added in v2.0.0
@@ -5985,7 +5985,7 @@ Zips each element with the previous element. Initially accompanied by
 **Signature**
 
 ```ts
-export declare const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option.Option<A>, A]>
+export declare const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option<A>, A]>
 ```
 
 Added in v2.0.0
@@ -5999,7 +5999,7 @@ Zips each element with both the previous and next element.
 ```ts
 export declare const zipWithPreviousAndNext: <R, E, A>(
   self: Stream<R, E, A>
-) => Stream<R, E, readonly [Option.Option<A>, A, Option.Option<A>]>
+) => Stream<R, E, readonly [Option<A>, A, Option<A>]>
 ```
 
 Added in v2.0.0

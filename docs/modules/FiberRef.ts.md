@@ -384,7 +384,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>>
+export declare const unhandledErrorLogLevel: FiberRef<Option<LogLevel.LogLevel>>
 ```
 
 Added in v2.0.0
@@ -508,8 +508,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 
@@ -549,7 +549,7 @@ Added in v2.0.0
 export declare const modifySome: <A, B>(
   self: FiberRef<A>,
   def: B,
-  f: (a: A) => Option.Option<readonly [B, A]>
+  f: (a: A) => Option<readonly [B, A]>
 ) => Effect<never, never, B>
 ```
 
@@ -610,8 +610,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect<never, never, void>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, void>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, void>
 }
 ```
 
@@ -623,8 +623,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 }
 ```
 

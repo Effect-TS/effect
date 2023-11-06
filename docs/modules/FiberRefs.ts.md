@@ -71,8 +71,8 @@ values if it exists or `None` otherwise.
 
 ```ts
 export declare const get: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => Option.Option<A>
-  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): Option.Option<A>
+  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => Option<A>
+  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): Option<A>
 }
 ```
 

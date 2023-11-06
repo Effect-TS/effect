@@ -76,7 +76,7 @@ import * as Duration from "effect/Duration"
 import { Effect } from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as TestClock from "effect/TestClock"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 
 Effect.gen(function* () {
   const fiber = yield* pipe(Effect.sleep(Duration.minutes(5)), Effect.timeout(Duration.minutes(1)), Effect.fork)

@@ -433,7 +433,7 @@ already done.
 **Signature**
 
 ```ts
-export declare const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option.Option<Exit<E, A>>>
+export declare const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option<Exit<E, A>>>
 ```
 
 Added in v2.0.0
@@ -644,7 +644,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect<never, never, Option.Option<Exit<E, A>>>
+  poll(): Effect<never, never, Option<Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -795,7 +795,7 @@ Gets the current fiber if one is running.
 **Signature**
 
 ```ts
-export declare const getCurrentFiber: () => Option.Option<RuntimeFiber<any, any>>
+export declare const getCurrentFiber: () => Option<RuntimeFiber<any, any>>
 ```
 
 Added in v2.0.0

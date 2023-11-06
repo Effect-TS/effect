@@ -107,7 +107,7 @@ export interface Span {
   readonly name: string
   readonly spanId: string
   readonly traceId: string
-  readonly parent: Option.Option<ParentSpan>
+  readonly parent: Option<ParentSpan>
   readonly context: Context.Context<never>
   readonly status: SpanStatus
   readonly attributes: ReadonlyMap<string, unknown>
@@ -188,7 +188,7 @@ export interface Tracer {
   readonly [TracerTypeId]: TracerTypeId
   readonly span: (
     name: string,
-    parent: Option.Option<ParentSpan>,
+    parent: Option<ParentSpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint

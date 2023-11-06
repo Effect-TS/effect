@@ -358,8 +358,8 @@ Construct a `Channel` from an `Option`.
 
 ```ts
 export declare const fromOption: <A>(
-  option: Option.Option<A>
-) => Channel<never, unknown, unknown, unknown, Option.Option<never>, never, A>
+  option: Option<A>
+) => Channel<never, unknown, unknown, unknown, Option<never>, never, A>
 ```
 
 Added in v2.0.0
@@ -433,7 +433,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const read: <In>() => Channel<never, unknown, In, unknown, Option.Option<never>, never, In>
+export declare const read: <In>() => Channel<never, unknown, In, unknown, Option<never>, never, In>
 ```
 
 Added in v2.0.0
@@ -1712,13 +1712,13 @@ are filtered and transformed by the specified partial function.
 ```ts
 export declare const collect: {
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutElem2, OutDone>(
-    pf: (o: OutElem) => Option.Option<OutElem2>
+    pf: (o: OutElem) => Option<OutElem2>
   ): (
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutElem2, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    pf: (o: OutElem) => Option.Option<OutElem2>
+    pf: (o: OutElem) => Option<OutElem2>
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>
 }
 ```

@@ -158,7 +158,7 @@ if there is not a value in the queue.
 **Signature**
 
 ```ts
-export declare const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option.Option<A>>
+export declare const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -287,7 +287,7 @@ the queue.
 **Signature**
 
 ```ts
-export declare const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option.Option<A>>
+export declare const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0

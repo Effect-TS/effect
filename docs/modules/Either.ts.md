@@ -191,7 +191,7 @@ export declare const fromOption: {
 
 ```ts
 import { Either } from "effect/Either"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 
 assert.deepStrictEqual(
   Either.fromOption(Option.some(1), () => "error"),

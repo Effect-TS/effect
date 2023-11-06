@@ -110,7 +110,7 @@ already been completed, `None` otherwise.
 ```ts
 export declare const poll: <E, A>(
   self: Deferred<E, A>
-) => Effect<never, never, Option.Option<Effect<never, E, A>>>
+) => Effect<never, never, Option<Effect<never, E, A>>>
 ```
 
 Added in v2.0.0

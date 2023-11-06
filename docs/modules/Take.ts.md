@@ -157,7 +157,7 @@ to `Take.failCause`, and the end-of-stream is converted to `Take.end`.
 
 ```ts
 export declare const fromPull: <R, E, A>(
-  pull: Effect<R, Option.Option<E>, Chunk.Chunk<A>>
+  pull: Effect<R, Option<E>, Chunk.Chunk<A>>
 ) => Effect<R, never, Take<E, A>>
 ```
 
@@ -170,7 +170,7 @@ Constructs a `Take`.
 **Signature**
 
 ```ts
-export declare const make: <E, A>(exit: Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A>
+export declare const make: <E, A>(exit: Exit<Option<E>, Chunk.Chunk<A>>) => Take<E, A>
 ```
 
 Added in v2.0.0
@@ -196,7 +196,7 @@ Transforms a `Take<E, A>` to an `Effect<never, E, A>`.
 **Signature**
 
 ```ts
-export declare const done: <E, A>(self: Take<E, A>) => Effect<never, Option.Option<E>, Chunk.Chunk<A>>
+export declare const done: <E, A>(self: Take<E, A>) => Effect<never, Option<E>, Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -325,7 +325,7 @@ or an end-of-stream marker.
 ```ts
 export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly exit: Exit<Option.Option<E>, Chunk.Chunk<A>>
+  readonly exit: Exit<Option<E>, Chunk.Chunk<A>>
 }
 ```
 

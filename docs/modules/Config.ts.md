@@ -485,7 +485,7 @@ data is missing from configuration, and `Some` otherwise.
 **Signature**
 
 ```ts
-export declare const option: <A>(self: Config<A>) => Config<Option.Option<A>>
+export declare const option: <A>(self: Config<A>) => Config<Option<A>>
 ```
 
 Added in v2.0.0

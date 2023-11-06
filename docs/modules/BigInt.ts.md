@@ -152,8 +152,8 @@ Returns `None` if the divisor is `0n`.
 
 ```ts
 export declare const divide: {
-  (that: bigint): (self: bigint) => Option.Option<bigint>
-  (self: bigint, that: bigint): Option.Option<bigint>
+  (that: bigint): (self: bigint) => Option<bigint>
+  (self: bigint, that: bigint): Option<bigint>
 }
 ```
 
@@ -302,14 +302,14 @@ Determines the square root of a given `bigint` safely. Returns `none` if the giv
 **Signature**
 
 ```ts
-export declare const sqrt: (n: bigint) => Option.Option<bigint>
+export declare const sqrt: (n: bigint) => Option<bigint>
 ```
 
 **Example**
 
 ```ts
 import { sqrt } from "effect/BigInt"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 
 assert.deepStrictEqual(sqrt(4n), Option.some(2n))
 assert.deepStrictEqual(sqrt(9n), Option.some(3n))

@@ -894,7 +894,7 @@ export declare const fromPush: <R, E, In, L, Z>(
   push: Effect<
     R,
     never,
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk.Chunk<L>], void>
+    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk.Chunk<L>], void>
   >
 ) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z>
 ```
@@ -923,7 +923,7 @@ Creates a sink containing the first value.
 **Signature**
 
 ```ts
-export declare const head: <In>() => Sink<never, never, In, In, Option.Option<In>>
+export declare const head: <In>() => Sink<never, never, In, In, Option<In>>
 ```
 
 Added in v2.0.0
@@ -935,7 +935,7 @@ Creates a sink containing the last value.
 **Signature**
 
 ```ts
-export declare const last: <In>() => Sink<never, never, In, In, Option.Option<In>>
+export declare const last: <In>() => Sink<never, never, In, In, Option<In>>
 ```
 
 Added in v2.0.0
@@ -1132,11 +1132,11 @@ Creates a sink that produces values until one verifies the predicate `f`.
 export declare const findEffect: {
   <Z, R2, E2>(
     f: (z: Z) => Effect<R2, E2, boolean>
-  ): <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>
+  ): <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, Option<Z>>
   <R, E, In, L extends In, Z, R2, E2>(
     self: Sink<R, E, In, L, Z>,
     f: (z: Z) => Effect<R2, E2, boolean>
-  ): Sink<R | R2, E | E2, In, L, Option.Option<Z>>
+  ): Sink<R | R2, E | E2, In, L, Option<Z>>
 }
 ```
 
@@ -1170,8 +1170,8 @@ Added in v2.0.0
 
 ```ts
 export declare const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z>
-  <R, In, L, Z, E, E2>(self: Sink<R, E, In, L, Z>, pf: (error: E) => Option.Option<E2>): Sink<R, E2, In, L, Z>
+  <E, E2>(pf: (error: E) => Option<E2>): <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z>
+  <R, In, L, Z, E, E2>(self: Sink<R, E, In, L, Z>, pf: (error: E) => Option<E2>): Sink<R, E2, In, L, Z>
 }
 ```
 
@@ -1183,7 +1183,7 @@ Added in v2.0.0
 
 ```ts
 export declare const refineOrDieWith: <E, E2>(
-  pf: (error: E) => Option.Option<E2>,
+  pf: (error: E) => Option<E2>,
   f: (error: E) => unknown
 ) => <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z>
 ```

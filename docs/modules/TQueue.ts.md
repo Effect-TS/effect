@@ -190,7 +190,7 @@ if the queue is empty.
 **Signature**
 
 ```ts
-export declare const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>>
+export declare const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -203,7 +203,7 @@ empty.
 **Signature**
 
 ```ts
-export declare const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>>
+export declare const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -293,7 +293,7 @@ export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
    * Views the next element in the queue without removing it, returning `None`
    * if the queue is empty.
    */
-  readonly peekOption: STM.STM<never, never, Option.Option<A>>
+  readonly peekOption: STM.STM<never, never, Option<A>>
 
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return

@@ -110,7 +110,7 @@ Added in v2.0.0
 ```ts
 export declare const summary: (options: {
   readonly error: number
-  readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+  readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
   readonly count: number
   readonly min: number
   readonly max: number
@@ -390,7 +390,7 @@ Added in v2.0.0
 export interface Summary extends MetricState<MetricKeyType.MetricKeyType.Summary> {
   readonly [SummaryStateTypeId]: SummaryStateTypeId
   readonly error: number
-  readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+  readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
   readonly count: number
   readonly min: number
   readonly max: number

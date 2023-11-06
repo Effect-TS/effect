@@ -88,8 +88,8 @@ Added in v2.0.0
 
 ```ts
 export declare const get: {
-  <K>(key: K): <V>(self: SortedMap<K, V>) => Option.Option<V>
-  <K, V>(self: SortedMap<K, V>, key: K): Option.Option<V>
+  <K>(key: K): <V>(self: SortedMap<K, V>) => Option<V>
+  <K, V>(self: SortedMap<K, V>, key: K): Option<V>
 }
 ```
 
@@ -113,7 +113,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const headOption: <K, V>(self: SortedMap<K, V>) => Option.Option<readonly [K, V]>
+export declare const headOption: <K, V>(self: SortedMap<K, V>) => Option<readonly [K, V]>
 ```
 
 Added in v2.0.0

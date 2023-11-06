@@ -80,8 +80,8 @@ Added in v2.0.0
 
 ```ts
 export declare const get: {
-  <K>(key: K): <V>(self: MutableHashMap<K, V>) => Option.Option<V>
-  <K, V>(self: MutableHashMap<K, V>, key: K): Option.Option<V>
+  <K>(key: K): <V>(self: MutableHashMap<K, V>) => Option<V>
+  <K, V>(self: MutableHashMap<K, V>, key: K): Option<V>
 }
 ```
 
@@ -165,8 +165,8 @@ update function.
 
 ```ts
 export declare const modifyAt: {
-  <K, V>(key: K, f: (value: Option.Option<V>) => Option.Option<V>): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
-  <K, V>(self: MutableHashMap<K, V>, key: K, f: (value: Option.Option<V>) => Option.Option<V>): MutableHashMap<K, V>
+  <K, V>(key: K, f: (value: Option<V>) => Option<V>): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
+  <K, V>(self: MutableHashMap<K, V>, key: K, f: (value: Option<V>) => Option<V>): MutableHashMap<K, V>
 }
 ```
 

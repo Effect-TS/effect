@@ -436,7 +436,7 @@ Added in v1.0.0
 ```ts
 export declare const option: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>> : Option.Option<Unify<A>>
+) => [Pr] extends [never] ? (input: I) => Option<Unify<A>> : Option<Unify<A>>
 ```
 
 Added in v1.0.0

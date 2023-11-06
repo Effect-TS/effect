@@ -61,7 +61,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option.Option<Either<E, A>>>
+export declare const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option<Either<E, A>>>
 ```
 
 Added in v2.0.0

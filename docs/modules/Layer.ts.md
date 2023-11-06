@@ -681,7 +681,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Layer<never, never, never>
+export declare const setUnhandledErrorLogLevel: (level: Option<LogLevel>) => Layer<never, never, never>
 ```
 
 Added in v2.0.0

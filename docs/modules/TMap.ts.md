@@ -169,8 +169,8 @@ provided function to extract a value out of it.
 
 ```ts
 export declare const find: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, Option.Option<A>>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, Option.Option<A>>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, Option<A>>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, Option<A>>
 }
 ```
 
@@ -185,8 +185,8 @@ the provided function to extract values out them.
 
 ```ts
 export declare const findAll: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, A[]>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, A[]>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, A[]>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, A[]>
 }
 ```
 
@@ -201,8 +201,8 @@ the provided effectful function to extract values out of them..
 
 ```ts
 export declare const findAllSTM: {
-  <K, V, R, E, A>(pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): (self: TMap<K, V>) => STM.STM<R, E, A[]>
-  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): STM.STM<R, E, A[]>
+  <K, V, R, E, A>(pf: (key: K, value: V) => STM.STM<R, Option<E>, A>): (self: TMap<K, V>) => STM.STM<R, E, A[]>
+  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option<E>, A>): STM.STM<R, E, A[]>
 }
 ```
 
@@ -218,12 +218,12 @@ provided effectful function to extract a value out of it.
 ```ts
 export declare const findSTM: {
   <K, V, R, E, A>(
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ): (self: TMap<K, V>) => STM.STM<R, E, Option.Option<A>>
+    f: (key: K, value: V) => STM.STM<R, Option<E>, A>
+  ): (self: TMap<K, V>) => STM.STM<R, E, Option<A>>
   <K, V, R, E, A>(
     self: TMap<K, V>,
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ): STM.STM<R, E, Option.Option<A>>
+    f: (key: K, value: V) => STM.STM<R, Option<E>, A>
+  ): STM.STM<R, E, Option<A>>
 }
 ```
 
@@ -252,8 +252,8 @@ Retrieves value associated with given key.
 
 ```ts
 export declare const get: {
-  <K>(key: K): <V>(self: TMap<K, V>) => STM.STM<never, never, Option.Option<V>>
-  <K, V>(self: TMap<K, V>, key: K): STM.STM<never, never, Option.Option<V>>
+  <K>(key: K): <V>(self: TMap<K, V>) => STM.STM<never, never, Option<V>>
+  <K, V>(self: TMap<K, V>, key: K): STM.STM<never, never, Option<V>>
 }
 ```
 
@@ -564,8 +564,8 @@ Takes the first matching value, or retries until there is one.
 
 ```ts
 export declare const takeFirst: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, A>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, A>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, A>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, A>
 }
 ```
 
@@ -579,8 +579,8 @@ Takes the first matching value, or retries until there is one.
 
 ```ts
 export declare const takeFirstSTM: {
-  <K, V, R, E, A>(pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): (self: TMap<K, V>) => STM.STM<R, E, A>
-  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): STM.STM<R, E, A>
+  <K, V, R, E, A>(pf: (key: K, value: V) => STM.STM<R, Option<E>, A>): (self: TMap<K, V>) => STM.STM<R, E, A>
+  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option<E>, A>): STM.STM<R, E, A>
 }
 ```
 
@@ -594,8 +594,8 @@ Takes all matching values, or retries until there is at least one.
 
 ```ts
 export declare const takeSome: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, [A, ...A[]]>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, [A, ...A[]]>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, [A, ...A[]]>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, [A, ...A[]]>
 }
 ```
 
@@ -610,11 +610,11 @@ Takes all matching values, or retries until there is at least one.
 ```ts
 export declare const takeSomeSTM: {
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ): (self: TMap<K, V>) => STM.STM<R, E, [A, ...A[]]>
   <K, V, R, E, A>(
     self: TMap<K, V>,
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ): STM.STM<R, E, [A, ...A[]]>
 }
 ```
@@ -695,13 +695,13 @@ updated value or `None` if the value was removed from the map.
 export declare const updateWith: {
   <K, V>(
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
-  ): (self: TMap<K, V>) => STM.STM<never, never, Option.Option<V>>
+    f: (value: Option<V>) => Option<V>
+  ): (self: TMap<K, V>) => STM.STM<never, never, Option<V>>
   <K, V>(
     self: TMap<K, V>,
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
-  ): STM.STM<never, never, Option.Option<V>>
+    f: (value: Option<V>) => Option<V>
+  ): STM.STM<never, never, Option<V>>
 }
 ```
 

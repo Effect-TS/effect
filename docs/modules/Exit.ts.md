@@ -79,7 +79,7 @@ the provided iterable contains no elements, `None` will be returned.
 export declare const all: <E, A>(
   exits: Iterable<Exit<E, A>>,
   options?: { readonly parallel?: boolean } | undefined
-) => Option.Option<Exit<E, A[]>>
+) => Option<Exit<E, A[]>>
 ```
 
 Added in v2.0.0
@@ -179,7 +179,7 @@ Converts an `Option<A>` into an `Exit<void, A>`.
 **Signature**
 
 ```ts
-export declare const fromOption: <A>(option: Option.Option<A>) => Exit<void, A>
+export declare const fromOption: <A>(option: Option<A>) => Exit<void, A>
 ```
 
 Added in v2.0.0
@@ -255,7 +255,7 @@ otherwise.
 **Signature**
 
 ```ts
-export declare const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<E>>
+export declare const causeOption: <E, A>(self: Exit<E, A>) => Option<Cause.Cause<E>>
 ```
 
 Added in v2.0.0

@@ -99,7 +99,7 @@ Removes all `None` values from the specified list.
 **Signature**
 
 ```ts
-export declare const compact: <A>(self: List<Option.Option<A>>) => List<A>
+export declare const compact: <A>(self: List<Option<A>>) => List<A>
 ```
 
 Added in v2.0.0
@@ -143,8 +143,8 @@ function not being defined for some elements.
 
 ```ts
 export declare const filterMap: {
-  <A, B>(f: (a: A) => Option.Option<B>): (self: List<A>) => List<B>
-  <A, B>(self: List<A>, f: (a: A) => Option.Option<B>): List<B>
+  <A, B>(f: (a: A) => Option<B>): (self: List<A>) => List<B>
+  <A, B>(self: List<A>, f: (a: A) => Option<B>): List<B>
 }
 ```
 
@@ -482,10 +482,10 @@ predicate, or `None` if no such element exists.
 
 ```ts
 export declare const findFirst: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option.Option<B>
-  <A>(predicate: Predicate<A>): (self: List<A>) => Option.Option<A>
-  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option.Option<B>
-  <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option<B>
+  <A>(predicate: Predicate<A>): (self: List<A>) => Option<A>
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option<B>
+  <A>(self: List<A>, predicate: Predicate<A>): Option<A>
 }
 ```
 
@@ -574,7 +574,7 @@ empty.
 **Signature**
 
 ```ts
-export declare const head: <A>(self: List<A>) => Option.Option<A>
+export declare const head: <A>(self: List<A>) => Option<A>
 ```
 
 Added in v2.0.0
@@ -587,7 +587,7 @@ empty.
 **Signature**
 
 ```ts
-export declare const last: <A>(self: List<A>) => Option.Option<A>
+export declare const last: <A>(self: List<A>) => Option<A>
 ```
 
 Added in v2.0.0
@@ -611,7 +611,7 @@ Returns the tail of the specified list, or `None` if the list is empty.
 **Signature**
 
 ```ts
-export declare const tail: <A>(self: List<A>) => Option.Option<List<A>>
+export declare const tail: <A>(self: List<A>) => Option<List<A>>
 ```
 
 Added in v2.0.0

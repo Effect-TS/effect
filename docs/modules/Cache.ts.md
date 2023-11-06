@@ -187,13 +187,13 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect<never, Error, Option.Option<Value>>
+  getOption(key: Key): Effect<never, Error, Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect<never, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect<never, never, Option<Value>>
 
   /**
    * Returns statistics for this cache.
@@ -209,7 +209,7 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
   /**
    * Returns statistics for the specified entry.
    */
-  entryStats(key: Key): Effect<never, never, Option.Option<EntryStats>>
+  entryStats(key: Key): Effect<never, never, Option<EntryStats>>
 
   /**
    * Invalidates the value associated with the specified key.

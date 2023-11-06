@@ -146,7 +146,7 @@ Convert a `FiberId` into an `Option<FiberId>`.
 **Signature**
 
 ```ts
-export declare const toOption: (self: FiberId) => Option.Option<FiberId>
+export declare const toOption: (self: FiberId) => Option<FiberId>
 ```
 
 Added in v2.0.0

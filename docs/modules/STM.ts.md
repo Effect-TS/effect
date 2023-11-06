@@ -448,7 +448,7 @@ Lifts an `Option` into a `STM`.
 **Signature**
 
 ```ts
-export declare const fromOption: <A>(option: Option.Option<A>) => STM<never, Option.Option<never>, A>
+export declare const fromOption: <A>(option: Option<A>) => STM<never, Option<never>, A>
 ```
 
 Added in v2.0.0
@@ -699,7 +699,7 @@ Returns an effect with the empty value.
 **Signature**
 
 ```ts
-export declare const succeedNone: STM<never, never, Option.Option<never>>
+export declare const succeedNone: STM<never, never, Option<never>>
 ```
 
 Added in v2.0.0
@@ -711,7 +711,7 @@ Returns an effect with the optional value.
 **Signature**
 
 ```ts
-export declare const succeedSome: <A>(value: A) => STM<never, never, Option.Option<A>>
+export declare const succeedSome: <A>(value: A) => STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -1001,11 +1001,11 @@ Recovers from some or all of the error cases.
 ```ts
 export declare const catchSome: {
   <E, R2, E2, A2>(
-    pf: (error: E) => Option.Option<STM<R2, E2, A2>>
+    pf: (error: E) => Option<STM<R2, E2, A2>>
   ): <R, A>(self: STM<R, E, A>) => STM<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: STM<R, E, A>,
-    pf: (error: E) => Option.Option<STM<R2, E2, A2>>
+    pf: (error: E) => Option<STM<R2, E2, A2>>
   ): STM<R | R2, E | E2, A | A2>
 }
 ```
@@ -1167,12 +1167,12 @@ specified effect.
 ```ts
 export declare const orElseOptional: {
   <R2, E2, A2>(
-    that: LazyArg<STM<R2, Option.Option<E2>, A2>>
-  ): <R, E, A>(self: STM<R, Option.Option<E>, A>) => STM<R2 | R, Option.Option<E2 | E>, A2 | A>
+    that: LazyArg<STM<R2, Option<E2>, A2>>
+  ): <R, E, A>(self: STM<R, Option<E>, A>) => STM<R2 | R, Option<E2 | E>, A2 | A>
   <R, E, A, R2, E2, A2>(
-    self: STM<R, Option.Option<E>, A>,
-    that: LazyArg<STM<R2, Option.Option<E2>, A2>>
-  ): STM<R | R2, Option.Option<E | E2>, A | A2>
+    self: STM<R, Option<E>, A>,
+    that: LazyArg<STM<R2, Option<E2>, A2>>
+  ): STM<R | R2, Option<E | E2>, A | A2>
 }
 ```
 
@@ -1396,7 +1396,7 @@ non-empty or fails with the error `None` if the list is empty.
 **Signature**
 
 ```ts
-export declare const head: <R, E, A>(self: STM<R, E, Iterable<A>>) => STM<R, Option.Option<E>, A>
+export declare const head: <R, E, A>(self: STM<R, E, Iterable<A>>) => STM<R, Option<E>, A>
 ```
 
 Added in v2.0.0
@@ -1432,7 +1432,7 @@ Converts an option on values into an option on errors.
 **Signature**
 
 ```ts
-export declare const some: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, A>
+export declare const some: <R, E, A>(self: STM<R, E, Option<A>>) => STM<R, Option<E>, A>
 ```
 
 Added in v2.0.0
@@ -1444,7 +1444,7 @@ Converts an option on errors into an option on values.
 **Signature**
 
 ```ts
-export declare const unsome: <R, E, A>(self: STM<R, Option.Option<E>, A>) => STM<R, E, Option.Option<A>>
+export declare const unsome: <R, E, A>(self: STM<R, Option<E>, A>) => STM<R, E, Option<A>>
 ```
 
 Added in v2.0.0
@@ -1473,7 +1473,7 @@ Maps the success value of this effect to an optional value.
 **Signature**
 
 ```ts
-export declare const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>>
+export declare const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option<A>>
 ```
 
 Added in v2.0.0
@@ -1485,7 +1485,7 @@ Maps the error value of this effect to an optional value.
 **Signature**
 
 ```ts
-export declare const asSomeError: <R, E, A>(self: STM<R, E, A>) => STM<R, Option.Option<E>, A>
+export declare const asSomeError: <R, E, A>(self: STM<R, E, A>) => STM<R, Option<E>, A>
 ```
 
 Added in v2.0.0
@@ -1942,8 +1942,8 @@ Simultaneously filters and maps the value produced by this effect.
 
 ```ts
 export declare const collect: {
-  <A, A2>(pf: (a: A) => Option.Option<A2>): <R, E>(self: STM<R, E, A>) => STM<R, E, A2>
-  <R, E, A, A2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<A2>): STM<R, E, A2>
+  <A, A2>(pf: (a: A) => Option<A2>): <R, E>(self: STM<R, E, A>) => STM<R, E, A2>
+  <R, E, A, A2>(self: STM<R, E, A>, pf: (a: A) => Option<A2>): STM<R, E, A2>
 }
 ```
 
@@ -1957,8 +1957,8 @@ Simultaneously filters and maps the value produced by this effect.
 
 ```ts
 export declare const collectSTM: {
-  <A, R2, E2, A2>(pf: (a: A) => Option.Option<STM<R2, E2, A2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A2>
-  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<STM<R2, E2, A2>>): STM<R | R2, E | E2, A2>
+  <A, R2, E2, A2>(pf: (a: A) => Option<STM<R2, E2, A2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A2>
+  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, pf: (a: A) => Option<STM<R2, E2, A2>>): STM<R | R2, E | E2, A2>
 }
 ```
 
@@ -2075,7 +2075,7 @@ Requires the option produced by this value to be `None`.
 **Signature**
 
 ```ts
-export declare const none: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, void>
+export declare const none: <R, E, A>(self: STM<R, E, Option<A>>) => STM<R, Option<E>, void>
 ```
 
 Added in v2.0.0
@@ -2087,7 +2087,7 @@ Converts the failure channel into an `Option`.
 **Signature**
 
 ```ts
-export declare const option: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Option.Option<A>>
+export declare const option: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -2100,8 +2100,8 @@ Keeps some of the errors, and terminates the fiber with the rest.
 
 ```ts
 export declare const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
-  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option.Option<E2>): STM<R, E2, A>
+  <E, E2>(pf: (error: E) => Option<E2>): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
+  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option<E2>): STM<R, E2, A>
 }
 ```
 
@@ -2116,8 +2116,8 @@ specified function to convert the `E` into a `Throwable`.
 
 ```ts
 export declare const refineOrDieWith: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
-  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): STM<R, E2, A>
+  <E, E2>(pf: (error: E) => Option<E2>, f: (error: E) => unknown): <R, A>(self: STM<R, E, A>) => STM<R, E2, A>
+  <R, A, E, E2>(self: STM<R, E, A>, pf: (error: E) => Option<E2>, f: (error: E) => unknown): STM<R, E2, A>
 }
 ```
 
@@ -2132,8 +2132,8 @@ continue with our held value.
 
 ```ts
 export declare const reject: {
-  <A, E2>(pf: (a: A) => Option.Option<E2>): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, A>
-  <R, E, A, E2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<E2>): STM<R, E | E2, A>
+  <A, E2>(pf: (a: A) => Option<E2>): <R, E>(self: STM<R, E, A>) => STM<R, E2 | E, A>
+  <R, E, A, E2>(self: STM<R, E, A>, pf: (a: A) => Option<E2>): STM<R, E | E2, A>
 }
 ```
 
@@ -2149,8 +2149,8 @@ with our held value.
 
 ```ts
 export declare const rejectSTM: {
-  <A, R2, E2>(pf: (a: A) => Option.Option<STM<R2, E2, E2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2>(self: STM<R, E, A>, pf: (a: A) => Option.Option<STM<R2, E2, E2>>): STM<R | R2, E | E2, A>
+  <A, R2, E2>(pf: (a: A) => Option<STM<R2, E2, E2>>): <R, E>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2>(self: STM<R, E, A>, pf: (a: A) => Option<STM<R2, E2, E2>>): STM<R | R2, E | E2, A>
 }
 ```
 
@@ -2271,8 +2271,8 @@ The moral equivalent of `if (!p) exp`
 
 ```ts
 export declare const unless: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>>
-  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option<A>>
+  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option<A>>
 }
 ```
 
@@ -2286,8 +2286,8 @@ The moral equivalent of `if (!p) exp` when `p` has side-effects
 
 ```ts
 export declare const unlessSTM: {
-  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option.Option<A>>
-  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option.Option<A>>
+  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option<A>>
+  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option<A>>
 }
 ```
 
@@ -2336,8 +2336,8 @@ The moral equivalent of `if (p) exp`.
 
 ```ts
 export declare const when: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>>
-  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option<A>>
+  <R, E, A>(self: STM<R, E, A>, predicate: LazyArg<boolean>): STM<R, E, Option<A>>
 }
 ```
 
@@ -2351,8 +2351,8 @@ The moral equivalent of `if (p) exp` when `p` has side-effects.
 
 ```ts
 export declare const whenSTM: {
-  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option.Option<A>>
-  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option.Option<A>>
+  <R2, E2>(predicate: STM<R2, E2, boolean>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2 | E, Option<A>>
+  <R, E, A, R2, E2>(self: STM<R, E, A>, predicate: STM<R2, E2, boolean>): STM<R | R2, E | E2, Option<A>>
 }
 ```
 

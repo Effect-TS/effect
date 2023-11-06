@@ -33,7 +33,7 @@ with an end of stream signal.
 
 ```ts
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
-  (f: Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
+  (f: Effect<R, Option<E>, Chunk.Chunk<A>>): Promise<B>
 }
 ```
 

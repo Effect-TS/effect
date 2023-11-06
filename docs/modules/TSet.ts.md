@@ -399,8 +399,8 @@ Takes the first matching value, or retries until there is one.
 
 ```ts
 export declare const takeFirst: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, B>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, B>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM.STM<never, never, B>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM.STM<never, never, B>
 }
 ```
 
@@ -414,8 +414,8 @@ Takes the first matching value, or retries until there is one.
 
 ```ts
 export declare const takeFirstSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, B>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, B>
+  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, B>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option<E>, B>): STM.STM<R, E, B>
 }
 ```
 
@@ -429,8 +429,8 @@ Takes all matching values, or retries until there is at least one.
 
 ```ts
 export declare const takeSome: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, [B, ...B[]]>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, [B, ...B[]]>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM.STM<never, never, [B, ...B[]]>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM.STM<never, never, [B, ...B[]]>
 }
 ```
 
@@ -444,8 +444,8 @@ Takes all matching values, or retries until there is at least one.
 
 ```ts
 export declare const takeSomeSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, [B, ...B[]]>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, [B, ...B[]]>
+  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, [B, ...B[]]>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option<E>, B>): STM.STM<R, E, [B, ...B[]]>
 }
 ```
 

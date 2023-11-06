@@ -41,7 +41,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const PullAfterAllEnqueued: <A>(emitSeparator: Option.Option<A>) => UpstreamPullStrategy<A>
+export declare const PullAfterAllEnqueued: <A>(emitSeparator: Option<A>) => UpstreamPullStrategy<A>
 ```
 
 Added in v2.0.0
@@ -51,7 +51,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const PullAfterNext: <A>(emitSeparator: Option.Option<A>) => UpstreamPullStrategy<A>
+export declare const PullAfterNext: <A>(emitSeparator: Option<A>) => UpstreamPullStrategy<A>
 ```
 
 Added in v2.0.0
@@ -67,14 +67,14 @@ Folds an `UpstreamPullStrategy<A>` into a value of type `Z`.
 ```ts
 export declare const match: {
   <A, Z>(options: {
-    readonly onNext: (emitSeparator: Option.Option<A>) => Z
-    readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
+    readonly onNext: (emitSeparator: Option<A>) => Z
+    readonly onAllEnqueued: (emitSeparator: Option<A>) => Z
   }): (self: UpstreamPullStrategy<A>) => Z
   <A, Z>(
     self: UpstreamPullStrategy<A>,
     options: {
-      readonly onNext: (emitSeparator: Option.Option<A>) => Z
-      readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
+      readonly onNext: (emitSeparator: Option<A>) => Z
+      readonly onAllEnqueued: (emitSeparator: Option<A>) => Z
     }
   ): Z
 }
@@ -91,7 +91,7 @@ Added in v2.0.0
 ```ts
 export interface PullAfterAllEnqueued<A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterAllEnqueued"
-  readonly emitSeparator: Option.Option<A>
+  readonly emitSeparator: Option<A>
 }
 ```
 
@@ -104,7 +104,7 @@ Added in v2.0.0
 ```ts
 export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterNext"
-  readonly emitSeparator: Option.Option<A>
+  readonly emitSeparator: Option<A>
 }
 ```
 
