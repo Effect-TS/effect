@@ -16,7 +16,7 @@ export type TExitTypeId = typeof TExitTypeId
 
 export * as TExit from "./tExit.js"
 
-declare module "./TExit.js" {
+declare module "./tExit.js" {
   /** @internal */
   export type TExit<E, A> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
 
