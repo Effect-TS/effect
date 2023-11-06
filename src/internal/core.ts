@@ -710,24 +710,41 @@ export const flatMap = dual<
 /* @internal */
 export const andThen = dual<
   {
-    <A, R1, E1, A1>(
-      f: (a: A) => Effect.Effect<R1, E1, A1>
-    ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, A1>
-    <R1, E1, A1>(
-      f: Effect.Effect<R1, E1, A1>
-    ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, A1>
+    <A, X>(
+      f: (a: A) => X
+    ): <R, E>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
+    <X>(
+      f: X
+    ): <R, E, A>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
   },
   {
-    <A, R1, E1, A1, R, E>(
+    <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
-      f: (a: A) => Effect.Effect<R1, E1, A1>
-    ): Effect.Effect<R | R1, E | E1, A1>
-    <A, R1, E1, A1, R, E>(
+      f: (a: A) => X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
+    <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
-      f: Effect.Effect<R1, E1, A1>
-    ): Effect.Effect<R | R1, E | E1, A1>
+      f: X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
   }
->(2, (self, f) => isEffect(f) ? zipRight(self, f) : flatMap(self, f))
+>(2, (self, f) =>
+  typeof f === "function" ?
+    flatMap(self, (a) => {
+      const b = (f as any)(a)
+      if (isEffect(b)) {
+        return b
+      }
+      return succeed(b)
+    }) :
+    zipRight(self, isEffect(f) ? f : succeed(f)))
 
 /* @internal */
 export const step = <R, E, A>(

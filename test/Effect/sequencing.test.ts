@@ -18,10 +18,18 @@ describe.concurrent("Effect", () => {
       const a1 = Effect.succeed(0).pipe(Effect.andThen(Effect.succeed(1)))
       const a2 = Effect.andThen(Effect.succeed(0), (n) => Effect.succeed(n + 1))
       const a3 = Effect.succeed(0).pipe(Effect.andThen((n) => Effect.succeed(n + 1)))
+      const a4 = Effect.succeed(0).pipe(Effect.andThen("ok"))
+      const a5 = Effect.succeed(0).pipe(Effect.andThen(() => "ok"))
+      const a6 = Effect.andThen(Effect.succeed(0), () => "ok")
+      const a7 = Effect.andThen(Effect.succeed(0), "ok")
       assert.strictEqual(yield* $(a0), 1)
       assert.strictEqual(yield* $(a1), 1)
       assert.strictEqual(yield* $(a2), 1)
       assert.strictEqual(yield* $(a3), 1)
+      assert.strictEqual(yield* $(a4), "ok")
+      assert.strictEqual(yield* $(a5), "ok")
+      assert.strictEqual(yield* $(a6), "ok")
+      assert.strictEqual(yield* $(a7), "ok")
     }))
   it.effect("flattens nested effects", () =>
     Effect.gen(function*($) {

@@ -3552,20 +3552,24 @@ export const flatMap: {
  * @category sequencing
  */
 export const andThen: {
-  <A, R1, E1, A1>(
-    f: (a: A) => Effect<R1, E1, A1>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, A1>
-  <R1, E1, A1>(
-    f: Effect<R1, E1, A1>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, A1>
-  <A, R1, E1, A1, R, E>(
+  <A, X>(
+    f: (a: A) => X
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <X>(
+    f: X
+  ): <R, E, A>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: A) => Effect<R1, E1, A1>
-  ): Effect<R | R1, E | E1, A1>
-  <A, R1, E1, A1, R, E>(
+    f: (a: A) => X
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: Effect<R1, E1, A1>
-  ): Effect<R | R1, E | E1, A1>
+    f: X
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
 } = core.andThen
 
 /**
