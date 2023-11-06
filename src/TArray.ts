@@ -20,31 +20,35 @@ export const TArrayTypeId: unique symbol = internal.TArrayTypeId
  */
 export type TArrayTypeId = typeof TArrayTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TArray<A> extends TArray.Variance<A> {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TArray<A> {
-  /** @internal */
-  readonly chunk: Array<TRef<A>>
-}
+export * as TArray from "./TArray.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace TArray {
+declare module "./TArray.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [TArrayTypeId]: {
-      readonly _A: (_: never) => A
+  export interface TArray<A> extends TArray.Variance<A> {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TArray<A> {
+    /** @internal */
+    readonly chunk: Array<TRef<A>>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TArray {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [TArrayTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

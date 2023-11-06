@@ -5,7 +5,7 @@
 import type { Equal } from "./Equal.js"
 import type { HashSet } from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
-import { HM } from "./internal/hashMap.js"
+import * as HM from "./internal/hashMap.js"
 import * as _keySet from "./internal/hashMap/keySet.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"

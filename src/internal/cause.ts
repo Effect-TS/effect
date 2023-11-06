@@ -11,7 +11,7 @@ import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isFunction, type Predicate } from "../Predicate.js"
 import { ReadonlyArray } from "../ReadonlyArray.js"
-import { OpCodes } from "./opCodes/cause.js"
+import * as OpCodes from "./opCodes/cause.js"
 
 import type { ParentSpan, Span } from "../Tracer.js"
 
@@ -143,8 +143,7 @@ export const isDieType = <E>(self: Cause<E>): self is Cause.Die => self._tag ===
 export const isInterruptType = <E>(self: Cause<E>): self is Cause.Interrupt => self._tag === OpCodes.OP_INTERRUPT
 
 /** @internal */
-export const isSequentialType = <E>(self: Cause<E>): self is Cause.Sequential<E> =>
-  self._tag === OpCodes.OP_SEQUENTIAL
+export const isSequentialType = <E>(self: Cause<E>): self is Cause.Sequential<E> => self._tag === OpCodes.OP_SEQUENTIAL
 
 /** @internal */
 export const isParallelType = <E>(self: Cause<E>): self is Cause.Parallel<E> => self._tag === OpCodes.OP_PARALLEL

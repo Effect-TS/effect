@@ -24,37 +24,41 @@ export const DeferredTypeId: unique symbol = internal.DeferredTypeId
  */
 export type DeferredTypeId = typeof DeferredTypeId
 
-/**
- * A `Deferred` represents an asynchronous variable that can be set exactly
- * once, with the ability for an arbitrary number of fibers to suspend (by
- * calling `Deferred.await`) and automatically resume when the variable is set.
- *
- * `Deferred` can be used for building primitive actions whose completions
- * require the coordinated action of multiple fibers, and for building
- * higher-level concurrent or asynchronous structures.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
-  /** @internal */
-  readonly state: MutableRef<internal.State<E, A>>
-  /** @internal */
-  readonly blockingOn: FiberId
-}
+export * as Deferred from "./Deferred.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Deferred {
+declare module "./Deferred.js" {
   /**
+   * A `Deferred` represents an asynchronous variable that can be set exactly
+   * once, with the ability for an arbitrary number of fibers to suspend (by
+   * calling `Deferred.await`) and automatically resume when the variable is set.
+   *
+   * `Deferred` can be used for building primitive actions whose completions
+   * require the coordinated action of multiple fibers, and for building
+   * higher-level concurrent or asynchronous structures.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
-    readonly [DeferredTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+  export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
+    /** @internal */
+    readonly state: MutableRef<internal.State<E, A>>
+    /** @internal */
+    readonly blockingOn: FiberId
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Deferred {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E, A> {
+      readonly [DeferredTypeId]: {
+        readonly _E: (_: never) => E
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

@@ -8,7 +8,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { PubSub } from "./PubSub.js"
 import { Ref } from "./Ref.js"
 import type { Stream } from "./Stream.js"
-import { Synchronized } from "./SynchronizedRef.js"
+import { SynchronizedRef } from "./SynchronizedRef.js"
 
 /**
  * @since 2.0.0
@@ -22,38 +22,42 @@ export const SubscriptionRefTypeId: unique symbol = internal.SubscriptionRefType
  */
 export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
 
-/**
- * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
- * receive the current value as well as all changes to the value.
- *
- * @since 2.0.0
- * @category models
- */
-export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable {
-  /** @internal */
-  readonly ref: Ref<A>
-  /** @internal */
-  readonly pubsub: PubSub<A>
-  /** @internal */
-  readonly semaphore: Effect.Semaphore
-  /**
-   * A stream containing the current value of the `Ref` as well as all changes
-   * to that value.
-   */
-  readonly changes: Stream<never, never, A>
-}
+export * as SubscriptionRef from "./SubscriptionRef.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace SubscriptionRef {
+declare module "./SubscriptionRef.js" {
   /**
+   * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
+   * receive the current value as well as all changes to the value.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [SubscriptionRefTypeId]: {
-      readonly _A: (_: never) => A
+  export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, SynchronizedRef<A>, Pipeable {
+    /** @internal */
+    readonly ref: Ref<A>
+    /** @internal */
+    readonly pubsub: PubSub<A>
+    /** @internal */
+    readonly semaphore: Effect.Semaphore
+    /**
+     * A stream containing the current value of the `Ref` as well as all changes
+     * to that value.
+     */
+    readonly changes: Stream<never, never, A>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace SubscriptionRef {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [SubscriptionRefTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }
@@ -89,7 +93,7 @@ export const getAndUpdate: {
 export const getAndUpdateEffect: {
   <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect<R, E, A>
   <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, A>
-} = Synchronized.getAndUpdateEffect
+} = SynchronizedRef.getAndUpdateEffect
 
 /**
  * @since 2.0.0
@@ -112,7 +116,7 @@ export const getAndUpdateSomeEffect: {
     self: SubscriptionRef<A>,
     pf: (a: A) => Option<Effect<R, E, A>>
   ): Effect<R, E, A>
-} = Synchronized.getAndUpdateSomeEffect
+} = SynchronizedRef.getAndUpdateSomeEffect
 
 /**
  * Creates a new `SubscriptionRef` with the specified value.
@@ -170,7 +174,7 @@ export const modifySomeEffect: {
     fallback: B,
     pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
   ): Effect<R, E, B>
-} = Synchronized.modifySomeEffect
+} = SynchronizedRef.modifySomeEffect
 
 /**
  * @since 2.0.0
@@ -206,7 +210,7 @@ export const update: {
 export const updateEffect: {
   <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect<R, E, void>
   <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, void>
-} = Synchronized.updateEffect
+} = SynchronizedRef.updateEffect
 
 /**
  * @since 2.0.0
@@ -224,7 +228,7 @@ export const updateAndGet: {
 export const updateAndGetEffect: {
   <A, R, E>(f: (a: A) => Effect<R, E, A>): (self: SubscriptionRef<A>) => Effect<R, E, A>
   <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect<R, E, A>): Effect<R, E, A>
-} = Synchronized.updateAndGetEffect
+} = SynchronizedRef.updateAndGetEffect
 
 /**
  * @since 2.0.0
@@ -247,7 +251,7 @@ export const updateSomeEffect: {
     self: SubscriptionRef<A>,
     pf: (a: A) => Option<Effect<R, E, A>>
   ): Effect<R, E, void>
-} = Synchronized.updateSomeEffect
+} = SynchronizedRef.updateSomeEffect
 
 /**
  * @since 2.0.0
@@ -270,4 +274,4 @@ export const updateSomeAndGetEffect: {
     self: SubscriptionRef<A>,
     pf: (a: A) => Option<Effect<R, E, A>>
   ): Effect<R, E, A>
-} = Synchronized.updateSomeAndGetEffect
+} = SynchronizedRef.updateSomeAndGetEffect

@@ -4,7 +4,7 @@
 
 import type { Equal } from "./Equal.js"
 import type { Inspectable } from "./Inspectable.js"
-import { HS } from "./internal/hashSet.js"
+import * as HS from "./internal/hashSet.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 

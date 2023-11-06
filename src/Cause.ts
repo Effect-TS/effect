@@ -105,37 +105,41 @@ export const InvalidPubSubCapacityExceptionTypeId: unique symbol = internal.Inva
  */
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
-/**
- * A `Cause` represents the full history of a failure resulting from running an
- * `Effect` workflow.
- *
- * Effect-TS uses a data structure from functional programming called a semiring
- * to represent the `Cause` data type. This allows us to take a base type `E`
- * (which represents the error type of an `Effect`) and capture the sequential
- * and parallel composition of errors in a fully lossless fashion.
- *
- * @since 2.0.0
- * @category models
- */
-export type Cause<E> =
-  | Empty
-  | Fail<E>
-  | Die
-  | Interrupt
-  | Sequential<E>
-  | Parallel<E>
+export * as Cause from "./Cause.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Cause {
+declare module "./Cause.js" {
   /**
+   * A `Cause` represents the full history of a failure resulting from running an
+   * `Effect` workflow.
+   *
+   * Effect-TS uses a data structure from functional programming called a semiring
+   * to represent the `Cause` data type. This allows us to take a base type `E`
+   * (which represents the error type of an `Effect`) and capture the sequential
+   * and parallel composition of errors in a fully lossless fashion.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E> {
-    readonly [CauseTypeId]: {
-      readonly _E: (_: never) => E
+  export type Cause<E> =
+    | Empty
+    | Fail<E>
+    | Die
+    | Interrupt
+    | Sequential<E>
+    | Parallel<E>
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Cause {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E> {
+      readonly [CauseTypeId]: {
+        readonly _E: (_: never) => E
+      }
     }
   }
 }

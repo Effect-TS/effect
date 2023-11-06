@@ -19,32 +19,36 @@ export const TDeferredTypeId: unique symbol = internal.TDeferredTypeId
  */
 export type TDeferredTypeId = typeof TDeferredTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TDeferred<E, A> extends TDeferred.Variance<E, A> {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TDeferred<E, A> {
-  /** @internal */
-  readonly ref: TRef<Option<Either<E, A>>>
-}
+export * as TDeferred from "./TDeferred.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace TDeferred {
+declare module "./TDeferred.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
-    readonly [TDeferredTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+  export interface TDeferred<E, A> extends TDeferred.Variance<E, A> {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TDeferred<E, A> {
+    /** @internal */
+    readonly ref: TRef<Option<Either<E, A>>>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TDeferred {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E, A> {
+      readonly [TDeferredTypeId]: {
+        readonly _E: (_: never) => E
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

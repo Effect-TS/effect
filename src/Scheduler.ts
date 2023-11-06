@@ -16,13 +16,17 @@ import * as timeout from "./internal/timeout.js"
  */
 export type Task = () => void
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Scheduler {
-  shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
-  scheduleTask(task: Task, priority: number): void
+export * as Scheduler from "./Scheduler.js"
+
+declare module "./Scheduler.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Scheduler {
+    shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
+    scheduleTask(task: Task, priority: number): void
+  }
 }
 
 /**

@@ -30,7 +30,7 @@ import { Option } from "./Option.js"
 import { Order } from "./Order.js"
 import type { Ref } from "./Ref.js"
 import type { SortedSet } from "./SortedSet.js"
-import type { Synchronized } from "./SynchronizedRef.js"
+import type { SynchronizedRef } from "./SynchronizedRef.js"
 import { Annotations } from "./TestAnnotations.js"
 import { Live } from "./TestLive.js"
 
@@ -142,8 +142,8 @@ export class TestClockImpl implements TestClock {
     readonly clockState: Ref<Data>,
     readonly live: Live.TestLive,
     readonly annotations: Annotations.TestAnnotations,
-    readonly warningState: Synchronized.SynchronizedRef<WarningData>,
-    readonly suspendedWarningState: Synchronized.SynchronizedRef<SuspendedWarningData>
+    readonly warningState: SynchronizedRef<WarningData>,
+    readonly suspendedWarningState: SynchronizedRef<SuspendedWarningData>
   ) {
     this.currentTimeMillis = core.map(
       ref.get(this.clockState),

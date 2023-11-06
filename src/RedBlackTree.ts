@@ -4,8 +4,8 @@
 import type { Chunk } from "./Chunk.js"
 import type { Equal } from "./Equal.js"
 import type { Inspectable } from "./Inspectable.js"
-import { RBT } from "./internal/redBlackTree.js"
-import { RBTI } from "./internal/redBlackTree/iterator.js"
+import * as RBT from "./internal/redBlackTree.js"
+import * as RBTI from "./internal/redBlackTree/iterator.js"
 import type { Option } from "./Option.js"
 import type { Order } from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -24,25 +24,29 @@ export type TypeId = typeof TypeId
  */
 export const Direction = RBTI.Direction
 
-/**
- * A Red-Black Tree.
- *
- * @since 2.0.0
- * @category models
- */
-export interface RedBlackTree<Key, Value> extends Iterable<readonly [Key, Value]>, Equal, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
-}
+export * as RedBlackTree from "./RedBlackTree.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace RedBlackTree {
+declare module "./RedBlackTree.js" {
+  /**
+   * A Red-Black Tree.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface RedBlackTree<Key, Value> extends Iterable<readonly [Key, Value]>, Equal, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+  }
+
   /**
    * @since 2.0.0
    */
-  export type Direction = number & {
-    readonly Direction: unique symbol
+  export namespace RedBlackTree {
+    /**
+     * @since 2.0.0
+     */
+    export type Direction = number & {
+      readonly Direction: unique symbol
+    }
   }
 }
 
