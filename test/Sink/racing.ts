@@ -24,7 +24,7 @@ const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>
   )
 
 const sinkRaceLaw = <E, A, L>(
-  stream: Stream.Stream<never, never, A>,
+  stream: Stream<never, never, A>,
   sink1: Sink.Sink<never, E, A, L, A>,
   sink2: Sink.Sink<never, E, A, L, A>
 ): Effect<never, never, boolean> =>

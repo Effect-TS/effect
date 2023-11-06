@@ -25,7 +25,7 @@ const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>
   )
 
 const zipParLaw = <A, B, C, E>(
-  stream: Stream.Stream<never, never, A>,
+  stream: Stream<never, never, A>,
   sink1: Sink.Sink<never, E, A, A, B>,
   sink2: Sink.Sink<never, E, A, A, C>
 ): Effect<never, never, boolean> =>

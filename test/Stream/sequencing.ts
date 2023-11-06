@@ -67,7 +67,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("flatMap - deep flatMap stack safety", () =>
     Effect.gen(function*($) {
-      const fib = (n: number): Stream.Stream<never, never, number> =>
+      const fib = (n: number): Stream<never, never, number> =>
         n <= 1 ?
           Stream.succeed(n) :
           pipe(

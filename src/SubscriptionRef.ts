@@ -40,7 +40,7 @@ export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchro
    * A stream containing the current value of the `Ref` as well as all changes
    * to that value.
    */
-  readonly changes: Stream.Stream<never, never, A>
+  readonly changes: Stream<never, never, A>
 }
 
 /**
