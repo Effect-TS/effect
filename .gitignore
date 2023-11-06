@@ -4,5 +4,6 @@ node_modules/
 .DS_Store
 tmp/
 dist/
+build/
 docs/examples/
 .direnv/
