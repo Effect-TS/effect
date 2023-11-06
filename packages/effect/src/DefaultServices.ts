@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Clock from "./Clock"
-import type * as ConfigProvider from "./ConfigProvider"
-import type * as Console from "./Console"
-import type * as Context from "./Context"
-import type * as FiberRef from "./FiberRef"
-import * as internal from "./internal/defaultServices"
-import type * as Random from "./Random"
-import type * as Tracer from "./Tracer"
+import type * as Clock from "./Clock.js"
+import type * as ConfigProvider from "./ConfigProvider.js"
+import type * as Console from "./Console.js"
+import type * as Context from "./Context.js"
+import type * as FiberRef from "./FiberRef.js"
+import * as internal from "./internal/defaultServices.js"
+import type * as Random from "./Random.js"
+import type * as Tracer from "./Tracer.js"
 
 /**
  * @since 2.0.0

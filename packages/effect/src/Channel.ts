@@ -1,36 +1,36 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as ChildExecutorDecision from "./ChannelChildExecutorDecision"
-import type * as MergeDecision from "./ChannelMergeDecision"
-import type * as MergeStrategy from "./ChannelMergeStrategy"
-import type * as SingleProducerAsyncInput from "./ChannelSingleProducerAsyncInput"
-import type * as UpstreamPullRequest from "./ChannelUpstreamPullRequest"
-import type * as UpstreamPullStrategy from "./ChannelUpstreamPullStrategy"
-import type * as Chunk from "./Chunk"
-import type * as Context from "./Context"
-import type * as Deferred from "./Deferred"
-import type * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as Exit from "./Exit"
-import type { LazyArg } from "./Function"
-import * as channel from "./internal/channel"
-import * as core from "./internal/core-stream"
-import * as sink from "./internal/sink"
-import * as stream from "./internal/stream"
-import type * as Layer from "./Layer"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate } from "./Predicate"
-import type * as PubSub from "./PubSub"
-import type * as Queue from "./Queue"
-import type * as Ref from "./Ref"
-import type * as Scope from "./Scope"
-import type * as Sink from "./Sink"
-import type * as Stream from "./Stream"
-import type * as Tracer from "./Tracer"
-import type * as Unify from "./Unify"
+import type * as Cause from "./Cause.js"
+import type * as ChildExecutorDecision from "./ChildExecutorDecision.js"
+import type * as Chunk from "./Chunk.js"
+import type * as Context from "./Context.js"
+import type * as Deferred from "./Deferred.js"
+import type * as Effect from "./Effect.js"
+import type * as Either from "./Either.js"
+import type * as Exit from "./Exit.js"
+import type { LazyArg } from "./Function.js"
+import * as channel from "./internal/channel.js"
+import * as core from "./internal/core-stream.js"
+import * as sink from "./internal/sink.js"
+import * as stream from "./internal/stream.js"
+import type * as Layer from "./Layer.js"
+import type * as MergeDecision from "./MergeDecision.js"
+import type * as MergeStrategy from "./MergeStrategy.js"
+import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { Predicate } from "./Predicate.js"
+import type * as PubSub from "./PubSub.js"
+import type * as Queue from "./Queue.js"
+import type * as Ref from "./Ref.js"
+import type * as Scope from "./Scope.js"
+import type * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
+import type * as Sink from "./Sink.js"
+import type * as Stream from "./Stream.js"
+import type * as Tracer from "./Tracer.js"
+import type * as Unify from "./Unify.js"
+import type * as UpstreamPullRequest from "./UpstreamPullRequest.js"
+import type * as UpstreamPullStrategy from "./UpstreamPullStrategy.js"
 
 /**
  * @since 2.0.0
@@ -109,7 +109,7 @@ export interface ChannelUnifyBlacklist extends Effect.EffectUnifyBlacklist {
  * @since 2.0.0
  * @category models
  */
-declare module "./Effect" {
+declare module "./Effect.js" {
   interface Effect<R, E, A> extends Channel<R, unknown, unknown, unknown, E, never, A> {}
   interface EffectUnifyBlacklist {
     Channel?: true

@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Effect from "./Effect"
-import * as defaultServices from "./internal/defaultServices"
-import * as internal from "./internal/random"
+import type * as Chunk from "./Chunk.js"
+import type * as Effect from "./Effect.js"
+import * as defaultServices from "./internal/defaultServices.js"
+import * as internal from "./internal/random.js"
 
 /**
  * @since 2.0.0

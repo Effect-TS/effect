@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type { LazyArg } from "./Function"
-import * as internal from "./internal/executionStrategy"
+import type { LazyArg } from "./Function.js"
+import * as internal from "./internal/executionStrategy.js"
 
 /**
  * Describes a strategy for evaluating multiple effects, potentially in

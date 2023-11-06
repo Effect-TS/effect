@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/stm/tSet"
-import type * as Option from "./Option"
-import type { Predicate } from "./Predicate"
-import type * as STM from "./STM"
-import type * as TMap from "./TMap"
+import type * as HashSet from "./HashSet.js"
+import * as internal from "./internal/stm/tSet.js"
+import type * as Option from "./Option.js"
+import type { Predicate } from "./Predicate.js"
+import type * as STM from "./STM.js"
+import type * as TMap from "./TMap.js"
 
 /**
  * @since 2.0.0

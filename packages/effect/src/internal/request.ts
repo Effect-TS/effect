@@ -1,10 +1,10 @@
-import type * as Effect from "../Effect"
-import { dual } from "../Function"
-import * as completedRequestMap from "../internal/completedRequestMap"
-import * as core from "../internal/core"
-import { hasProperty } from "../Predicate"
-import type * as Request from "../Request"
-import * as Data from "./Data"
+import type * as Effect from "../Effect.js"
+import { dual } from "../Function.js"
+import { hasProperty } from "../Predicate.js"
+import type * as Request from "../Request.js"
+import * as completedRequestMap from "./completedRequestMap.js"
+import * as core from "./core.js"
+import * as Data from "./data.js"
 
 /** @internal */
 const RequestSymbolKey = "effect/Request"

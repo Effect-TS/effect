@@ -1,6 +1,6 @@
-import type * as Deferred from "../Deferred"
-import type * as Effect from "../Effect"
-import * as OpCodes from "../internal/opCodes/deferred"
+import type * as Deferred from "../Deferred.js"
+import type * as Effect from "../Effect.js"
+import * as OpCodes from "./opCodes/deferred.js"
 
 /** @internal */
 const DeferredSymbolKey = "effect/Deferred"

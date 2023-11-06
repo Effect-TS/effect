@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as DefaultServices from "./DefaultServices"
-import { pipe } from "./Function"
-import * as defaultServices from "./internal/defaultServices"
-import * as layer from "./internal/layer"
-import type * as Layer from "./Layer"
-import * as TestClock from "./TestClock"
-import * as TestServices from "./TestServices"
+import type * as DefaultServices from "./DefaultServices.js"
+import { pipe } from "./Function.js"
+import * as defaultServices from "./internal/defaultServices.js"
+import * as layer from "./internal/layer.js"
+import type * as Layer from "./Layer.js"
+import * as TestClock from "./TestClock.js"
+import * as TestServices from "./TestServices.js"
 
 /** @internal */
 export const live: Layer.Layer<DefaultServices.DefaultServices, never, TestServices.TestServices> = pipe(

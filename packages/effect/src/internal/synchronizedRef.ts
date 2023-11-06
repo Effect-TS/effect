@@ -1,9 +1,9 @@
-import type * as Effect from "../Effect"
-import { dual, pipe } from "../Function"
-import * as core from "../internal/core"
-import * as _ref from "../internal/ref"
-import * as Option from "../Option"
-import type * as Synchronized from "../SynchronizedRef"
+import type * as Effect from "../Effect.js"
+import { dual, pipe } from "../Function.js"
+import * as Option from "../Option.js"
+import type * as Synchronized from "../SynchronizedRef.js"
+import * as core from "./core.js"
+import * as _ref from "./ref.js"
 
 /** @internal */
 export const getAndUpdateEffect = dual<

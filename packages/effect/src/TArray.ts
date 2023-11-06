@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/stm/tArray"
-import type * as Option from "./Option"
-import type * as Order from "./Order"
-import type { Predicate } from "./Predicate"
-import type * as STM from "./STM"
-import type * as TRef from "./TRef"
+import * as internal from "./internal/stm/tArray.js"
+import type * as Option from "./Option.js"
+import type * as Order from "./Order.js"
+import type { Predicate } from "./Predicate.js"
+import type * as STM from "./STM.js"
+import type * as TRef from "./TRef.js"
 
 /**
  * @since 2.0.0

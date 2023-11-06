@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type { Equivalence } from "./Equivalence"
-import * as Hash from "./Hash"
-import { hasProperty } from "./Predicate"
+import type { Equivalence } from "./Equivalence.js"
+import * as Hash from "./Hash.js"
+import { hasProperty } from "./Predicate.js"
 
 /**
  * @since 2.0.0

@@ -1,6 +1,6 @@
-import { dual } from "../Function"
-import type * as RuntimeFlags from "../RuntimeFlags"
-import type * as RuntimeFlagsPatch from "../RuntimeFlagsPatch"
+import { dual } from "../Function.js"
+import type * as RuntimeFlags from "../RuntimeFlags.js"
+import type * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
 
 /** @internal */
 const BIT_MASK = 0xff

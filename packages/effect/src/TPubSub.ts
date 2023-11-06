@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import type * as HashSet from "./HashSet"
-import * as internal from "./internal/stm/tPubSub"
-import type * as tQueue from "./internal/stm/tQueue"
-import type * as Scope from "./Scope"
-import type * as STM from "./STM"
-import type * as TQueue from "./TQueue"
-import type * as TRef from "./TRef"
+import type * as Effect from "./Effect.js"
+import type * as HashSet from "./HashSet.js"
+import * as internal from "./internal/stm/tPubSub.js"
+import type * as tQueue from "./internal/stm/tQueue.js"
+import type * as Scope from "./Scope.js"
+import type * as STM from "./STM.js"
+import type * as TQueue from "./TQueue.js"
+import type * as TRef from "./TRef.js"
 
 /**
  * @since 2.0.0

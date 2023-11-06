@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect"
-import * as internal from "./internal/pubsub"
-import type { Pipeable } from "./Pipeable"
-import type * as Queue from "./Queue"
-import type * as Scope from "./Scope"
+import type * as Effect from "./Effect.js"
+import * as internal from "./internal/pubsub.js"
+import type { Pipeable } from "./Pipeable.js"
+import type * as Queue from "./Queue.js"
+import type * as Scope from "./Scope.js"
 
 /**
  * A `PubSub<A>` is an asynchronous message hub into which publishers can publish

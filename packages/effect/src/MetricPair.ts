@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/metric/pair"
-import type * as MetricKey from "./MetricKey"
-import type * as MetricKeyType from "./MetricKeyType"
-import type * as MetricState from "./MetricState"
-import type { Pipeable } from "./Pipeable"
+import * as internal from "./internal/metric/pair.js"
+import type * as MetricKey from "./MetricKey.js"
+import type * as MetricKeyType from "./MetricKeyType.js"
+import type * as MetricState from "./MetricState.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

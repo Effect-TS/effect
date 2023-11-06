@@ -1,10 +1,10 @@
-import * as Equal from "../Equal"
-import type { FiberId } from "../FiberId"
-import type * as FiberStatus from "../FiberStatus"
-import { pipe } from "../Function"
-import * as Hash from "../Hash"
-import { hasProperty } from "../Predicate"
-import type { RuntimeFlags } from "../RuntimeFlags"
+import * as Equal from "../Equal.js"
+import type { FiberId } from "../FiberId.js"
+import type * as FiberStatus from "../FiberStatus.js"
+import { pipe } from "../Function.js"
+import * as Hash from "../Hash.js"
+import { hasProperty } from "../Predicate.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
 
 const FiberStatusSymbolKey = "effect/FiberStatus"
 

@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/groupBy"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate } from "./Predicate"
-import type * as Queue from "./Queue"
-import type * as Stream from "./Stream"
-import type * as Take from "./Take"
+import * as internal from "./internal/groupBy.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { Predicate } from "./Predicate.js"
+import type * as Queue from "./Queue.js"
+import type * as Stream from "./Stream.js"
+import type * as Take from "./Take.js"
 
 /**
  * @since 2.0.0

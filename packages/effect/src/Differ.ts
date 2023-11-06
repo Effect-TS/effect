@@ -1,25 +1,25 @@
 /**
  * @since 2.0.0
  */
-import type { Chunk } from "./Chunk"
-import type { Context } from "./Context"
-import type { Either } from "./Either"
-import type { Equal } from "./Equal"
-import * as Dual from "./Function"
-import type { HashMap } from "./HashMap"
-import type { HashSet } from "./HashSet"
-import * as D from "./internal/Differ"
-import * as ChunkPatch from "./internal/Differ/ChunkPatch"
-import * as ContextPatch from "./internal/Differ/ContextPatch"
-import * as HashMapPatch from "./internal/Differ/HashMapPatch"
-import * as HashSetPatch from "./internal/Differ/HashSetPatch"
-import * as OrPatch from "./internal/Differ/OrPatch"
+import type { Chunk } from "./Chunk.js"
+import type { Context } from "./Context.js"
+import type { Either } from "./Either.js"
+import type { Equal } from "./Equal.js"
+import * as Dual from "./Function.js"
+import type { HashMap } from "./HashMap.js"
+import type { HashSet } from "./HashSet.js"
+import * as internal from "./internal/differ.js"
+import * as ChunkPatch from "./internal/differ/chunkPatch.js"
+import * as ContextPatch from "./internal/differ/contextPatch.js"
+import * as HashMapPatch from "./internal/differ/hashMapPatch.js"
+import * as HashSetPatch from "./internal/differ/hashSetPatch.js"
+import * as OrPatch from "./internal/differ/orPatch.js"
 
 /**
  * @since 2.0.0
  * @category symbol
  */
-export const TypeId: unique symbol = D.DifferTypeId as TypeId
+export const TypeId: unique symbol = internal.DifferTypeId as TypeId
 
 /**
  * @since 2.0.0
@@ -283,7 +283,7 @@ export const make: <Value, Patch>(params: {
   readonly diff: (oldValue: Value, newValue: Value) => Patch
   readonly combine: (first: Patch, second: Patch) => Patch
   readonly patch: (patch: Patch, oldValue: Value) => Value
-}) => Differ<Value, Patch> = D.make
+}) => Differ<Value, Patch> = internal.make
 
 /**
  * Constructs a differ that knows how to diff `Env` values.
@@ -294,7 +294,7 @@ export const make: <Value, Patch>(params: {
 export const environment: <A>() => Differ<
   Context<A>,
   Differ.Context.Patch<A, A>
-> = D.environment
+> = internal.environment
 
 /**
  * Constructs a differ that knows how to diff a `Chunk` of values given a
@@ -305,7 +305,7 @@ export const environment: <A>() => Differ<
  */
 export const chunk: <Value, Patch>(
   differ: Differ<Value, Patch>
-) => Differ<Chunk<Value>, Differ.Chunk.Patch<Value, Patch>> = D.chunk
+) => Differ<Chunk<Value>, Differ.Chunk.Patch<Value, Patch>> = internal.chunk
 
 /**
  * Constructs a differ that knows how to diff a `HashMap` of keys and values given
@@ -316,7 +316,7 @@ export const chunk: <Value, Patch>(
  */
 export const hashMap: <Key, Value, Patch>(
   differ: Differ<Value, Patch>
-) => Differ<HashMap<Key, Value>, Differ.HashMap.Patch<Key, Value, Patch>> = D.hashMap
+) => Differ<HashMap<Key, Value>, Differ.HashMap.Patch<Key, Value, Patch>> = internal.hashMap
 
 /**
  * Constructs a differ that knows how to diff a `HashSet` of values.
@@ -327,7 +327,7 @@ export const hashMap: <Key, Value, Patch>(
 export const hashSet: <Value>() => Differ<
   HashSet<Value>,
   Differ.HashSet.Patch<Value>
-> = D.hashSet
+> = internal.hashSet
 
 /**
  * Combines this differ and the specified differ to produce a differ that
@@ -349,7 +349,7 @@ export const orElseEither: {
     Either<Value, Value2>,
     Differ.Or.Patch<Value, Value2, Patch, Patch2>
   >
-} = D.orElseEither
+} = internal.orElseEither
 
 /**
  * Transforms the type of values that this differ knows how to differ using
@@ -369,7 +369,7 @@ export const transform: {
       readonly toOld: (value: Value2) => Value
     }
   ): Differ<Value2, Patch>
-} = D.transform
+} = internal.transform
 
 /**
  * Constructs a differ that just diffs two values by returning a function that
@@ -379,7 +379,7 @@ export const transform: {
  *
  * @since 2.0.0
  */
-export const update: <A>() => Differ<A, (a: A) => A> = D.update
+export const update: <A>() => Differ<A, (a: A) => A> = internal.update
 
 /**
  * A variant of `update` that allows specifying the function that will be used
@@ -387,7 +387,7 @@ export const update: <A>() => Differ<A, (a: A) => A> = D.update
  *
  * @since 2.0.0
  */
-export const updateWith: <A>(f: (x: A, y: A) => A) => Differ<A, (a: A) => A> = D.updateWith
+export const updateWith: <A>(f: (x: A, y: A) => A) => Differ<A, (a: A) => A> = internal.updateWith
 
 /**
  * Combines this differ and the specified differ to produce a new differ that
@@ -403,4 +403,4 @@ export const zip: {
     self: Differ<Value, Patch>,
     that: Differ<Value2, Patch2>
   ): Differ<readonly [Value, Value2], readonly [Patch, Patch2]>
-} = D.zip
+} = internal.zip

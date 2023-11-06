@@ -1,6 +1,6 @@
-import type * as ExecutionStrategy from "../ExecutionStrategy"
-import { dual } from "../Function"
-import type { LazyArg } from "../Function"
+import type * as ExecutionStrategy from "../ExecutionStrategy.js"
+import { dual } from "../Function.js"
+import type { LazyArg } from "../Function.js"
 
 /** @internal */
 export const OP_SEQUENTIAL = "Sequential" as const

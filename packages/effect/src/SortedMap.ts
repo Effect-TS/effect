@@ -1,17 +1,17 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "./Equal"
-import * as Dual from "./Function"
-import { pipe } from "./Function"
-import * as Hash from "./Hash"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable"
-import * as Option from "./Option"
-import type { Order } from "./Order"
-import type { Pipeable } from "./Pipeable"
-import { pipeArguments } from "./Pipeable"
-import { hasProperty } from "./Predicate"
-import * as RBT from "./RedBlackTree"
+import * as Equal from "./Equal.js"
+import * as Dual from "./Function.js"
+import { pipe } from "./Function.js"
+import * as Hash from "./Hash.js"
+import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import * as Option from "./Option.js"
+import type { Order } from "./Order.js"
+import type { Pipeable } from "./Pipeable.js"
+import { pipeArguments } from "./Pipeable.js"
+import { hasProperty } from "./Predicate.js"
+import * as RBT from "./RedBlackTree.js"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedMap")
 

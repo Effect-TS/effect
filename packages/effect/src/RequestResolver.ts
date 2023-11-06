@@ -2,15 +2,15 @@
  * @since 2.0.0
  */
 
-import * as Context from "./Context"
-import * as Effect from "./Effect"
-import type * as Either from "./Either"
-import type * as Equal from "./Equal"
-import type { FiberRef } from "./FiberRef"
-import * as core from "./internal/core"
-import * as internal from "./internal/dataSource"
-import type { Pipeable } from "./Pipeable"
-import type * as Request from "./Request"
+import * as Context from "./Context.js"
+import * as Effect from "./Effect.js"
+import type * as Either from "./Either.js"
+import type * as Equal from "./Equal.js"
+import type { FiberRef } from "./FiberRef.js"
+import * as core from "./internal/core.js"
+import * as internal from "./internal/dataSource.js"
+import type { Pipeable } from "./Pipeable.js"
+import type * as Request from "./Request.js"
 
 /**
  * @since 2.0.0

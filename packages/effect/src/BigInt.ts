@@ -6,12 +6,12 @@
  * @since 2.0.0
  */
 
-import * as equivalence from "./Equivalence"
-import { dual } from "./Function"
-import * as Option from "./Option"
-import * as order from "./Order"
-import type { Ordering } from "./Ordering"
-import * as predicate from "./Predicate"
+import * as equivalence from "./Equivalence.js"
+import { dual } from "./Function.js"
+import * as Option from "./Option.js"
+import * as order from "./Order.js"
+import type { Ordering } from "./Ordering.js"
+import * as predicate from "./Predicate.js"
 
 const bigint0 = BigInt(0)
 const bigint1 = BigInt(1)

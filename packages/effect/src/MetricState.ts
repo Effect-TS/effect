@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Equal from "./Equal"
-import type * as HashMap from "./HashMap"
-import * as internal from "./internal/metric/state"
-import type * as MetricKeyType from "./MetricKeyType"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
+import type * as Chunk from "./Chunk.js"
+import type * as Equal from "./Equal.js"
+import type * as HashMap from "./HashMap.js"
+import * as internal from "./internal/metric/state.js"
+import type * as MetricKeyType from "./MetricKeyType.js"
+import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

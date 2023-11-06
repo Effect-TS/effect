@@ -1,7 +1,7 @@
-import type * as MergeStrategy from "../../ChannelMergeStrategy"
-import { dual } from "../../Function"
-import { hasProperty } from "../../Predicate"
-import * as OpCodes from "../opCodes/channelMergeStrategy"
+import { dual } from "../../Function.js"
+import type * as MergeStrategy from "../../MergeStrategy.js"
+import { hasProperty } from "../../Predicate.js"
+import * as OpCodes from "../opCodes/channelMergeStrategy.js"
 
 /** @internal */
 const MergeStrategySymbolKey = "effect/ChannelMergeStrategy"

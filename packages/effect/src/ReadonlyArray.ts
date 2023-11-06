@@ -4,19 +4,19 @@
  * @since 2.0.0
  */
 
-import type { Either } from "./Either"
-import * as E from "./Either"
-import * as Equal from "./Equal"
-import * as Equivalence from "./Equivalence"
-import { dual, identity } from "./Function"
-import type { LazyArg } from "./Function"
-import type { TypeLambda } from "./HKT"
-import * as readonlyArray from "./internal/ReadonlyArray"
-import type { Option } from "./Option"
-import * as O from "./Option"
-import * as Order from "./Order"
-import type { Predicate, Refinement } from "./Predicate"
-import * as RR from "./ReadonlyRecord"
+import type { Either } from "./Either.js"
+import * as E from "./Either.js"
+import * as Equal from "./Equal.js"
+import * as Equivalence from "./Equivalence.js"
+import { dual, identity } from "./Function.js"
+import type { LazyArg } from "./Function.js"
+import type { TypeLambda } from "./HKT.js"
+import * as readonlyArray from "./internal/readonlyArray.js"
+import type { Option } from "./Option.js"
+import * as O from "./Option.js"
+import * as Order from "./Order.js"
+import type { Predicate, Refinement } from "./Predicate.js"
+import * as RR from "./ReadonlyRecord.js"
 
 /**
  * @category type lambdas

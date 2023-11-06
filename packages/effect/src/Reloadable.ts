@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import * as internal from "./internal/reloadable"
-import type * as Layer from "./Layer"
-import type * as Schedule from "./Schedule"
-import type * as ScopedRef from "./ScopedRef"
+import type * as Context from "./Context.js"
+import type * as Effect from "./Effect.js"
+import * as internal from "./internal/reloadable.js"
+import type * as Layer from "./Layer.js"
+import type * as Schedule from "./Schedule.js"
+import type * as ScopedRef from "./ScopedRef.js"
 
 /**
  * @since 2.0.0

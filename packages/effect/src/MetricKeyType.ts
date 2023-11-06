@@ -1,13 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Duration from "./Duration"
-import type * as Equal from "./Equal"
-import * as internal from "./internal/metric/keyType"
-import type * as MetricBoundaries from "./MetricBoundaries"
-import type * as MetricState from "./MetricState"
-import type { Pipeable } from "./Pipeable"
+import type * as Chunk from "./Chunk.js"
+import type * as Duration from "./Duration.js"
+import type * as Equal from "./Equal.js"
+import * as internal from "./internal/metric/keyType.js"
+import type * as MetricBoundaries from "./MetricBoundaries.js"
+import type * as MetricState from "./MetricState.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0
