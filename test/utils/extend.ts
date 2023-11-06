@@ -5,7 +5,7 @@ import { Layer } from "effect/Layer"
 import { Logger } from "effect/Logger"
 import { Schedule } from "effect/Schedule"
 import type { Scope } from "effect/Scope"
-import { TestEnvironment } from "effect/TestContext"
+import { TestContext } from "effect/TestContext"
 import type { TestServices } from "effect/TestServices"
 import type { TestAPI } from "vitest"
 import * as V from "vitest"
@@ -14,7 +14,7 @@ export type API = TestAPI<{}>
 
 export const it: API = V.it
 
-const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestEnvironment.TestContext)
+const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestContext)
 
 export const effect = (() => {
   const f = <E, A>(

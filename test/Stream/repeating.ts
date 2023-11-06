@@ -11,7 +11,7 @@ import { Ref } from "effect/Ref"
 import { Schedule } from "effect/Schedule"
 import { Stream } from "effect/Stream"
 import { TestClock } from "effect/TestClock"
-import { TestEnvironment } from "effect/TestContext"
+import { TestContext } from "effect/TestContext"
 import fc from "fast-check"
 import { assert, describe } from "vitest"
 
@@ -189,7 +189,7 @@ describe.concurrent("Stream", () => {
         const stream = Stream.repeatEffectWithSchedule(effect, schedule)
         return yield* $(
           Stream.runCollect(stream),
-          Effect.provide(TestEnvironment.TestContext)
+          Effect.provide(TestContext)
         )
       })
       const result = await Effect.runPromise(effect)

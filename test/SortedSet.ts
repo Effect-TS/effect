@@ -1,9 +1,9 @@
-import { Eq } from "effect/Equal"
+import { Equal as Eq } from "effect/Equal"
 import { pipe } from "effect/Function"
 import { Hash } from "effect/Hash"
 import { Order } from "effect/Order"
 import { SortedSet } from "effect/SortedSet"
-import { Str } from "effect/String"
+import { String as Str } from "effect/String"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 

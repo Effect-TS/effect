@@ -10,15 +10,45 @@ export const HandoffTypeId = Symbol.for("effect/Stream/Handoff")
 /** @internal */
 export type HandoffTypeId = typeof HandoffTypeId
 
-/**
- * A synchronous queue-like abstraction that allows a producer to offer an
- * element and wait for it to be taken, and allows a consumer to wait for an
- * element to be available.
- *
- * @internal
- */
-export interface Handoff<A> extends Handoff.Variance<A> {
-  readonly ref: Ref<Handoff.State<A>>
+export * as Handoff from "./handoff.js"
+
+declare module "./Handoff.js" {
+  /**
+   * A synchronous queue-like abstraction that allows a producer to offer an
+   * element and wait for it to be taken, and allows a consumer to wait for an
+   * element to be available.
+   *
+   * @internal
+   */
+  export interface Handoff<A> extends Handoff.Variance<A> {
+    readonly ref: Ref<Handoff.State<A>>
+  }
+
+  /** @internal */
+  export namespace Handoff {
+    /** @internal */
+    export interface Variance<A> {
+      readonly [HandoffTypeId]: {
+        readonly _A: (_: never) => A
+      }
+    }
+
+    /** @internal */
+    export type State<A> = Empty | Full<A>
+
+    /** @internal */
+    export interface Empty {
+      readonly _tag: OP_HANDOFF_STATE_EMPTY
+      readonly notifyConsumer: Deferred<never, void>
+    }
+
+    /** @internal */
+    export interface Full<A> {
+      readonly _tag: OP_HANDOFF_STATE_FULL
+      readonly value: A
+      readonly notifyProducer: Deferred<never, void>
+    }
+  }
 }
 
 /** @internal */
@@ -32,32 +62,6 @@ export const OP_HANDOFF_STATE_FULL = "Full" as const
 
 /** @internal */
 export type OP_HANDOFF_STATE_FULL = typeof OP_HANDOFF_STATE_FULL
-
-/** @internal */
-export declare namespace Handoff {
-  /** @internal */
-  export interface Variance<A> {
-    readonly [HandoffTypeId]: {
-      readonly _A: (_: never) => A
-    }
-  }
-
-  /** @internal */
-  export type State<A> = Empty | Full<A>
-
-  /** @internal */
-  export interface Empty {
-    readonly _tag: OP_HANDOFF_STATE_EMPTY
-    readonly notifyConsumer: Deferred<never, void>
-  }
-
-  /** @internal */
-  export interface Full<A> {
-    readonly _tag: OP_HANDOFF_STATE_FULL
-    readonly value: A
-    readonly notifyProducer: Deferred<never, void>
-  }
-}
 
 /** @internal */
 const handoffStateEmpty = (notifyConsumer: Deferred<never, void>): Handoff.State<never> => ({

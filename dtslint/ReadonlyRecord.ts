@@ -2,7 +2,7 @@ import type { Brand } from "effect/Brand"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import { RR } from "effect/ReadonlyRecord"
+import { ReadonlyRecord as RR } from "effect/ReadonlyRecord"
 
 declare const record: Record<string, number>
 declare const readonlyRecord: Readonly<Record<string, number>>

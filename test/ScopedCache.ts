@@ -1,5 +1,5 @@
-import { ObservableResource } from "effect-test/utils/cache/ObservableResource"
-import { WatchableLookup } from "effect-test/utils/cache/WatchableLookup"
+import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
+import * as WatchableLookup from "effect-test/utils/cache/WatchableLookup"
 import * as it from "effect-test/utils/extend"
 import { Cause } from "effect/Cause"
 import { Chunk } from "effect/Chunk"
