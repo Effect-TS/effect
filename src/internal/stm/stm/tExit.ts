@@ -49,7 +49,7 @@ export interface Die extends TExit.Variance<never, never>, Equal {
 /** @internal */
 export interface Interrupt extends TExit.Variance<never, never>, Equal {
   readonly _tag: OpCodes.OP_INTERRUPT
-  readonly fiberId: FiberId.FiberId
+  readonly fiberId: FiberId
 }
 
 /** @internal */

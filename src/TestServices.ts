@@ -29,7 +29,7 @@ export type TestServices =
   | Annotations.TestAnnotations
   | Live.TestLive
   | Sized.TestSized
-  | TestConfig.TestConfig
+  | TestConfig
 
 /**
  * The default Effect test services.

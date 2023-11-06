@@ -10,16 +10,16 @@ import type { FiberId } from "../../FiberId.js"
  * @internal
  */
 export interface Sleep {
-  readonly duration: Duration.Duration
+  readonly duration: Duration
   readonly deferred: Deferred<never, void>
-  readonly fiberId: FiberId.FiberId
+  readonly fiberId: FiberId
 }
 
 /** @internal */
 export const make = (
   duration: Duration,
   deferred: Deferred<never, void>,
-  fiberId: FiberId.FiberId
+  fiberId: FiberId
 ): Sleep => ({
   duration,
   deferred,

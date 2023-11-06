@@ -106,7 +106,7 @@ class Composite implements FiberId.Composite {
   readonly _tag = OP_COMPOSITE
   constructor(
     readonly left: FiberId,
-    readonly right: FiberId.FiberId
+    readonly right: FiberId
   ) {}
   [Hash.symbol](): number {
     return pipe(
@@ -172,7 +172,7 @@ export const isComposite = (self: FiberId.FiberId): self is FiberId.Composite =>
 /** @internal */
 export const combine = dual<
   (that: FiberId.FiberId) => (self: FiberId.FiberId) => FiberId,
-  (self: FiberId, that: FiberId.FiberId) => FiberId.FiberId
+  (self: FiberId, that: FiberId.FiberId) => FiberId
 >(2, (self, that) => {
   if (self._tag === OP_NONE) {
     return that
@@ -191,7 +191,7 @@ export const combineAll = (fiberIds: HashSet<FiberId>): FiberId => {
 /** @internal */
 export const getOrElse = dual<
   (that: FiberId.FiberId) => (self: FiberId.FiberId) => FiberId,
-  (self: FiberId, that: FiberId.FiberId) => FiberId.FiberId
+  (self: FiberId, that: FiberId.FiberId) => FiberId
 >(2, (self, that) => isNone(self) ? that : self)
 
 /** @internal */
@@ -232,7 +232,7 @@ export const toOption = (self: FiberId.FiberId): Option<FiberId> => {
     return Option.none()
   }
   let first = true
-  let acc: FiberId.FiberId
+  let acc: FiberId
   for (const fiberId of fiberIds) {
     if (first) {
       acc = fiberId

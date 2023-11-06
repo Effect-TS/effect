@@ -186,7 +186,7 @@ class MemoMap {
    */
   getOrElseMemoize<RIn, E, ROut>(
     layer: Layer<RIn, E, ROut>,
-    scope: Scope.Scope
+    scope: Scope
   ): Effect<RIn, E, Context<ROut>> {
     return pipe(
       synchronized.modifyEffect(this.ref, (map) => {
@@ -311,11 +311,11 @@ export const build = <RIn, E, ROut>(
 /** @internal */
 export const buildWithScope = dual<
   (
-    scope: Scope.Scope
+    scope: Scope
   ) => <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect<RIn, E, Context<ROut>>,
   <RIn, E, ROut>(
     self: Layer<RIn, E, ROut>,
-    scope: Scope.Scope
+    scope: Scope
   ) => Effect<RIn, E, Context<ROut>>
 >(2, (self, scope) =>
   core.flatMap(
@@ -325,7 +325,7 @@ export const buildWithScope = dual<
 
 const withScope = <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
-  scope: Scope.Scope
+  scope: Scope
 ): Effect<never, never, (memoMap: MemoMap) => Effect<RIn, E, Context<ROut>>> => {
   const op = self as Primitive
   switch (op._tag) {

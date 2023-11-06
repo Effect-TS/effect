@@ -17,7 +17,7 @@ export type ScheduleDecision = Continue | Done
  */
 export interface Continue {
   readonly _tag: "Continue"
-  readonly intervals: Intervals.Intervals
+  readonly intervals: Intervals
 }
 
 /**

@@ -16,7 +16,7 @@ export const enabled = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): number => (
 
 /** @internal */
 export const make = (active: number, enabled: number): RuntimeFlagsPatch =>
-  (((active) & BIT_MASK) + (((enabled & active) & BIT_MASK) << BIT_SHIFT)) as RuntimeFlagsPatch.RuntimeFlagsPatch
+  (((active) & BIT_MASK) + (((enabled & active) & BIT_MASK) << BIT_SHIFT)) as RuntimeFlagsPatch
 
 /** @internal */
 export const empty = make(0, 0)
@@ -53,46 +53,46 @@ export const exclude = dual<
   (
     flag: RuntimeFlags.RuntimeFlag
   ) => (self: RuntimeFlagsPatch.RuntimeFlagsPatch) => RuntimeFlagsPatch,
-  (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlagsPatch.RuntimeFlagsPatch
+  (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlagsPatch
 >(2, (self, flag) => make(active(self) & ~flag, enabled(self)))
 
 /** @internal */
 export const both = dual<
   (
-    that: RuntimeFlagsPatch.RuntimeFlagsPatch
+    that: RuntimeFlagsPatch
   ) => (
-    self: RuntimeFlagsPatch.RuntimeFlagsPatch
+    self: RuntimeFlagsPatch
   ) => RuntimeFlagsPatch,
   (
     self: RuntimeFlagsPatch,
-    that: RuntimeFlagsPatch.RuntimeFlagsPatch
-  ) => RuntimeFlagsPatch.RuntimeFlagsPatch
+    that: RuntimeFlagsPatch
+  ) => RuntimeFlagsPatch
 >(2, (self, that) => make(active(self) | active(that), enabled(self) & enabled(that)))
 
 /** @internal */
 export const either = dual<
   (
-    that: RuntimeFlagsPatch.RuntimeFlagsPatch
+    that: RuntimeFlagsPatch
   ) => (
-    self: RuntimeFlagsPatch.RuntimeFlagsPatch
+    self: RuntimeFlagsPatch
   ) => RuntimeFlagsPatch,
   (
     self: RuntimeFlagsPatch,
-    that: RuntimeFlagsPatch.RuntimeFlagsPatch
-  ) => RuntimeFlagsPatch.RuntimeFlagsPatch
+    that: RuntimeFlagsPatch
+  ) => RuntimeFlagsPatch
 >(2, (self, that) => make(active(self) | active(that), enabled(self) | enabled(that)))
 
 /** @internal */
 export const andThen = dual<
   (
-    that: RuntimeFlagsPatch.RuntimeFlagsPatch
+    that: RuntimeFlagsPatch
   ) => (
-    self: RuntimeFlagsPatch.RuntimeFlagsPatch
+    self: RuntimeFlagsPatch
   ) => RuntimeFlagsPatch,
   (
     self: RuntimeFlagsPatch,
-    that: RuntimeFlagsPatch.RuntimeFlagsPatch
-  ) => RuntimeFlagsPatch.RuntimeFlagsPatch
+    that: RuntimeFlagsPatch
+  ) => RuntimeFlagsPatch
 >(2, (self, that) => (self | that) as RuntimeFlagsPatch.RuntimeFlagsPatch)
 
 /** @internal */

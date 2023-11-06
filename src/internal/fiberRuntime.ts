@@ -188,7 +188,7 @@ const drainQueueWhileRunningTable = {
     _self: FiberRuntime<any, any>,
     _runtimeFlags: RuntimeFlags,
     _cur: Effect<any, any, any>,
-    _message: FiberMessage.FiberMessage
+    _message: FiberMessage
   ) => {
     throw new Error("It is illegal to have multiple concurrent run loops in a single fiber")
   },
@@ -247,9 +247,9 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     return pipeArguments(this, arguments)
   }
 
-  private _fiberRefs: FiberRefs.FiberRefs
+  private _fiberRefs: FiberRefs
   private _fiberId: FiberId.Runtime
-  public _runtimeFlags: RuntimeFlags.RuntimeFlags
+  public _runtimeFlags: RuntimeFlags
 
   private _queue = new Array<FiberMessage>()
   private _children: Set<FiberRuntime<any, any>> | null = null
@@ -262,14 +262,14 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   private _steps: Array<boolean> = [false]
   public _supervisor: Supervisor<any>
   public _scheduler: Scheduler
-  private _tracer: Tracer.Tracer
+  private _tracer: Tracer
   public currentOpCount: number = 0
   private isYielding = false
 
   constructor(
     fiberId: FiberId.Runtime,
     fiberRefs0: FiberRefs,
-    runtimeFlags0: RuntimeFlags.RuntimeFlags
+    runtimeFlags0: RuntimeFlags
   ) {
     this._runtimeFlags = runtimeFlags0
     this._fiberId = fiberId
@@ -2861,7 +2861,7 @@ export const zipWithOptions = dual<
 
 /* @internal */
 export const withRuntimeFlagsScoped = (
-  update: RuntimeFlagsPatch.RuntimeFlagsPatch
+  update: RuntimeFlagsPatch
 ): Effect<Scope, never, void> => {
   if (update === RuntimeFlagsPatch.empty) {
     return core.unit
@@ -3061,7 +3061,7 @@ export const fiberRefMakeContext = <A>(
 
 /* @internal */
 export const fiberRefMakeRuntimeFlags = (
-  initial: RuntimeFlags.RuntimeFlags
+  initial: RuntimeFlags
 ): Effect<Scope, never, FiberRef<RuntimeFlags>> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMakeRuntimeFlags(initial))
 

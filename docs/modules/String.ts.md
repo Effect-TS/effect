@@ -455,7 +455,7 @@ export declare const localeCompare: (
   that: string,
   locales?: Array<string>,
   options?: Intl.CollatorOptions
-) => (self: string) => Ordering.Ordering
+) => (self: string) => Ordering
 ```
 
 **Example**

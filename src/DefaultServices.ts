@@ -15,11 +15,11 @@ import type { Tracer } from "./Tracer.js"
  * @category models
  */
 export type DefaultServices =
-  | Clock.Clock
-  | Console.Console
-  | Random.Random
-  | ConfigProvider.ConfigProvider
-  | Tracer.Tracer
+  | Clock
+  | Console
+  | Random
+  | ConfigProvider
+  | Tracer
 
 /**
  * @since 2.0.0

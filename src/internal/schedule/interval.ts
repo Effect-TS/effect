@@ -39,7 +39,7 @@ export const lessThan = dual<
 /** @internal */
 export const min = dual<
   (that: Interval.Interval) => (self: Interval.Interval) => Interval,
-  (self: Interval, that: Interval.Interval) => Interval.Interval
+  (self: Interval, that: Interval.Interval) => Interval
 >(2, (self, that) => {
   if (self.endMillis <= that.startMillis) return self
   if (that.endMillis <= self.startMillis) return that
@@ -52,7 +52,7 @@ export const min = dual<
 /** @internal */
 export const max = dual<
   (that: Interval.Interval) => (self: Interval.Interval) => Interval,
-  (self: Interval, that: Interval.Interval) => Interval.Interval
+  (self: Interval, that: Interval.Interval) => Interval
 >(2, (self, that) => min(self, that) === self ? that : self)
 
 /** @internal */
@@ -68,7 +68,7 @@ export const isNonEmpty = (self: Interval.Interval): boolean => {
 /** @internal */
 export const intersect = dual<
   (that: Interval.Interval) => (self: Interval.Interval) => Interval,
-  (self: Interval, that: Interval.Interval) => Interval.Interval
+  (self: Interval, that: Interval.Interval) => Interval
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)

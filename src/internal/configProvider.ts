@@ -68,7 +68,7 @@ export const makeFlat = (
     readonly enumerateChildren: (
       path: ReadonlyArray<string>
     ) => Effect<never, ConfigError, HashSet<string>>
-    readonly patch: PathPatch.PathPatch
+    readonly patch: PathPatch
   }
 ): ConfigProvider.Flat => ({
   [FlatConfigProviderTypeId]: FlatConfigProviderTypeId,
@@ -437,7 +437,7 @@ const fromFlatLoopFail =
 /** @internal */
 export const mapInputPath = dual<
   (f: (path: string) => string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
-  (self: ConfigProvider, f: (path: string) => string) => ConfigProvider.ConfigProvider
+  (self: ConfigProvider, f: (path: string) => string) => ConfigProvider
 >(2, (self, f) => fromFlat(mapInputPathFlat(self.flattened, f)))
 
 const mapInputPathFlat = (
@@ -453,7 +453,7 @@ const mapInputPathFlat = (
 /** @internal */
 export const nested = dual<
   (name: string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
-  (self: ConfigProvider, name: string) => ConfigProvider.ConfigProvider
+  (self: ConfigProvider, name: string) => ConfigProvider
 >(2, (self, name) =>
   fromFlat(makeFlat({
     load: (path, config) => self.flattened.load(path, config, true),
@@ -464,7 +464,7 @@ export const nested = dual<
 /** @internal */
 export const unnested = dual<
   (name: string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
-  (self: ConfigProvider, name: string) => ConfigProvider.ConfigProvider
+  (self: ConfigProvider, name: string) => ConfigProvider
 >(2, (self, name) =>
   fromFlat(makeFlat({
     load: (path, config) => self.flattened.load(path, config, true),
@@ -477,12 +477,12 @@ export const orElse = dual<
   (
     that: LazyArg<ConfigProvider>
   ) => (
-    self: ConfigProvider.ConfigProvider
+    self: ConfigProvider
   ) => ConfigProvider,
   (
     self: ConfigProvider,
     that: LazyArg<ConfigProvider>
-  ) => ConfigProvider.ConfigProvider
+  ) => ConfigProvider
 >(2, (self, that) => fromFlat(orElseFlat(self.flattened, () => that().flattened)))
 
 const orElseFlat = (
@@ -569,13 +569,13 @@ export const upperCase = (self: ConfigProvider.ConfigProvider): ConfigProvider =
 export const within = dual<
   (
     path: ReadonlyArray<string>,
-    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider
+    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider
   ) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
   (
     self: ConfigProvider,
     path: ReadonlyArray<string>,
-    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider
-  ) => ConfigProvider.ConfigProvider
+    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider
+  ) => ConfigProvider
 >(3, (self, path, f) => {
   const unnest = RA.reduce(path, self, (provider, name) => unnested(provider, name))
   const nest = RA.reduceRight(path, f(unnest), (provider, name) => nested(provider, name))

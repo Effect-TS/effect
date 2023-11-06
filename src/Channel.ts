@@ -445,7 +445,7 @@ export const concatMapWithCustom: {
     onPull: (
       upstreamPullRequest: UpstreamPullRequest<OutElem>
     ) => UpstreamPullStrategy<OutElem2>,
-    onEmit: (elem: OutElem2) => ChildExecutorDecision.ChildExecutorDecision
+    onEmit: (elem: OutElem2) => ChildExecutorDecision
   ): <Env, InErr, InElem, InDone, OutErr>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>
   ) => Channel<Env2 | Env, InErr & InErr2, InElem & InElem2, InDone & InDone2, OutErr2 | OutErr, OutElem2, OutDone3>
@@ -473,7 +473,7 @@ export const concatMapWithCustom: {
     onPull: (
       upstreamPullRequest: UpstreamPullRequest<OutElem>
     ) => UpstreamPullStrategy<OutElem2>,
-    onEmit: (elem: OutElem2) => ChildExecutorDecision.ChildExecutorDecision
+    onEmit: (elem: OutElem2) => ChildExecutorDecision
   ): Channel<Env | Env2, InErr & InErr2, InElem & InElem2, InDone & InDone2, OutErr | OutErr2, OutElem2, OutDone3>
 } = core.concatMapWithCustom
 
@@ -1313,7 +1313,7 @@ export const mergeAll: (
   options: {
     readonly concurrency: number | "unbounded"
     readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly mergeStrategy?: MergeStrategy
   }
 ) => <Env, Env1, InErr, InErr1, InElem, InElem1, InDone, InDone1, OutErr, OutErr1, OutElem>(
   channels: Channel<
@@ -1384,7 +1384,7 @@ export const mergeAllWith: (
   { bufferSize, concurrency, mergeStrategy }: {
     readonly concurrency: number | "unbounded"
     readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly mergeStrategy?: MergeStrategy
   }
 ) => <Env, Env1, InErr, InErr1, InElem, InElem1, InDone, InDone1, OutErr, OutErr1, OutElem, OutDone>(
   channels: Channel<
@@ -1417,7 +1417,7 @@ export const mergeMap: {
     options: {
       readonly concurrency: number | "unbounded"
       readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly mergeStrategy?: MergeStrategy
     }
   ): <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -1428,7 +1428,7 @@ export const mergeMap: {
     options: {
       readonly concurrency: number | "unbounded"
       readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly mergeStrategy?: MergeStrategy
     }
   ): Channel<Env | Env1, InErr & InErr1, InElem & InElem1, InDone & InDone1, OutErr | OutErr1, OutElem1, unknown>
 } = channel.mergeMap

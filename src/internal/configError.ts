@@ -158,11 +158,11 @@ export const isUnsupported = (self: ConfigError.ConfigError): self is ConfigErro
 
 /** @internal */
 export const prefixed: {
-  (prefix: ReadonlyArray<string>): (self: ConfigError.ConfigError) => ConfigError.ConfigError
-  (self: ConfigError, prefix: ReadonlyArray<string>): ConfigError.ConfigError
+  (prefix: ReadonlyArray<string>): (self: ConfigError.ConfigError) => ConfigError
+  (self: ConfigError, prefix: ReadonlyArray<string>): ConfigError
 } = dual<
   (prefix: ReadonlyArray<string>) => (self: ConfigError.ConfigError) => ConfigError,
-  (self: ConfigError, prefix: ReadonlyArray<string>) => ConfigError.ConfigError
+  (self: ConfigError, prefix: ReadonlyArray<string>) => ConfigError
 >(2, (self, prefix) => {
   switch (self._tag) {
     case OpCodes.OP_AND: {

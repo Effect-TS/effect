@@ -99,7 +99,7 @@ export const makeContext: <A>(
  * @category constructors
  */
 export const makeRuntimeFlags: (
-  initial: RuntimeFlags.RuntimeFlags
+  initial: RuntimeFlags
 ) => Effect<Scope, never, FiberRef<RuntimeFlags>> = fiberRuntime.fiberRefMakeRuntimeFlags
 
 /**

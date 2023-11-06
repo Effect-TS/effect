@@ -263,7 +263,7 @@ export type Op<Tag extends string, Body = {}> = Effect<never, never, never> & Bo
 export interface Async extends
   Op<OpCodes.OP_ASYNC, {
     readonly i0: (resume: (effect: Primitive) => void) => void
-    readonly i1: FiberId.FiberId
+    readonly i1: FiberId
   }>
 {}
 
@@ -348,7 +348,7 @@ export interface Sync extends
 /** @internal */
 export interface UpdateRuntimeFlags extends
   Op<OpCodes.OP_UPDATE_RUNTIME_FLAGS, {
-    readonly i0: RuntimeFlagsPatch.RuntimeFlagsPatch
+    readonly i0: RuntimeFlagsPatch
     readonly i1?: (oldRuntimeFlags: RuntimeFlags.RuntimeFlags) => Primitive
   }>
 {}
@@ -1080,7 +1080,7 @@ export const partitionMap = <A, A1, A2>(
 export const runtimeFlags: Effect<never, never, RuntimeFlags> = withFiberRuntime<
   never,
   never,
-  RuntimeFlags.RuntimeFlags
+  RuntimeFlags
 >((_, status) => succeed(status.runtimeFlags))
 
 /* @internal */
@@ -1765,7 +1765,7 @@ export const fiberRefUnsafeMakePatch = <Value, Patch>(
 
 /** @internal */
 export const fiberRefUnsafeMakeRuntimeFlags = (
-  initial: RuntimeFlags.RuntimeFlags
+  initial: RuntimeFlags
 ): FiberRef<RuntimeFlags> =>
   fiberRefUnsafeMakePatch(initial, {
     differ: _runtimeFlags.differ,
@@ -1928,7 +1928,7 @@ export const scopeClose = (
 /* @internal */
 export const scopeFork = (
   self: Scope,
-  strategy: ExecutionStrategy.ExecutionStrategy
+  strategy: ExecutionStrategy
 ): Effect<never, never, Scope.Closeable> => self.fork(strategy)
 
 // -----------------------------------------------------------------------------

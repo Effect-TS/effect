@@ -806,7 +806,7 @@ export const gen: typeof Effect.gen = function() {
 export const fiberRefs: Effect<never, never, FiberRefs> = core.withFiberRuntime<
   never,
   never,
-  FiberRefs.FiberRefs
+  FiberRefs
 >((state) => core.succeed(state.getFiberRefs()))
 
 /* @internal */
@@ -1746,7 +1746,7 @@ export const unsandbox = <R, E, A>(self: Effect<R, Cause<E>, A>) => mapErrorCaus
 
 /* @internal */
 export const updateFiberRefs = (
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs
 ): Effect<never, never, void> =>
   core.withFiberRuntime<never, never, void>((state) => {
     state.setFiberRefs(f(state.id(), state.getFiberRefs()))

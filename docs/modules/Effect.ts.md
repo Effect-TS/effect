@@ -1226,7 +1226,7 @@ provided to allow for better diagnostics.
 ```ts
 export declare const async: <R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void, signal: AbortSignal) => void | Effect<R, never, void>,
-  blockingOn?: FiberId.FiberId
+  blockingOn?: FiberId
 ) => Effect<R, E, A>
 ```
 
@@ -1270,7 +1270,7 @@ provided to allow for better diagnostics.
 ```ts
 export declare const asyncEither: <R, E, A>(
   register: (callback: (effect: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
-  blockingOn?: FiberId.FiberId
+  blockingOn?: FiberId
 ) => Effect<R, E, A>
 ```
 
@@ -1293,7 +1293,7 @@ provided to allow for better diagnostics.
 ```ts
 export declare const asyncOption: <R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
-  blockingOn?: FiberId.FiberId
+  blockingOn?: FiberId
 ) => Effect<R, E, A>
 ```
 
@@ -2806,7 +2806,7 @@ specified function.
 
 ```ts
 export declare const updateFiberRefs: (
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs
 ) => Effect<never, never, void>
 ```
 
@@ -4724,7 +4724,7 @@ Added in v2.0.0
 
 ```ts
 export declare const withRuntimeFlagsPatchScoped: (
-  update: RuntimeFlagsPatch.RuntimeFlagsPatch
+  update: RuntimeFlagsPatch
 ) => Effect<Scope, never, void>
 ```
 

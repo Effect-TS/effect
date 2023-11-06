@@ -67,7 +67,7 @@ Added in v2.0.0
 ```ts
 export interface Continue {
   readonly _tag: "Continue"
-  readonly intervals: Intervals.Intervals
+  readonly intervals: Intervals
 }
 ```
 

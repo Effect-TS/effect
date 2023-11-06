@@ -49,7 +49,7 @@ declare module "./Scope.js" {
    */
   export interface Scope extends Pipeable {
     readonly [ScopeTypeId]: ScopeTypeId
-    readonly strategy: ExecutionStrategy.ExecutionStrategy
+    readonly strategy: ExecutionStrategy
     /**
      * @internal
      */
@@ -144,7 +144,7 @@ export const extend: {
  */
 export const fork: (
   self: Scope,
-  strategy: ExecutionStrategy.ExecutionStrategy
+  strategy: ExecutionStrategy
 ) => Effect<never, never, CloseableScope> = core.scopeFork
 
 /**
@@ -170,5 +170,5 @@ export const use: {
  * @category constructors
  */
 export const make: (
-  executionStrategy?: ExecutionStrategy.ExecutionStrategy
+  executionStrategy?: ExecutionStrategy
 ) => Effect<never, never, CloseableScope> = fiberRuntime.scopeMake

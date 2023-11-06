@@ -104,7 +104,7 @@ Added in v2.0.0
 
 ```ts
 export declare const makeRuntimeFlags: (
-  initial: RuntimeFlags.RuntimeFlags
+  initial: RuntimeFlags
 ) => Effect<Scope, never, FiberRef<RuntimeFlags>>
 ```
 

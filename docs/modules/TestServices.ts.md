@@ -57,7 +57,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type TestServices = Annotations.TestAnnotations | Live.TestLive | Sized.TestSized | TestConfig.TestConfig
+export type TestServices = Annotations.TestAnnotations | Live.TestLive | Sized.TestSized | TestConfig
 ```
 
 Added in v2.0.0
@@ -481,7 +481,7 @@ config service.
 
 ```ts
 export declare const withTestConfig: ((
-  config: TestConfig.TestConfig
+  config: TestConfig
 ) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
   (<R, E, A>(effect: Effect<R, E, A>, config: TestConfig.TestConfig) => Effect<R, E, A>)
 ```

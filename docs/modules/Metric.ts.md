@@ -626,7 +626,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const globalMetricRegistry: MetricRegistry.MetricRegistry
+export declare const globalMetricRegistry: MetricRegistry
 ```
 
 Added in v2.0.0

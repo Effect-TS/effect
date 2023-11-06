@@ -41,7 +41,7 @@ export interface Stateful {
   readonly _tag: OP_STATEFUL
   readonly onFiber: (
     fiber: FiberRuntime<any, any>,
-    status: FiberStatus.FiberStatus
+    status: FiberStatus
   ) => void
 }
 
@@ -66,7 +66,7 @@ export const interruptSignal = (cause: Cause<never>): FiberMessage => ({
 export const stateful = (
   onFiber: (
     fiber: FiberRuntime<any, any>,
-    status: FiberStatus.FiberStatus
+    status: FiberStatus
   ) => void
 ): FiberMessage => ({
   _tag: OP_STATEFUL,

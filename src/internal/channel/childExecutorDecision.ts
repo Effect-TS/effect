@@ -44,17 +44,17 @@ export const isChildExecutorDecision = (u: unknown): u is ChildExecutorDecision 
 
 /** @internal */
 export const isContinue = (
-  self: ChildExecutorDecision.ChildExecutorDecision
+  self: ChildExecutorDecision
 ): self is ChildExecutorDecision.Continue => self._tag === OpCodes.OP_CONTINUE
 
 /** @internal */
 export const isClose = (
-  self: ChildExecutorDecision.ChildExecutorDecision
+  self: ChildExecutorDecision
 ): self is ChildExecutorDecision.Close => self._tag === OpCodes.OP_CLOSE
 
 /** @internal */
 export const isYield = (
-  self: ChildExecutorDecision.ChildExecutorDecision
+  self: ChildExecutorDecision
 ): self is ChildExecutorDecision.Yield => self._tag === OpCodes.OP_YIELD
 
 /** @internal */

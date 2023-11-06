@@ -43,11 +43,11 @@ export interface Runtime<R> extends Pipeable {
   /**
    * The runtime flags used as initial for forks
    */
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
+  readonly runtimeFlags: RuntimeFlags
   /**
    * The fiber references used as initial for forks
    */
-  readonly fiberRefs: FiberRefs.FiberRefs
+  readonly fiberRefs: FiberRefs
 }
 
 /**
@@ -56,7 +56,7 @@ export interface Runtime<R> extends Pipeable {
  */
 export interface RunForkOptions {
   scheduler?: Scheduler
-  updateRefs?: (refs: FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  updateRefs?: (refs: FiberRefs, fiberId: FiberId.Runtime) => FiberRefs
 }
 
 /**
@@ -159,8 +159,8 @@ export const defaultRuntimeFlags: RuntimeFlags = internal.defaultRuntimeFlags
 export const make: <R>(
   options: {
     readonly context: Context<R>
-    readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-    readonly fiberRefs: FiberRefs.FiberRefs
+    readonly runtimeFlags: RuntimeFlags
+    readonly fiberRefs: FiberRefs
   }
 ) => Runtime<R> = internal.make
 

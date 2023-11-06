@@ -39,12 +39,12 @@ export type OP_AND_THEN = typeof OP_AND_THEN
 /** @internal */
 export const empty: FiberRefsPatch = ({
   _tag: OP_EMPTY
-}) as FiberRefsPatch.FiberRefsPatch
+}) as FiberRefsPatch
 
 /** @internal */
 export const diff = (
   oldValue: FiberRefs,
-  newValue: FiberRefs.FiberRefs
+  newValue: FiberRefs
 ): FiberRefsPatch => {
   const missingLocals = new Map(oldValue.locals)
   let patch = empty
@@ -81,7 +81,7 @@ export const diff = (
 /** @internal */
 export const combine = dual<
   (that: FiberRefsPatch.FiberRefsPatch) => (self: FiberRefsPatch.FiberRefsPatch) => FiberRefsPatch,
-  (self: FiberRefsPatch, that: FiberRefsPatch.FiberRefsPatch) => FiberRefsPatch.FiberRefsPatch
+  (self: FiberRefsPatch, that: FiberRefsPatch.FiberRefsPatch) => FiberRefsPatch
 >(2, (self, that) => ({
   _tag: OP_AND_THEN,
   first: self,
@@ -92,13 +92,13 @@ export const combine = dual<
 export const patch = dual<
   (
     fiberId: FiberId.Runtime,
-    oldValue: FiberRefs.FiberRefs
+    oldValue: FiberRefs
   ) => (self: FiberRefsPatch.FiberRefsPatch) => FiberRefs,
   (
     self: FiberRefsPatch,
     fiberId: FiberId.Runtime,
-    oldValue: FiberRefs.FiberRefs
-  ) => FiberRefs.FiberRefs
+    oldValue: FiberRefs
+  ) => FiberRefs
 >(3, (self, fiberId, oldValue) => {
   let fiberRefs: FiberRefs = oldValue
   let patches: ReadonlyArray<FiberRefsPatch> = Arr.of(self)

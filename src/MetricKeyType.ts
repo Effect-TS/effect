@@ -130,7 +130,7 @@ export declare namespace MetricKeyType {
    */
   export type Histogram = MetricKeyType<number, MetricState.Histogram> & {
     readonly [HistogramKeyTypeTypeId]: HistogramKeyTypeTypeId
-    readonly boundaries: MetricBoundaries.MetricBoundaries
+    readonly boundaries: MetricBoundaries
   }
 
   /**
@@ -139,7 +139,7 @@ export declare namespace MetricKeyType {
    */
   export type Summary = MetricKeyType<readonly [number, number], MetricState.Summary> & {
     readonly [SummaryKeyTypeTypeId]: SummaryKeyTypeTypeId
-    readonly maxAge: Duration.Duration
+    readonly maxAge: Duration
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk<number>

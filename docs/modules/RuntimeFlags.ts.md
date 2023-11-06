@@ -305,8 +305,8 @@ and `that`.
 
 ```ts
 export declare const diff: {
-  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch.RuntimeFlagsPatch
-  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch.RuntimeFlagsPatch
+  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch
+  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch
 }
 ```
 

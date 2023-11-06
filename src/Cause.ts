@@ -263,7 +263,7 @@ export interface Die extends Cause.Variance<never>, Equal, Pipeable, Inspectable
  */
 export interface Interrupt extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Interrupt"
-  readonly fiberId: FiberId.FiberId
+  readonly fiberId: FiberId
 }
 
 /**

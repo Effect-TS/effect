@@ -50,7 +50,7 @@ If an ExecutionStrategy is not provided `sequential` will be used.
 
 ```ts
 export declare const make: (
-  executionStrategy?: ExecutionStrategy.ExecutionStrategy
+  executionStrategy?: ExecutionStrategy
 ) => Effect<never, never, CloseableScope>
 ```
 
@@ -130,7 +130,7 @@ Added in v2.0.0
 ```ts
 export interface Scope extends Pipeable {
   readonly [ScopeTypeId]: ScopeTypeId
-  readonly strategy: ExecutionStrategy.ExecutionStrategy
+  readonly strategy: ExecutionStrategy
   /**
    * @internal
    */
@@ -269,7 +269,7 @@ automatically be closed when this scope is closed.
 ```ts
 export declare const fork: (
   self: Scope,
-  strategy: ExecutionStrategy.ExecutionStrategy
+  strategy: ExecutionStrategy
 ) => Effect<never, never, CloseableScope>
 ```
 

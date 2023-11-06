@@ -1026,7 +1026,7 @@ export const mergeAll = (
   options: {
     readonly concurrency: number | "unbounded"
     readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly mergeStrategy?: MergeStrategy
   }
 ) => {
   return <
@@ -1139,7 +1139,7 @@ export const mergeAllWith = (
   }: {
     readonly concurrency: number | "unbounded"
     readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly mergeStrategy?: MergeStrategy
   }
 ) =>
 <
@@ -1362,7 +1362,7 @@ export const mergeMap = dual<
     options: {
       readonly concurrency: number | "unbounded"
       readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly mergeStrategy?: MergeStrategy
     }
   ) => <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -1381,7 +1381,7 @@ export const mergeMap = dual<
     options: {
       readonly concurrency: number | "unbounded"
       readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly mergeStrategy?: MergeStrategy
     }
   ) => Channel<
     Env1 | Env,
@@ -1398,7 +1398,7 @@ export const mergeMap = dual<
   options: {
     readonly concurrency: number | "unbounded"
     readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly mergeStrategy?: MergeStrategy
   }
 ): Channel<
   Env | Env1,

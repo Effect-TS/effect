@@ -420,7 +420,7 @@ The identity of the fiber.
 **Signature**
 
 ```ts
-export declare const id: <E, A>(self: Fiber<E, A>) => FiberId.FiberId
+export declare const id: <E, A>(self: Fiber<E, A>) => FiberId
 ```
 
 Added in v2.0.0
@@ -621,7 +621,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
   /**
    * The identity of the fiber.
    */
-  id(): FiberId.FiberId
+  id(): FiberId
 
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
@@ -705,7 +705,7 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * Retrieves all fiber refs of the fiber.
    */
-  getFiberRefs(): FiberRefs.FiberRefs
+  getFiberRefs(): FiberRefs
 
   /**
    * Unsafely observes the fiber, but returns immediately if it is not
@@ -817,11 +817,11 @@ export interface Descriptor {
   /**
    * The fiber's unique identifier.
    */
-  readonly id: FiberId.FiberId
+  readonly id: FiberId
   /**
    * The status of the fiber.
    */
-  readonly status: FiberStatus.FiberStatus
+  readonly status: FiberStatus
   /**
    * The set of fibers attempting to interrupt the fiber or its ancestors.
    */
@@ -844,7 +844,7 @@ export interface Dump {
   /**
    * The status of the fiber.
    */
-  readonly status: FiberStatus.FiberStatus
+  readonly status: FiberStatus
 }
 ```
 

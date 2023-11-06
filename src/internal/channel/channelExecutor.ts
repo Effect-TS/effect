@@ -1109,7 +1109,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
   const run = (
     channelDeferred: Deferred<OutErr, OutDone>,
     scopeDeferred: Deferred<never, void>,
-    scope: Scope.Scope
+    scope: Scope
   ) =>
     Effect.acquireUseRelease(
       Effect.sync(() => new ChannelExecutor(self, void 0, identity)),

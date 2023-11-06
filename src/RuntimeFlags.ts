@@ -108,8 +108,8 @@ export const cooperativeYielding: (self: RuntimeFlags) => boolean = internal.coo
  * @category diffing
  */
 export const diff: {
-  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch.RuntimeFlagsPatch
-  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch.RuntimeFlagsPatch
+  (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch
+  (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch
 } = internal.diff
 
 /**

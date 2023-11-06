@@ -51,7 +51,7 @@ export class PullFromChild<R> implements Subexecutor<R> {
   constructor(
     readonly childExecutor: ErasedExecutor<R>,
     readonly parentSubexecutor: Subexecutor<R>,
-    readonly onEmit: (value: unknown) => ChildExecutorDecision.ChildExecutorDecision
+    readonly onEmit: (value: unknown) => ChildExecutorDecision
   ) {
   }
 
@@ -97,7 +97,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
     readonly onPull: (
       request: UpstreamPullRequest<unknown>
     ) => UpstreamPullStrategy<unknown>,
-    readonly onEmit: (value: unknown) => ChildExecutorDecision.ChildExecutorDecision
+    readonly onEmit: (value: unknown) => ChildExecutorDecision
   ) {
   }
 

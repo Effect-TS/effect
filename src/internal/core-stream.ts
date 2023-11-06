@@ -99,7 +99,7 @@ export interface ConcatAll extends
     readonly onPull: (
       request: UpstreamPullRequest<unknown>
     ) => UpstreamPullStrategy<unknown>
-    readonly onEmit: (outElem: unknown) => ChildExecutorDecision.ChildExecutorDecision
+    readonly onEmit: (outElem: unknown) => ChildExecutorDecision
     readonly value: LazyArg<ErasedChannel>
     readonly k: (outElem: unknown) => ErasedChannel
   }>
@@ -461,7 +461,7 @@ export const concatMapWithCustom = dual<
     onPull: (
       upstreamPullRequest: UpstreamPullRequest<OutElem>
     ) => UpstreamPullStrategy<OutElem2>,
-    onEmit: (elem: OutElem2) => ChildExecutorDecision.ChildExecutorDecision
+    onEmit: (elem: OutElem2) => ChildExecutorDecision
   ) => <Env, InErr, InElem, InDone, OutErr>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>
   ) => Channel<
@@ -497,7 +497,7 @@ export const concatMapWithCustom = dual<
     onPull: (
       upstreamPullRequest: UpstreamPullRequest<OutElem>
     ) => UpstreamPullStrategy<OutElem2>,
-    onEmit: (elem: OutElem2) => ChildExecutorDecision.ChildExecutorDecision
+    onEmit: (elem: OutElem2) => ChildExecutorDecision
   ) => Channel<
     Env2 | Env,
     InErr & InErr2,
@@ -533,7 +533,7 @@ export const concatMapWithCustom = dual<
   onPull: (
     upstreamPullRequest: UpstreamPullRequest<OutElem>
   ) => UpstreamPullStrategy<OutElem2>,
-  onEmit: (elem: OutElem2) => ChildExecutorDecision.ChildExecutorDecision
+  onEmit: (elem: OutElem2) => ChildExecutorDecision
 ): Channel<
   Env | Env2,
   InErr & InErr2,

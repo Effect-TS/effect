@@ -20,7 +20,7 @@ export const randomTag: Context.Tag<Random, Random> = Context.Tag(RandomTypeId)
 class RandomImpl implements Random {
   readonly [RandomTypeId]: Random.RandomTypeId = RandomTypeId
 
-  readonly PRNG: PCGRandom.PCGRandom
+  readonly PRNG: PCGRandom
 
   constructor(readonly seed: number) {
     this.PRNG = new PCGRandom.PCGRandom(seed)

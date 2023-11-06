@@ -40,7 +40,7 @@ export interface Done extends Equal {
 export interface Running extends Equal {
   readonly _tag: "Running"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
+  readonly runtimeFlags: RuntimeFlags
 }
 
 /**
@@ -50,8 +50,8 @@ export interface Running extends Equal {
 export interface Suspended extends Equal {
   readonly _tag: "Suspended"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-  readonly blockingOn: FiberId.FiberId
+  readonly runtimeFlags: RuntimeFlags
+  readonly blockingOn: FiberId
 }
 
 /**

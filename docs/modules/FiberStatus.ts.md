@@ -97,7 +97,7 @@ Added in v2.0.0
 export interface Running extends Equal {
   readonly _tag: "Running"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
+  readonly runtimeFlags: RuntimeFlags
 }
 ```
 
@@ -111,8 +111,8 @@ Added in v2.0.0
 export interface Suspended extends Equal {
   readonly _tag: "Suspended"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-  readonly blockingOn: FiberId.FiberId
+  readonly runtimeFlags: RuntimeFlags
+  readonly blockingOn: FiberId
 }
 ```
 

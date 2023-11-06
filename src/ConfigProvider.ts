@@ -76,7 +76,7 @@ export declare namespace ConfigProvider {
    */
   export interface Flat {
     readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
-    patch: PathPatch.PathPatch
+    patch: PathPatch
     load<A>(
       path: ReadonlyArray<string>,
       config: Config.Primitive<A>,
@@ -142,7 +142,7 @@ export const makeFlat: (options: {
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
   ) => Effect<never, ConfigError, HashSet<string>>
-  readonly patch: PathPatch.PathPatch
+  readonly patch: PathPatch
 }) => ConfigProvider.Flat = internal.makeFlat
 
 /**

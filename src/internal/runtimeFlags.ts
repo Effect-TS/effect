@@ -62,25 +62,25 @@ export const cooperativeYielding = (self: RuntimeFlags.RuntimeFlags): boolean =>
 /** @internal */
 export const disable = dual<
   (flag: RuntimeFlags.RuntimeFlag) => (self: RuntimeFlags.RuntimeFlags) => RuntimeFlags,
-  (self: RuntimeFlags, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlags.RuntimeFlags
+  (self: RuntimeFlags, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlags
 >(2, (self, flag) => (self & ~flag) as RuntimeFlags.RuntimeFlags)
 
 /** @internal */
 export const disableAll = dual<
   (flags: RuntimeFlags.RuntimeFlags) => (self: RuntimeFlags.RuntimeFlags) => RuntimeFlags,
-  (self: RuntimeFlags, flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags
+  (self: RuntimeFlags, flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags
 >(2, (self, flags) => (self & ~flags) as RuntimeFlags.RuntimeFlags)
 
 /** @internal */
 export const enable = dual<
   (flag: RuntimeFlags.RuntimeFlag) => (self: RuntimeFlags.RuntimeFlags) => RuntimeFlags,
-  (self: RuntimeFlags, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlags.RuntimeFlags
+  (self: RuntimeFlags, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlags
 >(2, (self, flag) => (self | flag) as RuntimeFlags.RuntimeFlags)
 
 /** @internal */
 export const enableAll = dual<
   (flags: RuntimeFlags.RuntimeFlags) => (self: RuntimeFlags.RuntimeFlags) => RuntimeFlags,
-  (self: RuntimeFlags, flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags
+  (self: RuntimeFlags, flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags
 >(2, (self, flags) => (self | flags) as RuntimeFlags.RuntimeFlags)
 
 /** @internal */
@@ -103,7 +103,7 @@ export const isEnabled = dual<
 
 /** @internal */
 export const make = (...flags: ReadonlyArray<RuntimeFlags.RuntimeFlag>): RuntimeFlags =>
-  flags.reduce((a, b) => a | b, 0) as RuntimeFlags.RuntimeFlags
+  flags.reduce((a, b) => a | b, 0) as RuntimeFlags
 
 /** @internal */
 export const none: RuntimeFlags = make(None)
@@ -144,13 +144,13 @@ export const disabledSet = (self: RuntimeFlagsPatch.RuntimeFlagsPatch): Readonly
 /** @internal */
 export const diff = dual<
   (that: RuntimeFlags.RuntimeFlags) => (self: RuntimeFlags.RuntimeFlags) => RuntimeFlagsPatch,
-  (self: RuntimeFlags, that: RuntimeFlags.RuntimeFlags) => RuntimeFlagsPatch.RuntimeFlagsPatch
+  (self: RuntimeFlags, that: RuntimeFlags.RuntimeFlags) => RuntimeFlagsPatch
 >(2, (self, that) => runtimeFlagsPatch.make(self ^ that, that))
 
 /** @internal */
 export const patch = dual<
   (patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => (self: RuntimeFlags.RuntimeFlags) => RuntimeFlags,
-  (self: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => RuntimeFlags.RuntimeFlags
+  (self: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => RuntimeFlags
 >(2, (self, patch) =>
   (
     (self & (runtimeFlagsPatch.invert(runtimeFlagsPatch.active(patch)) | runtimeFlagsPatch.enabled(patch))) |

@@ -281,7 +281,7 @@ export const aggregateWithinEither = dual<
         const scheduledAggregator = (
           sinkFiber: Fiber.RuntimeFiber<E | E2, readonly [Chunk<Chunk<A | A2>>, B]>,
           scheduleFiber: Fiber.RuntimeFiber<Option<never>, C>,
-          scope: Scope.Scope
+          scope: Scope
         ): Channel<R2 | R3, unknown, unknown, unknown, E | E2, Chunk<Either<C, B>>, unknown> => {
           const forkSink = pipe(
             Ref.set(consumed, false),

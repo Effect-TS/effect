@@ -978,7 +978,7 @@ export const validateFirst: {
  */
 export const async: <R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void, signal: AbortSignal) => void | Effect<R, never, void>,
-  blockingOn?: FiberId.FiberId
+  blockingOn?: FiberId
 ) => Effect<R, E, A> = core.async
 
 /**
@@ -1010,7 +1010,7 @@ export const asyncEffect: <R, E, A, R2, E2, X>(
  */
 export const asyncOption: <R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
-  blockingOn?: FiberId.FiberId
+  blockingOn?: FiberId
 ) => Effect<R, E, A> = effect.asyncOption
 
 /**
@@ -1033,7 +1033,7 @@ export const asyncOption: <R, E, A>(
  */
 export const asyncEither: <R, E, A>(
   register: (callback: (effect: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
-  blockingOn?: FiberId.FiberId
+  blockingOn?: FiberId
 ) => Effect<R, E, A> = core.asyncEither
 
 /**
@@ -4087,7 +4087,7 @@ export const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<never, nev
  * @category fiber refs
  */
 export const updateFiberRefs: (
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs
 ) => Effect<never, never, void> = effect.updateFiberRefs
 
 // -------------------------------------------------------------------------------------
@@ -4447,7 +4447,7 @@ export const withRuntimeFlagsPatch: {
  * @category runtime
  */
 export const withRuntimeFlagsPatchScoped: (
-  update: RuntimeFlagsPatch.RuntimeFlagsPatch
+  update: RuntimeFlagsPatch
 ) => Effect<Scope, never, void> = fiberRuntime.withRuntimeFlagsScoped
 
 // -------------------------------------------------------------------------------------

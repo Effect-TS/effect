@@ -923,7 +923,7 @@ export const setRequestCache: {
  * @category scheduler
  */
 export const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never, never, never> = (
-  scheduler: Scheduler.Scheduler
+  scheduler: Scheduler
 ): Layer<never, never, never> =>
   scopedDiscard(
     fiberRuntime.fiberRefLocallyScoped(Scheduler.currentScheduler, scheduler)

@@ -613,7 +613,7 @@ const buildWith = <Key, Environment, Error, Value>(
   capacity: number,
   scopedLookup: ScopedCache.Lookup<Key, Environment, Error, Value>,
   clock: Clock,
-  timeToLive: (exit: Exit<Error, Value>) => Duration.Duration
+  timeToLive: (exit: Exit<Error, Value>) => Duration
 ): Effect<Environment | Scope, never, ScopedCache<Key, Error, Value>> =>
   fiberRuntime.acquireRelease(
     core.flatMap(

@@ -14,7 +14,7 @@ export interface Done<E, A> {
 /** @internal */
 export interface Suspend {
   readonly _tag: OpCodes.OP_SUSPEND
-  readonly journal: Journal.Journal
+  readonly journal: Journal
 }
 
 /** @internal */

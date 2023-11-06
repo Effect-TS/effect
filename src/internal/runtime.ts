@@ -261,7 +261,7 @@ export class RuntimeImpl<R> implements Runtime<R> {
   constructor(
     readonly context: Context<R>,
     readonly runtimeFlags: RuntimeFlags,
-    readonly fiberRefs: FiberRefs.FiberRefs
+    readonly fiberRefs: FiberRefs
   ) {}
 
   pipe() {
@@ -273,8 +273,8 @@ export class RuntimeImpl<R> implements Runtime<R> {
 export const make = <R>(
   options: {
     readonly context: Context<R>
-    readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-    readonly fiberRefs: FiberRefs.FiberRefs
+    readonly runtimeFlags: RuntimeFlags
+    readonly fiberRefs: FiberRefs
   }
 ): Runtime<R> => new RuntimeImpl(options.context, options.runtimeFlags, options.fiberRefs)
 

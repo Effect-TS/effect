@@ -134,7 +134,7 @@ export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
   /** @internal */
   readonly state: MutableRef<internal.State<E, A>>
   /** @internal */
-  readonly blockingOn: FiberId.FiberId
+  readonly blockingOn: FiberId
 }
 ```
 

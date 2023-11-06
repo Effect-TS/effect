@@ -31,11 +31,11 @@ const loggerVariance = {
 export const makeLogger = <Message, Output>(
   log: (
     options: {
-      readonly fiberId: FiberId.FiberId
-      readonly logLevel: LogLevel.LogLevel
+      readonly fiberId: FiberId
+      readonly logLevel: LogLevel
       readonly message: Message
       readonly cause: CauseExt.Cause<unknown>
-      readonly context: FiberRefs.FiberRefs
+      readonly context: FiberRefs
       readonly spans: List<LogSpan>
       readonly annotations: HashMap<string, unknown>
       readonly date: Date

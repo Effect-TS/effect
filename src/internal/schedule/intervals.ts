@@ -32,7 +32,7 @@ export const fromIterable = (intervals: Iterable<Interval>): Intervals =>
 /** @internal */
 export const union = dual<
   (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
-  (self: Intervals, that: Intervals.Intervals) => Intervals.Intervals
+  (self: Intervals, that: Intervals.Intervals) => Intervals
 >(2, (self, that) => {
   if (!Chunk.isNonEmpty(that.intervals)) {
     return self
@@ -118,7 +118,7 @@ const unionLoop = (
 /** @internal */
 export const intersect = dual<
   (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
-  (self: Intervals, that: Intervals.Intervals) => Intervals.Intervals
+  (self: Intervals, that: Intervals.Intervals) => Intervals
 >(2, (self, that) => intersectLoop(self.intervals, that.intervals, Chunk.empty()))
 
 /** @internal */
@@ -175,5 +175,5 @@ export const isNonEmpty = (self: Intervals.Intervals): boolean => {
 /** @internal */
 export const max = dual<
   (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
-  (self: Intervals, that: Intervals.Intervals) => Intervals.Intervals
+  (self: Intervals, that: Intervals.Intervals) => Intervals
 >(2, (self, that) => lessThan(self, that) ? that : self)

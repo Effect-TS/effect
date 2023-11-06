@@ -100,7 +100,7 @@ interval to the end of the interval.
 **Signature**
 
 ```ts
-export declare const size: (self: Interval) => Duration.Duration
+export declare const size: (self: Interval) => Duration
 ```
 
 Added in v2.0.0

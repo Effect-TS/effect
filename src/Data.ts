@@ -19,7 +19,7 @@ declare module "./Data.js" {
    */
   export type Data<A> =
     & { readonly [P in keyof A]: A[P] }
-    & Equal.Equal
+    & Equal
 }
 
 /**

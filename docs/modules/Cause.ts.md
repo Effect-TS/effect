@@ -798,7 +798,7 @@ contains the `FiberId` of the interrupted `Fiber`.
 ```ts
 export interface Interrupt extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Interrupt"
-  readonly fiberId: FiberId.FiberId
+  readonly fiberId: FiberId
 }
 ```
 

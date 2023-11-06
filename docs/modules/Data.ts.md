@@ -434,7 +434,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Data<A> = { readonly [P in keyof A]: A[P] } & Equal.Equal
+export type Data<A> = { readonly [P in keyof A]: A[P] } & Equal
 ```
 
 Added in v2.0.0

@@ -84,7 +84,7 @@ const findAncestor = (
 /** @internal */
 export const joinAs = dual<
   (fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => (self: FiberRefs.FiberRefs) => FiberRefs,
-  (self: FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  (self: FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => FiberRefs
 >(3, (self, fiberId, that) => {
   const parentFiberRefs = new Map(self.locals)
   for (const [fiberRef, childStack] of that.locals) {
@@ -133,7 +133,7 @@ export const joinAs = dual<
 /** @internal */
 export const forkAs = dual<
   (childId: FiberId.Runtime) => (self: FiberRefs.FiberRefs) => FiberRefs,
-  (self: FiberRefs, childId: FiberId.Runtime) => FiberRefs.FiberRefs
+  (self: FiberRefs, childId: FiberId.Runtime) => FiberRefs
 >(2, (self, childId) => {
   const map = new Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>>()
   for (const [fiberRef, stack] of self.locals.entries()) {
@@ -161,7 +161,7 @@ export const setAll = (self: FiberRefs.FiberRefs): Effect<never, never, void> =>
 /** @internal */
 export const delete_ = dual<
   <A>(fiberRef: FiberRef<A>) => (self: FiberRefs.FiberRefs) => FiberRefs,
-  <A>(self: FiberRefs, fiberRef: FiberRef<A>) => FiberRefs.FiberRefs
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>) => FiberRefs
 >(2, (self, fiberRef) => {
   const locals = new Map(self.locals)
   locals.delete(fiberRef)
@@ -201,7 +201,7 @@ export const updatedAs = dual<
       readonly fiberRef: FiberRef<A>
       readonly value: A
     }
-  ) => FiberRefs.FiberRefs
+  ) => FiberRefs
 >(2, <A>(self: FiberRefs, { fiberId, fiberRef, value }: {
   readonly fiberId: FiberId.Runtime
   readonly fiberRef: FiberRef<A>

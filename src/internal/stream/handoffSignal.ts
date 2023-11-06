@@ -37,7 +37,7 @@ export interface Halt<E> {
 /** @internal */
 export interface End {
   readonly _tag: OP_END
-  readonly reason: SinkEndReason.SinkEndReason
+  readonly reason: SinkEndReason
 }
 
 /** @internal */

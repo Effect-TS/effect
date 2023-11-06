@@ -91,7 +91,7 @@ export class WriteLock implements LockState {
   constructor(
     readonly readLocks: number,
     readonly writeLocks: number,
-    readonly fiberId: FiberId.FiberId
+    readonly fiberId: FiberId
   ) {}
   readLocksHeld(fiberId: FiberId.FiberId): number {
     return Equal.equals(fiberId)(this.fiberId) ? this.readLocks : 0
@@ -287,11 +287,11 @@ export const releaseWrite = (self: TReentrantLock.TReentrantLock): STM<never, ne
 /** @internal */
 export const withLock = dual<
   (
-    self: TReentrantLock.TReentrantLock
+    self: TReentrantLock
   ) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
   <R, E, A>(
     effect: Effect<R, E, A>,
-    self: TReentrantLock.TReentrantLock
+    self: TReentrantLock
   ) => Effect<R, E, A>
 >(2, (effect, self) => withWriteLock(effect, self))
 
@@ -302,7 +302,7 @@ export const withReadLock = dual<
   ) => Effect<R, E, A>,
   <R, E, A>(
     effect: Effect<R, E, A>,
-    self: TReentrantLock.TReentrantLock
+    self: TReentrantLock
   ) => Effect<R, E, A>
 >(2, (effect, self) =>
   Effect.uninterruptibleMask((restore) =>
