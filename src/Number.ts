@@ -13,6 +13,8 @@ import * as order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
 import * as predicate from "./Predicate.js"
 
+export * as Number from "./Number.js"
+
 /**
  * Tests if a value is a `number`.
  *

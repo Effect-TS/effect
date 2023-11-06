@@ -9,6 +9,8 @@ import { Predicate } from "./Predicate.js"
 import type { UnionToIntersection } from "./Types.js"
 import type { Unify } from "./Unify.js"
 
+export * as Match from "./Match.js"
+
 /**
  * @category type ids
  * @since 1.0.0

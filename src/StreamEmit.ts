@@ -7,7 +7,7 @@ import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { Option } from "./Option.js"
 
-export * as Emit from "./StreamEmit.js"
+export * as StreamEmit from "./StreamEmit.js"
 
 declare module "./StreamEmit.js" {
   /**

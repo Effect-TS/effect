@@ -10,16 +10,21 @@ import * as internal from "./internal/defaultServices.js"
 import type { Random } from "./Random.js"
 import type { Tracer } from "./Tracer.js"
 
+export * as DefaultServices from "./DefaultServices.js"
+
+declare module "./DefaultServices.js" {
+  /**
 /**
  * @since 2.0.0
  * @category models
  */
-export type DefaultServices =
-  | Clock
-  | Console
-  | Random
-  | ConfigProvider
-  | Tracer
+  export type DefaultServices =
+    | Clock
+    | Console
+    | Random
+    | ConfigProvider
+    | Tracer
+}
 
 /**
  * @since 2.0.0

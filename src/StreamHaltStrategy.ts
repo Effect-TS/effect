@@ -3,7 +3,7 @@
  */
 import * as internal from "./internal/stream/haltStrategy.js"
 
-export * as HaltStrategy from "./StreamHaltStrategy.js"
+export * as StreamHaltStrategy from "./StreamHaltStrategy.js"
 
 declare module "./StreamHaltStrategy.js" {
   /**

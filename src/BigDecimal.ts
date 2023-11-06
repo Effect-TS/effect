@@ -39,16 +39,20 @@ export const TypeId: unique symbol = Symbol.for("effect/BigDecimal")
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface BigDecimal extends Equal, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
-  readonly value: bigint
-  readonly scale: number
-  /** @internal */
-  normalized?: BigDecimal
+export * as BigDecimal from "./BigDecimal.js"
+
+declare module "./BigDecimal.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface BigDecimal extends Equal, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+    readonly value: bigint
+    readonly scale: number
+    /** @internal */
+    normalized?: BigDecimal
+  }
 }
 
 const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {

@@ -17,7 +17,7 @@ export const IntervalTypeId: unique symbol = internal.IntervalTypeId
  */
 export type IntervalTypeId = typeof IntervalTypeId
 
-export * as Interval from "./ScheduleInterval.js"
+export * as ScheduleInterval from "./ScheduleInterval.js"
 
 declare module "./ScheduleInterval.js" {
   /**

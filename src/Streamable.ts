@@ -5,6 +5,8 @@
 import { pipeArguments } from "./Pipeable.js"
 import { Stream } from "./Stream.js"
 
+export * as Streamable from "./Streamable.js"
+
 const streamVariance = {
   _R: (_: never) => _,
   _E: (_: never) => _,

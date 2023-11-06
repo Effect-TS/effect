@@ -4,11 +4,15 @@
 import type { LazyArg } from "./Function.js"
 import { dual } from "./Function.js"
 
-/**
- * @category model
- * @since 2.0.0
- */
-export type Ordering = -1 | 0 | 1
+export * as Ordering from "./Ordering.js"
+
+declare module "./Ordering.js" {
+  /**
+   * @category model
+   * @since 2.0.0
+   */
+  export type Ordering = -1 | 0 | 1
+}
 
 /**
  * Inverts the ordering of the input `Ordering`.

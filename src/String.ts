@@ -17,6 +17,8 @@ import type { Refinement } from "./Predicate.js"
 import * as predicate from "./Predicate.js"
 import type { NonEmptyArray } from "./ReadonlyArray.js"
 
+export * as String from "./String.js"
+
 /**
  * Tests if a value is a `string`.
  *

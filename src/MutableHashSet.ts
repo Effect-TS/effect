@@ -15,15 +15,19 @@ const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
+export * as MutableHashSet from "./MutableHashSet.js"
 
-  /** @internal */
-  readonly keyMap: MutableHashMap<V, boolean>
+declare module "./MutableHashSet.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+
+    /** @internal */
+    readonly keyMap: MutableHashMap<V, boolean>
+  }
 }
 
 const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {

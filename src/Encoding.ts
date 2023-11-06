@@ -13,6 +13,10 @@ import * as Base64Url from "./internal/encoding/base64Url.js"
 import * as Common from "./internal/encoding/common.js"
 import * as Hex from "./internal/encoding/hex.js"
 
+export * as Encoding from "./Encoding.js"
+
+/**
+   *
 /**
  * Encodes the given value into a base64 (RFC4648) `string`.
  *
