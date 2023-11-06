@@ -45,8 +45,7 @@
     "lint-fix": "eslint src test --fix",
     "docgen": "docgen",
     "dtslint": "dtslint dtslint",
-    "dtslint-clean": "dtslint --installAll",
-    "prepare": "pnpm clean && pnpm run build"
+    "dtslint-clean": "dtslint --installAll"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.0",
