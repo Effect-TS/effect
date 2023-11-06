@@ -661,7 +661,7 @@ export * as SortedSet from "./SortedSet.js"
 /**
  * @since 2.0.0
  */
-export * as Stream from "./Stream.js"
+export { Stream } from "./Stream.js"
 
 /**
  * @since 2.0.0
