@@ -1,7 +1,7 @@
 import type * as Cause from "../Cause.js"
 import * as Context from "../Context.js"
 import type { Effect } from "../Effect.js"
-import * as Exit from "../Exit.js"
+import { Exit } from "../Exit.js"
 import * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
@@ -76,8 +76,8 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 <E, A>(
   effect: Effect<R, E, A>,
-  onExit?: (exit: Exit.Exit<E, A>) => void
-): (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void) => void => {
+  onExit?: (exit: Exit<E, A>) => void
+): (fiberId?: FiberId.FiberId, onExit?: (exit: Exit<E, A>) => void) => void => {
   const fiberRuntime = unsafeFork(runtime)(effect)
 
   if (onExit) {
@@ -189,7 +189,7 @@ export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => 
 /** @internal */
 export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure => Predicate.hasProperty(u, FiberFailureId)
 
-const fastPath = <R, E, A>(effect: Effect<R, E, A>): Exit.Exit<E, A> | undefined => {
+const fastPath = <R, E, A>(effect: Effect<R, E, A>): Exit<E, A> | undefined => {
   const op = effect as core.Primitive
   switch (op._op) {
     case "Failure":
@@ -215,7 +215,7 @@ const fastPath = <R, E, A>(effect: Effect<R, E, A>): Exit.Exit<E, A> | undefined
 
 /** @internal */
 export const unsafeRunSyncExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Exit.Exit<E, A> => {
+  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Exit<E, A> => {
     const op = fastPath(effect)
     if (op) {
       return op
@@ -245,7 +245,7 @@ export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effec
 
 /** @internal */
 export const unsafeRunPromiseExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Promise<Exit.Exit<E, A>> =>
+  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Promise<Exit<E, A>> =>
     new Promise((resolve) => {
       const op = fastPath(effect)
       if (op) {

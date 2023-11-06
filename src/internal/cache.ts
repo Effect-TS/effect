@@ -6,7 +6,7 @@ import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
-import * as Exit from "../Exit.js"
+import { Exit } from "../Exit.js"
 import type * as FiberId from "../FiberId.js"
 import { pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
@@ -38,7 +38,7 @@ export type MapValue<Key, Error, Value> =
 export interface Complete<Key, Error, Value> {
   readonly _tag: "Complete"
   readonly key: MapKey<Key>
-  readonly exit: Exit.Exit<Error, Value>
+  readonly exit: Exit<Error, Value>
   readonly entryStats: Cache.EntryStats
   readonly timeToLiveMillis: number
 }
@@ -60,7 +60,7 @@ export interface Refreshing<Key, Error, Value> {
 /** @internal */
 export const complete = <Key, Error, Value>(
   key: MapKey<Key>,
-  exit: Exit.Exit<Error, Value>,
+  exit: Exit<Error, Value>,
   entryStats: Cache.EntryStats,
   timeToLiveMillis: number
 ): MapValue<Key, Error, Value> =>
@@ -296,7 +296,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     readonly context: Context.Context<any>,
     readonly fiberId: FiberId.FiberId,
     readonly lookup: Cache.Lookup<Key, any, Error, Value>,
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   ) {
     this.cacheState = initialCacheState()
   }
@@ -685,7 +685,7 @@ export const makeWith = <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   }
 ): Effect<Environment, never, Cache.Cache<Key, Error, Value>> =>
   core.map(
@@ -704,7 +704,7 @@ export const makeWith = <Key, Environment, Error, Value>(
 export const unsafeMakeWith = <Key, Error, Value>(
   capacity: number,
   lookup: Cache.Lookup<never, Key, Error, Value>,
-  timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+  timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
 ): Cache.Cache<Key, Error, Value> =>
   new CacheImpl(
     capacity,

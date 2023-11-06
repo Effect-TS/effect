@@ -2,7 +2,7 @@ import * as Cause from "../../Cause.js"
 import * as Deferred from "../../Deferred.js"
 import { Effect } from "../../Effect.js"
 import * as Either from "../../Either.js"
-import * as Exit from "../../Exit.js"
+import { Exit } from "../../Exit.js"
 import { pipe } from "../../Function.js"
 import * as Ref from "../../Ref.js"
 import type * as SingleProducerAsyncInput from "../../SingleProducerAsyncInput.js"
@@ -198,10 +198,10 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     )
   }
 
-  take(): Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>> {
+  take(): Effect<never, never, Exit<Either.Either<Err, Done>, Elem>> {
     return this.takeWith(
       (cause) => Exit.failCause(Cause.map(cause, Either.left)),
-      (elem) => Exit.succeed(elem) as Exit.Exit<Either.Either<Err, Done>, Elem>,
+      (elem) => Exit.succeed(elem) as Exit<Either.Either<Err, Done>, Elem>,
       (done) => Exit.fail(Either.right(done))
     )
   }

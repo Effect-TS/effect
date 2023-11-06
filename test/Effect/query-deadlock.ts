@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
 import { describe } from "vitest"

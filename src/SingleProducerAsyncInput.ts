@@ -4,7 +4,7 @@
 import type * as Cause from "./Cause.js"
 import type { Effect } from "./Effect.js"
 import type * as Either from "./Either.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 
 /**
@@ -30,7 +30,7 @@ export interface SingleProducerAsyncInput<Err, Elem, Done>
   extends AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
 {
   close(): Effect<never, never, unknown>
-  take(): Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
+  take(): Effect<never, never, Exit<Either.Either<Err, Done>, Elem>>
 }
 
 /**

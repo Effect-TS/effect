@@ -8,7 +8,7 @@ import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type { Effect } from "./Effect.js"
 import type * as Either from "./Either.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import * as channel from "./internal/channel.js"
 import * as core from "./internal/core-stream.js"
@@ -174,7 +174,7 @@ export interface ChannelException<E> {
 export const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
   acquire: Effect<Env, OutErr, Acquired>,
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, any>
+  release: (a: Acquired, exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> = channel.acquireUseRelease
 
 /**
@@ -183,7 +183,7 @@ export const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, OutElem1, O
  */
 export const acquireReleaseOut: <R, R2, E, Z>(
   self: Effect<R, E, Z>,
-  release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect<R2, never, unknown>
+  release: (z: Z, e: Exit<unknown, unknown>) => Effect<R2, never, unknown>
 ) => Channel<R | R2, unknown, unknown, unknown, E, Z, void> = core.acquireReleaseOut
 
 /**
@@ -713,13 +713,13 @@ export const ensuring: {
  */
 export const ensuringWith: {
   <Env2, OutErr, OutDone>(
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
+    finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): <Env, InErr, InElem, InDone, OutElem>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
+    finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): Channel<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 } = core.ensuringWith
 
@@ -1078,7 +1078,7 @@ export const fromInput: <Err, Elem, Done>(
  * @category constructors
  */
 export const fromPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromPubSub
 
 /**
@@ -1088,7 +1088,7 @@ export const fromPubSub: <Err, Done, Elem>(
  * @category constructors
  */
 export const fromPubSubScoped: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ) => Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>> = channel.fromPubSubScoped
 
 /**
@@ -1108,7 +1108,7 @@ export const fromOption: <A>(
  * @category constructors
  */
 export const fromQueue: <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromQueue
 
 /**
@@ -1518,10 +1518,10 @@ export const mergeWith: {
     options: {
       readonly other: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
       readonly onSelfDone: (
-        exit: Exit.Exit<OutErr, OutDone>
+        exit: Exit<OutErr, OutDone>
       ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
       readonly onOtherDone: (
-        ex: Exit.Exit<OutErr1, OutDone1>
+        ex: Exit<OutErr1, OutDone1>
       ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
     }
   ): <Env, InErr, InElem, InDone, OutElem>(
@@ -1559,10 +1559,10 @@ export const mergeWith: {
     options: {
       readonly other: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
       readonly onSelfDone: (
-        exit: Exit.Exit<OutErr, OutDone>
+        exit: Exit<OutErr, OutDone>
       ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
       readonly onOtherDone: (
-        ex: Exit.Exit<OutErr1, OutDone1>
+        ex: Exit<OutErr1, OutDone1>
       ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
     }
   ): Channel<
@@ -1967,7 +1967,7 @@ export const sync: <OutDone>(
  * @category destructors
  */
 export const toPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toPubSub
 
 /**
@@ -1990,7 +1990,7 @@ export const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * @category destructors
  */
 export const toQueue: <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toQueue
 
 /** Converts this channel to a `Sink`.

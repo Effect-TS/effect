@@ -39,7 +39,7 @@ Added in v2.0.0
 
 ```ts
 export declare const Await: <R, E0, Z0, E, Z>(
-  f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>
+  f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>
 ) => MergeDecision<R, E0, Z0, E, Z>
 ```
 
@@ -75,13 +75,13 @@ Added in v2.0.0
 export declare const match: {
   <R, E0, Z0, E, Z, Z2>(options: {
     readonly onDone: (effect: Effect<R, E, Z>) => Z2
-    readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
+    readonly onAwait: (f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
   }): (self: MergeDecision<R, E0, Z0, E, Z>) => Z2
   <R, E0, Z0, E, Z, Z2>(
     self: MergeDecision<R, E0, Z0, E, Z>,
     options: {
       readonly onDone: (effect: Effect<R, E, Z>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
+      readonly onAwait: (f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
     }
   ): Z2
 }

@@ -1,5 +1,5 @@
 import type { Effect } from "../../Effect.js"
-import type * as Exit from "../../Exit.js"
+import type { Exit } from "../../Exit.js"
 import { dual } from "../../Function.js"
 import type * as MergeDecision from "../../MergeDecision.js"
 import { hasProperty } from "../../Predicate.js"
@@ -47,7 +47,7 @@ export interface Done extends
 /** @internal */
 export interface Await extends
   Op<OpCodes.OP_AWAIT, {
-    readonly f: (exit: Exit.Exit<unknown, unknown>) => Effect<never, never, never>
+    readonly f: (exit: Exit<unknown, unknown>) => Effect<never, never, never>
   }>
 {}
 
@@ -63,7 +63,7 @@ export const Done = <R, E, Z>(
 
 /** @internal */
 export const Await = <R, E0, Z0, E, Z>(
-  f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>
+  f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>
 ): MergeDecision.MergeDecision<R, E0, Z0, E, Z> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_AWAIT
@@ -86,21 +86,21 @@ export const match = dual<
   <R, E0, Z0, E, Z, Z2>(
     options: {
       readonly onDone: (effect: Effect<R, E, Z>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
+      readonly onAwait: (f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
     }
   ) => (self: MergeDecision.MergeDecision<R, E0, Z0, E, Z>) => Z2,
   <R, E0, Z0, E, Z, Z2>(
     self: MergeDecision.MergeDecision<R, E0, Z0, E, Z>,
     options: {
       readonly onDone: (effect: Effect<R, E, Z>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
+      readonly onAwait: (f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
     }
   ) => Z2
 >(2, <R, E0, Z0, E, Z, Z2>(
   self: MergeDecision.MergeDecision<R, E0, Z0, E, Z>,
   { onAwait, onDone }: {
     readonly onDone: (effect: Effect<R, E, Z>) => Z2
-    readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
+    readonly onAwait: (f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
   }
 ): Z2 => {
   const op = self as Primitive

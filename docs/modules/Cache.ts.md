@@ -91,7 +91,7 @@ returned by the lookup function.
 export declare const makeWith: <Key, Environment, Error, Value>(options: {
   readonly capacity: number
   readonly lookup: Lookup<Key, Environment, Error, Value>
-  readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+  readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
 }) => Effect<Environment, never, Cache<Key, Error, Value>>
 ```
 

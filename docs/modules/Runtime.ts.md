@@ -105,8 +105,8 @@ export declare const runCallback: <R>(
   runtime: Runtime<R>
 ) => <E, A>(
   effect: Effect<R, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
-) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void
+  onExit?: ((exit: Exit<E, A>) => void) | undefined
+) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void
 ```
 
 Added in v2.0.0
@@ -156,7 +156,7 @@ program.
 ```ts
 export declare const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit.Exit<E, A>>
+) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit<E, A>>
 ```
 
 Added in v2.0.0
@@ -186,7 +186,7 @@ program.
 **Signature**
 
 ```ts
-export declare const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit.Exit<E, A>
+export declare const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit<E, A>
 ```
 
 Added in v2.0.0
@@ -246,7 +246,7 @@ Added in v2.0.0
 
 ```ts
 export interface Cancel<E, A> {
-  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void): void
+  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
 ```
 

@@ -5,7 +5,7 @@ import type * as Context from "../../Context.js"
 import * as Deferred from "../../Deferred.js"
 import { Effect } from "../../Effect.js"
 import * as ExecutionStrategy from "../../ExecutionStrategy.js"
-import * as Exit from "../../Exit.js"
+import { Exit } from "../../Exit.js"
 import * as Fiber from "../../Fiber.js"
 import { identity, pipe } from "../../Function.js"
 import { Option } from "../../Option.js"
@@ -57,18 +57,18 @@ export type ErasedContinuation<R> = Continuation.Continuation<
 >
 
 /** @internal */
-export type ErasedFinalizer<R> = (exit: Exit.Exit<unknown, unknown>) => Effect<R, never, unknown>
+export type ErasedFinalizer<R> = (exit: Exit<unknown, unknown>) => Effect<R, never, unknown>
 
 export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   private _activeSubexecutor: Subexecutor.Subexecutor<Env> | undefined = undefined
 
-  private _cancelled: Exit.Exit<OutErr, OutDone> | undefined = undefined
+  private _cancelled: Exit<OutErr, OutDone> | undefined = undefined
 
   private _closeLastSubstream: Effect<Env, never, unknown> | undefined = undefined
 
   private _currentChannel: core.Primitive | undefined
 
-  private _done: Exit.Exit<unknown, unknown> | undefined = undefined
+  private _done: Exit<unknown, unknown> | undefined = undefined
 
   private _doneStack: Array<ErasedContinuation<Env>> = []
 
@@ -320,7 +320,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                       return undefined
                     },
                     (exit) => {
-                      const onExit = (exit: Exit.Exit<unknown, unknown>): core.Primitive => {
+                      const onExit = (exit: Exit<unknown, unknown>): core.Primitive => {
                         return read.done.onExit(exit) as core.Primitive
                       }
                       this._currentChannel = onExit(exit)
@@ -360,15 +360,15 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return result
   }
 
-  getDone(): Exit.Exit<OutErr, OutDone> {
-    return this._done as Exit.Exit<OutErr, OutDone>
+  getDone(): Exit<OutErr, OutDone> {
+    return this._done as Exit<OutErr, OutDone>
   }
 
   getEmit(): OutElem {
     return this._emitted as OutElem
   }
 
-  cancelWith(exit: Exit.Exit<OutErr, OutDone>): void {
+  cancelWith(exit: Exit<OutErr, OutDone>): void {
     this._cancelled = exit
   }
 
@@ -380,7 +380,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     this._inProgressFinalizer = finalizer
   }
 
-  popAllFinalizers(exit: Exit.Exit<unknown, unknown>): Effect<Env, never, unknown> {
+  popAllFinalizers(exit: Exit<unknown, unknown>): Effect<Env, never, unknown> {
     const finalizers: Array<ErasedFinalizer<Env>> = []
     let next = this._doneStack.pop() as Continuation.Primitive | undefined
     while (next) {
@@ -412,7 +412,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   restorePipe(
-    exit: Exit.Exit<unknown, unknown>,
+    exit: Exit<unknown, unknown>,
     prev: ErasedExecutor<Env> | undefined
   ): Effect<Env, never, unknown> | undefined {
     const currInput = this._input
@@ -424,7 +424,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return Effect.unit
   }
 
-  close(exit: Exit.Exit<unknown, unknown>): Effect<Env, never, unknown> | undefined {
+  close(exit: Exit<unknown, unknown>): Effect<Env, never, unknown> | undefined {
     let runInProgressFinalizers: Effect<Env, never, unknown> | undefined = undefined
     const finalizer = this._inProgressFinalizer
     if (finalizer !== undefined) {
@@ -606,7 +606,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     this._activeSubexecutor = nextSubExec
   }
 
-  finishWithExit(exit: Exit.Exit<unknown, unknown>): Effect<Env, unknown, unknown> {
+  finishWithExit(exit: Exit<unknown, unknown>): Effect<Env, unknown, unknown> {
     const state = Exit.match(exit, {
       onFailure: (cause) => this.doneHalt(cause),
       onSuccess: (value) => this.doneSucceed(value)
@@ -618,8 +618,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   finishSubexecutorWithCloseEffect(
-    subexecutorDone: Exit.Exit<unknown, unknown>,
-    ...closeFuncs: Array<(exit: Exit.Exit<unknown, unknown>) => Effect<Env, never, unknown> | undefined>
+    subexecutorDone: Exit<unknown, unknown>,
+    ...closeFuncs: Array<(exit: Exit<unknown, unknown>) => Effect<Env, never, unknown> | undefined>
   ): ChannelState.ChannelState<Env, unknown> | undefined {
     this.addFinalizer(() =>
       pipe(
@@ -1008,12 +1008,12 @@ const ifNotNull = <Env>(effect: Effect<Env, never, unknown> | undefined): Effect
 
 const runFinalizers = <Env>(
   finalizers: Array<ErasedFinalizer<Env>>,
-  exit: Exit.Exit<unknown, unknown>
+  exit: Exit<unknown, unknown>
 ): Effect<Env, never, unknown> => {
   return pipe(
     Effect.forEach(finalizers, (fin) => Effect.exit(fin(exit))),
     Effect.map((exits) => pipe(Exit.all(exits), Option.getOrElse(() => Exit.unit))),
-    Effect.flatMap((exit) => Effect.suspend(() => exit as Exit.Exit<never, unknown>))
+    Effect.flatMap((exit) => Effect.suspend(() => exit as Exit<never, unknown>))
   )
 }
 

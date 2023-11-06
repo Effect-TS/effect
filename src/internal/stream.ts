@@ -8,7 +8,7 @@ import * as Duration from "../Duration.js"
 import { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
-import * as Exit from "../Exit.js"
+import { Exit } from "../Exit.js"
 import * as Fiber from "../Fiber.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import type { LazyArg } from "../Function.js"
@@ -109,7 +109,7 @@ export const accumulateChunks = <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A
 /** @internal */
 export const acquireRelease = <R, E, A, R2, _>(
   acquire: Effect<R, E, A>,
-  release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, _>
+  release: (resource: A, exit: Exit<unknown, unknown>) => Effect<R2, never, _>
 ): Stream<R | R2, E, A> => scoped(Effect.acquireRelease(acquire, release))
 
 /** @internal */
@@ -1324,7 +1324,7 @@ export const combine = dual<
       s: S,
       pullLeft: Effect<R3, Option<E>, A>,
       pullRight: Effect<R4, Option<E2>, A2>
-    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [A3, S]>>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [A3, S]>>
   ) => <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>,
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -1334,7 +1334,7 @@ export const combine = dual<
       s: S,
       pullLeft: Effect<R3, Option<E>, A>,
       pullRight: Effect<R4, Option<E2>, A2>
-    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [A3, S]>>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [A3, S]>>
   ) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
 >(4, <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
   self: Stream<R, E, A>,
@@ -1344,10 +1344,10 @@ export const combine = dual<
     s: S,
     pullLeft: Effect<R3, Option<E>, A>,
     pullRight: Effect<R4, Option<E2>, A2>
-  ) => Effect<R5, never, Exit.Exit<Option<E | E2>, readonly [A3, S]>>
+  ) => Effect<R5, never, Exit<Option<E | E2>, readonly [A3, S]>>
 ): Stream<R | R2 | R3 | R4 | R5, E | E2, A3> => {
   const producer = <Err, Elem>(
-    handoff: Handoff.Handoff<Exit.Exit<Option<Err>, Elem>>,
+    handoff: Handoff.Handoff<Exit<Option<Err>, Elem>>,
     latch: Handoff.Handoff<void>
   ): Channel.Channel<R, Err, Elem, unknown, never, never, unknown> =>
     pipe(
@@ -1357,13 +1357,13 @@ export const combine = dual<
           core.flatMap(
             core.fromEffect(pipe(
               handoff,
-              Handoff.offer<Exit.Exit<Option<Err>, Elem>>(Exit.succeed(input))
+              Handoff.offer<Exit<Option<Err>, Elem>>(Exit.succeed(input))
             )),
             () => producer(handoff, latch)
           ),
         onFailure: (cause) =>
           core.fromEffect(
-            Handoff.offer<Exit.Exit<Option<Err>, Elem>>(
+            Handoff.offer<Exit<Option<Err>, Elem>>(
               handoff,
               Exit.failCause(pipe(cause, Cause.map(Option.some)))
             )
@@ -1371,7 +1371,7 @@ export const combine = dual<
         onDone: () =>
           core.flatMap(
             core.fromEffect(
-              Handoff.offer<Exit.Exit<Option<Err>, Elem>>(
+              Handoff.offer<Exit<Option<Err>, Elem>>(
                 handoff,
                 Exit.fail(Option.none())
               )
@@ -1383,8 +1383,8 @@ export const combine = dual<
   return new StreamImpl(
     channel.unwrapScoped(
       Effect.gen(function*($) {
-        const left = yield* $(Handoff.make<Exit.Exit<Option<E>, A>>())
-        const right = yield* $(Handoff.make<Exit.Exit<Option<E2>, A2>>())
+        const left = yield* $(Handoff.make<Exit<Option<E>, A>>())
+        const right = yield* $(Handoff.make<Exit<Option<E2>, A2>>())
         const latchL = yield* $(Handoff.make<void>())
         const latchR = yield* $(Handoff.make<void>())
         yield* $(
@@ -1428,7 +1428,7 @@ export const combineChunks = dual<
       s: S,
       pullLeft: Effect<R3, Option<E>, Chunk.Chunk<A>>,
       pullRight: Effect<R4, Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ) => <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>,
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -1438,7 +1438,7 @@ export const combineChunks = dual<
       s: S,
       pullLeft: Effect<R3, Option<E>, Chunk.Chunk<A>>,
       pullRight: Effect<R4, Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+    ) => Effect<R5, never, Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
 >(4, <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
   self: Stream<R, E, A>,
@@ -1448,7 +1448,7 @@ export const combineChunks = dual<
     s: S,
     pullLeft: Effect<R3, Option<E>, Chunk.Chunk<A>>,
     pullRight: Effect<R4, Option<E2>, Chunk.Chunk<A2>>
-  ) => Effect<R5, never, Exit.Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, S]>>
+  ) => Effect<R5, never, Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, S]>>
 ): Stream<R | R2 | R3 | R4 | R5, E | E2, A3> => {
   const producer = <Err, Elem>(
     handoff: Handoff.Handoff<Take.Take<Err, Elem>>,
@@ -1793,7 +1793,7 @@ export const distributedWith = dual<
   ) => Effect<
     Scope.Scope | R,
     never,
-    Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option<E>, A>>, N>
+    Stream.DynamicTuple<Queue.Dequeue<Exit<Option<E>, A>>, N>
   >,
   <R, E, N extends number, A>(
     self: Stream<R, E, A>,
@@ -1805,7 +1805,7 @@ export const distributedWith = dual<
   ) => Effect<
     Scope.Scope | R,
     never,
-    Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option<E>, A>>, N>
+    Stream.DynamicTuple<Queue.Dequeue<Exit<Option<E>, A>>, N>
   >
 >(
   2,
@@ -1819,7 +1819,7 @@ export const distributedWith = dual<
   ): Effect<
     R | Scope.Scope,
     never,
-    Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option<E>, A>>, N>
+    Stream.DynamicTuple<Queue.Dequeue<Exit<Option<E>, A>>, N>
   > =>
     pipe(
       Deferred.make<never, (a: A) => Effect<never, never, Predicate<number>>>(),
@@ -1844,7 +1844,7 @@ export const distributedWith = dual<
                   entries,
                   [
                     new Map<number, number>(),
-                    Chunk.empty<Queue.Dequeue<Exit.Exit<Option<E>, A>>>()
+                    Chunk.empty<Queue.Dequeue<Exit<Option<E>, A>>>()
                   ] as const,
                   ([mappings, queues], [mapping, queue]) =>
                     [
@@ -1856,7 +1856,7 @@ export const distributedWith = dual<
                   Deferred.succeed(deferred, (a: A) =>
                     Effect.map(options.decide(a), (f) => (key: number) => pipe(f(mappings.get(key)!)))),
                   Effect.as(
-                    Array.from(queues) as Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option<E>, A>>, N>
+                    Array.from(queues) as Stream.DynamicTuple<Queue.Dequeue<Exit<Option<E>, A>>, N>
                   )
                 )
               })
@@ -1888,7 +1888,7 @@ export const distributedWithDynamic = dual<
   ) => Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
   >,
   <R, E, A, _>(
     self: Stream<R, E, A>,
@@ -1899,7 +1899,7 @@ export const distributedWithDynamic = dual<
   ) => Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
   >
 >(2, <R, E, A, _>(
   self: Stream<R, E, A>,
@@ -1910,44 +1910,44 @@ export const distributedWithDynamic = dual<
 ): Effect<
   R | Scope.Scope,
   never,
-  Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
+  Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
 > => distributedWithDynamicCallback(self, options.maximumLag, options.decide, () => Effect.unit))
 
 export const distributedWithDynamicCallback = dual<
   <E, A, _>(
     maximumLag: number,
     decide: (a: A) => Effect<never, never, Predicate<number>>,
-    done: (exit: Exit.Exit<Option<E>, never>) => Effect<never, never, _>
+    done: (exit: Exit<Option<E>, never>) => Effect<never, never, _>
   ) => <R>(
     self: Stream<R, E, A>
   ) => Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
   >,
   <R, E, A, _>(
     self: Stream<R, E, A>,
     maximumLag: number,
     decide: (a: A) => Effect<never, never, Predicate<number>>,
-    done: (exit: Exit.Exit<Option<E>, never>) => Effect<never, never, _>
+    done: (exit: Exit<Option<E>, never>) => Effect<never, never, _>
   ) => Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
   >
 >(4, <R, E, A, _>(
   self: Stream<R, E, A>,
   maximumLag: number,
   decide: (a: A) => Effect<never, never, Predicate<number>>,
-  done: (exit: Exit.Exit<Option<E>, never>) => Effect<never, never, _>
+  done: (exit: Exit<Option<E>, never>) => Effect<never, never, _>
 ): Effect<
   R | Scope.Scope,
   never,
-  Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
+  Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option<E>, A>>]>
 > =>
   pipe(
     Effect.acquireRelease(
-      Ref.make<Map<number, Queue.Queue<Exit.Exit<Option<E>, A>>>>(new Map()),
+      Ref.make<Map<number, Queue.Queue<Exit<Option<E>, A>>>>(new Map()),
       (ref, _) => pipe(Ref.get(ref), Effect.flatMap((queues) => pipe(queues.values(), Effect.forEach(Queue.shutdown))))
     ),
     Effect.flatMap((queuesRef) =>
@@ -1999,9 +1999,9 @@ export const distributedWithDynamicCallback = dual<
           )
         const queuesLock = yield* $(Effect.makeSemaphore(1))
         const newQueue = yield* $(
-          Ref.make<Effect<never, never, readonly [number, Queue.Queue<Exit.Exit<Option<E>, A>>]>>(
+          Ref.make<Effect<never, never, readonly [number, Queue.Queue<Exit<Option<E>, A>>]>>(
             pipe(
-              Queue.bounded<Exit.Exit<Option<E>, A>>(maximumLag),
+              Queue.bounded<Exit<Option<E>, A>>(maximumLag),
               Effect.flatMap((queue) => {
                 const id = newDistributedWithDynamicId()
                 return pipe(
@@ -2012,7 +2012,7 @@ export const distributedWithDynamicCallback = dual<
             )
           )
         )
-        const finalize = (endTake: Exit.Exit<Option<E>, never>): Effect<never, never, void> =>
+        const finalize = (endTake: Exit<Option<E>, never>): Effect<never, never, void> =>
           // Make sure that no queues are currently being added
           queuesLock.withPermits(1)(
             pipe(
@@ -2020,7 +2020,7 @@ export const distributedWithDynamicCallback = dual<
                 newQueue,
                 pipe(
                   // All newly created queues should end immediately
-                  Queue.bounded<Exit.Exit<Option<E>, A>>(1),
+                  Queue.bounded<Exit<Option<E>, A>>(1),
                   Effect.tap((queue) => Queue.offer(queue, endTake)),
                   Effect.flatMap((queue) => {
                     const id = newDistributedWithDynamicId()
@@ -2295,11 +2295,11 @@ export const ensuring = dual<
 /** @internal */
 export const ensuringWith = dual<
   <E, R2>(
-    finalizer: (exit: Exit.Exit<E, unknown>) => Effect<R2, never, unknown>
+    finalizer: (exit: Exit<E, unknown>) => Effect<R2, never, unknown>
   ) => <R, A>(self: Stream<R, E, A>) => Stream<R | R2, E, A>,
   <R, E, A, R2>(
     self: Stream<R, E, A>,
-    finalizer: (exit: Exit.Exit<E, unknown>) => Effect<R2, never, unknown>
+    finalizer: (exit: Exit<E, unknown>) => Effect<R2, never, unknown>
   ) => Stream<R | R2, E, A>
 >(2, (self, finalizer) => new StreamImpl(core.ensuringWith(toChannel(self), finalizer)))
 
@@ -2754,11 +2754,11 @@ export const flattenEffect = dual<
 
 /** @internal */
 export const flattenExitOption = <R, E, E2, A>(
-  self: Stream<R, E, Exit.Exit<Option<E2>, A>>
+  self: Stream<R, E, Exit<Option<E2>, A>>
 ): Stream<R, E | E2, A> => {
   const processChunk = (
-    chunk: Chunk.Chunk<Exit.Exit<Option<E2>, A>>,
-    cont: Channel.Channel<R, E, Chunk.Chunk<Exit.Exit<Option<E2>, A>>, unknown, E | E2, Chunk.Chunk<A>, unknown>
+    chunk: Chunk.Chunk<Exit<Option<E2>, A>>,
+    cont: Channel.Channel<R, E, Chunk.Chunk<Exit<Option<E2>, A>>, unknown, E | E2, Chunk.Chunk<A>, unknown>
   ) => {
     const [toEmit, rest] = pipe(chunk, Chunk.splitWhere((exit) => !Exit.isSuccess(exit)))
     const next = pipe(
@@ -2790,13 +2790,13 @@ export const flattenExitOption = <R, E, E2, A>(
   const process: Channel.Channel<
     R,
     E,
-    Chunk.Chunk<Exit.Exit<Option<E2>, A>>,
+    Chunk.Chunk<Exit<Option<E2>, A>>,
     unknown,
     E | E2,
     Chunk.Chunk<A>,
     unknown
   > = core.readWithCause({
-    onInput: (chunk: Chunk.Chunk<Exit.Exit<Option<E2>, A>>) => processChunk(chunk, process),
+    onInput: (chunk: Chunk.Chunk<Exit<Option<E2>, A>>) => processChunk(chunk, process),
     onFailure: (cause) => core.failCause<E | E2>(cause),
     onDone: () => core.unit
   })
@@ -4000,7 +4000,7 @@ export const mergeWith = dual<
     const strategy = options.haltStrategy ? haltStrategy.fromInput(options.haltStrategy) : HaltStrategy.Both
     const handler =
       (terminate: boolean) =>
-      (exit: Exit.Exit<E | E2, unknown>): MergeDecision.MergeDecision<R | R2, E | E2, unknown, E | E2, unknown> =>
+      (exit: Exit<E | E2, unknown>): MergeDecision.MergeDecision<R | R2, E | E2, unknown, E | E2, unknown> =>
         terminate || !Exit.isSuccess(exit) ?
           // TODO: remove
           MergeDecision.Done(Effect.suspend(() => exit)) :
@@ -5355,17 +5355,17 @@ export const runIntoQueue = dual<
 /** @internal */
 export const runIntoQueueElementsScoped = dual<
   <E, A>(
-    queue: Queue.Enqueue<Exit.Exit<Option<E>, A>>
+    queue: Queue.Enqueue<Exit<Option<E>, A>>
   ) => <R>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, void>,
   <R, E, A>(
     self: Stream<R, E, A>,
-    queue: Queue.Enqueue<Exit.Exit<Option<E>, A>>
+    queue: Queue.Enqueue<Exit<Option<E>, A>>
   ) => Effect<Scope.Scope | R, never, void>
 >(2, <R, E, A>(
   self: Stream<R, E, A>,
-  queue: Queue.Enqueue<Exit.Exit<Option<E>, A>>
+  queue: Queue.Enqueue<Exit<Option<E>, A>>
 ): Effect<R | Scope.Scope, never, void> => {
-  const writer: Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, Exit.Exit<Option<E>, A>, unknown> = core
+  const writer: Channel.Channel<R, E, Chunk.Chunk<A>, unknown, never, Exit<Option<E>, A>, unknown> = core
     .readWithCause({
       onInput: (input: Chunk.Chunk<A>) =>
         core.flatMap(
@@ -6559,18 +6559,18 @@ export const toQueue = dual<
 export const toQueueOfElements = dual<
   (options?: { readonly capacity?: number }) => <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect<R | Scope.Scope, never, Queue.Dequeue<Exit.Exit<Option<E>, A>>>,
+  ) => Effect<R | Scope.Scope, never, Queue.Dequeue<Exit<Option<E>, A>>>,
   <R, E, A>(
     self: Stream<R, E, A>,
     options?: { readonly capacity?: number }
-  ) => Effect<R | Scope.Scope, never, Queue.Dequeue<Exit.Exit<Option<E>, A>>>
+  ) => Effect<R | Scope.Scope, never, Queue.Dequeue<Exit<Option<E>, A>>>
 >((args) => isStream(args[0]), <R, E, A>(
   self: Stream<R, E, A>,
   options?: { readonly capacity?: number }
 ) =>
   Effect.tap(
     Effect.acquireRelease(
-      Queue.bounded<Exit.Exit<Option<E>, A>>(options?.capacity ?? 2),
+      Queue.bounded<Exit<Option<E>, A>>(options?.capacity ?? 2),
       (queue) => Queue.shutdown(queue)
     ),
     (queue) => Effect.forkScoped(runIntoQueueElementsScoped(self, queue))
@@ -7133,7 +7133,7 @@ export const zipAllSortedByKeyWith = dual<
     ): Effect<
       R | R2,
       never,
-      Exit.Exit<
+      Exit<
         Option<E | E2>,
         readonly [
           Chunk.Chunk<readonly [K, A3]>,
@@ -7234,7 +7234,7 @@ export const zipAllSortedByKeyWith = dual<
                 ),
               onSome: (error) =>
                 Effect.succeed<
-                  Exit.Exit<
+                  Exit<
                     Option<E | E2>,
                     readonly [
                       Chunk.Chunk<readonly [K, A3]>,
@@ -7263,7 +7263,7 @@ export const zipAllSortedByKeyWith = dual<
                 ),
               onSome: (error) =>
                 Effect.succeed<
-                  Exit.Exit<
+                  Exit<
                     Option<E | E2>,
                     readonly [
                       Chunk.Chunk<readonly [K, A3]>,
@@ -7408,7 +7408,7 @@ export const zipAllWith = dual<
     ): Effect<
       R | R2,
       never,
-      Exit.Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
+      Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
     > => {
       switch (state._tag) {
         case ZipAllState.OP_DRAIN_LEFT: {
@@ -7487,7 +7487,7 @@ export const zipAllWith = dual<
                 )),
               onSome: (error) =>
                 Effect.succeed<
-                  Exit.Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
+                  Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
                 >(
                   Exit.fail(Option.some(error))
                 )
@@ -7517,7 +7517,7 @@ export const zipAllWith = dual<
                 ),
               onSome: (error) =>
                 Effect.succeed<
-                  Exit.Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
+                  Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
                 >(
                   Exit.fail(Option.some(error))
                 )
@@ -7793,7 +7793,7 @@ export const zipWithChunks = dual<
   ): Effect<
     R | R2,
     never,
-    Exit.Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipChunksState.ZipChunksState<A, A2>]>
+    Exit<Option<E | E2>, readonly [Chunk.Chunk<A3>, ZipChunksState.ZipChunksState<A, A2>]>
   > => {
     switch (state._tag) {
       case ZipChunksState.OP_PULL_BOTH: {

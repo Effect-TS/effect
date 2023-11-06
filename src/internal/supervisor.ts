@@ -1,6 +1,6 @@
 import type * as Context from "../Context.js"
 import type { Effect } from "../Effect.js"
-import type * as Exit from "../Exit.js"
+import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
@@ -47,7 +47,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
     this.underlying.onStart(context, effect, parent, fiber)
   }
 
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(value: Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
     this.underlying.onEnd(value, fiber)
   }
 
@@ -97,7 +97,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
     this.right.onStart(context, effect, parent, fiber)
   }
 
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(value: Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
     this.left.onEnd(value, fiber)
     this.right.onEnd(value, fiber)
   }
@@ -147,7 +147,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
     this.fibers.add(fiber)
   }
 
-  onEnd<E, A>(_value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
     this.fibers.delete(fiber)
   }
 
@@ -197,7 +197,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
     //
   }
 
-  onEnd<E, A>(_value: Exit.Exit<E, A>, _fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit<E, A>, _fiber: Fiber.RuntimeFiber<E, A>): void {
     //
   }
 
@@ -245,7 +245,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.add(fiber))))
   }
 
-  onEnd<E, A>(_value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
+  onEnd<E, A>(_value: Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void {
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.remove(fiber))))
   }
 

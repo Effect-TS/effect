@@ -4,7 +4,7 @@
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import * as internal from "./internal/take.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -31,7 +31,7 @@ export type TakeTypeId = typeof TakeTypeId
  */
 export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly exit: Exit.Exit<Option<E>, Chunk.Chunk<A>>
+  readonly exit: Exit<Option<E>, Chunk.Chunk<A>>
 }
 
 /**
@@ -122,7 +122,7 @@ export const fromEffect: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, never, 
  * @since 2.0.0
  * @category constructors
  */
-export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fromExit
+export const fromExit: <E, A>(exit: Exit<E, A>) => Take<E, A> = internal.fromExit
 
 /**
  * Creates effect from `Effect<R, Option<E>, Chunk<A>>` that does not fail, but
@@ -166,7 +166,7 @@ export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>(exit: Exit.Exit<Option<E>, Chunk.Chunk<A>>) => Take<E, A> = internal.make
+export const make: <E, A>(exit: Exit<Option<E>, Chunk.Chunk<A>>) => Take<E, A> = internal.make
 
 /**
  * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.

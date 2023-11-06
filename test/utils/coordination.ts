@@ -1,13 +1,13 @@
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 
 export interface ChunkCoordination<A> {
-  readonly queue: Queue.Queue<Exit.Exit<Option<never>, Chunk.Chunk<A>>>
+  readonly queue: Queue.Queue<Exit<Option<never>, Chunk.Chunk<A>>>
   readonly offer: Effect<never, never, void>
   readonly proceed: Effect<never, never, void>
   readonly awaitNext: Effect<never, never, void>
@@ -18,9 +18,9 @@ export const chunkCoordination = <A>(
 ): Effect<never, never, ChunkCoordination<A>> =>
   Effect.gen(function*($) {
     const chunks = Chunk.fromIterable(_chunks)
-    const queue = yield* $(Queue.unbounded<Exit.Exit<Option<never>, Chunk.Chunk<A>>>())
+    const queue = yield* $(Queue.unbounded<Exit<Option<never>, Chunk.Chunk<A>>>())
     const ps = yield* $(Queue.unbounded<void>())
-    const ref = yield* $(Ref.make<Chunk.Chunk<Chunk.Chunk<Exit.Exit<Option<never>, Chunk.Chunk<A>>>>>(
+    const ref = yield* $(Ref.make<Chunk.Chunk<Chunk.Chunk<Exit<Option<never>, Chunk.Chunk<A>>>>>(
       pipe(
         chunks,
         Chunk.dropRight(1),
@@ -29,13 +29,13 @@ export const chunkCoordination = <A>(
           pipe(
             Chunk.last(chunks),
             Option.map((chunk) =>
-              Chunk.unsafeFromArray<Exit.Exit<Option<never>, Chunk.Chunk<A>>>([
+              Chunk.unsafeFromArray<Exit<Option<never>, Chunk.Chunk<A>>>([
                 Exit.succeed(chunk),
                 Exit.fail(Option.none())
               ])
             ),
             Option.match({
-              onNone: () => Chunk.empty<Chunk.Chunk<Exit.Exit<Option<never>, Chunk.Chunk<A>>>>(),
+              onNone: () => Chunk.empty<Chunk.Chunk<Exit<Option<never>, Chunk.Chunk<A>>>>(),
               onSome: Chunk.of
             })
           )

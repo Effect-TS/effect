@@ -58,7 +58,7 @@ Added in v2.0.0
 
 ```ts
 export declare const LeftDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err1, Done1>) => Effect<Env, Err2, Done2>
+  f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -70,7 +70,7 @@ Added in v2.0.0
 
 ```ts
 export declare const RightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  f: (exit: Exit.Exit<Err, Done>) => Effect<Env, Err2, Done2>
+  f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -89,8 +89,8 @@ export declare const match: {
       left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
       right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
     ) => Z
-    readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
-    readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
+    readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
+    readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
   }): (self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>) => Z
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
     self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
@@ -99,8 +99,8 @@ export declare const match: {
         left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
         right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
       ) => Z
-      readonly onLeftDone: (f: (exit: Exit.Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
-      readonly onRightDone: (f: (exit: Exit.Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
+      readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
+      readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
     }
   ): Z
 }
@@ -131,7 +131,7 @@ Added in v2.0.0
 ```ts
 export interface LeftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2> extends MergeState.Proto {
   readonly _tag: "LeftDone"
-  readonly f: (exit: Exit.Exit<Err1, Done1>) => Effect<Env, Err2, Done2>
+  readonly f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>
 }
 ```
 
@@ -157,7 +157,7 @@ Added in v2.0.0
 ```ts
 export interface RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> extends MergeState.Proto {
   readonly _tag: "RightDone"
-  readonly f: (exit: Exit.Exit<Err, Done>) => Effect<Env, Err2, Done2>
+  readonly f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>
 }
 ```
 

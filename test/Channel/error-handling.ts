@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import * as Deferred from "effect/Deferred"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
@@ -28,7 +28,7 @@ describe.concurrent("Channel", () => {
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<never, void>())
       const finished = yield* $(Deferred.make<never, void>())
-      const ref = yield* $(Ref.make<Exit.Exit<never, void>>(Exit.unit))
+      const ref = yield* $(Ref.make<Exit<never, void>>(Exit.unit))
       const effect = pipe(
         Deferred.succeed<never, void>(deferred, void 0),
         Effect.zipRight(Effect.never)
@@ -36,7 +36,7 @@ describe.concurrent("Channel", () => {
       yield* $(
         Channel.fromEffect(effect),
         Channel.runDrain,
-        Effect.onExit((exit) => Ref.set(ref, exit as Exit.Exit<never, void>)),
+        Effect.onExit((exit) => Ref.set(ref, exit as Exit<never, void>)),
         Effect.ensuring(Deferred.succeed(finished, void 0)),
         Effect.race(Deferred.await(deferred)),
         Effect.either

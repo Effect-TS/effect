@@ -6,7 +6,7 @@
  */
 import type * as Context from "./Context.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as core from "./internal/core.js"
 import * as circular from "./internal/layer/circular.js"
@@ -53,7 +53,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
   /**
    * Supervises the end of a `Fiber`.
    */
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void
+  onEnd<E, A>(value: Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void
 
   /**
    * Supervises the execution of an `Effect` by a `Fiber`.
@@ -173,7 +173,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   onEnd<E, A>(
-    _value: Exit.Exit<E, A>,
+    _value: Exit<E, A>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     //

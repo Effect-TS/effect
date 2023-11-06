@@ -4,7 +4,7 @@
 import type * as Cause from "./Cause.js"
 import type { Effect } from "./Effect.js"
 import type * as Either from "./Either.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type * as FiberId from "./FiberId.js"
 import type { FiberRef } from "./FiberRef.js"
 import type * as FiberRefs from "./FiberRefs.js"
@@ -66,7 +66,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  await(): Effect<never, never, Exit.Exit<E, A>>
+  await(): Effect<never, never, Exit<E, A>>
 
   /**
    * Retrieves the immediate children of the fiber.
@@ -83,7 +83,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect<never, never, Option<Exit.Exit<E, A>>>
+  poll(): Effect<never, never, Option<Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -129,13 +129,13 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * Adds an observer to the list of observers.
    */
-  addObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  addObserver(observer: (exit: Exit<E, A>) => void): void
 
   /**
    * Removes the specified observer from the list of observers that will be
    * notified when the fiber exits.
    */
-  removeObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  removeObserver(observer: (exit: Exit<E, A>) => void): void
 
   /**
    * Retrieves all fiber refs of the fiber.
@@ -146,7 +146,7 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
    * Unsafely observes the fiber, but returns immediately if it is not
    * already done.
    */
-  unsafePoll(): Exit.Exit<E, A> | null
+  unsafePoll(): Exit<E, A> | null
 }
 
 /**
@@ -248,7 +248,7 @@ export const isRuntimeFiber: <E, A>(self: Fiber<E, A>) => self is RuntimeFiber<E
  */
 export const id: <E, A>(self: Fiber<E, A>) => FiberId.FiberId = internal.id
 
-const _await: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit.Exit<E, A>> = internal._await
+const _await: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>> = internal._await
 export {
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
@@ -292,7 +292,7 @@ export const all: <E, A>(fibers: Iterable<Fiber<E, A>>) => Fiber<E, ReadonlyArra
  * @since 2.0.0
  * @category constructors
  */
-export const done: <E, A>(exit: Exit.Exit<E, A>) => Fiber<E, A> = internal.done
+export const done: <E, A>(exit: Exit<E, A>) => Fiber<E, A> = internal.done
 
 /**
  * @since 2.0.0
@@ -357,7 +357,7 @@ export const inheritAll: <E, A>(self: Fiber<E, A>) => Effect<never, never, void>
  * @since 2.0.0
  * @category interruption
  */
-export const interrupt: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit.Exit<E, A>> = core.interruptFiber
+export const interrupt: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>> = core.interruptFiber
 
 /**
  * Constructrs a `Fiber` that is already interrupted.
@@ -376,8 +376,8 @@ export const interrupted: (fiberId: FiberId.FiberId) => Fiber<never, never> = in
  * @category interruption
  */
 export const interruptAs: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit.Exit<E, A>>
-  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect<never, never, Exit.Exit<E, A>>
+  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect<never, never, Exit<E, A>>
 } = core.interruptAsFiber
 
 /**
@@ -536,7 +536,7 @@ export const orElseEither: {
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option<Exit.Exit<E, A>>> = internal.poll
+export const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option<Exit<E, A>>> = internal.poll
 
 /**
  * Pretty-prints a `RuntimeFiber`.

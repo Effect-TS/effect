@@ -4,7 +4,7 @@
 import type * as Cache from "./Cache.js"
 import type * as Duration from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import * as internal from "./internal/scopedCache.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -133,7 +133,7 @@ export const makeWith: <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   }
 ) => Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>> = internal.makeWith
 

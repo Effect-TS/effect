@@ -5,7 +5,7 @@ import * as Data from "../Data.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import * as Equal from "../Equal.js"
-import * as Exit from "../Exit.js"
+import { Exit } from "../Exit.js"
 import { pipe } from "../Function.js"
 import * as HashSet from "../HashSet.js"
 import * as MutableHashMap from "../MutableHashMap.js"
@@ -83,7 +83,7 @@ export type MapValue<Key, Error, Value> =
 export interface Complete<Key, Error, Value> {
   readonly _tag: "Complete"
   readonly key: _cache.MapKey<Key>
-  readonly exit: Exit.Exit<Error, readonly [Value, Scope.Scope.Finalizer]>
+  readonly exit: Exit<Error, readonly [Value, Scope.Scope.Finalizer]>
   readonly ownerCount: MutableRef.MutableRef<number>
   readonly entryStats: Cache.EntryStats
   readonly timeToLive: number
@@ -106,7 +106,7 @@ export interface Refreshing<Key, Error, Value> {
 /** @internal */
 export const complete = <Key, Error, Value>(
   key: _cache.MapKey<Key>,
-  exit: Exit.Exit<Error, readonly [Value, Scope.Scope.Finalizer]>,
+  exit: Exit<Error, readonly [Value, Scope.Scope.Finalizer]>,
   ownerCount: MutableRef.MutableRef<number>,
   entryStats: Cache.EntryStats,
   timeToLive: number
@@ -189,7 +189,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
     readonly capacity: number,
     readonly scopedLookup: ScopedCache.Lookup<Key, Environment, Error, Value>,
     readonly clock: Clock.Clock,
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.Duration,
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.Duration,
     readonly context: Context.Context<Environment>
   ) {
     this.cacheState = initialCacheState()
@@ -445,7 +445,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
         const expiredAt = now + Duration.toMillis(this.timeToLive(exit))
         switch (exit._tag) {
           case "Success": {
-            const exitWithFinalizer: Exit.Exit<never, [Value, Scope.Scope.Finalizer]> = Exit.succeed([
+            const exitWithFinalizer: Exit<never, [Value, Scope.Scope.Finalizer]> = Exit.succeed([
               exit.value,
               release
             ])
@@ -473,7 +473,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
           case "Failure": {
             const completedResult = complete<Key, Error, Value>(
               _cache.makeMapKey(key),
-              exit as Exit.Exit<Error, readonly [Value, Scope.Scope.Finalizer]>,
+              exit as Exit<Error, readonly [Value, Scope.Scope.Finalizer]>,
               MutableRef.make(0),
               _cache.makeEntryStats(now),
               expiredAt
@@ -595,7 +595,7 @@ export const makeWith = <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: ScopedCache.Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   }
 ): Effect<Environment | Scope.Scope, never, ScopedCache.ScopedCache<Key, Error, Value>> =>
   core.flatMap(
@@ -613,7 +613,7 @@ const buildWith = <Key, Environment, Error, Value>(
   capacity: number,
   scopedLookup: ScopedCache.Lookup<Key, Environment, Error, Value>,
   clock: Clock.Clock,
-  timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.Duration
+  timeToLive: (exit: Exit<Error, Value>) => Duration.Duration
 ): Effect<Environment | Scope.Scope, never, ScopedCache.ScopedCache<Key, Error, Value>> =>
   fiberRuntime.acquireRelease(
     core.flatMap(

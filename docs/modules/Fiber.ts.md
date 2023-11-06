@@ -144,7 +144,7 @@ A fiber that is done with the specified `Exit` value.
 **Signature**
 
 ```ts
-export declare const done: <E, A>(exit: Exit.Exit<E, A>) => Fiber<E, A>
+export declare const done: <E, A>(exit: Exit<E, A>) => Fiber<E, A>
 ```
 
 Added in v2.0.0
@@ -396,7 +396,7 @@ fiber has been determined.
 **Signature**
 
 ```ts
-export declare const await: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit.Exit<E, A>>
+export declare const await: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>
 ```
 
 Added in v2.0.0
@@ -433,7 +433,7 @@ already done.
 **Signature**
 
 ```ts
-export declare const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option.Option<Exit.Exit<E, A>>>
+export declare const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option.Option<Exit<E, A>>>
 ```
 
 Added in v2.0.0
@@ -473,7 +473,7 @@ Otherwise, the effect will resume when the fiber exits.
 **Signature**
 
 ```ts
-export declare const interrupt: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit.Exit<E, A>>
+export declare const interrupt: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>
 ```
 
 Added in v2.0.0
@@ -516,8 +516,8 @@ Otherwise, the effect will resume when the fiber exits.
 
 ```ts
 export declare const interruptAs: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit.Exit<E, A>>
-  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect<never, never, Exit.Exit<E, A>>
+  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect<never, never, Exit<E, A>>
 }
 ```
 
@@ -627,7 +627,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  await(): Effect<never, never, Exit.Exit<E, A>>
+  await(): Effect<never, never, Exit<E, A>>
 
   /**
    * Retrieves the immediate children of the fiber.
@@ -644,7 +644,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect<never, never, Option.Option<Exit.Exit<E, A>>>
+  poll(): Effect<never, never, Option.Option<Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -694,13 +694,13 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * Adds an observer to the list of observers.
    */
-  addObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  addObserver(observer: (exit: Exit<E, A>) => void): void
 
   /**
    * Removes the specified observer from the list of observers that will be
    * notified when the fiber exits.
    */
-  removeObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  removeObserver(observer: (exit: Exit<E, A>) => void): void
 
   /**
    * Retrieves all fiber refs of the fiber.
@@ -711,7 +711,7 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
    * Unsafely observes the fiber, but returns immediately if it is not
    * already done.
    */
-  unsafePoll(): Exit.Exit<E, A> | null
+  unsafePoll(): Exit<E, A> | null
 }
 ```
 

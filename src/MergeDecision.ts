@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import * as internal from "./internal/channel/mergeDecision.js"
 
 /**
@@ -53,7 +53,7 @@ export const Done: <R, E, Z>(effect: Effect<R, E, Z>) => MergeDecision<R, unknow
  * @category constructors
  */
 export const Await: <R, E0, Z0, E, Z>(
-  f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>
+  f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>
 ) => MergeDecision<R, E0, Z0, E, Z> = internal.Await
 
 /**
@@ -81,14 +81,14 @@ export const match: {
   <R, E0, Z0, E, Z, Z2>(
     options: {
       readonly onDone: (effect: Effect<R, E, Z>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
+      readonly onAwait: (f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
     }
   ): (self: MergeDecision<R, E0, Z0, E, Z>) => Z2
   <R, E0, Z0, E, Z, Z2>(
     self: MergeDecision<R, E0, Z0, E, Z>,
     options: {
       readonly onDone: (effect: Effect<R, E, Z>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
+      readonly onAwait: (f: (exit: Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
     }
   ): Z2
 } = internal.match

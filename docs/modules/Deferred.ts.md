@@ -286,8 +286,8 @@ propagated to all fibers waiting on the value of the `Deferred`.
 
 ```ts
 export declare const done: {
-  <E, A>(exit: Exit.Exit<E, A>): (self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, exit: Exit.Exit<E, A>): Effect<never, never, boolean>
+  <E, A>(exit: Exit<E, A>): (self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, exit: Exit<E, A>): Effect<never, never, boolean>
 }
 ```
 

@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Channel", () => {

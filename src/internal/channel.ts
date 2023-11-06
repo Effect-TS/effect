@@ -6,7 +6,7 @@ import * as Deferred from "../Deferred.js"
 import { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
-import * as Exit from "../Exit.js"
+import { Exit } from "../Exit.js"
 import * as Fiber from "../Fiber.js"
 import { constVoid, dual, identity, pipe } from "../Function.js"
 import type { LazyArg } from "../Function.js"
@@ -38,12 +38,12 @@ import * as tracer from "./tracer.js"
 export const acquireUseRelease = <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
   acquire: Effect<Env, OutErr, Acquired>,
   use: (a: Acquired) => Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, any>
+  release: (a: Acquired, exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>
 ): Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> =>
   core.flatMap(
     core.fromEffect(
       Ref.make<
-        (exit: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, any>
+        (exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>
       >(() => Effect.unit)
     ),
     (ref) =>
@@ -693,13 +693,13 @@ export const fromInput = <Err, Elem, Done>(
 
 /** @internal */
 export const fromPubSub = <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
   unwrapScoped(Effect.map(PubSub.subscribe(pubsub), fromQueue))
 
 /** @internal */
 export const fromPubSubScoped = <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ): Effect<Scope.Scope, never, Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =>
   Effect.map(PubSub.subscribe(pubsub), fromQueue)
 
@@ -716,12 +716,12 @@ export const fromOption = <A>(
 
 /** @internal */
 export const fromQueue = <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done> => core.suspend(() => fromQueueInternal(queue))
 
 /** @internal */
 const fromQueueInternal = <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
   pipe(
     core.fromEffect(Queue.take(queue)),
@@ -1547,10 +1547,10 @@ export const mergeWith = dual<
     options: {
       readonly other: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
       readonly onSelfDone: (
-        exit: Exit.Exit<OutErr, OutDone>
+        exit: Exit<OutErr, OutDone>
       ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
       readonly onOtherDone: (
-        ex: Exit.Exit<OutErr1, OutDone1>
+        ex: Exit<OutErr1, OutDone1>
       ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
     }
   ) => <Env, InErr, InElem, InDone, OutElem>(
@@ -1588,10 +1588,10 @@ export const mergeWith = dual<
     options: {
       readonly other: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
       readonly onSelfDone: (
-        exit: Exit.Exit<OutErr, OutDone>
+        exit: Exit<OutErr, OutDone>
       ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
       readonly onOtherDone: (
-        ex: Exit.Exit<OutErr1, OutDone1>
+        ex: Exit<OutErr1, OutDone1>
       ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
     }
   ) => Channel.Channel<
@@ -1627,10 +1627,10 @@ export const mergeWith = dual<
   options: {
     readonly other: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
     readonly onSelfDone: (
-      exit: Exit.Exit<OutErr, OutDone>
+      exit: Exit<OutErr, OutDone>
     ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
     readonly onOtherDone: (
-      ex: Exit.Exit<OutErr1, OutDone1>
+      ex: Exit<OutErr1, OutDone1>
     ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
   }
 ): Channel.Channel<
@@ -1669,13 +1669,13 @@ export const mergeWith = dual<
             >
 
             const handleSide = <Err, Done, Err2, Done2>(
-              exit: Exit.Exit<Err, Either.Either<Done, OutElem | OutElem1>>,
+              exit: Exit<Err, Either.Either<Done, OutElem | OutElem1>>,
               fiber: Fiber.Fiber<Err2, Either.Either<Done2, OutElem | OutElem1>>,
               pull: Effect<Env | Env1, Err, Either.Either<Done, OutElem | OutElem1>>
             ) =>
             (
               done: (
-                ex: Exit.Exit<Err, Done>
+                ex: Exit<Err, Done>
               ) => MergeDecision.MergeDecision<
                 Env | Env1,
                 Err2,
@@ -1689,7 +1689,7 @@ export const mergeWith = dual<
               ) => State,
               single: (
                 f: (
-                  ex: Exit.Exit<Err2, Done2>
+                  ex: Exit<Err2, Done2>
                 ) => Effect<Env | Env1, OutErr2 | OutErr3, OutDone2 | OutDone3>
               ) => State
             ): Effect<
@@ -1796,7 +1796,7 @@ export const mergeWith = dual<
                           Fiber.interrupt(lf),
                           handleSide(rightExit, state.left, pullR)(
                             options.onOtherDone as (
-                              ex: Exit.Exit<InErr1 | OutErr1, OutDone1>
+                              ex: Exit<InErr1 | OutErr1, OutDone1>
                             ) => MergeDecision.MergeDecision<
                               Env1 | Env,
                               OutErr,
@@ -2163,7 +2163,7 @@ export const serviceWithEffect = <T extends Context.Tag<any, any>>(tag: T) =>
 
 /** @internal */
 export const toPubSub = <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => toQueue(pubsub)
 
 /** @internal */
@@ -2215,12 +2215,12 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 
 /** @internal */
 export const toQueue = <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => core.suspend(() => toQueueInternal(queue))
 
 /** @internal */
 const toQueueInternal = <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => {
   return core.readWithCause({
     onInput: (elem) =>

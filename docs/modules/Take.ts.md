@@ -142,7 +142,7 @@ Creates a `Take` from an `Exit`.
 **Signature**
 
 ```ts
-export declare const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A>
+export declare const fromExit: <E, A>(exit: Exit<E, A>) => Take<E, A>
 ```
 
 Added in v2.0.0
@@ -170,7 +170,7 @@ Constructs a `Take`.
 **Signature**
 
 ```ts
-export declare const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A>
+export declare const make: <E, A>(exit: Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A>
 ```
 
 Added in v2.0.0
@@ -325,7 +325,7 @@ or an end-of-stream marker.
 ```ts
 export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
+  readonly exit: Exit<Option.Option<E>, Chunk.Chunk<A>>
 }
 ```
 

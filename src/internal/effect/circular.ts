@@ -5,7 +5,7 @@ import type { Effect } from "../../Effect.js"
 import * as Either from "../../Either.js"
 import * as Equal from "../../Equal.js"
 import type { Equivalence } from "../../Equivalence.js"
-import * as Exit from "../../Exit.js"
+import { Exit } from "../../Exit.js"
 import type * as Fiber from "../../Fiber.js"
 import * as FiberId from "../../FiberId.js"
 import type * as FiberRefsPatch from "../../FiberRefsPatch.js"
@@ -361,7 +361,7 @@ export const raceFirst = dual<
   pipe(
     core.exit(self),
     fiberRuntime.race(core.exit(that)),
-    (effect: Effect<R | R2, never, Exit.Exit<E | E2, A | A2>>) => core.flatten(effect)
+    (effect: Effect<R | R2, never, Exit<E | E2, A | A2>>) => core.flatten(effect)
   ))
 
 /** @internal */

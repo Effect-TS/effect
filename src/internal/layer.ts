@@ -3,7 +3,7 @@ import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
-import type * as Exit from "../Exit.js"
+import type { Exit } from "../Exit.js"
 import type { FiberRef } from "../FiberRef.js"
 import * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
@@ -267,7 +267,7 @@ class MemoMap {
                           onSuccess: () => ref.update(observers, (n) => n + 1)
                         }))
                       ),
-                      (exit: Exit.Exit<unknown, unknown>) =>
+                      (exit: Exit<unknown, unknown>) =>
                         pipe(
                           ref.get(finalizerRef),
                           core.flatMap((finalizer) => finalizer(exit))
@@ -1126,7 +1126,7 @@ export const withSpan = dual<
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
     readonly context?: Context.Context<never>
-    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>
   }) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Layer.Layer<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown>
@@ -1134,7 +1134,7 @@ export const withSpan = dual<
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
     readonly context?: Context.Context<never>
-    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>
   }) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 >((args) => isLayer(args[0]), (self, name, options) =>
   unwrapScoped(

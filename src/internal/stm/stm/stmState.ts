@@ -1,5 +1,5 @@
 import * as Equal from "../../../Equal.js"
-import * as Exit from "../../../Exit.js"
+import { Exit } from "../../../Exit.js"
 import { pipe } from "../../../Function.js"
 import * as Hash from "../../../Hash.js"
 import { hasProperty } from "../../../Predicate.js"
@@ -23,7 +23,7 @@ export type STMState<E, A> = Done<E, A> | Interrupted | Running
 export interface Done<E, A> extends Equal.Equal {
   readonly [STMStateTypeId]: STMStateTypeId
   readonly _tag: OpCodes.OP_DONE
-  readonly exit: Exit.Exit<E, A>
+  readonly exit: Exit<E, A>
 }
 
 /** @internal */
@@ -57,7 +57,7 @@ export const isInterrupted = <E, A>(self: STMState<E, A>): self is Interrupted =
 }
 
 /** @internal */
-export const done = <E, A>(exit: Exit.Exit<E, A>): STMState<E, A> => {
+export const done = <E, A>(exit: Exit<E, A>): STMState<E, A> => {
   return {
     [STMStateTypeId]: STMStateTypeId,
     _tag: OpCodes.OP_DONE,

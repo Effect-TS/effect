@@ -80,7 +80,7 @@ have been added to the scope.
 ```ts
 export declare const close: (
   self: CloseableScope,
-  exit: Exit.Exit<unknown, unknown>
+  exit: Exit<unknown, unknown>
 ) => Effect<never, never, void>
 ```
 
@@ -117,7 +117,7 @@ export interface CloseableScope extends Scope, Pipeable {
   /**
    * @internal
    */
-  readonly close: (exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+  readonly close: (exit: Exit<unknown, unknown>) => Effect<never, never, void>
 }
 ```
 
@@ -207,7 +207,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+export type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, void>
 ```
 
 Added in v2.0.0

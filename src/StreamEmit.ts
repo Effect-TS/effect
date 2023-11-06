@@ -4,7 +4,7 @@
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type { Option } from "./Option.js"
 
 /**
@@ -47,7 +47,7 @@ export interface EmitOps<R, E, A, B> {
    * Either emits the specified value if this `Exit` is a `Success` or else
    * terminates with the specified cause if this `Exit` is a `Failure`.
    */
-  readonly done: (exit: Exit.Exit<E, A>) => Promise<B>
+  readonly done: (exit: Exit<E, A>) => Promise<B>
 
   /**
    * Terminates with an end of stream signal.

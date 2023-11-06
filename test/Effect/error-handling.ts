@@ -5,7 +5,7 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
@@ -272,7 +272,7 @@ describe.concurrent("Effect", () => {
         Effect.exit
       )
       assert.deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
-      satisfies<true>(assertType<Exit.Exit<ErrorB, ErrorA>>()(result))
+      satisfies<true>(assertType<Exit<ErrorB, ErrorA>>()(result))
     }))
   it.effect("catchTags - recovers from one of several tagged errors", () =>
     Effect.gen(function*($) {

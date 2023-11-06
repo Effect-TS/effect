@@ -986,7 +986,7 @@ export declare const span: (
         readonly root?: boolean | undefined
         readonly context?: Context.Context<never> | undefined
         readonly onEnd?:
-          | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>)
+          | ((span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>)
           | undefined
       }
     | undefined
@@ -1024,7 +1024,7 @@ export declare const withSpan: {
           readonly root?: boolean | undefined
           readonly context?: Context.Context<never> | undefined
           readonly onEnd?:
-            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>)
+            | ((span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>)
             | undefined
         }
       | undefined
@@ -1040,7 +1040,7 @@ export declare const withSpan: {
           readonly root?: boolean | undefined
           readonly context?: Context.Context<never> | undefined
           readonly onEnd?:
-            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>)
+            | ((span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>)
             | undefined
         }
       | undefined

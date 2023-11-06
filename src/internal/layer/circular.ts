@@ -1,7 +1,7 @@
 import type * as ConfigProvider from "../../ConfigProvider.js"
 import * as Context from "../../Context.js"
 import type { Effect } from "../../Effect.js"
-import type * as Exit from "../../Exit.js"
+import type { Exit } from "../../Exit.js"
 import { dual } from "../../Function.js"
 import * as HashSet from "../../HashSet.js"
 import type * as Layer from "../../Layer.js"
@@ -197,7 +197,7 @@ export const span = (
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
     readonly context?: Context.Context<never>
-    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>
   }
 ): Layer.Layer<never, never, Tracer.ParentSpan> =>
   layer.scoped(

@@ -1115,7 +1115,7 @@ export declare const validateFirst: {
 
 ```ts
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 
 const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))
 
@@ -1799,7 +1799,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit.Exit<E, A>>
+export declare const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit<E, A>>
 ```
 
 Added in v2.0.0
@@ -2630,7 +2630,7 @@ Added in v2.0.0
 ```ts
 export declare const runCallback: <E, A>(
   effect: Effect<never, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
+  onExit?: ((exit: Exit<E, A>) => void) | undefined
 ) => Runtime.Cancel<E, A>
 ```
 
@@ -2667,7 +2667,7 @@ Runs an `Effect` workflow, returning a `Promise` which resolves with the
 **Signature**
 
 ```ts
-export declare const runPromiseExit: <E, A>(effect: Effect<never, E, A>) => Promise<Exit.Exit<E, A>>
+export declare const runPromiseExit: <E, A>(effect: Effect<never, E, A>) => Promise<Exit<E, A>>
 ```
 
 Added in v2.0.0
@@ -2687,7 +2687,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const runSyncExit: <E, A>(effect: Effect<never, E, A>) => Exit.Exit<E, A>
+export declare const runSyncExit: <E, A>(effect: Effect<never, E, A>) => Exit<E, A>
 ```
 
 Added in v2.0.0
@@ -4581,7 +4581,7 @@ Added in v2.0.0
 ```ts
 export declare const flatMapStep: <R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
-  f: (step: Exit.Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
+  f: (step: Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
 ) => Effect<R | R1, E1, B>
 ```
 
@@ -4622,7 +4622,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<R, E, A>>
+export declare const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit<E, A> | Blocked<R, E, A>>
 ```
 
 Added in v2.0.0
@@ -4768,11 +4768,11 @@ specified when the scope is closed.
 ```ts
 export declare const acquireRelease: {
   <A, R2, X>(
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): Effect<Scope.Scope | R | R2, E, A>
 }
 ```
@@ -4800,11 +4800,11 @@ specified when the scope is closed.
 ```ts
 export declare const acquireReleaseInterruptible: {
   <A, R2, X>(
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): Effect<Scope.Scope | R | R2, E, A>
 }
 ```
@@ -4841,12 +4841,12 @@ and ignored.
 export declare const acquireUseRelease: {
   <A, R2, E2, A2, R3, X>(
     use: (a: A) => Effect<R2, E2, A2>,
-    release: (a: A, exit: Exit.Exit<E2, A2>) => Effect<R3, never, X>
+    release: (a: A, exit: Exit<E2, A2>) => Effect<R3, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<R2 | R3 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2, R3, X>(
     acquire: Effect<R, E, A>,
     use: (a: A) => Effect<R2, E2, A2>,
-    release: (a: A, exit: Exit.Exit<E2, A2>) => Effect<R3, never, X>
+    release: (a: A, exit: Exit<E2, A2>) => Effect<R3, never, X>
   ): Effect<R | R2 | R3, E | E2, A2>
 }
 ```
@@ -4863,7 +4863,7 @@ depend on the `Exit` value that the scope is closed with.
 
 ```ts
 export declare const addFinalizer: <R, X>(
-  finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<R, never, X>
+  finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>
 ) => Effect<Scope.Scope | R, never, void>
 ```
 
@@ -4937,11 +4937,11 @@ or is interrupted.
 ```ts
 export declare const onExit: {
   <E, A, R2, X>(
-    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+    cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>
   ): <R>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
-    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+    cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>
   ): Effect<R | R2, E, A>
 }
 ```
@@ -5194,16 +5194,16 @@ export declare const raceWith: {
   <E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ): <R>(self: Effect<R, E, A>) => Effect<R1 | R2 | R3 | R, E2 | E3, A2 | A3>
   <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     self: Effect<R, E, A>,
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ): Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>
 }

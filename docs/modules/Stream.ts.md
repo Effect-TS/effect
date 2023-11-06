@@ -379,7 +379,7 @@ stream is consumed.
 ```ts
 export declare const acquireRelease: <R, E, A, R2, _>(
   acquire: Effect<R, E, A>,
-  release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, _>
+  release: (resource: A, exit: Exit<unknown, unknown>) => Effect<R2, never, _>
 ) => Stream<R | R2, E, A>
 ```
 
@@ -1882,11 +1882,11 @@ to allow for scope composition.
 ```ts
 export declare const runIntoQueueElementsScoped: {
   <E, A>(
-    queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
+    queue: Queue.Enqueue<Exit<Option.Option<E>, A>>
   ): <R>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, void>
   <R, E, A>(
     self: Stream<R, E, A>,
-    queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
+    queue: Queue.Enqueue<Exit<Option.Option<E>, A>>
   ): Effect<Scope.Scope | R, never, void>
 }
 ```
@@ -2034,11 +2034,11 @@ export declare const toQueueOfElements: {
     readonly capacity?: number
   }): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ) => Effect<Scope.Scope | R, never, Queue.Dequeue<Exit<Option.Option<E>, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     options?: { readonly capacity?: number }
-  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Exit<Option.Option<E>, A>>>
 }
 ```
 
@@ -3072,7 +3072,7 @@ stream.mapZIO(ZIO.done(_))
 
 ```ts
 export declare const flattenExitOption: <R, E, E2, A>(
-  self: Stream<R, E, Exit.Exit<Option.Option<E2>, A>>
+  self: Stream<R, E, Exit<Option.Option<E2>, A>>
 ) => Stream<R, E | E2, A>
 ```
 
@@ -3652,7 +3652,7 @@ export declare const combine: {
       s: S,
       pullLeft: Effect<R3, Option.Option<E>, A>,
       pullRight: Effect<R4, Option.Option<E2>, A2>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [A3, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -3662,7 +3662,7 @@ export declare const combine: {
       s: S,
       pullLeft: Effect<R3, Option.Option<E>, A>,
       pullRight: Effect<R4, Option.Option<E2>, A2>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [A3, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 }
 ```
@@ -3688,7 +3688,7 @@ export declare const combineChunks: {
       s: S,
       pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
       pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -3698,7 +3698,7 @@ export declare const combineChunks: {
       s: S,
       pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
       pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+    ) => Effect<R5, never, Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 }
 ```
@@ -3845,7 +3845,7 @@ export declare const distributedWith: {
     readonly decide: (a: A) => Effect<never, never, Predicate<number>>
   }): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit<Option.Option<E>, A>>, N>>
   <R, E, N extends number, A>(
     self: Stream<R, E, A>,
     options: {
@@ -3853,7 +3853,7 @@ export declare const distributedWith: {
       readonly maximumLag: number
       readonly decide: (a: A) => Effect<never, never, Predicate<number>>
     }
-  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit<Option.Option<E>, A>>, N>>
 }
 ```
 
@@ -3880,7 +3880,7 @@ export declare const distributedWithDynamic: {
   ) => Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option.Option<E>, A>>]>
   >
   <R, E, A, _>(
     self: Stream<R, E, A>,
@@ -3888,7 +3888,7 @@ export declare const distributedWithDynamic: {
   ): Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit<Option.Option<E>, A>>]>
   >
 }
 ```
@@ -4067,11 +4067,11 @@ Executes the provided finalizer after this stream's finalizers run.
 ```ts
 export declare const ensuringWith: {
   <E, R2>(
-    finalizer: (exit: Exit.Exit<E, unknown>) => Effect<R2, never, unknown>
+    finalizer: (exit: Exit<E, unknown>) => Effect<R2, never, unknown>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, A>
   <R, E, A, R2>(
     self: Stream<R, E, A>,
-    finalizer: (exit: Exit.Exit<E, unknown>) => Effect<R2, never, unknown>
+    finalizer: (exit: Exit<E, unknown>) => Effect<R2, never, unknown>
   ): Stream<R | R2, E, A>
 }
 ```

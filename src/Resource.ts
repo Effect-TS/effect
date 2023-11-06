@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import * as internal from "./internal/resource.js"
 import type * as Schedule from "./Schedule.js"
 import type * as Scope from "./Scope.js"
@@ -29,7 +29,7 @@ export type ResourceTypeId = typeof ResourceTypeId
  */
 export interface Resource<E, A> extends Resource.Variance<E, A> {
   /** @internal */
-  readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
+  readonly scopedRef: ScopedRef.ScopedRef<Exit<E, A>>
   /** @internal */
   acquire(): Effect<Scope.Scope, E, A>
 }

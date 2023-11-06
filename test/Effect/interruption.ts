@@ -6,7 +6,7 @@ import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { constVoid, pipe } from "effect/Function"
@@ -224,12 +224,12 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("interrupted cause persists after catching", () =>
     Effect.gen(function*($) {
-      const process = (list: Chunk.Chunk<Exit.Exit<never, any>>): Chunk.Chunk<Exit.Exit<never, any>> => {
+      const process = (list: Chunk.Chunk<Exit<never, any>>): Chunk.Chunk<Exit<never, any>> => {
         return pipe(list, Chunk.map(Exit.mapErrorCause((cause) => cause)))
       }
       const latch1 = yield* $(Deferred.make<never, void>())
       const latch2 = yield* $(Deferred.make<never, void>())
-      const exits = yield* $(Ref.make(Chunk.empty<Exit.Exit<never, any>>()))
+      const exits = yield* $(Ref.make(Chunk.empty<Exit<never, any>>()))
       const fiber = yield* $(
         Effect.uninterruptibleMask((restore) =>
           pipe(

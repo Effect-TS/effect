@@ -3,7 +3,7 @@ import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import * as Equal from "../Equal.js"
-import type * as Exit from "../Exit.js"
+import type { Exit } from "../Exit.js"
 import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
@@ -38,7 +38,7 @@ interface PoolState {
 }
 
 interface Attempted<E, A> {
-  readonly result: Exit.Exit<E, A>
+  readonly result: Exit<E, A>
   readonly finalizer: Effect<never, never, unknown>
 }
 
@@ -55,7 +55,7 @@ interface Strategy<S, R, E, A> {
    * Describes how the state of the strategy should be updated when an item is
    * added to the pool or returned to the pool.
    */
-  track(state: S, attempted: Exit.Exit<E, A>): Effect<never, never, void>
+  track(state: S, attempted: Exit<E, A>): Effect<never, never, void>
   /**
    * Describes how excess items that are not being used should shrink down.
    */
@@ -141,7 +141,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
     readonly state: Ref.Ref<PoolState>,
     readonly items: Queue.Queue<Attempted<E, A>>,
     readonly invalidated: Ref.Ref<HashSet.HashSet<A>>,
-    readonly track: (exit: Exit.Exit<E, A>) => Effect<never, never, unknown>
+    readonly track: (exit: Exit<E, A>) => Effect<never, never, unknown>
   ) {}
 
   [Hash.symbol](): number {
@@ -265,7 +265,7 @@ const allocate = <E, A>(
       (exit) =>
         core.flatMap(
           core.succeed<Attempted<E, A>>({
-            result: exit as Exit.Exit<E, A>,
+            result: exit as Exit<E, A>,
             finalizer: core.scopeClose(scope, core.exitSucceed(void 0))
           }),
           (attempted) =>

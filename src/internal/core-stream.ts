@@ -5,7 +5,7 @@ import * as Chunk from "../Chunk.js"
 import type * as Context from "../Context.js"
 import { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
-import type * as Exit from "../Exit.js"
+import type { Exit } from "../Exit.js"
 import { constVoid, dual, identity } from "../Function.js"
 import type { LazyArg } from "../Function.js"
 import { Option } from "../Option.js"
@@ -78,7 +78,7 @@ export interface BracketOut extends
     readonly acquire: LazyArg<Effect<unknown, unknown, unknown>>
     readonly finalizer: (
       resource: unknown,
-      exit: Exit.Exit<unknown, unknown>
+      exit: Exit<unknown, unknown>
     ) => Effect<unknown, unknown, unknown>
   }>
 {}
@@ -116,7 +116,7 @@ export interface Emit extends
 export interface Ensuring extends
   Op<OpCodes.OP_ENSURING, {
     readonly channel: ErasedChannel
-    readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<unknown, unknown, unknown>
+    readonly finalizer: (exit: Exit<unknown, unknown>) => Effect<unknown, unknown, unknown>
   }>
 {}
 
@@ -201,11 +201,11 @@ export const isChannel = (u: unknown): u is Channel.Channel<
 /** @internal */
 export const acquireReleaseOut = dual<
   <R2, Z>(
-    release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect<R2, never, unknown>
+    release: (z: Z, e: Exit<unknown, unknown>) => Effect<R2, never, unknown>
   ) => <R, E>(self: Effect<R, E, Z>) => Channel.Channel<R | R2, unknown, unknown, unknown, E, Z, void>,
   <R, R2, E, Z>(
     self: Effect<R, E, Z>,
-    release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect<R2, never, unknown>
+    release: (z: Z, e: Exit<unknown, unknown>) => Effect<R2, never, unknown>
   ) => Channel.Channel<R | R2, unknown, unknown, unknown, E, Z, void>
 >(2, (self, release) => {
   const op = Object.create(proto)
@@ -582,19 +582,19 @@ export const embedInput = dual<
 /** @internal */
 export const ensuringWith = dual<
   <Env2, OutErr, OutDone>(
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
+    finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ) => <Env, InErr, InElem, InDone, OutElem>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
+    finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ) => Channel.Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 >(
   2,
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
+    finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): Channel.Channel<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone> => {
     const op = Object.create(proto)
     op._tag = OpCodes.OP_ENSURING

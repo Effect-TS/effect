@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Deferred from "effect/Deferred"
 import { Effect } from "effect/Effect"
-import type * as Exit from "effect/Exit"
+import type { Exit } from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
@@ -13,14 +13,14 @@ import { assert, describe } from "vitest"
 
 const pollSchedule = <E, A>(): Schedule.Schedule<
   never,
-  Option<Exit.Exit<E, A>>,
-  Option<Exit.Exit<E, A>>
+  Option<Exit<E, A>>,
+  Option<Exit<E, A>>
 > =>
   pipe(
     Schedule.recurs(100),
     Schedule.zipRight(
       pipe(
-        Schedule.identity<Option<Exit.Exit<E, A>>>(),
+        Schedule.identity<Option<Exit<E, A>>>(),
         Schedule.whileOutput(Option.isNone)
       )
     )

@@ -1,7 +1,7 @@
 import * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
 import { Effect } from "../../Effect.js"
-import * as Exit from "../../Exit.js"
+import { Exit } from "../../Exit.js"
 import { pipe } from "../../Function.js"
 import { Option } from "../../Option.js"
 import type * as Emit from "../../StreamEmit.js"
@@ -20,7 +20,7 @@ export const make = <R, E, A, B>(
     dieMessage(this: Emit.Emit<R, E, A, B>, message: string) {
       return this(Effect.dieMessage(message))
     },
-    done(this: Emit.Emit<R, E, A, B>, exit: Exit.Exit<E, A>) {
+    done(this: Emit.Emit<R, E, A, B>, exit: Exit<E, A>) {
       return this(Effect.suspend(() => Exit.mapBoth(exit, { onFailure: Option.some, onSuccess: Chunk.of })))
     },
     end(this: Emit.Emit<R, E, A, B>) {

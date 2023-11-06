@@ -14,7 +14,7 @@ import type * as Either from "./Either.js"
 import type * as Equal from "./Equal.js"
 import type { Equivalence } from "./Equivalence.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import type * as FiberId from "./FiberId.js"
 import type * as FiberRef from "./FiberRef.js"
@@ -925,7 +925,7 @@ export const validateAll: {
  *
  * @example
  * import { Effect } from "effect/Effect"
- * import * as Exit from "effect/Exit"
+ * import { Exit } from "effect/Exit"
  *
  * const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))
  *
@@ -2254,11 +2254,11 @@ export const negate: <R, E>(self: Effect<R, E, boolean>) => Effect<R, E, boolean
  */
 export const acquireRelease: {
   <A, R2, X>(
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): Effect<Scope.Scope | R | R2, E, A>
 } = fiberRuntime.acquireRelease
 
@@ -2287,11 +2287,11 @@ export const acquireRelease: {
  */
 export const acquireReleaseInterruptible: {
   <A, R2, X>(
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): Effect<Scope.Scope | R | R2, E, A>
 } = fiberRuntime.acquireReleaseInterruptible
 
@@ -2332,12 +2332,12 @@ export const acquireReleaseInterruptible: {
 export const acquireUseRelease: {
   <A, R2, E2, A2, R3, X>(
     use: (a: A) => Effect<R2, E2, A2>,
-    release: (a: A, exit: Exit.Exit<E2, A2>) => Effect<R3, never, X>
+    release: (a: A, exit: Exit<E2, A2>) => Effect<R3, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<R2 | R3 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2, R3, X>(
     acquire: Effect<R, E, A>,
     use: (a: A) => Effect<R2, E2, A2>,
-    release: (a: A, exit: Exit.Exit<E2, A2>) => Effect<R3, never, X>
+    release: (a: A, exit: Exit<E2, A2>) => Effect<R3, never, X>
   ): Effect<R | R2 | R3, E | E2, A2>
 } = core.acquireUseRelease
 
@@ -2357,7 +2357,7 @@ export const acquireUseRelease: {
  * @category scoping, resources & finalization
  */
 export const addFinalizer: <R, X>(
-  finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<R, never, X>
+  finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>
 ) => Effect<R | Scope.Scope, never, void> = fiberRuntime.addFinalizer
 
 /**
@@ -2405,11 +2405,11 @@ export const onError: {
  */
 export const onExit: {
   <E, A, R2, X>(
-    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+    cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>
   ): <R>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
-    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+    cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>
   ): Effect<R | R2, E, A>
 } = core.onExit
 
@@ -3267,7 +3267,7 @@ export const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either
  * @since 2.0.0
  * @category conversions
  */
-export const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit.Exit<E, A>> = core.exit
+export const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit<E, A>> = core.exit
 
 /**
  * @since 2.0.0
@@ -3593,16 +3593,16 @@ export const raceWith: {
   <E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ): <R>(self: Effect<R, E, A>) => Effect<R1 | R2 | R3 | R, E2 | E3, A2 | A3>
   <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     self: Effect<R, E, A>,
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ): Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>
 } = fiberRuntime.raceWith
@@ -4611,7 +4611,7 @@ export const runFork: <E, A>(effect: Effect<never, E, A>) => Fiber.RuntimeFiber<
  */
 export const runCallback: <E, A>(
   effect: Effect<never, E, A>,
-  onExit?: (exit: Exit.Exit<E, A>) => void
+  onExit?: (exit: Exit<E, A>) => void
 ) => Runtime.Cancel<E, A> = _runtime.unsafeRunEffect
 
 /**
@@ -4630,7 +4630,7 @@ export const runPromise: <E, A>(effect: Effect<never, E, A>) => Promise<A> = _ru
  * @since 2.0.0
  * @category execution
  */
-export const runPromiseExit: <E, A>(effect: Effect<never, E, A>) => Promise<Exit.Exit<E, A>> =
+export const runPromiseExit: <E, A>(effect: Effect<never, E, A>) => Promise<Exit<E, A>> =
   _runtime.unsafeRunPromiseExitEffect
 
 /**
@@ -4643,7 +4643,7 @@ export const runSync: <E, A>(effect: Effect<never, E, A>) => A = _runtime.unsafe
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <E, A>(effect: Effect<never, E, A>) => Exit.Exit<E, A> = _runtime.unsafeRunSyncExitEffect
+export const runSyncExit: <E, A>(effect: Effect<never, E, A>) => Exit<E, A> = _runtime.unsafeRunSyncExitEffect
 
 // -------------------------------------------------------------------------------------
 // zipping
@@ -4800,7 +4800,7 @@ export const runRequestBlock: <R>(blockedRequests: RequestBlock<R>) => Blocked<R
  * @category requests & batching
  * @since 2.0.0
  */
-export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<R, E, A>> = core.step
+export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit<E, A> | Blocked<R, E, A>> = core.step
 
 /**
  * @category requests & batching
@@ -4808,7 +4808,7 @@ export const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E,
  */
 export const flatMapStep: <R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
-  f: (step: Exit.Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
+  f: (step: Exit<E, A> | Blocked<R, E, A>) => Effect<R1, E1, B>
 ) => Effect<R | R1, E1, B> = core.flatMapStep
 
 /**

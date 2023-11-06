@@ -3,7 +3,7 @@ import * as Context from "../../Context.js"
 import { Effect } from "../../Effect.js"
 import * as Either from "../../Either.js"
 import * as Equal from "../../Equal.js"
-import * as Exit from "../../Exit.js"
+import { Exit } from "../../Exit.js"
 import type * as FiberId from "../../FiberId.js"
 import * as FiberRef from "../../FiberRef.js"
 import type { LazyArg } from "../../Function.js"
@@ -185,7 +185,7 @@ export const commit = <R, E, A>(self: STM.STM<R, E, A>): Effect<R, E, A> => unsa
 /** @internal */
 export const unsafeAtomically = <R, E, A>(
   self: STM.STM<R, E, A>,
-  onDone: (exit: Exit.Exit<E, A>) => unknown,
+  onDone: (exit: Exit<E, A>) => unknown,
   onInterrupt: LazyArg<unknown>
 ): Effect<R, E, A> =>
   withFiberRuntime<R, E, A>((state) => {
@@ -377,7 +377,7 @@ const tryCommitAsync = <R, E, A>(
 
 /** @internal */
 const completeTodos = <E, A>(
-  exit: Exit.Exit<E, A>,
+  exit: Exit<E, A>,
   journal: Journal.Journal,
   scheduler: Scheduler.Scheduler,
   priority: number
@@ -391,7 +391,7 @@ const completeTodos = <E, A>(
 
 /** @internal */
 const completeTryCommit = <R, E, A>(
-  exit: Exit.Exit<E, A>,
+  exit: Exit<E, A>,
   k: (effect: Effect<R, E, A>) => unknown
 ): void => {
   k(exit)

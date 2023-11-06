@@ -1,4 +1,4 @@
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("Exit", () => {

@@ -113,7 +113,7 @@ export interface Span {
   readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
   readonly sampled: boolean
-  readonly end: (endTime: bigint, exit: Exit.Exit<unknown, unknown>) => void
+  readonly end: (endTime: bigint, exit: Exit<unknown, unknown>) => void
   readonly attribute: (key: string, value: unknown) => void
   readonly event: (name: string, startTime: bigint, attributes?: Record<string, unknown>) => void
 }
@@ -149,7 +149,7 @@ export type SpanStatus =
       _tag: "Ended"
       startTime: bigint
       endTime: bigint
-      exit: Exit.Exit<unknown, unknown>
+      exit: Exit<unknown, unknown>
     }
 ```
 

@@ -9,7 +9,7 @@ import type { Effect } from "../Effect.js"
 import { EffectTypeId } from "../Effectable.js"
 import type * as Either from "../Either.js"
 import * as ExecutionStrategy from "../ExecutionStrategy.js"
-import type * as Exit from "../Exit.js"
+import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
@@ -253,12 +253,12 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
 
   private _queue = new Array<FiberMessage.FiberMessage>()
   private _children: Set<FiberRuntime<any, any>> | null = null
-  private _observers = new Array<(exit: Exit.Exit<E, A>) => void>()
+  private _observers = new Array<(exit: Exit<E, A>) => void>()
   private _running = false
   private _stack: Array<core.Continuation> = []
   private _asyncInterruptor: ((effect: Effect<any, any, any>) => any) | null = null
   private _asyncBlockingOn: FiberId.FiberId | null = null
-  private _exitValue: Exit.Exit<E, A> | null = null
+  private _exitValue: Exit<E, A> | null = null
   private _steps: Array<boolean> = [false]
   public _supervisor: Supervisor.Supervisor<any>
   public _scheduler: Scheduler
@@ -394,9 +394,9 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     }
   }
 
-  await(): Effect<never, never, Exit.Exit<E, A>> {
-    return core.async<never, never, Exit.Exit<E, A>>((resume) => {
-      const cb = (exit: Exit.Exit<E, A>) => resume(core.succeed(exit))
+  await(): Effect<never, never, Exit<E, A>> {
+    return core.async<never, never, Exit<E, A>>((resume) => {
+      const cb = (exit: Exit<E, A>) => resume(core.succeed(exit))
       this.tell(
         FiberMessage.stateful((fiber, _) => {
           if (fiber._exitValue !== null) {
@@ -443,7 +443,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect<never, never, Option<Exit.Exit<E, A>>> {
+  poll(): Effect<never, never, Option<Exit<E, A>>> {
     return core.sync(() => Option.fromNullable(this._exitValue))
   }
 
@@ -451,7 +451,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * Unsafely observes the fiber, but returns immediately if it is not
    * already done.
    */
-  unsafePoll(): Exit.Exit<E, A> | null {
+  unsafePoll(): Exit<E, A> | null {
     return this._exitValue
   }
 
@@ -467,7 +467,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  addObserver(observer: (exit: Exit.Exit<E, A>) => void): void {
+  addObserver(observer: (exit: Exit<E, A>) => void): void {
     if (this._exitValue !== null) {
       observer(this._exitValue!)
     } else {
@@ -481,7 +481,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  removeObserver(observer: (exit: Exit.Exit<E, A>) => void): void {
+  removeObserver(observer: (exit: Exit<E, A>) => void): void {
     this._observers = this._observers.filter((o) => o !== observer)
   }
   /**
@@ -727,7 +727,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     return null
   }
 
-  reportExitValue(exit: Exit.Exit<E, A>) {
+  reportExitValue(exit: Exit<E, A>) {
     if (_runtimeFlags.runtimeMetrics(this._runtimeFlags)) {
       const tags = this.getFiberRef(core.currentMetricLabels)
       fiberActive.unsafeUpdate(-1, tags)
@@ -750,7 +750,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     }
   }
 
-  setExitValue(exit: Exit.Exit<E, A>) {
+  setExitValue(exit: Exit<E, A>) {
     this._exitValue = exit
 
     if (_runtimeFlags.runtimeMetrics(this._runtimeFlags)) {
@@ -1263,7 +1263,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  runLoop(effect0: Effect<any, any, any>): Exit.Exit<any, any> {
+  runLoop(effect0: Effect<any, any, any>): Exit<any, any> {
     let cur = effect0
     this.currentOpCount = 0
     // eslint-disable-next-line no-constant-condition
@@ -1318,7 +1318,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
             (e as core.Primitive)._op === OpCodes.OP_SUCCESS ||
             (e as core.Primitive)._op === OpCodes.OP_FAILURE
           ) {
-            return e as Exit.Exit<E, A>
+            return e as Exit<E, A>
           }
         } else {
           if (core.isEffectError(e)) {
@@ -1425,22 +1425,22 @@ export const currentLoggers: FiberRef.FiberRef<
 /* @internal */
 export const acquireRelease: {
   <A, R2, X>(
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<R2 | R | Scope.Scope, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): Effect<Scope.Scope | R | R2, E, A>
 } = dual<
   {
     <A, R2, X>(
-      release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+      release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
     ): <R, E>(acquire: Effect<R, E, A>) => Effect<R | R2 | Scope.Scope, E, A>
   },
   {
     <R, E, A, R2, X>(
       acquire: Effect<R, E, A>,
-      release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+      release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
     ): Effect<R | R2 | Scope.Scope, E, A>
   }
 >((args) => core.isEffect(args[0]), (acquire, release) => {
@@ -1452,22 +1452,22 @@ export const acquireRelease: {
 /* @internal */
 export const acquireReleaseInterruptible: {
   <A, R2, X>(
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
-    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+    release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
   ): Effect<Scope.Scope | R | R2, E, A>
 } = dual<
   {
     <A, R2, X>(
-      release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+      release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
     ): <R, E>(acquire: Effect<R, E, A>) => Effect<R | R2 | Scope.Scope, E, A>
   },
   {
     <R, E, A, R2, X>(
       acquire: Effect<R, E, A>,
-      release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+      release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
     ): Effect<R | R2 | Scope.Scope, E, A>
   }
 >((args) => core.isEffect(args[0]), (acquire, release) => {
@@ -1479,7 +1479,7 @@ export const acquireReleaseInterruptible: {
 
 /* @internal */
 export const addFinalizer = <R, X>(
-  finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<R, never, X>
+  finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>
 ): Effect<R | Scope.Scope, never, void> =>
   core.withFiberRuntime(
     (runtime) => {
@@ -2405,7 +2405,7 @@ const raceAllArbiter = <E, E1, A, A1>(
   deferred: Deferred.Deferred<E | E1, readonly [A | A1, Fiber.Fiber<E | E1, A | A1>]>,
   fails: Ref.Ref<number>
 ) =>
-(exit: Exit.Exit<E | E1, A | A1>): Effect<never, never, void> =>
+(exit: Exit<E | E1, A | A1>): Effect<never, never, void> =>
   core.exitMatchEffect(exit, {
     onFailure: (cause) =>
       pipe(
@@ -2886,7 +2886,7 @@ export const withRuntimeFlagsScoped = (
 /* @internal */
 export const releaseMapReleaseAll = (
   strategy: ExecutionStrategy.ExecutionStrategy,
-  exit: Exit.Exit<unknown, unknown>
+  exit: Exit<unknown, unknown>
 ) =>
 (self: core.ReleaseMap): Effect<never, never, void> =>
   core.suspend(() => {
@@ -3093,7 +3093,7 @@ export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber
     core.map(
       core.forEachSequential(fibers, (fiber) => fiber.poll()),
       RA.reduceRight(
-        Option.some<Exit.Exit<E, Array<A>>>(core.exitSucceed(new Array())),
+        Option.some<Exit<E, Array<A>>>(core.exitSucceed(new Array())),
         (optionB, optionA) => {
           switch (optionA._tag) {
             case "None": {
@@ -3145,24 +3145,24 @@ export const raceWith = dual<
   <E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ) => <R>(self: Effect<R, E, A>) => Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>,
   <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     self: Effect<R, E, A>,
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ) => Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>
 >(3, <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
   other: Effect<R1, E1, A1>,
   options: {
-    readonly onSelfDone: (exit: Exit.Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-    readonly onOtherDone: (exit: Exit.Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+    readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
+    readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
   }
 ) =>
   raceFibersWith(self, other, {

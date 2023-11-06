@@ -5,7 +5,7 @@
 import type * as Context from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type * as ExecutionStrategy from "./ExecutionStrategy.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import * as core from "./internal/core.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -61,7 +61,7 @@ export interface CloseableScope extends Scope, Pipeable {
   /**
    * @internal
    */
-  readonly close: (exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+  readonly close: (exit: Exit<unknown, unknown>) => Effect<never, never, void>
 }
 
 /**
@@ -78,7 +78,7 @@ export declare namespace Scope {
    * @since 2.0.0
    * @category model
    */
-  export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+  export type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, void>
   /**
    * @since 2.0.0
    * @category model
@@ -115,7 +115,7 @@ export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effe
  * @since 2.0.0
  * @category destructors
  */
-export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void> =
+export const close: (self: CloseableScope, exit: Exit<unknown, unknown>) => Effect<never, never, void> =
   core.scopeClose
 
 /**

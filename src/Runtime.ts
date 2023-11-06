@@ -4,7 +4,7 @@
 import type { Cause } from "./Cause.js"
 import type * as Context from "./Context.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import type * as FiberId from "./FiberId.js"
 import type * as FiberRefs from "./FiberRefs.js"
@@ -28,7 +28,7 @@ export interface AsyncFiberException<E, A> {
  * @category models
  */
 export interface Cancel<E, A> {
-  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void): void
+  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
 
 /**
@@ -80,7 +80,7 @@ export const runFork: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit.Exit<E, A> =
+export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit<E, A> =
   internal.unsafeRunSyncExit
 
 /**
@@ -108,8 +108,8 @@ export const runCallback: <R>(
   runtime: Runtime<R>
 ) => <E, A>(
   effect: Effect<R, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
-) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void =
+  onExit?: ((exit: Exit<E, A>) => void) | undefined
+) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void =
   internal.unsafeRunCallback
 
 /**
@@ -138,7 +138,7 @@ export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E,
  */
 export const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit.Exit<E, A>> = internal.unsafeRunPromiseExit
+) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit<E, A>> = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0

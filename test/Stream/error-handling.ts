@@ -3,7 +3,7 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { identity, pipe } from "effect/Function"
 import { Option } from "effect/Option"
 import * as Ref from "effect/Ref"
@@ -140,7 +140,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("catchAllCause - propagates the right Exit value to the failing stream (ZIO #3609)", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<Exit.Exit<unknown, unknown>>(Exit.unit))
+      const ref = yield* $(Ref.make<Exit<unknown, unknown>>(Exit.unit))
       yield* $(
         Stream.acquireRelease(
           Effect.unit,

@@ -1,5 +1,5 @@
 import { Effect } from "../../Effect.js"
-import type * as Exit from "../../Exit.js"
+import type { Exit } from "../../Exit.js"
 import { hasProperty } from "../../Predicate.js"
 import * as OpCodes from "../opCodes/channelState.js"
 import type { ErasedExecutor } from "./channelExecutor.js"
@@ -65,7 +65,7 @@ export interface Read extends
     readonly upstream: ErasedExecutor<unknown>
     readonly onEffect: (effect: Effect<unknown, never, void>) => Effect<unknown, never, void>
     readonly onEmit: (value: unknown) => Effect<unknown, never, void>
-    readonly onDone: (exit: Exit.Exit<unknown, unknown>) => Effect<unknown, never, void>
+    readonly onDone: (exit: Exit<unknown, unknown>) => Effect<unknown, never, void>
   }>
 {}
 
@@ -96,7 +96,7 @@ export const Read = <R>(
   upstream: ErasedExecutor<R>,
   onEffect: (effect: Effect<R, never, void>) => Effect<R, never, void>,
   onEmit: (value: unknown) => Effect<R, never, void> | undefined,
-  onDone: (exit: Exit.Exit<unknown, unknown>) => Effect<R, never, void> | undefined
+  onDone: (exit: Exit<unknown, unknown>) => Effect<R, never, void> | undefined
 ): ChannelState<R, never> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_READ

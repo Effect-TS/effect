@@ -4,7 +4,7 @@ import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import { Option } from "effect/Option"
@@ -74,7 +74,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("finalizer errors reported", () =>
     Effect.gen(function*($) {
-      let reported: Exit.Exit<never, number> | undefined
+      let reported: Exit<never, number> | undefined
       const result = yield* $(
         pipe(
           Effect.succeed(42),

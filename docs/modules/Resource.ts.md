@@ -94,7 +94,7 @@ which can be refreshed either manually or automatically.
 ```ts
 export interface Resource<E, A> extends Resource.Variance<E, A> {
   /** @internal */
-  readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
+  readonly scopedRef: ScopedRef.ScopedRef<Exit<E, A>>
   /** @internal */
   acquire(): Effect<Scope.Scope, E, A>
 }

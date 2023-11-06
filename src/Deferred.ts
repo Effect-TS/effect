@@ -3,7 +3,7 @@
  */
 import type * as Cause from "./Cause.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type * as FiberId from "./FiberId.js"
 import type { LazyArg } from "./Function.js"
 import * as core from "./internal/core.js"
@@ -123,8 +123,8 @@ export const completeWith: {
  * @category utils
  */
 export const done: {
-  <E, A>(exit: Exit.Exit<E, A>): (self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, exit: Exit.Exit<E, A>): Effect<never, never, boolean>
+  <E, A>(exit: Exit<E, A>): (self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, exit: Exit<E, A>): Effect<never, never, boolean>
 } = core.deferredDone
 
 /**

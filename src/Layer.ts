@@ -22,7 +22,7 @@ import type * as Clock from "./Clock.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
 import * as Context from "./Context.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type { FiberRef } from "./FiberRef.js"
 import type { LazyArg } from "./Function.js"
 import { clockTag } from "./internal/clock.js"
@@ -945,7 +945,7 @@ export const span: (
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
     readonly context?: Context.Context<never>
-    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+    readonly onEnd?: (span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>
   }
 ) => Layer<never, never, Tracer.ParentSpan> = circularLayer.span
 
@@ -990,7 +990,7 @@ export const withSpan: {
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
       readonly context?: Context.Context<never>
-      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+      readonly onEnd?: (span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>
     }
   ): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
@@ -1002,7 +1002,7 @@ export const withSpan: {
       readonly parent?: Tracer.ParentSpan
       readonly root?: boolean
       readonly context?: Context.Context<never>
-      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
+      readonly onEnd?: (span: Tracer.Span, exit: Exit<unknown, unknown>) => Effect<never, never, void>
     }
   ): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 } = internal.withSpan

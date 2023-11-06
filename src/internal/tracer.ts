@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as Context from "../Context.js"
-import type * as Exit from "../Exit.js"
+import type { Exit } from "../Exit.js"
 import { globalValue } from "../GlobalValue.js"
 import * as MutableRef from "../MutableRef.js"
 import type { Option } from "../Option.js"
@@ -55,7 +55,7 @@ export class NativeSpan implements Tracer.Span {
     this.spanId = `span${MutableRef.incrementAndGet(ids)}`
   }
 
-  end = (endTime: bigint, exit: Exit.Exit<unknown, unknown>): void => {
+  end = (endTime: bigint, exit: Exit<unknown, unknown>): void => {
     this.status = {
       _tag: "Ended",
       endTime,

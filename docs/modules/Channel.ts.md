@@ -153,7 +153,7 @@ Added in v2.0.0
 ```ts
 export declare const acquireReleaseOut: <R, R2, E, Z>(
   self: Effect<R, E, Z>,
-  release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect<R2, never, unknown>
+  release: (z: Z, e: Exit<unknown, unknown>) => Effect<R2, never, unknown>
 ) => Channel<R | R2, unknown, unknown, unknown, E, Z, void>
 ```
 
@@ -167,7 +167,7 @@ Added in v2.0.0
 export declare const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
   acquire: Effect<Env, OutErr, Acquired>,
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, any>
+  release: (a: Acquired, exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>
 ```
 
@@ -372,7 +372,7 @@ Construct a `Channel` from a `PubSub`.
 
 ```ts
 export declare const fromPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 ```
 
@@ -386,7 +386,7 @@ Construct a `Channel` from a `PubSub` within a scoped effect.
 
 ```ts
 export declare const fromPubSubScoped: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ) => Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>>
 ```
 
@@ -400,7 +400,7 @@ Construct a `Channel` from a `Queue`.
 
 ```ts
 export declare const fromQueue: <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 ```
 
@@ -907,7 +907,7 @@ Converts a `Channel` to a `PubSub`.
 
 ```ts
 export declare const toPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown>
 ```
 
@@ -938,7 +938,7 @@ Converts a `Channel` to a `Queue`.
 
 ```ts
 export declare const toQueue: <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit.Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown>
 ```
 
@@ -1984,13 +1984,13 @@ regardless of whether or not it completes).
 ```ts
 export declare const ensuringWith: {
   <Env2, OutErr, OutDone>(
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
+    finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): <Env, InErr, InElem, InDone, OutElem>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
+    finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): Channel<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 }
 ```
@@ -2583,10 +2583,10 @@ export declare const mergeWith: {
   >(options: {
     readonly other: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
     readonly onSelfDone: (
-      exit: Exit.Exit<OutErr, OutDone>
+      exit: Exit<OutErr, OutDone>
     ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
     readonly onOtherDone: (
-      ex: Exit.Exit<OutErr1, OutDone1>
+      ex: Exit<OutErr1, OutDone1>
     ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
   }): <Env, InErr, InElem, InDone, OutElem>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -2623,10 +2623,10 @@ export declare const mergeWith: {
     options: {
       readonly other: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
       readonly onSelfDone: (
-        exit: Exit.Exit<OutErr, OutDone>
+        exit: Exit<OutErr, OutDone>
       ) => MergeDecision.MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>
       readonly onOtherDone: (
-        ex: Exit.Exit<OutErr1, OutDone1>
+        ex: Exit<OutErr1, OutDone1>
       ) => MergeDecision.MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
     }
   ): Channel<

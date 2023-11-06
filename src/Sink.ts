@@ -8,7 +8,7 @@ import type * as Context from "./Context.js"
 import type * as Duration from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type * as Either from "./Either.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
@@ -504,11 +504,11 @@ export const ensuring: {
  */
 export const ensuringWith: {
   <E, Z, R2, _>(
-    finalizer: (exit: Exit.Exit<E, Z>) => Effect<R2, never, _>
+    finalizer: (exit: Exit<E, Z>) => Effect<R2, never, _>
   ): <R, In, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E, In, L, Z>
   <R, In, L, E, Z, R2, _>(
     self: Sink<R, E, In, L, Z>,
-    finalizer: (exit: Exit.Exit<E, Z>) => Effect<R2, never, _>
+    finalizer: (exit: Exit<E, Z>) => Effect<R2, never, _>
   ): Sink<R | R2, E, In, L, Z>
 } = internal.ensuringWith
 
@@ -1198,8 +1198,8 @@ export const raceWith: {
   <R2, E2, In2, L2, Z2, E, Z, Z3, Z4>(
     options: {
       readonly other: Sink<R2, E2, In2, L2, Z2>
-      readonly onSelfDone: (exit: Exit.Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
-      readonly onOtherDone: (exit: Exit.Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
+      readonly onSelfDone: (exit: Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
+      readonly onOtherDone: (exit: Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number
     }
   ): <R, In, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L2 | L, Z3 | Z4>
@@ -1207,8 +1207,8 @@ export const raceWith: {
     self: Sink<R, E, In, L, Z>,
     options: {
       readonly other: Sink<R2, E2, In2, L2, Z2>
-      readonly onSelfDone: (exit: Exit.Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
-      readonly onOtherDone: (exit: Exit.Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
+      readonly onSelfDone: (exit: Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
+      readonly onOtherDone: (exit: Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number
     }
   ): Sink<R | R2, E2 | E, In & In2, L | L2, Z3 | Z4>

@@ -6,7 +6,7 @@ import type * as Data from "./Data.js"
 import type { Deferred } from "./Deferred.js"
 import type { DurationInput } from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type * as Exit from "./Exit.js"
+import type { Exit } from "./Exit.js"
 import type { FiberId } from "./FiberId.js"
 import * as _RequestBlock from "./internal/blockedRequests.js"
 import * as cache from "./internal/cache.js"
@@ -81,7 +81,7 @@ export declare namespace Request {
    * @since 2.0.0
    * @category type-level
    */
-  export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit.Exit<E, A> : never
+  export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit<E, A> : never
 
   /**
    * A utility type to extract the optional result type from a `Request`.
@@ -90,7 +90,7 @@ export declare namespace Request {
    * @category type-level
    */
   export type OptionalResult<T extends Request<any, any>> = T extends Request<infer E, infer A>
-    ? Exit.Exit<E, Option<A>>
+    ? Exit<E, Option<A>>
     : never
 }
 

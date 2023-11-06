@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Deferred from "effect/Deferred"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import { Option } from "effect/Option"
 import { Stream } from "effect/Stream"

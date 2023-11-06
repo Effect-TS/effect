@@ -3,7 +3,7 @@ import type * as Channel from "../Channel.js"
 import * as Chunk from "../Chunk.js"
 import * as Deferred from "../Deferred.js"
 import { Effect } from "../Effect.js"
-import * as Exit from "../Exit.js"
+import { Exit } from "../Exit.js"
 import { dual, pipe } from "../Function.js"
 import type * as GroupBy from "../GroupBy.js"
 import { Option } from "../Option.js"
@@ -142,7 +142,7 @@ export const groupBy = dual<
             >()
           )
           const output = yield* $(Effect.acquireRelease(
-            Queue.bounded<Exit.Exit<Option<E | E2>, readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>]>>(
+            Queue.bounded<Exit<Option<E | E2>, readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>]>>(
               options?.bufferSize ?? 16
             ),
             (queue) => Queue.shutdown(queue)

@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import { Stream } from "effect/Stream"

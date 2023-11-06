@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import { Effect } from "effect/Effect"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
