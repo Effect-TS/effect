@@ -13,7 +13,7 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type { ScheduleDecision } from "./ScheduleDecision.js"
-import type { Intervals } from "./ScheduleIntervals.js"
+import type { ScheduleIntervals } from "./ScheduleIntervals.js"
 
 /**
  * @since 2.0.0
@@ -568,12 +568,12 @@ export const either: {
 export const eitherWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.eitherWith
 
@@ -726,12 +726,12 @@ export const intersect: {
 export const intersectWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.intersectWith
 
@@ -1190,12 +1190,12 @@ export const union: {
 export const unionWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.unionWith
 

@@ -43,7 +43,7 @@ declare module "./TestServices.js" {
 export const liveServices: Context<TestServices> = pipe(
   Context.make(Annotations.TestAnnotations, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
   Context.add(Live.TestLive, Live.make(defaultServices.liveServices)),
-  Context.add(Sized.TestSized, Sized.make(100)),
+  Context.add(Sized.Tag, Sized.make(100)),
   Context.add(TestConfig.Tag, TestConfig.make({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
 )
 
@@ -240,7 +240,7 @@ export const provideWithLive = dual<
 export const sizedWith = <R, E, A>(f: (sized: Sized.TestSized) => Effect<R, E, A>): Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
-    (services) => f(Context.get(services, Sized.TestSized))
+    (services) => f(Context.get(services, Sized.Tag))
   )
 
 /**
@@ -262,7 +262,7 @@ export const withSized = dual<
 >(2, (effect, sized) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(Sized.TestSized, sized)
+    Context.add(Sized.Tag, sized)
   )(effect))
 
 /**
@@ -272,14 +272,14 @@ export const withSized = dual<
  * @since 2.0.0
  */
 export const withSizedScoped = (sized: Sized.TestSized): Effect<Scope, never, void> =>
-  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Sized.TestSized, sized))
+  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Sized.Tag, sized))
 
 /**
  * @since 2.0.0
  */
 export const sizedLayer = (size: number): Layer<never, never, Sized.TestSized> =>
   layer.scoped(
-    Sized.TestSized,
+    Sized.Tag,
     pipe(
       fiberRuntime.fiberRefMake(size),
       core.map(Sized.fromFiberRef),

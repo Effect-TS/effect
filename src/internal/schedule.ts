@@ -16,7 +16,7 @@ import type { Ref } from "../Ref.js"
 import type { Schedule } from "../Schedule.js"
 import { ScheduleDecision } from "../ScheduleDecision.js"
 import { Interval } from "../ScheduleInterval.js"
-import { Intervals } from "../ScheduleIntervals.js"
+import { ScheduleIntervals } from "../ScheduleIntervals.js"
 import * as internalCause from "./cause.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
@@ -115,7 +115,7 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
                   ) :
                   pipe(
                     ref.set(this.ref, [Option.some(out), state] as const),
-                    core.zipRight(effect.sleep(Duration.millis(Intervals.start(decision.intervals) - now))),
+                    core.zipRight(effect.sleep(Duration.millis(ScheduleIntervals.start(decision.intervals) - now))),
                     core.as(out)
                   )
               )
@@ -272,7 +272,7 @@ export const bothInOut = dual<
       that.step(now, in2, state[1]),
       ([lState, out, lDecision], [rState, out2, rDecision]) => {
         if (ScheduleDecision.isContinue(lDecision) && ScheduleDecision.isContinue(rDecision)) {
-          const interval = pipe(lDecision.intervals, Intervals.union(rDecision.intervals))
+          const interval = pipe(lDecision.intervals, ScheduleIntervals.union(rDecision.intervals))
           return [
             [lState, rState] as const,
             [out, out2] as const,
@@ -365,7 +365,7 @@ export const compose = dual<
               : [
                 [lState, rState] as const,
                 out2,
-                ScheduleDecision.continue(pipe(lDecision.intervals, Intervals.max(rDecision.intervals)))
+                ScheduleDecision.continue(pipe(lDecision.intervals, ScheduleIntervals.max(rDecision.intervals)))
               ] as const)
       )
   ))
@@ -513,7 +513,7 @@ export const delays = <Env, In, Out>(
         return core.succeed(
           [
             state,
-            Duration.millis(Intervals.start(decision.intervals) - now),
+            Duration.millis(ScheduleIntervals.start(decision.intervals) - now),
             decision
           ] as const
         )
@@ -604,7 +604,7 @@ export const either = dual<
 export const eitherWith = dual<
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ) => <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<
     Env | Env2,
     In & In2,
@@ -613,7 +613,7 @@ export const eitherWith = dual<
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ) => Schedule<
     Env | Env2,
     In & In2,
@@ -790,13 +790,13 @@ export const intersect = dual<
     In & In2,
     readonly [Out, Out2]
   >
->(2, (self, that) => intersectWith(self, that, Intervals.intersect))
+>(2, (self, that) => intersectWith(self, that, ScheduleIntervals.intersect))
 
 /** @internal */
 export const intersectWith = dual<
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ) => <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<
     Env | Env2,
     In & In2,
@@ -805,7 +805,7 @@ export const intersectWith = dual<
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ) => Schedule<
     Env | Env2,
     In & In2,
@@ -814,7 +814,7 @@ export const intersectWith = dual<
 >(3, <Env, In, Out, Env2, In2, Out2>(
   self: Schedule<Env, In, Out>,
   that: Schedule<Env2, In2, Out2>,
-  f: (x: Intervals, y: Intervals) => Intervals
+  f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
 ): Schedule<
   Env | Env2,
   In & In2,
@@ -862,18 +862,18 @@ const intersectWithLoop = <State, State1, Env, In, Out, Env1, In1, Out2>(
   input: In & In1,
   lState: State,
   out: Out,
-  lInterval: Intervals,
+  lInterval: ScheduleIntervals,
   rState: State1,
   out2: Out2,
-  rInterval: Intervals,
-  f: (x: Intervals, y: Intervals) => Intervals
+  rInterval: ScheduleIntervals,
+  f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
 ): Effect<
   Env | Env1,
   never,
   readonly [readonly [State, State1], readonly [Out, Out2], ScheduleDecision]
 > => {
   const combined = f(lInterval, rInterval)
-  if (Intervals.isNonEmpty(combined)) {
+  if (ScheduleIntervals.isNonEmpty(combined)) {
     return core.succeed([
       [lState, rState],
       [out, out2],
@@ -881,8 +881,8 @@ const intersectWithLoop = <State, State1, Env, In, Out, Env1, In1, Out2>(
     ])
   }
 
-  if (pipe(lInterval, Intervals.lessThan(rInterval))) {
-    return core.flatMap(self.step(Intervals.end(lInterval), input, lState), ([lState, out, decision]) => {
+  if (pipe(lInterval, ScheduleIntervals.lessThan(rInterval))) {
+    return core.flatMap(self.step(ScheduleIntervals.end(lInterval), input, lState), ([lState, out, decision]) => {
       if (ScheduleDecision.isDone(decision)) {
         return core.succeed([
           [lState, rState],
@@ -904,7 +904,7 @@ const intersectWithLoop = <State, State1, Env, In, Out, Env1, In1, Out2>(
       )
     })
   }
-  return core.flatMap(that.step(Intervals.end(rInterval), input, rState), ([rState, out2, decision]) => {
+  return core.flatMap(that.step(ScheduleIntervals.end(rInterval), input, rState), ([rState, out2, decision]) => {
     if (ScheduleDecision.isDone(decision)) {
       return core.succeed([
         [lState, rState],
@@ -1044,13 +1044,13 @@ export const modifyDelayEffect = dual<
           return core.succeed([state, out, decision] as const)
         }
         const intervals = decision.intervals
-        const delay = Interval.size(Interval.make(now, Intervals.start(intervals)))
+        const delay = Interval.size(Interval.make(now, ScheduleIntervals.start(intervals)))
         return core.map(f(out, delay), (durationInput) => {
           const duration = Duration.decode(durationInput)
-          const oldStart = Intervals.start(intervals)
+          const oldStart = ScheduleIntervals.start(intervals)
           const newStart = now + Duration.toMillis(duration)
           const delta = newStart - oldStart
-          const newEnd = Math.min(Math.max(0, Intervals.end(intervals) + delta), Number.MAX_SAFE_INTEGER)
+          const newEnd = Math.min(Math.max(0, ScheduleIntervals.end(intervals) + delta), Number.MAX_SAFE_INTEGER)
           const newInterval = Interval.make(newStart, newEnd)
           return [state, out, ScheduleDecision.continueWith(newInterval)] as const
         })
@@ -1292,7 +1292,7 @@ const runLoop = <Env, In, Out>(
     }
     return runLoop(
       self,
-      Intervals.start(decision.intervals),
+      ScheduleIntervals.start(decision.intervals),
       nextInputs,
       state,
       Chunk.prepend(acc, out)
@@ -1398,13 +1398,13 @@ export const union = dual<
     In & In2,
     readonly [Out, Out2]
   >
->(2, (self, that) => unionWith(self, that, Intervals.union))
+>(2, (self, that) => unionWith(self, that, ScheduleIntervals.union))
 
 /** @internal */
 export const unionWith = dual<
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ) => <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<
     Env | Env2,
     In & In2,
@@ -1413,7 +1413,7 @@ export const unionWith = dual<
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals) => Intervals
+    f: (x: ScheduleIntervals, y: ScheduleIntervals) => ScheduleIntervals
   ) => Schedule<
     Env | Env2,
     In & In2,

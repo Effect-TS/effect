@@ -14,7 +14,7 @@ import { hasProperty } from "../Predicate.js"
 import type { Runtime } from "../Runtime.js"
 import type { Schedule } from "../Schedule.js"
 import * as ScheduleDecision from "../ScheduleDecision.js"
-import * as Intervals from "../ScheduleIntervals.js"
+import * as ScheduleIntervals from "../ScheduleIntervals.js"
 import { Scope } from "../Scope.js"
 import type { SynchronizedRef } from "../SynchronizedRef.js"
 import type { Tracer } from "../Tracer.js"
@@ -847,7 +847,7 @@ const retryUpdate = <RIn, E, X>(
             ScheduleDecision.isDone(decision) ?
               core.fail(error) :
               pipe(
-                Clock.sleep(Duration.millis(Intervals.start(decision.intervals) - now)),
+                Clock.sleep(Duration.millis(ScheduleIntervals.start(decision.intervals) - now)),
                 core.as({ state })
               )
           )

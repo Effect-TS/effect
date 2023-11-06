@@ -21,7 +21,7 @@ Added in v2.0.0
   - [isNonEmpty](#isnonempty)
   - [start](#start)
 - [models](#models)
-  - [Intervals (interface)](#intervals-interface)
+  - [ScheduleIntervals (interface)](#intervals-interface)
 - [ordering](#ordering)
   - [lessThan](#lessthan)
   - [max](#max)
@@ -43,31 +43,31 @@ Constructs an empty list of `Interval`s.
 **Signature**
 
 ```ts
-export declare const empty: Intervals
+export declare const empty: ScheduleIntervals
 ```
 
 Added in v2.0.0
 
 ## fromIterable
 
-Constructs `Intervals` from the specified `Iterable<Interval>`.
+Constructs `ScheduleIntervals` from the specified `Iterable<Interval>`.
 
 **Signature**
 
 ```ts
-export declare const fromIterable: (intervals: Iterable<Interval>) => Intervals
+export declare const fromIterable: (intervals: Iterable<Interval>) => ScheduleIntervals
 ```
 
 Added in v2.0.0
 
 ## make
 
-Creates a new `Intervals` from a `List` of `Interval`s.
+Creates a new `ScheduleIntervals` from a `List` of `Interval`s.
 
 **Signature**
 
 ```ts
-export declare const make: (intervals: Check.Chunk<Interval>) => Intervals
+export declare const make: (intervals: Check.Chunk<Interval>) => ScheduleIntervals
 ```
 
 Added in v2.0.0
@@ -76,50 +76,50 @@ Added in v2.0.0
 
 ## end
 
-The end of the latest interval in the specified `Intervals`.
+The end of the latest interval in the specified `ScheduleIntervals`.
 
 **Signature**
 
 ```ts
-export declare const end: (self: Intervals) => number
+export declare const end: (self: ScheduleIntervals) => number
 ```
 
 Added in v2.0.0
 
 ## isNonEmpty
 
-Returns `true` if this `Intervals` is non-empty, `false` otherwise.
+Returns `true` if this `ScheduleIntervals` is non-empty, `false` otherwise.
 
 **Signature**
 
 ```ts
-export declare const isNonEmpty: (self: Intervals) => boolean
+export declare const isNonEmpty: (self: ScheduleIntervals) => boolean
 ```
 
 Added in v2.0.0
 
 ## start
 
-The start of the earliest interval in the specified `Intervals`.
+The start of the earliest interval in the specified `ScheduleIntervals`.
 
 **Signature**
 
 ```ts
-export declare const start: (self: Intervals) => number
+export declare const start: (self: ScheduleIntervals) => number
 ```
 
 Added in v2.0.0
 
 # models
 
-## Intervals (interface)
+## ScheduleIntervals (interface)
 
-An `Intervals` represents a list of several `Interval`s.
+An `ScheduleIntervals` represents a list of several `Interval`s.
 
 **Signature**
 
 ```ts
-export interface Intervals {
+export interface ScheduleIntervals {
   readonly [IntervalsTypeId]: IntervalsTypeId
   readonly intervals: Check.Chunk<Interval>
 }
@@ -131,15 +131,15 @@ Added in v2.0.0
 
 ## lessThan
 
-Returns `true` if the start of this `Intervals` is before the start of that
-`Intervals`, `false` otherwise.
+Returns `true` if the start of this `ScheduleIntervals` is before the start of that
+`ScheduleIntervals`, `false` otherwise.
 
 **Signature**
 
 ```ts
 export declare const lessThan: {
-  (that: Intervals): (self: Intervals) => boolean
-  (self: Intervals, that: Intervals): boolean
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => boolean
+  (self: ScheduleIntervals, that: ScheduleIntervals): boolean
 }
 ```
 
@@ -147,14 +147,14 @@ Added in v2.0.0
 
 ## max
 
-Returns the maximum of the two `Intervals` (i.e. which has the latest start).
+Returns the maximum of the two `ScheduleIntervals` (i.e. which has the latest start).
 
 **Signature**
 
 ```ts
 export declare const max: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => ScheduleIntervals
+  (self: ScheduleIntervals, that: ScheduleIntervals): ScheduleIntervals
 }
 ```
 
@@ -186,14 +186,14 @@ Added in v2.0.0
 
 ## intersect
 
-Produces the intersection of this `Intervals` and that `Intervals`.
+Produces the intersection of this `ScheduleIntervals` and that `ScheduleIntervals`.
 
 **Signature**
 
 ```ts
 export declare const intersect: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => ScheduleIntervals
+  (self: ScheduleIntervals, that: ScheduleIntervals): ScheduleIntervals
 }
 ```
 
@@ -201,14 +201,14 @@ Added in v2.0.0
 
 ## union
 
-Computes the union of this `Intervals` and that `Intervals`
+Computes the union of this `ScheduleIntervals` and that `ScheduleIntervals`
 
 **Signature**
 
 ```ts
 export declare const union: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
+  (that: ScheduleIntervals): (self: ScheduleIntervals) => ScheduleIntervals
+  (self: ScheduleIntervals, that: ScheduleIntervals): ScheduleIntervals
 }
 ```
 

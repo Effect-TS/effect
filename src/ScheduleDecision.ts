@@ -3,7 +3,7 @@
  */
 import * as internal from "./internal/schedule/decision.js"
 import type { Interval } from "./ScheduleInterval.js"
-import type { Intervals } from "./ScheduleIntervals.js"
+import type { ScheduleIntervals } from "./ScheduleIntervals.js"
 
 export * as ScheduleDecision from "./ScheduleDecision.js"
 
@@ -21,7 +21,7 @@ declare module "./ScheduleDecision.js" {
  */
 export interface Continue {
   readonly _tag: "Continue"
-  readonly intervals: Intervals
+  readonly intervals: ScheduleIntervals
 }
 
 /**

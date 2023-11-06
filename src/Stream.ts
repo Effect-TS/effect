@@ -25,7 +25,7 @@ import type { Queue } from "./Queue.js"
 import type { Schedule } from "./Schedule.js"
 import type { Scope } from "./Scope.js"
 import type { Sink } from "./Sink.js"
-import type { Emit } from "./StreamEmit.js"
+import type { StreamEmit as Emit } from "./StreamEmit.js"
 import type { HaltStrategy } from "./StreamHaltStrategy.js"
 import type { Take } from "./Take.js"
 import type { Tracer } from "./Tracer.js"
@@ -1614,8 +1614,7 @@ export const fromReadableStreamByob: <E>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromSchedule: <R, A>(schedule: Schedule<R, unknown, A>) => Stream<R, never, A> =
-  internal.fromSchedule
+export const fromSchedule: <R, A>(schedule: Schedule<R, unknown, A>) => Stream<R, never, A> = internal.fromSchedule
 
 /**
  * Creates a pipeline that groups on adjacent keys, calculated by the

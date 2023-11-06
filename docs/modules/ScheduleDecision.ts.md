@@ -33,7 +33,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const continue: (intervals: Intervals) => ScheduleDecision
+export declare const continue: (intervals: ScheduleIntervals) => ScheduleDecision
 ```
 
 Added in v2.0.0
@@ -67,7 +67,7 @@ Added in v2.0.0
 ```ts
 export interface Continue {
   readonly _tag: "Continue"
-  readonly intervals: Intervals
+  readonly intervals: ScheduleIntervals
 }
 ```
 

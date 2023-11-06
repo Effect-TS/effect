@@ -611,12 +611,12 @@ export { ScheduleDecision } from "./ScheduleDecision.js"
 /**
  * @since 2.0.0
  */
-export { ScheduleInterval } from "./ScheduleInterval.js"
+export { Interval as ScheduleInterval } from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0
  */
-export { ScheduleIntervals } from "./ScheduleIntervals.js"
+export { ScheduleIntervals as ScheduleIntervals } from "./ScheduleIntervals.js"
 
 /**
  * @since 2.0.0
@@ -671,7 +671,7 @@ export { StreamEmit } from "./StreamEmit.js"
 /**
  * @since 2.0.0
  */
-export { StreamHaltStrategy } from "./StreamHaltStrategy.js"
+export { HaltStrategy as StreamHaltStrategy } from "./StreamHaltStrategy.js"
 
 /**
  * @since 2.0.0

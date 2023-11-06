@@ -2,28 +2,28 @@ import { Chunk } from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import { Option } from "../../Option.js"
 import { Interval } from "../../ScheduleInterval.js"
-import type { Intervals } from "../../ScheduleIntervals.js"
+import type { ScheduleIntervals } from "../../ScheduleIntervals.js"
 
 /** @internal */
 const IntervalsSymbolKey = "effect/ScheduleIntervals"
 
 /** @internal */
-export const IntervalsTypeId: Intervals.IntervalsTypeId = Symbol.for(
+export const IntervalsTypeId: ScheduleIntervals.IntervalsTypeId = Symbol.for(
   IntervalsSymbolKey
-) as Intervals.IntervalsTypeId
+) as ScheduleIntervals.IntervalsTypeId
 
 /** @internal */
-export const make = (intervals: Chunk<Interval>): Intervals => {
+export const make = (intervals: Chunk<Interval>): ScheduleIntervals => {
   return {
     [IntervalsTypeId]: IntervalsTypeId,
     intervals
   }
 }
 /** @internal */
-export const empty: Intervals = make(Chunk.empty())
+export const empty: ScheduleIntervals = make(Chunk.empty())
 
 /** @internal */
-export const fromIterable = (intervals: Iterable<Interval>): Intervals =>
+export const fromIterable = (intervals: Iterable<Interval>): ScheduleIntervals =>
   Array.from(intervals).reduce(
     (intervals, interval) => pipe(intervals, union(make(Chunk.of(interval)))),
     empty
@@ -31,8 +31,8 @@ export const fromIterable = (intervals: Iterable<Interval>): Intervals =>
 
 /** @internal */
 export const union = dual<
-  (that: Intervals) => (self: Intervals) => Intervals,
-  (self: Intervals, that: Intervals) => Intervals
+  (that: ScheduleIntervals) => (self: ScheduleIntervals) => ScheduleIntervals,
+  (self: ScheduleIntervals, that: ScheduleIntervals) => ScheduleIntervals
 >(2, (self, that) => {
   if (!Chunk.isNonEmpty(that.intervals)) {
     return self
@@ -62,7 +62,7 @@ const unionLoop = (
   _that: Chunk<Interval>,
   _interval: Interval,
   _acc: Chunk<Interval>
-): Intervals => {
+): ScheduleIntervals => {
   let self = _self
   let that = _that
   let interval = _interval
@@ -109,7 +109,9 @@ const unionLoop = (
         that = Chunk.tailNonEmpty(that)
       }
     } else {
-      throw new Error("BUG: Intervals.unionLoop - please report an issue at https://github.com/Effect-TS/io/issues")
+      throw new Error(
+        "BUG: ScheduleIntervals.unionLoop - please report an issue at https://github.com/Effect-TS/io/issues"
+      )
     }
   }
   return make(pipe(acc, Chunk.prepend(interval), Chunk.reverse))
@@ -117,8 +119,8 @@ const unionLoop = (
 
 /** @internal */
 export const intersect = dual<
-  (that: Intervals) => (self: Intervals) => Intervals,
-  (self: Intervals, that: Intervals) => Intervals
+  (that: ScheduleIntervals) => (self: ScheduleIntervals) => ScheduleIntervals,
+  (self: ScheduleIntervals, that: ScheduleIntervals) => ScheduleIntervals
 >(2, (self, that) => intersectLoop(self.intervals, that.intervals, Chunk.empty()))
 
 /** @internal */
@@ -126,7 +128,7 @@ const intersectLoop = (
   _left: Chunk<Interval>,
   _right: Chunk<Interval>,
   _acc: Chunk<Interval>
-): Intervals => {
+): ScheduleIntervals => {
   let left = _left
   let right = _right
   let acc = _acc
@@ -144,7 +146,7 @@ const intersectLoop = (
 }
 
 /** @internal */
-export const start = (self: Intervals): number => {
+export const start = (self: ScheduleIntervals): number => {
   return pipe(
     self.intervals,
     Chunk.head,
@@ -153,7 +155,7 @@ export const start = (self: Intervals): number => {
 }
 
 /** @internal */
-export const end = (self: Intervals): number => {
+export const end = (self: ScheduleIntervals): number => {
   return pipe(
     self.intervals,
     Chunk.head,
@@ -163,17 +165,17 @@ export const end = (self: Intervals): number => {
 
 /** @internal */
 export const lessThan = dual<
-  (that: Intervals) => (self: Intervals) => boolean,
-  (self: Intervals, that: Intervals) => boolean
+  (that: ScheduleIntervals) => (self: ScheduleIntervals) => boolean,
+  (self: ScheduleIntervals, that: ScheduleIntervals) => boolean
 >(2, (self, that) => start(self) < start(that))
 
 /** @internal */
-export const isNonEmpty = (self: Intervals): boolean => {
+export const isNonEmpty = (self: ScheduleIntervals): boolean => {
   return Chunk.isNonEmpty(self.intervals)
 }
 
 /** @internal */
 export const max = dual<
-  (that: Intervals) => (self: Intervals) => Intervals,
-  (self: Intervals, that: Intervals) => Intervals
+  (that: ScheduleIntervals) => (self: ScheduleIntervals) => ScheduleIntervals,
+  (self: ScheduleIntervals, that: ScheduleIntervals) => ScheduleIntervals
 >(2, (self, that) => lessThan(self, that) ? that : self)

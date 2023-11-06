@@ -21,7 +21,7 @@ declare module "./StreamEmit.js" {
    * @since 2.0.0
    * @category models
    */
-  export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
+  export interface StreamEmit<R, E, A, B> extends EmitOps<R, E, A, B> {
     (f: Effect<R, Option<E>, Chunk<A>>): Promise<B>
   }
 }

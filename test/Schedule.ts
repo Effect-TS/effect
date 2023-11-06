@@ -13,7 +13,7 @@ import { ReadonlyArray } from "effect/ReadonlyArray"
 import { Ref } from "effect/Ref"
 import { Schedule } from "effect/Schedule"
 import { ScheduleDecision } from "effect/ScheduleDecision"
-import { Intervals } from "effect/ScheduleIntervals"
+import { ScheduleIntervals } from "effect/ScheduleIntervals"
 import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
@@ -903,7 +903,7 @@ const runManuallyLoop = <Env, In, Out>(
         schedule,
         state,
         rest,
-        acc.pipe(Chunk.prepend([Intervals.start(decision.intervals), out] as const))
+        acc.pipe(Chunk.prepend([ScheduleIntervals.start(decision.intervals), out] as const))
       )
     })
   )

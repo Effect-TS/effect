@@ -109,7 +109,7 @@ Added in v2.0.0
 
 ## Interval (interface)
 
-An `Interval` represents an interval of time. Intervals can encompass all
+An `Interval` represents an interval of time. ScheduleIntervals can encompass all
 time, or no time at all.
 
 **Signature**
