@@ -20,30 +20,34 @@ export const TSemaphoreTypeId: unique symbol = internal.TSemaphoreTypeId
  */
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TSemaphore extends TSemaphore.Proto {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TSemaphore {
-  /** @internal */
-  readonly permits: TRef<number>
-}
+export * as TSemaphore from "./TSemaphore.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace TSemaphore {
+declare module "./TSemaphore.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [TSemaphoreTypeId]: TSemaphoreTypeId
+  export interface TSemaphore extends TSemaphore.Proto {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TSemaphore {
+    /** @internal */
+    readonly permits: TRef<number>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TSemaphore {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [TSemaphoreTypeId]: TSemaphoreTypeId
+    }
   }
 }
 

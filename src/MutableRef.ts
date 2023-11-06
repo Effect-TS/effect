@@ -15,15 +15,19 @@ const TypeId: unique symbol = Symbol.for("effect/MutableRef") as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MutableRef<T> extends Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
+export * as MutableRef from "./MutableRef.js"
 
-  /** @internal */
-  current: T
+declare module "./MutableRef.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface MutableRef<T> extends Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+
+    /** @internal */
+    current: T
+  }
 }
 
 const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {

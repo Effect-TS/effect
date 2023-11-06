@@ -2,8 +2,7 @@
  * @since 2.0.0
  */
 import { Equal } from "./Equal.js"
-import { Dual } from "./Function.js"
-import { pipe } from "./Function.js"
+import { Dual, pipe } from "./Function.js"
 import { Hash } from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
@@ -22,16 +21,20 @@ const TypeId: unique symbol = Symbol.for("effect/SortedSet")
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface SortedSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
-  readonly [TypeId]: {
-    readonly _A: (_: never) => A
+export * as SortedSet from "./SortedSet.js"
+
+declare module "./SortedSet.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface SortedSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
+    readonly [TypeId]: {
+      readonly _A: (_: never) => A
+    }
+    /** @internal */
+    readonly keyTree: RBT.RedBlackTree<A, boolean>
   }
-  /** @internal */
-  readonly keyTree: RBT.RedBlackTree<A, boolean>
 }
 
 const SortedSetProto: Omit<SortedSet<unknown>, "keyTree"> = {

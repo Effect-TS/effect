@@ -18,25 +18,29 @@ export const RefTypeId: unique symbol = internal.RefTypeId
  */
 export type RefTypeId = typeof RefTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Ref<A> extends Ref.Variance<A>, Pipeable {
-  modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B>
-}
+export * as Ref from "./Ref.js"
 
-/**
- * @since 2.0.0
- * @category models
- */
-export declare namespace Ref {
+declare module "./Ref.js" {
   /**
    * @since 2.0.0
+   * @category models
    */
-  export interface Variance<A> {
-    readonly [RefTypeId]: {
-      readonly _A: (_: never) => A
+  export interface Ref<A> extends Ref.Variance<A>, Pipeable {
+    modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B>
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export namespace Ref {
+    /**
+     * @since 2.0.0
+     */
+    export interface Variance<A> {
+      readonly [RefTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

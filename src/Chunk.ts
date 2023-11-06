@@ -26,23 +26,42 @@ const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @category models
- * @since 2.0.0
- */
-export interface Chunk<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
-  readonly [TypeId]: {
-    readonly _A: (_: never) => A
+export * as Chunk from "./Chunk.js"
+
+declare module "./Chunk.js" {
+  /**
+   * @category models
+   * @since 2.0.0
+   */
+  export interface Chunk<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
+    readonly [TypeId]: {
+      readonly _A: (_: never) => A
+    }
+    readonly length: number
+    /** @internal */
+    right: Chunk<A>
+    /** @internal */
+    left: Chunk<A>
+    /** @internal */
+    backing: Backing<A>
+    /** @internal */
+    depth: number
   }
-  readonly length: number
-  /** @internal */
-  right: Chunk<A>
-  /** @internal */
-  left: Chunk<A>
-  /** @internal */
-  backing: Backing<A>
-  /** @internal */
-  depth: number
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Chunk {
+    /**
+     * @since 2.0.0
+     */
+    export type Infer<T extends Chunk<any>> = T extends Chunk<infer A> ? A : never
+
+    /**
+     * @since 2.0.0
+     */
+    export type With<T extends Chunk<any>, A> = T extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
+  }
 }
 
 /**
@@ -822,21 +841,6 @@ export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
  * @category unsafe
  */
 export const unsafeLast = <A>(self: Chunk<A>): A => unsafeGet(self, self.length - 1)
-
-/**
- * @since 2.0.0
- */
-export declare namespace Chunk {
-  /**
-   * @since 2.0.0
-   */
-  export type Infer<T extends Chunk<any>> = T extends Chunk<infer A> ? A : never
-
-  /**
-   * @since 2.0.0
-   */
-  export type With<T extends Chunk<any>, A> = T extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
-}
 
 /**
  * Returns a chunk with the elements mapped by the specified f function.

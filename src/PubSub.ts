@@ -7,33 +7,37 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Queue } from "./Queue.js"
 import type { Scope } from "./Scope.js"
 
-/**
- * A `PubSub<A>` is an asynchronous message hub into which publishers can publish
- * messages of type `A` and subscribers can subscribe to take messages of type
- * `A`.
- *
- * @since 2.0.0
- * @category models
- */
-export interface PubSub<A> extends Queue.Enqueue<A>, Pipeable {
-  /**
-   * Publishes a message to the `PubSub`, returning whether the message was published
-   * to the `PubSub`.
-   */
-  publish(value: A): Effect<never, never, boolean>
+export * as PubSub from "./PubSub.js"
 
+declare module "./PubSub.js" {
   /**
-   * Publishes all of the specified messages to the `PubSub`, returning whether they
-   * were published to the `PubSub`.
+   * A `PubSub<A>` is an asynchronous message hub into which publishers can publish
+   * messages of type `A` and subscribers can subscribe to take messages of type
+   * `A`.
+   *
+   * @since 2.0.0
+   * @category models
    */
-  publishAll(elements: Iterable<A>): Effect<never, never, boolean>
+  export interface PubSub<A> extends Queue.Enqueue<A>, Pipeable {
+    /**
+     * Publishes a message to the `PubSub`, returning whether the message was published
+     * to the `PubSub`.
+     */
+    publish(value: A): Effect<never, never, boolean>
 
-  /**
-   * Subscribes to receive messages from the `PubSub`. The resulting subscription can
-   * be evaluated multiple times within the scope to take a message from the `PubSub`
-   * each time.
-   */
-  subscribe(): Effect<Scope, never, Queue.Dequeue<A>>
+    /**
+     * Publishes all of the specified messages to the `PubSub`, returning whether they
+     * were published to the `PubSub`.
+     */
+    publishAll(elements: Iterable<A>): Effect<never, never, boolean>
+
+    /**
+     * Subscribes to receive messages from the `PubSub`. The resulting subscription can
+     * be evaluated multiple times within the scope to take a message from the `PubSub`
+     * each time.
+     */
+    subscribe(): Effect<Scope, never, Queue.Dequeue<A>>
+  }
 }
 
 /**

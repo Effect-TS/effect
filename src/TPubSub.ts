@@ -22,31 +22,35 @@ export const TPubSubTypeId: unique symbol = internal.TPubSubTypeId
  */
 export type TPubSubTypeId = typeof TPubSubTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TPubSub<A> extends TQueue.TEnqueue<A> {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TPubSub<A> {
-  readonly [TPubSubTypeId]: TPubSubTypeId
-  /** @internal */
-  readonly pubsubSize: TRef<number>
-  /** @internal */
-  readonly publisherHead: TRef<TRef<internal.Node<A> | undefined>>
-  /** @internal */
-  readonly publisherTail: TRef<TRef<internal.Node<A> | undefined> | undefined>
-  /** @internal */
-  readonly requestedCapacity: number
-  /** @internal */
-  readonly strategy: tQueue.TQueueStrategy
-  /** @internal */
-  readonly subscriberCount: TRef<number>
-  /** @internal */
-  readonly subscribers: TRef<HashSet<TRef<TRef<internal.Node<A>> | undefined>>>
+export * as TPubSub from "./TPubSub.js"
+
+declare module "./TPubSub.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface TPubSub<A> extends TQueue.TEnqueue<A> {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TPubSub<A> {
+    readonly [TPubSubTypeId]: TPubSubTypeId
+    /** @internal */
+    readonly pubsubSize: TRef<number>
+    /** @internal */
+    readonly publisherHead: TRef<TRef<internal.Node<A> | undefined>>
+    /** @internal */
+    readonly publisherTail: TRef<TRef<internal.Node<A> | undefined> | undefined>
+    /** @internal */
+    readonly requestedCapacity: number
+    /** @internal */
+    readonly strategy: tQueue.TQueueStrategy
+    /** @internal */
+    readonly subscriberCount: TRef<number>
+    /** @internal */
+    readonly subscribers: TRef<HashSet<TRef<TRef<internal.Node<A>> | undefined>>>
+  }
 }
 
 /**

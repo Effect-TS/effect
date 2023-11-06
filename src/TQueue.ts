@@ -30,11 +30,40 @@ export const TEnqueueTypeId: unique symbol = internal.TEnqueueTypeId
  */
 export type TEnqueueTypeId = typeof TEnqueueTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
+export * as TQueue from "./TQueue.js"
+
+declare module "./TQueue.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TQueue {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface TEnqueueVariance<A> {
+      readonly [TEnqueueTypeId]: {
+        readonly _In: (_: A) => void
+      }
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface TDequeueVariance<A> {
+      readonly [TDequeueTypeId]: {
+        readonly _Out: (_: never) => A
+      }
+    }
+  }
+}
 
 /**
  * @since 2.0.0
@@ -146,31 +175,6 @@ export interface BaseTQueue {
    * shutdown, the `STM` will resume right away.
    */
   readonly awaitShutdown: STM<never, never, void>
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace TQueue {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TEnqueueVariance<A> {
-    readonly [TEnqueueTypeId]: {
-      readonly _In: (_: A) => void
-    }
-  }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TDequeueVariance<A> {
-    readonly [TDequeueTypeId]: {
-      readonly _Out: (_: never) => A
-    }
-  }
 }
 
 /**

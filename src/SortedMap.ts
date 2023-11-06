@@ -2,8 +2,7 @@
  * @since 2.0.0
  */
 import { Equal } from "./Equal.js"
-import { Dual } from "./Function.js"
-import { pipe } from "./Function.js"
+import { Dual, pipe } from "./Function.js"
 import { Hash } from "./Hash.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import { Option } from "./Option.js"
@@ -21,14 +20,18 @@ const TypeId: unique symbol = Symbol.for("effect/SortedMap")
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
-  /** @internal */
-  readonly tree: RBT.RedBlackTree<K, V>
+export * as SortedMap from "./SortedMap.js"
+
+declare module "./SortedMap.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+    /** @internal */
+    readonly tree: RBT.RedBlackTree<K, V>
+  }
 }
 
 const SortedMapProto: Omit<SortedMap<unknown, unknown>, "tree"> = {

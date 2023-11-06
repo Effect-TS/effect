@@ -20,33 +20,37 @@ export const TSetTypeId: unique symbol = internal.TSetTypeId
  */
 export type TSetTypeId = typeof TSetTypeId
 
-/**
- * Transactional set implemented on top of `TMap`.
- *
- * @since 2.0.0
- * @category models
- */
-export interface TSet<A> extends TSet.Variance<A> {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TSet<A> {
-  /** @internal */
-  readonly tMap: TMap<A, void>
-}
+export * as TSet from "./TSet.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace TSet {
+declare module "./TSet.js" {
   /**
+   * Transactional set implemented on top of `TMap`.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [TSetTypeId]: {
-      readonly _A: (_: never) => A
+  export interface TSet<A> extends TSet.Variance<A> {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TSet<A> {
+    /** @internal */
+    readonly tMap: TMap<A, void>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TSet {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [TSetTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }
