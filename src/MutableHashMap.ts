@@ -5,7 +5,7 @@ import * as Dual from "./Function.js"
 import * as HashMap from "./HashMap.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import * as MutableRef from "./MutableRef.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
@@ -85,11 +85,11 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): MutableH
  * @category elements
  */
 export const get: {
-  <K>(key: K): <V>(self: MutableHashMap<K, V>) => Option.Option<V>
-  <K, V>(self: MutableHashMap<K, V>, key: K): Option.Option<V>
+  <K>(key: K): <V>(self: MutableHashMap<K, V>) => Option<V>
+  <K, V>(self: MutableHashMap<K, V>, key: K): Option<V>
 } = Dual.dual<
-  <K>(key: K) => <V>(self: MutableHashMap<K, V>) => Option.Option<V>,
-  <K, V>(self: MutableHashMap<K, V>, key: K) => Option.Option<V>
+  <K>(key: K) => <V>(self: MutableHashMap<K, V>) => Option<V>,
+  <K, V>(self: MutableHashMap<K, V>, key: K) => Option<V>
 >(2, <K, V>(self: MutableHashMap<K, V>, key: K) => HashMap.get(self.backingMap.current, key))
 
 /**
@@ -130,17 +130,17 @@ export const modify: {
  * @since 2.0.0
  */
 export const modifyAt: {
-  <K, V>(key: K, f: (value: Option.Option<V>) => Option.Option<V>): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
-  <K, V>(self: MutableHashMap<K, V>, key: K, f: (value: Option.Option<V>) => Option.Option<V>): MutableHashMap<K, V>
+  <K, V>(key: K, f: (value: Option<V>) => Option<V>): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
+  <K, V>(self: MutableHashMap<K, V>, key: K, f: (value: Option<V>) => Option<V>): MutableHashMap<K, V>
 } = Dual.dual<
   <K, V>(
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
+    f: (value: Option<V>) => Option<V>
   ) => (self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
   <K, V>(
     self: MutableHashMap<K, V>,
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
+    f: (value: Option<V>) => Option<V>
   ) => MutableHashMap<K, V>
 >(3, (self, key, f) => {
   const result = f(get(self, key))

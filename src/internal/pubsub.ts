@@ -4,7 +4,7 @@ import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import * as MutableQueue from "../MutableQueue.js"
 import * as MutableRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as PubSub from "../PubSub.js"
 import type * as Queue from "../Queue.js"
@@ -849,7 +849,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     )
   }
 
-  unsafeSize(): Option.Option<number> {
+  unsafeSize(): Option<number> {
     if (MutableRef.get(this.shutdownFlag)) {
       return Option.none()
     }
@@ -1017,7 +1017,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     )
   }
 
-  unsafeSize(): Option.Option<number> {
+  unsafeSize(): Option<number> {
     if (MutableRef.get(this.shutdownFlag)) {
       return Option.none()
     }

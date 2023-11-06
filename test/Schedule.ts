@@ -8,7 +8,7 @@ import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constVoid } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
@@ -856,7 +856,7 @@ const runManually = <Env, In, Out>(
         Out
       ]
     >,
-    Option.Option<Out>
+    Option<Out>
   ]
 > => {
   return runManuallyLoop(schedule, schedule.initial, Chunk.fromIterable(inputs), Chunk.empty())
@@ -886,7 +886,7 @@ const runManuallyLoop = <Env, In, Out>(
         Out
       ]
     >,
-    Option.Option<Out>
+    Option<Out>
   ]
 > => {
   if (!Chunk.isNonEmpty(inputs)) {

@@ -5,7 +5,7 @@ import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type { Effect } from "./Effect.js"
 import type * as Exit from "./Exit.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * An `Emit<R, E, A, B>` represents an asynchronous callback that can be
@@ -19,7 +19,7 @@ import type * as Option from "./Option.js"
  * @category models
  */
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
-  (f: Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
+  (f: Effect<R, Option<E>, Chunk.Chunk<A>>): Promise<B>
 }
 
 /**

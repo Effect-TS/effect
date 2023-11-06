@@ -7,7 +7,7 @@ import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
 import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isFunction, type Predicate } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
@@ -225,7 +225,7 @@ export const interruptors = <E>(self: Cause.Cause<E>): HashSet.HashSet<FiberId.F
       Option.none())
 
 /** @internal */
-export const failureOption = <E>(self: Cause.Cause<E>): Option.Option<E> =>
+export const failureOption = <E>(self: Cause.Cause<E>): Option<E> =>
   find<E, E>(self, (cause) =>
     cause._tag === OpCodes.OP_FAIL ?
       Option.some(cause.error) :
@@ -246,14 +246,14 @@ export const failureOrCause = <E>(self: Cause.Cause<E>): Either.Either<E, Cause.
 }
 
 /** @internal */
-export const dieOption = <E>(self: Cause.Cause<E>): Option.Option<unknown> =>
+export const dieOption = <E>(self: Cause.Cause<E>): Option<unknown> =>
   find(self, (cause) =>
     cause._tag === OpCodes.OP_DIE ?
       Option.some(cause.defect) :
       Option.none())
 
 /** @internal */
-export const flipCauseOption = <E>(self: Cause.Cause<Option.Option<E>>): Option.Option<Cause.Cause<E>> =>
+export const flipCauseOption = <E>(self: Cause.Cause<Option<E>>): Option<Cause.Cause<E>> =>
   match(self, {
     onEmpty: Option.some(empty),
     onFail: (failureOption) => pipe(failureOption, Option.map(fail)),
@@ -286,15 +286,15 @@ export const flipCauseOption = <E>(self: Cause.Cause<Option.Option<E>>): Option.
   })
 
 /** @internal */
-export const interruptOption = <E>(self: Cause.Cause<E>): Option.Option<FiberId.FiberId> =>
+export const interruptOption = <E>(self: Cause.Cause<E>): Option<FiberId.FiberId> =>
   find(self, (cause) =>
     cause._tag === OpCodes.OP_INTERRUPT ?
       Option.some(cause.fiberId) :
       Option.none())
 
 /** @internal */
-export const keepDefects = <E>(self: Cause.Cause<E>): Option.Option<Cause.Cause<never>> =>
-  match<Option.Option<Cause.Cause<never>>, E>(self, {
+export const keepDefects = <E>(self: Cause.Cause<E>): Option<Cause.Cause<never>> =>
+  match<Option<Cause.Cause<never>>, E>(self, {
     onEmpty: Option.none(),
     onFail: () => Option.none(),
     onDie: (defect) => Option.some(die(defect)),
@@ -326,8 +326,8 @@ export const keepDefects = <E>(self: Cause.Cause<E>): Option.Option<Cause.Cause<
   })
 
 /** @internal */
-export const keepDefectsAndElectFailures = <E>(self: Cause.Cause<E>): Option.Option<Cause.Cause<never>> =>
-  match<Option.Option<Cause.Cause<never>>, E>(self, {
+export const keepDefectsAndElectFailures = <E>(self: Cause.Cause<E>): Option<Cause.Cause<never>> =>
+  match<Option<Cause.Cause<never>>, E>(self, {
     onEmpty: Option.none(),
     onFail: (failure) => Option.some(die(failure)),
     onDie: (defect) => Option.some(die(defect)),
@@ -411,9 +411,9 @@ export const electFailures = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
 
 /** @internal */
 export const stripSomeDefects = dual<
-  (pf: (defect: unknown) => Option.Option<unknown>) => <E>(self: Cause.Cause<E>) => Option.Option<Cause.Cause<E>>,
-  <E>(self: Cause.Cause<E>, pf: (defect: unknown) => Option.Option<unknown>) => Option.Option<Cause.Cause<E>>
->(2, <E>(self: Cause.Cause<E>, pf: (defect: unknown) => Option.Option<unknown>) =>
+  (pf: (defect: unknown) => Option<unknown>) => <E>(self: Cause.Cause<E>) => Option<Cause.Cause<E>>,
+  <E>(self: Cause.Cause<E>, pf: (defect: unknown) => Option<unknown>) => Option<Cause.Cause<E>>
+>(2, <E>(self: Cause.Cause<E>, pf: (defect: unknown) => Option<unknown>) =>
   match(self, {
     onEmpty: Option.some(empty),
     onFail: (error) => Option.some(fail(error)),
@@ -636,9 +636,9 @@ export const squashWith = dual<
 
 /** @internal */
 export const find = dual<
-  <E, Z>(pf: (cause: Cause.Cause<E>) => Option.Option<Z>) => (self: Cause.Cause<E>) => Option.Option<Z>,
-  <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => Option.Option<Z>) => Option.Option<Z>
->(2, <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => Option.Option<Z>) => {
+  <E, Z>(pf: (cause: Cause.Cause<E>) => Option<Z>) => (self: Cause.Cause<E>) => Option<Z>,
+  <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => Option<Z>) => Option<Z>
+>(2, <E, Z>(self: Cause.Cause<E>, pf: (cause: Cause.Cause<E>) => Option<Z>) => {
   const stack: Array<Cause.Cause<E>> = [self]
   while (stack.length > 0) {
     const item = stack.pop()!
@@ -869,9 +869,9 @@ export const match = dual<
 
 /** @internal */
 export const reduce = dual<
-  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option.Option<Z>) => (self: Cause.Cause<E>) => Z,
-  <Z, E>(self: Cause.Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option.Option<Z>) => Z
->(3, <Z, E>(self: Cause.Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option.Option<Z>) => {
+  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option<Z>) => (self: Cause.Cause<E>) => Z,
+  <Z, E>(self: Cause.Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option<Z>) => Z
+>(3, <Z, E>(self: Cause.Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause.Cause<E>) => Option<Z>) => {
   let accumulator: Z = zero
   let cause: Cause.Cause<E> | undefined = self
   const causes: Array<Cause.Cause<E>> = []

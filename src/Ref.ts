@@ -3,7 +3,7 @@
  */
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/ref.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -76,8 +76,8 @@ export const getAndUpdate: {
  * @category utils
  */
 export const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = internal.getAndUpdateSome
 
 /**
@@ -94,8 +94,8 @@ export const modify: {
  * @category utils
  */
 export const modifySome: {
-  <B, A>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): (self: Ref<A>) => Effect<never, never, B>
-  <A, B>(self: Ref<A>, fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): Effect<never, never, B>
+  <B, A>(fallback: B, pf: (a: A) => Option<readonly [B, A]>): (self: Ref<A>) => Effect<never, never, B>
+  <A, B>(self: Ref<A>, fallback: B, pf: (a: A) => Option<readonly [B, A]>): Effect<never, never, B>
 } = internal.modifySome
 
 /**
@@ -139,8 +139,8 @@ export const updateAndGet: {
  * @category utils
  */
 export const updateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect<never, never, void>
-  <A>(self: Ref<A>, f: (a: A) => Option.Option<A>): Effect<never, never, void>
+  <A>(f: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, f: (a: A) => Option<A>): Effect<never, never, void>
 } = internal.updateSome
 
 /**
@@ -148,8 +148,8 @@ export const updateSome: {
  * @category utils
  */
 export const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = internal.updateSomeAndGet
 
 /**

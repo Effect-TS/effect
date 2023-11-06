@@ -14,7 +14,7 @@ import * as Layer from "../Layer.js"
 import type * as MergeDecision from "../MergeDecision.js"
 import type * as MergeState from "../MergeState.js"
 import type * as MergeStrategy from "../MergeStrategy.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { hasProperty, type Predicate } from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
 import * as Queue from "../Queue.js"
@@ -223,17 +223,17 @@ export const concatMap = dual<
 /** @internal */
 export const collect = dual<
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutElem2, OutDone>(
-    pf: (o: OutElem) => Option.Option<OutElem2>
+    pf: (o: OutElem) => Option<OutElem2>
   ) => (
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>,
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutElem2, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    pf: (o: OutElem) => Option.Option<OutElem2>
+    pf: (o: OutElem) => Option<OutElem2>
   ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>
 >(2, <Env, InErr, InElem, InDone, OutErr, OutElem, OutElem2, OutDone>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  pf: (o: OutElem) => Option.Option<OutElem2>
+  pf: (o: OutElem) => Option<OutElem2>
 ): Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> => {
   const collector: Channel.Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = core
     .readWith({
@@ -705,8 +705,8 @@ export const fromPubSubScoped = <Err, Done, Elem>(
 
 /** @internal */
 export const fromOption = <A>(
-  option: Option.Option<A>
-): Channel.Channel<never, unknown, unknown, unknown, Option.Option<never>, never, A> =>
+  option: Option<A>
+): Channel.Channel<never, unknown, unknown, unknown, Option<never>, never, A> =>
   core.suspend(() =>
     Option.match(option, {
       onNone: () => core.fail(Option.none()),
@@ -1196,7 +1196,7 @@ export const mergeAllWith = (
           (queue) => Queue.shutdown(queue)
         )
       )
-      const lastDone = yield* $(Ref.make<Option.Option<OutDone>>(Option.none()))
+      const lastDone = yield* $(Ref.make<Option<OutDone>>(Option.none()))
       const errorSignal = yield* $(Deferred.make<never, void>())
       const withPermits = (yield* $(Effect.makeSemaphore(concurrencyN)))
         .withPermits
@@ -2092,10 +2092,10 @@ export const read = <In>(): Channel.Channel<
   unknown,
   In,
   unknown,
-  Option.Option<never>,
+  Option<never>,
   never,
   In
-> => core.readOrFail<In, Option.Option<never>>(Option.none())
+> => core.readOrFail<In, Option<never>>(Option.none())
 
 /** @internal */
 export const repeated = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(

@@ -1,5 +1,5 @@
 import { dual } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import type * as STM from "../../STM.js"
 import type * as TRef from "../../TRef.js"
 import * as core from "./core.js"
@@ -76,8 +76,8 @@ export const getAndUpdate = dual<
 
 /** @internal */
 export const getAndUpdateSome = dual<
-  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<never, never, A>
+  <A>(f: (a: A) => Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => Option<A>) => STM.STM<never, never, A>
 >(2, (self, f) =>
   self.modify((a) =>
     Option.match(f(a), {
@@ -100,8 +100,8 @@ export const modify = dual<
 
 /** @internal */
 export const modifySome = dual<
-  <A, B>(fallback: B, f: (a: A) => Option.Option<readonly [B, A]>) => (self: TRef.TRef<A>) => STM.STM<never, never, B>,
-  <A, B>(self: TRef.TRef<A>, fallback: B, f: (a: A) => Option.Option<readonly [B, A]>) => STM.STM<never, never, B>
+  <A, B>(fallback: B, f: (a: A) => Option<readonly [B, A]>) => (self: TRef.TRef<A>) => STM.STM<never, never, B>,
+  <A, B>(self: TRef.TRef<A>, fallback: B, f: (a: A) => Option<readonly [B, A]>) => STM.STM<never, never, B>
 >(3, (self, fallback, f) =>
   self.modify((a) =>
     Option.match(f(a), {
@@ -128,8 +128,8 @@ export const updateAndGet = dual<
 
 /** @internal */
 export const updateSome = dual<
-  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, void>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<never, never, void>
+  <A>(f: (a: A) => Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, void>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => Option<A>) => STM.STM<never, never, void>
 >(
   2,
   (self, f) =>
@@ -144,8 +144,8 @@ export const updateSome = dual<
 
 /** @internal */
 export const updateSomeAndGet = dual<
-  <A>(f: (a: A) => Option.Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
-  <A>(self: TRef.TRef<A>, f: (a: A) => Option.Option<A>) => STM.STM<never, never, A>
+  <A>(f: (a: A) => Option<A>) => (self: TRef.TRef<A>) => STM.STM<never, never, A>,
+  <A>(self: TRef.TRef<A>, f: (a: A) => Option<A>) => STM.STM<never, never, A>
 >(
   2,
   (self, f) =>

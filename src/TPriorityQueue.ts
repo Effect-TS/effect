@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/stm/tPriorityQueue.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type * as Order from "./Order.js"
 import type { Predicate } from "./Predicate.js"
 import type * as SortedMap from "./SortedMap.js"
@@ -137,7 +137,7 @@ export const peek: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A> = in
  * @since 2.0.0
  * @category getters
  */
-export const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option.Option<A>> = internal.peekOption
+export const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>> = internal.peekOption
 
 /**
  * Removes all elements from the queue matching the specified predicate.
@@ -192,7 +192,7 @@ export const takeAll: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Arra
  * @since 2.0.0
  * @category mutations
  */
-export const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option.Option<A>> = internal.takeOption
+export const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>> = internal.takeOption
 
 /**
  * Takes up to the specified maximum number of elements from the queue.

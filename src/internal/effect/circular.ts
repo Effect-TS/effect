@@ -13,7 +13,7 @@ import type { LazyArg } from "../../Function.js"
 import { dual, pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
 import * as MutableHashMap from "../../MutableHashMap.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import * as Predicate from "../../Predicate.js"
 import type * as Ref from "../../Ref.js"
@@ -129,7 +129,7 @@ export const cachedInvalidate = dual<
       core.context<R>(),
       (env) =>
         core.map(
-          makeSynchronized<Option.Option<[number, Deferred.Deferred<E, A>]>>(Option.none()),
+          makeSynchronized<Option<[number, Deferred.Deferred<E, A>]>>(Option.none()),
           (cache) =>
             [
               core.provideContext(getCachedValue(self, duration, cache), env),
@@ -145,7 +145,7 @@ const computeCachedValue = <R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
   start: number
-): Effect<R, never, Option.Option<readonly [number, Deferred.Deferred<E, A>]>> => {
+): Effect<R, never, Option<readonly [number, Deferred.Deferred<E, A>]>> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
     core.deferredMake<E, A>(),
@@ -158,7 +158,7 @@ const computeCachedValue = <R, E, A>(
 const getCachedValue = <R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
-  cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>
+  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred.Deferred<E, A>]>>
 ): Effect<R, E, A> =>
   core.uninterruptibleMask<R, E, A>((restore) =>
     pipe(
@@ -190,7 +190,7 @@ const getCachedValue = <R, E, A>(
 
 /** @internal */
 const invalidateCache = <E, A>(
-  cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>
+  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred.Deferred<E, A>]>>
 ): Effect<never, never, void> => internalRef.set(cache, Option.none())
 
 /** @internal */
@@ -390,8 +390,8 @@ export const supervised = dual<
 export const timeout = dual<
   (
     duration: Duration.DurationInput
-  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput) => Effect<R, E, Option.Option<A>>
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>,
+  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput) => Effect<R, E, Option<A>>
 >(2, (self, duration) =>
   timeoutTo(self, {
     onTimeout: Option.none,
@@ -566,11 +566,11 @@ export const unsafeMakeSynchronized = <A>(value: A): Synchronized.SynchronizedRe
 /** @internal */
 export const updateSomeAndGetEffectSynchronized = dual<
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect<R, E, A>>
+    pf: (a: A) => Option<Effect<R, E, A>>
   ) => (self: Synchronized.SynchronizedRef<A>) => Effect<R, E, A>,
   <A, R, E>(
     self: Synchronized.SynchronizedRef<A>,
-    pf: (a: A) => Option.Option<Effect<R, E, A>>
+    pf: (a: A) => Option<Effect<R, E, A>>
   ) => Effect<R, E, A>
 >(2, (self, pf) =>
   self.modifyEffect((value) => {

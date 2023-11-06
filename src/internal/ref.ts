@@ -1,7 +1,7 @@
 import type { Effect } from "../Effect.js"
 import { dual } from "../Function.js"
 import * as MutableRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Ref from "../Ref.js"
 import * as core from "./core.js"
@@ -61,9 +61,9 @@ export const getAndUpdate = dual<
 
 /** @internal */
 export const getAndUpdateSome = dual<
-  <A>(pf: (a: A) => Option.Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option.Option<A>) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, pf: (a: A) => Option.Option<A>) =>
+  <A>(pf: (a: A) => Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
+>(2, <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) =>
   self.modify((value): [A, A] => {
     const option = pf(value)
     switch (option._tag) {
@@ -92,12 +92,12 @@ export const modify = dual<
 export const modifySome = dual<
   <B, A>(
     fallback: B,
-    pf: (a: A) => Option.Option<readonly [B, A]>
+    pf: (a: A) => Option<readonly [B, A]>
   ) => (self: Ref.Ref<A>) => Effect<never, never, B>,
   <A, B>(
     self: Ref.Ref<A>,
     fallback: B,
-    pf: (a: A) => Option.Option<readonly [B, A]>
+    pf: (a: A) => Option<readonly [B, A]>
   ) => Effect<never, never, B>
 >(3, (self, fallback, pf) =>
   self.modify((value) => {
@@ -130,9 +130,9 @@ export const updateAndGet = dual<
 
 /** @internal */
 export const updateSome = dual<
-  <A>(f: (a: A) => Option.Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, void>,
-  <A>(self: Ref.Ref<A>, f: (a: A) => Option.Option<A>) => Effect<never, never, void>
->(2, <A>(self: Ref.Ref<A>, f: (a: A) => Option.Option<A>) =>
+  <A>(f: (a: A) => Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, void>,
+  <A>(self: Ref.Ref<A>, f: (a: A) => Option<A>) => Effect<never, never, void>
+>(2, <A>(self: Ref.Ref<A>, f: (a: A) => Option<A>) =>
   self.modify(
     (a): [void, A] => [
       void 0,
@@ -145,9 +145,9 @@ export const updateSome = dual<
 
 /** @internal */
 export const updateSomeAndGet = dual<
-  <A>(pf: (a: A) => Option.Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option.Option<A>) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, pf: (a: A) => Option.Option<A>) =>
+  <A>(pf: (a: A) => Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
+>(2, <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) =>
   self.modify((value): [A, A] => {
     const option = pf(value)
     switch (option._tag) {

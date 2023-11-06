@@ -17,7 +17,7 @@ import type * as Logger from "./Logger.js"
 import type * as LogLevel from "./LogLevel.js"
 import type * as LogSpan from "./LogSpan.js"
 import type * as MetricLabel from "./MetricLabel.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Request from "./Request.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
@@ -177,8 +177,8 @@ export const getAndUpdate: {
  * @category utils
  */
 export const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = core.fiberRefGetAndUpdateSome
 
 /**
@@ -231,7 +231,7 @@ export const modify: {
 export const modifySome: <A, B>(
   self: FiberRef<A>,
   def: B,
-  f: (a: A) => Option.Option<readonly [B, A]>
+  f: (a: A) => Option<readonly [B, A]>
 ) => Effect<never, never, B> = core.fiberRefModifySome
 
 /**
@@ -248,8 +248,8 @@ export const update: {
  * @category utils
  */
 export const updateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect<never, never, void>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, void>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, void>
 } = core.fiberRefUpdateSome
 
 /**
@@ -266,8 +266,8 @@ export const updateAndGet: {
  * @category utils
  */
 export const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = core.fiberRefUpdateSomeAndGet
 
 /**
@@ -310,7 +310,7 @@ export const currentMaxOpsBeforeYield: FiberRef<number> = core.currentMaxOpsBefo
  * @since 2.0.0
  * @category fiberRefs
  */
-export const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> = core.currentUnhandledErrorLogLevel
+export const unhandledErrorLogLevel: FiberRef<Option<LogLevel.LogLevel>> = core.currentUnhandledErrorLogLevel
 
 /**
  * @since 2.0.0

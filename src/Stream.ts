@@ -16,7 +16,7 @@ import type { TypeLambda } from "./HKT.js"
 import * as _groupBy from "./internal/groupBy.js"
 import * as internal from "./internal/stream.js"
 import type * as Layer from "./Layer.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type * as Order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
@@ -209,12 +209,12 @@ export const aggregate: {
 export const aggregateWithin: {
   <R2, E2, A, A2, B, R3, C>(
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, B>
   <R, E, R2, E2, A, A2, B, R3, C>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): Stream<R | R2 | R3, E | E2, B>
 } = internal.aggregateWithin
 
@@ -238,12 +238,12 @@ export const aggregateWithin: {
 export const aggregateWithinEither: {
   <R2, E2, A, A2, B, R3, C>(
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, Either.Either<C, B>>
   <R, E, R2, E2, A, A2, B, R3, C>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
-    schedule: Schedule.Schedule<R3, Option.Option<B>, C>
+    schedule: Schedule.Schedule<R3, Option<B>, C>
   ): Stream<R | R2 | R3, E | E2, Either.Either<C, B>>
 } = internal.aggregateWithinEither
 
@@ -310,7 +310,7 @@ export const asyncInterrupt: <R, E, A>(
  * @category constructors
  */
 export const asyncOption: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Option.Option<Stream<R, E, A>>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Option<Stream<R, E, A>>,
   outputBuffer?: number
 ) => Stream<R, E, A> = internal.asyncOption
 
@@ -518,11 +518,11 @@ export const catchAllCause: {
  */
 export const catchSome: {
   <E, R2, E2, A2>(
-    pf: (error: E) => Option.Option<Stream<R2, E2, A2>>
+    pf: (error: E) => Option<Stream<R2, E2, A2>>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (error: E) => Option.Option<Stream<R2, E2, A2>>
+    pf: (error: E) => Option<Stream<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A | A2>
 } = internal.catchSome
 
@@ -614,11 +614,11 @@ export const catchTags: {
  */
 export const catchSomeCause: {
   <E, R2, E2, A2>(
-    pf: (cause: Cause.Cause<E>) => Option.Option<Stream<R2, E2, A2>>
+    pf: (cause: Cause.Cause<E>) => Option<Stream<R2, E2, A2>>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (cause: Cause.Cause<E>) => Option.Option<Stream<R2, E2, A2>>
+    pf: (cause: Cause.Cause<E>) => Option<Stream<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A | A2>
 } = internal.catchSomeCause
 
@@ -699,9 +699,9 @@ export const combine: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, A>,
-      pullRight: Effect<R4, Option.Option<E2>, A2>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+      pullLeft: Effect<R3, Option<E>, A>,
+      pullRight: Effect<R4, Option<E2>, A2>
+    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [A3, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -709,9 +709,9 @@ export const combine: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, A>,
-      pullRight: Effect<R4, Option.Option<E2>, A2>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+      pullLeft: Effect<R3, Option<E>, A>,
+      pullRight: Effect<R4, Option<E2>, A2>
+    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [A3, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 } = internal.combine
 
@@ -731,9 +731,9 @@ export const combineChunks: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
-      pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+      pullLeft: Effect<R3, Option<E>, Chunk.Chunk<A>>,
+      pullRight: Effect<R4, Option<E2>, Chunk.Chunk<A2>>
+    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -741,9 +741,9 @@ export const combineChunks: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
-      pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+      pullLeft: Effect<R3, Option<E>, Chunk.Chunk<A>>,
+      pullRight: Effect<R4, Option<E2>, Chunk.Chunk<A2>>
+    ) => Effect<R5, never, Exit.Exit<Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 } = internal.combineChunks
 
@@ -896,7 +896,7 @@ export const distributedWith: {
     }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option<E>, A>>, N>>
   <R, E, N extends number, A>(
     self: Stream<R, E, A>,
     options: {
@@ -904,7 +904,7 @@ export const distributedWith: {
       readonly maximumLag: number
       readonly decide: (a: A) => Effect<never, never, Predicate<number>>
     }
-  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option<E>, A>>, N>>
 } = internal.distributedWith
 
 /**
@@ -929,7 +929,7 @@ export const distributedWithDynamic: {
   ) => Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
   >
   <R, E, A, _>(
     self: Stream<R, E, A>,
@@ -940,7 +940,7 @@ export const distributedWithDynamic: {
   ): Effect<
     Scope.Scope | R,
     never,
-    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option<E>, A>>]>
   >
 } = internal.distributedWithDynamic
 
@@ -1207,8 +1207,8 @@ export const filterEffect: {
  * @category utils
  */
 export const filterMap: {
-  <A, B>(pf: (a: A) => Option.Option<B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <R, E, A, B>(self: Stream<R, E, A>, pf: (a: A) => Option.Option<B>): Stream<R, E, B>
+  <A, B>(pf: (a: A) => Option<B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
+  <R, E, A, B>(self: Stream<R, E, A>, pf: (a: A) => Option<B>): Stream<R, E, B>
 } = internal.filterMap
 
 /**
@@ -1219,11 +1219,11 @@ export const filterMap: {
  */
 export const filterMapEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 } = internal.filterMapEffect
 
@@ -1235,8 +1235,8 @@ export const filterMapEffect: {
  * @category utils
  */
 export const filterMapWhile: {
-  <A, A2>(pf: (a: A) => Option.Option<A2>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A2>
-  <R, E, A, A2>(self: Stream<R, E, A>, pf: (a: A) => Option.Option<A2>): Stream<R, E, A2>
+  <A, A2>(pf: (a: A) => Option<A2>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A2>
+  <R, E, A, A2>(self: Stream<R, E, A>, pf: (a: A) => Option<A2>): Stream<R, E, A2>
 } = internal.filterMapWhile
 
 /**
@@ -1248,11 +1248,11 @@ export const filterMapWhile: {
  */
 export const filterMapWhileEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
+    pf: (a: A) => Option<Effect<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 } = internal.filterMapWhileEffect
 
@@ -1383,7 +1383,7 @@ export const flattenEffect: {
  * @category sequencing
  */
 export const flattenExitOption: <R, E, E2, A>(
-  self: Stream<R, E, Exit.Exit<Option.Option<E2>, A>>
+  self: Stream<R, E, Exit.Exit<Option<E2>, A>>
 ) => Stream<R, E | E2, A> = internal.flattenExitOption
 
 /**
@@ -1507,8 +1507,7 @@ export const fromEffect: <R, E, A>(effect: Effect<R, E, A>) => Stream<R, E, A> =
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffectOption: <R, E, A>(effect: Effect<R, Option.Option<E>, A>) => Stream<R, E, A> =
-  internal.fromEffectOption
+export const fromEffectOption: <R, E, A>(effect: Effect<R, Option<E>, A>) => Stream<R, E, A> = internal.fromEffectOption
 
 /**
  * Creates a stream from a subscription to a `PubSub`.
@@ -1563,7 +1562,7 @@ export const fromIteratorSucceed: <A>(iterator: IterableIterator<A>, maxChunkSiz
  * @category constructors
  */
 export const fromPull: <R, R2, E, A>(
-  effect: Effect<Scope.Scope | R, never, Effect<R2, Option.Option<E>, Chunk.Chunk<A>>>
+  effect: Effect<Scope.Scope | R, never, Effect<R2, Option<E>, Chunk.Chunk<A>>>
 ) => Stream<Exclude<R, Scope.Scope> | R2, E, A> = internal.fromPull
 
 /**
@@ -2385,8 +2384,7 @@ export const orElseSucceed: {
  * @since 2.0.0
  * @category constructors
  */
-export const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option.Option<S>]) => Stream<never, never, A> =
-  internal.paginate
+export const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option<S>]) => Stream<never, never, A> = internal.paginate
 
 /**
  * Like `Stream.unfoldChunk`, but allows the emission of values to end one step
@@ -2398,7 +2396,7 @@ export const paginate: <S, A>(s: S, f: (s: S) => readonly [A, Option.Option<S>])
  */
 export const paginateChunk: <S, A>(
   s: S,
-  f: (s: S) => readonly [Chunk.Chunk<A>, Option.Option<S>]
+  f: (s: S) => readonly [Chunk.Chunk<A>, Option<S>]
 ) => Stream<never, never, A> = internal.paginateChunk
 
 /**
@@ -2411,7 +2409,7 @@ export const paginateChunk: <S, A>(
  */
 export const paginateChunkEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect<R, E, readonly [Chunk.Chunk<A>, Option.Option<S>]>
+  f: (s: S) => Effect<R, E, readonly [Chunk.Chunk<A>, Option<S>]>
 ) => Stream<R, E, A> = internal.paginateChunkEffect
 
 /**
@@ -2424,7 +2422,7 @@ export const paginateChunkEffect: <S, R, E, A>(
  */
 export const paginateEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect<R, E, readonly [A, Option.Option<S>]>
+  f: (s: S) => Effect<R, E, readonly [A, Option<S>]>
 ) => Stream<R, E, A> = internal.paginateEffect
 
 /**
@@ -2683,8 +2681,8 @@ export const rechunk: {
  * @category error handling
  */
 export const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, A>(self: Stream<R, E, A>) => Stream<R, E2, A>
-  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option.Option<E2>): Stream<R, E2, A>
+  <E, E2>(pf: (error: E) => Option<E2>): <R, A>(self: Stream<R, E, A>) => Stream<R, E2, A>
+  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option<E2>): Stream<R, E2, A>
 } = internal.refineOrDie
 
 /**
@@ -2696,10 +2694,10 @@ export const refineOrDie: {
  */
 export const refineOrDieWith: {
   <E, E2>(
-    pf: (error: E) => Option.Option<E2>,
+    pf: (error: E) => Option<E2>,
     f: (error: E) => unknown
   ): <R, A>(self: Stream<R, E, A>) => Stream<R, E2, A>
-  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option.Option<E2>, f: (error: E) => unknown): Stream<R, E2, A>
+  <R, A, E, E2>(self: Stream<R, E, A>, pf: (error: E) => Option<E2>, f: (error: E) => unknown): Stream<R, E2, A>
 } = internal.refineOrDieWith
 
 /**
@@ -2741,7 +2739,7 @@ export const repeatEffectChunk: <R, E, A>(effect: Effect<R, E, Chunk.Chunk<A>>) 
  * @category constructors
  */
 export const repeatEffectChunkOption: <R, E, A>(
-  effect: Effect<R, Option.Option<E>, Chunk.Chunk<A>>
+  effect: Effect<R, Option<E>, Chunk.Chunk<A>>
 ) => Stream<R, E, A> = internal.repeatEffectChunkOption
 
 /**
@@ -2751,7 +2749,7 @@ export const repeatEffectChunkOption: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const repeatEffectOption: <R, E, A>(effect: Effect<R, Option.Option<E>, A>) => Stream<R, E, A> =
+export const repeatEffectOption: <R, E, A>(effect: Effect<R, Option<E>, A>) => Stream<R, E, A> =
   internal.repeatEffectOption
 
 /**
@@ -3159,7 +3157,7 @@ export const runForEachWhileScoped: {
  * @since 2.0.0
  * @category destructors
  */
-export const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option.Option<A>> = internal.runHead
+export const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option<A>> = internal.runHead
 
 /**
  * Publishes elements of this stream to a `PubSub`. Stream failure and ending will
@@ -3208,11 +3206,11 @@ export const runIntoQueue: {
  */
 export const runIntoQueueElementsScoped: {
   <E, A>(
-    queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
+    queue: Queue.Enqueue<Exit.Exit<Option<E>, A>>
   ): <R>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, void>
   <R, E, A>(
     self: Stream<R, E, A>,
-    queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
+    queue: Queue.Enqueue<Exit.Exit<Option<E>, A>>
   ): Effect<Scope.Scope | R, never, void>
 } = internal.runIntoQueueElementsScoped
 
@@ -3237,7 +3235,7 @@ export const runIntoQueueScoped: {
  * @since 2.0.0
  * @category destructors
  */
-export const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option.Option<A>> = internal.runLast
+export const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option<A>> = internal.runLast
 
 /**
  * @since 2.0.0
@@ -3400,7 +3398,7 @@ export const slidingSize: {
  * @since 2.0.0
  * @category utils
  */
-export const some: <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, Option.Option<E>, A> = internal.some
+export const some: <R, E, A>(self: Stream<R, E, Option<A>>) => Stream<R, Option<E>, A> = internal.some
 
 /**
  * Extracts the optional value, or returns the given 'default'.
@@ -3409,8 +3407,8 @@ export const some: <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, 
  * @category utils
  */
 export const someOrElse: {
-  <A2>(fallback: LazyArg<A2>): <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, E, A2 | A>
-  <R, E, A, A2>(self: Stream<R, E, Option.Option<A>>, fallback: LazyArg<A2>): Stream<R, E, A | A2>
+  <A2>(fallback: LazyArg<A2>): <R, E, A>(self: Stream<R, E, Option<A>>) => Stream<R, E, A2 | A>
+  <R, E, A, A2>(self: Stream<R, E, Option<A>>, fallback: LazyArg<A2>): Stream<R, E, A | A2>
 } = internal.someOrElse
 
 /**
@@ -3420,8 +3418,8 @@ export const someOrElse: {
  * @category utils
  */
 export const someOrFail: {
-  <E2>(error: LazyArg<E2>): <R, E, A>(self: Stream<R, E, Option.Option<A>>) => Stream<R, E2 | E, A>
-  <R, E, A, E2>(self: Stream<R, E, Option.Option<A>>, error: LazyArg<E2>): Stream<R, E | E2, A>
+  <E2>(error: LazyArg<E2>): <R, E, A>(self: Stream<R, E, Option<A>>) => Stream<R, E2 | E, A>
+  <R, E, A, E2>(self: Stream<R, E, Option<A>>, error: LazyArg<E2>): Stream<R, E | E2, A>
 } = internal.someOrFail
 
 /**
@@ -3811,7 +3809,7 @@ export const toPubSub: {
  */
 export const toPull: <R, E, A>(
   self: Stream<R, E, A>
-) => Effect<Scope.Scope | R, never, Effect<R, Option.Option<E>, Chunk.Chunk<A>>> = internal.toPull
+) => Effect<Scope.Scope | R, never, Effect<R, Option<E>, Chunk.Chunk<A>>> = internal.toPull
 
 /**
  * Converts the stream to a scoped queue of chunks. After the scope is closed,
@@ -3850,11 +3848,11 @@ export const toQueueOfElements: {
     options?: { readonly capacity?: number }
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ) => Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option<E>, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     options?: { readonly capacity?: number }
-  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option<E>, A>>>
 } = internal.toQueueOfElements
 
 /**
@@ -3884,8 +3882,7 @@ export const transduce: {
  * @since 2.0.0
  * @category constructors
  */
-export const unfold: <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>) => Stream<never, never, A> =
-  internal.unfold
+export const unfold: <S, A>(s: S, f: (s: S) => Option<readonly [A, S]>) => Stream<never, never, A> = internal.unfold
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.
@@ -3895,7 +3892,7 @@ export const unfold: <S, A>(s: S, f: (s: S) => Option.Option<readonly [A, S]>) =
  */
 export const unfoldChunk: <S, A>(
   s: S,
-  f: (s: S) => Option.Option<readonly [Chunk.Chunk<A>, S]>
+  f: (s: S) => Option<readonly [Chunk.Chunk<A>, S]>
 ) => Stream<never, never, A> = internal.unfoldChunk
 
 /**
@@ -3907,7 +3904,7 @@ export const unfoldChunk: <S, A>(
  */
 export const unfoldChunkEffect: <R, E, A, S>(
   s: S,
-  f: (s: S) => Effect<R, E, Option.Option<readonly [Chunk.Chunk<A>, S]>>
+  f: (s: S) => Effect<R, E, Option<readonly [Chunk.Chunk<A>, S]>>
 ) => Stream<R, E, A> = internal.unfoldChunkEffect
 
 /**
@@ -3919,7 +3916,7 @@ export const unfoldChunkEffect: <R, E, A, S>(
  */
 export const unfoldEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect<R, E, Option.Option<readonly [A, S]>>
+  f: (s: S) => Effect<R, E, Option<readonly [A, S]>>
 ) => Stream<R, E, A> = internal.unfoldEffect
 
 /**
@@ -3978,7 +3975,7 @@ export const when: {
  */
 export const whenCase: <A, R, E, A2>(
   evaluate: LazyArg<A>,
-  pf: (a: A) => Option.Option<Stream<R, E, A2>>
+  pf: (a: A) => Option<Stream<R, E, A2>>
 ) => Stream<R, E, A2> = internal.whenCase
 
 /**
@@ -3990,11 +3987,11 @@ export const whenCase: <A, R, E, A2>(
  */
 export const whenCaseEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Stream<R2, E2, A2>>
+    pf: (a: A) => Option<Stream<R2, E2, A2>>
   ): <R, E>(self: Effect<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    pf: (a: A) => Option.Option<Stream<R2, E2, A2>>
+    pf: (a: A) => Option<Stream<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 } = internal.whenCaseEffect
 
@@ -4411,7 +4408,7 @@ export const zipWithChunks: {
  * @since 2.0.0
  * @category zipping
  */
-export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option.Option<A>]> =
+export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option<A>]> =
   internal.zipWithNext
 
 /**
@@ -4421,7 +4418,7 @@ export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, reado
  * @since 2.0.0
  * @category zipping
  */
-export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option.Option<A>, A]> =
+export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option<A>, A]> =
   internal.zipWithPrevious
 
 /**
@@ -4432,7 +4429,7 @@ export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, r
  */
 export const zipWithPreviousAndNext: <R, E, A>(
   self: Stream<R, E, A>
-) => Stream<R, E, readonly [Option.Option<A>, A, Option.Option<A>]> = internal.zipWithPreviousAndNext
+) => Stream<R, E, readonly [Option<A>, A, Option<A>]> = internal.zipWithPreviousAndNext
 
 /**
  * Zips this stream together with the index of elements.

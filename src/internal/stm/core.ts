@@ -9,7 +9,7 @@ import * as FiberRef from "../../FiberRef.js"
 import type { LazyArg } from "../../Function.js"
 import { constVoid, dual, pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
-import type * as Option from "../../Option.js"
+import type { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
 import type * as Scheduler from "../../Scheduler.js"
@@ -464,7 +464,7 @@ export class STMDriver<R, E, A> {
   }
 
   run(): TExit.TExit<E, A> {
-    let curr = this.self as Primitive | Context.Tag<any, any> | Either.Either<any, any> | Option.Option<any> | undefined
+    let curr = this.self as Primitive | Context.Tag<any, any> | Either.Either<any, any> | Option<any> | undefined
     let exit: TExit.TExit<unknown, unknown> | undefined = undefined
     while (exit === undefined && curr !== undefined) {
       try {

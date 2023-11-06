@@ -11,7 +11,7 @@ import * as HashSet from "../HashSet.js"
 import * as MutableHashMap from "../MutableHashMap.js"
 import * as MutableQueue from "../MutableQueue.js"
 import * as MutableRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Scope from "../Scope.js"
 import type * as ScopedCache from "../ScopedCache.js"
@@ -209,7 +209,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
     )
   }
 
-  getOption(key: Key): Effect<Scope.Scope, Error, Option.Option<Value>> {
+  getOption(key: Key): Effect<Scope.Scope, Error, Option<Value>> {
     return core.suspend(() =>
       Option.match(MutableHashMap.get(this.cacheState.map, key), {
         onNone: () => effect.succeedNone,
@@ -218,12 +218,11 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
     )
   }
 
-  getOptionComplete(key: Key): Effect<Scope.Scope, never, Option.Option<Value>> {
+  getOptionComplete(key: Key): Effect<Scope.Scope, never, Option<Value>> {
     return core.suspend(() =>
       Option.match(MutableHashMap.get(this.cacheState.map, key), {
         onNone: () => effect.succeedNone,
-        onSome: (value) =>
-          core.flatten(this.resolveMapValue(value, true)) as Effect<Scope.Scope, never, Option.Option<Value>>
+        onSome: (value) => core.flatten(this.resolveMapValue(value, true)) as Effect<Scope.Scope, never, Option<Value>>
       })
     )
   }
@@ -232,7 +231,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
     return core.sync(() => MutableHashMap.has(this.cacheState.map, key))
   }
 
-  entryStats(key: Key): Effect<never, never, Option.Option<Cache.EntryStats>> {
+  entryStats(key: Key): Effect<never, never, Option<Cache.EntryStats>> {
     return core.sync(() => {
       const value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, key))
       if (value === undefined) {

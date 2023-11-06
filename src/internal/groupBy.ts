@@ -6,7 +6,7 @@ import { Effect } from "../Effect.js"
 import * as Exit from "../Exit.js"
 import { dual, pipe } from "../Function.js"
 import type * as GroupBy from "../GroupBy.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate } from "../Predicate.js"
 import * as Queue from "../Queue.js"
@@ -142,7 +142,7 @@ export const groupBy = dual<
             >()
           )
           const output = yield* $(Effect.acquireRelease(
-            Queue.bounded<Exit.Exit<Option.Option<E | E2>, readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>]>>(
+            Queue.bounded<Exit.Exit<Option<E | E2>, readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>]>>(
               options?.bufferSize ?? 16
             ),
             (queue) => Queue.shutdown(queue)
@@ -322,7 +322,7 @@ class MapDequeue<A, B> implements Queue.Dequeue<B> {
     return Queue.size(this.dequeue)
   }
 
-  unsafeSize(): Option.Option<number> {
+  unsafeSize(): Option<number> {
     return this.dequeue.unsafeSize()
   }
 
@@ -370,7 +370,7 @@ class MapDequeue<A, B> implements Queue.Dequeue<B> {
     return pipe(Queue.takeN(this.dequeue, n), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  poll(): Effect<never, never, Option.Option<B>> {
+  poll(): Effect<never, never, Option<B>> {
     return pipe(Queue.poll(this.dequeue), Effect.map(Option.map((a) => this.f(a))))
   }
 

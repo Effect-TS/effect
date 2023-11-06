@@ -15,7 +15,7 @@ import type * as Layer from "./Layer.js"
 import type * as List from "./List.js"
 import type * as LogLevel from "./LogLevel.js"
 import type * as LogSpan from "./LogSpan.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 
@@ -130,11 +130,11 @@ export const mapInput: {
 export const filterLogLevel: {
   (
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option.Option<Output>>
+  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option<Output>>
   <Message, Output>(
     self: Logger<Message, Output>,
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ): Logger<Message, Option.Option<Output>>
+  ): Logger<Message, Option<Output>>
 } = internal.filterLogLevel
 
 /**

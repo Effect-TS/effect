@@ -10,7 +10,7 @@ import * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as readonlyArray from "./internal/readonlyArray.js"
 import * as number from "./Number.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import * as order from "./Order.js"
 import type * as Ordering from "./Ordering.js"
 import type { Refinement } from "./Predicate.js"
@@ -280,11 +280,11 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
  * @since 2.0.0
  */
 export const charCodeAt: {
-  (index: number): (self: string) => Option.Option<number>
-  (self: string, index: number): Option.Option<number>
+  (index: number): (self: string) => Option<number>
+  (self: string, index: number): Option<number>
 } = dual(
   2,
-  (self: string, index: number): Option.Option<number> =>
+  (self: string, index: number): Option<number> =>
     Option.filter(Option.some(self.charCodeAt(index)), (charCode) => !isNaN(charCode))
 )
 
@@ -312,9 +312,9 @@ export const substring = (start: number, end?: number) => (self: string): string
  * @since 2.0.0
  */
 export const at: {
-  (index: number): (self: string) => Option.Option<string>
-  (self: string, index: number): Option.Option<string>
-} = dual(2, (self: string, index: number): Option.Option<string> => Option.fromNullable(self.at(index)))
+  (index: number): (self: string) => Option<string>
+  (self: string, index: number): Option<string>
+} = dual(2, (self: string, index: number): Option<string> => Option.fromNullable(self.at(index)))
 
 /**
  * @example
@@ -328,11 +328,11 @@ export const at: {
  * @since 2.0.0
  */
 export const charAt: {
-  (index: number): (self: string) => Option.Option<string>
-  (self: string, index: number): Option.Option<string>
+  (index: number): (self: string) => Option<string>
+  (self: string, index: number): Option<string>
 } = dual(
   2,
-  (self: string, index: number): Option.Option<string> => Option.filter(Option.some(self.charAt(index)), isNonEmpty)
+  (self: string, index: number): Option<string> => Option.filter(Option.some(self.charAt(index)), isNonEmpty)
 )
 
 /**
@@ -346,9 +346,9 @@ export const charAt: {
  * @since 2.0.0
  */
 export const codePointAt: {
-  (index: number): (self: string) => Option.Option<number>
-  (self: string, index: number): Option.Option<number>
-} = dual(2, (self: string, index: number): Option.Option<number> => Option.fromNullable(self.codePointAt(index)))
+  (index: number): (self: string) => Option<number>
+  (self: string, index: number): Option<number>
+} = dual(2, (self: string, index: number): Option<number> => Option.fromNullable(self.codePointAt(index)))
 
 /**
  * @example
@@ -360,7 +360,7 @@ export const codePointAt: {
  *
  * @since 2.0.0
  */
-export const indexOf = (searchString: string) => (self: string): Option.Option<number> =>
+export const indexOf = (searchString: string) => (self: string): Option<number> =>
   Option.filter(Option.some(self.indexOf(searchString)), number.greaterThanOrEqualTo(0))
 
 /**
@@ -374,7 +374,7 @@ export const indexOf = (searchString: string) => (self: string): Option.Option<n
  *
  * @since 2.0.0
  */
-export const lastIndexOf = (searchString: string) => (self: string): Option.Option<number> =>
+export const lastIndexOf = (searchString: string) => (self: string): Option<number> =>
   Option.filter(Option.some(self.lastIndexOf(searchString)), number.greaterThanOrEqualTo(0))
 
 /**
@@ -397,7 +397,7 @@ export const localeCompare =
  *
  * @since 2.0.0
  */
-export const match = (regexp: RegExp | string) => (self: string): Option.Option<RegExpMatchArray> =>
+export const match = (regexp: RegExp | string) => (self: string): Option<RegExpMatchArray> =>
   Option.fromNullable(self.match(regexp))
 
 /**
@@ -486,11 +486,11 @@ export const replaceAll = (searchValue: string | RegExp, replaceValue: string) =
  * @since 2.0.0
  */
 export const search: {
-  (regexp: RegExp | string): (self: string) => Option.Option<number>
-  (self: string, regexp: RegExp | string): Option.Option<number>
+  (regexp: RegExp | string): (self: string) => Option<number>
+  (self: string, regexp: RegExp | string): Option<number>
 } = dual(
   2,
-  (self: string, regexp: RegExp | string): Option.Option<number> =>
+  (self: string, regexp: RegExp | string): Option<number> =>
     Option.filter(Option.some(self.search(regexp)), number.greaterThanOrEqualTo(0))
 )
 

@@ -7,7 +7,7 @@ import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/tracer.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -26,7 +26,7 @@ export interface Tracer {
   readonly [TracerTypeId]: TracerTypeId
   readonly span: (
     name: string,
-    parent: Option.Option<ParentSpan>,
+    parent: Option<ParentSpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint
@@ -81,7 +81,7 @@ export interface Span {
   readonly name: string
   readonly spanId: string
   readonly traceId: string
-  readonly parent: Option.Option<ParentSpan>
+  readonly parent: Option<ParentSpan>
   readonly context: Context.Context<never>
   readonly status: SpanStatus
   readonly attributes: ReadonlyMap<string, unknown>

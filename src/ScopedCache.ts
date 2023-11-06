@@ -6,7 +6,7 @@ import type * as Duration from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import * as internal from "./internal/scopedCache.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
 
@@ -31,13 +31,13 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect<Scope.Scope, Error, Option.Option<Value>>
+  getOption(key: Key): Effect<Scope.Scope, Error, Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect<Scope.Scope, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect<Scope.Scope, never, Option<Value>>
 
   /**
    * Returns statistics for this cache.
@@ -54,7 +54,7 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
   /**
    * Return statistics for the specified entry.
    */
-  entryStats(key: Key): Effect<never, never, Option.Option<Cache.EntryStats>>
+  entryStats(key: Key): Effect<never, never, Option<Cache.EntryStats>>
 
   /**
    * Gets the value from the cache if it exists or otherwise computes it, the

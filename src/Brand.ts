@@ -18,7 +18,7 @@
  */
 import * as Either from "./Either.js"
 import { identity } from "./Function.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import * as ReadonlyArray from "./ReadonlyArray.js"
 import type * as Types from "./Types.js"
@@ -97,7 +97,7 @@ export declare namespace Brand {
      * Constructs a branded type from a value of type `A`, returning `Some<A>`
      * if the provided `A` is valid, `None` otherwise.
      */
-    option: (args: Brand.Unbranded<A>) => Option.Option<A>
+    option: (args: Brand.Unbranded<A>) => Option<A>
     /**
      * Constructs a branded type from a value of type `A`, returning `Right<A>`
      * if the provided `A` is valid, `Left<BrandError>` otherwise.

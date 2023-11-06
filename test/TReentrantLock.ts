@@ -4,7 +4,7 @@ import { Effect } from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import * as STM from "effect/STM"
@@ -13,14 +13,14 @@ import { assert, describe } from "vitest"
 
 const pollSchedule = <E, A>(): Schedule.Schedule<
   never,
-  Option.Option<Exit.Exit<E, A>>,
-  Option.Option<Exit.Exit<E, A>>
+  Option<Exit.Exit<E, A>>,
+  Option<Exit.Exit<E, A>>
 > =>
   pipe(
     Schedule.recurs(100),
     Schedule.zipRight(
       pipe(
-        Schedule.identity<Option.Option<Exit.Exit<E, A>>>(),
+        Schedule.identity<Option<Exit.Exit<E, A>>>(),
         Schedule.whileOutput(Option.isNone)
       )
     )

@@ -1,6 +1,6 @@
 import * as Chunk from "../Chunk.js"
 import { constUndefined } from "../Function.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 
 /** @internal */
 export class RingBuffer<A> {
@@ -12,7 +12,7 @@ export class RingBuffer<A> {
     this.array = Array.from({ length: capacity }, constUndefined)
   }
 
-  head(): Option.Option<A> {
+  head(): Option<A> {
     return Option.fromNullable(this.array[this.current])
   }
 

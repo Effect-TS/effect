@@ -7,7 +7,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
 import * as Number from "effect/Number"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as STM from "effect/STM"
 import * as TArray from "effect/TArray"
 import * as TRef from "effect/TRef"
@@ -21,7 +21,7 @@ const makeRepeats = (blocks: number, length: number): STM.STM<never, never, TArr
 const makeStair = (length: number): STM.STM<never, never, TArray.TArray<number>> =>
   TArray.fromIterable(Array.from({ length }, (_, i) => i + 1))
 
-const makeStairWithHoles = (length: number): STM.STM<never, never, TArray.TArray<Option.Option<number>>> =>
+const makeStairWithHoles = (length: number): STM.STM<never, never, TArray.TArray<Option<number>>> =>
   TArray.fromIterable(Array.from({ length }, (_, i) => i % 3 === 0 ? Option.none() : Option.some(i)))
 
 const makeTArray = <A>(length: number, value: A): STM.STM<never, never, TArray.TArray<A>> =>
@@ -48,7 +48,7 @@ describe.concurrent("TArray", () => {
 
   it.effect("collectFirst - succeeds for empty array", () =>
     Effect.gen(function*($) {
-      const array = yield* $(makeTArray<Option.Option<number>>(0, Option.none()))
+      const array = yield* $(makeTArray<Option<number>>(0, Option.none()))
       const result = yield* $(pipe(array, TArray.collectFirst(identity)))
       assert.deepStrictEqual(result, Option.none())
     }))
@@ -109,7 +109,7 @@ describe.concurrent("TArray", () => {
 
   it.effect("collectFirstSTM - succeeds for empty array", () =>
     Effect.gen(function*($) {
-      const array = yield* $(makeTArray<Option.Option<number>>(0, Option.none()))
+      const array = yield* $(makeTArray<Option<number>>(0, Option.none()))
       const result = yield* $(pipe(
         array,
         TArray.collectFirstSTM((option) =>

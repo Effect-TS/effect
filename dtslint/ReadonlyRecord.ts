@@ -1,7 +1,7 @@
 import type * as Brand from "effect/Brand"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as RR from "effect/ReadonlyRecord"
 
 declare const record: Record<string, number>

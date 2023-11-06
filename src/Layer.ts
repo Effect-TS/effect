@@ -33,7 +33,7 @@ import * as internal from "./internal/layer.js"
 import * as circularLayer from "./internal/layer/circular.js"
 import * as query from "./internal/query.js"
 import type { LogLevel } from "./LogLevel.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Request from "./Request.js"
 import type * as Runtime from "./Runtime.js"
@@ -970,8 +970,8 @@ export const setTracerTiming: (enabled: boolean) => Layer<never, never, never> =
  * @since 2.0.0
  * @category logging
  */
-export const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Layer<never, never, never> = (
-  level: Option.Option<LogLevel>
+export const setUnhandledErrorLogLevel: (level: Option<LogLevel>) => Layer<never, never, never> = (
+  level: Option<LogLevel>
 ): Layer<never, never, never> =>
   scopedDiscard(
     fiberRuntime.fiberRefLocallyScoped(core.currentUnhandledErrorLogLevel, level)

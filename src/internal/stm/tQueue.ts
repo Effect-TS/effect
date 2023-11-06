@@ -1,6 +1,6 @@
 import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import { hasProperty, type Predicate } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
 import * as STM from "../../STM.js"
@@ -195,7 +195,7 @@ class TQueueImpl<A> implements TQueue.TQueue<A> {
     return core.succeed(head)
   })
 
-  peekOption: STM.STM<never, never, Option.Option<A>> = core.withSTMRuntime((runtime) => {
+  peekOption: STM.STM<never, never, Option<A>> = core.withSTMRuntime((runtime) => {
     const queue = tRef.unsafeGet(this.ref, runtime.journal)
     if (queue === undefined) {
       return core.interruptAs(runtime.fiberId)
@@ -293,10 +293,10 @@ export const offerAll = dual<
 export const peek = <A>(self: TQueue.TDequeue<A>): STM.STM<never, never, A> => self.peek
 
 /** @internal */
-export const peekOption = <A>(self: TQueue.TDequeue<A>): STM.STM<never, never, Option.Option<A>> => self.peekOption
+export const peekOption = <A>(self: TQueue.TDequeue<A>): STM.STM<never, never, Option<A>> => self.peekOption
 
 /** @internal */
-export const poll = <A>(self: TQueue.TDequeue<A>): STM.STM<never, never, Option.Option<A>> =>
+export const poll = <A>(self: TQueue.TDequeue<A>): STM.STM<never, never, Option<A>> =>
   pipe(self.takeUpTo(1), core.map(RA.head))
 
 /** @internal */

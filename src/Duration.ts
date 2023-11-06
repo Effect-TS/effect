@@ -7,7 +7,7 @@ import { dual } from "./Function.js"
 import * as Hash from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toString } from "./Inspectable.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -254,7 +254,7 @@ export const toSeconds = (self: DurationInput): number => toMillis(self) / 1_000
  * @since 2.0.0
  * @category getters
  */
-export const toNanos = (self: DurationInput): Option.Option<bigint> => {
+export const toNanos = (self: DurationInput): Option<bigint> => {
   const _self = decode(self)
   switch (_self.value._tag) {
     case "Infinity":

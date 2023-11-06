@@ -1,6 +1,6 @@
 import * as Duration from "../../Duration.js"
 import { dual } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import type * as Interval from "../../ScheduleInterval.js"
 
 /** @internal */
@@ -82,8 +82,8 @@ export const size = (self: Interval.Interval): Duration.Duration => {
 
 /** @internal */
 export const union = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Option.Option<Interval.Interval>,
-  (self: Interval.Interval, that: Interval.Interval) => Option.Option<Interval.Interval>
+  (that: Interval.Interval) => (self: Interval.Interval) => Option<Interval.Interval>,
+  (self: Interval.Interval, that: Interval.Interval) => Option<Interval.Interval>
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)

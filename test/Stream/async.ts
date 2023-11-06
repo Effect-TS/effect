@@ -7,7 +7,7 @@ import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
 import { Stream } from "effect/Stream"
@@ -95,7 +95,7 @@ describe.concurrent("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncEffect<never, Option.Option<never>, number>((emit) => {
+      const stream = Stream.asyncEffect<never, Option<never>, number>((emit) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -196,7 +196,7 @@ describe.concurrent("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncInterrupt<never, Option.Option<never>, number>((emit) => {
+      const stream = Stream.asyncInterrupt<never, Option<never>, number>((emit) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -294,7 +294,7 @@ describe.concurrent("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncOption<never, Option.Option<never>, number>((emit) => {
+      const stream = Stream.asyncOption<never, Option<never>, number>((emit) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -389,7 +389,7 @@ describe.concurrent("Stream", () => {
     Effect.gen(function*($) {
       const refCount = yield* $(Ref.make(0))
       const refDone = yield* $(Ref.make(false))
-      const stream = Stream.asyncScoped<never, Option.Option<never>, number>((cb) => {
+      const stream = Stream.asyncScoped<never, Option<never>, number>((cb) => {
         Promise.all(
           // 1st consumed by sink, 2-6 – in queue, 7th – back pressured
           [1, 2, 3, 4, 5, 6, 7].map((n) =>

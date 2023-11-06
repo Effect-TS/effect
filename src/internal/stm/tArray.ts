@@ -1,6 +1,6 @@
 import * as Equal from "../../Equal.js"
 import { dual, pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import * as Order from "../../Order.js"
 import type { Predicate } from "../../Predicate.js"
 import type * as STM from "../../STM.js"
@@ -29,8 +29,8 @@ export class TArrayImpl<A> implements TArray.TArray<A> {
 
 /** @internal */
 export const collectFirst = dual<
-  <A, B>(pf: (a: A) => Option.Option<B>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<B>>,
-  <A, B>(self: TArray.TArray<A>, pf: (a: A) => Option.Option<B>) => STM.STM<never, never, Option.Option<B>>
+  <A, B>(pf: (a: A) => Option<B>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<B>>,
+  <A, B>(self: TArray.TArray<A>, pf: (a: A) => Option<B>) => STM.STM<never, never, Option<B>>
 >(2, (self, pf) =>
   collectFirstSTM(
     self,
@@ -40,20 +40,20 @@ export const collectFirst = dual<
 /** @internal */
 export const collectFirstSTM = dual<
   <A, R, E, B>(
-    pf: (a: A) => Option.Option<STM.STM<R, E, B>>
+    pf: (a: A) => Option<STM.STM<R, E, B>>
   ) => (
     self: TArray.TArray<A>
-  ) => STM.STM<R, E, Option.Option<B>>,
+  ) => STM.STM<R, E, Option<B>>,
   <A, R, E, B>(
     self: TArray.TArray<A>,
-    pf: (a: A) => Option.Option<STM.STM<R, E, B>>
-  ) => STM.STM<R, E, Option.Option<B>>
+    pf: (a: A) => Option<STM.STM<R, E, B>>
+  ) => STM.STM<R, E, Option<B>>
 >(
   2,
-  <A, R, E, B>(self: TArray.TArray<A>, pf: (a: A) => Option.Option<STM.STM<R, E, B>>) =>
+  <A, R, E, B>(self: TArray.TArray<A>, pf: (a: A) => Option<STM.STM<R, E, B>>) =>
     core.withSTMRuntime((runtime) => {
       let index = 0
-      let result: Option.Option<STM.STM<R, E, B>> = Option.none()
+      let result: Option<STM.STM<R, E, B>> = Option.none()
       while (Option.isNone(result) && index < self.chunk.length) {
         const element = pipe(self.chunk[index], tRef.unsafeGet(runtime.journal))
         const option = pf(element)
@@ -121,8 +121,8 @@ export const everySTM = dual<
 
 /** @internal */
 export const findFirst = dual<
-  <A>(predicate: Predicate<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<A>>,
-  <A>(self: TArray.TArray<A>, predicate: Predicate<A>) => STM.STM<never, never, Option.Option<A>>
+  <A>(predicate: Predicate<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<A>>,
+  <A>(self: TArray.TArray<A>, predicate: Predicate<A>) => STM.STM<never, never, Option<A>>
 >(2, (self, predicate) =>
   collectFirst(self, (a) =>
     predicate(a)
@@ -131,14 +131,14 @@ export const findFirst = dual<
 
 /** @internal */
 export const findFirstIndex = dual<
-  <A>(value: A) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<number>>,
-  <A>(self: TArray.TArray<A>, value: A) => STM.STM<never, never, Option.Option<number>>
+  <A>(value: A) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<number>>,
+  <A>(self: TArray.TArray<A>, value: A) => STM.STM<never, never, Option<number>>
 >(2, (self, value) => findFirstIndexFrom(self, value, 0))
 
 /** @internal */
 export const findFirstIndexFrom = dual<
-  <A>(value: A, from: number) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<number>>,
-  <A>(self: TArray.TArray<A>, value: A, from: number) => STM.STM<never, never, Option.Option<number>>
+  <A>(value: A, from: number) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<number>>,
+  <A>(self: TArray.TArray<A>, value: A, from: number) => STM.STM<never, never, Option<number>>
 >(3, (self, value, from) =>
   findFirstIndexWhereFrom(
     self,
@@ -148,8 +148,8 @@ export const findFirstIndexFrom = dual<
 
 /** @internal */
 export const findFirstIndexWhere = dual<
-  <A>(predicate: Predicate<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<number>>,
-  <A>(self: TArray.TArray<A>, predicate: Predicate<A>) => STM.STM<never, never, Option.Option<number>>
+  <A>(predicate: Predicate<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<number>>,
+  <A>(self: TArray.TArray<A>, predicate: Predicate<A>) => STM.STM<never, never, Option<number>>
 >(2, (self, predicate) => findFirstIndexWhereFrom(self, predicate, 0))
 
 /** @internal */
@@ -157,13 +157,13 @@ export const findFirstIndexWhereFrom = dual<
   <A>(
     predicate: Predicate<A>,
     from: number
-  ) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<number>>,
-  <A>(self: TArray.TArray<A>, predicate: Predicate<A>, from: number) => STM.STM<never, never, Option.Option<number>>
+  ) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<number>>,
+  <A>(self: TArray.TArray<A>, predicate: Predicate<A>, from: number) => STM.STM<never, never, Option<number>>
 >(3, (self, predicate, from) => {
   if (from < 0) {
     return stm.succeedNone
   }
-  return core.effect<never, Option.Option<number>>((journal) => {
+  return core.effect<never, Option<number>>((journal) => {
     let index: number = from
     let found = false
     while (!found && index < self.chunk.length) {
@@ -182,11 +182,11 @@ export const findFirstIndexWhereFrom = dual<
 export const findFirstIndexWhereSTM = dual<
   <A, R, E>(
     predicate: (value: A) => STM.STM<R, E, boolean>
-  ) => (self: TArray.TArray<A>) => STM.STM<R, E, Option.Option<number>>,
+  ) => (self: TArray.TArray<A>) => STM.STM<R, E, Option<number>>,
   <A, R, E>(
     self: TArray.TArray<A>,
     predicate: (value: A) => STM.STM<R, E, boolean>
-  ) => STM.STM<R, E, Option.Option<number>>
+  ) => STM.STM<R, E, Option<number>>
 >(2, (self, predicate) => findFirstIndexWhereFromSTM(self, predicate, 0))
 
 /** @internal */
@@ -194,18 +194,18 @@ export const findFirstIndexWhereFromSTM = dual<
   <A, R, E>(
     predicate: (value: A) => STM.STM<R, E, boolean>,
     from: number
-  ) => (self: TArray.TArray<A>) => STM.STM<R, E, Option.Option<number>>,
+  ) => (self: TArray.TArray<A>) => STM.STM<R, E, Option<number>>,
   <A, R, E>(
     self: TArray.TArray<A>,
     predicate: (value: A) => STM.STM<R, E, boolean>,
     from: number
-  ) => STM.STM<R, E, Option.Option<number>>
+  ) => STM.STM<R, E, Option<number>>
 >(3, <A, R, E>(
   self: TArray.TArray<A>,
   predicate: (value: A) => STM.STM<R, E, boolean>,
   from: number
 ) => {
-  const forIndex = (index: number): STM.STM<R, E, Option.Option<number>> =>
+  const forIndex = (index: number): STM.STM<R, E, Option<number>> =>
     index < self.chunk.length
       ? pipe(
         tRef.get(self.chunk[index]),
@@ -228,15 +228,14 @@ export const findFirstSTM = dual<
     predicate: (value: A) => STM.STM<R, E, boolean>
   ) => (
     self: TArray.TArray<A>
-  ) => STM.STM<R, E, Option.Option<A>>,
+  ) => STM.STM<R, E, Option<A>>,
   <A, R, E>(
     self: TArray.TArray<A>,
     predicate: (value: A) => STM.STM<R, E, boolean>
-  ) => STM.STM<R, E, Option.Option<A>>
+  ) => STM.STM<R, E, Option<A>>
 >(2, <A, R, E>(self: TArray.TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>) => {
-  const init = [Option.none() as Option.Option<A>, 0 as number] as const
-  const cont = (state: readonly [Option.Option<A>, number]) =>
-    Option.isNone(state[0]) && state[1] < self.chunk.length - 1
+  const init = [Option.none() as Option<A>, 0 as number] as const
+  const cont = (state: readonly [Option<A>, number]) => Option.isNone(state[0]) && state[1] < self.chunk.length - 1
   return core.map(
     stm.iterate(init, {
       while: cont,
@@ -259,12 +258,12 @@ export const findFirstSTM = dual<
 
 /** @internal */
 export const findLast = dual<
-  <A>(predicate: Predicate<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<A>>,
-  <A>(self: TArray.TArray<A>, predicate: Predicate<A>) => STM.STM<never, never, Option.Option<A>>
+  <A>(predicate: Predicate<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<A>>,
+  <A>(self: TArray.TArray<A>, predicate: Predicate<A>) => STM.STM<never, never, Option<A>>
 >(2, <A>(self: TArray.TArray<A>, predicate: Predicate<A>) =>
-  core.effect<never, Option.Option<A>>((journal) => {
+  core.effect<never, Option<A>>((journal) => {
     let index = self.chunk.length - 1
-    let result: Option.Option<A> = Option.none()
+    let result: Option<A> = Option.none()
     while (Option.isNone(result) && index >= 0) {
       const element = tRef.unsafeGet(self.chunk[index], journal)
       if (predicate(element)) {
@@ -277,19 +276,19 @@ export const findLast = dual<
 
 /** @internal */
 export const findLastIndex = dual<
-  <A>(value: A) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<number>>,
-  <A>(self: TArray.TArray<A>, value: A) => STM.STM<never, never, Option.Option<number>>
+  <A>(value: A) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<number>>,
+  <A>(self: TArray.TArray<A>, value: A) => STM.STM<never, never, Option<number>>
 >(2, (self, value) => findLastIndexFrom(self, value, self.chunk.length - 1))
 
 /** @internal */
 export const findLastIndexFrom = dual<
-  <A>(value: A, end: number) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<number>>,
-  <A>(self: TArray.TArray<A>, value: A, end: number) => STM.STM<never, never, Option.Option<number>>
+  <A>(value: A, end: number) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<number>>,
+  <A>(self: TArray.TArray<A>, value: A, end: number) => STM.STM<never, never, Option<number>>
 >(3, (self, value, end) => {
   if (end >= self.chunk.length) {
     return stm.succeedNone
   }
-  return core.effect<never, Option.Option<number>>((journal) => {
+  return core.effect<never, Option<number>>((journal) => {
     let index: number = end
     let found = false
     while (!found && index >= 0) {
@@ -308,14 +307,14 @@ export const findLastIndexFrom = dual<
 export const findLastSTM = dual<
   <A, R, E>(
     predicate: (value: A) => STM.STM<R, E, boolean>
-  ) => (self: TArray.TArray<A>) => STM.STM<R, E, Option.Option<A>>,
+  ) => (self: TArray.TArray<A>) => STM.STM<R, E, Option<A>>,
   <A, R, E>(
     self: TArray.TArray<A>,
     predicate: (value: A) => STM.STM<R, E, boolean>
-  ) => STM.STM<R, E, Option.Option<A>>
+  ) => STM.STM<R, E, Option<A>>
 >(2, <A, R, E>(self: TArray.TArray<A>, predicate: (value: A) => STM.STM<R, E, boolean>) => {
-  const init = [Option.none() as Option.Option<A>, self.chunk.length - 1] as const
-  const cont = (state: readonly [Option.Option<A>, number]) => Option.isNone(state[0]) && state[1] >= 0
+  const init = [Option.none() as Option<A>, self.chunk.length - 1] as const
+  const cont = (state: readonly [Option<A>, number]) => Option.isNone(state[0]) && state[1] >= 0
   return core.map(
     stm.iterate(init, {
       while: cont,
@@ -361,13 +360,13 @@ export const get = dual<
 })
 
 /** @internal */
-export const headOption = <A>(self: TArray.TArray<A>): STM.STM<never, never, Option.Option<A>> =>
+export const headOption = <A>(self: TArray.TArray<A>): STM.STM<never, never, Option<A>> =>
   self.chunk.length === 0 ?
     core.succeed(Option.none()) :
     core.map(tRef.get(self.chunk[0]), Option.some)
 
 /** @internal */
-export const lastOption = <A>(self: TArray.TArray<A>): STM.STM<never, never, Option.Option<A>> =>
+export const lastOption = <A>(self: TArray.TArray<A>): STM.STM<never, never, Option<A>> =>
   self.chunk.length === 0 ?
     stm.succeedNone :
     core.map(tRef.get(self.chunk[self.chunk.length - 1]), Option.some)
@@ -379,8 +378,8 @@ export const make = <Elements extends [any, ...Array<any>]>(
 
 /** @internal */
 export const maxOption = dual<
-  <A>(order: Order.Order<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<A>>,
-  <A>(self: TArray.TArray<A>, order: Order.Order<A>) => STM.STM<never, never, Option.Option<A>>
+  <A>(order: Order.Order<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<A>>,
+  <A>(self: TArray.TArray<A>, order: Order.Order<A>) => STM.STM<never, never, Option<A>>
 >(2, (self, order) => {
   const greaterThan = Order.greaterThan(order)
   return reduceOption(self, (acc, curr) => greaterThan(acc)(curr) ? curr : acc)
@@ -388,8 +387,8 @@ export const maxOption = dual<
 
 /** @internal */
 export const minOption = dual<
-  <A>(order: Order.Order<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<A>>,
-  <A>(self: TArray.TArray<A>, order: Order.Order<A>) => STM.STM<never, never, Option.Option<A>>
+  <A>(order: Order.Order<A>) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<A>>,
+  <A>(self: TArray.TArray<A>, order: Order.Order<A>) => STM.STM<never, never, Option<A>>
 >(2, (self, order) => {
   const lessThan = Order.lessThan(order)
   return reduceOption(self, (acc, curr) => lessThan(acc)(curr) ? curr : acc)
@@ -416,12 +415,12 @@ export const reduce = dual<
 
 /** @internal */
 export const reduceOption = dual<
-  <A>(f: (x: A, y: A) => A) => (self: TArray.TArray<A>) => STM.STM<never, never, Option.Option<A>>,
-  <A>(self: TArray.TArray<A>, f: (x: A, y: A) => A) => STM.STM<never, never, Option.Option<A>>
+  <A>(f: (x: A, y: A) => A) => (self: TArray.TArray<A>) => STM.STM<never, never, Option<A>>,
+  <A>(self: TArray.TArray<A>, f: (x: A, y: A) => A) => STM.STM<never, never, Option<A>>
 >(
   2,
   <A>(self: TArray.TArray<A>, f: (x: A, y: A) => A) =>
-    core.effect<never, Option.Option<A>>((journal) => {
+    core.effect<never, Option<A>>((journal) => {
       let index = 0
       let result: A | undefined = undefined
       while (index < self.chunk.length) {
@@ -435,8 +434,8 @@ export const reduceOption = dual<
 
 /** @internal */
 export const reduceOptionSTM = dual<
-  <A, R, E>(f: (x: A, y: A) => STM.STM<R, E, A>) => (self: TArray.TArray<A>) => STM.STM<R, E, Option.Option<A>>,
-  <A, R, E>(self: TArray.TArray<A>, f: (x: A, y: A) => STM.STM<R, E, A>) => STM.STM<R, E, Option.Option<A>>
+  <A, R, E>(f: (x: A, y: A) => STM.STM<R, E, A>) => (self: TArray.TArray<A>) => STM.STM<R, E, Option<A>>,
+  <A, R, E>(self: TArray.TArray<A>, f: (x: A, y: A) => STM.STM<R, E, A>) => STM.STM<R, E, Option<A>>
 >(
   2,
   <A, R, E>(self: TArray.TArray<A>, f: (x: A, y: A) => STM.STM<R, E, A>) =>

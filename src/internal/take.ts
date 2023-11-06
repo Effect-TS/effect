@@ -3,7 +3,7 @@ import * as Chunk from "../Chunk.js"
 import { Effect } from "../Effect.js"
 import * as Exit from "../Exit.js"
 import { constFalse, constTrue, dual, pipe } from "../Function.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Take from "../Take.js"
 
@@ -24,7 +24,7 @@ const takeVariance = {
 /** @internal */
 export class TakeImpl<E, A> implements Take.Take<E, A> {
   readonly [TakeTypeId] = takeVariance
-  constructor(readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) {
+  constructor(readonly exit: Exit.Exit<Option<E>, Chunk.Chunk<A>>) {
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -42,7 +42,7 @@ export const dieMessage = (message: string): Take.Take<never, never> =>
   new TakeImpl(Exit.die(Cause.RuntimeException(message)))
 
 /** @internal */
-export const done = <E, A>(self: Take.Take<E, A>): Effect<never, Option.Option<E>, Chunk.Chunk<A>> =>
+export const done = <E, A>(self: Take.Take<E, A>): Effect<never, Option<E>, Chunk.Chunk<A>> =>
   Effect.suspend(() => self.exit)
 
 /** @internal */
@@ -65,7 +65,7 @@ export const fromExit = <E, A>(exit: Exit.Exit<E, A>): Take.Take<E, A> =>
 
 /** @internal */
 export const fromPull = <R, E, A>(
-  pull: Effect<R, Option.Option<E>, Chunk.Chunk<A>>
+  pull: Effect<R, Option<E>, Chunk.Chunk<A>>
 ): Effect<R, never, Take.Take<E, A>> =>
   Effect.matchCause(pull, {
     onFailure: (cause) =>
@@ -99,7 +99,7 @@ export const isSuccess = <E, A>(self: Take.Take<E, A>): boolean =>
 
 /** @internal */
 export const make = <E, A>(
-  exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
+  exit: Exit.Exit<Option<E>, Chunk.Chunk<A>>
 ): Take.Take<E, A> => new TakeImpl(exit)
 
 /** @internal */
@@ -161,7 +161,7 @@ export const matchEffect = dual<
     readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect<R3, E3, Z3>
   }
 ): Effect<R | R2 | R3, E | E2 | E3, Z | Z2 | Z3> =>
-  Exit.matchEffect<Option.Option<E>, Chunk.Chunk<A>, R | R2, E | E2, Z | Z2, R3, E3, Z3>(self.exit, {
+  Exit.matchEffect<Option<E>, Chunk.Chunk<A>, R | R2, E | E2, Z | Z2, R3, E3, Z3>(self.exit, {
     onFailure: (cause) =>
       Option.match(Cause.flipCauseOption(cause), {
         onNone: onEnd,

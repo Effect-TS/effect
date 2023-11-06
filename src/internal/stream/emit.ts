@@ -3,12 +3,12 @@ import * as Chunk from "../../Chunk.js"
 import { Effect } from "../../Effect.js"
 import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import type * as Emit from "../../StreamEmit.js"
 
 /** @internal */
 export const make = <R, E, A, B>(
-  emit: (f: Effect<R, Option.Option<E>, Chunk.Chunk<A>>) => Promise<B>
+  emit: (f: Effect<R, Option<E>, Chunk.Chunk<A>>) => Promise<B>
 ): Emit.Emit<R, E, A, B> => {
   const ops: Emit.EmitOps<R, E, A, B> = {
     chunk(this: Emit.Emit<R, E, A, B>, as: Chunk.Chunk<A>) {

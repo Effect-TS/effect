@@ -17,7 +17,7 @@ import * as stream from "./internal/stream.js"
 import type * as Layer from "./Layer.js"
 import type * as MergeDecision from "./MergeDecision.js"
 import type * as MergeStrategy from "./MergeStrategy.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type * as PubSub from "./PubSub.js"
@@ -482,13 +482,13 @@ export const concatMapWithCustom: {
  */
 export const collect: {
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutElem2, OutDone>(
-    pf: (o: OutElem) => Option.Option<OutElem2>
+    pf: (o: OutElem) => Option<OutElem2>
   ): (
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutElem2, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    pf: (o: OutElem) => Option.Option<OutElem2>
+    pf: (o: OutElem) => Option<OutElem2>
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>
 } = channel.collect
 
@@ -1098,8 +1098,8 @@ export const fromPubSubScoped: <Err, Done, Elem>(
  * @category constructors
  */
 export const fromOption: <A>(
-  option: Option.Option<A>
-) => Channel<never, unknown, unknown, unknown, Option.Option<never>, never, A> = channel.fromOption
+  option: Option<A>
+) => Channel<never, unknown, unknown, unknown, Option<never>, never, A> = channel.fromOption
 
 /**
  * Construct a `Channel` from a `Queue`.
@@ -1799,7 +1799,7 @@ export const provideService: {
  * @since 2.0.0
  * @category constructors
  */
-export const read: <In>() => Channel<never, unknown, In, unknown, Option.Option<never>, never, In> = channel.read
+export const read: <In>() => Channel<never, unknown, In, unknown, Option<never>, never, In> = channel.read
 
 /**
  * @since 2.0.0

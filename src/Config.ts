@@ -10,7 +10,7 @@ import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/config.js"
 import type * as LogLevel from "./LogLevel.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 
@@ -271,7 +271,7 @@ export const orElseIf: {
  * @since 2.0.0
  * @category utils
  */
-export const option: <A>(self: Config<A>) => Config<Option.Option<A>> = internal.option
+export const option: <A>(self: Config<A>) => Config<Option<A>> = internal.option
 
 /**
  * Constructs a new primitive config.

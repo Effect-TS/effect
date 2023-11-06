@@ -3,7 +3,7 @@ import * as Deferred from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 

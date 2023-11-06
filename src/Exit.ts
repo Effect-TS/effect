@@ -7,7 +7,7 @@ import type * as Either from "./Either.js"
 import type * as FiberId from "./FiberId.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as core from "./internal/core.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type * as Unify from "./Unify.js"
@@ -136,7 +136,7 @@ export const asUnit: <E, A>(self: Exit<E, A>) => Exit<E, void> = core.exitAsUnit
  * @since 2.0.0
  * @category getters
  */
-export const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<E>> = core.exitCauseOption
+export const causeOption: <E, A>(self: Exit<E, A>) => Option<Cause.Cause<E>> = core.exitCauseOption
 
 /**
  * Collects all of the specified exit values into a `Some<Exit<E, List<A>>>`. If
@@ -148,7 +148,7 @@ export const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<
 export const all: <E, A>(
   exits: Iterable<Exit<E, A>>,
   options?: { readonly parallel?: boolean } | undefined
-) => Option.Option<Exit<E, Array<A>>> = core.exitCollectAll
+) => Option<Exit<E, Array<A>>> = core.exitCollectAll
 
 /**
  * Constructs a new `Exit.Failure` from the specified unrecoverable defect.
@@ -239,7 +239,7 @@ export const fromEither: <E, A>(either: Either.Either<E, A>) => Exit<E, A> = cor
  * @since 2.0.0
  * @category conversions
  */
-export const fromOption: <A>(option: Option.Option<A>) => Exit<void, A> = core.exitFromOption
+export const fromOption: <A>(option: Option<A>) => Exit<void, A> = core.exitFromOption
 
 /**
  * Returns the `A` if specified exit is a `Success`, otherwise returns the

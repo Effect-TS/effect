@@ -1,6 +1,6 @@
 import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import type * as Synchronized from "../SynchronizedRef.js"
 import * as core from "./core.js"
 import * as _ref from "./ref.js"
@@ -17,11 +17,11 @@ export const getAndUpdateEffect = dual<
 /** @internal */
 export const getAndUpdateSomeEffect = dual<
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect<R, E, A>>
+    pf: (a: A) => Option<Effect<R, E, A>>
   ) => (self: Synchronized.SynchronizedRef<A>) => Effect<R, E, A>,
   <A, R, E>(
     self: Synchronized.SynchronizedRef<A>,
-    pf: (a: A) => Option.Option<Effect<R, E, A>>
+    pf: (a: A) => Option<Effect<R, E, A>>
   ) => Effect<R, E, A>
 >(2, (self, pf) =>
   self.modifyEffect((value) => {
@@ -57,12 +57,12 @@ export const modifyEffect = dual<
 export const modifySomeEffect = dual<
   <A, B, R, E>(
     fallback: B,
-    pf: (a: A) => Option.Option<Effect<R, E, readonly [B, A]>>
+    pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
   ) => (self: Synchronized.SynchronizedRef<A>) => Effect<R, E, B>,
   <A, B, R, E>(
     self: Synchronized.SynchronizedRef<A>,
     fallback: B,
-    pf: (a: A) => Option.Option<Effect<R, E, readonly [B, A]>>
+    pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
   ) => Effect<R, E, B>
 >(3, (self, fallback, pf) =>
   self.modifyEffect(
@@ -95,11 +95,11 @@ export const updateAndGetEffect = dual<
 /** @internal */
 export const updateSomeEffect = dual<
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect<R, E, A>>
+    pf: (a: A) => Option<Effect<R, E, A>>
   ) => (self: Synchronized.SynchronizedRef<A>) => Effect<R, E, void>,
   <A, R, E>(
     self: Synchronized.SynchronizedRef<A>,
-    pf: (a: A) => Option.Option<Effect<R, E, A>>
+    pf: (a: A) => Option<Effect<R, E, A>>
   ) => Effect<R, E, void>
 >(2, (self, pf) =>
   self.modifyEffect((value) => {

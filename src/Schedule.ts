@@ -9,7 +9,7 @@ import type { Effect } from "./Effect.js"
 import type * as Either from "./Either.js"
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/schedule.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type * as ScheduleDecision from "./ScheduleDecision.js"
@@ -118,7 +118,7 @@ export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<En
   state(): Effect<never, never, unknown>
   last(): Effect<never, Cause.NoSuchElementException, Out>
   reset(): Effect<never, never, void>
-  next(input: In): Effect<Env, Option.Option<never>, Out>
+  next(input: In): Effect<Env, Option<never>, Out>
 }
 
 /**
@@ -945,7 +945,7 @@ export const recurUntilEffect: <Env, A>(f: (a: A) => Effect<Env, never, boolean>
  * @since 2.0.0
  * @category utils
  */
-export const recurUntilOption: <A, B>(pf: (a: A) => Option.Option<B>) => Schedule<never, A, Option.Option<B>> =
+export const recurUntilOption: <A, B>(pf: (a: A) => Option<B>) => Schedule<never, A, Option<B>> =
   internal.recurUntilOption
 
 /**

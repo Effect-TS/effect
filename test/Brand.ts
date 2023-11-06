@@ -1,6 +1,6 @@
 import * as Brand from "effect/Brand"
 import * as Either from "effect/Either"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { assert, describe, it } from "vitest"
 
 declare const IntTypeId: unique symbol

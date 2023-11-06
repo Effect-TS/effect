@@ -1,4 +1,4 @@
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import type * as RBT from "../../RedBlackTree.js"
 import type { RedBlackTreeImpl } from "../redBlackTree.js"
 import type * as Node from "./node.js"
@@ -61,7 +61,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   /**
    * Returns the key
    */
-  get key(): Option.Option<K> {
+  get key(): Option<K> {
     if (this.stack.length > 0) {
       return Option.some(this.stack[this.stack.length - 1]!.key)
     }
@@ -71,7 +71,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   /**
    * Returns the value
    */
-  get value(): Option.Option<V> {
+  get value(): Option<V> {
     if (this.stack.length > 0) {
       return Option.some(this.stack[this.stack.length - 1]!.value)
     }
@@ -81,7 +81,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   /**
    * Returns the key
    */
-  get entry(): Option.Option<readonly [K, V]> {
+  get entry(): Option<readonly [K, V]> {
     if (this.stack.length > 0) {
       return Option.some(
         [

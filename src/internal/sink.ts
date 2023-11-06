@@ -12,7 +12,7 @@ import type { LazyArg } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
 import type * as MergeDecision from "../MergeDecision.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as PubSub from "../PubSub.js"
@@ -773,17 +773,17 @@ export const filterInputEffect = dual<
 export const findEffect = dual<
   <Z, R2, E2>(
     f: (z: Z) => Effect<R2, E2, boolean>
-  ) => <R, E, In, L extends In>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>,
+  ) => <R, E, In, L extends In>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In, L, Option<Z>>,
   <R, E, In, L extends In, Z, R2, E2>(
     self: Sink.Sink<R, E, In, L, Z>,
     f: (z: Z) => Effect<R2, E2, boolean>
-  ) => Sink.Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>
+  ) => Sink.Sink<R2 | R, E2 | E, In, L, Option<Z>>
 >(
   2,
   <R, E, In, L extends In, Z, R2, E2>(
     self: Sink.Sink<R, E, In, L, Z>,
     f: (z: Z) => Effect<R2, E2, boolean>
-  ): Sink.Sink<R | R2, E | E2, In, L, Option.Option<Z>> => {
+  ): Sink.Sink<R | R2, E | E2, In, L, Option<Z>> => {
     const newChannel = pipe(
       core.fromEffect(pipe(
         Ref.make(Chunk.empty<In>()),
@@ -796,7 +796,7 @@ export const findEffect = dual<
             onFailure: core.fail,
             onDone: (done) => pipe(core.fromEffect(Ref.set(upstreamDoneRef, true)), channel.as(done))
           })
-        const loop: Channel.Channel<R | R2, never, Chunk.Chunk<In>, unknown, E | E2, Chunk.Chunk<L>, Option.Option<Z>> =
+        const loop: Channel.Channel<R | R2, never, Chunk.Chunk<In>, unknown, E | E2, Chunk.Chunk<L>, Option<Z>> =
           channel.foldChannel(core.collectElements(toChannel(self)), {
             onFailure: core.fail,
             onSuccess: ([leftovers, doneValue]) =>
@@ -1044,7 +1044,7 @@ const foldChunkSplitEffect = <S, R, E, In>(
   chunk: Chunk.Chunk<In>,
   contFn: Predicate<S>,
   f: (s: S, input: In) => Effect<R, E, S>
-): Effect<R, E, readonly [S, Option.Option<Chunk.Chunk<In>>]> =>
+): Effect<R, E, readonly [S, Option<Chunk.Chunk<In>>]> =>
   foldChunkSplitEffectInternal(s, chunk, 0, chunk.length, contFn, f)
 
 /** @internal */
@@ -1055,7 +1055,7 @@ const foldChunkSplitEffectInternal = <S, R, E, In>(
   length: number,
   contFn: Predicate<S>,
   f: (s: S, input: In) => Effect<R, E, S>
-): Effect<R, E, readonly [S, Option.Option<Chunk.Chunk<In>>]> => {
+): Effect<R, E, readonly [S, Option<Chunk.Chunk<In>>]> => {
   if (index === length) {
     return Effect.succeed([s, Option.none()] as const)
   }
@@ -1459,14 +1459,14 @@ export const fromPush = <R, E, In, L, Z>(
   push: Effect<
     R,
     never,
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
+    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
   >
 ): Sink.Sink<Exclude<R, Scope.Scope>, E, In, L, Z> =>
   new SinkImpl(channel.unwrapScoped(pipe(push, Effect.map(fromPushPull))))
 
 const fromPushPull = <R, E, In, L, Z>(
   push: (
-    option: Option.Option<Chunk.Chunk<In>>
+    option: Option<Chunk.Chunk<In>>
   ) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
 ): Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z> =>
   core.readWith({
@@ -1511,9 +1511,9 @@ export const fromQueue = <In>(
     forEachChunk((input: Chunk.Chunk<In>) => pipe(Queue.offerAll(queue, input)))
 
 /** @internal */
-export const head = <In>(): Sink.Sink<never, never, In, In, Option.Option<In>> =>
+export const head = <In>(): Sink.Sink<never, never, In, In, Option<In>> =>
   fold(
-    Option.none() as Option.Option<In>,
+    Option.none() as Option<In>,
     Option.isNone,
     (option, input) =>
       Option.match(option, {
@@ -1527,7 +1527,7 @@ export const ignoreLeftover = <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>):
   new SinkImpl(channel.drain(toChannel(self)))
 
 /** @internal */
-export const last = <In>(): Sink.Sink<never, never, In, In, Option.Option<In>> =>
+export const last = <In>(): Sink.Sink<never, never, In, In, Option<In>> =>
   foldLeftChunks(Option.none<In>(), (s, input) => Option.orElse(Chunk.last(input), () => s))
 
 /** @internal */
@@ -1725,36 +1725,36 @@ export const raceWith = dual<
 /** @internal */
 export const refineOrDie = dual<
   <E, E2>(
-    pf: (error: E) => Option.Option<E2>
+    pf: (error: E) => Option<E2>
   ) => <R, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E2, In, L, Z>,
   <R, In, L, Z, E, E2>(
     self: Sink.Sink<R, E, In, L, Z>,
-    pf: (error: E) => Option.Option<E2>
+    pf: (error: E) => Option<E2>
   ) => Sink.Sink<R, E2, In, L, Z>
 >(
   2,
   <R, In, L, Z, E, E2>(
     self: Sink.Sink<R, E, In, L, Z>,
-    pf: (error: E) => Option.Option<E2>
+    pf: (error: E) => Option<E2>
   ): Sink.Sink<R, E2, In, L, Z> => pipe(self, refineOrDieWith(pf, identity))
 )
 
 /** @internal */
 export const refineOrDieWith = dual<
   <E, E2>(
-    pf: (error: E) => Option.Option<E2>,
+    pf: (error: E) => Option<E2>,
     f: (error: E) => unknown
   ) => <R, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R, E2, In, L, Z>,
   <R, In, L, Z, E, E2>(
     self: Sink.Sink<R, E, In, L, Z>,
-    pf: (error: E) => Option.Option<E2>,
+    pf: (error: E) => Option<E2>,
     f: (error: E) => unknown
   ) => Sink.Sink<R, E2, In, L, Z>
 >(
   3,
   <R, In, L, Z, E, E2>(
     self: Sink.Sink<R, E, In, L, Z>,
-    pf: (error: E) => Option.Option<E2>,
+    pf: (error: E) => Option<E2>,
     f: (error: E) => unknown
   ): Sink.Sink<R, E2, In, L, Z> => {
     const newChannel = pipe(

@@ -3,7 +3,7 @@
  */
 import type * as Duration from "./Duration.js"
 import * as internal from "./internal/schedule/interval.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -128,8 +128,8 @@ export const size: (self: Interval) => Duration.Duration = internal.size
  * @category utils
  */
 export const union: {
-  (that: Interval): (self: Interval) => Option.Option<Interval>
-  (self: Interval, that: Interval): Option.Option<Interval>
+  (that: Interval): (self: Interval) => Option<Interval>
+  (self: Interval, that: Interval): Option<Interval>
 } = internal.union
 
 /**

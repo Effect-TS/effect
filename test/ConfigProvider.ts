@@ -12,7 +12,7 @@ import * as Exit from "effect/Exit"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { assert, describe, expect } from "vitest"
 
 interface HostPort {

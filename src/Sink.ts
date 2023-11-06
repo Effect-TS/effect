@@ -14,7 +14,7 @@ import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/sink.js"
 import type * as MergeDecision from "./MergeDecision.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as PubSub from "./PubSub.js"
@@ -628,11 +628,11 @@ export const filterInputEffect: {
 export const findEffect: {
   <Z, R2, E2>(
     f: (z: Z) => Effect<R2, E2, boolean>
-  ): <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, Option.Option<Z>>
+  ): <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, Option<Z>>
   <R, E, In, L extends In, Z, R2, E2>(
     self: Sink<R, E, In, L, Z>,
     f: (z: Z) => Effect<R2, E2, boolean>
-  ): Sink<R | R2, E | E2, In, L, Option.Option<Z>>
+  ): Sink<R | R2, E | E2, In, L, Option<Z>>
 } = internal.findEffect as any
 
 /**
@@ -1008,7 +1008,7 @@ export const fromPush: <R, E, In, L, Z>(
   push: Effect<
     R,
     never,
-    (_: Option.Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
+    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
   >
 ) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z> = internal.fromPush
 
@@ -1030,7 +1030,7 @@ export const fromQueue: <In>(
  * @since 2.0.0
  * @category constructors
  */
-export const head: <In>() => Sink<never, never, In, In, Option.Option<In>> = internal.head
+export const head: <In>() => Sink<never, never, In, In, Option<In>> = internal.head
 
 /**
  * Drains the remaining elements from the stream after the sink finishes
@@ -1047,7 +1047,7 @@ export const ignoreLeftover: <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sin
  * @since 2.0.0
  * @category constructors
  */
-export const last: <In>() => Sink<never, never, In, In, Option.Option<In>> = internal.last
+export const last: <In>() => Sink<never, never, In, In, Option<In>> = internal.last
 
 /**
  * Creates a sink that does not consume any input but provides the given chunk
@@ -1219,8 +1219,8 @@ export const raceWith: {
  * @category error handling
  */
 export const refineOrDie: {
-  <E, E2>(pf: (error: E) => Option.Option<E2>): <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z>
-  <R, In, L, Z, E, E2>(self: Sink<R, E, In, L, Z>, pf: (error: E) => Option.Option<E2>): Sink<R, E2, In, L, Z>
+  <E, E2>(pf: (error: E) => Option<E2>): <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z>
+  <R, In, L, Z, E, E2>(self: Sink<R, E, In, L, Z>, pf: (error: E) => Option<E2>): Sink<R, E2, In, L, Z>
 } = internal.refineOrDie
 
 /**
@@ -1228,7 +1228,7 @@ export const refineOrDie: {
  * @category error handling
  */
 export const refineOrDieWith: <E, E2>(
-  pf: (error: E) => Option.Option<E2>,
+  pf: (error: E) => Option<E2>,
   f: (error: E) => unknown
 ) => <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z> = internal.refineOrDieWith
 

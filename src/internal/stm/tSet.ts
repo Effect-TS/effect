@@ -1,6 +1,6 @@
 import { dual, pipe } from "../../Function.js"
 import * as HashSet from "../../HashSet.js"
-import type * as Option from "../../Option.js"
+import type { Option } from "../../Option.js"
 import type { Predicate } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
 import type * as STM from "../../STM.js"
@@ -164,30 +164,30 @@ export const size = <A>(self: TSet.TSet<A>): STM.STM<never, never, number> =>
 
 /** @internal */
 export const takeFirst = dual<
-  <A, B>(pf: (a: A) => Option.Option<B>) => (self: TSet.TSet<A>) => STM.STM<never, never, B>,
-  <A, B>(self: TSet.TSet<A>, pf: (a: A) => Option.Option<B>) => STM.STM<never, never, B>
+  <A, B>(pf: (a: A) => Option<B>) => (self: TSet.TSet<A>) => STM.STM<never, never, B>,
+  <A, B>(self: TSet.TSet<A>, pf: (a: A) => Option<B>) => STM.STM<never, never, B>
 >(2, (self, pf) => tMap.takeFirst(self.tMap, (key) => pf(key)))
 
 /** @internal */
 export const takeFirstSTM = dual<
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>) => (self: TSet.TSet<A>) => STM.STM<R, E, B>,
-  <A, R, E, B>(self: TSet.TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>) => STM.STM<R, E, B>
+  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option<E>, B>) => (self: TSet.TSet<A>) => STM.STM<R, E, B>,
+  <A, R, E, B>(self: TSet.TSet<A>, pf: (a: A) => STM.STM<R, Option<E>, B>) => STM.STM<R, E, B>
 >(2, (self, pf) => tMap.takeFirstSTM(self.tMap, (key) => pf(key)))
 
 /** @internal */
 export const takeSome = dual<
-  <A, B>(pf: (a: A) => Option.Option<B>) => (self: TSet.TSet<A>) => STM.STM<never, never, RA.NonEmptyArray<B>>,
-  <A, B>(self: TSet.TSet<A>, pf: (a: A) => Option.Option<B>) => STM.STM<never, never, RA.NonEmptyArray<B>>
+  <A, B>(pf: (a: A) => Option<B>) => (self: TSet.TSet<A>) => STM.STM<never, never, RA.NonEmptyArray<B>>,
+  <A, B>(self: TSet.TSet<A>, pf: (a: A) => Option<B>) => STM.STM<never, never, RA.NonEmptyArray<B>>
 >(2, (self, pf) => tMap.takeSome(self.tMap, (key) => pf(key)))
 
 /** @internal */
 export const takeSomeSTM = dual<
   <A, R, E, B>(
-    pf: (a: A) => STM.STM<R, Option.Option<E>, B>
+    pf: (a: A) => STM.STM<R, Option<E>, B>
   ) => (self: TSet.TSet<A>) => STM.STM<R, E, RA.NonEmptyArray<B>>,
   <A, R, E, B>(
     self: TSet.TSet<A>,
-    pf: (a: A) => STM.STM<R, Option.Option<E>, B>
+    pf: (a: A) => STM.STM<R, Option<E>, B>
   ) => STM.STM<R, E, RA.NonEmptyArray<B>>
 >(2, (self, pf) => tMap.takeSomeSTM(self.tMap, (key) => pf(key)))
 

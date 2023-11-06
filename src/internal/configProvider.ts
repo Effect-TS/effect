@@ -10,7 +10,7 @@ import { dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
 import * as number from "../Number.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as RA from "../ReadonlyArray.js"
 import * as _config from "./config.js"
@@ -630,7 +630,7 @@ const indicesFrom = (quotedIndices: HashSet.HashSet<string>): Effect<never, neve
 const STR_INDEX_REGEX = /(^.+)(\[(\d+)\])$/
 const QUOTED_INDEX_REGEX = /^(\[(\d+)\])$/
 
-const parseQuotedIndex = (str: string): Option.Option<number> => {
+const parseQuotedIndex = (str: string): Option<number> => {
   const match = str.match(QUOTED_INDEX_REGEX)
   if (match !== null) {
     const matchedIndex = match[2]
@@ -665,7 +665,7 @@ const splitIndexInKeys = (
   return newMap
 }
 
-const splitIndexFrom = (key: string): Option.Option<readonly [string, number]> => {
+const splitIndexFrom = (key: string): Option<readonly [string, number]> => {
   const match = key.match(STR_INDEX_REGEX)
   if (match !== null) {
     const matchedString = match[1]
@@ -684,7 +684,7 @@ const splitIndexFrom = (key: string): Option.Option<readonly [string, number]> =
   return Option.none()
 }
 
-const parseInteger = (str: string): Option.Option<number> => {
+const parseInteger = (str: string): Option<number> => {
   const parsedIndex = Number.parseInt(str)
   return Number.isNaN(parsedIndex) ?
     Option.none() :

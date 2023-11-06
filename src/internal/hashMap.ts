@@ -4,7 +4,7 @@ import { identity, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import type * as HM from "../HashMap.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import { fromBitmap, hashFragment, toBitmap } from "./hashMap/bitwise.js"
@@ -105,7 +105,7 @@ const makeImpl = <K, V>(
 }
 
 class HashMapIterator<K, V, T> implements IterableIterator<T> {
-  v: Option.Option<VisitResult<K, V, T>>
+  v: Option<VisitResult<K, V, T>>
 
   constructor(readonly map: HashMapImpl<K, V>, readonly f: TraversalFn<K, V, T>) {
     this.v = visitLazy(this.map._root, this.f, undefined)
@@ -125,7 +125,7 @@ class HashMapIterator<K, V, T> implements IterableIterator<T> {
   }
 }
 
-const applyCont = <K, V, A>(cont: Cont<K, V, A>): Option.Option<VisitResult<K, V, A>> =>
+const applyCont = <K, V, A>(cont: Cont<K, V, A>): Option<VisitResult<K, V, A>> =>
   cont
     ? visitLazyChildren(cont[0], cont[1], cont[2], cont[3], cont[4])
     : Option.none()
@@ -134,7 +134,7 @@ const visitLazy = <K, V, A>(
   node: Node.Node<K, V>,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A> = undefined
-): Option.Option<VisitResult<K, V, A>> => {
+): Option<VisitResult<K, V, A>> => {
   switch (node._tag) {
     case "LeafNode": {
       if (Option.isSome(node.value)) {
@@ -163,7 +163,7 @@ const visitLazyChildren = <K, V, A>(
   i: number,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A>
-): Option.Option<VisitResult<K, V, A>> => {
+): Option<VisitResult<K, V, A>> => {
   while (i < len) {
     const child = children[i++]
     if (child && !Node.isEmptyNode(child)) {
@@ -207,14 +207,14 @@ export const isEmpty = <K, V>(self: HM.HashMap<K, V>): boolean =>
 
 /** @internal */
 export const get = Dual.dual<
-  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => Option.Option<V>,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => Option.Option<V>
+  <K1>(key: K1) => <K, V>(self: HM.HashMap<K, V>) => Option<V>,
+  <K, V, K1>(self: HM.HashMap<K, V>, key: K1) => Option<V>
 >(2, (self, key) => getHash(self, key, Hash.hash(key)))
 
 /** @internal */
 export const getHash = Dual.dual<
-  <K1>(key: K1, hash: number) => <K, V>(self: HM.HashMap<K, V>) => Option.Option<V>,
-  <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => Option.Option<V>
+  <K1>(key: K1, hash: number) => <K, V>(self: HM.HashMap<K, V>) => Option<V>,
+  <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => Option<V>
 >(3, <K, V, K1>(self: HM.HashMap<K, V>, key: K1, hash: number) => {
   let node = (self as HashMapImpl<K, V>)._root
   let shift = 0
@@ -502,14 +502,14 @@ export const filter = Dual.dual<
   }))
 
 /** @internal */
-export const compact = <K, A>(self: HM.HashMap<K, Option.Option<A>>) => filterMap(self, identity)
+export const compact = <K, A>(self: HM.HashMap<K, Option<A>>) => filterMap(self, identity)
 
 /** @internal */
 export const filterMap = Dual.dual<
   <A, K, B>(
-    f: (value: A, key: K) => Option.Option<B>
+    f: (value: A, key: K) => Option<B>
   ) => (self: HM.HashMap<K, A>) => HM.HashMap<K, B>,
-  <K, A, B>(self: HM.HashMap<K, A>, f: (value: A, key: K) => Option.Option<B>) => HM.HashMap<K, B>
+  <K, A, B>(self: HM.HashMap<K, A>, f: (value: A, key: K) => Option<B>) => HM.HashMap<K, B>
 >(2, (self, f) =>
   mutate(empty(), (map) => {
     for (const [k, a] of self) {
@@ -522,11 +522,11 @@ export const filterMap = Dual.dual<
 
 /** @internal */
 export const findFirst: {
-  <K, A>(predicate: (k: K, a: A) => boolean): (self: HM.HashMap<K, A>) => Option.Option<[K, A]>
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]>
+  <K, A>(predicate: (k: K, a: A) => boolean): (self: HM.HashMap<K, A>) => Option<[K, A]>
+  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option<[K, A]>
 } = Dual.dual(
   2,
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]> => {
+  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option<[K, A]> => {
     for (const ka of self) {
       if (predicate(ka[0], ka[1])) {
         return Option.some(ka)

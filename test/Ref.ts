@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
@@ -139,7 +139,7 @@ describe.concurrent("Ref", () => {
         Ref.updateSomeAndGet(ref, (state) => isActive(state) ? Option.some(Changed) : Option.none())
       )
       const result2 = yield* $(
-        Ref.updateSomeAndGet(ref, (state): Option.Option<State> => {
+        Ref.updateSomeAndGet(ref, (state): Option<State> => {
           return isActive(state) ?
             Option.some(Changed) :
             isChanged(state) ?

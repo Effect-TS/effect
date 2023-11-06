@@ -29,7 +29,7 @@ import type * as HashSet from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/cause.js"
 import { originalInstance } from "./internal/core.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 
@@ -499,7 +499,7 @@ export const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberI
  * @since 2.0.0
  * @category getters
  */
-export const failureOption: <E>(self: Cause<E>) => Option.Option<E> = internal.failureOption
+export const failureOption: <E>(self: Cause<E>) => Option<E> = internal.failureOption
 
 /**
  * Returns the first checked error on the `Left` if available, if there are
@@ -518,7 +518,7 @@ export const failureOrCause: <E>(self: Cause<E>) => Either.Either<E, Cause<never
  * @since 2.0.0
  * @category getters
  */
-export const flipCauseOption: <E>(self: Cause<Option.Option<E>>) => Option.Option<Cause<E>> = internal.flipCauseOption
+export const flipCauseOption: <E>(self: Cause<Option<E>>) => Option<Cause<E>> = internal.flipCauseOption
 
 /**
  * Returns the defect associated with the first `Die` in this `Cause`, if one
@@ -527,7 +527,7 @@ export const flipCauseOption: <E>(self: Cause<Option.Option<E>>) => Option.Optio
  * @since 2.0.0
  * @category getters
  */
-export const dieOption: <E>(self: Cause<E>) => Option.Option<unknown> = internal.dieOption
+export const dieOption: <E>(self: Cause<E>) => Option<unknown> = internal.dieOption
 
 /**
  * Returns the `FiberId` associated with the first `Interrupt` in the specified
@@ -536,7 +536,7 @@ export const dieOption: <E>(self: Cause<E>) => Option.Option<unknown> = internal
  * @since 2.0.0
  * @category getters
  */
-export const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.FiberId> = internal.interruptOption
+export const interruptOption: <E>(self: Cause<E>) => Option<FiberId.FiberId> = internal.interruptOption
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from the specified cause, and return
@@ -545,7 +545,7 @@ export const interruptOption: <E>(self: Cause<E>) => Option.Option<FiberId.Fiber
  * @since 2.0.0
  * @category getters
  */
-export const keepDefects: <E>(self: Cause<E>) => Option.Option<Cause<never>> = internal.keepDefects
+export const keepDefects: <E>(self: Cause<E>) => Option<Cause<never>> = internal.keepDefects
 
 /**
  * Linearizes the specified cause into a `HashSet` of parallel causes where each
@@ -574,8 +574,8 @@ export const stripFailures: <E>(self: Cause<E>) => Cause<never> = internal.strip
  * @category getters
  */
 export const stripSomeDefects: {
-  (pf: (defect: unknown) => Option.Option<unknown>): <E>(self: Cause<E>) => Option.Option<Cause<E>>
-  <E>(self: Cause<E>, pf: (defect: unknown) => Option.Option<unknown>): Option.Option<Cause<E>>
+  (pf: (defect: unknown) => Option<unknown>): <E>(self: Cause<E>) => Option<Cause<E>>
+  <E>(self: Cause<E>, pf: (defect: unknown) => Option<unknown>): Option<Cause<E>>
 } = internal.stripSomeDefects
 
 /**
@@ -653,8 +653,8 @@ export const squashWith: {
  * @category elements
  */
 export const find: {
-  <E, Z>(pf: (cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Option.Option<Z>
-  <E, Z>(self: Cause<E>, pf: (cause: Cause<E>) => Option.Option<Z>): Option.Option<Z>
+  <E, Z>(pf: (cause: Cause<E>) => Option<Z>): (self: Cause<E>) => Option<Z>
+  <E, Z>(self: Cause<E>, pf: (cause: Cause<E>) => Option<Z>): Option<Z>
 } = internal.find
 
 /**
@@ -706,8 +706,8 @@ export const match: {
  * @category folding
  */
 export const reduce: {
-  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Z
-  <Z, E>(self: Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): Z
+  <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option<Z>): (self: Cause<E>) => Z
+  <Z, E>(self: Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option<Z>): Z
 } = internal.reduce
 
 /**

@@ -7,7 +7,7 @@ import { Effect } from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { constant, constTrue, identity } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import { assert, describe } from "vitest"
 

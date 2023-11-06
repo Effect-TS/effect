@@ -3,7 +3,7 @@
  */
 import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/stm/tSet.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Predicate } from "./Predicate.js"
 import type * as STM from "./STM.js"
 import type * as TMap from "./TMap.js"
@@ -245,8 +245,8 @@ export const size: <A>(self: TSet<A>) => STM.STM<never, never, number> = interna
  * @category mutations
  */
 export const takeFirst: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, B>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, B>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM.STM<never, never, B>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM.STM<never, never, B>
 } = internal.takeFirst
 
 /**
@@ -256,8 +256,8 @@ export const takeFirst: {
  * @category mutations
  */
 export const takeFirstSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, B>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, B>
+  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, B>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option<E>, B>): STM.STM<R, E, B>
 } = internal.takeFirstSTM
 
 /**
@@ -267,8 +267,8 @@ export const takeFirstSTM: {
  * @category mutations
  */
 export const takeSome: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, [B, ...Array<B>]>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, [B, ...Array<B>]>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM.STM<never, never, [B, ...Array<B>]>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM.STM<never, never, [B, ...Array<B>]>
 } = internal.takeSome
 
 /**
@@ -278,8 +278,8 @@ export const takeSome: {
  * @category mutations
  */
 export const takeSomeSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, [B, ...Array<B>]>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, [B, ...Array<B>]>
+  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, [B, ...Array<B>]>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option<E>, B>): STM.STM<R, E, [B, ...Array<B>]>
 } = internal.takeSomeSTM
 
 /**

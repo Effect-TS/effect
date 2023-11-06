@@ -1,13 +1,13 @@
 import type * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
 import { Effect } from "../../Effect.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import * as Queue from "../../Queue.js"
 import type * as Take from "../../Take.js"
 import * as take from "../take.js"
 
 /** @internal */
-export interface Pull<R, E, A> extends Effect<R, Option.Option<E>, Chunk.Chunk<A>> {}
+export interface Pull<R, E, A> extends Effect<R, Option<E>, Chunk.Chunk<A>> {}
 
 /** @internal */
 export const emit = <A>(value: A): Effect<never, never, Chunk.Chunk<A>> => Effect.succeed(Chunk.of(value))
@@ -19,16 +19,16 @@ export const emitChunk = <A>(chunk: Chunk.Chunk<A>): Effect<never, never, Chunk.
 export const empty = <A>(): Effect<never, never, Chunk.Chunk<A>> => Effect.succeed(Chunk.empty<A>())
 
 /** @internal */
-export const end = (): Effect<never, Option.Option<never>, never> => Effect.fail(Option.none())
+export const end = (): Effect<never, Option<never>, never> => Effect.fail(Option.none())
 
 /** @internal */
-export const fail = <E>(error: E): Effect<never, Option.Option<E>, never> => Effect.fail(Option.some(error))
+export const fail = <E>(error: E): Effect<never, Option<E>, never> => Effect.fail(Option.some(error))
 
 /** @internal */
-export const failCause = <E>(cause: Cause.Cause<E>): Effect<never, Option.Option<E>, never> =>
+export const failCause = <E>(cause: Cause.Cause<E>): Effect<never, Option<E>, never> =>
   Effect.mapError(Effect.failCause(cause), Option.some)
 
 /** @internal */
 export const fromDequeue = <E, A>(
   dequeue: Queue.Dequeue<Take.Take<E, A>>
-): Effect<never, Option.Option<E>, Chunk.Chunk<A>> => Effect.flatMap(Queue.take(dequeue), take.done)
+): Effect<never, Option<E>, Chunk.Chunk<A>> => Effect.flatMap(Queue.take(dequeue), take.done)

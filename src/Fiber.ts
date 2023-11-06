@@ -14,7 +14,7 @@ import * as core from "./internal/core.js"
 import * as circular from "./internal/effect/circular.js"
 import * as internal from "./internal/fiber.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
@@ -83,7 +83,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect<never, never, Option.Option<Exit.Exit<E, A>>>
+  poll(): Effect<never, never, Option<Exit.Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -338,7 +338,7 @@ export const fromEffect: <E, A>(effect: Effect<never, E, A>) => Effect<never, ne
  * @since 2.0.0
  * @category utilities
  */
-export const getCurrentFiber: () => Option.Option<RuntimeFiber<any, any>> = internal.getCurrentFiber
+export const getCurrentFiber: () => Option<RuntimeFiber<any, any>> = internal.getCurrentFiber
 
 /**
  * Inherits values from all `FiberRef` instances into current fiber. This
@@ -536,7 +536,7 @@ export const orElseEither: {
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option.Option<Exit.Exit<E, A>>> = internal.poll
+export const poll: <E, A>(self: Fiber<E, A>) => Effect<never, never, Option<Exit.Exit<E, A>>> = internal.poll
 
 /**
  * Pretty-prints a `RuntimeFiber`.

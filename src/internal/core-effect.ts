@@ -19,7 +19,7 @@ import * as LogLevel from "../LogLevel.js"
 import * as LogSpan from "../LogSpan.js"
 import type * as Metric from "../Metric.js"
 import type * as MetricLabel from "../MetricLabel.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import * as Predicate from "../Predicate.js"
 import type * as Random from "../Random.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
@@ -66,15 +66,14 @@ export const annotateLogs = dual<
 )
 
 /* @internal */
-export const asSome = <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Option.Option<A>> => core.map(self, Option.some)
+export const asSome = <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Option<A>> => core.map(self, Option.some)
 
 /* @internal */
-export const asSomeError = <R, E, A>(self: Effect<R, E, A>): Effect<R, Option.Option<E>, A> =>
-  core.mapError(self, Option.some)
+export const asSomeError = <R, E, A>(self: Effect<R, E, A>): Effect<R, Option<E>, A> => core.mapError(self, Option.some)
 
 /* @internal */
 export const asyncOption = <R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Option.Option<Effect<R, E, A>>,
+  register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect<R, E, A> =>
   core.asyncEither<R, E, A>(
@@ -177,17 +176,17 @@ export const catchAllDefect = dual<
 /* @internal */
 export const catchSomeCause = dual<
   <E, R2, E2, A2>(
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
   ) => <R, A>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A | A2>,
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
   ) => Effect<R | R2, E | E2, A | A2>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
   ) =>
     core.matchCauseEffect(self, {
       onFailure: (cause): Effect<R2, E | E2, A2> => {
@@ -208,15 +207,15 @@ export const catchSomeCause = dual<
 /* @internal */
 export const catchSomeDefect = dual<
   <R2, E2, A2>(
-    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+    pf: (defect: unknown) => Option<Effect<R2, E2, A2>>
   ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A | A2>,
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+    pf: (defect: unknown) => Option<Effect<R2, E2, A2>>
   ) => Effect<R | R2, E | E2, A | A2>
 >(
   2,
-  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, pf: (_: unknown) => Option.Option<Effect<R2, E2, A2>>) =>
+  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, pf: (_: unknown) => Option<Effect<R2, E2, A2>>) =>
     core.catchAllCause(
       self,
       core.unified((cause) => {
@@ -516,11 +515,11 @@ export const eventually = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, A> 
 /* @internal */
 export const filterMap = dual<
   <A, B>(
-    pf: (a: A) => Option.Option<B>
+    pf: (a: A) => Option<B>
   ) => <R, E>(elements: Iterable<Effect<R, E, A>>) => Effect<R, E, Array<B>>,
   <R, E, A, B>(
     elements: Iterable<Effect<R, E, A>>,
-    pf: (a: A) => Option.Option<B>
+    pf: (a: A) => Option<B>
   ) => Effect<R, E, Array<B>>
 >(2, (elements, pf) =>
   core.map(
@@ -656,11 +655,11 @@ export const filterOrFail = dual<
 export const findFirst = dual<
   <A, R, E>(
     f: (a: A, i: number) => Effect<R, E, boolean>
-  ) => (elements: Iterable<A>) => Effect<R, E, Option.Option<A>>,
+  ) => (elements: Iterable<A>) => Effect<R, E, Option<A>>,
   <A, R, E>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, boolean>
-  ) => Effect<R, E, Option.Option<A>>
+  ) => Effect<R, E, Option<A>>
 >(2, (elements, f) =>
   core.suspend(() => {
     const iterator = elements[Symbol.iterator]()
@@ -676,7 +675,7 @@ const findLoop = <A, R, E>(
   index: number,
   f: (a: A, i: number) => Effect<R, E, boolean>,
   value: A
-): Effect<R, E, Option.Option<A>> =>
+): Effect<R, E, Option<A>> =>
   core.flatMap(f(value, index), (result) => {
     if (result) {
       return core.succeed(Option.some(value))
@@ -813,7 +812,7 @@ export const fiberRefs: Effect<never, never, FiberRefs.FiberRefs> = core.withFib
 /* @internal */
 export const head = <R, E, A>(
   self: Effect<R, E, Iterable<A>>
-): Effect<R, Option.Option<E>, A> =>
+): Effect<R, Option<E>, A> =>
   core.matchEffect(self, {
     onFailure: (e) => core.fail(Option.some(e)),
     onSuccess: (as) => {
@@ -1102,8 +1101,8 @@ export const negate = <R, E>(self: Effect<R, E, boolean>): Effect<R, E, boolean>
 
 /* @internal */
 export const none = <R, E, A>(
-  self: Effect<R, E, Option.Option<A>>
-): Effect<R, Option.Option<E>, void> =>
+  self: Effect<R, E, Option<A>>
+): Effect<R, Option<E>, void> =>
   core.matchEffect(self, {
     onFailure: (e) => core.fail(Option.some(e)),
     onSuccess: (option) => {
@@ -1128,7 +1127,7 @@ export const once = <R, E, A>(
   )
 
 /* @internal */
-export const option = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Option.Option<A>> =>
+export const option = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Option<A>> =>
   core.matchEffect(self, {
     onFailure: () => core.succeed(Option.none()),
     onSuccess: (a) => core.succeed(Option.some(a))
@@ -1343,10 +1342,10 @@ export const setFiberRefs = (fiberRefs: FiberRefs.FiberRefs): Effect<never, neve
 export const sleep: (duration: Duration.DurationInput) => Effect<never, never, void> = Clock.sleep
 
 /* @internal */
-export const succeedNone: Effect<never, never, Option.Option<never>> = core.succeed(Option.none())
+export const succeedNone: Effect<never, never, Option<never>> = core.succeed(Option.none())
 
 /* @internal */
-export const succeedSome = <A>(value: A): Effect<never, never, Option.Option<A>> => core.succeed(Option.some(value))
+export const succeedSome = <A>(value: A): Effect<never, never, Option<A>> => core.succeed(Option.some(value))
 
 /* @internal */
 export const summarized = dual<
@@ -1722,8 +1721,8 @@ export const tryMapPromise = dual<
 
 /* @internal */
 export const unless = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>,
+  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect<R, E, Option<A>>
 >(2, (self, predicate) =>
   core.suspend(() =>
     predicate()
@@ -1735,11 +1734,11 @@ export const unless = dual<
 export const unlessEffect = dual<
   <R2, E2>(
     predicate: Effect<R2, E2, boolean>
-  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, Option.Option<A>>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, Option<A>>,
   <R, E, A, R2, E2>(
     self: Effect<R, E, A>,
     predicate: Effect<R2, E2, boolean>
-  ) => Effect<R | R2, E | E2, Option.Option<A>>
+  ) => Effect<R | R2, E | E2, Option<A>>
 >(2, (self, predicate) => core.flatMap(predicate, (b) => (b ? succeedNone : asSome(self))))
 
 /* @internal */
@@ -1779,8 +1778,8 @@ export const updateService = dual<
 
 /* @internal */
 export const when = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>,
+  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>) => Effect<R, E, Option<A>>
 >(2, (self, predicate) =>
   core.suspend(() =>
     predicate()
@@ -1793,19 +1792,19 @@ export const whenFiberRef = dual<
   <S>(
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate.Predicate<S>
-  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option.Option<A>]>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option<A>]>,
   <R, E, A, S>(
     self: Effect<R, E, A>,
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate.Predicate<S>
-  ) => Effect<R, E, readonly [S, Option.Option<A>]>
+  ) => Effect<R, E, readonly [S, Option<A>]>
 >(
   3,
   <R, E, A, S>(self: Effect<R, E, A>, fiberRef: FiberRef.FiberRef<S>, predicate: Predicate.Predicate<S>) =>
     core.flatMap(core.fiberRefGet(fiberRef), (s) =>
       predicate(s)
         ? core.map(self, (a) => [s, Option.some(a)] as const)
-        : core.succeed<[S, Option.Option<A>]>([s, Option.none()]))
+        : core.succeed<[S, Option<A>]>([s, Option.none()]))
 )
 
 /* @internal */
@@ -1813,19 +1812,19 @@ export const whenRef = dual<
   <S>(
     ref: Ref.Ref<S>,
     predicate: Predicate.Predicate<S>
-  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option.Option<A>]>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option<A>]>,
   <R, E, A, S>(
     self: Effect<R, E, A>,
     ref: Ref.Ref<S>,
     predicate: Predicate.Predicate<S>
-  ) => Effect<R, E, readonly [S, Option.Option<A>]>
+  ) => Effect<R, E, readonly [S, Option<A>]>
 >(
   3,
   <R, E, A, S>(self: Effect<R, E, A>, ref: Ref.Ref<S>, predicate: Predicate.Predicate<S>) =>
     core.flatMap(Ref.get(ref), (s) =>
       predicate(s)
         ? core.map(self, (a) => [s, Option.some(a)] as const)
-        : core.succeed<[S, Option.Option<A>]>([s, Option.none()]))
+        : core.succeed<[S, Option<A>]>([s, Option.none()]))
 )
 
 /* @internal */
@@ -1957,12 +1956,12 @@ export const annotateSpans = dual<
 )
 
 /** @internal */
-export const currentParentSpan: Effect<never, never, Option.Option<Tracer.ParentSpan>> = serviceOption(
+export const currentParentSpan: Effect<never, never, Option<Tracer.ParentSpan>> = serviceOption(
   internalTracer.spanTag
 )
 
 /** @internal */
-export const currentSpan: Effect<never, never, Option.Option<Tracer.Span>> = core.map(
+export const currentSpan: Effect<never, never, Option<Tracer.Span>> = core.map(
   core.context<never>(),
   (context) => {
     const span = context.unsafeMap.get(internalTracer.spanTag) as Tracer.ParentSpan | undefined
@@ -2143,7 +2142,7 @@ export const fromNullable = <A>(value: A): Effect<never, Cause.NoSuchElementExce
 /* @internal */
 export const optionFromOptional = <R, E, A>(
   self: Effect<R, E, A>
-): Effect<R, Exclude<E, Cause.NoSuchElementException>, Option.Option<A>> =>
+): Effect<R, Exclude<E, Cause.NoSuchElementException>, Option<A>> =>
   core.catchAll(
     core.map(self, Option.some),
     (error) =>

@@ -7,7 +7,7 @@ import * as Hash from "../Hash.js"
 import * as HashMap from "../HashMap.js"
 import type * as KeyedPool from "../KeyedPool.js"
 import * as MutableRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Pool from "../Pool.js"
 import * as Predicate from "../Predicate.js"
@@ -92,7 +92,7 @@ const makeImpl = <K, R, E, A>(
   get: (key: K) => Effect<R, E, A>,
   min: (key: K) => number,
   max: (key: K) => number,
-  timeToLive: (key: K) => Option.Option<Duration.Duration>
+  timeToLive: (key: K) => Option<Duration.Duration>
 ): Effect<R | Scope.Scope, never, KeyedPool.KeyedPool<K, E, A>> =>
   pipe(
     fiberRuntime.all([

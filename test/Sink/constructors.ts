@@ -8,7 +8,7 @@ import { pipe } from "effect/Function"
 import * as internalQueue from "effect/internal/queue"
 import type * as MutableQueue from "effect/MutableQueue"
 import type * as MutableRef from "effect/MutableRef"
-import type * as Option from "effect/Option"
+import type { Option } from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
@@ -129,7 +129,7 @@ class QueueSpy<A> implements Queue.Queue<A> {
     return Queue.size(this.backingQueue)
   }
 
-  unsafeSize(): Option.Option<number> {
+  unsafeSize(): Option<number> {
     return this.backingQueue.unsafeSize()
   }
 
@@ -179,7 +179,7 @@ class QueueSpy<A> implements Queue.Queue<A> {
     return Queue.takeN(this.backingQueue, n)
   }
 
-  poll(): Effect<never, never, Option.Option<A>> {
+  poll(): Effect<never, never, Option<A>> {
     return Queue.poll(this.backingQueue)
   }
 }

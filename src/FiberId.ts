@@ -5,7 +5,7 @@ import type * as Equal from "./Equal.js"
 import type * as HashSet from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/fiberId.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -168,7 +168,7 @@ export const threadName: (self: FiberId) => string = internal.threadName
  * @since 2.0.0
  * @category destructors
  */
-export const toOption: (self: FiberId) => Option.Option<FiberId> = internal.toOption
+export const toOption: (self: FiberId) => Option<FiberId> = internal.toOption
 
 /**
  * Convert a `FiberId` into a `HashSet<FiberId>`.

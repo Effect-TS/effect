@@ -6,7 +6,7 @@ import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
 import * as HashMap from "effect/HashMap"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Queue from "effect/Queue"
 import { assert, describe, expect } from "vitest"
 

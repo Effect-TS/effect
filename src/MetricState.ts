@@ -6,7 +6,7 @@ import type * as Equal from "./Equal.js"
 import type * as HashMap from "./HashMap.js"
 import * as internal from "./internal/metric/state.js"
 import type * as MetricKeyType from "./MetricKeyType.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -148,7 +148,7 @@ export declare namespace MetricState {
   export interface Summary extends MetricState<MetricKeyType.MetricKeyType.Summary> {
     readonly [SummaryStateTypeId]: SummaryStateTypeId
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -211,7 +211,7 @@ export const histogram: (
 export const summary: (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number

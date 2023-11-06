@@ -6,7 +6,7 @@ import type * as FiberId from "./FiberId.js"
 import type * as FiberRef from "./FiberRef.js"
 import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/fiberRefs.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Arr from "./ReadonlyArray.js"
 
@@ -80,8 +80,8 @@ export const forkAs: {
  * @category getters
  */
 export const get: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => Option.Option<A>
-  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): Option.Option<A>
+  <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => Option<A>
+  <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): Option<A>
 } = internal.get
 
 /**

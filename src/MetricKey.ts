@@ -9,7 +9,7 @@ import * as internal from "./internal/metric/key.js"
 import type * as MetricBoundaries from "./MetricBoundaries.js"
 import type * as MetricKeyType from "./MetricKeyType.js"
 import type * as MetricLabel from "./MetricLabel.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -39,7 +39,7 @@ export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
 {
   readonly name: string
   readonly keyType: Type
-  readonly description: Option.Option<string>
+  readonly description: Option<string>
   readonly tags: HashSet.HashSet<MetricLabel.MetricLabel>
 }
 

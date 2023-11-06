@@ -11,7 +11,7 @@ import type {
   ValueMatcher,
   When
 } from "../Match.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Predicate from "../Predicate.js"
 import type { Unify } from "../Unify.js"
@@ -549,8 +549,8 @@ export const either: <I, F, R, A, Pr>(
 /** @internal */
 export const option: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>>
-  : Option.Option<Unify<A>> = (<I, A>(self: Matcher<I, any, any, A, I>) => {
+) => [Pr] extends [never] ? (input: I) => Option<Unify<A>>
+  : Option<Unify<A>> = (<I, A>(self: Matcher<I, any, any, A, I>) => {
     const toEither = either(self)
     if (Either.isEither(toEither)) {
       return Either.match(toEither, {
@@ -558,7 +558,7 @@ export const option: <I, F, R, A, Pr>(
         onRight: Option.some
       })
     }
-    return (input: I): Option.Option<A> =>
+    return (input: I): Option<A> =>
       Either.match((toEither as any)(input), {
         onLeft: () => Option.none(),
         onRight: Option.some as any

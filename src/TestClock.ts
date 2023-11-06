@@ -26,7 +26,7 @@ import * as SuspendedWarningData from "./internal/testing/suspendedWarningData.j
 import * as WarningData from "./internal/testing/warningData.js"
 import type * as Layer from "./Layer.js"
 import * as number from "./Number.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import * as Order from "./Order.js"
 import type * as Ref from "./Ref.js"
 import type * as SortedSet from "./SortedSet.js"
@@ -51,7 +51,7 @@ import * as Live from "./TestLive.js"
  * import { Effect } from "effect/Effect"
  * import * as Fiber from "effect/Fiber"
  * import * as TestClock from "effect/TestClock"
- * import * as Option from "effect/Option"
+ * import { Option } from "effect/Option"
  *
  * Effect.gen(function*() {
  *   const fiber = yield* pipe(

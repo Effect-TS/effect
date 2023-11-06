@@ -8,7 +8,7 @@ import * as List from "../List.js"
 import type * as Logger from "../Logger.js"
 import type * as LogLevel from "../LogLevel.js"
 import * as LogSpan from "../LogSpan.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Cause from "./cause.js"
 import * as _fiberId from "./fiberId.js"
@@ -67,11 +67,11 @@ export const mapInput = dual<
 export const filterLogLevel = dual<
   (
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ) => <Message, Output>(self: Logger.Logger<Message, Output>) => Logger.Logger<Message, Option.Option<Output>>,
+  ) => <Message, Output>(self: Logger.Logger<Message, Output>) => Logger.Logger<Message, Option<Output>>,
   <Message, Output>(
     self: Logger.Logger<Message, Output>,
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ) => Logger.Logger<Message, Option.Option<Output>>
+  ) => Logger.Logger<Message, Option<Output>>
 >(2, (self, f) =>
   makeLogger((options) =>
     f(options.logLevel)

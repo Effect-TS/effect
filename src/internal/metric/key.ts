@@ -8,7 +8,7 @@ import type * as MetricBoundaries from "../../MetricBoundaries.js"
 import type * as MetricKey from "../../MetricKey.js"
 import type * as MetricKeyType from "../../MetricKeyType.js"
 import type * as MetricLabel from "../../MetricLabel.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
 import * as metricKeyType from "./keyType.js"
@@ -33,7 +33,7 @@ class MetricKeyImpl<Type extends MetricKeyType.MetricKeyType<any, any>> implemen
   constructor(
     readonly name: string,
     readonly keyType: Type,
-    readonly description: Option.Option<string>,
+    readonly description: Option<string>,
     readonly tags: HashSet.HashSet<MetricLabel.MetricLabel> = HashSet.empty()
   ) {}
   [Hash.symbol](): number {

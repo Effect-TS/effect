@@ -4,7 +4,7 @@ import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import * as MutableQueue from "../MutableQueue.js"
 import * as MutableRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Queue from "../Queue.js"
@@ -459,7 +459,7 @@ export const offerAll = dual<
 >(2, (self, iterable) => self.offerAll(iterable))
 
 /** @internal */
-export const poll = <A>(self: Queue.Dequeue<A>): Effect<never, never, Option.Option<A>> =>
+export const poll = <A>(self: Queue.Dequeue<A>): Effect<never, never, Option<A>> =>
   core.map(self.takeUpTo(1), Chunk.head)
 
 /** @internal */

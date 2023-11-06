@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/stm/tQueue.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Predicate } from "./Predicate.js"
 import type * as STM from "./STM.js"
 
@@ -79,7 +79,7 @@ export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
    * Views the next element in the queue without removing it, returning `None`
    * if the queue is empty.
    */
-  readonly peekOption: STM.STM<never, never, Option.Option<A>>
+  readonly peekOption: STM.STM<never, never, Option<A>>
 
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return
@@ -313,7 +313,7 @@ export const peek: <A>(self: TDequeue<A>) => STM.STM<never, never, A> = internal
  * @since 2.0.0
  * @category getters
  */
-export const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>> = internal.peekOption
+export const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option<A>> = internal.peekOption
 
 /**
  * Takes a single element from the queue, returning `None` if the queue is
@@ -322,7 +322,7 @@ export const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.
  * @since 2.0.0
  * @category getters
  */
-export const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option.Option<A>> = internal.poll
+export const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option<A>> = internal.poll
 
 /**
  * Drops elements from the queue while they do not satisfy the predicate,

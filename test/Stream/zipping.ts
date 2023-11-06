@@ -8,7 +8,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Number from "effect/Number"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Order from "effect/Order"
 import * as Queue from "effect/Queue"
 import { Stream } from "effect/Stream"
@@ -158,8 +158,8 @@ describe.concurrent("Stream", () => {
   //         Stream.map(Option.some),
   //         Stream.zipAll(
   //           pipe(Stream.fromChunks(...right), Stream.map(Option.some)),
-  //           Option.none() as Option.Option<number>,
-  //           Option.none() as Option.Option<number>
+  //           Option.none() as Option<number>,
+  //           Option.none() as Option<number>
   //         )
   //       )
   //       const actual = await Effect.runPromise(Stream.runCollect(stream))

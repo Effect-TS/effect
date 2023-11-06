@@ -7,7 +7,7 @@ import type { Effect } from "./Effect.js"
 import * as internal from "./internal/queue.js"
 import type * as MutableQueue from "./MutableQueue.js"
 import type * as MutableRef from "./MutableRef.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -155,7 +155,7 @@ export interface BaseQueue {
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue. Returns None if shutdown has been called
    */
-  unsafeSize(): Option.Option<number>
+  unsafeSize(): Option<number>
 
   /**
    * Returns `true` if the `Queue` contains at least one element, `false`
@@ -522,7 +522,7 @@ export const offerAll: {
  * @since 2.0.0
  * @category utils
  */
-export const poll: <A>(self: Dequeue<A>) => Effect<never, never, Option.Option<A>> = internal.poll
+export const poll: <A>(self: Dequeue<A>) => Effect<never, never, Option<A>> = internal.poll
 
 /**
  * Takes the oldest value in the queue. If the queue is empty, this will return

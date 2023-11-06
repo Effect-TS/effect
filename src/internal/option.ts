@@ -5,7 +5,7 @@
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import type * as Option from "../Option.js"
+import type { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 import { EffectPrototype } from "./effectable.js"
 
@@ -16,10 +16,10 @@ const CommonProto = {
   [TypeId]: {
     _A: (_: never) => _
   },
-  [NodeInspectSymbol]<A>(this: Option.Option<A>) {
+  [NodeInspectSymbol]<A>(this: Option<A>) {
     return this.toJSON()
   },
-  toString<A>(this: Option.Option<A>) {
+  toString<A>(this: Option<A>) {
     return toString(this.toJSON())
   }
 }
@@ -60,19 +60,19 @@ const NoneProto = Object.assign(Object.create(CommonProto), {
 })
 
 /** @internal */
-export const isOption = (input: unknown): input is Option.Option<unknown> => hasProperty(input, TypeId)
+export const isOption = (input: unknown): input is Option<unknown> => hasProperty(input, TypeId)
 
 /** @internal */
-export const isNone = <A>(fa: Option.Option<A>): fa is Option.None<A> => fa._tag === "None"
+export const isNone = <A>(fa: Option<A>): fa is Option.None<A> => fa._tag === "None"
 
 /** @internal */
-export const isSome = <A>(fa: Option.Option<A>): fa is Option.Some<A> => fa._tag === "Some"
+export const isSome = <A>(fa: Option<A>): fa is Option.Some<A> => fa._tag === "Some"
 
 /** @internal */
-export const none: Option.Option<never> = Object.create(NoneProto)
+export const none: Option<never> = Object.create(NoneProto)
 
 /** @internal */
-export const some = <A>(value: A): Option.Option<A> => {
+export const some = <A>(value: A): Option<A> => {
   const a = Object.create(SomeProto)
   a.value = value
   return a

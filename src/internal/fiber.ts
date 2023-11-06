@@ -9,7 +9,7 @@ import * as FiberStatus from "../FiberStatus.js"
 import { dual, pipe } from "../Function.js"
 import * as HashSet from "../HashSet.js"
 import * as number from "../Number.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import * as order from "../Order.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
@@ -268,7 +268,7 @@ export const orElseEither = dual<
 >(2, (self, that) => orElse(map(self, Either.left), map(that, Either.right)))
 
 /** @internal */
-export const poll = <E, A>(self: Fiber.Fiber<E, A>): Effect<never, never, Option.Option<Exit.Exit<E, A>>> => self.poll()
+export const poll = <E, A>(self: Fiber.Fiber<E, A>): Effect<never, never, Option<Exit.Exit<E, A>>> => self.poll()
 
 // forked from https://github.com/sindresorhus/parse-ms/blob/4da2ffbdba02c6e288c08236695bdece0adca173/index.js
 // MIT License
@@ -345,5 +345,5 @@ export const unit: Fiber.Fiber<never, void> = succeed(void 0)
 export const currentFiberURI = "effect/FiberCurrent"
 
 /** @internal */
-export const getCurrentFiber = (): Option.Option<Fiber.RuntimeFiber<any, any>> =>
+export const getCurrentFiber = (): Option<Fiber.RuntimeFiber<any, any>> =>
   Option.fromNullable((globalThis as any)[currentFiberURI])

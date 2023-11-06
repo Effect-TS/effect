@@ -7,7 +7,7 @@ import type * as MetricHook from "../../MetricHook.js"
 import type * as MetricKey from "../../MetricKey.js"
 import type * as MetricState from "../../MetricState.js"
 import * as number from "../../Number.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import * as ReadonlyArray from "../../ReadonlyArray.js"
 import * as metricState from "./state.js"
@@ -200,7 +200,7 @@ export const summary = (key: MetricKey.MetricKey.Summary): MetricHook.MetricHook
   let max = Number.MIN_VALUE
 
   // Just before the snapshot we filter out all values older than maxAge
-  const snapshot = (now: number): Chunk.Chunk<readonly [number, Option.Option<number>]> => {
+  const snapshot = (now: number): Chunk.Chunk<readonly [number, Option<number>]> => {
     const builder: Array<number> = []
     // If the buffer is not full yet it contains valid items at the 0..last
     // indices and null values at the rest of the positions.
@@ -273,7 +273,7 @@ interface ResolvedQuantile {
    * `Some<number>` if a value for the quantile could be found, otherwise
    * `None`.
    */
-  readonly value: Option.Option<number>
+  readonly value: Option<number>
   /**
    * How many samples have been consumed prior to this quantile.
    */
@@ -289,7 +289,7 @@ const calculateQuantiles = (
   error: number,
   sortedQuantiles: Chunk.Chunk<number>,
   sortedSamples: Chunk.Chunk<number>
-): Chunk.Chunk<readonly [number, Option.Option<number>]> => {
+): Chunk.Chunk<readonly [number, Option<number>]> => {
   // The number of samples examined
   const sampleCount = sortedSamples.length
   if (Chunk.isEmpty(sortedQuantiles)) {
@@ -335,7 +335,7 @@ const calculateQuantiles = (
 const resolveQuantile = (
   error: number,
   sampleCount: number,
-  current: Option.Option<number>,
+  current: Option<number>,
   consumed: number,
   quantile: number,
   rest: Chunk.Chunk<number>

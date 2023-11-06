@@ -13,7 +13,7 @@ import * as circular from "./internal/layer/circular.js"
 import * as internal from "./internal/supervisor.js"
 import type * as Layer from "./Layer.js"
 import type * as MutableRef from "./MutableRef.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type * as SortedSet from "./SortedSet.js"
 
 /**
@@ -46,7 +46,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
   onStart<R, E, A>(
     context: Context.Context<R>,
     effect: Effect<R, E, A>,
-    parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void
 
@@ -163,7 +163,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   onStart<R, E, A>(
     _context: Context.Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     //

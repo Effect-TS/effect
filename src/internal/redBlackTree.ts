@@ -3,7 +3,7 @@ import * as Equal from "../Equal.js"
 import * as Dual from "../Function.js"
 import * as Hash from "../Hash.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import type * as Order from "../Order.js"
 import type * as Ordering from "../Ordering.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -178,8 +178,8 @@ export const findAll = Dual.dual<
 
 /** @internal */
 export const findFirst = Dual.dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Option.Option<V>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Option.Option<V>
+  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Option<V>,
+  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Option<V>
 >(2, <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => {
   const cmp = (self as RedBlackTreeImpl<K, V>)._ord
   let node = (self as RedBlackTreeImpl<K, V>)._root
@@ -198,7 +198,7 @@ export const findFirst = Dual.dual<
 })
 
 /** @internal */
-export const first = <K, V>(self: RBT.RedBlackTree<K, V>): Option.Option<readonly [K, V]> => {
+export const first = <K, V>(self: RBT.RedBlackTree<K, V>): Option<readonly [K, V]> => {
   let node: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   let current: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   while (node !== undefined) {
@@ -210,8 +210,8 @@ export const first = <K, V>(self: RBT.RedBlackTree<K, V>): Option.Option<readonl
 
 /** @internal */
 export const getAt = Dual.dual<
-  (index: number) => <K, V>(self: RBT.RedBlackTree<K, V>) => Option.Option<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, index: number) => Option.Option<readonly [K, V]>
+  (index: number) => <K, V>(self: RBT.RedBlackTree<K, V>) => Option<readonly [K, V]>,
+  <K, V>(self: RBT.RedBlackTree<K, V>, index: number) => Option<readonly [K, V]>
 >(2, <K, V>(self: RBT.RedBlackTree<K, V>, index: number) => {
   if (index < 0) {
     return Option.none()
@@ -460,7 +460,7 @@ const keys = <K, V>(
 }
 
 /** @internal */
-export const last = <K, V>(self: RBT.RedBlackTree<K, V>): Option.Option<readonly [K, V]> => {
+export const last = <K, V>(self: RBT.RedBlackTree<K, V>): Option<readonly [K, V]> => {
   let node: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   let current: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   while (node !== undefined) {
@@ -895,8 +895,8 @@ const values = <K, V>(
 
 const visitFull = <K, V, A>(
   node: Node.Node<K, V>,
-  visit: (key: K, value: V) => Option.Option<A>
-): Option.Option<A> => {
+  visit: (key: K, value: V) => Option<A>
+): Option<A> => {
   let current: Node.Node<K, V> | undefined = node
   let stack: Stack<Node.Node<K, V>> | undefined = undefined
   let done = false
@@ -922,8 +922,8 @@ const visitGreaterThanEqual = <K, V, A>(
   node: Node.Node<K, V>,
   min: K,
   ord: Order.Order<K>,
-  visit: (key: K, value: V) => Option.Option<A>
-): Option.Option<A> => {
+  visit: (key: K, value: V) => Option<A>
+): Option<A> => {
   let current: Node.Node<K, V> | undefined = node
   let stack: Stack<Node.Node<K, V>> | undefined = undefined
   let done = false
@@ -955,8 +955,8 @@ const visitLessThan = <K, V, A>(
   node: Node.Node<K, V>,
   max: K,
   ord: Order.Order<K>,
-  visit: (key: K, value: V) => Option.Option<A>
-): Option.Option<A> => {
+  visit: (key: K, value: V) => Option<A>
+): Option<A> => {
   let current: Node.Node<K, V> | undefined = node
   let stack: Stack<Node.Node<K, V>> | undefined = undefined
   let done = false
@@ -983,8 +983,8 @@ const visitBetween = <K, V, A>(
   min: K,
   max: K,
   ord: Order.Order<K>,
-  visit: (key: K, value: V) => Option.Option<A>
-): Option.Option<A> => {
+  visit: (key: K, value: V) => Option<A>
+): Option<A> => {
   let current: Node.Node<K, V> | undefined = node
   let stack: Stack<Node.Node<K, V>> | undefined = undefined
   let done = false

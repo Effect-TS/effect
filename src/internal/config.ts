@@ -8,7 +8,7 @@ import { constTrue, dual, pipe } from "../Function.js"
 import type * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
 import type * as LogLevel from "../LogLevel.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as configError from "./configError.js"
@@ -360,7 +360,7 @@ export const orElseIf = dual<
 })
 
 /** @internal */
-export const option = <A>(self: Config.Config<A>): Config.Config<Option.Option<A>> => {
+export const option = <A>(self: Config.Config<A>): Config.Config<Option<A>> => {
   return pipe(
     self,
     map(Option.some),

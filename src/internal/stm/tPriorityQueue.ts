@@ -1,5 +1,5 @@
 import { dual, pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import type * as Order from "../../Order.js"
 import type { Predicate } from "../../Predicate.js"
 import * as ReadonlyArray from "../../ReadonlyArray.js"
@@ -124,7 +124,7 @@ export const peek = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, 
   })
 
 /** @internal */
-export const peekOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Option.Option<A>> =>
+export const peekOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Option<A>> =>
   tRef.modify(self.ref, (map) => [
     Option.map(SortedMap.headOption(map), (elements) => elements[0]),
     map
@@ -194,11 +194,11 @@ export const takeAll = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<neve
   })
 
 /** @internal */
-export const takeOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Option.Option<A>> =>
-  core.effect<never, Option.Option<A>>((journal) => {
+export const takeOption = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Option<A>> =>
+  core.effect<never, Option<A>>((journal) => {
     const map = pipe(self.ref, tRef.unsafeGet(journal))
     return Option.match(SortedMap.headOption(map), {
-      onNone: (): Option.Option<A> => Option.none(),
+      onNone: (): Option<A> => Option.none(),
       onSome: ([key, value]) => {
         const tail = value.slice(1)
         tRef.unsafeSet(

@@ -6,7 +6,7 @@ import * as Dual from "./Function.js"
 import { pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import type { Order } from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -115,11 +115,11 @@ export const isNonEmpty = <K, V>(self: SortedMap<K, V>): boolean => size(self) >
  * @category elements
  */
 export const get: {
-  <K>(key: K): <V>(self: SortedMap<K, V>) => Option.Option<V>
-  <K, V>(self: SortedMap<K, V>, key: K): Option.Option<V>
+  <K>(key: K): <V>(self: SortedMap<K, V>) => Option<V>
+  <K, V>(self: SortedMap<K, V>, key: K): Option<V>
 } = Dual.dual<
-  <K>(key: K) => <V>(self: SortedMap<K, V>) => Option.Option<V>,
-  <K, V>(self: SortedMap<K, V>, key: K) => Option.Option<V>
+  <K>(key: K) => <V>(self: SortedMap<K, V>) => Option<V>,
+  <K, V>(self: SortedMap<K, V>, key: K) => Option<V>
 >(2, (self, key) => RBT.findFirst(self.tree, key))
 
 /**
@@ -146,7 +146,7 @@ export const has: {
  * @since 2.0.0
  * @category elements
  */
-export const headOption = <K, V>(self: SortedMap<K, V>): Option.Option<readonly [K, V]> => RBT.first(self.tree)
+export const headOption = <K, V>(self: SortedMap<K, V>): Option<readonly [K, V]> => RBT.first(self.tree)
 
 /**
  * @since 2.0.0

@@ -25,7 +25,7 @@ import type { Logger } from "../Logger.js"
 import * as LogLevel from "../LogLevel.js"
 import type * as MetricLabel from "../MetricLabel.js"
 import * as MRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
 import * as RA from "../ReadonlyArray.js"
@@ -443,7 +443,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect<never, never, Option.Option<Exit.Exit<E, A>>> {
+  poll(): Effect<never, never, Option<Exit.Exit<E, A>>> {
     return core.sync(() => Option.fromNullable(this._exitValue))
   }
 
@@ -774,7 +774,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   log(
     message: unknown,
     cause: Cause.Cause<any>,
-    overrideLogLevel: Option.Option<LogLevel.LogLevel>
+    overrideLogLevel: Option<LogLevel.LogLevel>
   ): void {
     const logLevel = Option.isSome(overrideLogLevel) ?
       overrideLogLevel.value :
@@ -1615,7 +1615,7 @@ export const filter = dual<
 
 const allResolveInput = (
   input: Iterable<Effect<any, any, any>> | Record<string, Effect<any, any, any>>
-): readonly [Iterable<Effect<any, any, any>>, Option.Option<(as: ReadonlyArray<any>) => any>] => {
+): readonly [Iterable<Effect<any, any, any>>, Option<(as: ReadonlyArray<any>) => any>] => {
   if (Array.isArray(input) || Predicate.isIterable(input)) {
     return [input, Option.none()]
   }
@@ -1635,7 +1635,7 @@ const allResolveInput = (
 
 const allValidate = (
   effects: Iterable<Effect<any, any, any>>,
-  reconcile: Option.Option<(as: ReadonlyArray<any>) => any>,
+  reconcile: Option<(as: ReadonlyArray<any>) => any>,
   options?: {
     readonly concurrency?: Concurrency
     readonly batching?: boolean | "inherit"
@@ -1684,7 +1684,7 @@ const allValidate = (
 
 const allEither = (
   effects: Iterable<Effect<any, any, any>>,
-  reconcile: Option.Option<(as: ReadonlyArray<any>) => any>,
+  reconcile: Option<(as: ReadonlyArray<any>) => any>,
   options?: {
     readonly concurrency?: Concurrency
     readonly batching?: boolean | "inherit"
@@ -2474,7 +2474,7 @@ export const reduceEffect = dual<
         pipe(
           mergeAll(
             [zero, ...elements],
-            Option.none() as Option.Option<A>,
+            Option.none() as Option<A>,
             (acc, elem, i) => {
               switch (acc._tag) {
                 case "None": {

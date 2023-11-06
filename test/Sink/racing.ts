@@ -4,7 +4,7 @@ import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import { constVoid, pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Random from "effect/Random"
 import * as Sink from "effect/Sink"
 import { Stream } from "effect/Stream"
@@ -12,7 +12,7 @@ import { assert, describe } from "vitest"
 
 const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>
   pipe(
-    Sink.fold<Option.Option<A>, A>(
+    Sink.fold<Option<A>, A>(
       Option.none(),
       Option.isNone,
       (_, v) => (a === v ? Option.some(a) : Option.none())

@@ -19,7 +19,7 @@ import * as equivalence from "./Equivalence.js"
 import { dual, pipe } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import * as order from "./Order.js"
 import type { Ordering } from "./Ordering.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
@@ -371,9 +371,9 @@ const roundTerminal = (n: bigint): bigint => {
  * @category math
  */
 export const divide: {
-  (that: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
-  (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal>
-} = dual(2, (self: BigDecimal, that: BigDecimal): Option.Option<BigDecimal> => {
+  (that: BigDecimal): (self: BigDecimal) => Option<BigDecimal>
+  (self: BigDecimal, that: BigDecimal): Option<BigDecimal>
+} = dual(2, (self: BigDecimal, that: BigDecimal): Option<BigDecimal> => {
   if (that.value === bigint0) {
     return Option.none()
   }
@@ -691,9 +691,9 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  * @category math
  */
 export const remainder: {
-  (divisor: BigDecimal): (self: BigDecimal) => Option.Option<BigDecimal>
-  (self: BigDecimal, divisor: BigDecimal): Option.Option<BigDecimal>
-} = dual(2, (self: BigDecimal, divisor: BigDecimal): Option.Option<BigDecimal> => {
+  (divisor: BigDecimal): (self: BigDecimal) => Option<BigDecimal>
+  (self: BigDecimal, divisor: BigDecimal): Option<BigDecimal>
+} = dual(2, (self: BigDecimal, divisor: BigDecimal): Option<BigDecimal> => {
   if (divisor.value === bigint0) {
     return Option.none()
   }
@@ -807,7 +807,7 @@ export const fromNumber = (n: number): BigDecimal => {
  * @since 2.0.0
  * @category constructors
  */
-export const fromString = (s: string): Option.Option<BigDecimal> => {
+export const fromString = (s: string): Option<BigDecimal> => {
   let digits: string
   let scale: number
 

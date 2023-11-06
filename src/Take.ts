@@ -6,7 +6,7 @@ import type * as Chunk from "./Chunk.js"
 import type { Effect } from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import * as internal from "./internal/take.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -31,7 +31,7 @@ export type TakeTypeId = typeof TakeTypeId
  */
 export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
+  readonly exit: Exit.Exit<Option<E>, Chunk.Chunk<A>>
 }
 
 /**
@@ -80,7 +80,7 @@ export const dieMessage: (message: string) => Take<never, never> = internal.dieM
  * @since 2.0.0
  * @category destructors
  */
-export const done: <E, A>(self: Take<E, A>) => Effect<never, Option.Option<E>, Chunk.Chunk<A>> = internal.done
+export const done: <E, A>(self: Take<E, A>) => Effect<never, Option<E>, Chunk.Chunk<A>> = internal.done
 
 /**
  * Represents the end-of-stream marker.
@@ -133,7 +133,7 @@ export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fr
  * @category constructors
  */
 export const fromPull: <R, E, A>(
-  pull: Effect<R, Option.Option<E>, Chunk.Chunk<A>>
+  pull: Effect<R, Option<E>, Chunk.Chunk<A>>
 ) => Effect<R, never, Take<E, A>> = internal.fromPull
 
 /**
@@ -166,7 +166,7 @@ export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A> = internal.make
+export const make: <E, A>(exit: Exit.Exit<Option<E>, Chunk.Chunk<A>>) => Take<E, A> = internal.make
 
 /**
  * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.

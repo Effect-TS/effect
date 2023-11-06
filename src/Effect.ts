@@ -38,7 +38,7 @@ import type * as Layer from "./Layer.js"
 import type { LogLevel } from "./LogLevel.js"
 import type * as Metric from "./Metric.js"
 import type * as MetricLabel from "./MetricLabel.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Random from "./Random.js"
@@ -407,7 +407,7 @@ export declare namespace All {
     [Iterable<Effect.Variance<infer R, infer E, infer A>>] ? Effect<
       R,
       Mode extends "either" ? never
-        : Mode extends "validate" ? Array<Option.Option<E>>
+        : Mode extends "validate" ? Array<Option<E>>
         : E,
       Discard extends true ? void : Mode extends "either" ? Array<Either.Either<E, A>> : Array<A>
     >
@@ -423,7 +423,7 @@ export declare namespace All {
     Mode extends "either" ? never
       : T[number] extends never ? never
       : Mode extends "validate" ? {
-          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option.Option<_E>
+          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option<_E>
             : never
         }
       : [T[number]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }] ? E
@@ -448,7 +448,7 @@ export declare namespace All {
       Mode extends "either" ? never
         : keyof T extends never ? never
         : Mode extends "validate" ? {
-            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option.Option<_E>
+            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Option<_E>
               : never
           }
         : [T[keyof T]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }] ? E
@@ -596,8 +596,8 @@ export const filter: {
  * @category collecting & elements
  */
 export const findFirst: {
-  <A, R, E>(f: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Option.Option<A>>
-  <A, R, E>(elements: Iterable<A>, f: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Option.Option<A>>
+  <A, R, E>(f: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Option<A>>
+  <A, R, E>(elements: Iterable<A>, f: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Option<A>>
 } = effect.findFirst
 
 /**
@@ -669,7 +669,7 @@ export const forEach: {
  * @since 2.0.0
  * @category collecting & elements
  */
-export const head: <R, E, A>(self: Effect<R, E, Iterable<A>>) => Effect<R, Option.Option<E>, A> = effect.head
+export const head: <R, E, A>(self: Effect<R, E, Iterable<A>>) => Effect<R, Option<E>, A> = effect.head
 
 /**
  * Merges an `Iterable<Effect<R, E, A>>` to a single effect, working
@@ -1009,7 +1009,7 @@ export const asyncEffect: <R, E, A, R2, E2, X>(
  * @category constructors
  */
 export const asyncOption: <R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Option.Option<Effect<R, E, A>>,
+  register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
   blockingOn?: FiberId.FiberId
 ) => Effect<R, E, A> = effect.asyncOption
 
@@ -1398,7 +1398,7 @@ export const never: Effect<never, never, never> = core.never
  * @since 2.0.0
  * @category constructors
  */
-export const none: <R, E, A>(self: Effect<R, E, Option.Option<A>>) => Effect<R, Option.Option<E>, void> = effect.none
+export const none: <R, E, A>(self: Effect<R, E, Option<A>>) => Effect<R, Option<E>, void> = effect.none
 
 /**
  * Like `tryPromise` but produces a defect in case of errors.
@@ -1425,7 +1425,7 @@ export const succeed: <A>(value: A) => Effect<never, never, A> = core.succeed
  * @since 2.0.0
  * @category constructors
  */
-export const succeedNone: Effect<never, never, Option.Option<never>> = effect.succeedNone
+export const succeedNone: Effect<never, never, Option<never>> = effect.succeedNone
 
 /**
  * Returns an effect which succeeds with the value wrapped in a `Some`.
@@ -1433,7 +1433,7 @@ export const succeedNone: Effect<never, never, Option.Option<never>> = effect.su
  * @since 2.0.0
  * @category constructors
  */
-export const succeedSome: <A>(value: A) => Effect<never, never, Option.Option<A>> = effect.succeedSome
+export const succeedSome: <A>(value: A) => Effect<never, never, Option<A>> = effect.succeedSome
 
 /**
  * @since 2.0.0
@@ -1579,11 +1579,11 @@ export const catchIf: {
  */
 export const catchSome: {
   <E, R2, E2, A2>(
-    pf: (e: E) => Option.Option<Effect<R2, E2, A2>>
+    pf: (e: E) => Option<Effect<R2, E2, A2>>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
   <R, A, E, R2, E2, A2>(
     self: Effect<R, E, A>,
-    pf: (e: E) => Option.Option<Effect<R2, E2, A2>>
+    pf: (e: E) => Option<Effect<R2, E2, A2>>
   ): Effect<R | R2, E | E2, A | A2>
 } = core.catchSome
 
@@ -1595,11 +1595,11 @@ export const catchSome: {
  */
 export const catchSomeCause: {
   <E, R2, E2, A2>(
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
   ): Effect<R | R2, E | E2, A | A2>
 } = effect.catchSomeCause
 
@@ -1616,11 +1616,11 @@ export const catchSomeCause: {
  */
 export const catchSomeDefect: {
   <R2, E2, A2>(
-    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+    pf: (defect: unknown) => Option<Effect<R2, E2, A2>>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A2 | A>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+    pf: (defect: unknown) => Option<Effect<R2, E2, A2>>
   ): Effect<R | R2, E | E2, A | A2>
 } = effect.catchSomeDefect
 
@@ -2076,7 +2076,7 @@ export const as: {
  * @category mapping
  * @since 2.0.0
  */
-export const asSome: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>> = effect.asSome
+export const asSome: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>> = effect.asSome
 
 /**
  * This function maps the error value of an `Effect` value to a `Some` value
@@ -2094,7 +2094,7 @@ export const asSome: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Opt
  * @category mapping
  * @since 2.0.0
  */
-export const asSomeError: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Option.Option<E>, A> = effect.asSomeError
+export const asSomeError: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Option<E>, A> = effect.asSomeError
 
 /**
  * This function maps the success value of an `Effect` value to `void`. If the
@@ -2889,8 +2889,8 @@ export const timedWith: {
  * @category delays & timeouts
  */
 export const timeout: {
-  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, E, Option.Option<A>>
+  (duration: Duration.DurationInput): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput): Effect<R, E, Option<A>>
 } = circular.timeout
 
 /**
@@ -3166,8 +3166,7 @@ export const serviceMembers: <I, S>(tag: Context.Tag<I, S>) => {
  * @since 2.0.0
  * @category context
  */
-export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>> =
-  effect.serviceOption
+export const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option<A>> = effect.serviceOption
 
 /**
  * Updates the service with the required service entry.
@@ -3286,7 +3285,7 @@ export const intoDeferred: {
  * @since 2.0.0
  * @category conversions
  */
-export const option: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Option.Option<A>> = effect.option
+export const option: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Option<A>> = effect.option
 
 // -------------------------------------------------------------------------------------
 // filtering & conditionals
@@ -3420,8 +3419,8 @@ export const filterOrFail: {
  * @category filtering & conditionals
  */
 export const unless: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option<A>>
 } = effect.unless
 
 /**
@@ -3435,11 +3434,11 @@ export const unlessEffect: {
     predicate: Effect<R2, E2, boolean>
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, Option.Option<A>>
+  ) => Effect<R2 | R, E2 | E, Option<A>>
   <R, E, A, R2, E2>(
     self: Effect<R, E, A>,
     predicate: Effect<R2, E2, boolean>
-  ): Effect<R | R2, E | E2, Option.Option<A>>
+  ): Effect<R | R2, E | E2, Option<A>>
 } = effect.unlessEffect
 
 /**
@@ -3449,8 +3448,8 @@ export const unlessEffect: {
  * @category filtering & conditionals
  */
 export const when: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
-  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option<A>>
+  <R, E, A>(self: Effect<R, E, A>, predicate: LazyArg<boolean>): Effect<R, E, Option<A>>
 } = effect.when
 
 /**
@@ -3462,11 +3461,11 @@ export const whenEffect: {
     predicate: Effect<R, E, boolean>
   ): <R2, E2, A>(
     effect: Effect<R2, E2, A>
-  ) => Effect<R | R2, E | E2, Option.Option<A>>
+  ) => Effect<R | R2, E | E2, Option<A>>
   <R, E, A, R2, E2>(
     self: Effect<R2, E2, A>,
     predicate: Effect<R, E, boolean>
-  ): Effect<R | R2, E | E2, Option.Option<A>>
+  ): Effect<R | R2, E | E2, Option<A>>
 } = core.whenEffect
 
 /**
@@ -3482,12 +3481,12 @@ export const whenFiberRef: {
     predicate: Predicate<S>
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R, E, readonly [S, Option.Option<A>]>
+  ) => Effect<R, E, readonly [S, Option<A>]>
   <R, E, A, S>(
     self: Effect<R, E, A>,
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate<S>
-  ): Effect<R, E, readonly [S, Option.Option<A>]>
+  ): Effect<R, E, readonly [S, Option<A>]>
 } = effect.whenFiberRef
 
 /**
@@ -3502,12 +3501,12 @@ export const whenRef: {
     predicate: Predicate<S>
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R, E, readonly [S, Option.Option<A>]>
+  ) => Effect<R, E, readonly [S, Option<A>]>
   <R, E, A, S>(
     self: Effect<R, E, A>,
     ref: Ref.Ref<S>,
     predicate: Predicate<S>
-  ): Effect<R, E, readonly [S, Option.Option<A>]>
+  ): Effect<R, E, readonly [S, Option<A>]>
 } = effect.whenRef
 
 // -------------------------------------------------------------------------------------
@@ -3882,12 +3881,12 @@ export const repeatN: {
 export const repeatOrElse: {
   <R2, A extends A0, A0, B, E, R3, E2>(
     schedule: Schedule.Schedule<R2, A, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+    orElse: (error: E, option: Option<B>) => Effect<R3, E2, B>
   ): <R>(self: Effect<R, E, A>) => Effect<R2 | R3 | R, E2, B>
   <R, E, A extends A0, A0, R2, B, R3, E2>(
     self: Effect<R, E, A>,
     schedule: Schedule.Schedule<R2, A0, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+    orElse: (error: E, option: Option<B>) => Effect<R3, E2, B>
   ): Effect<R | R2 | R3, E2, B>
 } = _schedule.repeatOrElse_Effect
 
@@ -4317,8 +4316,8 @@ export const logAnnotations: Effect<never, never, HashMap.HashMap<string, unknow
  * @category logging
  */
 export const withUnhandledErrorLogLevel: {
-  (level: Option.Option<LogLevel>): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B>(self: Effect<R, E, B>, level: Option.Option<LogLevel>): Effect<R, E, B>
+  (level: Option<LogLevel>): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(self: Effect<R, E, B>, level: Option<LogLevel>): Effect<R, E, B>
 } = core.withUnhandledErrorLogLevel
 
 // -------------------------------------------------------------------------------------
@@ -4936,13 +4935,13 @@ export const annotateCurrentSpan: {
  * @since 2.0.0
  * @category tracing
  */
-export const currentSpan: Effect<never, never, Option.Option<Tracer.Span>> = effect.currentSpan
+export const currentSpan: Effect<never, never, Option<Tracer.Span>> = effect.currentSpan
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const currentParentSpan: Effect<never, never, Option.Option<Tracer.ParentSpan>> = effect.currentParentSpan
+export const currentParentSpan: Effect<never, never, Option<Tracer.ParentSpan>> = effect.currentParentSpan
 
 /**
  * @since 2.0.0
@@ -5133,4 +5132,4 @@ export const fromNullable: <A>(value: A) => Effect<never, Cause.NoSuchElementExc
  */
 export const optionFromOptional: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<R, Exclude<E, Cause.NoSuchElementException>, Option.Option<A>> = effect.optionFromOptional
+) => Effect<R, Exclude<E, Cause.NoSuchElementException>, Option<A>> = effect.optionFromOptional

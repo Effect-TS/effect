@@ -4,7 +4,7 @@ import type { LazyArg } from "../../Function.js"
 import { dual, pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
 import * as HashMap from "../../HashMap.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import * as RA from "../../ReadonlyArray.js"
 import * as STM from "../../STM.js"
 import type * as TArray from "../../TArray.js"
@@ -93,12 +93,12 @@ export const empty = <K, V>(): STM.STM<never, never, TMap.TMap<K, V>> => fromIte
 /** @internal */
 export const find = dual<
   <K, V, A>(
-    pf: (key: K, value: V) => Option.Option<A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Option.Option<A>>,
+    pf: (key: K, value: V) => Option<A>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Option<A>>,
   <K, V, A>(
     self: TMap.TMap<K, V>,
-    pf: (key: K, value: V) => Option.Option<A>
-  ) => STM.STM<never, never, Option.Option<A>>
+    pf: (key: K, value: V) => Option<A>
+  ) => STM.STM<never, never, Option<A>>
 >(2, (self, pf) =>
   findSTM(self, (key, value) => {
     const option = pf(key, value)
@@ -111,15 +111,15 @@ export const find = dual<
 /** @internal */
 export const findSTM = dual<
   <K, V, R, E, A>(
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, Option.Option<A>>,
+    f: (key: K, value: V) => STM.STM<R, Option<E>, A>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, Option<A>>,
   <K, V, R, E, A>(
     self: TMap.TMap<K, V>,
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ) => STM.STM<R, E, Option.Option<A>>
+    f: (key: K, value: V) => STM.STM<R, Option<E>, A>
+  ) => STM.STM<R, E, Option<A>>
 >(2, <K, V, R, E, A>(
   self: TMap.TMap<K, V>,
-  f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+  f: (key: K, value: V) => STM.STM<R, Option<E>, A>
 ) =>
   reduceWithIndexSTM(self, Option.none<A>(), (acc, value, key) =>
     Option.isNone(acc) ?
@@ -135,11 +135,11 @@ export const findSTM = dual<
 /** @internal */
 export const findAll = dual<
   <K, V, A>(
-    pf: (key: K, value: V) => Option.Option<A>
+    pf: (key: K, value: V) => Option<A>
   ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<A>>,
   <K, V, A>(
     self: TMap.TMap<K, V>,
-    pf: (key: K, value: V) => Option.Option<A>
+    pf: (key: K, value: V) => Option<A>
   ) => STM.STM<never, never, Array<A>>
 >(2, (self, pf) =>
   findAllSTM(self, (key, value) => {
@@ -153,15 +153,15 @@ export const findAll = dual<
 /** @internal */
 export const findAllSTM = dual<
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, Array<A>>,
   <K, V, R, E, A>(
     self: TMap.TMap<K, V>,
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ) => STM.STM<R, E, Array<A>>
 >(2, <K, V, R, E, A>(
   self: TMap.TMap<K, V>,
-  pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+  pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
 ) =>
   core.map(
     reduceWithIndexSTM(self, Chunk.empty<A>(), (acc, value, key) =>
@@ -198,10 +198,10 @@ export const fromIterable = <K, V>(iterable: Iterable<readonly [K, V]>): STM.STM
 
 /** @internal */
 export const get = dual<
-  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<never, never, Option.Option<V>>,
-  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<never, never, Option.Option<V>>
+  <K>(key: K) => <V>(self: TMap.TMap<K, V>) => STM.STM<never, never, Option<V>>,
+  <K, V>(self: TMap.TMap<K, V>, key: K) => STM.STM<never, never, Option<V>>
 >(2, <K, V>(self: TMap.TMap<K, V>, key: K) =>
-  core.effect<never, Option.Option<V>>((journal) => {
+  core.effect<never, Option<V>>((journal) => {
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
     const index = indexOf(key, buckets.chunk.length)
     const bucket = tRef.unsafeGet(buckets.chunk[index], journal)
@@ -522,15 +522,15 @@ export const size = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, number>
 
 /** @internal */
 export const takeFirst = dual<
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>) => (self: TMap.TMap<K, V>) => STM.STM<never, never, A>,
-  <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>) => STM.STM<never, never, A>
->(2, <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>) =>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>) => (self: TMap.TMap<K, V>) => STM.STM<never, never, A>,
+  <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option<A>) => STM.STM<never, never, A>
+>(2, <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option<A>) =>
   pipe(
-    core.effect<never, Option.Option<A>>((journal) => {
+    core.effect<never, Option<A>>((journal) => {
       const buckets = tRef.unsafeGet(self.tBuckets, journal)
       const capacity = buckets.chunk.length
       const size = tRef.unsafeGet(self.tSize, journal)
-      let result: Option.Option<A> = Option.none()
+      let result: Option<A> = Option.none()
       let index = 0
       while (index < capacity && Option.isNone(result)) {
         const bucket = tRef.unsafeGet(buckets.chunk[index], journal)
@@ -566,9 +566,9 @@ export const takeFirst = dual<
 /** @internal */
 export const takeFirstSTM = dual<
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, A>,
-  <K, V, R, E, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>) => STM.STM<R, E, A>
+  <K, V, R, E, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option<E>, A>) => STM.STM<R, E, A>
 >(2, (self, pf) =>
   pipe(
     findSTM(self, (key, value) => core.map(pf(key, value), (a) => [key, a] as const)),
@@ -579,15 +579,15 @@ export const takeFirstSTM = dual<
 /** @internal */
 export const takeSome = dual<
   <K, V, A>(
-    pf: (key: K, value: V) => Option.Option<A>
+    pf: (key: K, value: V) => Option<A>
   ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, RA.NonEmptyArray<A>>,
   <K, V, A>(
     self: TMap.TMap<K, V>,
-    pf: (key: K, value: V) => Option.Option<A>
+    pf: (key: K, value: V) => Option<A>
   ) => STM.STM<never, never, RA.NonEmptyArray<A>>
->(2, <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>) =>
+>(2, <K, V, A>(self: TMap.TMap<K, V>, pf: (key: K, value: V) => Option<A>) =>
   pipe(
-    core.effect<never, Option.Option<RA.NonEmptyArray<A>>>((journal) => {
+    core.effect<never, Option<RA.NonEmptyArray<A>>>((journal) => {
       const buckets = tRef.unsafeGet(self.tBuckets, journal)
       const capacity = buckets.chunk.length
       const builder: Array<A> = []
@@ -631,15 +631,15 @@ export const takeSome = dual<
 /** @internal */
 export const takeSomeSTM = dual<
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ) => (self: TMap.TMap<K, V>) => STM.STM<R, E, RA.NonEmptyArray<A>>,
   <K, V, R, E, A>(
     self: TMap.TMap<K, V>,
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ) => STM.STM<R, E, RA.NonEmptyArray<A>>
 >(2, <K, V, R, E, A>(
   self: TMap.TMap<K, V>,
-  pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+  pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
 ) =>
   pipe(
     findAllSTM(
@@ -802,13 +802,13 @@ export const transformValuesSTM = dual<
 export const updateWith = dual<
   <K, V>(
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Option.Option<V>>,
+    f: (value: Option<V>) => Option<V>
+  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Option<V>>,
   <K, V>(
     self: TMap.TMap<K, V>,
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
-  ) => STM.STM<never, never, Option.Option<V>>
+    f: (value: Option<V>) => Option<V>
+  ) => STM.STM<never, never, Option<V>>
 >(3, (self, key, f) =>
   core.flatMap(get(self, key), (option) =>
     Option.match(

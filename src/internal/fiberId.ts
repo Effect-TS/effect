@@ -6,7 +6,7 @@ import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import * as MutableRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 
 /** @internal */
@@ -226,7 +226,7 @@ export const threadName = (self: FiberId.FiberId): string => {
 }
 
 /** @internal */
-export const toOption = (self: FiberId.FiberId): Option.Option<FiberId.FiberId> => {
+export const toOption = (self: FiberId.FiberId): Option<FiberId.FiberId> => {
   const fiberIds = toSet(self)
   if (HashSet.size(fiberIds) === 0) {
     return Option.none()

@@ -18,11 +18,15 @@ import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
-/**
- * @category models
- * @since 2.0.0
- */
-export type Option<A> = None<A> | Some<A>
+export * as Option from "./Option.js"
+
+declare module "./Option.js" {
+  /**
+   * @category models
+   * @since 2.0.0
+   */
+  export type Option<A> = None<A> | Some<A>
+}
 
 /**
  * @category symbols

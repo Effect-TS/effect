@@ -5,7 +5,7 @@ import type * as FiberRef from "../FiberRef.js"
 import type * as FiberRefs from "../FiberRefs.js"
 import { dual, pipe } from "../Function.js"
 import * as HashSet from "../HashSet.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Arr from "../ReadonlyArray.js"
 import * as core from "./core.js"
@@ -170,8 +170,8 @@ export const delete_ = dual<
 
 /** @internal */
 export const get = dual<
-  <A>(fiberRef: FiberRef.FiberRef<A>) => (self: FiberRefs.FiberRefs) => Option.Option<A>,
-  <A>(self: FiberRefs.FiberRefs, fiberRef: FiberRef.FiberRef<A>) => Option.Option<A>
+  <A>(fiberRef: FiberRef.FiberRef<A>) => (self: FiberRefs.FiberRefs) => Option<A>,
+  <A>(self: FiberRefs.FiberRefs, fiberRef: FiberRef.FiberRef<A>) => Option<A>
 >(2, (self, fiberRef) => {
   if (!self.locals.has(fiberRef)) {
     return Option.none()

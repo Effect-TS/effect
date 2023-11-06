@@ -3,7 +3,7 @@ import * as Deferred from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as Synchronized from "effect/SynchronizedRef"
 import { assert, describe } from "vitest"
 

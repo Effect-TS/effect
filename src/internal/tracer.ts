@@ -5,7 +5,7 @@ import * as Context from "../Context.js"
 import type * as Exit from "../Exit.js"
 import { globalValue } from "../GlobalValue.js"
 import * as MutableRef from "../MutableRef.js"
-import type * as Option from "../Option.js"
+import type { Option } from "../Option.js"
 import type * as Tracer from "../Tracer.js"
 
 /** @internal */
@@ -42,7 +42,7 @@ export class NativeSpan implements Tracer.Span {
 
   constructor(
     readonly name: string,
-    readonly parent: Option.Option<Tracer.ParentSpan>,
+    readonly parent: Option<Tracer.ParentSpan>,
     readonly context: Context.Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
     readonly startTime: bigint

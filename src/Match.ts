@@ -3,7 +3,7 @@
  */
 import type * as Either from "./Either.js"
 import * as internal from "./internal/matcher.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
 import type { UnionToIntersection } from "./Types.js"
@@ -523,8 +523,8 @@ export const either: <I, F, R, A, Pr>(
  */
 export const option: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>>
-  : Option.Option<Unify<A>> = internal.option
+) => [Pr] extends [never] ? (input: I) => Option<Unify<A>>
+  : Option<Unify<A>> = internal.option
 
 /**
  * @category conversions

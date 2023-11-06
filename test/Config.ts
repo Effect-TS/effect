@@ -9,7 +9,7 @@ import { Effect } from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Config", () => {

@@ -3,7 +3,7 @@ import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HM from "effect/HashMap"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
@@ -262,7 +262,7 @@ describe.concurrent("HashMap", () => {
     deepStrictEqual(
       HM.get(key(0))(pipe(
         map,
-        HM.modifyAt(key(0), (): Option.Option<Value> => Option.none())
+        HM.modifyAt(key(0), (): Option<Value> => Option.none())
       )),
       Option.none()
     )

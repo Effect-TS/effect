@@ -7,7 +7,7 @@ import * as Exit from "../../Exit.js"
 import type * as FiberId from "../../FiberId.js"
 import type { LazyArg } from "../../Function.js"
 import { constFalse, constTrue, constVoid, dual, identity, pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import * as predicate from "../../Predicate.js"
 import type { Predicate, Refinement } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
@@ -89,11 +89,10 @@ export const as = dual<
 >(2, (self, value) => pipe(self, core.map(() => value)))
 
 /** @internal */
-export const asSome = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, E, Option.Option<A>> =>
-  pipe(self, core.map(Option.some))
+export const asSome = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, E, Option<A>> => pipe(self, core.map(Option.some))
 
 /** @internal */
-export const asSomeError = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, Option.Option<E>, A> =>
+export const asSomeError = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, Option<E>, A> =>
   pipe(self, mapError(Option.some))
 
 /** @internal */
@@ -187,17 +186,17 @@ export const let_ = dual<
 /** @internal */
 export const catchSome = dual<
   <E, R2, E2, A2>(
-    pf: (error: E) => Option.Option<STM.STM<R2, E2, A2>>
+    pf: (error: E) => Option<STM.STM<R2, E2, A2>>
   ) => <R, A>(
     self: STM.STM<R, E, A>
   ) => STM.STM<R2 | R, E | E2, A2 | A>,
   <R, A, E, R2, E2, A2>(
     self: STM.STM<R, E, A>,
-    pf: (error: E) => Option.Option<STM.STM<R2, E2, A2>>
+    pf: (error: E) => Option<STM.STM<R2, E2, A2>>
   ) => STM.STM<R2 | R, E | E2, A2 | A>
 >(2, <R, A, E, R2, E2, A2>(
   self: STM.STM<R, E, A>,
-  pf: (error: E) => Option.Option<STM.STM<R2, E2, A2>>
+  pf: (error: E) => Option<STM.STM<R2, E2, A2>>
 ): STM.STM<R2 | R, E | E2, A2 | A> =>
   core.catchAll(
     self,
@@ -284,8 +283,8 @@ export const check = (predicate: LazyArg<boolean>): STM.STM<never, never, void> 
 
 /** @internal */
 export const collect = dual<
-  <A, A2>(pf: (a: A) => Option.Option<A2>) => <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A2>,
-  <R, E, A, A2>(self: STM.STM<R, E, A>, pf: (a: A) => Option.Option<A2>) => STM.STM<R, E, A2>
+  <A, A2>(pf: (a: A) => Option<A2>) => <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E, A2>,
+  <R, E, A, A2>(self: STM.STM<R, E, A>, pf: (a: A) => Option<A2>) => STM.STM<R, E, A2>
 >(2, (self, pf) =>
   collectSTM(
     self,
@@ -295,13 +294,13 @@ export const collect = dual<
 /** @internal */
 export const collectSTM = dual<
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<STM.STM<R2, E2, A2>>
+    pf: (a: A) => Option<STM.STM<R2, E2, A2>>
   ) => <R, E>(
     self: STM.STM<R, E, A>
   ) => STM.STM<R2 | R, E2 | E, A2>,
   <R, E, A, R2, E2, A2>(
     self: STM.STM<R, E, A>,
-    pf: (a: A) => Option.Option<STM.STM<R2, E2, A2>>
+    pf: (a: A) => Option<STM.STM<R2, E2, A2>>
   ) => STM.STM<R2 | R, E2 | E, A2>
 >(2, (self, pf) =>
   core.matchSTM(self, {
@@ -637,7 +636,7 @@ export const fromEither = <E, A>(either: Either.Either<E, A>): STM.STM<never, E,
 }
 
 /** @internal */
-export const fromOption = <A>(option: Option.Option<A>): STM.STM<never, Option.Option<never>, A> =>
+export const fromOption = <A>(option: Option<A>): STM.STM<never, Option<never>, A> =>
   Option.match(option, {
     onNone: () => core.fail(Option.none()),
     onSome: core.succeed
@@ -680,7 +679,7 @@ export const gen: typeof STM.gen = (f) =>
   })
 
 /** @internal */
-export const head = <R, E, A>(self: STM.STM<R, E, Iterable<A>>): STM.STM<R, Option.Option<E>, A> =>
+export const head = <R, E, A>(self: STM.STM<R, E, Iterable<A>>): STM.STM<R, Option<E>, A> =>
   pipe(
     self,
     core.matchSTM({
@@ -897,7 +896,7 @@ export const mergeAll = dual<
 export const negate = <R, E>(self: STM.STM<R, E, boolean>): STM.STM<R, E, boolean> => pipe(self, core.map((b) => !b))
 
 /** @internal */
-export const none = <R, E, A>(self: STM.STM<R, E, Option.Option<A>>): STM.STM<R, Option.Option<E>, void> =>
+export const none = <R, E, A>(self: STM.STM<R, E, Option<A>>): STM.STM<R, Option<E>, void> =>
   core.matchSTM(self, {
     onFailure: (e) => core.fail(Option.some(e)),
     onSuccess: Option.match({
@@ -907,7 +906,7 @@ export const none = <R, E, A>(self: STM.STM<R, E, Option.Option<A>>): STM.STM<R,
   })
 
 /** @internal */
-export const option = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, never, Option.Option<A>> =>
+export const option = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, never, Option<A>> =>
   match(self, { onFailure: () => Option.none(), onSuccess: Option.some })
 
 /** @internal */
@@ -966,20 +965,20 @@ export const orElseFail = dual<
 /** @internal */
 export const orElseOptional = dual<
   <R2, E2, A2>(
-    that: LazyArg<STM.STM<R2, Option.Option<E2>, A2>>
+    that: LazyArg<STM.STM<R2, Option<E2>, A2>>
   ) => <R, E, A>(
-    self: STM.STM<R, Option.Option<E>, A>
-  ) => STM.STM<R2 | R, Option.Option<E2 | E>, A2 | A>,
+    self: STM.STM<R, Option<E>, A>
+  ) => STM.STM<R2 | R, Option<E2 | E>, A2 | A>,
   <R, E, A, R2, E2, A2>(
-    self: STM.STM<R, Option.Option<E>, A>,
-    that: LazyArg<STM.STM<R2, Option.Option<E2>, A2>>
-  ) => STM.STM<R2 | R, Option.Option<E2 | E>, A2 | A>
+    self: STM.STM<R, Option<E>, A>,
+    that: LazyArg<STM.STM<R2, Option<E2>, A2>>
+  ) => STM.STM<R2 | R, Option<E2 | E>, A2 | A>
 >(
   2,
   <R, E, A, R2, E2, A2>(
-    self: STM.STM<R, Option.Option<E>, A>,
-    that: LazyArg<STM.STM<R2, Option.Option<E2>, A2>>
-  ): STM.STM<R2 | R, Option.Option<E2 | E>, A2 | A> =>
+    self: STM.STM<R, Option<E>, A>,
+    that: LazyArg<STM.STM<R2, Option<E2>, A2>>
+  ): STM.STM<R2 | R, Option<E2 | E>, A2 | A> =>
     core.catchAll(
       self,
       Option.match({
@@ -1119,21 +1118,21 @@ export const reduceRight = dual<
 
 /** @internal */
 export const refineOrDie = dual<
-  <E, E2>(pf: (error: E) => Option.Option<E2>) => <R, A>(self: STM.STM<R, E, A>) => STM.STM<R, E2, A>,
-  <R, A, E, E2>(self: STM.STM<R, E, A>, pf: (error: E) => Option.Option<E2>) => STM.STM<R, E2, A>
+  <E, E2>(pf: (error: E) => Option<E2>) => <R, A>(self: STM.STM<R, E, A>) => STM.STM<R, E2, A>,
+  <R, A, E, E2>(self: STM.STM<R, E, A>, pf: (error: E) => Option<E2>) => STM.STM<R, E2, A>
 >(2, (self, pf) => refineOrDieWith(self, pf, identity))
 
 /** @internal */
 export const refineOrDieWith = dual<
   <E, E2>(
-    pf: (error: E) => Option.Option<E2>,
+    pf: (error: E) => Option<E2>,
     f: (error: E) => unknown
   ) => <R, A>(
     self: STM.STM<R, E, A>
   ) => STM.STM<R, E2, A>,
   <R, A, E, E2>(
     self: STM.STM<R, E, A>,
-    pf: (error: E) => Option.Option<E2>,
+    pf: (error: E) => Option<E2>,
     f: (error: E) => unknown
   ) => STM.STM<R, E2, A>
 >(3, (self, pf, f) =>
@@ -1148,8 +1147,8 @@ export const refineOrDieWith = dual<
 
 /** @internal */
 export const reject = dual<
-  <A, E2>(pf: (a: A) => Option.Option<E2>) => <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, A>,
-  <R, E, A, E2>(self: STM.STM<R, E, A>, pf: (a: A) => Option.Option<E2>) => STM.STM<R, E2 | E, A>
+  <A, E2>(pf: (a: A) => Option<E2>) => <R, E>(self: STM.STM<R, E, A>) => STM.STM<R, E2 | E, A>,
+  <R, E, A, E2>(self: STM.STM<R, E, A>, pf: (a: A) => Option<E2>) => STM.STM<R, E2 | E, A>
 >(2, (self, pf) =>
   rejectSTM(
     self,
@@ -1159,13 +1158,13 @@ export const reject = dual<
 /** @internal */
 export const rejectSTM = dual<
   <A, R2, E2>(
-    pf: (a: A) => Option.Option<STM.STM<R2, E2, E2>>
+    pf: (a: A) => Option<STM.STM<R2, E2, E2>>
   ) => <R, E>(
     self: STM.STM<R, E, A>
   ) => STM.STM<R2 | R, E2 | E, A>,
   <R, E, A, R2, E2>(
     self: STM.STM<R, E, A>,
-    pf: (a: A) => Option.Option<STM.STM<R2, E2, E2>>
+    pf: (a: A) => Option<STM.STM<R2, E2, E2>>
   ) => STM.STM<R2 | R, E2 | E, A>
 >(2, (self, pf) =>
   core.flatMap(self, (a) =>
@@ -1262,7 +1261,7 @@ export const partition = dual<
   ))
 
 /** @internal */
-export const some = <R, E, A>(self: STM.STM<R, E, Option.Option<A>>): STM.STM<R, Option.Option<E>, A> =>
+export const some = <R, E, A>(self: STM.STM<R, E, Option<A>>): STM.STM<R, Option<E>, A> =>
   core.matchSTM(self, {
     onFailure: (e) => core.fail(Option.some(e)),
     onSuccess: Option.match({
@@ -1298,10 +1297,10 @@ export const all = ((
 }) as STM.All.Signature
 
 /** @internal */
-export const succeedNone: STM.STM<never, never, Option.Option<never>> = core.succeed(Option.none())
+export const succeedNone: STM.STM<never, never, Option<never>> = core.succeed(Option.none())
 
 /** @internal */
-export const succeedSome = <A>(value: A): STM.STM<never, never, Option.Option<A>> => core.succeed(Option.some(value))
+export const succeedSome = <A>(value: A): STM.STM<never, never, Option<A>> => core.succeed(Option.some(value))
 
 /** @internal */
 export const summarized = dual<
@@ -1404,8 +1403,8 @@ export const unit: STM.STM<never, never, void> = core.succeed(void 0)
 
 /** @internal */
 export const unless = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: STM.STM<R, E, A>) => STM.STM<R, E, Option.Option<A>>,
-  <R, E, A>(self: STM.STM<R, E, A>, predicate: LazyArg<boolean>) => STM.STM<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>) => <R, E, A>(self: STM.STM<R, E, A>) => STM.STM<R, E, Option<A>>,
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: LazyArg<boolean>) => STM.STM<R, E, Option<A>>
 >(2, (self, predicate) =>
   suspend(
     () => predicate() ? succeedNone : asSome(self)
@@ -1417,11 +1416,11 @@ export const unlessSTM = dual<
     predicate: STM.STM<R2, E2, boolean>
   ) => <R, E, A>(
     self: STM.STM<R, E, A>
-  ) => STM.STM<R2 | R, E2 | E, Option.Option<A>>,
+  ) => STM.STM<R2 | R, E2 | E, Option<A>>,
   <R, E, A, R2, E2>(
     self: STM.STM<R, E, A>,
     predicate: STM.STM<R2, E2, boolean>
-  ) => STM.STM<R2 | R, E2 | E, Option.Option<A>>
+  ) => STM.STM<R2 | R, E2 | E, Option<A>>
 >(2, (self, predicate) =>
   core.flatMap(
     predicate,
@@ -1429,7 +1428,7 @@ export const unlessSTM = dual<
   ))
 
 /** @internal */
-export const unsome = <R, E, A>(self: STM.STM<R, Option.Option<E>, A>): STM.STM<R, E, Option.Option<A>> =>
+export const unsome = <R, E, A>(self: STM.STM<R, Option<E>, A>): STM.STM<R, E, Option<A>> =>
   core.matchSTM(self, {
     onFailure: Option.match({
       onNone: () => core.succeed(Option.none()),
@@ -1466,8 +1465,8 @@ export const validateFirst = dual<
 
 /** @internal */
 export const when = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: STM.STM<R, E, A>) => STM.STM<R, E, Option.Option<A>>,
-  <R, E, A>(self: STM.STM<R, E, A>, predicate: LazyArg<boolean>) => STM.STM<R, E, Option.Option<A>>
+  (predicate: LazyArg<boolean>) => <R, E, A>(self: STM.STM<R, E, A>) => STM.STM<R, E, Option<A>>,
+  <R, E, A>(self: STM.STM<R, E, A>, predicate: LazyArg<boolean>) => STM.STM<R, E, Option<A>>
 >(2, (self, predicate) =>
   suspend(
     () => predicate() ? asSome(self) : succeedNone
@@ -1479,11 +1478,11 @@ export const whenSTM = dual<
     predicate: STM.STM<R2, E2, boolean>
   ) => <R, E, A>(
     self: STM.STM<R, E, A>
-  ) => STM.STM<R2 | R, E2 | E, Option.Option<A>>,
+  ) => STM.STM<R2 | R, E2 | E, Option<A>>,
   <R, E, A, R2, E2>(
     self: STM.STM<R, E, A>,
     predicate: STM.STM<R2, E2, boolean>
-  ) => STM.STM<R2 | R, E2 | E, Option.Option<A>>
+  ) => STM.STM<R2 | R, E2 | E, Option<A>>
 >(2, (self, predicate) =>
   core.flatMap(
     predicate,

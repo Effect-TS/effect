@@ -8,7 +8,7 @@ import * as ExecutionStrategy from "../../ExecutionStrategy.js"
 import * as Exit from "../../Exit.js"
 import * as Fiber from "../../Fiber.js"
 import { identity, pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import * as Scope from "../../Scope.js"
 import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
 import * as core from "../core-stream.js"
@@ -646,7 +646,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     upstreamFinished: boolean,
     queue: ReadonlyArray<Subexecutor.PullFromChild<Env> | undefined>,
     strategy: UpstreamPullStrategy.UpstreamPullStrategy<unknown>
-  ): readonly [Option.Option<unknown>, ReadonlyArray<Subexecutor.PullFromChild<Env> | undefined>] {
+  ): readonly [Option<unknown>, ReadonlyArray<Subexecutor.PullFromChild<Env> | undefined>] {
     switch (strategy._tag) {
       case UpstreamPullStrategyOpCodes.OP_PULL_AFTER_NEXT: {
         const shouldPrepend = !upstreamFinished || queue.some((subexecutor) => subexecutor !== undefined)

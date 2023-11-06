@@ -5,7 +5,7 @@ import type * as Chunk from "./Chunk.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import * as internal from "./internal/stm/tMap.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type * as STM from "./STM.js"
 import type * as TArray from "./TArray.js"
 import type * as TRef from "./TRef.js"
@@ -73,8 +73,8 @@ export const empty: <K, V>() => STM.STM<never, never, TMap<K, V>> = internal.emp
  * @category elements
  */
 export const find: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, Option.Option<A>>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, Option.Option<A>>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, Option<A>>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, Option<A>>
 } = internal.find
 
 /**
@@ -86,12 +86,12 @@ export const find: {
  */
 export const findSTM: {
   <K, V, R, E, A>(
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ): (self: TMap<K, V>) => STM.STM<R, E, Option.Option<A>>
+    f: (key: K, value: V) => STM.STM<R, Option<E>, A>
+  ): (self: TMap<K, V>) => STM.STM<R, E, Option<A>>
   <K, V, R, E, A>(
     self: TMap<K, V>,
-    f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
-  ): STM.STM<R, E, Option.Option<A>>
+    f: (key: K, value: V) => STM.STM<R, Option<E>, A>
+  ): STM.STM<R, E, Option<A>>
 } = internal.findSTM
 
 /**
@@ -102,8 +102,8 @@ export const findSTM: {
  * @category elements
  */
 export const findAll: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, Array<A>>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, Array<A>>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, Array<A>>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, Array<A>>
 } = internal.findAll
 
 /**
@@ -115,9 +115,9 @@ export const findAll: {
  */
 export const findAllSTM: {
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ): (self: TMap<K, V>) => STM.STM<R, E, Array<A>>
-  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): STM.STM<R, E, Array<A>>
+  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option<E>, A>): STM.STM<R, E, Array<A>>
 } = internal.findAllSTM
 
 /**
@@ -148,8 +148,8 @@ export const fromIterable: <K, V>(
  * @category elements
  */
 export const get: {
-  <K>(key: K): <V>(self: TMap<K, V>) => STM.STM<never, never, Option.Option<V>>
-  <K, V>(self: TMap<K, V>, key: K): STM.STM<never, never, Option.Option<V>>
+  <K>(key: K): <V>(self: TMap<K, V>) => STM.STM<never, never, Option<V>>
+  <K, V>(self: TMap<K, V>, key: K): STM.STM<never, never, Option<V>>
 } = internal.get
 
 /**
@@ -359,8 +359,8 @@ export const size: <K, V>(self: TMap<K, V>) => STM.STM<never, never, number> = i
  * @category mutations
  */
 export const takeFirst: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, A>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, A>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, A>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, A>
 } = internal.takeFirst
 
 /**
@@ -370,8 +370,8 @@ export const takeFirst: {
  * @category mutations
  */
 export const takeFirstSTM: {
-  <K, V, R, E, A>(pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): (self: TMap<K, V>) => STM.STM<R, E, A>
-  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>): STM.STM<R, E, A>
+  <K, V, R, E, A>(pf: (key: K, value: V) => STM.STM<R, Option<E>, A>): (self: TMap<K, V>) => STM.STM<R, E, A>
+  <K, V, R, E, A>(self: TMap<K, V>, pf: (key: K, value: V) => STM.STM<R, Option<E>, A>): STM.STM<R, E, A>
 } = internal.takeFirstSTM
 
 /**
@@ -381,8 +381,8 @@ export const takeFirstSTM: {
  * @category mutations
  */
 export const takeSome: {
-  <K, V, A>(pf: (key: K, value: V) => Option.Option<A>): (self: TMap<K, V>) => STM.STM<never, never, [A, ...Array<A>]>
-  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option.Option<A>): STM.STM<never, never, [A, ...Array<A>]>
+  <K, V, A>(pf: (key: K, value: V) => Option<A>): (self: TMap<K, V>) => STM.STM<never, never, [A, ...Array<A>]>
+  <K, V, A>(self: TMap<K, V>, pf: (key: K, value: V) => Option<A>): STM.STM<never, never, [A, ...Array<A>]>
 } = internal.takeSome
 
 /**
@@ -393,11 +393,11 @@ export const takeSome: {
  */
 export const takeSomeSTM: {
   <K, V, R, E, A>(
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ): (self: TMap<K, V>) => STM.STM<R, E, [A, ...Array<A>]>
   <K, V, R, E, A>(
     self: TMap<K, V>,
-    pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
+    pf: (key: K, value: V) => STM.STM<R, Option<E>, A>
   ): STM.STM<R, E, [A, ...Array<A>]>
 } = internal.takeSomeSTM
 
@@ -492,13 +492,13 @@ export const transformValuesSTM: {
 export const updateWith: {
   <K, V>(
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
-  ): (self: TMap<K, V>) => STM.STM<never, never, Option.Option<V>>
+    f: (value: Option<V>) => Option<V>
+  ): (self: TMap<K, V>) => STM.STM<never, never, Option<V>>
   <K, V>(
     self: TMap<K, V>,
     key: K,
-    f: (value: Option.Option<V>) => Option.Option<V>
-  ): STM.STM<never, never, Option.Option<V>>
+    f: (value: Option<V>) => Option<V>
+  ): STM.STM<never, never, Option<V>>
 } = internal.updateWith
 
 /**

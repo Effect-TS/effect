@@ -6,7 +6,7 @@ import type * as Journal from "./internal/stm/stm/journal.js"
 import type * as TxnId from "./internal/stm/stm/txnId.js"
 import type * as Versioned from "./internal/stm/stm/versioned.js"
 import * as internal from "./internal/stm/tRef.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type * as STM from "./STM.js"
 
 /**
@@ -93,8 +93,8 @@ export const getAndUpdate: {
  * @category mutations
  */
 export const getAndUpdateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
-  <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<never, never, A>
+  <A>(f: (a: A) => Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
+  <A>(self: TRef<A>, f: (a: A) => Option<A>): STM.STM<never, never, A>
 } = internal.getAndUpdateSome
 
 /**
@@ -117,8 +117,8 @@ export const modify: {
  * @category mutations
  */
 export const modifySome: {
-  <A, B>(fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): (self: TRef<A>) => STM.STM<never, never, B>
-  <A, B>(self: TRef<A>, fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): STM.STM<never, never, B>
+  <A, B>(fallback: B, f: (a: A) => Option<readonly [B, A]>): (self: TRef<A>) => STM.STM<never, never, B>
+  <A, B>(self: TRef<A>, fallback: B, f: (a: A) => Option<readonly [B, A]>): STM.STM<never, never, B>
 } = internal.modifySome
 
 /**
@@ -162,8 +162,8 @@ export const updateAndGet: {
  * @category mutations
  */
 export const updateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<never, never, void>
-  <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<never, never, void>
+  <A>(f: (a: A) => Option<A>): (self: TRef<A>) => STM.STM<never, never, void>
+  <A>(self: TRef<A>, f: (a: A) => Option<A>): STM.STM<never, never, void>
 } = internal.updateSome
 
 /**
@@ -171,6 +171,6 @@ export const updateSome: {
  * @category mutations
  */
 export const updateSomeAndGet: {
-  <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
-  <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<never, never, A>
+  <A>(f: (a: A) => Option<A>): (self: TRef<A>) => STM.STM<never, never, A>
+  <A>(self: TRef<A>, f: (a: A) => Option<A>): STM.STM<never, never, A>
 } = internal.updateSomeAndGet

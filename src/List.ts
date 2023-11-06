@@ -28,7 +28,7 @@ import * as Equivalence from "./Equivalence.js"
 import { dual, identity, unsafeCoerce } from "./Function.js"
 import * as Hash from "./Hash.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import * as Option from "./Option.js"
+import { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
@@ -588,9 +588,9 @@ const partialFill = <A>(
  * @category combinators
  */
 export const filterMap: {
-  <A, B>(f: (a: A) => Option.Option<B>): (self: List<A>) => List<B>
-  <A, B>(self: List<A>, f: (a: A) => Option.Option<B>): List<B>
-} = dual(2, <A, B>(self: List<A>, f: (a: A) => Option.Option<B>): List<B> => {
+  <A, B>(f: (a: A) => Option<B>): (self: List<A>) => List<B>
+  <A, B>(self: List<A>, f: (a: A) => Option<B>): List<B>
+} = dual(2, <A, B>(self: List<A>, f: (a: A) => Option<B>): List<B> => {
   const bs: Array<B> = []
   for (const a of self) {
     const oa = f(a)
@@ -607,7 +607,7 @@ export const filterMap: {
  * @since 2.0.0
  * @category combinators
  */
-export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(self, identity)
+export const compact = <A>(self: List<Option<A>>): List<A> => filterMap(self, identity)
 
 /**
  * Returns the first element that satisfies the specified
@@ -617,11 +617,11 @@ export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(s
  * @since 2.0.0
  */
 export const findFirst: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option.Option<B>
-  <A>(predicate: Predicate<A>): (self: List<A>) => Option.Option<A>
-  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option.Option<B>
-  <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A>
-} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A> => {
+  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option<B>
+  <A>(predicate: Predicate<A>): (self: List<A>) => Option<A>
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option<B>
+  <A>(self: List<A>, predicate: Predicate<A>): Option<A>
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option<A> => {
   let these = self
   while (!isNil(these)) {
     if (predicate(these.head)) {
@@ -698,7 +698,7 @@ export const forEach: {
  * @since 2.0.0
  * @category getters
  */
-export const head = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option.none() : Option.some(self.head)
+export const head = <A>(self: List<A>): Option<A> => isNil(self) ? Option.none() : Option.some(self.head)
 
 /**
  * Returns the last element of the specified list, or `None` if the list is
@@ -707,7 +707,7 @@ export const head = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option
  * @since 2.0.0
  * @category getters
  */
-export const last = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option.none() : Option.some(unsafeLast(self)!)
+export const last = <A>(self: List<A>): Option<A> => isNil(self) ? Option.none() : Option.some(unsafeLast(self)!)
 
 /**
  * @since 2.0.0
@@ -875,7 +875,7 @@ export const splitAt: {
  * @since 2.0.0
  * @category getters
  */
-export const tail = <A>(self: List<A>): Option.Option<List<A>> => isNil(self) ? Option.none() : Option.some(self.tail)
+export const tail = <A>(self: List<A>): Option<List<A>> => isNil(self) ? Option.none() : Option.some(self.tail)
 
 /**
  * Takes the specified number of elements from the beginning of the specified

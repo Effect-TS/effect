@@ -1,6 +1,6 @@
 import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import * as Interval from "../../ScheduleInterval.js"
 import type * as Intervals from "../../ScheduleIntervals.js"
 

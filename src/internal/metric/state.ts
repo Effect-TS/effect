@@ -4,7 +4,7 @@ import { pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
 import type * as HashMap from "../../HashMap.js"
 import type * as MetricState from "../../MetricState.js"
-import type * as Option from "../../Option.js"
+import type { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
 
@@ -158,7 +158,7 @@ export class SummaryState implements MetricState.MetricState.Summary {
   readonly [SummaryStateTypeId]: MetricState.SummaryStateTypeId = SummaryStateTypeId
   constructor(
     readonly error: number,
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>,
+    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -228,7 +228,7 @@ export const histogram = (
 export const summary = (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number

@@ -12,7 +12,7 @@ import * as FiberId from "effect/FiberId"
 import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as MutableRef from "effect/MutableRef"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import * as TestClock from "effect/TestClock"
@@ -314,7 +314,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("sandbox of interruptible", () =>
     Effect.gen(function*($) {
-      const recovered = yield* $(Ref.make<Option.Option<Either.Either<boolean, never>>>(Option.none()))
+      const recovered = yield* $(Ref.make<Option<Either.Either<boolean, never>>>(Option.none()))
       const fiber = yield* $(withLatch((release) =>
         pipe(
           release,
@@ -334,7 +334,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("run of interruptible", () =>
     Effect.gen(function*($) {
-      const recovered = yield* $(Ref.make<Option.Option<boolean>>(Option.none()))
+      const recovered = yield* $(Ref.make<Option<boolean>>(Option.none()))
       const fiber = yield* $(withLatch((release) =>
         pipe(
           release,

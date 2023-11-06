@@ -1,7 +1,7 @@
 import { Effect } from "../../Effect.js"
 import { dual, identity, pipe } from "../../Function.js"
 import * as HashSet from "../../HashSet.js"
-import * as Option from "../../Option.js"
+import { Option } from "../../Option.js"
 import * as RA from "../../ReadonlyArray.js"
 import type * as Scope from "../../Scope.js"
 import type * as STM from "../../STM.js"
@@ -246,12 +246,12 @@ class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
     return core.succeed(value!)
   })
 
-  peekOption: STM.STM<never, never, Option.Option<A>> = core.withSTMRuntime((runtime) => {
+  peekOption: STM.STM<never, never, Option<A>> = core.withSTMRuntime((runtime) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, runtime.journal)
     if (currentSubscriberHead === undefined) {
       return core.interruptAs(runtime.fiberId)
     }
-    let value: Option.Option<A> = Option.none()
+    let value: Option<A> = Option.none()
     let loop = true
     while (loop) {
       const node = tRef.unsafeGet(currentSubscriberHead, runtime.journal)

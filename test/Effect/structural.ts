@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import { assertType, satisfies } from "effect-test/utils/types"
 import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
@@ -102,7 +102,7 @@ describe.concurrent("Effect", () => {
       Effect.gen(function*($) {
         const res = yield* $(Effect.flip(Effect.all([Effect.fail(0), Effect.succeed(1)], { mode: "validate" })))
         assert.deepEqual(res, [Option.some(0), Option.none()])
-        satisfies<true>(assertType<[Option.Option<number>, Option.Option<never>]>()(res))
+        satisfies<true>(assertType<[Option<number>, Option<never>]>()(res))
       }))
     it.effect("should work with one record argument", () =>
       Effect.gen(function*($) {
@@ -127,8 +127,8 @@ describe.concurrent("Effect", () => {
         assert.deepEqual(b, Option.none())
         satisfies<true>(
           assertType<{
-            readonly a: Option.Option<number>
-            readonly b: Option.Option<never>
+            readonly a: Option<number>
+            readonly b: Option<never>
           }>()(result)
         )
       }))

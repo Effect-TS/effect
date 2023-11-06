@@ -5,7 +5,7 @@ import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { constVoid, pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import * as UpstreamPullRequest from "effect/UpstreamPullRequest"
@@ -209,13 +209,13 @@ describe.concurrent("Channel", () => {
         Channel.concatMapWithCustom(
           (x) =>
             Channel.writeAll(
-              Option.some([x, 1]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 2]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 3]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 4]) as Option.Option<readonly [number, number]>
+              Option.some([x, 1]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 2]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 3]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 4]) as Option<readonly [number, number]>
             ),
           constVoid,
           constVoid,
@@ -258,13 +258,13 @@ describe.concurrent("Channel", () => {
         Channel.concatMapWithCustom(
           (x) =>
             Channel.writeAll(
-              Option.some([x, 1]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 2]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 3]) as Option.Option<readonly [number, number]>,
-              Option.none() as Option.Option<readonly [number, number]>,
-              Option.some([x, 4]) as Option.Option<readonly [number, number]>
+              Option.some([x, 1]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 2]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 3]) as Option<readonly [number, number]>,
+              Option.none() as Option<readonly [number, number]>,
+              Option.some([x, 4]) as Option<readonly [number, number]>
             ),
           constVoid,
           constVoid,

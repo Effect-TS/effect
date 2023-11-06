@@ -9,7 +9,7 @@ import type { LazyArg } from "./Function.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/deferred.js"
 import type * as MutableRef from "./MutableRef.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -239,7 +239,7 @@ export const isDone: <E, A>(self: Deferred<E, A>) => Effect<never, never, boolea
  */
 export const poll: <E, A>(
   self: Deferred<E, A>
-) => Effect<never, never, Option.Option<Effect<never, E, A>>> = core.deferredPoll
+) => Effect<never, never, Option<Effect<never, E, A>>> = core.deferredPoll
 
 /**
  * Completes the `Deferred` with the specified value.

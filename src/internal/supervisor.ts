@@ -5,7 +5,7 @@ import type * as Fiber from "../Fiber.js"
 import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as MutableRef from "../MutableRef.js"
-import type * as Option from "../Option.js"
+import type { Option } from "../Option.js"
 import { hasProperty, isTagged } from "../Predicate.js"
 import * as SortedSet from "../SortedSet.js"
 import type * as Supervisor from "../Supervisor.js"
@@ -41,7 +41,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
   onStart<R, E, A>(
     context: Context.Context<R>,
     effect: Effect<R, E, A>,
-    parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     this.underlying.onStart(context, effect, parent, fiber)
@@ -90,7 +90,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   onStart<R, E, A>(
     context: Context.Context<R>,
     effect: Effect<R, E, A>,
-    parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     this.left.onStart(context, effect, parent, fiber)
@@ -141,7 +141,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
   onStart<R, E, A>(
     _context: Context.Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    _parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     this.fibers.add(fiber)
@@ -191,7 +191,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
   onStart<R, E, A>(
     _context: Context.Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     //
@@ -239,7 +239,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
   onStart<R, E, A>(
     _context: Context.Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    _parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.add(fiber))))

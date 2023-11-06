@@ -9,7 +9,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 
@@ -328,7 +328,7 @@ describe.concurrent("Effect", () => {
         Effect.sandbox,
         Effect.match({
           onFailure: Option.some,
-          onSuccess: () => Option.none() as Option.Option<Cause.Cause<never>>
+          onSuccess: () => Option.none() as Option<Cause.Cause<never>>
         })
       )
       assert.deepStrictEqual(result, Option.some(Cause.die(ExampleError)))

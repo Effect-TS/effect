@@ -13,7 +13,7 @@ import * as cache from "./internal/cache.js"
 import * as core from "./internal/core.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/request.js"
-import type * as Option from "./Option.js"
+import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
@@ -90,7 +90,7 @@ export declare namespace Request {
    * @category type-level
    */
   export type OptionalResult<T extends Request<any, any>> = T extends Request<infer E, infer A>
-    ? Exit.Exit<E, Option.Option<A>>
+    ? Exit.Exit<E, Option<A>>
     : never
 }
 

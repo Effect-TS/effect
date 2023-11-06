@@ -8,7 +8,7 @@ import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import * as Random from "../Random.js"
@@ -74,7 +74,7 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
 
   constructor(
     readonly schedule: Schedule.Schedule<Env, In, Out>,
-    readonly ref: Ref.Ref<readonly [Option.Option<Out>, any]>
+    readonly ref: Ref.Ref<readonly [Option<Out>, any]>
   ) {}
 
   state(): Effect<never, never, unknown> {
@@ -98,7 +98,7 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
     return ref.set(this.ref, [Option.none(), this.schedule.initial])
   }
 
-  next(input: In): Effect<Env, Option.Option<never>, Out> {
+  next(input: In): Effect<Env, Option<never>, Out> {
     return pipe(
       core.map(ref.get(this.ref), (tuple) => tuple[1]),
       core.flatMap((state) =>
@@ -562,7 +562,7 @@ export const driver = <Env, In, Out>(
   self: Schedule.Schedule<Env, In, Out>
 ): Effect<never, never, Schedule.ScheduleDriver<Env, In, Out>> =>
   pipe(
-    ref.make<readonly [Option.Option<Out>, any]>([Option.none(), self.initial]),
+    ref.make<readonly [Option<Out>, any]>([Option.none(), self.initial]),
     core.map((ref) => new ScheduleDriverImpl(self, ref))
   )
 
@@ -671,7 +671,7 @@ export const fixed = (intervalInput: Duration.DurationInput): Schedule.Schedule<
   const interval = Duration.decode(intervalInput)
   const intervalMillis = Duration.toMillis(interval)
   return makeWithState(
-    [Option.none(), 0] as readonly [Option.Option<readonly [number, number]>, number],
+    [Option.none(), 0] as readonly [Option<readonly [number, number]>, number],
     (now, _, [option, n]) =>
       core.sync(() => {
         switch (option._tag) {
@@ -1147,7 +1147,7 @@ export const recurUntilEffect = <Env, A>(
 ): Schedule.Schedule<Env, A, A> => untilInputEffect(identity<A>(), f)
 
 /** @internal */
-export const recurUntilOption = <A, B>(pf: (a: A) => Option.Option<B>): Schedule.Schedule<never, A, Option.Option<B>> =>
+export const recurUntilOption = <A, B>(pf: (a: A) => Option<B>): Schedule.Schedule<never, A, Option<B>> =>
   untilOutput(map(identity<A>(), pf), Option.isSome)
 
 /** @internal */
@@ -1544,7 +1544,7 @@ export const windowed = (intervalInput: Duration.DurationInput): Schedule.Schedu
   const interval = Duration.decode(intervalInput)
   const millis = Duration.toMillis(interval)
   return makeWithState(
-    [Option.none(), 0] as readonly [Option.Option<number>, number],
+    [Option.none(), 0] as readonly [Option<number>, number],
     (now, _, [option, n]) => {
       switch (option._tag) {
         case "None": {
@@ -1797,12 +1797,12 @@ export const repeat_Effect = dual<
 export const repeatOrElse_Effect = dual<
   <R2, A extends A0, A0, B, E, R3, E2>(
     schedule: Schedule.Schedule<R2, A, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+    orElse: (error: E, option: Option<B>) => Effect<R3, E2, B>
   ) => <R>(self: Effect<R, E, A>) => Effect<R | R2 | R3, E2, B>,
   <R, E, A extends A0, A0, R2, B, R3, E2>(
     self: Effect<R, E, A>,
     schedule: Schedule.Schedule<R2, A0, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+    orElse: (error: E, option: Option<B>) => Effect<R3, E2, B>
   ) => Effect<R | R2 | R3, E2, B>
 >(3, (self, schedule, orElse) =>
   core.flatMap(driver(schedule), (driver) =>
@@ -1815,7 +1815,7 @@ export const repeatOrElse_Effect = dual<
 const repeatOrElseEffectLoop = <R, E, A extends A0, A0, R1, B, R2, E2, C>(
   self: Effect<R, E, A>,
   driver: Schedule.ScheduleDriver<R1, A0, B>,
-  orElse: (error: E, option: Option.Option<B>) => Effect<R2, E2, C>,
+  orElse: (error: E, option: Option<B>) => Effect<R2, E2, C>,
   value: A
 ): Effect<R | R1 | R2, E2, B | C> => {
   return core.matchEffect(driver.next(value), {
@@ -2060,7 +2060,7 @@ export const count: Schedule.Schedule<never, unknown, number> = unfold(0, (n) =>
 
 /** @internal */
 export const elapsed: Schedule.Schedule<never, unknown, Duration.Duration> = makeWithState(
-  Option.none() as Option.Option<number>,
+  Option.none() as Option<number>,
   (now, _, state) => {
     switch (state._tag) {
       case "None": {

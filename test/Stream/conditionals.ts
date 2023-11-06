@@ -6,7 +6,7 @@ import { Stream } from "effect/Stream"
 // import * as Chunk from "effect/Chunk"
 // import * as Either from "effect/Either"
 import { constFalse, constTrue, constVoid, pipe } from "effect/Function"
-import * as Option from "effect/Option"
+import { Option } from "effect/Option"
 // import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 
@@ -97,7 +97,7 @@ describe.concurrent("Stream", () => {
       const result = yield* $(
         Stream.whenCase(
           constVoid,
-          (): Option.Option<Stream<never, never, void>> => {
+          (): Option<Stream<never, never, void>> => {
             throw error
           }
         ),
@@ -125,7 +125,7 @@ describe.concurrent("Stream", () => {
   it.effect("whenCaseEffect - returns an empty stream if the given partial function is not defined for the given effectful value", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Effect.succeed<Option.Option<number>>(Option.none()),
+        Effect.succeed<Option<number>>(Option.none()),
         Stream.whenCaseEffect(
           (option) =>
             Option.isSome(option) ?
@@ -154,7 +154,7 @@ describe.concurrent("Stream", () => {
       const error = Cause.RuntimeException("boom")
       const result = yield* $(
         Effect.unit,
-        Stream.whenCaseEffect((): Option.Option<Stream<never, never, void>> => {
+        Stream.whenCaseEffect((): Option<Stream<never, never, void>> => {
           throw error
         }),
         Stream.runCollect,
