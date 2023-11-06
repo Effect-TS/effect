@@ -27,8 +27,8 @@ devDependencies:
     specifier: ^3.1.6
     version: 3.1.6
   '@effect/build-utils':
-    specifier: ^0.2.0
-    version: 0.2.0
+    specifier: ^0.3.0
+    version: 0.3.0
   '@effect/docgen':
     specifier: ^0.3.0
     version: 0.3.0(fast-check@3.13.2)(tsx@3.14.0)(typescript@5.2.2)
@@ -621,8 +621,8 @@ packages:
       '@edge-runtime/primitives': 4.0.4
     dev: true
 
-  /@effect/build-utils@0.2.0:
-    resolution: {integrity: sha512-GlvCwP0O0ViwfmPk+1u6CHkBYUDMI4Mjff4sCMdkGqJNkw55aT9wmOg0K/6GSbRi01lX13HJZBoetMPed6QdSQ==}
+  /@effect/build-utils@0.3.0:
+    resolution: {integrity: sha512-t8YEfEMGObi8vuCyUe1hVQLLZPzfV4K1c8LdRa9w+Uwk3CXASUER0crjvDoPTT2A7dclVlOdhCie2oyGav8YQQ==}
     engines: {node: '>=16.17.1'}
     hasBin: true
     dev: true
@@ -6011,3 +6011,5 @@ packages:
       repeat-string: 1.6.1
       strip-color: 0.1.0
     dev: true
+
+publishDirectory: dist
