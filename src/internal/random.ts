@@ -47,7 +47,7 @@ class RandomImpl implements Random.Random {
   }
 
   shuffle<A>(elements: Iterable<A>): Effect.Effect<never, never, Chunk.Chunk<A>> {
-    return shuffleWith(elements, (n) => this.nextIntBetween(0, n + 1))
+    return shuffleWith(elements, (n) => this.nextIntBetween(0, n))
   }
 }
 
