@@ -27,12 +27,12 @@ export type typeSymbol = typeof typeSymbol
 /**
  * @since 2.0.0
  */
-export declare const blacklistSymbol: unique symbol
+export declare const ignoreSymbol: unique symbol
 
 /**
  * @since 2.0.0
  */
-export type blacklistSymbol = typeof blacklistSymbol
+export type ignoreSymbol = typeof ignoreSymbol
 
 type MaybeReturn<F> = F extends () => any ? ReturnType<F> : F
 
@@ -40,9 +40,9 @@ type Values<X extends [any, any]> = X extends any
   ? { [k in keyof X[0]]-?: k extends X[1] ? never : MaybeReturn<X[0][k]> }[keyof X[0]]
   : never
 
-type Blacklist<X> = X extends {
-  [blacklistSymbol]?: any
-} ? keyof NonNullable<X[blacklistSymbol]>
+type Ignore<X> = X extends {
+  [ignoreSymbol]?: any
+} ? keyof NonNullable<X[ignoreSymbol]>
   : never
 
 type ExtractTypes<
@@ -52,7 +52,7 @@ type ExtractTypes<
   }
 > = X extends any ? [
     NonNullable<X[unifySymbol]>,
-    Blacklist<X>
+    Ignore<X>
   ]
   : never
 

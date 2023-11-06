@@ -75,7 +75,7 @@ export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ChannelUnify<this>
-  [Unify.blacklistSymbol]?: ChannelUnifyBlacklist
+  [Unify.ignoreSymbol]?: ChannelUnifyIgnore
 }
 
 /**
@@ -101,7 +101,7 @@ export interface ChannelUnify<A extends { [Unify.typeSymbol]?: any }> extends Ef
  * @category models
  * @since 2.0.0
  */
-export interface ChannelUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface ChannelUnifyIgnore extends Effect.EffectUnifyIgnore {
   Channel?: true
 }
 
@@ -111,7 +111,7 @@ export interface ChannelUnifyBlacklist extends Effect.EffectUnifyBlacklist {
  */
 declare module "./Effect.js" {
   interface Effect<R, E, A> extends Channel<R, unknown, unknown, unknown, E, never, A> {}
-  interface EffectUnifyBlacklist {
+  interface EffectUnifyIgnore {
     Channel?: true
   }
 }

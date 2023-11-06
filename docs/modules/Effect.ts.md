@@ -235,7 +235,7 @@ Added in v2.0.0
   - [Effect (interface)](#effect-interface)
   - [EffectGen (interface)](#effectgen-interface)
   - [EffectUnify (interface)](#effectunify-interface)
-  - [EffectUnifyBlacklist (interface)](#effectunifyblacklist-interface)
+  - [EffectUnifyIgnore (interface)](#effectunifyignore-interface)
 - [optionality](#optionality)
   - [fromNullable](#fromnullable)
   - [optionFromOptional](#optionfromoptional)
@@ -4088,7 +4088,7 @@ of executing `Effect` values.
 export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
-  readonly [Unify.blacklistSymbol]?: EffectUnifyBlacklist
+  readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
 }
 ```
 
@@ -4126,12 +4126,12 @@ export interface EffectUnify<A extends { [Unify.typeSymbol]?: any }>
 
 Added in v2.0.0
 
-## EffectUnifyBlacklist (interface)
+## EffectUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface EffectUnifyBlacklist {
+export interface EffectUnifyIgnore {
   Tag?: true
   Option?: true
   Either?: true

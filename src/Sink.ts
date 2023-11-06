@@ -67,7 +67,7 @@ export interface SinkUnify<A extends { [Unify.typeSymbol]?: any }> extends Effec
  * @category models
  * @since 2.0.0
  */
-export interface SinkUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface SinkUnifyIgnore extends Effect.EffectUnifyIgnore {
   Sink?: true
 }
 
@@ -77,7 +77,7 @@ export interface SinkUnifyBlacklist extends Effect.EffectUnifyBlacklist {
  */
 declare module "./Effect.js" {
   interface Effect<R, E, A> extends Sink<R, E, unknown, never, A> {}
-  interface EffectUnifyBlacklist {
+  interface EffectUnifyIgnore {
     Sink?: true
   }
 }

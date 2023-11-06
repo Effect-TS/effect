@@ -69,7 +69,7 @@ Added in v2.0.0
   - [None (interface)](#none-interface)
   - [Option (type alias)](#option-type-alias)
   - [OptionUnify (interface)](#optionunify-interface)
-  - [OptionUnifyBlacklist (interface)](#optionunifyblacklist-interface)
+  - [OptionUnifyIgnore (interface)](#optionunifyignore-interface)
   - [Some (interface)](#some-interface)
 - [pattern matching](#pattern-matching)
   - [match](#match)
@@ -1028,7 +1028,7 @@ export interface None<A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>
-  [Unify.blacklistSymbol]?: OptionUnifyBlacklist
+  [Unify.ignoreSymbol]?: OptionUnifyIgnore
 }
 ```
 
@@ -1056,12 +1056,12 @@ export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
 
 Added in v2.0.0
 
-## OptionUnifyBlacklist (interface)
+## OptionUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface OptionUnifyBlacklist {}
+export interface OptionUnifyIgnore {}
 ```
 
 Added in v2.0.0
@@ -1080,7 +1080,7 @@ export interface Some<A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>
-  [Unify.blacklistSymbol]?: OptionUnifyBlacklist
+  [Unify.ignoreSymbol]?: OptionUnifyIgnore
 }
 ```
 

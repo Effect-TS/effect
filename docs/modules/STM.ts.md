@@ -112,7 +112,7 @@ Added in v2.0.0
   - [STM (interface)](#stm-interface)
   - [STMGen (interface)](#stmgen-interface)
   - [STMUnify (interface)](#stmunify-interface)
-  - [STMUnifyBlacklist (interface)](#stmunifyblacklist-interface)
+  - [STMUnifyIgnore (interface)](#stmunifyignore-interface)
 - [mutations](#mutations)
   - [collect](#collect)
   - [collectSTM](#collectstm)
@@ -1886,7 +1886,7 @@ synchronization of Fibers and transactional data-types can be quite useful.
 export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: STMUnify<this>
-  [Unify.blacklistSymbol]?: STMUnifyBlacklist
+  [Unify.ignoreSymbol]?: STMUnifyIgnore
 }
 ```
 
@@ -1920,12 +1920,12 @@ export interface STMUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect
 
 Added in v2.0.0
 
-## STMUnifyBlacklist (interface)
+## STMUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface STMUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface STMUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
 }
 ```

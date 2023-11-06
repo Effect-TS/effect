@@ -89,7 +89,7 @@ Added in v2.0.0
   - [Channel (interface)](#channel-interface)
   - [ChannelException (interface)](#channelexception-interface)
   - [ChannelUnify (interface)](#channelunify-interface)
-  - [ChannelUnifyBlacklist (interface)](#channelunifyblacklist-interface)
+  - [ChannelUnifyIgnore (interface)](#channelunifyignore-interface)
 - [refinements](#refinements)
   - [isChannelException](#ischannelexception)
 - [sequencing](#sequencing)
@@ -1430,7 +1430,7 @@ export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ChannelUnify<this>
-  [Unify.blacklistSymbol]?: ChannelUnifyBlacklist
+  [Unify.ignoreSymbol]?: ChannelUnifyIgnore
 }
 ```
 
@@ -1469,12 +1469,12 @@ export interface ChannelUnify<A extends { [Unify.typeSymbol]?: any }> extends Ef
 
 Added in v2.0.0
 
-## ChannelUnifyBlacklist (interface)
+## ChannelUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface ChannelUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface ChannelUnifyIgnore extends Effect.EffectUnifyIgnore {
   Channel?: true
 }
 ```
