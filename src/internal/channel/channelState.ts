@@ -1,7 +1,7 @@
 import { Effect } from "../../Effect.js"
 import type { Exit } from "../../Exit.js"
 import { hasProperty } from "../../Predicate.js"
-import { OpCodes } from "../opCodes/channelState.js"
+import * as OpCodes from "../opCodes/channelState.js"
 import type { ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */

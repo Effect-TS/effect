@@ -14,12 +14,11 @@ import { Predicate } from "../Predicate.js"
 import type { Runtime } from "../Runtime.js"
 import type { RuntimeFlags } from "../RuntimeFlags.js"
 import * as _scheduler from "../Scheduler.js"
-import { NoSuchElementException } from "./cause.js"
-import { InternalCause } from "./cause.js"
+import { InternalCause, NoSuchElementException } from "./cause.js"
 import * as core from "./core.js"
 import { FiberRuntime } from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
-import { OpCodes } from "./opCodes/effect.js"
+import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as _supervisor from "./supervisor.js"
 
@@ -214,21 +213,20 @@ const fastPath = <R, E, A>(effect: Effect<R, E, A>): Exit<E, A> | undefined => {
 }
 
 /** @internal */
-export const unsafeRunSyncExit =
-  <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Exit<E, A> => {
-    const op = fastPath(effect)
-    if (op) {
-      return op
-    }
-    const scheduler = new _scheduler.SyncScheduler()
-    const fiberRuntime = unsafeFork(runtime)(effect, { scheduler })
-    scheduler.flush()
-    const result = fiberRuntime.unsafePoll()
-    if (result) {
-      return result
-    }
-    throw asyncFiberException(fiberRuntime)
+export const unsafeRunSyncExit = <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Exit<E, A> => {
+  const op = fastPath(effect)
+  if (op) {
+    return op
   }
+  const scheduler = new _scheduler.SyncScheduler()
+  const fiberRuntime = unsafeFork(runtime)(effect, { scheduler })
+  scheduler.flush()
+  const result = fiberRuntime.unsafePoll()
+  if (result) {
+    return result
+  }
+  throw asyncFiberException(fiberRuntime)
+}
 
 /** @internal */
 export const unsafeRunPromise = <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Promise<A> =>
@@ -244,17 +242,16 @@ export const unsafeRunPromise = <R>(runtime: Runtime<R>) => <E, A>(effect: Effec
   })
 
 /** @internal */
-export const unsafeRunPromiseExit =
-  <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Promise<Exit<E, A>> =>
-    new Promise((resolve) => {
-      const op = fastPath(effect)
-      if (op) {
-        resolve(op)
-      }
-      unsafeFork(runtime)(effect).addObserver((exit) => {
-        resolve(exit)
-      })
+export const unsafeRunPromiseExit = <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Promise<Exit<E, A>> =>
+  new Promise((resolve) => {
+    const op = fastPath(effect)
+    if (op) {
+      resolve(op)
+    }
+    unsafeFork(runtime)(effect).addObserver((exit) => {
+      resolve(exit)
     })
+  })
 
 /** @internal */
 export class RuntimeImpl<R> implements Runtime<R> {

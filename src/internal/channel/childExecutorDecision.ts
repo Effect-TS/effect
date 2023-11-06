@@ -1,7 +1,7 @@
 import type { ChildExecutorDecision } from "../../ChildExecutorDecision.js"
 import { dual } from "../../Function.js"
 import { hasProperty } from "../../Predicate.js"
-import { OpCodes } from "../opCodes/channelChildExecutorDecision.js"
+import * as OpCodes from "../opCodes/channelChildExecutorDecision.js"
 
 /** @internal */
 const ChildExecutorDecisionSymbolKey = "effect/ChannelChildExecutorDecision"

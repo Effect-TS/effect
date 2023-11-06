@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 
-import type { Journal } from "./internal/stm/stm/journal.js"
+import type * as Journal from "./internal/stm/stm/journal.js"
 import type { TxnId } from "./internal/stm/stm/txnId.js"
 import type { Versioned } from "./internal/stm/stm/versioned.js"
 import * as internal from "./internal/stm/tRef.js"

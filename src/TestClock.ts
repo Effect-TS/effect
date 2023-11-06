@@ -22,8 +22,8 @@ import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as layer from "./internal/layer.js"
 import * as ref from "./internal/ref.js"
 import * as synchronized from "./internal/synchronizedRef.js"
-import { SuspendedWarningData } from "./internal/testing/suspendedWarningData.js"
-import { WarningData } from "./internal/testing/warningData.js"
+import * as SuspendedWarningData from "./internal/testing/suspendedWarningData.js"
+import * as WarningData from "./internal/testing/warningData.js"
 import type { Layer } from "./Layer.js"
 import * as number from "./Number.js"
 import { Option } from "./Option.js"
@@ -31,8 +31,8 @@ import { Order } from "./Order.js"
 import type { Ref } from "./Ref.js"
 import type { SortedSet } from "./SortedSet.js"
 import type { SynchronizedRef } from "./SynchronizedRef.js"
-import { Annotations } from "./TestAnnotations.js"
-import { Live } from "./TestLive.js"
+import * as Annotations from "./TestAnnotations.js"
+import * as Live from "./TestLive.js"
 
 export * as TestClock from "./TestClock.js"
 
@@ -142,8 +142,8 @@ export class TestClockImpl implements TestClock {
     readonly clockState: Ref<Data>,
     readonly live: Live.TestLive,
     readonly annotations: Annotations.TestAnnotations,
-    readonly warningState: SynchronizedRef<WarningData>,
-    readonly suspendedWarningState: SynchronizedRef<SuspendedWarningData>
+    readonly warningState: SynchronizedRef<WarningData.WarningData>,
+    readonly suspendedWarningState: SynchronizedRef<SuspendedWarningData.SuspendedWarningData>
   ) {
     this.currentTimeMillis = core.map(
       ref.get(this.clockState),
@@ -437,7 +437,7 @@ export class TestClockImpl implements TestClock {
  */
 export const live = (data: Data): Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
   layer.scoped(
-    TestClock,
+    TestClock.Tag,
     effect.gen(function*($) {
       const live = yield* $(Live.TestLive)
       const annotations = yield* $(Annotations.TestAnnotations)

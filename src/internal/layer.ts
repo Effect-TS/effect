@@ -13,8 +13,8 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type { Runtime } from "../Runtime.js"
 import type { Schedule } from "../Schedule.js"
-import { ScheduleDecision } from "../ScheduleDecision.js"
-import { Intervals } from "../ScheduleIntervals.js"
+import * as ScheduleDecision from "../ScheduleDecision.js"
+import * as Intervals from "../ScheduleIntervals.js"
 import { Scope } from "../Scope.js"
 import type { SynchronizedRef } from "../SynchronizedRef.js"
 import type { Tracer } from "../Tracer.js"
@@ -22,8 +22,8 @@ import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
 import * as fiberRuntime from "./fiberRuntime.js"
-import { EffectOpCodes } from "./opCodes/effect.js"
-import { OpCodes } from "./opCodes/layer.js"
+import * as EffectOpCodes from "./opCodes/effect.js"
+import * as OpCodes from "./opCodes/layer.js"
 import * as ref from "./ref.js"
 import * as runtime from "./runtime.js"
 import * as runtimeFlags from "./runtimeFlags.js"
@@ -899,7 +899,7 @@ export const scope: Layer<never, never, Scope.Closeable> = scopedContext(
       fiberRuntime.scopeMake(),
       (scope, exit) => scope.close(exit)
     ),
-    (scope) => Context.make(Scope, scope)
+    (scope) => Context.make(Scope.Tag, scope)
   )
 )
 

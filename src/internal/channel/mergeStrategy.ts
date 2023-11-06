@@ -1,7 +1,7 @@
 import { dual } from "../../Function.js"
 import type { MergeStrategy } from "../../MergeStrategy.js"
 import { hasProperty } from "../../Predicate.js"
-import { OpCodes } from "../opCodes/channelMergeStrategy.js"
+import * as OpCodes from "../opCodes/channelMergeStrategy.js"
 
 /** @internal */
 const MergeStrategySymbolKey = "effect/ChannelMergeStrategy"

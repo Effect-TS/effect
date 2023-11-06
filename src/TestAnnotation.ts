@@ -26,15 +26,19 @@ export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
  */
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 
-/**
- * @since 2.0.0
- */
-export interface TestAnnotation<A> extends Equal {
-  readonly [TestAnnotationTypeId]: TestAnnotationTypeId
-  readonly identifier: string
-  readonly tag: Context.Tag<A, A>
-  readonly initial: A
-  readonly combine: (a: A, b: A) => A
+export * as TestAnnotation from "./TestAnnotation.js"
+
+declare module "./TestAnnotation.js" {
+  /**
+   * @since 2.0.0
+   */
+  export interface TestAnnotation<A> extends Equal {
+    readonly [TestAnnotationTypeId]: TestAnnotationTypeId
+    readonly identifier: string
+    readonly tag: Context.Tag<A, A>
+    readonly initial: A
+    readonly combine: (a: A, b: A) => A
+  }
 }
 
 /** @internal */

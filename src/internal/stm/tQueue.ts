@@ -7,7 +7,7 @@ import { STM } from "../../STM.js"
 import type { TQueue } from "../../TQueue.js"
 import type { TRef } from "../../TRef.js"
 import * as core from "./core.js"
-import { OpCodes } from "./opCodes/strategy.js"
+import * as OpCodes from "./opCodes/strategy.js"
 import * as stm from "./stm.js"
 import * as tRef from "./tRef.js"
 

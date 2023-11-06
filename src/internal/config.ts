@@ -14,7 +14,7 @@ import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as configError from "./configError.js"
 import * as configSecret from "./configSecret.js"
 import * as core from "./core.js"
-import { OpCodes } from "./opCodes/config.js"
+import * as OpCodes from "./opCodes/config.js"
 
 /** @internal */
 const ConfigSymbolKey = "effect/Config"

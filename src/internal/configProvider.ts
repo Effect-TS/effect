@@ -17,7 +17,7 @@ import * as _config from "./config.js"
 import * as configError from "./configError.js"
 import * as pathPatch from "./configProvider/pathPatch.js"
 import * as core from "./core.js"
-import { OpCodes } from "./opCodes/config.js"
+import * as OpCodes from "./opCodes/config.js"
 import { StringUtils } from "./string-utils.js"
 
 const concat = <A, B>(l: ReadonlyArray<A>, r: ReadonlyArray<B>): ReadonlyArray<A | B> => [...l, ...r]
@@ -546,24 +546,19 @@ const orElseFlat = (
   })
 
 /** @internal */
-export const constantCase = (self: ConfigProvider): ConfigProvider =>
-  mapInputPath(self, StringUtils.constantCase)
+export const constantCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.constantCase)
 
 /** @internal */
-export const kebabCase = (self: ConfigProvider): ConfigProvider =>
-  mapInputPath(self, StringUtils.kebabCase)
+export const kebabCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.kebabCase)
 
 /** @internal */
-export const lowerCase = (self: ConfigProvider): ConfigProvider =>
-  mapInputPath(self, StringUtils.lowerCase)
+export const lowerCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.lowerCase)
 
 /** @internal */
-export const snakeCase = (self: ConfigProvider): ConfigProvider =>
-  mapInputPath(self, StringUtils.snakeCase)
+export const snakeCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.snakeCase)
 
 /** @internal */
-export const upperCase = (self: ConfigProvider): ConfigProvider =>
-  mapInputPath(self, StringUtils.upperCase)
+export const upperCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.upperCase)
 
 /** @internal */
 export const within = dual<

@@ -1,9 +1,13 @@
 import type { Exit } from "../../../Exit.js"
-import { OpCodes } from "../opCodes/tryCommit.js"
+import * as OpCodes from "../opCodes/tryCommit.js"
 import type { Journal } from "./journal.js"
 
 /** @internal */
-export type TryCommit<E, A> = Done<E, A> | Suspend
+export * as TryCommit from "./tryCommit.js"
+
+declare module "./tryCommit.js" {
+  export type TryCommit<E, A> = Done<E, A> | Suspend
+}
 
 /** @internal */
 export interface Done<E, A> {

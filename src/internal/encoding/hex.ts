@@ -1,5 +1,5 @@
 import { Either } from "../../Either.js"
-import type { Encoding } from "../../Encoding.js"
+import type * as Encoding from "../../Encoding.js"
 import { DecodeException } from "./common.js"
 
 /** @internal */

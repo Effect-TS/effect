@@ -17,27 +17,31 @@ export const MergeDecisionTypeId: unique symbol = internal.MergeDecisionTypeId
  */
 export type MergeDecisionTypeId = typeof MergeDecisionTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MergeDecision<R, E0, Z0, E, Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
+export * as MergeDecision from "./MergeDecision.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace MergeDecision {
+declare module "./MergeDecision.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, E0, Z0, E, Z> {
-    readonly [MergeDecisionTypeId]: {
-      _R: (_: never) => R
-      _E0: (_: E0) => void
-      _Z0: (_: Z0) => void
-      _E: (_: never) => E
-      _Z: (_: never) => Z
+  export interface MergeDecision<R, E0, Z0, E, Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace MergeDecision {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<R, E0, Z0, E, Z> {
+      readonly [MergeDecisionTypeId]: {
+        _R: (_: never) => R
+        _E0: (_: E0) => void
+        _Z0: (_: Z0) => void
+        _E: (_: never) => E
+        _Z: (_: never) => Z
+      }
     }
   }
 }

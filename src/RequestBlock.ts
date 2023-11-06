@@ -9,35 +9,39 @@ import * as _dataSource from "./internal/dataSource.js"
 import type { Request } from "./Request.js"
 import type { RequestResolver } from "./RequestResolver.js"
 
-/**
- * `RequestBlock` captures a collection of blocked requests as a data
- * structure. By doing this the library is able to preserve information about
- * which requests must be performed sequentially and which can be performed in
- * parallel, allowing for maximum possible batching and pipelining while
- * preserving ordering guarantees.
- *
- * @since 2.0.0
- * @category models
- */
-export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
+export * as RequestBlock from "./RequestBlock.js"
 
-/**
- * @since 2.0.0
- * @category models
- */
-export declare namespace RequestBlock {
+declare module "./RequestBlock.js" {
+  /**
+   * `RequestBlock` captures a collection of blocked requests as a data
+   * structure. By doing this the library is able to preserve information about
+   * which requests must be performed sequentially and which can be performed in
+   * parallel, allowing for maximum possible batching and pipelining while
+   * preserving ordering guarantees.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
+
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Reducer<R, Z> {
-    readonly emptyCase: () => Z
-    readonly parCase: (left: Z, right: Z) => Z
-    readonly singleCase: (
-      dataSource: RequestResolver<unknown, R>,
-      blockedRequest: Request.Entry<unknown>
-    ) => Z
-    readonly seqCase: (left: Z, right: Z) => Z
+  export namespace RequestBlock {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Reducer<R, Z> {
+      readonly emptyCase: () => Z
+      readonly parCase: (left: Z, right: Z) => Z
+      readonly singleCase: (
+        dataSource: RequestResolver<unknown, R>,
+        blockedRequest: Request.Entry<unknown>
+      ) => Z
+      readonly seqCase: (left: Z, right: Z) => Z
+    }
   }
 }
 

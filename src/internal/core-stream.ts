@@ -18,7 +18,7 @@ import * as childExecutorDecision from "./channel/childExecutorDecision.js"
 import type { ErasedContinuationK } from "./channel/continuation.js"
 import { ContinuationKImpl } from "./channel/continuation.js"
 import * as upstreamPullStrategy from "./channel/upstreamPullStrategy.js"
-import { OpCodes } from "./opCodes/channel.js"
+import * as OpCodes from "./opCodes/channel.js"
 
 /** @internal */
 const ChannelSymbolKey = "effect/Channel"

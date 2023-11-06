@@ -2,7 +2,7 @@ import { dual } from "../../Function.js"
 import type { Option } from "../../Option.js"
 import { hasProperty } from "../../Predicate.js"
 import type { UpstreamPullStrategy } from "../../UpstreamPullStrategy.js"
-import { OpCodes } from "../opCodes/channelUpstreamPullStrategy.js"
+import * as OpCodes from "../opCodes/channelUpstreamPullStrategy.js"
 
 /** @internal */
 const UpstreamPullStrategySymbolKey = "effect/ChannelUpstreamPullStrategy"

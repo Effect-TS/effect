@@ -26,53 +26,57 @@ export const ConfigTypeId: unique symbol = internal.ConfigTypeId
  */
 export type ConfigTypeId = typeof ConfigTypeId
 
-/**
- * A `Config` describes the structure of some configuration data.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Config<A> extends Config.Variance<A>, Pipeable {}
+export * as Config from "./Config.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Config {
+declare module "./Config.js" {
   /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<A> {
-    readonly [ConfigTypeId]: {
-      readonly _A: (_: never) => A
-    }
-  }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Primitive<A> extends Config<A> {
-    readonly description: string
-    parse(text: string): Either<ConfigError, A>
-  }
-
-  /**
-   * Wraps a nested structure, converting all primitives to a `Config`.
-   *
-   * `Config.Wrap<{ key: string }>` becomes `{ key: Config<string> }`
-   *
-   * To create the resulting config, use the `unwrap` constructor.
+   * A `Config` describes the structure of some configuration data.
    *
    * @since 2.0.0
    * @category models
    */
-  export type Wrap<A> =
-    | (A extends Record<string, any> ? {
-        [K in keyof A]: Wrap<A[K]>
+  export interface Config<A> extends Config.Variance<A>, Pipeable {}
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Config {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [ConfigTypeId]: {
+        readonly _A: (_: never) => A
       }
-      : never)
-    | Config<A>
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Primitive<A> extends Config<A> {
+      readonly description: string
+      parse(text: string): Either<ConfigError, A>
+    }
+
+    /**
+     * Wraps a nested structure, converting all primitives to a `Config`.
+     *
+     * `Config.Wrap<{ key: string }>` becomes `{ key: Config<string> }`
+     *
+     * To create the resulting config, use the `unwrap` constructor.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export type Wrap<A> =
+      | (A extends Record<string, any> ? {
+          [K in keyof A]: Wrap<A[K]>
+        }
+        : never)
+      | Config<A>
+  }
 }
 
 /**
@@ -347,8 +351,7 @@ export const sync: <A>(value: LazyArg<A>) => Config<A> = internal.sync
  * @since 2.0.0
  * @category constructors
  */
-export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap<string, A>> =
-  internal.hashMap
+export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap<string, A>> = internal.hashMap
 
 /**
  * Constructs a config from some configuration wrapped with the `Wrap<A>` utility type.

@@ -6,7 +6,7 @@ import * as internal from "./internal/stm/tRandom.js"
 import type { Layer } from "./Layer.js"
 import type { STM } from "./STM.js"
 import type { TRef } from "./TRef.js"
-import type { Random } from "./Utils.js"
+import type * as Random from "./Utils.js"
 
 /**
  * @since 2.0.0

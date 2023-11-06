@@ -519,9 +519,9 @@ export const timeoutTo = dual<
 const SynchronizedSymbolKey = "effect/Ref/SynchronizedRef"
 
 /** @internal */
-export const SynchronizedTypeId: SynchronizedRefTypeId = Symbol.for(
+export const SynchronizedTypeId: SynchronizedRef.SynchronizedRefTypeId = Symbol.for(
   SynchronizedSymbolKey
-) as SynchronizedRefTypeId
+) as SynchronizedRef.SynchronizedRefTypeId
 
 /** @internal */
 export const synchronizedVariance = {

@@ -42,8 +42,8 @@ import * as internalDiffer from "./differ.js"
 import { effectVariance } from "./effectable.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
-import { DeferredOpCodes } from "./opCodes/deferred.js"
-import { OpCodes } from "./opCodes/effect.js"
+import * as DeferredOpCodes from "./opCodes/deferred.js"
+import * as OpCodes from "./opCodes/effect.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 import * as internalTracer from "./tracer.js"
 
@@ -1526,8 +1526,7 @@ export const fiberRefDelete = <A>(self: FiberRef<A>): Effect<never, never, void>
   })
 
 /* @internal */
-export const fiberRefReset = <A>(self: FiberRef<A>): Effect<never, never, void> =>
-  fiberRefSet(self, self.initial)
+export const fiberRefReset = <A>(self: FiberRef<A>): Effect<never, never, void> => fiberRefSet(self, self.initial)
 
 /* @internal */
 export const fiberRefModify = dual<
@@ -2110,8 +2109,7 @@ export const exitAs = dual<
 })
 
 /** @internal */
-export const exitAsUnit = <E, A>(self: Exit<E, A>): Exit<E, void> =>
-  exitAs(self, void 0) as Exit<E, void>
+export const exitAsUnit = <E, A>(self: Exit<E, A>): Exit<E, void> => exitAs(self, void 0) as Exit<E, void>
 
 /** @internal */
 export const exitCauseOption = <E, A>(self: Exit<E, A>): Option<Cause<E>> => {
@@ -2152,8 +2150,7 @@ export const exitExists = dual<
 })
 
 /** @internal */
-export const exitFail = <E>(error: E): Exit<E, never> =>
-  exitFailCause(internalCause.fail(error)) as Exit<E, never>
+export const exitFail = <E>(error: E): Exit<E, never> => exitFailCause(internalCause.fail(error)) as Exit<E, never>
 
 /** @internal */
 export const exitFailCause = <E>(cause: Cause<E>): Exit<E, never> => {
@@ -2709,8 +2706,7 @@ const deferredInterruptJoiner = <E, A>(
 const constContext = fiberRefGet(currentContext)
 
 /* @internal */
-export const context = <R>(): Effect<R, never, Context<R>> =>
-  constContext as Effect<never, never, Context<R>>
+export const context = <R>(): Effect<R, never, Context<R>> => constContext as Effect<never, never, Context<R>>
 
 /* @internal */
 export const contextWith = <R0, A>(

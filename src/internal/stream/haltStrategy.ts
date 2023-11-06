@@ -1,6 +1,6 @@
 import { dual } from "../../Function.js"
 import type { HaltStrategy } from "../../StreamHaltStrategy.js"
-import { OpCodes } from "../opCodes/streamHaltStrategy.js"
+import * as OpCodes from "../opCodes/streamHaltStrategy.js"
 
 /** @internal */
 export const Left: HaltStrategy = {
@@ -48,8 +48,7 @@ export const isRight = (self: HaltStrategy): self is HaltStrategy.Right => self.
 export const isBoth = (self: HaltStrategy): self is HaltStrategy.Both => self._tag === OpCodes.OP_BOTH
 
 /** @internal */
-export const isEither = (self: HaltStrategy): self is HaltStrategy.Either =>
-  self._tag === OpCodes.OP_EITHER
+export const isEither = (self: HaltStrategy): self is HaltStrategy.Either => self._tag === OpCodes.OP_EITHER
 
 /** @internal */
 export const match = dual<

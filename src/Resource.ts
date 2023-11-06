@@ -20,32 +20,36 @@ export const ResourceTypeId: unique symbol = internal.ResourceTypeId
  */
 export type ResourceTypeId = typeof ResourceTypeId
 
-/**
- * A `Resource` is a possibly resourceful value that is loaded into memory, and
- * which can be refreshed either manually or automatically.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Resource<E, A> extends Resource.Variance<E, A> {
-  /** @internal */
-  readonly scopedRef: ScopedRef<Exit<E, A>>
-  /** @internal */
-  acquire(): Effect<Scope, E, A>
-}
+export * as Resource from "./Resource.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Resource {
+declare module "./Resource.js" {
   /**
+   * A `Resource` is a possibly resourceful value that is loaded into memory, and
+   * which can be refreshed either manually or automatically.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
-    readonly [ResourceTypeId]: {
-      _E: (_: never) => E
-      _A: (_: never) => A
+  export interface Resource<E, A> extends Resource.Variance<E, A> {
+    /** @internal */
+    readonly scopedRef: ScopedRef<Exit<E, A>>
+    /** @internal */
+    acquire(): Effect<Scope, E, A>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Resource {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E, A> {
+      readonly [ResourceTypeId]: {
+        _E: (_: never) => E
+        _A: (_: never) => A
+      }
     }
   }
 }

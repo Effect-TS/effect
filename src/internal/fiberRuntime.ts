@@ -58,7 +58,7 @@ import * as internalLogger from "./logger.js"
 import * as metric from "./metric.js"
 import * as metricBoundaries from "./metric/boundaries.js"
 import * as metricLabel from "./metric/label.js"
-import { OpCodes } from "./opCodes/effect.js"
+import * as OpCodes from "./opCodes/effect.js"
 import { complete } from "./request.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 import { OpSupervision } from "./runtimeFlags.js"
@@ -3062,8 +3062,7 @@ export const fiberRefMakeContext = <A>(
 /* @internal */
 export const fiberRefMakeRuntimeFlags = (
   initial: RuntimeFlags
-): Effect<Scope, never, FiberRef<RuntimeFlags>> =>
-  fiberRefMakeWith(() => core.fiberRefUnsafeMakeRuntimeFlags(initial))
+): Effect<Scope, never, FiberRef<RuntimeFlags>> => fiberRefMakeWith(() => core.fiberRefUnsafeMakeRuntimeFlags(initial))
 
 /** @internal */
 export const currentRuntimeFlags: FiberRef<RuntimeFlags> = core.fiberRefUnsafeMakeRuntimeFlags(

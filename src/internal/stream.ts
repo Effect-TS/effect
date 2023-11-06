@@ -21,31 +21,31 @@ import { hasProperty, isTagged, type Predicate, type Refinement } from "../Predi
 import { PubSub } from "../PubSub.js"
 import { Queue } from "../Queue.js"
 import { Ref } from "../Ref.js"
-import { Runtime } from "../Runtime.js"
+import * as Runtime from "../Runtime.js"
 import { Schedule } from "../Schedule.js"
 import { Scope } from "../Scope.js"
 import type { Sink } from "../Sink.js"
 import type { Stream } from "../Stream.js"
 import type { Emit } from "../StreamEmit.js"
-import { HaltStrategy } from "../StreamHaltStrategy.js"
+import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type { Take } from "../Take.js"
 import type { Tracer } from "../Tracer.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
-import { MergeStrategy } from "./channel/mergeStrategy.js"
+import * as MergeStrategy from "./channel/mergeStrategy.js"
 import * as singleProducerAsyncInput from "./channel/singleProducerAsyncInput.js"
 import * as core from "./core-stream.js"
 import { RingBuffer } from "./ringBuffer.js"
 import * as _sink from "./sink.js"
-import { DebounceState } from "./stream/debounceState.js"
+import * as DebounceState from "./stream/debounceState.js"
 import * as emit from "./stream/emit.js"
 import * as haltStrategy from "./stream/haltStrategy.js"
-import { Handoff } from "./stream/handoff.js"
-import { HandoffSignal } from "./stream/handoffSignal.js"
+import * as Handoff from "./stream/handoff.js"
+import * as HandoffSignal from "./stream/handoffSignal.js"
 import * as pull from "./stream/pull.js"
-import { SinkEndReason } from "./stream/sinkEndReason.js"
-import { ZipAllState } from "./stream/zipAllState.js"
-import { ZipChunksState } from "./stream/zipChunksState.js"
+import * as SinkEndReason from "./stream/sinkEndReason.js"
+import * as ZipAllState from "./stream/zipAllState.js"
+import * as ZipChunksState from "./stream/zipChunksState.js"
 import * as _take from "./take.js"
 
 /** @internal */
@@ -84,8 +84,7 @@ export const isStream = (u: unknown): u is Stream<unknown, unknown, unknown> =>
 export const DefaultChunkSize = 4096
 
 /** @internal */
-export const accumulate = <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> =>
-  chunks(accumulateChunks(self))
+export const accumulate = <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => chunks(accumulateChunks(self))
 
 /** @internal */
 export const accumulateChunks = <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
@@ -176,8 +175,8 @@ export const aggregateWithinEither = dual<
     schedule: Schedule<R3, Option<B>, C>
   ): Stream<R | R2 | R3, E | E2, Either<C, B>> => {
     const layer = Effect.all([
-      Handoff.make<HandoffSignal<E | E2, A>>(),
-      Ref.make<SinkEndReason>(SinkEndReason.ScheduleEnd),
+      Handoff.make<HandoffSignal.HandoffSignal<E | E2, A>>(),
+      Ref.make<SinkEndReason.SinkEndReason>(SinkEndReason.ScheduleEnd),
       Ref.make(Chunk.empty<A | A2>()),
       Schedule.driver(schedule),
       Ref.make(false),
@@ -192,91 +191,90 @@ export const aggregateWithinEither = dual<
               core.flatMap(
                 core.fromEffect(pipe(
                   handoff,
-                  Handoff.offer<HandoffSignal<E | E2, A>>(HandoffSignal.emit(input)),
+                  Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(HandoffSignal.emit(input)),
                   Effect.when(() => Chunk.isNonEmpty(input))
                 )),
                 () => handoffProducer
               ),
             onFailure: (cause) =>
               core.fromEffect(
-                Handoff.offer<HandoffSignal<E | E2, A>>(
+                Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
                   handoff,
                   HandoffSignal.halt(cause)
                 )
               ),
             onDone: () =>
               core.fromEffect(
-                Handoff.offer<HandoffSignal<E | E2, A>>(
+                Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
                   handoff,
                   HandoffSignal.end(SinkEndReason.UpstreamEnd)
                 )
               )
           })
-        const handoffConsumer: Channel<never, unknown, unknown, unknown, E | E2, Chunk<A | A2>, void> =
-          pipe(
-            Ref.getAndSet(sinkLeftovers, Chunk.empty()),
-            Effect.flatMap((leftovers) => {
-              if (Chunk.isNonEmpty(leftovers)) {
-                return pipe(
-                  Ref.set(consumed, true),
-                  Effect.zipRight(Effect.succeed(pipe(
-                    core.write(leftovers),
-                    core.flatMap(() => handoffConsumer)
-                  )))
-                )
-              }
+        const handoffConsumer: Channel<never, unknown, unknown, unknown, E | E2, Chunk<A | A2>, void> = pipe(
+          Ref.getAndSet(sinkLeftovers, Chunk.empty()),
+          Effect.flatMap((leftovers) => {
+            if (Chunk.isNonEmpty(leftovers)) {
               return pipe(
-                Handoff.take(handoff),
-                Effect.map((signal) => {
-                  switch (signal._tag) {
-                    case HandoffSignal.OP_EMIT: {
+                Ref.set(consumed, true),
+                Effect.zipRight(Effect.succeed(pipe(
+                  core.write(leftovers),
+                  core.flatMap(() => handoffConsumer)
+                )))
+              )
+            }
+            return pipe(
+              Handoff.take(handoff),
+              Effect.map((signal) => {
+                switch (signal._tag) {
+                  case HandoffSignal.OP_EMIT: {
+                    return pipe(
+                      core.fromEffect(Ref.set(consumed, true)),
+                      channel.zipRight(core.write(signal.elements)),
+                      channel.zipRight(core.fromEffect(Ref.get(endAfterEmit))),
+                      core.flatMap((bool) => bool ? core.unit : handoffConsumer)
+                    )
+                  }
+                  case HandoffSignal.OP_HALT: {
+                    return core.failCause(signal.cause)
+                  }
+                  case HandoffSignal.OP_END: {
+                    if (signal.reason._tag === SinkEndReason.OP_SCHEDULE_END) {
                       return pipe(
-                        core.fromEffect(Ref.set(consumed, true)),
-                        channel.zipRight(core.write(signal.elements)),
-                        channel.zipRight(core.fromEffect(Ref.get(endAfterEmit))),
-                        core.flatMap((bool) => bool ? core.unit : handoffConsumer)
-                      )
-                    }
-                    case HandoffSignal.OP_HALT: {
-                      return core.failCause(signal.cause)
-                    }
-                    case HandoffSignal.OP_END: {
-                      if (signal.reason._tag === SinkEndReason.OP_SCHEDULE_END) {
-                        return pipe(
-                          Ref.get(consumed),
-                          Effect.map((bool) =>
-                            bool ?
+                        Ref.get(consumed),
+                        Effect.map((bool) =>
+                          bool ?
+                            core.fromEffect(
+                              pipe(
+                                Ref.set(sinkEndReason, SinkEndReason.ScheduleEnd),
+                                Effect.zipRight(Ref.set(endAfterEmit, true))
+                              )
+                            ) :
+                            pipe(
                               core.fromEffect(
                                 pipe(
                                   Ref.set(sinkEndReason, SinkEndReason.ScheduleEnd),
                                   Effect.zipRight(Ref.set(endAfterEmit, true))
                                 )
-                              ) :
-                              pipe(
-                                core.fromEffect(
-                                  pipe(
-                                    Ref.set(sinkEndReason, SinkEndReason.ScheduleEnd),
-                                    Effect.zipRight(Ref.set(endAfterEmit, true))
-                                  )
-                                ),
-                                core.flatMap(() => handoffConsumer)
-                              )
-                          ),
-                          channel.unwrap
-                        )
-                      }
-                      return pipe(
-                        Ref.set<SinkEndReason>(sinkEndReason, signal.reason),
-                        Effect.zipRight(Ref.set(endAfterEmit, true)),
-                        core.fromEffect
+                              ),
+                              core.flatMap(() => handoffConsumer)
+                            )
+                        ),
+                        channel.unwrap
                       )
                     }
+                    return pipe(
+                      Ref.set<SinkEndReason.SinkEndReason>(sinkEndReason, signal.reason),
+                      Effect.zipRight(Ref.set(endAfterEmit, true)),
+                      core.fromEffect
+                    )
                   }
-                })
-              )
-            }),
-            channel.unwrap
-          )
+                }
+              })
+            )
+          }),
+          channel.unwrap
+        )
         const timeout = (lastB: Option<B>): Effect<R2 | R3, Option<never>, C> => scheduleDriver.next(lastB)
         const scheduledAggregator = (
           sinkFiber: Fiber.RuntimeFiber<E | E2, readonly [Chunk<Chunk<A | A2>>, B]>,
@@ -318,8 +316,7 @@ export const aggregateWithinEither = dual<
                             c,
                             Option.match({
                               onNone: (): Chunk<Either<C, B>> => Chunk.of(Either.right(b)),
-                              onSome: (c): Chunk<Either<C, B>> =>
-                                Chunk.make(Either.right(b), Either.left(c))
+                              onSome: (c): Chunk<Either<C, B>> => Chunk.make(Either.right(b), Either.left(c))
                             })
                           )
                           if (wasConsumed) {
@@ -368,7 +365,7 @@ export const aggregateWithinEither = dual<
                         onLeft: () =>
                           pipe(
                             handoff,
-                            Handoff.offer<HandoffSignal<E | E2, A>>(
+                            Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
                               HandoffSignal.end(SinkEndReason.ScheduleEnd)
                             ),
                             Effect.forkDaemon,
@@ -382,7 +379,7 @@ export const aggregateWithinEither = dual<
                         onRight: (cause) =>
                           pipe(
                             handoff,
-                            Handoff.offer<HandoffSignal<E | E2, A>>(
+                            Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
                               HandoffSignal.halt(cause)
                             ),
                             Effect.forkDaemon,
@@ -398,7 +395,7 @@ export const aggregateWithinEither = dual<
                   onSuccess: (c) =>
                     pipe(
                       handoff,
-                      Handoff.offer<HandoffSignal<E | E2, A>>(
+                      Handoff.offer<HandoffSignal.HandoffSignal<E | E2, A>>(
                         HandoffSignal.end(SinkEndReason.ScheduleEnd)
                       ),
                       Effect.forkDaemon,
@@ -1347,8 +1344,8 @@ export const combine = dual<
   ) => Effect<R5, never, Exit<Option<E | E2>, readonly [A3, S]>>
 ): Stream<R | R2 | R3 | R4 | R5, E | E2, A3> => {
   const producer = <Err, Elem>(
-    handoff: Handoff<Exit<Option<Err>, Elem>>,
-    latch: Handoff<void>
+    handoff: Handoff.Handoff<Exit<Option<Err>, Elem>>,
+    latch: Handoff.Handoff<void>
   ): Channel<R, Err, Elem, unknown, never, never, unknown> =>
     pipe(
       core.fromEffect(Handoff.take(latch)),
@@ -1451,8 +1448,8 @@ export const combineChunks = dual<
   ) => Effect<R5, never, Exit<Option<E | E2>, readonly [Chunk<A3>, S]>>
 ): Stream<R | R2 | R3 | R4 | R5, E | E2, A3> => {
   const producer = <Err, Elem>(
-    handoff: Handoff<Take<Err, Elem>>,
-    latch: Handoff<void>
+    handoff: Handoff.Handoff<Take<Err, Elem>>,
+    latch: Handoff.Handoff<void>
   ): Channel<R, Err, Chunk<Elem>, unknown, never, never, unknown> =>
     channel.zipRight(
       core.fromEffect(Handoff.take(latch)),
@@ -1631,7 +1628,7 @@ export const debounce = dual<
     Effect.flatMap((input) =>
       Effect.transplant<never, never, Stream<R, E, A>>((grafter) =>
         pipe(
-          Handoff.make<HandoffSignal<never, A>>(),
+          Handoff.make<HandoffSignal.HandoffSignal<never, A>>(),
           Effect.map((handoff) => {
             const enqueue = (last: Chunk<A>): Effect<
               never,
@@ -1653,7 +1650,7 @@ export const debounce = dual<
                     onSome: (last) =>
                       core.flatMap(
                         core.fromEffect(
-                          Handoff.offer<HandoffSignal<E, A>>(
+                          Handoff.offer<HandoffSignal.HandoffSignal<E, A>>(
                             handoff,
                             HandoffSignal.emit(Chunk.of(last))
                           )
@@ -1663,18 +1660,18 @@ export const debounce = dual<
                   }),
                 onFailure: (cause) =>
                   core.fromEffect(
-                    Handoff.offer<HandoffSignal<E, A>>(handoff, HandoffSignal.halt(cause))
+                    Handoff.offer<HandoffSignal.HandoffSignal<E, A>>(handoff, HandoffSignal.halt(cause))
                   ),
                 onDone: () =>
                   core.fromEffect(
-                    Handoff.offer<HandoffSignal<E, A>>(
+                    Handoff.offer<HandoffSignal.HandoffSignal<E, A>>(
                       handoff,
                       HandoffSignal.end(SinkEndReason.UpstreamEnd)
                     )
                   )
               })
             const consumer = (
-              state: DebounceState<never, A>
+              state: DebounceState.DebounceState<never, A>
             ): Channel<never, unknown, unknown, unknown, never, Chunk<A>, unknown> => {
               switch (state._tag) {
                 case DebounceState.OP_NOT_STARTED: {
@@ -1751,18 +1748,17 @@ export const debounce = dual<
                 }
               }
             }
-            const debounceChannel: Channel<never, E, Chunk<A>, unknown, E, Chunk<A>, unknown> =
-              pipe(
-                channel.fromInput(input),
-                core.pipeTo(producer),
-                channelExecutor.run,
-                Effect.forkScoped,
-                Effect.as(pipe(
-                  consumer(DebounceState.notStarted),
-                  core.embedInput<E, Chunk<A>, unknown>(input)
-                )),
-                channel.unwrapScoped
-              )
+            const debounceChannel: Channel<never, E, Chunk<A>, unknown, E, Chunk<A>, unknown> = pipe(
+              channel.fromInput(input),
+              core.pipeTo(producer),
+              channelExecutor.run,
+              Effect.forkScoped,
+              Effect.as(pipe(
+                consumer(DebounceState.notStarted),
+                core.embedInput<E, Chunk<A>, unknown>(input)
+              )),
+              channel.unwrapScoped
+            )
             return new StreamImpl(pipe(toChannel(self), core.pipeTo(debounceChannel)))
           })
         )
@@ -3225,8 +3221,7 @@ export const grouped = dual<
   <R, E, A>(self: Stream<R, E, A>, chunkSize: number) => Stream<R, E, Chunk<A>>
 >(
   2,
-  <R, E, A>(self: Stream<R, E, A>, chunkSize: number): Stream<R, E, Chunk<A>> =>
-    pipe(self, rechunk(chunkSize), chunks)
+  <R, E, A>(self: Stream<R, E, A>, chunkSize: number): Stream<R, E, Chunk<A>> => pipe(self, rechunk(chunkSize), chunks)
 )
 
 /** @internal */
@@ -3373,7 +3368,7 @@ export const interleaveWith = dual<
     decider: Stream<R3, E3, boolean>
   ): Stream<R | R2 | R3, E | E2 | E3, A | A2> => {
     const producer = (
-      handoff: Handoff<Take<E | E2 | E3, A | A2>>
+      handoff: Handoff.Handoff<Take<E | E2 | E3, A | A2>>
     ): Channel<R | R2 | R3, E | E2 | E3, A | A2, unknown, never, never, void> =>
       core.readWithCause({
         onInput: (value: A | A2) =>
@@ -3929,8 +3924,7 @@ export const mergeEither = dual<
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     that: Stream<R2, E2, A2>
-  ): Stream<R | R2, E | E2, Either<A, A2>> =>
-    mergeWith(self, that, { onSelf: Either.left, onOther: Either.right })
+  ): Stream<R | R2, E | E2, Either<A, A2>> => mergeWith(self, that, { onSelf: Either.left, onOther: Either.right })
 )
 
 /** @internal */
@@ -3999,8 +3993,7 @@ export const mergeWith = dual<
   ): Stream<R | R2, E | E2, A3 | A4> => {
     const strategy = options.haltStrategy ? haltStrategy.fromInput(options.haltStrategy) : HaltStrategy.Both
     const handler =
-      (terminate: boolean) =>
-      (exit: Exit<E | E2, unknown>): MergeDecision<R | R2, E | E2, unknown, E | E2, unknown> =>
+      (terminate: boolean) => (exit: Exit<E | E2, unknown>): MergeDecision<R | R2, E | E2, unknown, E | E2, unknown> =>
         terminate || !Exit.isSuccess(exit) ?
           // TODO: remove
           MergeDecision.Done(Effect.suspend(() => exit)) :
@@ -4105,8 +4098,7 @@ export const orElseEither = dual<
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     that: LazyArg<Stream<R2, E2, A2>>
-  ): Stream<R | R2, E2, Either<A, A2>> =>
-    pipe(self, map(Either.left), orElse(() => pipe(that(), map(Either.right))))
+  ): Stream<R | R2, E2, Either<A, A2>> => pipe(self, map(Either.left), orElse(() => pipe(that(), map(Either.right))))
 )
 
 /** @internal */
@@ -7127,7 +7119,7 @@ export const zipAllSortedByKeyWith = dual<
     }
   ): Stream<R | R2, E | E2, readonly [K, A3]> => {
     const pull = (
-      state: ZipAllState<readonly [K, A], readonly [K, A2]>,
+      state: ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>,
       pullLeft: Effect<R, Option<E>, Chunk<readonly [K, A]>>,
       pullRight: Effect<R2, Option<E2>, Chunk<readonly [K, A2]>>
     ): Effect<
@@ -7137,7 +7129,7 @@ export const zipAllSortedByKeyWith = dual<
         Option<E | E2>,
         readonly [
           Chunk<readonly [K, A3]>,
-          ZipAllState<readonly [K, A], readonly [K, A2]>
+          ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
         ]
       >
     > => {
@@ -7238,7 +7230,7 @@ export const zipAllSortedByKeyWith = dual<
                     Option<E | E2>,
                     readonly [
                       Chunk<readonly [K, A3]>,
-                      ZipAllState<readonly [K, A], readonly [K, A2]>
+                      ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
                     ]
                   >
                 >(Exit.fail(Option.some(error)))
@@ -7267,7 +7259,7 @@ export const zipAllSortedByKeyWith = dual<
                     Option<E | E2>,
                     readonly [
                       Chunk<readonly [K, A3]>,
-                      ZipAllState<readonly [K, A], readonly [K, A2]>
+                      ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
                     ]
                   >
                 >(Exit.fail(Option.some(error)))
@@ -7285,12 +7277,12 @@ export const zipAllSortedByKeyWith = dual<
       rightChunk: Chunk<readonly [K, A2]>
     ): readonly [
       Chunk<readonly [K, A3]>,
-      ZipAllState<readonly [K, A], readonly [K, A2]>
+      ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
     ] => {
       const hasNext = <T>(chunk: Chunk<T>, index: number) => index < chunk.length - 1
       const builder: Array<readonly [K, A3]> = []
       let state:
-        | ZipAllState<
+        | ZipAllState.ZipAllState<
           readonly [K, A],
           readonly [K, A2]
         >
@@ -7402,13 +7394,13 @@ export const zipAllWith = dual<
     }
   ): Stream<R | R2, E | E2, A3> => {
     const pull = (
-      state: ZipAllState<A, A2>,
+      state: ZipAllState.ZipAllState<A, A2>,
       pullLeft: Effect<R, Option<E>, Chunk<A>>,
       pullRight: Effect<R2, Option<E2>, Chunk<A2>>
     ): Effect<
       R | R2,
       never,
-      Exit<Option<E | E2>, readonly [Chunk<A3>, ZipAllState<A, A2>]>
+      Exit<Option<E | E2>, readonly [Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
     > => {
       switch (state._tag) {
         case ZipAllState.OP_DRAIN_LEFT: {
@@ -7487,7 +7479,7 @@ export const zipAllWith = dual<
                 )),
               onSome: (error) =>
                 Effect.succeed<
-                  Exit<Option<E | E2>, readonly [Chunk<A3>, ZipAllState<A, A2>]>
+                  Exit<Option<E | E2>, readonly [Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
                 >(
                   Exit.fail(Option.some(error))
                 )
@@ -7517,7 +7509,7 @@ export const zipAllWith = dual<
                 ),
               onSome: (error) =>
                 Effect.succeed<
-                  Exit<Option<E | E2>, readonly [Chunk<A3>, ZipAllState<A, A2>]>
+                  Exit<Option<E | E2>, readonly [Chunk<A3>, ZipAllState.ZipAllState<A, A2>]>
                 >(
                   Exit.fail(Option.some(error))
                 )
@@ -7547,7 +7539,7 @@ export const zipAllWith = dual<
       leftChunk: Chunk<A>,
       rightChunk: Chunk<A2>,
       f: (a: A, a2: A2) => A3
-    ): readonly [Chunk<A3>, ZipAllState<A, A2>] => {
+    ): readonly [Chunk<A3>, ZipAllState.ZipAllState<A, A2>] => {
       const [output, either] = zipChunks(leftChunk, rightChunk, f)
       switch (either._tag) {
         case "Left": {
@@ -7787,13 +7779,13 @@ export const zipWithChunks = dual<
   ) => readonly [Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]
 ): Stream<R | R2, E | E2, A3> => {
   const pull = (
-    state: ZipChunksState<A, A2>,
+    state: ZipChunksState.ZipChunksState<A, A2>,
     pullLeft: Effect<R, Option<E>, Chunk<A>>,
     pullRight: Effect<R2, Option<E2>, Chunk<A2>>
   ): Effect<
     R | R2,
     never,
-    Exit<Option<E | E2>, readonly [Chunk<A3>, ZipChunksState<A, A2>]>
+    Exit<Option<E | E2>, readonly [Chunk<A3>, ZipChunksState.ZipChunksState<A, A2>]>
   > => {
     switch (state._tag) {
       case ZipChunksState.OP_PULL_BOTH: {
@@ -7853,7 +7845,7 @@ export const zipWithChunks = dual<
   const zip = (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
-  ): readonly [Chunk<A3>, ZipChunksState<A, A2>] => {
+  ): readonly [Chunk<A3>, ZipChunksState.ZipChunksState<A, A2>] => {
     const [output, either] = f(leftChunk, rightChunk)
     switch (either._tag) {
       case "Left": {

@@ -3,7 +3,7 @@ import type { Exit } from "../../Exit.js"
 import { dual } from "../../Function.js"
 import type { MergeDecision } from "../../MergeDecision.js"
 import { hasProperty } from "../../Predicate.js"
-import { OpCodes } from "../opCodes/channelMergeDecision.js"
+import * as OpCodes from "../opCodes/channelMergeDecision.js"
 
 /** @internal */
 const MergeDecisionSymbolKey = "effect/ChannelMergeDecision"

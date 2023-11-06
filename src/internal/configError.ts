@@ -4,7 +4,7 @@ import { Either } from "../Either.js"
 import { constFalse, constTrue, dual, pipe } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
 import { ReadonlyArray as RA } from "../ReadonlyArray.js"
-import { OpCodes } from "./opCodes/configError.js"
+import * as OpCodes from "./opCodes/configError.js"
 
 /** @internal */
 const ConfigErrorSymbolKey = "effect/ConfigError"

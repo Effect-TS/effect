@@ -29,9 +29,9 @@ import * as mergeState from "./channel/mergeState.js"
 import * as _mergeStrategy from "./channel/mergeStrategy.js"
 import * as singleProducerAsyncInput from "./channel/singleProducerAsyncInput.js"
 import * as core from "./core-stream.js"
-import { MergeDecisionOpCodes } from "./opCodes/channelMergeDecision.js"
-import { MergeStateOpCodes } from "./opCodes/channelMergeState.js"
-import { ChannelStateOpCodes } from "./opCodes/channelState.js"
+import * as MergeDecisionOpCodes from "./opCodes/channelMergeDecision.js"
+import * as MergeStateOpCodes from "./opCodes/channelMergeState.js"
+import * as ChannelStateOpCodes from "./opCodes/channelState.js"
 import * as tracer from "./tracer.js"
 
 /** @internal */
@@ -468,8 +468,7 @@ export const ensuring = dual<
 >(2, <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, Z>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   finalizer: Effect<Env1, never, Z>
-): Channel<Env | Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> =>
-  core.ensuringWith(self, () => finalizer))
+): Channel<Env | Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> => core.ensuringWith(self, () => finalizer))
 
 /** @internal */
 export const context = <Env>(): Channel<
@@ -806,8 +805,7 @@ export const map = dual<
 >(2, <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutDone2>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (out: OutDone) => OutDone2
-): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2> =>
-  core.flatMap(self, (a) => core.sync(() => f(a))))
+): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2> => core.flatMap(self, (a) => core.sync(() => f(a))))
 
 /** @internal */
 export const mapEffect = dual<

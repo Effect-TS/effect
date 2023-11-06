@@ -20,9 +20,9 @@ import { withFiberRuntime } from "../core.js"
 import { effectVariance } from "../effectable.js"
 import { OP_COMMIT } from "../opCodes/effect.js"
 import { SinkTypeId } from "../sink.js"
-import { OpCodes } from "./opCodes/stm.js"
-import { TExitOpCodes } from "./opCodes/tExit.js"
-import { TryCommitOpCodes } from "./opCodes/tryCommit.js"
+import * as OpCodes from "./opCodes/stm.js"
+import * as TExitOpCodes from "./opCodes/tExit.js"
+import * as TryCommitOpCodes from "./opCodes/tryCommit.js"
 import { Journal } from "./stm/journal.js"
 import { STMState } from "./stm/stmState.js"
 import { TExit } from "./stm/tExit.js"
@@ -401,12 +401,10 @@ const completeTryCommit = <R, E, A>(
 type Continuation = STMOnFailure | STMOnSuccess | STMOnRetry
 
 /** @internal */
-export const context = <R>(): STM<R, never, Context<R>> =>
-  effect<R, Context<R>>((_, __, env) => env)
+export const context = <R>(): STM<R, never, Context<R>> => effect<R, Context<R>>((_, __, env) => env)
 
 /** @internal */
-export const contextWith = <R0, R>(f: (environment: Context<R0>) => R): STM<R0, never, R> =>
-  map(context<R0>(), f)
+export const contextWith = <R0, R>(f: (environment: Context<R0>) => R): STM<R0, never, R> => map(context<R0>(), f)
 
 /** @internal */
 export const contextWithSTM = <R0, R, E, A>(
@@ -612,8 +610,7 @@ export const mapInputContext = dual<
 export const die = (defect: unknown): STM<never, never, never> => dieSync(() => defect)
 
 /** @internal */
-export const dieMessage = (message: string): STM<never, never, never> =>
-  dieSync(() => Cause.RuntimeException(message))
+export const dieMessage = (message: string): STM<never, never, never> => dieSync(() => Cause.RuntimeException(message))
 
 /** @internal */
 export const dieSync = (evaluate: LazyArg<unknown>): STM<never, never, never> => {

@@ -3,7 +3,7 @@ import { Exit } from "../../../Exit.js"
 import { pipe } from "../../../Function.js"
 import { Hash } from "../../../Hash.js"
 import { hasProperty } from "../../../Predicate.js"
-import { OpCodes } from "../opCodes/stmState.js"
+import * as OpCodes from "../opCodes/stmState.js"
 import { TExitOpCodes } from "../opCodes/tExit.js"
 import type { TExit } from "./tExit.js"
 
@@ -16,8 +16,12 @@ export const STMStateTypeId = Symbol.for(STMStateSymbolKey)
 /** @internal */
 export type STMStateTypeId = typeof STMStateTypeId
 
-/** @internal */
-export type STMState<E, A> = Done<E, A> | Interrupted | Running
+export * as STMState from "./stmState.js"
+
+declare module "./STMState.js" {
+  /** @internal */
+  export type STMState<E, A> = Done<E, A> | Interrupted | Running
+}
 
 /** @internal */
 export interface Done<E, A> extends Equal {

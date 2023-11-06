@@ -1,7 +1,7 @@
 import { dual } from "../../Function.js"
 import { hasProperty } from "../../Predicate.js"
 import type { UpstreamPullRequest } from "../../UpstreamPullRequest.js"
-import { OpCodes } from "../opCodes/channelUpstreamPullRequest.js"
+import * as OpCodes from "../opCodes/channelUpstreamPullRequest.js"
 
 /** @internal */
 const UpstreamPullRequestSymbolKey = "effect/ChannelUpstreamPullRequest"

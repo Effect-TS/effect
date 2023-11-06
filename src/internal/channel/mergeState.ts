@@ -5,7 +5,7 @@ import type { Fiber } from "../../Fiber.js"
 import { dual } from "../../Function.js"
 import type { MergeState } from "../../MergeState.js"
 import { hasProperty } from "../../Predicate.js"
-import { OpCodes } from "../opCodes/channelMergeState.js"
+import * as OpCodes from "../opCodes/channelMergeState.js"
 
 /** @internal */
 const MergeStateSymbolKey = "effect/ChannelMergeState"

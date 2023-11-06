@@ -2,7 +2,7 @@ import type { Cause } from "../../Cause.js"
 import type { Channel } from "../../Channel.js"
 import type { Effect } from "../../Effect.js"
 import { Exit } from "../../Exit.js"
-import { OpCodes } from "../opCodes/continuation.js"
+import * as OpCodes from "../opCodes/continuation.js"
 
 /** @internal */
 export const ContinuationTypeId = Symbol.for("effect/ChannelContinuation")

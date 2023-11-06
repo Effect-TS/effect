@@ -16,7 +16,7 @@ import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type { Unify } from "./Unify.js"
-import { Gen } from "./Utils.js"
+import { Utils } from "./Utils.js"
 
 export * as Option from "./Option.js"
 
@@ -1188,13 +1188,13 @@ export const bind: {
  */
 export const Do: Option<{}> = some({})
 
-const adapter = Gen.adapter<OptionTypeLambda>()
+const adapter = Utils.adapter<OptionTypeLambda>()
 
 /**
  * @category generators
  * @since 2.0.0
  */
-export const gen: Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>> = (f) => {
+export const gen: Utils.Gen<OptionTypeLambda, Utils.Adapter<OptionTypeLambda>> = (f) => {
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {

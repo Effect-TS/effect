@@ -3,7 +3,7 @@ import type { FiberId } from "../../../FiberId.js"
 import { pipe } from "../../../Function.js"
 import { Hash } from "../../../Hash.js"
 import { hasProperty } from "../../../Predicate.js"
-import { OpCodes } from "../opCodes/tExit.js"
+import * as OpCodes from "../opCodes/tExit.js"
 
 /** @internal */
 const TExitSymbolKey = "effect/TExit"
@@ -14,16 +14,20 @@ export const TExitTypeId = Symbol.for(TExitSymbolKey)
 /** @internal */
 export type TExitTypeId = typeof TExitTypeId
 
-/** @internal */
-export type TExit<E, A> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
+export * as TExit from "./tExit.js"
 
-/** @internal */
-export declare namespace TExit {
+declare module "./TExit.js" {
   /** @internal */
-  export interface Variance<E, A> {
-    readonly [TExitTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+  export type TExit<E, A> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
+
+  /** @internal */
+  export namespace TExit {
+    /** @internal */
+    export interface Variance<E, A> {
+      readonly [TExitTypeId]: {
+        readonly _E: (_: never) => E
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

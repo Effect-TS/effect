@@ -17,10 +17,10 @@ import type { Scope } from "./Scope.js"
 import type { SortedSet } from "./SortedSet.js"
 import type { TestAnnotation } from "./TestAnnotation.js"
 import { TestAnnotationMap } from "./TestAnnotationMap.js"
-import { Annotations } from "./TestAnnotations.js"
+import * as Annotations from "./TestAnnotations.js"
 import { TestConfig } from "./TestConfig.js"
-import { Live } from "./TestLive.js"
-import { Sized } from "./TestSized.js"
+import * as Live from "./TestLive.js"
+import * as Sized from "./TestSized.js"
 
 export * as TestServices from "./TestServices.js"
 

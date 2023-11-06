@@ -38,23 +38,27 @@ export const FiberRefTypeId: unique symbol = core.FiberRefTypeId
  */
 export type FiberRefTypeId = typeof FiberRefTypeId
 
-/**
- * @since 2.0.0
- * @category model
- */
-export interface FiberRef<A> extends Variance<A>, Pipeable {
-  /** @internal */
-  readonly initial: A
-  /** @internal */
-  readonly diff: (oldValue: A, newValue: A) => unknown
-  /** @internal */
-  readonly combine: (first: unknown, second: unknown) => unknown
-  /** @internal */
-  readonly patch: (patch: unknown) => (oldValue: A) => A
-  /** @internal */
-  readonly fork: unknown
-  /** @internal */
-  readonly join: (oldValue: A, newValue: A) => A
+export * as FiberRef from "./FiberRef.js"
+
+declare module "./FiberRef.js" {
+  /**
+   * @since 2.0.0
+   * @category model
+   */
+  export interface FiberRef<A> extends Variance<A>, Pipeable {
+    /** @internal */
+    readonly initial: A
+    /** @internal */
+    readonly diff: (oldValue: A, newValue: A) => unknown
+    /** @internal */
+    readonly combine: (first: unknown, second: unknown) => unknown
+    /** @internal */
+    readonly patch: (patch: unknown) => (oldValue: A) => A
+    /** @internal */
+    readonly fork: unknown
+    /** @internal */
+    readonly join: (oldValue: A, newValue: A) => A
+  }
 }
 
 /**
@@ -118,15 +122,13 @@ export const unsafeMake: <Value>(
  * @since 2.0.0
  * @category constructors
  */
-export const unsafeMakeHashSet: <A>(initial: HashSet<A>) => FiberRef<HashSet<A>> =
-  core.fiberRefUnsafeMakeHashSet
+export const unsafeMakeHashSet: <A>(initial: HashSet<A>) => FiberRef<HashSet<A>> = core.fiberRefUnsafeMakeHashSet
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const unsafeMakeContext: <A>(initial: Context<A>) => FiberRef<Context<A>> =
-  core.fiberRefUnsafeMakeContext
+export const unsafeMakeContext: <A>(initial: Context<A>) => FiberRef<Context<A>> = core.fiberRefUnsafeMakeContext
 
 /**
  * @since 2.0.0
@@ -376,8 +378,7 @@ export const currentTracerTimingEnabled: FiberRef<boolean> = core.currentTracerT
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentTracerSpanAnnotations: FiberRef<HashMap<string, unknown>> =
-  core.currentTracerSpanAnnotations
+export const currentTracerSpanAnnotations: FiberRef<HashMap<string, unknown>> = core.currentTracerSpanAnnotations
 
 /**
  * @since 2.0.0
