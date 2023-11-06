@@ -1078,6 +1078,8 @@ Added in v2.0.0
 
 ## andThen
 
+Executes a sequence of two `Cause`s. The second `Cause` can be dependent on the result of the first `Cause`.
+
 **Signature**
 
 ```ts

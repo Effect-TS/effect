@@ -3546,8 +3546,7 @@ export const flatMap: {
 } = core.flatMap
 
 /**
- * Runs a sequence of two effects where the second effect can be dependent on the
- * result of the first
+ * Executes a sequence of two `Effect`s. The second `Effect` can be dependent on the result of the first `Effect`.
  *
  * @since 2.0.0
  * @category sequencing

@@ -606,6 +606,8 @@ export const flatMap: {
 } = internal.flatMap
 
 /**
+ * Executes a sequence of two `Cause`s. The second `Cause` can be dependent on the result of the first `Cause`.
+ *
  * @since 2.0.0
  * @category sequencing
  */

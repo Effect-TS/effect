@@ -497,7 +497,7 @@ export const orElse: {
 )
 
 /**
- * @category combining
+ * @category sequencing
  * @since 2.0.0
  */
 export const flatMap: {
@@ -507,6 +507,23 @@ export const flatMap: {
   2,
   <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B> =>
     isLeft(self) ? left(self.left) : f(self.right)
+)
+
+/**
+ * Executes a sequence of two `Either`s. The second `Either` can be dependent on the result of the first `Either`.
+ *
+ * @category sequencing
+ * @since 2.0.0
+ */
+export const andThen: {
+  <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E1 | E2, B>
+  <E2, B>(f: Either<E2, B>): <E1, A>(self: Either<E1, A>) => Either<E1 | E2, B>
+  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
+  <E1, A, E2, B>(self: Either<E1, A>, f: Either<E2, B>): Either<E1 | E2, B>
+} = dual(
+  2,
+  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B> | Either<E2, B>): Either<E1 | E2, B> =>
+    isFunction(f) ? flatMap(self, f) : flatMap(self, () => f)
 )
 
 /**
