@@ -12,7 +12,7 @@ export type HandoffTypeId = typeof HandoffTypeId
 
 export * as Handoff from "./handoff.js"
 
-declare module "./Handoff.js" {
+declare module "./handoff.js" {
   /**
    * A synchronous queue-like abstraction that allows a producer to offer an
    * element and wait for it to be taken, and allows a consumer to wait for an
