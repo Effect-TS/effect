@@ -5,7 +5,7 @@ import type * as Channel from "./Channel.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/effectable.js"
 import type * as Sink from "./Sink.js"
-import type * as Stream from "./Stream.js"
+import type { Stream } from "./Stream.js"
 
 /**
  * @since 2.0.0

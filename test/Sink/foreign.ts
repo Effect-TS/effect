@@ -6,7 +6,7 @@ import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import type * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 

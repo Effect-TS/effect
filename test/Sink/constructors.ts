@@ -13,7 +13,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as PubSub from "effect/PubSub"
 import * as Queue from "effect/Queue"
 import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {

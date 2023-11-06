@@ -5,7 +5,7 @@ import * as Exit from "effect/Exit"
 import { absurd, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {

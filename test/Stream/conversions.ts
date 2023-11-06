@@ -5,7 +5,7 @@ import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import * as Take from "effect/Take"
 import { assert, describe } from "vitest"
 

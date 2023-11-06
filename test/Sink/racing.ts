@@ -7,7 +7,7 @@ import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 const findSink = <A>(a: A): Sink.Sink<never, void, A, A, A> =>

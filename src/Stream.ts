@@ -1666,7 +1666,7 @@ export const groupBy: {
  *
  * ```ts
  * import * as GroupBy from "./GroupBy"
- * import * as Stream from "./Stream"
+ * import { Stream } from "./Stream"
  * import { pipe } from "./Function"
  *
  * pipe(
@@ -3364,7 +3364,7 @@ export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Stream<Exclude<R, Sco
  * Emits a sliding window of `n` elements.
  *
  * ```ts
- * import * as Stream from "./Stream"
+ * import { Stream } from "./Stream"
  * import { pipe } from "./Function"
  *
  * pipe(
@@ -3428,7 +3428,7 @@ export const someOrFail: {
  * Splits elements based on a predicate.
  *
  * ```ts
- * import * as Stream from "./Stream"
+ * import { Stream } from "./Stream"
  * import { pipe } from "./Function"
  *
  * pipe(

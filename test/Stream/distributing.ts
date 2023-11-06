@@ -4,7 +4,7 @@ import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

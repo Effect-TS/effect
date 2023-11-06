@@ -5,7 +5,7 @@ import * as internal from "./internal/groupBy.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type * as Queue from "./Queue.js"
-import type * as Stream from "./Stream.js"
+import type { Stream } from "./Stream.js"
 import type * as Take from "./Take.js"
 
 /**

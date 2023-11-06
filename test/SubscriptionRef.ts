@@ -8,7 +8,7 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as Random from "effect/Random"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import * as SubscriptionRef from "effect/SubscriptionRef"
 import { assert, describe } from "vitest"
 

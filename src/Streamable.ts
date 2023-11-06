@@ -3,7 +3,7 @@
  */
 
 import { pipeArguments } from "./Pipeable.js"
-import * as Stream from "./Stream.js"
+import { Stream } from "./Stream.js"
 
 const streamVariance = {
   _R: (_: never) => _,

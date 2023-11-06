@@ -10,7 +10,7 @@ import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import * as Take from "effect/Take"
 import { assert, describe } from "vitest"
 

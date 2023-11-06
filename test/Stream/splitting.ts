@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 

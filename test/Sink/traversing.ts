@@ -5,7 +5,7 @@ import * as Equal from "effect/Equal"
 import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {

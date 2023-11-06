@@ -11,7 +11,7 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 

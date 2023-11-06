@@ -7,7 +7,7 @@ import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as PubSub from "./PubSub.js"
 import * as Ref from "./Ref.js"
-import type * as Stream from "./Stream.js"
+import type { Stream } from "./Stream.js"
 import * as Synchronized from "./SynchronizedRef.js"
 
 /**

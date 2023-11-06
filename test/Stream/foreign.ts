@@ -7,7 +7,7 @@ import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
-import * as Stream from "effect/Stream"
+import { Stream } from "effect/Stream"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 
