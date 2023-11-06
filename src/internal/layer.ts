@@ -16,7 +16,7 @@ import type { Schedule } from "../Schedule.js"
 import { ScheduleDecision } from "../ScheduleDecision.js"
 import { Intervals } from "../ScheduleIntervals.js"
 import { Scope } from "../Scope.js"
-import type { Synchronized } from "../SynchronizedRef.js"
+import type { SynchronizedRef } from "../SynchronizedRef.js"
 import type { Tracer } from "../Tracer.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
@@ -170,7 +170,7 @@ export const isFresh = <R, E, A>(self: Layer<R, E, A>): boolean => {
 /** @internal */
 class MemoMap {
   constructor(
-    readonly ref: Synchronized.SynchronizedRef<
+    readonly ref: SynchronizedRef<
       Map<
         Layer<any, any, any>,
         readonly [Effect<never, any, any>, Scope.Finalizer]
@@ -469,8 +469,7 @@ export const failSync = <E>(evaluate: LazyArg<E>): Layer<never, E, unknown> =>
   failCauseSync(() => Cause.fail(evaluate()))
 
 /** @internal */
-export const failCause = <E>(cause: Cause<E>): Layer<never, E, unknown> =>
-  fromEffectContext(core.failCause(cause))
+export const failCause = <E>(cause: Cause<E>): Layer<never, E, unknown> => fromEffectContext(core.failCause(cause))
 
 /** @internal */
 export const failCauseSync = <E>(evaluate: LazyArg<Cause<E>>): Layer<never, E, unknown> =>
@@ -709,8 +708,7 @@ export const mergeAll = <Layers extends [Layer<any, any, never>, ...Array<Layer<
 }
 
 /** @internal */
-export const orDie = <R, E, A>(self: Layer<R, E, A>): Layer<R, never, A> =>
-  catchAll(self, (defect) => die(defect))
+export const orDie = <R, E, A>(self: Layer<R, E, A>): Layer<R, never, A> => catchAll(self, (defect) => die(defect))
 
 /** @internal */
 export const orElse = dual<
@@ -787,8 +785,7 @@ export const provideMerge = dual<
   zipWith._tag = OpCodes.OP_ZIP_WITH
   zipWith.first = self
   zipWith.second = pipe(self, provide(that))
-  zipWith.zipK = (a: Context<ROut>, b: Context<ROut2>): Context<ROut | ROut2> =>
-    Context.merge(a, b)
+  zipWith.zipK = (a: Context<ROut>, b: Context<ROut2>): Context<ROut | ROut2> => Context.merge(a, b)
   return zipWith
 })
 

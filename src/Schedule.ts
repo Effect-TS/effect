@@ -39,73 +39,77 @@ export const ScheduleDriverTypeId: unique symbol = internal.ScheduleDriverTypeId
  */
 export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
 
-/**
- * A `Schedule<Env, In, Out>` defines a recurring schedule, which consumes
- * values of type `In`, and which returns values of type `Out`.
- *
- * Schedules are defined as a possibly infinite set of intervals spread out over
- * time. Each interval defines a window in which recurrence is possible.
- *
- * When schedules are used to repeat or retry effects, the starting boundary of
- * each interval produced by a schedule is used as the moment when the effect
- * will be executed again.
- *
- * Schedules compose in the following primary ways:
- *
- * - Union: performs the union of the intervals of two schedules
- * - Intersection: performs the intersection of the intervals of two schedules
- * - Sequence: concatenates the intervals of one schedule onto another
- *
- * In addition, schedule inputs and outputs can be transformed, filtered (to
- * terminate a schedule early in response to some input or output), and so
- * forth.
- *
- * A variety of other operators exist for transforming and combining schedules,
- * and the companion object for `Schedule` contains all common types of
- * schedules, both for performing retrying, as well as performing repetition.
- *
- * @category model
- * @since 2.0.0
- */
-export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>, Pipeable {
-  /**
-   * Initial State
-   */
-  readonly initial: any
-  /**
-   * Schedule Step
-   */
-  readonly step: (
-    now: number,
-    input: In,
-    state: any
-  ) => Effect<Env, never, readonly [any, Out, ScheduleDecision]>
-}
+export * as Schedule from "./Schedule.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Schedule {
+declare module "./Schedule.js" {
   /**
+   * A `Schedule<Env, In, Out>` defines a recurring schedule, which consumes
+   * values of type `In`, and which returns values of type `Out`.
+   *
+   * Schedules are defined as a possibly infinite set of intervals spread out over
+   * time. Each interval defines a window in which recurrence is possible.
+   *
+   * When schedules are used to repeat or retry effects, the starting boundary of
+   * each interval produced by a schedule is used as the moment when the effect
+   * will be executed again.
+   *
+   * Schedules compose in the following primary ways:
+   *
+   * - Union: performs the union of the intervals of two schedules
+   * - Intersection: performs the intersection of the intervals of two schedules
+   * - Sequence: concatenates the intervals of one schedule onto another
+   *
+   * In addition, schedule inputs and outputs can be transformed, filtered (to
+   * terminate a schedule early in response to some input or output), and so
+   * forth.
+   *
+   * A variety of other operators exist for transforming and combining schedules,
+   * and the companion object for `Schedule` contains all common types of
+   * schedules, both for performing retrying, as well as performing repetition.
+   *
+   * @category model
    * @since 2.0.0
-   * @category models
    */
-  export interface Variance<Env, In, Out> {
-    readonly [ScheduleTypeId]: {
-      readonly _Env: (_: never) => Env
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
-    }
+  export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>, Pipeable {
+    /**
+     * Initial State
+     */
+    readonly initial: any
+    /**
+     * Schedule Step
+     */
+    readonly step: (
+      now: number,
+      input: In,
+      state: any
+    ) => Effect<Env, never, readonly [any, Out, ScheduleDecision]>
   }
 
   /**
    * @since 2.0.0
    */
-  export interface DriverVariance<Env, In, Out> {
-    readonly [ScheduleDriverTypeId]: {
-      readonly _Env: (_: never) => Env
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
+  export namespace Schedule {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<Env, In, Out> {
+      readonly [ScheduleTypeId]: {
+        readonly _Env: (_: never) => Env
+        readonly _In: (_: In) => void
+        readonly _Out: (_: never) => Out
+      }
+    }
+
+    /**
+     * @since 2.0.0
+     */
+    export interface DriverVariance<Env, In, Out> {
+      readonly [ScheduleDriverTypeId]: {
+        readonly _Env: (_: never) => Env
+        readonly _In: (_: In) => void
+        readonly _Out: (_: never) => Out
+      }
     }
   }
 }
@@ -472,8 +476,7 @@ export const delayedSchedule: <Env, In>(
  * @since 2.0.0
  * @category constructors
  */
-export const delays: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Duration> =
-  internal.delays
+export const delays: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Duration> = internal.delays
 
 /**
  * Returns a new schedule that maps both the input and output.
@@ -537,8 +540,7 @@ export const driver: <Env, In, Out>(
  * @since 2.0.0
  * @category constructors
  */
-export const duration: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration> =
-  internal.duration
+export const duration: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration> = internal.duration
 
 /**
  * Returns a new schedule that performs a geometric union on the intervals
@@ -620,8 +622,7 @@ export const exponential: (
  * @since 2.0.0
  * @category constructors
  */
-export const fibonacci: (one: Duration.DurationInput) => Schedule<never, unknown, Duration> =
-  internal.fibonacci
+export const fibonacci: (one: Duration.DurationInput) => Schedule<never, unknown, Duration> = internal.fibonacci
 
 /**
  * A schedule that recurs on a fixed interval. Returns the number of
@@ -654,8 +655,7 @@ export const forever: Schedule<never, unknown, number> = internal.forever
  * @since 2.0.0
  * @category constructors
  */
-export const fromDelay: (delay: Duration.DurationInput) => Schedule<never, unknown, Duration> =
-  internal.fromDelay
+export const fromDelay: (delay: Duration.DurationInput) => Schedule<never, unknown, Duration> = internal.fromDelay
 
 /**
  * A schedule that recurs once for each of the specified durations, delaying
@@ -954,8 +954,7 @@ export const recurUntilOption: <A, B>(pf: (a: A) => Option<B>) => Schedule<never
  * @since 2.0.0
  * @category utils
  */
-export const recurUpTo: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration> =
-  internal.recurUpTo
+export const recurUpTo: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration> = internal.recurUpTo
 
 /**
  * A schedule that recurs for as long as the predicate evaluates to true.

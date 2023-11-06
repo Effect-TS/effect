@@ -21,7 +21,7 @@ import type { Schedule } from "../../Schedule.js"
 import { currentScheduler } from "../../Scheduler.js"
 import type { Scope } from "../../Scope.js"
 import type { Supervisor } from "../../Supervisor.js"
-import type { Synchronized } from "../../SynchronizedRef.js"
+import type { SynchronizedRef } from "../../SynchronizedRef.js"
 import * as internalCause from "../cause.js"
 import * as effect from "../core-effect.js"
 import * as core from "../core.js"
@@ -158,7 +158,7 @@ const computeCachedValue = <R, E, A>(
 const getCachedValue = <R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
-  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred<E, A>]>>
+  cache: SynchronizedRef<Option<readonly [number, Deferred<E, A>]>>
 ): Effect<R, E, A> =>
   core.uninterruptibleMask<R, E, A>((restore) =>
     pipe(
@@ -190,7 +190,7 @@ const getCachedValue = <R, E, A>(
 
 /** @internal */
 const invalidateCache = <E, A>(
-  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred<E, A>]>>
+  cache: SynchronizedRef<Option<readonly [number, Deferred<E, A>]>>
 ): Effect<never, never, void> => internalRef.set(cache, Option.none())
 
 /** @internal */
@@ -519,9 +519,9 @@ export const timeoutTo = dual<
 const SynchronizedSymbolKey = "effect/Ref/SynchronizedRef"
 
 /** @internal */
-export const SynchronizedTypeId: Synchronized.SynchronizedRefTypeId = Symbol.for(
+export const SynchronizedTypeId: SynchronizedRefTypeId = Symbol.for(
   SynchronizedSymbolKey
-) as Synchronized.SynchronizedRefTypeId
+) as SynchronizedRefTypeId
 
 /** @internal */
 export const synchronizedVariance = {
@@ -529,7 +529,7 @@ export const synchronizedVariance = {
 }
 
 /** @internal */
-class SynchronizedImpl<A> implements Synchronized.SynchronizedRef<A> {
+class SynchronizedImpl<A> implements SynchronizedRef<A> {
   readonly [SynchronizedTypeId] = synchronizedVariance
   readonly [internalRef.RefTypeId] = internalRef.refVariance
   constructor(
@@ -553,11 +553,11 @@ class SynchronizedImpl<A> implements Synchronized.SynchronizedRef<A> {
 }
 
 /** @internal */
-export const makeSynchronized = <A>(value: A): Effect<never, never, Synchronized.SynchronizedRef<A>> =>
+export const makeSynchronized = <A>(value: A): Effect<never, never, SynchronizedRef<A>> =>
   core.sync(() => unsafeMakeSynchronized(value))
 
 /** @internal */
-export const unsafeMakeSynchronized = <A>(value: A): Synchronized.SynchronizedRef<A> => {
+export const unsafeMakeSynchronized = <A>(value: A): SynchronizedRef<A> => {
   const ref = internalRef.unsafeMake(value)
   const sem = unsafeMakeSemaphore(1)
   return new SynchronizedImpl(ref, sem.withPermits(1))
@@ -567,9 +567,9 @@ export const unsafeMakeSynchronized = <A>(value: A): Synchronized.SynchronizedRe
 export const updateSomeAndGetEffectSynchronized = dual<
   <A, R, E>(
     pf: (a: A) => Option<Effect<R, E, A>>
-  ) => (self: Synchronized.SynchronizedRef<A>) => Effect<R, E, A>,
+  ) => (self: SynchronizedRef<A>) => Effect<R, E, A>,
   <A, R, E>(
-    self: Synchronized.SynchronizedRef<A>,
+    self: SynchronizedRef<A>,
     pf: (a: A) => Option<Effect<R, E, A>>
   ) => Effect<R, E, A>
 >(2, (self, pf) =>

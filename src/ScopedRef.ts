@@ -6,7 +6,7 @@ import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/scopedRef.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
-import type { Synchronized } from "./SynchronizedRef.js"
+import type { SynchronizedRef } from "./SynchronizedRef.js"
 
 /**
  * @since 2.0.0
@@ -35,7 +35,7 @@ declare module "./ScopedRef.js" {
    */
   export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
     /** @internal */
-    readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Closeable, A]>
+    readonly ref: SynchronizedRef<readonly [Scope.Closeable, A]>
   }
 
   /**
