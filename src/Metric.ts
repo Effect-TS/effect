@@ -29,36 +29,91 @@ export const MetricTypeId: unique symbol = internal.MetricTypeId
  */
 export type MetricTypeId = typeof MetricTypeId
 
-/**
- * A `Metric<Type, In, Out>` represents a concurrent metric which accepts
- * updates of type `In` and are aggregated to a stateful value of type `Out`.
- *
- * For example, a counter metric would have type `Metric<number, number>`,
- * representing the fact that the metric can be updated with numbers (the amount
- * to increment or decrement the counter by), and the state of the counter is a
- * number.
- *
- * There are five primitive metric types supported by Effect:
- *
- *   - Counters
- *   - Frequencies
- *   - Gauges
- *   - Histograms
- *   - Summaries
- *
- * @since 2.0.0
- * @category models
- */
-export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, Pipeable {
+export * as Metric from "./Metric.js"
+
+declare module "./Metric.js" {
   /**
-   * The type of the underlying primitive metric. For example, this could be
-   * `MetricKeyType.Counter` or `MetricKeyType.Gauge`.
+   * A `Metric<Type, In, Out>` represents a concurrent metric which accepts
+   * updates of type `In` and are aggregated to a stateful value of type `Out`.
+   *
+   * For example, a counter metric would have type `Metric<number, number>`,
+   * representing the fact that the metric can be updated with numbers (the amount
+   * to increment or decrement the counter by), and the state of the counter is a
+   * number.
+   *
+   * There are five primitive metric types supported by Effect:
+   *
+   *   - Counters
+   *   - Frequencies
+   *   - Gauges
+   *   - Histograms
+   *   - Summaries
+   *
+   * @since 2.0.0
+   * @category models
    */
-  readonly keyType: Type
-  readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void
-  readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
-  /** */
-  <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
+  export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, Pipeable {
+    /**
+     * The type of the underlying primitive metric. For example, this could be
+     * `MetricKeyType.Counter` or `MetricKeyType.Gauge`.
+     */
+    readonly keyType: Type
+    readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void
+    readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
+    /** */
+    <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Metric {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Counter<In extends number | bigint>
+      extends Metric<MetricKeyType.Counter<In>, In, MetricState.Counter<In>>
+    {}
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Gauge<In extends number | bigint>
+      extends Metric<MetricKeyType.Gauge<In>, In, MetricState.Gauge<In>>
+    {}
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Frequency<In> extends Metric<MetricKeyType.Frequency, In, MetricState.Frequency> {}
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Histogram<In> extends Metric<MetricKeyType.Histogram, In, MetricState.Histogram> {}
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Summary<In> extends Metric<MetricKeyType.Summary, In, MetricState.Summary> {}
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<Type, In, Out> {
+      readonly [MetricTypeId]: {
+        readonly _Type: (_: Type) => Type
+        readonly _In: (_: In) => void
+        readonly _Out: (_: never) => Out
+      }
+    }
+  }
 }
 
 /**
@@ -71,63 +126,6 @@ export interface MetricApply {
     unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void,
     unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
   ): Metric<Type, In, Out>
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace Metric {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Counter<In extends number | bigint>
-    extends Metric<MetricKeyType.Counter<In>, In, MetricState.Counter<In>>
-  {}
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Gauge<In extends number | bigint>
-    extends Metric<MetricKeyType.Gauge<In>, In, MetricState.Gauge<In>>
-  {}
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Frequency<In>
-    extends Metric<MetricKeyType.Frequency, In, MetricState.Frequency>
-  {}
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Histogram<In>
-    extends Metric<MetricKeyType.Histogram, In, MetricState.Histogram>
-  {}
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Summary<In>
-    extends Metric<MetricKeyType.Summary, In, MetricState.Summary>
-  {}
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<Type, In, Out> {
-    readonly [MetricTypeId]: {
-      readonly _Type: (_: Type) => Type
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
-    }
-  }
 }
 
 /**
@@ -235,8 +233,7 @@ export const withConstantInput: {
  */
 export const fromMetricKey: <Type extends MetricKeyType<any, any>>(
   key: MetricKey<Type>
-) => Metric<Type, MetricKeyType.InType<Type>, MetricKeyType.OutType<Type>> =
-  internal.fromMetricKey
+) => Metric<Type, MetricKeyType.InType<Type>, MetricKeyType.OutType<Type>> = internal.fromMetricKey
 
 /**
  * Represents a Gauge metric that tracks and reports a single numerical value at a specific moment.
@@ -475,8 +472,7 @@ export const taggedWithLabels: {
  */
 export const timer: (
   name: string
-) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> =
-  internal.timer
+) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> = internal.timer
 
 /**
  * Creates a timer metric, based on a histogram created from the provided
@@ -490,8 +486,7 @@ export const timer: (
 export const timerWithBoundaries: (
   name: string,
   boundaries: Chunk<number>
-) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> =
-  internal.timerWithBoundaries
+) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> = internal.timerWithBoundaries
 
 /**
  * Returns an aspect that will update this metric with the specified constant

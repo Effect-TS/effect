@@ -20,32 +20,36 @@ export const ScopedRefTypeId: unique symbol = internal.ScopedRefTypeId
  */
 export type ScopedRefTypeId = typeof ScopedRefTypeId
 
-/**
- * A `ScopedRef` is a reference whose value is associated with resources,
- * which must be released properly. You can both get the current value of any
- * `ScopedRef`, as well as set it to a new value (which may require new
- * resources). The reference itself takes care of properly releasing resources
- * for the old value whenever a new value is obtained.
- *
- * @since 2.0.0
- * @category models
- */
-export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
-  /** @internal */
-  readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Closeable, A]>
-}
+export * as ScopedRef from "./ScopedRef.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ScopedRef {
+declare module "./ScopedRef.js" {
   /**
+   * A `ScopedRef` is a reference whose value is associated with resources,
+   * which must be released properly. You can both get the current value of any
+   * `ScopedRef`, as well as set it to a new value (which may require new
+   * resources). The reference itself takes care of properly releasing resources
+   * for the old value whenever a new value is obtained.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [ScopedRefTypeId]: {
-      readonly _A: (_: never) => A
+  export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
+    /** @internal */
+    readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Closeable, A]>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ScopedRef {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [ScopedRefTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

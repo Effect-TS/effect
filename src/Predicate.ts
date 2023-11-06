@@ -4,12 +4,16 @@
 import { dual, isFunction as isFunction_ } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
-/**
- * @category models
- * @since 2.0.0
- */
-export interface Predicate<A> {
-  (a: A): boolean
+export * as Predicate from "./Predicate.js"
+
+declare module "./Predicate.js" {
+  /**
+   * @category models
+   * @since 2.0.0
+   */
+  export interface Predicate<A> {
+    (a: A): boolean
+  }
 }
 
 /**

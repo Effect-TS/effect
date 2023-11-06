@@ -47,114 +47,118 @@ export const RefinedConstructorsTypeId: unique symbol = Symbol.for("effect/Brand
  */
 export type RefinedConstructorsTypeId = typeof RefinedConstructorsTypeId
 
-/**
- * A generic interface that defines a branded type.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Brand<in out K extends string | symbol> {
-  readonly [BrandTypeId]: {
-    readonly [k in K]: K
-  }
-}
+export * as Brand from "./Brand.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Brand {
+declare module "./Brand.js" {
   /**
-   * Represents a list of refinement errors.
+   * A generic interface that defines a branded type.
    *
    * @since 2.0.0
    * @category models
    */
-  export interface BrandErrors extends ReadonlyArray<RefinementError> {}
-
-  /**
-   * Represents an error that occurs when the provided value of the branded type does not pass the refinement predicate.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface RefinementError {
-    readonly meta: unknown
-    readonly message: string
+  export interface Brand<in out K extends string | symbol> {
+    readonly [BrandTypeId]: {
+      readonly [k in K]: K
+    }
   }
 
   /**
    * @since 2.0.0
-   * @category models
    */
-  export interface Constructor<in out A extends Brand<any>> {
-    readonly [RefinedConstructorsTypeId]: RefinedConstructorsTypeId
+  export namespace Brand {
     /**
-     * Constructs a branded type from a value of type `A`, throwing an error if
-     * the provided `A` is not valid.
+     * Represents a list of refinement errors.
+     *
+     * @since 2.0.0
+     * @category models
      */
-    (args: Brand.Unbranded<A>): A
+    export interface BrandErrors extends ReadonlyArray<RefinementError> {}
+
     /**
-     * Constructs a branded type from a value of type `A`, returning `Some<A>`
-     * if the provided `A` is valid, `None` otherwise.
+     * Represents an error that occurs when the provided value of the branded type does not pass the refinement predicate.
+     *
+     * @since 2.0.0
+     * @category models
      */
-    option: (args: Brand.Unbranded<A>) => Option<A>
+    export interface RefinementError {
+      readonly meta: unknown
+      readonly message: string
+    }
+
     /**
-     * Constructs a branded type from a value of type `A`, returning `Right<A>`
-     * if the provided `A` is valid, `Left<BrandError>` otherwise.
+     * @since 2.0.0
+     * @category models
      */
-    either: (args: Brand.Unbranded<A>) => Either<Brand.BrandErrors, A>
+    export interface Constructor<in out A extends Brand<any>> {
+      readonly [RefinedConstructorsTypeId]: RefinedConstructorsTypeId
+      /**
+       * Constructs a branded type from a value of type `A`, throwing an error if
+       * the provided `A` is not valid.
+       */
+      (args: Brand.Unbranded<A>): A
+      /**
+       * Constructs a branded type from a value of type `A`, returning `Some<A>`
+       * if the provided `A` is valid, `None` otherwise.
+       */
+      option: (args: Brand.Unbranded<A>) => Option<A>
+      /**
+       * Constructs a branded type from a value of type `A`, returning `Right<A>`
+       * if the provided `A` is valid, `Left<BrandError>` otherwise.
+       */
+      either: (args: Brand.Unbranded<A>) => Either<Brand.BrandErrors, A>
+      /**
+       * Attempts to refine the provided value of type `A`, returning `true` if
+       * the provided `A` is valid, `false` otherwise.
+       */
+      is: Refinement<Brand.Unbranded<A>, Brand.Unbranded<A> & A>
+    }
+
     /**
-     * Attempts to refine the provided value of type `A`, returning `true` if
-     * the provided `A` is valid, `false` otherwise.
+     * A utility type to extract a branded type from a `Brand.Constructor`.
+     *
+     * @since 2.0.0
+     * @category models
      */
-    is: Refinement<Brand.Unbranded<A>, Brand.Unbranded<A> & A>
-  }
+    export type FromConstructor<A> = A extends Brand.Constructor<infer B> ? B : never
 
-  /**
-   * A utility type to extract a branded type from a `Brand.Constructor`.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type FromConstructor<A> = A extends Brand.Constructor<infer B> ? B : never
+    /**
+     * A utility type to extract the value type from a brand.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export type Unbranded<P> = P extends infer Q & Brands<P> ? Q : P
 
-  /**
-   * A utility type to extract the value type from a brand.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type Unbranded<P> = P extends infer Q & Brands<P> ? Q : P
+    /**
+     * A utility type to extract the brands from a branded type.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export type Brands<P> = P extends Brand<any> ? Types.UnionToIntersection<
+        {
+          [k in keyof P[BrandTypeId]]: k extends string | symbol ? Brand<k>
+            : never
+        }[keyof P[BrandTypeId]]
+      >
+      : never
 
-  /**
-   * A utility type to extract the brands from a branded type.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type Brands<P> = P extends Brand<any> ? Types.UnionToIntersection<
-      {
-        [k in keyof P[BrandTypeId]]: k extends string | symbol ? Brand<k>
-          : never
-      }[keyof P[BrandTypeId]]
-    >
-    : never
-
-  /**
-   * A utility type that checks that all brands have the same base type.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type EnsureCommonBase<
-    Brands extends readonly [Brand.Constructor<any>, ...Array<Brand.Constructor<any>>]
-  > = {
-    [B in keyof Brands]: Brand.Unbranded<Brand.FromConstructor<Brands[0]>> extends
-      Brand.Unbranded<Brand.FromConstructor<Brands[B]>>
-      ? Brand.Unbranded<Brand.FromConstructor<Brands[B]>> extends Brand.Unbranded<Brand.FromConstructor<Brands[0]>>
-        ? Brands[B]
-      : Brands[B]
-      : "ERROR: All brands should have the same base type"
+    /**
+     * A utility type that checks that all brands have the same base type.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export type EnsureCommonBase<
+      Brands extends readonly [Brand.Constructor<any>, ...Array<Brand.Constructor<any>>]
+    > = {
+      [B in keyof Brands]: Brand.Unbranded<Brand.FromConstructor<Brands[0]>> extends
+        Brand.Unbranded<Brand.FromConstructor<Brands[B]>>
+        ? Brand.Unbranded<Brand.FromConstructor<Brands[B]>> extends Brand.Unbranded<Brand.FromConstructor<Brands[0]>>
+          ? Brands[B]
+        : Brands[B]
+        : "ERROR: All brands should have the same base type"
+    }
   }
 }
 
