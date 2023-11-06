@@ -13,7 +13,8 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { isFunction } from "./Predicate.js"
 import type { Unify } from "./Unify.js"
-import { Gen } from "./Utils.js"
+import type { Gen } from "./Utils.js"
+import { Utils } from "./Utils.js"
 
 export * as Either from "./Either.js"
 
@@ -600,13 +601,13 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
  */
 export const reverse = <E, A>(self: Either<E, A>): Either<A, E> => isLeft(self) ? right(self.left) : left(self.right)
 
-const adapter = Gen.adapter<EitherTypeLambda>()
+const adapter = Utils.adapter<EitherTypeLambda>()
 
 /**
  * @category generators
  * @since 2.0.0
  */
-export const gen: Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
+export const gen: Gen<EitherTypeLambda, Utils.Adapter<EitherTypeLambda>> = (f) => {
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {

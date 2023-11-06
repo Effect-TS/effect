@@ -19,19 +19,23 @@ export const TracerTypeId: unique symbol = internal.TracerTypeId
  */
 export type TracerTypeId = typeof TracerTypeId
 
-/**
- * @since 2.0.0
- */
-export interface Tracer {
-  readonly [TracerTypeId]: TracerTypeId
-  readonly span: (
-    name: string,
-    parent: Option<ParentSpan>,
-    context: Context<never>,
-    links: ReadonlyArray<SpanLink>,
-    startTime: bigint
-  ) => Span
-  readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
+export * as Tracer from "./Tracer.js"
+
+declare module "./Tracer.js" {
+  /**
+   * @since 2.0.0
+   */
+  export interface Tracer {
+    readonly [TracerTypeId]: TracerTypeId
+    readonly span: (
+      name: string,
+      parent: Option<ParentSpan>,
+      context: Context<never>,
+      links: ReadonlyArray<SpanLink>,
+      startTime: bigint
+    ) => Span
+    readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
+  }
 }
 
 /**
@@ -106,7 +110,7 @@ export interface SpanLink {
  * @since 2.0.0
  * @category tags
  */
-export const Tracer: Context.Tag<Tracer, Tracer> = internal.tracerTag
+export const Tag: Context.Tag<Tracer, Tracer> = internal.tracerTag
 
 /**
  * @since 2.0.0

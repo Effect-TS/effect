@@ -19,11 +19,15 @@ export const FiberIdTypeId: unique symbol = internal.FiberIdTypeId
  */
 export type FiberIdTypeId = typeof FiberIdTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type FiberId = None | Runtime | Composite
+export * as FiberId from "./FiberId.js"
+
+declare module "./FiberId.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type FiberId = None | Runtime | Composite
+}
 
 /**
  * @since 2.0.0
