@@ -33,7 +33,7 @@ Added in v2.0.0
   - [Context (interface)](#context-interface)
   - [Tag (interface)](#tag-interface)
   - [TagUnify (interface)](#tagunify-interface)
-  - [TagUnifyBlacklist (interface)](#tagunifyblacklist-interface)
+  - [TagUnifyIgnore (interface)](#tagunifyignore-interface)
   - [ValidTagsById (type alias)](#validtagsbyid-type-alias)
 - [symbol](#symbol)
   - [TagTypeId (type alias)](#tagtypeid-type-alias)
@@ -273,7 +273,7 @@ export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
   readonly identifier?: unknown | undefined
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: TagUnify<this>
-  [Unify.blacklistSymbol]?: TagUnifyBlacklist
+  [Unify.ignoreSymbol]?: TagUnifyIgnore
 }
 ```
 
@@ -291,12 +291,12 @@ export interface TagUnify<A extends { [Unify.typeSymbol]?: any }> {
 
 Added in v2.0.0
 
-## TagUnifyBlacklist (interface)
+## TagUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface TagUnifyBlacklist {}
+export interface TagUnifyIgnore {}
 ```
 
 Added in v2.0.0

@@ -39,7 +39,7 @@ export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
   readonly identifier?: unknown | undefined
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: TagUnify<this>
-  [Unify.blacklistSymbol]?: TagUnifyBlacklist
+  [Unify.ignoreSymbol]?: TagUnifyIgnore
 }
 
 /**
@@ -54,7 +54,7 @@ export interface TagUnify<A extends { [Unify.typeSymbol]?: any }> {
  * @category models
  * @since 2.0.0
  */
-export interface TagUnifyBlacklist {}
+export interface TagUnifyIgnore {}
 
 /**
  * @since 2.0.0

@@ -178,7 +178,7 @@ Added in v2.0.0
 - [models](#models)
   - [Stream (interface)](#stream-interface)
   - [StreamUnify (interface)](#streamunify-interface)
-  - [StreamUnifyBlacklist (interface)](#streamunifyblacklist-interface)
+  - [StreamUnifyIgnore (interface)](#streamunifyignore-interface)
 - [sequencing](#sequencing)
   - [branchAfter](#branchafter)
   - [flatMap](#flatmap)
@@ -2922,7 +2922,7 @@ allow for rich and expressive composition of streams.
 export interface Stream<R, E, A> extends Stream.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: StreamUnify<this>
-  [Unify.blacklistSymbol]?: StreamUnifyBlacklist
+  [Unify.ignoreSymbol]?: StreamUnifyIgnore
 }
 ```
 
@@ -2940,12 +2940,12 @@ export interface StreamUnify<A extends { [Unify.typeSymbol]?: any }> extends Eff
 
 Added in v2.0.0
 
-## StreamUnifyBlacklist (interface)
+## StreamUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface StreamUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface StreamUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
 }
 ```

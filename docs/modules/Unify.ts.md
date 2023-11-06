@@ -14,7 +14,7 @@ Added in v2.0.0
 
 - [utils](#utils)
   - [Unify (type alias)](#unify-type-alias)
-  - [blacklistSymbol (type alias)](#blacklistsymbol-type-alias)
+  - [ignoreSymbol (type alias)](#ignoresymbol-type-alias)
   - [typeSymbol (type alias)](#typesymbol-type-alias)
   - [unify](#unify)
   - [unifySymbol (type alias)](#unifysymbol-type-alias)
@@ -35,12 +35,12 @@ export type Unify<A> = Values<ExtractTypes<FilterIn<A> & { [typeSymbol]: A }>> e
 
 Added in v2.0.0
 
-## blacklistSymbol (type alias)
+## ignoreSymbol (type alias)
 
 **Signature**
 
 ```ts
-export type blacklistSymbol = typeof blacklistSymbol
+export type ignoreSymbol = typeof ignoreSymbol
 ```
 
 Added in v2.0.0

@@ -42,7 +42,7 @@ Added in v2.0.0
 - [models](#models)
   - [Exit (type alias)](#exit-type-alias)
   - [ExitUnify (interface)](#exitunify-interface)
-  - [ExitUnifyBlackList (interface)](#exitunifyblacklist-interface)
+  - [ExitUnifyIgnore (interface)](#exitunifyignore-interface)
   - [Failure (interface)](#failure-interface)
   - [Success (interface)](#success-interface)
 - [refinements](#refinements)
@@ -421,12 +421,12 @@ export interface ExitUnify<A extends { [Unify.typeSymbol]?: any }> extends Effec
 
 Added in v2.0.0
 
-## ExitUnifyBlackList (interface)
+## ExitUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface ExitUnifyBlackList extends Effect.EffectUnifyBlacklist {
+export interface ExitUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
 }
 ```
@@ -447,7 +447,7 @@ export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Ins
   readonly cause: Cause.Cause<E>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
-  [Unify.blacklistSymbol]?: ExitUnifyBlackList
+  [Unify.ignoreSymbol]?: ExitUnifyIgnore
   /** @internal */
   readonly i0: Cause.Cause<E>
 }
@@ -469,7 +469,7 @@ export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Ins
   readonly value: A
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
-  [Unify.blacklistSymbol]?: ExitUnifyBlackList
+  [Unify.ignoreSymbol]?: ExitUnifyIgnore
   /** @internal */
   readonly i0: A
 }

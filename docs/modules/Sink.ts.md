@@ -113,7 +113,7 @@ Added in v2.0.0
 - [models](#models)
   - [Sink (interface)](#sink-interface)
   - [SinkUnify (interface)](#sinkunify-interface)
-  - [SinkUnifyBlacklist (interface)](#sinkunifyblacklist-interface)
+  - [SinkUnifyIgnore (interface)](#sinkunifyignore-interface)
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
 - [symbols](#symbols)
@@ -1597,12 +1597,12 @@ export interface SinkUnify<A extends { [Unify.typeSymbol]?: any }> extends Effec
 
 Added in v2.0.0
 
-## SinkUnifyBlacklist (interface)
+## SinkUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface SinkUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface SinkUnifyIgnore extends Effect.EffectUnifyIgnore {
   Sink?: true
 }
 ```

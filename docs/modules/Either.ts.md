@@ -49,7 +49,7 @@ Added in v2.0.0
 - [models](#models)
   - [Either (type alias)](#either-type-alias)
   - [EitherUnify (interface)](#eitherunify-interface)
-  - [EitherUnifyBlacklist (interface)](#eitherunifyblacklist-interface)
+  - [EitherUnifyIgnore (interface)](#eitherunifyignore-interface)
   - [Left (interface)](#left-interface)
   - [Right (interface)](#right-interface)
 - [pattern matching](#pattern-matching)
@@ -607,12 +607,12 @@ export interface EitherUnify<A extends { [Unify.typeSymbol]?: any }> {
 
 Added in v2.0.0
 
-## EitherUnifyBlacklist (interface)
+## EitherUnifyIgnore (interface)
 
 **Signature**
 
 ```ts
-export interface EitherUnifyBlacklist {}
+export interface EitherUnifyIgnore {}
 ```
 
 Added in v2.0.0
@@ -632,7 +632,7 @@ export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>
-  [Unify.blacklistSymbol]?: EitherUnifyBlacklist
+  [Unify.ignoreSymbol]?: EitherUnifyIgnore
 }
 ```
 
@@ -653,7 +653,7 @@ export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>
-  [Unify.blacklistSymbol]?: EitherUnifyBlacklist
+  [Unify.ignoreSymbol]?: EitherUnifyIgnore
 }
 ```
 
