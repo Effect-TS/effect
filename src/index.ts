@@ -29,8 +29,6 @@ export {
   unsafeCoerce
 } from "./Function.js"
 
-export { Effect as EffectTest } from "./Effect.js"
-
 /**
  * This module provides utility functions and type class instances for working with the `BigDecimal` type in TypeScript.
  * It includes functions for basic arithmetic operations, as well as type class instances for `Equivalence` and `Order`.
@@ -205,7 +203,7 @@ export * as Duration from "./Duration.js"
 /**
  * @since 2.0.0
  */
-export * as Effect from "./Effect.js"
+export { Effect } from "./Effect.js"
 
 /**
  * @since 2.0.0
