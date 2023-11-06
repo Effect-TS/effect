@@ -253,8 +253,8 @@ export const forkAll = dual<
 
 /** @internal */
 export const forkIn = dual<
-  (scope: Scope.Scope) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>,
-  <R, E, A>(self: Effect<R, E, A>, scope: Scope.Scope) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  (scope: Scope) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>,
+  <R, E, A>(self: Effect<R, E, A>, scope: Scope) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
 >(
   2,
   (self, scope) =>
@@ -294,7 +294,7 @@ const memoKeySymbol = Symbol.for("effect/Effect/memoizeFunction.key")
 class Key<A> implements Equal {
   [memoKeySymbol] = memoKeySymbol
   constructor(readonly a: A, readonly eq?: Equivalence<A>) {}
-  [Equal.symbol](that: Equal.Equal) {
+  [Equal.symbol](that: Equal) {
     if (Predicate.hasProperty(that, memoKeySymbol)) {
       if (this.eq) {
         return this.eq(this.a, (that as unknown as Key<A>).a)

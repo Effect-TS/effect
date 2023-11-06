@@ -98,7 +98,7 @@ export const die = (defect: unknown): Cause<never> => {
 }
 
 /** @internal */
-export const interrupt = (fiberId: FiberId.FiberId): Cause<never> => {
+export const interrupt = (fiberId: FiberId): Cause<never> => {
   const o = Object.create(proto)
   o._tag = OpCodes.OP_INTERRUPT
   o.fiberId = fiberId
@@ -840,7 +840,7 @@ export const match = dual<
       readonly onEmpty: Z
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+      readonly onInterrupt: (fiberId: FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }
@@ -851,7 +851,7 @@ export const match = dual<
       readonly onEmpty: Z
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+      readonly onInterrupt: (fiberId: FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }

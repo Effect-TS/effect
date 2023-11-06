@@ -378,12 +378,12 @@ export const trackDuration = dual<
 export const trackDurationWith = dual<
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
-    f: (duration: Duration.Duration) => In
+    f: (duration: Duration) => In
   ) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
   <R, E, A, Type, In, Out>(
     self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
-    f: (duration: Duration.Duration) => In
+    f: (duration: Duration) => In
   ) => Effect<R, E, A>
 >(3, (self, metric, f) =>
   Clock.clockWith((clock) => {

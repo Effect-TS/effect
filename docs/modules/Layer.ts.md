@@ -520,8 +520,8 @@ layer is provided to.
 
 ```ts
 export declare const buildWithScope: {
-  (scope: Scope.Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect<RIn, E, Context<ROut>>
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope.Scope): Effect<RIn, E, Context<ROut>>
+  (scope: Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect<RIn, E, Context<ROut>>
+  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope): Effect<RIn, E, Context<ROut>>
 }
 ```
 
@@ -807,7 +807,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never, never, never>
+export declare const setScheduler: (scheduler: Scheduler) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -952,7 +952,7 @@ Create a Layer that sets the current Tracer
 **Signature**
 
 ```ts
-export declare const setTracer: (tracer: Tracer.Tracer) => Layer<never, never, never>
+export declare const setTracer: (tracer: Tracer) => Layer<never, never, never>
 ```
 
 Added in v2.0.0

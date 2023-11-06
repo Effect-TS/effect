@@ -129,7 +129,7 @@ the `Fiber` running an `Effect` workflow was terminated due to interruption.
 **Signature**
 
 ```ts
-export declare const interrupt: (fiberId: FiberId.FiberId) => Exit<never, never>
+export declare const interrupt: (fiberId: FiberId) => Exit<never, never>
 ```
 
 Added in v2.0.0

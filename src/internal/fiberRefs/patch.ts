@@ -80,8 +80,8 @@ export const diff = (
 
 /** @internal */
 export const combine = dual<
-  (that: FiberRefsPatch.FiberRefsPatch) => (self: FiberRefsPatch.FiberRefsPatch) => FiberRefsPatch,
-  (self: FiberRefsPatch, that: FiberRefsPatch.FiberRefsPatch) => FiberRefsPatch
+  (that: FiberRefsPatch) => (self: FiberRefsPatch) => FiberRefsPatch,
+  (self: FiberRefsPatch, that: FiberRefsPatch) => FiberRefsPatch
 >(2, (self, that) => ({
   _tag: OP_AND_THEN,
   first: self,
@@ -93,7 +93,7 @@ export const patch = dual<
   (
     fiberId: FiberId.Runtime,
     oldValue: FiberRefs
-  ) => (self: FiberRefsPatch.FiberRefsPatch) => FiberRefs,
+  ) => (self: FiberRefsPatch) => FiberRefs,
   (
     self: FiberRefsPatch,
     fiberId: FiberId.Runtime,

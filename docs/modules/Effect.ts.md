@@ -592,7 +592,7 @@ specified effectful function.
 **Signature**
 
 ```ts
-export declare const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A>
+export declare const clockWith: <R, E, A>(f: (clock: Clock) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -2714,7 +2714,7 @@ Inherits values from all `FiberRef` instances into current fiber.
 **Signature**
 
 ```ts
-export declare const inheritFiberRefs: (childFiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void>
+export declare const inheritFiberRefs: (childFiberRefs: FiberRefs) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -2779,7 +2779,7 @@ running this workflow.
 **Signature**
 
 ```ts
-export declare const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<never, never, void>
+export declare const patchFiberRefs: (patch: FiberRefsPatch) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -2792,7 +2792,7 @@ in the specified collection of `FiberRef` values.
 **Signature**
 
 ```ts
-export declare const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void>
+export declare const setFiberRefs: (fiberRefs: FiberRefs) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -2806,7 +2806,7 @@ specified function.
 
 ```ts
 export declare const updateFiberRefs: (
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => FiberRefs
 ) => Effect<never, never, void>
 ```
 
@@ -3223,7 +3223,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const interruptWith: (fiberId: FiberId.FiberId) => Effect<never, never, never>
+export declare const interruptWith: (fiberId: FiberId) => Effect<never, never, never>
 ```
 
 Added in v2.0.0
@@ -4192,7 +4192,7 @@ specified workflow.
 **Signature**
 
 ```ts
-export declare const randomWith: <R, E, A>(f: (random: Random.Random) => Effect<R, E, A>) => Effect<R, E, A>
+export declare const randomWith: <R, E, A>(f: (random: Random) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -4686,7 +4686,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const patchRuntimeFlags: (patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => Effect<never, never, void>
+export declare const patchRuntimeFlags: (patch: RuntimeFlagsPatch) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -4711,8 +4711,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withRuntimeFlagsPatch: {
-  (update: RuntimeFlagsPatch.RuntimeFlagsPatch): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch.RuntimeFlagsPatch): Effect<R, E, A>
+  (update: RuntimeFlagsPatch): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch): Effect<R, E, A>
 }
 ```
 
@@ -4740,8 +4740,8 @@ Sets the provided scheduler for usage in the wrapped effect
 
 ```ts
 export declare const withScheduler: {
-  (scheduler: Scheduler.Scheduler): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B>(self: Effect<R, E, B>, scheduler: Scheduler.Scheduler): Effect<R, E, B>
+  (scheduler: Scheduler): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(self: Effect<R, E, B>, scheduler: Scheduler): Effect<R, E, B>
 }
 ```
 
@@ -4975,7 +4975,7 @@ Accesses the current scope and uses it to perform the specified effect.
 **Signature**
 
 ```ts
-export declare const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) => Effect<Scope | R, E, A>
+export declare const scopeWith: <R, E, A>(f: (scope: Scope) => Effect<R, E, A>) => Effect<Scope | R, E, A>
 ```
 
 Added in v2.0.0
@@ -5560,8 +5560,8 @@ when the scope is closed.
 
 ```ts
 export declare const forkIn: {
-  (scope: Scope.Scope): <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
-  <R, E, A>(self: Effect<R, E, A>, scope: Scope.Scope): Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  (scope: Scope): <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  <R, E, A>(self: Effect<R, E, A>, scope: Scope): Effect<R, never, Fiber.RuntimeFiber<E, A>>
 }
 ```
 
@@ -5847,7 +5847,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>) => Effect<R, E, A>
+export declare const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -5972,8 +5972,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withTracer: {
-  (value: Tracer.Tracer): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, value: Tracer.Tracer): Effect<R, E, A>
+  (value: Tracer): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, value: Tracer): Effect<R, E, A>
 }
 ```
 
@@ -5984,7 +5984,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const withTracerScoped: (value: Tracer.Tracer) => Effect<Scope, never, void>
+export declare const withTracerScoped: (value: Tracer) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0

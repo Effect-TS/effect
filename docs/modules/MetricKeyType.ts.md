@@ -91,7 +91,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const histogram: (boundaries: MetricBoundaries.MetricBoundaries) => MetricKeyType.Histogram
+export declare const histogram: (boundaries: MetricBoundaries) => MetricKeyType.Histogram
 ```
 
 Added in v2.0.0

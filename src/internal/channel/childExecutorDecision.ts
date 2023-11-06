@@ -65,7 +65,7 @@ export const match = dual<
       readonly onClose: (value: unknown) => A
       readonly onYield: () => A
     }
-  ) => (self: ChildExecutorDecision.ChildExecutorDecision) => A,
+  ) => (self: ChildExecutorDecision) => A,
   <A>(
     self: ChildExecutorDecision,
     options: {

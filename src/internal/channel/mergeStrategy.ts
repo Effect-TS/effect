@@ -34,11 +34,11 @@ export const BufferSliding = (_: void): MergeStrategy => {
 export const isMergeStrategy = (u: unknown): u is MergeStrategy => hasProperty(u, MergeStrategyTypeId)
 
 /** @internal */
-export const isBackPressure = (self: MergeStrategy.MergeStrategy): self is MergeStrategy.BackPressure =>
+export const isBackPressure = (self: MergeStrategy): self is MergeStrategy.BackPressure =>
   self._tag === OpCodes.OP_BACK_PRESSURE
 
 /** @internal */
-export const isBufferSliding = (self: MergeStrategy.MergeStrategy): self is MergeStrategy.BufferSliding =>
+export const isBufferSliding = (self: MergeStrategy): self is MergeStrategy.BufferSliding =>
   self._tag === OpCodes.OP_BUFFER_SLIDING
 
 /** @internal */
@@ -46,7 +46,7 @@ export const match = dual<
   <A>(options: {
     readonly onBackPressure: () => A
     readonly onBufferSliding: () => A
-  }) => (self: MergeStrategy.MergeStrategy) => A,
+  }) => (self: MergeStrategy) => A,
   <A>(
     self: MergeStrategy,
     options: {

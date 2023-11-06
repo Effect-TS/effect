@@ -21,7 +21,7 @@ export const MAX_TIMER_MILLIS = 2 ** 31 - 1
 
 /** @internal */
 export const globalClockScheduler: Clock.ClockScheduler = {
-  unsafeSchedule(task: Clock.Task, duration: Duration.Duration): Clock.CancelToken {
+  unsafeSchedule(task: Clock.Task, duration: Duration): Clock.CancelToken {
     const millis = Duration.toMillis(duration)
     // If the duration is greater than the value allowable by the JS timer
     // functions, treat the value as an infinite duration
@@ -85,7 +85,7 @@ class ClockImpl implements Clock {
     return core.succeed(globalClockScheduler)
   }
 
-  sleep(duration: Duration.Duration): Effect<never, never, void> {
+  sleep(duration: Duration): Effect<never, never, void> {
     return core.asyncEither<never, never, void>((cb) => {
       const canceler = globalClockScheduler.unsafeSchedule(() => cb(core.unit), duration)
       return Either.left(core.asUnit(core.sync(canceler)))

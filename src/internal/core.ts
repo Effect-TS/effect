@@ -349,7 +349,7 @@ export interface Sync extends
 export interface UpdateRuntimeFlags extends
   Op<OpCodes.OP_UPDATE_RUNTIME_FLAGS, {
     readonly i0: RuntimeFlagsPatch
-    readonly i1?: (oldRuntimeFlags: RuntimeFlags.RuntimeFlags) => Primitive
+    readonly i1?: (oldRuntimeFlags: RuntimeFlags) => Primitive
   }>
 {}
 
@@ -884,7 +884,7 @@ export const if_ = dual<
 export const interrupt: Effect<never, never, never> = flatMap(fiberId, (fiberId) => interruptWith(fiberId))
 
 /* @internal */
-export const interruptWith = (fiberId: FiberId.FiberId): Effect<never, never, never> =>
+export const interruptWith = (fiberId: FiberId): Effect<never, never, never> =>
   failCause(internalCause.interrupt(fiberId))
 
 /* @internal */
@@ -914,7 +914,7 @@ export const interruptibleMask = <R, E, A>(
     }
     return step
   }
-  effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
+  effect.i1 = (oldFlags: RuntimeFlags) =>
     _runtimeFlags.interruption(oldFlags)
       ? step(f(interruptible))
       : step(f(uninterruptible))
@@ -1173,7 +1173,7 @@ export const uninterruptibleMask = <R, E, A>(
     }
     return step
   }
-  effect.i1 = (oldFlags: RuntimeFlags.RuntimeFlags) =>
+  effect.i1 = (oldFlags: RuntimeFlags) =>
     _runtimeFlags.interruption(oldFlags)
       ? step(f(interruptible))
       : step(f(uninterruptible))
@@ -1184,7 +1184,7 @@ export const uninterruptibleMask = <R, E, A>(
 export const unit: Effect<never, never, void> = succeed(void 0)
 
 /* @internal */
-export const updateRuntimeFlags = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): Effect<never, never, void> => {
+export const updateRuntimeFlags = (patch: RuntimeFlagsPatch): Effect<never, never, void> => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = patch
   effect.i1 = void 0
@@ -1239,8 +1239,8 @@ export const withRequestBatching = dual<
 
 /* @internal */
 export const withRuntimeFlags = dual<
-  (update: RuntimeFlagsPatch.RuntimeFlagsPatch) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch.RuntimeFlagsPatch) => Effect<R, E, A>
+  (update: RuntimeFlagsPatch) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch) => Effect<R, E, A>
 >(2, (self, update) => {
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = update
@@ -1354,8 +1354,8 @@ export const interruptFiber = <E, A>(self: Fiber<E, A>): Effect<never, never, Ex
 
 /* @internal */
 export const interruptAsFiber = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>,
-  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId) => Effect<never, never, Exit<E, A>>
+  (fiberId: FiberId) => <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>,
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId) => Effect<never, never, Exit<E, A>>
 >(2, (self, fiberId) => flatMap(self.interruptAsFork(fiberId), () => self.await()))
 
 // -----------------------------------------------------------------------------
@@ -2262,7 +2262,7 @@ export const exitGetOrElse = dual<
 })
 
 /** @internal */
-export const exitInterrupt = (fiberId: FiberId.FiberId): Exit<never, never> =>
+export const exitInterrupt = (fiberId: FiberId): Exit<never, never> =>
   exitFailCause(internalCause.interrupt(fiberId)) as Exit<never, never>
 
 /** @internal */
@@ -2531,7 +2531,7 @@ const exitCollectAllInternal = <E, A>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const deferredUnsafeMake = <E, A>(fiberId: FiberId.FiberId): Deferred<E, A> => ({
+export const deferredUnsafeMake = <E, A>(fiberId: FiberId): Deferred<E, A> => ({
   [deferred.DeferredTypeId]: deferred.deferredVariance,
   state: MutableRef.make(deferred.pending([])),
   blockingOn: fiberId,
@@ -2545,7 +2545,7 @@ export const deferredMake = <E, A>(): Effect<never, never, Deferred<E, A>> =>
   flatMap(fiberId, (id) => deferredMakeAs<E, A>(id))
 
 /* @internal */
-export const deferredMakeAs = <E, A>(fiberId: FiberId.FiberId): Effect<never, never, Deferred<E, A>> =>
+export const deferredMakeAs = <E, A>(fiberId: FiberId): Effect<never, never, Deferred<E, A>> =>
   sync(() => deferredUnsafeMake<E, A>(fiberId))
 
 /* @internal */
@@ -2641,8 +2641,8 @@ export const deferredInterrupt = <E, A>(self: Deferred<E, A>): Effect<never, nev
 
 /* @internal */
 export const deferredInterruptWith = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred<E, A>, fiberId: FiberId.FiberId) => Effect<never, never, boolean>
+  (fiberId: FiberId) => <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, fiberId: FiberId) => Effect<never, never, boolean>
 >(2, (self, fiberId) => deferredCompleteWith(self, interruptWith(fiberId)))
 
 /* @internal */

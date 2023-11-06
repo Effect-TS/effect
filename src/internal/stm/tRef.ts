@@ -158,7 +158,7 @@ export const updateSomeAndGet = dual<
 )
 
 /** @internal */
-const getOrMakeEntry = <A>(self: TRef<A>, journal: Journal.Journal): Entry => {
+const getOrMakeEntry = <A>(self: TRef<A>, journal: Journal): Entry => {
   if (journal.has(self)) {
     return journal.get(self)!
   }
@@ -169,20 +169,20 @@ const getOrMakeEntry = <A>(self: TRef<A>, journal: Journal.Journal): Entry => {
 
 /** @internal */
 export const unsafeGet: {
-  (journal: Journal.Journal): <A>(self: TRef<A>) => A
-  <A>(self: TRef<A>, journal: Journal.Journal): A
+  (journal: Journal): <A>(self: TRef<A>) => A
+  <A>(self: TRef<A>, journal: Journal): A
 } = dual<
-  (journal: Journal.Journal) => <A>(self: TRef<A>) => A,
-  <A>(self: TRef<A>, journal: Journal.Journal) => A
->(2, <A>(self: TRef<A>, journal: Journal.Journal) => Entry.unsafeGet(getOrMakeEntry(self, journal)) as A)
+  (journal: Journal) => <A>(self: TRef<A>) => A,
+  <A>(self: TRef<A>, journal: Journal) => A
+>(2, <A>(self: TRef<A>, journal: Journal) => Entry.unsafeGet(getOrMakeEntry(self, journal)) as A)
 
 /** @internal */
 export const unsafeSet: {
-  <A>(value: A, journal: Journal.Journal): (self: TRef<A>) => void
-  <A>(self: TRef<A>, value: A, journal: Journal.Journal): void
+  <A>(value: A, journal: Journal): (self: TRef<A>) => void
+  <A>(self: TRef<A>, value: A, journal: Journal): void
 } = dual<
-  <A>(value: A, journal: Journal.Journal) => (self: TRef<A>) => void,
-  <A>(self: TRef<A>, value: A, journal: Journal.Journal) => void
+  <A>(value: A, journal: Journal) => (self: TRef<A>) => void,
+  <A>(self: TRef<A>, value: A, journal: Journal) => void
 >(3, (self, value, journal) => {
   const entry = getOrMakeEntry(self, journal)
   Entry.unsafeSet(entry, value)

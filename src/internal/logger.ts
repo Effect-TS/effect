@@ -66,11 +66,11 @@ export const mapInput = dual<
 /** @internal */
 export const filterLogLevel = dual<
   (
-    f: (logLevel: LogLevel.LogLevel) => boolean
+    f: (logLevel: LogLevel) => boolean
   ) => <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option<Output>>,
   <Message, Output>(
     self: Logger<Message, Output>,
-    f: (logLevel: LogLevel.LogLevel) => boolean
+    f: (logLevel: LogLevel) => boolean
   ) => Logger<Message, Option<Output>>
 >(2, (self, f) =>
   makeLogger((options) =>
@@ -301,7 +301,7 @@ const appendQuotedLogfmt = (label: string, output: string): string =>
   output + (label.match(textOnly) ? label : escapeDoubleQuotesLogfmt(label))
 
 /** @internal */
-const renderLogSpanLogfmt = (now: number) => (self: LogSpan.LogSpan): string => {
+const renderLogSpanLogfmt = (now: number) => (self: LogSpan): string => {
   const label = filterKeyName(self.label)
   return `${label}=${now - self.startTime}ms`
 }

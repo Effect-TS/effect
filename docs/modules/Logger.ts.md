@@ -221,7 +221,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const minimumLogLevel: (level: LogLevel.LogLevel) => Layer<never, never, never>
+export declare const minimumLogLevel: (level: LogLevel) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -286,8 +286,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withMinimumLogLevel: {
-  (level: LogLevel.LogLevel): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, level: LogLevel.LogLevel): Effect<R, E, A>
+  (level: LogLevel): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, level: LogLevel): Effect<R, E, A>
 }
 ```
 
@@ -305,11 +305,11 @@ satisfies the specified predicate.
 ```ts
 export declare const filterLogLevel: {
   (
-    f: (logLevel: LogLevel.LogLevel) => boolean
+    f: (logLevel: LogLevel) => boolean
   ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option<Output>>
   <Message, Output>(
     self: Logger<Message, Output>,
-    f: (logLevel: LogLevel.LogLevel) => boolean
+    f: (logLevel: LogLevel) => boolean
   ): Logger<Message, Option<Output>>
 }
 ```

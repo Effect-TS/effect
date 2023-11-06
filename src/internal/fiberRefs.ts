@@ -83,8 +83,8 @@ const findAncestor = (
 
 /** @internal */
 export const joinAs = dual<
-  (fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => (self: FiberRefs.FiberRefs) => FiberRefs,
-  (self: FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => FiberRefs
+  (fiberId: FiberId.Runtime, that: FiberRefs) => (self: FiberRefs) => FiberRefs,
+  (self: FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs) => FiberRefs
 >(3, (self, fiberId, that) => {
   const parentFiberRefs = new Map(self.locals)
   for (const [fiberRef, childStack] of that.locals) {
@@ -132,7 +132,7 @@ export const joinAs = dual<
 
 /** @internal */
 export const forkAs = dual<
-  (childId: FiberId.Runtime) => (self: FiberRefs.FiberRefs) => FiberRefs,
+  (childId: FiberId.Runtime) => (self: FiberRefs) => FiberRefs,
   (self: FiberRefs, childId: FiberId.Runtime) => FiberRefs
 >(2, (self, childId) => {
   const map = new Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>>()
@@ -149,10 +149,10 @@ export const forkAs = dual<
 })
 
 /** @internal */
-export const fiberRefs = (self: FiberRefs.FiberRefs) => HashSet.fromIterable(self.locals.keys())
+export const fiberRefs = (self: FiberRefs) => HashSet.fromIterable(self.locals.keys())
 
 /** @internal */
-export const setAll = (self: FiberRefs.FiberRefs): Effect<never, never, void> =>
+export const setAll = (self: FiberRefs): Effect<never, never, void> =>
   core.forEachSequentialDiscard(
     fiberRefs(self),
     (fiberRef) => core.fiberRefSet(fiberRef, getOrDefault(self, fiberRef))
@@ -160,7 +160,7 @@ export const setAll = (self: FiberRefs.FiberRefs): Effect<never, never, void> =>
 
 /** @internal */
 export const delete_ = dual<
-  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs.FiberRefs) => FiberRefs,
+  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs) => FiberRefs,
   <A>(self: FiberRefs, fiberRef: FiberRef<A>) => FiberRefs
 >(2, (self, fiberRef) => {
   const locals = new Map(self.locals)
@@ -170,7 +170,7 @@ export const delete_ = dual<
 
 /** @internal */
 export const get = dual<
-  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs.FiberRefs) => Option<A>,
+  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs) => Option<A>,
   <A>(self: FiberRefs, fiberRef: FiberRef<A>) => Option<A>
 >(2, (self, fiberRef) => {
   if (!self.locals.has(fiberRef)) {
@@ -181,7 +181,7 @@ export const get = dual<
 
 /** @internal */
 export const getOrDefault = dual<
-  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs.FiberRefs) => A,
+  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs) => A,
   <A>(self: FiberRefs, fiberRef: FiberRef<A>) => A
 >(2, (self, fiberRef) => pipe(get(self, fiberRef), Option.getOrElse(() => fiberRef.initial)))
 
@@ -193,7 +193,7 @@ export const updatedAs = dual<
       readonly fiberRef: FiberRef<A>
       readonly value: A
     }
-  ) => (self: FiberRefs.FiberRefs) => FiberRefs,
+  ) => (self: FiberRefs) => FiberRefs,
   <A>(
     self: FiberRefs,
     options: {

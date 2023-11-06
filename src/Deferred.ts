@@ -73,7 +73,7 @@ export const make: <E, A>() => Effect<never, never, Deferred<E, A>> = core.defer
  * @since 2.0.0
  * @category constructors
  */
-export const makeAs: <E, A>(fiberId: FiberId.FiberId) => Effect<never, never, Deferred<E, A>> = core.deferredMakeAs
+export const makeAs: <E, A>(fiberId: FiberId) => Effect<never, never, Deferred<E, A>> = core.deferredMakeAs
 
 const _await: <E, A>(self: Deferred<E, A>) => Effect<never, E, A> = core.deferredAwait
 
@@ -217,8 +217,8 @@ export const interrupt: <E, A>(self: Deferred<E, A>) => Effect<never, never, boo
  * @category utils
  */
 export const interruptWith: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, fiberId: FiberId.FiberId): Effect<never, never, boolean>
+  (fiberId: FiberId): <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, fiberId: FiberId): Effect<never, never, boolean>
 } = core.deferredInterruptWith
 
 /**
@@ -269,7 +269,7 @@ export const sync: {
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<E, A> = core.deferredUnsafeMake
+export const unsafeMake: <E, A>(fiberId: FiberId) => Deferred<E, A> = core.deferredUnsafeMake
 
 /**
  * Unsafely exits the `Deferred` with the specified `Exit` value, which will be

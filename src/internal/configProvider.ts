@@ -436,7 +436,7 @@ const fromFlatLoopFail =
 
 /** @internal */
 export const mapInputPath = dual<
-  (f: (path: string) => string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
+  (f: (path: string) => string) => (self: ConfigProvider) => ConfigProvider,
   (self: ConfigProvider, f: (path: string) => string) => ConfigProvider
 >(2, (self, f) => fromFlat(mapInputPathFlat(self.flattened, f)))
 
@@ -452,7 +452,7 @@ const mapInputPathFlat = (
 
 /** @internal */
 export const nested = dual<
-  (name: string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
+  (name: string) => (self: ConfigProvider) => ConfigProvider,
   (self: ConfigProvider, name: string) => ConfigProvider
 >(2, (self, name) =>
   fromFlat(makeFlat({
@@ -463,7 +463,7 @@ export const nested = dual<
 
 /** @internal */
 export const unnested = dual<
-  (name: string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
+  (name: string) => (self: ConfigProvider) => ConfigProvider,
   (self: ConfigProvider, name: string) => ConfigProvider
 >(2, (self, name) =>
   fromFlat(makeFlat({
@@ -546,35 +546,35 @@ const orElseFlat = (
   })
 
 /** @internal */
-export const constantCase = (self: ConfigProvider.ConfigProvider): ConfigProvider =>
+export const constantCase = (self: ConfigProvider): ConfigProvider =>
   mapInputPath(self, StringUtils.constantCase)
 
 /** @internal */
-export const kebabCase = (self: ConfigProvider.ConfigProvider): ConfigProvider =>
+export const kebabCase = (self: ConfigProvider): ConfigProvider =>
   mapInputPath(self, StringUtils.kebabCase)
 
 /** @internal */
-export const lowerCase = (self: ConfigProvider.ConfigProvider): ConfigProvider =>
+export const lowerCase = (self: ConfigProvider): ConfigProvider =>
   mapInputPath(self, StringUtils.lowerCase)
 
 /** @internal */
-export const snakeCase = (self: ConfigProvider.ConfigProvider): ConfigProvider =>
+export const snakeCase = (self: ConfigProvider): ConfigProvider =>
   mapInputPath(self, StringUtils.snakeCase)
 
 /** @internal */
-export const upperCase = (self: ConfigProvider.ConfigProvider): ConfigProvider =>
+export const upperCase = (self: ConfigProvider): ConfigProvider =>
   mapInputPath(self, StringUtils.upperCase)
 
 /** @internal */
 export const within = dual<
   (
     path: ReadonlyArray<string>,
-    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider
-  ) => (self: ConfigProvider.ConfigProvider) => ConfigProvider,
+    f: (self: ConfigProvider) => ConfigProvider
+  ) => (self: ConfigProvider) => ConfigProvider,
   (
     self: ConfigProvider,
     path: ReadonlyArray<string>,
-    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider
+    f: (self: ConfigProvider) => ConfigProvider
   ) => ConfigProvider
 >(3, (self, path, f) => {
   const unnest = RA.reduce(path, self, (provider, name) => unnested(provider, name))

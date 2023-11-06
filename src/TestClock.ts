@@ -266,10 +266,10 @@ export class TestClockImpl implements TestClock {
             fiber.status(),
             core.flatMap((status) => {
               if (FiberStatus.isDone(status)) {
-                return core.succeed(HashMap.set(map, fiber.id() as FiberId, status as FiberStatus.FiberStatus))
+                return core.succeed(HashMap.set(map, fiber.id() as FiberId, status as FiberStatus))
               }
               if (FiberStatus.isSuspended(status)) {
-                return core.succeed(HashMap.set(map, fiber.id() as FiberId, status as FiberStatus.FiberStatus))
+                return core.succeed(HashMap.set(map, fiber.id() as FiberId, status as FiberStatus))
               }
               return core.fail(void 0)
             })

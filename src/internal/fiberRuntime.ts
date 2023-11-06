@@ -370,7 +370,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * without locks or immutable data.
    */
   ask<Z>(
-    f: (runtime: FiberRuntime<any, any>, status: FiberStatus.FiberStatus) => Z
+    f: (runtime: FiberRuntime<any, any>, status: FiberStatus) => Z
   ): Effect<never, never, Z> {
     return core.suspend(() => {
       const deferred = core.deferredUnsafeMake<never, Z>(this._fiberId)
@@ -386,7 +386,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   /**
    * Adds a message to be processed by the fiber on the fiber.
    */
-  tell(message: FiberMessage.FiberMessage): void {
+  tell(message: FiberMessage): void {
     this._queue.push(message)
     if (!this._running) {
       this._running = true
@@ -458,7 +458,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   /**
    * In the background, interrupts the fiber as if interrupted from the specified fiber.
    */
-  interruptAsFork(fiberId: FiberId.FiberId): Effect<never, never, void> {
+  interruptAsFork(fiberId: FiberId): Effect<never, never, void> {
     return core.sync(() => this.tell(FiberMessage.interruptSignal(internalCause.interrupt(fiberId))))
   }
 
@@ -544,7 +544,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  setFiberRefs(fiberRefs: FiberRefs.FiberRefs): void {
+  setFiberRefs(fiberRefs: FiberRefs): void {
     this._fiberRefs = fiberRefs
     this.refreshRefCache()
   }
@@ -812,7 +812,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  evaluateMessageWhileSuspended(message: FiberMessage.FiberMessage): EvaluationSignal {
+  evaluateMessageWhileSuspended(message: FiberMessage): EvaluationSignal {
     switch (message._tag) {
       case FiberMessage.OP_YIELD_NOW: {
         return EvaluationSignalYieldNow
@@ -950,7 +950,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  patchRuntimeFlags(oldRuntimeFlags: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch) {
+  patchRuntimeFlags(oldRuntimeFlags: RuntimeFlags, patch: RuntimeFlagsPatch) {
     const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, patch)
     ;(globalThis as any)[internalFiber.currentFiberURI] = this
     this._runtimeFlags = newRuntimeFlags
@@ -1349,7 +1349,7 @@ export const currentMinimumLogLevel: FiberRef<LogLevel> = globalValue(
 )
 
 /** @internal */
-export const getConsole = (refs: FiberRefs.FiberRefs) => {
+export const getConsole = (refs: FiberRefs) => {
   const defaultServicesValue = FiberRefs.getOrDefault(refs, defaultServices.currentServices)
   const cnsl = Context.get(defaultServicesValue, consoleTag)
   return cnsl.unsafe
@@ -2541,7 +2541,7 @@ export const parallelNFinalizers = (parallelism: number) => <R, E, A>(self: Effe
   )
 
 /* @internal */
-export const finalizersMask = (strategy: ExecutionStrategy.ExecutionStrategy) =>
+export const finalizersMask = (strategy: ExecutionStrategy) =>
 <R, E, A>(
   self: (restore: <R1, E1, A1>(self: Effect<R1, E1, A1>) => Effect<R1, E1, A1>) => Effect<R, E, A>
 ): Effect<R, E, A> =>
@@ -2568,7 +2568,7 @@ export const finalizersMask = (strategy: ExecutionStrategy.ExecutionStrategy) =>
 
 /* @internal */
 export const scopeWith = <R, E, A>(
-  f: (scope: Scope.Scope) => Effect<R, E, A>
+  f: (scope: Scope) => Effect<R, E, A>
 ): Effect<R | Scope, E, A> => core.flatMap(scopeTag, f)
 
 /* @internal */
@@ -2974,11 +2974,11 @@ export const scopeMake = (
 
 /* @internal */
 export const scopeExtend = dual<
-  (scope: Scope.Scope) => <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>,
-  <R, E, A>(effect: Effect<R, E, A>, scope: Scope.Scope) => Effect<Exclude<R, Scope>, E, A>
+  (scope: Scope) => <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>,
+  <R, E, A>(effect: Effect<R, E, A>, scope: Scope) => Effect<Exclude<R, Scope>, E, A>
 >(
   2,
-  <R, E, A>(effect: Effect<R, E, A>, scope: Scope.Scope) =>
+  <R, E, A>(effect: Effect<R, E, A>, scope: Scope) =>
     core.mapInputContext<Exclude<R, Scope>, R, E, A>(
       effect,
       // @ts-expect-error
@@ -3464,7 +3464,7 @@ export const makeSpanScoped = (
   )
 
 /* @internal */
-export const withTracerScoped = (value: Tracer.Tracer): Effect<Scope, never, void> =>
+export const withTracerScoped = (value: Tracer): Effect<Scope, never, void> =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(tracer.tracerTag, value))
 
 /** @internal */

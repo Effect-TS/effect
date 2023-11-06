@@ -8,7 +8,7 @@ export const ArrayProto: Equal = Object.assign(Object.create(Array.prototype), {
   [Hash.symbol](this: Array<any>) {
     return Hash.array(this)
   },
-  [Equal.symbol](this: Array<any>, that: Equal.Equal) {
+  [Equal.symbol](this: Array<any>, that: Equal) {
     if (Array.isArray(that) && this.length === that.length) {
       return this.every((v, i) => Equal.equals(v, (that as Array<any>)[i]))
     } else {
@@ -19,10 +19,10 @@ export const ArrayProto: Equal = Object.assign(Object.create(Array.prototype), {
 
 /** @internal */
 export const StructProto: Equal = {
-  [Hash.symbol](this: Equal.Equal) {
+  [Hash.symbol](this: Equal) {
     return Hash.structure(this)
   },
-  [Equal.symbol](this: Equal, that: Equal.Equal) {
+  [Equal.symbol](this: Equal, that: Equal) {
     const selfKeys = Object.keys(this)
     const thatKeys = Object.keys(that as object)
     if (selfKeys.length !== thatKeys.length) {

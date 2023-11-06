@@ -1992,7 +1992,7 @@ export const interrupt: Effect<never, never, never> = core.interrupt
  * @since 2.0.0
  * @category interruption
  */
-export const interruptWith: (fiberId: FiberId.FiberId) => Effect<never, never, never> = core.interruptWith
+export const interruptWith: (fiberId: FiberId) => Effect<never, never, never> = core.interruptWith
 
 /**
  * @since 2.0.0
@@ -2452,7 +2452,7 @@ export const scope: Effect<Scope, never, Scope> = fiberRuntime.scope
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) => Effect<R | Scope, E, A> =
+export const scopeWith: <R, E, A>(f: (scope: Scope) => Effect<R, E, A>) => Effect<R | Scope, E, A> =
   fiberRuntime.scopeWith
 
 /**
@@ -2656,8 +2656,8 @@ export const forkAll: {
  * @category supervision & fibers
  */
 export const forkIn: {
-  (scope: Scope.Scope): <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
-  <R, E, A>(self: Effect<R, E, A>, scope: Scope.Scope): Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  (scope: Scope): <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  <R, E, A>(self: Effect<R, E, A>, scope: Scope): Effect<R, never, Fiber.RuntimeFiber<E, A>>
 } = circular.forkIn
 
 /**
@@ -2751,8 +2751,8 @@ export const withConcurrency: {
  * @category scheduler
  */
 export const withScheduler: {
-  (scheduler: Scheduler.Scheduler): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B>(self: Effect<R, E, B>, scheduler: Scheduler.Scheduler): Effect<R, E, B>
+  (scheduler: Scheduler): <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(self: Effect<R, E, B>, scheduler: Scheduler): Effect<R, E, B>
 } = Scheduler.withScheduler
 
 /**
@@ -2796,7 +2796,7 @@ export const clock: Effect<never, never, Clock> = effect.clock
  * @since 2.0.0
  * @category clock
  */
-export const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A> = effect.clockWith
+export const clockWith: <R, E, A>(f: (clock: Clock) => Effect<R, E, A>) => Effect<R, E, A> = effect.clockWith
 
 /**
  * Sets the implementation of the clock service to the specified value and
@@ -4021,7 +4021,7 @@ export const getFiberRefs: Effect<never, never, FiberRefs> = effect.fiberRefs
  * @since 2.0.0
  * @category fiber refs
  */
-export const inheritFiberRefs: (childFiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void> =
+export const inheritFiberRefs: (childFiberRefs: FiberRefs) => Effect<never, never, void> =
   effect.inheritFiberRefs
 
 /**
@@ -4067,7 +4067,7 @@ export const locallyScopedWith: {
  * @since 2.0.0
  * @category fiber refs
  */
-export const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<never, never, void> =
+export const patchFiberRefs: (patch: FiberRefsPatch) => Effect<never, never, void> =
   effect.patchFiberRefs
 
 /**
@@ -4077,7 +4077,7 @@ export const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<ne
  * @since 2.0.0
  * @category fiber refs
  */
-export const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void> = effect.setFiberRefs
+export const setFiberRefs: (fiberRefs: FiberRefs) => Effect<never, never, void> = effect.setFiberRefs
 
 /**
  * Updates the `FiberRef` values for the fiber running this effect using the
@@ -4087,7 +4087,7 @@ export const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<never, nev
  * @category fiber refs
  */
 export const updateFiberRefs: (
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => FiberRefs
 ) => Effect<never, never, void> = effect.updateFiberRefs
 
 // -------------------------------------------------------------------------------------
@@ -4400,7 +4400,7 @@ export const random: Effect<never, never, Random> = effect.random
  * @since 2.0.0
  * @category random
  */
-export const randomWith: <R, E, A>(f: (random: Random.Random) => Effect<R, E, A>) => Effect<R, E, A> =
+export const randomWith: <R, E, A>(f: (random: Random) => Effect<R, E, A>) => Effect<R, E, A> =
   defaultServices.randomWith
 
 // -------------------------------------------------------------------------------------
@@ -4430,7 +4430,7 @@ export const getRuntimeFlags: Effect<never, never, RuntimeFlags> = core.runtimeF
  * @since 2.0.0
  * @category runtime
  */
-export const patchRuntimeFlags: (patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => Effect<never, never, void> =
+export const patchRuntimeFlags: (patch: RuntimeFlagsPatch) => Effect<never, never, void> =
   core.updateRuntimeFlags
 
 /**
@@ -4438,8 +4438,8 @@ export const patchRuntimeFlags: (patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => 
  * @category runtime
  */
 export const withRuntimeFlagsPatch: {
-  (update: RuntimeFlagsPatch.RuntimeFlagsPatch): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch.RuntimeFlagsPatch): Effect<R, E, A>
+  (update: RuntimeFlagsPatch): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, update: RuntimeFlagsPatch): Effect<R, E, A>
 } = core.withRuntimeFlags
 
 /**
@@ -4879,7 +4879,7 @@ export const tracer: Effect<never, never, Tracer> = effect.tracer
  * @since 2.0.0
  * @category tracing
  */
-export const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>) => Effect<R, E, A> =
+export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A> =
   defaultServices.tracerWith
 
 /**
@@ -4887,15 +4887,15 @@ export const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>
  * @category tracing
  */
 export const withTracer: {
-  (value: Tracer.Tracer): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(effect: Effect<R, E, A>, value: Tracer.Tracer): Effect<R, E, A>
+  (value: Tracer): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, value: Tracer): Effect<R, E, A>
 } = defaultServices.withTracer
 
 /**
  * @since 2.0.0
  * @category tracing
  */
-export const withTracerScoped: (value: Tracer.Tracer) => Effect<Scope, never, void> =
+export const withTracerScoped: (value: Tracer) => Effect<Scope, never, void> =
   fiberRuntime.withTracerScoped
 
 /**

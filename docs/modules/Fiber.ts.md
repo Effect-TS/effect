@@ -180,7 +180,7 @@ Constructrs a `Fiber` that is already interrupted.
 **Signature**
 
 ```ts
-export declare const interrupted: (fiberId: FiberId.FiberId) => Fiber<never, never>
+export declare const interrupted: (fiberId: FiberId) => Fiber<never, never>
 ```
 
 Added in v2.0.0
@@ -499,8 +499,8 @@ interruption.
 
 ```ts
 export declare const interruptAllAs: {
-  (fiberId: FiberId.FiberId): (fibers: Iterable<Fiber<any, any>>) => Effect<never, never, void>
-  (fibers: Iterable<Fiber<any, any>>, fiberId: FiberId.FiberId): Effect<never, never, void>
+  (fiberId: FiberId): (fibers: Iterable<Fiber<any, any>>) => Effect<never, never, void>
+  (fibers: Iterable<Fiber<any, any>>, fiberId: FiberId): Effect<never, never, void>
 }
 ```
 
@@ -516,8 +516,8 @@ Otherwise, the effect will resume when the fiber exits.
 
 ```ts
 export declare const interruptAs: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>
-  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect<never, never, Exit<E, A>>
+  (fiberId: FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId): Effect<never, never, Exit<E, A>>
 }
 ```
 
@@ -533,8 +533,8 @@ Otherwise, the effect will resume when the fiber exits.
 
 ```ts
 export declare const interruptAsFork: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, void>
-  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId): Effect<never, never, void>
+  (fiberId: FiberId): <E, A>(self: Fiber<E, A>) => Effect<never, never, void>
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId): Effect<never, never, void>
 }
 ```
 
@@ -651,7 +651,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * specified fiber. If the fiber has already exited, the returned effect will
    * resume immediately. Otherwise, the effect will resume when the fiber exits.
    */
-  interruptAsFork(fiberId: FiberId.FiberId): Effect<never, never, void>
+  interruptAsFork(fiberId: FiberId): Effect<never, never, void>
 }
 ```
 

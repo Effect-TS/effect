@@ -47,7 +47,7 @@ export const sleep = (duration: Duration.DurationInput): Effect<never, never, vo
 }
 
 /** @internal */
-export const clockWith = <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>): Effect<R, E, A> =>
+export const clockWith = <R, E, A>(f: (clock: Clock) => Effect<R, E, A>): Effect<R, E, A> =>
   core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, clock.clockTag)))
 
 /** @internal */
@@ -70,8 +70,8 @@ export const withClock = dual<
 
 /** @internal */
 export const withConfigProvider = dual<
-  (value: ConfigProvider.ConfigProvider) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A>(effect: Effect<R, E, A>, value: ConfigProvider.ConfigProvider) => Effect<R, E, A>
+  (value: ConfigProvider) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(effect: Effect<R, E, A>, value: ConfigProvider) => Effect<R, E, A>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     currentServices,
@@ -80,7 +80,7 @@ export const withConfigProvider = dual<
 
 /** @internal */
 export const configProviderWith = <R, E, A>(
-  f: (configProvider: ConfigProvider.ConfigProvider) => Effect<R, E, A>
+  f: (configProvider: ConfigProvider) => Effect<R, E, A>
 ): Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
@@ -96,7 +96,7 @@ export const configOrDie = <A>(config: Config<A>) => core.orDie(configProviderWi
 // circular with Random
 
 /** @internal */
-export const randomWith = <R, E, A>(f: (random: Random.Random) => Effect<R, E, A>): Effect<R, E, A> =>
+export const randomWith = <R, E, A>(f: (random: Random) => Effect<R, E, A>): Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
     (services) => f(Context.get(services, random.randomTag))
@@ -126,13 +126,13 @@ export const shuffle = <A>(elements: Iterable<A>): Effect<never, never, Chunk<A>
 // circular with Tracer
 
 /** @internal */
-export const tracerWith = <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>): Effect<R, E, A> =>
+export const tracerWith = <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>): Effect<R, E, A> =>
   core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, tracer.tracerTag)))
 
 /** @internal */
 export const withTracer = dual<
-  (value: Tracer.Tracer) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A>(effect: Effect<R, E, A>, value: Tracer.Tracer) => Effect<R, E, A>
+  (value: Tracer) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(effect: Effect<R, E, A>, value: Tracer) => Effect<R, E, A>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     currentServices,

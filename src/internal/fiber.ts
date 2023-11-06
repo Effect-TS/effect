@@ -110,7 +110,7 @@ export const id = <E, A>(self: Fiber<E, A>): FiberId => self.id()
 export const inheritAll = <E, A>(self: Fiber<E, A>): Effect<never, never, void> => self.inheritAll()
 
 /** @internal */
-export const interrupted = (fiberId: FiberId.FiberId): Fiber<never, never> => done(Exit.interrupt(fiberId))
+export const interrupted = (fiberId: FiberId): Fiber<never, never> => done(Exit.interrupt(fiberId))
 
 /** @internal */
 export const interruptAll = (fibers: Iterable<Fiber<any, any>>): Effect<never, never, void> =>
@@ -118,8 +118,8 @@ export const interruptAll = (fibers: Iterable<Fiber<any, any>>): Effect<never, n
 
 /** @internal */
 export const interruptAllAs = dual<
-  (fiberId: FiberId.FiberId) => (fibers: Iterable<Fiber<any, any>>) => Effect<never, never, void>,
-  (fibers: Iterable<Fiber<any, any>>, fiberId: FiberId.FiberId) => Effect<never, never, void>
+  (fiberId: FiberId) => (fibers: Iterable<Fiber<any, any>>) => Effect<never, never, void>,
+  (fibers: Iterable<Fiber<any, any>>, fiberId: FiberId) => Effect<never, never, void>
 >(2, (fibers, fiberId) =>
   pipe(
     core.forEachSequentialDiscard(fibers, interruptAsFork(fiberId)),
@@ -128,8 +128,8 @@ export const interruptAllAs = dual<
 
 /** @internal */
 export const interruptAsFork = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Fiber<E, A>) => Effect<never, never, void>,
-  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId) => Effect<never, never, void>
+  (fiberId: FiberId) => <E, A>(self: Fiber<E, A>) => Effect<never, never, void>,
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId) => Effect<never, never, void>
 >(2, (self, fiberId) => self.interruptAsFork(fiberId))
 
 /** @internal */
@@ -288,7 +288,7 @@ const parseMs = (milliseconds: number) => {
 }
 
 /** @internal */
-const renderStatus = (status: FiberStatus.FiberStatus): string => {
+const renderStatus = (status: FiberStatus): string => {
   if (FiberStatus.isDone(status)) {
     return "Done"
   }

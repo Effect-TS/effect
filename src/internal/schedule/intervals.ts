@@ -31,8 +31,8 @@ export const fromIterable = (intervals: Iterable<Interval>): Intervals =>
 
 /** @internal */
 export const union = dual<
-  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
-  (self: Intervals, that: Intervals.Intervals) => Intervals
+  (that: Intervals) => (self: Intervals) => Intervals,
+  (self: Intervals, that: Intervals) => Intervals
 >(2, (self, that) => {
   if (!Chunk.isNonEmpty(that.intervals)) {
     return self
@@ -117,8 +117,8 @@ const unionLoop = (
 
 /** @internal */
 export const intersect = dual<
-  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
-  (self: Intervals, that: Intervals.Intervals) => Intervals
+  (that: Intervals) => (self: Intervals) => Intervals,
+  (self: Intervals, that: Intervals) => Intervals
 >(2, (self, that) => intersectLoop(self.intervals, that.intervals, Chunk.empty()))
 
 /** @internal */
@@ -144,7 +144,7 @@ const intersectLoop = (
 }
 
 /** @internal */
-export const start = (self: Intervals.Intervals): number => {
+export const start = (self: Intervals): number => {
   return pipe(
     self.intervals,
     Chunk.head,
@@ -153,7 +153,7 @@ export const start = (self: Intervals.Intervals): number => {
 }
 
 /** @internal */
-export const end = (self: Intervals.Intervals): number => {
+export const end = (self: Intervals): number => {
   return pipe(
     self.intervals,
     Chunk.head,
@@ -163,17 +163,17 @@ export const end = (self: Intervals.Intervals): number => {
 
 /** @internal */
 export const lessThan = dual<
-  (that: Intervals.Intervals) => (self: Intervals.Intervals) => boolean,
-  (self: Intervals, that: Intervals.Intervals) => boolean
+  (that: Intervals) => (self: Intervals) => boolean,
+  (self: Intervals, that: Intervals) => boolean
 >(2, (self, that) => start(self) < start(that))
 
 /** @internal */
-export const isNonEmpty = (self: Intervals.Intervals): boolean => {
+export const isNonEmpty = (self: Intervals): boolean => {
   return Chunk.isNonEmpty(self.intervals)
 }
 
 /** @internal */
 export const max = dual<
-  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
-  (self: Intervals, that: Intervals.Intervals) => Intervals
+  (that: Intervals) => (self: Intervals) => Intervals,
+  (self: Intervals, that: Intervals) => Intervals
 >(2, (self, that) => lessThan(self, that) ? that : self)

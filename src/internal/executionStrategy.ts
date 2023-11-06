@@ -33,15 +33,15 @@ export const parallelN = (parallelism: number): ExecutionStrategy => ({
 })
 
 /** @internal */
-export const isSequential = (self: ExecutionStrategy.ExecutionStrategy): self is ExecutionStrategy.Sequential =>
+export const isSequential = (self: ExecutionStrategy): self is ExecutionStrategy.Sequential =>
   self._tag === OP_SEQUENTIAL
 
 /** @internal */
-export const isParallel = (self: ExecutionStrategy.ExecutionStrategy): self is ExecutionStrategy.Parallel =>
+export const isParallel = (self: ExecutionStrategy): self is ExecutionStrategy.Parallel =>
   self._tag === OP_PARALLEL
 
 /** @internal */
-export const isParallelN = (self: ExecutionStrategy.ExecutionStrategy): self is ExecutionStrategy.ParallelN =>
+export const isParallelN = (self: ExecutionStrategy): self is ExecutionStrategy.ParallelN =>
   self._tag === OP_PARALLEL_N
 
 /** @internal */
@@ -50,7 +50,7 @@ export const match = dual<
     onSequential: LazyArg<A>,
     onParallel: LazyArg<A>,
     onParallelN: (n: number) => A
-  ) => (self: ExecutionStrategy.ExecutionStrategy) => A,
+  ) => (self: ExecutionStrategy) => A,
   <A>(
     self: ExecutionStrategy,
     onSequential: LazyArg<A>,

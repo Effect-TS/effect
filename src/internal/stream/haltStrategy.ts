@@ -39,21 +39,21 @@ export const fromInput = (input: HaltStrategy.HaltStrategyInput): HaltStrategy =
 }
 
 /** @internal */
-export const isLeft = (self: HaltStrategy.HaltStrategy): self is HaltStrategy.Left => self._tag === OpCodes.OP_LEFT
+export const isLeft = (self: HaltStrategy): self is HaltStrategy.Left => self._tag === OpCodes.OP_LEFT
 
 /** @internal */
-export const isRight = (self: HaltStrategy.HaltStrategy): self is HaltStrategy.Right => self._tag === OpCodes.OP_RIGHT
+export const isRight = (self: HaltStrategy): self is HaltStrategy.Right => self._tag === OpCodes.OP_RIGHT
 
 /** @internal */
-export const isBoth = (self: HaltStrategy.HaltStrategy): self is HaltStrategy.Both => self._tag === OpCodes.OP_BOTH
+export const isBoth = (self: HaltStrategy): self is HaltStrategy.Both => self._tag === OpCodes.OP_BOTH
 
 /** @internal */
-export const isEither = (self: HaltStrategy.HaltStrategy): self is HaltStrategy.Either =>
+export const isEither = (self: HaltStrategy): self is HaltStrategy.Either =>
   self._tag === OpCodes.OP_EITHER
 
 /** @internal */
 export const match = dual<
-  <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z) => (self: HaltStrategy.HaltStrategy) => Z,
+  <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z) => (self: HaltStrategy) => Z,
   <Z>(
     self: HaltStrategy,
     onLeft: () => Z,

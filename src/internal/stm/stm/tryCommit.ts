@@ -26,7 +26,7 @@ export const done = <E, A>(exit: Exit<E, A>): TryCommit<E, A> => {
 }
 
 /** @internal */
-export const suspend = (journal: Journal.Journal): TryCommit<never, never> => {
+export const suspend = (journal: Journal): TryCommit<never, never> => {
   return {
     _tag: OpCodes.OP_SUSPEND,
     journal

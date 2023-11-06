@@ -151,7 +151,7 @@ export interface CauseReducer<C, E, Z> {
   readonly emptyCase: (context: C) => Z
   readonly failCase: (context: C, error: E) => Z
   readonly dieCase: (context: C, defect: unknown) => Z
-  readonly interruptCase: (context: C, fiberId: FiberId.FiberId) => Z
+  readonly interruptCase: (context: C, fiberId: FiberId) => Z
   readonly sequentialCase: (context: C, left: Z, right: Z) => Z
   readonly parallelCase: (context: C, left: Z, right: Z) => Z
 }
@@ -333,7 +333,7 @@ export const die: (defect: unknown) => Cause<never> = internal.die
  * @since 2.0.0
  * @category constructors
  */
-export const interrupt: (fiberId: FiberId.FiberId) => Cause<never> = internal.interrupt
+export const interrupt: (fiberId: FiberId) => Cause<never> = internal.interrupt
 
 /**
  * Constructs a new `Parallel` cause from the specified `left` and `right`
@@ -680,7 +680,7 @@ export const match: {
       readonly onEmpty: Z
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+      readonly onInterrupt: (fiberId: FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }
@@ -691,7 +691,7 @@ export const match: {
       readonly onEmpty: Z
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+      readonly onInterrupt: (fiberId: FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }

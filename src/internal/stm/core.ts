@@ -713,7 +713,7 @@ export const interrupt: STM<never, never, never> = withSTMRuntime((_) => {
 })
 
 /** @internal */
-export const interruptAs = (fiberId: FiberId.FiberId): STM<never, never, never> => {
+export const interruptAs = (fiberId: FiberId): STM<never, never, never> => {
   const stm = new STMPrimitive(OpCodes.OP_INTERRUPT)
   stm.i1 = fiberId
   return stm as any

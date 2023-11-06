@@ -130,8 +130,8 @@ export const build: <RIn, E, ROut>(
  * @category destructors
  */
 export const buildWithScope: {
-  (scope: Scope.Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect<RIn, E, Context<ROut>>
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope.Scope): Effect<RIn, E, Context<ROut>>
+  (scope: Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect<RIn, E, Context<ROut>>
+  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope): Effect<RIn, E, Context<ROut>>
 } = internal.buildWithScope
 
 /**
@@ -922,7 +922,7 @@ export const setRequestCache: {
  * @since 2.0.0
  * @category scheduler
  */
-export const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never, never, never> = (
+export const setScheduler: (scheduler: Scheduler) => Layer<never, never, never> = (
   scheduler: Scheduler
 ): Layer<never, never, never> =>
   scopedDiscard(
@@ -955,7 +955,7 @@ export const span: (
  * @since 2.0.0
  * @category tracing
  */
-export const setTracer: (tracer: Tracer.Tracer) => Layer<never, never, never> = circularLayer.setTracer
+export const setTracer: (tracer: Tracer) => Layer<never, never, never> = circularLayer.setTracer
 
 /**
  * @since 2.0.0

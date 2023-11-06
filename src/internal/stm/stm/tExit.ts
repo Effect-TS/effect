@@ -126,7 +126,7 @@ export const die = (defect: unknown): TExit<never, never> => ({
 })
 
 /** @internal */
-export const interrupt = (fiberId: FiberId.FiberId): TExit<never, never> => ({
+export const interrupt = (fiberId: FiberId): TExit<never, never> => ({
   [TExitTypeId]: variance,
   _tag: OpCodes.OP_INTERRUPT,
   fiberId,

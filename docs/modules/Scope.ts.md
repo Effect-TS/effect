@@ -134,7 +134,7 @@ export interface Scope extends Pipeable {
   /**
    * @internal
    */
-  readonly fork: (strategy: ExecutionStrategy.ExecutionStrategy) => Effect<never, never, Scope.Closeable>
+  readonly fork: (strategy: ExecutionStrategy) => Effect<never, never, Scope.Closeable>
   /**
    * @internal
    */

@@ -430,11 +430,11 @@ export const dayOfWeek: (day: number) => Schedule<never, unknown, number> = inte
  */
 export const delayed: {
   (
-    f: (duration: Duration.Duration) => Duration.DurationInput
+    f: (duration: Duration) => Duration.DurationInput
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Out>
   <Env, In, Out>(
     self: Schedule<Env, In, Out>,
-    f: (duration: Duration.Duration) => Duration.DurationInput
+    f: (duration: Duration) => Duration.DurationInput
   ): Schedule<Env, In, Out>
 } = internal.delayed
 
@@ -447,11 +447,11 @@ export const delayed: {
  */
 export const delayedEffect: {
   <Env2>(
-    f: (duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration) => Effect<Env2, never, Duration.DurationInput>
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration) => Effect<Env2, never, Duration.DurationInput>
   ): Schedule<Env | Env2, In, Out>
 } = internal.delayedEffect
 
@@ -566,12 +566,12 @@ export const either: {
 export const eitherWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals.Intervals) => Intervals
+    f: (x: Intervals, y: Intervals) => Intervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals.Intervals) => Intervals
+    f: (x: Intervals, y: Intervals) => Intervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.eitherWith
 
@@ -726,12 +726,12 @@ export const intersect: {
 export const intersectWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals.Intervals) => Intervals
+    f: (x: Intervals, y: Intervals) => Intervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals.Intervals) => Intervals
+    f: (x: Intervals, y: Intervals) => Intervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.intersectWith
 
@@ -829,11 +829,11 @@ export const minuteOfHour: (minute: number) => Schedule<never, unknown, number> 
  */
 export const modifyDelay: {
   <Out>(
-    f: (out: Out, duration: Duration.Duration) => Duration.DurationInput
+    f: (out: Out, duration: Duration) => Duration.DurationInput
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Out>
   <Env, In, Out>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out, duration: Duration.Duration) => Duration.DurationInput
+    f: (out: Out, duration: Duration) => Duration.DurationInput
   ): Schedule<Env, In, Out>
 } = internal.modifyDelay
 
@@ -846,11 +846,11 @@ export const modifyDelay: {
  */
 export const modifyDelayEffect: {
   <Out, Env2>(
-    f: (out: Out, duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration) => Effect<Env2, never, Duration.DurationInput>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out, duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration) => Effect<Env2, never, Duration.DurationInput>
   ): Schedule<Env | Env2, In, Out>
 } = internal.modifyDelayEffect
 
@@ -864,11 +864,11 @@ export const modifyDelayEffect: {
  */
 export const onDecision: {
   <Out, Env2, X>(
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision) => Effect<Env2, never, X>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2, X>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision) => Effect<Env2, never, X>
   ): Schedule<Env | Env2, In, Out>
 } = internal.onDecision
 
@@ -1191,12 +1191,12 @@ export const union: {
 export const unionWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals.Intervals) => Intervals
+    f: (x: Intervals, y: Intervals) => Intervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals, y: Intervals.Intervals) => Intervals
+    f: (x: Intervals, y: Intervals) => Intervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.unionWith
 

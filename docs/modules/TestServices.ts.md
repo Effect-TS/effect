@@ -366,7 +366,7 @@ specified workflow.
 
 ```ts
 export declare const testConfigWith: <R, E, A>(
-  f: (config: TestConfig.TestConfig) => Effect<R, E, A>
+  f: (config: TestConfig) => Effect<R, E, A>
 ) => Effect<R, E, A>
 ```
 
@@ -483,7 +483,7 @@ config service.
 export declare const withTestConfig: ((
   config: TestConfig
 ) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>) &
-  (<R, E, A>(effect: Effect<R, E, A>, config: TestConfig.TestConfig) => Effect<R, E, A>)
+  (<R, E, A>(effect: Effect<R, E, A>, config: TestConfig) => Effect<R, E, A>)
 ```
 
 Added in v2.0.0
@@ -496,7 +496,7 @@ restores it to its original value when the scope is closed.
 **Signature**
 
 ```ts
-export declare const withTestConfigScoped: (config: TestConfig.TestConfig) => Effect<Scope, never, void>
+export declare const withTestConfigScoped: (config: TestConfig) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0

@@ -297,8 +297,8 @@ export const opSupervision: (self: RuntimeFlags) => boolean = internal.opSupervi
  * @category utils
  */
 export const patch: {
-  (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): (self: RuntimeFlags) => RuntimeFlags
-  (self: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch): RuntimeFlags
+  (patch: RuntimeFlagsPatch): (self: RuntimeFlags) => RuntimeFlags
+  (self: RuntimeFlags, patch: RuntimeFlagsPatch): RuntimeFlags
 } = internal.patch
 
 /**

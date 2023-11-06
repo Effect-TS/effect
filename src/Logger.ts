@@ -129,11 +129,11 @@ export const mapInput: {
  */
 export const filterLogLevel: {
   (
-    f: (logLevel: LogLevel.LogLevel) => boolean
+    f: (logLevel: LogLevel) => boolean
   ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option<Output>>
   <Message, Output>(
     self: Logger<Message, Output>,
-    f: (logLevel: LogLevel.LogLevel) => boolean
+    f: (logLevel: LogLevel) => boolean
   ): Logger<Message, Option<Output>>
 } = internal.filterLogLevel
 
@@ -229,8 +229,8 @@ export const test: {
  * @category context
  */
 export const withMinimumLogLevel: {
-  (level: LogLevel.LogLevel): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, level: LogLevel.LogLevel): Effect<R, E, A>
+  (level: LogLevel): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, level: LogLevel): Effect<R, E, A>
 } = circular.withMinimumLogLevel
 
 /**
@@ -312,4 +312,4 @@ export const logFmt: Layer<never, never, never> = replace(fiberRuntime.defaultLo
  * @since 2.0.0
  * @category context
  */
-export const minimumLogLevel: (level: LogLevel.LogLevel) => Layer<never, never, never> = circular.minimumLogLevel
+export const minimumLogLevel: (level: LogLevel) => Layer<never, never, never> = circular.minimumLogLevel

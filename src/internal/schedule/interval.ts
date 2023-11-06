@@ -32,14 +32,14 @@ export const make = (startMillis: number, endMillis: number): Interval => {
 
 /** @internal */
 export const lessThan = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => boolean,
-  (self: Interval, that: Interval.Interval) => boolean
+  (that: Interval) => (self: Interval) => boolean,
+  (self: Interval, that: Interval) => boolean
 >(2, (self, that) => min(self, that) === self)
 
 /** @internal */
 export const min = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Interval,
-  (self: Interval, that: Interval.Interval) => Interval
+  (that: Interval) => (self: Interval) => Interval,
+  (self: Interval, that: Interval) => Interval
 >(2, (self, that) => {
   if (self.endMillis <= that.startMillis) return self
   if (that.endMillis <= self.startMillis) return that
@@ -51,24 +51,24 @@ export const min = dual<
 
 /** @internal */
 export const max = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Interval,
-  (self: Interval, that: Interval.Interval) => Interval
+  (that: Interval) => (self: Interval) => Interval,
+  (self: Interval, that: Interval) => Interval
 >(2, (self, that) => min(self, that) === self ? that : self)
 
 /** @internal */
-export const isEmpty = (self: Interval.Interval): boolean => {
+export const isEmpty = (self: Interval): boolean => {
   return self.startMillis >= self.endMillis
 }
 
 /** @internal */
-export const isNonEmpty = (self: Interval.Interval): boolean => {
+export const isNonEmpty = (self: Interval): boolean => {
   return !isEmpty(self)
 }
 
 /** @internal */
 export const intersect = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Interval,
-  (self: Interval, that: Interval.Interval) => Interval
+  (that: Interval) => (self: Interval) => Interval,
+  (self: Interval, that: Interval) => Interval
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)
@@ -76,14 +76,14 @@ export const intersect = dual<
 })
 
 /** @internal */
-export const size = (self: Interval.Interval): Duration => {
+export const size = (self: Interval): Duration => {
   return Duration.millis(self.endMillis - self.startMillis)
 }
 
 /** @internal */
 export const union = dual<
-  (that: Interval.Interval) => (self: Interval.Interval) => Option<Interval>,
-  (self: Interval, that: Interval.Interval) => Option<Interval>
+  (that: Interval) => (self: Interval) => Option<Interval>,
+  (self: Interval, that: Interval) => Option<Interval>
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)

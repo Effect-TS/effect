@@ -21,7 +21,7 @@ import * as tracer from "../tracer.js"
 // circular with Logger
 
 /** @internal */
-export const minimumLogLevel = (level: LogLevel.LogLevel): Layer<never, never, never> =>
+export const minimumLogLevel = (level: LogLevel): Layer<never, never, never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScoped(
       fiberRuntime.currentMinimumLogLevel,
@@ -31,8 +31,8 @@ export const minimumLogLevel = (level: LogLevel.LogLevel): Layer<never, never, n
 
 /** @internal */
 export const withMinimumLogLevel = dual<
-  (level: LogLevel.LogLevel) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A>(self: Effect<R, E, A>, level: LogLevel.LogLevel) => Effect<R, E, A>
+  (level: LogLevel) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, level: LogLevel) => Effect<R, E, A>
 >(2, (self, level) =>
   core.fiberRefLocally(
     fiberRuntime.currentMinimumLogLevel,
@@ -181,7 +181,7 @@ export const disableWindDown: Layer<never, never, never> = layer.scopedDiscard(
 )
 
 /** @internal */
-export const setConfigProvider = (configProvider: ConfigProvider.ConfigProvider): Layer<never, never, never> =>
+export const setConfigProvider = (configProvider: ConfigProvider): Layer<never, never, never> =>
   layer.scopedDiscard(fiberRuntime.withConfigProviderScoped(configProvider))
 
 /** @internal */
@@ -211,5 +211,5 @@ export const span = (
   )
 
 /** @internal */
-export const setTracer = (tracer: Tracer.Tracer): Layer<never, never, never> =>
+export const setTracer = (tracer: Tracer): Layer<never, never, never> =>
   layer.scopedDiscard(fiberRuntime.withTracerScoped(tracer))

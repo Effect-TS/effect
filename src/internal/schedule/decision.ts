@@ -16,7 +16,7 @@ export const OP_DONE = "Done" as const
 export type OP_DONE = typeof OP_DONE
 
 /** @internal */
-export const _continue = (intervals: Intervals.Intervals): ScheduleDecision => {
+export const _continue = (intervals: Intervals): ScheduleDecision => {
   return {
     _tag: OP_CONTINUE,
     intervals
@@ -24,7 +24,7 @@ export const _continue = (intervals: Intervals.Intervals): ScheduleDecision => {
 }
 
 /** @internal */
-export const continueWith = (interval: Interval.Interval): ScheduleDecision => {
+export const continueWith = (interval: Interval): ScheduleDecision => {
   return {
     _tag: OP_CONTINUE,
     intervals: Intervals.make(Chunk.of(interval))
@@ -37,11 +37,11 @@ export const done: ScheduleDecision = {
 }
 
 /** @internal */
-export const isContinue = (self: ScheduleDecision.ScheduleDecision): self is ScheduleDecision.Continue => {
+export const isContinue = (self: ScheduleDecision): self is ScheduleDecision.Continue => {
   return self._tag === OP_CONTINUE
 }
 
 /** @internal */
-export const isDone = (self: ScheduleDecision.ScheduleDecision): self is ScheduleDecision.Done => {
+export const isDone = (self: ScheduleDecision): self is ScheduleDecision.Done => {
   return self._tag === OP_DONE
 }

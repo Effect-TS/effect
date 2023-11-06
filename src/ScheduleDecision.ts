@@ -41,7 +41,7 @@ export {
  * @since 2.0.0
  * @category constructors
  */
-export const continueWith: (interval: Interval.Interval) => ScheduleDecision = internal.continueWith
+export const continueWith: (interval: Interval) => ScheduleDecision = internal.continueWith
 
 /**
  * @since 2.0.0

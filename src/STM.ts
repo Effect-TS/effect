@@ -1160,7 +1160,7 @@ export const interrupt: STM<never, never, never> = core.interrupt
  * @since 2.0.0
  * @category constructors
  */
-export const interruptAs: (fiberId: FiberId.FiberId) => STM<never, never, never> = core.interruptAs
+export const interruptAs: (fiberId: FiberId) => STM<never, never, never> = core.interruptAs
 
 /**
  * Returns whether this transactional effect is a failure.

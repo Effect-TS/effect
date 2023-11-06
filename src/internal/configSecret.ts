@@ -16,7 +16,7 @@ export const ConfigSecretTypeId: ConfigSecret.ConfigSecretTypeId = Symbol.for(
 /** @internal */
 export const proto = {
   [ConfigSecretTypeId]: ConfigSecretTypeId,
-  [Hash.symbol](this: ConfigSecret.ConfigSecret): number {
+  [Hash.symbol](this: ConfigSecret): number {
     return pipe(
       Hash.hash(ConfigSecretSymbolKey),
       Hash.combine(Hash.array(this.raw))
@@ -58,12 +58,12 @@ export const fromString = (text: string): ConfigSecret => {
 }
 
 /** @internal */
-export const value = (self: ConfigSecret.ConfigSecret): string => {
+export const value = (self: ConfigSecret): string => {
   return self.raw.map((byte) => String.fromCharCode(byte)).join("")
 }
 
 /** @internal */
-export const unsafeWipe = (self: ConfigSecret.ConfigSecret): void => {
+export const unsafeWipe = (self: ConfigSecret): void => {
   for (let i = 0; i < self.raw.length; i++) {
     self.raw[i] = 0
   }

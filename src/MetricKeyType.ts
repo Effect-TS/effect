@@ -205,7 +205,7 @@ export const gauge: <A extends number | bigint>() => MetricKeyType.Gauge<A> = in
  * @since 2.0.0
  * @category constructors
  */
-export const histogram: (boundaries: MetricBoundaries.MetricBoundaries) => MetricKeyType.Histogram = internal.histogram
+export const histogram: (boundaries: MetricBoundaries) => MetricKeyType.Histogram = internal.histogram
 
 /**
  * @since 2.0.0

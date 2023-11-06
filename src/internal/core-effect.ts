@@ -312,7 +312,7 @@ export const cause = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Cause<E>
   core.matchCause(self, { onFailure: identity, onSuccess: () => internalCause.empty })
 
 /* @internal */
-export const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A> = Clock.clockWith
+export const clockWith: <R, E, A>(f: (clock: Clock) => Effect<R, E, A>) => Effect<R, E, A> = Clock.clockWith
 
 /* @internal */
 export const clock: Effect<never, never, Clock> = clockWith(core.succeed)
@@ -837,7 +837,7 @@ export const ignoreLogged = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, v
   })
 
 /* @internal */
-export const inheritFiberRefs = (childFiberRefs: FiberRefs.FiberRefs) =>
+export const inheritFiberRefs = (childFiberRefs: FiberRefs) =>
   updateFiberRefs((parentFiberId, parentFiberRefs) => FiberRefs.joinAs(parentFiberRefs, parentFiberId, childFiberRefs))
 
 /* @internal */
@@ -863,7 +863,7 @@ export const iterate = <Z, R, E>(
     return core.succeed(initial)
   })
 
-const logWithLevel = (level?: LogLevel.LogLevel) =>
+const logWithLevel = (level?: LogLevel) =>
 <A>(
   messageOrCause: A,
   supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
@@ -1158,7 +1158,7 @@ export const parallelErrors = <R, E, A>(self: Effect<R, E, A>): Effect<R, Array<
   })
 
 /* @internal */
-export const patchFiberRefs = (patch: FiberRefsPatch.FiberRefsPatch): Effect<never, never, void> =>
+export const patchFiberRefs = (patch: FiberRefsPatch): Effect<never, never, void> =>
   updateFiberRefs((fiberId, fiberRefs) => pipe(patch, fiberRefsPatch.patch(fiberId, fiberRefs)))
 
 /* @internal */
@@ -1335,7 +1335,7 @@ export const sandbox = <R, E, A>(self: Effect<R, E, A>): Effect<R, Cause<E>, A> 
   })
 
 /* @internal */
-export const setFiberRefs = (fiberRefs: FiberRefs.FiberRefs): Effect<never, never, void> =>
+export const setFiberRefs = (fiberRefs: FiberRefs): Effect<never, never, void> =>
   core.suspend(() => FiberRefs.setAll(fiberRefs))
 
 /* @internal */
@@ -1600,7 +1600,7 @@ export const timedWith = dual<
 )
 
 /* @internal */
-export const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>) => Effect<R, E, A> = Tracer.tracerWith
+export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A> = Tracer.tracerWith
 
 /** @internal */
 export const tracer: Effect<never, never, Tracer> = tracerWith(core.succeed)
@@ -1746,7 +1746,7 @@ export const unsandbox = <R, E, A>(self: Effect<R, Cause<E>, A>) => mapErrorCaus
 
 /* @internal */
 export const updateFiberRefs = (
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs.FiberRefs) => FiberRefs
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => FiberRefs
 ): Effect<never, never, void> =>
   core.withFiberRuntime<never, never, void>((state) => {
     state.setFiberRefs(f(state.id(), state.getFiberRefs()))

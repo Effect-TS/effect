@@ -174,7 +174,7 @@ Constructs a new `Interrupt` cause from the specified `fiberId`.
 **Signature**
 
 ```ts
-export declare const interrupt: (fiberId: FiberId.FiberId) => Cause<never>
+export declare const interrupt: (fiberId: FiberId) => Cause<never>
 ```
 
 Added in v2.0.0
@@ -366,7 +366,7 @@ export declare const match: {
     readonly onEmpty: Z
     readonly onFail: (error: E) => Z
     readonly onDie: (defect: unknown) => Z
-    readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+    readonly onInterrupt: (fiberId: FiberId) => Z
     readonly onSequential: (left: Z, right: Z) => Z
     readonly onParallel: (left: Z, right: Z) => Z
   }): (self: Cause<E>) => Z
@@ -376,7 +376,7 @@ export declare const match: {
       readonly onEmpty: Z
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+      readonly onInterrupt: (fiberId: FiberId) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }
@@ -715,7 +715,7 @@ export interface CauseReducer<C, E, Z> {
   readonly emptyCase: (context: C) => Z
   readonly failCase: (context: C, error: E) => Z
   readonly dieCase: (context: C, defect: unknown) => Z
-  readonly interruptCase: (context: C, fiberId: FiberId.FiberId) => Z
+  readonly interruptCase: (context: C, fiberId: FiberId) => Z
   readonly sequentialCase: (context: C, left: Z, right: Z) => Z
   readonly parallelCase: (context: C, left: Z, right: Z) => Z
 }

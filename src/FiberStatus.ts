@@ -64,13 +64,13 @@ export const done: FiberStatus = internal.done
  * @since 2.0.0
  * @category constructors
  */
-export const running: (runtimeFlags: RuntimeFlags.RuntimeFlags) => FiberStatus = internal.running
+export const running: (runtimeFlags: RuntimeFlags) => FiberStatus = internal.running
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const suspended: (runtimeFlags: RuntimeFlags, blockingOn: FiberId.FiberId) => FiberStatus =
+export const suspended: (runtimeFlags: RuntimeFlags, blockingOn: FiberId) => FiberStatus =
   internal.suspended
 
 /**

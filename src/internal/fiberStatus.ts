@@ -109,10 +109,10 @@ export const suspended = (
 export const isFiberStatus = (u: unknown): u is FiberStatus => hasProperty(u, FiberStatusTypeId)
 
 /** @internal */
-export const isDone = (self: FiberStatus.FiberStatus): self is FiberStatus.Done => self._tag === OP_DONE
+export const isDone = (self: FiberStatus): self is FiberStatus.Done => self._tag === OP_DONE
 
 /** @internal */
-export const isRunning = (self: FiberStatus.FiberStatus): self is FiberStatus.Running => self._tag === OP_RUNNING
+export const isRunning = (self: FiberStatus): self is FiberStatus.Running => self._tag === OP_RUNNING
 
 /** @internal */
-export const isSuspended = (self: FiberStatus.FiberStatus): self is FiberStatus.Suspended => self._tag === OP_SUSPENDED
+export const isSuspended = (self: FiberStatus): self is FiberStatus.Suspended => self._tag === OP_SUSPENDED

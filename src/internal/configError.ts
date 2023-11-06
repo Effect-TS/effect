@@ -20,7 +20,7 @@ export const proto = {
 }
 
 /** @internal */
-export const And = (self: ConfigError, that: ConfigError.ConfigError): ConfigError => {
+export const And = (self: ConfigError, that: ConfigError): ConfigError => {
   const error = Object.create(proto)
   error._tag = OpCodes.OP_AND
   error.left = self
@@ -35,7 +35,7 @@ export const And = (self: ConfigError, that: ConfigError.ConfigError): ConfigErr
 }
 
 /** @internal */
-export const Or = (self: ConfigError, that: ConfigError.ConfigError): ConfigError => {
+export const Or = (self: ConfigError, that: ConfigError): ConfigError => {
   const error = Object.create(proto)
   error._tag = OpCodes.OP_OR
   error.left = self
@@ -135,33 +135,33 @@ export const Unsupported = (
 export const isConfigError = (u: unknown): u is ConfigError => hasProperty(u, ConfigErrorTypeId)
 
 /** @internal */
-export const isAnd = (self: ConfigError.ConfigError): self is ConfigError.And => self._tag === OpCodes.OP_AND
+export const isAnd = (self: ConfigError): self is ConfigError.And => self._tag === OpCodes.OP_AND
 
 /** @internal */
-export const isOr = (self: ConfigError.ConfigError): self is ConfigError.Or => self._tag === OpCodes.OP_OR
+export const isOr = (self: ConfigError): self is ConfigError.Or => self._tag === OpCodes.OP_OR
 
 /** @internal */
-export const isInvalidData = (self: ConfigError.ConfigError): self is ConfigError.InvalidData =>
+export const isInvalidData = (self: ConfigError): self is ConfigError.InvalidData =>
   self._tag === OpCodes.OP_INVALID_DATA
 
 /** @internal */
-export const isMissingData = (self: ConfigError.ConfigError): self is ConfigError.MissingData =>
+export const isMissingData = (self: ConfigError): self is ConfigError.MissingData =>
   self._tag === OpCodes.OP_MISSING_DATA
 
 /** @internal */
-export const isSourceUnavailable = (self: ConfigError.ConfigError): self is ConfigError.SourceUnavailable =>
+export const isSourceUnavailable = (self: ConfigError): self is ConfigError.SourceUnavailable =>
   self._tag === OpCodes.OP_SOURCE_UNAVAILABLE
 
 /** @internal */
-export const isUnsupported = (self: ConfigError.ConfigError): self is ConfigError.Unsupported =>
+export const isUnsupported = (self: ConfigError): self is ConfigError.Unsupported =>
   self._tag === OpCodes.OP_UNSUPPORTED
 
 /** @internal */
 export const prefixed: {
-  (prefix: ReadonlyArray<string>): (self: ConfigError.ConfigError) => ConfigError
+  (prefix: ReadonlyArray<string>): (self: ConfigError) => ConfigError
   (self: ConfigError, prefix: ReadonlyArray<string>): ConfigError
 } = dual<
-  (prefix: ReadonlyArray<string>) => (self: ConfigError.ConfigError) => ConfigError,
+  (prefix: ReadonlyArray<string>) => (self: ConfigError) => ConfigError,
   (self: ConfigError, prefix: ReadonlyArray<string>) => ConfigError
 >(2, (self, prefix) => {
   switch (self._tag) {
@@ -211,7 +211,7 @@ interface OrCase {
 
 /** @internal */
 export const reduceWithContext = dual<
-  <C, Z>(context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => (self: ConfigError.ConfigError) => Z,
+  <C, Z>(context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => (self: ConfigError) => Z,
   <C, Z>(self: ConfigError, context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => Z
 >(3, <C, Z>(self: ConfigError, context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => {
   const input: Array<ConfigError> = [self]
@@ -287,5 +287,5 @@ export const reduceWithContext = dual<
 })
 
 /** @internal */
-export const isMissingDataOnly = (self: ConfigError.ConfigError): boolean =>
+export const isMissingDataOnly = (self: ConfigError): boolean =>
   reduceWithContext(self, void 0, IsMissingDataOnlyReducer)

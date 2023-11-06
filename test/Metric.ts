@@ -432,7 +432,7 @@ describe.concurrent("Metric", () => {
         const histogram = pipe(
           Metric.histogram(name, boundaries),
           Metric.taggedWithLabels(labels),
-          Metric.mapInput((duration: Duration.Duration) => Duration.toMillis(duration) / 1000)
+          Metric.mapInput((duration: Duration) => Duration.toMillis(duration) / 1000)
         )
         // NOTE: trackDuration always uses the **real** Clock
         const start = yield* $(Effect.sync(() => Date.now()))

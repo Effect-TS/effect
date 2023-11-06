@@ -488,7 +488,7 @@ Interrupts the fiber running the effect with the specified `FiberId`.
 **Signature**
 
 ```ts
-export declare const interruptAs: (fiberId: FiberId.FiberId) => STM<never, never, never>
+export declare const interruptAs: (fiberId: FiberId) => STM<never, never, never>
 ```
 
 Added in v2.0.0

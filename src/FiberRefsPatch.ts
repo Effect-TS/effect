@@ -77,7 +77,7 @@ export const empty: FiberRefsPatch = internal.empty
  * @since 2.0.0
  * @category constructors
  */
-export const diff: (oldValue: FiberRefs, newValue: FiberRefs.FiberRefs) => FiberRefsPatch = internal.diff
+export const diff: (oldValue: FiberRefs, newValue: FiberRefs) => FiberRefsPatch = internal.diff
 
 /**
  * Combines this patch and the specified patch to create a new patch that
@@ -100,6 +100,6 @@ export const combine: {
  * @category destructors
  */
 export const patch: {
-  (fiberId: FiberId.Runtime, oldValue: FiberRefs.FiberRefs): (self: FiberRefsPatch) => FiberRefs
-  (self: FiberRefsPatch, fiberId: FiberId.Runtime, oldValue: FiberRefs.FiberRefs): FiberRefs
+  (fiberId: FiberId.Runtime, oldValue: FiberRefs): (self: FiberRefsPatch) => FiberRefs
+  (self: FiberRefsPatch, fiberId: FiberId.Runtime, oldValue: FiberRefs): FiberRefs
 } = internal.patch

@@ -67,7 +67,7 @@ Creates a new `Deferred` from the specified `FiberId`.
 **Signature**
 
 ```ts
-export declare const makeAs: <E, A>(fiberId: FiberId.FiberId) => Effect<never, never, Deferred<E, A>>
+export declare const makeAs: <E, A>(fiberId: FiberId) => Effect<never, never, Deferred<E, A>>
 ```
 
 Added in v2.0.0
@@ -184,7 +184,7 @@ Unsafely creates a new `Deferred` from the specified `FiberId`.
 **Signature**
 
 ```ts
-export declare const unsafeMake: <E, A>(fiberId: FiberId.FiberId) => Deferred<E, A>
+export declare const unsafeMake: <E, A>(fiberId: FiberId) => Deferred<E, A>
 ```
 
 Added in v2.0.0
@@ -380,8 +380,8 @@ waiting on the value of the `Deferred` with the specified `FiberId`.
 
 ```ts
 export declare const interruptWith: {
-  (fiberId: FiberId.FiberId): <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, fiberId: FiberId.FiberId): Effect<never, never, boolean>
+  (fiberId: FiberId): <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, fiberId: FiberId): Effect<never, never, boolean>
 }
 ```
 

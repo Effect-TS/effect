@@ -303,11 +303,11 @@ export const withSize = dual<
  * @since 2.0.0
  */
 export const testConfigWith = <R, E, A>(
-  f: (config: TestConfig.TestConfig) => Effect<R, E, A>
+  f: (config: TestConfig) => Effect<R, E, A>
 ): Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
-    (services) => f(Context.get(services, TestConfig.TestConfig))
+    (services) => f(Context.get(services, TestConfig))
   )
 
 /**
@@ -324,8 +324,8 @@ export const testConfig: Effect<never, never, TestConfig> = testConfigWith(core.
  * @since 2.0.0
  */
 export const withTestConfig = dual<
-  (config: TestConfig.TestConfig) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A>(effect: Effect<R, E, A>, config: TestConfig.TestConfig) => Effect<R, E, A>
+  (config: TestConfig) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(effect: Effect<R, E, A>, config: TestConfig) => Effect<R, E, A>
 >(2, (effect, config) =>
   core.fiberRefLocallyWith(
     currentServices,
@@ -338,7 +338,7 @@ export const withTestConfig = dual<
  *
  * @since 2.0.0
  */
-export const withTestConfigScoped = (config: TestConfig.TestConfig): Effect<Scope, never, void> =>
+export const withTestConfigScoped = (config: TestConfig): Effect<Scope, never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(TestConfig, config))
 
 /**

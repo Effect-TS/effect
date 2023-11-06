@@ -49,7 +49,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const running: (runtimeFlags: RuntimeFlags.RuntimeFlags) => FiberStatus
+export declare const running: (runtimeFlags: RuntimeFlags) => FiberStatus
 ```
 
 Added in v2.0.0
@@ -59,7 +59,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const suspended: (runtimeFlags: RuntimeFlags, blockingOn: FiberId.FiberId) => FiberStatus
+export declare const suspended: (runtimeFlags: RuntimeFlags, blockingOn: FiberId) => FiberStatus
 ```
 
 Added in v2.0.0

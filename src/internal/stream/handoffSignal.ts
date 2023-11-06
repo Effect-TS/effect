@@ -53,7 +53,7 @@ export const halt = <E>(cause: Cause<E>): HandoffSignal<E, never> => ({
 })
 
 /** @internal */
-export const end = (reason: SinkEndReason.SinkEndReason): HandoffSignal<never, never> => ({
+export const end = (reason: SinkEndReason): HandoffSignal<never, never> => ({
   _tag: OP_END,
   reason
 })

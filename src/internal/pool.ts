@@ -88,7 +88,7 @@ class NoneStrategy implements Strategy<unknown, never, never, never> {
  * pool have not been used for the specified duration.
  */
 class TimeToLiveStrategy implements Strategy<readonly [Clock, Ref<number>], never, never, never> {
-  constructor(readonly timeToLive: Duration.Duration) {}
+  constructor(readonly timeToLive: Duration) {}
   initial(): Effect<never, never, readonly [Clock, Ref<number>]> {
     return core.flatMap(effect.clock, (clock) =>
       core.flatMap(clock.currentTimeMillis, (now) =>

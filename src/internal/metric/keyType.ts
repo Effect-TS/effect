@@ -116,7 +116,7 @@ class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.Gauge<A
 export class HistogramKeyType implements MetricKeyType.Histogram {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [HistogramKeyTypeTypeId]: MetricKeyType.HistogramKeyTypeTypeId = HistogramKeyTypeTypeId
-  constructor(readonly boundaries: MetricBoundaries.MetricBoundaries) {}
+  constructor(readonly boundaries: MetricBoundaries) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(HistogramKeyTypeSymbolKey),
@@ -196,7 +196,7 @@ export const gauge: <A extends number | bigint>(options?: {
  * @since 2.0.0
  * @category constructors
  */
-export const histogram = (boundaries: MetricBoundaries.MetricBoundaries): MetricKeyType.Histogram => {
+export const histogram = (boundaries: MetricBoundaries): MetricKeyType.Histogram => {
   return new HistogramKeyType(boundaries)
 }
 

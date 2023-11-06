@@ -136,7 +136,7 @@ export interface Clock {
   /**
    * Asynchronously sleeps for the specified duration.
    */
-  sleep(duration: Duration.Duration): Effect<never, never, void>
+  sleep(duration: Duration): Effect<never, never, void>
 }
 ```
 
@@ -151,7 +151,7 @@ export interface ClockScheduler {
   /**
    * Unsafely schedules the specified task for the specified duration.
    */
-  readonly unsafeSchedule: (task: Task, duration: Duration.Duration) => CancelToken
+  readonly unsafeSchedule: (task: Task, duration: Duration) => CancelToken
 }
 ```
 

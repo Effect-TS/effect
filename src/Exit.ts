@@ -265,7 +265,7 @@ export const getOrElse: {
  * @since 2.0.0
  * @category constructors
  */
-export const interrupt: (fiberId: FiberId.FiberId) => Exit<never, never> = core.exitInterrupt
+export const interrupt: (fiberId: FiberId) => Exit<never, never> = core.exitInterrupt
 
 /**
  * Maps over the `Success` value of the specified exit using the provided

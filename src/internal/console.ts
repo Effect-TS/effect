@@ -16,7 +16,7 @@ export const console: Effect<never, never, Console> = core.map(
 )
 
 /** @internal */
-export const consoleWith = <R, E, A>(f: (console: Console.Console) => Effect<R, E, A>) =>
+export const consoleWith = <R, E, A>(f: (console: Console) => Effect<R, E, A>) =>
   core.fiberRefGetWith(
     defaultServices.currentServices,
     (services) => f(Context.get(services, defaultConsole.consoleTag))
