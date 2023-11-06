@@ -1344,8 +1344,8 @@ export const combine = dual<
   ) => Effect<R5, never, Exit<Option<E | E2>, readonly [A3, S]>>
 ): Stream<R | R2 | R3 | R4 | R5, E | E2, A3> => {
   const producer = <Err, Elem>(
-    handoff: Handoff.Handoff<Exit<Option<Err>, Elem>>,
-    latch: Handoff.Handoff<void>
+    handoff: Handoff<Exit<Option<Err>, Elem>>,
+    latch: Handoff<void>
   ): Channel<R, Err, Elem, unknown, never, never, unknown> =>
     pipe(
       core.fromEffect(Handoff.take(latch)),
@@ -1448,8 +1448,8 @@ export const combineChunks = dual<
   ) => Effect<R5, never, Exit<Option<E | E2>, readonly [Chunk<A3>, S]>>
 ): Stream<R | R2 | R3 | R4 | R5, E | E2, A3> => {
   const producer = <Err, Elem>(
-    handoff: Handoff.Handoff<Take<Err, Elem>>,
-    latch: Handoff.Handoff<void>
+    handoff: Handoff<Take<Err, Elem>>,
+    latch: Handoff<void>
   ): Channel<R, Err, Chunk<Elem>, unknown, never, never, unknown> =>
     channel.zipRight(
       core.fromEffect(Handoff.take(latch)),
@@ -3368,7 +3368,7 @@ export const interleaveWith = dual<
     decider: Stream<R3, E3, boolean>
   ): Stream<R | R2 | R3, E | E2 | E3, A | A2> => {
     const producer = (
-      handoff: Handoff.Handoff<Take<E | E2 | E3, A | A2>>
+      handoff: Handoff<Take<E | E2 | E3, A | A2>>
     ): Channel<R | R2 | R3, E | E2 | E3, A | A2, unknown, never, never, void> =>
       core.readWithCause({
         onInput: (value: A | A2) =>
