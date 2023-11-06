@@ -25,9 +25,7 @@ export const live: Layer<DefaultServices, never, TestServices> = pipe(
 /**
  * @since 2.0.0
  */
-export const LiveContext: Layer<never, never, DefaultServices> = layer.syncContext(() =>
-  defaultServices.liveServices
-)
+export const LiveContext: Layer<never, never, DefaultServices> = layer.syncContext(() => defaultServices.liveServices)
 
 /**
  * @since 2.0.0

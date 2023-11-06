@@ -437,7 +437,7 @@ export class TestClockImpl implements TestClock {
  */
 export const live = (data: Data): Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
   layer.scoped(
-    TestClock.Tag,
+    Tag,
     effect.gen(function*($) {
       const live = yield* $(Live.TestLive)
       const annotations = yield* $(Annotations.TestAnnotations)
