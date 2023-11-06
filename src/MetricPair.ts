@@ -19,34 +19,36 @@ export const MetricPairTypeId: unique symbol = internal.MetricPairTypeId
  */
 export type MetricPairTypeId = typeof MetricPairTypeId
 
-/**
- * @since 2.0.0
- * @category model
- */
-export interface MetricPair<Type extends MetricKeyType<any, any>>
-  extends MetricPair.Variance<Type>, Pipeable
-{
-  readonly metricKey: MetricKey<Type>
-  readonly metricState: MetricState<MetricKeyType.OutType<Type>>
-}
+export * as MetricPair from "./MetricPair.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace MetricPair {
+declare module "./MetricPair.js" {
   /**
    * @since 2.0.0
-   * @category models
+   * @category model
    */
-  export interface Untyped extends MetricPair<MetricKeyType<any, any>> {}
+  export interface MetricPair<Type extends MetricKeyType<any, any>> extends MetricPair.Variance<Type>, Pipeable {
+    readonly metricKey: MetricKey<Type>
+    readonly metricState: MetricState<MetricKeyType.OutType<Type>>
+  }
 
   /**
    * @since 2.0.0
-   * @category models
    */
-  export interface Variance<Type extends MetricKeyType<any, any>> {
-    readonly [MetricPairTypeId]: {
-      readonly _Type: (_: never) => Type
+  export namespace MetricPair {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Untyped extends MetricPair<MetricKeyType<any, any>> {}
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<Type extends MetricKeyType<any, any>> {
+      readonly [MetricPairTypeId]: {
+        readonly _Type: (_: never) => Type
+      }
     }
   }
 }

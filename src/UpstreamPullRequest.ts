@@ -15,23 +15,27 @@ export const UpstreamPullRequestTypeId: unique symbol = internal.UpstreamPullReq
  */
 export type UpstreamPullRequestTypeId = typeof UpstreamPullRequestTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type UpstreamPullRequest<A> = Pulled<A> | NoUpstream
+export * as UpstreamPullRequest from "./UpstreamPullRequest.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace UpstreamPullRequest {
+declare module "./UpstreamPullRequest.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [UpstreamPullRequestTypeId]: {
-      readonly _A: (_: never) => A
+  export type UpstreamPullRequest<A> = Pulled<A> | NoUpstream
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace UpstreamPullRequest {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [UpstreamPullRequestTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

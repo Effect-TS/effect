@@ -19,25 +19,29 @@ export const MergeStateTypeId: unique symbol = internal.MergeStateTypeId
  */
 export type MergeStateTypeId = typeof MergeStateTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> =
-  | BothRunning<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
-  | LeftDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
-  | RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
+export * as MergeState from "./MergeState.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace MergeState {
+declare module "./MergeState.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [MergeStateTypeId]: MergeStateTypeId
+  export type MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> =
+    | BothRunning<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
+    | LeftDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
+    | RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace MergeState {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [MergeStateTypeId]: MergeStateTypeId
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type { Check } from "./Chunk.js"
+import type { Chunk } from "./Chunk.js"
 import * as internal from "./internal/schedule/intervals.js"
 import type { Interval } from "./ScheduleInterval.js"
 
@@ -17,15 +17,19 @@ export const IntervalsTypeId: unique symbol = internal.IntervalsTypeId
  */
 export type IntervalsTypeId = typeof IntervalsTypeId
 
-/**
- * An `Intervals` represents a list of several `Interval`s.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Intervals {
-  readonly [IntervalsTypeId]: IntervalsTypeId
-  readonly intervals: Check.Chunk<Interval>
+export * as Intervals from "./ScheduleIntervals.js"
+
+declare module "./ScheduleIntervals.js" {
+  /**
+   * An `Intervals` represents a list of several `Interval`s.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Intervals {
+    readonly [IntervalsTypeId]: IntervalsTypeId
+    readonly intervals: Chunk<Interval>
+  }
 }
 
 /**
@@ -34,7 +38,7 @@ export interface Intervals {
  * @since 2.0.0
  * @category constructors
  */
-export const make: (intervals: Check.Chunk<Interval>) => Intervals = internal.make
+export const make: (intervals: Chunk<Interval>) => Intervals = internal.make
 
 /**
  * Constructs an empty list of `Interval`s.

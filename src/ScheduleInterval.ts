@@ -17,17 +17,21 @@ export const IntervalTypeId: unique symbol = internal.IntervalTypeId
  */
 export type IntervalTypeId = typeof IntervalTypeId
 
-/**
- * An `Interval` represents an interval of time. Intervals can encompass all
- * time, or no time at all.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Interval {
-  readonly [IntervalTypeId]: IntervalTypeId
-  readonly startMillis: number
-  readonly endMillis: number
+export * as Interval from "./ScheduleInterval.js"
+
+declare module "./ScheduleInterval.js" {
+  /**
+   * An `Interval` represents an interval of time. Intervals can encompass all
+   * time, or no time at all.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Interval {
+    readonly [IntervalTypeId]: IntervalTypeId
+    readonly startMillis: number
+    readonly endMillis: number
+  }
 }
 
 /**

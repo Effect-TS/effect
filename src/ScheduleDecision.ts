@@ -5,11 +5,15 @@ import * as internal from "./internal/schedule/decision.js"
 import type { Interval } from "./ScheduleInterval.js"
 import type { Intervals } from "./ScheduleIntervals.js"
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type ScheduleDecision = Continue | Done
+export * as ScheduleDecision from "./ScheduleDecision.js"
+
+declare module "./ScheduleDecision.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type ScheduleDecision = Continue | Done
+}
 
 /**
  * @since 2.0.0

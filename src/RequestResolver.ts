@@ -24,56 +24,60 @@ export const RequestResolverTypeId: unique symbol = core.RequestResolverTypeId
  */
 export type RequestResolverTypeId = typeof RequestResolverTypeId
 
-/**
- * A `RequestResolver<A, R>` requires an environment `R` and is capable of executing
- * requests of type `A`.
- *
- * Data sources must implement the method `runAll` which takes a collection of
- * requests and returns an effect with a `RequestCompletionMap` containing a
- * mapping from requests to results. The type of the collection of requests is
- * a `Chunk<Chunk<A>>`. The outer `Chunk` represents batches of requests that
- * must be performed sequentially. The inner `Chunk` represents a batch of
- * requests that can be performed in parallel. This allows data sources to
- * introspect on all the requests being executed and optimize the query.
- *
- * Data sources will typically be parameterized on a subtype of `Request<A>`,
- * though that is not strictly necessarily as long as the data source can map
- * the request type to a `Request<A>`. Data sources can then pattern match on
- * the collection of requests to determine the information requested, execute
- * the query, and place the results into the `RequestCompletionMap` using
- * `RequestCompletionMap.empty` and `RequestCompletionMap.insert`. Data
- * sources must provide results for all requests received. Failure to do so
- * will cause a query to die with a `QueryFailure` when run.
- *
- * @since 2.0.0
- * @category models
- */
-export interface RequestResolver<A, R = never> extends Equal, Pipeable {
-  /**
-   * Execute a collection of requests. The outer `Chunk` represents batches
-   * of requests that must be performed sequentially. The inner `Chunk`
-   * represents a batch of requests that can be performed in parallel.
-   */
-  runAll(requests: Array<Array<Request.Entry<A>>>): Effect<R, never, void>
+export * as RequestResolver from "./RequestResolver.js"
 
+declare module "./RequestResolver.js" {
   /**
-   * Identify the data source using the specific identifier
-   */
-  identified(...identifiers: Array<unknown>): RequestResolver<A, R>
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace RequestResolver {
-  /**
+   * A `RequestResolver<A, R>` requires an environment `R` and is capable of executing
+   * requests of type `A`.
+   *
+   * Data sources must implement the method `runAll` which takes a collection of
+   * requests and returns an effect with a `RequestCompletionMap` containing a
+   * mapping from requests to results. The type of the collection of requests is
+   * a `Chunk<Chunk<A>>`. The outer `Chunk` represents batches of requests that
+   * must be performed sequentially. The inner `Chunk` represents a batch of
+   * requests that can be performed in parallel. This allows data sources to
+   * introspect on all the requests being executed and optimize the query.
+   *
+   * Data sources will typically be parameterized on a subtype of `Request<A>`,
+   * though that is not strictly necessarily as long as the data source can map
+   * the request type to a `Request<A>`. Data sources can then pattern match on
+   * the collection of requests to determine the information requested, execute
+   * the query, and place the results into the `RequestCompletionMap` using
+   * `RequestCompletionMap.empty` and `RequestCompletionMap.insert`. Data
+   * sources must provide results for all requests received. Failure to do so
+   * will cause a query to die with a `QueryFailure` when run.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, A> {
-    readonly [RequestResolverTypeId]: {
-      readonly _R: (_: never) => R
-      readonly _A: (_: never) => A
+  export interface RequestResolver<A, R = never> extends Equal, Pipeable {
+    /**
+     * Execute a collection of requests. The outer `Chunk` represents batches
+     * of requests that must be performed sequentially. The inner `Chunk`
+     * represents a batch of requests that can be performed in parallel.
+     */
+    runAll(requests: Array<Array<Request.Entry<A>>>): Effect<R, never, void>
+
+    /**
+     * Identify the data source using the specific identifier
+     */
+    identified(...identifiers: Array<unknown>): RequestResolver<A, R>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace RequestResolver {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<R, A> {
+      readonly [RequestResolverTypeId]: {
+        readonly _R: (_: never) => R
+        readonly _A: (_: never) => A
+      }
     }
   }
 }
@@ -256,8 +260,7 @@ export const fromEffect: <R, A extends Request<any, any>>(
 export const fromEffectTagged: <A extends Request<any, any> & { readonly _tag: string }>() => <
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
-      ? Req extends Request<infer ReqE, infer ReqA>
-        ? (requests: Array<Req>) => Effect<any, ReqE, Iterable<ReqA>>
+      ? Req extends Request<infer ReqE, infer ReqA> ? (requests: Array<Req>) => Effect<any, ReqE, Iterable<ReqA>>
       : never
       : never
   }

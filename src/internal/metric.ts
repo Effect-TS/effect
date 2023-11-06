@@ -17,7 +17,7 @@ import type { MetricRegistry } from "../MetricRegistry.js"
 import type { MetricState } from "../MetricState.js"
 import { pipeArguments } from "../Pipeable.js"
 import { ReadonlyArray } from "../ReadonlyArray.js"
-import { Cause } from "./cause.js"
+import * as Cause from "./cause.js"
 import * as _effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as metricBoundaries from "./metric/boundaries.js"
@@ -147,8 +147,7 @@ export const histogram = (name: string, boundaries: MetricBoundaries, descriptio
 /* @internal */
 export const increment = (
   self: Metric.Counter<number> | Metric.Counter<bigint>
-): Effect<never, never, void> =>
-  update(self as Metric.Counter<number>, self.keyType.bigint ? BigInt(1) as any : 1)
+): Effect<never, never, void> => update(self as Metric.Counter<number>, self.keyType.bigint ? BigInt(1) as any : 1)
 
 /* @internal */
 export const incrementBy = dual<

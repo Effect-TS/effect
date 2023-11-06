@@ -505,8 +505,7 @@ export const dropWhile = dual<
   }))
 
 /* @internal */
-export const contextWith = <R, A>(f: (context: Context<R>) => A): Effect<R, never, A> =>
-  core.map(core.context<R>(), f)
+export const contextWith = <R, A>(f: (context: Context<R>) => A): Effect<R, never, A> => core.map(core.context<R>(), f)
 
 /* @internal */
 export const eventually = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, A> =>
@@ -765,7 +764,7 @@ class EffectGen {
   constructor(readonly value: Effect<any, any, any>) {
   }
   [Symbol.iterator]() {
-    return new SingleShotGen.SingleShotGen(this)
+    return new SingleShotGen(this)
   }
 }
 

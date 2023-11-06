@@ -22,18 +22,22 @@ export const FiberRefsSym: unique symbol = internal.FiberRefsSym
  */
 export type FiberRefsSym = typeof FiberRefsSym
 
-/**
- * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
- *
- * This allows safely propagating `FiberRef` values across fiber boundaries, for
- * example between an asynchronous producer and consumer.
- *
- * @since 2.0.0
- * @category models
- */
-export interface FiberRefs extends Pipeable {
-  readonly [FiberRefsSym]: FiberRefsSym
-  readonly locals: Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+export * as FiberRefs from "./FiberRefs.js"
+
+declare module "./FiberRefs.js" {
+  /**
+   * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
+   *
+   * This allows safely propagating `FiberRef` values across fiber boundaries, for
+   * example between an asynchronous producer and consumer.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export interface FiberRefs extends Pipeable {
+    readonly [FiberRefsSym]: FiberRefsSym
+    readonly locals: Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+  }
 }
 
 const delete_: {

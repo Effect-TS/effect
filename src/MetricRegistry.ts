@@ -20,24 +20,28 @@ export const MetricRegistryTypeId: unique symbol = internal.MetricRegistryTypeId
  */
 export type MetricRegistryTypeId = typeof MetricRegistryTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MetricRegistry {
-  readonly [MetricRegistryTypeId]: MetricRegistryTypeId
-  snapshot(): HashSet<MetricPair.Untyped>
-  get<Type extends MetricKeyType<any, any>>(
-    key: MetricKey<Type>
-  ): MetricHook<
-    MetricKeyType.InType<typeof key["keyType"]>,
-    MetricKeyType.OutType<typeof key["keyType"]>
-  >
-  getCounter<A extends (number | bigint)>(key: MetricKey.Counter<A>): MetricHook.Counter<A>
-  getFrequency(key: MetricKey.Frequency): MetricHook.Frequency
-  getGauge<A extends (number | bigint)>(key: MetricKey.Gauge<A>): MetricHook.Gauge<A>
-  getHistogram(key: MetricKey.Histogram): MetricHook.Histogram
-  getSummary(key: MetricKey.Summary): MetricHook.Summary
+export * as MetricRegistry from "./MetricRegistry.js"
+
+declare module "./MetricRegistry.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface MetricRegistry {
+    readonly [MetricRegistryTypeId]: MetricRegistryTypeId
+    snapshot(): HashSet<MetricPair.Untyped>
+    get<Type extends MetricKeyType<any, any>>(
+      key: MetricKey<Type>
+    ): MetricHook<
+      MetricKeyType.InType<typeof key["keyType"]>,
+      MetricKeyType.OutType<typeof key["keyType"]>
+    >
+    getCounter<A extends (number | bigint)>(key: MetricKey.Counter<A>): MetricHook.Counter<A>
+    getFrequency(key: MetricKey.Frequency): MetricHook.Frequency
+    getGauge<A extends (number | bigint)>(key: MetricKey.Gauge<A>): MetricHook.Gauge<A>
+    getHistogram(key: MetricKey.Histogram): MetricHook.Histogram
+    getSummary(key: MetricKey.Summary): MetricHook.Summary
+  }
 }
 
 /**

@@ -17,7 +17,7 @@ import { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
-import { Data } from "./data.js"
+import * as Data from "./data.js"
 import { none } from "./fiberId.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 

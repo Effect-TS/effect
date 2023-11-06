@@ -21,31 +21,35 @@ export const TakeTypeId: unique symbol = internal.TakeTypeId
  */
 export type TakeTypeId = typeof TakeTypeId
 
-/**
- * A `Take<E, A>` represents a single `take` from a queue modeling a stream of
- * values. A `Take` may be a failure cause `Cause<E>`, a chunk value `Chunk<A>`,
- * or an end-of-stream marker.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
-  /** @internal */
-  readonly exit: Exit<Option<E>, Chunk<A>>
-}
+export * as Take from "./Take.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Take {
+declare module "./Take.js" {
   /**
+   * A `Take<E, A>` represents a single `take` from a queue modeling a stream of
+   * values. A `Take` may be a failure cause `Cause<E>`, a chunk value `Chunk<A>`,
+   * or an end-of-stream marker.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
-    readonly [TakeTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+  export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
+    /** @internal */
+    readonly exit: Exit<Option<E>, Chunk<A>>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Take {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<E, A> {
+      readonly [TakeTypeId]: {
+        readonly _E: (_: never) => E
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

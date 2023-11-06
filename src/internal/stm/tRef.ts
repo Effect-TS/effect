@@ -29,7 +29,7 @@ export class TRefImpl<A> implements TRef<A> {
   /** @internal */
   versioned: Versioned<A>
   constructor(value: A) {
-    this.versioned = new Versioned.Versioned(value)
+    this.versioned = new Versioned(value)
     this.todos = new Map()
   }
   modify<B>(f: (a: A) => readonly [B, A]): STM<never, never, B> {
