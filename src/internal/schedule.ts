@@ -323,12 +323,10 @@ export const collectAllInputs = <A>(): Schedule<never, A, Chunk<A>> => collectAl
 /** @internal */
 export const collectAllOutputs = <Env, In, Out>(
   self: Schedule<Env, In, Out>
-): Schedule<Env, In, Chunk<Out>> =>
-  reduce(self, Chunk.empty<Out>(), (outs, out) => pipe(outs, Chunk.append(out)))
+): Schedule<Env, In, Chunk<Out>> => reduce(self, Chunk.empty<Out>(), (outs, out) => pipe(outs, Chunk.append(out)))
 
 /** @internal */
-export const collectUntil = <A>(f: Predicate<A>): Schedule<never, A, Chunk<A>> =>
-  collectAllOutputs(recurUntil(f))
+export const collectUntil = <A>(f: Predicate<A>): Schedule<never, A, Chunk<A>> => collectAllOutputs(recurUntil(f))
 
 /** @internal */
 export const collectUntilEffect = <Env, A>(
@@ -336,8 +334,7 @@ export const collectUntilEffect = <Env, A>(
 ): Schedule<Env, A, Chunk<A>> => collectAllOutputs(recurUntilEffect(f))
 
 /** @internal */
-export const collectWhile = <A>(f: Predicate<A>): Schedule<never, A, Chunk<A>> =>
-  collectAllOutputs(recurWhile(f))
+export const collectWhile = <A>(f: Predicate<A>): Schedule<never, A, Chunk<A>> => collectAllOutputs(recurWhile(f))
 
 /** @internal */
 export const collectWhileEffect = <Env, A>(
@@ -702,8 +699,7 @@ export const fixed = (intervalInput: Duration.DurationInput): Schedule<never, un
 }
 
 /** @internal */
-export const fromDelay = (delay: Duration.DurationInput): Schedule<never, unknown, Duration> =>
-  duration(delay)
+export const fromDelay = (delay: Duration.DurationInput): Schedule<never, unknown, Duration> => duration(delay)
 
 /** @internal */
 export const fromDelays = (

@@ -33,7 +33,7 @@ declare module "./SortedSet.js" {
       readonly _A: (_: never) => A
     }
     /** @internal */
-    readonly keyTree: RBT.RedBlackTree<A, boolean>
+    readonly keyTree: RBT<A, boolean>
   }
 }
 
@@ -67,7 +67,7 @@ const SortedSetProto: Omit<SortedSet<unknown>, "keyTree"> = {
   }
 }
 
-const fromTree = <A>(keyTree: RBT.RedBlackTree<A, boolean>): SortedSet<A> => {
+const fromTree = <A>(keyTree: RBT<A, boolean>): SortedSet<A> => {
   const a = Object.create(SortedSetProto)
   a.keyTree = keyTree
   return a

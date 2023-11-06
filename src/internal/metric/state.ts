@@ -256,22 +256,19 @@ export const isCounterState = (u: unknown): u is MetricState.Counter<number | bi
  * @since 2.0.0
  * @category refinements
  */
-export const isFrequencyState = (u: unknown): u is MetricState.Frequency =>
-  hasProperty(u, FrequencyStateTypeId)
+export const isFrequencyState = (u: unknown): u is MetricState.Frequency => hasProperty(u, FrequencyStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeState = (u: unknown): u is MetricState.Gauge<number | bigint> =>
-  hasProperty(u, GaugeStateTypeId)
+export const isGaugeState = (u: unknown): u is MetricState.Gauge<number | bigint> => hasProperty(u, GaugeStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isHistogramState = (u: unknown): u is MetricState.Histogram =>
-  hasProperty(u, HistogramStateTypeId)
+export const isHistogramState = (u: unknown): u is MetricState.Histogram => hasProperty(u, HistogramStateTypeId)
 
 /**
  * @since 2.0.0

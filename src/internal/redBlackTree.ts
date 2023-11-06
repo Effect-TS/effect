@@ -19,12 +19,12 @@ const RedBlackTreeSymbolKey = "effect/RedBlackTree"
 export const RedBlackTreeTypeId: RBT.TypeId = Symbol.for(RedBlackTreeSymbolKey) as RBT.TypeId
 
 /** @internal */
-export interface RedBlackTreeImpl<K, V> extends RBT.RedBlackTree<K, V> {
+export interface RedBlackTreeImpl<K, V> extends RBT<K, V> {
   readonly _ord: Order<K>
   readonly _root: Node.Node<K, V> | undefined
 }
 
-const RedBlackTreeProto: RBT.RedBlackTree<unknown, unknown> = {
+const RedBlackTreeProto: RBT<unknown, unknown> = {
   [RedBlackTreeTypeId]: RedBlackTreeTypeId,
   [Hash.symbol](): number {
     return Hash.combine(Hash.hash(RedBlackTreeSymbolKey))(Hash.array(Array.from(this)))
@@ -73,15 +73,15 @@ const makeImpl = <K, V>(ord: Order<K>, root: Node.Node<K, V> | undefined): RedBl
 
 /** @internal */
 export const isRedBlackTree: {
-  <K, V>(u: Iterable<readonly [K, V]>): u is RBT.RedBlackTree<K, V>
-  (u: unknown): u is RBT.RedBlackTree<unknown, unknown>
-} = (u: unknown): u is RBT.RedBlackTree<unknown, unknown> => hasProperty(u, RedBlackTreeTypeId)
+  <K, V>(u: Iterable<readonly [K, V]>): u is RBT<K, V>
+  (u: unknown): u is RBT<unknown, unknown>
+} = (u: unknown): u is RBT<unknown, unknown> => hasProperty(u, RedBlackTreeTypeId)
 
 /** @internal */
-export const empty = <K, V = never>(ord: Order<K>): RBT.RedBlackTree<K, V> => makeImpl<K, V>(ord, undefined)
+export const empty = <K, V = never>(ord: Order<K>): RBT<K, V> => makeImpl<K, V>(ord, undefined)
 
 /** @internal */
-export const fromIterable = <K, V>(ord: Order<K>) => (entries: Iterable<readonly [K, V]>): RBT.RedBlackTree<K, V> => {
+export const fromIterable = <K, V>(ord: Order<K>) => (entries: Iterable<readonly [K, V]>): RBT<K, V> => {
   let tree = empty<K, V>(ord)
   for (const [key, value] of entries) {
     tree = insert(tree, key, value)
@@ -90,31 +90,30 @@ export const fromIterable = <K, V>(ord: Order<K>) => (entries: Iterable<readonly
 }
 
 /** @internal */
-export const make =
-  <K>(ord: Order<K>) =>
-  <Entries extends Array<readonly [K, any]>>(...entries: Entries): RBT.RedBlackTree<
-    K,
-    Entries[number] extends readonly [any, infer V] ? V : never
-  > => {
-    return fromIterable<K, Entries[number] extends readonly [any, infer V] ? V : never>(ord)(
-      entries
-    )
-  }
+export const make = <K>(ord: Order<K>) =>
+<Entries extends Array<readonly [K, any]>>(...entries: Entries): RBT<
+  K,
+  Entries[number] extends readonly [any, infer V] ? V : never
+> => {
+  return fromIterable<K, Entries[number] extends readonly [any, infer V] ? V : never>(ord)(
+    entries
+  )
+}
 
 /** @internal */
 export const atBackwards = dual<
-  (index: number) => <K, V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, index: number) => Iterable<readonly [K, V]>
+  (index: number) => <K, V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, index: number) => Iterable<readonly [K, V]>
 >(2, (self, index) => at(self, index, Direction.Backward))
 
 /** @internal */
 export const atForwards = dual<
-  (index: number) => <K, V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, index: number) => Iterable<readonly [K, V]>
+  (index: number) => <K, V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, index: number) => Iterable<readonly [K, V]>
 >(2, (self, index) => at(self, index, Direction.Forward))
 
 const at = <K, V>(
-  self: RBT.RedBlackTree<K, V>,
+  self: RBT<K, V>,
   index: number,
   direction: RBT.RedBlackTree.Direction
 ): Iterable<readonly [K, V]> => {
@@ -154,9 +153,9 @@ const at = <K, V>(
 
 /** @internal */
 export const findAll = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Chunk<V>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Chunk<V>
->(2, <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => {
+  <K>(key: K) => <V>(self: RBT<K, V>) => Chunk<V>,
+  <K, V>(self: RBT<K, V>, key: K) => Chunk<V>
+>(2, <K, V>(self: RBT<K, V>, key: K) => {
   const stack: Array<Node.Node<K, V>> = []
   let node = (self as RedBlackTreeImpl<K, V>)._root
   let result = Chunk.empty<V>()
@@ -177,9 +176,9 @@ export const findAll = dual<
 
 /** @internal */
 export const findFirst = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Option<V>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Option<V>
->(2, <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => {
+  <K>(key: K) => <V>(self: RBT<K, V>) => Option<V>,
+  <K, V>(self: RBT<K, V>, key: K) => Option<V>
+>(2, <K, V>(self: RBT<K, V>, key: K) => {
   const cmp = (self as RedBlackTreeImpl<K, V>)._ord
   let node = (self as RedBlackTreeImpl<K, V>)._root
   while (node !== undefined) {
@@ -197,7 +196,7 @@ export const findFirst = dual<
 })
 
 /** @internal */
-export const first = <K, V>(self: RBT.RedBlackTree<K, V>): Option<readonly [K, V]> => {
+export const first = <K, V>(self: RBT<K, V>): Option<readonly [K, V]> => {
   let node: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   let current: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   while (node !== undefined) {
@@ -209,9 +208,9 @@ export const first = <K, V>(self: RBT.RedBlackTree<K, V>): Option<readonly [K, V
 
 /** @internal */
 export const getAt = dual<
-  (index: number) => <K, V>(self: RBT.RedBlackTree<K, V>) => Option<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, index: number) => Option<readonly [K, V]>
->(2, <K, V>(self: RBT.RedBlackTree<K, V>, index: number) => {
+  (index: number) => <K, V>(self: RBT<K, V>) => Option<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, index: number) => Option<readonly [K, V]>
+>(2, <K, V>(self: RBT<K, V>, index: number) => {
   if (index < 0) {
     return Option.none()
   }
@@ -243,19 +242,19 @@ export const getAt = dual<
 })
 
 /** @internal */
-export const getOrder = <K, V>(tree: RBT.RedBlackTree<K, V>): Order<K> => (tree as RedBlackTreeImpl<K, V>)._ord
+export const getOrder = <K, V>(tree: RBT<K, V>): Order<K> => (tree as RedBlackTreeImpl<K, V>)._ord
 
 /** @internal */
 export const has = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => boolean,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => boolean
+  <K>(key: K) => <V>(self: RBT<K, V>) => boolean,
+  <K, V>(self: RBT<K, V>, key: K) => boolean
 >(2, (self, key) => Option.isSome(findFirst(self, key)))
 
 /** @internal */
 export const insert = dual<
-  <K, V>(key: K, value: V) => (self: RBT.RedBlackTree<K, V>) => RBT.RedBlackTree<K, V>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K, value: V) => RBT.RedBlackTree<K, V>
->(3, <K, V>(self: RBT.RedBlackTree<K, V>, key: K, value: V) => {
+  <K, V>(key: K, value: V) => (self: RBT<K, V>) => RBT<K, V>,
+  <K, V>(self: RBT<K, V>, key: K, value: V) => RBT<K, V>
+>(3, <K, V>(self: RBT<K, V>, key: K, value: V) => {
   const cmp = (self as RedBlackTreeImpl<K, V>)._ord
   // Find point to insert new node at
   let n: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
@@ -425,13 +424,13 @@ export const insert = dual<
 })
 
 /** @internal */
-export const keysForward = <K, V>(self: RBT.RedBlackTree<K, V>): IterableIterator<K> => keys(self, Direction.Forward)
+export const keysForward = <K, V>(self: RBT<K, V>): IterableIterator<K> => keys(self, Direction.Forward)
 
 /** @internal */
-export const keysBackward = <K, V>(self: RBT.RedBlackTree<K, V>): IterableIterator<K> => keys(self, Direction.Backward)
+export const keysBackward = <K, V>(self: RBT<K, V>): IterableIterator<K> => keys(self, Direction.Backward)
 
 const keys = <K, V>(
-  self: RBT.RedBlackTree<K, V>,
+  self: RBT<K, V>,
   direction: RBT.RedBlackTree.Direction
 ): IterableIterator<K> => {
   const begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>
@@ -459,7 +458,7 @@ const keys = <K, V>(
 }
 
 /** @internal */
-export const last = <K, V>(self: RBT.RedBlackTree<K, V>): Option<readonly [K, V]> => {
+export const last = <K, V>(self: RBT<K, V>): Option<readonly [K, V]> => {
   let node: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   let current: Node.Node<K, V> | undefined = (self as RedBlackTreeImpl<K, V>)._root
   while (node !== undefined) {
@@ -470,7 +469,7 @@ export const last = <K, V>(self: RBT.RedBlackTree<K, V>): Option<readonly [K, V]
 }
 
 /** @internal */
-export const reversed = <K, V>(self: RBT.RedBlackTree<K, V>): Iterable<readonly [K, V]> => {
+export const reversed = <K, V>(self: RBT<K, V>): Iterable<readonly [K, V]> => {
   return {
     [Symbol.iterator]: () => {
       const stack: Array<Node.Node<K, V>> = []
@@ -486,18 +485,18 @@ export const reversed = <K, V>(self: RBT.RedBlackTree<K, V>): Iterable<readonly 
 
 /** @internal */
 export const greaterThanBackwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => greaterThan(self, key, Direction.Backward))
 
 /** @internal */
 export const greaterThanForwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => greaterThan(self, key, Direction.Forward))
 
 const greaterThan = <K, V>(
-  self: RBT.RedBlackTree<K, V>,
+  self: RBT<K, V>,
   key: K,
   direction: RBT.RedBlackTree.Direction
 ): Iterable<readonly [K, V]> => {
@@ -527,18 +526,18 @@ const greaterThan = <K, V>(
 
 /** @internal */
 export const greaterThanEqualBackwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => greaterThanEqual(self, key, Direction.Backward))
 
 /** @internal */
 export const greaterThanEqualForwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => greaterThanEqual(self, key, Direction.Forward))
 
 const greaterThanEqual = <K, V>(
-  self: RBT.RedBlackTree<K, V>,
+  self: RBT<K, V>,
   key: K,
   direction: RBT.RedBlackTree.Direction = Direction.Forward
 ): Iterable<readonly [K, V]> => {
@@ -568,18 +567,18 @@ const greaterThanEqual = <K, V>(
 
 /** @internal */
 export const lessThanBackwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => lessThan(self, key, Direction.Backward))
 
 /** @internal */
 export const lessThanForwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => lessThan(self, key, Direction.Forward))
 
 const lessThan = <K, V>(
-  self: RBT.RedBlackTree<K, V>,
+  self: RBT<K, V>,
   key: K,
   direction: RBT.RedBlackTree.Direction
 ): Iterable<readonly [K, V]> => {
@@ -609,18 +608,18 @@ const lessThan = <K, V>(
 
 /** @internal */
 export const lessThanEqualBackwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => lessThanEqual(self, key, Direction.Backward))
 
 /** @internal */
 export const lessThanEqualForwards = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => Iterable<readonly [K, V]>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => Iterable<readonly [K, V]>
+  <K>(key: K) => <V>(self: RBT<K, V>) => Iterable<readonly [K, V]>,
+  <K, V>(self: RBT<K, V>, key: K) => Iterable<readonly [K, V]>
 >(2, (self, key) => lessThanEqual(self, key, Direction.Forward))
 
 const lessThanEqual = <K, V>(
-  self: RBT.RedBlackTree<K, V>,
+  self: RBT<K, V>,
   key: K,
   direction: RBT.RedBlackTree.Direction
 ): Iterable<readonly [K, V]> => {
@@ -650,9 +649,9 @@ const lessThanEqual = <K, V>(
 
 /** @internal */
 export const forEach = dual<
-  <K, V>(f: (key: K, value: V) => void) => (self: RBT.RedBlackTree<K, V>) => void,
-  <K, V>(self: RBT.RedBlackTree<K, V>, f: (key: K, value: V) => void) => void
->(2, <K, V>(self: RBT.RedBlackTree<K, V>, f: (key: K, value: V) => void) => {
+  <K, V>(f: (key: K, value: V) => void) => (self: RBT<K, V>) => void,
+  <K, V>(self: RBT<K, V>, f: (key: K, value: V) => void) => void
+>(2, <K, V>(self: RBT<K, V>, f: (key: K, value: V) => void) => {
   const root = (self as RedBlackTreeImpl<K, V>)._root
   if (root !== undefined) {
     visitFull(root, (key, value) => {
@@ -664,9 +663,9 @@ export const forEach = dual<
 
 /** @internal */
 export const forEachGreaterThanEqual = dual<
-  <K, V>(min: K, f: (key: K, value: V) => void) => (self: RBT.RedBlackTree<K, V>) => void,
-  <K, V>(self: RBT.RedBlackTree<K, V>, min: K, f: (key: K, value: V) => void) => void
->(3, <K, V>(self: RBT.RedBlackTree<K, V>, min: K, f: (key: K, value: V) => void) => {
+  <K, V>(min: K, f: (key: K, value: V) => void) => (self: RBT<K, V>) => void,
+  <K, V>(self: RBT<K, V>, min: K, f: (key: K, value: V) => void) => void
+>(3, <K, V>(self: RBT<K, V>, min: K, f: (key: K, value: V) => void) => {
   const root = (self as RedBlackTreeImpl<K, V>)._root
   const ord = (self as RedBlackTreeImpl<K, V>)._ord
   if (root !== undefined) {
@@ -679,9 +678,9 @@ export const forEachGreaterThanEqual = dual<
 
 /** @internal */
 export const forEachLessThan = dual<
-  <K, V>(max: K, f: (key: K, value: V) => void) => (self: RBT.RedBlackTree<K, V>) => void,
-  <K, V>(self: RBT.RedBlackTree<K, V>, max: K, f: (key: K, value: V) => void) => void
->(3, <K, V>(self: RBT.RedBlackTree<K, V>, max: K, f: (key: K, value: V) => void) => {
+  <K, V>(max: K, f: (key: K, value: V) => void) => (self: RBT<K, V>) => void,
+  <K, V>(self: RBT<K, V>, max: K, f: (key: K, value: V) => void) => void
+>(3, <K, V>(self: RBT<K, V>, max: K, f: (key: K, value: V) => void) => {
   const root = (self as RedBlackTreeImpl<K, V>)._root
   const ord = (self as RedBlackTreeImpl<K, V>)._ord
   if (root !== undefined) {
@@ -698,13 +697,13 @@ export const forEachBetween = dual<
     readonly min: K
     readonly max: K
     readonly body: (key: K, value: V) => void
-  }) => (self: RBT.RedBlackTree<K, V>) => void,
-  <K, V>(self: RBT.RedBlackTree<K, V>, options: {
+  }) => (self: RBT<K, V>) => void,
+  <K, V>(self: RBT<K, V>, options: {
     readonly min: K
     readonly max: K
     readonly body: (key: K, value: V) => void
   }) => void
->(2, <K, V>(self: RBT.RedBlackTree<K, V>, { body, max, min }: {
+>(2, <K, V>(self: RBT<K, V>, { body, max, min }: {
   readonly min: K
   readonly max: K
   readonly body: (key: K, value: V) => void
@@ -724,8 +723,8 @@ export const reduce = dual<
   <Z, V, K>(
     zero: Z,
     f: (accumulator: Z, value: V, key: K) => Z
-  ) => (self: RBT.RedBlackTree<K, V>) => Z,
-  <Z, V, K>(self: RBT.RedBlackTree<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => Z
+  ) => (self: RBT<K, V>) => Z,
+  <Z, V, K>(self: RBT<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z) => Z
 >(3, (self, zero, f) => {
   let accumulator = zero
   for (const entry of self) {
@@ -736,9 +735,9 @@ export const reduce = dual<
 
 /** @internal */
 export const removeFirst = dual<
-  <K>(key: K) => <V>(self: RBT.RedBlackTree<K, V>) => RBT.RedBlackTree<K, V>,
-  <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => RBT.RedBlackTree<K, V>
->(2, <K, V>(self: RBT.RedBlackTree<K, V>, key: K) => {
+  <K>(key: K) => <V>(self: RBT<K, V>) => RBT<K, V>,
+  <K, V>(self: RBT<K, V>, key: K) => RBT<K, V>
+>(2, <K, V>(self: RBT<K, V>, key: K) => {
   if (!has(self, key)) {
     return self
   }
@@ -853,19 +852,17 @@ export const removeFirst = dual<
 })
 
 /** @internal */
-export const size = <K, V>(self: RBT.RedBlackTree<K, V>): number => (self as RedBlackTreeImpl<K, V>)._root?.count ?? 0
+export const size = <K, V>(self: RBT<K, V>): number => (self as RedBlackTreeImpl<K, V>)._root?.count ?? 0
 
 /** @internal */
-export const valuesForward = <K, V>(self: RBT.RedBlackTree<K, V>): IterableIterator<V> =>
-  values(self, Direction.Forward)
+export const valuesForward = <K, V>(self: RBT<K, V>): IterableIterator<V> => values(self, Direction.Forward)
 
 /** @internal */
-export const valuesBackward = <K, V>(self: RBT.RedBlackTree<K, V>): IterableIterator<V> =>
-  values(self, Direction.Backward)
+export const valuesBackward = <K, V>(self: RBT<K, V>): IterableIterator<V> => values(self, Direction.Backward)
 
 /** @internal */
 const values = <K, V>(
-  self: RBT.RedBlackTree<K, V>,
+  self: RBT<K, V>,
   direction: RBT.RedBlackTree.Direction
 ): IterableIterator<V> => {
   const begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>

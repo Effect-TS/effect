@@ -30,7 +30,7 @@ declare module "./SortedMap.js" {
   export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal, Pipeable, Inspectable {
     readonly [TypeId]: TypeId
     /** @internal */
-    readonly tree: RBT.RedBlackTree<K, V>
+    readonly tree: RBT<K, V>
   }
 }
 
@@ -62,7 +62,7 @@ const SortedMapProto: Omit<SortedMap<unknown, unknown>, "tree"> = {
   }
 }
 
-const makeImpl = <K, V>(tree: RBT.RedBlackTree<K, V>): SortedMap<K, V> => {
+const makeImpl = <K, V>(tree: RBT<K, V>): SortedMap<K, V> => {
   const self = Object.create(SortedMapProto)
   self.tree = tree
   return self

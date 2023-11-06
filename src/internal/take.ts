@@ -42,8 +42,7 @@ export const dieMessage = (message: string): Take<never, never> =>
   new TakeImpl(Exit.die(Cause.RuntimeException(message)))
 
 /** @internal */
-export const done = <E, A>(self: Take<E, A>): Effect<never, Option<E>, Chunk<A>> =>
-  Effect.suspend(() => self.exit)
+export const done = <E, A>(self: Take<E, A>): Effect<never, Option<E>, Chunk<A>> => Effect.suspend(() => self.exit)
 
 /** @internal */
 export const end: Take<never, never> = new TakeImpl(Exit.fail(Option.none()))
@@ -176,8 +175,7 @@ export const map = dual<
   <E, A, B>(self: Take<E, A>, f: (a: A) => B) => Take<E, B>
 >(
   2,
-  <E, A, B>(self: Take<E, A>, f: (a: A) => B): Take<E, B> =>
-    new TakeImpl(pipe(self.exit, Exit.map(Chunk.map(f))))
+  <E, A, B>(self: Take<E, A>, f: (a: A) => B): Take<E, B> => new TakeImpl(pipe(self.exit, Exit.map(Chunk.map(f))))
 )
 
 /** @internal */

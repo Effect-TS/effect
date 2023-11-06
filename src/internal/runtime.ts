@@ -332,7 +332,7 @@ export const asyncEffect = <R, E, A, R2, E2, X>(
       core.flatMap(runtime<R | R2>(), (runtime) =>
         core.uninterruptibleMask((restore) =>
           core.zipRight(
-            fiberRuntime.fork(restore(
+            fiberRuntime_.fork(restore(
               core.catchAllCause(
                 register((cb) => unsafeRunCallback(runtime)(core.intoDeferred(cb, deferred))),
                 (cause) => core.deferredFailCause(deferred, cause)

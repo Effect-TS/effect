@@ -14,7 +14,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   private count = 0
 
   constructor(
-    readonly self: RBT.RedBlackTree<K, V>,
+    readonly self: RBT<K, V>,
     readonly stack: Array<Node<K, V>>,
     readonly direction: RBT.RedBlackTree.Direction
   ) {}

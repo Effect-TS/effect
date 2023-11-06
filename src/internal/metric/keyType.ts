@@ -219,8 +219,7 @@ export const summary = (
  * @since 2.0.0
  * @category refinements
  */
-export const isMetricKeyType = (u: unknown): u is MetricKeyType<unknown, unknown> =>
-  hasProperty(u, MetricKeyTypeTypeId)
+export const isMetricKeyType = (u: unknown): u is MetricKeyType<unknown, unknown> => hasProperty(u, MetricKeyTypeTypeId)
 
 /**
  * @since 2.0.0
@@ -233,26 +232,22 @@ export const isCounterKey = (u: unknown): u is MetricKeyType.Counter<number | bi
  * @since 2.0.0
  * @category refinements
  */
-export const isFrequencyKey = (u: unknown): u is MetricKeyType.Frequency =>
-  hasProperty(u, FrequencyKeyTypeTypeId)
+export const isFrequencyKey = (u: unknown): u is MetricKeyType.Frequency => hasProperty(u, FrequencyKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeKey = (u: unknown): u is MetricKeyType.Gauge<number | bigint> =>
-  hasProperty(u, GaugeKeyTypeTypeId)
+export const isGaugeKey = (u: unknown): u is MetricKeyType.Gauge<number | bigint> => hasProperty(u, GaugeKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isHistogramKey = (u: unknown): u is MetricKeyType.Histogram =>
-  hasProperty(u, HistogramKeyTypeTypeId)
+export const isHistogramKey = (u: unknown): u is MetricKeyType.Histogram => hasProperty(u, HistogramKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isSummaryKey = (u: unknown): u is MetricKeyType.Summary =>
-  hasProperty(u, SummaryKeyTypeTypeId)
+export const isSummaryKey = (u: unknown): u is MetricKeyType.Summary => hasProperty(u, SummaryKeyTypeTypeId)

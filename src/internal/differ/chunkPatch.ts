@@ -2,7 +2,7 @@ import { Chunk } from "../../Chunk.js"
 import type { Differ } from "../../Differ.js"
 import { Equal } from "../../Equal.js"
 import { dual, pipe } from "../../Function.js"
-import { Data } from "../data.js"
+import * as Data from "../data.js"
 
 /** @internal */
 export const ChunkPatchTypeId: Differ.Chunk.TypeId = Symbol.for(

@@ -265,7 +265,7 @@ export interface SortedSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable 
     readonly _A: (_: never) => A
   }
   /** @internal */
-  readonly keyTree: RBT.RedBlackTree<A, boolean>
+  readonly keyTree: RBT<A, boolean>
 }
 ```
 

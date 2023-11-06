@@ -89,24 +89,24 @@ declare module "./ConfigProvider.js" {
         path: ReadonlyArray<string>
       ): Effect<never, ConfigError, HashSet<string>>
     }
-  }
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface FromMapConfig {
-    readonly pathDelim: string
-    readonly seqDelim: string
-  }
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface FromMapConfig {
+      readonly pathDelim: string
+      readonly seqDelim: string
+    }
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface FromEnvConfig {
-    readonly pathDelim: string
-    readonly seqDelim: string
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface FromEnvConfig {
+      readonly pathDelim: string
+      readonly seqDelim: string
+    }
   }
 }
 
@@ -116,7 +116,7 @@ declare module "./ConfigProvider.js" {
  * @since 2.0.0
  * @category context
  */
-export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = internal.configProviderTag
+export const Tag: Context.Tag<ConfigProvider, ConfigProvider> = internal.configProviderTag
 
 /**
  * Creates a new config provider.

@@ -18,7 +18,7 @@ import * as configError from "./configError.js"
 import * as pathPatch from "./configProvider/pathPatch.js"
 import * as core from "./core.js"
 import * as OpCodes from "./opCodes/config.js"
-import { StringUtils } from "./string-utils.js"
+import * as StringUtils from "./string-utils.js"
 
 const concat = <A, B>(l: ReadonlyArray<A>, r: ReadonlyArray<B>): ReadonlyArray<A | B> => [...l, ...r]
 
