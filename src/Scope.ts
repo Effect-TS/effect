@@ -34,13 +34,13 @@ export const CloseableScopeTypeId: unique symbol = core.CloseableScopeTypeId
  */
 export type CloseableScopeTypeId = typeof CloseableScopeTypeId
 
-export * as Scope from "./Scope.js"
-
 /**
  * @since 2.0.0
  * @category context
  */
-export const Scope: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
+export const Tag: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
+
+export * as Scope from "./Scope.js"
 
 declare module "./Scope.js" {
   /**
