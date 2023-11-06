@@ -16,37 +16,41 @@ export const ConfigErrorTypeId: unique symbol = internal.ConfigErrorTypeId
  */
 export type ConfigErrorTypeId = typeof ConfigErrorTypeId
 
-/**
- * The possible ways that loading configuration data may fail.
- *
- * @since 2.0.0
- * @category models
- */
-export type ConfigError =
-  | And
-  | Or
-  | InvalidData
-  | MissingData
-  | SourceUnavailable
-  | Unsupported
+export * as ConfigError from "./ConfigError.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ConfigError {
+declare module "./ConfigError.js" {
   /**
+   * The possible ways that loading configuration data may fail.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [ConfigErrorTypeId]: ConfigErrorTypeId
+  export type ConfigError =
+    | And
+    | Or
+    | InvalidData
+    | MissingData
+    | SourceUnavailable
+    | Unsupported
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ConfigError {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [ConfigErrorTypeId]: ConfigErrorTypeId
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export type Reducer<C, Z> = ConfigErrorReducer<C, Z>
   }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Reducer<C, Z> = ConfigErrorReducer<C, Z>
 }
 
 /**

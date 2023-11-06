@@ -2,12 +2,12 @@ import { Equal } from "../Equal.js"
 import { dual } from "../Function.js"
 import { Hash } from "../Hash.js"
 import type { HashMap } from "../HashMap.js"
-import type { HS } from "../HashSet.js"
+import type { HashSet as HS } from "../HashSet.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import { hasProperty } from "../Predicate.js"
-import { HM } from "./hashMap.js"
+import * as HM from "./hashMap.js"
 
 /** @internal */
 export const HashSetTypeId: HS.TypeId = Symbol.for("effect/HashSet") as HS.TypeId

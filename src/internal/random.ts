@@ -23,7 +23,7 @@ class RandomImpl implements Random {
   readonly PRNG: PCGRandom
 
   constructor(readonly seed: number) {
-    this.PRNG = new PCGRandom.PCGRandom(seed)
+    this.PRNG = new PCGRandom(seed)
   }
 
   next(): Effect<never, never, number> {

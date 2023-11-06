@@ -35,56 +35,60 @@ export const FlatConfigProviderTypeId: unique symbol = internal.FlatConfigProvid
  */
 export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
 
-/**
- * A ConfigProvider is a service that provides configuration given a description
- * of the structure of that configuration.
- *
- * @since 2.0.0
- * @category models
- */
-export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
-  /**
-   * Loads the specified configuration, or fails with a config error.
-   */
-  load<A>(config: Config<A>): Effect<never, ConfigError, A>
-  /**
-   * Flattens this config provider into a simplified config provider that knows
-   * only how to deal with flat (key/value) properties.
-   */
-  flattened: ConfigProvider.Flat
-}
+export * as ConfigProvider from "./ConfigProvider.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ConfigProvider {
+declare module "./ConfigProvider.js" {
   /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Proto {
-    readonly [ConfigProviderTypeId]: ConfigProviderTypeId
-  }
-
-  /**
-   * A simplified config provider that knows only how to deal with flat
-   * (key/value) properties. Because these providers are common, there is
-   * special support for implementing them.
+   * A ConfigProvider is a service that provides configuration given a description
+   * of the structure of that configuration.
    *
    * @since 2.0.0
    * @category models
    */
-  export interface Flat {
-    readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
-    patch: PathPatch
-    load<A>(
-      path: ReadonlyArray<string>,
-      config: Config.Primitive<A>,
-      split?: boolean
-    ): Effect<never, ConfigError, ReadonlyArray<A>>
-    enumerateChildren(
-      path: ReadonlyArray<string>
-    ): Effect<never, ConfigError, HashSet<string>>
+  export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
+    /**
+     * Loads the specified configuration, or fails with a config error.
+     */
+    load<A>(config: Config<A>): Effect<never, ConfigError, A>
+    /**
+     * Flattens this config provider into a simplified config provider that knows
+     * only how to deal with flat (key/value) properties.
+     */
+    flattened: ConfigProvider.Flat
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ConfigProvider {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [ConfigProviderTypeId]: ConfigProviderTypeId
+    }
+
+    /**
+     * A simplified config provider that knows only how to deal with flat
+     * (key/value) properties. Because these providers are common, there is
+     * special support for implementing them.
+     *
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Flat {
+      readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
+      patch: PathPatch
+      load<A>(
+        path: ReadonlyArray<string>,
+        config: Config.Primitive<A>,
+        split?: boolean
+      ): Effect<never, ConfigError, ReadonlyArray<A>>
+      enumerateChildren(
+        path: ReadonlyArray<string>
+      ): Effect<never, ConfigError, HashSet<string>>
+    }
   }
 
   /**

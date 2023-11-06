@@ -1,4 +1,4 @@
-import type { CauseExt } from "../Cause.js"
+import type { Cause } from "../Cause.js"
 import type { FiberId } from "../FiberId.js"
 import type { FiberRefs } from "../FiberRefs.js"
 import type { LazyArg } from "../Function.js"
@@ -10,7 +10,7 @@ import type { LogLevel } from "../LogLevel.js"
 import { LogSpan } from "../LogSpan.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { Cause } from "./cause.js"
+import * as cause_ from "./cause.js"
 import * as _fiberId from "./fiberId.js"
 
 /** @internal */
@@ -34,7 +34,7 @@ export const makeLogger = <Message, Output>(
       readonly fiberId: FiberId
       readonly logLevel: LogLevel
       readonly message: Message
-      readonly cause: CauseExt.Cause<unknown>
+      readonly cause: Cause<unknown>
       readonly context: FiberRefs
       readonly spans: List<LogSpan>
       readonly annotations: HashMap<string, unknown>
@@ -178,7 +178,7 @@ export const stringLogger: Logger<unknown, string> = makeLogger<unknown, string>
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuoted(Cause.pretty(cause), output)
+      output = appendQuoted(cause_.pretty(cause), output)
     }
 
     if (List.isCons(spans)) {
@@ -253,7 +253,7 @@ export const logfmtLogger = makeLogger<unknown, string>(
 
     if (cause != null && cause._tag !== "Empty") {
       output = output + " cause="
-      output = appendQuotedLogfmt(Cause.pretty(cause), output)
+      output = appendQuotedLogfmt(cause_.pretty(cause), output)
     }
 
     if (List.isCons(spans)) {

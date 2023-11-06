@@ -17,25 +17,29 @@ export const ConfigSecretTypeId: unique symbol = internal.ConfigSecretTypeId
  */
 export type ConfigSecretTypeId = typeof ConfigSecretTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface ConfigSecret extends ConfigSecret.Proto, Equal {
-  /** @internal */
-  readonly raw: Array<number>
-}
+export * as ConfigSecret from "./ConfigSecret.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace ConfigSecret {
+declare module "./ConfigSecret.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Proto {
-    readonly [ConfigSecretTypeId]: ConfigSecretTypeId
+  export interface ConfigSecret extends ConfigSecret.Proto, Equal {
+    /** @internal */
+    readonly raw: Array<number>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace ConfigSecret {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Proto {
+      readonly [ConfigSecretTypeId]: ConfigSecretTypeId
+    }
   }
 }
 

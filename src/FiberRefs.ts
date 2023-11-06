@@ -8,7 +8,7 @@ import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/fiberRefs.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { Arr } from "./ReadonlyArray.js"
+import type { ReadonlyArray as Arr } from "./ReadonlyArray.js"
 
 /**
  * @since 2.0.0

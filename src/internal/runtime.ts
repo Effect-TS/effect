@@ -14,9 +14,10 @@ import { Predicate } from "../Predicate.js"
 import type { Runtime } from "../Runtime.js"
 import type { RuntimeFlags } from "../RuntimeFlags.js"
 import * as _scheduler from "../Scheduler.js"
-import { InternalCause, NoSuchElementException } from "./cause.js"
+import { NoSuchElementException } from "./cause.js"
+import * as internalCause from "./cause.js"
 import * as core from "./core.js"
-import { FiberRuntime } from "./fiberRuntime.js"
+import * as fiberRuntime_ from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
@@ -49,7 +50,7 @@ export const unsafeFork = <R>(runtime: Runtime<R>) =>
     fiberRefs = options.updateRefs(fiberRefs, fiberId)
   }
 
-  const fiberRuntime: FiberRuntime<E, A> = new FiberRuntime<E, A>(
+  const fiberRuntime: fiberRuntime_.FiberRuntime<E, A> = new fiberRuntime_.FiberRuntime<E, A>(
     fiberId,
     FiberRefs.forkAs(fiberRefs, fiberId),
     runtime.runtimeFlags
@@ -161,12 +162,12 @@ export const fiberFailure = <E>(cause: Cause<E>): Runtime.FiberFailure => {
   Error.stackTraceLimit = 0
   const error = (new Error()) as Mutable<Runtime.FiberFailure>
   Error.stackTraceLimit = limit
-  const prettyErrors = InternalCause.prettyErrors(cause)
+  const prettyErrors = internalCause.prettyErrors(cause)
   if (prettyErrors.length > 0) {
     const head = prettyErrors[0]
     error.name = head.message.split(":")[0]
     error.message = head.message.substring(error.name.length + 2)
-    error.stack = InternalCause.pretty(cause)
+    error.stack = internalCause.pretty(cause)
   }
   error[FiberFailureId] = FiberFailureId
   error[FiberFailureCauseId] = cause
@@ -331,7 +332,7 @@ export const asyncEffect = <R, E, A, R2, E2, X>(
       core.flatMap(runtime<R | R2>(), (runtime) =>
         core.uninterruptibleMask((restore) =>
           core.zipRight(
-            FiberRuntime.fork(restore(
+            fiberRuntime.fork(restore(
               core.catchAllCause(
                 register((cb) => unsafeRunCallback(runtime)(core.intoDeferred(cb, deferred))),
                 (cause) => core.deferredFailCause(deferred, cause)

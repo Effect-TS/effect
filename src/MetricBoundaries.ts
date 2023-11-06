@@ -18,13 +18,17 @@ export const MetricBoundariesTypeId: unique symbol = internal.MetricBoundariesTy
  */
 export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MetricBoundaries extends Equal, Pipeable {
-  readonly [MetricBoundariesTypeId]: MetricBoundariesTypeId
-  readonly values: Chunk<number>
+export * as MetricBoundaries from "./MetricBoundaries.js"
+
+declare module "./MetricBoundaries.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface MetricBoundaries extends Equal, Pipeable {
+    readonly [MetricBoundariesTypeId]: MetricBoundariesTypeId
+    readonly values: Chunk<number>
+  }
 }
 
 /**

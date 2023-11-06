@@ -1,5 +1,5 @@
 import { Option } from "../../Option.js"
-import type { RBT } from "../../RedBlackTree.js"
+import type { RedBlackTree as RBT } from "../../RedBlackTree.js"
 import type { RedBlackTreeImpl } from "../redBlackTree.js"
 import type { Node } from "./node.js"
 

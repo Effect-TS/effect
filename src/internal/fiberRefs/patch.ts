@@ -3,7 +3,7 @@ import type { FiberId } from "../../FiberId.js"
 import type { FiberRefs } from "../../FiberRefs.js"
 import type { FiberRefsPatch } from "../../FiberRefsPatch.js"
 import { dual } from "../../Function.js"
-import { Arr } from "../../ReadonlyArray.js"
+import { ReadonlyArray as Arr } from "../../ReadonlyArray.js"
 import * as _fiberRefs from "../fiberRefs.js"
 
 /** @internal */
