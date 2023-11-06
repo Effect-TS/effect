@@ -431,8 +431,7 @@ export declare namespace All {
     Discard extends true ? void
       : T[number] extends never ? []
       : Mode extends "either" ? {
-          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ?
-            Either<_E, _A>
+          -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Either<_E, _A>
             : never
         }
       : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
@@ -455,8 +454,7 @@ export declare namespace All {
         : never,
       Discard extends true ? void
         : Mode extends "either" ? {
-            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ?
-              Either<_E, _A>
+            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? Either<_E, _A>
               : never
           }
         : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
@@ -2463,8 +2461,7 @@ export const scopeWith: <R, E, A>(f: (scope: Scope) => Effect<R, E, A>) => Effec
  * @since 2.0.0
  * @category scoping, resources & finalization
  */
-export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A> =
-  fiberRuntime.scopedEffect
+export const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A> = fiberRuntime.scopedEffect
 
 /**
  * Scopes all resources acquired by `resource` to the lifetime of `use`
@@ -2701,8 +2698,7 @@ export const fromFiber: <E, A>(fiber: Fiber<E, A>) => Effect<never, E, A> = circ
  * @since 2.0.0
  * @category supervision & fibers
  */
-export const fromFiberEffect: <R, E, A>(fiber: Effect<R, E, Fiber<E, A>>) => Effect<R, E, A> =
-  circular.fromFiberEffect
+export const fromFiberEffect: <R, E, A>(fiber: Effect<R, E, Fiber<E, A>>) => Effect<R, E, A> = circular.fromFiberEffect
 
 /**
  * Returns an effect with the behavior of this one, but where all child fibers
@@ -2805,8 +2801,7 @@ export const clockWith: <R, E, A>(f: (clock: Clock) => Effect<R, E, A>) => Effec
  * @since 2.0.0
  * @category constructors
  */
-export const withClockScoped: <A extends Clock>(value: A) => Effect<Scope, never, void> =
-  fiberRuntime.withClockScoped
+export const withClockScoped: <A extends Clock>(value: A) => Effect<Scope, never, void> = fiberRuntime.withClockScoped
 
 /**
  * Executes the specified workflow with the specified implementation of the
@@ -4021,8 +4016,7 @@ export const getFiberRefs: Effect<never, never, FiberRefs> = effect.fiberRefs
  * @since 2.0.0
  * @category fiber refs
  */
-export const inheritFiberRefs: (childFiberRefs: FiberRefs) => Effect<never, never, void> =
-  effect.inheritFiberRefs
+export const inheritFiberRefs: (childFiberRefs: FiberRefs) => Effect<never, never, void> = effect.inheritFiberRefs
 
 /**
  * @since 2.0.0
@@ -4067,8 +4061,7 @@ export const locallyScopedWith: {
  * @since 2.0.0
  * @category fiber refs
  */
-export const patchFiberRefs: (patch: FiberRefsPatch) => Effect<never, never, void> =
-  effect.patchFiberRefs
+export const patchFiberRefs: (patch: FiberRefsPatch) => Effect<never, never, void> = effect.patchFiberRefs
 
 /**
  * Sets the `FiberRef` values for the fiber running this effect to the values
@@ -4430,8 +4423,7 @@ export const getRuntimeFlags: Effect<never, never, RuntimeFlags> = core.runtimeF
  * @since 2.0.0
  * @category runtime
  */
-export const patchRuntimeFlags: (patch: RuntimeFlagsPatch) => Effect<never, never, void> =
-  core.updateRuntimeFlags
+export const patchRuntimeFlags: (patch: RuntimeFlagsPatch) => Effect<never, never, void> = core.updateRuntimeFlags
 
 /**
  * @since 2.0.0
@@ -4895,8 +4887,7 @@ export const withTracer: {
  * @since 2.0.0
  * @category tracing
  */
-export const withTracerScoped: (value: Tracer) => Effect<Scope, never, void> =
-  fiberRuntime.withTracerScoped
+export const withTracerScoped: (value: Tracer) => Effect<Scope, never, void> = fiberRuntime.withTracerScoped
 
 /**
  * @since 2.0.0

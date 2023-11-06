@@ -94,8 +94,7 @@ export const withPermits = dual<
   ))
 
 /** @internal */
-export const withPermitScoped = (self: TSemaphore): Effect<Scope, never, void> =>
-  withPermitsScoped(self, 1)
+export const withPermitScoped = (self: TSemaphore): Effect<Scope, never, void> => withPermitsScoped(self, 1)
 
 /** @internal */
 export const withPermitsScoped = dual<

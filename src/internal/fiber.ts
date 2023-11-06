@@ -62,8 +62,7 @@ export const Order: order.Order<Fiber.RuntimeFiber<unknown, unknown>> = pipe(
 export const isFiber = (u: unknown): u is Fiber<unknown, unknown> => hasProperty(u, FiberTypeId)
 
 /** @internal */
-export const isRuntimeFiber = <E, A>(self: Fiber<E, A>): self is Fiber.RuntimeFiber<E, A> =>
-  RuntimeFiberTypeId in self
+export const isRuntimeFiber = <E, A>(self: Fiber<E, A>): self is Fiber.RuntimeFiber<E, A> => RuntimeFiberTypeId in self
 
 /** @internal */
 export const _await = <E, A>(self: Fiber<E, A>): Effect<never, never, Exit<E, A>> => self.await()
@@ -332,8 +331,7 @@ export const unsafeRoots = (): Array<Fiber.RuntimeFiber<any, any>> => Array.from
 export const roots: Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> = core.sync(unsafeRoots)
 
 /** @internal */
-export const status = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect<never, never, FiberStatus> =>
-  self.status()
+export const status = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect<never, never, FiberStatus> => self.status()
 
 /** @internal */
 export const succeed = <A>(value: A): Fiber<never, A> => done(Exit.succeed(value))

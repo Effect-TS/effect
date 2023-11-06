@@ -69,12 +69,10 @@ export const fromAcquire = <R, E, A>(
   )
 
 /** @internal */
-export const get = <A>(self: ScopedRef<A>): Effect<never, never, A> =>
-  core.map(ref.get(self.ref), (tuple) => tuple[1])
+export const get = <A>(self: ScopedRef<A>): Effect<never, never, A> => core.map(ref.get(self.ref), (tuple) => tuple[1])
 
 /** @internal */
-export const make = <A>(evaluate: LazyArg<A>): Effect<Scope, never, ScopedRef<A>> =>
-  fromAcquire(core.sync(evaluate))
+export const make = <A>(evaluate: LazyArg<A>): Effect<Scope, never, ScopedRef<A>> => fromAcquire(core.sync(evaluate))
 
 /** @internal */
 export const set = dual<

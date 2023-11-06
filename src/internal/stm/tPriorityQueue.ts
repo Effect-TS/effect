@@ -37,31 +37,30 @@ export const empty = <A>(order: Order<A>): STM<never, never, TPriorityQueue<A>> 
   )
 
 /** @internal */
-export const fromIterable =
-  <A>(order: Order<A>) => (iterable: Iterable<A>): STM<never, never, TPriorityQueue<A>> =>
-    pipe(
-      tRef.make(
-        Array.from(iterable).reduce(
-          (map, value) =>
-            pipe(
-              map,
-              SortedMap.set(
-                value,
-                pipe(
-                  map,
-                  SortedMap.get(value),
-                  Option.match({
-                    onNone: () => ReadonlyArray.of(value),
-                    onSome: ReadonlyArray.prepend(value)
-                  })
-                )
+export const fromIterable = <A>(order: Order<A>) => (iterable: Iterable<A>): STM<never, never, TPriorityQueue<A>> =>
+  pipe(
+    tRef.make(
+      Array.from(iterable).reduce(
+        (map, value) =>
+          pipe(
+            map,
+            SortedMap.set(
+              value,
+              pipe(
+                map,
+                SortedMap.get(value),
+                Option.match({
+                  onNone: () => ReadonlyArray.of(value),
+                  onSome: ReadonlyArray.prepend(value)
+                })
               )
-            ),
-          SortedMap.empty<A, [A, ...Array<A>]>(order)
-        )
-      ),
-      core.map((ref) => new TPriorityQueueImpl(ref))
-    )
+            )
+          ),
+        SortedMap.empty<A, [A, ...Array<A>]>(order)
+      )
+    ),
+    core.map((ref) => new TPriorityQueueImpl(ref))
+  )
 
 /** @internal */
 export const isEmpty = <A>(self: TPriorityQueue<A>): STM<never, never, boolean> =>
@@ -72,9 +71,8 @@ export const isNonEmpty = <A>(self: TPriorityQueue<A>): STM<never, never, boolea
   core.map(tRef.get(self.ref), SortedMap.isNonEmpty)
 
 /** @internal */
-export const make =
-  <A>(order: Order<A>) => (...elements: Array<A>): STM<never, never, TPriorityQueue<A>> =>
-    fromIterable(order)(elements)
+export const make = <A>(order: Order<A>) => (...elements: Array<A>): STM<never, never, TPriorityQueue<A>> =>
+  fromIterable(order)(elements)
 
 /** @internal */
 export const offer = dual<

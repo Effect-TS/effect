@@ -37,12 +37,10 @@ export const isSequential = (self: ExecutionStrategy): self is ExecutionStrategy
   self._tag === OP_SEQUENTIAL
 
 /** @internal */
-export const isParallel = (self: ExecutionStrategy): self is ExecutionStrategy.Parallel =>
-  self._tag === OP_PARALLEL
+export const isParallel = (self: ExecutionStrategy): self is ExecutionStrategy.Parallel => self._tag === OP_PARALLEL
 
 /** @internal */
-export const isParallelN = (self: ExecutionStrategy): self is ExecutionStrategy.ParallelN =>
-  self._tag === OP_PARALLEL_N
+export const isParallelN = (self: ExecutionStrategy): self is ExecutionStrategy.ParallelN => self._tag === OP_PARALLEL_N
 
 /** @internal */
 export const match = dual<

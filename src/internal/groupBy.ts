@@ -36,8 +36,7 @@ const groupByVariance = {
 }
 
 /** @internal */
-export const isGroupBy = (u: unknown): u is GroupBy<unknown, unknown, unknown, unknown> =>
-  hasProperty(u, GroupByTypeId)
+export const isGroupBy = (u: unknown): u is GroupBy<unknown, unknown, unknown, unknown> => hasProperty(u, GroupByTypeId)
 
 /** @internal */
 export const evaluate = dual<

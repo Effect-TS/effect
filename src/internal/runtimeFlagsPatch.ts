@@ -96,8 +96,7 @@ export const andThen = dual<
 >(2, (self, that) => (self | that) as RuntimeFlagsPatch)
 
 /** @internal */
-export const inverse = (patch: RuntimeFlagsPatch): RuntimeFlagsPatch =>
-  make(enabled(patch), invert(active(patch)))
+export const inverse = (patch: RuntimeFlagsPatch): RuntimeFlagsPatch => make(enabled(patch), invert(active(patch)))
 
 /** @internal */
 export const invert = (n: number): number => (~n >>> 0) & BIT_MASK
