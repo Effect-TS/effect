@@ -57,7 +57,7 @@ import type * as Tracer from "./Tracer.js"
 import type { Concurrency } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
-export * as Effect from "./Effect"
+export * as Effect from "./Effect.js"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -85,7 +85,7 @@ export const EffectTypeId: unique symbol = core.EffectTypeId
  */
 export type EffectTypeId = typeof EffectTypeId
 
-declare module "./Effect" {
+declare module "./Effect.js" {
   /**
    * The `Effect` interface defines a value that lazily describes a workflow or job.
    * The workflow requires some context `R`, and may fail with an error of type `E`,
