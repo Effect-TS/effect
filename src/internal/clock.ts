@@ -1,6 +1,6 @@
-import type * as Clock from "../Clock.js"
-import * as Context from "../Context.js"
-import * as Duration from "../Duration.js"
+import type { Clock } from "../Clock.js"
+import { Context } from "../Context.js"
+import { Duration } from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import { Either } from "../Either.js"
 import { constFalse } from "../Function.js"
@@ -14,7 +14,7 @@ const ClockSymbolKey = "effect/Clock"
 export const ClockTypeId: Clock.ClockTypeId = Symbol.for(ClockSymbolKey) as Clock.ClockTypeId
 
 /** @internal */
-export const clockTag: Context.Tag<Clock.Clock, Clock.Clock> = Context.Tag(ClockTypeId)
+export const clockTag: Context.Tag<Clock, Clock> = Context.Tag(ClockTypeId)
 
 /** @internal */
 export const MAX_TIMER_MILLIS = 2 ** 31 - 1
@@ -66,7 +66,7 @@ const processOrPerformanceNow = (function() {
 })()
 
 /** @internal */
-class ClockImpl implements Clock.Clock {
+class ClockImpl implements Clock {
   readonly [ClockTypeId]: Clock.ClockTypeId = ClockTypeId
 
   unsafeCurrentTimeMillis(): number {
@@ -94,4 +94,4 @@ class ClockImpl implements Clock.Clock {
 }
 
 /** @internal */
-export const make = (): Clock.Clock => new ClockImpl()
+export const make = (): Clock => new ClockImpl()

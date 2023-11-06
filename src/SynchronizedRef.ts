@@ -6,7 +6,7 @@ import * as circular from "./internal/effect/circular.js"
 import * as ref from "./internal/ref.js"
 import * as internal from "./internal/synchronizedRef.js"
 import type { Option } from "./Option.js"
-import type * as Ref from "./Ref.js"
+import type { Ref } from "./Ref.js"
 
 /**
  * @since 2.0.0
@@ -24,7 +24,7 @@ export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref.Ref<A> {
+export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref<A> {
   modifyEffect<R, E, B>(f: (a: A) => Effect<R, E, readonly [B, A]>): Effect<R, E, B>
 }
 
@@ -60,8 +60,8 @@ export const get: <A>(self: SynchronizedRef<A>) => Effect<never, never, A> = ref
  * @category utils
  */
 export const getAndSet: {
-  <A>(value: A): (self: Ref.Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, value: A): Effect<never, never, A>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, value: A): Effect<never, never, A>
 } = ref.getAndSet
 
 /**
@@ -69,8 +69,8 @@ export const getAndSet: {
  * @category utils
  */
 export const getAndUpdate: {
-  <A>(f: (a: A) => A): (self: Ref.Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, f: (a: A) => A): Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, A>
 } = ref.getAndUpdate
 
 /**
@@ -87,8 +87,8 @@ export const getAndUpdateEffect: {
  * @category utils
  */
 export const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option<A>): (self: Ref.Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = ref.getAndUpdateSome
 
 /**
@@ -126,9 +126,9 @@ export const modifySome: {
   <B, A>(
     fallback: B,
     pf: (a: A) => Option<readonly [B, A]>
-  ): (self: Ref.Ref<A>) => Effect<never, never, B>
+  ): (self: Ref<A>) => Effect<never, never, B>
   <A, B>(
-    self: Ref.Ref<A>,
+    self: Ref<A>,
     fallback: B,
     pf: (a: A) => Option<readonly [B, A]>
   ): Effect<never, never, B>
@@ -155,8 +155,8 @@ export const modifySomeEffect: {
  * @category utils
  */
 export const set: {
-  <A>(value: A): (self: Ref.Ref<A>) => Effect<never, never, void>
-  <A>(self: Ref.Ref<A>, value: A): Effect<never, never, void>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, value: A): Effect<never, never, void>
 } = ref.set
 
 /**
@@ -164,8 +164,8 @@ export const set: {
  * @category utils
  */
 export const setAndGet: {
-  <A>(value: A): (self: Ref.Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, value: A): Effect<never, never, A>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, value: A): Effect<never, never, A>
 } = ref.setAndGet
 
 /**
@@ -173,8 +173,8 @@ export const setAndGet: {
  * @category utils
  */
 export const update: {
-  <A>(f: (a: A) => A): (self: Ref.Ref<A>) => Effect<never, never, void>
-  <A>(self: Ref.Ref<A>, f: (a: A) => A): Effect<never, never, void>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, void>
 } = ref.update
 
 /**
@@ -191,8 +191,8 @@ export const updateEffect: {
  * @category utils
  */
 export const updateAndGet: {
-  <A>(f: (a: A) => A): (self: Ref.Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, f: (a: A) => A): Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, A>
 } = ref.updateAndGet
 
 /**
@@ -209,8 +209,8 @@ export const updateAndGetEffect: {
  * @category utils
  */
 export const updateSome: {
-  <A>(f: (a: A) => Option<A>): (self: Ref.Ref<A>) => Effect<never, never, void>
-  <A>(self: Ref.Ref<A>, f: (a: A) => Option<A>): Effect<never, never, void>
+  <A>(f: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, f: (a: A) => Option<A>): Effect<never, never, void>
 } = ref.updateSome
 
 /**
@@ -229,8 +229,8 @@ export const updateSomeEffect: {
  * @category utils
  */
 export const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option<A>): (self: Ref.Ref<A>) => Effect<never, never, A>
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = ref.updateSomeAndGet
 
 /**

@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration.js"
+import type { Duration } from "./Duration.js"
 import * as internal from "./internal/schedule/interval.js"
 import type { Option } from "./Option.js"
 
@@ -117,7 +117,7 @@ export const intersect: {
  * @since 2.0.0
  * @category getters
  */
-export const size: (self: Interval) => Duration.Duration = internal.size
+export const size: (self: Interval) => Duration = internal.size
 
 /**
  * Computes a new `Interval` which is the union of this `Interval` and that

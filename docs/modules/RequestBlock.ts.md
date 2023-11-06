@@ -52,7 +52,7 @@ Added in v2.0.0
 ```ts
 export declare const mapRequestResolvers: <R, A, R2>(
   self: RequestBlock<R>,
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
+  f: (dataSource: RequestResolver<A, R>) => RequestResolver<A, R2>
 ) => RequestBlock<R | R2>
 ```
 
@@ -94,7 +94,7 @@ Added in v2.0.0
 
 ```ts
 export declare const single: <R, A>(
-  dataSource: RequestResolver.RequestResolver<A, R>,
+  dataSource: RequestResolver<A, R>,
   blockedRequest: Request.Entry<A>
 ) => RequestBlock<R>
 ```
@@ -158,7 +158,7 @@ export interface Reducer<R, Z> {
   readonly emptyCase: () => Z
   readonly parCase: (left: Z, right: Z) => Z
   readonly singleCase: (
-    dataSource: RequestResolver.RequestResolver<unknown, R>,
+    dataSource: RequestResolver<unknown, R>,
     blockedRequest: Request.Entry<unknown>
   ) => Z
   readonly seqCase: (left: Z, right: Z) => Z
@@ -188,7 +188,7 @@ Added in v2.0.0
 ```ts
 export interface Single<R> {
   readonly _tag: "Single"
-  readonly dataSource: RequestResolver.RequestResolver<unknown, R>
+  readonly dataSource: RequestResolver<unknown, R>
   readonly blockedRequest: Request.Entry<unknown>
 }
 ```
@@ -218,7 +218,7 @@ Provides each data source with part of its required environment.
 ```ts
 export declare const mapInputContext: <R0, R>(
   self: RequestBlock<R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
+  f: (context: Context<R0>) => Context<R>
 ) => RequestBlock<R0>
 ```
 

@@ -1,5 +1,5 @@
 import { assertFalse, assertTrue, deepStrictEqual } from "effect-test/util"
-import * as BD from "effect/BigDecimal"
+import { BD } from "effect/BigDecimal"
 import { Option } from "effect/Option"
 import { assert, describe, it } from "vitest"
 

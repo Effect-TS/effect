@@ -197,11 +197,11 @@ must be `Duration`.
 ```ts
 export declare const trackDuration: {
   <Type, Out>(
-    metric: Metric<Type, Duration.Duration, Out>
+    metric: Metric<Type, Duration, Out>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, Out>(
     self: Effect<R, E, A>,
-    metric: Metric<Type, Duration.Duration, Out>
+    metric: Metric<Type, Duration, Out>
   ): Effect<R, E, A>
 }
 ```
@@ -347,7 +347,7 @@ export declare const counter: {
 **Example**
 
 ```ts
-import * as Metric from "effect/Metric"
+import { Metric } from "effect/Metric"
 
 const numberCounter = Metric.counter("count", {
   description: "A number counter"
@@ -375,7 +375,7 @@ export declare const frequency: (name: string, description?: string) => Metric.F
 **Example**
 
 ```ts
-import * as Metric from "effect/Metric"
+import { Metric } from "effect/Metric"
 
 const errorFrequency = Metric.frequency("error_frequency", "Counts the occurrences of errors.")
 ```
@@ -387,9 +387,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  key: MetricKey.MetricKey<Type>
-) => Metric<Type, MetricKeyType.MetricKeyType.InType<Type>, MetricKeyType.MetricKeyType.OutType<Type>>
+export declare const fromMetricKey: <Type extends MetricKeyType<any, any>>(
+  key: MetricKey<Type>
+) => Metric<Type, MetricKeyType.InType<Type>, MetricKeyType.OutType<Type>>
 ```
 
 Added in v2.0.0
@@ -411,7 +411,7 @@ export declare const gauge: {
 **Example**
 
 ```ts
-import * as Metric from "effect/Metric"
+import { Metric } from "effect/Metric"
 
 const numberGauge = Metric.gauge("memory_usage", {
   description: "A gauge for memory usage"
@@ -435,16 +435,16 @@ Histogram metrics are useful for measuring the distribution of values within a r
 ```ts
 export declare const histogram: (
   name: string,
-  boundaries: MetricBoundaries.MetricBoundaries,
+  boundaries: MetricBoundaries,
   description?: string
-) => Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram>
+) => Metric<MetricKeyType.Histogram, number, MetricState.Histogram>
 ```
 
 **Example**
 
 ```ts
-import * as Metric from "effect/Metric"
-import * as MetricBoundaries from "effect/MetricBoundaries"
+import { Metric } from "effect/Metric"
+import { MetricBoundaries } from "effect/MetricBoundaries"
 
 const latencyHistogram = Metric.histogram(
   "latency_histogram",
@@ -490,7 +490,7 @@ export declare const summary: (options: {
   readonly maxAge: Duration.DurationInput
   readonly maxSize: number
   readonly error: number
-  readonly quantiles: Chunk.Chunk<number>
+  readonly quantiles: Chunk<number>
   readonly description?: string
 }) => Metric.Summary<number>
 ```
@@ -498,8 +498,8 @@ export declare const summary: (options: {
 **Example**
 
 ```ts
-import * as Metric from "effect/Metric"
-import * as Chunk from "effect/Chunk"
+import { Metric } from "effect/Metric"
+import { Chunk } from "effect/Chunk"
 
 const responseTimesSummary = Metric.summary({
   name: "response_times_summary",
@@ -523,7 +523,7 @@ export declare const summaryTimestamp: (options: {
   readonly maxAge: Duration.DurationInput
   readonly maxSize: number
   readonly error: number
-  readonly quantiles: Chunk.Chunk<number>
+  readonly quantiles: Chunk<number>
   readonly description?: string
 }) => Metric.Summary<readonly [value: number, timestamp: number]>
 ```
@@ -553,7 +553,7 @@ the metric as a tag (i.e. `"time_unit: milliseconds"`).
 ```ts
 export declare const timer: (
   name: string
-) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
+) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram>
 ```
 
 Added in v2.0.0
@@ -570,8 +570,8 @@ will automatically be added to the metric as a tag (i.e.
 ```ts
 export declare const timerWithBoundaries: (
   name: string,
-  boundaries: Chunk.Chunk<number>
-) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
+  boundaries: Chunk<number>
+) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram>
 ```
 
 Added in v2.0.0
@@ -602,7 +602,7 @@ Captures a snapshot of all metrics recorded by the application.
 **Signature**
 
 ```ts
-export declare const snapshot: Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>>
+export declare const snapshot: Effect<never, never, HashSet<MetricPair.Untyped>>
 ```
 
 Added in v2.0.0
@@ -708,9 +708,9 @@ Added in v2.0.0
 
 ```ts
 export declare const fiberLifetimes: Metric<
-  MetricKeyType.MetricKeyType.Histogram,
+  MetricKeyType.Histogram,
   number,
-  MetricState.MetricState.Histogram
+  MetricState.Histogram
 >
 ```
 
@@ -765,8 +765,8 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
    * `MetricKeyType.Counter` or `MetricKeyType.Gauge`.
    */
   readonly keyType: Type
-  readonly unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void
-  readonly unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
+  readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void
+  readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
   /** */
   <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
@@ -782,8 +782,8 @@ Added in v2.0.0
 export interface MetricApply {
   <Type, In, Out>(
     keyType: Type,
-    unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void,
-    unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
+    unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void,
+    unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
   ): Metric<Type, In, Out>
 }
 ```
@@ -821,7 +821,7 @@ Unsafely captures a snapshot of all metrics recorded by the application.
 **Signature**
 
 ```ts
-export declare const unsafeSnapshot: (_: void) => HashSet.HashSet<MetricPair.MetricPair.Untyped>
+export declare const unsafeSnapshot: (_: void) => HashSet<MetricPair.Untyped>
 ```
 
 Added in v2.0.0
@@ -838,7 +838,7 @@ Added in v2.0.0
 
 ```ts
 export interface Counter<In extends number | bigint>
-  extends Metric<MetricKeyType.MetricKeyType.Counter<In>, In, MetricState.MetricState.Counter<In>> {}
+  extends Metric<MetricKeyType.Counter<In>, In, MetricState.Counter<In>> {}
 ```
 
 Added in v2.0.0
@@ -849,7 +849,7 @@ Added in v2.0.0
 
 ```ts
 export interface Frequency<In>
-  extends Metric<MetricKeyType.MetricKeyType.Frequency, In, MetricState.MetricState.Frequency> {}
+  extends Metric<MetricKeyType.Frequency, In, MetricState.Frequency> {}
 ```
 
 Added in v2.0.0
@@ -860,7 +860,7 @@ Added in v2.0.0
 
 ```ts
 export interface Gauge<In extends number | bigint>
-  extends Metric<MetricKeyType.MetricKeyType.Gauge<In>, In, MetricState.MetricState.Gauge<In>> {}
+  extends Metric<MetricKeyType.Gauge<In>, In, MetricState.Gauge<In>> {}
 ```
 
 Added in v2.0.0
@@ -871,7 +871,7 @@ Added in v2.0.0
 
 ```ts
 export interface Histogram<In>
-  extends Metric<MetricKeyType.MetricKeyType.Histogram, In, MetricState.MetricState.Histogram> {}
+  extends Metric<MetricKeyType.Histogram, In, MetricState.Histogram> {}
 ```
 
 Added in v2.0.0
@@ -881,7 +881,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Summary<In> extends Metric<MetricKeyType.MetricKeyType.Summary, In, MetricState.MetricState.Summary> {}
+export interface Summary<In> extends Metric<MetricKeyType.Summary, In, MetricState.Summary> {}
 ```
 
 Added in v2.0.0
@@ -927,8 +927,8 @@ the specified tags have been added to the tags of this metric.
 
 ```ts
 export declare const taggedWithLabels: {
-  <Type, In, Out>(extraTags: Iterable<MetricLabel.MetricLabel>): (self: Metric<Type, In, Out>) => Metric<Type, In, Out>
-  <Type, In, Out>(self: Metric<Type, In, Out>, extraTags: Iterable<MetricLabel.MetricLabel>): Metric<Type, In, Out>
+  <Type, In, Out>(extraTags: Iterable<MetricLabel>): (self: Metric<Type, In, Out>) => Metric<Type, In, Out>
+  <Type, In, Out>(self: Metric<Type, In, Out>, extraTags: Iterable<MetricLabel>): Metric<Type, In, Out>
 }
 ```
 
@@ -946,11 +946,11 @@ dynamic nature of the added tags.
 ```ts
 export declare const taggedWithLabelsInput: {
   <In>(
-    f: (input: In) => Iterable<MetricLabel.MetricLabel>
+    f: (input: In) => Iterable<MetricLabel>
   ): <Type, Out>(self: Metric<Type, In, Out>) => Metric<Type, In, void>
   <Type, In, Out>(
     self: Metric<Type, In, Out>,
-    f: (input: In) => Iterable<MetricLabel.MetricLabel>
+    f: (input: In) => Iterable<MetricLabel>
   ): Metric<Type, In, void>
 }
 ```

@@ -2,15 +2,15 @@
  * @since 2.0.0
  */
 
-import * as Context from "./Context.js"
+import { Context } from "./Context.js"
 import { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
-import type * as Equal from "./Equal.js"
+import type { Equal } from "./Equal.js"
 import type { FiberRef } from "./FiberRef.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/dataSource.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Request from "./Request.js"
+import type { Request } from "./Request.js"
 
 /**
  * @since 2.0.0
@@ -48,7 +48,7 @@ export type RequestResolverTypeId = typeof RequestResolverTypeId
  * @since 2.0.0
  * @category models
  */
-export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
+export interface RequestResolver<A, R = never> extends Equal, Pipeable {
   /**
    * Execute a collection of requests. The outer `Chunk` represents batches
    * of requests that must be performed sequentially. The inner `Chunk`
@@ -82,8 +82,8 @@ export declare namespace RequestResolver {
  * @since 2.0.0
  * @category utils
  */
-export const contextFromEffect = <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) =>
-  Effect.contextWith((_: Context.Context<R>) => provideContext(self, _))
+export const contextFromEffect = <R, A extends Request<any, any>>(self: RequestResolver<A, R>) =>
+  Effect.contextWith((_: Context<R>) => provideContext(self, _))
 
 /**
  * @since 2.0.0
@@ -91,7 +91,7 @@ export const contextFromEffect = <R, A extends Request.Request<any, any>>(self: 
  */
 export const contextFromServices =
   <Services extends Array<Context.Tag<any, any>>>(...services: Services) =>
-  <R, A extends Request.Request<any, any>>(
+  <R, A extends Request<any, any>>(
     self: RequestResolver<A, R>
   ): Effect<
     { [k in keyof Services]: Effect.Context<Services[k]> }[number],
@@ -136,7 +136,7 @@ export const makeWithEntry: <R, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const makeBatched: <R, A extends Request.Request<any, any>>(
+export const makeBatched: <R, A extends Request<any, any>>(
   run: (requests: Array<A>) => Effect<R, never, void>
 ) => RequestResolver<A, R> = internal.makeBatched
 
@@ -178,11 +178,11 @@ export const batchN: {
  */
 export const mapInputContext: {
   <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
-  <R, A extends Request.Request<any, any>, R0>(
+    f: (context: Context<R0>) => Context<R>
+  ): <A extends Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
+  <R, A extends Request<any, any>, R0>(
     self: RequestResolver<A, R>,
-    f: (context: Context.Context<R0>) => Context.Context<R>
+    f: (context: Context<R0>) => Context<R>
   ): RequestResolver<A, R0>
 } = internal.mapInputContext
 
@@ -195,16 +195,16 @@ export const mapInputContext: {
  * @category combinators
  */
 export const eitherWith: {
-  <A extends Request.Request<any, any>, R2, B extends Request.Request<any, any>, C extends Request.Request<any, any>>(
+  <A extends Request<any, any>, R2, B extends Request<any, any>, C extends Request<any, any>>(
     that: RequestResolver<B, R2>,
     f: (_: Request.Entry<C>) => Either<Request.Entry<A>, Request.Entry<B>>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<C, R2 | R>
   <
     R,
-    A extends Request.Request<any, any>,
+    A extends Request<any, any>,
     R2,
-    B extends Request.Request<any, any>,
-    C extends Request.Request<any, any>
+    B extends Request<any, any>,
+    C extends Request<any, any>
   >(
     self: RequestResolver<A, R>,
     that: RequestResolver<B, R2>,
@@ -218,8 +218,8 @@ export const eitherWith: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromFunction: <A extends Request.Request<never, any>>(
-  f: (request: A) => Request.Request.Success<A>
+export const fromFunction: <A extends Request<never, any>>(
+  f: (request: A) => Request.Success<A>
 ) => RequestResolver<A, never> = internal.fromFunction
 
 /**
@@ -230,8 +230,8 @@ export const fromFunction: <A extends Request.Request<never, any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromFunctionBatched: <A extends Request.Request<never, any>>(
-  f: (chunk: Array<A>) => Iterable<Request.Request.Success<A>>
+export const fromFunctionBatched: <A extends Request<never, any>>(
+  f: (chunk: Array<A>) => Iterable<Request.Success<A>>
 ) => RequestResolver<A, never> = internal.fromFunctionBatched
 
 /**
@@ -240,8 +240,8 @@ export const fromFunctionBatched: <A extends Request.Request<never, any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffect: <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+export const fromEffect: <R, A extends Request<any, any>>(
+  f: (a: A) => Effect<R, Request.Error<A>, Request.Success<A>>
 ) => RequestResolver<A, R> = internal.fromEffect
 
 /**
@@ -253,10 +253,10 @@ export const fromEffect: <R, A extends Request.Request<any, any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
+export const fromEffectTagged: <A extends Request<any, any> & { readonly _tag: string }>() => <
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
-      ? Req extends Request.Request<infer ReqE, infer ReqA>
+      ? Req extends Request<infer ReqE, infer ReqA>
         ? (requests: Array<Req>) => Effect<any, ReqE, Iterable<ReqA>>
       : never
       : never
@@ -282,11 +282,11 @@ export const never: RequestResolver<never, never> = internal.never
  */
 export const provideContext: {
   <R>(
-    context: Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, never>
-  <R, A extends Request.Request<any, any>>(
+    context: Context<R>
+  ): <A extends Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, never>
+  <R, A extends Request<any, any>>(
     self: RequestResolver<A, R>,
-    context: Context.Context<R>
+    context: Context<R>
   ): RequestResolver<A, never>
 } = internal.provideContext
 
@@ -299,10 +299,10 @@ export const provideContext: {
  * @category combinators
  */
 export const race: {
-  <R2, A2 extends Request.Request<any, any>>(
+  <R2, A2 extends Request<any, any>>(
     that: RequestResolver<A2, R2>
-  ): <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
-  <R, A extends Request.Request<any, any>, R2, A2 extends Request.Request<any, any>>(
+  ): <R, A extends Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
+  <R, A extends Request<any, any>, R2, A2 extends Request<any, any>>(
     self: RequestResolver<A, R>,
     that: RequestResolver<A2, R2>
   ): RequestResolver<A | A2, R | R2>
@@ -318,8 +318,8 @@ export const locally: {
   <A>(
     self: FiberRef<A>,
     value: A
-  ): <R, B extends Request.Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
-  <R, B extends Request.Request<any, any>, A>(
+  ): <R, B extends Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
+  <R, B extends Request<any, any>, A>(
     use: RequestResolver<B, R>,
     self: FiberRef<A>,
     value: A

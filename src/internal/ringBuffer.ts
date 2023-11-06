@@ -1,4 +1,4 @@
-import * as Chunk from "../Chunk.js"
+import { Chunk } from "../Chunk.js"
 import { constUndefined } from "../Function.js"
 import { Option } from "../Option.js"
 
@@ -38,7 +38,7 @@ export class RingBuffer<A> {
     }
   }
 
-  toChunk(): Chunk.Chunk<A> {
+  toChunk(): Chunk<A> {
     const begin = this.current - this.size
     const newArray = begin < 0
       ? [
@@ -47,7 +47,7 @@ export class RingBuffer<A> {
       ]
       : this.array.slice(begin, this.current)
 
-    return Chunk.fromIterable(newArray) as Chunk.Chunk<A>
+    return Chunk.fromIterable(newArray) as Chunk<A>
   }
 
   private increment(): void {

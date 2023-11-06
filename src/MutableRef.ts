@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "./Equal.js"
-import * as Dual from "./Function.js"
+import { Equal } from "./Equal.js"
+import { Dual } from "./Function.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"

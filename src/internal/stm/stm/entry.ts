@@ -1,17 +1,17 @@
-import type * as TRef from "../../../TRef.js"
-import * as Versioned from "./versioned.js"
+import type { TRef } from "../../../TRef.js"
+import { Versioned } from "./versioned.js"
 
 /** @internal */
 export interface Entry {
-  readonly ref: TRef.TRef<unknown>
-  readonly expected: Versioned.Versioned<unknown>
+  readonly ref: TRef<unknown>
+  readonly expected: Versioned<unknown>
   isChanged: boolean
   readonly isNew: boolean
   newValue: unknown
 }
 
 /** @internal */
-export const make = (ref: TRef.TRef<unknown>, isNew: boolean): Entry => ({
+export const make = (ref: TRef<unknown>, isNew: boolean): Entry => ({
   ref,
   isNew,
   isChanged: false,

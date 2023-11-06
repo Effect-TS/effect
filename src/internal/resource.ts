@@ -1,8 +1,8 @@
 import type { Effect } from "../Effect.js"
 import { identity, pipe } from "../Function.js"
-import type * as Resource from "../Resource.js"
-import type * as Schedule from "../Schedule.js"
-import type * as Scope from "../Scope.js"
+import type { Resource } from "../Resource.js"
+import type { Schedule } from "../Schedule.js"
+import type { Scope } from "../Scope.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as _schedule from "./schedule.js"
@@ -25,8 +25,8 @@ const cachedVariance = {
 /** @internal */
 export const auto = <R, E, A, R2, Out>(
   acquire: Effect<R, E, A>,
-  policy: Schedule.Schedule<R2, unknown, Out>
-): Effect<R | R2 | Scope.Scope, never, Resource.Resource<E, A>> =>
+  policy: Schedule<R2, unknown, Out>
+): Effect<R | R2 | Scope, never, Resource<E, A>> =>
   core.tap(manual(acquire), (manual) =>
     fiberRuntime.acquireRelease(
       pipe(
@@ -41,7 +41,7 @@ export const auto = <R, E, A, R2, Out>(
 /** @internal */
 export const manual = <R, E, A>(
   acquire: Effect<R, E, A>
-): Effect<R | Scope.Scope, never, Resource.Resource<E, A>> =>
+): Effect<R | Scope, never, Resource<E, A>> =>
   core.flatMap(core.context<R>(), (env) =>
     pipe(
       scopedRef.fromAcquire(core.exit(acquire)),
@@ -53,11 +53,11 @@ export const manual = <R, E, A>(
     ))
 
 /** @internal */
-export const get = <E, A>(self: Resource.Resource<E, A>): Effect<never, E, A> =>
+export const get = <E, A>(self: Resource<E, A>): Effect<never, E, A> =>
   core.flatMap(scopedRef.get(self.scopedRef), identity)
 
 /** @internal */
-export const refresh = <E, A>(self: Resource.Resource<E, A>): Effect<never, E, void> =>
+export const refresh = <E, A>(self: Resource<E, A>): Effect<never, E, void> =>
   scopedRef.set(
     self.scopedRef,
     core.map(self.acquire(), core.exitSucceed)

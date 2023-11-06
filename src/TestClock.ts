@@ -1,18 +1,18 @@
 /**
  * @since 2.0.0
  */
-import * as Chunk from "./Chunk.js"
-import type * as Clock from "./Clock.js"
-import * as Context from "./Context.js"
-import type * as Deferred from "./Deferred.js"
-import * as Duration from "./Duration.js"
+import { Chunk } from "./Chunk.js"
+import type { Clock } from "./Clock.js"
+import { Context } from "./Context.js"
+import type { Deferred } from "./Deferred.js"
+import { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import * as Equal from "./Equal.js"
-import type * as Fiber from "./Fiber.js"
-import type * as FiberId from "./FiberId.js"
-import * as FiberStatus from "./FiberStatus.js"
+import { Equal } from "./Equal.js"
+import type { Fiber } from "./Fiber.js"
+import type { FiberId } from "./FiberId.js"
+import { FiberStatus } from "./FiberStatus.js"
 import { constVoid, dual, identity, pipe } from "./Function.js"
-import * as HashMap from "./HashMap.js"
+import { HashMap } from "./HashMap.js"
 import * as clock from "./internal/clock.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
@@ -22,17 +22,17 @@ import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as layer from "./internal/layer.js"
 import * as ref from "./internal/ref.js"
 import * as synchronized from "./internal/synchronizedRef.js"
-import * as SuspendedWarningData from "./internal/testing/suspendedWarningData.js"
-import * as WarningData from "./internal/testing/warningData.js"
-import type * as Layer from "./Layer.js"
+import { SuspendedWarningData } from "./internal/testing/suspendedWarningData.js"
+import { WarningData } from "./internal/testing/warningData.js"
+import type { Layer } from "./Layer.js"
 import * as number from "./Number.js"
 import { Option } from "./Option.js"
-import * as Order from "./Order.js"
-import type * as Ref from "./Ref.js"
-import type * as SortedSet from "./SortedSet.js"
-import type * as Synchronized from "./SynchronizedRef.js"
-import * as Annotations from "./TestAnnotations.js"
-import * as Live from "./TestLive.js"
+import { Order } from "./Order.js"
+import type { Ref } from "./Ref.js"
+import type { SortedSet } from "./SortedSet.js"
+import type { Synchronized } from "./SynchronizedRef.js"
+import { Annotations } from "./TestAnnotations.js"
+import { Live } from "./TestLive.js"
 
 /**
  * A `TestClock` makes it easy to deterministically and efficiently test effects
@@ -47,10 +47,10 @@ import * as Live from "./TestLive.js"
  * For example, here is how we can test `Effect.timeout` using `TestClock`:
  *
  * ```ts
- * import * as Duration from "effect/Duration"
+ * import { Duration } from "effect/Duration"
  * import { Effect } from "effect/Effect"
- * import * as Fiber from "effect/Fiber"
- * import * as TestClock from "effect/TestClock"
+ * import { Fiber } from "effect/Fiber"
+ * import { TestClock } from "effect/TestClock"
  * import { Option } from "effect/Option"
  *
  * Effect.gen(function*() {
@@ -75,12 +75,12 @@ import * as Live from "./TestLive.js"
  *
  * @since 2.0.0
  */
-export interface TestClock extends Clock.Clock {
+export interface TestClock extends Clock {
   adjust(duration: Duration.DurationInput): Effect<never, never, void>
   adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   save(): Effect<never, never, Effect<never, never, void>>
   setTime(time: number): Effect<never, never, void>
-  sleeps(): Effect<never, never, Chunk.Chunk<number>>
+  sleeps(): Effect<never, never, Chunk<number>>
 }
 
 /**
@@ -90,7 +90,7 @@ export interface TestClock extends Clock.Clock {
  */
 export interface Data {
   readonly instant: number
-  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  readonly sleeps: Chunk<readonly [number, Deferred<never, void>]>
 }
 
 /**
@@ -98,7 +98,7 @@ export interface Data {
  */
 export const makeData = (
   instant: number,
-  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  sleeps: Chunk<readonly [number, Deferred<never, void>]>
 ): Data => ({
   instant,
   sleeps
@@ -135,11 +135,11 @@ const suspendedWarning = "Warning: A test is advancing the test clock, " +
 export class TestClockImpl implements TestClock {
   [clock.ClockTypeId]: Clock.ClockTypeId = clock.ClockTypeId
   constructor(
-    readonly clockState: Ref.Ref<Data>,
+    readonly clockState: Ref<Data>,
     readonly live: Live.TestLive,
     readonly annotations: Annotations.TestAnnotations,
-    readonly warningState: Synchronized.SynchronizedRef<WarningData.WarningData>,
-    readonly suspendedWarningState: Synchronized.SynchronizedRef<SuspendedWarningData.SuspendedWarningData>
+    readonly warningState: Synchronized.SynchronizedRef<WarningData>,
+    readonly suspendedWarningState: Synchronized.SynchronizedRef<SuspendedWarningData>
   ) {
     this.currentTimeMillis = core.map(
       ref.get(this.clockState),
@@ -219,7 +219,7 @@ export class TestClockImpl implements TestClock {
    * Returns a list of the times at which all queued effects are scheduled to
    * resume.
    */
-  sleeps(): Effect<never, never, Chunk.Chunk<number>> {
+  sleeps(): Effect<never, never, Chunk<number>> {
     return core.map(
       ref.get(this.clockState),
       (data) => Chunk.map(data.sleeps, (_) => _[0])
@@ -247,7 +247,7 @@ export class TestClockImpl implements TestClock {
   /**
    * Returns a set of all fibers in this test.
    */
-  supervisedFibers(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
+  supervisedFibers(): Effect<never, never, SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
     return this.annotations.supervisedFibers()
   }
   /**
@@ -257,19 +257,19 @@ export class TestClockImpl implements TestClock {
    * synchronize on the status of multiple fibers at the same time this
    * snapshot may not be fully consistent.
    */
-  freeze(): Effect<never, void, HashMap.HashMap<FiberId.FiberId, FiberStatus.FiberStatus>> {
+  freeze(): Effect<never, void, HashMap<FiberId, FiberStatus>> {
     return core.flatMap(this.supervisedFibers(), (fibers) =>
       pipe(
         fibers,
-        effect.reduce(HashMap.empty<FiberId.FiberId, FiberStatus.FiberStatus>(), (map, fiber) =>
+        effect.reduce(HashMap.empty<FiberId, FiberStatus>(), (map, fiber) =>
           pipe(
             fiber.status(),
             core.flatMap((status) => {
               if (FiberStatus.isDone(status)) {
-                return core.succeed(HashMap.set(map, fiber.id() as FiberId.FiberId, status as FiberStatus.FiberStatus))
+                return core.succeed(HashMap.set(map, fiber.id() as FiberId, status as FiberStatus.FiberStatus))
               }
               if (FiberStatus.isSuspended(status)) {
-                return core.succeed(HashMap.set(map, fiber.id() as FiberId.FiberId, status as FiberStatus.FiberStatus))
+                return core.succeed(HashMap.set(map, fiber.id() as FiberId, status as FiberStatus.FiberStatus))
               }
               return core.fail(void 0)
             })
@@ -313,7 +313,7 @@ export class TestClockImpl implements TestClock {
   /**
    * Returns whether all descendants of this fiber are done or suspended.
    */
-  suspended(): Effect<never, void, HashMap.HashMap<FiberId.FiberId, FiberStatus.FiberStatus>> {
+  suspended(): Effect<never, void, HashMap<FiberId, FiberStatus>> {
     return pipe(
       this.freeze(),
       core.zip(this.live.provide(pipe(effect.sleep(Duration.millis(5)), core.zipRight(this.freeze())))),
@@ -393,7 +393,7 @@ export class TestClockImpl implements TestClock {
           const end = f(data.instant)
           const sorted = pipe(
             data.sleeps,
-            Chunk.sort<readonly [number, Deferred.Deferred<never, void>]>(
+            Chunk.sort<readonly [number, Deferred<never, void>]>(
               pipe(number.Order, Order.mapInput((_) => _[0]))
             )
           )
@@ -431,7 +431,7 @@ export class TestClockImpl implements TestClock {
 /**
  * @since 2.0.0
  */
-export const live = (data: Data): Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
+export const live = (data: Data): Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
   layer.scoped(
     TestClock,
     effect.gen(function*($) {
@@ -452,7 +452,7 @@ export const live = (data: Data): Layer.Layer<Annotations.TestAnnotations | Live
 /**
  * @since 2.0.0
  */
-export const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> = live(
+export const defaultTestClock: Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> = live(
   makeData(new Date(0).getTime(), Chunk.empty())
 )
 
@@ -517,7 +517,7 @@ export const sleep = (durationInput: Duration.DurationInput): Effect<never, neve
  *
  * @since 2.0.0
  */
-export const sleeps = (): Effect<never, never, Chunk.Chunk<number>> =>
+export const sleeps = (): Effect<never, never, Chunk<number>> =>
   testClockWith(
     (testClock) => testClock.sleeps()
   )

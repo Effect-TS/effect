@@ -1,4 +1,4 @@
-import type * as Types from "effect/Types"
+import type { Types } from "effect/Types"
 
 // -------------------------------------------------------------------------------------
 // UnionToIntersection

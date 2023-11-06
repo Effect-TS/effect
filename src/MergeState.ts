@@ -4,7 +4,7 @@
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
-import type * as Fiber from "./Fiber.js"
+import type { Fiber } from "./Fiber.js"
 import * as internal from "./internal/channel/mergeState.js"
 
 /**
@@ -47,8 +47,8 @@ export declare namespace MergeState {
  */
 export interface BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> extends MergeState.Proto {
   readonly _tag: "BothRunning"
-  readonly left: Fiber.Fiber<Err, Either<Done, Elem>>
-  readonly right: Fiber.Fiber<Err1, Either<Done1, Elem>>
+  readonly left: Fiber<Err, Either<Done, Elem>>
+  readonly right: Fiber<Err1, Either<Done1, Elem>>
 }
 
 /**
@@ -74,8 +74,8 @@ export interface RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> ex
  * @category constructors
  */
 export const BothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  left: Fiber.Fiber<Err, Either<Done, Elem>>,
-  right: Fiber.Fiber<Err1, Either<Done1, Elem>>
+  left: Fiber<Err, Either<Done, Elem>>,
+  right: Fiber<Err1, Either<Done1, Elem>>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> = internal.BothRunning
 
 /**
@@ -145,8 +145,8 @@ export const match: {
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Err, Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either<Done1, Elem>>
+        left: Fiber<Err, Either<Done, Elem>>,
+        right: Fiber<Err1, Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
@@ -156,8 +156,8 @@ export const match: {
     self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Err, Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either<Done1, Elem>>
+        left: Fiber<Err, Either<Done, Elem>>,
+        right: Fiber<Err1, Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z

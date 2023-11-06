@@ -1,8 +1,8 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Random from "effect/Random"
-import * as Ref from "effect/Ref"
+import { Random } from "effect/Random"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

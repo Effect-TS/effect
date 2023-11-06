@@ -35,9 +35,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>
+export declare const make: <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState<MetricKeyType.OutType<Type>>
 ) => MetricPair.Untyped
 ```
 
@@ -50,11 +50,11 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MetricPair<Type extends MetricKeyType.MetricKeyType<any, any>>
+export interface MetricPair<Type extends MetricKeyType<any, any>>
   extends MetricPair.Variance<Type>,
     Pipeable {
-  readonly metricKey: MetricKey.MetricKey<Type>
-  readonly metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>
+  readonly metricKey: MetricKey<Type>
+  readonly metricState: MetricState<MetricKeyType.OutType<Type>>
 }
 ```
 
@@ -89,9 +89,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeMake: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState.Untyped
+export declare const unsafeMake: <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState.Untyped
 ) => MetricPair.Untyped
 ```
 
@@ -108,7 +108,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Untyped extends MetricPair<MetricKeyType.MetricKeyType<any, any>> {}
+export interface Untyped extends MetricPair<MetricKeyType<any, any>> {}
 ```
 
 Added in v2.0.0
@@ -118,7 +118,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Type extends MetricKeyType.MetricKeyType<any, any>> {
+export interface Variance<Type extends MetricKeyType<any, any>> {
   readonly [MetricPairTypeId]: {
     readonly _Type: (_: never) => Type
   }

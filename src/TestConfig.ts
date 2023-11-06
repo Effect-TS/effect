@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context.js"
+import { Context } from "./Context.js"
 
 /**
  * The `TestConfig` service provides access to default configuration settings

@@ -1,49 +1,49 @@
-import type * as Cause from "../Cause.js"
-import * as Chunk from "../Chunk.js"
-import * as Context from "../Context.js"
-import type * as Deferred from "../Deferred.js"
-import type * as Differ from "../Differ.js"
+import type { Cause } from "../Cause.js"
+import { Chunk } from "../Chunk.js"
+import { Context } from "../Context.js"
+import type { Deferred } from "../Deferred.js"
+import type { Differ } from "../Differ.js"
 import type { Effect } from "../Effect.js"
 import { Either } from "../Either.js"
-import * as Equal from "../Equal.js"
-import type * as ExecutionStrategy from "../ExecutionStrategy.js"
+import { Equal } from "../Equal.js"
+import type { ExecutionStrategy } from "../ExecutionStrategy.js"
 import type { Exit } from "../Exit.js"
-import type * as Fiber from "../Fiber.js"
-import * as FiberId from "../FiberId.js"
-import type * as FiberRef from "../FiberRef.js"
-import type * as FiberStatus from "../FiberStatus.js"
+import type { Fiber } from "../Fiber.js"
+import { FiberId } from "../FiberId.js"
+import type { FiberRef } from "../FiberRef.js"
+import type { FiberStatus } from "../FiberStatus.js"
 import type { LazyArg } from "../Function.js"
 import { dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
-import * as Hash from "../Hash.js"
-import * as HashMap from "../HashMap.js"
-import * as HashSet from "../HashSet.js"
+import { Hash } from "../Hash.js"
+import { HashMap } from "../HashMap.js"
+import { HashSet } from "../HashSet.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import * as List from "../List.js"
-import type * as LogLevel from "../LogLevel.js"
-import type * as LogSpan from "../LogSpan.js"
-import type * as MetricLabel from "../MetricLabel.js"
-import * as MutableRef from "../MutableRef.js"
+import { List } from "../List.js"
+import type { LogLevel } from "../LogLevel.js"
+import type { LogSpan } from "../LogSpan.js"
+import type { MetricLabel } from "../MetricLabel.js"
+import { MutableRef } from "../MutableRef.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isObject, type Predicate, type Refinement } from "../Predicate.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
-import type * as Request from "../Request.js"
-import type * as BlockedRequests from "../RequestBlock.js"
-import type * as RequestResolver from "../RequestResolver.js"
-import type * as RuntimeFlags from "../RuntimeFlags.js"
-import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
-import type * as Scope from "../Scope.js"
-import type * as Tracer from "../Tracer.js"
+import { ReadonlyArray } from "../ReadonlyArray.js"
+import type { Request } from "../Request.js"
+import type { BlockedRequests } from "../RequestBlock.js"
+import type { RequestResolver } from "../RequestResolver.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
+import { RuntimeFlagsPatch } from "../RuntimeFlagsPatch.js"
+import type { Scope } from "../Scope.js"
+import type { Tracer } from "../Tracer.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
 import * as internalDiffer from "./differ.js"
 import { effectVariance } from "./effectable.js"
-import type * as FiberRuntime from "./fiberRuntime.js"
+import type { FiberRuntime } from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
-import * as DeferredOpCodes from "./opCodes/deferred.js"
-import * as OpCodes from "./opCodes/effect.js"
+import { DeferredOpCodes } from "./opCodes/deferred.js"
+import { OpCodes } from "./opCodes/effect.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 import * as internalTracer from "./tracer.js"
 
@@ -64,14 +64,14 @@ export type EffectErrorTypeId = typeof EffectErrorTypeId
 export interface EffectError<E> {
   readonly [EffectErrorTypeId]: EffectErrorTypeId
   readonly _tag: "EffectError"
-  readonly cause: Cause.Cause<E>
+  readonly cause: Cause<E>
 }
 
 /** @internal */
 export const isEffectError = (u: unknown): u is EffectError<unknown> => hasProperty(u, EffectErrorTypeId)
 
 /** @internal */
-export const makeEffectError = <E>(cause: Cause.Cause<E>): EffectError<E> => ({
+export const makeEffectError = <E>(cause: Cause<E>): EffectError<E> => ({
   [EffectErrorTypeId]: EffectErrorTypeId,
   _tag: "EffectError",
   cause
@@ -138,7 +138,7 @@ export type Continuation =
 export class RevertFlags {
   readonly _op = OpCodes.OP_REVERT_FLAGS
   constructor(
-    readonly patch: RuntimeFlagsPatch.RuntimeFlagsPatch,
+    readonly patch: RuntimeFlagsPatch,
     readonly op: Primitive & { _op: OpCodes.OP_UPDATE_RUNTIME_FLAGS }
   ) {
   }
@@ -285,7 +285,7 @@ export interface RunBlocked<R = any> extends
 /** @internal */
 export interface Failure extends
   Op<OpCodes.OP_FAILURE, {
-    readonly i0: Cause.Cause<unknown>
+    readonly i0: Cause<unknown>
   }>
 {}
 
@@ -302,7 +302,7 @@ export interface Commit extends
 export interface OnFailure extends
   Op<OpCodes.OP_ON_FAILURE, {
     readonly i0: Primitive
-    readonly i1: (a: Cause.Cause<unknown>) => Primitive
+    readonly i1: (a: Cause<unknown>) => Primitive
   }>
 {}
 
@@ -326,7 +326,7 @@ export interface OnStep extends
 export interface OnSuccessAndFailure extends
   Op<OpCodes.OP_ON_SUCCESS_AND_FAILURE, {
     readonly i0: Primitive
-    readonly i1: (a: Cause.Cause<unknown>) => Primitive
+    readonly i1: (a: Cause<unknown>) => Primitive
     readonly i2: (a: unknown) => Primitive
   }>
 {}
@@ -365,7 +365,7 @@ export interface While extends
 /** @internal */
 export interface WithRuntime extends
   Op<OpCodes.OP_WITH_RUNTIME, {
-    readonly i0: (fiber: FiberRuntime.FiberRuntime<unknown, unknown>, status: FiberStatus.Running) => Primitive
+    readonly i0: (fiber: FiberRuntime<unknown, unknown>, status: FiberStatus.Running) => Primitive
   }>
 {}
 
@@ -377,7 +377,7 @@ export const isEffect = (u: unknown): u is Effect<unknown, unknown, unknown> => 
 
 /* @internal */
 export const withFiberRuntime = <R, E, A>(
-  withRuntime: (fiber: FiberRuntime.FiberRuntime<E, A>, status: FiberStatus.Running) => Effect<R, E, A>
+  withRuntime: (fiber: FiberRuntime<E, A>, status: FiberStatus.Running) => Effect<R, E, A>
 ): Effect<R, E, A> => {
   const effect = new EffectPrimitive(OpCodes.OP_WITH_RUNTIME) as any
   effect.i0 = withRuntime
@@ -447,7 +447,7 @@ export const async = <R, E, A>(
     callback: (_: Effect<R, E, A>) => void,
     signal: AbortSignal
   ) => void | Effect<R, never, void>,
-  blockingOn: FiberId.FiberId = FiberId.none
+  blockingOn: FiberId = FiberId.none
 ): Effect<R, E, A> =>
   suspend(() => {
     let cancelerRef: Effect<R, never, void> | void = undefined
@@ -479,7 +479,7 @@ export const asyncEither = <R, E, A>(
   register: (
     callback: (effect: Effect<R, E, A>) => void
   ) => Either<Effect<R, never, void>, Effect<R, E, A>>,
-  blockingOn: FiberId.FiberId = FiberId.none
+  blockingOn: FiberId = FiberId.none
 ): Effect<R, E, A> =>
   async<R, E, A>((resume) => {
     const result = register(resume)
@@ -493,11 +493,11 @@ export const asyncEither = <R, E, A>(
 /* @internal */
 export const catchAllCause = dual<
   <E, R2, E2, A2>(
-    f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+    f: (cause: Cause<E>) => Effect<R2, E2, A2>
   ) => <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2, A2 | A>,
   <R, A, E, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+    f: (cause: Cause<E>) => Effect<R2, E2, A2>
   ) => Effect<R2 | R, E2, A2 | A>
 >(2, (self, f) => {
   const effect = new EffectPrimitive(OpCodes.OP_ON_FAILURE) as any
@@ -668,7 +668,7 @@ export const fail = <E>(error: E): Effect<never, E, never> =>
 export const failSync = <E>(evaluate: LazyArg<E>): Effect<never, E, never> => flatMap(sync(evaluate), fail)
 
 /* @internal */
-export const failCause = <E>(cause: Cause.Cause<E>): Effect<never, E, never> => {
+export const failCause = <E>(cause: Cause<E>): Effect<never, E, never> => {
   const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
   effect.i0 = cause
   return effect
@@ -676,11 +676,11 @@ export const failCause = <E>(cause: Cause.Cause<E>): Effect<never, E, never> => 
 
 /* @internal */
 export const failCauseSync = <E>(
-  evaluate: LazyArg<Cause.Cause<E>>
+  evaluate: LazyArg<Cause<E>>
 ): Effect<never, E, never> => flatMap(sync(evaluate), failCause)
 
 /* @internal */
-export const fiberId: Effect<never, never, FiberId.FiberId> = withFiberRuntime<never, never, FiberId.FiberId>((
+export const fiberId: Effect<never, never, FiberId> = withFiberRuntime<never, never, FiberId>((
   state
 ) => succeed(state.id()))
 
@@ -737,14 +737,14 @@ export const flip = <R, E, A>(self: Effect<R, E, A>): Effect<R, A, E> =>
 export const matchCause = dual<
   <E, A2, A, A3>(
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => A2
+      readonly onFailure: (cause: Cause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ) => <R>(self: Effect<R, E, A>) => Effect<R, never, A2 | A3>,
   <R, E, A2, A, A3>(
     self: Effect<R, E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => A2
+      readonly onFailure: (cause: Cause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ) => Effect<R, never, A2 | A3>
@@ -758,14 +758,14 @@ export const matchCause = dual<
 export const matchCauseEffect = dual<
   <E, A, R2, E2, A2, R3, E3, A3>(
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+      readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, A2>
       readonly onSuccess: (a: A) => Effect<R3, E3, A3>
     }
   ) => <R>(self: Effect<R, E, A>) => Effect<R2 | R3 | R, E2 | E3, A2 | A3>,
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     self: Effect<R, E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+      readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, A2>
       readonly onSuccess: (a: A) => Effect<R3, E3, A3>
     }
   ) => Effect<R2 | R3 | R, E2 | E3, A2 | A3>
@@ -803,7 +803,7 @@ export const matchEffect = dual<
       if (failures.length > 0) {
         return onFailure(Chunk.unsafeHead(failures))
       }
-      return failCause(cause as Cause.Cause<never>)
+      return failCause(cause as Cause<never>)
     },
     onSuccess
   }))
@@ -923,8 +923,8 @@ export const interruptibleMask = <R, E, A>(
 
 /* @internal */
 export const intoDeferred = dual<
-  <E, A>(deferred: Deferred.Deferred<E, A>) => <R>(self: Effect<R, E, A>) => Effect<R, never, boolean>,
-  <R, E, A>(self: Effect<R, E, A>, deferred: Deferred.Deferred<E, A>) => Effect<R, never, boolean>
+  <E, A>(deferred: Deferred<E, A>) => <R>(self: Effect<R, E, A>) => Effect<R, never, boolean>,
+  <R, E, A>(self: Effect<R, E, A>, deferred: Deferred<E, A>) => Effect<R, never, boolean>
 >(2, (self, deferred) =>
   uninterruptibleMask((restore) =>
     flatMap(
@@ -977,11 +977,11 @@ export const mapError = dual<
 /* @internal */
 export const onError = dual<
   <E, R2, X>(
-    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>
+    cleanup: (cause: Cause<E>) => Effect<R2, never, X>
   ) => <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>,
   <R, A, E, R2, X>(
     self: Effect<R, E, A>,
-    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>
+    cleanup: (cause: Cause<E>) => Effect<R2, never, X>
   ) => Effect<R2 | R, E, A>
 >(2, (self, cleanup) => onExit(self, unified((exit) => exitIsSuccess(exit) ? unit : cleanup(exit.i0))))
 
@@ -1014,11 +1014,11 @@ export const onExit = dual<
 /* @internal */
 export const onInterrupt = dual<
   <R2, X>(
-    cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>
+    cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>
   ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>,
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
-    cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>
+    cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>
   ) => Effect<R2 | R, E, A>
 >(2, (self, cleanup) =>
   onExit(
@@ -1077,7 +1077,7 @@ export const partitionMap = <A, A1, A2>(
   )
 
 /* @internal */
-export const runtimeFlags: Effect<never, never, RuntimeFlags.RuntimeFlags> = withFiberRuntime<
+export const runtimeFlags: Effect<never, never, RuntimeFlags> = withFiberRuntime<
   never,
   never,
   RuntimeFlags.RuntimeFlags
@@ -1349,13 +1349,13 @@ export const never: Effect<never, never, never> = asyncEither<never, never, neve
 // -----------------------------------------------------------------------------
 
 /* @internal */
-export const interruptFiber = <E, A>(self: Fiber.Fiber<E, A>): Effect<never, never, Exit<E, A>> =>
+export const interruptFiber = <E, A>(self: Fiber<E, A>): Effect<never, never, Exit<E, A>> =>
   flatMap(fiberId, (fiberId) => pipe(self, interruptAsFiber(fiberId)))
 
 /* @internal */
 export const interruptAsFiber = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Fiber.Fiber<E, A>) => Effect<never, never, Exit<E, A>>,
-  <E, A>(self: Fiber.Fiber<E, A>, fiberId: FiberId.FiberId) => Effect<never, never, Exit<E, A>>
+  (fiberId: FiberId.FiberId) => <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>>,
+  <E, A>(self: Fiber<E, A>, fiberId: FiberId.FiberId) => Effect<never, never, Exit<E, A>>
 >(2, (self, fiberId) => flatMap(self.interruptAsFork(fiberId), () => self.await()))
 
 // -----------------------------------------------------------------------------
@@ -1363,7 +1363,7 @@ export const interruptAsFiber = dual<
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const logLevelAll: LogLevel.LogLevel = {
+export const logLevelAll: LogLevel = {
   _tag: "All",
   syslog: 0,
   label: "ALL",
@@ -1374,7 +1374,7 @@ export const logLevelAll: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const logLevelFatal: LogLevel.LogLevel = {
+export const logLevelFatal: LogLevel = {
   _tag: "Fatal",
   syslog: 2,
   label: "FATAL",
@@ -1385,7 +1385,7 @@ export const logLevelFatal: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const logLevelError: LogLevel.LogLevel = {
+export const logLevelError: LogLevel = {
   _tag: "Error",
   syslog: 3,
   label: "ERROR",
@@ -1396,7 +1396,7 @@ export const logLevelError: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const logLevelWarning: LogLevel.LogLevel = {
+export const logLevelWarning: LogLevel = {
   _tag: "Warning",
   syslog: 4,
   label: "WARN",
@@ -1407,7 +1407,7 @@ export const logLevelWarning: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const logLevelInfo: LogLevel.LogLevel = {
+export const logLevelInfo: LogLevel = {
   _tag: "Info",
   syslog: 6,
   label: "INFO",
@@ -1418,7 +1418,7 @@ export const logLevelInfo: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const logLevelDebug: LogLevel.LogLevel = {
+export const logLevelDebug: LogLevel = {
   _tag: "Debug",
   syslog: 7,
   label: "DEBUG",
@@ -1429,7 +1429,7 @@ export const logLevelDebug: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const logLevelTrace: LogLevel.LogLevel = {
+export const logLevelTrace: LogLevel = {
   _tag: "Trace",
   syslog: 7,
   label: "TRACE",
@@ -1440,7 +1440,7 @@ export const logLevelTrace: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const logLevelNone: LogLevel.LogLevel = {
+export const logLevelNone: LogLevel = {
   _tag: "None",
   syslog: 7,
   label: "OFF",
@@ -1451,7 +1451,7 @@ export const logLevelNone: LogLevel.LogLevel = {
 }
 
 /** @internal */
-export const allLogLevels: ReadonlyArray<LogLevel.LogLevel> = [
+export const allLogLevels: ReadonlyArray<LogLevel> = [
   logLevelAll,
   logLevelTrace,
   logLevelDebug,
@@ -1480,61 +1480,61 @@ const fiberRefVariance = {
 }
 
 /* @internal */
-export const fiberRefGet = <A>(self: FiberRef.FiberRef<A>): Effect<never, never, A> =>
+export const fiberRefGet = <A>(self: FiberRef<A>): Effect<never, never, A> =>
   fiberRefModify(self, (a) => [a, a] as const)
 
 /* @internal */
 export const fiberRefGetAndSet = dual<
-  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect<never, never, A>,
-  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect<never, never, A>
+  <A>(value: A) => (self: FiberRef<A>) => Effect<never, never, A>,
+  <A>(self: FiberRef<A>, value: A) => Effect<never, never, A>
 >(2, (self, value) => fiberRefModify(self, (v) => [v, value] as const))
 
 /* @internal */
 export const fiberRefGetAndUpdate = dual<
-  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect<never, never, A>,
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect<never, never, A>
+  <A>(f: (a: A) => A) => (self: FiberRef<A>) => Effect<never, never, A>,
+  <A>(self: FiberRef<A>, f: (a: A) => A) => Effect<never, never, A>
 >(2, (self, f) => fiberRefModify(self, (v) => [v, f(v)] as const))
 
 /* @internal */
 export const fiberRefGetAndUpdateSome = dual<
   <A>(
     pf: (a: A) => Option<A>
-  ) => (self: FiberRef.FiberRef<A>) => Effect<never, never, A>,
+  ) => (self: FiberRef<A>) => Effect<never, never, A>,
   <A>(
-    self: FiberRef.FiberRef<A>,
+    self: FiberRef<A>,
     pf: (a: A) => Option<A>
   ) => Effect<never, never, A>
 >(2, (self, pf) => fiberRefModify(self, (v) => [v, Option.getOrElse(pf(v), () => v)] as const))
 
 /* @internal */
 export const fiberRefGetWith = dual<
-  <A, R, E, B>(f: (a: A) => Effect<R, E, B>) => (self: FiberRef.FiberRef<A>) => Effect<R, E, B>,
-  <A, R, E, B>(self: FiberRef.FiberRef<A>, f: (a: A) => Effect<R, E, B>) => Effect<R, E, B>
+  <A, R, E, B>(f: (a: A) => Effect<R, E, B>) => (self: FiberRef<A>) => Effect<R, E, B>,
+  <A, R, E, B>(self: FiberRef<A>, f: (a: A) => Effect<R, E, B>) => Effect<R, E, B>
 >(2, (self, f) => flatMap(fiberRefGet(self), f))
 
 /* @internal */
 export const fiberRefSet = dual<
-  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect<never, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect<never, never, void>
+  <A>(value: A) => (self: FiberRef<A>) => Effect<never, never, void>,
+  <A>(self: FiberRef<A>, value: A) => Effect<never, never, void>
 >(2, (self, value) => fiberRefModify(self, () => [void 0, value] as const))
 
 /* @internal */
-export const fiberRefDelete = <A>(self: FiberRef.FiberRef<A>): Effect<never, never, void> =>
+export const fiberRefDelete = <A>(self: FiberRef<A>): Effect<never, never, void> =>
   withFiberRuntime<never, never, void>((state) => {
     state.unsafeDeleteFiberRef(self)
     return unit
   })
 
 /* @internal */
-export const fiberRefReset = <A>(self: FiberRef.FiberRef<A>): Effect<never, never, void> =>
+export const fiberRefReset = <A>(self: FiberRef<A>): Effect<never, never, void> =>
   fiberRefSet(self, self.initial)
 
 /* @internal */
 export const fiberRefModify = dual<
-  <A, B>(f: (a: A) => readonly [B, A]) => (self: FiberRef.FiberRef<A>) => Effect<never, never, B>,
-  <A, B>(self: FiberRef.FiberRef<A>, f: (a: A) => readonly [B, A]) => Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]) => (self: FiberRef<A>) => Effect<never, never, B>,
+  <A, B>(self: FiberRef<A>, f: (a: A) => readonly [B, A]) => Effect<never, never, B>
 >(2, <A, B>(
-  self: FiberRef.FiberRef<A>,
+  self: FiberRef<A>,
   f: (a: A) => readonly [B, A]
 ): Effect<never, never, B> =>
   withFiberRuntime<never, never, B>((state) => {
@@ -1545,27 +1545,27 @@ export const fiberRefModify = dual<
 
 /* @internal */
 export const fiberRefModifySome = <A, B>(
-  self: FiberRef.FiberRef<A>,
+  self: FiberRef<A>,
   def: B,
   f: (a: A) => Option<readonly [B, A]>
 ): Effect<never, never, B> => fiberRefModify(self, (v) => Option.getOrElse(f(v), () => [def, v] as const))
 
 /* @internal */
 export const fiberRefUpdate = dual<
-  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect<never, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect<never, never, void>
+  <A>(f: (a: A) => A) => (self: FiberRef<A>) => Effect<never, never, void>,
+  <A>(self: FiberRef<A>, f: (a: A) => A) => Effect<never, never, void>
 >(2, (self, f) => fiberRefModify(self, (v) => [void 0, f(v)] as const))
 
 /* @internal */
 export const fiberRefUpdateSome = dual<
-  <A>(pf: (a: A) => Option<A>) => (self: FiberRef.FiberRef<A>) => Effect<never, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, pf: (a: A) => Option<A>) => Effect<never, never, void>
+  <A>(pf: (a: A) => Option<A>) => (self: FiberRef<A>) => Effect<never, never, void>,
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>) => Effect<never, never, void>
 >(2, (self, pf) => fiberRefModify(self, (v) => [void 0, Option.getOrElse(pf(v), () => v)] as const))
 
 /* @internal */
 export const fiberRefUpdateAndGet = dual<
-  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect<never, never, A>,
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect<never, never, A>
+  <A>(f: (a: A) => A) => (self: FiberRef<A>) => Effect<never, never, A>,
+  <A>(self: FiberRef<A>, f: (a: A) => A) => Effect<never, never, A>
 >(2, (self, f) =>
   fiberRefModify(self, (v) => {
     const result = f(v)
@@ -1574,8 +1574,8 @@ export const fiberRefUpdateAndGet = dual<
 
 /* @internal */
 export const fiberRefUpdateSomeAndGet = dual<
-  <A>(pf: (a: A) => Option<A>) => (self: FiberRef.FiberRef<A>) => Effect<never, never, A>,
-  <A>(self: FiberRef.FiberRef<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>) => (self: FiberRef<A>) => Effect<never, never, A>,
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
 >(2, (self, pf) =>
   fiberRefModify(self, (v) => {
     const result = Option.getOrElse(pf(v), () => v)
@@ -1597,7 +1597,7 @@ const dataSourceVariance = {
 }
 
 /** @internal */
-export class RequestResolverImpl<R, A> implements RequestResolver.RequestResolver<A, R> {
+export class RequestResolverImpl<R, A> implements RequestResolver<A, R> {
   readonly [RequestResolverTypeId] = dataSourceVariance
   constructor(
     readonly runAll: (
@@ -1615,7 +1615,7 @@ export class RequestResolverImpl<R, A> implements RequestResolver.RequestResolve
       isRequestResolver(that) && Equal.equals(this.target, (that as RequestResolverImpl<any, any>).target) :
       this === that
   }
-  identified(...ids: Array<unknown>): RequestResolver.RequestResolver<A, R> {
+  identified(...ids: Array<unknown>): RequestResolver<A, R> {
     return new RequestResolverImpl(this.runAll, Chunk.fromIterable(ids))
   }
   pipe() {
@@ -1624,7 +1624,7 @@ export class RequestResolverImpl<R, A> implements RequestResolver.RequestResolve
 }
 
 /** @internal */
-export const isRequestResolver = (u: unknown): u is RequestResolver.RequestResolver<unknown, unknown> =>
+export const isRequestResolver = (u: unknown): u is RequestResolver<unknown, unknown> =>
   hasProperty(u, RequestResolverTypeId)
 
 // end
@@ -1632,21 +1632,21 @@ export const isRequestResolver = (u: unknown): u is RequestResolver.RequestResol
 /** @internal */
 export const resolverLocally = dual<
   <A>(
-    self: FiberRef.FiberRef<A>,
+    self: FiberRef<A>,
     value: A
-  ) => <R, B extends Request.Request<any, any>>(
-    use: RequestResolver.RequestResolver<B, R>
-  ) => RequestResolver.RequestResolver<B, R>,
-  <R, B extends Request.Request<any, any>, A>(
-    use: RequestResolver.RequestResolver<B, R>,
-    self: FiberRef.FiberRef<A>,
+  ) => <R, B extends Request<any, any>>(
+    use: RequestResolver<B, R>
+  ) => RequestResolver<B, R>,
+  <R, B extends Request<any, any>, A>(
+    use: RequestResolver<B, R>,
+    self: FiberRef<A>,
     value: A
-  ) => RequestResolver.RequestResolver<B, R>
->(3, <R, B extends Request.Request<any, any>, A>(
-  use: RequestResolver.RequestResolver<B, R>,
-  self: FiberRef.FiberRef<A>,
+  ) => RequestResolver<B, R>
+>(3, <R, B extends Request<any, any>, A>(
+  use: RequestResolver<B, R>,
+  self: FiberRef<A>,
   value: A
-): RequestResolver.RequestResolver<B, R> =>
+): RequestResolver<B, R> =>
   new RequestResolverImpl<R, B>(
     (requests) =>
       fiberRefLocally(
@@ -1660,12 +1660,12 @@ export const resolverLocally = dual<
 /** @internal */
 export const requestBlockLocally = <R, A>(
   self: BlockedRequests.RequestBlock<R>,
-  ref: FiberRef.FiberRef<A>,
+  ref: FiberRef<A>,
   value: A
 ): BlockedRequests.RequestBlock<R> => _blockedRequests.reduce(self, LocallyReducer(ref, value))
 
 const LocallyReducer = <R, A>(
-  ref: FiberRef.FiberRef<A>,
+  ref: FiberRef<A>,
   value: A
 ): BlockedRequests.RequestBlock.Reducer<R, BlockedRequests.RequestBlock<R>> => ({
   emptyCase: () => _blockedRequests.empty,
@@ -1680,11 +1680,11 @@ const LocallyReducer = <R, A>(
 
 /* @internal */
 export const fiberRefLocally: {
-  <A>(self: FiberRef.FiberRef<A>, value: A): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
-  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef.FiberRef<A>, value: A): Effect<R, E, B>
+  <A>(self: FiberRef<A>, value: A): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef<A>, value: A): Effect<R, E, B>
 } = dual<
-  <A>(self: FiberRef.FiberRef<A>, value: A) => <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>,
-  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef.FiberRef<A>, value: A) => Effect<R, E, B>
+  <A>(self: FiberRef<A>, value: A) => <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>,
+  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef<A>, value: A) => Effect<R, E, B>
 >(3, (use, self, value) =>
   flatMap(
     acquireUseRelease(
@@ -1702,8 +1702,8 @@ export const fiberRefLocally: {
 
 /* @internal */
 export const fiberRefLocallyWith = dual<
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>,
-  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect<R, E, B>
+  <A>(self: FiberRef<A>, f: (a: A) => A) => <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>,
+  <R, E, B, A>(use: Effect<R, E, B>, self: FiberRef<A>, f: (a: A) => A) => Effect<R, E, B>
 >(3, (use, self, f) => fiberRefGetWith(self, (a) => fiberRefLocally(use, self, f(a))))
 
 /** @internal */
@@ -1713,7 +1713,7 @@ export const fiberRefUnsafeMake = <Value>(
     readonly fork?: (a: Value) => Value
     readonly join?: (left: Value, right: Value) => Value
   }
-): FiberRef.FiberRef<Value> =>
+): FiberRef<Value> =>
   fiberRefUnsafeMakePatch(initial, {
     differ: internalDiffer.update(),
     fork: options?.fork ?? identity,
@@ -1722,8 +1722,8 @@ export const fiberRefUnsafeMake = <Value>(
 
 /** @internal */
 export const fiberRefUnsafeMakeHashSet = <A>(
-  initial: HashSet.HashSet<A>
-): FiberRef.FiberRef<HashSet.HashSet<A>> => {
+  initial: HashSet<A>
+): FiberRef<HashSet<A>> => {
   const differ = internalDiffer.hashSet<A>()
   return fiberRefUnsafeMakePatch(initial, {
     differ,
@@ -1733,8 +1733,8 @@ export const fiberRefUnsafeMakeHashSet = <A>(
 
 /** @internal */
 export const fiberRefUnsafeMakeContext = <A>(
-  initial: Context.Context<A>
-): FiberRef.FiberRef<Context.Context<A>> => {
+  initial: Context<A>
+): FiberRef<Context<A>> => {
   const differ = internalDiffer.environment<A>()
   return fiberRefUnsafeMakePatch(initial, {
     differ,
@@ -1746,11 +1746,11 @@ export const fiberRefUnsafeMakeContext = <A>(
 export const fiberRefUnsafeMakePatch = <Value, Patch>(
   initial: Value,
   options: {
-    readonly differ: Differ.Differ<Value, Patch>
+    readonly differ: Differ<Value, Patch>
     readonly fork: Patch
     readonly join?: (oldV: Value, newV: Value) => Value
   }
-): FiberRef.FiberRef<Value> => ({
+): FiberRef<Value> => ({
   [FiberRefTypeId]: fiberRefVariance,
   initial,
   diff: (oldValue, newValue) => options.differ.diff(oldValue, newValue),
@@ -1766,46 +1766,46 @@ export const fiberRefUnsafeMakePatch = <Value, Patch>(
 /** @internal */
 export const fiberRefUnsafeMakeRuntimeFlags = (
   initial: RuntimeFlags.RuntimeFlags
-): FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> =>
+): FiberRef<RuntimeFlags> =>
   fiberRefUnsafeMakePatch(initial, {
     differ: _runtimeFlags.differ,
     fork: _runtimeFlags.differ.empty
   })
 
 /** @internal */
-export const currentContext: FiberRef.FiberRef<Context.Context<never>> = globalValue(
+export const currentContext: FiberRef<Context<never>> = globalValue(
   Symbol.for("effect/FiberRef/currentContext"),
   () => fiberRefUnsafeMakeContext(Context.empty())
 )
 
 /** @internal */
-export const currentSchedulingPriority: FiberRef.FiberRef<number> = globalValue(
+export const currentSchedulingPriority: FiberRef<number> = globalValue(
   Symbol.for("effect/FiberRef/currentSchedulingPriority"),
   () => fiberRefUnsafeMake(0)
 )
 
 /** @internal */
-export const currentMaxOpsBeforeYield: FiberRef.FiberRef<number> = globalValue(
+export const currentMaxOpsBeforeYield: FiberRef<number> = globalValue(
   Symbol.for("effect/FiberRef/currentMaxOpsBeforeYield"),
   () => fiberRefUnsafeMake(2048)
 )
 
 /** @internal */
-export const currentLogAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, unknown>> = globalValue(
+export const currentLogAnnotations: FiberRef<HashMap<string, unknown>> = globalValue(
   Symbol.for("effect/FiberRef/currentLogAnnotation"),
   () => fiberRefUnsafeMake(HashMap.empty())
 )
 
 /** @internal */
-export const currentLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = globalValue(
+export const currentLogLevel: FiberRef<LogLevel> = globalValue(
   Symbol.for("effect/FiberRef/currentLogLevel"),
-  () => fiberRefUnsafeMake<LogLevel.LogLevel>(logLevelInfo)
+  () => fiberRefUnsafeMake<LogLevel>(logLevelInfo)
 )
 
 /** @internal */
-export const currentLogSpan: FiberRef.FiberRef<List.List<LogSpan.LogSpan>> = globalValue(
+export const currentLogSpan: FiberRef<List<LogSpan>> = globalValue(
   Symbol.for("effect/FiberRef/currentLogSpan"),
-  () => fiberRefUnsafeMake(List.empty<LogSpan.LogSpan>())
+  () => fiberRefUnsafeMake(List.empty<LogSpan>())
 )
 
 /** @internal */
@@ -1821,7 +1821,7 @@ export const withMaxOpsBeforeYield = dual<
 >(2, (self, scheduler) => fiberRefLocally(self, currentMaxOpsBeforeYield, scheduler))
 
 /** @internal */
-export const currentConcurrency: FiberRef.FiberRef<"unbounded" | number> = globalValue(
+export const currentConcurrency: FiberRef<"unbounded" | number> = globalValue(
   Symbol.for("effect/FiberRef/currentConcurrency"),
   () => fiberRefUnsafeMake<"unbounded" | number>("unbounded")
 )
@@ -1835,30 +1835,30 @@ export const currentRequestBatching = globalValue(
 )
 
 /** @internal */
-export const currentUnhandledErrorLogLevel: FiberRef.FiberRef<Option<LogLevel.LogLevel>> = globalValue(
+export const currentUnhandledErrorLogLevel: FiberRef<Option<LogLevel>> = globalValue(
   Symbol.for("effect/FiberRef/currentUnhandledErrorLogLevel"),
-  () => fiberRefUnsafeMake(Option.some<LogLevel.LogLevel>(logLevelDebug))
+  () => fiberRefUnsafeMake(Option.some<LogLevel>(logLevelDebug))
 )
 
 /** @internal */
 export const withUnhandledErrorLogLevel = dual<
-  (level: Option<LogLevel.LogLevel>) => <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>,
-  <R, E, B>(self: Effect<R, E, B>, level: Option<LogLevel.LogLevel>) => Effect<R, E, B>
+  (level: Option<LogLevel>) => <R, E, B>(self: Effect<R, E, B>) => Effect<R, E, B>,
+  <R, E, B>(self: Effect<R, E, B>, level: Option<LogLevel>) => Effect<R, E, B>
 >(2, (self, level) => fiberRefLocally(self, currentUnhandledErrorLogLevel, level))
 
 /** @internal */
-export const currentMetricLabels: FiberRef.FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>> = globalValue(
+export const currentMetricLabels: FiberRef<HashSet<MetricLabel>> = globalValue(
   Symbol.for("effect/FiberRef/currentMetricLabels"),
   () => fiberRefUnsafeMakeHashSet(HashSet.empty())
 )
 
 /* @internal */
-export const metricLabels: Effect<never, never, HashSet.HashSet<MetricLabel.MetricLabel>> = fiberRefGet(
+export const metricLabels: Effect<never, never, HashSet<MetricLabel>> = fiberRefGet(
   currentMetricLabels
 )
 
 /** @internal */
-export const currentForkScopeOverride: FiberRef.FiberRef<Option<fiberScope.FiberScope>> = globalValue(
+export const currentForkScopeOverride: FiberRef<Option<fiberScope.FiberScope>> = globalValue(
   Symbol.for("effect/FiberRef/currentForkScopeOverride"),
   () =>
     fiberRefUnsafeMake(Option.none(), {
@@ -1868,7 +1868,7 @@ export const currentForkScopeOverride: FiberRef.FiberRef<Option<fiberScope.Fiber
 )
 
 /** @internal */
-export const currentInterruptedCause: FiberRef.FiberRef<Cause.Cause<never>> = globalValue(
+export const currentInterruptedCause: FiberRef<Cause<never>> = globalValue(
   Symbol.for("effect/FiberRef/currentInterruptedCause"),
   () =>
     fiberRefUnsafeMake(internalCause.empty, {
@@ -1878,19 +1878,19 @@ export const currentInterruptedCause: FiberRef.FiberRef<Cause.Cause<never>> = gl
 )
 
 /** @internal */
-export const currentTracerTimingEnabled: FiberRef.FiberRef<boolean> = globalValue(
+export const currentTracerTimingEnabled: FiberRef<boolean> = globalValue(
   Symbol.for("effect/FiberRef/currentTracerTiming"),
   () => fiberRefUnsafeMake(true)
 )
 
 /** @internal */
-export const currentTracerSpanAnnotations: FiberRef.FiberRef<HashMap.HashMap<string, unknown>> = globalValue(
+export const currentTracerSpanAnnotations: FiberRef<HashMap<string, unknown>> = globalValue(
   Symbol.for("effect/FiberRef/currentTracerSpanAnnotations"),
   () => fiberRefUnsafeMake(HashMap.empty())
 )
 
 /** @internal */
-export const currentTracerSpanLinks: FiberRef.FiberRef<Chunk.Chunk<Tracer.SpanLink>> = globalValue(
+export const currentTracerSpanLinks: FiberRef<Chunk<Tracer.SpanLink>> = globalValue(
   Symbol.for("effect/FiberRef/currentTracerSpanLinks"),
   () => fiberRefUnsafeMake(Chunk.empty())
 )
@@ -1909,27 +1909,27 @@ export const CloseableScopeTypeId: Scope.CloseableScopeTypeId = Symbol.for(
 
 /* @internal */
 export const scopeAddFinalizer = (
-  self: Scope.Scope,
+  self: Scope,
   finalizer: Effect<never, never, unknown>
 ): Effect<never, never, void> => self.addFinalizer(() => asUnit(finalizer))
 
 /* @internal */
 export const scopeAddFinalizerExit = (
-  self: Scope.Scope,
-  finalizer: Scope.Scope.Finalizer
+  self: Scope,
+  finalizer: Scope.Finalizer
 ): Effect<never, never, void> => self.addFinalizer(finalizer)
 
 /* @internal */
 export const scopeClose = (
-  self: Scope.Scope.Closeable,
+  self: Scope.Closeable,
   exit: Exit<unknown, unknown>
 ): Effect<never, never, void> => self.close(exit)
 
 /* @internal */
 export const scopeFork = (
-  self: Scope.Scope,
+  self: Scope,
   strategy: ExecutionStrategy.ExecutionStrategy
-): Effect<never, never, Scope.Scope.Closeable> => self.fork(strategy)
+): Effect<never, never, Scope.Closeable> => self.fork(strategy)
 
 // -----------------------------------------------------------------------------
 // ReleaseMap
@@ -1940,12 +1940,12 @@ export type ReleaseMapState = {
   _tag: "Exited"
   nextKey: number
   exit: Exit<unknown, unknown>
-  update: (finalizer: Scope.Scope.Finalizer) => Scope.Scope.Finalizer
+  update: (finalizer: Scope.Finalizer) => Scope.Finalizer
 } | {
   _tag: "Running"
   nextKey: number
-  finalizers: Map<number, Scope.Scope.Finalizer>
-  update: (finalizer: Scope.Scope.Finalizer) => Scope.Scope.Finalizer
+  finalizers: Map<number, Scope.Finalizer>
+  update: (finalizer: Scope.Finalizer) => Scope.Finalizer
 }
 
 /** @internal */
@@ -1955,14 +1955,14 @@ export interface ReleaseMap {
 
 /* @internal */
 export const releaseMapAdd = dual<
-  (finalizer: Scope.Scope.Finalizer) => (self: ReleaseMap) => Effect<never, never, Scope.Scope.Finalizer>,
-  (self: ReleaseMap, finalizer: Scope.Scope.Finalizer) => Effect<never, never, Scope.Scope.Finalizer>
+  (finalizer: Scope.Finalizer) => (self: ReleaseMap) => Effect<never, never, Scope.Finalizer>,
+  (self: ReleaseMap, finalizer: Scope.Finalizer) => Effect<never, never, Scope.Finalizer>
 >(2, (self, finalizer) =>
   map(
     releaseMapAddIfOpen(self, finalizer),
     Option.match({
-      onNone: (): Scope.Scope.Finalizer => () => unit,
-      onSome: (key): Scope.Scope.Finalizer => (exit) => releaseMapRelease(key, exit)(self)
+      onNone: (): Scope.Finalizer => () => unit,
+      onSome: (key): Scope.Finalizer => (exit) => releaseMapRelease(key, exit)(self)
     })
   ))
 
@@ -1989,8 +1989,8 @@ export const releaseMapRelease = dual<
 
 /* @internal */
 export const releaseMapAddIfOpen = dual<
-  (finalizer: Scope.Scope.Finalizer) => (self: ReleaseMap) => Effect<never, never, Option<number>>,
-  (self: ReleaseMap, finalizer: Scope.Scope.Finalizer) => Effect<never, never, Option<number>>
+  (finalizer: Scope.Finalizer) => (self: ReleaseMap) => Effect<never, never, Option<number>>,
+  (self: ReleaseMap, finalizer: Scope.Finalizer) => Effect<never, never, Option<number>>
 >(2, (self, finalizer) =>
   suspend(() => {
     switch (self.state._tag) {
@@ -2009,12 +2009,12 @@ export const releaseMapAddIfOpen = dual<
 
 /* @internal */
 export const releaseMapGet = dual<
-  (key: number) => (self: ReleaseMap) => Effect<never, never, Option<Scope.Scope.Finalizer>>,
-  (self: ReleaseMap, key: number) => Effect<never, never, Option<Scope.Scope.Finalizer>>
+  (key: number) => (self: ReleaseMap) => Effect<never, never, Option<Scope.Finalizer>>,
+  (self: ReleaseMap, key: number) => Effect<never, never, Option<Scope.Finalizer>>
 >(
   2,
   (self, key) =>
-    sync((): Option<Scope.Scope.Finalizer> =>
+    sync((): Option<Scope.Finalizer> =>
       self.state._tag === "Running" ? Option.fromNullable(self.state.finalizers.get(key)) : Option.none()
     )
 )
@@ -2023,13 +2023,13 @@ export const releaseMapGet = dual<
 export const releaseMapReplace = dual<
   (
     key: number,
-    finalizer: Scope.Scope.Finalizer
-  ) => (self: ReleaseMap) => Effect<never, never, Option<Scope.Scope.Finalizer>>,
+    finalizer: Scope.Finalizer
+  ) => (self: ReleaseMap) => Effect<never, never, Option<Scope.Finalizer>>,
   (
     self: ReleaseMap,
     key: number,
-    finalizer: Scope.Scope.Finalizer
-  ) => Effect<never, never, Option<Scope.Scope.Finalizer>>
+    finalizer: Scope.Finalizer
+  ) => Effect<never, never, Option<Scope.Finalizer>>
 >(3, (self, key, finalizer) =>
   suspend(() => {
     switch (self.state._tag) {
@@ -2046,8 +2046,8 @@ export const releaseMapReplace = dual<
 
 /* @internal */
 export const releaseMapRemove = dual<
-  (key: number) => (self: ReleaseMap) => Effect<never, never, Option<Scope.Scope.Finalizer>>,
-  (self: ReleaseMap, key: number) => Effect<never, never, Option<Scope.Scope.Finalizer>>
+  (key: number) => (self: ReleaseMap) => Effect<never, never, Option<Scope.Finalizer>>,
+  (self: ReleaseMap, key: number) => Effect<never, never, Option<Scope.Finalizer>>
 >(2, (self, key) =>
   sync(() => {
     if (self.state._tag === "Exited") {
@@ -2114,7 +2114,7 @@ export const exitAsUnit = <E, A>(self: Exit<E, A>): Exit<E, void> =>
   exitAs(self, void 0) as Exit<E, void>
 
 /** @internal */
-export const exitCauseOption = <E, A>(self: Exit<E, A>): Option<Cause.Cause<E>> => {
+export const exitCauseOption = <E, A>(self: Exit<E, A>): Option<Cause<E>> => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
       return Option.some(self.i0)
@@ -2156,7 +2156,7 @@ export const exitFail = <E>(error: E): Exit<E, never> =>
   exitFailCause(internalCause.fail(error)) as Exit<E, never>
 
 /** @internal */
-export const exitFailCause = <E>(cause: Cause.Cause<E>): Exit<E, never> => {
+export const exitFailCause = <E>(cause: Cause<E>): Exit<E, never> => {
   const effect = new EffectPrimitiveFailure(OpCodes.OP_FAILURE) as any
   effect.i0 = cause
   return effect
@@ -2248,8 +2248,8 @@ export const exitFromOption = <A>(option: Option<A>): Exit<void, A> => {
 
 /** @internal */
 export const exitGetOrElse = dual<
-  <E, A2>(orElse: (cause: Cause.Cause<E>) => A2) => <A1>(self: Exit<E, A1>) => A1 | A2,
-  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause.Cause<E>) => A2) => A1 | A2
+  <E, A2>(orElse: (cause: Cause<E>) => A2) => <A1>(self: Exit<E, A1>) => A1 | A2,
+  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause<E>) => A2) => A1 | A2
 >(2, (self, orElse) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
@@ -2323,9 +2323,9 @@ export const exitMapError = dual<
 
 /** @internal */
 export const exitMapErrorCause = dual<
-  <E, E2>(f: (cause: Cause.Cause<E>) => Cause.Cause<E2>) => <A>(self: Exit<E, A>) => Exit<E2, A>,
-  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause.Cause<E>) => Cause.Cause<E2>) => Exit<E2, A>
->(2, <E, A, E2>(self: Exit<E, A>, f: (cause: Cause.Cause<E>) => Cause.Cause<E2>) => {
+  <E, E2>(f: (cause: Cause<E>) => Cause<E2>) => <A>(self: Exit<E, A>) => Exit<E2, A>,
+  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause<E>) => Cause<E2>) => Exit<E2, A>
+>(2, <E, A, E2>(self: Exit<E, A>, f: (cause: Cause<E>) => Cause<E2>) => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
       return exitFailCause(f(self.i0)) as Exit<E2, A>
@@ -2339,11 +2339,11 @@ export const exitMapErrorCause = dual<
 /** @internal */
 export const exitMatch = dual<
   <E, A, Z1, Z2>(options: {
-    readonly onFailure: (cause: Cause.Cause<E>) => Z1
+    readonly onFailure: (cause: Cause<E>) => Z1
     readonly onSuccess: (a: A) => Z2
   }) => (self: Exit<E, A>) => Z1 | Z2,
   <E, A, Z1, Z2>(self: Exit<E, A>, options: {
-    readonly onFailure: (cause: Cause.Cause<E>) => Z1
+    readonly onFailure: (cause: Cause<E>) => Z1
     readonly onSuccess: (a: A) => Z2
   }) => Z1 | Z2
 >(2, (self, { onFailure, onSuccess }) => {
@@ -2361,14 +2361,14 @@ export const exitMatch = dual<
 export const exitMatchEffect = dual<
   <E, A, R, E2, A2, R2, E3, A3>(
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R, E2, A2>
+      readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
       readonly onSuccess: (a: A) => Effect<R2, E3, A3>
     }
   ) => (self: Exit<E, A>) => Effect<R | R2, E2 | E3, A2 | A3>,
   <E, A, R, E2, A2, R2, E3, A3>(
     self: Exit<E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R, E2, A2>
+      readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
       readonly onSuccess: (a: A) => Effect<R2, E3, A3>
     }
   ) => Effect<R | R2, E2 | E3, A2 | A3>
@@ -2459,7 +2459,7 @@ export const exitZipWith = dual<
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ) => (self: Exit<E, A>) => Exit<E | E2, C>,
   <E, E2, A, B, C>(
@@ -2467,7 +2467,7 @@ export const exitZipWith = dual<
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ) => Exit<E | E2, C>
 >(3, (
@@ -2501,7 +2501,7 @@ export const exitZipWith = dual<
 
 const exitCollectAllInternal = <E, A>(
   exits: Iterable<Exit<E, A>>,
-  combineCauses: (causeA: Cause.Cause<E>, causeB: Cause.Cause<E>) => Cause.Cause<E>
+  combineCauses: (causeA: Cause<E>, causeB: Cause<E>) => Cause<E>
 ): Option<Exit<E, Array<A>>> => {
   const list = Chunk.fromIterable(exits)
   if (!Chunk.isNonEmpty(list)) {
@@ -2510,7 +2510,7 @@ const exitCollectAllInternal = <E, A>(
   return pipe(
     Chunk.tailNonEmpty(list),
     ReadonlyArray.reduce(
-      pipe(Chunk.headNonEmpty(list), exitMap<A, Chunk.Chunk<A>>(Chunk.of)),
+      pipe(Chunk.headNonEmpty(list), exitMap<A, Chunk<A>>(Chunk.of)),
       (accumulator, current) =>
         pipe(
           accumulator,
@@ -2531,7 +2531,7 @@ const exitCollectAllInternal = <E, A>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const deferredUnsafeMake = <E, A>(fiberId: FiberId.FiberId): Deferred.Deferred<E, A> => ({
+export const deferredUnsafeMake = <E, A>(fiberId: FiberId.FiberId): Deferred<E, A> => ({
   [deferred.DeferredTypeId]: deferred.deferredVariance,
   state: MutableRef.make(deferred.pending([])),
   blockingOn: fiberId,
@@ -2541,15 +2541,15 @@ export const deferredUnsafeMake = <E, A>(fiberId: FiberId.FiberId): Deferred.Def
 })
 
 /* @internal */
-export const deferredMake = <E, A>(): Effect<never, never, Deferred.Deferred<E, A>> =>
+export const deferredMake = <E, A>(): Effect<never, never, Deferred<E, A>> =>
   flatMap(fiberId, (id) => deferredMakeAs<E, A>(id))
 
 /* @internal */
-export const deferredMakeAs = <E, A>(fiberId: FiberId.FiberId): Effect<never, never, Deferred.Deferred<E, A>> =>
+export const deferredMakeAs = <E, A>(fiberId: FiberId.FiberId): Effect<never, never, Deferred<E, A>> =>
   sync(() => deferredUnsafeMake<E, A>(fiberId))
 
 /* @internal */
-export const deferredAwait = <E, A>(self: Deferred.Deferred<E, A>): Effect<never, E, A> =>
+export const deferredAwait = <E, A>(self: Deferred<E, A>): Effect<never, E, A> =>
   asyncEither<never, E, A>((k) => {
     const state = MutableRef.get(self.state)
     switch (state._tag) {
@@ -2568,14 +2568,14 @@ export const deferredAwait = <E, A>(self: Deferred.Deferred<E, A>): Effect<never
 
 /* @internal */
 export const deferredComplete = dual<
-  <E, A>(effect: Effect<never, E, A>) => (self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, effect: Effect<never, E, A>) => Effect<never, never, boolean>
+  <E, A>(effect: Effect<never, E, A>) => (self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, effect: Effect<never, E, A>) => Effect<never, never, boolean>
 >(2, (self, effect) => intoDeferred(effect, self))
 
 /* @internal */
 export const deferredCompleteWith = dual<
-  <E, A>(effect: Effect<never, E, A>) => (self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, effect: Effect<never, E, A>) => Effect<never, never, boolean>
+  <E, A>(effect: Effect<never, E, A>) => (self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, effect: Effect<never, E, A>) => Effect<never, never, boolean>
 >(2, (self, effect) =>
   sync(() => {
     const state = MutableRef.get(self.state)
@@ -2595,63 +2595,63 @@ export const deferredCompleteWith = dual<
 
 /* @internal */
 export const deferredDone = dual<
-  <E, A>(exit: Exit<E, A>) => (self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, exit: Exit<E, A>) => Effect<never, never, boolean>
+  <E, A>(exit: Exit<E, A>) => (self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, exit: Exit<E, A>) => Effect<never, never, boolean>
 >(2, (self, exit) => deferredCompleteWith(self, exit))
 
 /* @internal */
 export const deferredFail = dual<
-  <E>(error: E) => <A>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, error: E) => Effect<never, never, boolean>
+  <E>(error: E) => <A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, error: E) => Effect<never, never, boolean>
 >(2, (self, error) => deferredCompleteWith(self, fail(error)))
 
 /* @internal */
 export const deferredFailSync = dual<
-  <E>(evaluate: LazyArg<E>) => <A>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, evaluate: LazyArg<E>) => Effect<never, never, boolean>
+  <E>(evaluate: LazyArg<E>) => <A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<E>) => Effect<never, never, boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, failSync(evaluate)))
 
 /* @internal */
 export const deferredFailCause = dual<
-  <E>(cause: Cause.Cause<E>) => <A>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, cause: Cause.Cause<E>) => Effect<never, never, boolean>
+  <E>(cause: Cause<E>) => <A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, cause: Cause<E>) => Effect<never, never, boolean>
 >(2, (self, cause) => deferredCompleteWith(self, failCause(cause)))
 
 /* @internal */
 export const deferredFailCauseSync = dual<
-  <E>(evaluate: LazyArg<Cause.Cause<E>>) => <A>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, evaluate: LazyArg<Cause.Cause<E>>) => Effect<never, never, boolean>
+  <E>(evaluate: LazyArg<Cause<E>>) => <A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<Cause<E>>) => Effect<never, never, boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, failCauseSync(evaluate)))
 
 /* @internal */
 export const deferredDie = dual<
-  (defect: unknown) => <E, A>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, defect: unknown) => Effect<never, never, boolean>
+  (defect: unknown) => <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, defect: unknown) => Effect<never, never, boolean>
 >(2, (self, defect) => deferredCompleteWith(self, die(defect)))
 
 /* @internal */
 export const deferredDieSync = dual<
-  (evaluate: LazyArg<unknown>) => <E, A>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, evaluate: LazyArg<unknown>) => Effect<never, never, boolean>
+  (evaluate: LazyArg<unknown>) => <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<unknown>) => Effect<never, never, boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, dieSync(evaluate)))
 
 /* @internal */
-export const deferredInterrupt = <E, A>(self: Deferred.Deferred<E, A>): Effect<never, never, boolean> =>
+export const deferredInterrupt = <E, A>(self: Deferred<E, A>): Effect<never, never, boolean> =>
   flatMap(fiberId, (fiberId) => deferredCompleteWith(self, interruptWith(fiberId)))
 
 /* @internal */
 export const deferredInterruptWith = dual<
-  (fiberId: FiberId.FiberId) => <E, A>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, fiberId: FiberId.FiberId) => Effect<never, never, boolean>
+  (fiberId: FiberId.FiberId) => <E, A>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, fiberId: FiberId.FiberId) => Effect<never, never, boolean>
 >(2, (self, fiberId) => deferredCompleteWith(self, interruptWith(fiberId)))
 
 /* @internal */
-export const deferredIsDone = <E, A>(self: Deferred.Deferred<E, A>): Effect<never, never, boolean> =>
+export const deferredIsDone = <E, A>(self: Deferred<E, A>): Effect<never, never, boolean> =>
   sync(() => MutableRef.get(self.state)._tag === DeferredOpCodes.OP_STATE_DONE)
 
 /* @internal */
 export const deferredPoll = <E, A>(
-  self: Deferred.Deferred<E, A>
+  self: Deferred<E, A>
 ): Effect<never, never, Option<Effect<never, E, A>>> =>
   sync(() => {
     const state = MutableRef.get(self.state)
@@ -2667,18 +2667,18 @@ export const deferredPoll = <E, A>(
 
 /* @internal */
 export const deferredSucceed = dual<
-  <A>(value: A) => <E>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, value: A) => Effect<never, never, boolean>
+  <A>(value: A) => <E>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, value: A) => Effect<never, never, boolean>
 >(2, (self, value) => deferredCompleteWith(self, succeed(value)))
 
 /* @internal */
 export const deferredSync = dual<
-  <A>(evaluate: LazyArg<A>) => <E>(self: Deferred.Deferred<E, A>) => Effect<never, never, boolean>,
-  <E, A>(self: Deferred.Deferred<E, A>, evaluate: LazyArg<A>) => Effect<never, never, boolean>
+  <A>(evaluate: LazyArg<A>) => <E>(self: Deferred<E, A>) => Effect<never, never, boolean>,
+  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<A>) => Effect<never, never, boolean>
 >(2, (self, evaluate) => deferredCompleteWith(self, sync(evaluate)))
 
 /** @internal */
-export const deferredUnsafeDone = <E, A>(self: Deferred.Deferred<E, A>, effect: Effect<never, E, A>): void => {
+export const deferredUnsafeDone = <E, A>(self: Deferred<E, A>, effect: Effect<never, E, A>): void => {
   const state = MutableRef.get(self.state)
   if (state._tag === DeferredOpCodes.OP_STATE_PENDING) {
     pipe(self.state, MutableRef.set(deferred.done(effect)))
@@ -2689,7 +2689,7 @@ export const deferredUnsafeDone = <E, A>(self: Deferred.Deferred<E, A>, effect: 
 }
 
 const deferredInterruptJoiner = <E, A>(
-  self: Deferred.Deferred<E, A>,
+  self: Deferred<E, A>,
   joiner: (effect: Effect<never, E, A>) => void
 ): Effect<never, never, void> =>
   sync(() => {
@@ -2709,24 +2709,24 @@ const deferredInterruptJoiner = <E, A>(
 const constContext = fiberRefGet(currentContext)
 
 /* @internal */
-export const context = <R>(): Effect<R, never, Context.Context<R>> =>
-  constContext as Effect<never, never, Context.Context<R>>
+export const context = <R>(): Effect<R, never, Context<R>> =>
+  constContext as Effect<never, never, Context<R>>
 
 /* @internal */
 export const contextWith = <R0, A>(
-  f: (context: Context.Context<R0>) => A
+  f: (context: Context<R0>) => A
 ): Effect<R0, never, A> => map(context<R0>(), f)
 
 /* @internal */
 export const contextWithEffect = <R, R0, E, A>(
-  f: (context: Context.Context<R0>) => Effect<R, E, A>
+  f: (context: Context<R0>) => Effect<R, E, A>
 ): Effect<R | R0, E, A> => flatMap(context<R0>(), f)
 
 /* @internal */
 export const provideContext = dual<
-  <R>(context: Context.Context<R>) => <E, A>(self: Effect<R, E, A>) => Effect<never, E, A>,
-  <R, E, A>(self: Effect<R, E, A>, context: Context.Context<R>) => Effect<never, E, A>
->(2, <R, E, A>(self: Effect<R, E, A>, context: Context.Context<R>) =>
+  <R>(context: Context<R>) => <E, A>(self: Effect<R, E, A>) => Effect<never, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, context: Context<R>) => Effect<never, E, A>
+>(2, <R, E, A>(self: Effect<R, E, A>, context: Context<R>) =>
   fiberRefLocally(
     currentContext,
     context
@@ -2734,9 +2734,9 @@ export const provideContext = dual<
 
 /* @internal */
 export const provideSomeContext = dual<
-  <R>(context: Context.Context<R>) => <R1, E, A>(self: Effect<R1, E, A>) => Effect<Exclude<R1, R>, E, A>,
-  <R, R1, E, A>(self: Effect<R1, E, A>, context: Context.Context<R>) => Effect<Exclude<R1, R>, E, A>
->(2, <R1, R, E, A>(self: Effect<R1, E, A>, context: Context.Context<R>) =>
+  <R>(context: Context<R>) => <R1, E, A>(self: Effect<R1, E, A>) => Effect<Exclude<R1, R>, E, A>,
+  <R, R1, E, A>(self: Effect<R1, E, A>, context: Context<R>) => Effect<Exclude<R1, R>, E, A>
+>(2, <R1, R, E, A>(self: Effect<R1, E, A>, context: Context<R>) =>
   fiberRefLocallyWith(
     currentContext,
     (parent) => Context.merge(parent, context)
@@ -2745,16 +2745,16 @@ export const provideSomeContext = dual<
 /* @internal */
 export const mapInputContext = dual<
   <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
+    f: (context: Context<R0>) => Context<R>
   ) => <E, A>(self: Effect<R, E, A>) => Effect<R0, E, A>,
   <R0, R, E, A>(
     self: Effect<R, E, A>,
-    f: (context: Context.Context<R0>) => Context.Context<R>
+    f: (context: Context<R0>) => Context<R>
   ) => Effect<R0, E, A>
 >(2, <R0, R, E, A>(
   self: Effect<R, E, A>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
-) => contextWithEffect((context: Context.Context<R0>) => provideContext(self, f(context))))
+  f: (context: Context<R0>) => Context<R>
+) => contextWithEffect((context: Context<R0>) => provideContext(self, f(context))))
 
 // -----------------------------------------------------------------------------
 // Tracing

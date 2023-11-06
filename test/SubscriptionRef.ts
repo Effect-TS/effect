@@ -1,15 +1,15 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as Number from "effect/Number"
-import * as Random from "effect/Random"
+import { Number } from "effect/Number"
+import { Random } from "effect/Random"
 import { Stream } from "effect/Stream"
-import * as SubscriptionRef from "effect/SubscriptionRef"
+import { SubscriptionRef } from "effect/SubscriptionRef"
 import { assert, describe } from "vitest"
 
 describe.concurrent("SubscriptionRef", () => {
@@ -73,7 +73,7 @@ describe.concurrent("SubscriptionRef", () => {
 
   it.effect("concurrent subscribes and unsubscribes are handled correctly", () =>
     Effect.gen(function*($) {
-      const subscriber = (subscriptionRef: SubscriptionRef.SubscriptionRef<number>) =>
+      const subscriber = (subscriptionRef: SubscriptionRef<number>) =>
         pipe(
           Random.nextIntBetween(0, 200),
           Effect.flatMap((n) =>

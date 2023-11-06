@@ -1,9 +1,9 @@
-import * as Eq from "effect/Equal"
+import { Eq } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
+import { Hash } from "effect/Hash"
 import * as N from "effect/Number"
 import * as O from "effect/Option"
-import * as SM from "effect/SortedMap"
+import { SM } from "effect/SortedMap"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 

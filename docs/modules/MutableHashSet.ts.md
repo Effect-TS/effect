@@ -122,7 +122,7 @@ export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */
-  readonly keyMap: MutableHashMap.MutableHashMap<V, boolean>
+  readonly keyMap: MutableHashMap<V, boolean>
 }
 ```
 

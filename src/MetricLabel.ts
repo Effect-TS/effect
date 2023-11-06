@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Equal from "./Equal.js"
+import type { Equal } from "./Equal.js"
 import * as internal from "./internal/metric/label.js"
 import type { Pipeable } from "./Pipeable.js"
 
@@ -28,7 +28,7 @@ export type MetricLabelTypeId = typeof MetricLabelTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MetricLabel extends Equal.Equal, Pipeable {
+export interface MetricLabel extends Equal, Pipeable {
   readonly [MetricLabelTypeId]: MetricLabelTypeId
   readonly key: string
   readonly value: string

@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Data from "./Data.js"
-import type * as Duration from "./Duration.js"
+import type { Data } from "./Data.js"
+import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/pool.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Scope from "./Scope.js"
+import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -34,7 +34,7 @@ export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
    * acquisition fails, then the returned effect will fail for that same reason.
    * Retrying a failed acquisition attempt will repeat the acquisition attempt.
    */
-  get(): Effect<Scope.Scope, E, A>
+  get(): Effect<Scope, E, A>
 
   /**
    * Invalidates the specified item. This will cause the pool to eventually
@@ -82,7 +82,7 @@ export const make: <R, E, A>(
     readonly acquire: Effect<R, E, A>
     readonly size: number
   }
-) => Effect<Scope.Scope | R, never, Pool<E, A>> = internal.make
+) => Effect<Scope | R, never, Pool<E, A>> = internal.make
 
 /**
  * Makes a new pool with the specified minimum and maximum sizes and time to
@@ -93,10 +93,10 @@ export const make: <R, E, A>(
  * unspecified order.
  *
  * ```ts
- * import * as Duration from "./Duration"
+ * import { Duration } from "./Duration"
  * import { Effect } from "effect/Effect"
- * import * as Pool from "effect/Pool"
- * import * as Scope from "effect/Scope"
+ * import { Pool } from "effect/Pool"
+ * import { Scope } from "effect/Scope"
  * import { pipe } from "./Function"
  *
  * Effect.scoped(
@@ -122,7 +122,7 @@ export const makeWithTTL: <R, E, A>(options: {
   readonly min: number
   readonly max: number
   readonly timeToLive: Duration.DurationInput
-}) => Effect<Scope.Scope | R, never, Pool<E, A>> = internal.makeWithTTL
+}) => Effect<Scope | R, never, Pool<E, A>> = internal.makeWithTTL
 
 /**
  * Retrieves an item from the pool in a scoped effect. Note that if
@@ -132,7 +132,7 @@ export const makeWithTTL: <R, E, A>(options: {
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Pool<E, A>) => Effect<Scope.Scope, E, A> = internal.get
+export const get: <E, A>(self: Pool<E, A>) => Effect<Scope, E, A> = internal.get
 
 /**
  * Invalidates the specified item. This will cause the pool to eventually
@@ -143,6 +143,6 @@ export const get: <E, A>(self: Pool<E, A>) => Effect<Scope.Scope, E, A> = intern
  * @category combinators
  */
 export const invalidate: {
-  <A>(value: A): <E>(self: Pool<E, A>) => Effect<Scope.Scope, never, void>
-  <E, A>(self: Pool<E, A>, value: A): Effect<Scope.Scope, never, void>
+  <A>(value: A): <E>(self: Pool<E, A>) => Effect<Scope, never, void>
+  <E, A>(self: Pool<E, A>, value: A): Effect<Scope, never, void>
 } = internal.invalidate

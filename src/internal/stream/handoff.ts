@@ -1,8 +1,8 @@
-import * as Deferred from "../../Deferred.js"
+import { Deferred } from "../../Deferred.js"
 import { Effect } from "../../Effect.js"
 import { dual, pipe } from "../../Function.js"
 import { Option } from "../../Option.js"
-import * as Ref from "../../Ref.js"
+import { Ref } from "../../Ref.js"
 
 /** @internal */
 export const HandoffTypeId = Symbol.for("effect/Stream/Handoff")
@@ -18,7 +18,7 @@ export type HandoffTypeId = typeof HandoffTypeId
  * @internal
  */
 export interface Handoff<A> extends Handoff.Variance<A> {
-  readonly ref: Ref.Ref<Handoff.State<A>>
+  readonly ref: Ref<Handoff.State<A>>
 }
 
 /** @internal */
@@ -48,25 +48,25 @@ export declare namespace Handoff {
   /** @internal */
   export interface Empty {
     readonly _tag: OP_HANDOFF_STATE_EMPTY
-    readonly notifyConsumer: Deferred.Deferred<never, void>
+    readonly notifyConsumer: Deferred<never, void>
   }
 
   /** @internal */
   export interface Full<A> {
     readonly _tag: OP_HANDOFF_STATE_FULL
     readonly value: A
-    readonly notifyProducer: Deferred.Deferred<never, void>
+    readonly notifyProducer: Deferred<never, void>
   }
 }
 
 /** @internal */
-const handoffStateEmpty = (notifyConsumer: Deferred.Deferred<never, void>): Handoff.State<never> => ({
+const handoffStateEmpty = (notifyConsumer: Deferred<never, void>): Handoff.State<never> => ({
   _tag: OP_HANDOFF_STATE_EMPTY,
   notifyConsumer
 })
 
 /** @internal */
-const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, void>): Handoff.State<A> => ({
+const handoffStateFull = <A>(value: A, notifyProducer: Deferred<never, void>): Handoff.State<A> => ({
   _tag: OP_HANDOFF_STATE_FULL,
   value,
   notifyProducer
@@ -74,8 +74,8 @@ const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, 
 
 /** @internal */
 const handoffStateMatch = <A, Z>(
-  onEmpty: (notifyConsumer: Deferred.Deferred<never, void>) => Z,
-  onFull: (value: A, notifyProducer: Deferred.Deferred<never, void>) => Z
+  onEmpty: (notifyConsumer: Deferred<never, void>) => Z,
+  onFull: (value: A, notifyProducer: Deferred<never, void>) => Z
 ) => {
   return (self: Handoff.State<A>): Z => {
     switch (self._tag) {

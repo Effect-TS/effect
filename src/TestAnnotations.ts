@@ -1,21 +1,21 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context.js"
+import { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
-import * as Equal from "./Equal.js"
-import type * as Fiber from "./Fiber.js"
+import { Equal } from "./Equal.js"
+import type { Fiber } from "./Fiber.js"
 import { pipe } from "./Function.js"
 import * as effect from "./internal/core-effect.js"
 import * as core from "./internal/core.js"
 import * as fiber from "./internal/fiber.js"
-import * as MutableRef from "./MutableRef.js"
+import { MutableRef } from "./MutableRef.js"
 import { hasProperty } from "./Predicate.js"
-import * as RA from "./ReadonlyArray.js"
-import * as Ref from "./Ref.js"
-import * as SortedSet from "./SortedSet.js"
-import * as TestAnnotation from "./TestAnnotation.js"
-import * as TestAnnotationMap from "./TestAnnotationMap.js"
+import { ReadonlyArray as RA } from "./ReadonlyArray.js"
+import { Ref } from "./Ref.js"
+import { SortedSet } from "./SortedSet.js"
+import { TestAnnotation } from "./TestAnnotation.js"
+import { TestAnnotationMap } from "./TestAnnotationMap.js"
 
 /**
  * @since 2.0.0
@@ -40,38 +40,38 @@ export type TestAnnotationsTypeId = typeof TestAnnotationsTypeId
 export interface TestAnnotations {
   readonly [TestAnnotationsTypeId]: TestAnnotationsTypeId
 
-  readonly ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>
+  readonly ref: Ref<TestAnnotationMap>
 
   /**
    * Accesses an `Annotations` instance in the context and retrieves the
    * annotation of the specified type, or its default value if there is none.
    */
-  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect<never, never, A>
+  get<A>(key: TestAnnotation<A>): Effect<never, never, A>
 
   /**
    * Accesses an `Annotations` instance in the context and appends the
    * specified annotation to the annotation map.
    */
-  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect<never, never, void>
+  annotate<A>(key: TestAnnotation<A>, value: A): Effect<never, never, void>
 
   /**
    * Returns the set of all fibers in this test.
    */
-  supervisedFibers(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
+  supervisedFibers(): Effect<never, never, SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
 }
 
 /** @internal */
 class AnnotationsImpl implements TestAnnotations {
   readonly [TestAnnotationsTypeId]: TestAnnotationsTypeId = TestAnnotationsTypeId
-  constructor(readonly ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>) {
+  constructor(readonly ref: Ref<TestAnnotationMap>) {
   }
-  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect<never, never, A> {
+  get<A>(key: TestAnnotation<A>): Effect<never, never, A> {
     return core.map(Ref.get(this.ref), TestAnnotationMap.get(key))
   }
-  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect<never, never, void> {
+  annotate<A>(key: TestAnnotation<A>, value: A): Effect<never, never, void> {
     return Ref.update(this.ref, TestAnnotationMap.annotate(key, value))
   }
-  supervisedFibers(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
+  supervisedFibers(): Effect<never, never, SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
     return effect.descriptorWith((descriptor) =>
       core.flatMap(this.get(TestAnnotation.fibers), (either) => {
         switch (either._tag) {
@@ -108,5 +108,5 @@ export const isTestAnnotations = (u: unknown): u is TestAnnotations => hasProper
  * @since 2.0.0
  */
 export const make = (
-  ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>
+  ref: Ref<TestAnnotationMap>
 ): TestAnnotations => new AnnotationsImpl(ref)

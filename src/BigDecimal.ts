@@ -14,10 +14,10 @@
  * @since 2.0.0
  */
 
-import * as Equal from "./Equal.js"
+import { Equal } from "./Equal.js"
 import * as equivalence from "./Equivalence.js"
 import { dual, pipe } from "./Function.js"
-import * as Hash from "./Hash.js"
+import { Hash } from "./Hash.js"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.js"
 import { Option } from "./Option.js"
 import * as order from "./Order.js"
@@ -43,7 +43,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
+export interface BigDecimal extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number

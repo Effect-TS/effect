@@ -437,7 +437,7 @@ Converts the specified `List` to a `Chunk`.
 **Signature**
 
 ```ts
-export declare const toChunk: <A>(self: List<A>) => Chunk.Chunk<A>
+export declare const toChunk: <A>(self: List<A>) => Chunk<A>
 ```
 
 Added in v2.0.0
@@ -525,7 +525,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const getEquivalence: <A>(isEquivalent: Equivalence.Equivalence<A>) => Equivalence.Equivalence<List<A>>
+export declare const getEquivalence: <A>(isEquivalent: Equivalence<A>) => Equivalence<List<A>>
 ```
 
 Added in v2.0.0
@@ -623,7 +623,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Cons<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Cons"
   readonly head: A
@@ -654,7 +654,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Nil<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Nil"
 }

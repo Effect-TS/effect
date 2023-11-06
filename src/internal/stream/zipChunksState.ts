@@ -1,4 +1,4 @@
-import type * as Chunk from "../../Chunk.js"
+import type { Chunk } from "../../Chunk.js"
 
 /** @internal */
 export type ZipChunksState<A, A2> = PullBoth | PullLeft<A2> | PullRight<A>
@@ -29,13 +29,13 @@ export interface PullBoth {
 /** @internal */
 export interface PullLeft<A> {
   readonly _tag: OP_PULL_LEFT
-  readonly rightChunk: Chunk.Chunk<A>
+  readonly rightChunk: Chunk<A>
 }
 
 /** @internal */
 export interface PullRight<A> {
   readonly _tag: OP_PULL_RIGHT
-  readonly leftChunk: Chunk.Chunk<A>
+  readonly leftChunk: Chunk<A>
 }
 
 /** @internal */
@@ -44,13 +44,13 @@ export const PullBoth: ZipChunksState<never, never> = {
 }
 
 /** @internal */
-export const PullLeft = <A>(rightChunk: Chunk.Chunk<A>): ZipChunksState<never, A> => ({
+export const PullLeft = <A>(rightChunk: Chunk<A>): ZipChunksState<never, A> => ({
   _tag: OP_PULL_LEFT,
   rightChunk
 })
 
 /** @internal */
-export const PullRight = <A>(leftChunk: Chunk.Chunk<A>): ZipChunksState<A, never> => ({
+export const PullRight = <A>(leftChunk: Chunk<A>): ZipChunksState<A, never> => ({
   _tag: OP_PULL_RIGHT,
   leftChunk
 })

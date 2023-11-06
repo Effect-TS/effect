@@ -1,11 +1,11 @@
 import { pipe } from "../../Function.js"
-import * as HashSet from "../../HashSet.js"
-import type * as MetricHook from "../../MetricHook.js"
-import type * as MetricKey from "../../MetricKey.js"
-import type * as MetricKeyType from "../../MetricKeyType.js"
-import type * as MetricPair from "../../MetricPair.js"
-import type * as MetricRegistry from "../../MetricRegistry.js"
-import * as MutableHashMap from "../../MutableHashMap.js"
+import { HashSet } from "../../HashSet.js"
+import type { MetricHook } from "../../MetricHook.js"
+import type { MetricKey } from "../../MetricKey.js"
+import type { MetricKeyType } from "../../MetricKeyType.js"
+import type { MetricPair } from "../../MetricPair.js"
+import type { MetricRegistry } from "../../MetricRegistry.js"
+import { MutableHashMap } from "../../MutableHashMap.js"
 import { Option } from "../../Option.js"
 import * as metricHook from "./hook.js"
 import * as metricKeyType from "./keyType.js"
@@ -20,48 +20,48 @@ export const MetricRegistryTypeId: MetricRegistry.MetricRegistryTypeId = Symbol.
 ) as MetricRegistry.MetricRegistryTypeId
 
 /** @internal */
-class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
+class MetricRegistryImpl implements MetricRegistry {
   readonly [MetricRegistryTypeId]: MetricRegistry.MetricRegistryTypeId = MetricRegistryTypeId
 
   private map = MutableHashMap.empty<
-    MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>,
-    MetricHook.MetricHook.Root
+    MetricKey<MetricKeyType.Untyped>,
+    MetricHook.Root
   >()
 
-  snapshot(): HashSet.HashSet<MetricPair.MetricPair.Untyped> {
-    const result: Array<MetricPair.MetricPair.Untyped> = []
+  snapshot(): HashSet<MetricPair.Untyped> {
+    const result: Array<MetricPair.Untyped> = []
     for (const [key, hook] of this.map) {
       result.push(metricPair.unsafeMake(key, hook.get()))
     }
     return HashSet.fromIterable(result)
   }
 
-  get<Type extends MetricKeyType.MetricKeyType<any, any>>(
-    key: MetricKey.MetricKey<Type>
-  ): MetricHook.MetricHook<
-    MetricKeyType.MetricKeyType.InType<typeof key["keyType"]>,
-    MetricKeyType.MetricKeyType.OutType<typeof key["keyType"]>
+  get<Type extends MetricKeyType<any, any>>(
+    key: MetricKey<Type>
+  ): MetricHook<
+    MetricKeyType.InType<typeof key["keyType"]>,
+    MetricKeyType.OutType<typeof key["keyType"]>
   > {
     const hook = pipe(
       this.map,
-      MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
       Option.getOrUndefined
     )
     if (hook == null) {
       if (metricKeyType.isCounterKey(key.keyType)) {
-        return this.getCounter(key as unknown as MetricKey.MetricKey.Counter<any>) as any
+        return this.getCounter(key as unknown as MetricKey.Counter<any>) as any
       }
       if (metricKeyType.isGaugeKey(key.keyType)) {
-        return this.getGauge(key as unknown as MetricKey.MetricKey.Gauge<any>) as any
+        return this.getGauge(key as unknown as MetricKey.Gauge<any>) as any
       }
       if (metricKeyType.isFrequencyKey(key.keyType)) {
-        return this.getFrequency(key as unknown as MetricKey.MetricKey.Frequency) as any
+        return this.getFrequency(key as unknown as MetricKey.Frequency) as any
       }
       if (metricKeyType.isHistogramKey(key.keyType)) {
-        return this.getHistogram(key as unknown as MetricKey.MetricKey.Histogram) as any
+        return this.getHistogram(key as unknown as MetricKey.Histogram) as any
       }
       if (metricKeyType.isSummaryKey(key.keyType)) {
-        return this.getSummary(key as unknown as MetricKey.MetricKey.Summary) as any
+        return this.getSummary(key as unknown as MetricKey.Summary) as any
       }
       throw new Error(
         "BUG: MetricRegistry.get - unknown MetricKeyType - please report an issue at https://github.com/Effect-TS/io/issues"
@@ -71,118 +71,118 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
     }
   }
 
-  getCounter<A extends (number | bigint)>(key: MetricKey.MetricKey.Counter<A>): MetricHook.MetricHook.Counter<A> {
+  getCounter<A extends (number | bigint)>(key: MetricKey.Counter<A>): MetricHook.Counter<A> {
     let value = pipe(
       this.map,
-      MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
       Option.getOrUndefined
     )
     if (value == null) {
       const counter = metricHook.counter(key)
-      if (!pipe(this.map, MutableHashMap.has(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>))) {
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
         pipe(
           this.map,
           MutableHashMap.set(
-            key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>,
-            counter as MetricHook.MetricHook.Root
+            key as MetricKey<MetricKeyType.Untyped>,
+            counter as MetricHook.Root
           )
         )
       }
       value = counter
     }
-    return value as MetricHook.MetricHook.Counter<A>
+    return value as MetricHook.Counter<A>
   }
 
-  getFrequency(key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency {
+  getFrequency(key: MetricKey.Frequency): MetricHook.Frequency {
     let value = pipe(
       this.map,
-      MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
       Option.getOrUndefined
     )
     if (value == null) {
       const frequency = metricHook.frequency(key)
-      if (!pipe(this.map, MutableHashMap.has(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>))) {
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
         pipe(
           this.map,
           MutableHashMap.set(
-            key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>,
-            frequency as MetricHook.MetricHook.Root
+            key as MetricKey<MetricKeyType.Untyped>,
+            frequency as MetricHook.Root
           )
         )
       }
       value = frequency
     }
-    return value as MetricHook.MetricHook.Frequency
+    return value as MetricHook.Frequency
   }
 
-  getGauge<A extends (number | bigint)>(key: MetricKey.MetricKey.Gauge<A>): MetricHook.MetricHook.Gauge<A> {
+  getGauge<A extends (number | bigint)>(key: MetricKey.Gauge<A>): MetricHook.Gauge<A> {
     let value = pipe(
       this.map,
-      MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
       Option.getOrUndefined
     )
     if (value == null) {
       const gauge = metricHook.gauge(key as any, key.keyType.bigint ? BigInt(0) as any : 0)
-      if (!pipe(this.map, MutableHashMap.has(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>))) {
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
         pipe(
           this.map,
           MutableHashMap.set(
-            key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>,
-            gauge as MetricHook.MetricHook.Root
+            key as MetricKey<MetricKeyType.Untyped>,
+            gauge as MetricHook.Root
           )
         )
       }
       value = gauge
     }
-    return value as MetricHook.MetricHook.Gauge<A>
+    return value as MetricHook.Gauge<A>
   }
 
-  getHistogram(key: MetricKey.MetricKey.Histogram): MetricHook.MetricHook.Histogram {
+  getHistogram(key: MetricKey.Histogram): MetricHook.Histogram {
     let value = pipe(
       this.map,
-      MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
       Option.getOrUndefined
     )
     if (value == null) {
       const histogram = metricHook.histogram(key)
-      if (!pipe(this.map, MutableHashMap.has(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>))) {
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
         pipe(
           this.map,
           MutableHashMap.set(
-            key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>,
-            histogram as MetricHook.MetricHook.Root
+            key as MetricKey<MetricKeyType.Untyped>,
+            histogram as MetricHook.Root
           )
         )
       }
       value = histogram
     }
-    return value as MetricHook.MetricHook.Histogram
+    return value as MetricHook.Histogram
   }
 
-  getSummary(key: MetricKey.MetricKey.Summary): MetricHook.MetricHook.Summary {
+  getSummary(key: MetricKey.Summary): MetricHook.Summary {
     let value = pipe(
       this.map,
-      MutableHashMap.get(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>),
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
       Option.getOrUndefined
     )
     if (value == null) {
       const summary = metricHook.summary(key)
-      if (!pipe(this.map, MutableHashMap.has(key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>))) {
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
         pipe(
           this.map,
           MutableHashMap.set(
-            key as MetricKey.MetricKey<MetricKeyType.MetricKeyType.Untyped>,
-            summary as MetricHook.MetricHook.Root
+            key as MetricKey<MetricKeyType.Untyped>,
+            summary as MetricHook.Root
           )
         )
       }
       value = summary
     }
-    return value as MetricHook.MetricHook.Summary
+    return value as MetricHook.Summary
   }
 }
 
 /** @internal */
-export const make = (): MetricRegistry.MetricRegistry => {
+export const make = (): MetricRegistry => {
   return new MetricRegistryImpl()
 }

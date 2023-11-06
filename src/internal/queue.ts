@@ -1,14 +1,14 @@
-import * as Chunk from "../Chunk.js"
-import type * as Deferred from "../Deferred.js"
+import { Chunk } from "../Chunk.js"
+import type { Deferred } from "../Deferred.js"
 import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
-import * as MutableQueue from "../MutableQueue.js"
-import * as MutableRef from "../MutableRef.js"
+import { MutableQueue } from "../MutableQueue.js"
+import { MutableRef } from "../MutableRef.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
-import type * as Queue from "../Queue.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
+import type { Queue } from "../Queue.js"
+import { ReadonlyArray } from "../ReadonlyArray.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 
@@ -48,7 +48,7 @@ export const dequeueVariance = {
 }
 
 /** @internal */
-class QueueImpl<A> implements Queue.Queue<A> {
+class QueueImpl<A> implements Queue<A> {
   readonly [EnqueueTypeId] = enqueueVariance
   readonly [DequeueTypeId] = dequeueVariance
 
@@ -56,11 +56,11 @@ class QueueImpl<A> implements Queue.Queue<A> {
     /** @internal */
     readonly queue: Queue.BackingQueue<A>,
     /** @internal */
-    readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
+    readonly takers: MutableQueue<Deferred<never, A>>,
     /** @internal */
-    readonly shutdownHook: Deferred.Deferred<never, void>,
+    readonly shutdownHook: Deferred<never, void>,
     /** @internal */
-    readonly shutdownFlag: MutableRef.MutableRef<boolean>,
+    readonly shutdownFlag: MutableRef<boolean>,
     /** @internal */
     readonly strategy: Queue.Strategy<A>
   ) {
@@ -245,7 +245,7 @@ class QueueImpl<A> implements Queue.Queue<A> {
     })
   }
 
-  takeAll(): Effect<never, never, Chunk.Chunk<A>> {
+  takeAll(): Effect<never, never, Chunk<A>> {
     return core.suspend(() => {
       return MutableRef.get(this.shutdownFlag)
         ? core.interrupt
@@ -257,7 +257,7 @@ class QueueImpl<A> implements Queue.Queue<A> {
     })
   }
 
-  takeUpTo(max: number): Effect<never, never, Chunk.Chunk<A>> {
+  takeUpTo(max: number): Effect<never, never, Chunk<A>> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag)
         ? core.interrupt
@@ -269,7 +269,7 @@ class QueueImpl<A> implements Queue.Queue<A> {
     )
   }
 
-  takeBetween(min: number, max: number): Effect<never, never, Chunk.Chunk<A>> {
+  takeBetween(min: number, max: number): Effect<never, never, Chunk<A>> {
     return core.suspend(() =>
       takeRemainderLoop(
         this,
@@ -286,8 +286,8 @@ const takeRemainderLoop = <A>(
   self: Queue.Dequeue<A>,
   min: number,
   max: number,
-  acc: Chunk.Chunk<A>
-): Effect<never, never, Chunk.Chunk<A>> => {
+  acc: Chunk<A>
+): Effect<never, never, Chunk<A>> => {
   if (max < min) {
     return core.succeed(acc)
   }
@@ -320,7 +320,7 @@ const takeRemainderLoop = <A>(
 }
 
 /** @internal */
-export const isQueue = (u: unknown): u is Queue.Queue<unknown> => isEnqueue(u) && isDequeue(u)
+export const isQueue = (u: unknown): u is Queue<unknown> => isEnqueue(u) && isDequeue(u)
 
 /** @internal */
 export const isEnqueue = (u: unknown): u is Queue.Enqueue<unknown> => hasProperty(u, EnqueueTypeId)
@@ -329,28 +329,28 @@ export const isEnqueue = (u: unknown): u is Queue.Enqueue<unknown> => hasPropert
 export const isDequeue = (u: unknown): u is Queue.Dequeue<unknown> => hasProperty(u, DequeueTypeId)
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number): Effect<never, never, Queue.Queue<A>> =>
+export const bounded = <A>(requestedCapacity: number): Effect<never, never, Queue<A>> =>
   pipe(
     core.sync(() => MutableQueue.bounded<A>(requestedCapacity)),
     core.flatMap((queue) => make(backingQueueFromMutableQueue(queue), backPressureStrategy()))
   )
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number): Effect<never, never, Queue.Queue<A>> =>
+export const dropping = <A>(requestedCapacity: number): Effect<never, never, Queue<A>> =>
   pipe(
     core.sync(() => MutableQueue.bounded<A>(requestedCapacity)),
     core.flatMap((queue) => make(backingQueueFromMutableQueue(queue), droppingStrategy()))
   )
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number): Effect<never, never, Queue.Queue<A>> =>
+export const sliding = <A>(requestedCapacity: number): Effect<never, never, Queue<A>> =>
   pipe(
     core.sync(() => MutableQueue.bounded<A>(requestedCapacity)),
     core.flatMap((queue) => make(backingQueueFromMutableQueue(queue), slidingStrategy()))
   )
 
 /** @internal */
-export const unbounded = <A>(): Effect<never, never, Queue.Queue<A>> =>
+export const unbounded = <A>(): Effect<never, never, Queue<A>> =>
   pipe(
     core.sync(() => MutableQueue.unbounded<A>()),
     core.flatMap((queue) => make(backingQueueFromMutableQueue(queue), droppingStrategy()))
@@ -359,11 +359,11 @@ export const unbounded = <A>(): Effect<never, never, Queue.Queue<A>> =>
 /** @internal */
 const unsafeMake = <A>(
   queue: Queue.BackingQueue<A>,
-  takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-  shutdownHook: Deferred.Deferred<never, void>,
-  shutdownFlag: MutableRef.MutableRef<boolean>,
+  takers: MutableQueue<Deferred<never, A>>,
+  shutdownHook: Deferred<never, void>,
+  shutdownFlag: MutableRef<boolean>,
   strategy: Queue.Strategy<A>
-): Queue.Queue<A> => {
+): Queue<A> => {
   return new QueueImpl(queue, takers, shutdownHook, shutdownFlag, strategy)
 }
 
@@ -371,7 +371,7 @@ const unsafeMake = <A>(
 export const make = <A>(
   queue: Queue.BackingQueue<A>,
   strategy: Queue.Strategy<A>
-): Effect<never, never, Queue.Queue<A>> =>
+): Effect<never, never, Queue<A>> =>
   pipe(
     core.deferredMake<never, void>(),
     core.map((deferred) =>
@@ -387,14 +387,14 @@ export const make = <A>(
 
 /** @internal */
 export class BackingQueueFromMutableQueue<A> implements Queue.BackingQueue<A> {
-  constructor(readonly mutable: MutableQueue.MutableQueue<A>) {}
+  constructor(readonly mutable: MutableQueue<A>) {}
   poll<Def>(def: Def): A | Def {
     return MutableQueue.poll(this.mutable, def)
   }
-  pollUpTo(limit: number): Chunk.Chunk<A> {
+  pollUpTo(limit: number): Chunk<A> {
     return MutableQueue.pollUpTo(this.mutable, limit)
   }
-  offerAll(elements: Iterable<A>): Chunk.Chunk<A> {
+  offerAll(elements: Iterable<A>): Chunk<A> {
     return MutableQueue.offerAll(this.mutable, elements)
   }
   offer(element: A): boolean {
@@ -409,7 +409,7 @@ export class BackingQueueFromMutableQueue<A> implements Queue.BackingQueue<A> {
 }
 
 /** @internal */
-export const backingQueueFromMutableQueue = <A>(mutable: MutableQueue.MutableQueue<A>): Queue.BackingQueue<A> =>
+export const backingQueueFromMutableQueue = <A>(mutable: MutableQueue<A>): Queue.BackingQueue<A> =>
   new BackingQueueFromMutableQueue(mutable)
 
 /** @internal */
@@ -466,24 +466,24 @@ export const poll = <A>(self: Queue.Dequeue<A>): Effect<never, never, Option<A>>
 export const take = <A>(self: Queue.Dequeue<A>): Effect<never, never, A> => self.take()
 
 /** @internal */
-export const takeAll = <A>(self: Queue.Dequeue<A>): Effect<never, never, Chunk.Chunk<A>> => self.takeAll()
+export const takeAll = <A>(self: Queue.Dequeue<A>): Effect<never, never, Chunk<A>> => self.takeAll()
 
 /** @internal */
 export const takeUpTo = dual<
-  (max: number) => <A>(self: Queue.Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>,
-  <A>(self: Queue.Dequeue<A>, max: number) => Effect<never, never, Chunk.Chunk<A>>
+  (max: number) => <A>(self: Queue.Dequeue<A>) => Effect<never, never, Chunk<A>>,
+  <A>(self: Queue.Dequeue<A>, max: number) => Effect<never, never, Chunk<A>>
 >(2, (self, max) => self.takeUpTo(max))
 
 /** @internal */
 export const takeBetween = dual<
-  (min: number, max: number) => <A>(self: Queue.Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>,
-  <A>(self: Queue.Dequeue<A>, min: number, max: number) => Effect<never, never, Chunk.Chunk<A>>
+  (min: number, max: number) => <A>(self: Queue.Dequeue<A>) => Effect<never, never, Chunk<A>>,
+  <A>(self: Queue.Dequeue<A>, min: number, max: number) => Effect<never, never, Chunk<A>>
 >(3, (self, min, max) => self.takeBetween(min, max))
 
 /** @internal */
 export const takeN = dual<
-  (n: number) => <A>(self: Queue.Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>,
-  <A>(self: Queue.Dequeue<A>, n: number) => Effect<never, never, Chunk.Chunk<A>>
+  (n: number) => <A>(self: Queue.Dequeue<A>) => Effect<never, never, Chunk<A>>,
+  <A>(self: Queue.Dequeue<A>, n: number) => Effect<never, never, Chunk<A>>
 >(2, (self, n) => self.takeBetween(n, n))
 
 // -----------------------------------------------------------------------------
@@ -503,13 +503,13 @@ export const slidingStrategy = <A>(): Queue.Strategy<A> => new SlidingStrategy()
 class BackPressureStrategy<A> implements Queue.Strategy<A> {
   readonly [QueueStrategyTypeId] = queueStrategyVariance
 
-  readonly putters = MutableQueue.unbounded<readonly [A, Deferred.Deferred<never, boolean>, boolean]>()
+  readonly putters = MutableQueue.unbounded<readonly [A, Deferred<never, boolean>, boolean]>()
 
   surplusSize(): number {
     return MutableQueue.length(this.putters)
   }
 
-  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void {
+  onCompleteTakersWithEmptyQueue(takers: MutableQueue<Deferred<never, A>>): void {
     while (!MutableQueue.isEmpty(this.putters) && !MutableQueue.isEmpty(takers)) {
       const taker = MutableQueue.poll(takers, void 0)!
       const putter = MutableQueue.poll(this.putters, void 0)!
@@ -543,8 +543,8 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
   handleSurplus(
     iterable: Iterable<A>,
     queue: Queue.BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    isShutdown: MutableRef.MutableRef<boolean>
+    takers: MutableQueue<Deferred<never, A>>,
+    isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return core.withFiberRuntime<never, never, boolean>((state) => {
       const deferred = core.deferredUnsafeMake<never, boolean>(state.id())
@@ -562,7 +562,7 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
 
   unsafeOnQueueEmptySpace(
     queue: Queue.BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    takers: MutableQueue<Deferred<never, A>>
   ): void {
     let keepPolling = true
     while (keepPolling && (queue.capacity() === Number.POSITIVE_INFINITY || queue.length() < queue.capacity())) {
@@ -581,7 +581,7 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
     }
   }
 
-  unsafeOffer(iterable: Iterable<A>, deferred: Deferred.Deferred<never, boolean>): void {
+  unsafeOffer(iterable: Iterable<A>, deferred: Deferred<never, boolean>): void {
     const stuff = Array.from(iterable)
     for (let i = 0; i < stuff.length; i++) {
       const value = stuff[i]
@@ -593,7 +593,7 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
     }
   }
 
-  unsafeRemove(deferred: Deferred.Deferred<never, boolean>): void {
+  unsafeRemove(deferred: Deferred<never, boolean>): void {
     unsafeOfferAll(
       this.putters,
       pipe(unsafePollAll(this.putters), Chunk.filter(([, _]) => _ !== deferred))
@@ -619,15 +619,15 @@ class DroppingStrategy<A> implements Queue.Strategy<A> {
   handleSurplus(
     _iterable: Iterable<A>,
     _queue: Queue.BackingQueue<A>,
-    _takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    _isShutdown: MutableRef.MutableRef<boolean>
+    _takers: MutableQueue<Deferred<never, A>>,
+    _isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return core.succeed(false)
   }
 
   unsafeOnQueueEmptySpace(
     _queue: Queue.BackingQueue<A>,
-    _takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    _takers: MutableQueue<Deferred<never, A>>
   ): void {
     //
   }
@@ -651,8 +651,8 @@ class SlidingStrategy<A> implements Queue.Strategy<A> {
   handleSurplus(
     iterable: Iterable<A>,
     queue: Queue.BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    _isShutdown: MutableRef.MutableRef<boolean>
+    takers: MutableQueue<Deferred<never, A>>,
+    _isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return core.sync(() => {
       this.unsafeOffer(queue, iterable)
@@ -663,7 +663,7 @@ class SlidingStrategy<A> implements Queue.Strategy<A> {
 
   unsafeOnQueueEmptySpace(
     _queue: Queue.BackingQueue<A>,
-    _takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    _takers: MutableQueue<Deferred<never, A>>
   ): void {
     //
   }
@@ -684,27 +684,27 @@ class SlidingStrategy<A> implements Queue.Strategy<A> {
 }
 
 /** @internal */
-const unsafeCompleteDeferred = <A>(deferred: Deferred.Deferred<never, A>, a: A): void => {
+const unsafeCompleteDeferred = <A>(deferred: Deferred<never, A>, a: A): void => {
   return core.deferredUnsafeDone(deferred, core.succeed(a))
 }
 
 /** @internal */
-const unsafeOfferAll = <A>(queue: MutableQueue.MutableQueue<A>, as: Iterable<A>): Chunk.Chunk<A> => {
+const unsafeOfferAll = <A>(queue: MutableQueue<A>, as: Iterable<A>): Chunk<A> => {
   return pipe(queue, MutableQueue.offerAll(as))
 }
 
 /** @internal */
-const unsafePollAll = <A>(queue: MutableQueue.MutableQueue<A>): Chunk.Chunk<A> => {
+const unsafePollAll = <A>(queue: MutableQueue<A>): Chunk<A> => {
   return pipe(queue, MutableQueue.pollUpTo(Number.POSITIVE_INFINITY))
 }
 
 /** @internal */
-const unsafePollN = <A>(queue: MutableQueue.MutableQueue<A>, max: number): Chunk.Chunk<A> => {
+const unsafePollN = <A>(queue: MutableQueue<A>, max: number): Chunk<A> => {
   return pipe(queue, MutableQueue.pollUpTo(max))
 }
 
 /** @internal */
-export const unsafeRemove = <A>(queue: MutableQueue.MutableQueue<A>, a: A): void => {
+export const unsafeRemove = <A>(queue: MutableQueue<A>, a: A): void => {
   unsafeOfferAll(
     queue,
     pipe(unsafePollAll(queue), Chunk.filter((b) => a !== b))
@@ -715,7 +715,7 @@ export const unsafeRemove = <A>(queue: MutableQueue.MutableQueue<A>, a: A): void
 export const unsafeCompleteTakers = <A>(
   strategy: Queue.Strategy<A>,
   queue: Queue.BackingQueue<A>,
-  takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  takers: MutableQueue<Deferred<never, A>>
 ): void => {
   // Check both a taker and an item are in the queue, starting with the taker
   let keepPolling = true

@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "./Duration.js"
+import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"

@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
+import type { Chunk } from "./Chunk.js"
 import type { Effect } from "./Effect.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/random.js"
@@ -49,7 +49,7 @@ export interface Random {
   /**
    * Uses the pseudo-random number generator to shuffle the specified iterable.
    */
-  shuffle<A>(elements: Iterable<A>): Effect<never, never, Chunk.Chunk<A>>
+  shuffle<A>(elements: Iterable<A>): Effect<never, never, Chunk<A>>
 }
 
 /**
@@ -100,7 +100,7 @@ export const nextIntBetween: (min: number, max: number) => Effect<never, never, 
  * @since 2.0.0
  * @category constructors
  */
-export const shuffle: <A>(elements: Iterable<A>) => Effect<never, never, Chunk.Chunk<A>> = defaultServices.shuffle
+export const shuffle: <A>(elements: Iterable<A>) => Effect<never, never, Chunk<A>> = defaultServices.shuffle
 
 /**
  * Retreives the `Random` service from the context and uses it to run the

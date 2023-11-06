@@ -1,15 +1,15 @@
-import type * as Console from "../../Console.js"
-import * as Context from "../../Context.js"
+import type { Console } from "../../Console.js"
+import { Context } from "../../Context.js"
 import * as core from "../core.js"
 
 /** @internal */
 export const TypeId: Console.TypeId = Symbol.for("effect/Console") as Console.TypeId
 
 /** @internal */
-export const consoleTag: Context.Tag<Console.Console, Console.Console> = Context.Tag<Console.Console>(TypeId)
+export const consoleTag: Context.Tag<Console, Console> = Context.Tag<Console>(TypeId)
 
 /** @internal */
-export const defaultConsole: Console.Console = {
+export const defaultConsole: Console = {
   [TypeId]: TypeId,
   assert(condition, ...args) {
     return core.sync(() => {

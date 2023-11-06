@@ -1,18 +1,18 @@
 import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
-import * as FiberRef from "effect/FiberRef"
-import * as FiberStatus from "effect/FiberStatus"
+import { Fiber } from "effect/Fiber"
+import { FiberId } from "effect/FiberId"
+import { FiberRef } from "effect/FiberRef"
+import { FiberStatus } from "effect/FiberStatus"
 import { constVoid, identity, pipe } from "effect/Function"
-import * as HashSet from "effect/HashSet"
-import * as Queue from "effect/Queue"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
+import { HashSet } from "effect/HashSet"
+import { Queue } from "effect/Queue"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const initial = "initial"
@@ -123,7 +123,7 @@ describe.concurrent("Fiber", () => {
   it.effect("shard example", () =>
     Effect.gen(function*($) {
       const shard = <R, E, A>(
-        queue: Queue.Queue<A>,
+        queue: Queue<A>,
         n: number,
         worker: (a: A) => Effect<R, E, void>
       ): Effect<R, E, never> => {

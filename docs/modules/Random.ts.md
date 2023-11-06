@@ -112,7 +112,7 @@ Uses the pseudo-random number generator to shuffle the specified iterable.
 **Signature**
 
 ```ts
-export declare const shuffle: <A>(elements: Iterable<A>) => Effect<never, never, Chunk.Chunk<A>>
+export declare const shuffle: <A>(elements: Iterable<A>) => Effect<never, never, Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -151,7 +151,7 @@ export interface Random {
   /**
    * Uses the pseudo-random number generator to shuffle the specified iterable.
    */
-  shuffle<A>(elements: Iterable<A>): Effect<never, never, Chunk.Chunk<A>>
+  shuffle<A>(elements: Iterable<A>): Effect<never, never, Chunk<A>>
 }
 ```
 

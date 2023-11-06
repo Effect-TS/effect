@@ -260,7 +260,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface SortedSet<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface SortedSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _A: (_: never) => A
   }

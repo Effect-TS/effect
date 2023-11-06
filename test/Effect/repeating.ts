@@ -1,13 +1,13 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
   it.effect("succeeds eventually", () =>
     Effect.gen(function*($) {
-      const effect = (ref: Ref.Ref<number>) => {
+      const effect = (ref: Ref<number>) => {
         return pipe(
           Ref.get(ref),
           Effect.flatMap((n) =>

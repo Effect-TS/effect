@@ -4,9 +4,9 @@
 import * as internal from "./internal/groupBy.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
-import type * as Queue from "./Queue.js"
+import type { Queue } from "./Queue.js"
 import type { Stream } from "./Stream.js"
-import type * as Take from "./Take.js"
+import type { Take } from "./Take.js"
 
 /**
  * @since 2.0.0
@@ -29,7 +29,7 @@ export type GroupByTypeId = typeof GroupByTypeId
  * @category models
  */
 export interface GroupBy<R, E, K, V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
-  readonly grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
+  readonly grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
 }
 
 /**
@@ -98,5 +98,5 @@ export const first: {
  * @category constructors
  */
 export const make: <R, E, K, V>(
-  grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
+  grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
 ) => GroupBy<R, E, K, V> = internal.make

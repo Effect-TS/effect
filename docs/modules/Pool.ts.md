@@ -44,8 +44,8 @@ than eagerly.
 
 ```ts
 export declare const invalidate: {
-  <A>(value: A): <E>(self: Pool<E, A>) => Effect<Scope.Scope, never, void>
-  <E, A>(self: Pool<E, A>, value: A): Effect<Scope.Scope, never, void>
+  <A>(value: A): <E>(self: Pool<E, A>) => Effect<Scope, never, void>
+  <E, A>(self: Pool<E, A>, value: A): Effect<Scope, never, void>
 }
 ```
 
@@ -66,7 +66,7 @@ will be released in some unspecified order.
 export declare const make: <R, E, A>(options: {
   readonly acquire: Effect<R, E, A>
   readonly size: number
-}) => Effect<Scope.Scope | R, never, Pool<E, A>>
+}) => Effect<Scope | R, never, Pool<E, A>>
 ```
 
 Added in v2.0.0
@@ -81,10 +81,10 @@ used, the individual items allocated by the pool will be released in some
 unspecified order.
 
 ```ts
-import * as Duration from "./Duration"
+import { Duration } from "./Duration"
 import { Effect } from "effect/Effect"
-import * as Pool from "effect/Pool"
-import * as Scope from "effect/Scope"
+import { Pool } from "effect/Pool"
+import { Scope } from "effect/Scope"
 import { pipe } from "./Function"
 
 Effect.scoped(
@@ -110,7 +110,7 @@ export declare const makeWithTTL: <R, E, A>(options: {
   readonly min: number
   readonly max: number
   readonly timeToLive: Duration.DurationInput
-}) => Effect<Scope.Scope | R, never, Pool<E, A>>
+}) => Effect<Scope | R, never, Pool<E, A>>
 ```
 
 Added in v2.0.0
@@ -126,7 +126,7 @@ Retrying a failed acquisition attempt will repeat the acquisition attempt.
 **Signature**
 
 ```ts
-export declare const get: <E, A>(self: Pool<E, A>) => Effect<Scope.Scope, E, A>
+export declare const get: <E, A>(self: Pool<E, A>) => Effect<Scope, E, A>
 ```
 
 Added in v2.0.0
@@ -148,7 +148,7 @@ export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
    * acquisition fails, then the returned effect will fail for that same reason.
    * Retrying a failed acquisition attempt will repeat the acquisition attempt.
    */
-  get(): Effect<Scope.Scope, E, A>
+  get(): Effect<Scope, E, A>
 
   /**
    * Invalidates the specified item. This will cause the pool to eventually

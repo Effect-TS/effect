@@ -1,5 +1,5 @@
-import * as Util from "effect-test/util"
-import * as Chunk from "effect/Chunk"
+import { Util } from "effect-test/util"
+import { Chunk } from "effect/Chunk"
 import { Either } from "effect/Either"
 import { flow, pipe } from "effect/Function"
 import * as N from "effect/Number"

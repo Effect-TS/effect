@@ -95,16 +95,16 @@ data source or that data source can execute.
 
 ```ts
 export declare const eitherWith: {
-  <A extends Request.Request<any, any>, R2, B extends Request.Request<any, any>, C extends Request.Request<any, any>>(
+  <A extends Request<any, any>, R2, B extends Request<any, any>, C extends Request<any, any>>(
     that: RequestResolver<B, R2>,
     f: (_: Request.Entry<C>) => Either<Request.Entry<A>, Request.Entry<B>>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<C, R2 | R>
   <
     R,
-    A extends Request.Request<any, any>,
+    A extends Request<any, any>,
     R2,
-    B extends Request.Request<any, any>,
-    C extends Request.Request<any, any>
+    B extends Request<any, any>,
+    C extends Request<any, any>
   >(
     self: RequestResolver<A, R>,
     that: RequestResolver<B, R2>,
@@ -126,8 +126,8 @@ export declare const locally: {
   <A>(
     self: FiberRef<A>,
     value: A
-  ): <R, B extends Request.Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
-  <R, B extends Request.Request<any, any>, A>(
+  ): <R, B extends Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
+  <R, B extends Request<any, any>, A>(
     use: RequestResolver<B, R>,
     self: FiberRef<A>,
     value: A
@@ -147,10 +147,10 @@ source to complete and safely interrupting the loser.
 
 ```ts
 export declare const race: {
-  <R2, A2 extends Request.Request<any, any>>(
+  <R2, A2 extends Request<any, any>>(
     that: RequestResolver<A2, R2>
-  ): <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
-  <R, A extends Request.Request<any, any>, R2, A2 extends Request.Request<any, any>>(
+  ): <R, A extends Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
+  <R, A extends Request<any, any>, R2, A2 extends Request<any, any>>(
     self: RequestResolver<A, R>,
     that: RequestResolver<A2, R2>
   ): RequestResolver<A | A2, R | R2>
@@ -168,8 +168,8 @@ Constructs a data source from an effectual function.
 **Signature**
 
 ```ts
-export declare const fromEffect: <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+export declare const fromEffect: <R, A extends Request<any, any>>(
+  f: (a: A) => Effect<R, Request.Error<A>, Request.Success<A>>
 ) => RequestResolver<A, R>
 ```
 
@@ -185,10 +185,10 @@ request list.
 **Signature**
 
 ```ts
-export declare const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
+export declare const fromEffectTagged: <A extends Request<any, any> & { readonly _tag: string }>() => <
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
-      ? Req extends Request.Request<infer ReqE, infer ReqA>
+      ? Req extends Request<infer ReqE, infer ReqA>
         ? (requests: Req[]) => Effect<any, ReqE, Iterable<ReqA>>
         : never
       : never
@@ -207,8 +207,8 @@ Constructs a data source from a pure function.
 **Signature**
 
 ```ts
-export declare const fromFunction: <A extends Request.Request<never, any>>(
-  f: (request: A) => Request.Request.Success<A>
+export declare const fromFunction: <A extends Request<never, any>>(
+  f: (request: A) => Request.Success<A>
 ) => RequestResolver<A, never>
 ```
 
@@ -223,8 +223,8 @@ list must correspond to the item at the same index in the request list.
 **Signature**
 
 ```ts
-export declare const fromFunctionBatched: <A extends Request.Request<never, any>>(
-  f: (chunk: A[]) => Iterable<Request.Request.Success<A>>
+export declare const fromFunctionBatched: <A extends Request<never, any>>(
+  f: (chunk: A[]) => Iterable<Request.Success<A>>
 ) => RequestResolver<A, never>
 ```
 
@@ -251,7 +251,7 @@ and returning a `RequestCompletionMap`.
 **Signature**
 
 ```ts
-export declare const makeBatched: <R, A extends Request.Request<any, any>>(
+export declare const makeBatched: <R, A extends Request<any, any>>(
   run: (requests: A[]) => Effect<R, never, void>
 ) => RequestResolver<A, R>
 ```
@@ -296,11 +296,11 @@ Provides this data source with part of its required context.
 ```ts
 export declare const mapInputContext: {
   <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
-  <R, A extends Request.Request<any, any>, R0>(
+    f: (context: Context<R0>) => Context<R>
+  ): <A extends Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
+  <R, A extends Request<any, any>, R0>(
     self: RequestResolver<A, R>,
-    f: (context: Context.Context<R0>) => Context.Context<R>
+    f: (context: Context<R0>) => Context<R>
   ): RequestResolver<A, R0>
 }
 ```
@@ -316,11 +316,11 @@ Provides this data source with its required context.
 ```ts
 export declare const provideContext: {
   <R>(
-    context: Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, never>
-  <R, A extends Request.Request<any, any>>(
+    context: Context<R>
+  ): <A extends Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, never>
+  <R, A extends Request<any, any>>(
     self: RequestResolver<A, R>,
-    context: Context.Context<R>
+    context: Context<R>
   ): RequestResolver<A, never>
 }
 ```
@@ -354,7 +354,7 @@ will cause a query to die with a `QueryFailure` when run.
 **Signature**
 
 ```ts
-export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
+export interface RequestResolver<A, R = never> extends Equal, Pipeable {
   /**
    * Execute a collection of requests. The outer `Chunk` represents batches
    * of requests that must be performed sequentially. The inner `Chunk`
@@ -433,7 +433,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const contextFromEffect: <R, A extends Request.Request<any, any>>(
+export declare const contextFromEffect: <R, A extends Request<any, any>>(
   self: RequestResolver<A, R>
 ) => Effect<R, never, RequestResolver<A, never>>
 ```
@@ -447,7 +447,7 @@ Added in v2.0.0
 ```ts
 export declare const contextFromServices: <Services extends Context.Tag<any, any>[]>(
   ...services: Services
-) => <R, A extends Request.Request<any, any>>(
+) => <R, A extends Request<any, any>>(
   self: RequestResolver<A, R>
 ) => Effect<
   { [k in keyof Services]: Effect.Context<Services[k]> }[number],

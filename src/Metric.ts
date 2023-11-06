@@ -1,20 +1,20 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Duration from "./Duration.js"
+import type { Chunk } from "./Chunk.js"
+import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type { LazyArg } from "./Function.js"
-import type * as HashSet from "./HashSet.js"
+import type { HashSet } from "./HashSet.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/metric.js"
-import type * as MetricBoundaries from "./MetricBoundaries.js"
-import type * as MetricKey from "./MetricKey.js"
-import type * as MetricKeyType from "./MetricKeyType.js"
-import type * as MetricLabel from "./MetricLabel.js"
-import type * as MetricPair from "./MetricPair.js"
-import type * as MetricRegistry from "./MetricRegistry.js"
-import type * as MetricState from "./MetricState.js"
+import type { MetricBoundaries } from "./MetricBoundaries.js"
+import type { MetricKey } from "./MetricKey.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
+import type { MetricLabel } from "./MetricLabel.js"
+import type { MetricPair } from "./MetricPair.js"
+import type { MetricRegistry } from "./MetricRegistry.js"
+import type { MetricState } from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -55,8 +55,8 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
    * `MetricKeyType.Counter` or `MetricKeyType.Gauge`.
    */
   readonly keyType: Type
-  readonly unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void
-  readonly unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
+  readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void
+  readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
   /** */
   <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
@@ -68,8 +68,8 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
 export interface MetricApply {
   <Type, In, Out>(
     keyType: Type,
-    unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void,
-    unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
+    unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void,
+    unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
   ): Metric<Type, In, Out>
 }
 
@@ -82,7 +82,7 @@ export declare namespace Metric {
    * @category models
    */
   export interface Counter<In extends number | bigint>
-    extends Metric<MetricKeyType.MetricKeyType.Counter<In>, In, MetricState.MetricState.Counter<In>>
+    extends Metric<MetricKeyType.Counter<In>, In, MetricState.Counter<In>>
   {}
 
   /**
@@ -90,7 +90,7 @@ export declare namespace Metric {
    * @category models
    */
   export interface Gauge<In extends number | bigint>
-    extends Metric<MetricKeyType.MetricKeyType.Gauge<In>, In, MetricState.MetricState.Gauge<In>>
+    extends Metric<MetricKeyType.Gauge<In>, In, MetricState.Gauge<In>>
   {}
 
   /**
@@ -98,7 +98,7 @@ export declare namespace Metric {
    * @category models
    */
   export interface Frequency<In>
-    extends Metric<MetricKeyType.MetricKeyType.Frequency, In, MetricState.MetricState.Frequency>
+    extends Metric<MetricKeyType.Frequency, In, MetricState.Frequency>
   {}
 
   /**
@@ -106,7 +106,7 @@ export declare namespace Metric {
    * @category models
    */
   export interface Histogram<In>
-    extends Metric<MetricKeyType.MetricKeyType.Histogram, In, MetricState.MetricState.Histogram>
+    extends Metric<MetricKeyType.Histogram, In, MetricState.Histogram>
   {}
 
   /**
@@ -114,7 +114,7 @@ export declare namespace Metric {
    * @category models
    */
   export interface Summary<In>
-    extends Metric<MetricKeyType.MetricKeyType.Summary, In, MetricState.MetricState.Summary>
+    extends Metric<MetricKeyType.Summary, In, MetricState.Summary>
   {}
 
   /**
@@ -134,7 +134,7 @@ export declare namespace Metric {
  * @since 2.0.0
  * @category globals
  */
-export const globalMetricRegistry: MetricRegistry.MetricRegistry = internal.globalMetricRegistry
+export const globalMetricRegistry: MetricRegistry = internal.globalMetricRegistry
 
 /**
  * @since 2.0.0
@@ -166,7 +166,7 @@ export const mapInput: {
  * - incremental - Set to 'true' for a counter that only increases. With this configuration, Effect ensures that non-incremental updates have no impact on the counter, making it exclusively suitable for counting upwards.
  *
  * @example
- * import * as Metric from "effect/Metric"
+ * import { Metric } from "effect/Metric"
  *
  * const numberCounter = Metric.counter("count", {
  *   description: "A number counter"
@@ -207,7 +207,7 @@ export const counter: {
  * @param description - An optional description of the Frequency metric.
  *
  * @example
- * import * as Metric from "effect/Metric"
+ * import { Metric } from "effect/Metric"
  *
  * const errorFrequency = Metric.frequency("error_frequency", "Counts the occurrences of errors.");
  *
@@ -233,9 +233,9 @@ export const withConstantInput: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  key: MetricKey.MetricKey<Type>
-) => Metric<Type, MetricKeyType.MetricKeyType.InType<Type>, MetricKeyType.MetricKeyType.OutType<Type>> =
+export const fromMetricKey: <Type extends MetricKeyType<any, any>>(
+  key: MetricKey<Type>
+) => Metric<Type, MetricKeyType.InType<Type>, MetricKeyType.OutType<Type>> =
   internal.fromMetricKey
 
 /**
@@ -248,7 +248,7 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
  * - bigint - Indicates if the counter uses 'bigint' data type.
  *
  * @example
- * import * as Metric from "effect/Metric"
+ * import { Metric } from "effect/Metric"
  *
  * const numberGauge = Metric.gauge("memory_usage", {
  *   description: "A gauge for memory usage"
@@ -276,8 +276,8 @@ export const gauge: {
  * @param description - A description of the histogram metric.
  *
  * @example
- * import * as Metric from "effect/Metric"
- * import * as MetricBoundaries from "effect/MetricBoundaries"
+ * import { Metric } from "effect/Metric"
+ * import { MetricBoundaries } from "effect/MetricBoundaries"
  *
  * const latencyHistogram = Metric.histogram("latency_histogram",
  *   MetricBoundaries.linear({ start: 0, width: 10, count: 11 }),
@@ -289,9 +289,9 @@ export const gauge: {
  */
 export const histogram: (
   name: string,
-  boundaries: MetricBoundaries.MetricBoundaries,
+  boundaries: MetricBoundaries,
   description?: string
-) => Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram> = internal.histogram
+) => Metric<MetricKeyType.Histogram, number, MetricState.Histogram> = internal.histogram
 
 /**
  * @since 2.0.0
@@ -350,7 +350,7 @@ export const set: {
  * @since 2.0.0
  * @category getters
  */
-export const snapshot: Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>> = internal.snapshot
+export const snapshot: Effect<never, never, HashSet<MetricPair.Untyped>> = internal.snapshot
 
 /**
  * Creates a metric that ignores input and produces constant output.
@@ -381,8 +381,8 @@ export const sync: <Out>(evaluate: LazyArg<Out>) => Metric<void, unknown, Out> =
  * - description - An optional description of the Summary metric.
  *
  * @example
- * import * as Metric from "effect/Metric"
- * import * as Chunk from "effect/Chunk"
+ * import { Metric } from "effect/Metric"
+ * import { Chunk } from "effect/Chunk"
  *
  * const responseTimesSummary = Metric.summary({
  *   name: "response_times_summary",
@@ -402,7 +402,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
     readonly description?: string
   }
 ) => Metric.Summary<number> = internal.summary
@@ -417,7 +417,7 @@ export const summaryTimestamp: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
     readonly description?: string
   }
 ) => Metric.Summary<readonly [value: number, timestamp: number]> = internal.summaryTimestamp
@@ -445,11 +445,11 @@ export const tagged: {
  */
 export const taggedWithLabelsInput: {
   <In>(
-    f: (input: In) => Iterable<MetricLabel.MetricLabel>
+    f: (input: In) => Iterable<MetricLabel>
   ): <Type, Out>(self: Metric<Type, In, Out>) => Metric<Type, In, void>
   <Type, In, Out>(
     self: Metric<Type, In, Out>,
-    f: (input: In) => Iterable<MetricLabel.MetricLabel>
+    f: (input: In) => Iterable<MetricLabel>
   ): Metric<Type, In, void>
 } = internal.taggedWithLabelsInput
 
@@ -461,8 +461,8 @@ export const taggedWithLabelsInput: {
  * @category utils
  */
 export const taggedWithLabels: {
-  <Type, In, Out>(extraTags: Iterable<MetricLabel.MetricLabel>): (self: Metric<Type, In, Out>) => Metric<Type, In, Out>
-  <Type, In, Out>(self: Metric<Type, In, Out>, extraTags: Iterable<MetricLabel.MetricLabel>): Metric<Type, In, Out>
+  <Type, In, Out>(extraTags: Iterable<MetricLabel>): (self: Metric<Type, In, Out>) => Metric<Type, In, Out>
+  <Type, In, Out>(self: Metric<Type, In, Out>, extraTags: Iterable<MetricLabel>): Metric<Type, In, Out>
 } = internal.taggedWithLabels
 
 /**
@@ -475,7 +475,7 @@ export const taggedWithLabels: {
  */
 export const timer: (
   name: string
-) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram> =
+) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> =
   internal.timer
 
 /**
@@ -489,8 +489,8 @@ export const timer: (
  */
 export const timerWithBoundaries: (
   name: string,
-  boundaries: Chunk.Chunk<number>
-) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram> =
+  boundaries: Chunk<number>
+) => Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> =
   internal.timerWithBoundaries
 
 /**
@@ -553,11 +553,11 @@ export const trackDefectWith: {
  */
 export const trackDuration: {
   <Type, Out>(
-    metric: Metric<Type, Duration.Duration, Out>
+    metric: Metric<Type, Duration, Out>
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, Out>(
     self: Effect<R, E, A>,
-    metric: Metric<Type, Duration.Duration, Out>
+    metric: Metric<Type, Duration, Out>
   ): Effect<R, E, A>
 } = internal.trackDuration
 
@@ -705,7 +705,7 @@ export const zip: {
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeSnapshot: (_: void) => HashSet.HashSet<MetricPair.MetricPair.Untyped> = internal.unsafeSnapshot
+export const unsafeSnapshot: (_: void) => HashSet<MetricPair.Untyped> = internal.unsafeSnapshot
 
 /**
  * @since 2.0.0
@@ -729,7 +729,7 @@ export const fiberFailures: Metric.Counter<number> = fiberRuntime.fiberFailures
  * @since 2.0.0
  * @category metrics
  */
-export const fiberLifetimes: Metric<MetricKeyType.MetricKeyType.Histogram, number, MetricState.MetricState.Histogram> =
+export const fiberLifetimes: Metric<MetricKeyType.Histogram, number, MetricState.Histogram> =
   fiberRuntime.fiberLifetimes
 
 /**

@@ -3,11 +3,11 @@
  */
 import * as internal from "./internal/stm/tPriorityQueue.js"
 import type { Option } from "./Option.js"
-import type * as Order from "./Order.js"
+import type { Order } from "./Order.js"
 import type { Predicate } from "./Predicate.js"
-import type * as SortedMap from "./SortedMap.js"
-import type * as STM from "./STM.js"
-import type * as TRef from "./TRef.js"
+import type { SortedMap } from "./SortedMap.js"
+import type { STM } from "./STM.js"
+import type { TRef } from "./TRef.js"
 
 /**
  * @since 2.0.0
@@ -38,7 +38,7 @@ export interface TPriorityQueue<A> extends TPriorityQueue.Variance<A> {}
  */
 export interface TPriorityQueue<A> {
   /** @internal */
-  readonly ref: TRef.TRef<SortedMap.SortedMap<A, [A, ...Array<A>]>>
+  readonly ref: TRef<SortedMap<A, [A, ...Array<A>]>>
 }
 
 /**
@@ -62,7 +62,7 @@ export declare namespace TPriorityQueue {
  * @since 2.0.0
  * @category constructors
  */
-export const empty: <A>(order: Order.Order<A>) => STM.STM<never, never, TPriorityQueue<A>> = internal.empty
+export const empty: <A>(order: Order<A>) => STM<never, never, TPriorityQueue<A>> = internal.empty
 
 /**
  * Makes a new `TPriorityQueue` initialized with provided iterable.
@@ -71,8 +71,8 @@ export const empty: <A>(order: Order.Order<A>) => STM.STM<never, never, TPriorit
  * @category constructors
  */
 export const fromIterable: <A>(
-  order: Order.Order<A>
-) => (iterable: Iterable<A>) => STM.STM<never, never, TPriorityQueue<A>> = internal.fromIterable
+  order: Order<A>
+) => (iterable: Iterable<A>) => STM<never, never, TPriorityQueue<A>> = internal.fromIterable
 
 /**
  * Checks whether the queue is empty.
@@ -80,7 +80,7 @@ export const fromIterable: <A>(
  * @since 2.0.0
  * @category getters
  */
-export const isEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, boolean> = internal.isEmpty
+export const isEmpty: <A>(self: TPriorityQueue<A>) => STM<never, never, boolean> = internal.isEmpty
 
 /**
  * Checks whether the queue is not empty.
@@ -88,7 +88,7 @@ export const isEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, bool
  * @since 2.0.0
  * @category getters
  */
-export const isNonEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, boolean> = internal.isNonEmpty
+export const isNonEmpty: <A>(self: TPriorityQueue<A>) => STM<never, never, boolean> = internal.isNonEmpty
 
 /**
  * Makes a new `TPriorityQueue` that is initialized with specified values.
@@ -96,7 +96,7 @@ export const isNonEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, b
  * @since 2.0.0
  * @category constructors
  */
-export const make: <A>(order: Order.Order<A>) => (...elements: Array<A>) => STM.STM<never, never, TPriorityQueue<A>> =
+export const make: <A>(order: Order<A>) => (...elements: Array<A>) => STM<never, never, TPriorityQueue<A>> =
   internal.make
 
 /**
@@ -106,8 +106,8 @@ export const make: <A>(order: Order.Order<A>) => (...elements: Array<A>) => STM.
  * @category mutations
  */
 export const offer: {
-  <A>(value: A): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, value: A): STM<never, never, void>
 } = internal.offer
 
 /**
@@ -117,8 +117,8 @@ export const offer: {
  * @category mutations
  */
 export const offerAll: {
-  <A>(values: Iterable<A>): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, values: Iterable<A>): STM.STM<never, never, void>
+  <A>(values: Iterable<A>): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, values: Iterable<A>): STM<never, never, void>
 } = internal.offerAll
 
 /**
@@ -128,7 +128,7 @@ export const offerAll: {
  * @since 2.0.0
  * @category getters
  */
-export const peek: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A> = internal.peek
+export const peek: <A>(self: TPriorityQueue<A>) => STM<never, never, A> = internal.peek
 
 /**
  * Peeks at the first value in the queue without removing it, returning `None`
@@ -137,7 +137,7 @@ export const peek: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A> = in
  * @since 2.0.0
  * @category getters
  */
-export const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>> = internal.peekOption
+export const peekOption: <A>(self: TPriorityQueue<A>) => STM<never, never, Option<A>> = internal.peekOption
 
 /**
  * Removes all elements from the queue matching the specified predicate.
@@ -146,8 +146,8 @@ export const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, O
  * @category getters
  */
 export const removeIf: {
-  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM<never, never, void>
 } = internal.removeIf
 
 /**
@@ -157,8 +157,8 @@ export const removeIf: {
  * @category getters
  */
 export const retainIf: {
-  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM<never, never, void>
 } = internal.retainIf
 
 /**
@@ -167,7 +167,7 @@ export const retainIf: {
  * @since 2.0.0
  * @category getters
  */
-export const size: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, number> = internal.size
+export const size: <A>(self: TPriorityQueue<A>) => STM<never, never, number> = internal.size
 
 /**
  * Takes a value from the queue, retrying until a value is in the queue.
@@ -175,7 +175,7 @@ export const size: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, number>
  * @since 2.0.0
  * @category mutations
  */
-export const take: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A> = internal.take
+export const take: <A>(self: TPriorityQueue<A>) => STM<never, never, A> = internal.take
 
 /**
  * Takes all values from the queue.
@@ -183,7 +183,7 @@ export const take: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A> = in
  * @since 2.0.0
  * @category mutations
  */
-export const takeAll: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Array<A>> = internal.takeAll
+export const takeAll: <A>(self: TPriorityQueue<A>) => STM<never, never, Array<A>> = internal.takeAll
 
 /**
  * Takes a value from the queue, returning `None` if there is not a value in
@@ -192,7 +192,7 @@ export const takeAll: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Arra
  * @since 2.0.0
  * @category mutations
  */
-export const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>> = internal.takeOption
+export const takeOption: <A>(self: TPriorityQueue<A>) => STM<never, never, Option<A>> = internal.takeOption
 
 /**
  * Takes up to the specified maximum number of elements from the queue.
@@ -201,8 +201,8 @@ export const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, O
  * @category mutations
  */
 export const takeUpTo: {
-  (n: number): <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TPriorityQueue<A>, n: number): STM.STM<never, never, Array<A>>
+  (n: number): <A>(self: TPriorityQueue<A>) => STM<never, never, Array<A>>
+  <A>(self: TPriorityQueue<A>, n: number): STM<never, never, Array<A>>
 } = internal.takeUpTo
 
 /**
@@ -211,7 +211,7 @@ export const takeUpTo: {
  * @since 2.0.0
  * @category destructors
  */
-export const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Array<A>> = internal.toChunk
+export const toArray: <A>(self: TPriorityQueue<A>) => STM<never, never, Array<A>> = internal.toChunk
 
 /**
  * Collects all values into an array.
@@ -219,5 +219,5 @@ export const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Arra
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, ReadonlyArray<A>> =
+export const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM<never, never, ReadonlyArray<A>> =
   internal.toReadonlyArray

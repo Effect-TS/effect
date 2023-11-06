@@ -1,13 +1,13 @@
 import { Effect } from "../../Effect.js"
-import * as Equal from "../../Equal.js"
-import * as FiberId from "../../FiberId.js"
+import { Equal } from "../../Equal.js"
+import { FiberId } from "../../FiberId.js"
 import { dual } from "../../Function.js"
-import * as HashMap from "../../HashMap.js"
+import { HashMap } from "../../HashMap.js"
 import { Option } from "../../Option.js"
-import type * as Scope from "../../Scope.js"
-import type * as STM from "../../STM.js"
-import type * as TReentrantLock from "../../TReentrantLock.js"
-import type * as TRef from "../../TRef.js"
+import type { Scope } from "../../Scope.js"
+import type { STM } from "../../STM.js"
+import type { TReentrantLock } from "../../TReentrantLock.js"
+import type { TRef } from "../../TRef.js"
 import * as core from "./core.js"
 import * as tRef from "./tRef.js"
 
@@ -26,9 +26,9 @@ const ReadLockTypeId = Symbol.for("effect/TReentrantLock/ReadLock")
 
 type ReadLockTypeId = typeof ReadLockTypeId
 
-class TReentranLockImpl implements TReentrantLock.TReentrantLock {
+class TReentranLockImpl implements TReentrantLock {
   readonly [TReentrantLockTypeId]: TReentrantLock.TReentrantLockTypeId = TReentrantLockTypeId
-  constructor(readonly state: TRef.TRef<LockState>) {}
+  constructor(readonly state: TRef<LockState>) {}
 }
 
 /** @internal */
@@ -61,7 +61,7 @@ export interface LockState {
  */
 export class ReadLock implements LockState {
   readonly [ReadLockTypeId]: ReadLockTypeId = ReadLockTypeId
-  constructor(readonly readers: HashMap.HashMap<FiberId.FiberId, number>) {}
+  constructor(readonly readers: HashMap<FiberId, number>) {}
   get readLocks(): number {
     return Array.from(this.readers).reduce((acc, curr) => acc + curr[1], 0)
   }
@@ -118,7 +118,7 @@ const emptyReadLock = new ReadLock(HashMap.empty())
  * Creates a new read lock where the specified fiber holds the specified
  * number of read locks.
  */
-const makeReadLock = (fiberId: FiberId.FiberId, count: number): ReadLock => {
+const makeReadLock = (fiberId: FiberId, count: number): ReadLock => {
   if (count <= 0) {
     return emptyReadLock
   }
@@ -139,7 +139,7 @@ const noOtherHolder = (readLock: ReadLock, fiberId: FiberId.FiberId): boolean =>
 /**
  * Adjusts the number of read locks held by the specified fiber id.
  */
-const adjustReadLock = (readLock: ReadLock, fiberId: FiberId.FiberId, adjustment: number): ReadLock => {
+const adjustReadLock = (readLock: ReadLock, fiberId: FiberId, adjustment: number): ReadLock => {
   const total = readLock.readLocksHeld(fiberId)
   const newTotal = total + adjustment
   if (newTotal < 0) {
@@ -153,7 +153,7 @@ const adjustReadLock = (readLock: ReadLock, fiberId: FiberId.FiberId, adjustment
   return new ReadLock(HashMap.set(readLock.readers, fiberId, newTotal))
 }
 
-const adjustRead = (self: TReentrantLock.TReentrantLock, delta: number): STM.STM<never, never, number> =>
+const adjustRead = (self: TReentrantLock, delta: number): STM<never, never, number> =>
   core.withSTMRuntime((runtime) => {
     const lock = tRef.unsafeGet(self.state, runtime.journal)
     if (isReadLock(lock)) {
@@ -181,10 +181,10 @@ const adjustRead = (self: TReentrantLock.TReentrantLock, delta: number): STM.STM
   })
 
 /** @internal */
-export const acquireRead = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> => adjustRead(self, 1)
+export const acquireRead = (self: TReentrantLock.TReentrantLock): STM<never, never, number> => adjustRead(self, 1)
 
 /** @internal */
-export const acquireWrite = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> =>
+export const acquireWrite = (self: TReentrantLock.TReentrantLock): STM<never, never, number> =>
   core.withSTMRuntime((runtime) => {
     const lock = tRef.unsafeGet(self.state, runtime.journal)
     if (isReadLock(lock) && noOtherHolder(lock, runtime.fiberId)) {
@@ -207,7 +207,7 @@ export const acquireWrite = (self: TReentrantLock.TReentrantLock): STM.STM<never
   })
 
 /** @internal */
-export const fiberReadLocks = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> =>
+export const fiberReadLocks = (self: TReentrantLock.TReentrantLock): STM<never, never, number> =>
   core.effect<never, number>((journal, fiberId) =>
     tRef.unsafeGet(
       self.state,
@@ -216,7 +216,7 @@ export const fiberReadLocks = (self: TReentrantLock.TReentrantLock): STM.STM<nev
   )
 
 /** @internal */
-export const fiberWriteLocks = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> =>
+export const fiberWriteLocks = (self: TReentrantLock.TReentrantLock): STM<never, never, number> =>
   core.effect<never, number>((journal, fiberId) =>
     tRef.unsafeGet(
       self.state,
@@ -225,10 +225,10 @@ export const fiberWriteLocks = (self: TReentrantLock.TReentrantLock): STM.STM<ne
   )
 
 /** @internal */
-export const lock = (self: TReentrantLock.TReentrantLock): Effect<Scope.Scope, never, number> => writeLock(self)
+export const lock = (self: TReentrantLock.TReentrantLock): Effect<Scope, never, number> => writeLock(self)
 
 /** @internal */
-export const locked = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, boolean> =>
+export const locked = (self: TReentrantLock.TReentrantLock): STM<never, never, boolean> =>
   core.zipWith(
     readLocked(self),
     writeLocked(self),
@@ -236,37 +236,37 @@ export const locked = (self: TReentrantLock.TReentrantLock): STM.STM<never, neve
   )
 
 /** @internal */
-export const make: STM.STM<never, never, TReentrantLock.TReentrantLock> = core.map(
+export const make: STM<never, never, TReentrantLock> = core.map(
   tRef.make(emptyReadLock),
   (readLock) => new TReentranLockImpl(readLock)
 )
 
 /** @internal */
-export const readLock = (self: TReentrantLock.TReentrantLock): Effect<Scope.Scope, never, number> =>
+export const readLock = (self: TReentrantLock.TReentrantLock): Effect<Scope, never, number> =>
   Effect.acquireRelease(
     core.commit(acquireRead(self)),
     () => core.commit(releaseRead(self))
   )
 
 /** @internal */
-export const readLocks = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> =>
+export const readLocks = (self: TReentrantLock.TReentrantLock): STM<never, never, number> =>
   core.map(
     tRef.get(self.state),
     (state) => state.readLocks
   )
 
 /** @internal */
-export const readLocked = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, boolean> =>
+export const readLocked = (self: TReentrantLock.TReentrantLock): STM<never, never, boolean> =>
   core.map(
     tRef.get(self.state),
     (state) => state.readLocks > 0
   )
 
 /** @internal */
-export const releaseRead = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> => adjustRead(self, -1)
+export const releaseRead = (self: TReentrantLock.TReentrantLock): STM<never, never, number> => adjustRead(self, -1)
 
 /** @internal */
-export const releaseWrite = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> =>
+export const releaseWrite = (self: TReentrantLock.TReentrantLock): STM<never, never, number> =>
   core.withSTMRuntime((runtime) => {
     const lock = tRef.unsafeGet(self.state, runtime.journal)
     if (isWriteLock(lock) && lock.writeLocks === 1 && Equal.equals(runtime.fiberId)(lock.fiberId)) {
@@ -331,21 +331,21 @@ export const withWriteLock = dual<
   ))
 
 /** @internal */
-export const writeLock = (self: TReentrantLock.TReentrantLock): Effect<Scope.Scope, never, number> =>
+export const writeLock = (self: TReentrantLock.TReentrantLock): Effect<Scope, never, number> =>
   Effect.acquireRelease(
     core.commit(acquireWrite(self)),
     () => core.commit(releaseWrite(self))
   )
 
 /** @internal */
-export const writeLocked = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, boolean> =>
+export const writeLocked = (self: TReentrantLock.TReentrantLock): STM<never, never, boolean> =>
   core.map(
     tRef.get(self.state),
     (state) => state.writeLocks > 0
   )
 
 /** @internal */
-export const writeLocks = (self: TReentrantLock.TReentrantLock): STM.STM<never, never, number> =>
+export const writeLocks = (self: TReentrantLock.TReentrantLock): STM<never, never, number> =>
   core.map(
     tRef.get(self.state),
     (state) => state.writeLocks

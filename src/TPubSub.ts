@@ -2,13 +2,13 @@
  * @since 2.0.0
  */
 import type { Effect } from "./Effect.js"
-import type * as HashSet from "./HashSet.js"
+import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/stm/tPubSub.js"
 import type * as tQueue from "./internal/stm/tQueue.js"
-import type * as Scope from "./Scope.js"
-import type * as STM from "./STM.js"
-import type * as TQueue from "./TQueue.js"
-import type * as TRef from "./TRef.js"
+import type { Scope } from "./Scope.js"
+import type { STM } from "./STM.js"
+import type { TQueue } from "./TQueue.js"
+import type { TRef } from "./TRef.js"
 
 /**
  * @since 2.0.0
@@ -34,19 +34,19 @@ export interface TPubSub<A> extends TQueue.TEnqueue<A> {}
 export interface TPubSub<A> {
   readonly [TPubSubTypeId]: TPubSubTypeId
   /** @internal */
-  readonly pubsubSize: TRef.TRef<number>
+  readonly pubsubSize: TRef<number>
   /** @internal */
-  readonly publisherHead: TRef.TRef<TRef.TRef<internal.Node<A> | undefined>>
+  readonly publisherHead: TRef<TRef<internal.Node<A> | undefined>>
   /** @internal */
-  readonly publisherTail: TRef.TRef<TRef.TRef<internal.Node<A> | undefined> | undefined>
+  readonly publisherTail: TRef<TRef<internal.Node<A> | undefined> | undefined>
   /** @internal */
   readonly requestedCapacity: number
   /** @internal */
   readonly strategy: tQueue.TQueueStrategy
   /** @internal */
-  readonly subscriberCount: TRef.TRef<number>
+  readonly subscriberCount: TRef<number>
   /** @internal */
-  readonly subscribers: TRef.TRef<HashSet.HashSet<TRef.TRef<TRef.TRef<internal.Node<A>> | undefined>>>
+  readonly subscribers: TRef<HashSet<TRef<TRef<internal.Node<A>> | undefined>>>
 }
 
 /**
@@ -57,7 +57,7 @@ export interface TPubSub<A> {
  * @since 2.0.0
  * @category mutations
  */
-export const awaitShutdown: <A>(self: TPubSub<A>) => STM.STM<never, never, void> = internal.awaitShutdown
+export const awaitShutdown: <A>(self: TPubSub<A>) => STM<never, never, void> = internal.awaitShutdown
 
 /**
  * Creates a bounded `TPubSub` with the back pressure strategy. The `TPubSub` will retain
@@ -67,7 +67,7 @@ export const awaitShutdown: <A>(self: TPubSub<A>) => STM.STM<never, never, void>
  * @since 2.0.0
  * @category constructors
  */
-export const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TPubSub<A>> = internal.bounded
+export const bounded: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>> = internal.bounded
 
 /**
  * Returns the number of elements the `TPubSub` can hold.
@@ -84,7 +84,7 @@ export const capacity: <A>(self: TPubSub<A>) => number = internal.capacity
  * @since 2.0.0
  * @category constructors
  */
-export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, TPubSub<A>> = internal.dropping
+export const dropping: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>> = internal.dropping
 
 /**
  * Returns `true` if the `TPubSub` contains zero elements, `false` otherwise.
@@ -92,7 +92,7 @@ export const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, T
  * @since 2.0.0
  * @category getters
  */
-export const isEmpty: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean> = internal.isEmpty
+export const isEmpty: <A>(self: TPubSub<A>) => STM<never, never, boolean> = internal.isEmpty
 
 /**
  * Returns `true` if the `TPubSub` contains at least one element, `false`
@@ -101,7 +101,7 @@ export const isEmpty: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean> = 
  * @since 2.0.0
  * @category getters
  */
-export const isFull: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean> = internal.isFull
+export const isFull: <A>(self: TPubSub<A>) => STM<never, never, boolean> = internal.isFull
 
 /**
  * Returns `true` if `shutdown` has been called, otherwise returns `false`.
@@ -109,7 +109,7 @@ export const isFull: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean> = i
  * @since 2.0.0
  * @category getters
  */
-export const isShutdown: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean> = internal.isShutdown
+export const isShutdown: <A>(self: TPubSub<A>) => STM<never, never, boolean> = internal.isShutdown
 
 /**
  * Publishes a message to the `TPubSub`, returning whether the message was published
@@ -119,8 +119,8 @@ export const isShutdown: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean>
  * @category mutations
  */
 export const publish: {
-  <A>(value: A): (self: TPubSub<A>) => STM.STM<never, never, boolean>
-  <A>(self: TPubSub<A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): (self: TPubSub<A>) => STM<never, never, boolean>
+  <A>(self: TPubSub<A>, value: A): STM<never, never, boolean>
 } = internal.publish
 
 /**
@@ -131,8 +131,8 @@ export const publish: {
  * @category mutations
  */
 export const publishAll: {
-  <A>(iterable: Iterable<A>): (self: TPubSub<A>) => STM.STM<never, never, boolean>
-  <A>(self: TPubSub<A>, iterable: Iterable<A>): STM.STM<never, never, boolean>
+  <A>(iterable: Iterable<A>): (self: TPubSub<A>) => STM<never, never, boolean>
+  <A>(self: TPubSub<A>, iterable: Iterable<A>): STM<never, never, boolean>
 } = internal.publishAll
 
 /**
@@ -143,7 +143,7 @@ export const publishAll: {
  * @since 2.0.0
  * @category getters
  */
-export const size: <A>(self: TPubSub<A>) => STM.STM<never, never, number> = internal.size
+export const size: <A>(self: TPubSub<A>) => STM<never, never, number> = internal.size
 
 /**
  * Creates a bounded `TPubSub` with the sliding strategy. The `TPubSub` will add new
@@ -154,7 +154,7 @@ export const size: <A>(self: TPubSub<A>) => STM.STM<never, never, number> = inte
  * @since 2.0.0
  * @category constructors
  */
-export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TPubSub<A>> = internal.sliding
+export const sliding: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>> = internal.sliding
 
 /**
  * Subscribes to receive messages from the `TPubSub`. The resulting subscription can
@@ -165,7 +165,7 @@ export const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TP
  * @since 2.0.0
  * @category mutations
  */
-export const subscribe: <A>(self: TPubSub<A>) => STM.STM<never, never, TQueue.TDequeue<A>> = internal.subscribe
+export const subscribe: <A>(self: TPubSub<A>) => STM<never, never, TQueue.TDequeue<A>> = internal.subscribe
 
 /**
  * Subscribes to receive messages from the `TPubSub`. The resulting subscription can
@@ -175,7 +175,7 @@ export const subscribe: <A>(self: TPubSub<A>) => STM.STM<never, never, TQueue.TD
  * @since 2.0.0
  * @category mutations
  */
-export const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope.Scope, never, TQueue.TDequeue<A>> =
+export const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope, never, TQueue.TDequeue<A>> =
   internal.subscribeScoped
 
 /**
@@ -184,4 +184,4 @@ export const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope.Scope, never
  * @since 2.0.0
  * @category constructors
  */
-export const unbounded: <A>() => STM.STM<never, never, TPubSub<A>> = internal.unbounded
+export const unbounded: <A>() => STM<never, never, TPubSub<A>> = internal.unbounded

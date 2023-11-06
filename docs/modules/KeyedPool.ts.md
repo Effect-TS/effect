@@ -44,8 +44,8 @@ acquisition attempt.
 
 ```ts
 export declare const get: {
-  <K>(key: K): <E, A>(self: KeyedPool<K, E, A>) => Effect<Scope.Scope, E, A>
-  <K, E, A>(self: KeyedPool<K, E, A>, key: K): Effect<Scope.Scope, E, A>
+  <K>(key: K): <E, A>(self: KeyedPool<K, E, A>) => Effect<Scope, E, A>
+  <K, E, A>(self: KeyedPool<K, E, A>, key: K): Effect<Scope, E, A>
 }
 ```
 
@@ -83,7 +83,7 @@ will be released in some unspecified order.
 export declare const make: <K, R, E, A>(options: {
   readonly acquire: (key: K) => Effect<R, E, A>
   readonly size: number
-}) => Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
+}) => Effect<Scope | R, never, KeyedPool<K, E, A>>
 ```
 
 Added in v2.0.0
@@ -103,7 +103,7 @@ The size of the underlying pools can be configured per key.
 export declare const makeWith: <K, R, E, A>(options: {
   readonly acquire: (key: K) => Effect<R, E, A>
   readonly size: (key: K) => number
-}) => Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
+}) => Effect<Scope | R, never, KeyedPool<K, E, A>>
 ```
 
 Added in v2.0.0
@@ -127,7 +127,7 @@ export declare const makeWithTTL: <K, R, E, A>(options: {
   readonly min: (key: K) => number
   readonly max: (key: K) => number
   readonly timeToLive: Duration.DurationInput
-}) => Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
+}) => Effect<Scope | R, never, KeyedPool<K, E, A>>
 ```
 
 Added in v2.0.0
@@ -151,7 +151,7 @@ export declare const makeWithTTLBy: <K, R, E, A>(options: {
   readonly min: (key: K) => number
   readonly max: (key: K) => number
   readonly timeToLive: (key: K) => Duration.DurationInput
-}) => Effect<Scope.Scope | R, never, KeyedPool<K, E, A>>
+}) => Effect<Scope | R, never, KeyedPool<K, E, A>>
 ```
 
 Added in v2.0.0
@@ -173,7 +173,7 @@ export interface KeyedPool<K, E, A> extends KeyedPool.Variance<K, E, A>, Pipeabl
    * for that same reason. Retrying a failed acquisition attempt will repeat the
    * acquisition attempt.
    */
-  get(key: K): Effect<Scope.Scope, E, A>
+  get(key: K): Effect<Scope, E, A>
 
   /**
    * Invalidates the specified item. This will cause the pool to eventually

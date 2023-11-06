@@ -1,10 +1,10 @@
 import type { Effect } from "../Effect.js"
 import { dual } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
-import type * as Request from "../Request.js"
+import type { Request } from "../Request.js"
 import * as completedRequestMap from "./completedRequestMap.js"
 import * as core from "./core.js"
-import * as Data from "./data.js"
+import { Data } from "./data.js"
 
 /** @internal */
 const RequestSymbolKey = "effect/Request"
@@ -21,10 +21,10 @@ const requestVariance = {
 }
 
 /** @internal */
-export const isRequest = (u: unknown): u is Request.Request<unknown, unknown> => hasProperty(u, RequestTypeId)
+export const isRequest = (u: unknown): u is Request<unknown, unknown> => hasProperty(u, RequestTypeId)
 
 /** @internal */
-export const of = <R extends Request.Request<any, any>>(): Request.Request.Constructor<R> => (args) =>
+export const of = <R extends Request<any, any>>(): Request.Constructor<R> => (args) =>
   // @ts-expect-error
   Data.struct({
     [RequestTypeId]: requestVariance,
@@ -32,9 +32,9 @@ export const of = <R extends Request.Request<any, any>>(): Request.Request.Const
   })
 
 /** @internal */
-export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
+export const tagged = <R extends Request<any, any> & { _tag: string }>(
   tag: R["_tag"]
-): Request.Request.Constructor<R, "_tag"> =>
+): Request.Constructor<R, "_tag"> =>
 (args) =>
   // @ts-expect-error
   Data.struct({
@@ -45,12 +45,12 @@ export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
 
 /** @internal */
 export const complete = dual<
-  <A extends Request.Request<any, any>>(
-    result: Request.Request.Result<A>
+  <A extends Request<any, any>>(
+    result: Request.Result<A>
   ) => (self: A) => Effect<never, never, void>,
-  <A extends Request.Request<any, any>>(
+  <A extends Request<any, any>>(
     self: A,
-    result: Request.Request.Result<A>
+    result: Request.Result<A>
   ) => Effect<never, never, void>
 >(2, (self, result) =>
   core.fiberRefGetWith(
@@ -69,12 +69,12 @@ export const complete = dual<
 
 /** @internal */
 export const completeEffect = dual<
-  <A extends Request.Request<any, any>, R>(
-    effect: Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+  <A extends Request<any, any>, R>(
+    effect: Effect<R, Request.Error<A>, Request.Success<A>>
   ) => (self: A) => Effect<R, never, void>,
-  <A extends Request.Request<any, any>, R>(
+  <A extends Request<any, any>, R>(
     self: A,
-    effect: Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+    effect: Effect<R, Request.Error<A>, Request.Success<A>>
   ) => Effect<R, never, void>
 >(2, (self, effect) =>
   core.matchEffect(effect, {
@@ -84,23 +84,23 @@ export const completeEffect = dual<
 
 /** @internal */
 export const fail = dual<
-  <A extends Request.Request<any, any>>(
-    error: Request.Request.Error<A>
+  <A extends Request<any, any>>(
+    error: Request.Error<A>
   ) => (self: A) => Effect<never, never, void>,
-  <A extends Request.Request<any, any>>(
+  <A extends Request<any, any>>(
     self: A,
-    error: Request.Request.Error<A>
+    error: Request.Error<A>
   ) => Effect<never, never, void>
 >(2, (self, error) => complete(self, core.exitFail(error) as any))
 
 /** @internal */
 export const succeed = dual<
-  <A extends Request.Request<any, any>>(
-    value: Request.Request.Success<A>
+  <A extends Request<any, any>>(
+    value: Request.Success<A>
   ) => (self: A) => Effect<never, never, void>,
-  <A extends Request.Request<any, any>>(
+  <A extends Request<any, any>>(
     self: A,
-    value: Request.Request.Success<A>
+    value: Request.Success<A>
   ) => Effect<never, never, void>
 >(2, (self, value) => complete(self, core.exitSucceed(value) as any))
 
@@ -127,7 +127,7 @@ export class Listeners {
 /**
  * @internal
  */
-export const filterOutCompleted = <A extends Request.Request<any, any>>(requests: Array<A>) =>
+export const filterOutCompleted = <A extends Request<any, any>>(requests: Array<A>) =>
   core.fiberRefGetWith(
     completedRequestMap.currentRequestMap,
     (map) =>

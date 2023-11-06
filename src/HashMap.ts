@@ -5,7 +5,7 @@
 import type { Equal } from "./Equal.js"
 import type { HashSet } from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
-import * as HM from "./internal/hashMap.js"
+import { HM } from "./internal/hashMap.js"
 import * as _keySet from "./internal/hashMap/keySet.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -39,12 +39,12 @@ export declare namespace HashMap {
    * This type-level utility extracts the key type `K` from a `HashMap<K, V>` type.
    *
    * @example
-   * import * as HashMap from "effect/HashMap"
+   * import { HashMap } from "effect/HashMap"
    *
-   * declare const hm: HashMap.HashMap<string, number>
+   * declare const hm: HashMap<string, number>
    *
    * // $ExpectType string
-   * type K = HashMap.HashMap.Key<typeof hm>
+   * type K = HashMap.Key<typeof hm>
    *
    * @since 2.0.0
    * @category type-level
@@ -54,12 +54,12 @@ export declare namespace HashMap {
    * This type-level utility extracts the value type `V` from a `HashMap<K, V>` type.
    *
    * @example
-   * import * as HashMap from "effect/HashMap"
+   * import { HashMap } from "effect/HashMap"
    *
-   * declare const hm: HashMap.HashMap<string, number>
+   * declare const hm: HashMap<string, number>
    *
    * // $ExpectType number
-   * type V = HashMap.HashMap.Value<typeof hm>
+   * type V = HashMap.Value<typeof hm>
    *
    * @since 2.0.0
    * @category type-level

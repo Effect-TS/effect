@@ -1,23 +1,23 @@
-import type * as Cache from "../Cache.js"
-import type * as Clock from "../Clock.js"
-import * as Context from "../Context.js"
-import * as Deferred from "../Deferred.js"
-import * as Duration from "../Duration.js"
+import type { Cache } from "../Cache.js"
+import type { Clock } from "../Clock.js"
+import { Context } from "../Context.js"
+import { Deferred } from "../Deferred.js"
+import { Duration } from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import { Either } from "../Either.js"
-import * as Equal from "../Equal.js"
+import { Equal } from "../Equal.js"
 import { Exit } from "../Exit.js"
-import type * as FiberId from "../FiberId.js"
+import type { FiberId } from "../FiberId.js"
 import { pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
-import * as MutableHashMap from "../MutableHashMap.js"
-import * as MutableQueue from "../MutableQueue.js"
-import * as MutableRef from "../MutableRef.js"
+import { Hash } from "../Hash.js"
+import { MutableHashMap } from "../MutableHashMap.js"
+import { MutableQueue } from "../MutableQueue.js"
+import { MutableRef } from "../MutableRef.js"
 import { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
-import * as Data from "./data.js"
+import { Data } from "./data.js"
 import { none } from "./fiberId.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 
@@ -47,13 +47,13 @@ export interface Complete<Key, Error, Value> {
 export interface Pending<Key, Error, Value> {
   readonly _tag: "Pending"
   readonly key: MapKey<Key>
-  readonly deferred: Deferred.Deferred<Error, Value>
+  readonly deferred: Deferred<Error, Value>
 }
 
 /** @internal */
 export interface Refreshing<Key, Error, Value> {
   readonly _tag: "Refreshing"
-  readonly deferred: Deferred.Deferred<Error, Value>
+  readonly deferred: Deferred<Error, Value>
   readonly complete: Complete<Key, Error, Value>
 }
 
@@ -75,7 +75,7 @@ export const complete = <Key, Error, Value>(
 /** @internal */
 export const pending = <Key, Error, Value>(
   key: MapKey<Key>,
-  deferred: Deferred.Deferred<Error, Value>
+  deferred: Deferred<Error, Value>
 ): MapValue<Key, Error, Value> =>
   Data.struct({
     _tag: "Pending",
@@ -85,7 +85,7 @@ export const pending = <Key, Error, Value>(
 
 /** @internal */
 export const refreshing = <Key, Error, Value>(
-  deferred: Deferred.Deferred<Error, Value>,
+  deferred: Deferred<Error, Value>,
   complete: Complete<Key, Error, Value>
 ): MapValue<Key, Error, Value> =>
   Data.struct({
@@ -107,7 +107,7 @@ export type MapKeyTypeId = typeof MapKeyTypeId
  *
  * @internal
  */
-export interface MapKey<K> extends Equal.Equal {
+export interface MapKey<K> extends Equal {
   readonly [MapKeyTypeId]: MapKeyTypeId
   current: K
   previous: MapKey<K> | undefined
@@ -216,10 +216,10 @@ export const makeKeySet = <K>(): KeySet<K> => new KeySetImpl<K>()
  * @internal
  */
 export interface CacheState<Key, Error, Value> {
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>>
+  map: MutableHashMap<Key, MapValue<Key, Error, Value>>
   keys: KeySet<Key>
-  accesses: MutableQueue.MutableQueue<MapKey<Key>>
-  updating: MutableRef.MutableRef<boolean>
+  accesses: MutableQueue<MapKey<Key>>
+  updating: MutableRef<boolean>
   hits: number
   misses: number
 }
@@ -230,10 +230,10 @@ export interface CacheState<Key, Error, Value> {
  * @internal
  */
 export const makeCacheState = <Key, Error, Value>(
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>>,
+  map: MutableHashMap<Key, MapValue<Key, Error, Value>>,
   keys: KeySet<Key>,
-  accesses: MutableQueue.MutableQueue<MapKey<Key>>,
-  updating: MutableRef.MutableRef<boolean>,
+  accesses: MutableQueue<MapKey<Key>>,
+  updating: MutableRef<boolean>,
   hits: number,
   misses: number
 ): CacheState<Key, Error, Value> => ({
@@ -288,13 +288,13 @@ export const makeEntryStats = (loadedMillis: number): Cache.EntryStats => ({
   loadedMillis
 })
 
-class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
+class CacheImpl<Key, Error, Value> implements Cache<Key, Error, Value> {
   readonly [CacheTypeId] = cacheVariance
   readonly cacheState: CacheState<Key, Error, Value>
   constructor(
     readonly capacity: number,
-    readonly context: Context.Context<any>,
-    readonly fiberId: FiberId.FiberId,
+    readonly context: Context<any>,
+    readonly fiberId: FiberId,
     readonly lookup: Cache.Lookup<Key, any, Error, Value>,
     readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   ) {
@@ -373,7 +373,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     return core.suspend((): Effect<never, Error, Either<Value, Value>> => {
       const k = key
       let mapKey: MapKey<Key> | undefined = undefined
-      let deferred: Deferred.Deferred<Error, Value> | undefined = undefined
+      let deferred: Deferred<Error, Value> | undefined = undefined
       let value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
       if (value === undefined) {
         deferred = Deferred.unsafeMake<Error, Value>(this.fiberId)
@@ -429,7 +429,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     return effect.clockWith((clock) =>
       core.suspend(() => {
         const k = key
-        const deferred: Deferred.Deferred<Error, Value> = Deferred.unsafeMake(this.fiberId)
+        const deferred: Deferred<Error, Value> = Deferred.unsafeMake(this.fiberId)
         let value = Option.getOrUndefined(MutableHashMap.get(this.cacheState.map, k))
         if (value === undefined) {
           if (MutableHashMap.has(this.cacheState.map, k)) {
@@ -620,13 +620,13 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     }
   }
 
-  hasExpired(clock: Clock.Clock, timeToLiveMillis: number): boolean {
+  hasExpired(clock: Clock, timeToLiveMillis: number): boolean {
     return clock.unsafeCurrentTimeMillis() > timeToLiveMillis
   }
 
   lookupValueOf(
     input: Key,
-    deferred: Deferred.Deferred<Error, Value>
+    deferred: Deferred<Error, Value>
   ): Effect<never, Error, Value> {
     return effect.clockWith((clock) =>
       core.suspend(() => {
@@ -671,7 +671,7 @@ export const make = <Key, Environment, Error, Value>(
     readonly timeToLive: Duration.DurationInput
     readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
   }
-): Effect<Environment, never, Cache.Cache<Key, Error, Value>> => {
+): Effect<Environment, never, Cache<Key, Error, Value>> => {
   const timeToLive = Duration.decode(options.timeToLive)
   return makeWith({
     capacity: options.capacity,
@@ -687,7 +687,7 @@ export const makeWith = <Key, Environment, Error, Value>(
     readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
     readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   }
-): Effect<Environment, never, Cache.Cache<Key, Error, Value>> =>
+): Effect<Environment, never, Cache<Key, Error, Value>> =>
   core.map(
     fiberRuntime.all([core.context<Environment>(), core.fiberId]),
     ([context, fiberId]) =>
@@ -705,10 +705,10 @@ export const unsafeMakeWith = <Key, Error, Value>(
   capacity: number,
   lookup: Cache.Lookup<never, Key, Error, Value>,
   timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
-): Cache.Cache<Key, Error, Value> =>
+): Cache<Key, Error, Value> =>
   new CacheImpl(
     capacity,
-    Context.empty() as Context.Context<any>,
+    Context.empty() as Context<any>,
     none,
     lookup,
     (exit) => Duration.decode(timeToLive(exit))

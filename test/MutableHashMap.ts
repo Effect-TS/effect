@@ -1,12 +1,12 @@
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HM from "effect/MutableHashMap"
+import { Hash } from "effect/Hash"
+import { HM } from "effect/MutableHashMap"
 import * as O from "effect/Option"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
-class Key implements Equal.Equal {
+class Key implements Equal {
   constructor(readonly a: number, readonly b: number) {}
 
   [Hash.symbol]() {
@@ -18,7 +18,7 @@ class Key implements Equal.Equal {
   }
 }
 
-class Value implements Equal.Equal {
+class Value implements Equal {
   constructor(readonly c: number, readonly d: number) {}
 
   [Hash.symbol]() {

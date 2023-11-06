@@ -1,10 +1,10 @@
 import * as it from "effect-test/utils/extend"
-import * as Channel from "effect/Channel"
-import * as Context from "effect/Context"
+import { Channel } from "effect/Channel"
+import { Context } from "effect/Context"
 import { Effect } from "effect/Effect"
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
+import { Hash } from "effect/Hash"
 import { assert, describe } from "vitest"
 
 const NumberServiceSymbolKey = "effect/test/NumberService"
@@ -13,7 +13,7 @@ const NumberServiceTypeId = Symbol.for(NumberServiceSymbolKey)
 
 type NumberServiceTypeId = typeof NumberServiceTypeId
 
-export interface NumberService extends Equal.Equal {
+export interface NumberService extends Equal {
   readonly [NumberServiceTypeId]: NumberServiceTypeId
   readonly n: number
 }

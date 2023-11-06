@@ -1,13 +1,13 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
-import * as Request from "effect/Request"
-import * as Resolver from "effect/RequestResolver"
+import { Request } from "effect/Request"
+import { Resolver } from "effect/RequestResolver"
 import { describe } from "vitest"
 
 export const userIds: ReadonlyArray<number> = [1, 1]
 
-interface GetNameById extends Request.Request<string, string> {
+interface GetNameById extends Request<string, string> {
   readonly _tag: "GetNameById"
   readonly id: number
 }

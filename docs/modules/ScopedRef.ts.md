@@ -41,7 +41,7 @@ value.
 ```ts
 export declare const fromAcquire: <R, E, A>(
   acquire: Effect<R, E, A>
-) => Effect<Scope.Scope | R, E, ScopedRef<A>>
+) => Effect<Scope | R, E, ScopedRef<A>>
 ```
 
 Added in v2.0.0
@@ -54,7 +54,7 @@ not be used for values whose creation require the acquisition of resources.
 **Signature**
 
 ```ts
-export declare const make: <A>(evaluate: LazyArg<A>) => Effect<Scope.Scope, never, ScopedRef<A>>
+export declare const make: <A>(evaluate: LazyArg<A>) => Effect<Scope, never, ScopedRef<A>>
 ```
 
 Added in v2.0.0
@@ -86,8 +86,8 @@ to acquire a new value fails.
 
 ```ts
 export declare const set: {
-  <A, R, E>(acquire: Effect<R, E, A>): (self: ScopedRef<A>) => Effect<Exclude<R, Scope.Scope>, E, void>
-  <A, R, E>(self: ScopedRef<A>, acquire: Effect<R, E, A>): Effect<Exclude<R, Scope.Scope>, E, void>
+  <A, R, E>(acquire: Effect<R, E, A>): (self: ScopedRef<A>) => Effect<Exclude<R, Scope>, E, void>
+  <A, R, E>(self: ScopedRef<A>, acquire: Effect<R, E, A>): Effect<Exclude<R, Scope>, E, void>
 }
 ```
 
@@ -108,7 +108,7 @@ for the old value whenever a new value is obtained.
 ```ts
 export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
   /** @internal */
-  readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Scope.Closeable, A]>
+  readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Closeable, A]>
 }
 ```
 

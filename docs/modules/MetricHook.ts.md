@@ -45,7 +45,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const counter: <A extends number | bigint>(key: MetricKey.MetricKey.Counter<A>) => MetricHook.Counter<A>
+export declare const counter: <A extends number | bigint>(key: MetricKey.Counter<A>) => MetricHook.Counter<A>
 ```
 
 Added in v2.0.0
@@ -55,7 +55,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const frequency: (_key: MetricKey.MetricKey.Frequency) => MetricHook.Frequency
+export declare const frequency: (_key: MetricKey.Frequency) => MetricHook.Frequency
 ```
 
 Added in v2.0.0
@@ -66,8 +66,8 @@ Added in v2.0.0
 
 ```ts
 export declare const gauge: {
-  (key: MetricKey.MetricKey.Gauge<number>, startAt: number): MetricHook.Gauge<number>
-  (key: MetricKey.MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.Gauge<bigint>
+  (key: MetricKey.Gauge<number>, startAt: number): MetricHook.Gauge<number>
+  (key: MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.Gauge<bigint>
 }
 ```
 
@@ -78,7 +78,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const histogram: (key: MetricKey.MetricKey.Histogram) => MetricHook.Histogram
+export declare const histogram: (key: MetricKey.Histogram) => MetricHook.Histogram
 ```
 
 Added in v2.0.0
@@ -101,7 +101,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const summary: (key: MetricKey.MetricKey.Summary) => MetricHook.Summary
+export declare const summary: (key: MetricKey.Summary) => MetricHook.Summary
 ```
 
 Added in v2.0.0
@@ -169,7 +169,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Counter<A extends number | bigint> = MetricHook<A, MetricState.MetricState.Counter<A>>
+export type Counter<A extends number | bigint> = MetricHook<A, MetricState.Counter<A>>
 ```
 
 Added in v2.0.0
@@ -179,7 +179,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Frequency = MetricHook<string, MetricState.MetricState.Frequency>
+export type Frequency = MetricHook<string, MetricState.Frequency>
 ```
 
 Added in v2.0.0
@@ -189,7 +189,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Gauge<A extends number | bigint> = MetricHook<A, MetricState.MetricState.Gauge<A>>
+export type Gauge<A extends number | bigint> = MetricHook<A, MetricState.Gauge<A>>
 ```
 
 Added in v2.0.0
@@ -199,7 +199,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Histogram = MetricHook<number, MetricState.MetricState.Histogram>
+export type Histogram = MetricHook<number, MetricState.Histogram>
 ```
 
 Added in v2.0.0
@@ -209,7 +209,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Root = MetricHook<any, MetricState.MetricState.Untyped>
+export type Root = MetricHook<any, MetricState.Untyped>
 ```
 
 Added in v2.0.0
@@ -219,7 +219,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Summary = MetricHook<readonly [number, number], MetricState.MetricState.Summary>
+export type Summary = MetricHook<readonly [number, number], MetricState.Summary>
 ```
 
 Added in v2.0.0

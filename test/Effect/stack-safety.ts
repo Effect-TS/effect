@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { constVoid, identity, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const deepMapEffect = (n: number): Effect<never, never, number> => {
@@ -68,13 +68,13 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("deep effects", () =>
     Effect.gen(function*($) {
-      const incLeft = (n: number, ref: Ref.Ref<number>): Effect<never, never, number> => {
+      const incLeft = (n: number, ref: Ref<number>): Effect<never, never, number> => {
         if (n <= 0) {
           return Ref.get(ref)
         }
         return pipe(incLeft(n - 1, ref), Effect.zipLeft(Ref.update(ref, (n) => n + 1)))
       }
-      const incRight = (n: number, ref: Ref.Ref<number>): Effect<never, never, number> => {
+      const incRight = (n: number, ref: Ref<number>): Effect<never, never, number> => {
         if (n <= 0) {
           return Ref.get(ref)
         }

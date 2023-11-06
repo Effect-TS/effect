@@ -3,9 +3,9 @@
  */
 
 import type { Either } from "../Either.js"
-import * as Equal from "../Equal.js"
+import { Equal } from "../Equal.js"
 import { dual } from "../Function.js"
-import * as Hash from "../Hash.js"
+import { Hash } from "../Hash.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import type { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"

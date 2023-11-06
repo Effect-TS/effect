@@ -44,8 +44,8 @@ constructor.
 ```ts
 export declare const auto: <R, E, A, R2, Out>(
   acquire: Effect<R, E, A>,
-  policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect<Scope.Scope | R | R2, never, Resource<E, A>>
+  policy: Schedule<R2, unknown, Out>
+) => Effect<Scope | R | R2, never, Resource<E, A>>
 ```
 
 Added in v2.0.0
@@ -63,7 +63,7 @@ constructor.
 ```ts
 export declare const manual: <R, E, A>(
   acquire: Effect<R, E, A>
-) => Effect<Scope.Scope | R, never, Resource<E, A>>
+) => Effect<Scope | R, never, Resource<E, A>>
 ```
 
 Added in v2.0.0
@@ -94,9 +94,9 @@ which can be refreshed either manually or automatically.
 ```ts
 export interface Resource<E, A> extends Resource.Variance<E, A> {
   /** @internal */
-  readonly scopedRef: ScopedRef.ScopedRef<Exit<E, A>>
+  readonly scopedRef: ScopedRef<Exit<E, A>>
   /** @internal */
-  acquire(): Effect<Scope.Scope, E, A>
+  acquire(): Effect<Scope, E, A>
 }
 ```
 

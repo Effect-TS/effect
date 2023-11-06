@@ -1,24 +1,24 @@
 import type { Effect } from "../Effect.js"
-import * as Equal from "../Equal.js"
-import type * as FiberId from "../FiberId.js"
-import type * as FiberRef from "../FiberRef.js"
-import type * as FiberRefs from "../FiberRefs.js"
+import { Equal } from "../Equal.js"
+import type { FiberId } from "../FiberId.js"
+import type { FiberRef } from "../FiberRef.js"
+import type { FiberRefs } from "../FiberRefs.js"
 import { dual, pipe } from "../Function.js"
-import * as HashSet from "../HashSet.js"
+import { HashSet } from "../HashSet.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import * as Arr from "../ReadonlyArray.js"
+import { Arr } from "../ReadonlyArray.js"
 import * as core from "./core.js"
 
 /** @internal */
 export function unsafeMake(
-  fiberRefLocals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
-): FiberRefs.FiberRefs {
+  fiberRefLocals: Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>>
+): FiberRefs {
   return new FiberRefsImpl(fiberRefLocals)
 }
 
 /** @internal */
-export function empty(): FiberRefs.FiberRefs {
+export function empty(): FiberRefs {
   return unsafeMake(new Map())
 }
 
@@ -26,11 +26,11 @@ export function empty(): FiberRefs.FiberRefs {
 export const FiberRefsSym: FiberRefs.FiberRefsSym = Symbol.for("effect/FiberRefs") as FiberRefs.FiberRefsSym
 
 /** @internal */
-export class FiberRefsImpl implements FiberRefs.FiberRefs {
+export class FiberRefsImpl implements FiberRefs {
   readonly [FiberRefsSym]: FiberRefs.FiberRefsSym = FiberRefsSym
   constructor(
     readonly locals: Map<
-      FiberRef.FiberRef<any>,
+      FiberRef<any>,
       Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, any]>
     >
   ) {
@@ -42,7 +42,7 @@ export class FiberRefsImpl implements FiberRefs.FiberRefs {
 
 /** @internal */
 const findAncestor = (
-  _ref: FiberRef.FiberRef<any>,
+  _ref: FiberRef<any>,
   _parentStack: ReadonlyArray<readonly [FiberId.Runtime, unknown]>,
   _childStack: ReadonlyArray<readonly [FiberId.Runtime, unknown]>,
   _childModified = false
@@ -83,8 +83,8 @@ const findAncestor = (
 
 /** @internal */
 export const joinAs = dual<
-  (fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
-  (self: FiberRefs.FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  (fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => (self: FiberRefs.FiberRefs) => FiberRefs,
+  (self: FiberRefs, fiberId: FiberId.Runtime, that: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
 >(3, (self, fiberId, that) => {
   const parentFiberRefs = new Map(self.locals)
   for (const [fiberRef, childStack] of that.locals) {
@@ -132,10 +132,10 @@ export const joinAs = dual<
 
 /** @internal */
 export const forkAs = dual<
-  (childId: FiberId.Runtime) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
-  (self: FiberRefs.FiberRefs, childId: FiberId.Runtime) => FiberRefs.FiberRefs
+  (childId: FiberId.Runtime) => (self: FiberRefs.FiberRefs) => FiberRefs,
+  (self: FiberRefs, childId: FiberId.Runtime) => FiberRefs.FiberRefs
 >(2, (self, childId) => {
-  const map = new Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>>()
+  const map = new Map<FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Runtime, unknown]>>()
   for (const [fiberRef, stack] of self.locals.entries()) {
     const oldValue = Arr.headNonEmpty(stack)[1]
     const newValue = fiberRef.patch(fiberRef.fork)(oldValue)
@@ -160,8 +160,8 @@ export const setAll = (self: FiberRefs.FiberRefs): Effect<never, never, void> =>
 
 /** @internal */
 export const delete_ = dual<
-  <A>(fiberRef: FiberRef.FiberRef<A>) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
-  <A>(self: FiberRefs.FiberRefs, fiberRef: FiberRef.FiberRef<A>) => FiberRefs.FiberRefs
+  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs.FiberRefs) => FiberRefs,
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>) => FiberRefs.FiberRefs
 >(2, (self, fiberRef) => {
   const locals = new Map(self.locals)
   locals.delete(fiberRef)
@@ -170,8 +170,8 @@ export const delete_ = dual<
 
 /** @internal */
 export const get = dual<
-  <A>(fiberRef: FiberRef.FiberRef<A>) => (self: FiberRefs.FiberRefs) => Option<A>,
-  <A>(self: FiberRefs.FiberRefs, fiberRef: FiberRef.FiberRef<A>) => Option<A>
+  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs.FiberRefs) => Option<A>,
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>) => Option<A>
 >(2, (self, fiberRef) => {
   if (!self.locals.has(fiberRef)) {
     return Option.none()
@@ -181,8 +181,8 @@ export const get = dual<
 
 /** @internal */
 export const getOrDefault = dual<
-  <A>(fiberRef: FiberRef.FiberRef<A>) => (self: FiberRefs.FiberRefs) => A,
-  <A>(self: FiberRefs.FiberRefs, fiberRef: FiberRef.FiberRef<A>) => A
+  <A>(fiberRef: FiberRef<A>) => (self: FiberRefs.FiberRefs) => A,
+  <A>(self: FiberRefs, fiberRef: FiberRef<A>) => A
 >(2, (self, fiberRef) => pipe(get(self, fiberRef), Option.getOrElse(() => fiberRef.initial)))
 
 /** @internal */
@@ -190,21 +190,21 @@ export const updatedAs = dual<
   <A>(
     options: {
       readonly fiberId: FiberId.Runtime
-      readonly fiberRef: FiberRef.FiberRef<A>
+      readonly fiberRef: FiberRef<A>
       readonly value: A
     }
-  ) => (self: FiberRefs.FiberRefs) => FiberRefs.FiberRefs,
+  ) => (self: FiberRefs.FiberRefs) => FiberRefs,
   <A>(
-    self: FiberRefs.FiberRefs,
+    self: FiberRefs,
     options: {
       readonly fiberId: FiberId.Runtime
-      readonly fiberRef: FiberRef.FiberRef<A>
+      readonly fiberRef: FiberRef<A>
       readonly value: A
     }
   ) => FiberRefs.FiberRefs
->(2, <A>(self: FiberRefs.FiberRefs, { fiberId, fiberRef, value }: {
+>(2, <A>(self: FiberRefs, { fiberId, fiberRef, value }: {
   readonly fiberId: FiberId.Runtime
-  readonly fiberRef: FiberRef.FiberRef<A>
+  readonly fiberRef: FiberRef<A>
   readonly value: A
 }) => {
   const oldStack = self.locals.has(fiberRef) ?

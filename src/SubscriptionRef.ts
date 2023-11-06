@@ -5,10 +5,10 @@ import type { Effect } from "./Effect.js"
 import * as internal from "./internal/subscriptionRef.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as PubSub from "./PubSub.js"
-import * as Ref from "./Ref.js"
+import type { PubSub } from "./PubSub.js"
+import { Ref } from "./Ref.js"
 import type { Stream } from "./Stream.js"
-import * as Synchronized from "./SynchronizedRef.js"
+import { Synchronized } from "./SynchronizedRef.js"
 
 /**
  * @since 2.0.0
@@ -31,9 +31,9 @@ export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
  */
 export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable {
   /** @internal */
-  readonly ref: Ref.Ref<A>
+  readonly ref: Ref<A>
   /** @internal */
-  readonly pubsub: PubSub.PubSub<A>
+  readonly pubsub: PubSub<A>
   /** @internal */
   readonly semaphore: Effect.Semaphore
   /**

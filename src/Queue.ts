@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Deferred from "./Deferred.js"
+import type { Chunk } from "./Chunk.js"
+import type { Deferred } from "./Deferred.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/queue.js"
-import type * as MutableQueue from "./MutableQueue.js"
-import type * as MutableRef from "./MutableRef.js"
+import type { MutableQueue } from "./MutableQueue.js"
+import type { MutableRef } from "./MutableRef.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
@@ -46,21 +46,60 @@ export const QueueStrategyTypeId: unique symbol = internal.QueueStrategyTypeId
  */
 export type QueueStrategyTypeId = typeof QueueStrategyTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
-  /** @internal */
-  readonly queue: BackingQueue<A>
-  /** @internal */
-  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
-  /** @internal */
-  readonly shutdownHook: Deferred.Deferred<never, void>
-  /** @internal */
-  readonly shutdownFlag: MutableRef.MutableRef<boolean>
-  /** @internal */
-  readonly strategy: Strategy<A>
+export * as Queue from "./Queue.js"
+
+declare module "./Queue.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
+    /** @internal */
+    readonly queue: BackingQueue<A>
+    /** @internal */
+    readonly takers: MutableQueue<Deferred<never, A>>
+    /** @internal */
+    readonly shutdownHook: Deferred<never, void>
+    /** @internal */
+    readonly shutdownFlag: MutableRef<boolean>
+    /** @internal */
+    readonly strategy: Strategy<A>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Queue {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface EnqueueVariance<A> {
+      readonly [EnqueueTypeId]: {
+        readonly _In: (_: A) => void
+      }
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface DequeueVariance<A> {
+      readonly [DequeueTypeId]: {
+        readonly _Out: (_: never) => A
+      }
+    }
+
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface StrategyVariance<A> {
+      readonly [QueueStrategyTypeId]: {
+        readonly _A: (_: never) => A
+      }
+    }
+  }
 }
 
 /**
@@ -111,19 +150,19 @@ export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeabl
    * Takes all the values in the queue and returns the values. If the queue is
    * empty returns an empty collection.
    */
-  takeAll(): Effect<never, never, Chunk.Chunk<A>>
+  takeAll(): Effect<never, never, Chunk<A>>
 
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(max: number): Effect<never, never, Chunk.Chunk<A>>
+  takeUpTo(max: number): Effect<never, never, Chunk<A>>
 
   /**
    * Takes a number of elements from the queue between the specified minimum and
    * maximum. If there are fewer than the minimum number of elements available,
    * suspends until at least the minimum number of elements have been collected.
    */
-  takeBetween(min: number, max: number): Effect<never, never, Chunk.Chunk<A>>
+  takeBetween(min: number, max: number): Effect<never, never, Chunk<A>>
 }
 
 /**
@@ -212,8 +251,8 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
   handleSurplus(
     iterable: Iterable<A>,
     queue: BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    isShutdown: MutableRef.MutableRef<boolean>
+    takers: MutableQueue<Deferred<never, A>>,
+    isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean>
 
   /**
@@ -221,7 +260,7 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
    * takers that can be completed
    */
   onCompleteTakersWithEmptyQueue(
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    takers: MutableQueue<Deferred<never, A>>
   ): void
 
   /**
@@ -230,7 +269,7 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
    */
   unsafeOnQueueEmptySpace(
     queue: BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    takers: MutableQueue<Deferred<never, A>>
   ): void
 }
 
@@ -247,13 +286,13 @@ export interface BackingQueue<A> {
   /**
    * Dequeues up to `limit` elements from the queue.
    */
-  pollUpTo(limit: number): Chunk.Chunk<A>
+  pollUpTo(limit: number): Chunk<A>
   /**
    * Enqueues a collection of values into the queue.
    *
    * Returns a `Chunk` of the values that were **not** able to be enqueued.
    */
-  offerAll(elements: Iterable<A>): Chunk.Chunk<A>
+  offerAll(elements: Iterable<A>): Chunk<A>
   /**
    * Offers an element to the queue.
    *
@@ -271,41 +310,6 @@ export interface BackingQueue<A> {
    * Returns the number of elements currently in the queue
    */
   length(): number
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace Queue {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface EnqueueVariance<A> {
-    readonly [EnqueueTypeId]: {
-      readonly _In: (_: A) => void
-    }
-  }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface DequeueVariance<A> {
-    readonly [DequeueTypeId]: {
-      readonly _Out: (_: never) => A
-    }
-  }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface StrategyVariance<A> {
-    readonly [QueueStrategyTypeId]: {
-      readonly _A: (_: never) => A
-    }
-  }
 }
 
 /**
@@ -540,7 +544,7 @@ export const take: <A>(self: Dequeue<A>) => Effect<never, never, A> = internal.t
  * @since 2.0.0
  * @category utils
  */
-export const takeAll: <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>> = internal.takeAll
+export const takeAll: <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>> = internal.takeAll
 
 /**
  * Takes up to max number of values from the queue.
@@ -549,8 +553,8 @@ export const takeAll: <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<
  * @category utils
  */
 export const takeUpTo: {
-  (max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>
-  <A>(self: Dequeue<A>, max: number): Effect<never, never, Chunk.Chunk<A>>
+  (max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>>
+  <A>(self: Dequeue<A>, max: number): Effect<never, never, Chunk<A>>
 } = internal.takeUpTo
 
 /**
@@ -562,8 +566,8 @@ export const takeUpTo: {
  * @category utils
  */
 export const takeBetween: {
-  (min: number, max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>
-  <A>(self: Dequeue<A>, min: number, max: number): Effect<never, never, Chunk.Chunk<A>>
+  (min: number, max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>>
+  <A>(self: Dequeue<A>, min: number, max: number): Effect<never, never, Chunk<A>>
 } = internal.takeBetween
 
 /**
@@ -575,6 +579,6 @@ export const takeBetween: {
  * @category utils
  */
 export const takeN: {
-  (n: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>
-  <A>(self: Dequeue<A>, n: number): Effect<never, never, Chunk.Chunk<A>>
+  (n: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>>
+  <A>(self: Dequeue<A>, n: number): Effect<never, never, Chunk<A>>
 } = internal.takeN

@@ -602,8 +602,8 @@ Sort the elements of a Chunk in increasing order, creating a new Chunk.
 
 ```ts
 export declare const sort: {
-  <B>(O: Order.Order<B>): <A extends B>(self: Chunk<A>) => Chunk<A>
-  <A extends B, B>(self: Chunk<A>, O: Order.Order<B>): Chunk<A>
+  <B>(O: Order<B>): <A extends B>(self: Chunk<A>) => Chunk<A>
+  <A extends B, B>(self: Chunk<A>, O: Order<B>): Chunk<A>
 }
 ```
 
@@ -615,8 +615,8 @@ Added in v2.0.0
 
 ```ts
 export declare const sortWith: {
-  <A, B>(f: (a: A) => B, order: Order.Order<B>): (self: Chunk<A>) => Chunk<A>
-  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order.Order<B>): Chunk<A>
+  <A, B>(f: (a: A) => B, order: Order<B>): (self: Chunk<A>) => Chunk<A>
+  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order<B>): Chunk<A>
 }
 ```
 
@@ -789,7 +789,7 @@ Compares the two chunks of equal length using the specified function
 **Signature**
 
 ```ts
-export declare const getEquivalence: <A>(isEquivalent: Equivalence.Equivalence<A>) => Equivalence.Equivalence<Chunk<A>>
+export declare const getEquivalence: <A>(isEquivalent: Equivalence<A>) => Equivalence<Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -1005,7 +1005,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Chunk<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Chunk<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _A: (_: never) => A
   }

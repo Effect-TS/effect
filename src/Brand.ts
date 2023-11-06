@@ -20,8 +20,8 @@ import { Either } from "./Either.js"
 import { identity } from "./Function.js"
 import { Option } from "./Option.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import * as ReadonlyArray from "./ReadonlyArray.js"
-import type * as Types from "./Types.js"
+import { ReadonlyArray } from "./ReadonlyArray.js"
+import type { Types } from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -199,9 +199,9 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * @param onFailure - Takes the unbranded value that did not pass the `refinement` predicate and returns a `BrandErrors`.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type Int = number & Brand.Brand<"Int">
+ * type Int = number & Brand<"Int">
  *
  * const Int = Brand.refined<Int>(
  *   (n) => Number.isInteger(n),
@@ -245,9 +245,9 @@ export const refined: <A extends Brand<any>>(
  * If you also want to perform some validation, see {@link refined}.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type UserId = number & Brand.Brand<"UserId">
+ * type UserId = number & Brand<"UserId">
  *
  * const UserId = Brand.nominal<UserId>()
  *
@@ -273,14 +273,14 @@ export const nominal: <A extends Brand<any>>() => Brand.Constructor<A> = <A exte
  * This API is useful when you want to validate that the input data passes multiple brand validators.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type Int = number & Brand.Brand<"Int">
+ * type Int = number & Brand<"Int">
  * const Int = Brand.refined<Int>(
  *   (n) => Number.isInteger(n),
  *   (n) => Brand.error(`Expected ${n} to be an integer`)
  * )
- * type Positive = number & Brand.Brand<"Positive">
+ * type Positive = number & Brand<"Positive">
  * const Positive = Brand.refined<Positive>(
  *   (n) => n > 0,
  *   (n) => Brand.error(`Expected ${n} to be positive`)

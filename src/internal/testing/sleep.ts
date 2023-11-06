@@ -1,6 +1,6 @@
-import type * as Deferred from "../../Deferred.js"
-import type * as Duration from "../../Duration.js"
-import type * as FiberId from "../../FiberId.js"
+import type { Deferred } from "../../Deferred.js"
+import type { Duration } from "../../Duration.js"
+import type { FiberId } from "../../FiberId.js"
 
 /**
  * `Sleep` represents the state of a scheduled effect, including the time the
@@ -11,14 +11,14 @@ import type * as FiberId from "../../FiberId.js"
  */
 export interface Sleep {
   readonly duration: Duration.Duration
-  readonly deferred: Deferred.Deferred<never, void>
+  readonly deferred: Deferred<never, void>
   readonly fiberId: FiberId.FiberId
 }
 
 /** @internal */
 export const make = (
-  duration: Duration.Duration,
-  deferred: Deferred.Deferred<never, void>,
+  duration: Duration,
+  deferred: Deferred<never, void>,
   fiberId: FiberId.FiberId
 ): Sleep => ({
   duration,

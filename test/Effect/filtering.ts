@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
+import { Cause } from "effect/Cause"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const exactlyOnce = <R, A, A1>(

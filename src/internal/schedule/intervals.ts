@@ -1,8 +1,8 @@
-import * as Chunk from "../../Chunk.js"
+import { Chunk } from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import { Option } from "../../Option.js"
-import * as Interval from "../../ScheduleInterval.js"
-import type * as Intervals from "../../ScheduleIntervals.js"
+import { Interval } from "../../ScheduleInterval.js"
+import type { Intervals } from "../../ScheduleIntervals.js"
 
 /** @internal */
 const IntervalsSymbolKey = "effect/ScheduleIntervals"
@@ -13,17 +13,17 @@ export const IntervalsTypeId: Intervals.IntervalsTypeId = Symbol.for(
 ) as Intervals.IntervalsTypeId
 
 /** @internal */
-export const make = (intervals: Chunk.Chunk<Interval.Interval>): Intervals.Intervals => {
+export const make = (intervals: Chunk<Interval>): Intervals => {
   return {
     [IntervalsTypeId]: IntervalsTypeId,
     intervals
   }
 }
 /** @internal */
-export const empty: Intervals.Intervals = make(Chunk.empty())
+export const empty: Intervals = make(Chunk.empty())
 
 /** @internal */
-export const fromIterable = (intervals: Iterable<Interval.Interval>): Intervals.Intervals =>
+export const fromIterable = (intervals: Iterable<Interval>): Intervals =>
   Array.from(intervals).reduce(
     (intervals, interval) => pipe(intervals, union(make(Chunk.of(interval)))),
     empty
@@ -31,8 +31,8 @@ export const fromIterable = (intervals: Iterable<Interval.Interval>): Intervals.
 
 /** @internal */
 export const union = dual<
-  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals.Intervals,
-  (self: Intervals.Intervals, that: Intervals.Intervals) => Intervals.Intervals
+  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
+  (self: Intervals, that: Intervals.Intervals) => Intervals.Intervals
 >(2, (self, that) => {
   if (!Chunk.isNonEmpty(that.intervals)) {
     return self
@@ -58,11 +58,11 @@ export const union = dual<
 
 /** @internal */
 const unionLoop = (
-  _self: Chunk.Chunk<Interval.Interval>,
-  _that: Chunk.Chunk<Interval.Interval>,
-  _interval: Interval.Interval,
-  _acc: Chunk.Chunk<Interval.Interval>
-): Intervals.Intervals => {
+  _self: Chunk<Interval>,
+  _that: Chunk<Interval>,
+  _interval: Interval,
+  _acc: Chunk<Interval>
+): Intervals => {
   let self = _self
   let that = _that
   let interval = _interval
@@ -117,16 +117,16 @@ const unionLoop = (
 
 /** @internal */
 export const intersect = dual<
-  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals.Intervals,
-  (self: Intervals.Intervals, that: Intervals.Intervals) => Intervals.Intervals
+  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
+  (self: Intervals, that: Intervals.Intervals) => Intervals.Intervals
 >(2, (self, that) => intersectLoop(self.intervals, that.intervals, Chunk.empty()))
 
 /** @internal */
 const intersectLoop = (
-  _left: Chunk.Chunk<Interval.Interval>,
-  _right: Chunk.Chunk<Interval.Interval>,
-  _acc: Chunk.Chunk<Interval.Interval>
-): Intervals.Intervals => {
+  _left: Chunk<Interval>,
+  _right: Chunk<Interval>,
+  _acc: Chunk<Interval>
+): Intervals => {
   let left = _left
   let right = _right
   let acc = _acc
@@ -164,7 +164,7 @@ export const end = (self: Intervals.Intervals): number => {
 /** @internal */
 export const lessThan = dual<
   (that: Intervals.Intervals) => (self: Intervals.Intervals) => boolean,
-  (self: Intervals.Intervals, that: Intervals.Intervals) => boolean
+  (self: Intervals, that: Intervals.Intervals) => boolean
 >(2, (self, that) => start(self) < start(that))
 
 /** @internal */
@@ -174,6 +174,6 @@ export const isNonEmpty = (self: Intervals.Intervals): boolean => {
 
 /** @internal */
 export const max = dual<
-  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals.Intervals,
-  (self: Intervals.Intervals, that: Intervals.Intervals) => Intervals.Intervals
+  (that: Intervals.Intervals) => (self: Intervals.Intervals) => Intervals,
+  (self: Intervals, that: Intervals.Intervals) => Intervals.Intervals
 >(2, (self, that) => lessThan(self, that) ? that : self)

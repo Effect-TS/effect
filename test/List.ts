@@ -1,14 +1,14 @@
-import * as Chunk from "effect/Chunk"
-import * as Duration from "effect/Duration"
+import { Chunk } from "effect/Chunk"
+import { Duration } from "effect/Duration"
 import { Either } from "effect/Either"
 import { equals, symbol } from "effect/Equal"
-import * as List from "effect/List"
+import { List } from "effect/List"
 import { Option } from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import { ReadonlyArray } from "effect/ReadonlyArray"
 import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
-const testStructuralSharing = <A>(a: List.List<A>, b: List.List<A>, n = 0): number | undefined => {
+const testStructuralSharing = <A>(a: List<A>, b: List<A>, n = 0): number | undefined => {
   if (a === b) {
     return n
   }

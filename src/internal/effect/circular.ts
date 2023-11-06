@@ -1,27 +1,27 @@
-import type * as Cause from "../../Cause.js"
-import type * as Deferred from "../../Deferred.js"
-import * as Duration from "../../Duration.js"
+import type { Cause } from "../../Cause.js"
+import type { Deferred } from "../../Deferred.js"
+import { Duration } from "../../Duration.js"
 import type { Effect } from "../../Effect.js"
 import { Either } from "../../Either.js"
-import * as Equal from "../../Equal.js"
+import { Equal } from "../../Equal.js"
 import type { Equivalence } from "../../Equivalence.js"
 import { Exit } from "../../Exit.js"
-import type * as Fiber from "../../Fiber.js"
-import * as FiberId from "../../FiberId.js"
-import type * as FiberRefsPatch from "../../FiberRefsPatch.js"
+import type { Fiber } from "../../Fiber.js"
+import { FiberId } from "../../FiberId.js"
+import type { FiberRefsPatch } from "../../FiberRefsPatch.js"
 import type { LazyArg } from "../../Function.js"
 import { dual, pipe } from "../../Function.js"
-import * as Hash from "../../Hash.js"
-import * as MutableHashMap from "../../MutableHashMap.js"
+import { Hash } from "../../Hash.js"
+import { MutableHashMap } from "../../MutableHashMap.js"
 import { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
-import * as Predicate from "../../Predicate.js"
-import type * as Ref from "../../Ref.js"
-import type * as Schedule from "../../Schedule.js"
+import { Predicate } from "../../Predicate.js"
+import type { Ref } from "../../Ref.js"
+import type { Schedule } from "../../Schedule.js"
 import { currentScheduler } from "../../Scheduler.js"
-import type * as Scope from "../../Scope.js"
-import type * as Supervisor from "../../Supervisor.js"
-import type * as Synchronized from "../../SynchronizedRef.js"
+import type { Scope } from "../../Scope.js"
+import type { Supervisor } from "../../Supervisor.js"
+import type { Synchronized } from "../../SynchronizedRef.js"
 import * as internalCause from "../cause.js"
 import * as effect from "../core-effect.js"
 import * as core from "../core.js"
@@ -129,7 +129,7 @@ export const cachedInvalidate = dual<
       core.context<R>(),
       (env) =>
         core.map(
-          makeSynchronized<Option<[number, Deferred.Deferred<E, A>]>>(Option.none()),
+          makeSynchronized<Option<[number, Deferred<E, A>]>>(Option.none()),
           (cache) =>
             [
               core.provideContext(getCachedValue(self, duration, cache), env),
@@ -145,7 +145,7 @@ const computeCachedValue = <R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
   start: number
-): Effect<R, never, Option<readonly [number, Deferred.Deferred<E, A>]>> => {
+): Effect<R, never, Option<readonly [number, Deferred<E, A>]>> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
     core.deferredMake<E, A>(),
@@ -158,7 +158,7 @@ const computeCachedValue = <R, E, A>(
 const getCachedValue = <R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
-  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred.Deferred<E, A>]>>
+  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred<E, A>]>>
 ): Effect<R, E, A> =>
   core.uninterruptibleMask<R, E, A>((restore) =>
     pipe(
@@ -190,19 +190,19 @@ const getCachedValue = <R, E, A>(
 
 /** @internal */
 const invalidateCache = <E, A>(
-  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred.Deferred<E, A>]>>
+  cache: Synchronized.SynchronizedRef<Option<readonly [number, Deferred<E, A>]>>
 ): Effect<never, never, void> => internalRef.set(cache, Option.none())
 
 /** @internal */
 export const ensuringChild = dual<
   <R2, X>(
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
+    f: (fiber: Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
   ) => <R, E, A>(
     self: Effect<R, E, A>
   ) => Effect<R | R2, E, A>,
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
+    f: (fiber: Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
   ) => Effect<R | R2, E, A>
 >(2, (self, f) => ensuringChildren(self, (children) => f(fiberRuntime.fiberAll(children))))
 
@@ -228,7 +228,7 @@ export const forkAll = dual<
   {
     (options?: { readonly discard?: false }): <R, E, A>(
       effects: Iterable<Effect<R, E, A>>
-    ) => Effect<R, never, Fiber.Fiber<E, Array<A>>>
+    ) => Effect<R, never, Fiber<E, Array<A>>>
     (options: { readonly discard: true }): <R, E, A>(
       effects: Iterable<Effect<R, E, A>>
     ) => Effect<R, never, void>
@@ -237,7 +237,7 @@ export const forkAll = dual<
     <R, E, A>(
       effects: Iterable<Effect<R, E, A>>,
       options?: { readonly discard?: false }
-    ): Effect<R, never, Fiber.Fiber<E, Array<A>>>
+    ): Effect<R, never, Fiber<E, Array<A>>>
     <R, E, A>(
       effects: Iterable<Effect<R, E, A>>,
       options: { readonly discard: true }
@@ -280,18 +280,18 @@ export const forkIn = dual<
 /** @internal */
 export const forkScoped = <R, E, A>(
   self: Effect<R, E, A>
-): Effect<R | Scope.Scope, never, Fiber.RuntimeFiber<E, A>> => fiberRuntime.scopeWith((scope) => forkIn(self, scope))
+): Effect<R | Scope, never, Fiber.RuntimeFiber<E, A>> => fiberRuntime.scopeWith((scope) => forkIn(self, scope))
 
 /** @internal */
-export const fromFiber = <E, A>(fiber: Fiber.Fiber<E, A>): Effect<never, E, A> => internalFiber.join(fiber)
+export const fromFiber = <E, A>(fiber: Fiber<E, A>): Effect<never, E, A> => internalFiber.join(fiber)
 
 /** @internal */
-export const fromFiberEffect = <R, E, A>(fiber: Effect<R, E, Fiber.Fiber<E, A>>): Effect<R, E, A> =>
+export const fromFiberEffect = <R, E, A>(fiber: Effect<R, E, Fiber<E, A>>): Effect<R, E, A> =>
   core.suspend(() => core.flatMap(fiber, internalFiber.join))
 
 const memoKeySymbol = Symbol.for("effect/Effect/memoizeFunction.key")
 
-class Key<A> implements Equal.Equal {
+class Key<A> implements Equal {
   [memoKeySymbol] = memoKeySymbol
   constructor(readonly a: A, readonly eq?: Equivalence<A>) {}
   [Equal.symbol](that: Equal.Equal) {
@@ -315,7 +315,7 @@ export const memoizeFunction = <R, E, A, B>(
   eq?: Equivalence<A>
 ): Effect<never, never, (a: A) => Effect<R, E, B>> => {
   return pipe(
-    core.sync(() => MutableHashMap.empty<Key<A>, Deferred.Deferred<E, readonly [FiberRefsPatch.FiberRefsPatch, B]>>()),
+    core.sync(() => MutableHashMap.empty<Key<A>, Deferred<E, readonly [FiberRefsPatch, B]>>()),
     core.flatMap(makeSynchronized),
     core.map((ref) => (a: A) =>
       pipe(
@@ -323,7 +323,7 @@ export const memoizeFunction = <R, E, A, B>(
           const result = pipe(map, MutableHashMap.get(new Key(a, eq)))
           if (Option.isNone(result)) {
             return pipe(
-              core.deferredMake<E, readonly [FiberRefsPatch.FiberRefsPatch, B]>(),
+              core.deferredMake<E, readonly [FiberRefsPatch, B]>(),
               core.tap((deferred) =>
                 pipe(
                   effect.diffFiberRefs(f(a)),
@@ -367,20 +367,20 @@ export const raceFirst = dual<
 /** @internal */
 export const scheduleForked = dual<
   <R2, Out>(
-    schedule: Schedule.Schedule<R2, unknown, Out>
+    schedule: Schedule<R2, unknown, Out>
   ) => <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>,
+  ) => Effect<R | R2 | Scope, never, Fiber.RuntimeFiber<E, Out>>,
   <R, E, A, R2, Out>(
     self: Effect<R, E, A>,
-    schedule: Schedule.Schedule<R2, unknown, Out>
-  ) => Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>
+    schedule: Schedule<R2, unknown, Out>
+  ) => Effect<R | R2 | Scope, never, Fiber.RuntimeFiber<E, Out>>
 >(2, (self, schedule) => pipe(self, _schedule.schedule_Effect(schedule), forkScoped))
 
 /** @internal */
 export const supervised = dual<
-  <X>(supervisor: Supervisor.Supervisor<X>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A, X>(self: Effect<R, E, A>, supervisor: Supervisor.Supervisor<X>) => Effect<R, E, A>
+  <X>(supervisor: Supervisor<X>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A, X>(self: Effect<R, E, A>, supervisor: Supervisor<X>) => Effect<R, E, A>
 >(2, (self, supervisor) => {
   const supervise = core.fiberRefLocallyWith(fiberRuntime.currentSupervisor, (s) => s.zip(supervisor))
   return supervise(self)
@@ -425,14 +425,14 @@ export const timeoutFail = dual<
 export const timeoutFailCause = dual<
   <E1>(
     options: {
-      readonly onTimeout: LazyArg<Cause.Cause<E1>>
+      readonly onTimeout: LazyArg<Cause<E1>>
       readonly duration: Duration.DurationInput
     }
   ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E | E1, A>,
   <R, E, A, E1>(
     self: Effect<R, E, A>,
     options: {
-      readonly onTimeout: LazyArg<Cause.Cause<E1>>
+      readonly onTimeout: LazyArg<Cause<E1>>
       readonly duration: Duration.DurationInput
     }
   ) => Effect<R, E | E1, A>
@@ -533,7 +533,7 @@ class SynchronizedImpl<A> implements Synchronized.SynchronizedRef<A> {
   readonly [SynchronizedTypeId] = synchronizedVariance
   readonly [internalRef.RefTypeId] = internalRef.refVariance
   constructor(
-    readonly ref: Ref.Ref<A>,
+    readonly ref: Ref<A>,
     readonly withLock: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   ) {}
   modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B> {
@@ -589,33 +589,33 @@ export const updateSomeAndGetEffectSynchronized = dual<
 
 /** @internal */
 export const zipFiber = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, readonly [A, A2]>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, readonly [A, A2]>
+  <E2, A2>(that: Fiber<E2, A2>) => <E, A>(self: Fiber<E, A>) => Fiber<E | E2, readonly [A, A2]>,
+  <E, A, E2, A2>(self: Fiber<E, A>, that: Fiber<E2, A2>) => Fiber<E | E2, readonly [A, A2]>
 >(2, (self, that) => zipWithFiber(self, that, (a, b) => [a, b] as const))
 
 /** @internal */
 export const zipLeftFiber = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, A>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, A>
+  <E2, A2>(that: Fiber<E2, A2>) => <E, A>(self: Fiber<E, A>) => Fiber<E | E2, A>,
+  <E, A, E2, A2>(self: Fiber<E, A>, that: Fiber<E2, A2>) => Fiber<E | E2, A>
 >(2, (self, that) => zipWithFiber(self, that, (a, _) => a))
 
 /** @internal */
 export const zipRightFiber = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, A2>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, A2>
+  <E2, A2>(that: Fiber<E2, A2>) => <E, A>(self: Fiber<E, A>) => Fiber<E | E2, A2>,
+  <E, A, E2, A2>(self: Fiber<E, A>, that: Fiber<E2, A2>) => Fiber<E | E2, A2>
 >(2, (self, that) => zipWithFiber(self, that, (_, b) => b))
 
 /** @internal */
 export const zipWithFiber = dual<
   <E2, A, B, C>(
-    that: Fiber.Fiber<E2, B>,
+    that: Fiber<E2, B>,
     f: (a: A, b: B) => C
-  ) => <E>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, C>,
+  ) => <E>(self: Fiber<E, A>) => Fiber<E | E2, C>,
   <E, A, E2, B, C>(
-    self: Fiber.Fiber<E, A>,
-    that: Fiber.Fiber<E2, B>,
+    self: Fiber<E, A>,
+    that: Fiber<E2, B>,
     f: (a: A, b: B) => C
-  ) => Fiber.Fiber<E | E2, C>
+  ) => Fiber<E | E2, C>
 >(3, (self, that, f) => ({
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => pipe(self.id(), FiberId.getOrElse(that.id())),

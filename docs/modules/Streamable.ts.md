@@ -47,7 +47,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-abstract toStream(): Stream.Stream<R, E, A>
+abstract toStream(): Stream<R, E, A>
 ```
 
 Added in v2.0.0

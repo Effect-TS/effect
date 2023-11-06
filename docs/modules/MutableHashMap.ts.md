@@ -121,7 +121,7 @@ export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeabl
   readonly [TypeId]: TypeId
 
   /** @internal */
-  readonly backingMap: MutableRef.MutableRef<HashMap.HashMap<K, V>>
+  readonly backingMap: MutableRef<HashMap<K, V>>
 }
 ```
 

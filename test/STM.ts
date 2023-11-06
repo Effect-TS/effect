@@ -1,23 +1,23 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Context from "effect/Context"
-import * as Deferred from "effect/Deferred"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Context } from "effect/Context"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { constFalse, constTrue, constVoid, pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import * as STM from "effect/STM"
-import * as TDeferred from "effect/TDeferred"
-import * as TQueue from "effect/TQueue"
-import * as TRef from "effect/TRef"
+import { STM } from "effect/STM"
+import { TDeferred } from "effect/TDeferred"
+import { TQueue } from "effect/TQueue"
+import { TRef } from "effect/TRef"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 
 interface STMEnv {
-  readonly ref: TRef.TRef<number>
+  readonly ref: TRef<number>
 }
 
 const STMEnv = Context.Tag<STMEnv>()
@@ -51,9 +51,9 @@ class UnpureBarrier {
 
 const chain = (depth: number) =>
 (
-  next: (stm: STM.STM<never, never, number>) => STM.STM<never, never, number>
+  next: (stm: STM<never, never, number>) => STM<never, never, number>
 ): Effect<never, never, number> => {
-  const loop = (_n: number, _acc: STM.STM<never, never, number>): Effect<never, never, number> => {
+  const loop = (_n: number, _acc: STM<never, never, number>): Effect<never, never, number> => {
     let n = _n
     let acc = _acc
     while (n > 0) {
@@ -66,7 +66,7 @@ const chain = (depth: number) =>
 }
 
 const chainError = (depth: number): Effect<never, number, never> => {
-  const loop = (_n: number, _acc: STM.STM<never, number, never>): Effect<never, number, never> => {
+  const loop = (_n: number, _acc: STM<never, number, never>): Effect<never, number, never> => {
     let n = _n
     let acc = _acc
     while (n > 0) {
@@ -78,7 +78,7 @@ const chainError = (depth: number): Effect<never, number, never> => {
   return loop(depth, STM.fail(0))
 }
 
-const incrementTRefN = (n: number, ref: TRef.TRef<number>): Effect<never, never, number> =>
+const incrementTRefN = (n: number, ref: TRef<number>): Effect<never, never, number> =>
   pipe(
     TRef.get(ref),
     STM.tap((n) => pipe(ref, TRef.set(n + 1))),
@@ -88,8 +88,8 @@ const incrementTRefN = (n: number, ref: TRef.TRef<number>): Effect<never, never,
   )
 
 const transfer = (
-  receiver: TRef.TRef<number>,
-  sender: TRef.TRef<number>,
+  receiver: TRef<number>,
+  sender: TRef<number>,
   much: number
 ): Effect<never, never, number> =>
   pipe(
@@ -103,9 +103,9 @@ const transfer = (
 
 const compute3TRefN = (
   n: number,
-  ref1: TRef.TRef<number>,
-  ref2: TRef.TRef<number>,
-  ref3: TRef.TRef<number>
+  ref1: TRef<number>,
+  ref2: TRef<number>,
+  ref3: TRef<number>
 ): Effect<never, never, number> =>
   pipe(
     STM.all([TRef.get(ref1), TRef.get(ref2)]),
@@ -127,7 +127,7 @@ const compute3TRefN = (
     Effect.repeatN(n)
   )
 
-const permutation = (ref1: TRef.TRef<number>, ref2: TRef.TRef<number>): STM.STM<never, never, void> =>
+const permutation = (ref1: TRef<number>, ref2: TRef<number>): STM<never, never, void> =>
   pipe(
     STM.all([TRef.get(ref1), TRef.get(ref2)]),
     STM.flatMap(([a, b]) =>
@@ -198,7 +198,7 @@ describe.concurrent("STM", () => {
 
   it.effect("collectAll - collects a list of transactional effects to a single transaction", () =>
     Effect.gen(function*($) {
-      const chunk: Chunk.Chunk<number> = Chunk.range(1, 100)
+      const chunk: Chunk<number> = Chunk.range(1, 100)
       const iterable = yield* $(Effect.succeed(pipe(chunk, Chunk.map(TRef.make))))
       const refs = yield* $(STM.all(iterable))
       const result = yield* $(
@@ -256,7 +256,7 @@ describe.concurrent("STM", () => {
 
   it.effect("eventually - succeeds", () =>
     Effect.gen(function*($) {
-      const f = (ref: TRef.TRef<number>) =>
+      const f = (ref: TRef<number>) =>
         STM.gen(function*($) {
           const n = yield* $(TRef.get(ref))
           return yield* $(
@@ -514,7 +514,7 @@ describe.concurrent("STM", () => {
   it.effect("mergeAll - return zero element on empty input", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        Chunk.empty<STM.STM<never, never, number>>(),
+        Chunk.empty<STM<never, never, number>>(),
         STM.mergeAll(42, () => 43)
       )
       const result = yield* $(STM.commit(transaction))
@@ -534,7 +534,7 @@ describe.concurrent("STM", () => {
   it.effect("mergeAll - return error if it exists in list", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        [STM.unit, STM.fail(1)] as Array<STM.STM<never, number, void>>,
+        [STM.unit, STM.fail(1)] as Array<STM<never, number, void>>,
         STM.mergeAll(void 0 as void, constVoid)
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
@@ -804,7 +804,7 @@ describe.concurrent("STM", () => {
   it.effect("reduceAll - empty iterable", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        Chunk.empty<STM.STM<never, never, number>>(),
+        Chunk.empty<STM<never, never, number>>(),
         STM.reduceAll(STM.succeed(1), (a, b) => a + b)
       )
       const result = yield* $(STM.commit(transaction))

@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "./Context.js"
+import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
-import type * as Fiber from "./Fiber.js"
+import type { Fiber } from "./Fiber.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/tracer.js"
 import type { Option } from "./Option.js"
@@ -27,7 +27,7 @@ export interface Tracer {
   readonly span: (
     name: string,
     parent: Option<ParentSpan>,
-    context: Context.Context<never>,
+    context: Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint
   ) => Span
@@ -69,7 +69,7 @@ export interface ExternalSpan {
   readonly spanId: string
   readonly traceId: string
   readonly sampled: boolean
-  readonly context: Context.Context<never>
+  readonly context: Context<never>
 }
 
 /**
@@ -82,7 +82,7 @@ export interface Span {
   readonly spanId: string
   readonly traceId: string
   readonly parent: Option<ParentSpan>
-  readonly context: Context.Context<never>
+  readonly context: Context<never>
   readonly status: SpanStatus
   readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
@@ -122,7 +122,7 @@ export const externalSpan: (options: {
   readonly spanId: string
   readonly traceId: string
   readonly sampled?: boolean | undefined
-  readonly context?: Context.Context<never> | undefined
+  readonly context?: Context<never> | undefined
 }) => ExternalSpan = internal.externalSpan
 
 /**

@@ -1,15 +1,15 @@
-import * as Equal from "../Equal.js"
-import * as Dual from "../Function.js"
+import { Equal } from "../Equal.js"
+import { Dual } from "../Function.js"
 import { identity, pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
-import type * as HM from "../HashMap.js"
+import { Hash } from "../Hash.js"
+import type { HM } from "../HashMap.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import { fromBitmap, hashFragment, toBitmap } from "./hashMap/bitwise.js"
 import { SIZE } from "./hashMap/config.js"
-import * as Node from "./hashMap/node.js"
+import { Node } from "./hashMap/node.js"
 
 /** @internal */
 export const HashMapTypeId: HM.TypeId = Symbol.for("effect/HashMap") as HM.TypeId
@@ -19,7 +19,7 @@ type TraversalFn<K, V, A> = (k: K, v: V) => A
 type Cont<K, V, A> =
   | [
     len: number,
-    children: Array<Node.Node<K, V>>,
+    children: Array<Node<K, V>>,
     i: number,
     f: TraversalFn<K, V, A>,
     cont: Cont<K, V, A>
@@ -35,7 +35,7 @@ interface VisitResult<K, V, A> {
 export interface HashMapImpl<K, V> extends HM.HashMap<K, V> {
   _editable: boolean
   _edit: number
-  _root: Node.Node<K, V>
+  _root: Node<K, V>
   _size: number
 }
 
@@ -93,7 +93,7 @@ const HashMapProto: HM.HashMap<unknown, unknown> = {
 const makeImpl = <K, V>(
   editable: boolean,
   edit: number,
-  root: Node.Node<K, V>,
+  root: Node<K, V>,
   size: number
 ): HashMapImpl<K, V> => {
   const map = Object.create(HashMapProto)
@@ -131,7 +131,7 @@ const applyCont = <K, V, A>(cont: Cont<K, V, A>): Option<VisitResult<K, V, A>> =
     : Option.none()
 
 const visitLazy = <K, V, A>(
-  node: Node.Node<K, V>,
+  node: Node<K, V>,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A> = undefined
 ): Option<VisitResult<K, V, A>> => {
@@ -159,7 +159,7 @@ const visitLazy = <K, V, A>(
 
 const visitLazyChildren = <K, V, A>(
   len: number,
-  children: Array<Node.Node<K, V>>,
+  children: Array<Node<K, V>>,
   i: number,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A>
@@ -292,9 +292,9 @@ export const set = Dual.dual<
 
 /** @internal */
 export const setTree = Dual.dual<
-  <K, V>(newRoot: Node.Node<K, V>, newSize: number) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
-  <K, V>(self: HM.HashMap<K, V>, newRoot: Node.Node<K, V>, newSize: number) => HM.HashMap<K, V>
->(3, <K, V>(self: HM.HashMap<K, V>, newRoot: Node.Node<K, V>, newSize: number) => {
+  <K, V>(newRoot: Node<K, V>, newSize: number) => (self: HM.HashMap<K, V>) => HM.HashMap<K, V>,
+  <K, V>(self: HM.HashMap<K, V>, newRoot: Node<K, V>, newSize: number) => HM.HashMap<K, V>
+>(3, <K, V>(self: HM.HashMap<K, V>, newRoot: Node<K, V>, newSize: number) => {
   if ((self as HashMapImpl<K, V>)._editable) {
     ;(self as HashMapImpl<K, V>)._root = newRoot
     ;(self as HashMapImpl<K, V>)._size = newSize

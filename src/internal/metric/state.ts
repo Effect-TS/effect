@@ -1,9 +1,9 @@
-import type * as Chunk from "../../Chunk.js"
-import * as Equal from "../../Equal.js"
+import type { Chunk } from "../../Chunk.js"
+import { Equal } from "../../Equal.js"
 import { pipe } from "../../Function.js"
-import * as Hash from "../../Hash.js"
-import type * as HashMap from "../../HashMap.js"
-import type * as MetricState from "../../MetricState.js"
+import { Hash } from "../../Hash.js"
+import type { HashMap } from "../../HashMap.js"
+import type { MetricState } from "../../MetricState.js"
 import type { Option } from "../../Option.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
@@ -62,7 +62,7 @@ const metricStateVariance = {
 }
 
 /** @internal */
-class CounterState<A extends (number | bigint)> implements MetricState.MetricState.Counter<A> {
+class CounterState<A extends (number | bigint)> implements MetricState.Counter<A> {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [CounterStateTypeId]: MetricState.CounterStateTypeId = CounterStateTypeId
   constructor(readonly count: A) {}
@@ -81,10 +81,10 @@ class CounterState<A extends (number | bigint)> implements MetricState.MetricSta
 }
 
 /** @internal */
-class FrequencyState implements MetricState.MetricState.Frequency {
+class FrequencyState implements MetricState.Frequency {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [FrequencyStateTypeId]: MetricState.FrequencyStateTypeId = FrequencyStateTypeId
-  constructor(readonly occurrences: HashMap.HashMap<string, number>) {}
+  constructor(readonly occurrences: HashMap<string, number>) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(FrequencyStateSymbolKey),
@@ -100,7 +100,7 @@ class FrequencyState implements MetricState.MetricState.Frequency {
 }
 
 /** @internal */
-class GaugeState<A extends (number | bigint)> implements MetricState.MetricState.Gauge<A> {
+class GaugeState<A extends (number | bigint)> implements MetricState.Gauge<A> {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [GaugeStateTypeId]: MetricState.GaugeStateTypeId = GaugeStateTypeId
   constructor(readonly value: A) {}
@@ -119,11 +119,11 @@ class GaugeState<A extends (number | bigint)> implements MetricState.MetricState
 }
 
 /** @internal */
-export class HistogramState implements MetricState.MetricState.Histogram {
+export class HistogramState implements MetricState.Histogram {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [HistogramStateTypeId]: MetricState.HistogramStateTypeId = HistogramStateTypeId
   constructor(
-    readonly buckets: Chunk.Chunk<readonly [number, number]>,
+    readonly buckets: Chunk<readonly [number, number]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -153,12 +153,12 @@ export class HistogramState implements MetricState.MetricState.Histogram {
 }
 
 /** @internal */
-export class SummaryState implements MetricState.MetricState.Summary {
+export class SummaryState implements MetricState.Summary {
   readonly [MetricStateTypeId] = metricStateVariance
   readonly [SummaryStateTypeId]: MetricState.SummaryStateTypeId = SummaryStateTypeId
   constructor(
     readonly error: number,
-    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>,
+    readonly quantiles: Chunk<readonly [number, Option<number>]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -191,31 +191,31 @@ export class SummaryState implements MetricState.MetricState.Summary {
 
 /** @internal */
 export const counter: {
-  (count: number): MetricState.MetricState.Counter<number>
-  (count: bigint): MetricState.MetricState.Counter<bigint>
+  (count: number): MetricState.Counter<number>
+  (count: bigint): MetricState.Counter<bigint>
 } = (count) => new CounterState(count) as any
 
 /** @internal */
-export const frequency = (occurrences: HashMap.HashMap<string, number>): MetricState.MetricState.Frequency => {
+export const frequency = (occurrences: HashMap<string, number>): MetricState.Frequency => {
   return new FrequencyState(occurrences)
 }
 
 /** @internal */
 export const gauge: {
-  (count: number): MetricState.MetricState.Gauge<number>
-  (count: bigint): MetricState.MetricState.Gauge<bigint>
+  (count: number): MetricState.Gauge<number>
+  (count: bigint): MetricState.Gauge<bigint>
 } = (count) => new GaugeState(count) as any
 
 /** @internal */
 export const histogram = (
   options: {
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: Chunk<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
     readonly sum: number
   }
-): MetricState.MetricState.Histogram =>
+): MetricState.Histogram =>
   new HistogramState(
     options.buckets,
     options.count,
@@ -228,13 +228,13 @@ export const histogram = (
 export const summary = (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
+    readonly quantiles: Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number
     readonly sum: number
   }
-): MetricState.MetricState.Summary =>
+): MetricState.Summary =>
   new SummaryState(
     options.error,
     options.quantiles,
@@ -245,36 +245,36 @@ export const summary = (
   )
 
 /** @internal */
-export const isMetricState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> =>
+export const isMetricState = (u: unknown): u is MetricState.Counter<number | bigint> =>
   hasProperty(u, MetricStateTypeId)
 
 /** @internal */
-export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter<number | bigint> =>
+export const isCounterState = (u: unknown): u is MetricState.Counter<number | bigint> =>
   hasProperty(u, CounterStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequency =>
+export const isFrequencyState = (u: unknown): u is MetricState.Frequency =>
   hasProperty(u, FrequencyStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge<number | bigint> =>
+export const isGaugeState = (u: unknown): u is MetricState.Gauge<number | bigint> =>
   hasProperty(u, GaugeStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histogram =>
+export const isHistogramState = (u: unknown): u is MetricState.Histogram =>
   hasProperty(u, HistogramStateTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary => hasProperty(u, SummaryStateTypeId)
+export const isSummaryState = (u: unknown): u is MetricState.Summary => hasProperty(u, SummaryStateTypeId)

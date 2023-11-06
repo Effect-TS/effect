@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "effect-test/util"
 import { Either } from "effect/Either"
-import * as Encoding from "effect/Encoding"
+import { Encoding } from "effect/Encoding"
 import { assert, describe, it } from "vitest"
 
 describe.concurrent("Base64", () => {

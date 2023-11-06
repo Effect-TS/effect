@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
-import type * as Chunk from "./Chunk.js"
-import type * as Context from "./Context.js"
-import type * as Duration from "./Duration.js"
+import type { Cause } from "./Cause.js"
+import type { Chunk } from "./Chunk.js"
+import type { Context } from "./Context.js"
+import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { LazyArg } from "./Function.js"
@@ -12,8 +12,8 @@ import * as internal from "./internal/schedule.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
-import type * as ScheduleDecision from "./ScheduleDecision.js"
-import type * as Intervals from "./ScheduleIntervals.js"
+import type { ScheduleDecision } from "./ScheduleDecision.js"
+import type { Intervals } from "./ScheduleIntervals.js"
 
 /**
  * @since 2.0.0
@@ -79,7 +79,7 @@ export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>,
     now: number,
     input: In,
     state: any
-  ) => Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]>
+  ) => Effect<Env, never, readonly [any, Out, ScheduleDecision]>
 }
 
 /**
@@ -134,7 +134,7 @@ export const makeWithState: <S, Env, In, Out>(
     now: number,
     input: In,
     state: S
-  ) => Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
+  ) => Effect<Env, never, readonly [S, Out, ScheduleDecision]>
 ) => Schedule<Env, In, Out> = internal.makeWithState
 
 /**
@@ -272,7 +272,7 @@ export const checkEffect: {
  * @since 2.0.0
  * @category constructors
  */
-export const collectAllInputs: <A>() => Schedule<never, A, Chunk.Chunk<A>> = internal.collectAllInputs
+export const collectAllInputs: <A>() => Schedule<never, A, Chunk<A>> = internal.collectAllInputs
 
 /**
  * Returns a new schedule that collects the outputs of this one into a chunk.
@@ -280,7 +280,7 @@ export const collectAllInputs: <A>() => Schedule<never, A, Chunk.Chunk<A>> = int
  * @since 2.0.0
  * @category utils
  */
-export const collectAllOutputs: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Chunk.Chunk<Out>> =
+export const collectAllOutputs: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Chunk<Out>> =
   internal.collectAllOutputs
 
 /**
@@ -290,7 +290,7 @@ export const collectAllOutputs: <Env, In, Out>(self: Schedule<Env, In, Out>) => 
  * @since 2.0.0
  * @category utils
  */
-export const collectUntil: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chunk<A>> = internal.collectUntil
+export const collectUntil: <A>(f: Predicate<A>) => Schedule<never, A, Chunk<A>> = internal.collectUntil
 
 /**
  * A schedule that recurs until the effectful condition f fails, collecting
@@ -301,7 +301,7 @@ export const collectUntil: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chun
  */
 export const collectUntilEffect: <Env, A>(
   f: (a: A) => Effect<Env, never, boolean>
-) => Schedule<Env, A, Chunk.Chunk<A>> = internal.collectUntilEffect
+) => Schedule<Env, A, Chunk<A>> = internal.collectUntilEffect
 
 /**
  * A schedule that recurs as long as the condition f holds, collecting all
@@ -310,7 +310,7 @@ export const collectUntilEffect: <Env, A>(
  * @since 2.0.0
  * @category utils
  */
-export const collectWhile: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chunk<A>> = internal.collectWhile
+export const collectWhile: <A>(f: Predicate<A>) => Schedule<never, A, Chunk<A>> = internal.collectWhile
 
 /**
  * A schedule that recurs as long as the effectful condition holds, collecting
@@ -321,7 +321,7 @@ export const collectWhile: <A>(f: Predicate<A>) => Schedule<never, A, Chunk.Chun
  */
 export const collectWhileEffect: <Env, A>(
   f: (a: A) => Effect<Env, never, boolean>
-) => Schedule<Env, A, Chunk.Chunk<A>> = internal.collectWhileEffect
+) => Schedule<Env, A, Chunk<A>> = internal.collectWhileEffect
 
 /**
  * Returns the composition of this schedule and the specified schedule, by
@@ -363,11 +363,11 @@ export const mapInput: {
  */
 export const mapInputContext: {
   <Env0, Env>(
-    f: (env0: Context.Context<Env0>) => Context.Context<Env>
+    f: (env0: Context<Env0>) => Context<Env>
   ): <In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env0, In, Out>
   <Env0, Env, In, Out>(
     self: Schedule<Env, In, Out>,
-    f: (env0: Context.Context<Env0>) => Context.Context<Env>
+    f: (env0: Context<Env0>) => Context<Env>
   ): Schedule<Env0, In, Out>
 } = internal.mapInputContext
 
@@ -463,8 +463,8 @@ export const delayedEffect: {
  * @category constructors
  */
 export const delayedSchedule: <Env, In>(
-  schedule: Schedule<Env, In, Duration.Duration>
-) => Schedule<Env, In, Duration.Duration> = internal.delayedSchedule
+  schedule: Schedule<Env, In, Duration>
+) => Schedule<Env, In, Duration> = internal.delayedSchedule
 
 /**
  * Returns a new schedule that outputs the delay between each occurence.
@@ -472,7 +472,7 @@ export const delayedSchedule: <Env, In>(
  * @since 2.0.0
  * @category constructors
  */
-export const delays: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Duration.Duration> =
+export const delays: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Duration> =
   internal.delays
 
 /**
@@ -537,7 +537,7 @@ export const driver: <Env, In, Out>(
  * @since 2.0.0
  * @category constructors
  */
-export const duration: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration> =
+export const duration: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration> =
   internal.duration
 
 /**
@@ -566,12 +566,12 @@ export const either: {
 export const eitherWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.eitherWith
 
@@ -582,7 +582,7 @@ export const eitherWith: {
  * @since 2.0.0
  * @category constructors
  */
-export const elapsed: Schedule<never, unknown, Duration.Duration> = internal.elapsed
+export const elapsed: Schedule<never, unknown, Duration> = internal.elapsed
 
 /**
  * Returns a new schedule that will run the specified finalizer as soon as the
@@ -610,7 +610,7 @@ export const ensuring: {
 export const exponential: (
   base: Duration.DurationInput,
   factor?: number
-) => Schedule<never, unknown, Duration.Duration> = internal.exponential
+) => Schedule<never, unknown, Duration> = internal.exponential
 
 /**
  * A schedule that always recurs, increasing delays by summing the preceding
@@ -620,7 +620,7 @@ export const exponential: (
  * @since 2.0.0
  * @category constructors
  */
-export const fibonacci: (one: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration> =
+export const fibonacci: (one: Duration.DurationInput) => Schedule<never, unknown, Duration> =
   internal.fibonacci
 
 /**
@@ -654,7 +654,7 @@ export const forever: Schedule<never, unknown, number> = internal.forever
  * @since 2.0.0
  * @category constructors
  */
-export const fromDelay: (delay: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration> =
+export const fromDelay: (delay: Duration.DurationInput) => Schedule<never, unknown, Duration> =
   internal.fromDelay
 
 /**
@@ -668,7 +668,7 @@ export const fromDelay: (delay: Duration.DurationInput) => Schedule<never, unkno
 export const fromDelays: (
   delay: Duration.DurationInput,
   ...delays: Array<Duration.DurationInput>
-) => Schedule<never, unknown, Duration.Duration> = internal.fromDelays
+) => Schedule<never, unknown, Duration> = internal.fromDelays
 
 /**
  * A schedule that always recurs, mapping input values through the specified
@@ -726,12 +726,12 @@ export const intersect: {
 export const intersectWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.intersectWith
 
@@ -777,7 +777,7 @@ export const jitteredWith: {
  * @since 2.0.0
  * @category constructors
  */
-export const linear: (base: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration> = internal.linear
+export const linear: (base: Duration.DurationInput) => Schedule<never, unknown, Duration> = internal.linear
 
 /**
  * Returns a new schedule that maps the output of this schedule through the
@@ -897,8 +897,8 @@ export const passthrough: <Env, Input, Output>(self: Schedule<Env, Input, Output
  * @category context
  */
 export const provideContext: {
-  <Env>(context: Context.Context<Env>): <In, Out>(self: Schedule<Env, In, Out>) => Schedule<never, In, Out>
-  <Env, In, Out>(self: Schedule<Env, In, Out>, context: Context.Context<Env>): Schedule<never, In, Out>
+  <Env>(context: Context<Env>): <In, Out>(self: Schedule<Env, In, Out>) => Schedule<never, In, Out>
+  <Env, In, Out>(self: Schedule<Env, In, Out>, context: Context<Env>): Schedule<never, In, Out>
 } = internal.provideContext
 
 /**
@@ -954,7 +954,7 @@ export const recurUntilOption: <A, B>(pf: (a: A) => Option<B>) => Schedule<never
  * @since 2.0.0
  * @category utils
  */
-export const recurUpTo: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration.Duration> =
+export const recurUpTo: (duration: Duration.DurationInput) => Schedule<never, unknown, Duration> =
   internal.recurUpTo
 
 /**
@@ -1065,12 +1065,12 @@ export const run: {
   <In>(
     now: number,
     input: Iterable<In>
-  ): <Env, Out>(self: Schedule<Env, In, Out>) => Effect<Env, never, Chunk.Chunk<Out>>
+  ): <Env, Out>(self: Schedule<Env, In, Out>) => Effect<Env, never, Chunk<Out>>
   <Env, In, Out>(
     self: Schedule<Env, In, Out>,
     now: number,
     input: Iterable<In>
-  ): Effect<Env, never, Chunk.Chunk<Out>>
+  ): Effect<Env, never, Chunk<Out>>
 } = internal.run
 
 /**
@@ -1191,12 +1191,12 @@ export const union: {
 export const unionWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
 } = internal.unionWith
 

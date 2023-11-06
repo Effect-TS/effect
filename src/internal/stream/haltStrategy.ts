@@ -1,29 +1,29 @@
 import { dual } from "../../Function.js"
-import type * as HaltStrategy from "../../StreamHaltStrategy.js"
-import * as OpCodes from "../opCodes/streamHaltStrategy.js"
+import type { HaltStrategy } from "../../StreamHaltStrategy.js"
+import { OpCodes } from "../opCodes/streamHaltStrategy.js"
 
 /** @internal */
-export const Left: HaltStrategy.HaltStrategy = {
+export const Left: HaltStrategy = {
   _tag: OpCodes.OP_LEFT
 }
 
 /** @internal */
-export const Right: HaltStrategy.HaltStrategy = {
+export const Right: HaltStrategy = {
   _tag: OpCodes.OP_RIGHT
 }
 
 /** @internal */
-export const Both: HaltStrategy.HaltStrategy = {
+export const Both: HaltStrategy = {
   _tag: OpCodes.OP_BOTH
 }
 
 /** @internal */
-export const Either: HaltStrategy.HaltStrategy = {
+export const Either: HaltStrategy = {
   _tag: OpCodes.OP_EITHER
 }
 
 /** @internal */
-export const fromInput = (input: HaltStrategy.HaltStrategyInput): HaltStrategy.HaltStrategy => {
+export const fromInput = (input: HaltStrategy.HaltStrategyInput): HaltStrategy => {
   switch (input) {
     case "left":
       return Left
@@ -55,14 +55,14 @@ export const isEither = (self: HaltStrategy.HaltStrategy): self is HaltStrategy.
 export const match = dual<
   <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z) => (self: HaltStrategy.HaltStrategy) => Z,
   <Z>(
-    self: HaltStrategy.HaltStrategy,
+    self: HaltStrategy,
     onLeft: () => Z,
     onRight: () => Z,
     onBoth: () => Z,
     onEither: () => Z
   ) => Z
 >(5, <Z>(
-  self: HaltStrategy.HaltStrategy,
+  self: HaltStrategy,
   onLeft: () => Z,
   onRight: () => Z,
   onBoth: () => Z,

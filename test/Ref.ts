@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { Option } from "effect/Option"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const current = "value"

@@ -70,7 +70,7 @@ specified annotation to the annotation map.
 **Signature**
 
 ```ts
-export declare const annotate: <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => Effect<never, never, void>
+export declare const annotate: <A>(key: TestAnnotation<A>, value: A) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -94,7 +94,7 @@ Constructs a new `Annotations` service wrapped in a layer.
 **Signature**
 
 ```ts
-export declare const annotationsLayer: () => Layer.Layer<never, never, Annotations.TestAnnotations>
+export declare const annotationsLayer: () => Layer<never, never, Annotations.TestAnnotations>
 ```
 
 Added in v2.0.0
@@ -119,7 +119,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentServices: FiberRef.FiberRef<Context.Context<TestServices>>
+export declare const currentServices: FiberRef<Context<TestServices>>
 ```
 
 Added in v2.0.0
@@ -132,7 +132,7 @@ annotation of the specified type, or its default value if there is none.
 **Signature**
 
 ```ts
-export declare const get: <A>(key: TestAnnotation.TestAnnotation<A>) => Effect<never, never, A>
+export declare const get: <A>(key: TestAnnotation<A>) => Effect<never, never, A>
 ```
 
 Added in v2.0.0
@@ -156,7 +156,7 @@ Constructs a new `Live` service wrapped in a layer.
 **Signature**
 
 ```ts
-export declare const liveLayer: () => Layer.Layer<DefaultServices.DefaultServices, never, Live.TestLive>
+export declare const liveLayer: () => Layer<DefaultServices, never, Live.TestLive>
 ```
 
 Added in v2.0.0
@@ -168,7 +168,7 @@ The default Effect test services.
 **Signature**
 
 ```ts
-export declare const liveServices: Context.Context<TestServices>
+export declare const liveServices: Context<TestServices>
 ```
 
 Added in v2.0.0
@@ -292,7 +292,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const sizedLayer: (size: number) => Layer.Layer<never, never, Sized.TestSized>
+export declare const sizedLayer: (size: number) => Layer<never, never, Sized.TestSized>
 ```
 
 Added in v2.0.0
@@ -322,7 +322,7 @@ Returns the set of all fibers in this test.
 export declare const supervisedFibers: () => Effect<
   never,
   never,
-  SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
+  SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
 >
 ```
 
@@ -335,7 +335,7 @@ Retrieves the `TestConfig` service for this test.
 **Signature**
 
 ```ts
-export declare const testConfig: Effect<never, never, TestConfig.TestConfig>
+export declare const testConfig: Effect<never, never, TestConfig>
 ```
 
 Added in v2.0.0
@@ -352,7 +352,7 @@ export declare const testConfigLayer: (params: {
   readonly retries: number
   readonly samples: number
   readonly shrinks: number
-}) => Layer.Layer<never, never, TestConfig.TestConfig>
+}) => Layer<never, never, TestConfig>
 ```
 
 Added in v2.0.0
@@ -398,7 +398,7 @@ and restores it to its original value when the scope is closed.
 ```ts
 export declare const withAnnotationsScoped: (
   annotations: Annotations.TestAnnotations
-) => Effect<Scope.Scope, never, void>
+) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -427,7 +427,7 @@ restores it to its original value when the scope is closed.
 **Signature**
 
 ```ts
-export declare const withLiveScoped: (live: Live.TestLive) => Effect<Scope.Scope, never, void>
+export declare const withLiveScoped: (live: Live.TestLive) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -467,7 +467,7 @@ restores it to its original value when the scope is closed.
 **Signature**
 
 ```ts
-export declare const withSizedScoped: (sized: Sized.TestSized) => Effect<Scope.Scope, never, void>
+export declare const withSizedScoped: (sized: Sized.TestSized) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -496,7 +496,7 @@ restores it to its original value when the scope is closed.
 **Signature**
 
 ```ts
-export declare const withTestConfigScoped: (config: TestConfig.TestConfig) => Effect<Scope.Scope, never, void>
+export declare const withTestConfigScoped: (config: TestConfig.TestConfig) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0

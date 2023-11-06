@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Data from "effect/Data"
+import { Cause } from "effect/Cause"
+import { Data } from "effect/Data"
 import { Effect } from "effect/Effect"
 import { describe, expect } from "vitest"
 

@@ -21,18 +21,18 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
-import * as Chunk from "./Chunk.js"
+import { Chunk } from "./Chunk.js"
 import { Either } from "./Either.js"
-import * as Equal from "./Equal.js"
-import * as Equivalence from "./Equivalence.js"
+import { Equal } from "./Equal.js"
+import { Equivalence } from "./Equivalence.js"
 import { dual, identity, unsafeCoerce } from "./Function.js"
-import * as Hash from "./Hash.js"
+import { Hash } from "./Hash.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
-import * as ReadonlyArray from "./ReadonlyArray.js"
+import { ReadonlyArray } from "./ReadonlyArray.js"
 
 /**
  * Represents an immutable linked list of elements of type `A`.
@@ -62,7 +62,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Nil<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Nil"
 }
@@ -71,7 +71,7 @@ export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable 
  * @since 2.0.0
  * @category models
  */
-export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Cons<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Cons"
   readonly head: A
@@ -90,7 +90,7 @@ export const toReadonlyArray = <A>(self: List<A>): ReadonlyArray<A> => Array.fro
  * @category equivalence
  * @since 2.0.0
  */
-export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<List<A>> =>
+export const getEquivalence = <A>(isEquivalent: Equivalence<A>): Equivalence<List<A>> =>
   Equivalence.mapInput(ReadonlyArray.getEquivalence(isEquivalent), toReadonlyArray<A>)
 
 const _equivalence = getEquivalence(Equal.equals)
@@ -909,7 +909,7 @@ export const take: {
  * @since 2.0.0
  * @category conversions
  */
-export const toChunk = <A>(self: List<A>): Chunk.Chunk<A> => Chunk.fromIterable(self)
+export const toChunk = <A>(self: List<A>): Chunk<A> => Chunk.fromIterable(self)
 
 /**
  * Unsafely returns the first element of the specified `List`.

@@ -1,9 +1,9 @@
-import * as Equal from "../../../Equal.js"
-import type * as FiberId from "../../../FiberId.js"
+import { Equal } from "../../../Equal.js"
+import type { FiberId } from "../../../FiberId.js"
 import { pipe } from "../../../Function.js"
-import * as Hash from "../../../Hash.js"
+import { Hash } from "../../../Hash.js"
 import { hasProperty } from "../../../Predicate.js"
-import * as OpCodes from "../opCodes/tExit.js"
+import { OpCodes } from "../opCodes/tExit.js"
 
 /** @internal */
 const TExitSymbolKey = "effect/TExit"
@@ -35,31 +35,31 @@ const variance = {
 }
 
 /** @internal */
-export interface Fail<E> extends TExit.Variance<E, never>, Equal.Equal {
+export interface Fail<E> extends TExit.Variance<E, never>, Equal {
   readonly _tag: OpCodes.OP_FAIL
   readonly error: E
 }
 
 /** @internal */
-export interface Die extends TExit.Variance<never, never>, Equal.Equal {
+export interface Die extends TExit.Variance<never, never>, Equal {
   readonly _tag: OpCodes.OP_DIE
   readonly defect: unknown
 }
 
 /** @internal */
-export interface Interrupt extends TExit.Variance<never, never>, Equal.Equal {
+export interface Interrupt extends TExit.Variance<never, never>, Equal {
   readonly _tag: OpCodes.OP_INTERRUPT
   readonly fiberId: FiberId.FiberId
 }
 
 /** @internal */
-export interface Succeed<A> extends TExit.Variance<never, A>, Equal.Equal {
+export interface Succeed<A> extends TExit.Variance<never, A>, Equal {
   readonly _tag: OpCodes.OP_SUCCEED
   readonly value: A
 }
 
 /** @internal */
-export interface Retry extends TExit.Variance<never, never>, Equal.Equal {
+export interface Retry extends TExit.Variance<never, never>, Equal {
   readonly _tag: OpCodes.OP_RETRY
 }
 

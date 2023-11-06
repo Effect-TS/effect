@@ -1,7 +1,7 @@
 import type { Cause } from "effect/Cause"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Predicate from "effect/Predicate"
+import { Predicate } from "effect/Predicate"
 
 declare const string: Effect<"dep-1", "err-1", string>
 declare const number: Effect<"dep-2", "err-2", number>

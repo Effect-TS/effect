@@ -1,38 +1,38 @@
-import type * as Cause from "../Cause.js"
-import * as Chunk from "../Chunk.js"
-import * as Clock from "../Clock.js"
-import * as Context from "../Context.js"
-import * as Duration from "../Duration.js"
+import type { Cause } from "../Cause.js"
+import { Chunk } from "../Chunk.js"
+import { Clock } from "../Clock.js"
+import { Context } from "../Context.js"
+import { Duration } from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import { Either } from "../Either.js"
-import type * as Fiber from "../Fiber.js"
-import * as FiberId from "../FiberId.js"
-import type * as FiberRef from "../FiberRef.js"
-import * as FiberRefs from "../FiberRefs.js"
-import type * as FiberRefsPatch from "../FiberRefsPatch.js"
+import type { Fiber } from "../Fiber.js"
+import { FiberId } from "../FiberId.js"
+import type { FiberRef } from "../FiberRef.js"
+import { FiberRefs } from "../FiberRefs.js"
+import type { FiberRefsPatch } from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
 import { constFalse, constTrue, constVoid, dual, identity, pipe } from "../Function.js"
-import * as HashMap from "../HashMap.js"
-import * as HashSet from "../HashSet.js"
-import * as List from "../List.js"
-import * as LogLevel from "../LogLevel.js"
-import * as LogSpan from "../LogSpan.js"
-import type * as Metric from "../Metric.js"
-import type * as MetricLabel from "../MetricLabel.js"
+import { HashMap } from "../HashMap.js"
+import { HashSet } from "../HashSet.js"
+import { List } from "../List.js"
+import { LogLevel } from "../LogLevel.js"
+import { LogSpan } from "../LogSpan.js"
+import type { Metric } from "../Metric.js"
+import type { MetricLabel } from "../MetricLabel.js"
 import { Option } from "../Option.js"
-import * as Predicate from "../Predicate.js"
-import type * as Random from "../Random.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
-import * as Ref from "../Ref.js"
+import { Predicate } from "../Predicate.js"
+import type { Random } from "../Random.js"
+import { ReadonlyArray } from "../ReadonlyArray.js"
+import { Ref } from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
-import * as Tracer from "../Tracer.js"
+import { Tracer } from "../Tracer.js"
 import * as internalCause from "./cause.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as fiberRefsPatch from "./fiberRefs/patch.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
-import * as SingleShotGen from "./singleShotGen.js"
+import { SingleShotGen } from "./singleShotGen.js"
 import * as internalTracer from "./tracer.js"
 
 /* @internal */
@@ -74,7 +74,7 @@ export const asSomeError = <R, E, A>(self: Effect<R, E, A>): Effect<R, Option<E>
 /* @internal */
 export const asyncOption = <R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
-  blockingOn: FiberId.FiberId = FiberId.none
+  blockingOn: FiberId = FiberId.none
 ): Effect<R, E, A> =>
   core.asyncEither<R, E, A>(
     (cb) => {
@@ -176,17 +176,17 @@ export const catchAllDefect = dual<
 /* @internal */
 export const catchSomeCause = dual<
   <E, R2, E2, A2>(
-    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
+    f: (cause: Cause<E>) => Option<Effect<R2, E2, A2>>
   ) => <R, A>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A | A2>,
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
+    f: (cause: Cause<E>) => Option<Effect<R2, E2, A2>>
   ) => Effect<R | R2, E | E2, A | A2>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<E>) => Option<Effect<R2, E2, A2>>
+    f: (cause: Cause<E>) => Option<Effect<R2, E2, A2>>
   ) =>
     core.matchCauseEffect(self, {
       onFailure: (cause): Effect<R2, E | E2, A2> => {
@@ -308,14 +308,14 @@ export const catchTags: {
 })
 
 /* @internal */
-export const cause = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Cause.Cause<E>> =>
+export const cause = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Cause<E>> =>
   core.matchCause(self, { onFailure: identity, onSuccess: () => internalCause.empty })
 
 /* @internal */
 export const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A> = Clock.clockWith
 
 /* @internal */
-export const clock: Effect<never, never, Clock.Clock> = clockWith(core.succeed)
+export const clock: Effect<never, never, Clock> = clockWith(core.succeed)
 
 /* @internal */
 export const delay = dual<
@@ -325,7 +325,7 @@ export const delay = dual<
 
 /* @internal */
 export const descriptorWith = <R, E, A>(
-  f: (descriptor: Fiber.Fiber.Descriptor) => Effect<R, E, A>
+  f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>
 ): Effect<R, E, A> =>
   core.withFiberRuntime((state, status) =>
     f({
@@ -344,12 +344,12 @@ export const allowInterrupt: Effect<never, never, void> = descriptorWith(
 )
 
 /* @internal */
-export const descriptor: Effect<never, never, Fiber.Fiber.Descriptor> = descriptorWith(core.succeed)
+export const descriptor: Effect<never, never, Fiber.Descriptor> = descriptorWith(core.succeed)
 
 /* @internal */
 export const diffFiberRefs = <R, E, A>(
   self: Effect<R, E, A>
-): Effect<R, E, readonly [FiberRefsPatch.FiberRefsPatch, A]> => summarized(self, fiberRefs, fiberRefsPatch.diff)
+): Effect<R, E, readonly [FiberRefsPatch, A]> => summarized(self, fiberRefs, fiberRefsPatch.diff)
 
 /* @internal */
 export const diffFiberRefsAndRuntimeFlags = <R, E, A>(
@@ -505,7 +505,7 @@ export const dropWhile = dual<
   }))
 
 /* @internal */
-export const contextWith = <R, A>(f: (context: Context.Context<R>) => A): Effect<R, never, A> =>
+export const contextWith = <R, A>(f: (context: Context<R>) => A): Effect<R, never, A> =>
   core.map(core.context<R>(), f)
 
 /* @internal */
@@ -535,7 +535,7 @@ export const filterOrDie = dual<
       orDieWith: (a: X) => unknown
     ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
     <A, X extends A, Y extends A>(
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       orDieWith: (a: Y) => unknown
     ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   },
@@ -547,13 +547,13 @@ export const filterOrDie = dual<
     ): Effect<R, E, B>
     <R, E, A, X extends A, Y extends A>(
       self: Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       orDieWith: (a: Y) => unknown
     ): Effect<R, E, A>
   }
 >(3, <R, E, A, X extends A, Y extends A>(
   self: Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
+  filter: Predicate<X>,
   orDieWith: (a: Y) => unknown
 ): Effect<R, E, A> => filterOrElse(self, filter, (a) => core.dieSync(() => orDieWith(a as Y))))
 
@@ -565,7 +565,7 @@ export const filterOrDieMessage = dual<
       message: string
     ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
     <A, X extends A>(
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       message: string
     ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   },
@@ -577,13 +577,13 @@ export const filterOrDieMessage = dual<
     ): Effect<R, E, B>
     <R, E, A, X extends A>(
       self: Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       message: string
     ): Effect<R, E, A>
   }
 >(3, <R, E, A, X extends A>(
   self: Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
+  filter: Predicate<X>,
   message: string
 ): Effect<R, E, A> => filterOrElse(self, filter, () => core.dieMessage(message)))
 
@@ -595,7 +595,7 @@ export const filterOrElse = dual<
       orElse: (a: X) => Effect<R2, E2, C>
     ): <R, E>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, B | C>
     <A, X extends A, Y extends A, R2, E2, B>(
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       orElse: (a: Y) => Effect<R2, E2, B>
     ): <R, E>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A | B>
   },
@@ -607,13 +607,13 @@ export const filterOrElse = dual<
     ): Effect<R | R2, E | E2, B | C>
     <R, E, A, X extends A, Y extends A, R2, E2, B>(
       self: Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       orElse: (a: Y) => Effect<R2, E2, B>
     ): Effect<R | R2, E | E2, A | B>
   }
 >(3, <R, E, A, R2, E2, B>(
   self: Effect<R, E, A>,
-  filter: Predicate.Predicate<A>,
+  filter: Predicate<A>,
   orElse: (a: A) => Effect<R2, E2, B>
 ): Effect<R | R2, E | E2, A | B> =>
   core.flatMap(
@@ -629,7 +629,7 @@ export const filterOrFail = dual<
       orFailWith: (a: X) => E2
     ): <R, E>(self: Effect<R, E, A>) => Effect<R, E | E2, B>
     <A, X extends A, Y extends A, E2>(
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       orFailWith: (a: Y) => E2
     ): <R, E>(self: Effect<R, E, A>) => Effect<R, E | E2, A>
   },
@@ -641,13 +641,13 @@ export const filterOrFail = dual<
     ): Effect<R, E | E2, B>
     <R, E, A, X extends A, Y extends A, E2>(
       self: Effect<R, E, A>,
-      filter: Predicate.Predicate<X>,
+      filter: Predicate<X>,
       orFailWith: (a: Y) => E2
     ): Effect<R, E | E2, A>
   }
 >(3, <R, E, A, X extends A, Y extends A, E2>(
   self: Effect<R, E, A>,
-  filter: Predicate.Predicate<X>,
+  filter: Predicate<X>,
   orFailWith: (a: Y) => E2
 ): Effect<R, E | E2, A> => filterOrElse(self, filter, (a) => core.failSync(() => orFailWith(a as Y))))
 
@@ -803,7 +803,7 @@ export const gen: typeof Effect.gen = function() {
 }
 
 /* @internal */
-export const fiberRefs: Effect<never, never, FiberRefs.FiberRefs> = core.withFiberRuntime<
+export const fiberRefs: Effect<never, never, FiberRefs> = core.withFiberRuntime<
   never,
   never,
   FiberRefs.FiberRefs
@@ -866,17 +866,17 @@ export const iterate = <Z, R, E>(
 const logWithLevel = (level?: LogLevel.LogLevel) =>
 <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ): Effect<never, never, void> => {
   const levelOption = Option.fromNullable(level)
   let message: unknown
-  let cause: Cause.Cause<unknown>
+  let cause: Cause<unknown>
   if (internalCause.isCause(messageOrCause)) {
     cause = messageOrCause
     message = (supplementary as unknown) ?? ""
   } else {
     message = messageOrCause
-    cause = (supplementary as Cause.Cause<unknown>) ?? internalCause.empty
+    cause = (supplementary as Cause<unknown>) ?? internalCause.empty
   }
   return core.withFiberRuntime<never, never, void>((fiberState) => {
     fiberState.log(message, cause, levelOption)
@@ -887,43 +887,43 @@ const logWithLevel = (level?: LogLevel.LogLevel) =>
 /** @internal */
 export const log: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = logWithLevel()
 
 /** @internal */
 export const logTrace: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = logWithLevel(LogLevel.Trace)
 
 /** @internal */
 export const logDebug: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = logWithLevel(LogLevel.Debug)
 
 /** @internal */
 export const logInfo: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = logWithLevel(LogLevel.Info)
 
 /** @internal */
 export const logWarning: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = logWithLevel(LogLevel.Warning)
 
 /** @internal */
 export const logError: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = logWithLevel(LogLevel.Error)
 
 /** @internal */
 export const logFatal: <A>(
   messageOrCause: A,
-  supplementary?: A extends Cause.Cause<any> ? unknown : Cause.Cause<unknown>
+  supplementary?: A extends Cause<any> ? unknown : Cause<unknown>
 ) => Effect<never, never, void> = logWithLevel(LogLevel.Fatal)
 
 /* @internal */
@@ -939,7 +939,7 @@ export const withLogSpan = dual<
     )))
 
 /* @internal */
-export const logAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>> = core
+export const logAnnotations: Effect<never, never, HashMap<string, unknown>> = core
   .fiberRefGet(
     core.currentLogAnnotations
   )
@@ -983,7 +983,7 @@ const loopInternal = <Z, R, E, A>(
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect<R, E, A>
-): Effect<R, E, List.List<A>> =>
+): Effect<R, E, List<A>> =>
   core.suspend(() =>
     cont(initial)
       ? core.flatMap(body(initial), (a) =>
@@ -1045,9 +1045,9 @@ export const mapAccum = dual<
 /* @internal */
 export const mapErrorCause = dual<
   <E, E2>(
-    f: (cause: Cause.Cause<E>) => Cause.Cause<E2>
+    f: (cause: Cause<E>) => Cause<E2>
   ) => <R, A>(self: Effect<R, E, A>) => Effect<R, E2, A>,
-  <R, E, A, E2>(self: Effect<R, E, A>, f: (cause: Cause.Cause<E>) => Cause.Cause<E2>) => Effect<R, E2, A>
+  <R, E, A, E2>(self: Effect<R, E, A>, f: (cause: Cause<E>) => Cause<E2>) => Effect<R, E2, A>
 >(2, (self, f) =>
   core.matchCauseEffect(self, {
     onFailure: (c) => core.failCauseSync(() => f(c)),
@@ -1063,7 +1063,7 @@ export const memoize = <R, E, A>(
       E,
       readonly [
         readonly [
-          FiberRefsPatch.FiberRefsPatch,
+          FiberRefsPatch,
           runtimeFlagsPatch.RuntimeFlagsPatch
         ],
         A
@@ -1151,7 +1151,7 @@ export const parallelErrors = <R, E, A>(self: Effect<R, E, A>): Effect<R, Array<
     onFailure: (cause) => {
       const errors = Array.from(internalCause.failures(cause))
       return errors.length === 0
-        ? core.failCause(cause as Cause.Cause<never>)
+        ? core.failCause(cause as Cause<never>)
         : core.fail(errors)
     },
     onSuccess: core.succeed
@@ -1217,15 +1217,15 @@ export const provideServiceEffect = dual<
   tag: T,
   effect: Effect<R1, E1, Context.Tag.Service<T>>
 ) =>
-  core.contextWithEffect((env: Context.Context<R1 | Exclude<R, Context.Tag.Identifier<T>>>) =>
+  core.contextWithEffect((env: Context<R1 | Exclude<R, Context.Tag.Identifier<T>>>) =>
     core.flatMap(
       effect,
-      (service) => core.provideContext(self, pipe(env, Context.add(tag, service)) as Context.Context<R | R1>)
+      (service) => core.provideContext(self, pipe(env, Context.add(tag, service)) as Context<R | R1>)
     )
   ))
 
 /* @internal */
-export const random: Effect<never, never, Random.Random> = defaultServices.randomWith(core.succeed)
+export const random: Effect<never, never, Random> = defaultServices.randomWith(core.succeed)
 
 /* @internal */
 export const reduce = dual<
@@ -1272,7 +1272,7 @@ export const reduceWhile = dual<
   <A, R, E, Z>(
     zero: Z,
     options: {
-      readonly while: Predicate.Predicate<Z>
+      readonly while: Predicate<Z>
       readonly body: (s: Z, a: A, i: number) => Effect<R, E, Z>
     }
   ) => (elements: Iterable<A>) => Effect<R, E, Z>,
@@ -1280,7 +1280,7 @@ export const reduceWhile = dual<
     elements: Iterable<A>,
     zero: Z,
     options: {
-      readonly while: Predicate.Predicate<Z>
+      readonly while: Predicate<Z>
       readonly body: (s: Z, a: A, i: number) => Effect<R, E, Z>
     }
   ) => Effect<R, E, Z>
@@ -1288,7 +1288,7 @@ export const reduceWhile = dual<
   elements: Iterable<A>,
   zero: Z,
   options: {
-    readonly while: Predicate.Predicate<Z>
+    readonly while: Predicate<Z>
     readonly body: (s: Z, a: A, i: number) => Effect<R, E, Z>
   }
 ) =>
@@ -1301,7 +1301,7 @@ const reduceWhileLoop = <A, R, E, Z>(
   iterator: Iterator<A>,
   index: number,
   state: Z,
-  predicate: Predicate.Predicate<Z>,
+  predicate: Predicate<Z>,
   f: (s: Z, a: A, i: number) => Effect<R, E, Z>
 ): Effect<R, E, Z> => {
   const next = iterator.next()
@@ -1328,7 +1328,7 @@ const repeatNLoop = <R, E, A>(self: Effect<R, E, A>, n: number): Effect<R, E, A>
       : core.zipRight(core.yieldNow(), repeatNLoop(self, n - 1)))
 
 /* @internal */
-export const sandbox = <R, E, A>(self: Effect<R, E, A>): Effect<R, Cause.Cause<E>, A> =>
+export const sandbox = <R, E, A>(self: Effect<R, E, A>): Effect<R, Cause<E>, A> =>
   core.matchCauseEffect(self, {
     onFailure: core.fail,
     onSuccess: core.succeed
@@ -1390,16 +1390,16 @@ export const tagMetrics = dual<
 
 /* @internal */
 export const labelMetrics = dual<
-  (labels: Iterable<MetricLabel.MetricLabel>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A>(self: Effect<R, E, A>, labels: Iterable<MetricLabel.MetricLabel>) => Effect<R, E, A>
+  (labels: Iterable<MetricLabel>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, labels: Iterable<MetricLabel>) => Effect<R, E, A>
 >(2, (self, labels) => labelMetricsSet(self, HashSet.fromIterable(labels)))
 
 /* @internal */
 export const labelMetricsSet = dual<
-  (labels: HashSet.HashSet<MetricLabel.MetricLabel>) => <R, E, A>(
+  (labels: HashSet<MetricLabel>) => <R, E, A>(
     self: Effect<R, E, A>
   ) => Effect<R, E, A>,
-  <R, E, A>(self: Effect<R, E, A>, labels: HashSet.HashSet<MetricLabel.MetricLabel>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, labels: HashSet<MetricLabel>) => Effect<R, E, A>
 >(
   2,
   (self, labels) => core.fiberRefLocallyWith(core.currentMetricLabels, (set) => pipe(set, HashSet.union(labels)))(self)
@@ -1508,11 +1508,11 @@ export const tapBoth = dual<
 /* @internal */
 export const tapDefect = dual<
   <R2, E2, X>(
-    f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>
+    f: (cause: Cause<never>) => Effect<R2, E2, X>
   ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A>,
   <R, E, A, R2, E2, X>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>
+    f: (cause: Cause<never>) => Effect<R2, E2, X>
   ) => Effect<R | R2, E | E2, A>
 >(2, (self, f) =>
   core.catchAllCause(self, (cause) =>
@@ -1568,11 +1568,11 @@ export const tapErrorTag = dual<
 /* @internal */
 export const tapErrorCause = dual<
   <E, XE extends E, R2, E2, X>(
-    f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>
+    f: (cause: Cause<XE>) => Effect<R2, E2, X>
   ) => <R, A>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A>,
   <R, E, A, XE extends E, R2, E2, X>(
     self: Effect<R, E, A>,
-    f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>
+    f: (cause: Cause<XE>) => Effect<R2, E2, X>
   ) => Effect<R | R2, E | E2, A>
 >(2, (self, f) =>
   core.matchCauseEffect(self, {
@@ -1583,17 +1583,17 @@ export const tapErrorCause = dual<
 /* @internal */
 export const timed = <R, E, A>(
   self: Effect<R, E, A>
-): Effect<R, E, readonly [Duration.Duration, A]> => timedWith(self, Clock.currentTimeNanos)
+): Effect<R, E, readonly [Duration, A]> => timedWith(self, Clock.currentTimeNanos)
 
 /* @internal */
 export const timedWith = dual<
   <R1, E1>(
     nanoseconds: Effect<R1, E1, bigint>
-  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, readonly [Duration.Duration, A]>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, readonly [Duration, A]>,
   <R, E, A, R1, E1>(
     self: Effect<R, E, A>,
     nanoseconds: Effect<R1, E1, bigint>
-  ) => Effect<R | R1, E | E1, readonly [Duration.Duration, A]>
+  ) => Effect<R | R1, E | E1, readonly [Duration, A]>
 >(
   2,
   (self, nanos) => summarized(self, nanos, (start, end) => Duration.nanos(end - start))
@@ -1603,7 +1603,7 @@ export const timedWith = dual<
 export const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>) => Effect<R, E, A> = Tracer.tracerWith
 
 /** @internal */
-export const tracer: Effect<never, never, Tracer.Tracer> = tracerWith(core.succeed)
+export const tracer: Effect<never, never, Tracer> = tracerWith(core.succeed)
 
 /* @internal */
 export const tryPromise: {
@@ -1742,7 +1742,7 @@ export const unlessEffect = dual<
 >(2, (self, predicate) => core.flatMap(predicate, (b) => (b ? succeedNone : asSome(self))))
 
 /* @internal */
-export const unsandbox = <R, E, A>(self: Effect<R, Cause.Cause<E>, A>) => mapErrorCause(self, internalCause.flatten)
+export const unsandbox = <R, E, A>(self: Effect<R, Cause<E>, A>) => mapErrorCause(self, internalCause.flatten)
 
 /* @internal */
 export const updateFiberRefs = (
@@ -1790,17 +1790,17 @@ export const when = dual<
 /* @internal */
 export const whenFiberRef = dual<
   <S>(
-    fiberRef: FiberRef.FiberRef<S>,
-    predicate: Predicate.Predicate<S>
+    fiberRef: FiberRef<S>,
+    predicate: Predicate<S>
   ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option<A>]>,
   <R, E, A, S>(
     self: Effect<R, E, A>,
-    fiberRef: FiberRef.FiberRef<S>,
-    predicate: Predicate.Predicate<S>
+    fiberRef: FiberRef<S>,
+    predicate: Predicate<S>
   ) => Effect<R, E, readonly [S, Option<A>]>
 >(
   3,
-  <R, E, A, S>(self: Effect<R, E, A>, fiberRef: FiberRef.FiberRef<S>, predicate: Predicate.Predicate<S>) =>
+  <R, E, A, S>(self: Effect<R, E, A>, fiberRef: FiberRef<S>, predicate: Predicate<S>) =>
     core.flatMap(core.fiberRefGet(fiberRef), (s) =>
       predicate(s)
         ? core.map(self, (a) => [s, Option.some(a)] as const)
@@ -1810,17 +1810,17 @@ export const whenFiberRef = dual<
 /* @internal */
 export const whenRef = dual<
   <S>(
-    ref: Ref.Ref<S>,
-    predicate: Predicate.Predicate<S>
+    ref: Ref<S>,
+    predicate: Predicate<S>
   ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option<A>]>,
   <R, E, A, S>(
     self: Effect<R, E, A>,
-    ref: Ref.Ref<S>,
-    predicate: Predicate.Predicate<S>
+    ref: Ref<S>,
+    predicate: Predicate<S>
   ) => Effect<R, E, readonly [S, Option<A>]>
 >(
   3,
-  <R, E, A, S>(self: Effect<R, E, A>, ref: Ref.Ref<S>, predicate: Predicate.Predicate<S>) =>
+  <R, E, A, S>(self: Effect<R, E, A>, ref: Ref<S>, predicate: Predicate<S>) =>
     core.flatMap(Ref.get(ref), (s) =>
       predicate(s)
         ? core.map(self, (a) => [s, Option.some(a)] as const)
@@ -1830,11 +1830,11 @@ export const whenRef = dual<
 /* @internal */
 export const withMetric = dual<
   <Type, In, Out>(
-    metric: Metric.Metric<Type, In, Out>
+    metric: Metric<Type, In, Out>
   ) => <R, E, A extends In>(self: Effect<R, E, A>) => Effect<R, E, A>,
   <R, E, A extends In, Type, In, Out>(
     self: Effect<R, E, A>,
-    metric: Metric.Metric<Type, In, Out>
+    metric: Metric<Type, In, Out>
   ) => Effect<R, E, A>
 >(2, (self, metric) => metric(self))
 
@@ -2011,7 +2011,7 @@ export const makeSpan = (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   }
 ) =>
   tracerWith((tracer) =>
@@ -2053,11 +2053,11 @@ export const makeSpan = (
   )
 
 /* @internal */
-export const spanAnnotations: Effect<never, never, HashMap.HashMap<string, unknown>> = core
+export const spanAnnotations: Effect<never, never, HashMap<string, unknown>> = core
   .fiberRefGet(core.currentTracerSpanAnnotations)
 
 /* @internal */
-export const spanLinks: Effect<never, never, Chunk.Chunk<Tracer.SpanLink>> = core
+export const spanLinks: Effect<never, never, Chunk<Tracer.SpanLink>> = core
   .fiberRefGet(core.currentTracerSpanLinks)
 
 /** @internal */
@@ -2068,7 +2068,7 @@ export const useSpan: {
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   }, evaluate: (span: Tracer.Span) => Effect<R, E, A>): Effect<R, E, A>
 } = <R, E, A>(
   name: string,
@@ -2082,7 +2082,7 @@ export const useSpan: {
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   } | undefined = args.length === 1 ? undefined : args[0]
   const evaluate: (span: Tracer.Span) => Effect<R, E, A> = args[args.length - 1]
 
@@ -2112,14 +2112,14 @@ export const withSpan = dual<
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   }) => <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Effect<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   }) => Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 >(
   (args) => typeof args[0] !== "string",

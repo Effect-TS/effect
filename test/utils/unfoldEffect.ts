@@ -1,5 +1,5 @@
 import { Effect } from "effect/Effect"
-import * as List from "effect/List"
+import { List } from "effect/List"
 import { Option } from "effect/Option"
 
 export const unfoldEffect = <A, R, E, S>(
@@ -14,8 +14,8 @@ export const unfoldEffect = <A, R, E, S>(
 const unfoldEffectLoop = <A, R, E, S>(
   s: S,
   f: (s: S) => Effect<R, E, Option<readonly [A, S]>>,
-  acc: List.List<A>
-): Effect<R, E, List.List<A>> =>
+  acc: List<A>
+): Effect<R, E, List<A>> =>
   Effect.flatMap(f(s), (option) => {
     if (Option.isSome(option)) {
       return unfoldEffectLoop(option.value[1], f, List.prepend(acc, option.value[0]))

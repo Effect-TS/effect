@@ -1,16 +1,16 @@
-import * as Brand from "effect/Brand"
+import { Brand } from "effect/Brand"
 import { Either } from "effect/Either"
 import { Option } from "effect/Option"
 import { assert, describe, it } from "vitest"
 
 declare const IntTypeId: unique symbol
-type Int = number & Brand.Brand<typeof IntTypeId>
+type Int = number & Brand<typeof IntTypeId>
 const Int = Brand.refined<Int>(
   (n) => Number.isInteger(n),
   (n) => Brand.error(`Expected ${n} to be an integer`)
 )
 
-type Positive = number & Brand.Brand<"Positive">
+type Positive = number & Brand<"Positive">
 const Positive = Brand.refined<Positive>(
   (n) => n > 0,
   (n) => Brand.error(`Expected ${n} to be positive`)
@@ -21,7 +21,7 @@ const PositiveInt = Brand.all(Int, Positive)
 
 describe.concurrent("Brand", () => {
   it("nominal", () => {
-    type MyNumber = number & Brand.Brand<"MyNumber">
+    type MyNumber = number & Brand<"MyNumber">
     const MyNumber = Brand.nominal<MyNumber>()
     assert.strictEqual(MyNumber(1), 1)
     assert.strictEqual(MyNumber(1.1), 1.1)

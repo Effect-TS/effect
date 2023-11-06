@@ -45,7 +45,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: (permits: number) => STM.STM<never, never, TSemaphore>
+export declare const make: (permits: number) => STM<never, never, TSemaphore>
 ```
 
 Added in v2.0.0
@@ -57,7 +57,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const available: (self: TSemaphore) => STM.STM<never, never, number>
+export declare const available: (self: TSemaphore) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -81,7 +81,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const acquire: (self: TSemaphore) => STM.STM<never, never, void>
+export declare const acquire: (self: TSemaphore) => STM<never, never, void>
 ```
 
 Added in v2.0.0
@@ -92,8 +92,8 @@ Added in v2.0.0
 
 ```ts
 export declare const acquireN: {
-  (n: number): (self: TSemaphore) => STM.STM<never, never, void>
-  (self: TSemaphore, n: number): STM.STM<never, never, void>
+  (n: number): (self: TSemaphore) => STM<never, never, void>
+  (self: TSemaphore, n: number): STM<never, never, void>
 }
 ```
 
@@ -104,7 +104,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const release: (self: TSemaphore) => STM.STM<never, never, void>
+export declare const release: (self: TSemaphore) => STM<never, never, void>
 ```
 
 Added in v2.0.0
@@ -115,8 +115,8 @@ Added in v2.0.0
 
 ```ts
 export declare const releaseN: {
-  (n: number): (self: TSemaphore) => STM.STM<never, never, void>
-  (self: TSemaphore, n: number): STM.STM<never, never, void>
+  (n: number): (self: TSemaphore) => STM<never, never, void>
+  (self: TSemaphore, n: number): STM<never, never, void>
 }
 ```
 
@@ -140,7 +140,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const withPermitScoped: (self: TSemaphore) => Effect<Scope.Scope, never, void>
+export declare const withPermitScoped: (self: TSemaphore) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -164,8 +164,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withPermitsScoped: {
-  (permits: number): (self: TSemaphore) => Effect<Scope.Scope, never, void>
-  (self: TSemaphore, permits: number): Effect<Scope.Scope, never, void>
+  (permits: number): (self: TSemaphore) => Effect<Scope, never, void>
+  (self: TSemaphore, permits: number): Effect<Scope, never, void>
 }
 ```
 

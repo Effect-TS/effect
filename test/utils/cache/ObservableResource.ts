@@ -1,12 +1,12 @@
 import { Effect } from "effect/Effect"
-import * as ExecutionStrategy from "effect/ExecutionStrategy"
+import { ExecutionStrategy } from "effect/ExecutionStrategy"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import * as Scope from "effect/Scope"
+import { Ref } from "effect/Ref"
+import { Scope } from "effect/Scope"
 import { expect } from "vitest"
 
 export interface ObservableResource<E, V> {
-  readonly scoped: Effect<Scope.Scope, E, V>
+  readonly scoped: Effect<Scope, E, V>
   assertNotAcquired(): Effect<never, never, void>
   assertAcquiredOnceAndCleaned(): Effect<never, never, void>
   assertAcquiredOnceAndNotCleaned(): Effect<never, never, void>
@@ -14,7 +14,7 @@ export interface ObservableResource<E, V> {
 
 class ObservableResourceImpl<E, V> implements ObservableResource<E, V> {
   constructor(
-    readonly scoped: Effect<Scope.Scope, E, V>,
+    readonly scoped: Effect<Scope, E, V>,
     readonly getState: Effect<never, never, readonly [number, number]>
   ) {}
 

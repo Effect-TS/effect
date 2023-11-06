@@ -2,8 +2,8 @@ import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import * as STM from "effect/STM"
-import * as TQueue from "effect/TQueue"
+import { STM } from "effect/STM"
+import { TQueue } from "effect/TQueue"
 import { assert, describe } from "vitest"
 
 describe.concurrent("TQueue", () => {

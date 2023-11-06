@@ -1,7 +1,7 @@
-import * as Deferred from "effect/Deferred"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 
 export const withLatch = <R, E, A>(
   f: (release: Effect<never, never, void>) => Effect<R, E, A>

@@ -41,7 +41,7 @@ Added in v2.0.0
 ```ts
 export interface TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId
-  readonly fiberRef: FiberRef.FiberRef<number>
+  readonly fiberRef: FiberRef<number>
   size(): Effect<never, never, number>
   withSize(size: number): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
 }
@@ -74,7 +74,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromFiberRef: (fiberRef: FiberRef.FiberRef<number>) => TestSized
+export declare const fromFiberRef: (fiberRef: FiberRef<number>) => TestSized
 ```
 
 Added in v2.0.0

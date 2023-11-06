@@ -1,10 +1,10 @@
-import * as Chunk from "effect/Chunk"
+import { Chunk } from "effect/Chunk"
 import { pipe } from "effect/Function"
-import * as Predicate from "effect/Predicate"
+import { Predicate } from "effect/Predicate"
 
-declare const numbers: Chunk.Chunk<number>
+declare const numbers: Chunk<number>
 declare const nonEmptyNumbers: Chunk.NonEmptyChunk<number>
-declare const numbersOrStrings: Chunk.Chunk<number | string>
+declare const numbersOrStrings: Chunk<number | string>
 declare const nonEmptyNumbersOrStrings: Chunk.NonEmptyChunk<number | string>
 
 // -------------------------------------------------------------------------------------

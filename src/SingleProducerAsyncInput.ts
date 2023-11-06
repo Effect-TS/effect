@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
+import type { Cause } from "./Cause.js"
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
@@ -43,7 +43,7 @@ export interface AsyncInputProducer<Err, Elem, Done> {
   awaitRead(): Effect<never, never, unknown>
   done(value: Done): Effect<never, never, unknown>
   emit(element: Elem): Effect<never, never, unknown>
-  error(cause: Cause.Cause<Err>): Effect<never, never, unknown>
+  error(cause: Cause<Err>): Effect<never, never, unknown>
 }
 
 /**
@@ -54,7 +54,7 @@ export interface AsyncInputProducer<Err, Elem, Done> {
  */
 export interface AsyncInputConsumer<Err, Elem, Done> {
   takeWith<A>(
-    onError: (cause: Cause.Cause<Err>) => A,
+    onError: (cause: Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
   ): Effect<never, never, A>

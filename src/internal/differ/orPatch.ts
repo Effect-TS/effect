@@ -1,9 +1,9 @@
-import * as Chunk from "../../Chunk.js"
+import { Chunk } from "../../Chunk.js"
 import type { Differ } from "../../Differ.js"
 import type { Either } from "../../Either.js"
 import * as E from "../../Either.js"
-import * as Equal from "../../Equal.js"
-import * as Dual from "../../Function.js"
+import { Equal } from "../../Equal.js"
+import { Dual } from "../../Function.js"
 import { Structural } from "../data.js"
 
 /** @internal */
@@ -252,7 +252,7 @@ export const patch = Dual.dual<
     right: Differ<Value2, Patch2>
   }
 ) => {
-  let patches: Chunk.Chunk<Differ.Or.Patch<Value, Value2, Patch, Patch2>> = Chunk.of(self)
+  let patches: Chunk<Differ.Or.Patch<Value, Value2, Patch, Patch2>> = Chunk.of(self)
   let result = oldValue
   while (Chunk.isNonEmpty(patches)) {
     const head: Instruction = Chunk.headNonEmpty(patches) as Instruction

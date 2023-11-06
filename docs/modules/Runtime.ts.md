@@ -70,7 +70,7 @@ Added in v2.0.0
 
 ```ts
 export declare const make: <R>(options: {
-  readonly context: Context.Context<R>
+  readonly context: Context<R>
   readonly runtimeFlags: RuntimeFlags.RuntimeFlags
   readonly fiberRefs: FiberRefs.FiberRefs
 }) => Runtime<R>
@@ -106,7 +106,7 @@ export declare const runCallback: <R>(
 ) => <E, A>(
   effect: Effect<R, E, A>,
   onExit?: ((exit: Exit<E, A>) => void) | undefined
-) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void
+) => (fiberId?: FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void
 ```
 
 Added in v2.0.0
@@ -246,7 +246,7 @@ Added in v2.0.0
 
 ```ts
 export interface Cancel<E, A> {
-  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit<E, A>) => void): void
+  (fiberId?: FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
 ```
 
@@ -272,7 +272,7 @@ Added in v2.0.0
 ```ts
 export interface RunForkOptions {
   scheduler?: Scheduler
-  updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  updateRefs?: (refs: FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
 }
 ```
 
@@ -287,7 +287,7 @@ export interface Runtime<R> extends Pipeable {
   /**
    * The context used as initial for forks
    */
-  readonly context: Context.Context<R>
+  readonly context: Context<R>
   /**
    * The runtime flags used as initial for forks
    */

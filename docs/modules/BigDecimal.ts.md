@@ -594,7 +594,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface BigDecimal extends Equal.Equal, Pipeable, Inspectable {
+export interface BigDecimal extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: bigint
   readonly scale: number

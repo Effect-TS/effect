@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import * as Dual from "./Function.js"
+import { Dual } from "./Function.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import * as MutableHashMap from "./MutableHashMap.js"
+import { MutableHashMap } from "./MutableHashMap.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
@@ -23,7 +23,7 @@ export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */
-  readonly keyMap: MutableHashMap.MutableHashMap<V, boolean>
+  readonly keyMap: MutableHashMap<V, boolean>
 }
 
 const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {
@@ -48,7 +48,7 @@ const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {
   }
 }
 
-const fromHashMap = <V>(keyMap: MutableHashMap.MutableHashMap<V, boolean>): MutableHashSet<V> => {
+const fromHashMap = <V>(keyMap: MutableHashMap<V, boolean>): MutableHashSet<V> => {
   const set = Object.create(MutableHashSetProto)
   set.keyMap = keyMap
   return set

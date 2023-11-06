@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
+import { Cause } from "effect/Cause"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"

@@ -4,17 +4,17 @@
  *
  * @since 2.0.0
  */
-import type * as Context from "./Context.js"
+import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
-import type * as Fiber from "./Fiber.js"
+import type { Fiber } from "./Fiber.js"
 import * as core from "./internal/core.js"
 import * as circular from "./internal/layer/circular.js"
 import * as internal from "./internal/supervisor.js"
-import type * as Layer from "./Layer.js"
-import type * as MutableRef from "./MutableRef.js"
+import type { Layer } from "./Layer.js"
+import type { MutableRef } from "./MutableRef.js"
 import type { Option } from "./Option.js"
-import type * as SortedSet from "./SortedSet.js"
+import type { SortedSet } from "./SortedSet.js"
 
 /**
  * @since 2.0.0
@@ -44,7 +44,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * Supervises the start of a `Fiber`.
    */
   onStart<R, E, A>(
-    context: Context.Context<R>,
+    context: Context<R>,
     effect: Effect<R, E, A>,
     parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
@@ -103,7 +103,7 @@ export declare namespace Supervisor {
  * @since 2.0.0
  * @category context
  */
-export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never, never, never> = circular.addSupervisor
+export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer<never, never, never> = circular.addSupervisor
 
 /**
  * Creates a new supervisor that tracks children in a set.
@@ -112,8 +112,8 @@ export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never,
  * @category constructors
  */
 export const fibersIn: (
-  ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
-) => Effect<never, never, Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>> = internal.fibersIn
+  ref: MutableRef<SortedSet<Fiber.RuntimeFiber<any, any>>>
+) => Effect<never, never, Supervisor<SortedSet<Fiber.RuntimeFiber<any, any>>>> = internal.fibersIn
 
 /**
  * Creates a new supervisor that constantly yields effect when polled
@@ -161,7 +161,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   onStart<R, E, A>(
-    _context: Context.Context<R>,
+    _context: Context<R>,
     _effect: Effect<R, E, A>,
     _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>

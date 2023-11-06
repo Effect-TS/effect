@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type { Equivalence } from "./Equivalence.js"
-import * as Hash from "./Hash.js"
+import { Hash } from "./Hash.js"
 import { hasProperty } from "./Predicate.js"
 
 /**
@@ -11,12 +11,16 @@ import { hasProperty } from "./Predicate.js"
  */
 export const symbol: unique symbol = Symbol.for("effect/Equal")
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Equal extends Hash.Hash {
-  [symbol](that: Equal): boolean
+export * as Equal from "./Equal.js"
+
+declare module "./Equal.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Equal extends Hash {
+    [symbol](that: Equal): boolean
+  }
 }
 
 /**

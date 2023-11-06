@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "./Equal.js"
-import * as Dual from "./Function.js"
+import { Equal } from "./Equal.js"
+import { Dual } from "./Function.js"
 import { pipe } from "./Function.js"
-import * as Hash from "./Hash.js"
+import { Hash } from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import type { Order } from "./Order.js"
@@ -12,7 +12,7 @@ import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { hasProperty } from "./Predicate.js"
-import * as RBT from "./RedBlackTree.js"
+import { RBT } from "./RedBlackTree.js"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedSet")
 
@@ -26,7 +26,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface SortedSet<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface SortedSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _A: (_: never) => A
   }

@@ -71,7 +71,7 @@ For best performance use capacities that are powers of two.
 **Signature**
 
 ```ts
-export declare const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>>
+export declare const bounded: <A>(requestedCapacity: number) => STM<never, never, TQueue<A>>
 ```
 
 Added in v2.0.0
@@ -86,7 +86,7 @@ For best performance use capacities that are powers of two.
 **Signature**
 
 ```ts
-export declare const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>>
+export declare const dropping: <A>(requestedCapacity: number) => STM<never, never, TQueue<A>>
 ```
 
 Added in v2.0.0
@@ -101,7 +101,7 @@ For best performance use capacities that are powers of two.
 **Signature**
 
 ```ts
-export declare const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TQueue<A>>
+export declare const sliding: <A>(requestedCapacity: number) => STM<never, never, TQueue<A>>
 ```
 
 Added in v2.0.0
@@ -113,7 +113,7 @@ Creates an unbounded queue.
 **Signature**
 
 ```ts
-export declare const unbounded: <A>() => STM.STM<never, never, TQueue<A>>
+export declare const unbounded: <A>() => STM<never, never, TQueue<A>>
 ```
 
 Added in v2.0.0
@@ -139,7 +139,7 @@ Returns `true` if the `TQueue` contains zero elements, `false` otherwise.
 **Signature**
 
 ```ts
-export declare const isEmpty: <A>(self: TQueue<A>) => STM.STM<never, never, boolean>
+export declare const isEmpty: <A>(self: TQueue<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -152,7 +152,7 @@ otherwise.
 **Signature**
 
 ```ts
-export declare const isFull: <A>(self: TQueue<A>) => STM.STM<never, never, boolean>
+export declare const isFull: <A>(self: TQueue<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -164,7 +164,7 @@ Returns `true` if `shutdown` has been called, otherwise returns `false`.
 **Signature**
 
 ```ts
-export declare const isShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, boolean>
+export declare const isShutdown: <A>(self: TQueue<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -177,7 +177,7 @@ queue is empty.
 **Signature**
 
 ```ts
-export declare const peek: <A>(self: TDequeue<A>) => STM.STM<never, never, A>
+export declare const peek: <A>(self: TDequeue<A>) => STM<never, never, A>
 ```
 
 Added in v2.0.0
@@ -190,7 +190,7 @@ if the queue is empty.
 **Signature**
 
 ```ts
-export declare const peekOption: <A>(self: TDequeue<A>) => STM.STM<never, never, Option<A>>
+export declare const peekOption: <A>(self: TDequeue<A>) => STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -203,7 +203,7 @@ empty.
 **Signature**
 
 ```ts
-export declare const poll: <A>(self: TDequeue<A>) => STM.STM<never, never, Option<A>>
+export declare const poll: <A>(self: TDequeue<A>) => STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -217,7 +217,7 @@ elements to be added to the queue.
 **Signature**
 
 ```ts
-export declare const size: <A>(self: TQueue<A>) => STM.STM<never, never, number>
+export declare const size: <A>(self: TQueue<A>) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -242,36 +242,36 @@ export interface BaseTQueue {
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue.
    */
-  readonly size: STM.STM<never, never, number>
+  readonly size: STM<never, never, number>
 
   /**
    * Returns `true` if the `TQueue` contains at least one element, `false`
    * otherwise.
    */
-  readonly isFull: STM.STM<never, never, boolean>
+  readonly isFull: STM<never, never, boolean>
 
   /**
    * Returns `true` if the `TQueue` contains zero elements, `false` otherwise.
    */
-  readonly isEmpty: STM.STM<never, never, boolean>
+  readonly isEmpty: STM<never, never, boolean>
 
   /**
    * Interrupts any fibers that are suspended on `offer` or `take`. Future calls
    * to `offer*` and `take*` will be interrupted immediately.
    */
-  readonly shutdown: STM.STM<never, never, void>
+  readonly shutdown: STM<never, never, void>
 
   /**
    * Returns `true` if `shutdown` has been called, otherwise returns `false`.
    */
-  readonly isShutdown: STM.STM<never, never, boolean>
+  readonly isShutdown: STM<never, never, boolean>
 
   /**
    * Waits until the queue is shutdown. The `STM` returned by this method will
    * not resume until the queue has been shutdown. If the queue is already
    * shutdown, the `STM` will resume right away.
    */
-  readonly awaitShutdown: STM.STM<never, never, void>
+  readonly awaitShutdown: STM<never, never, void>
 }
 ```
 
@@ -287,30 +287,30 @@ export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
    * Views the next element in the queue without removing it, retrying if the
    * queue is empty.
    */
-  readonly peek: STM.STM<never, never, A>
+  readonly peek: STM<never, never, A>
 
   /**
    * Views the next element in the queue without removing it, returning `None`
    * if the queue is empty.
    */
-  readonly peekOption: STM.STM<never, never, Option<A>>
+  readonly peekOption: STM<never, never, Option<A>>
 
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.
    */
-  readonly take: STM.STM<never, never, A>
+  readonly take: STM<never, never, A>
 
   /**
    * Takes all the values in the queue and returns the values. If the queue is
    * empty returns an empty collection.
    */
-  readonly takeAll: STM.STM<never, never, Array<A>>
+  readonly takeAll: STM<never, never, Array<A>>
 
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(max: number): STM.STM<never, never, Array<A>>
+  takeUpTo(max: number): STM<never, never, Array<A>>
 }
 ```
 
@@ -325,7 +325,7 @@ export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
   /**
    * Places one value in the queue.
    */
-  offer(value: A): STM.STM<never, never, boolean>
+  offer(value: A): STM<never, never, boolean>
 
   /**
    * For Bounded TQueue: uses the `BackPressure` Strategy, places the values in
@@ -342,7 +342,7 @@ export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
    * For Dropping TQueue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  offerAll(iterable: Iterable<A>): STM.STM<never, never, boolean>
+  offerAll(iterable: Iterable<A>): STM<never, never, boolean>
 }
 ```
 
@@ -369,7 +369,7 @@ shutdown, the `STM` will resume right away.
 **Signature**
 
 ```ts
-export declare const awaitShutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void>
+export declare const awaitShutdown: <A>(self: TQueue<A>) => STM<never, never, void>
 ```
 
 Added in v2.0.0
@@ -382,8 +382,8 @@ Places one value in the queue.
 
 ```ts
 export declare const offer: {
-  <A>(value: A): (self: TEnqueue<A>) => STM.STM<never, never, void>
-  <A>(self: TEnqueue<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TEnqueue<A>) => STM<never, never, void>
+  <A>(self: TEnqueue<A>, value: A): STM<never, never, void>
 }
 ```
 
@@ -409,8 +409,8 @@ queue but if there is no room it will not enqueue them and return false.
 
 ```ts
 export declare const offerAll: {
-  <A>(iterable: Iterable<A>): (self: TEnqueue<A>) => STM.STM<never, never, boolean>
-  <A>(self: TEnqueue<A>, iterable: Iterable<A>): STM.STM<never, never, boolean>
+  <A>(iterable: Iterable<A>): (self: TEnqueue<A>) => STM<never, never, boolean>
+  <A>(self: TEnqueue<A>, iterable: Iterable<A>): STM<never, never, boolean>
 }
 ```
 
@@ -426,8 +426,8 @@ Retries if no elements satisfy the predicate.
 
 ```ts
 export declare const seek: {
-  <A>(predicate: Predicate<A>): (self: TDequeue<A>) => STM.STM<never, never, A>
-  <A>(self: TDequeue<A>, predicate: Predicate<A>): STM.STM<never, never, A>
+  <A>(predicate: Predicate<A>): (self: TDequeue<A>) => STM<never, never, A>
+  <A>(self: TDequeue<A>, predicate: Predicate<A>): STM<never, never, A>
 }
 ```
 
@@ -441,7 +441,7 @@ to `offer*` and `take*` will be interrupted immediately.
 **Signature**
 
 ```ts
-export declare const shutdown: <A>(self: TQueue<A>) => STM.STM<never, never, void>
+export declare const shutdown: <A>(self: TQueue<A>) => STM<never, never, void>
 ```
 
 Added in v2.0.0
@@ -454,7 +454,7 @@ a computation that resumes when an item has been added to the queue.
 **Signature**
 
 ```ts
-export declare const take: <A>(self: TDequeue<A>) => STM.STM<never, never, A>
+export declare const take: <A>(self: TDequeue<A>) => STM<never, never, A>
 ```
 
 Added in v2.0.0
@@ -467,7 +467,7 @@ empty returns an empty collection.
 **Signature**
 
 ```ts
-export declare const takeAll: <A>(self: TDequeue<A>) => STM.STM<never, never, A[]>
+export declare const takeAll: <A>(self: TDequeue<A>) => STM<never, never, A[]>
 ```
 
 Added in v2.0.0
@@ -482,8 +482,8 @@ retries until at least the minimum number of elements have been collected.
 
 ```ts
 export declare const takeBetween: {
-  (min: number, max: number): <A>(self: TDequeue<A>) => STM.STM<never, never, A[]>
-  <A>(self: TDequeue<A>, min: number, max: number): STM.STM<never, never, A[]>
+  (min: number, max: number): <A>(self: TDequeue<A>) => STM<never, never, A[]>
+  <A>(self: TDequeue<A>, min: number, max: number): STM<never, never, A[]>
 }
 ```
 
@@ -499,8 +499,8 @@ become available.
 
 ```ts
 export declare const takeN: {
-  (n: number): <A>(self: TDequeue<A>) => STM.STM<never, never, A[]>
-  <A>(self: TDequeue<A>, n: number): STM.STM<never, never, A[]>
+  (n: number): <A>(self: TDequeue<A>) => STM<never, never, A[]>
+  <A>(self: TDequeue<A>, n: number): STM<never, never, A[]>
 }
 ```
 
@@ -514,8 +514,8 @@ Takes up to max number of values from the queue.
 
 ```ts
 export declare const takeUpTo: {
-  (max: number): <A>(self: TDequeue<A>) => STM.STM<never, never, A[]>
-  <A>(self: TDequeue<A>, max: number): STM.STM<never, never, A[]>
+  (max: number): <A>(self: TDequeue<A>) => STM<never, never, A[]>
+  <A>(self: TDequeue<A>, max: number): STM<never, never, A[]>
 }
 ```
 

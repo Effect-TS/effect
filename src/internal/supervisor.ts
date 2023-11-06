@@ -1,14 +1,14 @@
-import type * as Context from "../Context.js"
+import type { Context } from "../Context.js"
 import type { Effect } from "../Effect.js"
 import type { Exit } from "../Exit.js"
-import type * as Fiber from "../Fiber.js"
+import type { Fiber } from "../Fiber.js"
 import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
-import * as MutableRef from "../MutableRef.js"
+import { MutableRef } from "../MutableRef.js"
 import type { Option } from "../Option.js"
 import { hasProperty, isTagged } from "../Predicate.js"
-import * as SortedSet from "../SortedSet.js"
-import type * as Supervisor from "../Supervisor.js"
+import { SortedSet } from "../SortedSet.js"
+import type { Supervisor } from "../Supervisor.js"
 import * as core from "./core.js"
 
 /** @internal */
@@ -25,11 +25,11 @@ export const supervisorVariance = {
 }
 
 /** @internal */
-export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
+export class ProxySupervisor<T> implements Supervisor<T> {
   readonly [SupervisorTypeId] = supervisorVariance
 
   constructor(
-    readonly underlying: Supervisor.Supervisor<any>,
+    readonly underlying: Supervisor<any>,
     readonly value0: () => Effect<never, never, T>
   ) {
   }
@@ -39,7 +39,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
   }
 
   onStart<R, E, A>(
-    context: Context.Context<R>,
+    context: Context<R>,
     effect: Effect<R, E, A>,
     parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
@@ -63,23 +63,23 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
     this.underlying.onResume(fiber)
   }
 
-  map<B>(f: (a: T) => B): Supervisor.Supervisor<B> {
+  map<B>(f: (a: T) => B): Supervisor<B> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
-  zip<B>(right: Supervisor.Supervisor<B>): Supervisor.Supervisor<readonly [T, B]> {
+  zip<B>(right: Supervisor<B>): Supervisor<readonly [T, B]> {
     return new Zip(this, right)
   }
 }
 
 /** @internal */
-export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
+export class Zip<T0, T1> implements Supervisor<readonly [T0, T1]> {
   readonly _tag = "Zip"
   readonly [SupervisorTypeId] = supervisorVariance
 
   constructor(
-    readonly left: Supervisor.Supervisor<T0>,
-    readonly right: Supervisor.Supervisor<T1>
+    readonly left: Supervisor<T0>,
+    readonly right: Supervisor<T1>
   ) {
   }
 
@@ -88,7 +88,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   }
 
   onStart<R, E, A>(
-    context: Context.Context<R>,
+    context: Context<R>,
     effect: Effect<R, E, A>,
     parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
@@ -117,11 +117,11 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
     this.right.onResume(fiber)
   }
 
-  map<B>(f: (a: readonly [T0, T1]) => B): Supervisor.Supervisor<B> {
+  map<B>(f: (a: readonly [T0, T1]) => B): Supervisor<B> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
-  zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<readonly [readonly [T0, T1], A]> {
+  zip<A>(right: Supervisor<A>): Supervisor<readonly [readonly [T0, T1], A]> {
     return new Zip(this, right)
   }
 }
@@ -129,7 +129,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
 export const isZip = (self: unknown): self is Zip<any, any> =>
   hasProperty(self, SupervisorTypeId) && isTagged(self, "Zip")
 
-export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>> {
+export class Track implements Supervisor<Array<Fiber.RuntimeFiber<any, any>>> {
   readonly [SupervisorTypeId] = supervisorVariance
 
   readonly fibers: Set<Fiber.RuntimeFiber<any, any>> = new Set()
@@ -139,7 +139,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
   }
 
   onStart<R, E, A>(
-    _context: Context.Context<R>,
+    _context: Context<R>,
     _effect: Effect<R, E, A>,
     _parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
@@ -163,13 +163,13 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
     //
   }
 
-  map<B>(f: (a: Array<Fiber.RuntimeFiber<any, any>>) => B): Supervisor.Supervisor<B> {
+  map<B>(f: (a: Array<Fiber.RuntimeFiber<any, any>>) => B): Supervisor<B> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
   zip<A>(
-    right: Supervisor.Supervisor<A>
-  ): Supervisor.Supervisor<readonly [Array<Fiber.RuntimeFiber<any, any>>, A]> {
+    right: Supervisor<A>
+  ): Supervisor<readonly [Array<Fiber.RuntimeFiber<any, any>>, A]> {
     return new Zip(this, right)
   }
 
@@ -178,7 +178,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
   }
 }
 
-export class Const<T> implements Supervisor.Supervisor<T> {
+export class Const<T> implements Supervisor<T> {
   readonly [SupervisorTypeId] = supervisorVariance
 
   constructor(readonly effect: Effect<never, never, T>) {
@@ -189,7 +189,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
   }
 
   onStart<R, E, A>(
-    _context: Context.Context<R>,
+    _context: Context<R>,
     _effect: Effect<R, E, A>,
     _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
@@ -213,11 +213,11 @@ export class Const<T> implements Supervisor.Supervisor<T> {
     //
   }
 
-  map<B>(f: (a: T) => B): Supervisor.Supervisor<B> {
+  map<B>(f: (a: T) => B): Supervisor<B> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
-  zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<readonly [T, A]> {
+  zip<A>(right: Supervisor<A>): Supervisor<readonly [T, A]> {
     return new Zip(this, right)
   }
 
@@ -226,18 +226,18 @@ export class Const<T> implements Supervisor.Supervisor<T> {
   }
 }
 
-class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>> {
+class FibersIn implements Supervisor<SortedSet<Fiber.RuntimeFiber<any, any>>> {
   readonly [SupervisorTypeId] = supervisorVariance
 
-  constructor(readonly ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>) {
+  constructor(readonly ref: MutableRef<SortedSet<Fiber.RuntimeFiber<any, any>>>) {
   }
 
-  value(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>> {
+  value(): Effect<never, never, SortedSet<Fiber.RuntimeFiber<any, any>>> {
     return core.sync(() => MutableRef.get(this.ref))
   }
 
   onStart<R, E, A>(
-    _context: Context.Context<R>,
+    _context: Context<R>,
     _effect: Effect<R, E, A>,
     _parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
@@ -261,13 +261,13 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
     //
   }
 
-  map<B>(f: (a: SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>) => B): Supervisor.Supervisor<B> {
+  map<B>(f: (a: SortedSet<Fiber.RuntimeFiber<any, any>>) => B): Supervisor<B> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
   zip<A>(
-    right: Supervisor.Supervisor<A>
-  ): Supervisor.Supervisor<readonly [SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>, A]> {
+    right: Supervisor<A>
+  ): Supervisor<readonly [SortedSet<Fiber.RuntimeFiber<any, any>>, A]> {
     return new Zip(this, right)
   }
 
@@ -277,7 +277,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
 }
 
 /** @internal */
-export const unsafeTrack = (): Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>> => {
+export const unsafeTrack = (): Supervisor<Array<Fiber.RuntimeFiber<any, any>>> => {
   return new Track()
 }
 
@@ -285,11 +285,11 @@ export const unsafeTrack = (): Supervisor.Supervisor<Array<Fiber.RuntimeFiber<an
 export const track: Effect<
   never,
   never,
-  Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>>
+  Supervisor<Array<Fiber.RuntimeFiber<any, any>>>
 > = core.sync(unsafeTrack)
 
 /** @internal */
-export const fromEffect = <A>(effect: Effect<never, never, A>): Supervisor.Supervisor<A> => {
+export const fromEffect = <A>(effect: Effect<never, never, A>): Supervisor<A> => {
   return new Const(effect)
 }
 
@@ -298,9 +298,9 @@ export const none = globalValue("effect/Supervisor/none", () => fromEffect(core.
 
 /** @internal */
 export const fibersIn = (
-  ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
+  ref: MutableRef<SortedSet<Fiber.RuntimeFiber<any, any>>>
 ): Effect<
   never,
   never,
-  Supervisor.Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
+  Supervisor<SortedSet<Fiber.RuntimeFiber<any, any>>>
 > => core.sync(() => new FibersIn(ref))

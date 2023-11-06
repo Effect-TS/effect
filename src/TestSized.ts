@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context.js"
+import { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
-import type * as FiberRef from "./FiberRef.js"
+import type { FiberRef } from "./FiberRef.js"
 import * as core from "./internal/core.js"
 
 /**
@@ -21,7 +21,7 @@ export type TestSizedTypeId = typeof TestSizedTypeId
  */
 export interface TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId
-  readonly fiberRef: FiberRef.FiberRef<number>
+  readonly fiberRef: FiberRef<number>
   size(): Effect<never, never, number>
   withSize(size: number): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
 }
@@ -34,7 +34,7 @@ export const TestSized: Context.Tag<TestSized, TestSized> = Context.Tag(TestSize
 /** @internal */
 class SizedImpl implements TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId = TestSizedTypeId
-  constructor(readonly fiberRef: FiberRef.FiberRef<number>) {}
+  constructor(readonly fiberRef: FiberRef<number>) {}
   size(): Effect<never, never, number> {
     return core.fiberRefGet(this.fiberRef)
   }
@@ -51,4 +51,4 @@ export const make = (size: number): TestSized => new SizedImpl(core.fiberRefUnsa
 /**
  * @since 2.0.0
  */
-export const fromFiberRef = (fiberRef: FiberRef.FiberRef<number>): TestSized => new SizedImpl(fiberRef)
+export const fromFiberRef = (fiberRef: FiberRef<number>): TestSized => new SizedImpl(fiberRef)

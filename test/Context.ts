@@ -1,5 +1,5 @@
-import * as Context from "effect/Context"
-import * as Differ from "effect/Differ"
+import { Context } from "effect/Context"
+import { Differ } from "effect/Differ"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
@@ -153,12 +153,12 @@ describe.concurrent("Context", () => {
       Context.add(A, a),
       Context.add(B, b),
       Context.add(C, c)
-    ) as Context.Context<A | B | C>
+    ) as Context<A | B | C>
     const newEnv = pipe(
       Context.empty(),
       Context.add(A, a),
       Context.add(B, { b: 3 })
-    ) as Context.Context<A | B | C>
+    ) as Context<A | B | C>
     const differ = Differ.environment<A | B | C>()
     const patch = differ.diff(oldEnv, newEnv)
     const result = differ.patch(patch, oldEnv)
@@ -178,12 +178,12 @@ describe.concurrent("Context", () => {
       Context.add(A, a),
       Context.add(B, b),
       Context.add(C, c)
-    ) as Context.Context<A | B | C>
+    ) as Context<A | B | C>
     const newEnv = pipe(
       Context.empty(),
       Context.add(A, a),
       Context.add(B, { b: 3 })
-    ) as Context.Context<A | B | C>
+    ) as Context<A | B | C>
     const differ = Differ.environment<A | B | C>()
     const result = differ.diff(oldEnv, newEnv)
 

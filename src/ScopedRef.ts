@@ -5,8 +5,8 @@ import type { Effect } from "./Effect.js"
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/scopedRef.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as Scope from "./Scope.js"
-import type * as Synchronized from "./SynchronizedRef.js"
+import type { Scope } from "./Scope.js"
+import type { Synchronized } from "./SynchronizedRef.js"
 
 /**
  * @since 2.0.0
@@ -32,7 +32,7 @@ export type ScopedRefTypeId = typeof ScopedRefTypeId
  */
 export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
   /** @internal */
-  readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Scope.Closeable, A]>
+  readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Closeable, A]>
 }
 
 /**
@@ -59,7 +59,7 @@ export declare namespace ScopedRef {
  */
 export const fromAcquire: <R, E, A>(
   acquire: Effect<R, E, A>
-) => Effect<Scope.Scope | R, E, ScopedRef<A>> = internal.fromAcquire
+) => Effect<Scope | R, E, ScopedRef<A>> = internal.fromAcquire
 
 /**
  * Retrieves the current value of the scoped reference.
@@ -76,7 +76,7 @@ export const get: <A>(self: ScopedRef<A>) => Effect<never, never, A> = internal.
  * @since 2.0.0
  * @category constructors
  */
-export const make: <A>(evaluate: LazyArg<A>) => Effect<Scope.Scope, never, ScopedRef<A>> = internal.make
+export const make: <A>(evaluate: LazyArg<A>) => Effect<Scope, never, ScopedRef<A>> = internal.make
 
 /**
  * Sets the value of this reference to the specified resourcefully-created
@@ -90,6 +90,6 @@ export const make: <A>(evaluate: LazyArg<A>) => Effect<Scope.Scope, never, Scope
  * @category getters
  */
 export const set: {
-  <A, R, E>(acquire: Effect<R, E, A>): (self: ScopedRef<A>) => Effect<Exclude<R, Scope.Scope>, E, void>
-  <A, R, E>(self: ScopedRef<A>, acquire: Effect<R, E, A>): Effect<Exclude<R, Scope.Scope>, E, void>
+  <A, R, E>(acquire: Effect<R, E, A>): (self: ScopedRef<A>) => Effect<Exclude<R, Scope>, E, void>
+  <A, R, E>(self: ScopedRef<A>, acquire: Effect<R, E, A>): Effect<Exclude<R, Scope>, E, void>
 } = internal.set

@@ -56,7 +56,7 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T ext
 **Example**
 
 ```ts
-import * as Types from "effect/Types"
+import { Types } from "effect/Types"
 
 type Res1 = Types.Equals<{ a: number }, { a: number }> // true
 type Res2 = Types.Equals<{ a: number }, { b: number }> // false
@@ -79,7 +79,7 @@ export type MergeLeft<K, H> = Simplify<{
 **Example**
 
 ```ts
-import * as Types from "effect/Types"
+import { Types } from "effect/Types"
 type MergeLeft = Types.MergeLeft<{ a: number; b: number }, { a: string }> // { a: number; b: number; }
 ```
 
@@ -100,7 +100,7 @@ export type MergeRight<K, H> = Simplify<{
 **Example**
 
 ```ts
-import * as Types from "effect/Types"
+import { Types } from "effect/Types"
 type MergeRight = Types.MergeRight<{ a: number; b: number }, { a: string }> // { a: string; b: number; }
 ```
 
@@ -121,7 +121,7 @@ export type ExcludeTag<E, K extends Tags<E>> = Exclude<E, { _tag: K }>
 **Example**
 
 ```ts
-import * as Types from "effect/Types"
+import { Types } from "effect/Types"
 
 type Res = Types.ExcludeTag<string | { _tag: "a" } | { _tag: "b" }, "a"> // string | { _tag: "b" }
 ```
@@ -141,7 +141,7 @@ export type ExtractTag<E, K extends Tags<E>> = Extract<E, { _tag: K }>
 **Example**
 
 ```ts
-import * as Types from "effect/Types"
+import { Types } from "effect/Types"
 
 type Res = Types.ExtractTag<{ _tag: "a"; a: number } | { _tag: "b"; b: number }, "b"> // { _tag: "b", b: number }
 ```
@@ -193,7 +193,7 @@ export type Simplify<A> = {
 **Example**
 
 ```ts
-import * as Types from "effect/Types"
+import { Types } from "effect/Types"
 
 type Res = Types.Simplify<{ a: number } & { b: number }> // { a: number; b: number; }
 ```
@@ -213,7 +213,7 @@ export type Tags<E> = E extends { _tag: string } ? E["_tag"] : never
 **Example**
 
 ```ts
-import * as Types from "effect/Types"
+import { Types } from "effect/Types"
 
 type Res = Types.Tags<string | { _tag: "a" } | { _tag: "b" }> // "a" | "b"
 ```

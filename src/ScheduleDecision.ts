@@ -2,8 +2,8 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/schedule/decision.js"
-import type * as Interval from "./ScheduleInterval.js"
-import type * as Intervals from "./ScheduleIntervals.js"
+import type { Interval } from "./ScheduleInterval.js"
+import type { Intervals } from "./ScheduleIntervals.js"
 
 /**
  * @since 2.0.0

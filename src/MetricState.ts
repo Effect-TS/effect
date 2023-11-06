@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Equal from "./Equal.js"
-import type * as HashMap from "./HashMap.js"
+import type { Chunk } from "./Chunk.js"
+import type { Equal } from "./Equal.js"
+import type { HashMap } from "./HashMap.js"
 import * as internal from "./internal/metric/state.js"
-import type * as MetricKeyType from "./MetricKeyType.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
@@ -89,7 +89,7 @@ export type SummaryStateTypeId = typeof SummaryStateTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MetricState<A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
+export interface MetricState<A> extends MetricState.Variance<A>, Equal, Pipeable {}
 
 /**
  * @since 2.0.0
@@ -105,7 +105,7 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Counter<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
+  export interface Counter<A extends (number | bigint)> extends MetricState<MetricKeyType.Counter<A>> {
     readonly [CounterStateTypeId]: CounterStateTypeId
     readonly count: A
   }
@@ -114,16 +114,16 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Frequency extends MetricState<MetricKeyType.MetricKeyType.Frequency> {
+  export interface Frequency extends MetricState<MetricKeyType.Frequency> {
     readonly [FrequencyStateTypeId]: FrequencyStateTypeId
-    readonly occurrences: HashMap.HashMap<string, number>
+    readonly occurrences: HashMap<string, number>
   }
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Gauge<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
+  export interface Gauge<A extends (number | bigint)> extends MetricState<MetricKeyType.Gauge<A>> {
     readonly [GaugeStateTypeId]: GaugeStateTypeId
     readonly value: A
   }
@@ -132,9 +132,9 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Histogram extends MetricState<MetricKeyType.MetricKeyType.Histogram> {
+  export interface Histogram extends MetricState<MetricKeyType.Histogram> {
     readonly [HistogramStateTypeId]: HistogramStateTypeId
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: Chunk<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -145,10 +145,10 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Summary extends MetricState<MetricKeyType.MetricKeyType.Summary> {
+  export interface Summary extends MetricState<MetricKeyType.Summary> {
     readonly [SummaryStateTypeId]: SummaryStateTypeId
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
+    readonly quantiles: Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -179,7 +179,7 @@ export const counter: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: (occurrences: HashMap.HashMap<string, number>) => MetricState.Frequency = internal.frequency
+export const frequency: (occurrences: HashMap<string, number>) => MetricState.Frequency = internal.frequency
 
 /**
  * @since 2.0.0
@@ -196,7 +196,7 @@ export const gauge: {
  */
 export const histogram: (
   options: {
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: Chunk<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -211,7 +211,7 @@ export const histogram: (
 export const summary: (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option<number>]>
+    readonly quantiles: Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number

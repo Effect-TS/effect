@@ -105,7 +105,7 @@ export declare const summary: (options: {
   readonly maxAge: Duration.DurationInput
   readonly maxSize: number
   readonly error: number
-  readonly quantiles: Chunk.Chunk<number>
+  readonly quantiles: Chunk<number>
 }) => MetricKeyType.Summary
 ```
 
@@ -118,7 +118,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MetricKeyType<In, Out> extends MetricKeyType.Variance<In, Out>, Equal.Equal, Pipeable {}
+export interface MetricKeyType<In, Out> extends MetricKeyType.Variance<In, Out>, Equal, Pipeable {}
 ```
 
 Added in v2.0.0
@@ -333,7 +333,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Counter<A extends number | bigint> = MetricKeyType<A, MetricState.MetricState.Counter<A>> & {
+export type Counter<A extends number | bigint> = MetricKeyType<A, MetricState.Counter<A>> & {
   readonly [CounterKeyTypeTypeId]: CounterKeyTypeTypeId
   readonly incremental: boolean
   readonly bigint: boolean
@@ -347,7 +347,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Frequency = MetricKeyType<string, MetricState.MetricState.Frequency> & {
+export type Frequency = MetricKeyType<string, MetricState.Frequency> & {
   readonly [FrequencyKeyTypeTypeId]: FrequencyKeyTypeTypeId
 }
 ```
@@ -359,7 +359,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Gauge<A extends number | bigint> = MetricKeyType<A, MetricState.MetricState.Gauge<A>> & {
+export type Gauge<A extends number | bigint> = MetricKeyType<A, MetricState.Gauge<A>> & {
   readonly [GaugeKeyTypeTypeId]: GaugeKeyTypeTypeId
   readonly bigint: boolean
 }
@@ -372,7 +372,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Histogram = MetricKeyType<number, MetricState.MetricState.Histogram> & {
+export type Histogram = MetricKeyType<number, MetricState.Histogram> & {
   readonly [HistogramKeyTypeTypeId]: HistogramKeyTypeTypeId
   readonly boundaries: MetricBoundaries.MetricBoundaries
 }
@@ -421,12 +421,12 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Summary = MetricKeyType<readonly [number, number], MetricState.MetricState.Summary> & {
+export type Summary = MetricKeyType<readonly [number, number], MetricState.Summary> & {
   readonly [SummaryKeyTypeTypeId]: SummaryKeyTypeTypeId
   readonly maxAge: Duration.Duration
   readonly maxSize: number
   readonly error: number
-  readonly quantiles: Chunk.Chunk<number>
+  readonly quantiles: Chunk<number>
 }
 ```
 

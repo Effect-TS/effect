@@ -1,20 +1,20 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
+import { Cause } from "effect/Cause"
 import { Effect } from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
-import * as FiberRef from "effect/FiberRef"
-import * as FiberRefs from "effect/FiberRefs"
-import * as HashMap from "effect/HashMap"
+import { Fiber } from "effect/Fiber"
+import { FiberId } from "effect/FiberId"
+import { FiberRef } from "effect/FiberRef"
+import { FiberRefs } from "effect/FiberRefs"
+import { HashMap } from "effect/HashMap"
 import { Option } from "effect/Option"
-import * as Queue from "effect/Queue"
+import { Queue } from "effect/Queue"
 import { assert, describe, expect } from "vitest"
 
 describe.concurrent("FiberRefs", () => {
   it.scoped("propagate FiberRef values across fiber boundaries", () =>
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make(false))
-      const queue = yield* $(Queue.unbounded<FiberRefs.FiberRefs>())
+      const queue = yield* $(Queue.unbounded<FiberRefs>())
       const producer = yield* $(
         FiberRef.set(fiberRef, true).pipe(
           Effect.zipRight(Effect.getFiberRefs.pipe(Effect.flatMap((a) => Queue.offer(queue, a)))),

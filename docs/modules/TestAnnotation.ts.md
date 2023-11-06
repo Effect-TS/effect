@@ -34,7 +34,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TestAnnotation<A> extends Equal.Equal {
+export interface TestAnnotation<A> extends Equal {
   readonly [TestAnnotationTypeId]: TestAnnotationTypeId
   readonly identifier: string
   readonly tag: Context.Tag<A, A>
@@ -71,9 +71,9 @@ Added in v2.0.0
 
 ```ts
 export declare const compose: <A>(
-  left: Either<number, Chunk.Chunk<A>>,
-  right: Either<number, Chunk.Chunk<A>>
-) => Either<number, Chunk.Chunk<A>>
+  left: Either<number, Chunk<A>>,
+  right: Either<number, Chunk<A>>
+) => Either<number, Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -84,7 +84,7 @@ Added in v2.0.0
 
 ```ts
 export declare const fibers: TestAnnotation<
-  Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
+  Either<number, Chunk<MutableRef<SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
 >
 ```
 
@@ -158,7 +158,7 @@ An annotation which tags tests with strings.
 **Signature**
 
 ```ts
-export declare const tagged: TestAnnotation<HashSet.HashSet<string>>
+export declare const tagged: TestAnnotation<HashSet<string>>
 ```
 
 Added in v2.0.0

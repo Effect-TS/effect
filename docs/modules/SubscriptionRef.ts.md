@@ -84,16 +84,16 @@ receive the current value as well as all changes to the value.
 ```ts
 export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable {
   /** @internal */
-  readonly ref: Ref.Ref<A>
+  readonly ref: Ref<A>
   /** @internal */
-  readonly pubsub: PubSub.PubSub<A>
+  readonly pubsub: PubSub<A>
   /** @internal */
   readonly semaphore: Effect.Semaphore
   /**
    * A stream containing the current value of the `Ref` as well as all changes
    * to that value.
    */
-  readonly changes: Stream.Stream<never, never, A>
+  readonly changes: Stream<never, never, A>
 }
 ```
 

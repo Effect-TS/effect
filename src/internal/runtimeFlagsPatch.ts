@@ -1,6 +1,6 @@
 import { dual } from "../Function.js"
-import type * as RuntimeFlags from "../RuntimeFlags.js"
-import type * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
+import type { RuntimeFlagsPatch } from "../RuntimeFlagsPatch.js"
 
 /** @internal */
 const BIT_MASK = 0xff
@@ -15,17 +15,17 @@ export const active = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): number => pa
 export const enabled = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): number => (patch >> BIT_SHIFT) & BIT_MASK
 
 /** @internal */
-export const make = (active: number, enabled: number): RuntimeFlagsPatch.RuntimeFlagsPatch =>
+export const make = (active: number, enabled: number): RuntimeFlagsPatch =>
   (((active) & BIT_MASK) + (((enabled & active) & BIT_MASK) << BIT_SHIFT)) as RuntimeFlagsPatch.RuntimeFlagsPatch
 
 /** @internal */
 export const empty = make(0, 0)
 
 /** @internal */
-export const enable = (flag: RuntimeFlags.RuntimeFlag): RuntimeFlagsPatch.RuntimeFlagsPatch => make(flag, flag)
+export const enable = (flag: RuntimeFlags.RuntimeFlag): RuntimeFlagsPatch => make(flag, flag)
 
 /** @internal */
-export const disable = (flag: RuntimeFlags.RuntimeFlag): RuntimeFlagsPatch.RuntimeFlagsPatch => make(flag, 0)
+export const disable = (flag: RuntimeFlags.RuntimeFlag): RuntimeFlagsPatch => make(flag, 0)
 
 /** @internal */
 export const isEmpty = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): boolean => patch === 0
@@ -33,27 +33,27 @@ export const isEmpty = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): boolean => 
 /** @internal */
 export const isActive = dual<
   (flag: RuntimeFlagsPatch.RuntimeFlagsPatch) => (self: RuntimeFlagsPatch.RuntimeFlagsPatch) => boolean,
-  (self: RuntimeFlagsPatch.RuntimeFlagsPatch, flag: RuntimeFlagsPatch.RuntimeFlagsPatch) => boolean
+  (self: RuntimeFlagsPatch, flag: RuntimeFlagsPatch.RuntimeFlagsPatch) => boolean
 >(2, (self, flag) => (active(self) & flag) !== 0)
 
 /** @internal */
 export const isEnabled = dual<
   (flag: RuntimeFlags.RuntimeFlag) => (self: RuntimeFlagsPatch.RuntimeFlagsPatch) => boolean,
-  (self: RuntimeFlagsPatch.RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => boolean
+  (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => boolean
 >(2, (self, flag) => (enabled(self) & flag) !== 0)
 
 /** @internal */
 export const isDisabled = dual<
   (flag: RuntimeFlags.RuntimeFlag) => (self: RuntimeFlagsPatch.RuntimeFlagsPatch) => boolean,
-  (self: RuntimeFlagsPatch.RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => boolean
+  (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => boolean
 >(2, (self, flag) => ((active(self) & flag) !== 0) && ((enabled(self) & flag) === 0))
 
 /** @internal */
 export const exclude = dual<
   (
     flag: RuntimeFlags.RuntimeFlag
-  ) => (self: RuntimeFlagsPatch.RuntimeFlagsPatch) => RuntimeFlagsPatch.RuntimeFlagsPatch,
-  (self: RuntimeFlagsPatch.RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlagsPatch.RuntimeFlagsPatch
+  ) => (self: RuntimeFlagsPatch.RuntimeFlagsPatch) => RuntimeFlagsPatch,
+  (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag) => RuntimeFlagsPatch.RuntimeFlagsPatch
 >(2, (self, flag) => make(active(self) & ~flag, enabled(self)))
 
 /** @internal */
@@ -62,9 +62,9 @@ export const both = dual<
     that: RuntimeFlagsPatch.RuntimeFlagsPatch
   ) => (
     self: RuntimeFlagsPatch.RuntimeFlagsPatch
-  ) => RuntimeFlagsPatch.RuntimeFlagsPatch,
+  ) => RuntimeFlagsPatch,
   (
-    self: RuntimeFlagsPatch.RuntimeFlagsPatch,
+    self: RuntimeFlagsPatch,
     that: RuntimeFlagsPatch.RuntimeFlagsPatch
   ) => RuntimeFlagsPatch.RuntimeFlagsPatch
 >(2, (self, that) => make(active(self) | active(that), enabled(self) & enabled(that)))
@@ -75,9 +75,9 @@ export const either = dual<
     that: RuntimeFlagsPatch.RuntimeFlagsPatch
   ) => (
     self: RuntimeFlagsPatch.RuntimeFlagsPatch
-  ) => RuntimeFlagsPatch.RuntimeFlagsPatch,
+  ) => RuntimeFlagsPatch,
   (
-    self: RuntimeFlagsPatch.RuntimeFlagsPatch,
+    self: RuntimeFlagsPatch,
     that: RuntimeFlagsPatch.RuntimeFlagsPatch
   ) => RuntimeFlagsPatch.RuntimeFlagsPatch
 >(2, (self, that) => make(active(self) | active(that), enabled(self) | enabled(that)))
@@ -88,15 +88,15 @@ export const andThen = dual<
     that: RuntimeFlagsPatch.RuntimeFlagsPatch
   ) => (
     self: RuntimeFlagsPatch.RuntimeFlagsPatch
-  ) => RuntimeFlagsPatch.RuntimeFlagsPatch,
+  ) => RuntimeFlagsPatch,
   (
-    self: RuntimeFlagsPatch.RuntimeFlagsPatch,
+    self: RuntimeFlagsPatch,
     that: RuntimeFlagsPatch.RuntimeFlagsPatch
   ) => RuntimeFlagsPatch.RuntimeFlagsPatch
 >(2, (self, that) => (self | that) as RuntimeFlagsPatch.RuntimeFlagsPatch)
 
 /** @internal */
-export const inverse = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): RuntimeFlagsPatch.RuntimeFlagsPatch =>
+export const inverse = (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): RuntimeFlagsPatch =>
   make(enabled(patch), invert(active(patch)))
 
 /** @internal */

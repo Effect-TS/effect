@@ -59,7 +59,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const suspended: (runtimeFlags: RuntimeFlags.RuntimeFlags, blockingOn: FiberId.FiberId) => FiberStatus
+export declare const suspended: (runtimeFlags: RuntimeFlags, blockingOn: FiberId.FiberId) => FiberStatus
 ```
 
 Added in v2.0.0
@@ -71,7 +71,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Done extends Equal.Equal {
+export interface Done extends Equal {
   readonly _tag: "Done"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
 }
@@ -94,7 +94,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Running extends Equal.Equal {
+export interface Running extends Equal {
   readonly _tag: "Running"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
   readonly runtimeFlags: RuntimeFlags.RuntimeFlags
@@ -108,7 +108,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Suspended extends Equal.Equal {
+export interface Suspended extends Equal {
   readonly _tag: "Suspended"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
   readonly runtimeFlags: RuntimeFlags.RuntimeFlags

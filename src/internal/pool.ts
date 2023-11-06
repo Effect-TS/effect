@@ -1,18 +1,18 @@
-import type * as Clock from "../Clock.js"
-import * as Context from "../Context.js"
-import * as Duration from "../Duration.js"
+import type { Clock } from "../Clock.js"
+import { Context } from "../Context.js"
+import { Duration } from "../Duration.js"
 import type { Effect } from "../Effect.js"
-import * as Equal from "../Equal.js"
+import { Equal } from "../Equal.js"
 import type { Exit } from "../Exit.js"
 import { dual, pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
-import * as HashSet from "../HashSet.js"
+import { Hash } from "../Hash.js"
+import { HashSet } from "../HashSet.js"
 import { pipeArguments } from "../Pipeable.js"
-import type * as Pool from "../Pool.js"
+import type { Pool } from "../Pool.js"
 import { hasProperty } from "../Predicate.js"
-import type * as Queue from "../Queue.js"
-import type * as Ref from "../Ref.js"
-import type * as Scope from "../Scope.js"
+import type { Queue } from "../Queue.js"
+import type { Ref } from "../Ref.js"
+import type { Scope } from "../Scope.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as fiberRuntime from "./fiberRuntime.js"
@@ -87,9 +87,9 @@ class NoneStrategy implements Strategy<unknown, never, never, never> {
  * A strategy that shrinks the pool down to its minimum size if items in the
  * pool have not been used for the specified duration.
  */
-class TimeToLiveStrategy implements Strategy<readonly [Clock.Clock, Ref.Ref<number>], never, never, never> {
+class TimeToLiveStrategy implements Strategy<readonly [Clock, Ref<number>], never, never, never> {
   constructor(readonly timeToLive: Duration.Duration) {}
-  initial(): Effect<never, never, readonly [Clock.Clock, Ref.Ref<number>]> {
+  initial(): Effect<never, never, readonly [Clock, Ref<number>]> {
     return core.flatMap(effect.clock, (clock) =>
       core.flatMap(clock.currentTimeMillis, (now) =>
         core.map(
@@ -97,14 +97,14 @@ class TimeToLiveStrategy implements Strategy<readonly [Clock.Clock, Ref.Ref<numb
           (ref) => [clock, ref] as const
         )))
   }
-  track(state: readonly [Clock.Clock, Ref.Ref<number>]): Effect<never, never, void> {
+  track(state: readonly [Clock, Ref<number>]): Effect<never, never, void> {
     return core.asUnit(core.flatMap(
       state[0].currentTimeMillis,
       (now) => ref.set(state[1], now)
     ))
   }
   run(
-    state: readonly [Clock.Clock, Ref.Ref<number>],
+    state: readonly [Clock, Ref<number>],
     getExcess: Effect<never, never, number>,
     shrink: Effect<never, never, void>
   ): Effect<never, never, void> {
@@ -131,16 +131,16 @@ class TimeToLiveStrategy implements Strategy<readonly [Clock.Clock, Ref.Ref<numb
   }
 }
 
-class PoolImpl<E, A> implements Pool.Pool<E, A> {
+class PoolImpl<E, A> implements Pool<E, A> {
   readonly [PoolTypeId] = poolVariance
   constructor(
-    readonly creator: Effect<Scope.Scope, E, A>,
+    readonly creator: Effect<Scope, E, A>,
     readonly min: number,
     readonly max: number,
-    readonly isShuttingDown: Ref.Ref<boolean>,
-    readonly state: Ref.Ref<PoolState>,
-    readonly items: Queue.Queue<Attempted<E, A>>,
-    readonly invalidated: Ref.Ref<HashSet.HashSet<A>>,
+    readonly isShuttingDown: Ref<boolean>,
+    readonly state: Ref<PoolState>,
+    readonly items: Queue<Attempted<E, A>>,
+    readonly invalidated: Ref<HashSet<A>>,
     readonly track: (exit: Exit<E, A>) => Effect<never, never, unknown>
   ) {}
 
@@ -173,7 +173,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
     return pipeArguments(this, arguments)
   }
 
-  get(): Effect<Scope.Scope, E, A> {
+  get(): Effect<Scope, E, A> {
     const acquire = (
       restore: <RX, EX, AX>(effect: Effect<RX, EX, AX>) => Effect<RX, EX, AX>
     ): Effect<never, never, Attempted<E, A>> =>
@@ -408,7 +408,7 @@ const makeWith = <R, E, A, S, R2>(
     readonly max: number
     readonly strategy: Strategy<S, R2, E, A>
   }
-): Effect<R | R2 | Scope.Scope, never, Pool.Pool<E, A>> =>
+): Effect<R | R2 | Scope, never, Pool<E, A>> =>
   core.uninterruptibleMask((restore) =>
     pipe(
       fiberRuntime.all([
@@ -445,14 +445,14 @@ const makeWith = <R, E, A, S, R2>(
                 )
             )
           ),
-          core.as<Pool.Pool<E, A>>(pool)
+          core.as<Pool<E, A>>(pool)
         )
       })
     )
   )
 
 /** @internal */
-export const isPool = (u: unknown): u is Pool.Pool<unknown, unknown> => hasProperty(u, PoolTypeId)
+export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u, PoolTypeId)
 
 /** @internal */
 export const make = <R, E, A>(
@@ -460,7 +460,7 @@ export const make = <R, E, A>(
     readonly acquire: Effect<R, E, A>
     readonly size: number
   }
-): Effect<R | Scope.Scope, never, Pool.Pool<E, A>> =>
+): Effect<R | Scope, never, Pool<E, A>> =>
   makeWith({
     acquire: options.acquire,
     min: options.size,
@@ -476,7 +476,7 @@ export const makeWithTTL = <R, E, A>(
     readonly max: number
     readonly timeToLive: Duration.DurationInput
   }
-): Effect<R | Scope.Scope, never, Pool.Pool<E, A>> =>
+): Effect<R | Scope, never, Pool<E, A>> =>
   makeWith({
     acquire: options.acquire,
     min: options.min,
@@ -485,10 +485,10 @@ export const makeWithTTL = <R, E, A>(
   })
 
 /** @internal */
-export const get = <E, A>(self: Pool.Pool<E, A>): Effect<Scope.Scope, E, A> => self.get()
+export const get = <E, A>(self: Pool<E, A>): Effect<Scope, E, A> => self.get()
 
 /** @internal */
 export const invalidate = dual<
-  <A>(value: A) => <E>(self: Pool.Pool<E, A>) => Effect<Scope.Scope, never, void>,
-  <E, A>(self: Pool.Pool<E, A>, value: A) => Effect<Scope.Scope, never, void>
+  <A>(value: A) => <E>(self: Pool<E, A>) => Effect<Scope, never, void>,
+  <E, A>(self: Pool<E, A>, value: A) => Effect<Scope, never, void>
 >(2, (self, value) => self.invalidate(value))

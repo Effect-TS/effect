@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type * as _Cache from "./Cache.js"
-import type * as Data from "./Data.js"
+import type { Data } from "./Data.js"
 import type { Deferred } from "./Deferred.js"
 import type { DurationInput } from "./Duration.js"
 import type { Effect } from "./Effect.js"

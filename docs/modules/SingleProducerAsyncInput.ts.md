@@ -44,7 +44,7 @@ Consumer-side view of `SingleProducerAsyncInput` for variance purposes.
 ```ts
 export interface AsyncInputConsumer<Err, Elem, Done> {
   takeWith<A>(
-    onError: (cause: Cause.Cause<Err>) => A,
+    onError: (cause: Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
   ): Effect<never, never, A>
@@ -64,7 +64,7 @@ export interface AsyncInputProducer<Err, Elem, Done> {
   awaitRead(): Effect<never, never, unknown>
   done(value: Done): Effect<never, never, unknown>
   emit(element: Elem): Effect<never, never, unknown>
-  error(cause: Cause.Cause<Err>): Effect<never, never, unknown>
+  error(cause: Cause<Err>): Effect<never, never, unknown>
 }
 ```
 

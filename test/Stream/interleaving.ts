@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
@@ -22,10 +22,10 @@ describe.concurrent("Stream", () => {
   it.effect("interleaveWith", () =>
     Effect.gen(function*($) {
       const interleave = (
-        bools: Chunk.Chunk<boolean>,
-        numbers1: Chunk.Chunk<number>,
-        numbers2: Chunk.Chunk<number>
-      ): Chunk.Chunk<number> =>
+        bools: Chunk<boolean>,
+        numbers1: Chunk<number>,
+        numbers2: Chunk<number>
+      ): Chunk<number> =>
         pipe(
           Chunk.head(bools),
           Option.map((head) => {

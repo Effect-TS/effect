@@ -1,21 +1,21 @@
-import type * as ConfigError from "../../ConfigError.js"
-import type * as PathPatch from "../../ConfigProviderPathPatch.js"
+import type { ConfigError } from "../../ConfigError.js"
+import type { PathPatch } from "../../ConfigProviderPathPatch.js"
 import { Either } from "../../Either.js"
 import { dual, pipe } from "../../Function.js"
-import * as List from "../../List.js"
+import { List } from "../../List.js"
 import { Option } from "../../Option.js"
-import * as RA from "../../ReadonlyArray.js"
+import { ReadonlyArray as RA } from "../../ReadonlyArray.js"
 import * as configError from "../configError.js"
 
 /** @internal */
-export const empty: PathPatch.PathPatch = {
+export const empty: PathPatch = {
   _tag: "Empty"
 }
 
 /** @internal */
 export const andThen = dual<
-  (that: PathPatch.PathPatch) => (self: PathPatch.PathPatch) => PathPatch.PathPatch,
-  (self: PathPatch.PathPatch, that: PathPatch.PathPatch) => PathPatch.PathPatch
+  (that: PathPatch.PathPatch) => (self: PathPatch.PathPatch) => PathPatch,
+  (self: PathPatch, that: PathPatch.PathPatch) => PathPatch.PathPatch
 >(2, (self, that) => ({
   _tag: "AndThen",
   first: self,
@@ -24,20 +24,20 @@ export const andThen = dual<
 
 /** @internal */
 export const mapName = dual<
-  (f: (string: string) => string) => (self: PathPatch.PathPatch) => PathPatch.PathPatch,
-  (self: PathPatch.PathPatch, f: (string: string) => string) => PathPatch.PathPatch
+  (f: (string: string) => string) => (self: PathPatch.PathPatch) => PathPatch,
+  (self: PathPatch, f: (string: string) => string) => PathPatch.PathPatch
 >(2, (self, f) => andThen(self, { _tag: "MapName", f }))
 
 /** @internal */
 export const nested = dual<
-  (name: string) => (self: PathPatch.PathPatch) => PathPatch.PathPatch,
-  (self: PathPatch.PathPatch, name: string) => PathPatch.PathPatch
+  (name: string) => (self: PathPatch.PathPatch) => PathPatch,
+  (self: PathPatch, name: string) => PathPatch.PathPatch
 >(2, (self, name) => andThen(self, { _tag: "Nested", name }))
 
 /** @internal */
 export const unnested = dual<
-  (name: string) => (self: PathPatch.PathPatch) => PathPatch.PathPatch,
-  (self: PathPatch.PathPatch, name: string) => PathPatch.PathPatch
+  (name: string) => (self: PathPatch.PathPatch) => PathPatch,
+  (self: PathPatch, name: string) => PathPatch.PathPatch
 >(2, (self, name) => andThen(self, { _tag: "Unnested", name }))
 
 /** @internal */
@@ -46,16 +46,16 @@ export const patch = dual<
     patch: PathPatch.PathPatch
   ) => (
     path: ReadonlyArray<string>
-  ) => Either<ConfigError.ConfigError, ReadonlyArray<string>>,
+  ) => Either<ConfigError, ReadonlyArray<string>>,
   (
     path: ReadonlyArray<string>,
     patch: PathPatch.PathPatch
-  ) => Either<ConfigError.ConfigError, ReadonlyArray<string>>
+  ) => Either<ConfigError, ReadonlyArray<string>>
 >(2, (path, patch) => {
-  let input: List.List<PathPatch.PathPatch> = List.of(patch)
+  let input: List<PathPatch> = List.of(patch)
   let output: ReadonlyArray<string> = path
   while (List.isCons(input)) {
-    const patch: PathPatch.PathPatch = input.head
+    const patch: PathPatch = input.head
     switch (patch._tag) {
       case "Empty": {
         input = input.tail

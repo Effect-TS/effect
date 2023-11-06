@@ -1,9 +1,9 @@
-import type * as ChildExecutorDecision from "../../ChildExecutorDecision.js"
+import type { ChildExecutorDecision } from "../../ChildExecutorDecision.js"
 import { Effect } from "../../Effect.js"
 import { Exit } from "../../Exit.js"
 import { pipe } from "../../Function.js"
-import type * as UpstreamPullRequest from "../../UpstreamPullRequest.js"
-import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
+import type { UpstreamPullRequest } from "../../UpstreamPullRequest.js"
+import type { UpstreamPullStrategy } from "../../UpstreamPullStrategy.js"
 import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */
@@ -95,8 +95,8 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
     readonly combineChildResults: (x: unknown, y: unknown) => unknown,
     readonly combineWithChildResult: (x: unknown, y: unknown) => unknown,
     readonly onPull: (
-      request: UpstreamPullRequest.UpstreamPullRequest<unknown>
-    ) => UpstreamPullStrategy.UpstreamPullStrategy<unknown>,
+      request: UpstreamPullRequest<unknown>
+    ) => UpstreamPullStrategy<unknown>,
     readonly onEmit: (value: unknown) => ChildExecutorDecision.ChildExecutorDecision
   ) {
   }
@@ -163,8 +163,8 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
     readonly combineChildResults: (x: unknown, y: unknown) => unknown,
     readonly combineWithChildResult: (x: unknown, y: unknown) => unknown,
     readonly onPull: (
-      request: UpstreamPullRequest.UpstreamPullRequest<unknown>
-    ) => UpstreamPullStrategy.UpstreamPullStrategy<unknown>
+      request: UpstreamPullRequest<unknown>
+    ) => UpstreamPullStrategy<unknown>
   ) {
   }
 

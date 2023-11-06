@@ -1,13 +1,13 @@
 import { causesArb } from "effect-test/utils/cause"
 import * as it from "effect-test/utils/extend"
 import { assertType, satisfies } from "effect-test/utils/types"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
+import { Fiber } from "effect/Fiber"
+import { FiberId } from "effect/FiberId"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
 import { Option } from "effect/Option"
 import * as fc from "fast-check"
@@ -328,7 +328,7 @@ describe.concurrent("Effect", () => {
         Effect.sandbox,
         Effect.match({
           onFailure: Option.some,
-          onSuccess: () => Option.none() as Option<Cause.Cause<never>>
+          onSuccess: () => Option.none() as Option<Cause<never>>
         })
       )
       assert.deepStrictEqual(result, Option.some(Cause.die(ExampleError)))
@@ -408,8 +408,8 @@ describe.concurrent("Effect", () => {
     const causes = causesArb(1, smallInts, fc.string())
     const successes = smallInts.map(Effect.succeed)
     const exits = fc.oneof(
-      causes.map((s): Either<Cause.Cause<number>, Effect<never, never, number>> => Either.left(s)),
-      successes.map((s): Either<Cause.Cause<number>, Effect<never, never, number>> => Either.right(s))
+      causes.map((s): Either<Cause<number>, Effect<never, never, number>> => Either.left(s)),
+      successes.map((s): Either<Cause<number>, Effect<never, never, number>> => Either.right(s))
     ).map(Either.match({
       onLeft: Exit.failCause,
       onRight: Exit.succeed
@@ -524,7 +524,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("no information is lost during composition", () =>
     Effect.gen(function*($) {
-      const cause = <R, E>(effect: Effect<R, E, never>): Effect<R, never, Cause.Cause<E>> => {
+      const cause = <R, E>(effect: Effect<R, E, never>): Effect<R, never, Cause<E>> => {
         return Effect.cause(effect)
       }
       const expectedCause = Cause.fail("oh no")

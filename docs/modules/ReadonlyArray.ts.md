@@ -636,8 +636,8 @@ Added in v2.0.0
 
 ```ts
 export declare const sortWith: {
-  <A, B>(f: (a: A) => B, order: Order.Order<B>): (self: readonly A[]) => A[]
-  <A, B>(self: readonly A[], f: (a: A) => B, order: Order.Order<B>): A[]
+  <A, B>(f: (a: A) => B, order: Order<B>): (self: readonly A[]) => A[]
+  <A, B>(self: readonly A[], f: (a: A) => B, order: Order<B>): A[]
 }
 ```
 
@@ -1289,8 +1289,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getEquivalence: <A>(
-  isEquivalent: Equivalence.Equivalence<A>
-) => Equivalence.Equivalence<readonly A[]>
+  isEquivalent: Equivalence<A>
+) => Equivalence<readonly A[]>
 ```
 
 Added in v2.0.0
@@ -1305,7 +1305,7 @@ It is useful when you need to compare two arrays of the same type and you have a
 **Signature**
 
 ```ts
-export declare const getOrder: <A>(O: Order.Order<A>) => Order.Order<readonly A[]>
+export declare const getOrder: <A>(O: Order<A>) => Order<readonly A[]>
 ```
 
 Added in v2.0.0
@@ -1513,8 +1513,8 @@ Sort the elements of an `Iterable` in increasing order, creating a new `Array`.
 
 ```ts
 export declare const sort: {
-  <B>(O: Order.Order<B>): <A extends B>(self: Iterable<A>) => A[]
-  <A extends B, B>(self: Iterable<A>, O: Order.Order<B>): A[]
+  <B>(O: Order<B>): <A extends B>(self: Iterable<A>) => A[]
+  <A extends B, B>(self: Iterable<A>, O: Order<B>): A[]
 }
 ```
 
@@ -1528,7 +1528,7 @@ using first `orders[0]`, then `orders[1]`, etc...
 **Signature**
 
 ```ts
-export declare const sortBy: <B>(...orders: readonly Order.Order<B>[]) => <A extends B>(self: Iterable<A>) => A[]
+export declare const sortBy: <B>(...orders: readonly Order<B>[]) => <A extends B>(self: Iterable<A>) => A[]
 ```
 
 Added in v2.0.0
@@ -1539,7 +1539,7 @@ Added in v2.0.0
 
 ```ts
 export declare const sortByNonEmpty: <B>(
-  ...orders: readonly Order.Order<B>[]
+  ...orders: readonly Order<B>[]
 ) => <A extends B>(as: readonly [A, ...A[]]) => [A, ...A[]]
 ```
 
@@ -1553,8 +1553,8 @@ Sort the elements of a `NonEmptyReadonlyArray` in increasing order, creating a n
 
 ```ts
 export declare const sortNonEmpty: {
-  <B>(O: Order.Order<B>): <A extends B>(self: readonly [A, ...A[]]) => [A, ...A[]]
-  <A extends B, B>(self: readonly [A, ...A[]], O: Order.Order<B>): [A, ...A[]]
+  <B>(O: Order<B>): <A extends B>(self: readonly [A, ...A[]]) => [A, ...A[]]
+  <A extends B, B>(self: readonly [A, ...A[]], O: Order<B>): [A, ...A[]]
 }
 ```
 
@@ -1886,8 +1886,8 @@ Added in v2.0.0
 
 ```ts
 export declare const max: {
-  <A>(O: Order.Order<A>): (self: readonly [A, ...A[]]) => A
-  <A>(self: readonly [A, ...A[]], O: Order.Order<A>): A
+  <A>(O: Order<A>): (self: readonly [A, ...A[]]) => A
+  <A>(self: readonly [A, ...A[]], O: Order<A>): A
 }
 ```
 
@@ -1899,8 +1899,8 @@ Added in v2.0.0
 
 ```ts
 export declare const min: {
-  <A>(O: Order.Order<A>): (self: readonly [A, ...A[]]) => A
-  <A>(self: readonly [A, ...A[]], O: Order.Order<A>): A
+  <A>(O: Order<A>): (self: readonly [A, ...A[]]) => A
+  <A>(self: readonly [A, ...A[]], O: Order<A>): A
 }
 ```
 

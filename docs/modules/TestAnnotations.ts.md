@@ -49,24 +49,24 @@ monad effect.
 export interface TestAnnotations {
   readonly [TestAnnotationsTypeId]: TestAnnotationsTypeId
 
-  readonly ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>
+  readonly ref: Ref<TestAnnotationMap>
 
   /**
    * Accesses an `Annotations` instance in the context and retrieves the
    * annotation of the specified type, or its default value if there is none.
    */
-  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect<never, never, A>
+  get<A>(key: TestAnnotation<A>): Effect<never, never, A>
 
   /**
    * Accesses an `Annotations` instance in the context and appends the
    * specified annotation to the annotation map.
    */
-  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect<never, never, void>
+  annotate<A>(key: TestAnnotation<A>, value: A): Effect<never, never, void>
 
   /**
    * Returns the set of all fibers in this test.
    */
-  supervisedFibers(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
+  supervisedFibers(): Effect<never, never, SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
 }
 ```
 
@@ -107,7 +107,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: (ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>) => TestAnnotations
+export declare const make: (ref: Ref<TestAnnotationMap>) => TestAnnotations
 ```
 
 Added in v2.0.0

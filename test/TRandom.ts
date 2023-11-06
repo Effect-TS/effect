@@ -1,8 +1,8 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as STM from "effect/STM"
-import * as TRandom from "effect/TRandom"
+import { STM } from "effect/STM"
+import { TRandom } from "effect/TRandom"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 

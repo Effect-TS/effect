@@ -1,7 +1,7 @@
-import * as Equal from "../../Equal.js"
+import { Equal } from "../../Equal.js"
 import { pipe } from "../../Function.js"
-import * as Hash from "../../Hash.js"
-import type * as MetricLabel from "../../MetricLabel.js"
+import { Hash } from "../../Hash.js"
+import type { MetricLabel } from "../../MetricLabel.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
 
@@ -14,7 +14,7 @@ export const MetricLabelTypeId: MetricLabel.MetricLabelTypeId = Symbol.for(
 ) as MetricLabel.MetricLabelTypeId
 
 /** @internal */
-class MetricLabelImpl implements MetricLabel.MetricLabel {
+class MetricLabelImpl implements MetricLabel {
   readonly [MetricLabelTypeId]: MetricLabel.MetricLabelTypeId = MetricLabelTypeId
   constructor(readonly key: string, readonly value: string) {}
   [Hash.symbol](): number {
@@ -35,9 +35,9 @@ class MetricLabelImpl implements MetricLabel.MetricLabel {
 }
 
 /** @internal */
-export const make = (key: string, value: string): MetricLabel.MetricLabel => {
+export const make = (key: string, value: string): MetricLabel => {
   return new MetricLabelImpl(key, value)
 }
 
 /** @internal */
-export const isMetricLabel = (u: unknown): u is MetricLabel.MetricLabel => hasProperty(u, MetricLabelTypeId)
+export const isMetricLabel = (u: unknown): u is MetricLabel => hasProperty(u, MetricLabelTypeId)

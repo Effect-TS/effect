@@ -1,15 +1,15 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
+import type { Cause } from "./Cause.js"
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
-import type * as FiberId from "./FiberId.js"
+import type { FiberId } from "./FiberId.js"
 import type { FiberRef } from "./FiberRef.js"
-import type * as FiberRefs from "./FiberRefs.js"
-import type * as FiberStatus from "./FiberStatus.js"
-import type * as HashSet from "./HashSet.js"
+import type { FiberRefs } from "./FiberRefs.js"
+import type { FiberStatus } from "./FiberStatus.js"
+import type { HashSet } from "./HashSet.js"
 import * as core from "./internal/core.js"
 import * as circular from "./internal/effect/circular.js"
 import * as internal from "./internal/fiber.js"
@@ -17,8 +17,8 @@ import * as fiberRuntime from "./internal/fiberRuntime.js"
 import type { Option } from "./Option.js"
 import type * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as RuntimeFlags from "./RuntimeFlags.js"
-import type * as Scope from "./Scope.js"
+import type { RuntimeFlags } from "./RuntimeFlags.js"
+import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
@@ -119,12 +119,12 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * The status of the fiber.
    */
-  status(): Effect<never, never, FiberStatus.FiberStatus>
+  status(): Effect<never, never, FiberStatus>
 
   /**
    * Returns the current `RuntimeFlags` the fiber is running with.
    */
-  runtimeFlags(): Effect<never, never, RuntimeFlags.RuntimeFlags>
+  runtimeFlags(): Effect<never, never, RuntimeFlags>
 
   /**
    * Adds an observer to the list of observers.
@@ -213,7 +213,7 @@ export declare namespace Fiber {
     /**
      * The set of fibers attempting to interrupt the fiber or its ancestors.
      */
-    readonly interruptors: HashSet.HashSet<FiberId.FiberId>
+    readonly interruptors: HashSet<FiberId>
   }
 }
 
@@ -246,7 +246,7 @@ export const isRuntimeFiber: <E, A>(self: Fiber<E, A>) => self is RuntimeFiber<E
  * @since 2.0.0
  * @category getters
  */
-export const id: <E, A>(self: Fiber<E, A>) => FiberId.FiberId = internal.id
+export const id: <E, A>(self: Fiber<E, A>) => FiberId = internal.id
 
 const _await: <E, A>(self: Fiber<E, A>) => Effect<never, never, Exit<E, A>> = internal._await
 export {
@@ -322,7 +322,7 @@ export const fail: <E>(error: E) => Fiber<E, never> = internal.fail
  * @since 2.0.0
  * @category constructors
  */
-export const failCause: <E>(cause: Cause.Cause<E>) => Fiber<E, never> = internal.failCause
+export const failCause: <E>(cause: Cause<E>) => Fiber<E, never> = internal.failCause
 
 /**
  * Lifts an `Effect` into a `Fiber`.
@@ -569,7 +569,7 @@ export const unsafeRoots: (_: void) => Array<RuntimeFiber<any, any>> = internal.
  * @since 2.0.0
  * @category destructors
  */
-export const scoped: <E, A>(self: Fiber<E, A>) => Effect<Scope.Scope, never, Fiber<E, A>> = fiberRuntime.fiberScoped
+export const scoped: <E, A>(self: Fiber<E, A>) => Effect<Scope, never, Fiber<E, A>> = fiberRuntime.fiberScoped
 
 /**
  * Returns the `FiberStatus` of a `RuntimeFiber`.
@@ -577,7 +577,7 @@ export const scoped: <E, A>(self: Fiber<E, A>) => Effect<Scope.Scope, never, Fib
  * @since 2.0.0
  * @category getters
  */
-export const status: <E, A>(self: RuntimeFiber<E, A>) => Effect<never, never, FiberStatus.FiberStatus> = internal.status
+export const status: <E, A>(self: RuntimeFiber<E, A>) => Effect<never, never, FiberStatus> = internal.status
 
 /**
  * Returns a fiber that has already succeeded with the specified value.

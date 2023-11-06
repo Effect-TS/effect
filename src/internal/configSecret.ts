@@ -1,8 +1,8 @@
-import * as Chunk from "../Chunk.js"
-import type * as ConfigSecret from "../ConfigSecret.js"
-import * as Equal from "../Equal.js"
+import { Chunk } from "../Chunk.js"
+import type { ConfigSecret } from "../ConfigSecret.js"
+import { Equal } from "../Equal.js"
 import { pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
+import { Hash } from "../Hash.js"
 import { hasProperty } from "../Predicate.js"
 
 /** @internal */
@@ -22,17 +22,17 @@ export const proto = {
       Hash.combine(Hash.array(this.raw))
     )
   },
-  [Equal.symbol](this: ConfigSecret.ConfigSecret, that: unknown): boolean {
+  [Equal.symbol](this: ConfigSecret, that: unknown): boolean {
     return isConfigSecret(that) && this.raw.length === that.raw.length &&
       this.raw.every((v, i) => Equal.equals(v, that.raw[i]))
   }
 }
 
 /** @internal */
-export const isConfigSecret = (u: unknown): u is ConfigSecret.ConfigSecret => hasProperty(u, ConfigSecretTypeId)
+export const isConfigSecret = (u: unknown): u is ConfigSecret => hasProperty(u, ConfigSecretTypeId)
 
 /** @internal */
-export const make = (bytes: Array<number>): ConfigSecret.ConfigSecret => {
+export const make = (bytes: Array<number>): ConfigSecret => {
   const secret = Object.create(proto)
   Object.defineProperty(secret, "toString", {
     enumerable: false,
@@ -48,12 +48,12 @@ export const make = (bytes: Array<number>): ConfigSecret.ConfigSecret => {
 }
 
 /** @internal */
-export const fromChunk = (chunk: Chunk.Chunk<string>): ConfigSecret.ConfigSecret => {
+export const fromChunk = (chunk: Chunk<string>): ConfigSecret => {
   return make(Chunk.toReadonlyArray(chunk).map((char) => char.charCodeAt(0)))
 }
 
 /** @internal */
-export const fromString = (text: string): ConfigSecret.ConfigSecret => {
+export const fromString = (text: string): ConfigSecret => {
   return make(text.split("").map((char) => char.charCodeAt(0)))
 }
 

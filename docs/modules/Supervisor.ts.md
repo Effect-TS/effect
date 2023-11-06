@@ -74,7 +74,7 @@ Added in v2.0.0
 
 ```ts
 onStart<R, E, A>(
-    _context: Context.Context<R>,
+    _context: Context<R>,
     _effect: Effect<R, E, A>,
     _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
@@ -183,8 +183,8 @@ Creates a new supervisor that tracks children in a set.
 
 ```ts
 export declare const fibersIn: (
-  ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
-) => Effect<never, never, Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>>
+  ref: MutableRef<SortedSet<Fiber.RuntimeFiber<any, any>>>
+) => Effect<never, never, Supervisor<SortedSet<Fiber.RuntimeFiber<any, any>>>>
 ```
 
 Added in v2.0.0
@@ -232,7 +232,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never, never, never>
+export declare const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer<never, never, never>
 ```
 
 Added in v2.0.0
@@ -256,7 +256,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * Supervises the start of a `Fiber`.
    */
   onStart<R, E, A>(
-    context: Context.Context<R>,
+    context: Context<R>,
     effect: Effect<R, E, A>,
     parent: Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>

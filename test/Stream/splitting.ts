@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import { Stream } from "effect/Stream"
@@ -16,7 +16,7 @@ const weirdStringForSplitLines: fc.Arbitrary<ReadonlyArray<string>> = fc.array(
 })
 
 const testSplitLines = (
-  input: ReadonlyArray<Chunk.Chunk<string>>
+  input: ReadonlyArray<Chunk<string>>
 ): Effect<never, never, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> => {
   const str = input.flatMap((chunk) => Chunk.toReadonlyArray(chunk).join("")).join("")
   const expected = str.split(/\r?\n/)

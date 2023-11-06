@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "./Equal.js"
+import { Equal } from "./Equal.js"
 import type * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
-import * as Hash from "./Hash.js"
+import { Hash } from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toString } from "./Inspectable.js"
 import { Option } from "./Option.js"
@@ -28,7 +28,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Duration extends Equal.Equal, Pipeable, Inspectable {
+export interface Duration extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: DurationValue
 }

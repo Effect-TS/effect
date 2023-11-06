@@ -1,15 +1,15 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
@@ -209,7 +209,7 @@ describe.concurrent("Effect", () => {
     }))
   it.live("acquireUseRelease regression 1", () =>
     Effect.gen(function*($) {
-      const makeLogger = (ref: Ref.Ref<Chunk.Chunk<string>>) => {
+      const makeLogger = (ref: Ref<Chunk<string>>) => {
         return (line: string): Effect<never, never, void> => {
           return Ref.update(ref, Chunk.prepend(line))
         }

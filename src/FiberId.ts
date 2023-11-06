@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type * as Equal from "./Equal.js"
-import type * as HashSet from "./HashSet.js"
+import type { Equal } from "./Equal.js"
+import type { HashSet } from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/fiberId.js"
 import type { Option } from "./Option.js"
@@ -29,7 +29,7 @@ export type FiberId = None | Runtime | Composite
  * @since 2.0.0
  * @category models
  */
-export interface None extends Equal.Equal, Inspectable {
+export interface None extends Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
   readonly _tag: "None"
 }
@@ -38,7 +38,7 @@ export interface None extends Equal.Equal, Inspectable {
  * @since 2.0.0
  * @category models
  */
-export interface Runtime extends Equal.Equal, Inspectable {
+export interface Runtime extends Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
   readonly _tag: "Runtime"
   readonly id: number
@@ -49,7 +49,7 @@ export interface Runtime extends Equal.Equal, Inspectable {
  * @since 2.0.0
  * @category models
  */
-export interface Composite extends Equal.Equal, Inspectable {
+export interface Composite extends Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
   readonly _tag: "Composite"
   readonly left: FiberId
@@ -124,7 +124,7 @@ export const combine: {
  * @since 2.0.0
  * @category constructors
  */
-export const combineAll: (fiberIds: HashSet.HashSet<FiberId>) => FiberId = internal.combineAll
+export const combineAll: (fiberIds: HashSet<FiberId>) => FiberId = internal.combineAll
 
 /**
  * Returns this `FiberId` if it is not `None`, otherwise returns that `FiberId`.
@@ -143,7 +143,7 @@ export const getOrElse: {
  * @since 2.0.0
  * @category destructors
  */
-export const ids: (self: FiberId) => HashSet.HashSet<number> = internal.ids
+export const ids: (self: FiberId) => HashSet<number> = internal.ids
 
 /**
  * Creates a new `FiberId`.
@@ -176,7 +176,7 @@ export const toOption: (self: FiberId) => Option<FiberId> = internal.toOption
  * @since 2.0.0
  * @category destructors
  */
-export const toSet: (self: FiberId) => HashSet.HashSet<Runtime> = internal.toSet
+export const toSet: (self: FiberId) => HashSet<Runtime> = internal.toSet
 
 /**
  * Unsafely creates a new `FiberId`.

@@ -2,16 +2,16 @@
  * @since 2.0.0
  */
 import type { Cause } from "./Cause.js"
-import type * as Context from "./Context.js"
+import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
-import type * as Fiber from "./Fiber.js"
-import type * as FiberId from "./FiberId.js"
-import type * as FiberRefs from "./FiberRefs.js"
+import type { Fiber } from "./Fiber.js"
+import type { FiberId } from "./FiberId.js"
+import type { FiberRefs } from "./FiberRefs.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/runtime.js"
 import type { Pipeable } from "./Pipeable.js"
-import type * as RuntimeFlags from "./RuntimeFlags.js"
+import type { RuntimeFlags } from "./RuntimeFlags.js"
 import type { Scheduler } from "./Scheduler.js"
 
 /**
@@ -28,7 +28,7 @@ export interface AsyncFiberException<E, A> {
  * @category models
  */
 export interface Cancel<E, A> {
-  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit<E, A>) => void): void
+  (fiberId?: FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
 
 /**
@@ -39,7 +39,7 @@ export interface Runtime<R> extends Pipeable {
   /**
    * The context used as initial for forks
    */
-  readonly context: Context.Context<R>
+  readonly context: Context<R>
   /**
    * The runtime flags used as initial for forks
    */
@@ -56,7 +56,7 @@ export interface Runtime<R> extends Pipeable {
  */
 export interface RunForkOptions {
   scheduler?: Scheduler
-  updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  updateRefs?: (refs: FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
 }
 
 /**
@@ -109,7 +109,7 @@ export const runCallback: <R>(
 ) => <E, A>(
   effect: Effect<R, E, A>,
   onExit?: ((exit: Exit<E, A>) => void) | undefined
-) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void =
+) => (fiberId?: FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void =
   internal.unsafeRunCallback
 
 /**
@@ -150,7 +150,7 @@ export const defaultRuntime: Runtime<never> = internal.defaultRuntime
  * @since 2.0.0
  * @category constructors
  */
-export const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags = internal.defaultRuntimeFlags
+export const defaultRuntimeFlags: RuntimeFlags = internal.defaultRuntimeFlags
 
 /**
  * @since 2.0.0
@@ -158,7 +158,7 @@ export const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags = internal.defaultRu
  */
 export const make: <R>(
   options: {
-    readonly context: Context.Context<R>
+    readonly context: Context<R>
     readonly runtimeFlags: RuntimeFlags.RuntimeFlags
     readonly fiberRefs: FiberRefs.FiberRefs
   }

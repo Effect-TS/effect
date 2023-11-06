@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as Dual from "./Function.js"
+import { Dual } from "./Function.js"
 import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"

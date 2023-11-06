@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as Chunk from "./Chunk.js"
-import * as Dual from "./Function.js"
+import { Chunk } from "./Chunk.js"
+import { Dual } from "./Function.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import * as MutableList from "./MutableList.js"
+import { MutableList } from "./MutableList.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
@@ -30,7 +30,7 @@ export interface MutableQueue<A> extends Iterable<A>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */
-  queue: MutableList.MutableList<A>
+  queue: MutableList<A>
   /** @internal */
   capacity: number | undefined
 }
@@ -156,11 +156,11 @@ export const offer: {
  * @since 2.0.0
  */
 export const offerAll: {
-  <A>(values: Iterable<A>): (self: MutableQueue<A>) => Chunk.Chunk<A>
-  <A>(self: MutableQueue<A>, values: Iterable<A>): Chunk.Chunk<A>
+  <A>(values: Iterable<A>): (self: MutableQueue<A>) => Chunk<A>
+  <A>(self: MutableQueue<A>, values: Iterable<A>): Chunk<A>
 } = Dual.dual<
-  <A>(values: Iterable<A>) => (self: MutableQueue<A>) => Chunk.Chunk<A>,
-  <A>(self: MutableQueue<A>, values: Iterable<A>) => Chunk.Chunk<A>
+  <A>(values: Iterable<A>) => (self: MutableQueue<A>) => Chunk<A>,
+  <A>(self: MutableQueue<A>, values: Iterable<A>) => Chunk<A>
 >(2, <A>(self: MutableQueue<A>, values: Iterable<A>) => {
   const iterator = values[Symbol.iterator]()
   let next: IteratorResult<A> | undefined
@@ -207,11 +207,11 @@ export const poll: {
  * @since 2.0.0
  */
 export const pollUpTo: {
-  (n: number): <A>(self: MutableQueue<A>) => Chunk.Chunk<A>
-  <A>(self: MutableQueue<A>, n: number): Chunk.Chunk<A>
+  (n: number): <A>(self: MutableQueue<A>) => Chunk<A>
+  <A>(self: MutableQueue<A>, n: number): Chunk<A>
 } = Dual.dual<
-  (n: number) => <A>(self: MutableQueue<A>) => Chunk.Chunk<A>,
-  <A>(self: MutableQueue<A>, n: number) => Chunk.Chunk<A>
+  (n: number) => <A>(self: MutableQueue<A>) => Chunk<A>,
+  <A>(self: MutableQueue<A>, n: number) => Chunk<A>
 >(2, <A>(self: MutableQueue<A>, n: number) => {
   let result = Chunk.empty<A>()
   let count = 0

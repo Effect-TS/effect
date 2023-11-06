@@ -1,11 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Channel from "./Channel.js"
+import type { Channel } from "./Channel.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/effectable.js"
-import type * as Sink from "./Sink.js"
+import type { Sink } from "./Sink.js"
 import type { Stream } from "./Stream.js"
+
+export * as Effectable from "./Effectable.js"
 
 /**
  * @since 2.0.0

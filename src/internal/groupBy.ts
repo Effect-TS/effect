@@ -1,18 +1,18 @@
-import * as Cause from "../Cause.js"
-import type * as Channel from "../Channel.js"
-import * as Chunk from "../Chunk.js"
-import * as Deferred from "../Deferred.js"
+import { Cause } from "../Cause.js"
+import type { Channel } from "../Channel.js"
+import { Chunk } from "../Chunk.js"
+import { Deferred } from "../Deferred.js"
 import { Effect } from "../Effect.js"
 import { Exit } from "../Exit.js"
 import { dual, pipe } from "../Function.js"
-import type * as GroupBy from "../GroupBy.js"
+import type { GroupBy } from "../GroupBy.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate } from "../Predicate.js"
-import * as Queue from "../Queue.js"
-import * as Ref from "../Ref.js"
+import { Queue } from "../Queue.js"
+import { Ref } from "../Ref.js"
 import type { Stream } from "../Stream.js"
-import type * as Take from "../Take.js"
+import type { Take } from "../Take.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as core from "./core-stream.js"
@@ -36,7 +36,7 @@ const groupByVariance = {
 }
 
 /** @internal */
-export const isGroupBy = (u: unknown): u is GroupBy.GroupBy<unknown, unknown, unknown, unknown> =>
+export const isGroupBy = (u: unknown): u is GroupBy<unknown, unknown, unknown, unknown> =>
   hasProperty(u, GroupByTypeId)
 
 /** @internal */
@@ -44,16 +44,16 @@ export const evaluate = dual<
   <K, E, V, R2, E2, A>(
     f: (key: K, stream: Stream<never, E, V>) => Stream<R2, E2, A>,
     options?: { readonly bufferSize?: number }
-  ) => <R>(self: GroupBy.GroupBy<R, E, K, V>) => Stream<R2 | R, E | E2, A>,
+  ) => <R>(self: GroupBy<R, E, K, V>) => Stream<R2 | R, E | E2, A>,
   <R, K, E, V, R2, E2, A>(
-    self: GroupBy.GroupBy<R, E, K, V>,
+    self: GroupBy<R, E, K, V>,
     f: (key: K, stream: Stream<never, E, V>) => Stream<R2, E2, A>,
     options?: { readonly bufferSize?: number }
   ) => Stream<R2 | R, E | E2, A>
 >(
   (args) => isGroupBy(args[0]),
   <R, K, E, V, R2, E2, A>(
-    self: GroupBy.GroupBy<R, E, K, V>,
+    self: GroupBy<R, E, K, V>,
     f: (key: K, stream: Stream<never, E, V>) => Stream<R2, E2, A>,
     options?: { readonly bufferSize?: number }
   ): Stream<R | R2, E | E2, A> =>
@@ -66,9 +66,9 @@ export const evaluate = dual<
 
 /** @internal */
 export const filter = dual<
-  <K>(predicate: Predicate<K>) => <R, E, V>(self: GroupBy.GroupBy<R, E, K, V>) => GroupBy.GroupBy<R, E, K, V>,
-  <R, E, V, K>(self: GroupBy.GroupBy<R, E, K, V>, predicate: Predicate<K>) => GroupBy.GroupBy<R, E, K, V>
->(2, <R, E, V, K>(self: GroupBy.GroupBy<R, E, K, V>, predicate: Predicate<K>): GroupBy.GroupBy<R, E, K, V> =>
+  <K>(predicate: Predicate<K>) => <R, E, V>(self: GroupBy<R, E, K, V>) => GroupBy<R, E, K, V>,
+  <R, E, V, K>(self: GroupBy<R, E, K, V>, predicate: Predicate<K>) => GroupBy<R, E, K, V>
+>(2, <R, E, V, K>(self: GroupBy<R, E, K, V>, predicate: Predicate<K>): GroupBy<R, E, K, V> =>
   make(
     pipe(
       self.grouped,
@@ -83,9 +83,9 @@ export const filter = dual<
 
 /** @internal */
 export const first = dual<
-  (n: number) => <R, E, K, V>(self: GroupBy.GroupBy<R, E, K, V>) => GroupBy.GroupBy<R, E, K, V>,
-  <R, E, K, V>(self: GroupBy.GroupBy<R, E, K, V>, n: number) => GroupBy.GroupBy<R, E, K, V>
->(2, <R, E, K, V>(self: GroupBy.GroupBy<R, E, K, V>, n: number): GroupBy.GroupBy<R, E, K, V> =>
+  (n: number) => <R, E, K, V>(self: GroupBy<R, E, K, V>) => GroupBy<R, E, K, V>,
+  <R, E, K, V>(self: GroupBy<R, E, K, V>, n: number) => GroupBy<R, E, K, V>
+>(2, <R, E, K, V>(self: GroupBy<R, E, K, V>, n: number): GroupBy<R, E, K, V> =>
   make(
     pipe(
       stream.zipWithIndex(self.grouped),
@@ -103,8 +103,8 @@ export const first = dual<
 
 /** @internal */
 export const make = <R, E, K, V>(
-  grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
-): GroupBy.GroupBy<R, E, K, V> => ({
+  grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
+): GroupBy<R, E, K, V> => ({
   [GroupByTypeId]: groupByVariance,
   pipe() {
     return pipeArguments(this, arguments)
@@ -119,19 +119,19 @@ export const groupBy = dual<
   <A, R2, E2, K, V>(
     f: (a: A) => Effect<R2, E2, readonly [K, V]>,
     options?: { readonly bufferSize?: number }
-  ) => <R, E>(self: Stream<R, E, A>) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>,
+  ) => <R, E>(self: Stream<R, E, A>) => GroupBy<R2 | R, E2 | E, K, V>,
   <R, E, A, R2, E2, K, V>(
     self: Stream<R, E, A>,
     f: (a: A) => Effect<R2, E2, readonly [K, V]>,
     options?: { readonly bufferSize?: number }
-  ) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>
+  ) => GroupBy<R2 | R, E2 | E, K, V>
 >(
   (args) => stream.isStream(args[0]),
   <R, E, A, R2, E2, K, V>(
     self: Stream<R, E, A>,
     f: (a: A) => Effect<R2, E2, readonly [K, V]>,
     options?: { readonly bufferSize?: number }
-  ): GroupBy.GroupBy<R | R2, E | E2, K, V> =>
+  ): GroupBy<R | R2, E | E2, K, V> =>
     make(
       stream.unwrapScoped(
         Effect.gen(function*($) {
@@ -142,7 +142,7 @@ export const groupBy = dual<
             >()
           )
           const output = yield* $(Effect.acquireRelease(
-            Queue.bounded<Exit<Option<E | E2>, readonly [K, Queue.Dequeue<Take.Take<E | E2, V>>]>>(
+            Queue.bounded<Exit<Option<E | E2>, readonly [K, Queue.Dequeue<Take<E | E2, V>>]>>(
               options?.bufferSize ?? 16
             ),
             (queue) => Queue.shutdown(queue)
@@ -354,19 +354,19 @@ class MapDequeue<A, B> implements Queue.Dequeue<B> {
     return pipe(Queue.take(this.dequeue), Effect.map((a) => this.f(a)))
   }
 
-  takeAll(): Effect<never, never, Chunk.Chunk<B>> {
+  takeAll(): Effect<never, never, Chunk<B>> {
     return pipe(Queue.takeAll(this.dequeue), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  takeUpTo(max: number): Effect<never, never, Chunk.Chunk<B>> {
+  takeUpTo(max: number): Effect<never, never, Chunk<B>> {
     return pipe(Queue.takeUpTo(this.dequeue, max), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  takeBetween(min: number, max: number): Effect<never, never, Chunk.Chunk<B>> {
+  takeBetween(min: number, max: number): Effect<never, never, Chunk<B>> {
     return pipe(Queue.takeBetween(this.dequeue, min, max), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
-  takeN(n: number): Effect<never, never, Chunk.Chunk<B>> {
+  takeN(n: number): Effect<never, never, Chunk<B>> {
     return pipe(Queue.takeN(this.dequeue, n), Effect.map(Chunk.map((a) => this.f(a))))
   }
 
@@ -384,32 +384,32 @@ export const groupByKey = dual<
   <A, K>(
     f: (a: A) => K,
     options?: { readonly bufferSize?: number }
-  ) => <R, E>(self: Stream<R, E, A>) => GroupBy.GroupBy<R, E, K, A>,
+  ) => <R, E>(self: Stream<R, E, A>) => GroupBy<R, E, K, A>,
   <R, E, A, K>(
     self: Stream<R, E, A>,
     f: (a: A) => K,
     options?: { readonly bufferSize?: number }
-  ) => GroupBy.GroupBy<R, E, K, A>
+  ) => GroupBy<R, E, K, A>
 >(
   (args) => typeof args[0] !== "function",
   <R, E, A, K>(
     self: Stream<R, E, A>,
     f: (a: A) => K,
     options?: { readonly bufferSize?: number }
-  ): GroupBy.GroupBy<R, E, K, A> => {
+  ): GroupBy<R, E, K, A> => {
     const loop = (
-      map: Map<K, Queue.Queue<Take.Take<E, A>>>,
-      outerQueue: Queue.Queue<Take.Take<E, readonly [K, Queue.Queue<Take.Take<E, A>>]>>
-    ): Channel.Channel<R, E, Chunk.Chunk<A>, unknown, E, never, unknown> =>
+      map: Map<K, Queue<Take<E, A>>>,
+      outerQueue: Queue<Take<E, readonly [K, Queue<Take<E, A>>]>>
+    ): Channel<R, E, Chunk<A>, unknown, E, never, unknown> =>
       core.readWithCause({
-        onInput: (input: Chunk.Chunk<A>) =>
+        onInput: (input: Chunk<A>) =>
           core.flatMap(
             core.fromEffect(
               Effect.forEach(groupByIterable(input, f), ([key, values]) => {
                 const innerQueue = map.get(key)
                 if (innerQueue === undefined) {
                   return pipe(
-                    Queue.bounded<Take.Take<E, A>>(options?.bufferSize ?? 16),
+                    Queue.bounded<Take<E, A>>(options?.bufferSize ?? 16),
                     Effect.flatMap((innerQueue) =>
                       pipe(
                         Effect.sync(() => {
@@ -464,11 +464,11 @@ export const groupByKey = dual<
       })
     return make(stream.unwrapScoped(
       pipe(
-        Effect.sync(() => new Map<K, Queue.Queue<Take.Take<E, A>>>()),
+        Effect.sync(() => new Map<K, Queue<Take<E, A>>>()),
         Effect.flatMap((map) =>
           pipe(
             Effect.acquireRelease(
-              Queue.unbounded<Take.Take<E, readonly [K, Queue.Queue<Take.Take<E, A>>]>>(),
+              Queue.unbounded<Take<E, readonly [K, Queue<Take<E, A>>]>>(),
               (queue) => Queue.shutdown(queue)
             ),
             Effect.flatMap((queue) =>
@@ -495,9 +495,9 @@ export const groupByKey = dual<
  * @internal
  */
 export const groupByIterable = dual<
-  <V, K>(f: (value: V) => K) => (iterable: Iterable<V>) => Chunk.Chunk<readonly [K, Chunk.Chunk<V>]>,
-  <V, K>(iterable: Iterable<V>, f: (value: V) => K) => Chunk.Chunk<readonly [K, Chunk.Chunk<V>]>
->(2, <V, K>(iterable: Iterable<V>, f: (value: V) => K): Chunk.Chunk<readonly [K, Chunk.Chunk<V>]> => {
+  <V, K>(f: (value: V) => K) => (iterable: Iterable<V>) => Chunk<readonly [K, Chunk<V>]>,
+  <V, K>(iterable: Iterable<V>, f: (value: V) => K) => Chunk<readonly [K, Chunk<V>]>
+>(2, <V, K>(iterable: Iterable<V>, f: (value: V) => K): Chunk<readonly [K, Chunk<V>]> => {
   const builder: Array<readonly [K, Array<V>]> = []
   const iterator = iterable[Symbol.iterator]()
   const map = new Map<K, Array<V>>()

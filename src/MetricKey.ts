@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
-import type * as Duration from "./Duration.js"
-import type * as Equal from "./Equal.js"
-import type * as HashSet from "./HashSet.js"
+import type { Chunk } from "./Chunk.js"
+import type { Duration } from "./Duration.js"
+import type { Equal } from "./Equal.js"
+import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/metric/key.js"
-import type * as MetricBoundaries from "./MetricBoundaries.js"
-import type * as MetricKeyType from "./MetricKeyType.js"
-import type * as MetricLabel from "./MetricLabel.js"
+import type { MetricBoundaries } from "./MetricBoundaries.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
+import type { MetricLabel } from "./MetricLabel.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
@@ -34,13 +34,13 @@ export type MetricKeyTypeId = typeof MetricKeyTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
-  extends MetricKey.Variance<Type>, Equal.Equal, Pipeable
+export interface MetricKey<Type extends MetricKeyType<any, any>>
+  extends MetricKey.Variance<Type>, Equal, Pipeable
 {
   readonly name: string
   readonly keyType: Type
   readonly description: Option<string>
-  readonly tags: HashSet.HashSet<MetricLabel.MetricLabel>
+  readonly tags: HashSet<MetricLabel>
 }
 
 /**
@@ -57,31 +57,31 @@ export declare namespace MetricKey {
    * @since 2.0.0
    * @category models
    */
-  export type Counter<A extends (number | bigint)> = MetricKey<MetricKeyType.MetricKeyType.Counter<A>>
+  export type Counter<A extends (number | bigint)> = MetricKey<MetricKeyType.Counter<A>>
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export type Gauge<A extends (number | bigint)> = MetricKey<MetricKeyType.MetricKeyType.Gauge<A>>
+  export type Gauge<A extends (number | bigint)> = MetricKey<MetricKeyType.Gauge<A>>
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export type Frequency = MetricKey<MetricKeyType.MetricKeyType.Frequency>
+  export type Frequency = MetricKey<MetricKeyType.Frequency>
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export type Histogram = MetricKey<MetricKeyType.MetricKeyType.Histogram>
+  export type Histogram = MetricKey<MetricKeyType.Histogram>
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export type Summary = MetricKey<MetricKeyType.MetricKeyType.Summary>
+  export type Summary = MetricKey<MetricKeyType.Summary>
 
   /**
    * @since 2.0.0
@@ -98,7 +98,7 @@ export declare namespace MetricKey {
  * @since 2.0.0
  * @category refinements
  */
-export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKeyType<unknown, unknown>> =
+export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType<unknown, unknown>> =
   internal.isMetricKey
 
 /**
@@ -154,7 +154,7 @@ export const gauge: {
  */
 export const histogram: (
   name: string,
-  boundaries: MetricBoundaries.MetricBoundaries,
+  boundaries: MetricBoundaries,
   description?: string
 ) => MetricKey.Histogram = internal.histogram
 
@@ -171,7 +171,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
     readonly description?: string
   }
 ) => MetricKey.Summary = internal.summary
@@ -186,8 +186,8 @@ export const tagged: {
   (
     key: string,
     value: string
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
+  ): <Type extends MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  <Type extends MetricKeyType<any, any>>(
     self: MetricKey<Type>,
     key: string,
     value: string
@@ -202,11 +202,11 @@ export const tagged: {
  */
 export const taggedWithLabels: {
   (
-    extraTags: Iterable<MetricLabel.MetricLabel>
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
+    extraTags: Iterable<MetricLabel>
+  ): <Type extends MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  <Type extends MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: Iterable<MetricLabel.MetricLabel>
+    extraTags: Iterable<MetricLabel>
   ): MetricKey<Type>
 } = internal.taggedWithLabels
 
@@ -218,10 +218,10 @@ export const taggedWithLabels: {
  */
 export const taggedWithLabelSet: {
   (
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
+    extraTags: HashSet<MetricLabel>
+  ): <Type extends MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  <Type extends MetricKeyType<any, any>>(
     self: MetricKey<Type>,
-    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
+    extraTags: HashSet<MetricLabel>
   ): MetricKey<Type>
 } = internal.taggedWithLabelSet

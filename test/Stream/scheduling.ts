@@ -1,12 +1,12 @@
 import * as it from "effect-test/utils/extend"
-import * as Clock from "effect/Clock"
-import * as Duration from "effect/Duration"
+import { Clock } from "effect/Clock"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import * as Schedule from "effect/Schedule"
+import { Schedule } from "effect/Schedule"
 import { Stream } from "effect/Stream"
-import * as TestClock from "effect/TestClock"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

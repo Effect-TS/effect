@@ -1,17 +1,17 @@
 import * as it from "effect-test/utils/extend"
-import * as Clock from "effect/Clock"
-import * as Duration from "effect/Duration"
+import { Clock } from "effect/Clock"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as TestClock from "effect/TestClock"
+import { Ref } from "effect/Ref"
+import { Schedule } from "effect/Schedule"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
   it.effect("schedule - runs effect for each recurrence of the schedule", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<ReadonlyArray<Duration.Duration>>([]))
+      const ref = yield* $(Ref.make<ReadonlyArray<Duration>>([]))
       const effect = pipe(
         Clock.currentTimeMillis,
         Effect.flatMap((duration) => Ref.update(ref, (array) => [...array, Duration.millis(duration)]))

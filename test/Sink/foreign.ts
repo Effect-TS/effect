@@ -1,16 +1,16 @@
 import * as it from "effect-test/utils/extend"
-import * as Context from "effect/Context"
+import { Context } from "effect/Context"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
 import { Option } from "effect/Option"
-import * as Random from "effect/Random"
-import type * as Sink from "effect/Sink"
+import { Random } from "effect/Random"
+import type { Sink } from "effect/Sink"
 import { Stream } from "effect/Stream"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 
-const runSink = <R, E, A>(sink: Sink.Sink<R, E, unknown, unknown, A>) => Stream.run(Effect.unit, sink)
+const runSink = <R, E, A>(sink: Sink<R, E, unknown, unknown, A>) => Stream.run(Effect.unit, sink)
 
 describe.concurrent("Channel.Foreign", () => {
   it.effect("Tag", () =>

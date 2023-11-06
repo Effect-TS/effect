@@ -1,20 +1,20 @@
-import * as Chunk from "../Chunk.js"
-import type * as Config from "../Config.js"
-import * as ConfigError from "../ConfigError.js"
-import type * as ConfigSecret from "../ConfigSecret.js"
+import { Chunk } from "../Chunk.js"
+import type { Config } from "../Config.js"
+import { ConfigError } from "../ConfigError.js"
+import type { ConfigSecret } from "../ConfigSecret.js"
 import { Either } from "../Either.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, pipe } from "../Function.js"
-import type * as HashMap from "../HashMap.js"
-import * as HashSet from "../HashSet.js"
-import type * as LogLevel from "../LogLevel.js"
+import type { HashMap } from "../HashMap.js"
+import { HashSet } from "../HashSet.js"
+import type { LogLevel } from "../LogLevel.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as configError from "./configError.js"
 import * as configSecret from "./configSecret.js"
 import * as core from "./core.js"
-import * as OpCodes from "./opCodes/config.js"
+import { OpCodes } from "./opCodes/config.js"
 
 /** @internal */
 const ConfigSymbolKey = "effect/Config"
@@ -52,7 +52,7 @@ const proto = {
 }
 
 /** @internal */
-export type Op<Tag extends string, Body = {}> = Config.Config<never> & Body & {
+export type Op<Tag extends string, Body = {}> = Config<never> & Body & {
   readonly _tag: Tag
 }
 
@@ -60,14 +60,14 @@ export type Op<Tag extends string, Body = {}> = Config.Config<never> & Body & {
 export interface Constant extends
   Op<OpCodes.OP_CONSTANT, {
     readonly value: unknown
-    parse(text: string): Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either<ConfigError, unknown>
   }>
 {}
 
 /** @internal */
 export interface Described extends
   Op<OpCodes.OP_DESCRIBED, {
-    readonly config: Config.Config<unknown>
+    readonly config: Config<unknown>
     readonly description: string
   }>
 {}
@@ -75,9 +75,9 @@ export interface Described extends
 /** @internal */
 export interface Fallback extends
   Op<OpCodes.OP_FALLBACK, {
-    readonly first: Config.Config<unknown>
-    readonly second: Config.Config<unknown>
-    readonly condition: Predicate<ConfigError.ConfigError>
+    readonly first: Config<unknown>
+    readonly second: Config<unknown>
+    readonly condition: Predicate<ConfigError>
   }>
 {}
 
@@ -85,22 +85,22 @@ export interface Fallback extends
 export interface Fail extends
   Op<OpCodes.OP_FAIL, {
     readonly message: string
-    parse(text: string): Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either<ConfigError, unknown>
   }>
 {}
 
 /** @internal */
 export interface Lazy extends
   Op<OpCodes.OP_LAZY, {
-    readonly config: LazyArg<Config.Config<unknown>>
+    readonly config: LazyArg<Config<unknown>>
   }>
 {}
 
 /** @internal */
 export interface MapOrFail extends
   Op<OpCodes.OP_MAP_OR_FAIL, {
-    readonly original: Config.Config<unknown>
-    readonly mapOrFail: (value: unknown) => Either<ConfigError.ConfigError, unknown>
+    readonly original: Config<unknown>
+    readonly mapOrFail: (value: unknown) => Either<ConfigError, unknown>
   }>
 {}
 
@@ -108,7 +108,7 @@ export interface MapOrFail extends
 export interface Nested extends
   Op<OpCodes.OP_NESTED, {
     readonly name: string
-    readonly config: Config.Config<unknown>
+    readonly config: Config<unknown>
   }>
 {}
 
@@ -116,14 +116,14 @@ export interface Nested extends
 export interface Primitive extends
   Op<OpCodes.OP_PRIMITIVE, {
     readonly description: string
-    parse(text: string): Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either<ConfigError, unknown>
   }>
 {}
 
 /** @internal */
 export interface Sequence extends
   Op<OpCodes.OP_SEQUENCE, {
-    readonly config: Config.Config<unknown>
+    readonly config: Config<unknown>
   }>
 {}
 
@@ -131,7 +131,7 @@ export interface Sequence extends
 export interface Table extends
   Op<OpCodes.OP_HASHMAP, {
     readonly op: OpCodes.OP_HASHMAP
-    readonly valueConfig: Config.Config<unknown>
+    readonly valueConfig: Config<unknown>
   }>
 {}
 
@@ -139,14 +139,14 @@ export interface Table extends
 export interface Zipped extends
   Op<OpCodes.OP_ZIP_WITH, {
     readonly op: OpCodes.OP_ZIP_WITH
-    readonly left: Config.Config<unknown>
-    readonly right: Config.Config<unknown>
+    readonly left: Config<unknown>
+    readonly right: Config<unknown>
     readonly zip: (a: unknown, b: unknown) => unknown
   }>
 {}
 
 /** @internal */
-export const boolean = (name?: string): Config.Config<boolean> => {
+export const boolean = (name?: string): Config<boolean> => {
   const config = primitive(
     "a boolean property",
     (text) => {
@@ -177,17 +177,17 @@ export const boolean = (name?: string): Config.Config<boolean> => {
 }
 
 /** @internal */
-export const array = <A>(config: Config.Config<A>, name?: string): Config.Config<ReadonlyArray<A>> => {
+export const array = <A>(config: Config<A>, name?: string): Config<ReadonlyArray<A>> => {
   return pipe(chunk(config, name), map(Chunk.toReadonlyArray))
 }
 
 /** @internal */
-export const chunk = <A>(config: Config.Config<A>, name?: string): Config.Config<Chunk.Chunk<A>> => {
+export const chunk = <A>(config: Config<A>, name?: string): Config<Chunk<A>> => {
   return map(name === undefined ? repeat(config) : nested(name)(repeat(config)), Chunk.unsafeFromArray)
 }
 
 /** @internal */
-export const date = (name?: string): Config.Config<Date> => {
+export const date = (name?: string): Config<Date> => {
   const config = primitive(
     "a date property",
     (text) => {
@@ -207,7 +207,7 @@ export const date = (name?: string): Config.Config<Date> => {
 }
 
 /** @internal */
-export const fail = (message: string): Config.Config<never> => {
+export const fail = (message: string): Config<never> => {
   const fail = Object.create(proto)
   fail._tag = OpCodes.OP_FAIL
   fail.message = message
@@ -216,7 +216,7 @@ export const fail = (message: string): Config.Config<never> => {
 }
 
 /** @internal */
-export const number = (name?: string): Config.Config<number> => {
+export const number = (name?: string): Config<number> => {
   const config = primitive(
     "a number property",
     (text) => {
@@ -236,7 +236,7 @@ export const number = (name?: string): Config.Config<number> => {
 }
 
 /** @internal */
-export const integer = (name?: string): Config.Config<number> => {
+export const integer = (name?: string): Config<number> => {
   const config = primitive(
     "an integer property",
     (text) => {
@@ -256,7 +256,7 @@ export const integer = (name?: string): Config.Config<number> => {
 }
 
 /** @internal */
-export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
+export const logLevel = (name?: string): Config<LogLevel> => {
   const config = mapOrFail(string(), (value) => {
     const label = value.toUpperCase()
     const level = core.allLogLevels.find((level) => level.label === label)
@@ -269,14 +269,14 @@ export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
 
 /** @internal */
 export const map = dual<
-  <A, B>(f: (a: A) => B) => (self: Config.Config<A>) => Config.Config<B>,
-  <A, B>(self: Config.Config<A>, f: (a: A) => B) => Config.Config<B>
+  <A, B>(f: (a: A) => B) => (self: Config<A>) => Config<B>,
+  <A, B>(self: Config<A>, f: (a: A) => B) => Config<B>
 >(2, (self, f) => mapOrFail(self, (a) => Either.right(f(a))))
 
 /** @internal */
 export const mapAttempt = dual<
-  <A, B>(f: (a: A) => B) => (self: Config.Config<A>) => Config.Config<B>,
-  <A, B>(self: Config.Config<A>, f: (a: A) => B) => Config.Config<B>
+  <A, B>(f: (a: A) => B) => (self: Config<A>) => Config<B>,
+  <A, B>(self: Config<A>, f: (a: A) => B) => Config<B>
 >(2, (self, f) =>
   mapOrFail(self, (a) => {
     try {
@@ -293,8 +293,8 @@ export const mapAttempt = dual<
 
 /** @internal */
 export const mapOrFail = dual<
-  <A, B>(f: (a: A) => Either<ConfigError.ConfigError, B>) => (self: Config.Config<A>) => Config.Config<B>,
-  <A, B>(self: Config.Config<A>, f: (a: A) => Either<ConfigError.ConfigError, B>) => Config.Config<B>
+  <A, B>(f: (a: A) => Either<ConfigError, B>) => (self: Config<A>) => Config<B>,
+  <A, B>(self: Config<A>, f: (a: A) => Either<ConfigError, B>) => Config<B>
 >(2, (self, f) => {
   const mapOrFail = Object.create(proto)
   mapOrFail._tag = OpCodes.OP_MAP_OR_FAIL
@@ -305,15 +305,15 @@ export const mapOrFail = dual<
 
 /** @internal */
 export const missingError = (name: string) => {
-  return <A>(self: Config.Config.Primitive<A>): ConfigError.ConfigError => {
+  return <A>(self: Config.Primitive<A>): ConfigError => {
     return configError.MissingData([], `Expected ${self.description} with name ${name}`)
   }
 }
 
 /** @internal */
 export const nested = dual<
-  (name: string) => <A>(self: Config.Config<A>) => Config.Config<A>,
-  <A>(self: Config.Config<A>, name: string) => Config.Config<A>
+  (name: string) => <A>(self: Config<A>) => Config<A>,
+  <A>(self: Config<A>, name: string) => Config<A>
 >(2, (self, name) => {
   const nested = Object.create(proto)
   nested._tag = OpCodes.OP_NESTED
@@ -324,8 +324,8 @@ export const nested = dual<
 
 /** @internal */
 export const orElse = dual<
-  <A2>(that: LazyArg<Config.Config<A2>>) => <A>(self: Config.Config<A>) => Config.Config<A | A2>,
-  <A, A2>(self: Config.Config<A>, that: LazyArg<Config.Config<A2>>) => Config.Config<A | A2>
+  <A2>(that: LazyArg<Config<A2>>) => <A>(self: Config<A>) => Config<A | A2>,
+  <A, A2>(self: Config<A>, that: LazyArg<Config<A2>>) => Config<A | A2>
 >(2, (self, that) => {
   const fallback = Object.create(proto)
   fallback._tag = OpCodes.OP_FALLBACK
@@ -339,17 +339,17 @@ export const orElse = dual<
 export const orElseIf = dual<
   <A2>(
     options: {
-      readonly if: Predicate<ConfigError.ConfigError>
-      readonly orElse: LazyArg<Config.Config<A2>>
+      readonly if: Predicate<ConfigError>
+      readonly orElse: LazyArg<Config<A2>>
     }
-  ) => <A>(self: Config.Config<A>) => Config.Config<A>,
+  ) => <A>(self: Config<A>) => Config<A>,
   <A, A2>(
-    self: Config.Config<A>,
+    self: Config<A>,
     options: {
-      readonly if: Predicate<ConfigError.ConfigError>
-      readonly orElse: LazyArg<Config.Config<A2>>
+      readonly if: Predicate<ConfigError>
+      readonly orElse: LazyArg<Config<A2>>
     }
-  ) => Config.Config<A>
+  ) => Config<A>
 >(2, (self, options) => {
   const fallback = Object.create(proto)
   fallback._tag = OpCodes.OP_FALLBACK
@@ -360,7 +360,7 @@ export const orElseIf = dual<
 })
 
 /** @internal */
-export const option = <A>(self: Config.Config<A>): Config.Config<Option<A>> => {
+export const option = <A>(self: Config<A>): Config<Option<A>> => {
   return pipe(
     self,
     map(Option.some),
@@ -371,8 +371,8 @@ export const option = <A>(self: Config.Config<A>): Config.Config<Option<A>> => {
 /** @internal */
 export const primitive = <A>(
   description: string,
-  parse: (text: string) => Either<ConfigError.ConfigError, A>
-): Config.Config<A> => {
+  parse: (text: string) => Either<ConfigError, A>
+): Config<A> => {
   const primitive = Object.create(proto)
   primitive._tag = OpCodes.OP_PRIMITIVE
   primitive.description = description
@@ -381,7 +381,7 @@ export const primitive = <A>(
 }
 
 /** @internal */
-export const repeat = <A>(self: Config.Config<A>): Config.Config<Array<A>> => {
+export const repeat = <A>(self: Config<A>): Config<Array<A>> => {
   const repeat = Object.create(proto)
   repeat._tag = OpCodes.OP_SEQUENCE
   repeat.config = self
@@ -389,7 +389,7 @@ export const repeat = <A>(self: Config.Config<A>): Config.Config<Array<A>> => {
 }
 
 /** @internal */
-export const secret = (name?: string): Config.Config<ConfigSecret.ConfigSecret> => {
+export const secret = (name?: string): Config<ConfigSecret> => {
   const config = primitive(
     "a secret property",
     (text) => Either.right(configSecret.fromString(text))
@@ -398,13 +398,13 @@ export const secret = (name?: string): Config.Config<ConfigSecret.ConfigSecret> 
 }
 
 /** @internal */
-export const hashSet = <A>(config: Config.Config<A>, name?: string): Config.Config<HashSet.HashSet<A>> => {
+export const hashSet = <A>(config: Config<A>, name?: string): Config<HashSet<A>> => {
   const newConfig = map(chunk(config), HashSet.fromIterable)
   return name === undefined ? newConfig : nested(name)(newConfig)
 }
 
 /** @internal */
-export const string = (name?: string): Config.Config<string> => {
+export const string = (name?: string): Config<string> => {
   const config = primitive(
     "a text property",
     Either.right
@@ -412,27 +412,27 @@ export const string = (name?: string): Config.Config<string> => {
   return name === undefined ? config : nested(name)(config)
 }
 
-export const all = <const Arg extends Iterable<Config.Config<any>> | Record<string, Config.Config<any>>>(
+export const all = <const Arg extends Iterable<Config<any>> | Record<string, Config<any>>>(
   arg: Arg
-): Config.Config<
-  [Arg] extends [ReadonlyArray<Config.Config<any>>] ? {
-      -readonly [K in keyof Arg]: [Arg[K]] extends [Config.Config<infer A>] ? A : never
+): Config<
+  [Arg] extends [ReadonlyArray<Config<any>>] ? {
+      -readonly [K in keyof Arg]: [Arg[K]] extends [Config<infer A>] ? A : never
     }
-    : [Arg] extends [Iterable<Config.Config<infer A>>] ? Array<A>
-    : [Arg] extends [Record<string, Config.Config<any>>] ? {
-        -readonly [K in keyof Arg]: [Arg[K]] extends [Config.Config<infer A>] ? A : never
+    : [Arg] extends [Iterable<Config<infer A>>] ? Array<A>
+    : [Arg] extends [Record<string, Config<any>>] ? {
+        -readonly [K in keyof Arg]: [Arg[K]] extends [Config<infer A>] ? A : never
       }
     : never
 > => {
   if (Array.isArray(arg)) {
     return tuple(arg) as any
   } else if (Symbol.iterator in arg) {
-    return tuple([...(arg as Iterable<Config.Config<any>>)]) as any
+    return tuple([...(arg as Iterable<Config<any>>)]) as any
   }
   return struct(arg) as any
 }
 
-const struct = <NER extends Record<string, Config.Config<any>>>(r: NER): Config.Config<
+const struct = <NER extends Record<string, Config<any>>>(r: NER): Config<
   {
     [K in keyof NER]: [NER[K]] extends [{ [ConfigTypeId]: { _A: (_: never) => infer A } }] ? A : never
   }
@@ -453,7 +453,7 @@ const struct = <NER extends Record<string, Config.Config<any>>>(r: NER): Config.
 }
 
 /** @internal */
-export const succeed = <A>(value: A): Config.Config<A> => {
+export const succeed = <A>(value: A): Config<A> => {
   const constant = Object.create(proto)
   constant._tag = OpCodes.OP_CONSTANT
   constant.value = value
@@ -462,7 +462,7 @@ export const succeed = <A>(value: A): Config.Config<A> => {
 }
 
 /** @internal */
-export const suspend = <A>(config: LazyArg<Config.Config<A>>): Config.Config<A> => {
+export const suspend = <A>(config: LazyArg<Config<A>>): Config<A> => {
   const lazy = Object.create(proto)
   lazy._tag = OpCodes.OP_LAZY
   lazy.config = config
@@ -470,12 +470,12 @@ export const suspend = <A>(config: LazyArg<Config.Config<A>>): Config.Config<A> 
 }
 
 /** @internal */
-export const sync = <A>(value: LazyArg<A>): Config.Config<A> => {
+export const sync = <A>(value: LazyArg<A>): Config<A> => {
   return suspend(() => succeed(value()))
 }
 
 /** @internal */
-export const hashMap = <A>(config: Config.Config<A>, name?: string): Config.Config<HashMap.HashMap<string, A>> => {
+export const hashMap = <A>(config: Config<A>, name?: string): Config<HashMap<string, A>> => {
   const table = Object.create(proto)
   table._tag = OpCodes.OP_HASHMAP
   table.valueConfig = config
@@ -483,12 +483,12 @@ export const hashMap = <A>(config: Config.Config<A>, name?: string): Config.Conf
 }
 
 /** @internal */
-export const isConfig = (u: unknown): u is Config.Config<unknown> => hasProperty(u, ConfigTypeId)
+export const isConfig = (u: unknown): u is Config<unknown> => hasProperty(u, ConfigTypeId)
 
 /** @internal */
-const tuple = <T extends ArrayLike<Config.Config<any>>>(tuple: T): Config.Config<
+const tuple = <T extends ArrayLike<Config<any>>>(tuple: T): Config<
   {
-    [K in keyof T]: [T[K]] extends [Config.Config<infer A>] ? A : never
+    [K in keyof T]: [T[K]] extends [Config<infer A>] ? A : never
   }
 > => {
   if (tuple.length === 0) {
@@ -511,7 +511,7 @@ const tuple = <T extends ArrayLike<Config.Config<any>>>(tuple: T): Config.Config
 /**
  * @internal
  */
-export const unwrap = <A>(wrapped: Config.Config.Wrap<A>): Config.Config<A> => {
+export const unwrap = <A>(wrapped: Config.Wrap<A>): Config<A> => {
   if (isConfig(wrapped)) {
     return wrapped
   }
@@ -528,23 +528,23 @@ export const validate = dual<
     <A, B extends A>(options: {
       readonly message: string
       readonly validation: Refinement<A, B>
-    }): (self: Config.Config<A>) => Config.Config<B>
+    }): (self: Config<A>) => Config<B>
     <A>(options: {
       readonly message: string
       readonly validation: Predicate<A>
-    }): (self: Config.Config<A>) => Config.Config<A>
+    }): (self: Config<A>) => Config<A>
   },
   {
-    <A, B extends A>(self: Config.Config<A>, options: {
+    <A, B extends A>(self: Config<A>, options: {
       readonly message: string
       readonly validation: Refinement<A, B>
-    }): Config.Config<B>
-    <A>(self: Config.Config<A>, options: {
+    }): Config<B>
+    <A>(self: Config<A>, options: {
       readonly message: string
       readonly validation: Predicate<A>
-    }): Config.Config<A>
+    }): Config<A>
   }
->(2, <A>(self: Config.Config<A>, { message, validation }: {
+>(2, <A>(self: Config<A>, { message, validation }: {
   readonly message: string
   readonly validation: Predicate<A>
 }) =>
@@ -557,8 +557,8 @@ export const validate = dual<
 
 /** @internal */
 export const withDefault = dual<
-  <A2>(def: A2) => <A>(self: Config.Config<A>) => Config.Config<A | A2>,
-  <A, A2>(self: Config.Config<A>, def: A2) => Config.Config<A | A2>
+  <A2>(def: A2) => <A>(self: Config<A>) => Config<A | A2>,
+  <A, A2>(self: Config<A>, def: A2) => Config<A | A2>
 >(2, (self, def) =>
   orElseIf(self, {
     orElse: () => succeed(def),
@@ -567,8 +567,8 @@ export const withDefault = dual<
 
 /** @internal */
 export const withDescription = dual<
-  (description: string) => <A>(self: Config.Config<A>) => Config.Config<A>,
-  <A>(self: Config.Config<A>, description: string) => Config.Config<A>
+  (description: string) => <A>(self: Config<A>) => Config<A>,
+  <A>(self: Config<A>, description: string) => Config<A>
 >(2, (self, description) => {
   const described = Object.create(proto)
   described._tag = OpCodes.OP_DESCRIBED
@@ -579,14 +579,14 @@ export const withDescription = dual<
 
 /** @internal */
 export const zip = dual<
-  <B>(that: Config.Config<B>) => <A>(self: Config.Config<A>) => Config.Config<readonly [A, B]>,
-  <A, B>(self: Config.Config<A>, that: Config.Config<B>) => Config.Config<readonly [A, B]>
+  <B>(that: Config<B>) => <A>(self: Config<A>) => Config<readonly [A, B]>,
+  <A, B>(self: Config<A>, that: Config<B>) => Config<readonly [A, B]>
 >(2, (self, that) => zipWith(self, that, (a, b) => [a, b]))
 
 /** @internal */
 export const zipWith = dual<
-  <B, A, C>(that: Config.Config<B>, f: (a: A, b: B) => C) => (self: Config.Config<A>) => Config.Config<C>,
-  <A, B, C>(self: Config.Config<A>, that: Config.Config<B>, f: (a: A, b: B) => C) => Config.Config<C>
+  <B, A, C>(that: Config<B>, f: (a: A, b: B) => C) => (self: Config<A>) => Config<C>,
+  <A, B, C>(self: Config<A>, that: Config<B>, f: (a: A, b: B) => C) => Config<C>
 >(3, (self, that, f) => {
   const zipWith = Object.create(proto)
   zipWith._tag = OpCodes.OP_ZIP_WITH

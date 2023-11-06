@@ -1,12 +1,12 @@
 import * as it from "effect-test/utils/extend"
-import * as Context from "effect/Context"
+import { Context } from "effect/Context"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import { Layer } from "effect/Layer"
+import { ReadonlyArray } from "effect/ReadonlyArray"
 import { Stream } from "effect/Stream"
-import type * as Tracer from "effect/Tracer"
+import type { Tracer } from "effect/Tracer"
 import { assert, describe, expect } from "vitest"
 
 interface StringService {
@@ -50,7 +50,7 @@ describe.concurrent("Stream", () => {
   it.effect("contextWithEffect - success", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithEffect((context: Context.Context<StringService>) =>
+        Stream.contextWithEffect((context: Context<StringService>) =>
           Effect.succeed(pipe(context, Context.get(StringService)))
         ),
         Stream.provideContext(
@@ -68,7 +68,7 @@ describe.concurrent("Stream", () => {
   it.effect("contextWithEffect - fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithEffect((_: Context.Context<StringService>) => Effect.fail("boom")),
+        Stream.contextWithEffect((_: Context<StringService>) => Effect.fail("boom")),
         Stream.provideContext(
           pipe(
             Context.empty(),
@@ -84,7 +84,7 @@ describe.concurrent("Stream", () => {
   it.effect("contextWithStream - success", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithStream((context: Context.Context<StringService>) =>
+        Stream.contextWithStream((context: Context<StringService>) =>
           Stream.succeed(pipe(context, Context.get(StringService)))
         ),
         Stream.provideContext(
@@ -102,7 +102,7 @@ describe.concurrent("Stream", () => {
   it.effect("contextWithStream - fails", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.contextWithStream((_: Context.Context<StringService>) => Stream.fail("boom")),
+        Stream.contextWithStream((_: Context<StringService>) => Stream.fail("boom")),
         Stream.provideContext(
           pipe(
             Context.empty(),

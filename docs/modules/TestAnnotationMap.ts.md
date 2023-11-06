@@ -39,7 +39,7 @@ An annotation map keeps track of annotations of different types.
 export interface TestAnnotationMap {
   readonly [TestAnnotationMapTypeId]: TestAnnotationMapTypeId
   /** @internal */
-  readonly map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>
+  readonly map: ReadonlyMap<TestAnnotation<unknown>, unknown>
 }
 ```
 
@@ -73,10 +73,10 @@ Appends the specified annotation to the annotation map.
 
 ```ts
 export declare const annotate: (<A>(
-  key: TestAnnotation.TestAnnotation<A>,
+  key: TestAnnotation<A>,
   value: A
 ) => (self: TestAnnotationMap) => TestAnnotationMap) &
-  (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap)
+  (<A>(self: TestAnnotationMap, key: TestAnnotation<A>, value: A) => TestAnnotationMap)
 ```
 
 Added in v2.0.0
@@ -110,8 +110,8 @@ there is none.
 **Signature**
 
 ```ts
-export declare const get: (<A>(key: TestAnnotation.TestAnnotation<A>) => (self: TestAnnotationMap) => A) &
-  (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => A)
+export declare const get: (<A>(key: TestAnnotation<A>) => (self: TestAnnotationMap) => A) &
+  (<A>(self: TestAnnotationMap, key: TestAnnotation<A>) => A)
 ```
 
 Added in v2.0.0
@@ -131,7 +131,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: (map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>) => TestAnnotationMap
+export declare const make: (map: ReadonlyMap<TestAnnotation<unknown>, unknown>) => TestAnnotationMap
 ```
 
 Added in v2.0.0
@@ -142,10 +142,10 @@ Added in v2.0.0
 
 ```ts
 export declare const overwrite: (<A>(
-  key: TestAnnotation.TestAnnotation<A>,
+  key: TestAnnotation<A>,
   value: A
 ) => (self: TestAnnotationMap) => TestAnnotationMap) &
-  (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap)
+  (<A>(self: TestAnnotationMap, key: TestAnnotation<A>, value: A) => TestAnnotationMap)
 ```
 
 Added in v2.0.0
@@ -156,10 +156,10 @@ Added in v2.0.0
 
 ```ts
 export declare const update: (<A>(
-  key: TestAnnotation.TestAnnotation<A>,
+  key: TestAnnotation<A>,
   f: (value: A) => A
 ) => (self: TestAnnotationMap) => TestAnnotationMap) &
-  (<A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap)
+  (<A>(self: TestAnnotationMap, key: TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap)
 ```
 
 Added in v2.0.0

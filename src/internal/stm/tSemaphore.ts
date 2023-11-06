@@ -1,10 +1,10 @@
-import * as Cause from "../../Cause.js"
+import { Cause } from "../../Cause.js"
 import { Effect } from "../../Effect.js"
 import { dual } from "../../Function.js"
-import type * as Scope from "../../Scope.js"
-import * as STM from "../../STM.js"
-import type * as TRef from "../../TRef.js"
-import type * as TSemaphore from "../../TSemaphore.js"
+import type { Scope } from "../../Scope.js"
+import { STM } from "../../STM.js"
+import type { TRef } from "../../TRef.js"
+import type { TSemaphore } from "../../TSemaphore.js"
 import * as core from "./core.js"
 import * as tRef from "./tRef.js"
 
@@ -17,22 +17,22 @@ export const TSemaphoreTypeId: TSemaphore.TSemaphoreTypeId = Symbol.for(
 ) as TSemaphore.TSemaphoreTypeId
 
 /** @internal */
-class TSemaphoreImpl implements TSemaphore.TSemaphore {
+class TSemaphoreImpl implements TSemaphore {
   readonly [TSemaphoreTypeId]: TSemaphore.TSemaphoreTypeId = TSemaphoreTypeId
-  constructor(readonly permits: TRef.TRef<number>) {}
+  constructor(readonly permits: TRef<number>) {}
 }
 
 /** @internal */
-export const make = (permits: number): STM.STM<never, never, TSemaphore.TSemaphore> =>
+export const make = (permits: number): STM<never, never, TSemaphore> =>
   STM.map(tRef.make(permits), (permits) => new TSemaphoreImpl(permits))
 
 /** @internal */
-export const acquire = (self: TSemaphore.TSemaphore): STM.STM<never, never, void> => acquireN(self, 1)
+export const acquire = (self: TSemaphore.TSemaphore): STM<never, never, void> => acquireN(self, 1)
 
 /** @internal */
 export const acquireN = dual<
-  (n: number) => (self: TSemaphore.TSemaphore) => STM.STM<never, never, void>,
-  (self: TSemaphore.TSemaphore, n: number) => STM.STM<never, never, void>
+  (n: number) => (self: TSemaphore.TSemaphore) => STM<never, never, void>,
+  (self: TSemaphore, n: number) => STM<never, never, void>
 >(2, (self, n) =>
   core.withSTMRuntime((driver) => {
     if (n < 0) {
@@ -50,12 +50,12 @@ export const acquireN = dual<
 export const available = (self: TSemaphore.TSemaphore) => tRef.get(self.permits)
 
 /** @internal */
-export const release = (self: TSemaphore.TSemaphore): STM.STM<never, never, void> => releaseN(self, 1)
+export const release = (self: TSemaphore.TSemaphore): STM<never, never, void> => releaseN(self, 1)
 
 /** @internal */
 export const releaseN = dual<
-  (n: number) => (self: TSemaphore.TSemaphore) => STM.STM<never, never, void>,
-  (self: TSemaphore.TSemaphore, n: number) => STM.STM<never, never, void>
+  (n: number) => (self: TSemaphore.TSemaphore) => STM<never, never, void>,
+  (self: TSemaphore, n: number) => STM<never, never, void>
 >(2, (self, n) =>
   core.withSTMRuntime((driver) => {
     if (n < 0) {
@@ -74,12 +74,12 @@ export const withPermit = dual<
 /** @internal */
 export const withPermits = dual<
   (
-    semaphore: TSemaphore.TSemaphore,
+    semaphore: TSemaphore,
     permits: number
   ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
   <R, E, A>(
     self: Effect<R, E, A>,
-    semaphore: TSemaphore.TSemaphore,
+    semaphore: TSemaphore,
     permits: number
   ) => Effect<R, E, A>
 >(3, (self, semaphore, permits) =>
@@ -94,13 +94,13 @@ export const withPermits = dual<
   ))
 
 /** @internal */
-export const withPermitScoped = (self: TSemaphore.TSemaphore): Effect<Scope.Scope, never, void> =>
+export const withPermitScoped = (self: TSemaphore.TSemaphore): Effect<Scope, never, void> =>
   withPermitsScoped(self, 1)
 
 /** @internal */
 export const withPermitsScoped = dual<
-  (permits: number) => (self: TSemaphore.TSemaphore) => Effect<Scope.Scope, never, void>,
-  (self: TSemaphore.TSemaphore, permits: number) => Effect<Scope.Scope, never, void>
+  (permits: number) => (self: TSemaphore.TSemaphore) => Effect<Scope, never, void>,
+  (self: TSemaphore, permits: number) => Effect<Scope, never, void>
 >(2, (self, permits) =>
   Effect.acquireReleaseInterruptible(
     core.commit(acquireN(self, permits)),
@@ -108,6 +108,6 @@ export const withPermitsScoped = dual<
   ))
 
 /** @internal */
-export const unsafeMakeSemaphore = (permits: number): TSemaphore.TSemaphore => {
+export const unsafeMakeSemaphore = (permits: number): TSemaphore => {
   return new TSemaphoreImpl(new tRef.TRefImpl(permits))
 }

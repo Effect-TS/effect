@@ -1,4 +1,4 @@
-import * as Data from "effect/Data"
+import { Data } from "effect/Data"
 
 declare const readonlyStruct: { readonly a: string }
 declare const mutableStruct: { a: string }
@@ -140,8 +140,8 @@ export type Err = Data.TaggedEnum<{
 // -------------------------------------------------------------------------------------
 
 const { NotFound } = Data.taggedEnum<
-  | Data.Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }>
-  | Data.Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
+  | Data<{ readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }>
+  | Data<{ readonly _tag: "NotFound"; readonly status: 404; readonly message: string }>
 >()
 
 // $ExpectType { readonly status: 404; readonly message: string; }

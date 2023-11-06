@@ -293,7 +293,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Duration extends Equal.Equal, Pipeable, Inspectable {
+export interface Duration extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly value: DurationValue
 }

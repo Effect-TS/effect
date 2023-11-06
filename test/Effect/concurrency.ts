@@ -1,13 +1,13 @@
 import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { adjust } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("daemon fiber is unsupervised", () =>
     Effect.gen(function*($) {
-      const child = (ref: Ref.Ref<boolean>) => {
+      const child = (ref: Ref<boolean>) => {
         return withLatch((release) =>
           pipe(
             release,
@@ -84,7 +84,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("daemon fiber race interruption", () =>
     Effect.gen(function*($) {
-      const plus1 = <X>(latch: Deferred.Deferred<never, void>, finalizer: Effect<never, never, X>) => {
+      const plus1 = <X>(latch: Deferred<never, void>, finalizer: Effect<never, never, X>) => {
         return pipe(
           Deferred.succeed(latch, void 0),
           Effect.zipRight(Effect.sleep(Duration.hours(1))),
@@ -135,7 +135,7 @@ describe.concurrent("Effect", () => {
     }))
   it.live("supervise fibers", () =>
     Effect.gen(function*($) {
-      const makeChild = (n: number): Effect<never, never, Fiber.Fiber<never, void>> => {
+      const makeChild = (n: number): Effect<never, never, Fiber<never, void>> => {
         return pipe(Effect.sleep(Duration.millis(20 * n)), Effect.zipRight(Effect.never), Effect.fork)
       }
       const ref = yield* $(Ref.make(0))
@@ -195,9 +195,9 @@ describe.concurrent("Effect", () => {
   it.effect("race of two forks does not interrupt winner", () =>
     Effect.gen(function*($) {
       const forkWaiter = (
-        interrupted: Ref.Ref<number>,
-        latch: Deferred.Deferred<never, void>,
-        done: Deferred.Deferred<never, void>
+        interrupted: Ref<number>,
+        latch: Deferred<never, void>,
+        done: Deferred<never, void>
       ) => {
         return Effect.uninterruptibleMask((restore) =>
           pipe(

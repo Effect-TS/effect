@@ -43,7 +43,7 @@ export declare const externalSpan: (options: {
   readonly spanId: string
   readonly traceId: string
   readonly sampled?: boolean | undefined
-  readonly context?: Context.Context<never> | undefined
+  readonly context?: Context<never> | undefined
 }) => ExternalSpan
 ```
 
@@ -81,7 +81,7 @@ export interface ExternalSpan {
   readonly spanId: string
   readonly traceId: string
   readonly sampled: boolean
-  readonly context: Context.Context<never>
+  readonly context: Context<never>
 }
 ```
 
@@ -108,7 +108,7 @@ export interface Span {
   readonly spanId: string
   readonly traceId: string
   readonly parent: Option<ParentSpan>
-  readonly context: Context.Context<never>
+  readonly context: Context<never>
   readonly status: SpanStatus
   readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
@@ -189,7 +189,7 @@ export interface Tracer {
   readonly span: (
     name: string,
     parent: Option<ParentSpan>,
-    context: Context.Context<never>,
+    context: Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint
   ) => Span

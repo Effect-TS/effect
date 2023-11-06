@@ -42,7 +42,7 @@ Added in v2.0.0
 ```ts
 export interface Data {
   readonly instant: number
-  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  readonly sleeps: Chunk<readonly [number, Deferred<never, void>]>
 }
 ```
 
@@ -72,10 +72,10 @@ run in order.
 For example, here is how we can test `Effect.timeout` using `TestClock`:
 
 ```ts
-import * as Duration from "effect/Duration"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as TestClock from "effect/TestClock"
+import { Fiber } from "effect/Fiber"
+import { TestClock } from "effect/TestClock"
 import { Option } from "effect/Option"
 
 Effect.gen(function* () {
@@ -97,12 +97,12 @@ expected effects have been performed.
 **Signature**
 
 ```ts
-export interface TestClock extends Clock.Clock {
+export interface TestClock extends Clock {
   adjust(duration: Duration.DurationInput): Effect<never, never, void>
   adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   save(): Effect<never, never, Effect<never, never, void>>
   setTime(time: number): Effect<never, never, void>
-  sleeps(): Effect<never, never, Chunk.Chunk<number>>
+  sleeps(): Effect<never, never, Chunk<number>>
 }
 ```
 
@@ -153,7 +153,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
+export declare const defaultTestClock: Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
 ```
 
 Added in v2.0.0
@@ -163,7 +163,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const live: (data: Data) => Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
+export declare const live: (data: Data) => Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
 ```
 
 Added in v2.0.0
@@ -175,7 +175,7 @@ Added in v2.0.0
 ```ts
 export declare const makeData: (
   instant: number,
-  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+  sleeps: Chunk<readonly [number, Deferred<never, void>]>
 ) => Data
 ```
 
@@ -231,7 +231,7 @@ times that effects are scheduled to run.
 **Signature**
 
 ```ts
-export declare const sleeps: () => Effect<never, never, Chunk.Chunk<number>>
+export declare const sleeps: () => Effect<never, never, Chunk<number>>
 ```
 
 Added in v2.0.0

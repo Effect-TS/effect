@@ -262,7 +262,7 @@ Retrieves the environment inside an stm.
 **Signature**
 
 ```ts
-export declare const context: <R>() => STM<R, never, Context.Context<R>>
+export declare const context: <R>() => STM<R, never, Context<R>>
 ```
 
 Added in v2.0.0
@@ -274,7 +274,7 @@ Accesses the environment of the transaction to perform a transaction.
 **Signature**
 
 ```ts
-export declare const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) => STM<R0, never, R>
+export declare const contextWith: <R0, R>(f: (environment: Context<R0>) => R) => STM<R0, never, R>
 ```
 
 Added in v2.0.0
@@ -287,7 +287,7 @@ Accesses the environment of the transaction to perform a transaction.
 
 ```ts
 export declare const contextWithSTM: <R0, R, E, A>(
-  f: (environment: Context.Context<R0>) => STM<R, E, A>
+  f: (environment: Context<R0>) => STM<R, E, A>
 ) => STM<R0 | R, E, A>
 ```
 
@@ -393,7 +393,7 @@ Returns the fiber id of the fiber committing the transaction.
 **Signature**
 
 ```ts
-export declare const fiberId: STM<never, never, FiberId.FiberId>
+export declare const fiberId: STM<never, never, FiberId>
 ```
 
 Added in v2.0.0
@@ -777,8 +777,8 @@ function.
 
 ```ts
 export declare const mapInputContext: {
-  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <E, A>(self: STM<R, E, A>) => STM<R0, E, A>
-  <E, A, R0, R>(self: STM<R, E, A>, f: (context: Context.Context<R0>) => Context.Context<R>): STM<R0, E, A>
+  <R0, R>(f: (context: Context<R0>) => Context<R>): <E, A>(self: STM<R, E, A>) => STM<R0, E, A>
+  <E, A, R0, R>(self: STM<R, E, A>, f: (context: Context<R0>) => Context<R>): STM<R0, E, A>
 }
 ```
 
@@ -793,8 +793,8 @@ dependency on `R`.
 
 ```ts
 export declare const provideContext: {
-  <R>(env: Context.Context<R>): <E, A>(self: STM<R, E, A>) => STM<never, E, A>
-  <E, A, R>(self: STM<R, E, A>, env: Context.Context<R>): STM<never, E, A>
+  <R>(env: Context<R>): <E, A>(self: STM<R, E, A>) => STM<never, E, A>
+  <E, A, R>(self: STM<R, E, A>, env: Context<R>): STM<never, E, A>
 }
 ```
 
@@ -855,8 +855,8 @@ specified layer and leaving the remainder `R0`.
 
 ```ts
 export declare const provideSomeContext: {
-  <R>(context: Context.Context<R>): <R1, E, A>(self: STM<R1, E, A>) => STM<Exclude<R1, R>, E, A>
-  <R, R1, E, A>(self: STM<R1, E, A>, context: Context.Context<R>): STM<Exclude<R1, R>, E, A>
+  <R>(context: Context<R>): <R1, E, A>(self: STM<R1, E, A>) => STM<Exclude<R1, R>, E, A>
+  <R, R1, E, A>(self: STM<R1, E, A>, context: Context<R>): STM<Exclude<R1, R>, E, A>
 }
 ```
 

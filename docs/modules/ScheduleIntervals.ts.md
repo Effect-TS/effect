@@ -55,7 +55,7 @@ Constructs `Intervals` from the specified `Iterable<Interval>`.
 **Signature**
 
 ```ts
-export declare const fromIterable: (intervals: Iterable<Interval.Interval>) => Intervals
+export declare const fromIterable: (intervals: Iterable<Interval>) => Intervals
 ```
 
 Added in v2.0.0
@@ -67,7 +67,7 @@ Creates a new `Intervals` from a `List` of `Interval`s.
 **Signature**
 
 ```ts
-export declare const make: (intervals: Check.Chunk<Interval.Interval>) => Intervals
+export declare const make: (intervals: Check.Chunk<Interval>) => Intervals
 ```
 
 Added in v2.0.0
@@ -121,7 +121,7 @@ An `Intervals` represents a list of several `Interval`s.
 ```ts
 export interface Intervals {
   readonly [IntervalsTypeId]: IntervalsTypeId
-  readonly intervals: Check.Chunk<Interval.Interval>
+  readonly intervals: Check.Chunk<Interval>
 }
 ```
 

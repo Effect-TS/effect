@@ -1,6 +1,6 @@
 import { deepStrictEqual } from "effect-test/util"
-import * as Duration from "effect/Duration"
-import * as Equal from "effect/Equal"
+import { Duration } from "effect/Duration"
+import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
 import { inspect } from "node:util"

@@ -1,14 +1,14 @@
-import * as Chunk from "../Chunk.js"
-import type * as Deferred from "../Deferred.js"
+import { Chunk } from "../Chunk.js"
+import type { Deferred } from "../Deferred.js"
 import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
-import * as MutableQueue from "../MutableQueue.js"
-import * as MutableRef from "../MutableRef.js"
+import { MutableQueue } from "../MutableQueue.js"
+import { MutableRef } from "../MutableRef.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import type * as PubSub from "../PubSub.js"
-import type * as Queue from "../Queue.js"
-import type * as Scope from "../Scope.js"
+import type { PubSub } from "../PubSub.js"
+import type { Queue } from "../Queue.js"
+import type { Scope } from "../Scope.js"
 import * as cause from "./cause.js"
 import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
@@ -22,7 +22,7 @@ export interface AtomicPubSub<A> {
   isFull(): boolean
   size(): number
   publish(value: A): boolean
-  publishAll(elements: Iterable<A>): Chunk.Chunk<A>
+  publishAll(elements: Iterable<A>): Chunk<A>
   slide(): void
   subscribe(): Subscription<A>
 }
@@ -32,19 +32,19 @@ interface Subscription<A> {
   isEmpty(): boolean
   size(): number
   poll<D>(default_: D): A | D
-  pollUpTo(n: number): Chunk.Chunk<A>
+  pollUpTo(n: number): Chunk<A>
   unsubscribe(): void
 }
 
 /** @internal */
 type Subscribers<A> = Map<
   Subscription<A>,
-  Set<MutableQueue.MutableQueue<Deferred.Deferred<never, A>>>
+  Set<MutableQueue<Deferred<never, A>>>
 >
 
 const addSubscribers = <A>(
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  pollers: MutableQueue<Deferred<never, A>>
 ) =>
 (subscribers: Subscribers<A>) => {
   if (!subscribers.has(subscription)) {
@@ -56,7 +56,7 @@ const addSubscribers = <A>(
 
 const removeSubscribers = <A>(
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  pollers: MutableQueue<Deferred<never, A>>
 ) =>
 (subscribers: Subscribers<A>) => {
   if (!subscribers.has(subscription)) {
@@ -70,68 +70,68 @@ const removeSubscribers = <A>(
 }
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number): Effect<never, never, PubSub.PubSub<A>> =>
+export const bounded = <A>(requestedCapacity: number): Effect<never, never, PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new BackPressureStrategy()))
   )
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number): Effect<never, never, PubSub.PubSub<A>> =>
+export const dropping = <A>(requestedCapacity: number): Effect<never, never, PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
   )
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number): Effect<never, never, PubSub.PubSub<A>> =>
+export const sliding = <A>(requestedCapacity: number): Effect<never, never, PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new SlidingStrategy()))
   )
 
 /** @internal */
-export const unbounded = <A>(): Effect<never, never, PubSub.PubSub<A>> =>
+export const unbounded = <A>(): Effect<never, never, PubSub<A>> =>
   pipe(
     core.sync(() => makeUnboundedPubSub<A>()),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
   )
 
 /** @internal */
-export const capacity = <A>(self: PubSub.PubSub<A>): number => self.capacity()
+export const capacity = <A>(self: PubSub<A>): number => self.capacity()
 
 /** @internal */
-export const size = <A>(self: PubSub.PubSub<A>): Effect<never, never, number> => self.size()
+export const size = <A>(self: PubSub<A>): Effect<never, never, number> => self.size()
 
 /** @internal */
-export const isFull = <A>(self: PubSub.PubSub<A>): Effect<never, never, boolean> => self.isFull()
+export const isFull = <A>(self: PubSub<A>): Effect<never, never, boolean> => self.isFull()
 
 /** @internal */
-export const isEmpty = <A>(self: PubSub.PubSub<A>): Effect<never, never, boolean> => self.isEmpty()
+export const isEmpty = <A>(self: PubSub<A>): Effect<never, never, boolean> => self.isEmpty()
 
 /** @internal */
-export const shutdown = <A>(self: PubSub.PubSub<A>): Effect<never, never, void> => self.shutdown()
+export const shutdown = <A>(self: PubSub<A>): Effect<never, never, void> => self.shutdown()
 
 /** @internal */
-export const isShutdown = <A>(self: PubSub.PubSub<A>): Effect<never, never, boolean> => self.isShutdown()
+export const isShutdown = <A>(self: PubSub<A>): Effect<never, never, boolean> => self.isShutdown()
 
 /** @internal */
-export const awaitShutdown = <A>(self: PubSub.PubSub<A>): Effect<never, never, void> => self.awaitShutdown()
+export const awaitShutdown = <A>(self: PubSub<A>): Effect<never, never, void> => self.awaitShutdown()
 
 /** @internal */
 export const publish = dual<
-  <A>(value: A) => (self: PubSub.PubSub<A>) => Effect<never, never, boolean>,
-  <A>(self: PubSub.PubSub<A>, value: A) => Effect<never, never, boolean>
+  <A>(value: A) => (self: PubSub<A>) => Effect<never, never, boolean>,
+  <A>(self: PubSub<A>, value: A) => Effect<never, never, boolean>
 >(2, (self, value) => self.publish(value))
 
 /** @internal */
 export const publishAll = dual<
-  <A>(elements: Iterable<A>) => (self: PubSub.PubSub<A>) => Effect<never, never, boolean>,
-  <A>(self: PubSub.PubSub<A>, elements: Iterable<A>) => Effect<never, never, boolean>
+  <A>(elements: Iterable<A>) => (self: PubSub<A>) => Effect<never, never, boolean>,
+  <A>(self: PubSub<A>, elements: Iterable<A>) => Effect<never, never, boolean>
 >(2, (self, elements) => self.publishAll(elements))
 
 /** @internal */
-export const subscribe = <A>(self: PubSub.PubSub<A>): Effect<Scope.Scope, never, Queue.Dequeue<A>> => self.subscribe()
+export const subscribe = <A>(self: PubSub<A>): Effect<Scope, never, Queue.Dequeue<A>> => self.subscribe()
 
 /** @internal */
 const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
@@ -161,7 +161,7 @@ const makeSubscription = <A>(
       pubsub,
       subscribers,
       pubsub.subscribe(),
-      MutableQueue.unbounded<Deferred.Deferred<never, A>>(),
+      MutableQueue.unbounded<Deferred<never, A>>(),
       deferred,
       MutableRef.make(false),
       strategy
@@ -172,9 +172,9 @@ export const unsafeMakeSubscription = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-  shutdownHook: Deferred.Deferred<never, void>,
-  shutdownFlag: MutableRef.MutableRef<boolean>,
+  pollers: MutableQueue<Deferred<never, A>>,
+  shutdownHook: Deferred<never, void>,
+  shutdownFlag: MutableRef<boolean>,
   strategy: PubSubStrategy<A>
 ): Queue.Dequeue<A> => {
   return new SubscriptionImpl(
@@ -229,7 +229,7 @@ class BoundedPubSubArb<A> implements AtomicPubSub<A> {
     return true
   }
 
-  publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+  publishAll(elements: Iterable<A>): Chunk<A> {
     const chunk = Chunk.fromIterable(elements)
     const n = chunk.length
     const size = this.publisherIndex - this.subscribersIndex
@@ -307,7 +307,7 @@ class BoundedPubSubArbSubscription<A> implements Subscription<A> {
     return default_
   }
 
-  pollUpTo(n: number): Chunk.Chunk<A> {
+  pollUpTo(n: number): Chunk<A> {
     if (this.unsubscribed) {
       return Chunk.empty()
     }
@@ -395,7 +395,7 @@ class BoundedPubSubPow2<A> implements AtomicPubSub<A> {
     return true
   }
 
-  publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+  publishAll(elements: Iterable<A>): Chunk<A> {
     const chunk = Chunk.fromIterable(elements)
     const n = chunk.length
     const size = this.publisherIndex - this.subscribersIndex
@@ -474,7 +474,7 @@ class BoundedPubSubPow2Subscription<A> implements Subscription<A> {
     return default_
   }
 
-  pollUpTo(n: number): Chunk.Chunk<A> {
+  pollUpTo(n: number): Chunk<A> {
     if (this.unsubscribed) {
       return Chunk.empty()
     }
@@ -555,7 +555,7 @@ class BoundedPubSubSingle<A> implements AtomicPubSub<A> {
     return true
   }
 
-  publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+  publishAll(elements: Iterable<A>): Chunk<A> {
     const chunk = Chunk.fromIterable(elements)
     if (Chunk.isEmpty(chunk)) {
       return chunk
@@ -614,7 +614,7 @@ class BoundedPubSubSingleSubscription<A> implements Subscription<A> {
     return elem
   }
 
-  pollUpTo(n: number): Chunk.Chunk<A> {
+  pollUpTo(n: number): Chunk<A> {
     if (this.isEmpty() || n < 1) {
       return Chunk.empty()
     }
@@ -686,7 +686,7 @@ class UnboundedPubSub<A> implements AtomicPubSub<A> {
     return true
   }
 
-  publishAll(elements: Iterable<A>): Chunk.Chunk<A> {
+  publishAll(elements: Iterable<A>): Chunk<A> {
     for (const a of elements) {
       this.publish(a)
     }
@@ -779,7 +779,7 @@ class UnboundedPubSubSubscription<A> implements Subscription<A> {
     return polled
   }
 
-  pollUpTo(n: number): Chunk.Chunk<A> {
+  pollUpTo(n: number): Chunk<A> {
     const builder: Array<A> = []
     const default_ = null
     let i = 0
@@ -822,9 +822,9 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     readonly pubsub: AtomicPubSub<A>,
     readonly subscribers: Subscribers<A>,
     readonly subscription: Subscription<A>,
-    readonly pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    readonly shutdownHook: Deferred.Deferred<never, void>,
-    readonly shutdownFlag: MutableRef.MutableRef<boolean>,
+    readonly pollers: MutableQueue<Deferred<never, A>>,
+    readonly shutdownHook: Deferred<never, void>,
+    readonly shutdownFlag: MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>
   ) {
   }
@@ -925,7 +925,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     })
   }
 
-  takeAll(): Effect<never, never, Chunk.Chunk<A>> {
+  takeAll(): Effect<never, never, Chunk<A>> {
     return core.suspend(() => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -938,7 +938,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     })
   }
 
-  takeUpTo(this: this, max: number): Effect<never, never, Chunk.Chunk<A>> {
+  takeUpTo(this: this, max: number): Effect<never, never, Chunk<A>> {
     return core.suspend(() => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -951,7 +951,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     })
   }
 
-  takeBetween(min: number, max: number): Effect<never, never, Chunk.Chunk<A>> {
+  takeBetween(min: number, max: number): Effect<never, never, Chunk<A>> {
     return core.suspend(() => takeRemainderLoop(this, min, max, Chunk.empty()))
   }
 }
@@ -961,8 +961,8 @@ const takeRemainderLoop = <A>(
   self: Queue.Dequeue<A>,
   min: number,
   max: number,
-  acc: Chunk.Chunk<A>
-): Effect<never, never, Chunk.Chunk<A>> => {
+  acc: Chunk<A>
+): Effect<never, never, Chunk<A>> => {
   if (max < min) {
     return core.succeed(acc)
   }
@@ -992,15 +992,15 @@ const takeRemainderLoop = <A>(
 }
 
 /** @internal */
-class PubSubImpl<A> implements PubSub.PubSub<A> {
+class PubSubImpl<A> implements PubSub<A> {
   readonly [queue.EnqueueTypeId] = queue.enqueueVariance
 
   constructor(
     readonly pubsub: AtomicPubSub<A>,
     readonly subscribers: Subscribers<A>,
-    readonly scope: Scope.Scope.Closeable,
-    readonly shutdownHook: Deferred.Deferred<never, void>,
-    readonly shutdownFlag: MutableRef.MutableRef<boolean>,
+    readonly scope: Scope.Closeable,
+    readonly shutdownHook: Deferred<never, void>,
+    readonly shutdownFlag: MutableRef<boolean>,
     readonly strategy: PubSubStrategy<A>
   ) {
   }
@@ -1108,7 +1108,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     })
   }
 
-  subscribe(): Effect<Scope.Scope, never, Queue.Dequeue<A>> {
+  subscribe(): Effect<Scope, never, Queue.Dequeue<A>> {
     const acquire = core.tap(
       fiberRuntime.all([
         this.scope.fork(executionStrategy.sequential),
@@ -1139,7 +1139,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
 export const makePubSub = <A>(
   pubsub: AtomicPubSub<A>,
   strategy: PubSubStrategy<A>
-): Effect<never, never, PubSub.PubSub<A>> =>
+): Effect<never, never, PubSub<A>> =>
   core.flatMap(
     fiberRuntime.scopeMake(),
     (scope) =>
@@ -1158,11 +1158,11 @@ export const makePubSub = <A>(
 export const unsafeMakePubSub = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
-  scope: Scope.Scope.Closeable,
-  shutdownHook: Deferred.Deferred<never, void>,
-  shutdownFlag: MutableRef.MutableRef<boolean>,
+  scope: Scope.Closeable,
+  shutdownHook: Deferred<never, void>,
+  shutdownFlag: MutableRef<boolean>,
   strategy: PubSubStrategy<A>
-): PubSub.PubSub<A> => {
+): PubSub<A> => {
   return new PubSubImpl(pubsub, subscribers, scope, shutdownHook, shutdownFlag, strategy)
 }
 
@@ -1180,37 +1180,37 @@ const ensureCapacity = (capacity: number): void => {
 }
 
 /** @internal */
-const unsafeCompleteDeferred = <A>(deferred: Deferred.Deferred<never, A>, a: A): void => {
+const unsafeCompleteDeferred = <A>(deferred: Deferred<never, A>, a: A): void => {
   core.deferredUnsafeDone(deferred, core.succeed(a))
 }
 
 /** @internal */
-const unsafeOfferAll = <A>(queue: MutableQueue.MutableQueue<A>, as: Iterable<A>): Chunk.Chunk<A> => {
+const unsafeOfferAll = <A>(queue: MutableQueue<A>, as: Iterable<A>): Chunk<A> => {
   return pipe(queue, MutableQueue.offerAll(as))
 }
 
 /** @internal */
-const unsafePollAllQueue = <A>(queue: MutableQueue.MutableQueue<A>): Chunk.Chunk<A> => {
+const unsafePollAllQueue = <A>(queue: MutableQueue<A>): Chunk<A> => {
   return pipe(queue, MutableQueue.pollUpTo(Number.POSITIVE_INFINITY))
 }
 
 /** @internal */
-const unsafePollAllSubscription = <A>(subscription: Subscription<A>): Chunk.Chunk<A> => {
+const unsafePollAllSubscription = <A>(subscription: Subscription<A>): Chunk<A> => {
   return subscription.pollUpTo(Number.POSITIVE_INFINITY)
 }
 
 /** @internal */
-const unsafePollN = <A>(subscription: Subscription<A>, max: number): Chunk.Chunk<A> => {
+const unsafePollN = <A>(subscription: Subscription<A>, max: number): Chunk<A> => {
   return subscription.pollUpTo(max)
 }
 
 /** @internal */
-const unsafePublishAll = <A>(pubsub: AtomicPubSub<A>, as: Iterable<A>): Chunk.Chunk<A> => {
+const unsafePublishAll = <A>(pubsub: AtomicPubSub<A>, as: Iterable<A>): Chunk<A> => {
   return pubsub.publishAll(as)
 }
 
 /** @internal */
-const unsafeRemove = <A>(queue: MutableQueue.MutableQueue<A>, value: A): void => {
+const unsafeRemove = <A>(queue: MutableQueue<A>, value: A): void => {
   unsafeOfferAll(
     queue,
     pipe(unsafePollAllQueue(queue), Chunk.filter((elem) => elem !== value))
@@ -1241,7 +1241,7 @@ export interface PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
-    isShutdown: MutableRef.MutableRef<boolean>
+    isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean>
 
   /**
@@ -1262,7 +1262,7 @@ export interface PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue<Deferred<never, A>>
   ): void
 
   /**
@@ -1285,10 +1285,10 @@ export interface PubSubStrategy<A> {
  * @internal
  */
 class BackPressureStrategy<A> implements PubSubStrategy<A> {
-  publishers: MutableQueue.MutableQueue<
+  publishers: MutableQueue<
     readonly [
       A,
-      Deferred.Deferred<never, boolean>,
+      Deferred<never, boolean>,
       boolean
     ]
   > = MutableQueue.unbounded()
@@ -1313,7 +1313,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
-    isShutdown: MutableRef.MutableRef<boolean>
+    isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return core.withFiberRuntime<never, never, boolean>((state) => {
       const deferred = core.deferredUnsafeMake<never, boolean>(state.id())
@@ -1359,7 +1359,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue<Deferred<never, A>>
   ): void {
     return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
@@ -1368,7 +1368,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
     return unsafeStrategyCompleteSubscribers(this, pubsub, subscribers)
   }
 
-  private unsafeOffer(elements: Iterable<A>, deferred: Deferred.Deferred<never, boolean>): void {
+  private unsafeOffer(elements: Iterable<A>, deferred: Deferred<never, boolean>): void {
     const iterator = elements[Symbol.iterator]()
     let next: IteratorResult<A> = iterator.next()
     if (!next.done) {
@@ -1391,7 +1391,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
     }
   }
 
-  unsafeRemove(deferred: Deferred.Deferred<never, boolean>): void {
+  unsafeRemove(deferred: Deferred<never, boolean>): void {
     unsafeOfferAll(
       this.publishers,
       pipe(unsafePollAllQueue(this.publishers), Chunk.filter(([_, a]) => a !== deferred))
@@ -1418,7 +1418,7 @@ export class DroppingStrategy<A> implements PubSubStrategy<A> {
     _pubsub: AtomicPubSub<A>,
     _subscribers: Subscribers<A>,
     _elements: Iterable<A>,
-    _isShutdown: MutableRef.MutableRef<boolean>
+    _isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return core.succeed(false)
   }
@@ -1434,7 +1434,7 @@ export class DroppingStrategy<A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue<Deferred<never, A>>
   ): void {
     return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
@@ -1462,7 +1462,7 @@ export class SlidingStrategy<A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
-    _isShutdown: MutableRef.MutableRef<boolean>
+    _isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return core.sync(() => {
       this.unsafeSlidingPublish(pubsub, elements)
@@ -1482,7 +1482,7 @@ export class SlidingStrategy<A> implements PubSubStrategy<A> {
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
-    pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+    pollers: MutableQueue<Deferred<never, A>>
   ): void {
     return unsafeStrategyCompletePollers(this, pubsub, subscribers, subscription, pollers)
   }
@@ -1516,7 +1516,7 @@ const unsafeStrategyCompletePollers = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   subscription: Subscription<A>,
-  pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  pollers: MutableQueue<Deferred<never, A>>
 ): void => {
   let keepPolling = true
   while (keepPolling && !subscription.isEmpty()) {

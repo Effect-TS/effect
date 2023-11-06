@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { Option } from "effect/Option"
 import { Stream } from "effect/Stream"
@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("paginateChunk", () =>
     Effect.gen(function*($) {
-      const s: readonly [Chunk.Chunk<number>, Array<number>] = [Chunk.of(0), [1, 2, 3, 4, 5]]
+      const s: readonly [Chunk<number>, Array<number>] = [Chunk.of(0), [1, 2, 3, 4, 5]]
       const pageSize = 2
       const result = yield* $(
         Stream.paginateChunk(s, ([chunk, nums]) =>
@@ -61,12 +61,12 @@ describe.concurrent("Stream", () => {
 
   it.effect("paginateChunkEffect", () =>
     Effect.gen(function*($) {
-      const s: readonly [Chunk.Chunk<number>, Array<number>] = [Chunk.of(0), [1, 2, 3, 4, 5]]
+      const s: readonly [Chunk<number>, Array<number>] = [Chunk.of(0), [1, 2, 3, 4, 5]]
       const pageSize = 2
       const result = yield* $(
         Stream.paginateChunkEffect(s, ([chunk, nums]) =>
           nums.length === 0 ?
-            Effect.succeed([chunk, Option.none<readonly [Chunk.Chunk<number>, Array<number>]>()] as const) :
+            Effect.succeed([chunk, Option.none<readonly [Chunk<number>, Array<number>]>()] as const) :
             Effect.succeed(
               [
                 chunk,

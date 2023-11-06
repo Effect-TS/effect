@@ -1,12 +1,12 @@
 /**
  * @since 2.0.0
  */
-import * as Cause from "./Cause.js"
-import * as Chunk from "./Chunk.js"
-import type * as Context from "./Context.js"
+import { Cause } from "./Cause.js"
+import { Chunk } from "./Chunk.js"
+import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
-import type * as FiberId from "./FiberId.js"
+import type { FiberId } from "./FiberId.js"
 import type { LazyArg } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as core from "./internal/stm/core.js"
@@ -14,7 +14,7 @@ import * as stm from "./internal/stm/stm.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Unify from "./Unify.js"
+import type { Unify } from "./Unify.js"
 
 /**
  * @since 2.0.0
@@ -452,7 +452,7 @@ export const cond: <E, A>(predicate: LazyArg<boolean>, error: LazyArg<E>, result
  * @since 2.0.0
  * @category constructors
  */
-export const context: <R>() => STM<R, never, Context.Context<R>> = core.context
+export const context: <R>() => STM<R, never, Context<R>> = core.context
 
 /**
  * Accesses the environment of the transaction to perform a transaction.
@@ -460,7 +460,7 @@ export const context: <R>() => STM<R, never, Context.Context<R>> = core.context
  * @since 2.0.0
  * @category constructors
  */
-export const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) => STM<R0, never, R> = core.contextWith
+export const contextWith: <R0, R>(f: (environment: Context<R0>) => R) => STM<R0, never, R> = core.contextWith
 
 /**
  * Accesses the environment of the transaction to perform a transaction.
@@ -469,7 +469,7 @@ export const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) =>
  * @category constructors
  */
 export const contextWithSTM: <R0, R, E, A>(
-  f: (environment: Context.Context<R0>) => STM<R, E, A>
+  f: (environment: Context<R0>) => STM<R, E, A>
 ) => STM<R0 | R, E, A> = core.contextWithSTM
 
 /**
@@ -480,8 +480,8 @@ export const contextWithSTM: <R0, R, E, A>(
  * @category context
  */
 export const mapInputContext: {
-  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <E, A>(self: STM<R, E, A>) => STM<R0, E, A>
-  <E, A, R0, R>(self: STM<R, E, A>, f: (context: Context.Context<R0>) => Context.Context<R>): STM<R0, E, A>
+  <R0, R>(f: (context: Context<R0>) => Context<R>): <E, A>(self: STM<R, E, A>) => STM<R0, E, A>
+  <E, A, R0, R>(self: STM<R, E, A>, f: (context: Context<R0>) => Context<R>): STM<R0, E, A>
 } = core.mapInputContext
 
 /**
@@ -585,7 +585,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => STM<never, E, never> = core.
  * @since 2.0.0
  * @category constructors
  */
-export const fiberId: STM<never, never, FiberId.FiberId> = stm.fiberId
+export const fiberId: STM<never, never, FiberId> = stm.fiberId
 
 /**
  * Filters the collection using the specified effectual predicate.
@@ -1467,8 +1467,8 @@ export const partition: {
  * @category context
  */
 export const provideContext: {
-  <R>(env: Context.Context<R>): <E, A>(self: STM<R, E, A>) => STM<never, E, A>
-  <E, A, R>(self: STM<R, E, A>, env: Context.Context<R>): STM<never, E, A>
+  <R>(env: Context<R>): <E, A>(self: STM<R, E, A>) => STM<never, E, A>
+  <E, A, R>(self: STM<R, E, A>, env: Context<R>): STM<never, E, A>
 } = stm.provideContext
 
 /**
@@ -1479,8 +1479,8 @@ export const provideContext: {
  * @category context
  */
 export const provideSomeContext: {
-  <R>(context: Context.Context<R>): <R1, E, A>(self: STM<R1, E, A>) => STM<Exclude<R1, R>, E, A>
-  <R, R1, E, A>(self: STM<R1, E, A>, context: Context.Context<R>): STM<Exclude<R1, R>, E, A>
+  <R>(context: Context<R>): <R1, E, A>(self: STM<R1, E, A>) => STM<Exclude<R1, R>, E, A>
+  <R, R1, E, A>(self: STM<R1, E, A>, context: Context<R>): STM<Exclude<R1, R>, E, A>
 } = stm.provideSomeContext
 
 /**

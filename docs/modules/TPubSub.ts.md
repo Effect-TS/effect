@@ -48,7 +48,7 @@ pressure to publishers if the `TPubSub` is at capacity.
 **Signature**
 
 ```ts
-export declare const bounded: <A>(requestedCapacity: number) => STM.STM<never, never, TPubSub<A>>
+export declare const bounded: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>>
 ```
 
 Added in v2.0.0
@@ -61,7 +61,7 @@ messages if the `TPubSub` is at capacity.
 **Signature**
 
 ```ts
-export declare const dropping: <A>(requestedCapacity: number) => STM.STM<never, never, TPubSub<A>>
+export declare const dropping: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>>
 ```
 
 Added in v2.0.0
@@ -76,7 +76,7 @@ For best performance use capacities that are powers of two.
 **Signature**
 
 ```ts
-export declare const sliding: <A>(requestedCapacity: number) => STM.STM<never, never, TPubSub<A>>
+export declare const sliding: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>>
 ```
 
 Added in v2.0.0
@@ -88,7 +88,7 @@ Creates an unbounded `TPubSub`.
 **Signature**
 
 ```ts
-export declare const unbounded: <A>() => STM.STM<never, never, TPubSub<A>>
+export declare const unbounded: <A>() => STM<never, never, TPubSub<A>>
 ```
 
 Added in v2.0.0
@@ -114,7 +114,7 @@ Returns `true` if the `TPubSub` contains zero elements, `false` otherwise.
 **Signature**
 
 ```ts
-export declare const isEmpty: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean>
+export declare const isEmpty: <A>(self: TPubSub<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -127,7 +127,7 @@ otherwise.
 **Signature**
 
 ```ts
-export declare const isFull: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean>
+export declare const isFull: <A>(self: TPubSub<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -139,7 +139,7 @@ Returns `true` if `shutdown` has been called, otherwise returns `false`.
 **Signature**
 
 ```ts
-export declare const isShutdown: <A>(self: TPubSub<A>) => STM.STM<never, never, boolean>
+export declare const isShutdown: <A>(self: TPubSub<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -153,7 +153,7 @@ elements to be added to the `TPubSub`.
 **Signature**
 
 ```ts
-export declare const size: <A>(self: TPubSub<A>) => STM.STM<never, never, number>
+export declare const size: <A>(self: TPubSub<A>) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -181,7 +181,7 @@ shutdown, the `STM` will resume right away.
 **Signature**
 
 ```ts
-export declare const awaitShutdown: <A>(self: TPubSub<A>) => STM.STM<never, never, void>
+export declare const awaitShutdown: <A>(self: TPubSub<A>) => STM<never, never, void>
 ```
 
 Added in v2.0.0
@@ -195,8 +195,8 @@ to the `TPubSub`.
 
 ```ts
 export declare const publish: {
-  <A>(value: A): (self: TPubSub<A>) => STM.STM<never, never, boolean>
-  <A>(self: TPubSub<A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): (self: TPubSub<A>) => STM<never, never, boolean>
+  <A>(self: TPubSub<A>, value: A): STM<never, never, boolean>
 }
 ```
 
@@ -211,8 +211,8 @@ were published to the `TPubSub`.
 
 ```ts
 export declare const publishAll: {
-  <A>(iterable: Iterable<A>): (self: TPubSub<A>) => STM.STM<never, never, boolean>
-  <A>(self: TPubSub<A>, iterable: Iterable<A>): STM.STM<never, never, boolean>
+  <A>(iterable: Iterable<A>): (self: TPubSub<A>) => STM<never, never, boolean>
+  <A>(self: TPubSub<A>, iterable: Iterable<A>): STM<never, never, boolean>
 }
 ```
 
@@ -228,7 +228,7 @@ queue.
 **Signature**
 
 ```ts
-export declare const subscribe: <A>(self: TPubSub<A>) => STM.STM<never, never, TQueue.TDequeue<A>>
+export declare const subscribe: <A>(self: TPubSub<A>) => STM<never, never, TQueue.TDequeue<A>>
 ```
 
 Added in v2.0.0
@@ -242,7 +242,7 @@ each time.
 **Signature**
 
 ```ts
-export declare const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope.Scope, never, TQueue.TDequeue<A>>
+export declare const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope, never, TQueue.TDequeue<A>>
 ```
 
 Added in v2.0.0

@@ -1,17 +1,17 @@
 import * as it from "effect-test/utils/extend"
-import * as Deferred from "effect/Deferred"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import type { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as STM from "effect/STM"
-import * as TReentrantLock from "effect/TReentrantLock"
+import { Ref } from "effect/Ref"
+import { Schedule } from "effect/Schedule"
+import { STM } from "effect/STM"
+import { TReentrantLock } from "effect/TReentrantLock"
 import { assert, describe } from "vitest"
 
-const pollSchedule = <E, A>(): Schedule.Schedule<
+const pollSchedule = <E, A>(): Schedule<
   never,
   Option<Exit<E, A>>,
   Option<Exit<E, A>>

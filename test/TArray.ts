@@ -1,33 +1,33 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
-import * as Number from "effect/Number"
+import { Number } from "effect/Number"
 import { Option } from "effect/Option"
-import * as STM from "effect/STM"
-import * as TArray from "effect/TArray"
-import * as TRef from "effect/TRef"
+import { STM } from "effect/STM"
+import { TArray } from "effect/TArray"
+import { TRef } from "effect/TRef"
 import { assert, describe } from "vitest"
 
 const largePrime = 223
 
-const makeRepeats = (blocks: number, length: number): STM.STM<never, never, TArray.TArray<number>> =>
+const makeRepeats = (blocks: number, length: number): STM<never, never, TArray<number>> =>
   TArray.fromIterable(Array.from({ length: blocks * length }, (_, i) => (i % length) + 1))
 
-const makeStair = (length: number): STM.STM<never, never, TArray.TArray<number>> =>
+const makeStair = (length: number): STM<never, never, TArray<number>> =>
   TArray.fromIterable(Array.from({ length }, (_, i) => i + 1))
 
-const makeStairWithHoles = (length: number): STM.STM<never, never, TArray.TArray<Option<number>>> =>
+const makeStairWithHoles = (length: number): STM<never, never, TArray<Option<number>>> =>
   TArray.fromIterable(Array.from({ length }, (_, i) => i % 3 === 0 ? Option.none() : Option.some(i)))
 
-const makeTArray = <A>(length: number, value: A): STM.STM<never, never, TArray.TArray<A>> =>
+const makeTArray = <A>(length: number, value: A): STM<never, never, TArray<A>> =>
   TArray.fromIterable(Array.from({ length }, () => value))
 
-const valuesOf = <A>(array: TArray.TArray<A>): STM.STM<never, never, Array<A>> =>
+const valuesOf = <A>(array: TArray<A>): STM<never, never, Array<A>> =>
   pipe(array, TArray.reduce<Array<A>, A>([], (acc, a) => [...acc, a]))
 
 describe.concurrent("TArray", () => {
@@ -1048,7 +1048,7 @@ describe.concurrent("TArray", () => {
   it.effect("reduceSTM - returns failures", () =>
     Effect.gen(function*($) {
       const n = 1_000
-      const failInTheMiddle = (acc: number, n: number): STM.STM<never, string, number> =>
+      const failInTheMiddle = (acc: number, n: number): STM<never, string, number> =>
         acc === Math.floor(n / 2) ? STM.fail("boom") : STM.succeed(acc + n)
       const array = yield* $(makeTArray(n, 1))
       const result = yield* $(pipe(array, TArray.reduceSTM(0, failInTheMiddle), STM.either))

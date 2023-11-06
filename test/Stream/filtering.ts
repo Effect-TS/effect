@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { pipe } from "effect/Function"

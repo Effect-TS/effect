@@ -2,8 +2,8 @@
  * @since 2.0.0
  */
 
-import * as Equal from "../Equal.js"
-import * as Hash from "../Hash.js"
+import { Equal } from "../Equal.js"
+import { Hash } from "../Hash.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import type { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"

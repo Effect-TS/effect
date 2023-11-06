@@ -1,7 +1,7 @@
-import type * as LogSpan from "../LogSpan.js"
+import type { LogSpan } from "../LogSpan.js"
 
 /** @internal */
-export const make = (label: string, startTime: number): LogSpan.LogSpan => ({
+export const make = (label: string, startTime: number): LogSpan => ({
   label,
   startTime
 })

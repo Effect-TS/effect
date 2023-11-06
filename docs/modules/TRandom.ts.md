@@ -51,7 +51,7 @@ The "live" `TRandom` service wrapped into a `Layer`.
 **Signature**
 
 ```ts
-export declare const live: Layer.Layer<never, never, TRandom>
+export declare const live: Layer<never, never, TRandom>
 ```
 
 Added in v2.0.0
@@ -68,29 +68,29 @@ export interface TRandom {
   /**
    * Returns the next numeric value from the pseudo-random number generator.
    */
-  readonly next: STM.STM<never, never, number>
+  readonly next: STM<never, never, number>
   /**
    * Returns the next boolean value from the pseudo-random number generator.
    */
-  readonly nextBoolean: STM.STM<never, never, boolean>
+  readonly nextBoolean: STM<never, never, boolean>
   /**
    * Returns the next integer value from the pseudo-random number generator.
    */
-  readonly nextInt: STM.STM<never, never, number>
+  readonly nextInt: STM<never, never, number>
   /**
    * Returns the next numeric value in the specified range from the
    * pseudo-random number generator.
    */
-  nextRange(min: number, max: number): STM.STM<never, never, number>
+  nextRange(min: number, max: number): STM<never, never, number>
   /**
    * Returns the next integer value in the specified range from the
    * pseudo-random number generator.
    */
-  nextIntBetween(min: number, max: number): STM.STM<never, never, number>
+  nextIntBetween(min: number, max: number): STM<never, never, number>
   /**
    * Uses the pseudo-random number generator to shuffle the specified iterable.
    */
-  shuffle<A>(elements: Iterable<A>): STM.STM<never, never, Array<A>>
+  shuffle<A>(elements: Iterable<A>): STM<never, never, Array<A>>
 }
 ```
 
@@ -105,7 +105,7 @@ Returns the next number from the pseudo-random number generator.
 **Signature**
 
 ```ts
-export declare const next: STM.STM<TRandom, never, number>
+export declare const next: STM<TRandom, never, number>
 ```
 
 Added in v2.0.0
@@ -117,7 +117,7 @@ Returns the next boolean value from the pseudo-random number generator.
 **Signature**
 
 ```ts
-export declare const nextBoolean: STM.STM<TRandom, never, boolean>
+export declare const nextBoolean: STM<TRandom, never, boolean>
 ```
 
 Added in v2.0.0
@@ -129,7 +129,7 @@ Returns the next integer from the pseudo-random number generator.
 **Signature**
 
 ```ts
-export declare const nextInt: STM.STM<TRandom, never, number>
+export declare const nextInt: STM<TRandom, never, number>
 ```
 
 Added in v2.0.0
@@ -142,7 +142,7 @@ generator.
 **Signature**
 
 ```ts
-export declare const nextIntBetween: (low: number, high: number) => STM.STM<TRandom, never, number>
+export declare const nextIntBetween: (low: number, high: number) => STM<TRandom, never, number>
 ```
 
 Added in v2.0.0
@@ -155,7 +155,7 @@ generator.
 **Signature**
 
 ```ts
-export declare const nextRange: (min: number, max: number) => STM.STM<TRandom, never, number>
+export declare const nextRange: (min: number, max: number) => STM<TRandom, never, number>
 ```
 
 Added in v2.0.0
@@ -167,7 +167,7 @@ Uses the pseudo-random number generator to shuffle the specified iterable.
 **Signature**
 
 ```ts
-export declare const shuffle: <A>(elements: Iterable<A>) => STM.STM<TRandom, never, A[]>
+export declare const shuffle: <A>(elements: Iterable<A>) => STM<TRandom, never, A[]>
 ```
 
 Added in v2.0.0

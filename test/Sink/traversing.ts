@@ -1,10 +1,10 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { identity, pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import * as Sink from "effect/Sink"
+import { Sink } from "effect/Sink"
 import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 

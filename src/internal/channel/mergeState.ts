@@ -1,11 +1,11 @@
 import type { Effect } from "../../Effect.js"
 import type { Either } from "../../Either.js"
 import type { Exit } from "../../Exit.js"
-import type * as Fiber from "../../Fiber.js"
+import type { Fiber } from "../../Fiber.js"
 import { dual } from "../../Function.js"
-import type * as MergeState from "../../MergeState.js"
+import type { MergeState } from "../../MergeState.js"
 import { hasProperty } from "../../Predicate.js"
-import * as OpCodes from "../opCodes/channelMergeState.js"
+import { OpCodes } from "../opCodes/channelMergeState.js"
 
 /** @internal */
 const MergeStateSymbolKey = "effect/ChannelMergeState"
@@ -22,9 +22,9 @@ const proto = {
 
 /** @internal */
 export const BothRunning = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  left: Fiber.Fiber<Err, Either<Done, Elem>>,
-  right: Fiber.Fiber<Err1, Either<Done1, Elem>>
-): MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
+  left: Fiber<Err, Either<Done, Elem>>,
+  right: Fiber<Err1, Either<Done1, Elem>>
+): MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_BOTH_RUNNING
   op.left = left
@@ -35,7 +35,7 @@ export const BothRunning = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 /** @internal */
 export const LeftDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
   f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>
-): MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
+): MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_LEFT_DONE
   op.f = f
@@ -45,7 +45,7 @@ export const LeftDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 /** @internal */
 export const RightDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
   f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>
-): MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
+): MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_RIGHT_DONE
   op.f = f
@@ -55,26 +55,26 @@ export const RightDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
 /** @internal */
 export const isMergeState = (
   u: unknown
-): u is MergeState.MergeState<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown> =>
+): u is MergeState<unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown> =>
   hasProperty(u, MergeStateTypeId)
 
 /** @internal */
 export const isBothRunning = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
+  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ): self is MergeState.BothRunning<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   return self._tag === OpCodes.OP_BOTH_RUNNING
 }
 
 /** @internal */
 export const isLeftDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
+  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ): self is MergeState.LeftDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   return self._tag === OpCodes.OP_LEFT_DONE
 }
 
 /** @internal */
 export const isRightDone = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
+  self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ): self is MergeState.RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   return self._tag === OpCodes.OP_RIGHT_DONE
 }
@@ -84,19 +84,19 @@ export const match = dual<
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Err, Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either<Done1, Elem>>
+        left: Fiber<Err, Either<Done, Elem>>,
+        right: Fiber<Err1, Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
     }
-  ) => (self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>) => Z,
+  ) => (self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>) => Z,
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
-    self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
+    self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Err, Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either<Done1, Elem>>
+        left: Fiber<Err, Either<Done, Elem>>,
+        right: Fiber<Err1, Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z

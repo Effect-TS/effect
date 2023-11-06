@@ -1,20 +1,20 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Clock from "effect/Clock"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Clock } from "effect/Clock"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { constVoid } from "effect/Function"
 import { Option } from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as ScheduleDecision from "effect/ScheduleDecision"
-import * as Intervals from "effect/ScheduleIntervals"
-import * as TestClock from "effect/TestClock"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
+import { Schedule } from "effect/Schedule"
+import { ScheduleDecision } from "effect/ScheduleDecision"
+import { Intervals } from "effect/ScheduleIntervals"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Schedule", () => {
@@ -64,7 +64,7 @@ describe.concurrent("Schedule", () => {
     }))
   it.effect("perform log for each recurrence of effect", () =>
     Effect.gen(function*($) {
-      const schedule = (ref: Ref.Ref<number>) => {
+      const schedule = (ref: Ref<number>) => {
         return Schedule.recurs(3).pipe(Schedule.onDecision(() => Ref.update(ref, (n) => n + 1)))
       }
       const ref = yield* $(Ref.make(0))
@@ -74,7 +74,7 @@ describe.concurrent("Schedule", () => {
     }))
   it.effect("reset after some inactivity", () =>
     Effect.gen(function*($) {
-      const io = (ref: Ref.Ref<number>, latch: Deferred.Deferred<never, void>): Effect<never, string, void> => {
+      const io = (ref: Ref<number>, latch: Deferred<never, void>): Effect<never, string, void> => {
         return Ref.updateAndGet(ref, (n) => n + 1).pipe(
           Effect.flatMap((retries) => {
             // The 5th retry will fail after 10 seconds to let the schedule reset
@@ -744,16 +744,16 @@ describe.concurrent("Schedule", () => {
 })
 const ioSucceed = () => Effect.succeed("OrElse")
 const ioFail = () => Effect.fail("OrElseFailed")
-const failOn0 = (ref: Ref.Ref<number>): Effect<never, string, number> => {
+const failOn0 = (ref: Ref<number>): Effect<never, string, number> => {
   return Effect.gen(function*($) {
     const i = yield* $(Ref.updateAndGet(ref, (n) => n + 1))
     return yield* $(i <= 1 ? Effect.fail(`Error: ${i}`) : Effect.succeed(i))
   })
 }
-const alwaysFail = (ref: Ref.Ref<number>): Effect<never, string, number> => {
+const alwaysFail = (ref: Ref<number>): Effect<never, string, number> => {
   return Ref.updateAndGet(ref, (n) => n + 1).pipe(Effect.flatMap((n) => Effect.fail(`Error: ${n}`)))
 }
-const repeat = <Env, B>(schedule: Schedule.Schedule<Env, number, B>): Effect<Env, never, B> => {
+const repeat = <Env, B>(schedule: Schedule<Env, number, B>): Effect<Env, never, B> => {
   return Ref.make(0).pipe(
     Effect.flatMap((ref) => ref.pipe(Ref.updateAndGet((n) => n + 1), Effect.repeat(schedule)))
   )
@@ -764,13 +764,13 @@ const roundToNearestHour = (date: Date): number => {
   return date.getMilliseconds()
 }
 const checkDelays = <Env>(
-  schedule: Schedule.Schedule<Env, number, Duration.Duration>
+  schedule: Schedule<Env, number, Duration>
 ): Effect<
   Env,
   never,
   readonly [
-    Chunk.Chunk<Duration.Duration>,
-    Chunk.Chunk<Duration.Duration>
+    Chunk<Duration>,
+    Chunk<Duration>
   ]
 > => {
   return Effect.gen(function*($) {
@@ -781,12 +781,12 @@ const checkDelays = <Env>(
     return [actual, expected] as const
   })
 }
-const checkRepetitions = <Env>(schedule: Schedule.Schedule<Env, number, number>): Effect<
+const checkRepetitions = <Env>(schedule: Schedule<Env, number, number>): Effect<
   Env,
   never,
   readonly [
-    Chunk.Chunk<number>,
-    Chunk.Chunk<number>
+    Chunk<number>,
+    Chunk<number>
   ]
 > => {
   return Effect.gen(function*($) {
@@ -806,9 +806,9 @@ export const run = <R, E, A>(
   )
 }
 export const runCollect = <Env, In, Out>(
-  schedule: Schedule.Schedule<Env, In, Out>,
+  schedule: Schedule<Env, In, Out>,
   input: Iterable<In>
-): Effect<Env, never, Chunk.Chunk<Out>> => {
+): Effect<Env, never, Chunk<Out>> => {
   return run(
     Schedule.driver(schedule).pipe(
       Effect.flatMap((driver) => runCollectLoop(driver, Chunk.fromIterable(input), Chunk.empty()))
@@ -817,9 +817,9 @@ export const runCollect = <Env, In, Out>(
 }
 const runCollectLoop = <Env, In, Out>(
   driver: Schedule.ScheduleDriver<Env, In, Out>,
-  input: Chunk.Chunk<In>,
-  acc: Chunk.Chunk<Out>
-): Effect<Env, never, Chunk.Chunk<Out>> => {
+  input: Chunk<In>,
+  acc: Chunk<Out>
+): Effect<Env, never, Chunk<Out>> => {
   if (!Chunk.isNonEmpty(input)) {
     return Effect.succeed(acc)
   }
@@ -839,7 +839,7 @@ const runCollectLoop = <Env, In, Out>(
   )
 }
 const runManually = <Env, In, Out>(
-  schedule: Schedule.Schedule<Env, In, Out>,
+  schedule: Schedule<Env, In, Out>,
   inputs: Iterable<
     readonly [
       number,
@@ -850,7 +850,7 @@ const runManually = <Env, In, Out>(
   Env,
   never,
   readonly [
-    Chunk.Chunk<
+    Chunk<
       readonly [
         number,
         Out
@@ -862,15 +862,15 @@ const runManually = <Env, In, Out>(
   return runManuallyLoop(schedule, schedule.initial, Chunk.fromIterable(inputs), Chunk.empty())
 }
 const runManuallyLoop = <Env, In, Out>(
-  schedule: Schedule.Schedule<Env, In, Out>,
+  schedule: Schedule<Env, In, Out>,
   state: unknown,
-  inputs: Chunk.Chunk<
+  inputs: Chunk<
     readonly [
       number,
       In
     ]
   >,
-  acc: Chunk.Chunk<
+  acc: Chunk<
     readonly [
       number,
       Out
@@ -880,7 +880,7 @@ const runManuallyLoop = <Env, In, Out>(
   Env,
   never,
   readonly [
-    Chunk.Chunk<
+    Chunk<
       readonly [
         number,
         Out
@@ -909,7 +909,7 @@ const runManuallyLoop = <Env, In, Out>(
   )
 }
 // TODO(Mike/Max): remove if added to `effect`
-const scanLeft = <A, B>(self: Chunk.Chunk<A>, b: B, f: (b: B, a: A) => B): Chunk.Chunk<B> => {
+const scanLeft = <A, B>(self: Chunk<A>, b: B, f: (b: B, a: A) => B): Chunk<B> => {
   const len = self.length
   const out = new Array(len + 1)
   out[0] = b

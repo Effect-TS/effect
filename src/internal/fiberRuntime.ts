@@ -1,43 +1,43 @@
-import * as Boolean from "../Boolean.js"
-import type * as Cause from "../Cause.js"
-import * as Chunk from "../Chunk.js"
-import type * as Clock from "../Clock.js"
+import { Boolean } from "../Boolean.js"
+import type { Cause } from "../Cause.js"
+import { Chunk } from "../Chunk.js"
+import type { Clock } from "../Clock.js"
 import type { ConfigProvider } from "../ConfigProvider.js"
-import * as Context from "../Context.js"
-import * as Deferred from "../Deferred.js"
+import { Context } from "../Context.js"
+import { Deferred } from "../Deferred.js"
 import type { Effect } from "../Effect.js"
 import { EffectTypeId } from "../Effectable.js"
 import type { Either } from "../Either.js"
-import * as ExecutionStrategy from "../ExecutionStrategy.js"
+import { ExecutionStrategy } from "../ExecutionStrategy.js"
 import type { Exit } from "../Exit.js"
-import type * as Fiber from "../Fiber.js"
-import * as FiberId from "../FiberId.js"
-import type * as FiberRef from "../FiberRef.js"
-import * as FiberRefs from "../FiberRefs.js"
-import * as FiberRefsPatch from "../FiberRefsPatch.js"
-import * as FiberStatus from "../FiberStatus.js"
+import type { Fiber } from "../Fiber.js"
+import { FiberId } from "../FiberId.js"
+import type { FiberRef } from "../FiberRef.js"
+import { FiberRefs } from "../FiberRefs.js"
+import { FiberRefsPatch } from "../FiberRefsPatch.js"
+import { FiberStatus } from "../FiberStatus.js"
 import type { LazyArg } from "../Function.js"
 import { dual, identity, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
-import * as HashMap from "../HashMap.js"
-import * as HashSet from "../HashSet.js"
+import { HashMap } from "../HashMap.js"
+import { HashSet } from "../HashSet.js"
 import type { Logger } from "../Logger.js"
-import * as LogLevel from "../LogLevel.js"
-import type * as MetricLabel from "../MetricLabel.js"
-import * as MRef from "../MutableRef.js"
+import { LogLevel } from "../LogLevel.js"
+import type { MetricLabel } from "../MetricLabel.js"
+import { MRef } from "../MutableRef.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import * as Predicate from "../Predicate.js"
-import * as RA from "../ReadonlyArray.js"
-import * as Ref from "../Ref.js"
+import { Predicate } from "../Predicate.js"
+import { ReadonlyArray as RA } from "../ReadonlyArray.js"
+import { Ref } from "../Ref.js"
 import type { Entry, Request } from "../Request.js"
-import type * as RequestBlock from "../RequestBlock.js"
-import type * as RuntimeFlags from "../RuntimeFlags.js"
-import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
+import type { RequestBlock } from "../RequestBlock.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
+import { RuntimeFlagsPatch } from "../RuntimeFlagsPatch.js"
 import { currentScheduler, type Scheduler } from "../Scheduler.js"
-import type * as Scope from "../Scope.js"
-import type * as Supervisor from "../Supervisor.js"
-import type * as Tracer from "../Tracer.js"
+import type { Scope } from "../Scope.js"
+import type { Supervisor } from "../Supervisor.js"
+import type { Tracer } from "../Tracer.js"
 import type { Concurrency } from "../Types.js"
 import * as _RequestBlock from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
@@ -51,19 +51,19 @@ import * as defaultServices from "./defaultServices.js"
 import { consoleTag } from "./defaultServices/console.js"
 import * as executionStrategy from "./executionStrategy.js"
 import * as internalFiber from "./fiber.js"
-import * as FiberMessage from "./fiberMessage.js"
+import { FiberMessage } from "./fiberMessage.js"
 import * as fiberRefs from "./fiberRefs.js"
 import * as fiberScope from "./fiberScope.js"
 import * as internalLogger from "./logger.js"
 import * as metric from "./metric.js"
 import * as metricBoundaries from "./metric/boundaries.js"
 import * as metricLabel from "./metric/label.js"
-import * as OpCodes from "./opCodes/effect.js"
+import { OpCodes } from "./opCodes/effect.js"
 import { complete } from "./request.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 import { OpSupervision } from "./runtimeFlags.js"
 import * as supervisor from "./supervisor.js"
-import * as SupervisorPatch from "./supervisor/patch.js"
+import { SupervisorPatch } from "./supervisor/patch.js"
 import * as tracer from "./tracer.js"
 import { moduleVersion } from "./version.js"
 
@@ -177,16 +177,16 @@ const contOpSuccess = {
 const drainQueueWhileRunningTable = {
   [FiberMessage.OP_INTERRUPT_SIGNAL]: (
     self: FiberRuntime<any, any>,
-    runtimeFlags: RuntimeFlags.RuntimeFlags,
+    runtimeFlags: RuntimeFlags,
     cur: Effect<any, any, any>,
-    message: FiberMessage.FiberMessage & { _tag: FiberMessage.OP_INTERRUPT_SIGNAL }
+    message: FiberMessage & { _tag: FiberMessage.OP_INTERRUPT_SIGNAL }
   ) => {
     self.processNewInterruptSignal(message.cause)
     return _runtimeFlags.interruptible(runtimeFlags) ? core.exitFailCause(message.cause) : cur
   },
   [FiberMessage.OP_RESUME]: (
     _self: FiberRuntime<any, any>,
-    _runtimeFlags: RuntimeFlags.RuntimeFlags,
+    _runtimeFlags: RuntimeFlags,
     _cur: Effect<any, any, any>,
     _message: FiberMessage.FiberMessage
   ) => {
@@ -194,18 +194,18 @@ const drainQueueWhileRunningTable = {
   },
   [FiberMessage.OP_STATEFUL]: (
     self: FiberRuntime<any, any>,
-    runtimeFlags: RuntimeFlags.RuntimeFlags,
+    runtimeFlags: RuntimeFlags,
     cur: Effect<any, any, any>,
-    message: FiberMessage.FiberMessage & { _tag: FiberMessage.OP_STATEFUL }
+    message: FiberMessage & { _tag: FiberMessage.OP_STATEFUL }
   ) => {
     message.onFiber(self, FiberStatus.running(runtimeFlags))
     return cur
   },
   [FiberMessage.OP_YIELD_NOW]: (
     _self: FiberRuntime<any, any>,
-    _runtimeFlags: RuntimeFlags.RuntimeFlags,
+    _runtimeFlags: RuntimeFlags,
     cur: Effect<any, any, any>,
-    _message: FiberMessage.FiberMessage & { _tag: FiberMessage.OP_YIELD_NOW }
+    _message: FiberMessage & { _tag: FiberMessage.OP_YIELD_NOW }
   ) => {
     return core.flatMap(core.yieldNow(), () => cur)
   }
@@ -214,7 +214,7 @@ const drainQueueWhileRunningTable = {
 /**
  * Executes all requests, submitting requests to each data source in parallel.
  */
-const runBlockedRequests = <R>(self: RequestBlock.RequestBlock<R>) =>
+const runBlockedRequests = <R>(self: RequestBlock<R>) =>
   core.forEachSequentialDiscard(
     _RequestBlock.flatten(self),
     (requestsByRequestResolver) =>
@@ -251,16 +251,16 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   private _fiberId: FiberId.Runtime
   public _runtimeFlags: RuntimeFlags.RuntimeFlags
 
-  private _queue = new Array<FiberMessage.FiberMessage>()
+  private _queue = new Array<FiberMessage>()
   private _children: Set<FiberRuntime<any, any>> | null = null
   private _observers = new Array<(exit: Exit<E, A>) => void>()
   private _running = false
   private _stack: Array<core.Continuation> = []
   private _asyncInterruptor: ((effect: Effect<any, any, any>) => any) | null = null
-  private _asyncBlockingOn: FiberId.FiberId | null = null
+  private _asyncBlockingOn: FiberId | null = null
   private _exitValue: Exit<E, A> | null = null
   private _steps: Array<boolean> = [false]
-  public _supervisor: Supervisor.Supervisor<any>
+  public _supervisor: Supervisor<any>
   public _scheduler: Scheduler
   private _tracer: Tracer.Tracer
   public currentOpCount: number = 0
@@ -268,7 +268,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
 
   constructor(
     fiberId: FiberId.Runtime,
-    fiberRefs0: FiberRefs.FiberRefs,
+    fiberRefs0: FiberRefs,
     runtimeFlags0: RuntimeFlags.RuntimeFlags
   ) {
     this._runtimeFlags = runtimeFlags0
@@ -303,14 +303,14 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   /**
    * The status of the fiber.
    */
-  status(): Effect<never, never, FiberStatus.FiberStatus> {
+  status(): Effect<never, never, FiberStatus> {
     return this.ask((_, status) => status)
   }
 
   /**
    * Gets the fiber runtime flags.
    */
-  runtimeFlags(): Effect<never, never, RuntimeFlags.RuntimeFlags> {
+  runtimeFlags(): Effect<never, never, RuntimeFlags> {
     return this.ask((state, status) => {
       if (FiberStatus.isDone(status)) {
         return state._runtimeFlags
@@ -358,7 +358,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   /**
    * Retrieves the whole set of fiber refs.
    */
-  fiberRefs(): Effect<never, never, FiberRefs.FiberRefs> {
+  fiberRefs(): Effect<never, never, FiberRefs> {
     return this.ask((fiber) => fiber.getFiberRefs())
   }
 
@@ -491,7 +491,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * on this fiber, then values derived from the fiber's state (including the
    * log annotations and log level) may not be up-to-date.
    */
-  getFiberRefs(): FiberRefs.FiberRefs {
+  getFiberRefs(): FiberRefs {
     this.setFiberRef(currentRuntimeFlags, this._runtimeFlags)
     return this._fiberRefs
   }
@@ -501,7 +501,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  unsafeDeleteFiberRef<X>(fiberRef: FiberRef.FiberRef<X>): void {
+  unsafeDeleteFiberRef<X>(fiberRef: FiberRef<X>): void {
     this._fiberRefs = fiberRefs.delete_(this._fiberRefs, fiberRef)
   }
 
@@ -512,7 +512,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * on this fiber, then values derived from the fiber's state (including the
    * log annotations and log level) may not be up-to-date.
    */
-  getFiberRef<X>(fiberRef: FiberRef.FiberRef<X>): X {
+  getFiberRef<X>(fiberRef: FiberRef<X>): X {
     if (this._fiberRefs.locals.has(fiberRef)) {
       return this._fiberRefs.locals.get(fiberRef)![0][1] as X
     }
@@ -524,7 +524,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  setFiberRef<X>(fiberRef: FiberRef.FiberRef<X>, value: X): void {
+  setFiberRef<X>(fiberRef: FiberRef<X>, value: X): void {
     this._fiberRefs = fiberRefs.updatedAs(this._fiberRefs, {
       fiberId: this._fiberId,
       fiberRef,
@@ -631,7 +631,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * **NOTE**: This method must be invoked by the fiber itself.
    */
   drainQueueWhileRunning(
-    runtimeFlags: RuntimeFlags.RuntimeFlags,
+    runtimeFlags: RuntimeFlags,
     cur0: Effect<any, any, any>
   ) {
     let cur = cur0
@@ -660,7 +660,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  addInterruptedCause(cause: Cause.Cause<never>) {
+  addInterruptedCause(cause: Cause<never>) {
     const oldSC = this.getFiberRef(core.currentInterruptedCause)
     this.setFiberRef(core.currentInterruptedCause, internalCause.sequential(oldSC, cause))
   }
@@ -670,7 +670,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  processNewInterruptSignal(cause: Cause.Cause<never>): void {
+  processNewInterruptSignal(cause: Cause<never>): void {
     this.addInterruptedCause(cause)
     this.sendInterruptSignalToAllChildren()
   }
@@ -773,8 +773,8 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
 
   log(
     message: unknown,
-    cause: Cause.Cause<any>,
-    overrideLogLevel: Option<LogLevel.LogLevel>
+    cause: Cause<any>,
+    overrideLogLevel: Option<LogLevel>
   ): void {
     const logLevel = Option.isSome(overrideLogLevel) ?
       overrideLogLevel.value :
@@ -950,7 +950,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  patchRuntimeFlags(oldRuntimeFlags: RuntimeFlags.RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch) {
+  patchRuntimeFlags(oldRuntimeFlags: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch) {
     const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, patch)
     ;(globalThis as any)[internalFiber.currentFiberURI] = this
     this._runtimeFlags = newRuntimeFlags
@@ -965,7 +965,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * **NOTE**: This method must be invoked by the fiber itself.
    */
   initiateAsync(
-    runtimeFlags: RuntimeFlags.RuntimeFlags,
+    runtimeFlags: RuntimeFlags,
     asyncRegister: (resume: (effect: Effect<any, any, any>) => void) => void
   ) {
     let alreadyCalled = false
@@ -1343,9 +1343,9 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
 // circular with Logger
 
 /** @internal */
-export const currentMinimumLogLevel: FiberRef.FiberRef<LogLevel.LogLevel> = globalValue(
+export const currentMinimumLogLevel: FiberRef<LogLevel> = globalValue(
   "effect/FiberRef/currentMinimumLogLevel",
-  () => core.fiberRefUnsafeMake<LogLevel.LogLevel>(LogLevel.fromLiteral("Info"))
+  () => core.fiberRefUnsafeMake<LogLevel>(LogLevel.fromLiteral("Info"))
 )
 
 /** @internal */
@@ -1413,8 +1413,8 @@ export const tracerLogger = globalValue(
 )
 
 /** @internal */
-export const currentLoggers: FiberRef.FiberRef<
-  HashSet.HashSet<Logger<unknown, any>>
+export const currentLoggers: FiberRef<
+  HashSet<Logger<unknown, any>>
 > = globalValue(
   Symbol.for("effect/FiberRef/currentLoggers"),
   () => core.fiberRefUnsafeMakeHashSet(HashSet.make(defaultLogger, tracerLogger))
@@ -1426,22 +1426,22 @@ export const currentLoggers: FiberRef.FiberRef<
 export const acquireRelease: {
   <A, R2, X>(
     release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): <R, E>(acquire: Effect<R, E, A>) => Effect<R2 | R | Scope.Scope, E, A>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<R2 | R | Scope, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
     release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): Effect<Scope.Scope | R | R2, E, A>
+  ): Effect<Scope | R | R2, E, A>
 } = dual<
   {
     <A, R2, X>(
       release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-    ): <R, E>(acquire: Effect<R, E, A>) => Effect<R | R2 | Scope.Scope, E, A>
+    ): <R, E>(acquire: Effect<R, E, A>) => Effect<R | R2 | Scope, E, A>
   },
   {
     <R, E, A, R2, X>(
       acquire: Effect<R, E, A>,
       release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-    ): Effect<R | R2 | Scope.Scope, E, A>
+    ): Effect<R | R2 | Scope, E, A>
   }
 >((args) => core.isEffect(args[0]), (acquire, release) => {
   return core.uninterruptible(
@@ -1453,22 +1453,22 @@ export const acquireRelease: {
 export const acquireReleaseInterruptible: {
   <A, R2, X>(
     release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
     release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-  ): Effect<Scope.Scope | R | R2, E, A>
+  ): Effect<Scope | R | R2, E, A>
 } = dual<
   {
     <A, R2, X>(
       release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-    ): <R, E>(acquire: Effect<R, E, A>) => Effect<R | R2 | Scope.Scope, E, A>
+    ): <R, E>(acquire: Effect<R, E, A>) => Effect<R | R2 | Scope, E, A>
   },
   {
     <R, E, A, R2, X>(
       acquire: Effect<R, E, A>,
       release: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
-    ): Effect<R | R2 | Scope.Scope, E, A>
+    ): Effect<R | R2 | Scope, E, A>
   }
 >((args) => core.isEffect(args[0]), (acquire, release) => {
   return ensuring(
@@ -1480,7 +1480,7 @@ export const acquireReleaseInterruptible: {
 /* @internal */
 export const addFinalizer = <R, X>(
   finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>
-): Effect<R | Scope.Scope, never, void> =>
+): Effect<R | Scope, never, void> =>
   core.withFiberRuntime(
     (runtime) => {
       const acquireRefs = runtime.getFiberRefs()
@@ -2158,7 +2158,7 @@ export const forkWithErrorHandler = dual<
 export const unsafeFork = <R, E, A, E2, B>(
   effect: Effect<R, E, A>,
   parentFiber: FiberRuntime<E2, B>,
-  parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
+  parentRuntimeFlags: RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
 ): FiberRuntime<E, A> => {
   const childFiber = unsafeMakeChildFiber(effect, parentFiber, parentRuntimeFlags, overrideScope)
@@ -2170,7 +2170,7 @@ export const unsafeFork = <R, E, A, E2, B>(
 export const unsafeMakeChildFiber = <R, E, A, E2, B>(
   effect: Effect<R, E, A>,
   parentFiber: FiberRuntime<E2, B>,
-  parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
+  parentRuntimeFlags: RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
 ): FiberRuntime<E, A> => {
   const childId = FiberId.unsafeMake()
@@ -2179,7 +2179,7 @@ export const unsafeMakeChildFiber = <R, E, A, E2, B>(
   const childFiber = new FiberRuntime<E, A>(childId, childFiberRefs, parentRuntimeFlags)
   const childContext = fiberRefs.getOrDefault(
     childFiberRefs,
-    core.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>
+    core.currentContext as unknown as FiberRef<Context<R>>
   )
   const supervisor = childFiber._supervisor
 
@@ -2337,13 +2337,13 @@ export const raceAll = <R, E, A>(all: Iterable<Effect<R, E, A>>) => {
   }
   const self = Chunk.headNonEmpty(list)
   const effects = Chunk.tailNonEmpty(list)
-  const inheritAll = (res: readonly [A, Fiber.Fiber<E, A>]) =>
+  const inheritAll = (res: readonly [A, Fiber<E, A>]) =>
     pipe(
       internalFiber.inheritAll(res[1]),
       core.as(res[0])
     )
   return pipe(
-    core.deferredMake<E, readonly [A, Fiber.Fiber<E, A>]>(),
+    core.deferredMake<E, readonly [A, Fiber<E, A>]>(),
     core.flatMap((done) =>
       pipe(
         Ref.make(effects.length),
@@ -2356,7 +2356,7 @@ export const raceAll = <R, E, A>(all: Iterable<Effect<R, E, A>>) => {
                   effects,
                   core.forEachSequential((effect) => fork(core.interruptible(effect))),
                   core.map(Chunk.unsafeFromArray),
-                  core.map((tail) => pipe(tail, Chunk.prepend(head)) as Chunk.Chunk<Fiber.RuntimeFiber<E, A>>),
+                  core.map((tail) => pipe(tail, Chunk.prepend(head)) as Chunk<Fiber.RuntimeFiber<E, A>>),
                   core.tap((fibers) =>
                     pipe(
                       fibers,
@@ -2400,10 +2400,10 @@ export const raceAll = <R, E, A>(all: Iterable<Effect<R, E, A>>) => {
 
 /* @internal */
 const raceAllArbiter = <E, E1, A, A1>(
-  fibers: Iterable<Fiber.Fiber<E | E1, A | A1>>,
-  winner: Fiber.Fiber<E | E1, A | A1>,
-  deferred: Deferred.Deferred<E | E1, readonly [A | A1, Fiber.Fiber<E | E1, A | A1>]>,
-  fails: Ref.Ref<number>
+  fibers: Iterable<Fiber<E | E1, A | A1>>,
+  winner: Fiber<E | E1, A | A1>,
+  deferred: Deferred<E | E1, readonly [A | A1, Fiber<E | E1, A | A1>]>,
+  fails: Ref<number>
 ) =>
 (exit: Exit<E | E1, A | A1>): Effect<never, never, void> =>
   core.exitMatchEffect(exit, {
@@ -2569,10 +2569,10 @@ export const finalizersMask = (strategy: ExecutionStrategy.ExecutionStrategy) =>
 /* @internal */
 export const scopeWith = <R, E, A>(
   f: (scope: Scope.Scope) => Effect<R, E, A>
-): Effect<R | Scope.Scope, E, A> => core.flatMap(scopeTag, f)
+): Effect<R | Scope, E, A> => core.flatMap(scopeTag, f)
 
 /* @internal */
-export const scopedEffect = <R, E, A>(effect: Effect<R, E, A>): Effect<Exclude<R, Scope.Scope>, E, A> =>
+export const scopedEffect = <R, E, A>(effect: Effect<R, E, A>): Effect<Exclude<R, Scope>, E, A> =>
   core.flatMap(scopeMake(), (scope) => scopeUse(scope)(effect))
 
 /* @internal */
@@ -2596,29 +2596,29 @@ export const sequentialFinalizers = <R, E, A>(self: Effect<R, E, A>): Effect<R, 
   )
 
 /* @internal */
-export const tagMetricsScoped = (key: string, value: string): Effect<Scope.Scope, never, void> =>
+export const tagMetricsScoped = (key: string, value: string): Effect<Scope, never, void> =>
   labelMetricsScoped([metricLabel.make(key, value)])
 
 /* @internal */
 export const labelMetricsScoped = (
-  labels: ReadonlyArray<MetricLabel.MetricLabel>
-): Effect<Scope.Scope, never, void> => labelMetricsScopedSet(HashSet.fromIterable(labels))
+  labels: ReadonlyArray<MetricLabel>
+): Effect<Scope, never, void> => labelMetricsScopedSet(HashSet.fromIterable(labels))
 
 /* @internal */
 export const labelMetricsScopedSet = (
-  labels: HashSet.HashSet<MetricLabel.MetricLabel>
-): Effect<Scope.Scope, never, void> =>
+  labels: HashSet<MetricLabel>
+): Effect<Scope, never, void> =>
   fiberRefLocallyScopedWith(core.currentMetricLabels, (set) => pipe(set, HashSet.union(labels)))
 
 /* @internal */
 export const using = dual<
   <A, R2, E2, A2>(
     use: (a: A) => Effect<R2, E2, A2>
-  ) => <R, E>(self: Effect<R, E, A>) => Effect<Exclude<R, Scope.Scope> | R2, E | E2, A2>,
+  ) => <R, E>(self: Effect<R, E, A>) => Effect<Exclude<R, Scope> | R2, E | E2, A2>,
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
     use: (a: A) => Effect<R2, E2, A2>
-  ) => Effect<Exclude<R, Scope.Scope> | R2, E | E2, A2>
+  ) => Effect<Exclude<R, Scope> | R2, E | E2, A2>
 >(2, (self, use) =>
   core.acquireUseRelease(
     scopeMake(),
@@ -2728,7 +2728,7 @@ export const validateFirst = dual<
 )
 
 /* @internal */
-export const withClockScoped = <A extends Clock.Clock>(value: A) =>
+export const withClockScoped = <A extends Clock>(value: A) =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(clock.clockTag, value))
 
 /* @internal */
@@ -2738,7 +2738,7 @@ export const withConfigProviderScoped = (value: ConfigProvider) =>
 /* @internal */
 export const withEarlyRelease = <R, E, A>(
   self: Effect<R, E, A>
-): Effect<R | Scope.Scope, E, readonly [Effect<never, never, void>, A]> =>
+): Effect<R | Scope, E, readonly [Effect<never, never, void>, A]> =>
   scopeWith((parent) =>
     core.flatMap(core.scopeFork(parent, executionStrategy.sequential), (child) =>
       pipe(
@@ -2862,7 +2862,7 @@ export const zipWithOptions = dual<
 /* @internal */
 export const withRuntimeFlagsScoped = (
   update: RuntimeFlagsPatch.RuntimeFlagsPatch
-): Effect<Scope.Scope, never, void> => {
+): Effect<Scope, never, void> => {
   if (update === RuntimeFlagsPatch.empty) {
     return core.unit
   }
@@ -2885,7 +2885,7 @@ export const withRuntimeFlagsScoped = (
 
 /* @internal */
 export const releaseMapReleaseAll = (
-  strategy: ExecutionStrategy.ExecutionStrategy,
+  strategy: ExecutionStrategy,
   exit: Exit<unknown, unknown>
 ) =>
 (self: core.ReleaseMap): Effect<never, never, void> =>
@@ -2939,16 +2939,16 @@ export const releaseMapReleaseAll = (
 // circular with Scope
 
 /** @internal */
-export const scopeTag = Context.Tag<Scope.Scope>(core.ScopeTypeId)
+export const scopeTag = Context.Tag<Scope>(core.ScopeTypeId)
 
 /* @internal */
-export const scope: Effect<Scope.Scope, never, Scope.Scope> = scopeTag
+export const scope: Effect<Scope, never, Scope> = scopeTag
 
 /* @internal */
 export const scopeMake = (
-  strategy: ExecutionStrategy.ExecutionStrategy = executionStrategy.sequential
-): Effect<never, never, Scope.Scope.Closeable> =>
-  core.map(core.releaseMapMake, (rm): Scope.Scope.Closeable => ({
+  strategy: ExecutionStrategy = executionStrategy.sequential
+): Effect<never, never, Scope.Closeable> =>
+  core.map(core.releaseMapMake, (rm): Scope.Closeable => ({
     [core.ScopeTypeId]: core.ScopeTypeId,
     [core.CloseableScopeTypeId]: core.CloseableScopeTypeId,
     strategy,
@@ -2974,12 +2974,12 @@ export const scopeMake = (
 
 /* @internal */
 export const scopeExtend = dual<
-  (scope: Scope.Scope) => <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope.Scope>, E, A>,
-  <R, E, A>(effect: Effect<R, E, A>, scope: Scope.Scope) => Effect<Exclude<R, Scope.Scope>, E, A>
+  (scope: Scope.Scope) => <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>,
+  <R, E, A>(effect: Effect<R, E, A>, scope: Scope.Scope) => Effect<Exclude<R, Scope>, E, A>
 >(
   2,
   <R, E, A>(effect: Effect<R, E, A>, scope: Scope.Scope) =>
-    core.mapInputContext<Exclude<R, Scope.Scope>, R, E, A>(
+    core.mapInputContext<Exclude<R, Scope>, R, E, A>(
       effect,
       // @ts-expect-error
       Context.merge(Context.make(scopeTag, scope))
@@ -2989,12 +2989,12 @@ export const scopeExtend = dual<
 /* @internal */
 export const scopeUse = dual<
   (
-    scope: Scope.Scope.Closeable
-  ) => <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope.Scope>, E, A>,
+    scope: Scope.Closeable
+  ) => <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>,
   <R, E, A>(
     effect: Effect<R, E, A>,
-    scope: Scope.Scope.Closeable
-  ) => Effect<Exclude<R, Scope.Scope>, E, A>
+    scope: Scope.Closeable
+  ) => Effect<Exclude<R, Scope>, E, A>
 >(2, (effect, scope) =>
   pipe(
     effect,
@@ -3006,8 +3006,8 @@ export const scopeUse = dual<
 
 /** @internal */
 export const fiberRefUnsafeMakeSupervisor = (
-  initial: Supervisor.Supervisor<any>
-): FiberRef.FiberRef<Supervisor.Supervisor<any>> =>
+  initial: Supervisor<any>
+): FiberRef<Supervisor<any>> =>
   core.fiberRefUnsafeMakePatch(initial, {
     differ: SupervisorPatch.differ,
     fork: SupervisorPatch.empty
@@ -3017,8 +3017,8 @@ export const fiberRefUnsafeMakeSupervisor = (
 
 /* @internal */
 export const fiberRefLocallyScoped = dual<
-  <A>(value: A) => (self: FiberRef.FiberRef<A>) => Effect<Scope.Scope, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, value: A) => Effect<Scope.Scope, never, void>
+  <A>(value: A) => (self: FiberRef<A>) => Effect<Scope, never, void>,
+  <A>(self: FiberRef<A>, value: A) => Effect<Scope, never, void>
 >(2, (self, value) =>
   core.asUnit(
     acquireRelease(
@@ -3032,8 +3032,8 @@ export const fiberRefLocallyScoped = dual<
 
 /* @internal */
 export const fiberRefLocallyScopedWith = dual<
-  <A>(f: (a: A) => A) => (self: FiberRef.FiberRef<A>) => Effect<Scope.Scope, never, void>,
-  <A>(self: FiberRef.FiberRef<A>, f: (a: A) => A) => Effect<Scope.Scope, never, void>
+  <A>(f: (a: A) => A) => (self: FiberRef<A>) => Effect<Scope, never, void>,
+  <A>(self: FiberRef<A>, f: (a: A) => A) => Effect<Scope, never, void>
 >(2, (self, f) => core.fiberRefGetWith(self, (a) => fiberRefLocallyScoped(self, f(a))))
 
 /* @internal */
@@ -3043,12 +3043,12 @@ export const fiberRefMake = <A>(
     readonly fork?: (a: A) => A
     readonly join?: (left: A, right: A) => A
   }
-): Effect<Scope.Scope, never, FiberRef.FiberRef<A>> => fiberRefMakeWith(() => core.fiberRefUnsafeMake(initial, options))
+): Effect<Scope, never, FiberRef<A>> => fiberRefMakeWith(() => core.fiberRefUnsafeMake(initial, options))
 
 /* @internal */
 export const fiberRefMakeWith = <Value>(
-  ref: LazyArg<FiberRef.FiberRef<Value>>
-): Effect<Scope.Scope, never, FiberRef.FiberRef<Value>> =>
+  ref: LazyArg<FiberRef<Value>>
+): Effect<Scope, never, FiberRef<Value>> =>
   acquireRelease(
     core.tap(core.sync(ref), (ref) => core.fiberRefUpdate(ref, identity)),
     (fiberRef) => core.fiberRefDelete(fiberRef)
@@ -3056,34 +3056,33 @@ export const fiberRefMakeWith = <Value>(
 
 /* @internal */
 export const fiberRefMakeContext = <A>(
-  initial: Context.Context<A>
-): Effect<Scope.Scope, never, FiberRef.FiberRef<Context.Context<A>>> =>
-  fiberRefMakeWith(() => core.fiberRefUnsafeMakeContext(initial))
+  initial: Context<A>
+): Effect<Scope, never, FiberRef<Context<A>>> => fiberRefMakeWith(() => core.fiberRefUnsafeMakeContext(initial))
 
 /* @internal */
 export const fiberRefMakeRuntimeFlags = (
   initial: RuntimeFlags.RuntimeFlags
-): Effect<Scope.Scope, never, FiberRef.FiberRef<RuntimeFlags.RuntimeFlags>> =>
+): Effect<Scope, never, FiberRef<RuntimeFlags>> =>
   fiberRefMakeWith(() => core.fiberRefUnsafeMakeRuntimeFlags(initial))
 
 /** @internal */
-export const currentRuntimeFlags: FiberRef.FiberRef<RuntimeFlags.RuntimeFlags> = core.fiberRefUnsafeMakeRuntimeFlags(
+export const currentRuntimeFlags: FiberRef<RuntimeFlags> = core.fiberRefUnsafeMakeRuntimeFlags(
   _runtimeFlags.none
 )
 
 /** @internal */
-export const currentSupervisor: FiberRef.FiberRef<Supervisor.Supervisor<any>> = fiberRefUnsafeMakeSupervisor(
+export const currentSupervisor: FiberRef<Supervisor<any>> = fiberRefUnsafeMakeSupervisor(
   supervisor.none
 )
 
 // circular with Fiber
 
 /* @internal */
-export const fiberAwaitAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect<never, never, void> =>
+export const fiberAwaitAll = (fibers: Iterable<Fiber<any, any>>): Effect<never, never, void> =>
   core.asUnit(internalFiber._await(fiberAll(fibers)))
 
 /** @internal */
-export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber<E, Array<A>> => ({
+export const fiberAll = <E, A>(fibers: Iterable<Fiber<E, A>>): Fiber<E, Array<A>> => ({
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none),
   await: () => core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await()), false)),
@@ -3125,15 +3124,15 @@ export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber
 })
 
 /* @internal */
-export const fiberInterruptFork = <E, A>(self: Fiber.Fiber<E, A>): Effect<never, never, void> =>
+export const fiberInterruptFork = <E, A>(self: Fiber<E, A>): Effect<never, never, void> =>
   core.asUnit(forkDaemon(core.interruptFiber(self)))
 
 /* @internal */
-export const fiberJoinAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Effect<never, E, void> =>
+export const fiberJoinAll = <E, A>(fibers: Iterable<Fiber<E, A>>): Effect<never, E, void> =>
   core.asUnit(internalFiber.join(fiberAll(fibers)))
 
 /* @internal */
-export const fiberScoped = <E, A>(self: Fiber.Fiber<E, A>): Effect<Scope.Scope, never, Fiber.Fiber<E, A>> =>
+export const fiberScoped = <E, A>(self: Fiber<E, A>): Effect<Scope, never, Fiber<E, A>> =>
   acquireRelease(core.succeed(self), core.interruptFiber)
 
 //
@@ -3145,24 +3144,24 @@ export const raceWith = dual<
   <E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ) => <R>(self: Effect<R, E, A>) => Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>,
   <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     self: Effect<R, E, A>,
     other: Effect<R1, E1, A1>,
     options: {
-      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+      readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>
+      readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>
     }
   ) => Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>
 >(3, <R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
   other: Effect<R1, E1, A1>,
   options: {
-    readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber.Fiber<E1, A1>) => Effect<R2, E2, A2>
-    readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber.Fiber<E, A>) => Effect<R3, E3, A3>
+    readonly onSelfDone: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>
+    readonly onOtherDone: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>
   }
 ) =>
   raceFibersWith(self, other, {
@@ -3452,9 +3451,9 @@ export const makeSpanScoped = (
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly context?: Context<never>
   }
-): Effect<Scope.Scope, never, Tracer.Span> =>
+): Effect<Scope, never, Tracer.Span> =>
   acquireRelease(
     internalEffect.makeSpan(name, options),
     (span, exit) =>
@@ -3465,7 +3464,7 @@ export const makeSpanScoped = (
   )
 
 /* @internal */
-export const withTracerScoped = (value: Tracer.Tracer): Effect<Scope.Scope, never, void> =>
+export const withTracerScoped = (value: Tracer.Tracer): Effect<Scope, never, void> =>
   fiberRefLocallyScopedWith(defaultServices.currentServices, Context.add(tracer.tracerTag, value))
 
 /** @internal */
@@ -3475,15 +3474,15 @@ export const withSpanScoped = dual<
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
-  }) => <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>,
+    readonly context?: Context<never>
+  }) => <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Tracer.ParentSpan> | Scope, E, A>,
   <R, E, A>(self: Effect<R, E, A>, name: string, options?: {
     readonly attributes?: Record<string, unknown>
     readonly links?: ReadonlyArray<Tracer.SpanLink>
     readonly parent?: Tracer.ParentSpan
     readonly root?: boolean
-    readonly context?: Context.Context<never>
-  }) => Effect<Exclude<R, Tracer.ParentSpan> | Scope.Scope, E, A>
+    readonly context?: Context<never>
+  }) => Effect<Exclude<R, Tracer.ParentSpan> | Scope, E, A>
 >(
   (args) => typeof args[0] !== "string",
   (self, name, options) =>

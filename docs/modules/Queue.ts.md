@@ -226,13 +226,13 @@ export interface BackingQueue<A> {
   /**
    * Dequeues up to `limit` elements from the queue.
    */
-  pollUpTo(limit: number): Chunk.Chunk<A>
+  pollUpTo(limit: number): Chunk<A>
   /**
    * Enqueues a collection of values into the queue.
    *
    * Returns a `Chunk` of the values that were **not** able to be enqueued.
    */
-  offerAll(elements: Iterable<A>): Chunk.Chunk<A>
+  offerAll(elements: Iterable<A>): Chunk<A>
   /**
    * Offers an element to the queue.
    *
@@ -336,19 +336,19 @@ export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeabl
    * Takes all the values in the queue and returns the values. If the queue is
    * empty returns an empty collection.
    */
-  takeAll(): Effect<never, never, Chunk.Chunk<A>>
+  takeAll(): Effect<never, never, Chunk<A>>
 
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(max: number): Effect<never, never, Chunk.Chunk<A>>
+  takeUpTo(max: number): Effect<never, never, Chunk<A>>
 
   /**
    * Takes a number of elements from the queue between the specified minimum and
    * maximum. If there are fewer than the minimum number of elements available,
    * suspends until at least the minimum number of elements have been collected.
    */
-  takeBetween(min: number, max: number): Effect<never, never, Chunk.Chunk<A>>
+  takeBetween(min: number, max: number): Effect<never, never, Chunk<A>>
 }
 ```
 
@@ -400,11 +400,11 @@ export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
   /** @internal */
   readonly queue: BackingQueue<A>
   /** @internal */
-  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  readonly takers: MutableQueue<Deferred<never, A>>
   /** @internal */
-  readonly shutdownHook: Deferred.Deferred<never, void>
+  readonly shutdownHook: Deferred<never, void>
   /** @internal */
-  readonly shutdownFlag: MutableRef.MutableRef<boolean>
+  readonly shutdownFlag: MutableRef<boolean>
   /** @internal */
   readonly strategy: Strategy<A>
 }
@@ -438,21 +438,21 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
   handleSurplus(
     iterable: Iterable<A>,
     queue: BackingQueue<A>,
-    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
-    isShutdown: MutableRef.MutableRef<boolean>
+    takers: MutableQueue<Deferred<never, A>>,
+    isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean>
 
   /**
    * It is called when the backing queue is empty but there are some
    * takers that can be completed
    */
-  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void
+  onCompleteTakersWithEmptyQueue(takers: MutableQueue<Deferred<never, A>>): void
 
   /**
    * Determines the behavior of the `Queue.Strategy` when the `Queue` has empty
    * slots following a `take` operation.
    */
-  unsafeOnQueueEmptySpace(queue: BackingQueue<A>, takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void
+  unsafeOnQueueEmptySpace(queue: BackingQueue<A>, takers: MutableQueue<Deferred<never, A>>): void
 }
 ```
 
@@ -741,7 +741,7 @@ empty returns an empty collection.
 **Signature**
 
 ```ts
-export declare const takeAll: <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>
+export declare const takeAll: <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -756,8 +756,8 @@ suspends until at least the minimum number of elements have been collected.
 
 ```ts
 export declare const takeBetween: {
-  (min: number, max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>
-  <A>(self: Dequeue<A>, min: number, max: number): Effect<never, never, Chunk.Chunk<A>>
+  (min: number, max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>>
+  <A>(self: Dequeue<A>, min: number, max: number): Effect<never, never, Chunk<A>>
 }
 ```
 
@@ -773,8 +773,8 @@ become available.
 
 ```ts
 export declare const takeN: {
-  (n: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>
-  <A>(self: Dequeue<A>, n: number): Effect<never, never, Chunk.Chunk<A>>
+  (n: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>>
+  <A>(self: Dequeue<A>, n: number): Effect<never, never, Chunk<A>>
 }
 ```
 
@@ -788,8 +788,8 @@ Takes up to max number of values from the queue.
 
 ```ts
 export declare const takeUpTo: {
-  (max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk.Chunk<A>>
-  <A>(self: Dequeue<A>, max: number): Effect<never, never, Chunk.Chunk<A>>
+  (max: number): <A>(self: Dequeue<A>) => Effect<never, never, Chunk<A>>
+  <A>(self: Dequeue<A>, max: number): Effect<never, never, Chunk<A>>
 }
 ```
 

@@ -1,33 +1,33 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import * as Number from "effect/Number"
+import { Number } from "effect/Number"
 import { Option } from "effect/Option"
-import * as Order from "effect/Order"
-import * as Queue from "effect/Queue"
+import { Order } from "effect/Order"
+import { Queue } from "effect/Queue"
 import { Stream } from "effect/Stream"
-import * as Take from "effect/Take"
+import { Take } from "effect/Take"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 
 const chunkArb = <A>(
   arb: fc.Arbitrary<A>,
   constraints?: fc.ArrayConstraints
-): fc.Arbitrary<Chunk.Chunk<A>> => fc.array(arb, constraints).map(Chunk.unsafeFromArray)
+): fc.Arbitrary<Chunk<A>> => fc.array(arb, constraints).map(Chunk.unsafeFromArray)
 
-const OrderByKey: Order.Order<readonly [number, number]> = pipe(
+const OrderByKey: Order<readonly [number, number]> = pipe(
   Number.Order,
   Order.mapInput((tuple) => tuple[0])
 )
 
-export const splitChunks = <A>(chunks: Chunk.Chunk<Chunk.Chunk<A>>): fc.Arbitrary<Chunk.Chunk<Chunk.Chunk<A>>> => {
-  const split = (chunks: Chunk.Chunk<Chunk.Chunk<A>>): fc.Arbitrary<Chunk.Chunk<Chunk.Chunk<A>>> =>
+export const splitChunks = <A>(chunks: Chunk<Chunk<A>>): fc.Arbitrary<Chunk<Chunk<A>>> => {
+  const split = (chunks: Chunk<Chunk<A>>): fc.Arbitrary<Chunk<Chunk<A>>> =>
     fc.integer({ min: 0, max: Math.max(chunks.length - 1, 0) }).chain((i) => {
       const chunk = Chunk.unsafeGet(chunks, i)
       return fc.integer({ min: 0, max: Math.max(chunk.length - 1, 0) }).map((j) => {
@@ -203,9 +203,9 @@ describe.concurrent("Stream", () => {
 
   it.effect("zipLatest", () =>
     Effect.gen(function*($) {
-      const left = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
-      const right = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
-      const output = yield* $(Queue.bounded<Take.Take<never, readonly [number, number]>>(1))
+      const left = yield* $(Queue.unbounded<Chunk<number>>())
+      const right = yield* $(Queue.unbounded<Chunk<number>>())
+      const output = yield* $(Queue.bounded<Take<never, readonly [number, number]>>(1))
       yield* $(
         Stream.fromChunkQueue(left),
         Stream.zipLatest(Stream.fromChunkQueue(right)),

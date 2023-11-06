@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Check from "./Chunk.js"
+import type { Check } from "./Chunk.js"
 import * as internal from "./internal/schedule/intervals.js"
-import type * as Interval from "./ScheduleInterval.js"
+import type { Interval } from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0
@@ -25,7 +25,7 @@ export type IntervalsTypeId = typeof IntervalsTypeId
  */
 export interface Intervals {
   readonly [IntervalsTypeId]: IntervalsTypeId
-  readonly intervals: Check.Chunk<Interval.Interval>
+  readonly intervals: Check.Chunk<Interval>
 }
 
 /**
@@ -34,7 +34,7 @@ export interface Intervals {
  * @since 2.0.0
  * @category constructors
  */
-export const make: (intervals: Check.Chunk<Interval.Interval>) => Intervals = internal.make
+export const make: (intervals: Check.Chunk<Interval>) => Intervals = internal.make
 
 /**
  * Constructs an empty list of `Interval`s.
@@ -50,7 +50,7 @@ export const empty: Intervals = internal.empty
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterable: (intervals: Iterable<Interval.Interval>) => Intervals = internal.fromIterable
+export const fromIterable: (intervals: Iterable<Interval>) => Intervals = internal.fromIterable
 
 /**
  * Computes the union of this `Intervals` and  that `Intervals`

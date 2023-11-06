@@ -1,24 +1,24 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "../Context.js"
+import { Context } from "../Context.js"
 import type { Exit } from "../Exit.js"
 import { globalValue } from "../GlobalValue.js"
-import * as MutableRef from "../MutableRef.js"
+import { MutableRef } from "../MutableRef.js"
 import type { Option } from "../Option.js"
-import type * as Tracer from "../Tracer.js"
+import type { Tracer } from "../Tracer.js"
 
 /** @internal */
 export const TracerTypeId: Tracer.TracerTypeId = Symbol.for("effect/Tracer") as Tracer.TracerTypeId
 
 /** @internal */
-export const make = (options: Omit<Tracer.Tracer, Tracer.TracerTypeId>): Tracer.Tracer => ({
+export const make = (options: Omit<Tracer, Tracer.TracerTypeId>): Tracer => ({
   [TracerTypeId]: TracerTypeId,
   ...options
 })
 
 /** @internal */
-export const tracerTag = Context.Tag<Tracer.Tracer>(
+export const tracerTag = Context.Tag<Tracer>(
   Symbol.for("effect/Tracer")
 )
 
@@ -43,7 +43,7 @@ export class NativeSpan implements Tracer.Span {
   constructor(
     readonly name: string,
     readonly parent: Option<Tracer.ParentSpan>,
-    readonly context: Context.Context<never>,
+    readonly context: Context<never>,
     readonly links: ReadonlyArray<Tracer.SpanLink>,
     readonly startTime: bigint
   ) {
@@ -74,7 +74,7 @@ export class NativeSpan implements Tracer.Span {
 }
 
 /** @internal */
-export const nativeTracer: Tracer.Tracer = make({
+export const nativeTracer: Tracer = make({
   span: (name, parent, context, links, startTime) =>
     new NativeSpan(
       name,
@@ -91,7 +91,7 @@ export const externalSpan = (options: {
   readonly spanId: string
   readonly traceId: string
   readonly sampled?: boolean
-  readonly context?: Context.Context<never>
+  readonly context?: Context<never>
 }): Tracer.ExternalSpan => ({
   _tag: "ExternalSpan",
   spanId: options.spanId,

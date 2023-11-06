@@ -427,7 +427,7 @@ Returns a `List` of all unrecoverable defects in the specified cause.
 **Signature**
 
 ```ts
-export declare const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown>
+export declare const defects: <E>(self: Cause<E>) => Chunk<unknown>
 ```
 
 Added in v2.0.0
@@ -480,7 +480,7 @@ cause.
 **Signature**
 
 ```ts
-export declare const failures: <E>(self: Cause<E>) => Chunk.Chunk<E>
+export declare const failures: <E>(self: Cause<E>) => Chunk<E>
 ```
 
 Added in v2.0.0
@@ -506,7 +506,7 @@ cause, if one exists.
 **Signature**
 
 ```ts
-export declare const interruptOption: <E>(self: Cause<E>) => Option<FiberId.FiberId>
+export declare const interruptOption: <E>(self: Cause<E>) => Option<FiberId>
 ```
 
 Added in v2.0.0
@@ -519,7 +519,7 @@ described by the specified cause.
 **Signature**
 
 ```ts
-export declare const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberId>
+export declare const interruptors: <E>(self: Cause<E>) => HashSet<FiberId>
 ```
 
 Added in v2.0.0
@@ -607,7 +607,7 @@ parallel cause contains a linear sequence of failures.
 **Signature**
 
 ```ts
-export declare const linearize: <E>(self: Cause<E>) => HashSet.HashSet<Cause<E>>
+export declare const linearize: <E>(self: Cause<E>) => HashSet<Cause<E>>
 ```
 
 Added in v2.0.0
@@ -733,7 +733,7 @@ type `E`.
 **Signature**
 
 ```ts
-export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Die extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Die"
   readonly defect: unknown
 }
@@ -748,7 +748,7 @@ The `Empty` cause represents a lack of errors.
 **Signature**
 
 ```ts
-export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Empty extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Empty"
 }
 ```
@@ -763,7 +763,7 @@ type `E`.
 **Signature**
 
 ```ts
-export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Fail<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Fail"
   readonly error: E
 }
@@ -796,7 +796,7 @@ contains the `FiberId` of the interrupted `Fiber`.
 **Signature**
 
 ```ts
-export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Interrupt extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Interrupt"
   readonly fiberId: FiberId.FiberId
 }
@@ -868,7 +868,7 @@ occurred in parallel. In these cases, the errors can be represented by the
 **Signature**
 
 ```ts
-export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Parallel<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Parallel"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -906,7 +906,7 @@ represented by the `Sequential` cause.
 **Signature**
 
 ```ts
-export interface Sequential<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Sequential<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Sequential"
   readonly left: Cause<E>
   readonly right: Cause<E>

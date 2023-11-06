@@ -1,8 +1,8 @@
-import type * as Cause from "../../Cause.js"
-import type * as Channel from "../../Channel.js"
+import type { Cause } from "../../Cause.js"
+import type { Channel } from "../../Channel.js"
 import type { Effect } from "../../Effect.js"
 import { Exit } from "../../Exit.js"
-import * as OpCodes from "../opCodes/continuation.js"
+import { OpCodes } from "../opCodes/continuation.js"
 
 /** @internal */
 export const ContinuationTypeId = Symbol.for("effect/ChannelContinuation")
@@ -79,13 +79,13 @@ export interface ContinuationK<
   readonly _tag: OpCodes.OP_CONTINUATION_K
   readonly onSuccess: (
     o: OutDone
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   readonly onHalt: (
-    c: Cause.Cause<OutErr>
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+    c: Cause<OutErr>
+  ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   readonly onExit: (
     exit: Exit<OutErr, OutDone>
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
 }
 
 /** @internal */
@@ -149,15 +149,15 @@ export class ContinuationKImpl<
   constructor(
     readonly onSuccess: (
       o: OutDone
-    ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>,
+    ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>,
     readonly onHalt: (
-      c: Cause.Cause<OutErr>
-    ) => Channel.Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+      c: Cause<OutErr>
+    ) => Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   ) {
   }
   onExit(
     exit: Exit<OutErr, OutDone>
-  ): Channel.Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
+  ): Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
     return Exit.isFailure(exit) ? this.onHalt(exit.cause) : this.onSuccess(exit.value)
   }
 }

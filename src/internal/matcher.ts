@@ -13,7 +13,7 @@ import type {
 } from "../Match.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import type * as Predicate from "../Predicate.js"
+import type { Predicate } from "../Predicate.js"
 import type { Unify } from "../Unify.js"
 
 /** @internal */
@@ -113,9 +113,9 @@ const makeNot = (
   evaluate
 })
 
-const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
+const makePredicate = (pattern: unknown): Predicate<unknown> => {
   if (typeof pattern === "function") {
-    return pattern as Predicate.Predicate<unknown>
+    return pattern as Predicate<unknown>
   } else if (Array.isArray(pattern)) {
     const predicates = pattern.map(makePredicate)
     const len = predicates.length
@@ -160,7 +160,7 @@ const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
 
 const makeOrPredicate = (
   patterns: ReadonlyArray<unknown>
-): Predicate.Predicate<unknown> => {
+): Predicate<unknown> => {
   const predicates = patterns.map(makePredicate)
   const len = predicates.length
 
@@ -177,7 +177,7 @@ const makeOrPredicate = (
 
 const makeAndPredicate = (
   patterns: ReadonlyArray<unknown>
-): Predicate.Predicate<unknown> => {
+): Predicate<unknown> => {
   const predicates = patterns.map(makePredicate)
   const len = predicates.length
 

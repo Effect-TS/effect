@@ -1,12 +1,12 @@
 import * as it from "effect-test/utils/extend"
-import * as Duration from "effect/Duration"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { identity, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import * as Cached from "effect/Resource"
-import * as Schedule from "effect/Schedule"
-import * as TestClock from "effect/TestClock"
+import { Ref } from "effect/Ref"
+import { Cached } from "effect/Resource"
+import { Schedule } from "effect/Schedule"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Resource", () => {

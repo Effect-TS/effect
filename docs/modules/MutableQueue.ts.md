@@ -125,7 +125,7 @@ export interface MutableQueue<A> extends Iterable<A>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */
-  queue: MutableList.MutableList<A>
+  queue: MutableList<A>
   /** @internal */
   capacity: number | undefined
 }
@@ -198,8 +198,8 @@ Returns a `Chunk` of the values that were **not** able to be enqueued.
 
 ```ts
 export declare const offerAll: {
-  <A>(values: Iterable<A>): (self: MutableQueue<A>) => Chunk.Chunk<A>
-  <A>(self: MutableQueue<A>, values: Iterable<A>): Chunk.Chunk<A>
+  <A>(values: Iterable<A>): (self: MutableQueue<A>) => Chunk<A>
+  <A>(self: MutableQueue<A>, values: Iterable<A>): Chunk<A>
 }
 ```
 
@@ -235,8 +235,8 @@ Returns a `List` of up to `n` elements.
 
 ```ts
 export declare const pollUpTo: {
-  (n: number): <A>(self: MutableQueue<A>) => Chunk.Chunk<A>
-  <A>(self: MutableQueue<A>, n: number): Chunk.Chunk<A>
+  (n: number): <A>(self: MutableQueue<A>) => Chunk<A>
+  <A>(self: MutableQueue<A>, n: number): Chunk<A>
 }
 ```
 

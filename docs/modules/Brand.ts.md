@@ -90,14 +90,14 @@ export declare const all: <Brands extends readonly [Brand.Constructor<any>, ...B
 **Example**
 
 ```ts
-import * as Brand from "effect/Brand"
+import { Brand } from "effect/Brand"
 
-type Int = number & Brand.Brand<"Int">
+type Int = number & Brand<"Int">
 const Int = Brand.refined<Int>(
   (n) => Number.isInteger(n),
   (n) => Brand.error(`Expected ${n} to be an integer`)
 )
-type Positive = number & Brand.Brand<"Positive">
+type Positive = number & Brand<"Positive">
 const Positive = Brand.refined<Positive>(
   (n) => n > 0,
   (n) => Brand.error(`Expected ${n} to be positive`)
@@ -153,9 +153,9 @@ export declare const nominal: <A extends Brand<any>>() => Brand.Constructor<A>
 **Example**
 
 ```ts
-import * as Brand from "effect/Brand"
+import { Brand } from "effect/Brand"
 
-type UserId = number & Brand.Brand<"UserId">
+type UserId = number & Brand<"UserId">
 
 const UserId = Brand.nominal<UserId>()
 
@@ -184,9 +184,9 @@ export declare const refined: <A extends Brand<any>>(
 **Example**
 
 ```ts
-import * as Brand from "effect/Brand"
+import { Brand } from "effect/Brand"
 
-type Int = number & Brand.Brand<"Int">
+type Int = number & Brand<"Int">
 
 const Int = Brand.refined<Int>(
   (n) => Number.isInteger(n),

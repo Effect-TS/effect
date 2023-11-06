@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context.js"
-import type * as DefaultServices from "./DefaultServices.js"
+import { Context } from "./Context.js"
+import type { DefaultServices } from "./DefaultServices.js"
 import type { Effect } from "./Effect.js"
 import * as core from "./internal/core.js"
 import * as defaultServices from "./internal/defaultServices.js"
@@ -40,7 +40,7 @@ export const TestLive: Context.Tag<TestLive, TestLive> = Context.Tag<TestLive>(
 /** @internal */
 class LiveImpl implements TestLive {
   readonly [TestLiveTypeId]: TestLiveTypeId = TestLiveTypeId
-  constructor(readonly services: Context.Context<DefaultServices.DefaultServices>) {}
+  constructor(readonly services: Context<DefaultServices>) {}
   provide<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
     return core.fiberRefLocallyWith(
       defaultServices.currentServices,
@@ -52,4 +52,4 @@ class LiveImpl implements TestLive {
 /**
  * @since 2.0.0
  */
-export const make = (services: Context.Context<DefaultServices.DefaultServices>): TestLive => new LiveImpl(services)
+export const make = (services: Context<DefaultServices>): TestLive => new LiveImpl(services)

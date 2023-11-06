@@ -4,9 +4,9 @@
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import * as internal from "./internal/resource.js"
-import type * as Schedule from "./Schedule.js"
-import type * as Scope from "./Scope.js"
-import type * as ScopedRef from "./ScopedRef.js"
+import type { Schedule } from "./Schedule.js"
+import type { Scope } from "./Scope.js"
+import type { ScopedRef } from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
@@ -29,9 +29,9 @@ export type ResourceTypeId = typeof ResourceTypeId
  */
 export interface Resource<E, A> extends Resource.Variance<E, A> {
   /** @internal */
-  readonly scopedRef: ScopedRef.ScopedRef<Exit<E, A>>
+  readonly scopedRef: ScopedRef<Exit<E, A>>
   /** @internal */
-  acquire(): Effect<Scope.Scope, E, A>
+  acquire(): Effect<Scope, E, A>
 }
 
 /**
@@ -62,8 +62,8 @@ export declare namespace Resource {
  */
 export const auto: <R, E, A, R2, Out>(
   acquire: Effect<R, E, A>,
-  policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect<Scope.Scope | R | R2, never, Resource<E, A>> = internal.auto
+  policy: Schedule<R2, unknown, Out>
+) => Effect<Scope | R | R2, never, Resource<E, A>> = internal.auto
 
 /**
  * Retrieves the current value stored in the cache.
@@ -85,7 +85,7 @@ export const get: <E, A>(self: Resource<E, A>) => Effect<never, E, A> = internal
  */
 export const manual: <R, E, A>(
   acquire: Effect<R, E, A>
-) => Effect<Scope.Scope | R, never, Resource<E, A>> = internal.manual
+) => Effect<Scope | R, never, Resource<E, A>> = internal.manual
 
 /**
  * Refreshes the cache. This method will not return until either the refresh

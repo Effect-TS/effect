@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Deferred from "effect/Deferred"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"

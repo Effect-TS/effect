@@ -1,8 +1,8 @@
-import type * as Console from "../Console.js"
-import * as Context from "../Context.js"
+import type { Console } from "../Console.js"
+import { Context } from "../Context.js"
 import type { Effect } from "../Effect.js"
 import { dual } from "../Function.js"
-import type * as Layer from "../Layer.js"
+import type { Layer } from "../Layer.js"
 import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import * as defaultConsole from "./defaultServices/console.js"
@@ -10,7 +10,7 @@ import * as fiberRuntime from "./fiberRuntime.js"
 import * as layer from "./layer.js"
 
 /** @internal */
-export const console: Effect<never, never, Console.Console> = core.map(
+export const console: Effect<never, never, Console> = core.map(
   core.fiberRefGet(defaultServices.currentServices),
   Context.get(defaultConsole.consoleTag)
 )
@@ -24,8 +24,8 @@ export const consoleWith = <R, E, A>(f: (console: Console.Console) => Effect<R, 
 
 /** @internal */
 export const withConsole = dual<
-  <A extends Console.Console>(console: A) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A extends Console.Console>(effect: Effect<R, E, A>, console: A) => Effect<R, E, A>
+  <A extends Console>(console: A) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A extends Console>(effect: Effect<R, E, A>, console: A) => Effect<R, E, A>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     effect,
@@ -34,7 +34,7 @@ export const withConsole = dual<
   ))
 
 /** @internal */
-export const setConsole = <A extends Console.Console>(console: A): Layer.Layer<never, never, never> =>
+export const setConsole = <A extends Console>(console: A): Layer<never, never, never> =>
   layer.scopedDiscard(
     fiberRuntime.fiberRefLocallyScopedWith(
       defaultServices.currentServices,

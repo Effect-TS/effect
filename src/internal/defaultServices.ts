@@ -1,15 +1,15 @@
-import type * as Chunk from "../Chunk.js"
-import type * as Clock from "../Clock.js"
-import type * as Config from "../Config.js"
-import type * as ConfigProvider from "../ConfigProvider.js"
-import * as Context from "../Context.js"
-import type * as DefaultServices from "../DefaultServices.js"
-import * as Duration from "../Duration.js"
+import type { Chunk } from "../Chunk.js"
+import type { Clock } from "../Clock.js"
+import type { Config } from "../Config.js"
+import type { ConfigProvider } from "../ConfigProvider.js"
+import { Context } from "../Context.js"
+import type { DefaultServices } from "../DefaultServices.js"
+import { Duration } from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
-import type * as Random from "../Random.js"
-import type * as Tracer from "../Tracer.js"
+import type { Random } from "../Random.js"
+import type { Tracer } from "../Tracer.js"
 import * as clock from "./clock.js"
 import * as configProvider from "./configProvider.js"
 import * as core from "./core.js"
@@ -18,7 +18,7 @@ import * as random from "./random.js"
 import * as tracer from "./tracer.js"
 
 /** @internal */
-export const liveServices: Context.Context<DefaultServices.DefaultServices> = pipe(
+export const liveServices: Context<DefaultServices> = pipe(
   Context.empty(),
   Context.add(clock.clockTag, clock.make()),
   Context.add(console_.consoleTag, console_.defaultConsole),
@@ -58,8 +58,8 @@ export const currentTimeNanos: Effect<never, never, bigint> = clockWith((clock) 
 
 /** @internal */
 export const withClock = dual<
-  <A extends Clock.Clock>(value: A) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
-  <R, E, A extends Clock.Clock>(effect: Effect<R, E, A>, value: A) => Effect<R, E, A>
+  <A extends Clock>(value: A) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A extends Clock>(effect: Effect<R, E, A>, value: A) => Effect<R, E, A>
 >(2, (effect, value) =>
   core.fiberRefLocallyWith(
     currentServices,
@@ -88,10 +88,10 @@ export const configProviderWith = <R, E, A>(
   )
 
 /** @internal */
-export const config = <A>(config: Config.Config<A>) => configProviderWith((_) => _.load(config))
+export const config = <A>(config: Config<A>) => configProviderWith((_) => _.load(config))
 
 /** @internal */
-export const configOrDie = <A>(config: Config.Config<A>) => core.orDie(configProviderWith((_) => _.load(config)))
+export const configOrDie = <A>(config: Config<A>) => core.orDie(configProviderWith((_) => _.load(config)))
 
 // circular with Random
 
@@ -120,7 +120,7 @@ export const nextIntBetween = (min: number, max: number): Effect<never, never, n
   randomWith((random) => random.nextIntBetween(min, max))
 
 /** @internal */
-export const shuffle = <A>(elements: Iterable<A>): Effect<never, never, Chunk.Chunk<A>> =>
+export const shuffle = <A>(elements: Iterable<A>): Effect<never, never, Chunk<A>> =>
   randomWith((random) => random.shuffle(elements))
 
 // circular with Tracer

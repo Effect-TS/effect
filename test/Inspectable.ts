@@ -1,4 +1,4 @@
-import * as Inspectable from "effect/Inspectable"
+import { Inspectable } from "effect/Inspectable"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("Inspectable", () => {

@@ -1,7 +1,7 @@
 import { Option } from "../../Option.js"
-import type * as RBT from "../../RedBlackTree.js"
+import type { RBT } from "../../RedBlackTree.js"
 import type { RedBlackTreeImpl } from "../redBlackTree.js"
-import type * as Node from "./node.js"
+import type { Node } from "./node.js"
 
 /** @internal */
 export const Direction = {
@@ -15,7 +15,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
 
   constructor(
     readonly self: RBT.RedBlackTree<K, V>,
-    readonly stack: Array<Node.Node<K, V>>,
+    readonly stack: Array<Node<K, V>>,
     readonly direction: RBT.RedBlackTree.Direction
   ) {}
 
@@ -127,7 +127,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
     if (stack.length === 0) {
       return
     }
-    let n: Node.Node<K, V> | undefined = stack[stack.length - 1]!
+    let n: Node<K, V> | undefined = stack[stack.length - 1]!
     if (n.right != null) {
       n = n.right
       while (n != null) {
@@ -170,7 +170,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
     if (stack.length === 0) {
       return
     }
-    let n: Node.Node<K, V> | undefined = stack[stack.length - 1]
+    let n: Node<K, V> | undefined = stack[stack.length - 1]
     if (n != null && n.left != null) {
       n = n.left
       while (n != null) {

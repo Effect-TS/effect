@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as Dual from "./Function.js"
-import * as HashMap from "./HashMap.js"
+import { Dual } from "./Function.js"
+import { HashMap } from "./HashMap.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import * as MutableRef from "./MutableRef.js"
+import { MutableRef } from "./MutableRef.js"
 import { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -25,7 +25,7 @@ export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeabl
   readonly [TypeId]: TypeId
 
   /** @internal */
-  readonly backingMap: MutableRef.MutableRef<HashMap.HashMap<K, V>>
+  readonly backingMap: MutableRef<HashMap<K, V>>
 }
 
 const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backingMap"> = {
@@ -50,7 +50,7 @@ const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backingMap"> 
   }
 }
 
-const fromHashMap = <K, V>(backingMap: HashMap.HashMap<K, V>): MutableHashMap<K, V> => {
+const fromHashMap = <K, V>(backingMap: HashMap<K, V>): MutableHashMap<K, V> => {
   const map = Object.create(MutableHashMapProto)
   map.backingMap = MutableRef.make(backingMap)
   return map

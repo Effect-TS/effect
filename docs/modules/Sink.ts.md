@@ -150,7 +150,7 @@ A sink that collects all elements into a `Chunk`.
 **Signature**
 
 ```ts
-export declare const collectAll: <In>() => Sink<never, never, In, never, Chunk.Chunk<In>>
+export declare const collectAll: <In>() => Sink<never, never, In, never, Chunk<In>>
 ```
 
 Added in v2.0.0
@@ -162,7 +162,7 @@ A sink that collects first `n` elements into a chunk.
 **Signature**
 
 ```ts
-export declare const collectAllN: <In>(n: number) => Sink<never, never, In, In, Chunk.Chunk<In>>
+export declare const collectAllN: <In>(n: number) => Sink<never, never, In, In, Chunk<In>>
 ```
 
 Added in v2.0.0
@@ -179,7 +179,7 @@ same key, they are merged using the `merge` function.
 export declare const collectAllToMap: <In, K>(
   key: (input: In) => K,
   merge: (x: In, y: In) => In
-) => Sink<never, never, In, never, HashMap.HashMap<K, In>>
+) => Sink<never, never, In, never, HashMap<K, In>>
 ```
 
 Added in v2.0.0
@@ -197,7 +197,7 @@ export declare const collectAllToMapN: <In, K>(
   n: number,
   key: (input: In) => K,
   merge: (x: In, y: In) => In
-) => Sink<never, never, In, In, HashMap.HashMap<K, In>>
+) => Sink<never, never, In, In, HashMap<K, In>>
 ```
 
 Added in v2.0.0
@@ -209,7 +209,7 @@ A sink that collects all of its inputs into a set.
 **Signature**
 
 ```ts
-export declare const collectAllToSet: <In>() => Sink<never, never, In, never, HashSet.HashSet<In>>
+export declare const collectAllToSet: <In>() => Sink<never, never, In, never, HashSet<In>>
 ```
 
 Added in v2.0.0
@@ -221,7 +221,7 @@ A sink that collects first `n` distinct inputs into a set.
 **Signature**
 
 ```ts
-export declare const collectAllToSetN: <In>(n: number) => Sink<never, never, In, In, HashSet.HashSet<In>>
+export declare const collectAllToSetN: <In>(n: number) => Sink<never, never, In, In, HashSet<In>>
 ```
 
 Added in v2.0.0
@@ -234,7 +234,7 @@ satisfied.
 **Signature**
 
 ```ts
-export declare const collectAllUntil: <In>(p: Predicate<In>) => Sink<never, never, In, In, Chunk.Chunk<In>>
+export declare const collectAllUntil: <In>(p: Predicate<In>) => Sink<never, never, In, In, Chunk<In>>
 ```
 
 Added in v2.0.0
@@ -249,7 +249,7 @@ satisfied.
 ```ts
 export declare const collectAllUntilEffect: <In, R, E>(
   p: (input: In) => Effect<R, E, boolean>
-) => Sink<R, E, In, In, Chunk.Chunk<In>>
+) => Sink<R, E, In, In, Chunk<In>>
 ```
 
 Added in v2.0.0
@@ -262,7 +262,7 @@ Accumulates incoming elements into a chunk as long as they verify predicate
 **Signature**
 
 ```ts
-export declare const collectAllWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, Chunk.Chunk<In>>
+export declare const collectAllWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, Chunk<In>>
 ```
 
 Added in v2.0.0
@@ -277,7 +277,7 @@ predicate `p`.
 ```ts
 export declare const collectAllWhileEffect: <In, R, E>(
   predicate: (input: In) => Effect<R, E, boolean>
-) => Sink<R, E, In, In, Chunk.Chunk<In>>
+) => Sink<R, E, In, In, Chunk<In>>
 ```
 
 Added in v2.0.0
@@ -289,7 +289,7 @@ Accesses the whole context of the sink.
 **Signature**
 
 ```ts
-export declare const context: <R>() => Sink<R, never, unknown, never, Context.Context<R>>
+export declare const context: <R>() => Sink<R, never, unknown, never, Context<R>>
 ```
 
 Added in v2.0.0
@@ -301,7 +301,7 @@ Accesses the context of the sink.
 **Signature**
 
 ```ts
-export declare const contextWith: <R, Z>(f: (context: Context.Context<R>) => Z) => Sink<R, never, unknown, never, Z>
+export declare const contextWith: <R, Z>(f: (context: Context<R>) => Z) => Sink<R, never, unknown, never, Z>
 ```
 
 Added in v2.0.0
@@ -314,7 +314,7 @@ Accesses the context of the sink in the context of an effect.
 
 ```ts
 export declare const contextWithEffect: <R, R2, E, Z>(
-  f: (context: Context.Context<R>) => Effect<R2, E, Z>
+  f: (context: Context<R>) => Effect<R2, E, Z>
 ) => Sink<R | R2, E, unknown, never, Z>
 ```
 
@@ -328,7 +328,7 @@ Accesses the context of the sink in the context of a sink.
 
 ```ts
 export declare const contextWithSink: <R0, R, E, In, L, Z>(
-  f: (context: Context.Context<R0>) => Sink<R, E, In, L, Z>
+  f: (context: Context<R0>) => Sink<R, E, In, L, Z>
 ) => Sink<R0 | R, E, In, L, Z>
 ```
 
@@ -490,7 +490,7 @@ Creates a sink halting with a specified `Cause`.
 **Signature**
 
 ```ts
-export declare const failCause: <E>(cause: Cause.Cause<E>) => Sink<never, E, unknown, never, never>
+export declare const failCause: <E>(cause: Cause<E>) => Sink<never, E, unknown, never, never>
 ```
 
 Added in v2.0.0
@@ -502,7 +502,7 @@ Creates a sink halting with a specified lazily evaluated `Cause`.
 **Signature**
 
 ```ts
-export declare const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Sink<never, E, unknown, never, never>
+export declare const failCauseSync: <E>(evaluate: LazyArg<Cause<E>>) => Sink<never, E, unknown, never, never>
 ```
 
 Added in v2.0.0
@@ -532,7 +532,7 @@ must preserve chunking-invariance.
 export declare const foldChunks: <S, In>(
   s: S,
   contFn: Predicate<S>,
-  f: (s: S, chunk: Chunk.Chunk<In>) => S
+  f: (s: S, chunk: Chunk<In>) => S
 ) => Sink<never, never, In, never, S>
 ```
 
@@ -551,7 +551,7 @@ for the initial value and at the end of processing of each chunk. `f` and
 export declare const foldChunksEffect: <S, R, E, In>(
   s: S,
   contFn: Predicate<S>,
-  f: (s: S, chunk: Chunk.Chunk<In>) => Effect<R, E, S>
+  f: (s: S, chunk: Chunk<In>) => Effect<R, E, S>
 ) => Sink<R, E, In, In, S>
 ```
 
@@ -596,7 +596,7 @@ state. `f` must preserve chunking-invariance.
 ```ts
 export declare const foldLeftChunks: <S, In>(
   s: S,
-  f: (s: S, chunk: Chunk.Chunk<In>) => S
+  f: (s: S, chunk: Chunk<In>) => S
 ) => Sink<never, never, In, never, S>
 ```
 
@@ -612,7 +612,7 @@ and initial state. `f` must preserve chunking-invariance.
 ```ts
 export declare const foldLeftChunksEffect: <S, R, E, In>(
   s: S,
-  f: (s: S, chunk: Chunk.Chunk<In>) => Effect<R, E, S>
+  f: (s: S, chunk: Chunk<In>) => Effect<R, E, S>
 ) => Sink<R, E, In, never, S>
 ```
 
@@ -729,7 +729,7 @@ export declare const foldWeightedDecompose: <S, In>(options: {
   readonly initial: S
   readonly maxCost: number
   readonly cost: (s: S, input: In) => number
-  readonly decompose: (input: In) => Chunk.Chunk<In>
+  readonly decompose: (input: In) => Chunk<In>
   readonly body: (s: S, input: In) => S
 }) => Sink<never, never, In, In, S>
 ```
@@ -758,7 +758,7 @@ export declare const foldWeightedDecomposeEffect: <S, In, R, E, R2, E2, R3, E3>(
   readonly initial: S
   readonly maxCost: number
   readonly cost: (s: S, input: In) => Effect<R, E, number>
-  readonly decompose: (input: In) => Effect<R2, E2, Chunk.Chunk<In>>
+  readonly decompose: (input: In) => Effect<R2, E2, Chunk<In>>
   readonly body: (s: S, input: In) => Effect<R3, E3, S>
 }) => Sink<R | R2 | R3, E | E2 | E3, In, In, S>
 ```
@@ -806,7 +806,7 @@ it.
 
 ```ts
 export declare const forEachChunk: <In, R, E, _>(
-  f: (input: Chunk.Chunk<In>) => Effect<R, E, _>
+  f: (input: Chunk<In>) => Effect<R, E, _>
 ) => Sink<R, E, In, never, void>
 ```
 
@@ -821,7 +821,7 @@ it until `f` evaluates to `false`.
 
 ```ts
 export declare const forEachChunkWhile: <In, R, E>(
-  f: (input: Chunk.Chunk<In>) => Effect<R, E, boolean>
+  f: (input: Chunk<In>) => Effect<R, E, boolean>
 ) => Sink<R, E, In, In, void>
 ```
 
@@ -850,7 +850,7 @@ Creates a sink from a `Channel`.
 
 ```ts
 export declare const fromChannel: <R, E, In, L, Z>(
-  channel: Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
+  channel: Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, Z>
 ) => Sink<R, E, In, L, Z>
 ```
 
@@ -876,7 +876,7 @@ Create a sink which publishes each element to the specified `PubSub`.
 
 ```ts
 export declare const fromPubSub: <In>(
-  pubsub: PubSub.PubSub<In>,
+  pubsub: PubSub<In>,
   options?: { readonly shutdown?: boolean }
 ) => Sink<never, never, In, never, void>
 ```
@@ -894,9 +894,9 @@ export declare const fromPush: <R, E, In, L, Z>(
   push: Effect<
     R,
     never,
-    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk.Chunk<L>], void>
+    (_: Option<Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk<L>], void>
   >
-) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z>
+) => Sink<Exclude<R, Scope>, E, In, L, Z>
 ```
 
 Added in v2.0.0
@@ -948,7 +948,7 @@ as its leftovers
 **Signature**
 
 ```ts
-export declare const leftover: <L>(chunk: Chunk.Chunk<L>) => Sink<never, never, unknown, L, void>
+export declare const leftover: <L>(chunk: Chunk<L>) => Sink<never, never, unknown, L, void>
 ```
 
 Added in v2.0.0
@@ -1045,7 +1045,7 @@ A sink that takes the specified number of values.
 **Signature**
 
 ```ts
-export declare const take: <In>(n: number) => Sink<never, never, In, In, Chunk.Chunk<In>>
+export declare const take: <In>(n: number) => Sink<never, never, In, In, Chunk<In>>
 ```
 
 Added in v2.0.0
@@ -1055,7 +1055,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const timed: Sink<never, never, unknown, never, Duration.Duration>
+export declare const timed: Sink<never, never, unknown, never, Duration>
 ```
 
 Added in v2.0.0
@@ -1069,7 +1069,7 @@ Creates a `Channel` from a Sink.
 ```ts
 export declare const toChannel: <R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-) => Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
+) => Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, Z>
 ```
 
 Added in v2.0.0
@@ -1097,7 +1097,7 @@ Creates a sink produced from a scoped effect.
 ```ts
 export declare const unwrapScoped: <R, E, In, L, Z>(
   effect: Effect<R, E, Sink<R, E, In, L, Z>>
-) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z>
+) => Sink<Exclude<R, Scope>, E, In, L, Z>
 ```
 
 Added in v2.0.0
@@ -1113,8 +1113,8 @@ dependency on `R`.
 
 ```ts
 export declare const provideContext: {
-  <R>(context: Context.Context<R>): <E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<never, E, In, L, Z>
-  <E, In, L, Z, R>(self: Sink<R, E, In, L, Z>, context: Context.Context<R>): Sink<never, E, In, L, Z>
+  <R>(context: Context<R>): <E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<never, E, In, L, Z>
+  <E, In, L, Z, R>(self: Sink<R, E, In, L, Z>, context: Context<R>): Sink<never, E, In, L, Z>
 }
 ```
 
@@ -1364,12 +1364,12 @@ functions.
 ```ts
 export declare const dimapChunks: {
   <In0, In, Z, Z2>(options: {
-    readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
+    readonly onInput: (chunk: Chunk<In0>) => Chunk<In>
     readonly onDone: (z: Z) => Z2
   }): <R, E, L>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z2>
   <R, E, L, In0, In, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
-    options: { readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>; readonly onDone: (z: Z) => Z2 }
+    options: { readonly onInput: (chunk: Chunk<In0>) => Chunk<In>; readonly onDone: (z: Z) => Z2 }
   ): Sink<R, E, In0, L, Z2>
 }
 ```
@@ -1386,13 +1386,13 @@ provided functions. `f` and `g` must preserve chunking-invariance.
 ```ts
 export declare const dimapChunksEffect: {
   <In0, R2, E2, In, Z, R3, E3, Z2>(options: {
-    readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect<R2, E2, Chunk.Chunk<In>>
+    readonly onInput: (chunk: Chunk<In0>) => Effect<R2, E2, Chunk<In>>
     readonly onDone: (z: Z) => Effect<R3, E3, Z2>
   }): <R, E, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R3 | R, E2 | E3 | E, In0, L, Z2>
   <R, E, L, In0, R2, E2, In, Z, R3, E3, Z2>(
     self: Sink<R, E, In, L, Z>,
     options: {
-      readonly onInput: (chunk: Chunk.Chunk<In0>) => Effect<R2, E2, Chunk.Chunk<In>>
+      readonly onInput: (chunk: Chunk<In0>) => Effect<R2, E2, Chunk<In>>
       readonly onDone: (z: Z) => Effect<R3, E3, Z2>
     }
   ): Sink<R | R2 | R3, E | E2 | E3, In0, L, Z2>
@@ -1500,11 +1500,11 @@ Transforms this sink's input chunks. `f` must preserve chunking-invariance.
 ```ts
 export declare const mapInputChunks: {
   <In0, In>(
-    f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
+    f: (chunk: Chunk<In0>) => Chunk<In>
   ): <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z>
   <R, E, L, Z, In0, In>(
     self: Sink<R, E, In, L, Z>,
-    f: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
+    f: (chunk: Chunk<In0>) => Chunk<In>
   ): Sink<R, E, In0, L, Z>
 }
 ```
@@ -1521,11 +1521,11 @@ chunking-invariance.
 ```ts
 export declare const mapInputChunksEffect: {
   <In0, R2, E2, In>(
-    f: (chunk: Chunk.Chunk<In0>) => Effect<R2, E2, Chunk.Chunk<In>>
+    f: (chunk: Chunk<In0>) => Effect<R2, E2, Chunk<In>>
   ): <R, E, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In0, L, Z>
   <R, E, L, Z, In0, R2, E2, In>(
     self: Sink<R, E, In, L, Z>,
-    f: (chunk: Chunk.Chunk<In0>) => Effect<R2, E2, Chunk.Chunk<In>>
+    f: (chunk: Chunk<In0>) => Effect<R2, E2, Chunk<In>>
   ): Sink<R | R2, E | E2, In0, L, Z>
 }
 ```
@@ -1700,7 +1700,7 @@ Repeatedly runs the sink and accumulates its results into a `Chunk`.
 ```ts
 export declare const collectAllFrom: <R, E, In, L extends In, Z>(
   self: Sink<R, E, In, L, Z>
-) => Sink<R, E, In, L, Chunk.Chunk<Z>>
+) => Sink<R, E, In, L, Chunk<Z>>
 ```
 
 Added in v2.0.0
@@ -1738,7 +1738,7 @@ them as part of the sink's result.
 ```ts
 export declare const collectLeftover: <R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-) => Sink<R, E, In, never, readonly [Z, Chunk.Chunk<L>]>
+) => Sink<R, E, In, never, readonly [Z, Chunk<L>]>
 ```
 
 Added in v2.0.0
@@ -1810,16 +1810,16 @@ function as soon as one result or the other has been computed.
 export declare const raceWith: {
   <R2, E2, In2, L2, Z2, E, Z, Z3, Z4>(options: {
     readonly other: Sink<R2, E2, In2, L2, Z2>
-    readonly onSelfDone: (exit: Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
-    readonly onOtherDone: (exit: Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
+    readonly onSelfDone: (exit: Exit<E, Z>) => MergeDecision<R2, E2, Z2, E2 | E, Z3>
+    readonly onOtherDone: (exit: Exit<E2, Z2>) => MergeDecision<R2, E, Z, E2 | E, Z4>
     readonly capacity?: number | undefined
   }): <R, In, L>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L2 | L, Z3 | Z4>
   <R, In, L, R2, E2, In2, L2, Z2, E, Z, Z3, Z4>(
     self: Sink<R, E, In, L, Z>,
     options: {
       readonly other: Sink<R2, E2, In2, L2, Z2>
-      readonly onSelfDone: (exit: Exit<E, Z>) => MergeDecision.MergeDecision<R2, E2, Z2, E2 | E, Z3>
-      readonly onOtherDone: (exit: Exit<E2, Z2>) => MergeDecision.MergeDecision<R2, E, Z, E2 | E, Z4>
+      readonly onSelfDone: (exit: Exit<E, Z>) => MergeDecision<R2, E2, Z2, E2 | E, Z3>
+      readonly onOtherDone: (exit: Exit<E2, Z2>) => MergeDecision<R2, E, Z, E2 | E, Z4>
       readonly capacity?: number | undefined
     }
   ): Sink<R | R2, E2 | E, In & In2, L | L2, Z3 | Z4>
@@ -1877,7 +1877,7 @@ Returns the sink that executes this one and times its execution.
 ```ts
 export declare const withDuration: <R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-) => Sink<R, E, In, L, readonly [Z, Duration.Duration]>
+) => Sink<R, E, In, L, readonly [Z, Duration]>
 ```
 
 Added in v2.0.0

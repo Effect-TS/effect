@@ -10,8 +10,8 @@
 import { Either } from "./Either.js"
 import * as Base64 from "./internal/encoding/base64.js"
 import * as Base64Url from "./internal/encoding/base64Url.js"
-import * as Common from "./internal/encoding/common.js"
-import * as Hex from "./internal/encoding/hex.js"
+import { Common } from "./internal/encoding/common.js"
+import { Hex } from "./internal/encoding/hex.js"
 
 /**
  * Encodes the given value into a base64 (RFC4648) `string`.

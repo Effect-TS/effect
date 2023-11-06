@@ -41,7 +41,7 @@ export declare const make: <Key, Environment, Error, Value>(options: {
   readonly lookup: Lookup<Key, Environment, Error, Value>
   readonly capacity: number
   readonly timeToLive: Duration.DurationInput
-}) => Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>>
+}) => Effect<Scope | Environment, never, ScopedCache<Key, Error, Value>>
 ```
 
 Added in v2.0.0
@@ -59,7 +59,7 @@ export declare const makeWith: <Key, Environment, Error, Value>(options: {
   readonly capacity: number
   readonly lookup: Lookup<Key, Environment, Error, Value>
   readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
-}) => Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>>
+}) => Effect<Scope | Environment, never, ScopedCache<Key, Error, Value>>
 ```
 
 Added in v2.0.0
@@ -75,7 +75,7 @@ Similar to `Cache.Lookup`, but executes the lookup function within a `Scope`.
 ```ts
 export type Lookup<Key, Environment, Error, Value> = (
   key: Key
-) => Effect<Environment | Scope.Scope, Error, Value>
+) => Effect<Environment | Scope, Error, Value>
 ```
 
 Added in v2.0.0
@@ -90,13 +90,13 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect<Scope.Scope, Error, Option<Value>>
+  getOption(key: Key): Effect<Scope, Error, Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect<Scope.Scope, never, Option<Value>>
+  getOptionComplete(key: Key): Effect<Scope, never, Option<Value>>
 
   /**
    * Returns statistics for this cache.
@@ -120,7 +120,7 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
    * release action signals to the cache that the value is no longer being used
    * and can potentially be finalized subject to the policies of the cache.
    */
-  get(key: Key): Effect<Scope.Scope, Error, Value>
+  get(key: Key): Effect<Scope, Error, Value>
 
   /**
    * Invalidates the resource associated with the specified key.

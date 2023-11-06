@@ -1,7 +1,7 @@
-import * as Chunk from "../../Chunk.js"
+import { Chunk } from "../../Chunk.js"
 import type { Differ } from "../../Differ.js"
-import * as Dual from "../../Function.js"
-import * as HashSet from "../../HashSet.js"
+import { Dual } from "../../Function.js"
+import { HashSet } from "../../HashSet.js"
 import { Structural } from "../data.js"
 
 /** @internal */
@@ -101,8 +101,8 @@ type Instruction =
 
 /** @internal */
 export const diff = <Value>(
-  oldValue: HashSet.HashSet<Value>,
-  newValue: HashSet.HashSet<Value>
+  oldValue: HashSet<Value>,
+  newValue: HashSet<Value>
 ): Differ.HashSet.Patch<Value> => {
   const [removed, patch] = HashSet.reduce(
     [oldValue, empty<Value>()] as const,
@@ -132,20 +132,20 @@ export const combine = Dual.dual<
 /** @internal */
 export const patch = Dual.dual<
   <Value>(
-    oldValue: HashSet.HashSet<Value>
+    oldValue: HashSet<Value>
   ) => (
     self: Differ.HashSet.Patch<Value>
-  ) => HashSet.HashSet<Value>,
+  ) => HashSet<Value>,
   <Value>(
     self: Differ.HashSet.Patch<Value>,
-    oldValue: HashSet.HashSet<Value>
-  ) => HashSet.HashSet<Value>
+    oldValue: HashSet<Value>
+  ) => HashSet<Value>
 >(2, <Value>(
   self: Differ.HashSet.Patch<Value>,
-  oldValue: HashSet.HashSet<Value>
+  oldValue: HashSet<Value>
 ) => {
   let set = oldValue
-  let patches: Chunk.Chunk<Differ.HashSet.Patch<Value>> = Chunk.of(self)
+  let patches: Chunk<Differ.HashSet.Patch<Value>> = Chunk.of(self)
   while (Chunk.isNonEmpty(patches)) {
     const head: Instruction = Chunk.headNonEmpty(patches) as Instruction
     const tail = Chunk.tailNonEmpty(patches)

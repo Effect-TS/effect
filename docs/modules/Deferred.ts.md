@@ -132,7 +132,7 @@ higher-level concurrent or asynchronous structures.
 ```ts
 export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly state: MutableRef.MutableRef<internal.State<E, A>>
+  readonly state: MutableRef<internal.State<E, A>>
   /** @internal */
   readonly blockingOn: FiberId.FiberId
 }
@@ -318,8 +318,8 @@ all fibers waiting on the value of the `Deferred`.
 
 ```ts
 export declare const failCause: {
-  <E>(cause: Cause.Cause<E>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, cause: Cause.Cause<E>): Effect<never, never, boolean>
+  <E>(cause: Cause<E>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, cause: Cause<E>): Effect<never, never, boolean>
 }
 ```
 
@@ -334,8 +334,8 @@ all fibers waiting on the value of the `Deferred`.
 
 ```ts
 export declare const failCauseSync: {
-  <E>(evaluate: LazyArg<Cause.Cause<E>>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<Cause.Cause<E>>): Effect<never, never, boolean>
+  <E>(evaluate: LazyArg<Cause<E>>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<Cause<E>>): Effect<never, never, boolean>
 }
 ```
 

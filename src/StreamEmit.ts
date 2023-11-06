@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
-import type * as Chunk from "./Chunk.js"
+import type { Cause } from "./Cause.js"
+import type { Chunk } from "./Chunk.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { Option } from "./Option.js"
@@ -19,7 +19,7 @@ import type { Option } from "./Option.js"
  * @category models
  */
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
-  (f: Effect<R, Option<E>, Chunk.Chunk<A>>): Promise<B>
+  (f: Effect<R, Option<E>, Chunk<A>>): Promise<B>
 }
 
 /**
@@ -30,7 +30,7 @@ export interface EmitOps<R, E, A, B> {
   /**
    * Emits a chunk containing the specified values.
    */
-  readonly chunk: (chunk: Chunk.Chunk<A>) => Promise<B>
+  readonly chunk: (chunk: Chunk<A>) => Promise<B>
 
   /**
    * Terminates with a cause that dies with the specified defect.
@@ -69,12 +69,12 @@ export interface EmitOps<R, E, A, B> {
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  readonly fromEffectChunk: (effect: Effect<R, E, Chunk.Chunk<A>>) => Promise<B>
+  readonly fromEffectChunk: (effect: Effect<R, E, Chunk<A>>) => Promise<B>
 
   /**
    * Terminates the stream with the specified cause.
    */
-  readonly halt: (cause: Cause.Cause<E>) => Promise<B>
+  readonly halt: (cause: Cause<E>) => Promise<B>
 
   /**
    * Emits a chunk containing the specified value.

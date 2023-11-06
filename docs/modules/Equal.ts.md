@@ -69,7 +69,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Equal extends Hash.Hash {
+export interface Equal extends Hash {
   [symbol](that: Equal): boolean
 }
 ```

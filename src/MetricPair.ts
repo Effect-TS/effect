@@ -2,9 +2,9 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/metric/pair.js"
-import type * as MetricKey from "./MetricKey.js"
-import type * as MetricKeyType from "./MetricKeyType.js"
-import type * as MetricState from "./MetricState.js"
+import type { MetricKey } from "./MetricKey.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
+import type { MetricState } from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
 
 /**
@@ -23,11 +23,11 @@ export type MetricPairTypeId = typeof MetricPairTypeId
  * @since 2.0.0
  * @category model
  */
-export interface MetricPair<Type extends MetricKeyType.MetricKeyType<any, any>>
+export interface MetricPair<Type extends MetricKeyType<any, any>>
   extends MetricPair.Variance<Type>, Pipeable
 {
-  readonly metricKey: MetricKey.MetricKey<Type>
-  readonly metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>
+  readonly metricKey: MetricKey<Type>
+  readonly metricState: MetricState<MetricKeyType.OutType<Type>>
 }
 
 /**
@@ -38,13 +38,13 @@ export declare namespace MetricPair {
    * @since 2.0.0
    * @category models
    */
-  export interface Untyped extends MetricPair<MetricKeyType.MetricKeyType<any, any>> {}
+  export interface Untyped extends MetricPair<MetricKeyType<any, any>> {}
 
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Type extends MetricKeyType.MetricKeyType<any, any>> {
+  export interface Variance<Type extends MetricKeyType<any, any>> {
     readonly [MetricPairTypeId]: {
       readonly _Type: (_: never) => Type
     }
@@ -55,16 +55,16 @@ export declare namespace MetricPair {
  * @since 2.0.0
  * @category constructors
  */
-export const make: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>
+export const make: <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState<MetricKeyType.OutType<Type>>
 ) => MetricPair.Untyped = internal.make
 
 /**
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeMake: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState.Untyped
+export const unsafeMake: <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState.Untyped
 ) => MetricPair.Untyped = internal.unsafeMake

@@ -1,10 +1,10 @@
 import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import type * as Scope from "effect/Scope"
+import { Ref } from "effect/Ref"
+import type { Scope } from "effect/Scope"
 
 interface Counter {
-  acquire(): Effect<Scope.Scope, never, number>
+  acquire(): Effect<Scope, never, number>
   incrementAcquire(): Effect<never, never, number>
   incrementRelease(): Effect<never, never, number>
   acquired(): Effect<never, never, number>
@@ -12,9 +12,9 @@ interface Counter {
 }
 
 class CounterImpl implements Counter {
-  constructor(readonly ref: Ref.Ref<readonly [number, number]>) {}
+  constructor(readonly ref: Ref<readonly [number, number]>) {}
 
-  acquire(): Effect<Scope.Scope, never, number> {
+  acquire(): Effect<Scope, never, number> {
     return pipe(
       this.incrementAcquire(),
       Effect.zipRight(Effect.addFinalizer(() => this.incrementRelease())),

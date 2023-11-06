@@ -1,7 +1,7 @@
 import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import { Option } from "../Option.js"
-import type * as Synchronized from "../SynchronizedRef.js"
+import type { Synchronized } from "../SynchronizedRef.js"
 import * as core from "./core.js"
 import * as _ref from "./ref.js"
 

@@ -54,7 +54,7 @@ Constructs a new empty `TPriorityQueue` with the specified `Order`.
 **Signature**
 
 ```ts
-export declare const empty: <A>(order: Order.Order<A>) => STM.STM<never, never, TPriorityQueue<A>>
+export declare const empty: <A>(order: Order<A>) => STM<never, never, TPriorityQueue<A>>
 ```
 
 Added in v2.0.0
@@ -67,8 +67,8 @@ Makes a new `TPriorityQueue` initialized with provided iterable.
 
 ```ts
 export declare const fromIterable: <A>(
-  order: Order.Order<A>
-) => (iterable: Iterable<A>) => STM.STM<never, never, TPriorityQueue<A>>
+  order: Order<A>
+) => (iterable: Iterable<A>) => STM<never, never, TPriorityQueue<A>>
 ```
 
 Added in v2.0.0
@@ -80,7 +80,7 @@ Makes a new `TPriorityQueue` that is initialized with specified values.
 **Signature**
 
 ```ts
-export declare const make: <A>(order: Order.Order<A>) => (...elements: A[]) => STM.STM<never, never, TPriorityQueue<A>>
+export declare const make: <A>(order: Order<A>) => (...elements: A[]) => STM<never, never, TPriorityQueue<A>>
 ```
 
 Added in v2.0.0
@@ -94,7 +94,7 @@ Collects all values into a chunk.
 **Signature**
 
 ```ts
-export declare const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A[]>
+export declare const toArray: <A>(self: TPriorityQueue<A>) => STM<never, never, A[]>
 ```
 
 Added in v2.0.0
@@ -106,7 +106,7 @@ Collects all values into an array.
 **Signature**
 
 ```ts
-export declare const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, readonly A[]>
+export declare const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM<never, never, readonly A[]>
 ```
 
 Added in v2.0.0
@@ -120,7 +120,7 @@ Checks whether the queue is empty.
 **Signature**
 
 ```ts
-export declare const isEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, boolean>
+export declare const isEmpty: <A>(self: TPriorityQueue<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -132,7 +132,7 @@ Checks whether the queue is not empty.
 **Signature**
 
 ```ts
-export declare const isNonEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, boolean>
+export declare const isNonEmpty: <A>(self: TPriorityQueue<A>) => STM<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -145,7 +145,7 @@ value is in the queue.
 **Signature**
 
 ```ts
-export declare const peek: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A>
+export declare const peek: <A>(self: TPriorityQueue<A>) => STM<never, never, A>
 ```
 
 Added in v2.0.0
@@ -158,7 +158,7 @@ if there is not a value in the queue.
 **Signature**
 
 ```ts
-export declare const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>>
+export declare const peekOption: <A>(self: TPriorityQueue<A>) => STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -171,8 +171,8 @@ Removes all elements from the queue matching the specified predicate.
 
 ```ts
 export declare const removeIf: {
-  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM<never, never, void>
 }
 ```
 
@@ -186,8 +186,8 @@ Retains only elements from the queue matching the specified predicate.
 
 ```ts
 export declare const retainIf: {
-  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM<never, never, void>
 }
 ```
 
@@ -200,7 +200,7 @@ Returns the size of the queue.
 **Signature**
 
 ```ts
-export declare const size: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, number>
+export declare const size: <A>(self: TPriorityQueue<A>) => STM<never, never, number>
 ```
 
 Added in v2.0.0
@@ -233,8 +233,8 @@ Offers the specified value to the queue.
 
 ```ts
 export declare const offer: {
-  <A>(value: A): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, value: A): STM<never, never, void>
 }
 ```
 
@@ -248,8 +248,8 @@ Offers all of the elements in the specified collection to the queue.
 
 ```ts
 export declare const offerAll: {
-  <A>(values: Iterable<A>): (self: TPriorityQueue<A>) => STM.STM<never, never, void>
-  <A>(self: TPriorityQueue<A>, values: Iterable<A>): STM.STM<never, never, void>
+  <A>(values: Iterable<A>): (self: TPriorityQueue<A>) => STM<never, never, void>
+  <A>(self: TPriorityQueue<A>, values: Iterable<A>): STM<never, never, void>
 }
 ```
 
@@ -262,7 +262,7 @@ Takes a value from the queue, retrying until a value is in the queue.
 **Signature**
 
 ```ts
-export declare const take: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A>
+export declare const take: <A>(self: TPriorityQueue<A>) => STM<never, never, A>
 ```
 
 Added in v2.0.0
@@ -274,7 +274,7 @@ Takes all values from the queue.
 **Signature**
 
 ```ts
-export declare const takeAll: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A[]>
+export declare const takeAll: <A>(self: TPriorityQueue<A>) => STM<never, never, A[]>
 ```
 
 Added in v2.0.0
@@ -287,7 +287,7 @@ the queue.
 **Signature**
 
 ```ts
-export declare const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option<A>>
+export declare const takeOption: <A>(self: TPriorityQueue<A>) => STM<never, never, Option<A>>
 ```
 
 Added in v2.0.0
@@ -300,8 +300,8 @@ Takes up to the specified maximum number of elements from the queue.
 
 ```ts
 export declare const takeUpTo: {
-  (n: number): <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A[]>
-  <A>(self: TPriorityQueue<A>, n: number): STM.STM<never, never, A[]>
+  (n: number): <A>(self: TPriorityQueue<A>) => STM<never, never, A[]>
+  <A>(self: TPriorityQueue<A>, n: number): STM<never, never, A[]>
 }
 ```
 

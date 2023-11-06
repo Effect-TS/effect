@@ -1,12 +1,12 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Duration from "effect/Duration"
+import { Cause } from "effect/Cause"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { constFalse, pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import * as TestClock from "effect/TestClock"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

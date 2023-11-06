@@ -1,4 +1,4 @@
-import type * as Encoding from "../../Encoding.js"
+import type { Encoding } from "../../Encoding.js"
 import { hasProperty } from "../../Predicate.js"
 
 /** @internal */

@@ -1,17 +1,17 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import * as Scope from "effect/Scope"
+import { Ref } from "effect/Ref"
+import { Scope } from "effect/Scope"
 import { Stream } from "effect/Stream"
-import * as Take from "effect/Take"
+import { Take } from "effect/Take"
 import { assert, describe } from "vitest"
 
 const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>
@@ -786,7 +786,7 @@ describe.concurrent("Stream", () => {
   it.effect("flattenTake - works with empty streams", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        Stream.fromIterable<Take.Take<never, never>>([]),
+        Stream.fromIterable<Take<never, never>>([]),
         Stream.flattenTake,
         Stream.runCollect
       )

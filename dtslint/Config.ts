@@ -1,10 +1,10 @@
-import * as Config from "effect/Config"
+import { Config } from "effect/Config"
 import { pipe } from "effect/Function"
 
-declare const string: Config.Config<string>
-declare const number: Config.Config<number>
-declare const stringArray: Array<Config.Config<string>>
-declare const numberRecord: Record<string, Config.Config<number>>
+declare const string: Config<string>
+declare const number: Config<number>
+declare const stringArray: Array<Config<string>>
+declare const numberRecord: Record<string, Config<number>>
 
 // -------------------------------------------------------------------------------------
 // all - tuple

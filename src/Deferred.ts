@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause.js"
+import type { Cause } from "./Cause.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
-import type * as FiberId from "./FiberId.js"
+import type { FiberId } from "./FiberId.js"
 import type { LazyArg } from "./Function.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/deferred.js"
-import type * as MutableRef from "./MutableRef.js"
+import type { MutableRef } from "./MutableRef.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
@@ -38,7 +38,7 @@ export type DeferredTypeId = typeof DeferredTypeId
  */
 export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
   /** @internal */
-  readonly state: MutableRef.MutableRef<internal.State<E, A>>
+  readonly state: MutableRef<internal.State<E, A>>
   /** @internal */
   readonly blockingOn: FiberId.FiberId
 }
@@ -159,8 +159,8 @@ export const failSync: {
  * @category utils
  */
 export const failCause: {
-  <E>(cause: Cause.Cause<E>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, cause: Cause.Cause<E>): Effect<never, never, boolean>
+  <E>(cause: Cause<E>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, cause: Cause<E>): Effect<never, never, boolean>
 } = core.deferredFailCause
 
 /**
@@ -171,8 +171,8 @@ export const failCause: {
  * @category utils
  */
 export const failCauseSync: {
-  <E>(evaluate: LazyArg<Cause.Cause<E>>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
-  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<Cause.Cause<E>>): Effect<never, never, boolean>
+  <E>(evaluate: LazyArg<Cause<E>>): <A>(self: Deferred<E, A>) => Effect<never, never, boolean>
+  <E, A>(self: Deferred<E, A>, evaluate: LazyArg<Cause<E>>): Effect<never, never, boolean>
 } = core.deferredFailCauseSync
 
 /**

@@ -101,7 +101,7 @@ Added in v2.0.0
 export declare const SourceUnavailable: (
   path: Array<string>,
   message: string,
-  cause: Cause.Cause<unknown>,
+  cause: Cause<unknown>,
   options?: Options
 ) => ConfigError
 ```
@@ -171,7 +171,7 @@ export interface ConfigErrorReducer<C, Z> {
   readonly orCase: (context: C, left: Z, right: Z) => Z
   readonly invalidDataCase: (context: C, path: Array<string>, message: string) => Z
   readonly missingDataCase: (context: C, path: Array<string>, message: string) => Z
-  readonly sourceUnavailableCase: (context: C, path: Array<string>, message: string, cause: Cause.Cause<unknown>) => Z
+  readonly sourceUnavailableCase: (context: C, path: Array<string>, message: string, cause: Cause<unknown>) => Z
   readonly unsupportedCase: (context: C, path: Array<string>, message: string) => Z
 }
 ```
@@ -241,7 +241,7 @@ export interface SourceUnavailable extends ConfigError.Proto {
   readonly _tag: "SourceUnavailable"
   readonly path: Array<string>
   readonly message: string
-  readonly cause: Cause.Cause<unknown>
+  readonly cause: Cause<unknown>
 }
 ```
 

@@ -1,12 +1,12 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Channel from "effect/Channel"
-import * as Deferred from "effect/Deferred"
+import { Cause } from "effect/Cause"
+import { Channel } from "effect/Channel"
+import { Deferred } from "effect/Deferred"
 import { Effect } from "effect/Effect"
 import { Exit } from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
-import * as MergeDecision from "effect/MergeDecision"
-import * as Ref from "effect/Ref"
+import { MergeDecision } from "effect/MergeDecision"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Channel", () => {

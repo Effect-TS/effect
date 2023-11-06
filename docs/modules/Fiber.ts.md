@@ -168,7 +168,7 @@ Creates a `Fiber` that has already failed with the specified cause.
 **Signature**
 
 ```ts
-export declare const failCause: <E>(cause: Cause.Cause<E>) => Fiber<E, never>
+export declare const failCause: <E>(cause: Cause<E>) => Fiber<E, never>
 ```
 
 Added in v2.0.0
@@ -358,7 +358,7 @@ scope is closed.
 **Signature**
 
 ```ts
-export declare const scoped: <E, A>(self: Fiber<E, A>) => Effect<Scope.Scope, never, Fiber<E, A>>
+export declare const scoped: <E, A>(self: Fiber<E, A>) => Effect<Scope, never, Fiber<E, A>>
 ```
 
 Added in v2.0.0
@@ -445,7 +445,7 @@ Returns the `FiberStatus` of a `RuntimeFiber`.
 **Signature**
 
 ```ts
-export declare const status: <E, A>(self: RuntimeFiber<E, A>) => Effect<never, never, FiberStatus.FiberStatus>
+export declare const status: <E, A>(self: RuntimeFiber<E, A>) => Effect<never, never, FiberStatus>
 ```
 
 Added in v2.0.0
@@ -684,12 +684,12 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * The status of the fiber.
    */
-  status(): Effect<never, never, FiberStatus.FiberStatus>
+  status(): Effect<never, never, FiberStatus>
 
   /**
    * Returns the current `RuntimeFlags` the fiber is running with.
    */
-  runtimeFlags(): Effect<never, never, RuntimeFlags.RuntimeFlags>
+  runtimeFlags(): Effect<never, never, RuntimeFlags>
 
   /**
    * Adds an observer to the list of observers.
@@ -825,7 +825,7 @@ export interface Descriptor {
   /**
    * The set of fibers attempting to interrupt the fiber or its ancestors.
    */
-  readonly interruptors: HashSet.HashSet<FiberId.FiberId>
+  readonly interruptors: HashSet<FiberId>
 }
 ```
 

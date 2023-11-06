@@ -21,11 +21,11 @@
  *
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk.js"
+import type { Chunk } from "./Chunk.js"
 import type { Either } from "./Either.js"
-import type * as Equal from "./Equal.js"
-import type * as FiberId from "./FiberId.js"
-import type * as HashSet from "./HashSet.js"
+import type { Equal } from "./Equal.js"
+import type { FiberId } from "./FiberId.js"
+import type { HashSet } from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/cause.js"
 import { originalInstance } from "./internal/core.js"
@@ -225,7 +225,7 @@ export interface InvalidPubSubCapacityException {
  * @since 2.0.0
  * @category models
  */
-export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Empty extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Empty"
 }
 
@@ -236,7 +236,7 @@ export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Ins
  * @since 2.0.0
  * @category models
  */
-export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Fail<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Fail"
   readonly error: E
 }
@@ -249,7 +249,7 @@ export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspe
  * @since 2.0.0
  * @category models
  */
-export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Die extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Die"
   readonly defect: unknown
 }
@@ -261,7 +261,7 @@ export interface Die extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspe
  * @since 2.0.0
  * @category models
  */
-export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable, Inspectable {
+export interface Interrupt extends Cause.Variance<never>, Equal, Pipeable, Inspectable {
   readonly _tag: "Interrupt"
   readonly fiberId: FiberId.FiberId
 }
@@ -279,7 +279,7 @@ export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable,
  * @since 2.0.0
  * @category models
  */
-export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Parallel<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Parallel"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -297,7 +297,7 @@ export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, I
  * @since 2.0.0
  * @category models
  */
-export interface Sequential<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Sequential<E> extends Cause.Variance<E>, Equal, Pipeable, Inspectable {
   readonly _tag: "Sequential"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -473,7 +473,7 @@ export const isInterruptedOnly: <E>(self: Cause<E>) => boolean = internal.isInte
  * @since 2.0.0
  * @category getters
  */
-export const failures: <E>(self: Cause<E>) => Chunk.Chunk<E> = internal.failures
+export const failures: <E>(self: Cause<E>) => Chunk<E> = internal.failures
 
 /**
  * Returns a `List` of all unrecoverable defects in the specified cause.
@@ -481,7 +481,7 @@ export const failures: <E>(self: Cause<E>) => Chunk.Chunk<E> = internal.failures
  * @since 2.0.0
  * @category getters
  */
-export const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown> = internal.defects
+export const defects: <E>(self: Cause<E>) => Chunk<unknown> = internal.defects
 
 /**
  * Returns a `HashSet` of `FiberId`s for all fibers that interrupted the fiber
@@ -490,7 +490,7 @@ export const defects: <E>(self: Cause<E>) => Chunk.Chunk<unknown> = internal.def
  * @since 2.0.0
  * @category getters
  */
-export const interruptors: <E>(self: Cause<E>) => HashSet.HashSet<FiberId.FiberId> = internal.interruptors
+export const interruptors: <E>(self: Cause<E>) => HashSet<FiberId> = internal.interruptors
 
 /**
  * Returns the `E` associated with the first `Fail` in this `Cause`, if one
@@ -536,7 +536,7 @@ export const dieOption: <E>(self: Cause<E>) => Option<unknown> = internal.dieOpt
  * @since 2.0.0
  * @category getters
  */
-export const interruptOption: <E>(self: Cause<E>) => Option<FiberId.FiberId> = internal.interruptOption
+export const interruptOption: <E>(self: Cause<E>) => Option<FiberId> = internal.interruptOption
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from the specified cause, and return
@@ -554,7 +554,7 @@ export const keepDefects: <E>(self: Cause<E>) => Option<Cause<never>> = internal
  * @since 2.0.0
  * @category getters
  */
-export const linearize: <E>(self: Cause<E>) => HashSet.HashSet<Cause<E>> = internal.linearize
+export const linearize: <E>(self: Cause<E>) => HashSet<Cause<E>> = internal.linearize
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from the specified cause, and return

@@ -1,7 +1,7 @@
-import type * as ChildExecutorDecision from "../../ChildExecutorDecision.js"
+import type { ChildExecutorDecision } from "../../ChildExecutorDecision.js"
 import { dual } from "../../Function.js"
 import { hasProperty } from "../../Predicate.js"
-import * as OpCodes from "../opCodes/channelChildExecutorDecision.js"
+import { OpCodes } from "../opCodes/channelChildExecutorDecision.js"
 
 /** @internal */
 const ChildExecutorDecisionSymbolKey = "effect/ChannelChildExecutorDecision"
@@ -17,14 +17,14 @@ const proto = {
 }
 
 /** @internal */
-export const Continue = (_: void): ChildExecutorDecision.ChildExecutorDecision => {
+export const Continue = (_: void): ChildExecutorDecision => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_CONTINUE
   return op
 }
 
 /** @internal */
-export const Close = (value: unknown): ChildExecutorDecision.ChildExecutorDecision => {
+export const Close = (value: unknown): ChildExecutorDecision => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_CLOSE
   op.value = value
@@ -32,14 +32,14 @@ export const Close = (value: unknown): ChildExecutorDecision.ChildExecutorDecisi
 }
 
 /** @internal */
-export const Yield = (_: void): ChildExecutorDecision.ChildExecutorDecision => {
+export const Yield = (_: void): ChildExecutorDecision => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_YIELD
   return op
 }
 
 /** @internal */
-export const isChildExecutorDecision = (u: unknown): u is ChildExecutorDecision.ChildExecutorDecision =>
+export const isChildExecutorDecision = (u: unknown): u is ChildExecutorDecision =>
   hasProperty(u, ChildExecutorDecisionTypeId)
 
 /** @internal */
@@ -67,7 +67,7 @@ export const match = dual<
     }
   ) => (self: ChildExecutorDecision.ChildExecutorDecision) => A,
   <A>(
-    self: ChildExecutorDecision.ChildExecutorDecision,
+    self: ChildExecutorDecision,
     options: {
       readonly onContinue: () => A
       readonly onClose: (value: unknown) => A
@@ -75,7 +75,7 @@ export const match = dual<
     }
   ) => A
 >(2, <A>(
-  self: ChildExecutorDecision.ChildExecutorDecision,
+  self: ChildExecutorDecision,
   { onClose, onContinue, onYield }: {
     readonly onContinue: () => A
     readonly onClose: (value: unknown) => A

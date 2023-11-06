@@ -6,18 +6,22 @@
 
 import type { Either } from "./Either.js"
 import * as E from "./Either.js"
-import * as Equal from "./Equal.js"
+import { Equal } from "./Equal.js"
 import type { Equivalence } from "./Equivalence.js"
 import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import { Option } from "./Option.js"
 
-/**
- * @category models
- * @since 2.0.0
- */
-export interface ReadonlyRecord<A> {
-  readonly [x: string]: A
+export * as ReadonlyRecord from "./ReadonlyRecord.js"
+
+declare module "./ReadonlyRecord.js" {
+  /**
+   * @category models
+   * @since 2.0.0
+   */
+  export interface ReadonlyRecord<A> {
+    readonly [x: string]: A
+  }
 }
 
 /**

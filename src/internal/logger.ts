@@ -1,16 +1,16 @@
-import type * as CauseExt from "../Cause.js"
-import type * as FiberId from "../FiberId.js"
-import type * as FiberRefs from "../FiberRefs.js"
+import type { CauseExt } from "../Cause.js"
+import type { FiberId } from "../FiberId.js"
+import type { FiberRefs } from "../FiberRefs.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
-import * as HashMap from "../HashMap.js"
-import * as List from "../List.js"
-import type * as Logger from "../Logger.js"
-import type * as LogLevel from "../LogLevel.js"
-import * as LogSpan from "../LogSpan.js"
+import { HashMap } from "../HashMap.js"
+import { List } from "../List.js"
+import type { Logger } from "../Logger.js"
+import type { LogLevel } from "../LogLevel.js"
+import { LogSpan } from "../LogSpan.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import * as Cause from "./cause.js"
+import { Cause } from "./cause.js"
 import * as _fiberId from "./fiberId.js"
 
 /** @internal */
@@ -36,12 +36,12 @@ export const makeLogger = <Message, Output>(
       readonly message: Message
       readonly cause: CauseExt.Cause<unknown>
       readonly context: FiberRefs.FiberRefs
-      readonly spans: List.List<LogSpan.LogSpan>
-      readonly annotations: HashMap.HashMap<string, unknown>
+      readonly spans: List<LogSpan>
+      readonly annotations: HashMap<string, unknown>
       readonly date: Date
     }
   ) => Output
-): Logger.Logger<Message, Output> => ({
+): Logger<Message, Output> => ({
   [LoggerTypeId]: loggerVariance,
   log,
   pipe() {
@@ -53,11 +53,11 @@ export const makeLogger = <Message, Output>(
 export const mapInput = dual<
   <Message, Message2>(
     f: (message: Message2) => Message
-  ) => <Output>(self: Logger.Logger<Message, Output>) => Logger.Logger<Message2, Output>,
+  ) => <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>,
   <Output, Message, Message2>(
-    self: Logger.Logger<Message, Output>,
+    self: Logger<Message, Output>,
     f: (message: Message2) => Message
-  ) => Logger.Logger<Message2, Output>
+  ) => Logger<Message2, Output>
 >(2, (self, f) =>
   makeLogger(
     (options) => self.log({ ...options, message: f(options.message) })
@@ -67,11 +67,11 @@ export const mapInput = dual<
 export const filterLogLevel = dual<
   (
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ) => <Message, Output>(self: Logger.Logger<Message, Output>) => Logger.Logger<Message, Option<Output>>,
+  ) => <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option<Output>>,
   <Message, Output>(
-    self: Logger.Logger<Message, Output>,
+    self: Logger<Message, Output>,
     f: (logLevel: LogLevel.LogLevel) => boolean
-  ) => Logger.Logger<Message, Option<Output>>
+  ) => Logger<Message, Option<Output>>
 >(2, (self, f) =>
   makeLogger((options) =>
     f(options.logLevel)
@@ -83,24 +83,24 @@ export const filterLogLevel = dual<
 export const map = dual<
   <Output, Output2>(
     f: (output: Output) => Output2
-  ) => <Message>(self: Logger.Logger<Message, Output>) => Logger.Logger<Message, Output2>,
+  ) => <Message>(self: Logger<Message, Output>) => Logger<Message, Output2>,
   <Message, Output, Output2>(
-    self: Logger.Logger<Message, Output>,
+    self: Logger<Message, Output>,
     f: (output: Output) => Output2
-  ) => Logger.Logger<Message, Output2>
+  ) => Logger<Message, Output2>
 >(2, (self, f) => makeLogger((options) => f(self.log(options))))
 
 /** @internal */
-export const none: Logger.Logger<unknown, void> = {
+export const none: Logger<unknown, void> = {
   [LoggerTypeId]: loggerVariance,
   log: constVoid,
   pipe() {
     return pipeArguments(this, arguments)
   }
-} as Logger.Logger<unknown, void>
+} as Logger<unknown, void>
 
 /** @internal */
-export const simple = <A, B>(log: (a: A) => B): Logger.Logger<A, B> => ({
+export const simple = <A, B>(log: (a: A) => B): Logger<A, B> => ({
   [LoggerTypeId]: loggerVariance,
   log: ({ message }) => log(message),
   pipe() {
@@ -109,56 +109,56 @@ export const simple = <A, B>(log: (a: A) => B): Logger.Logger<A, B> => ({
 })
 
 /** @internal */
-export const succeed = <A>(value: A): Logger.Logger<unknown, A> => {
+export const succeed = <A>(value: A): Logger<unknown, A> => {
   return simple(() => value)
 }
 
 /** @internal */
-export const sync = <A>(evaluate: LazyArg<A>): Logger.Logger<unknown, A> => {
+export const sync = <A>(evaluate: LazyArg<A>): Logger<unknown, A> => {
   return simple(evaluate)
 }
 
 /** @internal */
 export const zip = dual<
   <Message2, Output2>(
-    that: Logger.Logger<Message2, Output2>
+    that: Logger<Message2, Output2>
   ) => <Message, Output>(
-    self: Logger.Logger<Message, Output>
-  ) => Logger.Logger<Message & Message2, readonly [Output, Output2]>,
+    self: Logger<Message, Output>
+  ) => Logger<Message & Message2, readonly [Output, Output2]>,
   <Message, Output, Message2, Output2>(
-    self: Logger.Logger<Message, Output>,
-    that: Logger.Logger<Message2, Output2>
-  ) => Logger.Logger<Message & Message2, readonly [Output, Output2]>
+    self: Logger<Message, Output>,
+    that: Logger<Message2, Output2>
+  ) => Logger<Message & Message2, readonly [Output, Output2]>
 >(2, (self, that) => makeLogger((options) => [self.log(options), that.log(options)] as const))
 
 /** @internal */
 export const zipLeft = dual<
   <Message2, Output2>(
-    that: Logger.Logger<Message2, Output2>
+    that: Logger<Message2, Output2>
   ) => <Message, Output>(
-    self: Logger.Logger<Message, Output>
-  ) => Logger.Logger<Message & Message2, Output>,
+    self: Logger<Message, Output>
+  ) => Logger<Message & Message2, Output>,
   <Message, Output, Message2, Output2>(
-    self: Logger.Logger<Message, Output>,
-    that: Logger.Logger<Message2, Output2>
-  ) => Logger.Logger<Message & Message2, Output>
+    self: Logger<Message, Output>,
+    that: Logger<Message2, Output2>
+  ) => Logger<Message & Message2, Output>
 >(2, (self, that) => map(zip(self, that), (tuple) => tuple[0]))
 
 /** @internal */
 export const zipRight = dual<
   <Message2, Output2>(
-    that: Logger.Logger<Message2, Output2>
+    that: Logger<Message2, Output2>
   ) => <Message, Output>(
-    self: Logger.Logger<Message, Output>
-  ) => Logger.Logger<Message & Message2, Output2>,
+    self: Logger<Message, Output>
+  ) => Logger<Message & Message2, Output2>,
   <Message, Output, Message2, Output2>(
-    self: Logger.Logger<Message, Output>,
-    that: Logger.Logger<Message2, Output2>
-  ) => Logger.Logger<Message & Message2, Output2>
+    self: Logger<Message, Output>,
+    that: Logger<Message2, Output2>
+  ) => Logger<Message & Message2, Output2>
 >(2, (self, that) => map(zip(self, that), (tuple) => tuple[1]))
 
 /** @internal */
-export const stringLogger: Logger.Logger<unknown, string> = makeLogger<unknown, string>(
+export const stringLogger: Logger<unknown, string> = makeLogger<unknown, string>(
   ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
     const nowMillis = date.getTime()
 

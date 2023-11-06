@@ -235,7 +235,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal.Equal, Pipeable, Inspectable {
+export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   /** @internal */
   readonly tree: RBT.RedBlackTree<K, V>

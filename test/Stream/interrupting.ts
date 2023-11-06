@@ -1,26 +1,26 @@
 import { chunkCoordination } from "effect-test/utils/coordination"
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
 import { Option } from "effect/Option"
-import * as Queue from "effect/Queue"
-import * as Ref from "effect/Ref"
+import { Queue } from "effect/Queue"
+import { Ref } from "effect/Ref"
 import { Stream } from "effect/Stream"
-import * as TestClock from "effect/TestClock"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {
   it.effect("interruptWhen - preserves the scope of inner fibers", () =>
     Effect.gen(function*($) {
       const deferred = yield* $(Deferred.make<never, void>())
-      const queue1 = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
-      const queue2 = yield* $(Queue.unbounded<Chunk.Chunk<number>>())
+      const queue1 = yield* $(Queue.unbounded<Chunk<number>>())
+      const queue2 = yield* $(Queue.unbounded<Chunk<number>>())
       yield* $(Queue.offer(queue1, Chunk.of(1)))
       yield* $(Queue.offer(queue2, Chunk.of(2)))
       yield* $(Queue.offer(queue1, Chunk.of(3)), Effect.fork)

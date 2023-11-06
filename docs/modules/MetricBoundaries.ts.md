@@ -50,7 +50,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromChunk: (chunk: Chunk.Chunk<number>) => MetricBoundaries
+export declare const fromChunk: (chunk: Chunk<number>) => MetricBoundaries
 ```
 
 Added in v2.0.0
@@ -79,9 +79,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MetricBoundaries extends Equal.Equal, Pipeable {
+export interface MetricBoundaries extends Equal, Pipeable {
   readonly [MetricBoundariesTypeId]: MetricBoundariesTypeId
-  readonly values: Chunk.Chunk<number>
+  readonly values: Chunk<number>
 }
 ```
 

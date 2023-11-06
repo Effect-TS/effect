@@ -5,7 +5,7 @@ import type { Either } from "./Either.js"
 import * as internal from "./internal/matcher.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import * as Predicate from "./Predicate.js"
+import { Predicate } from "./Predicate.js"
 import type { UnionToIntersection } from "./Types.js"
 import type { Unify } from "./Unify.js"
 
@@ -596,7 +596,7 @@ export declare namespace Types {
     : never
 
   // utilities
-  type PredicateA<A> = Predicate.Predicate<A> | Predicate.Refinement<A, A>
+  type PredicateA<A> = Predicate<A> | Predicate.Refinement<A, A>
 
   type SafeRefinementP<A> = A extends never ? never
     : A extends SafeRefinement<infer S, infer _> ? S
@@ -612,14 +612,14 @@ export declare namespace Types {
 
   type ResolvePred<A> = A extends never ? never
     : A extends Predicate.Refinement<any, infer P> ? P
-    : A extends Predicate.Predicate<infer P> ? P
+    : A extends Predicate<infer P> ? P
     : A extends SafeRefinement<any> ? A
     : A extends Record<string, any> ? DrainOuterGeneric<{ [K in keyof A]: ResolvePred<A[K]> }>
     : A
 
   type ToSafeRefinement<A> = A extends never ? never
     : A extends Predicate.Refinement<any, infer P> ? SafeRefinement<P, P>
-    : A extends Predicate.Predicate<infer P> ? SafeRefinement<P, never>
+    : A extends Predicate<infer P> ? SafeRefinement<P, never>
     : A extends SafeRefinement<any> ? A
     : A extends Record<string, any> ? DrainOuterGeneric<{ [K in keyof A]: ToSafeRefinement<A[K]> }>
     : NonLiteralsTo<A, never>

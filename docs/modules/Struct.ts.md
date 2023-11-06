@@ -36,9 +36,9 @@ Alias of {@link Equivalence.struct}.
 **Signature**
 
 ```ts
-export declare const getEquivalence: <R extends Record<string, Equivalence.Equivalence<any>>>(
+export declare const getEquivalence: <R extends Record<string, Equivalence<any>>>(
   isEquivalents: R
-) => Equivalence.Equivalence<{ readonly [K in keyof R]: [R[K]] extends [Equivalence.Equivalence<infer A>] ? A : never }>
+) => Equivalence<{ readonly [K in keyof R]: [R[K]] extends [Equivalence<infer A>] ? A : never }>
 ```
 
 **Example**

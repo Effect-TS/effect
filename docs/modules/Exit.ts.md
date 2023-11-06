@@ -116,7 +116,7 @@ Constructs a new `Exit.Failure` from the specified `Cause` of type `E`.
 **Signature**
 
 ```ts
-export declare const failCause: <E>(cause: Cause.Cause<E>) => Exit<E, never>
+export declare const failCause: <E>(cause: Cause<E>) => Exit<E, never>
 ```
 
 Added in v2.0.0
@@ -211,12 +211,12 @@ Added in v2.0.0
 ```ts
 export declare const match: {
   <E, A, Z1, Z2>(options: {
-    readonly onFailure: (cause: Cause.Cause<E>) => Z1
+    readonly onFailure: (cause: Cause<E>) => Z1
     readonly onSuccess: (a: A) => Z2
   }): (self: Exit<E, A>) => Z1 | Z2
   <E, A, Z1, Z2>(
     self: Exit<E, A>,
-    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
+    options: { readonly onFailure: (cause: Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
   ): Z1 | Z2
 }
 ```
@@ -230,13 +230,13 @@ Added in v2.0.0
 ```ts
 export declare const matchEffect: {
   <E, A, R, E2, A2, R2, E3, A3>(options: {
-    readonly onFailure: (cause: Cause.Cause<E>) => Effect<R, E2, A2>
+    readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
     readonly onSuccess: (a: A) => Effect<R2, E3, A3>
   }): (self: Exit<E, A>) => Effect<R | R2, E2 | E3, A2 | A3>
   <E, A, R, E2, A2, R2, E3, A3>(
     self: Exit<E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R, E2, A2>
+      readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
       readonly onSuccess: (a: A) => Effect<R2, E3, A3>
     }
   ): Effect<R | R2, E2 | E3, A2 | A3>
@@ -255,7 +255,7 @@ otherwise.
 **Signature**
 
 ```ts
-export declare const causeOption: <E, A>(self: Exit<E, A>) => Option<Cause.Cause<E>>
+export declare const causeOption: <E, A>(self: Exit<E, A>) => Option<Cause<E>>
 ```
 
 Added in v2.0.0
@@ -270,8 +270,8 @@ alternate `A` value computed from the specified function which receives the
 
 ```ts
 export declare const getOrElse: {
-  <E, A2>(orElse: (cause: Cause.Cause<E>) => A2): <A1>(self: Exit<E, A1>) => A2 | A1
-  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause.Cause<E>) => A2): A1 | A2
+  <E, A2>(orElse: (cause: Cause<E>) => A2): <A1>(self: Exit<E, A1>) => A2 | A1
+  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause<E>) => A2): A1 | A2
 }
 ```
 
@@ -383,8 +383,8 @@ the provided function.
 
 ```ts
 export declare const mapErrorCause: {
-  <E, E2>(f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): <A>(self: Exit<E, A>) => Exit<E2, A>
-  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): Exit<E2, A>
+  <E, E2>(f: (cause: Cause<E>) => Cause<E2>): <A>(self: Exit<E, A>) => Exit<E2, A>
+  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause<E>) => Cause<E2>): Exit<E2, A>
 }
 ```
 
@@ -444,12 +444,12 @@ of type `E`.
 export interface Failure<E, A> extends Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Failure"
   readonly _op: "Failure"
-  readonly cause: Cause.Cause<E>
+  readonly cause: Cause<E>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
   [Unify.ignoreSymbol]?: ExitUnifyIgnore
   /** @internal */
-  readonly i0: Cause.Cause<E>
+  readonly i0: Cause<E>
 }
 ```
 
@@ -681,7 +681,7 @@ export declare const zipWith: {
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ): (self: Exit<E, A>) => Exit<E | E2, C>
   <E, E2, A, B, C>(
@@ -689,7 +689,7 @@ export declare const zipWith: {
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ): Exit<E | E2, C>
 }

@@ -1,6 +1,6 @@
 import { deepStrictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
-import * as Number from "effect/Number"
+import { Number } from "effect/Number"
 import { Option } from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 

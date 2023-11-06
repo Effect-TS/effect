@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
+import { Chunk } from "effect/Chunk"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
@@ -112,7 +112,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("sliding - emits elements properly when a failure occurs", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make(Chunk.empty<Chunk.Chunk<number>>()))
+      const ref = yield* $(Ref.make(Chunk.empty<Chunk<number>>()))
       const streamChunks = Stream.fromChunks(
         Chunk.range(1, 4),
         Chunk.range(5, 7),

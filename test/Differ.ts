@@ -1,14 +1,14 @@
-import * as Chunk from "effect/Chunk"
-import * as Differ from "effect/Differ"
-import * as Equal from "effect/Equal"
+import { Chunk } from "effect/Chunk"
+import { Differ } from "effect/Differ"
+import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
-import * as RA from "effect/ReadonlyArray"
+import { HashMap } from "effect/HashMap"
+import { HashSet } from "effect/HashSet"
+import { ReadonlyArray as RA } from "effect/ReadonlyArray"
 import { assert, describe, it as it_ } from "vitest"
 
 function diffLaws<Value, Patch>(
-  differ: Differ.Differ<Value, Patch>,
+  differ: Differ<Value, Patch>,
   gen: () => Value,
   equal: (a: Value, b: Value) => boolean
 ): void {
@@ -69,11 +69,11 @@ function smallInt(): number {
   return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
-function randomChunk(): Chunk.Chunk<number> {
+function randomChunk(): Chunk<number> {
   return Chunk.fromIterable(Array.from({ length: 20 }, smallInt))
 }
 
-function randomHashMap(): HashMap.HashMap<number, number> {
+function randomHashMap(): HashMap<number, number> {
   return pipe(
     RA.fromIterable(Array.from({ length: 2 }, smallInt)),
     RA.cartesian(RA.fromIterable(Array.from({ length: 2 }, smallInt))),
@@ -81,7 +81,7 @@ function randomHashMap(): HashMap.HashMap<number, number> {
   )
 }
 
-function randomHashSet(): HashSet.HashSet<number> {
+function randomHashSet(): HashSet<number> {
   return HashSet.fromIterable(Array.from({ length: 20 }, smallInt))
 }
 

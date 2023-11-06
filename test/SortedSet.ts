@@ -1,9 +1,9 @@
-import * as Eq from "effect/Equal"
+import { Eq } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as Order from "effect/Order"
-import * as SortedSet from "effect/SortedSet"
-import * as Str from "effect/String"
+import { Hash } from "effect/Hash"
+import { Order } from "effect/Order"
+import { SortedSet } from "effect/SortedSet"
+import { Str } from "effect/String"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
@@ -19,11 +19,11 @@ class Member implements Eq.Equal {
   }
 }
 
-const OrdMember: Order.Order<Member> = pipe(Str.Order, Order.mapInput((member) => member.id))
+const OrdMember: Order<Member> = pipe(Str.Order, Order.mapInput((member) => member.id))
 
 function makeNumericSortedSet(
   ...numbers: Array<number>
-): SortedSet.SortedSet<number> {
+): SortedSet<number> {
   return SortedSet.fromIterable((self, that: number) => self > that ? 1 : self < that ? -1 : 0)(numbers)
 }
 

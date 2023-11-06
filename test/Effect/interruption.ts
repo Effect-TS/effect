@@ -1,21 +1,21 @@
 import * as it from "effect-test/utils/extend"
 import { withLatch, withLatchAwait } from "effect-test/utils/latch"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
 import { Effect } from "effect/Effect"
 import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
+import { Fiber } from "effect/Fiber"
+import { FiberId } from "effect/FiberId"
 import { constVoid, pipe } from "effect/Function"
-import * as HashSet from "effect/HashSet"
-import * as MutableRef from "effect/MutableRef"
+import { HashSet } from "effect/HashSet"
+import { MutableRef } from "effect/MutableRef"
 import { Option } from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
-import * as TestClock from "effect/TestClock"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
@@ -224,7 +224,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("interrupted cause persists after catching", () =>
     Effect.gen(function*($) {
-      const process = (list: Chunk.Chunk<Exit<never, any>>): Chunk.Chunk<Exit<never, any>> => {
+      const process = (list: Chunk<Exit<never, any>>): Chunk<Exit<never, any>> => {
         return pipe(list, Chunk.map(Exit.mapErrorCause((cause) => cause)))
       }
       const latch1 = yield* $(Deferred.make<never, void>())
@@ -261,7 +261,7 @@ describe.concurrent("Effect", () => {
       const ref = yield* $(Ref.make<number>(0))
       const latch1 = yield* $(Deferred.make<never, void>())
       const latch2 = yield* $(Deferred.make<never, void>())
-      const make = (deferred: Deferred.Deferred<never, void>) => {
+      const make = (deferred: Deferred<never, void>) => {
         return pipe(
           Deferred.succeed(deferred, void 0),
           Effect.zipRight(Effect.never),

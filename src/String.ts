@@ -12,7 +12,7 @@ import * as readonlyArray from "./internal/readonlyArray.js"
 import * as number from "./Number.js"
 import { Option } from "./Option.js"
 import * as order from "./Order.js"
-import type * as Ordering from "./Ordering.js"
+import type { Ordering } from "./Ordering.js"
 import type { Refinement } from "./Predicate.js"
 import * as predicate from "./Predicate.js"
 import type { NonEmptyArray } from "./ReadonlyArray.js"
@@ -389,7 +389,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option<numb
  * @since 2.0.0
  */
 export const localeCompare =
-  (that: string, locales?: Array<string>, options?: Intl.CollatorOptions) => (self: string): Ordering.Ordering =>
+  (that: string, locales?: Array<string>, options?: Intl.CollatorOptions) => (self: string): Ordering =>
     number.sign(self.localeCompare(that, locales, options))
 
 /**

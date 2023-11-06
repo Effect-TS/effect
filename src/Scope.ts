@@ -2,9 +2,9 @@
  * @since 2.0.0
  */
 
-import type * as Context from "./Context.js"
+import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
-import type * as ExecutionStrategy from "./ExecutionStrategy.js"
+import type { ExecutionStrategy } from "./ExecutionStrategy.js"
 import type { Exit } from "./Exit.js"
 import * as core from "./internal/core.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
@@ -34,21 +34,47 @@ export const CloseableScopeTypeId: unique symbol = core.CloseableScopeTypeId
  */
 export type CloseableScopeTypeId = typeof CloseableScopeTypeId
 
+export * as Scope from "./Scope.js"
+
 /**
  * @since 2.0.0
- * @category models
+ * @category context
  */
-export interface Scope extends Pipeable {
-  readonly [ScopeTypeId]: ScopeTypeId
-  readonly strategy: ExecutionStrategy.ExecutionStrategy
+export const Scope: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
+
+declare module "./Scope.js" {
   /**
-   * @internal
+   * @since 2.0.0
+   * @category models
    */
-  readonly fork: (strategy: ExecutionStrategy.ExecutionStrategy) => Effect<never, never, Scope.Closeable>
+  export interface Scope extends Pipeable {
+    readonly [ScopeTypeId]: ScopeTypeId
+    readonly strategy: ExecutionStrategy.ExecutionStrategy
+    /**
+     * @internal
+     */
+    readonly fork: (strategy: ExecutionStrategy.ExecutionStrategy) => Effect<never, never, Scope.Closeable>
+    /**
+     * @internal
+     */
+    readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect<never, never, void>
+  }
+
   /**
-   * @internal
+   * @since 2.0.0
    */
-  readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect<never, never, void>
+  export namespace Scope {
+    /**
+     * @since 2.0.0
+     * @category model
+     */
+    export type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, void>
+    /**
+     * @since 2.0.0
+     * @category model
+     */
+    export type Closeable = CloseableScope
+  }
 }
 
 /**
@@ -62,28 +88,6 @@ export interface CloseableScope extends Scope, Pipeable {
    * @internal
    */
   readonly close: (exit: Exit<unknown, unknown>) => Effect<never, never, void>
-}
-
-/**
- * @since 2.0.0
- * @category context
- */
-export const Scope: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
-
-/**
- * @since 2.0.0
- */
-export declare namespace Scope {
-  /**
-   * @since 2.0.0
-   * @category model
-   */
-  export type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, void>
-  /**
-   * @since 2.0.0
-   * @category model
-   */
-  export type Closeable = CloseableScope
 }
 
 /**
@@ -115,8 +119,7 @@ export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effe
  * @since 2.0.0
  * @category destructors
  */
-export const close: (self: CloseableScope, exit: Exit<unknown, unknown>) => Effect<never, never, void> =
-  core.scopeClose
+export const close: (self: CloseableScope, exit: Exit<unknown, unknown>) => Effect<never, never, void> = core.scopeClose
 
 /**
  * Extends the scope of an `Effect` workflow that needs a scope into this

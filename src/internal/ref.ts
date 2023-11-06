@@ -1,9 +1,9 @@
 import type { Effect } from "../Effect.js"
 import { dual } from "../Function.js"
-import * as MutableRef from "../MutableRef.js"
+import { MutableRef } from "../MutableRef.js"
 import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import type * as Ref from "../Ref.js"
+import type { Ref } from "../Ref.js"
 import * as core from "./core.js"
 
 /** @internal */
@@ -14,9 +14,9 @@ export const refVariance = {
   _A: (_: never) => _
 }
 
-class RefImpl<A> implements Ref.Ref<A> {
+class RefImpl<A> implements Ref<A> {
   readonly [RefTypeId] = refVariance
-  constructor(readonly ref: MutableRef.MutableRef<A>) {}
+  constructor(readonly ref: MutableRef<A>) {}
   modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B> {
     return core.sync(() => {
       const current = MutableRef.get(this.ref)
@@ -33,37 +33,37 @@ class RefImpl<A> implements Ref.Ref<A> {
 }
 
 /** @internal */
-export const unsafeMake = <A>(value: A): Ref.Ref<A> => new RefImpl(MutableRef.make(value))
+export const unsafeMake = <A>(value: A): Ref<A> => new RefImpl(MutableRef.make(value))
 
 /** @internal */
-export const make = <A>(value: A): Effect<never, never, Ref.Ref<A>> => core.sync(() => unsafeMake(value))
+export const make = <A>(value: A): Effect<never, never, Ref<A>> => core.sync(() => unsafeMake(value))
 
 /** @internal */
-export const get = <A>(self: Ref.Ref<A>) => self.modify((a) => [a, a])
+export const get = <A>(self: Ref<A>) => self.modify((a) => [a, a])
 
 /** @internal */
 export const set = dual<
-  <A>(value: A) => (self: Ref.Ref<A>) => Effect<never, never, void>,
-  <A>(self: Ref.Ref<A>, value: A) => Effect<never, never, void>
->(2, <A>(self: Ref.Ref<A>, value: A) => self.modify((): [void, A] => [void 0, value]))
+  <A>(value: A) => (self: Ref<A>) => Effect<never, never, void>,
+  <A>(self: Ref<A>, value: A) => Effect<never, never, void>
+>(2, <A>(self: Ref<A>, value: A) => self.modify((): [void, A] => [void 0, value]))
 
 /** @internal */
 export const getAndSet = dual<
-  <A>(value: A) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, value: A) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, value: A) => self.modify((a): [A, A] => [a, value]))
+  <A>(value: A) => (self: Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref<A>, value: A) => Effect<never, never, A>
+>(2, <A>(self: Ref<A>, value: A) => self.modify((a): [A, A] => [a, value]))
 
 /** @internal */
 export const getAndUpdate = dual<
-  <A>(f: (a: A) => A) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, f: (a: A) => A) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, f: (a: A) => A) => self.modify((a): [A, A] => [a, f(a)]))
+  <A>(f: (a: A) => A) => (self: Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref<A>, f: (a: A) => A) => Effect<never, never, A>
+>(2, <A>(self: Ref<A>, f: (a: A) => A) => self.modify((a): [A, A] => [a, f(a)]))
 
 /** @internal */
 export const getAndUpdateSome = dual<
-  <A>(pf: (a: A) => Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) =>
+  <A>(pf: (a: A) => Option<A>) => (self: Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
+>(2, <A>(self: Ref<A>, pf: (a: A) => Option<A>) =>
   self.modify((value): [A, A] => {
     const option = pf(value)
     switch (option._tag) {
@@ -78,14 +78,14 @@ export const getAndUpdateSome = dual<
 
 /** @internal */
 export const setAndGet = dual<
-  <A>(value: A) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, value: A) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, value: A) => self.modify((): [A, A] => [value, value]))
+  <A>(value: A) => (self: Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref<A>, value: A) => Effect<never, never, A>
+>(2, <A>(self: Ref<A>, value: A) => self.modify((): [A, A] => [value, value]))
 
 /** @internal */
 export const modify = dual<
-  <A, B>(f: (a: A) => readonly [B, A]) => (self: Ref.Ref<A>) => Effect<never, never, B>,
-  <A, B>(self: Ref.Ref<A>, f: (a: A) => readonly [B, A]) => Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]) => (self: Ref<A>) => Effect<never, never, B>,
+  <A, B>(self: Ref<A>, f: (a: A) => readonly [B, A]) => Effect<never, never, B>
 >(2, (self, f) => self.modify(f))
 
 /** @internal */
@@ -93,9 +93,9 @@ export const modifySome = dual<
   <B, A>(
     fallback: B,
     pf: (a: A) => Option<readonly [B, A]>
-  ) => (self: Ref.Ref<A>) => Effect<never, never, B>,
+  ) => (self: Ref<A>) => Effect<never, never, B>,
   <A, B>(
-    self: Ref.Ref<A>,
+    self: Ref<A>,
     fallback: B,
     pf: (a: A) => Option<readonly [B, A]>
   ) => Effect<never, never, B>
@@ -114,15 +114,15 @@ export const modifySome = dual<
 
 /** @internal */
 export const update = dual<
-  <A>(f: (a: A) => A) => (self: Ref.Ref<A>) => Effect<never, never, void>,
-  <A>(self: Ref.Ref<A>, f: (a: A) => A) => Effect<never, never, void>
->(2, <A>(self: Ref.Ref<A>, f: (a: A) => A) => self.modify((a): [void, A] => [void 0, f(a)]))
+  <A>(f: (a: A) => A) => (self: Ref<A>) => Effect<never, never, void>,
+  <A>(self: Ref<A>, f: (a: A) => A) => Effect<never, never, void>
+>(2, <A>(self: Ref<A>, f: (a: A) => A) => self.modify((a): [void, A] => [void 0, f(a)]))
 
 /** @internal */
 export const updateAndGet = dual<
-  <A>(f: (a: A) => A) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, f: (a: A) => A) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, f: (a: A) => A) =>
+  <A>(f: (a: A) => A) => (self: Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref<A>, f: (a: A) => A) => Effect<never, never, A>
+>(2, <A>(self: Ref<A>, f: (a: A) => A) =>
   self.modify((a): [A, A] => {
     const result = f(a)
     return [result, result]
@@ -130,9 +130,9 @@ export const updateAndGet = dual<
 
 /** @internal */
 export const updateSome = dual<
-  <A>(f: (a: A) => Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, void>,
-  <A>(self: Ref.Ref<A>, f: (a: A) => Option<A>) => Effect<never, never, void>
->(2, <A>(self: Ref.Ref<A>, f: (a: A) => Option<A>) =>
+  <A>(f: (a: A) => Option<A>) => (self: Ref<A>) => Effect<never, never, void>,
+  <A>(self: Ref<A>, f: (a: A) => Option<A>) => Effect<never, never, void>
+>(2, <A>(self: Ref<A>, f: (a: A) => Option<A>) =>
   self.modify(
     (a): [void, A] => [
       void 0,
@@ -145,9 +145,9 @@ export const updateSome = dual<
 
 /** @internal */
 export const updateSomeAndGet = dual<
-  <A>(pf: (a: A) => Option<A>) => (self: Ref.Ref<A>) => Effect<never, never, A>,
-  <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
->(2, <A>(self: Ref.Ref<A>, pf: (a: A) => Option<A>) =>
+  <A>(pf: (a: A) => Option<A>) => (self: Ref<A>) => Effect<never, never, A>,
+  <A>(self: Ref<A>, pf: (a: A) => Option<A>) => Effect<never, never, A>
+>(2, <A>(self: Ref<A>, pf: (a: A) => Option<A>) =>
   self.modify((value): [A, A] => {
     const option = pf(value)
     switch (option._tag) {
@@ -161,4 +161,4 @@ export const updateSomeAndGet = dual<
   }))
 
 /** @internal */
-export const unsafeGet = <A>(self: Ref.Ref<A>): A => MutableRef.get((self as RefImpl<A>).ref)
+export const unsafeGet = <A>(self: Ref<A>): A => MutableRef.get((self as RefImpl<A>).ref)

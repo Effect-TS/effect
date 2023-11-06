@@ -1,6 +1,6 @@
 import type { Exit } from "../../../Exit.js"
-import * as OpCodes from "../opCodes/tryCommit.js"
-import type * as Journal from "./journal.js"
+import { OpCodes } from "../opCodes/tryCommit.js"
+import type { Journal } from "./journal.js"
 
 /** @internal */
 export type TryCommit<E, A> = Done<E, A> | Suspend

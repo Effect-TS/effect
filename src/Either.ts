@@ -2,8 +2,8 @@
  * @since 2.0.0
  */
 
-import type * as Data from "./Data.js"
-import * as Equivalence from "./Equivalence.js"
+import type { Data } from "./Data.js"
+import { Equivalence } from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
@@ -12,8 +12,8 @@ import * as either from "./internal/either.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { isFunction } from "./Predicate.js"
-import type * as Unify from "./Unify.js"
-import * as Gen from "./Utils.js"
+import type { Unify } from "./Unify.js"
+import { Gen } from "./Utils.js"
 
 export * as Either from "./Either.js"
 
@@ -269,9 +269,9 @@ export const getLeft: <E, A>(self: Either<E, A>) => Option<E> = either.getLeft
  * @since 2.0.0
  */
 export const getEquivalence = <E, A>(
-  EE: Equivalence.Equivalence<E>,
-  EA: Equivalence.Equivalence<A>
-): Equivalence.Equivalence<Either<E, A>> =>
+  EE: Equivalence<E>,
+  EA: Equivalence<A>
+): Equivalence<Either<E, A>> =>
   Equivalence.make((x, y) =>
     x === y ||
     (isLeft(x) ?
@@ -606,7 +606,7 @@ const adapter = Gen.adapter<EitherTypeLambda>()
  * @category generators
  * @since 2.0.0
  */
-export const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
+export const gen: Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>> = (f) => {
   const iterator = f(adapter)
   let state: IteratorYieldResult<any> | IteratorReturnResult<any> = iterator.next()
   if (state.done) {
