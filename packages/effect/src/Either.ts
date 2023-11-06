@@ -47,7 +47,7 @@ export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>
-  [Unify.blacklistSymbol]?: EitherUnifyBlacklist
+  [Unify.ignoreSymbol]?: EitherUnifyIgnore
 }
 
 /**
@@ -64,7 +64,7 @@ export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>
-  [Unify.blacklistSymbol]?: EitherUnifyBlacklist
+  [Unify.ignoreSymbol]?: EitherUnifyIgnore
 }
 
 /**
@@ -79,7 +79,7 @@ export interface EitherUnify<A extends { [Unify.typeSymbol]?: any }> {
  * @category models
  * @since 2.0.0
  */
-export interface EitherUnifyBlacklist {}
+export interface EitherUnifyIgnore {}
 
 /**
  * @category type lambdas

@@ -102,7 +102,7 @@ export type EffectTypeId = typeof EffectTypeId
 export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
-  readonly [Unify.blacklistSymbol]?: EffectUnifyBlacklist
+  readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
 }
 
 /**
@@ -119,7 +119,7 @@ export interface EffectUnify<A extends { [Unify.typeSymbol]?: any }>
  * @category models
  * @since 2.0.0
  */
-export interface EffectUnifyBlacklist {
+export interface EffectUnifyIgnore {
   Tag?: true
   Option?: true
   Either?: true
@@ -149,7 +149,7 @@ export interface Blocked<R, E, A> extends Effect<R, E, A> {
  */
 declare module "./Context.js" {
   interface Tag<Identifier, Service> extends Effect<Identifier, never, Service> {}
-  interface TagUnifyBlacklist {
+  interface TagUnifyIgnore {
     Effect?: true
     Either?: true
     Option?: true
@@ -167,7 +167,7 @@ declare module "./Either.js" {
   interface Right<E, A> extends Effect<never, E, A> {
     readonly _tag: "Right"
   }
-  interface EitherUnifyBlacklist {
+  interface EitherUnifyIgnore {
     Effect?: true
     Tag?: true
     Option?: true
@@ -185,7 +185,7 @@ declare module "./Option.js" {
   interface Some<A> extends Effect<never, Cause.NoSuchElementException, A> {
     readonly _tag: "Some"
   }
-  interface OptionUnifyBlacklist {
+  interface OptionUnifyIgnore {
     Effect?: true
     Tag?: true
     Either?: true

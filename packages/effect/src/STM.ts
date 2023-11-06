@@ -68,7 +68,7 @@ export type STMTypeId = typeof STMTypeId
 export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: STMUnify<this>
-  [Unify.blacklistSymbol]?: STMUnifyBlacklist
+  [Unify.ignoreSymbol]?: STMUnifyIgnore
 }
 
 /**
@@ -83,7 +83,7 @@ export interface STMUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect
  * @category models
  * @since 2.0.0
  */
-export interface STMUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface STMUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
 }
 

@@ -66,7 +66,7 @@ export type StreamTypeId = typeof StreamTypeId
 export interface Stream<R, E, A> extends Stream.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: StreamUnify<this>
-  [Unify.blacklistSymbol]?: StreamUnifyBlacklist
+  [Unify.ignoreSymbol]?: StreamUnifyIgnore
 }
 
 /**
@@ -81,7 +81,7 @@ export interface StreamUnify<A extends { [Unify.typeSymbol]?: any }> extends Eff
  * @category models
  * @since 2.0.0
  */
-export interface StreamUnifyBlacklist extends Effect.EffectUnifyBlacklist {
+export interface StreamUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
 }
 
@@ -91,7 +91,7 @@ export interface StreamUnifyBlacklist extends Effect.EffectUnifyBlacklist {
  */
 declare module "./Effect.js" {
   interface Effect<R, E, A> extends Stream<R, E, A> {}
-  interface EffectUnifyBlacklist {
+  interface EffectUnifyIgnore {
     Stream?: true
   }
 }

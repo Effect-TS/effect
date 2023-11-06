@@ -48,7 +48,7 @@ export interface None<A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>
-  [Unify.blacklistSymbol]?: OptionUnifyBlacklist
+  [Unify.ignoreSymbol]?: OptionUnifyIgnore
 }
 
 /**
@@ -64,7 +64,7 @@ export interface Some<A> extends Data.Case, Pipeable, Inspectable {
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>
-  [Unify.blacklistSymbol]?: OptionUnifyBlacklist
+  [Unify.ignoreSymbol]?: OptionUnifyIgnore
 }
 
 /**
@@ -79,7 +79,7 @@ export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
  * @category models
  * @since 2.0.0
  */
-export interface OptionUnifyBlacklist {}
+export interface OptionUnifyIgnore {}
 
 /**
  * @category type lambdas
