@@ -4,7 +4,7 @@ import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import * as Equal from "../Equal.js"
 import type { LazyArg } from "../Function.js"
 import { constVoid, dual, pipe } from "../Function.js"
@@ -190,7 +190,7 @@ export const andThenEither = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    Either.Either<Out, Out2>
+    Either<Out, Out2>
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -198,7 +198,7 @@ export const andThenEither = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    Either.Either<Out, Out2>
+    Either<Out, Out2>
   >
 >(2, <Env, In, Out, Env2, In2, Out2>(
   self: Schedule.Schedule<Env, In, Out>,
@@ -206,7 +206,7 @@ export const andThenEither = dual<
 ): Schedule.Schedule<
   Env | Env2,
   In & In2,
-  Either.Either<Out, Out2>
+  Either<Out, Out2>
 > =>
   makeWithState(
     [self.initial, that.initial, true as boolean] as const,
@@ -217,7 +217,7 @@ export const andThenEither = dual<
             return core.map(that.step(now, input, state[1]), ([rState, out, decision]) =>
               [
                 [lState, rState, false as boolean] as const,
-                Either.right(out) as Either.Either<Out, Out2>,
+                Either.right(out) as Either<Out, Out2>,
                 decision as ScheduleDecision.ScheduleDecision
               ] as const)
           }
@@ -232,7 +232,7 @@ export const andThenEither = dual<
         core.map(that.step(now, input, state[1]), ([rState, out, decision]) =>
           [
             [state[0], rState, false as boolean] as const,
-            Either.right(out) as Either.Either<Out, Out2>,
+            Either.right(out) as Either<Out, Out2>,
             decision
           ] as const)
   ))

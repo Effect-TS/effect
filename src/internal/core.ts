@@ -4,7 +4,7 @@ import * as Context from "../Context.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Differ from "../Differ.js"
 import type { Effect } from "../Effect.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import * as Equal from "../Equal.js"
 import type * as ExecutionStrategy from "../ExecutionStrategy.js"
 import type { Exit } from "../Exit.js"
@@ -122,7 +122,7 @@ export type Primitive =
   | OpTag
   | Blocked
   | RunBlocked
-  | Either.Either<any, any>
+  | Either<any, any>
   | Option<any>
 
 /** @internal */
@@ -478,7 +478,7 @@ export const async = <R, E, A>(
 export const asyncEither = <R, E, A>(
   register: (
     callback: (effect: Effect<R, E, A>) => void
-  ) => Either.Either<Effect<R, never, void>, Effect<R, E, A>>,
+  ) => Either<Effect<R, never, void>, Effect<R, E, A>>,
   blockingOn: FiberId.FiberId = FiberId.none
 ): Effect<R, E, A> =>
   async<R, E, A>((resume) => {
@@ -645,7 +645,7 @@ export const dieMessage = (message: string): Effect<never, never, never> =>
 export const dieSync = (evaluate: LazyArg<unknown>): Effect<never, never, never> => flatMap(sync(evaluate), die)
 
 /* @internal */
-export const either = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Either.Either<E, A>> =>
+export const either = <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Either<E, A>> =>
   matchEffect(self, {
     onFailure: (e) => succeed(Either.left(e)),
     onSuccess: (a) => succeed(Either.right(a))
@@ -1059,7 +1059,7 @@ export const orDieWith = dual<
 /* @internal */
 export const partitionMap = <A, A1, A2>(
   elements: Iterable<A>,
-  f: (a: A) => Either.Either<A1, A2>
+  f: (a: A) => Either<A1, A2>
 ): readonly [Array<A1>, Array<A2>] =>
   ReadonlyArray.fromIterable(elements).reduceRight(
     ([lefts, rights], current) => {
@@ -2223,7 +2223,7 @@ export const exitForEachEffect = dual<
 })
 
 /** @internal */
-export const exitFromEither = <E, A>(either: Either.Either<E, A>): Exit<E, A> => {
+export const exitFromEither = <E, A>(either: Either<E, A>): Exit<E, A> => {
   switch (either._tag) {
     case "Left": {
       return exitFail(either.left) as Exit<E, A>

@@ -61,7 +61,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option.Option<Either.Either<E, A>>>
+export declare const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option.Option<Either<E, A>>>
 ```
 
 Added in v2.0.0
@@ -86,8 +86,8 @@ Added in v2.0.0
 
 ```ts
 export declare const done: {
-  <E, A>(either: Either.Either<E, A>): (self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, either: Either.Either<E, A>): STM.STM<never, never, boolean>
+  <E, A>(either: Either<E, A>): (self: TDeferred<E, A>) => STM.STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, either: Either<E, A>): STM.STM<never, never, boolean>
 }
 ```
 

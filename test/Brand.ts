@@ -1,5 +1,5 @@
 import * as Brand from "effect/Brand"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { Option } from "effect/Option"
 import { assert, describe, it } from "vitest"
 

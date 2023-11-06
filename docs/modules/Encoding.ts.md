@@ -50,7 +50,7 @@ Decodes a base64 (RFC4648) encoded `string` into a `Uint8Array`.
 **Signature**
 
 ```ts
-export declare const decodeBase64: (str: string) => Either.Either<DecodeException, Uint8Array>
+export declare const decodeBase64: (str: string) => Either<DecodeException, Uint8Array>
 ```
 
 Added in v2.0.0
@@ -62,7 +62,7 @@ Decodes a base64 (RFC4648) encoded `string` into a UTF-8 `string`.
 **Signature**
 
 ```ts
-export declare const decodeBase64String: (str: string) => Either.Either<DecodeException, string>
+export declare const decodeBase64String: (str: string) => Either<DecodeException, string>
 ```
 
 Added in v2.0.0
@@ -74,7 +74,7 @@ Decodes a base64 (URL) encoded `string` into a `Uint8Array`.
 **Signature**
 
 ```ts
-export declare const decodeBase64Url: (str: string) => Either.Either<DecodeException, Uint8Array>
+export declare const decodeBase64Url: (str: string) => Either<DecodeException, Uint8Array>
 ```
 
 Added in v2.0.0
@@ -86,7 +86,7 @@ Decodes a base64 (URL) encoded `string` into a UTF-8 `string`.
 **Signature**
 
 ```ts
-export declare const decodeBase64UrlString: (str: string) => Either.Either<DecodeException, string>
+export declare const decodeBase64UrlString: (str: string) => Either<DecodeException, string>
 ```
 
 Added in v2.0.0
@@ -98,7 +98,7 @@ Decodes a hex encoded `string` into a `Uint8Array`.
 **Signature**
 
 ```ts
-export declare const decodeHex: (str: string) => Either.Either<DecodeException, Uint8Array>
+export declare const decodeHex: (str: string) => Either<DecodeException, Uint8Array>
 ```
 
 Added in v2.0.0
@@ -110,7 +110,7 @@ Decodes a hex encoded `string` into a UTF-8 `string`.
 **Signature**
 
 ```ts
-export declare const decodeHexString: (str: string) => Either.Either<DecodeException, string>
+export declare const decodeHexString: (str: string) => Either<DecodeException, string>
 ```
 
 Added in v2.0.0

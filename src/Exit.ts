@@ -3,7 +3,7 @@
  */
 import type * as Cause from "./Cause.js"
 import type { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type * as FiberId from "./FiberId.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as core from "./internal/core.js"
@@ -235,7 +235,7 @@ export const forEachEffect: {
  * @since 2.0.0
  * @category conversions
  */
-export const fromEither: <E, A>(either: Either.Either<E, A>) => Exit<E, A> = core.exitFromEither
+export const fromEither: <E, A>(either: Either<E, A>) => Exit<E, A> = core.exitFromEither
 
 /**
  * Converts an `Option<A>` into an `Exit<void, A>`.

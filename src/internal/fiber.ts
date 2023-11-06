@@ -1,7 +1,7 @@
 import type * as Cause from "../Cause.js"
 import * as Clock from "../Clock.js"
 import type { Effect } from "../Effect.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
@@ -263,8 +263,8 @@ export const orElse = dual<
 
 /** @internal */
 export const orElseEither = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, Either.Either<A, A2>>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, Either.Either<A, A2>>
+  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, Either<A, A2>>,
+  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, Either<A, A2>>
 >(2, (self, that) => orElse(map(self, Either.left), map(that, Either.right)))
 
 /** @internal */

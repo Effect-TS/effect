@@ -298,7 +298,7 @@ export interface Constructor<in out A extends Brand<any>> {
    * Constructs a branded type from a value of type `A`, returning `Right<A>`
    * if the provided `A` is valid, `Left<BrandError>` otherwise.
    */
-  either: (args: Brand.Unbranded<A>) => Either.Either<Brand.BrandErrors, A>
+  either: (args: Brand.Unbranded<A>) => Either<Brand.BrandErrors, A>
   /**
    * Attempts to refine the provided value of type `A`, returning `true` if
    * the provided `A` is valid, `false` otherwise.

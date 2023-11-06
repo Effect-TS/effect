@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { identity } from "effect/Function"
 import { Option } from "effect/Option"
 import { Stream } from "effect/Stream"

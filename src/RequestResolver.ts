@@ -4,7 +4,7 @@
 
 import * as Context from "./Context.js"
 import { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type * as Equal from "./Equal.js"
 import type { FiberRef } from "./FiberRef.js"
 import * as core from "./internal/core.js"
@@ -197,7 +197,7 @@ export const mapInputContext: {
 export const eitherWith: {
   <A extends Request.Request<any, any>, R2, B extends Request.Request<any, any>, C extends Request.Request<any, any>>(
     that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either<Request.Entry<A>, Request.Entry<B>>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<C, R2 | R>
   <
     R,
@@ -208,7 +208,7 @@ export const eitherWith: {
   >(
     self: RequestResolver<A, R>,
     that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either<Request.Entry<A>, Request.Entry<B>>
   ): RequestResolver<C, R | R2>
 } = internal.eitherWith
 

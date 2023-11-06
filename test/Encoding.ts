@@ -1,5 +1,5 @@
 import { deepStrictEqual, strictEqual } from "effect-test/util"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import { assert, describe, it } from "vitest"
 

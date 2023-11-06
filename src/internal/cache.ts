@@ -4,7 +4,7 @@ import * as Context from "../Context.js"
 import * as Deferred from "../Deferred.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import * as Equal from "../Equal.js"
 import { Exit } from "../Exit.js"
 import type * as FiberId from "../FiberId.js"
@@ -369,8 +369,8 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  getEither(key: Key): Effect<never, Error, Either.Either<Value, Value>> {
-    return core.suspend((): Effect<never, Error, Either.Either<Value, Value>> => {
+  getEither(key: Key): Effect<never, Error, Either<Value, Value>> {
+    return core.suspend((): Effect<never, Error, Either<Value, Value>> => {
       const k = key
       let mapKey: MapKey<Key> | undefined = undefined
       let deferred: Deferred.Deferred<Error, Value> | undefined = undefined

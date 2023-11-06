@@ -209,8 +209,8 @@ contains all elements for which the specified function returned a `Right`.
 
 ```ts
 export declare const partitionMap: {
-  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => readonly [List<B>, List<C>]
-  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): readonly [List<B>, List<C>]
+  <A, B, C>(f: (a: A) => Either<B, C>): (self: List<A>) => readonly [List<B>, List<C>]
+  <A, B, C>(self: List<A>, f: (a: A) => Either<B, C>): readonly [List<B>, List<C>]
 }
 ```
 

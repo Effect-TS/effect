@@ -1,6 +1,6 @@
 import type * as Cause from "../Cause.js"
 import type * as ConfigError from "../ConfigError.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import { constFalse, constTrue, dual, pipe } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
 import * as RA from "../ReadonlyArray.js"
@@ -215,7 +215,7 @@ export const reduceWithContext = dual<
   <C, Z>(self: ConfigError.ConfigError, context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => Z
 >(3, <C, Z>(self: ConfigError.ConfigError, context: C, reducer: ConfigError.ConfigErrorReducer<C, Z>) => {
   const input: Array<ConfigError.ConfigError> = [self]
-  const output: Array<Either.Either<ConfigErrorCase, Z>> = []
+  const output: Array<Either<ConfigErrorCase, Z>> = []
   while (input.length > 0) {
     const error = input.pop()!
     switch (error._tag) {

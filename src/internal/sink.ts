@@ -5,7 +5,7 @@ import * as Clock from "../Clock.js"
 import type * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import { Effect } from "../Effect.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import { Exit } from "../Exit.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import type { LazyArg } from "../Function.js"
@@ -1459,7 +1459,7 @@ export const fromPush = <R, E, In, L, Z>(
   push: Effect<
     R,
     never,
-    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
+    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk.Chunk<L>], void>
   >
 ): Sink.Sink<Exclude<R, Scope.Scope>, E, In, L, Z> =>
   new SinkImpl(channel.unwrapScoped(pipe(push, Effect.map(fromPushPull))))
@@ -1467,7 +1467,7 @@ export const fromPush = <R, E, In, L, Z>(
 const fromPushPull = <R, E, In, L, Z>(
   push: (
     option: Option<Chunk.Chunk<In>>
-  ) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
+  ) => Effect<R, readonly [Either<E, Z>, Chunk.Chunk<L>], void>
 ): Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z> =>
   core.readWith({
     onInput: (input: Chunk.Chunk<In>) =>
@@ -1636,19 +1636,19 @@ export const raceBoth = dual<
     options?: { readonly capacity?: number }
   ) => <R, E, In, L, Z>(
     self: Sink.Sink<R, E, In, L, Z>
-  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>,
+  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Either<Z, Z1>>,
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
     self: Sink.Sink<R, E, In, L, Z>,
     that: Sink.Sink<R1, E1, In1, L1, Z1>,
     options?: { readonly capacity?: number }
-  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>
+  ) => Sink.Sink<R1 | R, E1 | E, In & In1, L1 | L, Either<Z, Z1>>
 >(
   (args) => isSink(args[1]),
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
     self: Sink.Sink<R, E, In, L, Z>,
     that: Sink.Sink<R1, E1, In1, L1, Z1>,
     options?: { readonly capacity?: number }
-  ): Sink.Sink<R | R1, E | E1, In & In1, L | L1, Either.Either<Z, Z1>> =>
+  ): Sink.Sink<R | R1, E | E1, In & In1, L | L1, Either<Z, Z1>> =>
     raceWith(self, {
       other: that,
       onSelfDone: (selfDone) => mergeDecision.Done(Effect.map(selfDone, Either.left)),
@@ -1689,7 +1689,7 @@ export const raceWith = dual<
   ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, Z3 | Z4> => {
     const scoped = Effect.gen(function*($) {
       const pubsub = yield* $(
-        PubSub.bounded<Either.Either<Exit<never, unknown>, Chunk.Chunk<In & In2>>>(options?.capacity ?? 16)
+        PubSub.bounded<Either<Exit<never, unknown>, Chunk.Chunk<In & In2>>>(options?.capacity ?? 16)
       )
       const channel1 = yield* $(channel.fromPubSubScoped(pubsub))
       const channel2 = yield* $(channel.fromPubSubScoped(pubsub))

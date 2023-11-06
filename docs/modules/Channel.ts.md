@@ -330,7 +330,7 @@ Constructs a channel from an `Either`.
 
 ```ts
 export declare const fromEither: <E, A>(
-  either: Either.Either<E, A>
+  either: Either<E, A>
 ) => Channel<never, unknown, unknown, unknown, E, never, A>
 ```
 
@@ -372,7 +372,7 @@ Construct a `Channel` from a `PubSub`.
 
 ```ts
 export declare const fromPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 ```
 
@@ -386,7 +386,7 @@ Construct a `Channel` from a `PubSub` within a scoped effect.
 
 ```ts
 export declare const fromPubSubScoped: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ) => Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>>
 ```
 
@@ -400,7 +400,7 @@ Construct a `Channel` from a `Queue`.
 
 ```ts
 export declare const fromQueue: <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 ```
 
@@ -907,7 +907,7 @@ Converts a `Channel` to a `PubSub`.
 
 ```ts
 export declare const toPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown>
 ```
 
@@ -925,7 +925,7 @@ emitted element.
 ```ts
 export declare const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Effect<Scope.Scope | Env, never, Effect<Env, OutErr, Either.Either<OutDone, OutElem>>>
+) => Effect<Scope.Scope | Env, never, Effect<Env, OutErr, Either<OutDone, OutElem>>>
 ```
 
 Added in v2.0.0
@@ -938,7 +938,7 @@ Converts a `Channel` to a `Queue`.
 
 ```ts
 export declare const toQueue: <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown>
 ```
 

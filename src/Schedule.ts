@@ -6,7 +6,7 @@ import type * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
 import type * as Duration from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/schedule.js"
 import type { Option } from "./Option.js"
@@ -192,11 +192,11 @@ export const andThen: {
 export const andThenEither: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, Either.Either<Out, Out2>>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, Either<Out, Out2>>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>
-  ): Schedule<Env | Env2, In & In2, Either.Either<Out, Out2>>
+  ): Schedule<Env | Env2, In & In2, Either<Out, Out2>>
 } = internal.andThenEither
 
 /**

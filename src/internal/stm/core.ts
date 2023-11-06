@@ -1,7 +1,7 @@
 import * as Cause from "../../Cause.js"
 import * as Context from "../../Context.js"
 import { Effect } from "../../Effect.js"
-import * as Either from "../../Either.js"
+import { Either } from "../../Either.js"
 import * as Equal from "../../Equal.js"
 import { Exit } from "../../Exit.js"
 import type * as FiberId from "../../FiberId.js"
@@ -464,7 +464,7 @@ export class STMDriver<R, E, A> {
   }
 
   run(): TExit.TExit<E, A> {
-    let curr = this.self as Primitive | Context.Tag<any, any> | Either.Either<any, any> | Option<any> | undefined
+    let curr = this.self as Primitive | Context.Tag<any, any> | Either<any, any> | Option<any> | undefined
     let exit: TExit.TExit<unknown, unknown> | undefined = undefined
     while (exit === undefined && curr !== undefined) {
       try {

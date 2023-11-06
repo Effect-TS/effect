@@ -1,6 +1,6 @@
 import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as FiberId from "../FiberId.js"
 import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
@@ -232,7 +232,7 @@ export const failureOption = <E>(self: Cause.Cause<E>): Option<E> =>
       Option.none())
 
 /** @internal */
-export const failureOrCause = <E>(self: Cause.Cause<E>): Either.Either<E, Cause.Cause<never>> => {
+export const failureOrCause = <E>(self: Cause.Cause<E>): Either<E, Cause.Cause<never>> => {
   const option = failureOption(self)
   switch (option._tag) {
     case "None": {
@@ -907,7 +907,7 @@ export const reduceWithContext = dual<
   <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => Z
 >(3, <C, E, Z>(self: Cause.Cause<E>, context: C, reducer: Cause.CauseReducer<C, E, Z>) => {
   const input: Array<Cause.Cause<E>> = [self]
-  const output: Array<Either.Either<CauseCase, Z>> = []
+  const output: Array<Either<CauseCase, Z>> = []
   while (input.length > 0) {
     const cause = input.pop()!
     switch (cause._tag) {

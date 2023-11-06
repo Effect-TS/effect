@@ -2,7 +2,7 @@ import * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
 import * as Context from "../../Context.js"
 import { Effect } from "../../Effect.js"
-import * as Either from "../../Either.js"
+import { Either } from "../../Either.js"
 import { Exit } from "../../Exit.js"
 import type * as FiberId from "../../FiberId.js"
 import type { LazyArg } from "../../Function.js"
@@ -327,7 +327,7 @@ export const cond = <E, A>(
 }
 
 /** @internal */
-export const either = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, never, Either.Either<E, A>> =>
+export const either = <R, E, A>(self: STM.STM<R, E, A>): STM.STM<R, never, Either<E, A>> =>
   match(self, { onFailure: Either.left, onSuccess: Either.right })
 
 /** @internal */
@@ -624,7 +624,7 @@ export const forEach = dual<
 )
 
 /** @internal */
-export const fromEither = <E, A>(either: Either.Either<E, A>): STM.STM<never, E, A> => {
+export const fromEither = <E, A>(either: Either<E, A>): STM.STM<never, E, A> => {
   switch (either._tag) {
     case "Left": {
       return core.fail(either.left)
@@ -938,17 +938,17 @@ export const orElseEither = dual<
     that: LazyArg<STM.STM<R2, E2, A2>>
   ) => <R, E, A>(
     self: STM.STM<R, E, A>
-  ) => STM.STM<R2 | R, E2, Either.Either<A, A2>>,
+  ) => STM.STM<R2 | R, E2, Either<A, A2>>,
   <R, E, A, R2, E2, A2>(
     self: STM.STM<R, E, A>,
     that: LazyArg<STM.STM<R2, E2, A2>>
-  ) => STM.STM<R2 | R, E2, Either.Either<A, A2>>
+  ) => STM.STM<R2 | R, E2, Either<A, A2>>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: STM.STM<R, E, A>,
     that: LazyArg<STM.STM<R2, E2, A2>>
-  ): STM.STM<R2 | R, E2, Either.Either<A, A2>> =>
+  ): STM.STM<R2 | R, E2, Either<A, A2>> =>
     orElse(core.map(self, Either.left), () => core.map(that(), Either.right))
 )
 

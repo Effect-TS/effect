@@ -1,4 +1,4 @@
-import * as Either from "../../Either.js"
+import { Either } from "../../Either.js"
 import type * as Encoding from "../../Encoding.js"
 import { DecodeException } from "./common.js"
 
@@ -35,7 +35,7 @@ export const encode = (bytes: Uint8Array) => {
 }
 
 /** @internal */
-export const decode = (str: string): Either.Either<Encoding.DecodeException, Uint8Array> => {
+export const decode = (str: string): Either<Encoding.DecodeException, Uint8Array> => {
   const length = str.length
   if (length % 4 !== 0) {
     return Either.left(

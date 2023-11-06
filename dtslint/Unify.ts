@@ -1,4 +1,4 @@
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import type { Option } from "effect/Option"
 import * as Unify from "effect/Unify"
 
@@ -6,11 +6,11 @@ import * as Unify from "effect/Unify"
 export type option = Unify.Unify<Option<number> | Option<string>>
 
 // $ExpectType Either<"LA" | "LB", "RA" | "RB">
-export type either = Unify.Unify<Either.Either<"LA", "RA"> | Either.Either<"LB", "RB">>
+export type either = Unify.Unify<Either<"LA", "RA"> | Either<"LB", "RB">>
 
 // $ExpectType 0 | Option<string | number> | Either<"LA" | "LB", "RA" | "RB">
 export type both = Unify.Unify<
-  Either.Either<"LA", "RA"> | Either.Either<"LB", "RB"> | Option<number> | Option<string> | 0
+  Either<"LA", "RA"> | Either<"LB", "RB"> | Option<number> | Option<string> | 0
 >
 
 // $ExpectType { [k: string]: string; }

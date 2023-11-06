@@ -4,7 +4,7 @@ import type * as ConfigProvider from "../ConfigProvider.js"
 import type * as PathPatch from "../ConfigProviderPathPatch.js"
 import * as Context from "../Context.js"
 import type { Effect } from "../Effect.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
@@ -426,7 +426,7 @@ const fromFlatLoop = <A>(
 }
 
 const fromFlatLoopFail =
-  (prefix: ReadonlyArray<string>, path: string) => (index: number): Either.Either<ConfigError.ConfigError, unknown> =>
+  (prefix: ReadonlyArray<string>, path: string) => (index: number): Either<ConfigError.ConfigError, unknown> =>
     Either.left(
       configError.MissingData(
         prefix,

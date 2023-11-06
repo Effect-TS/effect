@@ -16,7 +16,7 @@
  *
  * @since 2.0.0
  */
-import * as Either from "./Either.js"
+import { Either } from "./Either.js"
 import { identity } from "./Function.js"
 import { Option } from "./Option.js"
 import type { Predicate, Refinement } from "./Predicate.js"
@@ -102,7 +102,7 @@ export declare namespace Brand {
      * Constructs a branded type from a value of type `A`, returning `Right<A>`
      * if the provided `A` is valid, `Left<BrandError>` otherwise.
      */
-    either: (args: Brand.Unbranded<A>) => Either.Either<Brand.BrandErrors, A>
+    either: (args: Brand.Unbranded<A>) => Either<Brand.BrandErrors, A>
     /**
      * Attempts to refine the provided value of type `A`, returning `true` if
      * the provided `A` is valid, `false` otherwise.
@@ -221,7 +221,7 @@ export const refined: <A extends Brand<any>>(
   refinement: Predicate<Brand.Unbranded<A>>,
   onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors
 ): Brand.Constructor<A> => {
-  const either = (args: Brand.Unbranded<A>): Either.Either<Brand.BrandErrors, A> =>
+  const either = (args: Brand.Unbranded<A>): Either<Brand.BrandErrors, A> =>
     refinement(args) ? Either.right(args as A) : Either.left(onFailure(args))
   // @ts-expect-error
   return Object.assign((args) =>
@@ -308,8 +308,8 @@ export const all: <Brands extends readonly [Brand.Constructor<any>, ...Array<Bra
     }[number]
   > extends infer X extends Brand<any> ? X : Brand<any>
 > => {
-  const either = (args: any): Either.Either<Brand.BrandErrors, any> => {
-    let result: Either.Either<Brand.BrandErrors, any> = Either.right(args)
+  const either = (args: any): Either<Brand.BrandErrors, any> => {
+    let result: Either<Brand.BrandErrors, any> = Either.right(args)
     for (const brand of brands) {
       const nextResult = brand.either(args)
       if (Either.isLeft(result) && Either.isLeft(nextResult)) {

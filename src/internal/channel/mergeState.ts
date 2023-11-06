@@ -1,5 +1,5 @@
 import type { Effect } from "../../Effect.js"
-import type * as Either from "../../Either.js"
+import type { Either } from "../../Either.js"
 import type { Exit } from "../../Exit.js"
 import type * as Fiber from "../../Fiber.js"
 import { dual } from "../../Function.js"
@@ -22,8 +22,8 @@ const proto = {
 
 /** @internal */
 export const BothRunning = <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-  right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
+  left: Fiber.Fiber<Err, Either<Done, Elem>>,
+  right: Fiber.Fiber<Err1, Either<Done1, Elem>>
 ): MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_BOTH_RUNNING
@@ -84,8 +84,8 @@ export const match = dual<
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
+        left: Fiber.Fiber<Err, Either<Done, Elem>>,
+        right: Fiber.Fiber<Err1, Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
@@ -95,8 +95,8 @@ export const match = dual<
     self: MergeState.MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
+        left: Fiber.Fiber<Err, Either<Done, Elem>>,
+        right: Fiber.Fiber<Err1, Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z

@@ -2,7 +2,7 @@ import * as Chunk from "../Chunk.js"
 import type * as Config from "../Config.js"
 import * as ConfigError from "../ConfigError.js"
 import type * as ConfigSecret from "../ConfigSecret.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, pipe } from "../Function.js"
 import type * as HashMap from "../HashMap.js"
@@ -60,7 +60,7 @@ export type Op<Tag extends string, Body = {}> = Config.Config<never> & Body & {
 export interface Constant extends
   Op<OpCodes.OP_CONSTANT, {
     readonly value: unknown
-    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -85,7 +85,7 @@ export interface Fallback extends
 export interface Fail extends
   Op<OpCodes.OP_FAIL, {
     readonly message: string
-    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -100,7 +100,7 @@ export interface Lazy extends
 export interface MapOrFail extends
   Op<OpCodes.OP_MAP_OR_FAIL, {
     readonly original: Config.Config<unknown>
-    readonly mapOrFail: (value: unknown) => Either.Either<ConfigError.ConfigError, unknown>
+    readonly mapOrFail: (value: unknown) => Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -116,7 +116,7 @@ export interface Nested extends
 export interface Primitive extends
   Op<OpCodes.OP_PRIMITIVE, {
     readonly description: string
-    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -293,8 +293,8 @@ export const mapAttempt = dual<
 
 /** @internal */
 export const mapOrFail = dual<
-  <A, B>(f: (a: A) => Either.Either<ConfigError.ConfigError, B>) => (self: Config.Config<A>) => Config.Config<B>,
-  <A, B>(self: Config.Config<A>, f: (a: A) => Either.Either<ConfigError.ConfigError, B>) => Config.Config<B>
+  <A, B>(f: (a: A) => Either<ConfigError.ConfigError, B>) => (self: Config.Config<A>) => Config.Config<B>,
+  <A, B>(self: Config.Config<A>, f: (a: A) => Either<ConfigError.ConfigError, B>) => Config.Config<B>
 >(2, (self, f) => {
   const mapOrFail = Object.create(proto)
   mapOrFail._tag = OpCodes.OP_MAP_OR_FAIL
@@ -371,7 +371,7 @@ export const option = <A>(self: Config.Config<A>): Config.Config<Option<A>> => {
 /** @internal */
 export const primitive = <A>(
   description: string,
-  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
+  parse: (text: string) => Either<ConfigError.ConfigError, A>
 ): Config.Config<A> => {
   const primitive = Object.create(proto)
   primitive._tag = OpCodes.OP_PRIMITIVE

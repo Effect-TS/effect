@@ -95,7 +95,7 @@ export interface SingleProducerAsyncInput<Err, Elem, Done>
   extends AsyncInputProducer<Err, Elem, Done>,
     AsyncInputConsumer<Err, Elem, Done> {
   close(): Effect<never, never, unknown>
-  take(): Effect<never, never, Exit<Either.Either<Err, Done>, Elem>>
+  take(): Effect<never, never, Exit<Either<Err, Done>, Elem>>
 }
 ```
 

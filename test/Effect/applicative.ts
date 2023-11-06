@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { Effect } from "effect/Effect"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

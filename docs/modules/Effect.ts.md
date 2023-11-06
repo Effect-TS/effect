@@ -1269,7 +1269,7 @@ provided to allow for better diagnostics.
 
 ```ts
 export declare const asyncEither: <R, E, A>(
-  register: (callback: (effect: Effect<R, E, A>) => void) => Either.Either<Effect<R, never, void>, Effect<R, E, A>>,
+  register: (callback: (effect: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
   blockingOn?: FiberId.FiberId
 ) => Effect<R, E, A>
 ```
@@ -1789,7 +1789,7 @@ guaranteed the effect does not model failure.
 **Signature**
 
 ```ts
-export declare const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either.Either<E, A>>
+export declare const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either<E, A>>
 ```
 
 Added in v2.0.0
@@ -6115,7 +6115,7 @@ export type ReturnIterable<T extends Iterable<EffectAny>, Discard extends boolea
   ? Effect<
       R,
       Mode extends "either" ? never : Mode extends "validate" ? Array<Option.Option<E>> : E,
-      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<E, A>> : Array<A>
+      Discard extends true ? void : Mode extends "either" ? Array<Either<E, A>> : Array<A>
     >
   : never
 ```
@@ -6152,7 +6152,7 @@ export type ReturnObject<T, Discard extends boolean, Mode> = [T] extends [{ [K: 
         : Mode extends "either"
         ? {
             -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
-              ? Either.Either<_E, _A>
+              ? Either<_E, _A>
               : never
           }
         : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
@@ -6189,7 +6189,7 @@ export type ReturnTuple<T extends ReadonlyArray<unknown>, Discard extends boolea
     : Mode extends "either"
     ? {
         -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
-          ? Either.Either<_E, _A>
+          ? Either<_E, _A>
           : never
       }
     : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }

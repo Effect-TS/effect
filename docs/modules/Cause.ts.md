@@ -467,7 +467,7 @@ only `Die` or `Interrupt` causes.
 **Signature**
 
 ```ts
-export declare const failureOrCause: <E>(self: Cause<E>) => Either.Either<E, Cause<never>>
+export declare const failureOrCause: <E>(self: Cause<E>) => Either<E, Cause<never>>
 ```
 
 Added in v2.0.0

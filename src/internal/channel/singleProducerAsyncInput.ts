@@ -1,7 +1,7 @@
 import * as Cause from "../../Cause.js"
 import * as Deferred from "../../Deferred.js"
 import { Effect } from "../../Effect.js"
-import * as Either from "../../Either.js"
+import { Either } from "../../Either.js"
 import { Exit } from "../../Exit.js"
 import { pipe } from "../../Function.js"
 import * as Ref from "../../Ref.js"
@@ -47,7 +47,7 @@ interface Empty {
 /** @internal */
 interface Emit<Err, Elem, Done> {
   readonly _tag: OP_STATE_EMIT
-  readonly notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either.Either<Done, Elem>>>
+  readonly notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either<Done, Elem>>>
 }
 
 /** @internal */
@@ -70,7 +70,7 @@ const stateEmpty = (notifyProducer: Deferred.Deferred<never, void>): State<never
 
 /** @internal */
 const stateEmit = <Err, Elem, Done>(
-  notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either.Either<Done, Elem>>>
+  notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either<Done, Elem>>>
 ): State<Err, Elem, Done> => ({
   _tag: OP_STATE_EMIT,
   notifyConsumers
@@ -198,10 +198,10 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     )
   }
 
-  take(): Effect<never, never, Exit<Either.Either<Err, Done>, Elem>> {
+  take(): Effect<never, never, Exit<Either<Err, Done>, Elem>> {
     return this.takeWith(
       (cause) => Exit.failCause(Cause.map(cause, Either.left)),
-      (elem) => Exit.succeed(elem) as Exit<Either.Either<Err, Done>, Elem>,
+      (elem) => Exit.succeed(elem) as Exit<Either<Err, Done>, Elem>,
       (done) => Exit.fail(Either.right(done))
     )
   }
@@ -211,7 +211,7 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
   ): Effect<never, never, A> {
-    return Effect.flatMap(Deferred.make<Err, Either.Either<Done, Elem>>(), (deferred) =>
+    return Effect.flatMap(Deferred.make<Err, Either<Done, Elem>>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {

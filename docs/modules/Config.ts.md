@@ -212,7 +212,7 @@ Constructs a new primitive config.
 ```ts
 export declare const primitive: <A>(
   description: string,
-  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
+  parse: (text: string) => Either<ConfigError.ConfigError, A>
 ) => Config<A>
 ```
 
@@ -369,7 +369,7 @@ Added in v2.0.0
 ```ts
 export interface Primitive<A> extends Config<A> {
   readonly description: string
-  parse(text: string): Either.Either<ConfigError.ConfigError, A>
+  parse(text: string): Either<ConfigError.ConfigError, A>
 }
 ```
 
@@ -454,8 +454,8 @@ function.
 
 ```ts
 export declare const mapOrFail: {
-  <A, B>(f: (a: A) => Either.Either<ConfigError.ConfigError, B>): (self: Config<A>) => Config<B>
-  <A, B>(self: Config<A>, f: (a: A) => Either.Either<ConfigError.ConfigError, B>): Config<B>
+  <A, B>(f: (a: A) => Either<ConfigError.ConfigError, B>): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => Either<ConfigError.ConfigError, B>): Config<B>
 }
 ```
 

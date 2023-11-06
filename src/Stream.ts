@@ -8,7 +8,7 @@ import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import type * as GroupBy from "./GroupBy.js"
@@ -239,12 +239,12 @@ export const aggregateWithinEither: {
   <R2, E2, A, A2, B, R3, C>(
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
     schedule: Schedule.Schedule<R3, Option<B>, C>
-  ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, Either.Either<C, B>>
+  ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, Either<C, B>>
   <R, E, R2, E2, A, A2, B, R3, C>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
     schedule: Schedule.Schedule<R3, Option<B>, C>
-  ): Stream<R | R2 | R3, E | E2, Either.Either<C, B>>
+  ): Stream<R | R2 | R3, E | E2, Either<C, B>>
 } = internal.aggregateWithinEither
 
 /**
@@ -296,7 +296,7 @@ export const asyncEffect: <R, E, A>(
  * @category constructors
  */
 export const asyncInterrupt: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Either.Either<Effect<R, never, unknown>, Stream<R, E, A>>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Either<Effect<R, never, unknown>, Stream<R, E, A>>,
   outputBuffer?: number
 ) => Stream<R, E, A> = internal.asyncInterrupt
 
@@ -1058,7 +1058,7 @@ export const dropWhileEffect: {
  * @since 2.0.0
  * @category utils
  */
-export const either: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, Either.Either<E, A>> = internal.either
+export const either: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, Either<E, A>> = internal.either
 
 /**
  * The empty stream.
@@ -2191,8 +2191,8 @@ export const mergeWith: {
 export const mergeEither: {
   <R2, E2, A2>(
     that: Stream<R2, E2, A2>
-  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, Either.Either<A, A2>>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, Either.Either<A, A2>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, Either<A, A2>>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, Either<A, A2>>
 } = internal.mergeEither
 
 /**
@@ -2312,11 +2312,11 @@ export const orElse: {
 export const orElseEither: {
   <R2, E2, A2>(
     that: LazyArg<Stream<R2, E2, A2>>
-  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2, Either.Either<A, A2>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2, Either<A, A2>>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     that: LazyArg<Stream<R2, E2, A2>>
-  ): Stream<R | R2, E2, Either.Either<A, A2>>
+  ): Stream<R | R2, E2, Either<A, A2>>
 } = internal.orElseEither
 
 /**
@@ -2457,14 +2457,14 @@ export const partition: {
  */
 export const partitionEither: {
   <A, R2, E2, A2, A3>(
-    predicate: (a: A) => Effect<R2, E2, Either.Either<A2, A3>>,
+    predicate: (a: A) => Effect<R2, E2, Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
   ): <R, E>(
     self: Stream<R, E, A>
   ) => Effect<Scope.Scope | R2 | R, E2 | E, readonly [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
-    predicate: (a: A) => Effect<R2, E2, Either.Either<A2, A3>>,
+    predicate: (a: A) => Effect<R2, E2, Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
   ): Effect<Scope.Scope | R | R2, E | E2, readonly [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
 } = internal.partitionEither
@@ -2775,11 +2775,11 @@ export const repeatEffectWithSchedule: <R, E, A, A0 extends A, R2, _>(
 export const repeatEither: {
   <R2, B>(
     schedule: Schedule.Schedule<R2, unknown, B>
-  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, Either.Either<B, A>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, Either<B, A>>
   <R, E, A, R2, B>(
     self: Stream<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, B>
-  ): Stream<R | R2, E, Either.Either<B, A>>
+  ): Stream<R | R2, E, Either<B, A>>
 } = internal.repeatEither
 
 /**
@@ -4390,7 +4390,7 @@ export const zipWithChunks: {
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A3>
   <R, E, R2, E2, A2, A, A3>(
     self: Stream<R, E, A>,
@@ -4398,7 +4398,7 @@ export const zipWithChunks: {
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
   ): Stream<R | R2, E | E2, A3>
 } = internal.zipWithChunks
 

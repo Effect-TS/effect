@@ -7,7 +7,7 @@ import * as Context from "../Context.js"
 import * as Deferred from "../Deferred.js"
 import type { Effect } from "../Effect.js"
 import { EffectTypeId } from "../Effectable.js"
-import type * as Either from "../Either.js"
+import type { Either } from "../Either.js"
 import * as ExecutionStrategy from "../ExecutionStrategy.js"
 import type { Exit } from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
@@ -1643,7 +1643,7 @@ const allValidate = (
     readonly mode?: "default" | "validate" | "either"
   }
 ) => {
-  const eitherEffects: Array<Effect<unknown, never, Either.Either<unknown, unknown>>> = []
+  const eitherEffects: Array<Effect<unknown, never, Either<unknown, unknown>>> = []
   for (const effect of effects) {
     eitherEffects.push(core.either(effect))
   }
@@ -1659,7 +1659,7 @@ const allValidate = (
       const successes: Array<unknown> = new Array(size)
       let errored = false
       for (let i = 0; i < size; i++) {
-        const either = eithers[i] as Either.Either<unknown, unknown>
+        const either = eithers[i] as Either<unknown, unknown>
         if (either._tag === "Left") {
           errors[i] = Option.some(either.left)
           errored = true
@@ -1692,7 +1692,7 @@ const allEither = (
     readonly mode?: "default" | "validate" | "either"
   }
 ) => {
-  const eitherEffects: Array<Effect<unknown, never, Either.Either<unknown, unknown>>> = []
+  const eitherEffects: Array<Effect<unknown, never, Either<unknown, unknown>>> = []
   for (const effect of effects) {
     eitherEffects.push(core.either(effect))
   }

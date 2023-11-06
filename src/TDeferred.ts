@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import * as internal from "./internal/stm/tDeferred.js"
 import type { Option } from "./Option.js"
 import type * as STM from "./STM.js"
@@ -30,7 +30,7 @@ export interface TDeferred<E, A> extends TDeferred.Variance<E, A> {}
  */
 export interface TDeferred<E, A> {
   /** @internal */
-  readonly ref: TRef.TRef<Option<Either.Either<E, A>>>
+  readonly ref: TRef.TRef<Option<Either<E, A>>>
 }
 
 /**
@@ -63,8 +63,8 @@ export {
  * @category mutations
  */
 export const done: {
-  <E, A>(either: Either.Either<E, A>): (self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, either: Either.Either<E, A>): STM.STM<never, never, boolean>
+  <E, A>(either: Either<E, A>): (self: TDeferred<E, A>) => STM.STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, either: Either<E, A>): STM.STM<never, never, boolean>
 } = internal.done
 
 /**
@@ -86,7 +86,7 @@ export const make: <E, A>() => STM.STM<never, never, TDeferred<E, A>> = internal
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option<Either.Either<E, A>>> = internal.poll
+export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option<Either<E, A>>> = internal.poll
 
 /**
  * @since 2.0.0

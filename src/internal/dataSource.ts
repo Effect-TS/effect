@@ -2,7 +2,7 @@ import * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import type * as Context from "../Context.js"
 import { Effect } from "../Effect.js"
-import type * as Either from "../Either.js"
+import type { Either } from "../Either.js"
 import { dual, pipe } from "../Function.js"
 import * as RA from "../ReadonlyArray.js"
 import type * as Request from "../Request.js"
@@ -135,7 +135,7 @@ export const eitherWith = dual<
     C extends Request.Request<any, any>
   >(
     that: RequestResolver.RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either<Request.Entry<A>, Request.Entry<B>>
   ) => <R>(
     self: RequestResolver.RequestResolver<A, R>
   ) => RequestResolver.RequestResolver<C, R | R2>,
@@ -148,7 +148,7 @@ export const eitherWith = dual<
   >(
     self: RequestResolver.RequestResolver<A, R>,
     that: RequestResolver.RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+    f: (_: Request.Entry<C>) => Either<Request.Entry<A>, Request.Entry<B>>
   ) => RequestResolver.RequestResolver<C, R | R2>
 >(3, <
   R,
@@ -159,7 +159,7 @@ export const eitherWith = dual<
 >(
   self: RequestResolver.RequestResolver<A, R>,
   that: RequestResolver.RequestResolver<B, R2>,
-  f: (_: Request.Entry<C>) => Either.Either<Request.Entry<A>, Request.Entry<B>>
+  f: (_: Request.Entry<C>) => Either<Request.Entry<A>, Request.Entry<B>>
 ) =>
   new core.RequestResolverImpl<R | R2, C>(
     (batch) =>

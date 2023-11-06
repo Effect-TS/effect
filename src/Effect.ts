@@ -10,7 +10,7 @@ import type { ConfigProvider } from "./ConfigProvider.js"
 import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type * as Equal from "./Equal.js"
 import type { Equivalence } from "./Equivalence.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
@@ -409,7 +409,7 @@ export declare namespace All {
       Mode extends "either" ? never
         : Mode extends "validate" ? Array<Option<E>>
         : E,
-      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<E, A>> : Array<A>
+      Discard extends true ? void : Mode extends "either" ? Array<Either<E, A>> : Array<A>
     >
     : never
 
@@ -432,7 +432,7 @@ export declare namespace All {
       : T[number] extends never ? []
       : Mode extends "either" ? {
           -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ?
-            Either.Either<_E, _A>
+            Either<_E, _A>
             : never
         }
       : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
@@ -456,7 +456,7 @@ export declare namespace All {
       Discard extends true ? void
         : Mode extends "either" ? {
             -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ?
-              Either.Either<_E, _A>
+              Either<_E, _A>
               : never
           }
         : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
@@ -1032,7 +1032,7 @@ export const asyncOption: <R, E, A>(
  * @category constructors
  */
 export const asyncEither: <R, E, A>(
-  register: (callback: (effect: Effect<R, E, A>) => void) => Either.Either<Effect<R, never, void>, Effect<R, E, A>>,
+  register: (callback: (effect: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
   blockingOn?: FiberId.FiberId
 ) => Effect<R, E, A> = core.asyncEither
 
@@ -3261,7 +3261,7 @@ export {
  * @since 2.0.0
  * @category conversions
  */
-export const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either.Either<E, A>> = core.either
+export const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either<E, A>> = core.either
 
 /**
  * @since 2.0.0

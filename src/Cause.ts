@@ -22,7 +22,7 @@
  * @since 2.0.0
  */
 import type * as Chunk from "./Chunk.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type * as Equal from "./Equal.js"
 import type * as FiberId from "./FiberId.js"
 import type * as HashSet from "./HashSet.js"
@@ -509,7 +509,7 @@ export const failureOption: <E>(self: Cause<E>) => Option<E> = internal.failureO
  * @since 2.0.0
  * @category getters
  */
-export const failureOrCause: <E>(self: Cause<E>) => Either.Either<E, Cause<never>> = internal.failureOrCause
+export const failureOrCause: <E>(self: Cause<E>) => Either<E, Cause<never>> = internal.failureOrCause
 
 /**
  * Converts the specified `Cause<Option<E>>` to an `Option<Cause<E>>` by

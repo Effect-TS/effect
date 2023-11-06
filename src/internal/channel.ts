@@ -4,7 +4,7 @@ import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import * as Deferred from "../Deferred.js"
 import { Effect } from "../Effect.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import * as Equal from "../Equal.js"
 import { Exit } from "../Exit.js"
 import * as Fiber from "../Fiber.js"
@@ -675,7 +675,7 @@ export const foldChannel = dual<
 
 /** @internal */
 export const fromEither = <E, A>(
-  either: Either.Either<E, A>
+  either: Either<E, A>
 ): Channel.Channel<never, unknown, unknown, unknown, E, never, A> =>
   core.suspend(() => Either.match(either, { onLeft: core.fail, onRight: core.succeed }))
 
@@ -693,13 +693,13 @@ export const fromInput = <Err, Elem, Done>(
 
 /** @internal */
 export const fromPubSub = <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
   unwrapScoped(Effect.map(PubSub.subscribe(pubsub), fromQueue))
 
 /** @internal */
 export const fromPubSubScoped = <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ): Effect<Scope.Scope, never, Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done>> =>
   Effect.map(PubSub.subscribe(pubsub), fromQueue)
 
@@ -716,12 +716,12 @@ export const fromOption = <A>(
 
 /** @internal */
 export const fromQueue = <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done> => core.suspend(() => fromQueueInternal(queue))
 
 /** @internal */
 const fromQueueInternal = <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
   pipe(
     core.fromEffect(Queue.take(queue)),
@@ -934,7 +934,7 @@ export const mapOutEffectPar = dual<
     Effect.gen(function*($) {
       const queue = yield* $(
         Effect.acquireRelease(
-          Queue.bounded<Effect<Env1, OutErr | OutErr1, Either.Either<OutDone, OutElem1>>>(n),
+          Queue.bounded<Effect<Env1, OutErr | OutErr1, Either<OutDone, OutElem1>>>(n),
           (queue) => Queue.shutdown(queue)
         )
       )
@@ -1186,7 +1186,7 @@ export const mergeAllWith = (
       const queueReader = fromInput(input)
       const queue = yield* $(
         Effect.acquireRelease(
-          Queue.bounded<Effect<Env, OutErr | OutErr1, Either.Either<OutDone, OutElem>>>(bufferSize),
+          Queue.bounded<Effect<Env, OutErr | OutErr1, Either<OutDone, OutElem>>>(bufferSize),
           (queue) => Queue.shutdown(queue)
         )
       )
@@ -1202,7 +1202,7 @@ export const mergeAllWith = (
         .withPermits
       const pull = yield* $(toPull(channels))
       const evaluatePull = (
-        pull: Effect<Env | Env1, OutErr | OutErr1, Either.Either<OutDone, OutElem>>
+        pull: Effect<Env | Env1, OutErr | OutErr1, Either<OutDone, OutElem>>
       ) =>
         pipe(
           Effect.flatMap(
@@ -1669,9 +1669,9 @@ export const mergeWith = dual<
             >
 
             const handleSide = <Err, Done, Err2, Done2>(
-              exit: Exit<Err, Either.Either<Done, OutElem | OutElem1>>,
-              fiber: Fiber.Fiber<Err2, Either.Either<Done2, OutElem | OutElem1>>,
-              pull: Effect<Env | Env1, Err, Either.Either<Done, OutElem | OutElem1>>
+              exit: Exit<Err, Either<Done, OutElem | OutElem1>>,
+              fiber: Fiber.Fiber<Err2, Either<Done2, OutElem | OutElem1>>,
+              pull: Effect<Env | Env1, Err, Either<Done, OutElem | OutElem1>>
             ) =>
             (
               done: (
@@ -1684,8 +1684,8 @@ export const mergeWith = dual<
                 OutDone2 | OutDone3
               >,
               both: (
-                f1: Fiber.Fiber<Err, Either.Either<Done, OutElem | OutElem1>>,
-                f2: Fiber.Fiber<Err2, Either.Either<Done2, OutElem | OutElem1>>
+                f1: Fiber.Fiber<Err, Either<Done, OutElem | OutElem1>>,
+                f2: Fiber.Fiber<Err2, Either<Done2, OutElem | OutElem1>>
               ) => State,
               single: (
                 f: (
@@ -2163,13 +2163,13 @@ export const serviceWithEffect = <T extends Context.Tag<any, any>>(tag: T) =>
 
 /** @internal */
 export const toPubSub = <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => toQueue(pubsub)
 
 /** @internal */
 export const toPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Effect<Env | Scope.Scope, never, Effect<Env, OutErr, Either.Either<OutDone, OutElem>>> =>
+): Effect<Env | Scope.Scope, never, Effect<Env, OutErr, Either<OutDone, OutElem>>> =>
   Effect.map(
     Effect.acquireRelease(
       Effect.sync(() => new executor.ChannelExecutor(self, void 0, identity)),
@@ -2185,13 +2185,13 @@ export const toPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   channelState: ChannelState.ChannelState<Env, OutErr>,
   exec: executor.ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Effect<Env, OutErr, Either.Either<OutDone, OutElem>> => {
+): Effect<Env, OutErr, Either<OutDone, OutElem>> => {
   const state = channelState as ChannelState.Primitive
   switch (state._tag) {
     case ChannelStateOpCodes.OP_DONE: {
       return Exit.match(exec.getDone(), {
         onFailure: Effect.failCause,
-        onSuccess: (done): Effect<Env, OutErr, Either.Either<OutDone, OutElem>> => Effect.succeed(Either.left(done))
+        onSuccess: (done): Effect<Env, OutErr, Either<OutDone, OutElem>> => Effect.succeed(Either.left(done))
       })
     }
     case ChannelStateOpCodes.OP_EMIT: {
@@ -2199,7 +2199,7 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     }
     case ChannelStateOpCodes.OP_FROM_EFFECT: {
       return pipe(
-        state.effect as Effect<Env, OutErr, Either.Either<OutDone, OutElem>>,
+        state.effect as Effect<Env, OutErr, Either<OutDone, OutElem>>,
         Effect.flatMap(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
       )
     }
@@ -2207,7 +2207,7 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
       return executor.readUpstream(
         state,
         () => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
-        (cause) => Effect.failCause(cause) as Effect<Env, OutErr, Either.Either<OutDone, OutElem>>
+        (cause) => Effect.failCause(cause) as Effect<Env, OutErr, Either<OutDone, OutElem>>
       )
     }
   }
@@ -2215,12 +2215,12 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 
 /** @internal */
 export const toQueue = <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => core.suspend(() => toQueueInternal(queue))
 
 /** @internal */
 const toQueueInternal = <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either<Exit<Err, Done>, Elem>>
 ): Channel.Channel<never, Err, Elem, Done, never, never, unknown> => {
   return core.readWithCause({
     onInput: (elem) =>

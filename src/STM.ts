@@ -5,7 +5,7 @@ import * as Cause from "./Cause.js"
 import * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
 import type { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type * as FiberId from "./FiberId.js"
 import type { LazyArg } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
@@ -515,7 +515,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => STM<never, never, never> =
  * @since 2.0.0
  * @category mutations
  */
-export const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either.Either<E, A>> = stm.either
+export const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either<E, A>> = stm.either
 
 /**
  * Executes the specified finalization transaction whether or not this effect
@@ -808,7 +808,7 @@ export const forEach: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromEither: <E, A>(either: Either.Either<E, A>) => STM<never, E, A> = stm.fromEither
+export const fromEither: <E, A>(either: Either<E, A>) => STM<never, E, A> = stm.fromEither
 
 /**
  * Lifts an `Option` into a `STM`.
@@ -1387,8 +1387,8 @@ export const orElse: {
  * @category error handling
  */
 export const orElseEither: {
-  <R2, E2, A2>(that: LazyArg<STM<R2, E2, A2>>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2, Either.Either<A, A2>>
-  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, that: LazyArg<STM<R2, E2, A2>>): STM<R | R2, E2, Either.Either<A, A2>>
+  <R2, E2, A2>(that: LazyArg<STM<R2, E2, A2>>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2, Either<A, A2>>
+  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, that: LazyArg<STM<R2, E2, A2>>): STM<R | R2, E2, Either<A, A2>>
 } = stm.orElseEither
 
 /**

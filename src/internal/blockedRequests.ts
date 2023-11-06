@@ -1,5 +1,5 @@
 import type * as Deferred from "../Deferred.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import * as Equal from "../Equal.js"
 import type { FiberId } from "../FiberId.js"
 import * as HashMap from "../HashMap.js"
@@ -103,7 +103,7 @@ export const reduce = <R, Z>(
   reducer: RequestBlock.RequestBlock.Reducer<R, Z>
 ): Z => {
   let input: List.List<RequestBlock.RequestBlock<R>> = List.of(self)
-  let output = List.empty<Either.Either<BlockedRequestsCase, Z>>()
+  let output = List.empty<Either<BlockedRequestsCase, Z>>()
   while (List.isCons(input)) {
     const current: RequestBlock.RequestBlock<R> = input.head
     switch (current._tag) {

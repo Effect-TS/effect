@@ -1,6 +1,6 @@
 import type * as ConfigError from "../../ConfigError.js"
 import type * as PathPatch from "../../ConfigProviderPathPatch.js"
-import * as Either from "../../Either.js"
+import { Either } from "../../Either.js"
 import { dual, pipe } from "../../Function.js"
 import * as List from "../../List.js"
 import { Option } from "../../Option.js"
@@ -46,11 +46,11 @@ export const patch = dual<
     patch: PathPatch.PathPatch
   ) => (
     path: ReadonlyArray<string>
-  ) => Either.Either<ConfigError.ConfigError, ReadonlyArray<string>>,
+  ) => Either<ConfigError.ConfigError, ReadonlyArray<string>>,
   (
     path: ReadonlyArray<string>,
     patch: PathPatch.PathPatch
-  ) => Either.Either<ConfigError.ConfigError, ReadonlyArray<string>>
+  ) => Either<ConfigError.ConfigError, ReadonlyArray<string>>
 >(2, (path, patch) => {
   let input: List.List<PathPatch.PathPatch> = List.of(patch)
   let output: ReadonlyArray<string> = path

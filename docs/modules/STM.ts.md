@@ -436,7 +436,7 @@ Lifts an `Either` into a `STM`.
 **Signature**
 
 ```ts
-export declare const fromEither: <E, A>(either: Either.Either<E, A>) => STM<never, E, A>
+export declare const fromEither: <E, A>(either: Either<E, A>) => STM<never, E, A>
 ```
 
 Added in v2.0.0
@@ -1133,8 +1133,8 @@ the value of the specified effect in right side.
 
 ```ts
 export declare const orElseEither: {
-  <R2, E2, A2>(that: LazyArg<STM<R2, E2, A2>>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2, Either.Either<A, A2>>
-  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, that: LazyArg<STM<R2, E2, A2>>): STM<R | R2, E2, Either.Either<A, A2>>
+  <R2, E2, A2>(that: LazyArg<STM<R2, E2, A2>>): <R, E, A>(self: STM<R, E, A>) => STM<R2 | R, E2, Either<A, A2>>
+  <R, E, A, R2, E2, A2>(self: STM<R, E, A>, that: LazyArg<STM<R2, E2, A2>>): STM<R | R2, E2, Either<A, A2>>
 }
 ```
 
@@ -1971,7 +1971,7 @@ Converts the failure channel into an `Either`.
 **Signature**
 
 ```ts
-export declare const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either.Either<E, A>>
+export declare const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either<E, A>>
 ```
 
 Added in v2.0.0

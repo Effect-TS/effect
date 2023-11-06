@@ -5,7 +5,7 @@ import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import { Effect } from "effect/Effect"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
@@ -314,7 +314,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("sandbox of interruptible", () =>
     Effect.gen(function*($) {
-      const recovered = yield* $(Ref.make<Option<Either.Either<boolean, never>>>(Option.none()))
+      const recovered = yield* $(Ref.make<Option<Either<boolean, never>>>(Option.none()))
       const fiber = yield* $(withLatch((release) =>
         pipe(
           release,

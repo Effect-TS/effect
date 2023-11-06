@@ -7,7 +7,7 @@
  *
  * @since 2.0.0
  */
-import * as Either from "./Either.js"
+import { Either } from "./Either.js"
 import * as Base64 from "./internal/encoding/base64.js"
 import * as Base64Url from "./internal/encoding/base64Url.js"
 import * as Common from "./internal/encoding/common.js"
@@ -28,7 +28,7 @@ export const encodeBase64: (input: Uint8Array | string) => string = (input) =>
  * @category decoding
  * @since 2.0.0
  */
-export const decodeBase64 = (str: string): Either.Either<DecodeException, Uint8Array> => Base64.decode(str)
+export const decodeBase64 = (str: string): Either<DecodeException, Uint8Array> => Base64.decode(str)
 
 /**
  * Decodes a base64 (RFC4648) encoded `string` into a UTF-8 `string`.
@@ -53,7 +53,7 @@ export const encodeBase64Url: (input: Uint8Array | string) => string = (input) =
  * @category decoding
  * @since 2.0.0
  */
-export const decodeBase64Url = (str: string): Either.Either<DecodeException, Uint8Array> => Base64Url.decode(str)
+export const decodeBase64Url = (str: string): Either<DecodeException, Uint8Array> => Base64Url.decode(str)
 
 /**
  * Decodes a base64 (URL) encoded `string` into a UTF-8 `string`.
@@ -78,7 +78,7 @@ export const encodeHex: (input: Uint8Array | string) => string = (input) =>
  * @category decoding
  * @since 2.0.0
  */
-export const decodeHex = (str: string): Either.Either<DecodeException, Uint8Array> => Hex.decode(str)
+export const decodeHex = (str: string): Either<DecodeException, Uint8Array> => Hex.decode(str)
 
 /**
  * Decodes a hex encoded `string` into a UTF-8 `string`.

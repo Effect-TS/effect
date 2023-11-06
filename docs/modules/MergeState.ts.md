@@ -45,8 +45,8 @@ Added in v2.0.0
 
 ```ts
 export declare const BothRunning: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
-  left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-  right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
+  left: Fiber.Fiber<Err, Either<Done, Elem>>,
+  right: Fiber.Fiber<Err1, Either<Done1, Elem>>
 ) => MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
 ```
 
@@ -86,8 +86,8 @@ Added in v2.0.0
 export declare const match: {
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(options: {
     readonly onBothRunning: (
-      left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-      right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
+      left: Fiber.Fiber<Err, Either<Done, Elem>>,
+      right: Fiber.Fiber<Err1, Either<Done1, Elem>>
     ) => Z
     readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
     readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
@@ -96,8 +96,8 @@ export declare const match: {
     self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
     options: {
       readonly onBothRunning: (
-        left: Fiber.Fiber<Err, Either.Either<Done, Elem>>,
-        right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
+        left: Fiber.Fiber<Err, Either<Done, Elem>>,
+        right: Fiber.Fiber<Err1, Either<Done1, Elem>>
       ) => Z
       readonly onLeftDone: (f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>) => Z
       readonly onRightDone: (f: (exit: Exit<Err, Done>) => Effect<Env, Err2, Done2>) => Z
@@ -117,8 +117,8 @@ Added in v2.0.0
 ```ts
 export interface BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> extends MergeState.Proto {
   readonly _tag: "BothRunning"
-  readonly left: Fiber.Fiber<Err, Either.Either<Done, Elem>>
-  readonly right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
+  readonly left: Fiber.Fiber<Err, Either<Done, Elem>>
+  readonly right: Fiber.Fiber<Err1, Either<Done1, Elem>>
 }
 ```
 

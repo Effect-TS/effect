@@ -3,7 +3,7 @@
  */
 import * as Chunk from "./Chunk.js"
 import * as Context from "./Context.js"
-import * as Either from "./Either.js"
+import { Either } from "./Either.js"
 import * as Equal from "./Equal.js"
 import type * as Fiber from "./Fiber.js"
 import { pipe } from "./Function.js"
@@ -81,9 +81,9 @@ export const make = <A>(
  * @since 2.0.0
  */
 export const compose = <A>(
-  left: Either.Either<number, Chunk.Chunk<A>>,
-  right: Either.Either<number, Chunk.Chunk<A>>
-): Either.Either<number, Chunk.Chunk<A>> => {
+  left: Either<number, Chunk.Chunk<A>>,
+  right: Either<number, Chunk.Chunk<A>>
+): Either<number, Chunk.Chunk<A>> => {
   if (Either.isLeft(left) && Either.isLeft(right)) {
     return Either.left(left.left + right.left)
   }
@@ -103,14 +103,14 @@ export const compose = <A>(
  * @since 2.0.0
  */
 export const fibers: TestAnnotation<
-  Either.Either<
+  Either<
     number,
     Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>
   >
 > = make(
   "fibers",
   Context.Tag<
-    Either.Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
+    Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
   >(),
   Either.left(0),
   compose

@@ -22,7 +22,7 @@
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
 import * as Chunk from "./Chunk.js"
-import * as Either from "./Either.js"
+import { Either } from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
 import { dual, identity, unsafeCoerce } from "./Function.js"
@@ -786,9 +786,9 @@ export const partition: {
  * @category combinators
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => readonly [List<B>, List<C>]
-  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): readonly [List<B>, List<C>]
-} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): readonly [List<B>, List<C>] => {
+  <A, B, C>(f: (a: A) => Either<B, C>): (self: List<A>) => readonly [List<B>, List<C>]
+  <A, B, C>(self: List<A>, f: (a: A) => Either<B, C>): readonly [List<B>, List<C>]
+} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either<B, C>): readonly [List<B>, List<C>] => {
   const left: Array<B> = []
   const right: Array<C> = []
   for (const a of self) {

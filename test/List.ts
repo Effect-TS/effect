@@ -1,6 +1,6 @@
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { equals, symbol } from "effect/Equal"
 import * as List from "effect/List"
 import { Option } from "effect/Option"

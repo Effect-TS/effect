@@ -4,7 +4,7 @@ import { assertType, satisfies } from "effect-test/utils/types"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import { Effect } from "effect/Effect"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { Exit } from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
@@ -408,8 +408,8 @@ describe.concurrent("Effect", () => {
     const causes = causesArb(1, smallInts, fc.string())
     const successes = smallInts.map(Effect.succeed)
     const exits = fc.oneof(
-      causes.map((s): Either.Either<Cause.Cause<number>, Effect<never, never, number>> => Either.left(s)),
-      successes.map((s): Either.Either<Cause.Cause<number>, Effect<never, never, number>> => Either.right(s))
+      causes.map((s): Either<Cause.Cause<number>, Effect<never, never, number>> => Either.left(s)),
+      successes.map((s): Either<Cause.Cause<number>, Effect<never, never, number>> => Either.right(s))
     ).map(Either.match({
       onLeft: Exit.failCause,
       onRight: Exit.succeed

@@ -95,7 +95,7 @@ export declare const all: <const I extends Iterable<Either<any, any>> | Record<s
 **Example**
 
 ```ts
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 
 assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
 assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right("hello") }), Either.right({ a: 1, b: "hello" }))
@@ -162,7 +162,7 @@ export declare const fromNullable: {
 **Example**
 
 ```ts
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 
 assert.deepStrictEqual(
   Either.fromNullable(1, () => "fallback"),
@@ -190,7 +190,7 @@ export declare const fromOption: {
 **Example**
 
 ```ts
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import * as Option from "effect/Option"
 
 assert.deepStrictEqual(
@@ -328,7 +328,7 @@ export declare const getOrElse: {
 **Example**
 
 ```ts
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 
 assert.deepStrictEqual(
   Either.getOrElse(Either.right(1), (error) => error + "!"),
@@ -353,7 +353,7 @@ export declare const getOrNull: <E, A>(self: Either<E, A>) => A | null
 **Example**
 
 ```ts
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 
 assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
 assert.deepStrictEqual(Either.getOrNull(Either.left("a")), null)
@@ -424,7 +424,7 @@ export declare const getOrUndefined: <E, A>(self: Either<E, A>) => A | undefined
 **Example**
 
 ```ts
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 
 assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
 assert.deepStrictEqual(Either.getOrUndefined(Either.left("a")), undefined)

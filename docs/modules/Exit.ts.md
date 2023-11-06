@@ -167,7 +167,7 @@ Converts an `Either<E, A>` into an `Exit<E, A>`.
 **Signature**
 
 ```ts
-export declare const fromEither: <E, A>(either: Either.Either<E, A>) => Exit<E, A>
+export declare const fromEither: <E, A>(either: Either<E, A>) => Exit<E, A>
 ```
 
 Added in v2.0.0

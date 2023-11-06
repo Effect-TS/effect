@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import { Effect } from "effect/Effect"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"

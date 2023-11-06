@@ -4,7 +4,7 @@
 import type * as Chunk from "./Chunk.js"
 import type * as ConfigError from "./ConfigError.js"
 import type * as ConfigSecret from "./ConfigSecret.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
 import type * as HashSet from "./HashSet.js"
@@ -54,7 +54,7 @@ export declare namespace Config {
    */
   export interface Primitive<A> extends Config<A> {
     readonly description: string
-    parse(text: string): Either.Either<ConfigError.ConfigError, A>
+    parse(text: string): Either<ConfigError.ConfigError, A>
   }
 
   /**
@@ -211,8 +211,8 @@ export const mapAttempt: {
  * @category utils
  */
 export const mapOrFail: {
-  <A, B>(f: (a: A) => Either.Either<ConfigError.ConfigError, B>): (self: Config<A>) => Config<B>
-  <A, B>(self: Config<A>, f: (a: A) => Either.Either<ConfigError.ConfigError, B>): Config<B>
+  <A, B>(f: (a: A) => Either<ConfigError.ConfigError, B>): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => Either<ConfigError.ConfigError, B>): Config<B>
 } = internal.mapOrFail
 
 /**
@@ -281,7 +281,7 @@ export const option: <A>(self: Config<A>) => Config<Option<A>> = internal.option
  */
 export const primitive: <A>(
   description: string,
-  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
+  parse: (text: string) => Either<ConfigError.ConfigError, A>
 ) => Config<A> = internal.primitive
 
 /**

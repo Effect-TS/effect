@@ -15,11 +15,15 @@ import { isFunction } from "./Predicate.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
-/**
- * @category models
- * @since 2.0.0
- */
-export type Either<E, A> = Left<E, A> | Right<E, A>
+export * as Either from "./Either.js"
+
+declare module "./Either.js" {
+  /**
+   * @category models
+   * @since 2.0.0
+   */
+  export type Either<E, A> = Left<E, A> | Right<E, A>
+}
 
 /**
  * @category symbols
@@ -546,7 +550,7 @@ export const ap: {
  * @param fields - the struct of `Option`s to be sequenced.
  *
  * @example
- * import * as Either from "effect/Either"
+ * import { Either } from "effect/Either"
  *
  * assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
  * assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right("hello") }), Either.right({ a: 1, b: "hello" }))

@@ -3,7 +3,7 @@
  */
 import type * as Cause from "./Cause.js"
 import type { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import type * as FiberId from "./FiberId.js"
 import type { FiberRef } from "./FiberRef.js"
@@ -525,8 +525,8 @@ export const orElse: {
  * @category alternatives
  */
 export const orElseEither: {
-  <E2, A2>(that: Fiber<E2, A2>): <E, A>(self: Fiber<E, A>) => Fiber<E2 | E, Either.Either<A, A2>>
-  <E, A, E2, A2>(self: Fiber<E, A>, that: Fiber<E2, A2>): Fiber<E | E2, Either.Either<A, A2>>
+  <E2, A2>(that: Fiber<E2, A2>): <E, A>(self: Fiber<E, A>) => Fiber<E2 | E, Either<A, A2>>
+  <E, A, E2, A2>(self: Fiber<E, A>, that: Fiber<E2, A2>): Fiber<E | E2, Either<A, A2>>
 } = internal.orElseEither
 
 /**

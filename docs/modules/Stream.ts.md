@@ -431,7 +431,7 @@ be used to signal the end of the stream, by setting it to `None`.
 
 ```ts
 export declare const asyncInterrupt: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Either.Either<Effect<R, never, unknown>, Stream<R, E, A>>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Either<Effect<R, never, unknown>, Stream<R, E, A>>,
   outputBuffer?: number
 ) => Stream<R, E, A>
 ```
@@ -2456,11 +2456,11 @@ See also `Stream.catchAll`.
 export declare const orElseEither: {
   <R2, E2, A2>(
     that: LazyArg<Stream<R2, E2, A2>>
-  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2, Either.Either<A, A2>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2, Either<A, A2>>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     that: LazyArg<Stream<R2, E2, A2>>
-  ): Stream<R | R2, E2, Either.Either<A, A2>>
+  ): Stream<R | R2, E2, Either<A, A2>>
 }
 ```
 
@@ -3397,12 +3397,12 @@ export declare const aggregateWithinEither: {
   <R2, E2, A, A2, B, R3, C>(
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, Either.Either<C, B>>
+  ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E2 | E, Either<C, B>>
   <R, E, R2, E2, A, A2, B, R3, C>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A | A2, A2, B>,
     schedule: Schedule.Schedule<R3, Option.Option<B>, C>
-  ): Stream<R | R2 | R3, E | E2, Either.Either<C, B>>
+  ): Stream<R | R2 | R3, E | E2, Either<C, B>>
 }
 ```
 
@@ -4038,7 +4038,7 @@ exposed as part of the `Either` success case.
 **Signature**
 
 ```ts
-export declare const either: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, Either.Either<E, A>>
+export declare const either: <R, E, A>(self: Stream<R, E, A>) => Stream<R, never, Either<E, A>>
 ```
 
 Added in v2.0.0
@@ -4539,8 +4539,8 @@ eithers.
 export declare const mergeEither: {
   <R2, E2, A2>(
     that: Stream<R2, E2, A2>
-  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, Either.Either<A, A2>>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, Either.Either<A, A2>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, Either<A, A2>>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, Either<A, A2>>
 }
 ```
 
@@ -4701,14 +4701,14 @@ up to buffer elements further than the slower one.
 ```ts
 export declare const partitionEither: {
   <A, R2, E2, A2, A3>(
-    predicate: (a: A) => Effect<R2, E2, Either.Either<A2, A3>>,
+    predicate: (a: A) => Effect<R2, E2, Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
   ): <R, E>(
     self: Stream<R, E, A>
   ) => Effect<Scope.Scope | R2 | R, E2 | E, readonly [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
-    predicate: (a: A) => Effect<R2, E2, Either.Either<A2, A3>>,
+    predicate: (a: A) => Effect<R2, E2, Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
   ): Effect<Scope.Scope | R | R2, E | E2, readonly [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
 }
@@ -4856,11 +4856,11 @@ The schedule output will be emitted at the end of each repetition.
 export declare const repeatEither: {
   <R2, B>(
     schedule: Schedule.Schedule<R2, unknown, B>
-  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, Either.Either<B, A>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, Either<B, A>>
   <R, E, A, R2, B>(
     self: Stream<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, B>
-  ): Stream<R | R2, E, Either.Either<B, A>>
+  ): Stream<R | R2, E, Either<B, A>>
 }
 ```
 
@@ -5938,7 +5938,7 @@ export declare const zipWithChunks: {
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A3>
   <R, E, R2, E2, A2, A, A3>(
     self: Stream<R, E, A>,
@@ -5946,7 +5946,7 @@ export declare const zipWithChunks: {
     f: (
       left: Chunk.Chunk<A>,
       right: Chunk.Chunk<A2>
-    ) => readonly [Chunk.Chunk<A3>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
+    ) => readonly [Chunk.Chunk<A3>, Either<Chunk.Chunk<A>, Chunk.Chunk<A2>>]
   ): Stream<R | R2, E | E2, A3>
 }
 ```

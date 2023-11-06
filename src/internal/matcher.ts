@@ -1,4 +1,4 @@
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import { identity } from "../Function.js"
 import type {
   Case,
@@ -87,7 +87,7 @@ const ValueMatcherProto: Omit<
 
 function makeValueMatcher<I, R, RA, A, Pr>(
   provided: Pr,
-  value: Either.Either<RA, Pr>
+  value: Either<RA, Pr>
 ): ValueMatcher<I, R, RA, A, Pr> {
   const matcher = Object.create(ValueMatcherProto)
   matcher.provided = provided
@@ -525,14 +525,14 @@ export const orElseAbsurd = <I, R, RA, A, Pr>(
 /** @internal */
 export const either: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>>
-  : Either.Either<R, Unify<A>> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
+) => [Pr] extends [never] ? (input: I) => Either<R, Unify<A>>
+  : Either<R, Unify<A>> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
     if (self._tag === "ValueMatcher") {
       return self.value
     }
 
     const len = self.cases.length
-    return (input: I): Either.Either<RA, A> => {
+    return (input: I): Either<RA, A> => {
       for (let i = 0; i < len; i++) {
         const _case = self.cases[i]
         if (_case._tag === "When" && _case.guard(input) === true) {

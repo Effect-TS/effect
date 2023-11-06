@@ -7,7 +7,7 @@ import type * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import * as channel from "./internal/channel.js"
@@ -1058,7 +1058,7 @@ export const fromEffect: <R, E, A>(
  * @since 2.0.0
  * @category constructors
  */
-export const fromEither: <E, A>(either: Either.Either<E, A>) => Channel<never, unknown, unknown, unknown, E, never, A> =
+export const fromEither: <E, A>(either: Either<E, A>) => Channel<never, unknown, unknown, unknown, E, never, A> =
   channel.fromEither
 
 /**
@@ -1078,7 +1078,7 @@ export const fromInput: <Err, Elem, Done>(
  * @category constructors
  */
 export const fromPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromPubSub
 
 /**
@@ -1088,7 +1088,7 @@ export const fromPubSub: <Err, Done, Elem>(
  * @category constructors
  */
 export const fromPubSubScoped: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ) => Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>> = channel.fromPubSubScoped
 
 /**
@@ -1108,7 +1108,7 @@ export const fromOption: <A>(
  * @category constructors
  */
 export const fromQueue: <Err, Elem, Done>(
-  queue: Queue.Dequeue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Dequeue<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromQueue
 
 /**
@@ -1967,7 +1967,7 @@ export const sync: <OutDone>(
  * @category destructors
  */
 export const toPubSub: <Err, Done, Elem>(
-  pubsub: PubSub.PubSub<Either.Either<Exit<Err, Done>, Elem>>
+  pubsub: PubSub.PubSub<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toPubSub
 
 /**
@@ -1981,7 +1981,7 @@ export const toPubSub: <Err, Done, Elem>(
  */
 export const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Effect<Scope.Scope | Env, never, Effect<Env, OutErr, Either.Either<OutDone, OutElem>>> = channel.toPull
+) => Effect<Scope.Scope | Env, never, Effect<Env, OutErr, Either<OutDone, OutElem>>> = channel.toPull
 
 /**
  * Converts a `Channel` to a `Queue`.
@@ -1990,7 +1990,7 @@ export const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * @category destructors
  */
 export const toQueue: <Err, Done, Elem>(
-  queue: Queue.Enqueue<Either.Either<Exit<Err, Done>, Elem>>
+  queue: Queue.Enqueue<Either<Exit<Err, Done>, Elem>>
 ) => Channel<never, Err, Elem, Done, never, never, unknown> = channel.toQueue
 
 /** Converts this channel to a `Sink`.

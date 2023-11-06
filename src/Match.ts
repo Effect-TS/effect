@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import * as internal from "./internal/matcher.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -57,7 +57,7 @@ export interface ValueMatcher<Input, Filters, Remaining, Result, Provided> exten
     readonly _result: (_: never) => Result
   }
   readonly provided: Provided
-  readonly value: Either.Either<Remaining, Provided>
+  readonly value: Either<Remaining, Provided>
   readonly add: <I, R, RA, A, Pr>(_case: Case) => ValueMatcher<I, R, RA, A, Pr>
 }
 
@@ -514,8 +514,8 @@ export const orElseAbsurd: <I, R, RA, A, Pr>(
  */
 export const either: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>>
-  : Either.Either<R, Unify<A>> = internal.either
+) => [Pr] extends [never] ? (input: I) => Either<R, Unify<A>>
+  : Either<R, Unify<A>> = internal.either
 
 /**
  * @category conversions

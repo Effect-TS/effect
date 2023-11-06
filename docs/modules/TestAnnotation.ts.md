@@ -71,9 +71,9 @@ Added in v2.0.0
 
 ```ts
 export declare const compose: <A>(
-  left: Either.Either<number, Chunk.Chunk<A>>,
-  right: Either.Either<number, Chunk.Chunk<A>>
-) => Either.Either<number, Chunk.Chunk<A>>
+  left: Either<number, Chunk.Chunk<A>>,
+  right: Either<number, Chunk.Chunk<A>>
+) => Either<number, Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -84,7 +84,7 @@ Added in v2.0.0
 
 ```ts
 export declare const fibers: TestAnnotation<
-  Either.Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
+  Either<number, Chunk.Chunk<MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>>>
 >
 ```
 

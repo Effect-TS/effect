@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import { assertType, satisfies } from "effect-test/utils/types"
 import { Effect } from "effect/Effect"
-import * as Either from "effect/Either"
+import { Either } from "effect/Either"
 import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
@@ -144,13 +144,13 @@ describe.concurrent("Effect", () => {
       Effect.gen(function*($) {
         const res = yield* $(Effect.all([Effect.succeed(0), Effect.succeed(1)], { mode: "either" }))
         assert.deepEqual(res, [Either.right(0), Either.right(1)])
-        satisfies<true>(assertType<[Either.Either<never, number>, Either.Either<never, number>]>()(res))
+        satisfies<true>(assertType<[Either<never, number>, Either<never, number>]>()(res))
       }))
     it.effect("failure should work with one array argument", () =>
       Effect.gen(function*($) {
         const res = yield* $(Effect.all([Effect.fail(0), Effect.succeed(1)], { mode: "either" }))
         assert.deepEqual(res, [Either.left(0), Either.right(1)])
-        satisfies<true>(assertType<[Either.Either<number, never>, Either.Either<never, number>]>()(res))
+        satisfies<true>(assertType<[Either<number, never>, Either<never, number>]>()(res))
       }))
     it.effect("should work with one record argument", () =>
       Effect.gen(function*($) {
@@ -160,8 +160,8 @@ describe.concurrent("Effect", () => {
         assert.deepEqual(b, Either.right(1))
         satisfies<true>(
           assertType<{
-            readonly a: Either.Either<never, number>
-            readonly b: Either.Either<never, number>
+            readonly a: Either<never, number>
+            readonly b: Either<never, number>
           }>()(result)
         )
       }))
@@ -175,8 +175,8 @@ describe.concurrent("Effect", () => {
         assert.deepEqual(b, Either.right(1))
         satisfies<true>(
           assertType<{
-            readonly a: Either.Either<number, never>
-            readonly b: Either.Either<never, number>
+            readonly a: Either<number, never>
+            readonly b: Either<never, number>
           }>()(result)
         )
       }))
@@ -184,7 +184,7 @@ describe.concurrent("Effect", () => {
       Effect.gen(function*($) {
         const result = yield* $(Effect.all(new Set([Effect.succeed(0), Effect.succeed(1)]), { mode: "either" }))
         assert.deepEqual(result, [Either.right(0), Either.right(1)])
-        satisfies<true>(assertType<Array<Either.Either<never, number>>>()(result))
+        satisfies<true>(assertType<Array<Either<never, number>>>()(result))
       }))
   })
   describe("allWith", () => {

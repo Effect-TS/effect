@@ -7,7 +7,7 @@ import type * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
 import type * as Duration from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type * as Either from "./Either.js"
+import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashMap from "./HashMap.js"
@@ -1008,7 +1008,7 @@ export const fromPush: <R, E, In, L, Z>(
   push: Effect<
     R,
     never,
-    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either.Either<E, Z>, Chunk.Chunk<L>], void>
+    (_: Option<Chunk.Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk.Chunk<L>], void>
   >
 ) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z> = internal.fromPush
 
@@ -1179,12 +1179,12 @@ export const raceBoth: {
   <R1, E1, In1, L1, Z1>(
     that: Sink<R1, E1, In1, L1, Z1>,
     options?: { readonly capacity?: number }
-  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>
+  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Either<Z, Z1>>
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R1, E1, In1, L1, Z1>,
     options?: { readonly capacity?: number }
-  ): Sink<R | R1, E | E1, In & In1, L | L1, Either.Either<Z, Z1>>
+  ): Sink<R | R1, E | E1, In & In1, L | L1, Either<Z, Z1>>
 } = internal.raceBoth
 
 /**
