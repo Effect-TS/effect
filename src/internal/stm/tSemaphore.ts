@@ -1,5 +1,5 @@
 import * as Cause from "../../Cause.js"
-import * as Effect from "../../Effect.js"
+import { Effect } from "../../Effect.js"
 import { dual } from "../../Function.js"
 import type * as Scope from "../../Scope.js"
 import * as STM from "../../STM.js"
@@ -67,8 +67,8 @@ export const releaseN = dual<
 
 /** @internal */
 export const withPermit = dual<
-  (semaphore: TSemaphore.TSemaphore) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, semaphore: TSemaphore.TSemaphore) => Effect.Effect<R, E, A>
+  (semaphore: TSemaphore.TSemaphore) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, semaphore: TSemaphore.TSemaphore) => Effect<R, E, A>
 >(2, (self, semaphore) => withPermits(self, semaphore, 1))
 
 /** @internal */
@@ -76,12 +76,12 @@ export const withPermits = dual<
   (
     semaphore: TSemaphore.TSemaphore,
     permits: number
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
   <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     semaphore: TSemaphore.TSemaphore,
     permits: number
-  ) => Effect.Effect<R, E, A>
+  ) => Effect<R, E, A>
 >(3, (self, semaphore, permits) =>
   Effect.uninterruptibleMask((restore) =>
     Effect.zipRight(
@@ -94,13 +94,13 @@ export const withPermits = dual<
   ))
 
 /** @internal */
-export const withPermitScoped = (self: TSemaphore.TSemaphore): Effect.Effect<Scope.Scope, never, void> =>
+export const withPermitScoped = (self: TSemaphore.TSemaphore): Effect<Scope.Scope, never, void> =>
   withPermitsScoped(self, 1)
 
 /** @internal */
 export const withPermitsScoped = dual<
-  (permits: number) => (self: TSemaphore.TSemaphore) => Effect.Effect<Scope.Scope, never, void>,
-  (self: TSemaphore.TSemaphore, permits: number) => Effect.Effect<Scope.Scope, never, void>
+  (permits: number) => (self: TSemaphore.TSemaphore) => Effect<Scope.Scope, never, void>,
+  (self: TSemaphore.TSemaphore, permits: number) => Effect<Scope.Scope, never, void>
 >(2, (self, permits) =>
   Effect.acquireReleaseInterruptible(
     core.commit(acquireN(self, permits)),

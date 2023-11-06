@@ -128,8 +128,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withPermit: {
-  (semaphore: TSemaphore): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, semaphore: TSemaphore): Effect.Effect<R, E, A>
+  (semaphore: TSemaphore): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, semaphore: TSemaphore): Effect<R, E, A>
 }
 ```
 
@@ -140,7 +140,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const withPermitScoped: (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void>
+export declare const withPermitScoped: (self: TSemaphore) => Effect<Scope.Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -151,8 +151,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withPermits: {
-  (semaphore: TSemaphore, permits: number): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, semaphore: TSemaphore, permits: number): Effect.Effect<R, E, A>
+  (semaphore: TSemaphore, permits: number): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, semaphore: TSemaphore, permits: number): Effect<R, E, A>
 }
 ```
 
@@ -164,8 +164,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withPermitsScoped: {
-  (permits: number): (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void>
-  (self: TSemaphore, permits: number): Effect.Effect<Scope.Scope, never, void>
+  (permits: number): (self: TSemaphore) => Effect<Scope.Scope, never, void>
+  (self: TSemaphore, permits: number): Effect<Scope.Scope, never, void>
 }
 ```
 

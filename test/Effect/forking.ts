@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
@@ -75,7 +75,7 @@ describe.concurrent("Effect", () => {
   it.effect("forkAll - empty input", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        pipe([] as ReadonlyArray<Effect.Effect<never, never, number>>, Effect.forkAll(), Effect.flatMap(Fiber.join))
+        pipe([] as ReadonlyArray<Effect<never, never, number>>, Effect.forkAll(), Effect.flatMap(Fiber.join))
       )
       assert.strictEqual(result.length, 0)
     }))

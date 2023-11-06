@@ -55,7 +55,7 @@ Constructs a new polling metric from a metric and poll effect.
 ```ts
 export declare const make: <Type, In, Out, R, E>(
   metric: Metric.Metric<Type, In, Out>,
-  poll: Effect.Effect<R, E, In>
+  poll: Effect<R, E, In>
 ) => PollingMetric<Type, In, R, E, Out>
 ```
 
@@ -101,7 +101,7 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
   /**
    * An effect that polls a value that may be fed to the metric.
    */
-  readonly poll: Effect.Effect<R, E, In>
+  readonly poll: Effect<R, E, In>
 }
 ```
 
@@ -144,11 +144,11 @@ export declare const launch: {
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
     self: PollingMetric<Type, In, R, E, Out>
-  ) => Effect.Effect<Scope.Scope | R2 | R, never, Fiber.Fiber<E, A2>>
+  ) => Effect<Scope.Scope | R2 | R, never, Fiber.Fiber<E, A2>>
   <Type, In, R, E, Out, R2, A2>(
     self: PollingMetric<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
-  ): Effect.Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
+  ): Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
 }
 ```
 
@@ -161,7 +161,7 @@ An effect that polls a value that may be fed to the metric.
 **Signature**
 
 ```ts
-export declare const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect.Effect<R, E, In>
+export declare const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect<R, E, In>
 ```
 
 Added in v2.0.0
@@ -175,7 +175,7 @@ An effect that polls for a value and uses the value to update the metric.
 ```ts
 export declare const pollAndUpdate: <Type, In, R, E, Out>(
   self: PollingMetric<Type, In, R, E, Out>
-) => Effect.Effect<R, E, void>
+) => Effect<R, E, void>
 ```
 
 Added in v2.0.0

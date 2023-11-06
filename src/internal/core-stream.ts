@@ -3,7 +3,7 @@ import type * as Channel from "../Channel.js"
 import type * as ChildExecutorDecision from "../ChildExecutorDecision.js"
 import * as Chunk from "../Chunk.js"
 import type * as Context from "../Context.js"
-import * as Effect from "../Effect.js"
+import { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
 import type * as Exit from "../Exit.js"
 import { constVoid, dual, identity } from "../Function.js"
@@ -75,11 +75,11 @@ export type Primitive =
 /** @internal */
 export interface BracketOut extends
   Op<OpCodes.OP_BRACKET_OUT, {
-    readonly acquire: LazyArg<Effect.Effect<unknown, unknown, unknown>>
+    readonly acquire: LazyArg<Effect<unknown, unknown, unknown>>
     readonly finalizer: (
       resource: unknown,
       exit: Exit.Exit<unknown, unknown>
-    ) => Effect.Effect<unknown, unknown, unknown>
+    ) => Effect<unknown, unknown, unknown>
   }>
 {}
 
@@ -116,7 +116,7 @@ export interface Emit extends
 export interface Ensuring extends
   Op<OpCodes.OP_ENSURING, {
     readonly channel: ErasedChannel
-    readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>
+    readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect<unknown, unknown, unknown>
   }>
 {}
 
@@ -138,7 +138,7 @@ export interface Fold extends
 /** @internal */
 export interface FromEffect extends
   Op<OpCodes.OP_FROM_EFFECT, {
-    readonly effect: LazyArg<Effect.Effect<unknown, unknown, unknown>>
+    readonly effect: LazyArg<Effect<unknown, unknown, unknown>>
   }>
 {}
 
@@ -201,11 +201,11 @@ export const isChannel = (u: unknown): u is Channel.Channel<
 /** @internal */
 export const acquireReleaseOut = dual<
   <R2, Z>(
-    release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, unknown>
-  ) => <R, E>(self: Effect.Effect<R, E, Z>) => Channel.Channel<R | R2, unknown, unknown, unknown, E, Z, void>,
+    release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect<R2, never, unknown>
+  ) => <R, E>(self: Effect<R, E, Z>) => Channel.Channel<R | R2, unknown, unknown, unknown, E, Z, void>,
   <R, R2, E, Z>(
-    self: Effect.Effect<R, E, Z>,
-    release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, unknown>
+    self: Effect<R, E, Z>,
+    release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect<R2, never, unknown>
   ) => Channel.Channel<R | R2, unknown, unknown, unknown, E, Z, void>
 >(2, (self, release) => {
   const op = Object.create(proto)
@@ -582,19 +582,19 @@ export const embedInput = dual<
 /** @internal */
 export const ensuringWith = dual<
   <Env2, OutErr, OutDone>(
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env2, never, unknown>
+    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ) => <Env, InErr, InElem, InDone, OutElem>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env2, never, unknown>
+    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ) => Channel.Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 >(
   2,
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env2, never, unknown>
+    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): Channel.Channel<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone> => {
     const op = Object.create(proto)
     op._tag = OpCodes.OP_ENSURING
@@ -804,7 +804,7 @@ export const foldCauseChannel = dual<
 
 /** @internal */
 export const fromEffect = <R, E, A>(
-  effect: Effect.Effect<R, E, A>
+  effect: Effect<R, E, A>
 ): Channel.Channel<R, unknown, unknown, unknown, E, never, A> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_FROM_EFFECT

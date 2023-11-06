@@ -203,7 +203,7 @@ export * as Duration from "./Duration.js"
 /**
  * @since 2.0.0
  */
-export * as Effect from "./Effect.js"
+export { Effect } from "./Effect.js"
 
 /**
  * @since 2.0.0

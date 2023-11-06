@@ -1,6 +1,6 @@
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import { pipe } from "../Function.js"
 import type * as Random from "../Random.js"
 import * as PCGRandom from "../Utils.js"
@@ -26,35 +26,35 @@ class RandomImpl implements Random.Random {
     this.PRNG = new PCGRandom.PCGRandom(seed)
   }
 
-  next(): Effect.Effect<never, never, number> {
+  next(): Effect<never, never, number> {
     return core.sync(() => this.PRNG.number())
   }
 
-  nextBoolean(): Effect.Effect<never, never, boolean> {
+  nextBoolean(): Effect<never, never, boolean> {
     return core.map(this.next(), (n) => n > 0.5)
   }
 
-  nextInt(): Effect.Effect<never, never, number> {
+  nextInt(): Effect<never, never, number> {
     return core.sync(() => this.PRNG.integer(Number.MAX_SAFE_INTEGER))
   }
 
-  nextRange(min: number, max: number): Effect.Effect<never, never, number> {
+  nextRange(min: number, max: number): Effect<never, never, number> {
     return core.map(this.next(), (n) => (max - min) * n + min)
   }
 
-  nextIntBetween(min: number, max: number): Effect.Effect<never, never, number> {
+  nextIntBetween(min: number, max: number): Effect<never, never, number> {
     return core.sync(() => this.PRNG.integer(max - min) + min)
   }
 
-  shuffle<A>(elements: Iterable<A>): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  shuffle<A>(elements: Iterable<A>): Effect<never, never, Chunk.Chunk<A>> {
     return shuffleWith(elements, (n) => this.nextIntBetween(0, n))
   }
 }
 
 const shuffleWith = <A>(
   elements: Iterable<A>,
-  nextIntBounded: (n: number) => Effect.Effect<never, never, number>
-): Effect.Effect<never, never, Chunk.Chunk<A>> => {
+  nextIntBounded: (n: number) => Effect<never, never, number>
+): Effect<never, never, Chunk.Chunk<A>> => {
   return core.suspend(() =>
     pipe(
       core.sync(() => Array.from(elements)),

@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
@@ -125,8 +125,8 @@ describe.concurrent("Fiber", () => {
       const shard = <R, E, A>(
         queue: Queue.Queue<A>,
         n: number,
-        worker: (a: A) => Effect.Effect<R, E, void>
-      ): Effect.Effect<R, E, never> => {
+        worker: (a: A) => Effect<R, E, void>
+      ): Effect<R, E, never> => {
         const worker1 = pipe(
           Queue.take(queue),
           Effect.flatMap((a) => Effect.uninterruptible(worker(a))),
@@ -164,7 +164,7 @@ describe.concurrent("Fiber", () => {
     }))
   it.effect("dual roots", () =>
     Effect.gen(function*($) {
-      const rootContains = (fiber: Fiber.RuntimeFiber<any, any>): Effect.Effect<never, never, boolean> => {
+      const rootContains = (fiber: Fiber.RuntimeFiber<any, any>): Effect<never, never, boolean> => {
         return pipe(Fiber.roots, Effect.map(Chunk.unsafeFromArray), Effect.map(ReadonlyArray.contains(fiber)))
       }
       const fiber1 = yield* $(Effect.forkDaemon(Effect.never))

@@ -152,8 +152,8 @@ Added in v2.0.0
 
 ```ts
 export declare const acquireReleaseOut: <R, R2, E, Z>(
-  self: Effect.Effect<R, E, Z>,
-  release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, unknown>
+  self: Effect<R, E, Z>,
+  release: (z: Z, e: Exit.Exit<unknown, unknown>) => Effect<R2, never, unknown>
 ) => Channel<R | R2, unknown, unknown, unknown, E, Z, void>
 ```
 
@@ -165,9 +165,9 @@ Added in v2.0.0
 
 ```ts
 export declare const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
-  acquire: Effect.Effect<Env, OutErr, Acquired>,
+  acquire: Effect<Env, OutErr, Acquired>,
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, any>
+  release: (a: Acquired, exit: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, any>
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>
 ```
 
@@ -316,7 +316,7 @@ Use an effect to end a channel.
 
 ```ts
 export declare const fromEffect: <R, E, A>(
-  effect: Effect.Effect<R, E, A>
+  effect: Effect<R, E, A>
 ) => Channel<R, unknown, unknown, unknown, E, never, A>
 ```
 
@@ -387,7 +387,7 @@ Construct a `Channel` from a `PubSub` within a scoped effect.
 ```ts
 export declare const fromPubSubScoped: <Err, Done, Elem>(
   pubsub: PubSub.PubSub<Either.Either<Exit.Exit<Err, Done>, Elem>>
-) => Effect.Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>>
+) => Effect<Scope.Scope, never, Channel<never, unknown, unknown, unknown, Err, Elem, Done>>
 ```
 
 Added in v2.0.0
@@ -532,7 +532,7 @@ Use a scoped effect to emit an output element.
 
 ```ts
 export declare const scoped: <R, E, A>(
-  effect: Effect.Effect<R, E, A>
+  effect: Effect<R, E, A>
 ) => Channel<Exclude<R, Scope.Scope>, unknown, unknown, unknown, E, A, unknown>
 ```
 
@@ -596,7 +596,7 @@ Makes a channel from an effect that returns a channel in case of success.
 
 ```ts
 export declare const unwrap: <R, E, R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  channel: Effect.Effect<R, E, Channel<R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+  channel: Effect<R, E, Channel<R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
 ) => Channel<R | R2, InErr, InElem, InDone, E | OutErr, OutElem, OutDone>
 ```
 
@@ -610,7 +610,7 @@ Makes a channel from a managed that returns a channel in case of success.
 
 ```ts
 export declare const unwrapScoped: <R, E, Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  self: Effect.Effect<R, E, Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+  self: Effect<R, E, Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
 ) => Channel<Env | Exclude<R, Scope.Scope>, InErr, InElem, InDone, E | OutErr, OutElem, OutDone>
 ```
 
@@ -706,7 +706,7 @@ Accesses the context of the channel in the context of an effect.
 
 ```ts
 export declare const contextWithEffect: <Env, Env1, OutErr, OutDone>(
-  f: (env: Context.Context<Env>) => Effect.Effect<Env1, OutErr, OutDone>
+  f: (env: Context.Context<Env>) => Effect<Env1, OutErr, OutDone>
 ) => Channel<Env | Env1, unknown, unknown, unknown, OutErr, never, OutDone>
 ```
 
@@ -863,7 +863,7 @@ Runs a channel until the end is received.
 ```ts
 export declare const run: <Env, InErr, InDone, OutErr, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
-) => Effect.Effect<Env, OutErr, OutDone>
+) => Effect<Env, OutErr, OutDone>
 ```
 
 Added in v2.0.0
@@ -880,7 +880,7 @@ The channel must not read any input.
 ```ts
 export declare const runCollect: <Env, InErr, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
-) => Effect.Effect<Env, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone]>
+) => Effect<Env, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone]>
 ```
 
 Added in v2.0.0
@@ -894,7 +894,7 @@ Runs a channel until the end is received.
 ```ts
 export declare const runDrain: <Env, InErr, InDone, OutElem, OutErr, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
-) => Effect.Effect<Env, OutErr, OutDone>
+) => Effect<Env, OutErr, OutDone>
 ```
 
 Added in v2.0.0
@@ -925,7 +925,7 @@ emitted element.
 ```ts
 export declare const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Effect.Effect<Scope.Scope | Env, never, Effect.Effect<Env, OutErr, Either.Either<OutDone, OutElem>>>
+) => Effect<Scope.Scope | Env, never, Effect<Env, OutErr, Either.Either<OutDone, OutElem>>>
 ```
 
 Added in v2.0.0
@@ -1230,13 +1230,13 @@ effectful function to the terminal value of this channel.
 ```ts
 export declare const mapEffect: {
   <Env1, OutErr1, OutDone, OutDone1>(
-    f: (o: OutDone) => Effect.Effect<Env1, OutErr1, OutDone1>
+    f: (o: OutDone) => Effect<Env1, OutErr1, OutDone1>
   ): <Env, InErr, InElem, InDone, OutErr, OutElem>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1>
   <Env, InErr, InElem, InDone, OutErr, OutElem, Env1, OutErr1, OutDone, OutDone1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (o: OutDone) => Effect.Effect<Env1, OutErr1, OutDone1>
+    f: (o: OutDone) => Effect<Env1, OutErr1, OutDone1>
   ): Channel<Env | Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone1>
 }
 ```
@@ -1322,13 +1322,13 @@ gets applied to each emitted output element.
 ```ts
 export declare const mapOutEffect: {
   <OutElem, Env1, OutErr1, OutElem1>(
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>
+    f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>
   ): <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem1, OutDone>
   <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, Env1, OutErr1, OutElem1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>
+    f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>
   ): Channel<Env | Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem1, OutDone>
 }
 ```
@@ -1346,14 +1346,14 @@ mapping them in parallel.
 ```ts
 export declare const mapOutEffectPar: {
   <OutElem, Env1, OutErr1, OutElem1>(
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>,
+    f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>,
     n: number
   ): <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem1, OutDone>
   <Env, InErr, InElem, InDone, OutErr, OutDone, OutElem, Env1, OutErr1, OutElem1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (o: OutElem) => Effect.Effect<Env1, OutErr1, OutElem1>,
+    f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>,
     n: number
   ): Channel<Env | Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem1, OutDone>
 }
@@ -1960,13 +1960,13 @@ regardless of whether or not it completes).
 ```ts
 export declare const ensuring: {
   <Env1, Z>(
-    finalizer: Effect.Effect<Env1, never, Z>
+    finalizer: Effect<Env1, never, Z>
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, Z>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: Effect.Effect<Env1, never, Z>
+    finalizer: Effect<Env1, never, Z>
   ): Channel<Env | Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 }
 ```
@@ -1984,13 +1984,13 @@ regardless of whether or not it completes).
 ```ts
 export declare const ensuringWith: {
   <Env2, OutErr, OutDone>(
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env2, never, unknown>
+    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): <Env, InErr, InElem, InDone, OutElem>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env2 | Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   <Env, InErr, InElem, InDone, OutElem, Env2, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env2, never, unknown>
+    finalizer: (e: Exit.Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
   ): Channel<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 }
 ```
@@ -2176,13 +2176,13 @@ its terminal value.
 ```ts
 export declare const interruptWhen: {
   <Env1, OutErr1, OutDone1>(
-    effect: Effect.Effect<Env1, OutErr1, OutDone1>
+    effect: Effect<Env1, OutErr1, OutDone1>
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr, InElem, InDone, OutErr1 | OutErr, OutElem, OutDone1 | OutDone>
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, OutErr1, OutDone1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    effect: Effect.Effect<Env1, OutErr1, OutDone1>
+    effect: Effect<Env1, OutErr1, OutDone1>
   ): Channel<Env | Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone | OutDone1>
 }
 ```
@@ -2249,13 +2249,13 @@ effectual function to the input channel's done value.
 ```ts
 export declare const mapInputEffect: {
   <Env1, InErr, InDone0, InDone>(
-    f: (i: InDone0) => Effect.Effect<Env1, InErr, InDone>
+    f: (i: InDone0) => Effect<Env1, InErr, InDone>
   ): <Env, InElem, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr, InElem, InDone0, OutErr, OutElem, OutDone>
   <Env, InElem, OutErr, OutElem, OutDone, Env1, InErr, InDone0, InDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (i: InDone0) => Effect.Effect<Env1, InErr, InDone>
+    f: (i: InDone0) => Effect<Env1, InErr, InDone>
   ): Channel<Env | Env1, InErr, InElem, InDone0, OutErr, OutElem, OutDone>
 }
 ```
@@ -2295,13 +2295,13 @@ effectual function to the input channel's error value.
 ```ts
 export declare const mapInputErrorEffect: {
   <Env1, InErr0, InErr, InDone>(
-    f: (error: InErr0) => Effect.Effect<Env1, InErr, InDone>
+    f: (error: InErr0) => Effect<Env1, InErr, InDone>
   ): <Env, InElem, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr0, InElem, InDone, OutErr, OutElem, OutDone>
   <Env, InElem, OutErr, OutElem, OutDone, Env1, InErr0, InErr, InDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (error: InErr0) => Effect.Effect<Env1, InErr, InDone>
+    f: (error: InErr0) => Effect<Env1, InErr, InDone>
   ): Channel<Env | Env1, InErr0, InElem, InDone, OutErr, OutElem, OutDone>
 }
 ```
@@ -2341,13 +2341,13 @@ effectual function to the input channel's output elements.
 ```ts
 export declare const mapInputInEffect: {
   <Env1, InErr, InElem0, InElem>(
-    f: (a: InElem0) => Effect.Effect<Env1, InErr, InElem>
+    f: (a: InElem0) => Effect<Env1, InErr, InElem>
   ): <Env, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<Env1 | Env, InErr, InElem0, InDone, OutErr, OutElem, OutDone>
   <Env, InDone, OutErr, OutElem, OutDone, Env1, InErr, InElem0, InElem>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    f: (a: InElem0) => Effect.Effect<Env1, InErr, InElem>
+    f: (a: InElem0) => Effect<Env1, InErr, InElem>
   ): Channel<Env | Env1, InErr, InElem0, InDone, OutErr, OutElem, OutDone>
 }
 ```

@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as FiberId from "./FiberId.js"
 import type * as FiberRef from "./FiberRef.js"
 import type * as HashSet from "./HashSet.js"
@@ -115,7 +115,7 @@ export const joinAs: {
  * @since 2.0.0
  * @category utils
  */
-export const setAll: (self: FiberRefs) => Effect.Effect<never, never, void> = internal.setAll
+export const setAll: (self: FiberRefs) => Effect<never, never, void> = internal.setAll
 
 /**
  * Updates the value of the specified `FiberRef` using the provided `FiberId`

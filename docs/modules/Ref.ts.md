@@ -47,7 +47,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const make: <A>(value: A) => Effect.Effect<never, never, Ref<A>>
+export declare const make: <A>(value: A) => Effect<never, never, Ref<A>>
 ```
 
 Added in v2.0.0
@@ -59,7 +59,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const get: <A>(self: Ref<A>) => Effect.Effect<never, never, A>
+export declare const get: <A>(self: Ref<A>) => Effect<never, never, A>
 ```
 
 Added in v2.0.0
@@ -72,7 +72,7 @@ Added in v2.0.0
 
 ```ts
 export interface Ref<A> extends Ref.Variance<A>, Pipeable {
-  modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
+  modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B>
 }
 ```
 
@@ -138,8 +138,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndSet: {
-  <A>(value: A): (self: Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, value: A): Effect<never, never, A>
 }
 ```
 
@@ -151,8 +151,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdate: {
-  <A>(f: (a: A) => A): (self: Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -164,8 +164,8 @@ Added in v2.0.0
 
 ```ts
 export declare const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
 }
 ```
 
@@ -177,8 +177,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modify: {
-  <A, B>(f: (a: A) => readonly [B, A]): (self: Ref<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: Ref<A>, f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]): (self: Ref<A>) => Effect<never, never, B>
+  <A, B>(self: Ref<A>, f: (a: A) => readonly [B, A]): Effect<never, never, B>
 }
 ```
 
@@ -190,8 +190,8 @@ Added in v2.0.0
 
 ```ts
 export declare const modifySome: {
-  <B, A>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): (self: Ref<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: Ref<A>, fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): Effect.Effect<never, never, B>
+  <B, A>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): (self: Ref<A>) => Effect<never, never, B>
+  <A, B>(self: Ref<A>, fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): Effect<never, never, B>
 }
 ```
 
@@ -203,8 +203,8 @@ Added in v2.0.0
 
 ```ts
 export declare const set: {
-  <A>(value: A): (self: Ref<A>) => Effect.Effect<never, never, void>
-  <A>(self: Ref<A>, value: A): Effect.Effect<never, never, void>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, value: A): Effect<never, never, void>
 }
 ```
 
@@ -216,8 +216,8 @@ Added in v2.0.0
 
 ```ts
 export declare const setAndGet: {
-  <A>(value: A): (self: Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, value: A): Effect<never, never, A>
 }
 ```
 
@@ -229,8 +229,8 @@ Added in v2.0.0
 
 ```ts
 export declare const update: {
-  <A>(f: (a: A) => A): (self: Ref<A>) => Effect.Effect<never, never, void>
-  <A>(self: Ref<A>, f: (a: A) => A): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, void>
 }
 ```
 
@@ -242,8 +242,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateAndGet: {
-  <A>(f: (a: A) => A): (self: Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, f: (a: A) => A): Effect<never, never, A>
 }
 ```
 
@@ -255,8 +255,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSome: {
-  <A>(f: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect.Effect<never, never, void>
-  <A>(self: Ref<A>, f: (a: A) => Option.Option<A>): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect<never, never, void>
+  <A>(self: Ref<A>, f: (a: A) => Option.Option<A>): Effect<never, never, void>
 }
 ```
 
@@ -268,8 +268,8 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect.Effect<never, never, A>
-  <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect<never, never, A>
+  <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect<never, never, A>
 }
 ```
 

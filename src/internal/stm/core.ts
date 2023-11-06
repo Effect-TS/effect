@@ -1,6 +1,6 @@
 import * as Cause from "../../Cause.js"
 import * as Context from "../../Context.js"
-import * as Effect from "../../Effect.js"
+import { Effect } from "../../Effect.js"
 import * as Either from "../../Either.js"
 import * as Equal from "../../Equal.js"
 import * as Exit from "../../Exit.js"
@@ -168,7 +168,7 @@ class STMPrimitive implements STM.STM<any, any, any> {
   [Hash.symbol](this: {}) {
     return Hash.random(this)
   }
-  commit(this: STM.STM<any, any, any>): Effect.Effect<any, any, any> {
+  commit(this: STM.STM<any, any, any>): Effect<any, any, any> {
     return unsafeAtomically(this, constVoid, constVoid)
   }
   pipe() {
@@ -180,15 +180,14 @@ class STMPrimitive implements STM.STM<any, any, any> {
 export const isSTM = (u: unknown): u is STM.STM<unknown, unknown, unknown> => hasProperty(u, STMTypeId)
 
 /** @internal */
-export const commit = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<R, E, A> =>
-  unsafeAtomically(self, constVoid, constVoid)
+export const commit = <R, E, A>(self: STM.STM<R, E, A>): Effect<R, E, A> => unsafeAtomically(self, constVoid, constVoid)
 
 /** @internal */
 export const unsafeAtomically = <R, E, A>(
   self: STM.STM<R, E, A>,
   onDone: (exit: Exit.Exit<E, A>) => unknown,
   onInterrupt: LazyArg<unknown>
-): Effect.Effect<R, E, A> =>
+): Effect<R, E, A> =>
   withFiberRuntime<R, E, A>((state) => {
     const fiberId = state.id()
     const env = state.getFiberRef(FiberRef.currentContext) as Context.Context<R>
@@ -204,7 +203,7 @@ export const unsafeAtomically = <R, E, A>(
         const txnId = TxnId.make()
         const state: { value: STMState.STMState<E, A> } = { value: STMState.running }
         const effect = Effect.async(
-          (k: (effect: Effect.Effect<R, E, A>) => unknown): void =>
+          (k: (effect: Effect<R, E, A>) => unknown): void =>
             tryCommitAsync(fiberId, self, txnId, state, env, scheduler, priority, k)
         )
         return Effect.uninterruptibleMask((restore) =>
@@ -355,7 +354,7 @@ const tryCommitAsync = <R, E, A>(
   context: Context.Context<R>,
   scheduler: Scheduler.Scheduler,
   priority: number,
-  k: (effect: Effect.Effect<R, E, A>) => unknown
+  k: (effect: Effect<R, E, A>) => unknown
 ) => {
   if (STMState.isRunning(state.value)) {
     const result = tryCommit(fiberId, self, state, context, scheduler, priority)
@@ -393,7 +392,7 @@ const completeTodos = <E, A>(
 /** @internal */
 const completeTryCommit = <R, E, A>(
   exit: Exit.Exit<E, A>,
-  k: (effect: Effect.Effect<R, E, A>) => unknown
+  k: (effect: Effect<R, E, A>) => unknown
 ): void => {
   k(exit)
 }

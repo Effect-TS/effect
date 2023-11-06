@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import { seconds } from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
@@ -74,7 +74,7 @@ export const children: ReadonlyMap<number, ReadonlyArray<Child>> = new Map(
   ])
 )
 
-const counted = <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
+const counted = <R, E, A>(self: Effect<R, E, A>) => Effect.tap(self, () => Effect.map(Counter, (c) => c.count++))
 
 const AllResolver = Resolver.makeBatched((
   requests: Array<GetParentChildren | GetAllParents | GetChildExtra | GetChildInfo>

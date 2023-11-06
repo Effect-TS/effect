@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type * as Channel from "./Channel.js"
-import * as Effect from "./Effect.js"
+import { Effect } from "./Effect.js"
 import * as Effectable from "./Effectable.js"
 import type * as Equal from "./Equal.js"
 import * as internal from "./internal/data.js"
@@ -447,8 +447,8 @@ export const taggedEnum: {
  * @category models
  */
 export interface YieldableError extends Case, Pipeable, Readonly<Error> {
-  readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
-  readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.EffectTypeId]: Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.StreamTypeId]: Effect.VarianceStruct<never, this, never>
   readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
   readonly [Effectable.ChannelTypeId]: Channel.Channel.VarianceStruct<
     never,

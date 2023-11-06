@@ -242,7 +242,7 @@ each time.
 **Signature**
 
 ```ts
-export declare const subscribeScoped: <A>(self: TPubSub<A>) => Effect.Effect<Scope.Scope, never, TQueue.TDequeue<A>>
+export declare const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope.Scope, never, TQueue.TDequeue<A>>
 ```
 
 Added in v2.0.0

@@ -33,7 +33,7 @@ with an end of stream signal.
 
 ```ts
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
-  (f: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
+  (f: Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
 }
 ```
 
@@ -81,13 +81,13 @@ export interface EmitOps<R, E, A, B> {
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  readonly fromEffect: (effect: Effect.Effect<R, E, A>) => Promise<B>
+  readonly fromEffect: (effect: Effect<R, E, A>) => Promise<B>
 
   /**
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  readonly fromEffectChunk: (effect: Effect.Effect<R, E, Chunk.Chunk<A>>) => Promise<B>
+  readonly fromEffectChunk: (effect: Effect<R, E, Chunk.Chunk<A>>) => Promise<B>
 
   /**
    * Terminates the stream with the specified cause.

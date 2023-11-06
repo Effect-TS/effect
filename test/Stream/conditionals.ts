@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Stream from "effect/Stream"
 // import * as Chunk from "effect/Chunk"

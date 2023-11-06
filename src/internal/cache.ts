@@ -3,7 +3,7 @@ import type * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Deferred from "../Deferred.js"
 import * as Duration from "../Duration.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import * as Exit from "../Exit.js"
@@ -301,11 +301,11 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     this.cacheState = initialCacheState()
   }
 
-  get(key: Key): Effect.Effect<never, Error, Value> {
+  get(key: Key): Effect<never, Error, Value> {
     return core.map(this.getEither(key), Either.merge)
   }
 
-  cacheStats(): Effect.Effect<never, never, Cache.CacheStats> {
+  cacheStats(): Effect<never, never, Cache.CacheStats> {
     return core.sync(() =>
       makeCacheStats({
         hits: this.cacheState.hits,
@@ -315,7 +315,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     )
   }
 
-  getOption(key: Key): Effect.Effect<never, Error, Option.Option<Value>> {
+  getOption(key: Key): Effect<never, Error, Option.Option<Value>> {
     return core.suspend(() =>
       Option.match(MutableHashMap.get(this.cacheState.map, key), {
         onNone: () => {
@@ -329,7 +329,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     )
   }
 
-  getOptionComplete(key: Key): Effect.Effect<never, never, Option.Option<Value>> {
+  getOptionComplete(key: Key): Effect<never, never, Option.Option<Value>> {
     return core.suspend(() =>
       Option.match(MutableHashMap.get(this.cacheState.map, key), {
         onNone: () => {
@@ -338,16 +338,16 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
           this.trackMiss()
           return core.succeed(Option.none<Value>())
         },
-        onSome: (value) => this.resolveMapValue(value, true) as Effect.Effect<never, never, Option.Option<Value>>
+        onSome: (value) => this.resolveMapValue(value, true) as Effect<never, never, Option.Option<Value>>
       })
     )
   }
 
-  contains(key: Key): Effect.Effect<never, never, boolean> {
+  contains(key: Key): Effect<never, never, boolean> {
     return core.sync(() => MutableHashMap.has(this.cacheState.map, key))
   }
 
-  entryStats(key: Key): Effect.Effect<never, never, Option.Option<Cache.EntryStats>> {
+  entryStats(key: Key): Effect<never, never, Option.Option<Cache.EntryStats>> {
     return core.sync(() => {
       const option = MutableHashMap.get(this.cacheState.map, key)
       if (Option.isSome(option)) {
@@ -369,8 +369,8 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  getEither(key: Key): Effect.Effect<never, Error, Either.Either<Value, Value>> {
-    return core.suspend((): Effect.Effect<never, Error, Either.Either<Value, Value>> => {
+  getEither(key: Key): Effect<never, Error, Either.Either<Value, Value>> {
+    return core.suspend((): Effect<never, Error, Either.Either<Value, Value>> => {
       const k = key
       let mapKey: MapKey<Key> | undefined = undefined
       let deferred: Deferred.Deferred<Error, Value> | undefined = undefined
@@ -400,13 +400,13 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  invalidate(key: Key): Effect.Effect<never, never, void> {
+  invalidate(key: Key): Effect<never, never, void> {
     return core.sync(() => {
       MutableHashMap.remove(this.cacheState.map, key)
     })
   }
 
-  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect.Effect<never, never, void> {
+  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect<never, never, void> {
     return core.sync(() => {
       const value = MutableHashMap.get(this.cacheState.map, key)
       if (Option.isSome(value) && value.value._tag === "Complete") {
@@ -419,13 +419,13 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  invalidateAll(): Effect.Effect<never, never, void> {
+  invalidateAll(): Effect<never, never, void> {
     return core.sync(() => {
       this.cacheState.map = MutableHashMap.empty()
     })
   }
 
-  refresh(key: Key): Effect.Effect<never, Error, void> {
+  refresh(key: Key): Effect<never, Error, void> {
     return effect.clockWith((clock) =>
       core.suspend(() => {
         const k = key
@@ -481,7 +481,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     this: CacheImpl<Key, Error, Value>,
     key: Key,
     value: Value
-  ): Effect.Effect<never, never, void> {
+  ): Effect<never, never, void> {
     return effect.clockWith((clock) =>
       core.sync(() => {
         const now = clock.unsafeCurrentTimeMillis()
@@ -502,13 +502,13 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     )
   }
 
-  size(): Effect.Effect<never, never, number> {
+  size(): Effect<never, never, number> {
     return core.sync(() => {
       return MutableHashMap.size(this.cacheState.map)
     })
   }
 
-  values(): Effect.Effect<never, never, Array<Value>> {
+  values(): Effect<never, never, Array<Value>> {
     return core.sync(() => {
       const values: Array<Value> = []
       for (const entry of this.cacheState.map) {
@@ -520,7 +520,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  entries<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect.Effect<never, never, Array<[Key, Value]>> {
+  entries<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect<never, never, Array<[Key, Value]>> {
     return core.sync(() => {
       const values: Array<[Key, Value]> = []
       for (const entry of this.cacheState.map) {
@@ -532,7 +532,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  keys<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect.Effect<never, never, Array<Key>> {
+  keys<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect<never, never, Array<Key>> {
     return core.sync(() => {
       const keys: Array<Key> = []
       for (const entry of this.cacheState.map) {
@@ -547,7 +547,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
   resolveMapValue(
     value: MapValue<Key, Error, Value>,
     ignorePending = false
-  ): Effect.Effect<never, Error, Option.Option<Value>> {
+  ): Effect<never, Error, Option.Option<Value>> {
     return effect.clockWith((clock) => {
       switch (value._tag) {
         case "Complete": {
@@ -627,7 +627,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
   lookupValueOf(
     input: Key,
     deferred: Deferred.Deferred<Error, Value>
-  ): Effect.Effect<never, Error, Value> {
+  ): Effect<never, Error, Value> {
     return effect.clockWith((clock) =>
       core.suspend(() => {
         const key = input
@@ -671,7 +671,7 @@ export const make = <Key, Environment, Error, Value>(
     readonly timeToLive: Duration.DurationInput
     readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
   }
-): Effect.Effect<Environment, never, Cache.Cache<Key, Error, Value>> => {
+): Effect<Environment, never, Cache.Cache<Key, Error, Value>> => {
   const timeToLive = Duration.decode(options.timeToLive)
   return makeWith({
     capacity: options.capacity,
@@ -687,7 +687,7 @@ export const makeWith = <Key, Environment, Error, Value>(
     readonly lookup: Cache.Lookup<Key, Environment, Error, Value>
     readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
   }
-): Effect.Effect<Environment, never, Cache.Cache<Key, Error, Value>> =>
+): Effect<Environment, never, Cache.Cache<Key, Error, Value>> =>
   core.map(
     fiberRuntime.all([core.context<Environment>(), core.fiberId]),
     ([context, fiberId]) =>

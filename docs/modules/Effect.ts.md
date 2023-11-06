@@ -551,7 +551,7 @@ export declare const once: <R, E, A>(self: Effect<R, E, A>) => Effect<never, nev
 **Example**
 
 ```ts
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Console from "effect/Console"
 
 const program = Effect.gen(function* (_) {
@@ -1114,7 +1114,7 @@ export declare const validateFirst: {
 **Example**
 
 ```ts
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 
 const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))

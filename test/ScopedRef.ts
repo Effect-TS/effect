@@ -1,6 +1,6 @@
 import * as Counter from "effect-test/utils/counter"
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { identity, pipe } from "effect/Function"
 import * as ScopedRef from "effect/ScopedRef"
 import { assert, describe, expect } from "vitest"

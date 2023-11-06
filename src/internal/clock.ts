@@ -1,7 +1,7 @@
 import type * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
 import { constFalse } from "../Function.js"
 import * as core from "./core.js"
@@ -77,15 +77,15 @@ class ClockImpl implements Clock.Clock {
     return processOrPerformanceNow()
   }
 
-  currentTimeMillis: Effect.Effect<never, never, number> = core.sync(() => this.unsafeCurrentTimeMillis())
+  currentTimeMillis: Effect<never, never, number> = core.sync(() => this.unsafeCurrentTimeMillis())
 
-  currentTimeNanos: Effect.Effect<never, never, bigint> = core.sync(() => this.unsafeCurrentTimeNanos())
+  currentTimeNanos: Effect<never, never, bigint> = core.sync(() => this.unsafeCurrentTimeNanos())
 
-  scheduler(): Effect.Effect<never, never, Clock.ClockScheduler> {
+  scheduler(): Effect<never, never, Clock.ClockScheduler> {
     return core.succeed(globalClockScheduler)
   }
 
-  sleep(duration: Duration.Duration): Effect.Effect<never, never, void> {
+  sleep(duration: Duration.Duration): Effect<never, never, void> {
     return core.asyncEither<never, never, void>((cb) => {
       const canceler = globalClockScheduler.unsafeSchedule(() => cb(core.unit), duration)
       return Either.left(core.asUnit(core.sync(canceler)))

@@ -260,11 +260,11 @@ before the start of each interval produced by this schedule.
 ```ts
 export declare const delayedEffect: {
   <Env2>(
-    f: (duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -522,7 +522,7 @@ export declare const makeWithState: <S, Env, In, Out>(
     now: number,
     input: In,
     state: S
-  ) => Effect.Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
+  ) => Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
 ) => Schedule<Env, In, Out>
 ```
 
@@ -759,12 +759,12 @@ export declare const run: {
   <In>(
     now: number,
     input: Iterable<In>
-  ): <Env, Out>(self: Schedule<Env, In, Out>) => Effect.Effect<Env, never, Chunk.Chunk<Out>>
+  ): <Env, Out>(self: Schedule<Env, In, Out>) => Effect<Env, never, Chunk.Chunk<Out>>
   <Env, In, Out>(
     self: Schedule<Env, In, Out>,
     now: number,
     input: Iterable<In>
-  ): Effect.Effect<Env, never, Chunk.Chunk<Out>>
+  ): Effect<Env, never, Chunk.Chunk<Out>>
 }
 ```
 
@@ -784,8 +784,8 @@ the driver of the schedule may not run to completion. However, if the
 
 ```ts
 export declare const ensuring: {
-  <X>(finalizer: Effect.Effect<never, never, X>): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Out>
-  <Env, In, Out, X>(self: Schedule<Env, In, Out>, finalizer: Effect.Effect<never, never, X>): Schedule<Env, In, Out>
+  <X>(finalizer: Effect<never, never, X>): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env, In, Out>
+  <Env, In, Out, X>(self: Schedule<Env, In, Out>, finalizer: Effect<never, never, X>): Schedule<Env, In, Out>
 }
 ```
 
@@ -818,12 +818,12 @@ Returns a new schedule that effectfully folds over the outputs of this one.
 export declare const reduceEffect: {
   <Out, Env1, Z>(
     zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Env1, never, Z>
+    f: (z: Z, out: Out) => Effect<Env1, never, Z>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env1 | Env, In, Z>
   <Env, In, Out, Env1, Z>(
     self: Schedule<Env, In, Out>,
     zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Env1, never, Z>
+    f: (z: Z, out: Out) => Effect<Env1, never, Z>
   ): Schedule<Env | Env1, In, Z>
 }
 ```
@@ -842,7 +842,7 @@ handling sleeping.
 ```ts
 export declare const driver: <Env, In, Out>(
   self: Schedule<Env, In, Out>
-) => Effect.Effect<never, never, ScheduleDriver<Env, In, Out>>
+) => Effect<never, never, ScheduleDriver<Env, In, Out>>
 ```
 
 Added in v2.0.0
@@ -910,14 +910,14 @@ Returns a new schedule that maps both the input and output.
 ```ts
 export declare const mapBothEffect: {
   <In2, Env2, In, Out, Env3, Out2>(options: {
-    readonly onInput: (input: In2) => Effect.Effect<Env2, never, In>
-    readonly onOutput: (out: Out) => Effect.Effect<Env3, never, Out2>
+    readonly onInput: (input: In2) => Effect<Env2, never, In>
+    readonly onOutput: (out: Out) => Effect<Env3, never, Out2>
   }): <Env>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env3 | Env, In2, Out2>
   <Env, In, Out, In2, Env2, Env3, Out2>(
     self: Schedule<Env, In, Out>,
     options: {
-      readonly onInput: (input: In2) => Effect.Effect<Env2, never, In>
-      readonly onOutput: (out: Out) => Effect.Effect<Env3, never, Out2>
+      readonly onInput: (input: In2) => Effect<Env2, never, In>
+      readonly onOutput: (out: Out) => Effect<Env3, never, Out2>
     }
   ): Schedule<Env | Env2 | Env3, In2, Out2>
 }
@@ -935,11 +935,11 @@ specified effectful function.
 ```ts
 export declare const mapEffect: {
   <Out, Env2, Out2>(
-    f: (out: Out) => Effect.Effect<Env2, never, Out2>
+    f: (out: Out) => Effect<Env2, never, Out2>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out2>
   <Env, In, Out, Env2, Out2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, Out2>
+    f: (out: Out) => Effect<Env2, never, Out2>
   ): Schedule<Env | Env2, In, Out2>
 }
 ```
@@ -972,11 +972,11 @@ schedule.
 ```ts
 export declare const mapInputEffect: {
   <In, Env2, In2>(
-    f: (in2: In2) => Effect.Effect<Env2, never, In>
+    f: (in2: In2) => Effect<Env2, never, In>
   ): <Env, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In2, Out>
   <Env, In, Out, Env2, In2>(
     self: Schedule<Env, In, Out>,
-    f: (in2: In2) => Effect.Effect<Env2, never, In>
+    f: (in2: In2) => Effect<Env2, never, In>
   ): Schedule<Env | Env2, In2, Out>
 }
 ```
@@ -1026,7 +1026,7 @@ export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>,
     now: number,
     input: In,
     state: any
-  ) => Effect.Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]>
+  ) => Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]>
 }
 ```
 
@@ -1040,10 +1040,10 @@ Added in v2.0.0
 
 ```ts
 export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<Env, In, Out> {
-  state(): Effect.Effect<never, never, unknown>
-  last(): Effect.Effect<never, Cause.NoSuchElementException, Out>
-  reset(): Effect.Effect<never, never, void>
-  next(input: In): Effect.Effect<Env, Option.Option<never>, Out>
+  state(): Effect<never, never, unknown>
+  last(): Effect<never, Cause.NoSuchElementException, Out>
+  reset(): Effect<never, never, void>
+  next(input: In): Effect<Env, Option.Option<never>, Out>
 }
 ```
 
@@ -1102,11 +1102,11 @@ schedule.
 ```ts
 export declare const tapInput: {
   <Env2, In2, X>(
-    f: (input: In2) => Effect.Effect<Env2, never, X>
+    f: (input: In2) => Effect<Env2, never, X>
   ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, Out>
   <Env, In, Out, Env2, In2, X>(
     self: Schedule<Env, In, Out>,
-    f: (input: In2) => Effect.Effect<Env2, never, X>
+    f: (input: In2) => Effect<Env2, never, X>
   ): Schedule<Env | Env2, In & In2, Out>
 }
 ```
@@ -1123,11 +1123,11 @@ schedule.
 ```ts
 export declare const tapOutput: {
   <Out, XO extends Out, Env2, X>(
-    f: (out: XO) => Effect.Effect<Env2, never, X>
+    f: (out: XO) => Effect<Env2, never, X>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, XO extends Out, Env2, X>(
     self: Schedule<Env, In, Out>,
-    f: (out: XO) => Effect.Effect<Env2, never, X>
+    f: (out: XO) => Effect<Env2, never, X>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1240,11 +1240,11 @@ every interval defined by this schedule.
 ```ts
 export declare const addDelayEffect: {
   <Out, Env2>(
-    f: (out: Out) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out) => Effect<Env2, never, Duration.DurationInput>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out) => Effect<Env2, never, Duration.DurationInput>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1300,11 +1300,11 @@ based on the return value of the function.
 ```ts
 export declare const checkEffect: {
   <In, Out, Env2>(
-    test: (input: In, output: Out) => Effect.Effect<Env2, never, boolean>
+    test: (input: In, output: Out) => Effect<Env2, never, boolean>
   ): <Env>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    test: (input: In, output: Out) => Effect.Effect<Env2, never, boolean>
+    test: (input: In, output: Out) => Effect<Env2, never, boolean>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1347,7 +1347,7 @@ all inputs into a list.
 
 ```ts
 export declare const collectUntilEffect: <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ) => Schedule<Env, A, Chunk.Chunk<A>>
 ```
 
@@ -1375,7 +1375,7 @@ all inputs into a list.
 
 ```ts
 export declare const collectWhileEffect: <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ) => Schedule<Env, A, Chunk.Chunk<A>>
 ```
 
@@ -1501,11 +1501,11 @@ effectual function.
 ```ts
 export declare const modifyDelayEffect: {
   <Out, Env2>(
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1523,11 +1523,11 @@ schedules that log failures, decisions, or computed values.
 ```ts
 export declare const onDecision: {
   <Out, Env2, X>(
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect<Env2, never, X>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2, X>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect<Env2, never, X>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1567,7 +1567,7 @@ A schedule that recurs for until the predicate evaluates to true.
 **Signature**
 
 ```ts
-export declare const recurUntilEffect: <Env, A>(f: (a: A) => Effect.Effect<Env, never, boolean>) => Schedule<Env, A, A>
+export declare const recurUntilEffect: <Env, A>(f: (a: A) => Effect<Env, never, boolean>) => Schedule<Env, A, A>
 ```
 
 Added in v2.0.0
@@ -1617,7 +1617,7 @@ true.
 **Signature**
 
 ```ts
-export declare const recurWhileEffect: <Env, A>(f: (a: A) => Effect.Effect<Env, never, boolean>) => Schedule<Env, A, A>
+export declare const recurWhileEffect: <Env, A>(f: (a: A) => Effect<Env, never, boolean>) => Schedule<Env, A, A>
 ```
 
 Added in v2.0.0
@@ -1737,11 +1737,11 @@ predicate on the input evaluates to true.
 ```ts
 export declare const untilInputEffect: {
   <In, Env2>(
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ): <Env, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1774,11 +1774,11 @@ predicate on the output evaluates to true.
 ```ts
 export declare const untilOutputEffect: {
   <Out, Env2>(
-    f: (out: Out) => Effect.Effect<Env2, never, boolean>
+    f: (out: Out) => Effect<Env2, never, boolean>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, boolean>
+    f: (out: Out) => Effect<Env2, never, boolean>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1826,11 +1826,11 @@ predicate on the input evaluates to true.
 ```ts
 export declare const whileInputEffect: {
   <In, Env2>(
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ): <Env, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In, Out>
   <Env, In, Out, Env2>(
     self: Schedule<Env, In, Out>,
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ): Schedule<Env | Env2, In, Out>
 }
 ```
@@ -1863,11 +1863,11 @@ predicate on the output evaluates to true.
 ```ts
 export declare const whileOutputEffect: {
   <Out, Env1>(
-    f: (out: Out) => Effect.Effect<Env1, never, boolean>
+    f: (out: Out) => Effect<Env1, never, boolean>
   ): <Env, In>(self: Schedule<Env, In, Out>) => Schedule<Env1 | Env, In, Out>
   <Env, In, Out, Env1>(
     self: Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env1, never, boolean>
+    f: (out: Out) => Effect<Env1, never, boolean>
   ): Schedule<Env | Env1, In, Out>
 }
 ```

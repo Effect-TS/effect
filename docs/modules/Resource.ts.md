@@ -43,9 +43,9 @@ constructor.
 
 ```ts
 export declare const auto: <R, E, A, R2, Out>(
-  acquire: Effect.Effect<R, E, A>,
+  acquire: Effect<R, E, A>,
   policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect.Effect<Scope.Scope | R | R2, never, Resource<E, A>>
+) => Effect<Scope.Scope | R | R2, never, Resource<E, A>>
 ```
 
 Added in v2.0.0
@@ -62,8 +62,8 @@ constructor.
 
 ```ts
 export declare const manual: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<Scope.Scope | R, never, Resource<E, A>>
+  acquire: Effect<R, E, A>
+) => Effect<Scope.Scope | R, never, Resource<E, A>>
 ```
 
 Added in v2.0.0
@@ -77,7 +77,7 @@ Retrieves the current value stored in the cache.
 **Signature**
 
 ```ts
-export declare const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A>
+export declare const get: <E, A>(self: Resource<E, A>) => Effect<never, E, A>
 ```
 
 Added in v2.0.0
@@ -96,7 +96,7 @@ export interface Resource<E, A> extends Resource.Variance<E, A> {
   /** @internal */
   readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
   /** @internal */
-  acquire(): Effect.Effect<Scope.Scope, E, A>
+  acquire(): Effect<Scope.Scope, E, A>
 }
 ```
 
@@ -153,7 +153,7 @@ is successful, or the refresh operation fails.
 **Signature**
 
 ```ts
-export declare const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, void>
+export declare const refresh: <E, A>(self: Resource<E, A>) => Effect<never, E, void>
 ```
 
 Added in v2.0.0

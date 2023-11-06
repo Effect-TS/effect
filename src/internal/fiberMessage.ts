@@ -1,5 +1,5 @@
 import type * as Cause from "../Cause.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import type * as FiberStatus from "../FiberStatus.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 
@@ -48,7 +48,7 @@ export interface Stateful {
 /** @internal */
 export interface Resume {
   readonly _tag: OP_RESUME
-  readonly effect: Effect.Effect<any, any, any>
+  readonly effect: Effect<any, any, any>
 }
 
 /** @internal */
@@ -74,7 +74,7 @@ export const stateful = (
 })
 
 /** @internal */
-export const resume = (effect: Effect.Effect<any, any, any>): FiberMessage => ({
+export const resume = (effect: Effect<any, any, any>): FiberMessage => ({
   _tag: OP_RESUME,
   effect
 })

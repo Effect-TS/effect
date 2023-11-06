@@ -104,7 +104,7 @@ program.
 export declare const runCallback: <R>(
   runtime: Runtime<R>
 ) => <E, A>(
-  effect: Effect.Effect<R, E, A>,
+  effect: Effect<R, E, A>,
   onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
 ) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void
 ```
@@ -121,7 +121,7 @@ Scheduler if not provided
 ```ts
 export declare const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
+) => <E, A>(self: Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
 ```
 
 Added in v2.0.0
@@ -138,7 +138,7 @@ program.
 **Signature**
 
 ```ts
-export declare const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<A>
+export declare const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Promise<A>
 ```
 
 Added in v2.0.0
@@ -156,7 +156,7 @@ program.
 ```ts
 export declare const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>>
+) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit.Exit<E, A>>
 ```
 
 Added in v2.0.0
@@ -171,7 +171,7 @@ program.
 **Signature**
 
 ```ts
-export declare const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => A
+export declare const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => A
 ```
 
 Added in v2.0.0
@@ -186,7 +186,7 @@ program.
 **Signature**
 
 ```ts
-export declare const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Exit.Exit<E, A>
+export declare const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit.Exit<E, A>
 ```
 
 Added in v2.0.0

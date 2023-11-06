@@ -3,7 +3,7 @@ import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
@@ -354,7 +354,7 @@ describe.concurrent("Layer", () => {
       interface FooService {
         readonly ref: Ref.Ref<number>
         readonly string: string
-        readonly get: Effect.Effect<
+        readonly get: Effect<
           never,
           never,
           readonly [
@@ -390,7 +390,7 @@ describe.concurrent("Layer", () => {
       interface FooService {
         readonly ref: Ref.Ref<number>
         readonly string: string
-        readonly get: Effect.Effect<
+        readonly get: Effect<
           never,
           never,
           readonly [
@@ -637,11 +637,11 @@ describe.concurrent("Layer", () => {
       assert.strictEqual(result.bar, "bar: 1")
     }))
 })
-export const makeRef = (): Effect.Effect<never, never, Ref.Ref<Chunk.Chunk<string>>> => {
+export const makeRef = (): Effect<never, never, Ref.Ref<Chunk.Chunk<string>>> => {
   return Ref.make(Chunk.empty())
 }
 export class Service1 {
-  one(): Effect.Effect<never, never, number> {
+  one(): Effect<never, never, number> {
     return Effect.succeed(1)
   }
 }
@@ -656,7 +656,7 @@ export const makeLayer1 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never
   )
 }
 export class Service2 {
-  two(): Effect.Effect<never, never, number> {
+  two(): Effect<never, never, number> {
     return Effect.succeed(2)
   }
 }
@@ -671,7 +671,7 @@ export const makeLayer2 = (ref: Ref.Ref<Chunk.Chunk<string>>): Layer.Layer<never
   )
 }
 export class Service3 {
-  three(): Effect.Effect<never, never, number> {
+  three(): Effect<never, never, number> {
     return Effect.succeed(3)
   }
 }

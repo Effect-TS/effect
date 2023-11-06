@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"

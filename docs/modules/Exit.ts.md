@@ -230,16 +230,16 @@ Added in v2.0.0
 ```ts
 export declare const matchEffect: {
   <E, A, R, E2, A2, R2, E3, A3>(options: {
-    readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-    readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
-  }): (self: Exit<E, A>) => Effect.Effect<R | R2, E2 | E3, A2 | A3>
+    readonly onFailure: (cause: Cause.Cause<E>) => Effect<R, E2, A2>
+    readonly onSuccess: (a: A) => Effect<R2, E3, A3>
+  }): (self: Exit<E, A>) => Effect<R | R2, E2 | E3, A2 | A3>
   <E, A, R, E2, A2, R2, E3, A3>(
     self: Exit<E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-      readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R, E2, A2>
+      readonly onSuccess: (a: A) => Effect<R2, E3, A3>
     }
-  ): Effect.Effect<R | R2, E2 | E3, A2 | A3>
+  ): Effect<R | R2, E2 | E3, A2 | A3>
 }
 ```
 
@@ -441,7 +441,7 @@ of type `E`.
 **Signature**
 
 ```ts
-export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Failure<E, A> extends Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Failure"
   readonly _op: "Failure"
   readonly cause: Cause.Cause<E>
@@ -463,7 +463,7 @@ of type `A`.
 **Signature**
 
 ```ts
-export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Success<E, A> extends Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Success"
   readonly _op: "Success"
   readonly value: A
@@ -537,9 +537,9 @@ Added in v2.0.0
 ```ts
 export declare const flatMapEffect: {
   <E, A, R, E2, A2>(
-    f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>
-  ): (self: Exit<E, A>) => Effect.Effect<R, E2, Exit<E, A2>>
-  <E, A, R, E2, A2>(self: Exit<E, A>, f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>): Effect.Effect<R, E2, Exit<E, A2>>
+    f: (a: A) => Effect<R, E2, Exit<E, A2>>
+  ): (self: Exit<E, A>) => Effect<R, E2, Exit<E, A2>>
+  <E, A, R, E2, A2>(self: Exit<E, A>, f: (a: A) => Effect<R, E2, Exit<E, A2>>): Effect<R, E2, Exit<E, A2>>
 }
 ```
 
@@ -563,8 +563,8 @@ Added in v2.0.0
 
 ```ts
 export declare const forEachEffect: {
-  <A, R, E2, B>(f: (a: A) => Effect.Effect<R, E2, B>): <E>(self: Exit<E, A>) => Effect.Effect<R, never, Exit<E2 | E, B>>
-  <E, A, R, E2, B>(self: Exit<E, A>, f: (a: A) => Effect.Effect<R, E2, B>): Effect.Effect<R, never, Exit<E | E2, B>>
+  <A, R, E2, B>(f: (a: A) => Effect<R, E2, B>): <E>(self: Exit<E, A>) => Effect<R, never, Exit<E2 | E, B>>
+  <E, A, R, E2, B>(self: Exit<E, A>, f: (a: A) => Effect<R, E2, B>): Effect<R, never, Exit<E | E2, B>>
 }
 ```
 

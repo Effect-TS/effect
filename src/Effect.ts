@@ -325,7 +325,7 @@ export const cachedFunction: <R, E, A, B>(
  * evaluated multiple times.
  *
  * @example
- * import * as Effect from "effect/Effect"
+ * import { Effect } from "effect/Effect"
  * import * as Console from "effect/Console"
  *
  * const program = Effect.gen(function* (_) {
@@ -924,7 +924,7 @@ export const validateAll: {
  * If `elements` is empty then `Effect.fail([])` is returned.
  *
  * @example
- * import * as Effect from "effect/Effect"
+ * import { Effect } from "effect/Effect"
  * import * as Exit from "effect/Exit"
  *
  * const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))

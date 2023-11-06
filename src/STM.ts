@@ -4,7 +4,7 @@
 import * as Cause from "./Cause.js"
 import * as Chunk from "./Chunk.js"
 import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as Either from "./Either.js"
 import type * as FiberId from "./FiberId.js"
 import type { LazyArg } from "./Function.js"
@@ -65,7 +65,7 @@ export type STMTypeId = typeof STMTypeId
  * @since 2.0.0
  * @category models
  */
-export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
+export interface STM<R, E, A> extends Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: STMUnify<this>
   [Unify.ignoreSymbol]?: STMUnifyIgnore
@@ -181,12 +181,12 @@ export const acquireUseRelease: {
     release: (resource: A) => STM<R3, E3, A3>
   ): <R, E>(
     acquire: STM<R, E, A>
-  ) => Effect.Effect<R2 | R3 | R, E2 | E3 | E, A2>
+  ) => Effect<R2 | R3 | R, E2 | E3 | E, A2>
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     acquire: STM<R, E, A>,
     use: (resource: A) => STM<R2, E2, A2>,
     release: (resource: A) => STM<R3, E3, A3>
-  ): Effect.Effect<R | R2 | R3, E | E2 | E3, A2>
+  ): Effect<R | R2 | R3, E | E2 | E3, A2>
 } = stm.acquireUseRelease
 
 /**
@@ -425,7 +425,7 @@ export const collectSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = core.commit
+export const commit: <R, E, A>(self: STM<R, E, A>) => Effect<R, E, A> = core.commit
 
 /**
  * Commits this transaction atomically, regardless of whether the transaction
@@ -434,7 +434,7 @@ export const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = c
  * @since 2.0.0
  * @category destructors
  */
-export const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A> = stm.commitEither
+export const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect<R, E, A> = stm.commitEither
 
 /**
  * Similar to Either.cond, evaluate the predicate, return the given A as

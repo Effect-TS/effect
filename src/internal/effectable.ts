@@ -1,5 +1,5 @@
 import type * as Channel from "../Channel.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import type * as Effectable from "../Effectable.js"
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
@@ -51,7 +51,7 @@ export const channelVariance = {
 }
 
 /** @internal */
-export const EffectPrototype: Effect.Effect<never, never, never> = {
+export const EffectPrototype: Effect<never, never, never> = {
   [EffectTypeId]: effectVariance,
   [StreamTypeId]: effectVariance,
   [SinkTypeId]: sinkVariance,

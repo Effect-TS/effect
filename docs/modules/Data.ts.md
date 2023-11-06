@@ -483,8 +483,8 @@ Added in v2.0.0
 
 ```ts
 export interface YieldableError extends Case, Pipeable, Readonly<Error> {
-  readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
-  readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.EffectTypeId]: Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.StreamTypeId]: Effect.VarianceStruct<never, this, never>
   readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
   readonly [Effectable.ChannelTypeId]: Channel.Channel.VarianceStruct<
     never,

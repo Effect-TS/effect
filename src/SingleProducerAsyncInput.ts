@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as Either from "./Either.js"
 import type * as Exit from "./Exit.js"
 import * as internal from "./internal/channel/singleProducerAsyncInput.js"
@@ -29,8 +29,8 @@ import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 export interface SingleProducerAsyncInput<Err, Elem, Done>
   extends AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
 {
-  close(): Effect.Effect<never, never, unknown>
-  take(): Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
+  close(): Effect<never, never, unknown>
+  take(): Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
 }
 
 /**
@@ -40,10 +40,10 @@ export interface SingleProducerAsyncInput<Err, Elem, Done>
  * @category models
  */
 export interface AsyncInputProducer<Err, Elem, Done> {
-  awaitRead(): Effect.Effect<never, never, unknown>
-  done(value: Done): Effect.Effect<never, never, unknown>
-  emit(element: Elem): Effect.Effect<never, never, unknown>
-  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown>
+  awaitRead(): Effect<never, never, unknown>
+  done(value: Done): Effect<never, never, unknown>
+  emit(element: Elem): Effect<never, never, unknown>
+  error(cause: Cause.Cause<Err>): Effect<never, never, unknown>
 }
 
 /**
@@ -57,12 +57,12 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
     onError: (cause: Cause.Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
-  ): Effect.Effect<never, never, A>
+  ): Effect<never, never, A>
 }
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const make: <Err, Elem, Done>() => Effect.Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> =
+export const make: <Err, Elem, Done>() => Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> =
   internal.make

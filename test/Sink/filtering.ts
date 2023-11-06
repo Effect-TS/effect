@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"

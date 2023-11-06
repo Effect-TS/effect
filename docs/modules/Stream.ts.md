@@ -378,8 +378,8 @@ stream is consumed.
 
 ```ts
 export declare const acquireRelease: <R, E, A, R2, _>(
-  acquire: Effect.Effect<R, E, A>,
-  release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R2, never, _>
+  acquire: Effect<R, E, A>,
+  release: (resource: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, _>
 ) => Stream<R | R2, E, A>
 ```
 
@@ -413,7 +413,7 @@ stream, by setting it to `None`.
 
 ```ts
 export declare const asyncEffect: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R, E, unknown>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Effect<R, E, unknown>,
   outputBuffer?: number
 ) => Stream<R, E, A>
 ```
@@ -431,7 +431,7 @@ be used to signal the end of the stream, by setting it to `None`.
 
 ```ts
 export declare const asyncInterrupt: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Either.Either<Effect.Effect<R, never, unknown>, Stream<R, E, A>>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Either.Either<Effect<R, never, unknown>, Stream<R, E, A>>,
   outputBuffer?: number
 ) => Stream<R, E, A>
 ```
@@ -467,7 +467,7 @@ end of the stream, by setting it to `None`.
 
 ```ts
 export declare const asyncScoped: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R, E, unknown>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Effect<R, E, unknown>,
   outputBuffer?: number
 ) => Stream<Exclude<R, Scope.Scope>, E, A>
 ```
@@ -541,7 +541,7 @@ Creates a stream that executes the specified effect but emits no elements.
 **Signature**
 
 ```ts
-export declare const execute: <R, E, _>(effect: Effect.Effect<R, E, _>) => Stream<R, E, never>
+export declare const execute: <R, E, _>(effect: Effect<R, E, _>) => Stream<R, E, never>
 ```
 
 Added in v2.0.0
@@ -602,7 +602,7 @@ when it ends.
 **Signature**
 
 ```ts
-export declare const finalizer: <R, _>(finalizer: Effect.Effect<R, never, _>) => Stream<R, never, void>
+export declare const finalizer: <R, _>(finalizer: Effect<R, never, _>) => Stream<R, never, void>
 ```
 
 Added in v2.0.0
@@ -659,7 +659,7 @@ export declare const fromChunkPubSub: {
   <A>(
     pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
     options: { readonly scoped: true; readonly shutdown?: boolean }
-  ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
+  ): Effect<Scope.Scope, never, Stream<never, never, A>>
   <A>(
     pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
     options?: { readonly scoped?: false; readonly shutdown?: boolean }
@@ -704,7 +704,7 @@ with the failure value of this effect.
 **Signature**
 
 ```ts
-export declare const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R, E, A>
+export declare const fromEffect: <R, E, A>(effect: Effect<R, E, A>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -717,7 +717,7 @@ Creates a stream from an effect producing a value of type `A` or an empty
 **Signature**
 
 ```ts
-export declare const fromEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
+export declare const fromEffectOption: <R, E, A>(effect: Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -741,7 +741,7 @@ Creates a stream from an effect producing a value of type `Iterable<A>`.
 **Signature**
 
 ```ts
-export declare const fromIterableEffect: <R, E, A>(effect: Effect.Effect<R, E, Iterable<A>>) => Stream<R, E, A>
+export declare const fromIterableEffect: <R, E, A>(effect: Effect<R, E, Iterable<A>>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -772,7 +772,7 @@ export declare const fromPubSub: {
   <A>(
     pubsub: PubSub.PubSub<A>,
     options: { readonly scoped: true; readonly maxChunkSize?: number; readonly shutdown?: boolean }
-  ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
+  ): Effect<Scope.Scope, never, Stream<never, never, A>>
   <A>(
     pubsub: PubSub.PubSub<A>,
     options?: { readonly scoped?: false; readonly maxChunkSize?: number; readonly shutdown?: boolean }
@@ -792,7 +792,7 @@ See `Stream.toPull` for reference.
 
 ```ts
 export declare const fromPull: <R, R2, E, A>(
-  effect: Effect.Effect<Scope.Scope | R, never, Effect.Effect<R2, Option.Option<E>, Chunk.Chunk<A>>>
+  effect: Effect<Scope.Scope | R, never, Effect<R2, Option.Option<E>, Chunk.Chunk<A>>>
 ) => Stream<R2 | Exclude<R, Scope.Scope>, E, A>
 ```
 
@@ -941,7 +941,7 @@ paginated APIs, hence the name.
 ```ts
 export declare const paginateChunkEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect.Effect<R, E, readonly [Chunk.Chunk<A>, Option.Option<S>]>
+  f: (s: S) => Effect<R, E, readonly [Chunk.Chunk<A>, Option.Option<S>]>
 ) => Stream<R, E, A>
 ```
 
@@ -958,7 +958,7 @@ paginated APIs, hence the name.
 ```ts
 export declare const paginateEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect.Effect<R, E, readonly [A, Option.Option<S>]>
+  f: (s: S) => Effect<R, E, readonly [A, Option.Option<S>]>
 ) => Stream<R, E, A>
 ```
 
@@ -984,7 +984,7 @@ forever.
 **Signature**
 
 ```ts
-export declare const repeatEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<R, E, A>
+export declare const repeatEffect: <R, E, A>(effect: Effect<R, E, A>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -997,7 +997,7 @@ repeats forever.
 **Signature**
 
 ```ts
-export declare const repeatEffectChunk: <R, E, A>(effect: Effect.Effect<R, E, Chunk.Chunk<A>>) => Stream<R, E, A>
+export declare const repeatEffectChunk: <R, E, A>(effect: Effect<R, E, Chunk.Chunk<A>>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -1011,7 +1011,7 @@ fails with `None`.
 
 ```ts
 export declare const repeatEffectChunkOption: <R, E, A>(
-  effect: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>
+  effect: Effect<R, Option.Option<E>, Chunk.Chunk<A>>
 ) => Stream<R, E, A>
 ```
 
@@ -1025,7 +1025,7 @@ with `None`.
 **Signature**
 
 ```ts
-export declare const repeatEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
+export declare const repeatEffectOption: <R, E, A>(effect: Effect<R, Option.Option<E>, A>) => Stream<R, E, A>
 ```
 
 Added in v2.0.0
@@ -1039,7 +1039,7 @@ repeated using the specified schedule.
 
 ```ts
 export declare const repeatEffectWithSchedule: <R, E, A, A0 extends A, R2, _>(
-  effect: Effect.Effect<R, E, A>,
+  effect: Effect<R, E, A>,
   schedule: Schedule.Schedule<R2, A0, _>
 ) => Stream<R | R2, E, A>
 ```
@@ -1065,7 +1065,7 @@ Creates a single-valued stream from a scoped resource.
 **Signature**
 
 ```ts
-export declare const scoped: <R, E, A>(effect: Effect.Effect<R, E, A>) => Stream<Exclude<R, Scope.Scope>, E, A>
+export declare const scoped: <R, E, A>(effect: Effect<R, E, A>) => Stream<Exclude<R, Scope.Scope>, E, A>
 ```
 
 Added in v2.0.0
@@ -1169,7 +1169,7 @@ Creates a stream by effectfully peeling off the "layers" of a value of type
 ```ts
 export declare const unfoldChunkEffect: <R, E, A, S>(
   s: S,
-  f: (s: S) => Effect.Effect<R, E, Option.Option<readonly [Chunk.Chunk<A>, S]>>
+  f: (s: S) => Effect<R, E, Option.Option<readonly [Chunk.Chunk<A>, S]>>
 ) => Stream<R, E, A>
 ```
 
@@ -1185,7 +1185,7 @@ Creates a stream by effectfully peeling off the "layers" of a value of type
 ```ts
 export declare const unfoldEffect: <S, R, E, A>(
   s: S,
-  f: (s: S) => Effect.Effect<R, E, Option.Option<readonly [A, S]>>
+  f: (s: S) => Effect<R, E, Option.Option<readonly [A, S]>>
 ) => Stream<R, E, A>
 ```
 
@@ -1211,7 +1211,7 @@ Creates a stream produced from an `Effect`.
 
 ```ts
 export declare const unwrap: <R, E, R2, E2, A>(
-  effect: Effect.Effect<R, E, Stream<R2, E2, A>>
+  effect: Effect<R, E, Stream<R2, E2, A>>
 ) => Stream<R | R2, E | E2, A>
 ```
 
@@ -1225,7 +1225,7 @@ Creates a stream produced from a scoped `Effect`.
 
 ```ts
 export declare const unwrapScoped: <R, E, R2, E2, A>(
-  effect: Effect.Effect<R, E, Stream<R2, E2, A>>
+  effect: Effect<R, E, Stream<R2, E2, A>>
 ) => Stream<R2 | Exclude<R, Scope.Scope>, E | E2, A>
 ```
 
@@ -1281,7 +1281,7 @@ Accesses the context of the stream in the context of an effect.
 
 ```ts
 export declare const contextWithEffect: <R0, R, E, A>(
-  f: (env: Context.Context<R0>) => Effect.Effect<R, E, A>
+  f: (env: Context.Context<R0>) => Effect<R, E, A>
 ) => Stream<R0 | R, E, A>
 ```
 
@@ -1382,12 +1382,12 @@ requires more than one service use `Stream.provideContext` instead.
 export declare const provideServiceEffect: {
   <T extends Context.Tag<any, any>, R2, E2>(
     tag: T,
-    effect: Effect.Effect<R2, E2, Context.Tag.Service<T>>
+    effect: Effect<R2, E2, Context.Tag.Service<T>>
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | Exclude<R, Context.Tag.Identifier<T>>, E2 | E, A>
   <R, E, A, T extends Context.Tag<any, any>, R2, E2>(
     self: Stream<R, E, A>,
     tag: T,
-    effect: Effect.Effect<R2, E2, Context.Tag.Service<T>>
+    effect: Effect<R2, E2, Context.Tag.Service<T>>
   ): Stream<R2 | Exclude<R, Context.Tag.Identifier<T>>, E | E2, A>
 }
 ```
@@ -1470,8 +1470,8 @@ Runs the sink on the stream to produce either the sink's result or an error.
 export declare const run: {
   <R2, E2, A, Z>(
     sink: Sink.Sink<R2, E2, A, unknown, Z>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R2 | R, E2 | E, Z>
-  <R, E, R2, E2, A, Z>(self: Stream<R, E, A>, sink: Sink.Sink<R2, E2, A, unknown, Z>): Effect.Effect<R | R2, E | E2, Z>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<R2 | R, E2 | E, Z>
+  <R, E, R2, E2, A, Z>(self: Stream<R, E, A>, sink: Sink.Sink<R2, E2, A, unknown, Z>): Effect<R | R2, E | E2, Z>
 }
 ```
 
@@ -1484,7 +1484,7 @@ Runs the stream and collects all of its elements to a chunk.
 **Signature**
 
 ```ts
-export declare const runCollect: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Chunk.Chunk<A>>
+export declare const runCollect: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -1496,7 +1496,7 @@ Runs the stream and emits the number of elements processed
 **Signature**
 
 ```ts
-export declare const runCount: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, number>
+export declare const runCount: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, number>
 ```
 
 Added in v2.0.0
@@ -1508,7 +1508,7 @@ Runs the stream only for its effects. The emitted elements are discarded.
 **Signature**
 
 ```ts
-export declare const runDrain: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, void>
+export declare const runDrain: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, void>
 ```
 
 Added in v2.0.0
@@ -1522,8 +1522,8 @@ the stream to a value of type `S`.
 
 ```ts
 export declare const runFold: {
-  <S, A>(s: S, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R, E, S>
-  <R, E, S, A>(self: Stream<R, E, A>, s: S, f: (s: S, a: A) => S): Effect.Effect<R, E, S>
+  <S, A>(s: S, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect<R, E, S>
+  <R, E, S, A>(self: Stream<R, E, A>, s: S, f: (s: S, a: A) => S): Effect<R, E, S>
 }
 ```
 
@@ -1539,13 +1539,13 @@ Executes an effectful fold over the stream of values.
 export declare const runFoldEffect: {
   <S, A, R2, E2>(
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R2 | R, E2 | E, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<R2 | R, E2 | E, S>
   <R, E, S, A, R2, E2>(
     self: Stream<R, E, A>,
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): Effect.Effect<R | R2, E | E2, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): Effect<R | R2, E | E2, S>
 }
 ```
 
@@ -1560,8 +1560,8 @@ represents the scope of the stream.
 
 ```ts
 export declare const runFoldScoped: {
-  <S, A>(s: S, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, E, S>
-  <R, E, S, A>(self: Stream<R, E, A>, s: S, f: (s: S, a: A) => S): Effect.Effect<Scope.Scope | R, E, S>
+  <S, A>(s: S, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, E, S>
+  <R, E, S, A>(self: Stream<R, E, A>, s: S, f: (s: S, a: A) => S): Effect<Scope.Scope | R, E, S>
 }
 ```
 
@@ -1578,13 +1578,13 @@ value that represents the scope of the stream.
 export declare const runFoldScopedEffect: {
   <S, A, R2, E2>(
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R2 | R, E2 | E, S>
   <R, E, S, A, R2, E2>(
     self: Stream<R, E, A>,
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): Effect<Scope.Scope | R | R2, E | E2, S>
 }
 ```
 
@@ -1599,8 +1599,8 @@ early when the condition is not fulfilled. Example:
 
 ```ts
 export declare const runFoldWhile: {
-  <S, A>(s: S, cont: Predicate<S>, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R, E, S>
-  <R, E, S, A>(self: Stream<R, E, A>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S): Effect.Effect<R, E, S>
+  <S, A>(s: S, cont: Predicate<S>, f: (s: S, a: A) => S): <R, E>(self: Stream<R, E, A>) => Effect<R, E, S>
+  <R, E, S, A>(self: Stream<R, E, A>, s: S, cont: Predicate<S>, f: (s: S, a: A) => S): Effect<R, E, S>
 }
 ```
 
@@ -1618,14 +1618,14 @@ export declare const runFoldWhileEffect: {
   <S, A, R2, E2>(
     s: S,
     cont: Predicate<S>,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R2 | R, E2 | E, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<R2 | R, E2 | E, S>
   <R, E, S, A, R2, E2>(
     self: Stream<R, E, A>,
     s: S,
     cont: Predicate<S>,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): Effect.Effect<R | R2, E | E2, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): Effect<R | R2, E | E2, S>
 }
 ```
 
@@ -1645,13 +1645,13 @@ export declare const runFoldWhileScoped: {
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => S
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, E, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, E, S>
   <R, E, S, A>(
     self: Stream<R, E, A>,
     s: S,
     cont: Predicate<S>,
     f: (s: S, a: A) => S
-  ): Effect.Effect<Scope.Scope | R, E, S>
+  ): Effect<Scope.Scope | R, E, S>
 }
 ```
 
@@ -1670,14 +1670,14 @@ export declare const runFoldWhileScopedEffect: {
   <S, A, R2, E2>(
     s: S,
     cont: Predicate<S>,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R2 | R, E2 | E, S>
   <R, E, S, A, R2, E2>(
     self: Stream<R, E, A>,
     s: S,
     cont: Predicate<S>,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
+  ): Effect<Scope.Scope | R | R2, E | E2, S>
 }
 ```
 
@@ -1693,12 +1693,12 @@ callback.
 ```ts
 export declare const runForEach: {
   <A, R2, E2, _>(
-    f: (a: A) => Effect.Effect<R2, E2, _>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R2 | R, E2 | E, void>
+    f: (a: A) => Effect<R2, E2, _>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<R2 | R, E2 | E, void>
   <R, E, A, R2, E2, _>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, _>
-  ): Effect.Effect<R | R2, E | E2, void>
+    f: (a: A) => Effect<R2, E2, _>
+  ): Effect<R | R2, E | E2, void>
 }
 ```
 
@@ -1714,12 +1714,12 @@ callback.
 ```ts
 export declare const runForEachChunk: {
   <A, R2, E2, _>(
-    f: (a: Chunk.Chunk<A>) => Effect.Effect<R2, E2, _>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R2 | R, E2 | E, void>
+    f: (a: Chunk.Chunk<A>) => Effect<R2, E2, _>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<R2 | R, E2 | E, void>
   <R, E, A, R2, E2, _>(
     self: Stream<R, E, A>,
-    f: (a: Chunk.Chunk<A>) => Effect.Effect<R2, E2, _>
-  ): Effect.Effect<R | R2, E | E2, void>
+    f: (a: Chunk.Chunk<A>) => Effect<R2, E2, _>
+  ): Effect<R | R2, E | E2, void>
 }
 ```
 
@@ -1735,12 +1735,12 @@ finalization order can be controlled.
 ```ts
 export declare const runForEachChunkScoped: {
   <A, R2, E2, _>(
-    f: (a: Chunk.Chunk<A>) => Effect.Effect<R2, E2, _>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, void>
+    f: (a: Chunk.Chunk<A>) => Effect<R2, E2, _>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R2 | R, E2 | E, void>
   <R, E, A, R2, E2, _>(
     self: Stream<R, E, A>,
-    f: (a: Chunk.Chunk<A>) => Effect.Effect<R2, E2, _>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, void>
+    f: (a: Chunk.Chunk<A>) => Effect<R2, E2, _>
+  ): Effect<Scope.Scope | R | R2, E | E2, void>
 }
 ```
 
@@ -1756,12 +1756,12 @@ order can be controlled.
 ```ts
 export declare const runForEachScoped: {
   <A, R2, E2, _>(
-    f: (a: A) => Effect.Effect<R2, E2, _>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, void>
+    f: (a: A) => Effect<R2, E2, _>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R2 | R, E2 | E, void>
   <R, E, A, R2, E2, _>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, _>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, void>
+    f: (a: A) => Effect<R2, E2, _>
+  ): Effect<Scope.Scope | R | R2, E | E2, void>
 }
 ```
 
@@ -1777,12 +1777,12 @@ and terminating consumption when the callback returns `false`.
 ```ts
 export declare const runForEachWhile: {
   <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<R2 | R, E2 | E, void>
+    f: (a: A) => Effect<R2, E2, boolean>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<R2 | R, E2 | E, void>
   <R, E, A, R2, E2>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): Effect.Effect<R | R2, E | E2, void>
+    f: (a: A) => Effect<R2, E2, boolean>
+  ): Effect<R | R2, E | E2, void>
 }
 ```
 
@@ -1798,12 +1798,12 @@ finalization order can be controlled.
 ```ts
 export declare const runForEachWhileScoped: {
   <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, void>
+    f: (a: A) => Effect<R2, E2, boolean>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R2 | R, E2 | E, void>
   <R, E, A, R2, E2>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, void>
+    f: (a: A) => Effect<R2, E2, boolean>
+  ): Effect<Scope.Scope | R | R2, E | E2, void>
 }
 ```
 
@@ -1817,7 +1817,7 @@ discarding the rest of the elements.
 **Signature**
 
 ```ts
-export declare const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>
+export declare const runHead: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option.Option<A>>
 ```
 
 Added in v2.0.0
@@ -1831,8 +1831,8 @@ also be signalled.
 
 ```ts
 export declare const runIntoPubSub: {
-  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<R, never, void>
+  <E, A>(pubsub: PubSub.PubSub<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect<R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect<R, never, void>
 }
 ```
 
@@ -1849,8 +1849,8 @@ allow for scope composition.
 export declare const runIntoPubSubScoped: {
   <E, A>(
     pubsub: PubSub.PubSub<Take.Take<E, A>>
-  ): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
+  ): <R>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, pubsub: PubSub.PubSub<Take.Take<E, A>>): Effect<Scope.Scope | R, never, void>
 }
 ```
 
@@ -1865,8 +1865,8 @@ will also be signalled.
 
 ```ts
 export declare const runIntoQueue: {
-  <E, A>(queue: Queue.Enqueue<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect.Effect<R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect.Effect<R, never, void>
+  <E, A>(queue: Queue.Enqueue<Take.Take<E, A>>): <R>(self: Stream<R, E, A>) => Effect<R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect<R, never, void>
 }
 ```
 
@@ -1883,11 +1883,11 @@ to allow for scope composition.
 export declare const runIntoQueueElementsScoped: {
   <E, A>(
     queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
-  ): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
+  ): <R>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, void>
   <R, E, A>(
     self: Stream<R, E, A>,
     queue: Queue.Enqueue<Exit.Exit<Option.Option<E>, A>>
-  ): Effect.Effect<Scope.Scope | R, never, void>
+  ): Effect<Scope.Scope | R, never, void>
 }
 ```
 
@@ -1904,8 +1904,8 @@ to allow for scope composition.
 export declare const runIntoQueueScoped: {
   <E, A>(
     queue: Queue.Enqueue<Take.Take<E, A>>
-  ): <R>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, void>
-  <R, E, A>(self: Stream<R, E, A>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect.Effect<Scope.Scope | R, never, void>
+  ): <R>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, void>
+  <R, E, A>(self: Stream<R, E, A>, queue: Queue.Enqueue<Take.Take<E, A>>): Effect<Scope.Scope | R, never, void>
 }
 ```
 
@@ -1919,7 +1919,7 @@ discarding the rest of the elements.
 **Signature**
 
 ```ts
-export declare const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>
+export declare const runLast: <R, E, A>(self: Stream<R, E, A>) => Effect<R, E, Option.Option<A>>
 ```
 
 Added in v2.0.0
@@ -1932,11 +1932,11 @@ Added in v2.0.0
 export declare const runScoped: {
   <R2, E2, A, A2>(
     sink: Sink.Sink<R2, E2, A, unknown, A2>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, A2>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R2 | R, E2 | E, A2>
   <R, E, R2, E2, A, A2>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A, unknown, A2>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, A2>
+  ): Effect<Scope.Scope | R | R2, E | E2, A2>
 }
 ```
 
@@ -1949,7 +1949,7 @@ Runs the stream to a sink which sums elements, provided they are Numeric.
 **Signature**
 
 ```ts
-export declare const runSum: <R, E>(self: Stream<R, E, number>) => Effect.Effect<R, E, number>
+export declare const runSum: <R, E>(self: Stream<R, E, number>) => Effect<R, E, number>
 ```
 
 Added in v2.0.0
@@ -1965,11 +1965,11 @@ the `PubSub` will never again produce values and should be discarded.
 export declare const toPubSub: {
   (
     capacity: number
-  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     capacity: number
-  ): Effect.Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
+  ): Effect<Scope.Scope | R, never, PubSub.PubSub<Take.Take<E, A>>>
 }
 ```
 
@@ -1987,7 +1987,7 @@ the stream's output.
 ```ts
 export declare const toPull: <R, E, A>(
   self: Stream<R, E, A>
-) => Effect.Effect<Scope.Scope | R, never, Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>>
+) => Effect<Scope.Scope | R, never, Effect<R, Option.Option<E>, Chunk.Chunk<A>>>
 ```
 
 Added in v2.0.0
@@ -2007,13 +2007,13 @@ export declare const toQueue: {
     options?:
       | { readonly strategy?: "dropping" | "sliding" | "suspend"; readonly capacity?: number }
       | { readonly strategy: "unbounded" }
-  ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
+  ): <R, E, A>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     options?:
       | { readonly strategy?: "dropping" | "sliding" | "suspend"; readonly capacity?: number }
       | { readonly strategy: "unbounded" }
-  ): Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
+  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
 }
 ```
 
@@ -2034,11 +2034,11 @@ export declare const toQueueOfElements: {
     readonly capacity?: number
   }): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ) => Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     options?: { readonly capacity?: number }
-  ): Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
+  ): Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
 }
 ```
 
@@ -2104,13 +2104,13 @@ Binds an effectful value in a `do` scope
 export declare const bindEffect: {
   <N extends string, K, R2, E2, A>(
     tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<R2, E2, A>,
+    f: (_: K) => Effect<R2, E2, A>,
     options?: { readonly concurrency?: number | "unbounded"; readonly bufferSize?: number }
   ): <R, E>(self: Stream<R, E, K>) => Stream<R2 | R, E2 | E, Effect.MergeRecord<K, { [k in N]: A }>>
   <R, E, N extends string, K, R2, E2, A>(
     self: Stream<R, E, K>,
     tag: Exclude<N, keyof K>,
-    f: (_: K) => Effect.Effect<R2, E2, A>,
+    f: (_: K) => Effect<R2, E2, A>,
     options?: { readonly concurrency?: number | "unbounded"; readonly bufferSize?: number }
   ): Stream<R | R2, E | E2, Effect.MergeRecord<K, { [k in N]: A }>>
 }
@@ -2183,11 +2183,11 @@ effectful predicate.
 ```ts
 export declare const findEffect: {
   <A, X extends A, R2, E2>(
-    predicate: (a: X) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: X) => Effect<R2, E2, boolean>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, X extends A, R2, E2>(
     self: Stream<R, E, A>,
-    predicate: (a: X) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: X) => Effect<R2, E2, boolean>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -2605,11 +2605,11 @@ Effectfully filters the elements emitted by this stream.
 ```ts
 export declare const filterEffect: {
   <A, X extends A, R2, E2>(
-    f: (a: X) => Effect.Effect<R2, E2, boolean>
+    f: (a: X) => Effect<R2, E2, boolean>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, X extends A, R2, E2>(
     self: Stream<R, E, A>,
-    f: (a: X) => Effect.Effect<R2, E2, boolean>
+    f: (a: X) => Effect<R2, E2, boolean>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -2643,12 +2643,12 @@ More powerful version of `Stream.groupByKey`.
 ```ts
 export declare const groupBy: {
   <A, R2, E2, K, V>(
-    f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
+    f: (a: A) => Effect<R2, E2, readonly [K, V]>,
     options?: { readonly bufferSize?: number }
   ): <R, E>(self: Stream<R, E, A>) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>
   <R, E, A, R2, E2, K, V>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
+    f: (a: A) => Effect<R2, E2, readonly [K, V]>,
     options?: { readonly bufferSize?: number }
   ): GroupBy.GroupBy<R | R2, E | E2, K, V>
 }
@@ -2714,12 +2714,12 @@ new elements.
 export declare const mapAccumEffect: {
   <S, A, R2, E2, A2>(
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, readonly [S, A2]>
+    f: (s: S, a: A) => Effect<R2, E2, readonly [S, A2]>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, S, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, readonly [S, A2]>
+    f: (s: S, a: A) => Effect<R2, E2, readonly [S, A2]>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -2750,11 +2750,11 @@ Effectfully transforms the chunks emitted by this stream.
 ```ts
 export declare const mapChunksEffect: {
   <A, R2, E2, B>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, Chunk.Chunk<B>>
+    f: (chunk: Chunk.Chunk<A>) => Effect<R2, E2, Chunk.Chunk<B>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, B>
   <R, E, A, R2, E2, B>(
     self: Stream<R, E, A>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, Chunk.Chunk<B>>
+    f: (chunk: Chunk.Chunk<A>) => Effect<R2, E2, Chunk.Chunk<B>>
   ): Stream<R | R2, E | E2, B>
 }
 ```
@@ -2803,11 +2803,11 @@ output of this stream.
 ```ts
 export declare const mapConcatChunkEffect: {
   <A, R2, E2, A2>(
-    f: (a: A) => Effect.Effect<R2, E2, Chunk.Chunk<A2>>
+    f: (a: A) => Effect<R2, E2, Chunk.Chunk<A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, Chunk.Chunk<A2>>
+    f: (a: A) => Effect<R2, E2, Chunk.Chunk<A2>>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -2824,11 +2824,11 @@ into the output of this stream.
 ```ts
 export declare const mapConcatEffect: {
   <A, R2, E2, A2>(
-    f: (a: A) => Effect.Effect<R2, E2, Iterable<A2>>
+    f: (a: A) => Effect<R2, E2, Iterable<A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, Iterable<A2>>
+    f: (a: A) => Effect<R2, E2, Iterable<A2>>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -2844,21 +2844,21 @@ Maps over elements of the stream with the specified effectful function.
 ```ts
 export declare const mapEffect: {
   <A, R2, E2, A2>(
-    f: (a: A) => Effect.Effect<R2, E2, A2>,
+    f: (a: A) => Effect<R2, E2, A2>,
     options?: { readonly concurrency?: number | "unbounded"; readonly unordered?: boolean }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <A, R2, E2, A2, K>(
-    f: (a: A) => Effect.Effect<R2, E2, A2>,
+    f: (a: A) => Effect<R2, E2, A2>,
     options: { readonly key: (a: A) => K; readonly bufferSize?: number | undefined }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, A2>,
+    f: (a: A) => Effect<R2, E2, A2>,
     options?: { readonly concurrency?: number | "unbounded"; readonly unordered?: boolean }
   ): Stream<R | R2, E | E2, A2>
   <R, E, A, R2, E2, A2, K>(
     self: Stream<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, A2>,
+    f: (a: A) => Effect<R2, E2, A2>,
     options: { readonly key: (a: A) => K; readonly bufferSize?: number | undefined }
   ): Stream<R | R2, E | E2, A2>
 }
@@ -3048,9 +3048,9 @@ export declare const flattenEffect: {
   (options?: {
     readonly concurrency?: number | "unbounded"
     readonly unordered?: boolean
-  }): <R, E, R2, E2, A>(self: Stream<R, E, Effect.Effect<R2, E2, A>>) => Stream<R | R2, E | E2, A>
+  }): <R, E, R2, E2, A>(self: Stream<R, E, Effect<R2, E2, A>>) => Stream<R | R2, E | E2, A>
   <R, E, R2, E2, A>(
-    self: Stream<R, E, Effect.Effect<R2, E2, A>>,
+    self: Stream<R, E, Effect<R2, E2, A>>,
     options?: { readonly concurrency?: number | "unbounded"; readonly unordered?: boolean }
   ): Stream<R | R2, E | E2, A>
 }
@@ -3113,11 +3113,11 @@ Adds an effect to consumption of every element of the stream.
 ```ts
 export declare const tap: {
   <A, X extends A, R2, E2, _>(
-    f: (a: X) => Effect.Effect<R2, E2, _>
+    f: (a: X) => Effect<R2, E2, _>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, X extends A, R2, E2, _>(
     self: Stream<R, E, A>,
-    f: (a: X) => Effect.Effect<R2, E2, _>
+    f: (a: X) => Effect<R2, E2, _>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -3134,14 +3134,14 @@ the stream.
 ```ts
 export declare const tapBoth: {
   <E, XE extends E, A, XA extends A, R2, E2, X, R3, E3, X1>(options: {
-    readonly onFailure: (e: XE) => Effect.Effect<R2, E2, X>
-    readonly onSuccess: (a: XA) => Effect.Effect<R3, E3, X1>
+    readonly onFailure: (e: XE) => Effect<R2, E2, X>
+    readonly onSuccess: (a: XA) => Effect<R3, E3, X1>
   }): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R, E | E2 | E3, A>
   <R, E, A, XE extends E, XA extends A, R2, E2, X, R3, E3, X1>(
     self: Stream<R, E, A>,
     options: {
-      readonly onFailure: (e: XE) => Effect.Effect<R2, E2, X>
-      readonly onSuccess: (a: XA) => Effect.Effect<R3, E3, X1>
+      readonly onFailure: (e: XE) => Effect<R2, E2, X>
+      readonly onSuccess: (a: XA) => Effect<R3, E3, X1>
     }
   ): Stream<R | R2 | R3, E | E2 | E3, A>
 }
@@ -3158,11 +3158,11 @@ Returns a stream that effectfully "peeks" at the failure of the stream.
 ```ts
 export declare const tapError: {
   <E, X extends E, R2, E2, _>(
-    f: (error: X) => Effect.Effect<R2, E2, _>
+    f: (error: X) => Effect<R2, E2, _>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E | E2, A>
   <R, A, E, X extends E, R2, E2, _>(
     self: Stream<R, E, A>,
-    f: (error: X) => Effect.Effect<R2, E2, _>
+    f: (error: X) => Effect<R2, E2, _>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -3423,12 +3423,12 @@ export declare const broadcast: {
     maximumLag: number
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
+  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
   <R, E, A, N extends number>(
     self: Stream<R, E, A>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
+  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Stream<never, E, A>, N>>
 }
 ```
 
@@ -3444,8 +3444,8 @@ same elements as this stream. The driver stream will only ever advance the
 
 ```ts
 export declare const broadcastDynamic: {
-  (maximumLag: number): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, Stream<never, E, A>>
-  <R, E, A>(self: Stream<R, E, A>, maximumLag: number): Effect.Effect<Scope.Scope | R, never, Stream<never, E, A>>
+  (maximumLag: number): <R, E, A>(self: Stream<R, E, A>) => Effect<Scope.Scope | R, never, Stream<never, E, A>>
+  <R, E, A>(self: Stream<R, E, A>, maximumLag: number): Effect<Scope.Scope | R, never, Stream<never, E, A>>
 }
 ```
 
@@ -3468,12 +3468,12 @@ export declare const broadcastedQueues: {
     maximumLag: number
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
+  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
   <R, E, A, N extends number>(
     self: Stream<R, E, A>,
     n: N,
     maximumLag: number
-  ): Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
+  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Take.Take<E, A>>, N>>
 }
 ```
 
@@ -3495,11 +3495,11 @@ export declare const broadcastedQueuesDynamic: {
     maximumLag: number
   ): <R, E, A>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Effect.Effect<Scope.Scope, never, Queue.Dequeue<Take.Take<E, A>>>>
+  ) => Effect<Scope.Scope | R, never, Effect<Scope.Scope, never, Queue.Dequeue<Take.Take<E, A>>>>
   <R, E, A>(
     self: Stream<R, E, A>,
     maximumLag: number
-  ): Effect.Effect<Scope.Scope | R, never, Effect.Effect<Scope.Scope, never, Queue.Dequeue<Take.Take<E, A>>>>
+  ): Effect<Scope.Scope | R, never, Effect<Scope.Scope, never, Queue.Dequeue<Take.Take<E, A>>>>
 }
 ```
 
@@ -3594,9 +3594,9 @@ determine whether two elements are equal.
 ```ts
 export declare const changesWithEffect: {
   <A, R2, E2>(
-    f: (x: A, y: A) => Effect.Effect<R2, E2, boolean>
+    f: (x: A, y: A) => Effect<R2, E2, boolean>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2>(self: Stream<R, E, A>, f: (x: A, y: A) => Effect.Effect<R2, E2, boolean>): Stream<R | R2, E | E2, A>
+  <R, E, A, R2, E2>(self: Stream<R, E, A>, f: (x: A, y: A) => Effect<R2, E2, boolean>): Stream<R | R2, E | E2, A>
 }
 ```
 
@@ -3650,9 +3650,9 @@ export declare const combine: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect.Effect<R3, Option.Option<E>, A>,
-      pullRight: Effect.Effect<R4, Option.Option<E2>, A2>
-    ) => Effect.Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+      pullLeft: Effect<R3, Option.Option<E>, A>,
+      pullRight: Effect<R4, Option.Option<E2>, A2>
+    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -3660,9 +3660,9 @@ export declare const combine: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect.Effect<R3, Option.Option<E>, A>,
-      pullRight: Effect.Effect<R4, Option.Option<E2>, A2>
-    ) => Effect.Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
+      pullLeft: Effect<R3, Option.Option<E>, A>,
+      pullRight: Effect<R4, Option.Option<E2>, A2>
+    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [A3, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 }
 ```
@@ -3686,9 +3686,9 @@ export declare const combineChunks: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect.Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
-      pullRight: Effect.Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect.Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+      pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
+      pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
+    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): <R>(self: Stream<R, E, A>) => Stream<R2 | R3 | R4 | R5 | R, E2 | E, A3>
   <R, R2, E2, A2, S, R3, E, A, R4, R5, A3>(
     self: Stream<R, E, A>,
@@ -3696,9 +3696,9 @@ export declare const combineChunks: {
     s: S,
     f: (
       s: S,
-      pullLeft: Effect.Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
-      pullRight: Effect.Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
-    ) => Effect.Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
+      pullLeft: Effect<R3, Option.Option<E>, Chunk.Chunk<A>>,
+      pullRight: Effect<R4, Option.Option<E2>, Chunk.Chunk<A2>>
+    ) => Effect<R5, never, Exit.Exit<Option.Option<E2 | E>, readonly [Chunk.Chunk<A3>, S]>>
   ): Stream<R | R2 | R3 | R4 | R5, E2 | E, A3>
 }
 ```
@@ -3842,18 +3842,18 @@ export declare const distributedWith: {
   <N extends number, A>(options: {
     readonly size: N
     readonly maximumLag: number
-    readonly decide: (a: A) => Effect.Effect<never, never, Predicate<number>>
+    readonly decide: (a: A) => Effect<never, never, Predicate<number>>
   }): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ) => Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
   <R, E, N extends number, A>(
     self: Stream<R, E, A>,
     options: {
       readonly size: N
       readonly maximumLag: number
-      readonly decide: (a: A) => Effect.Effect<never, never, Predicate<number>>
+      readonly decide: (a: A) => Effect<never, never, Predicate<number>>
     }
-  ): Effect.Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
+  ): Effect<Scope.Scope | R, never, Stream.DynamicTuple<Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>, N>>
 }
 ```
 
@@ -3874,21 +3874,21 @@ will continue but no longer backpressure on them.
 export declare const distributedWithDynamic: {
   <E, A, _>(options: {
     readonly maximumLag: number
-    readonly decide: (a: A) => Effect.Effect<never, never, Predicate<number>>
+    readonly decide: (a: A) => Effect<never, never, Predicate<number>>
   }): <R>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<
+  ) => Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
   <R, E, A, _>(
     self: Stream<R, E, A>,
-    options: { readonly maximumLag: number; readonly decide: (a: A) => Effect.Effect<never, never, Predicate<number>> }
-  ): Effect.Effect<
+    options: { readonly maximumLag: number; readonly decide: (a: A) => Effect<never, never, Predicate<number>> }
+  ): Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
 }
 ```
@@ -3981,11 +3981,11 @@ evaluates to `true`.
 ```ts
 export declare const dropUntilEffect: {
   <A, X extends A, R2, E2>(
-    predicate: (a: X) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: X) => Effect<R2, E2, boolean>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, X extends A, R2, E2>(
     self: Stream<R, E, A>,
-    predicate: (a: X) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: X) => Effect<R2, E2, boolean>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -4018,11 +4018,11 @@ produces an effect that evalutates to `true`
 ```ts
 export declare const dropWhileEffect: {
   <A, X extends A, R2, E2>(
-    predicate: (a: X) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: X) => Effect<R2, E2, boolean>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, X extends A, R2, E2>(
     self: Stream<R, E, A>,
-    predicate: (a: X) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: X) => Effect<R2, E2, boolean>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -4051,8 +4051,8 @@ Executes the provided finalizer after this stream's finalizers run.
 
 ```ts
 export declare const ensuring: {
-  <R2, _>(finalizer: Effect.Effect<R2, never, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, A>
-  <R, E, A, R2, _>(self: Stream<R, E, A>, finalizer: Effect.Effect<R2, never, _>): Stream<R | R2, E, A>
+  <R2, _>(finalizer: Effect<R2, never, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, A>
+  <R, E, A, R2, _>(self: Stream<R, E, A>, finalizer: Effect<R2, never, _>): Stream<R | R2, E, A>
 }
 ```
 
@@ -4067,11 +4067,11 @@ Executes the provided finalizer after this stream's finalizers run.
 ```ts
 export declare const ensuringWith: {
   <E, R2>(
-    finalizer: (exit: Exit.Exit<E, unknown>) => Effect.Effect<R2, never, unknown>
+    finalizer: (exit: Exit.Exit<E, unknown>) => Effect<R2, never, unknown>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, A>
   <R, E, A, R2>(
     self: Stream<R, E, A>,
-    finalizer: (exit: Exit.Exit<E, unknown>) => Effect.Effect<R2, never, unknown>
+    finalizer: (exit: Exit.Exit<E, unknown>) => Effect<R2, never, unknown>
   ): Stream<R | R2, E, A>
 }
 ```
@@ -4102,11 +4102,11 @@ Performs an effectful filter and map in a single step.
 ```ts
 export declare const filterMapEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Effect.Effect<R2, E2, A2>>
+    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (a: A) => Option.Option<Effect.Effect<R2, E2, A2>>
+    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -4139,11 +4139,11 @@ specified partial function is defined.
 ```ts
 export declare const filterMapWhileEffect: {
   <A, R2, E2, A2>(
-    pf: (a: A) => Option.Option<Effect.Effect<R2, E2, A2>>
+    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
-    pf: (a: A) => Option.Option<Effect.Effect<R2, E2, A2>>
+    pf: (a: A) => Option.Option<Effect<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 }
 ```
@@ -4283,8 +4283,8 @@ If the effect completes with a failure, the stream will emit that failure.
 
 ```ts
 export declare const haltWhen: {
-  <R2, E2, _>(effect: Effect.Effect<R2, E2, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2, _>(self: Stream<R, E, A>, effect: Effect.Effect<R2, E2, _>): Stream<R | R2, E | E2, A>
+  <R2, E2, _>(effect: Effect<R2, E2, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2, _>(self: Stream<R, E, A>, effect: Effect<R2, E2, _>): Stream<R | R2, E | E2, A>
 }
 ```
 
@@ -4395,8 +4395,8 @@ returned stream will emit that failure.
 
 ```ts
 export declare const interruptWhen: {
-  <R2, E2, _>(effect: Effect.Effect<R2, E2, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2, _>(self: Stream<R, E, A>, effect: Effect.Effect<R2, E2, _>): Stream<R | R2, E | E2, A>
+  <R2, E2, _>(effect: Effect<R2, E2, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2, _>(self: Stream<R, E, A>, effect: Effect<R2, E2, _>): Stream<R | R2, E | E2, A>
 }
 ```
 
@@ -4620,7 +4620,7 @@ from the stream.
 **Signature**
 
 ```ts
-export declare const mkString: <R, E>(self: Stream<R, E, string>) => Effect.Effect<R, E, string>
+export declare const mkString: <R, E>(self: Stream<R, E, string>) => Effect<R, E, string>
 ```
 
 Added in v2.0.0
@@ -4633,8 +4633,8 @@ Runs the specified effect if this stream ends.
 
 ```ts
 export declare const onDone: {
-  <R2, _>(cleanup: () => Effect.Effect<R2, never, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, A>
-  <R, E, A, R2, _>(self: Stream<R, E, A>, cleanup: () => Effect.Effect<R2, never, _>): Stream<R | R2, E, A>
+  <R2, _>(cleanup: () => Effect<R2, never, _>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, A>
+  <R, E, A, R2, _>(self: Stream<R, E, A>, cleanup: () => Effect<R2, never, _>): Stream<R | R2, E, A>
 }
 ```
 
@@ -4653,11 +4653,11 @@ effect will not be interrupted.
 ```ts
 export declare const onError: {
   <E, R2, _>(
-    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<R2, never, _>
+    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, _>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E, A>
   <R, A, E, R2, _>(
     self: Stream<R, E, A>,
-    cleanup: (cause: Cause.Cause<E>) => Effect.Effect<R2, never, _>
+    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, _>
   ): Stream<R | R2, E, A>
 }
 ```
@@ -4680,12 +4680,12 @@ export declare const partition: {
     options?: { bufferSize?: number }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
+  ) => Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: { bufferSize?: number }
-  ): Effect.Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
+  ): Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
 }
 ```
 
@@ -4701,16 +4701,16 @@ up to buffer elements further than the slower one.
 ```ts
 export declare const partitionEither: {
   <A, R2, E2, A2, A3>(
-    predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
+    predicate: (a: A) => Effect<R2, E2, Either.Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
+  ) => Effect<Scope.Scope | R2 | R, E2 | E, readonly [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
-    predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
+    predicate: (a: A) => Effect<R2, E2, Either.Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, readonly [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
+  ): Effect<Scope.Scope | R | R2, E | E2, readonly [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
 }
 ```
 
@@ -4729,11 +4729,11 @@ valid only within the scope.
 export declare const peel: {
   <R2, E2, A, Z>(
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Z, Stream<never, E, A>]>
+  ): <R, E>(self: Stream<R, E, A>) => Effect<Scope.Scope | R2 | R, E2 | E, readonly [Z, Stream<never, E, A>]>
   <R, E, R2, E2, A, Z>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, readonly [Z, Stream<never, E, A>]>
+  ): Effect<Scope.Scope | R | R2, E | E2, readonly [Z, Stream<never, E, A>]>
 }
 ```
 
@@ -4991,12 +4991,12 @@ all intermediate results of type `S` given an initial S.
 export declare const scanEffect: {
   <S, A, R2, E2>(
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, S>
   <R, E, S, A, R2, E2>(
     self: Stream<R, E, A>,
     s: S,
-    f: (s: S, a: A) => Effect.Effect<R2, E2, S>
+    f: (s: S, a: A) => Effect<R2, E2, S>
   ): Stream<R | R2, E | E2, S>
 }
 ```
@@ -5032,7 +5032,7 @@ See also `Stream.scanEffect`.
 
 ```ts
 export declare const scanReduceEffect: <A2, A, R2, E2>(
-  f: (a2: A2 | A, a: A) => Effect.Effect<R2, E2, A2 | A>
+  f: (a2: A2 | A, a: A) => Effect<R2, E2, A2 | A>
 ) => <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2 | A>
 ```
 
@@ -5257,11 +5257,11 @@ evaluates to `true`.
 ```ts
 export declare const takeUntilEffect: {
   <A, R2, E2>(
-    predicate: (a: A) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: A) => Effect<R2, E2, boolean>
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, R2, E2>(
     self: Stream<R, E, A>,
-    predicate: (a: A) => Effect.Effect<R2, E2, boolean>
+    predicate: (a: A) => Effect<R2, E2, boolean>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -5294,11 +5294,11 @@ stream.
 ```ts
 export declare const tapErrorCause: {
   <E, X extends E, R2, E2, _>(
-    f: (cause: Cause.Cause<X>) => Effect.Effect<R2, E2, _>
+    f: (cause: Cause.Cause<X>) => Effect<R2, E2, _>
   ): <R, A>(self: Stream<R, E, A>) => Stream<R2 | R, E | E2, A>
   <R, A, E, X extends E, R2, E2, _>(
     self: Stream<R, E, A>,
-    f: (cause: Cause.Cause<X>) => Effect.Effect<R2, E2, _>
+    f: (cause: Cause.Cause<X>) => Effect<R2, E2, _>
   ): Stream<R | R2, E | E2, A>
 }
 ```
@@ -5364,7 +5364,7 @@ Defaults to the "shape" strategy.
 ```ts
 export declare const throttleEffect: {
   <A, R2, E2>(options: {
-    readonly cost: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, number>
+    readonly cost: (chunk: Chunk.Chunk<A>) => Effect<R2, E2, number>
     readonly units: number
     readonly duration: Duration.DurationInput
     readonly burst?: number | undefined
@@ -5373,7 +5373,7 @@ export declare const throttleEffect: {
   <R, E, A, R2, E2>(
     self: Stream<R, E, A>,
     options: {
-      readonly cost: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, number>
+      readonly cost: (chunk: Chunk.Chunk<A>) => Effect<R2, E2, number>
       readonly units: number
       readonly duration: Duration.DurationInput
       readonly burst?: number | undefined
@@ -5504,9 +5504,9 @@ effectful value, otherwise returns an empty stream.
 export declare const whenCaseEffect: {
   <A, R2, E2, A2>(
     pf: (a: A) => Option.Option<Stream<R2, E2, A2>>
-  ): <R, E>(self: Effect.Effect<R, E, A>) => Stream<R2 | R, E2 | E, A2>
+  ): <R, E>(self: Effect<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     pf: (a: A) => Option.Option<Stream<R2, E2, A2>>
   ): Stream<R | R2, E | E2, A2>
 }
@@ -5523,8 +5523,8 @@ returns an empty stream.
 
 ```ts
 export declare const whenEffect: {
-  <R2, E2>(effect: Effect.Effect<R2, E2, boolean>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2>(self: Stream<R, E, A>, effect: Effect.Effect<R2, E2, boolean>): Stream<R | R2, E | E2, A>
+  <R2, E2>(effect: Effect<R2, E2, boolean>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2>(self: Stream<R, E, A>, effect: Effect<R2, E2, boolean>): Stream<R | R2, E | E2, A>
 }
 ```
 

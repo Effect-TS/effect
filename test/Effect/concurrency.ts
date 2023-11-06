@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -20,7 +20,7 @@ const fib = (n: number): number => {
   return fib(n - 1) + fib(n - 2)
 }
 
-const concurrentFib = (n: number): Effect.Effect<never, never, number> => {
+const concurrentFib = (n: number): Effect<never, never, number> => {
   if (n <= 1) {
     return Effect.succeed(n)
   }
@@ -84,7 +84,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("daemon fiber race interruption", () =>
     Effect.gen(function*($) {
-      const plus1 = <X>(latch: Deferred.Deferred<never, void>, finalizer: Effect.Effect<never, never, X>) => {
+      const plus1 = <X>(latch: Deferred.Deferred<never, void>, finalizer: Effect<never, never, X>) => {
         return pipe(
           Deferred.succeed(latch, void 0),
           Effect.zipRight(Effect.sleep(Duration.hours(1))),
@@ -135,7 +135,7 @@ describe.concurrent("Effect", () => {
     }))
   it.live("supervise fibers", () =>
     Effect.gen(function*($) {
-      const makeChild = (n: number): Effect.Effect<never, never, Fiber.Fiber<never, void>> => {
+      const makeChild = (n: number): Effect<never, never, Fiber.Fiber<never, void>> => {
         return pipe(Effect.sleep(Duration.millis(20 * n)), Effect.zipRight(Effect.never), Effect.fork)
       }
       const ref = yield* $(Ref.make(0))
@@ -299,7 +299,7 @@ describe.concurrent("Effect", () => {
   it.effect("mergeAll - empty", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        pipe([] as ReadonlyArray<Effect.Effect<never, never, number>>, Effect.mergeAll(0, (b, a) => b + a))
+        pipe([] as ReadonlyArray<Effect<never, never, number>>, Effect.mergeAll(0, (b, a) => b + a))
       )
       assert.strictEqual(result, 0)
     }))
@@ -314,7 +314,7 @@ describe.concurrent("Effect", () => {
     Effect.gen(function*($) {
       const result = yield* $(
         pipe(
-          [] as ReadonlyArray<Effect.Effect<never, never, number>>,
+          [] as ReadonlyArray<Effect<never, never, number>>,
           Effect.reduceEffect(Effect.succeed(1), (acc, a) => acc + a)
         )
       )

@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import * as internal from "./internal/channel/mergeDecision.js"
 
@@ -46,21 +46,21 @@ export declare namespace MergeDecision {
  * @since 2.0.0
  * @category constructors
  */
-export const Done: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z> = internal.Done
+export const Done: <R, E, Z>(effect: Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z> = internal.Done
 
 /**
  * @since 2.0.0
  * @category constructors
  */
 export const Await: <R, E0, Z0, E, Z>(
-  f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<R, E, Z>
+  f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>
 ) => MergeDecision<R, E0, Z0, E, Z> = internal.Await
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const AwaitConst: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z> =
+export const AwaitConst: <R, E, Z>(effect: Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z> =
   internal.AwaitConst
 
 /**
@@ -80,15 +80,15 @@ export const isMergeDecision: (u: unknown) => u is MergeDecision<unknown, unknow
 export const match: {
   <R, E0, Z0, E, Z, Z2>(
     options: {
-      readonly onDone: (effect: Effect.Effect<R, E, Z>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<R, E, Z>) => Z2
+      readonly onDone: (effect: Effect<R, E, Z>) => Z2
+      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
     }
   ): (self: MergeDecision<R, E0, Z0, E, Z>) => Z2
   <R, E0, Z0, E, Z, Z2>(
     self: MergeDecision<R, E0, Z0, E, Z>,
     options: {
-      readonly onDone: (effect: Effect.Effect<R, E, Z>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect.Effect<R, E, Z>) => Z2
+      readonly onDone: (effect: Effect<R, E, Z>) => Z2
+      readonly onAwait: (f: (exit: Exit.Exit<E0, Z0>) => Effect<R, E, Z>) => Z2
     }
   ): Z2
 } = internal.match

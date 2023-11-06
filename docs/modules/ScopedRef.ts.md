@@ -40,8 +40,8 @@ value.
 
 ```ts
 export declare const fromAcquire: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<Scope.Scope | R, E, ScopedRef<A>>
+  acquire: Effect<R, E, A>
+) => Effect<Scope.Scope | R, E, ScopedRef<A>>
 ```
 
 Added in v2.0.0
@@ -54,7 +54,7 @@ not be used for values whose creation require the acquisition of resources.
 **Signature**
 
 ```ts
-export declare const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never, ScopedRef<A>>
+export declare const make: <A>(evaluate: LazyArg<A>) => Effect<Scope.Scope, never, ScopedRef<A>>
 ```
 
 Added in v2.0.0
@@ -68,7 +68,7 @@ Retrieves the current value of the scoped reference.
 **Signature**
 
 ```ts
-export declare const get: <A>(self: ScopedRef<A>) => Effect.Effect<never, never, A>
+export declare const get: <A>(self: ScopedRef<A>) => Effect<never, never, A>
 ```
 
 Added in v2.0.0
@@ -86,8 +86,8 @@ to acquire a new value fails.
 
 ```ts
 export declare const set: {
-  <A, R, E>(acquire: Effect.Effect<R, E, A>): (self: ScopedRef<A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, void>
-  <A, R, E>(self: ScopedRef<A>, acquire: Effect.Effect<R, E, A>): Effect.Effect<Exclude<R, Scope.Scope>, E, void>
+  <A, R, E>(acquire: Effect<R, E, A>): (self: ScopedRef<A>) => Effect<Exclude<R, Scope.Scope>, E, void>
+  <A, R, E>(self: ScopedRef<A>, acquire: Effect<R, E, A>): Effect<Exclude<R, Scope.Scope>, E, void>
 }
 ```
 

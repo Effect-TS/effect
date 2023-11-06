@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/stm/tPubSub.js"
 import type * as tQueue from "./internal/stm/tQueue.js"
@@ -175,7 +175,7 @@ export const subscribe: <A>(self: TPubSub<A>) => STM.STM<never, never, TQueue.TD
  * @since 2.0.0
  * @category mutations
  */
-export const subscribeScoped: <A>(self: TPubSub<A>) => Effect.Effect<Scope.Scope, never, TQueue.TDequeue<A>> =
+export const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope.Scope, never, TQueue.TDequeue<A>> =
   internal.subscribeScoped
 
 /**

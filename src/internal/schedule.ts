@@ -3,7 +3,7 @@ import * as Chunk from "../Chunk.js"
 import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import type { LazyArg } from "../Function.js"
@@ -60,7 +60,7 @@ class ScheduleImpl<S, Env, In, Out> implements Schedule.Schedule<Env, In, Out> {
       now: number,
       input: In,
       state: S
-    ) => Effect.Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
+    ) => Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
   ) {
   }
   pipe() {
@@ -77,11 +77,11 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
     readonly ref: Ref.Ref<readonly [Option.Option<Out>, any]>
   ) {}
 
-  state(): Effect.Effect<never, never, unknown> {
+  state(): Effect<never, never, unknown> {
     return core.map(ref.get(this.ref), (tuple) => tuple[1])
   }
 
-  last(): Effect.Effect<never, Cause.NoSuchElementException, Out> {
+  last(): Effect<never, Cause.NoSuchElementException, Out> {
     return core.flatMap(ref.get(this.ref), ([element, _]) => {
       switch (element._tag) {
         case "None": {
@@ -94,11 +94,11 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
     })
   }
 
-  reset(): Effect.Effect<never, never, void> {
+  reset(): Effect<never, never, void> {
     return ref.set(this.ref, [Option.none(), this.schedule.initial])
   }
 
-  next(input: In): Effect.Effect<Env, Option.Option<never>, Out> {
+  next(input: In): Effect<Env, Option.Option<never>, Out> {
     return pipe(
       core.map(ref.get(this.ref), (tuple) => tuple[1]),
       core.flatMap((state) =>
@@ -134,7 +134,7 @@ export const makeWithState = <S, Env, In, Out>(
     now: number,
     input: In,
     state: S
-  ) => Effect.Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
+  ) => Effect<Env, never, readonly [S, Out, ScheduleDecision.ScheduleDecision]>
 ): Schedule.Schedule<Env, In, Out> => new ScheduleImpl(initial, step)
 
 /** @internal */
@@ -151,11 +151,11 @@ export const addDelay = dual<
 /** @internal */
 export const addDelayEffect = dual<
   <Out, Env2>(
-    f: (out: Out) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out) => Effect<Env2, never, Duration.DurationInput>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out) => Effect<Env2, never, Duration.DurationInput>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) =>
   modifyDelayEffect(self, (out, duration) =>
@@ -297,11 +297,11 @@ export const check = dual<
 /** @internal */
 export const checkEffect = dual<
   <In, Out, Env2>(
-    test: (input: In, output: Out) => Effect.Effect<Env2, never, boolean>
+    test: (input: In, output: Out) => Effect<Env2, never, boolean>
   ) => <Env>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2>(
     self: Schedule.Schedule<Env, In, Out>,
-    test: (input: In, output: Out) => Effect.Effect<Env2, never, boolean>
+    test: (input: In, output: Out) => Effect<Env2, never, boolean>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, test) =>
   makeWithState(
@@ -332,7 +332,7 @@ export const collectUntil = <A>(f: Predicate<A>): Schedule.Schedule<never, A, Ch
 
 /** @internal */
 export const collectUntilEffect = <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ): Schedule.Schedule<Env, A, Chunk.Chunk<A>> => collectAllOutputs(recurUntilEffect(f))
 
 /** @internal */
@@ -341,7 +341,7 @@ export const collectWhile = <A>(f: Predicate<A>): Schedule.Schedule<never, A, Ch
 
 /** @internal */
 export const collectWhileEffect = <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ): Schedule.Schedule<Env, A, Chunk.Chunk<A>> => collectAllOutputs(recurWhileEffect(f))
 
 /** @internal */
@@ -402,11 +402,11 @@ export const mapInputContext = dual<
 /** @internal */
 export const mapInputEffect = dual<
   <In, Env2, In2>(
-    f: (in2: In2) => Effect.Effect<Env2, never, In>
+    f: (in2: In2) => Effect<Env2, never, In>
   ) => <Env, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In2, Out>,
   <Env, In, Out, Env2, In2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (in2: In2) => Effect.Effect<Env2, never, In>
+    f: (in2: In2) => Effect<Env2, never, In>
   ) => Schedule.Schedule<Env | Env2, In2, Out>
 >(2, (self, f) =>
   makeWithState(self.initial, (now, input2, state) =>
@@ -487,11 +487,11 @@ export const delayed = dual<
 /** @internal */
 export const delayedEffect = dual<
   <Env2>(
-    f: (duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) => modifyDelayEffect(self, (_, delay) => f(delay)))
 
@@ -509,7 +509,7 @@ export const delays = <Env, In, Out>(
       self.step(now, input, state),
       core.flatMap((
         [state, _, decision]
-      ): Effect.Effect<never, never, readonly [any, Duration.Duration, ScheduleDecision.ScheduleDecision]> => {
+      ): Effect<never, never, readonly [any, Duration.Duration, ScheduleDecision.ScheduleDecision]> => {
         if (ScheduleDecision.isDone(decision)) {
           return core.succeed([state, Duration.zero, decision] as const)
         }
@@ -544,15 +544,15 @@ export const mapBoth = dual<
 export const mapBothEffect = dual<
   <In2, Env2, In, Out, Env3, Out2>(
     options: {
-      readonly onInput: (input: In2) => Effect.Effect<Env2, never, In>
-      readonly onOutput: (out: Out) => Effect.Effect<Env3, never, Out2>
+      readonly onInput: (input: In2) => Effect<Env2, never, In>
+      readonly onOutput: (out: Out) => Effect<Env3, never, Out2>
     }
   ) => <Env>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2 | Env3, In2, Out2>,
   <Env, In, Out, In2, Env2, Env3, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
     options: {
-      readonly onInput: (input: In2) => Effect.Effect<Env2, never, In>
-      readonly onOutput: (out: Out) => Effect.Effect<Env3, never, Out2>
+      readonly onInput: (input: In2) => Effect<Env2, never, In>
+      readonly onOutput: (out: Out) => Effect<Env3, never, Out2>
     }
   ) => Schedule.Schedule<Env | Env2 | Env3, In2, Out2>
 >(2, (self, { onInput, onOutput }) => mapEffect(mapInputEffect(self, onInput), onOutput))
@@ -560,7 +560,7 @@ export const mapBothEffect = dual<
 /** @internal */
 export const driver = <Env, In, Out>(
   self: Schedule.Schedule<Env, In, Out>
-): Effect.Effect<never, never, Schedule.ScheduleDriver<Env, In, Out>> =>
+): Effect<never, never, Schedule.ScheduleDriver<Env, In, Out>> =>
   pipe(
     ref.make<readonly [Option.Option<Out>, any]>([Option.none(), self.initial]),
     core.map((ref) => new ScheduleDriverImpl(self, ref))
@@ -627,11 +627,11 @@ export const eitherWith = dual<
 /** @internal */
 export const ensuring = dual<
   <X>(
-    finalizer: Effect.Effect<never, never, X>
+    finalizer: Effect<never, never, X>
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env, In, Out>,
   <Env, In, Out, X>(
     self: Schedule.Schedule<Env, In, Out>,
-    finalizer: Effect.Effect<never, never, X>
+    finalizer: Effect<never, never, X>
   ) => Schedule.Schedule<Env, In, Out>
 >(2, (self, finalizer) =>
   makeWithState(
@@ -871,7 +871,7 @@ const intersectWithLoop = <State, State1, Env, In, Out, Env1, In1, Out2>(
   out2: Out2,
   rInterval: Intervals.Intervals,
   f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-): Effect.Effect<
+): Effect<
   Env | Env1,
   never,
   readonly [readonly [State, State1], readonly [Out, Out2], ScheduleDecision.ScheduleDecision]
@@ -974,11 +974,11 @@ export const map = dual<
 /** @internal */
 export const mapEffect = dual<
   <Out, Env2, Out2>(
-    f: (out: Out) => Effect.Effect<Env2, never, Out2>
+    f: (out: Out) => Effect<Env2, never, Out2>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out2>,
   <Env, In, Out, Env2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, Out2>
+    f: (out: Out) => Effect<Env2, never, Out2>
   ) => Schedule.Schedule<Env | Env2, In, Out2>
 >(2, (self, f) =>
   makeWithState(
@@ -1033,11 +1033,11 @@ export const modifyDelay = dual<
 /** @internal */
 export const modifyDelayEffect = dual<
   <Out, Env2>(
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Env2, never, Duration.DurationInput>
+    f: (out: Out, duration: Duration.Duration) => Effect<Env2, never, Duration.DurationInput>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) =>
   makeWithState(
@@ -1064,11 +1064,11 @@ export const modifyDelayEffect = dual<
 /** @internal */
 export const onDecision = dual<
   <Out, Env2, X>(
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect<Env2, never, X>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2, X>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<Env2, never, X>
+    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect<Env2, never, X>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) =>
   makeWithState(
@@ -1143,7 +1143,7 @@ export const recurUntil = <A>(f: Predicate<A>): Schedule.Schedule<never, A, A> =
 
 /** @internal */
 export const recurUntilEffect = <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ): Schedule.Schedule<Env, A, A> => untilInputEffect(identity<A>(), f)
 
 /** @internal */
@@ -1163,7 +1163,7 @@ export const recurWhile = <A>(f: Predicate<A>): Schedule.Schedule<never, A, A> =
 
 /** @internal */
 export const recurWhileEffect = <Env, A>(
-  f: (a: A) => Effect.Effect<Env, never, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ): Schedule.Schedule<Env, A, A> => whileInputEffect(identity<A>(), f)
 
 /** @internal */
@@ -1186,12 +1186,12 @@ export const reduce = dual<
 export const reduceEffect = dual<
   <Out, Env1, Z>(
     zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Env1, never, Z>
+    f: (z: Z, out: Out) => Effect<Env1, never, Z>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env1, In, Z>,
   <Env, In, Out, Env1, Z>(
     self: Schedule.Schedule<Env, In, Out>,
     zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Env1, never, Z>
+    f: (z: Z, out: Out) => Effect<Env1, never, Z>
   ) => Schedule.Schedule<Env | Env1, In, Z>
 >(3, (self, zero, f) =>
   makeWithState(
@@ -1210,7 +1210,7 @@ export const repeatForever = <Env, In, Out>(self: Schedule.Schedule<Env, In, Out
       now: number,
       input: In,
       state: any
-    ): Effect.Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]> =>
+    ): Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]> =>
       core.flatMap(
         self.step(now, input, state),
         ([state, out, decision]) =>
@@ -1265,12 +1265,12 @@ export const run = dual<
   <In>(
     now: number,
     input: Iterable<In>
-  ) => <Env, Out>(self: Schedule.Schedule<Env, In, Out>) => Effect.Effect<Env, never, Chunk.Chunk<Out>>,
+  ) => <Env, Out>(self: Schedule.Schedule<Env, In, Out>) => Effect<Env, never, Chunk.Chunk<Out>>,
   <Env, In, Out>(
     self: Schedule.Schedule<Env, In, Out>,
     now: number,
     input: Iterable<In>
-  ) => Effect.Effect<Env, never, Chunk.Chunk<Out>>
+  ) => Effect<Env, never, Chunk.Chunk<Out>>
 >(3, (self, now, input) =>
   pipe(
     runLoop(self, now, Chunk.fromIterable(input), self.initial, Chunk.empty()),
@@ -1284,7 +1284,7 @@ const runLoop = <Env, In, Out>(
   inputs: Chunk.Chunk<In>,
   state: any,
   acc: Chunk.Chunk<Out>
-): Effect.Effect<Env, never, Chunk.Chunk<Out>> => {
+): Effect<Env, never, Chunk.Chunk<Out>> => {
   if (!Chunk.isNonEmpty(inputs)) {
     return core.succeed(acc)
   }
@@ -1345,11 +1345,11 @@ export const sync = <A>(evaluate: LazyArg<A>): Schedule.Schedule<never, unknown,
 /** @internal */
 export const tapInput = dual<
   <Env2, In2, X>(
-    f: (input: In2) => Effect.Effect<Env2, never, X>
+    f: (input: In2) => Effect<Env2, never, X>
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In & In2, Out>,
   <Env, In, Out, Env2, In2, X>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (input: In2) => Effect.Effect<Env2, never, X>
+    f: (input: In2) => Effect<Env2, never, X>
   ) => Schedule.Schedule<Env | Env2, In & In2, Out>
 >(2, (self, f) =>
   makeWithState(self.initial, (now, input, state) =>
@@ -1361,11 +1361,11 @@ export const tapInput = dual<
 /** @internal */
 export const tapOutput = dual<
   <Out, XO extends Out, Env2, X>(
-    f: (out: XO) => Effect.Effect<Env2, never, X>
+    f: (out: XO) => Effect<Env2, never, X>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, XO extends Out, Env2, X>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (out: XO) => Effect.Effect<Env2, never, X>
+    f: (out: XO) => Effect<Env2, never, X>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) =>
   makeWithState(self.initial, (now, input, state) =>
@@ -1469,11 +1469,11 @@ export const untilInput = dual<
 /** @internal */
 export const untilInputEffect = dual<
   <In, Env2>(
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ) => <Env, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) => checkEffect(self, (input, _) => effect.negate(f(input))))
 
@@ -1486,11 +1486,11 @@ export const untilOutput = dual<
 /** @internal */
 export const untilOutputEffect = dual<
   <Out, Env2>(
-    f: (out: Out) => Effect.Effect<Env2, never, boolean>
+    f: (out: Out) => Effect<Env2, never, boolean>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env2, never, boolean>
+    f: (out: Out) => Effect<Env2, never, boolean>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) => checkEffect(self, (_, out) => effect.negate(f(out))))
 
@@ -1514,11 +1514,11 @@ export const whileInput = dual<
 /** @internal */
 export const whileInputEffect = dual<
   <In, Env2>(
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ) => <Env, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env2, In, Out>,
   <Env, In, Out, Env2>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (input: In) => Effect.Effect<Env2, never, boolean>
+    f: (input: In) => Effect<Env2, never, boolean>
   ) => Schedule.Schedule<Env | Env2, In, Out>
 >(2, (self, f) => checkEffect(self, (input, _) => f(input)))
 
@@ -1531,11 +1531,11 @@ export const whileOutput = dual<
 /** @internal */
 export const whileOutputEffect = dual<
   <Out, Env1>(
-    f: (out: Out) => Effect.Effect<Env1, never, boolean>
+    f: (out: Out) => Effect<Env1, never, boolean>
   ) => <Env, In>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<Env | Env1, In, Out>,
   <Env, In, Out, Env1>(
     self: Schedule.Schedule<Env, In, Out>,
-    f: (out: Out) => Effect.Effect<Env1, never, boolean>
+    f: (out: Out) => Effect<Env1, never, boolean>
   ) => Schedule.Schedule<Env | Env1, In, Out>
 >(2, (self, f) => checkEffect(self, (_, out) => f(out)))
 
@@ -1786,24 +1786,24 @@ export const findNextMonth = (now: number, day: number, months: number): number 
 export const repeat_Effect = dual<
   <R1, A extends A0, A0, B>(
     schedule: Schedule.Schedule<R1, A, B>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E, B>,
+  ) => <R, E>(self: Effect<R, E, A>) => Effect<R | R1, E, B>,
   <R, E, A extends A0, A0, R1, B>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     schedule: Schedule.Schedule<R1, A0, B>
-  ) => Effect.Effect<R | R1, E, B>
+  ) => Effect<R | R1, E, B>
 >(2, (self, schedule) => repeatOrElse_Effect(self, schedule, (e, _) => core.fail(e)))
 
 /** @internal */
 export const repeatOrElse_Effect = dual<
   <R2, A extends A0, A0, B, E, R3, E2>(
     schedule: Schedule.Schedule<R2, A, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect.Effect<R3, E2, B>
-  ) => <R>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2 | R3, E2, B>,
+    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+  ) => <R>(self: Effect<R, E, A>) => Effect<R | R2 | R3, E2, B>,
   <R, E, A extends A0, A0, R2, B, R3, E2>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     schedule: Schedule.Schedule<R2, A0, B>,
-    orElse: (error: E, option: Option.Option<B>) => Effect.Effect<R3, E2, B>
-  ) => Effect.Effect<R | R2 | R3, E2, B>
+    orElse: (error: E, option: Option.Option<B>) => Effect<R3, E2, B>
+  ) => Effect<R | R2 | R3, E2, B>
 >(3, (self, schedule, orElse) =>
   core.flatMap(driver(schedule), (driver) =>
     core.matchEffect(self, {
@@ -1813,11 +1813,11 @@ export const repeatOrElse_Effect = dual<
 
 /** @internal */
 const repeatOrElseEffectLoop = <R, E, A extends A0, A0, R1, B, R2, E2, C>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   driver: Schedule.ScheduleDriver<R1, A0, B>,
-  orElse: (error: E, option: Option.Option<B>) => Effect.Effect<R2, E2, C>,
+  orElse: (error: E, option: Option.Option<B>) => Effect<R2, E2, C>,
   value: A
-): Effect.Effect<R | R1 | R2, E2, B | C> => {
+): Effect<R | R1 | R2, E2, B | C> => {
   return core.matchEffect(driver.next(value), {
     onFailure: () => core.orDie(driver.last()),
     onSuccess: (b) =>
@@ -1831,36 +1831,35 @@ const repeatOrElseEffectLoop = <R, E, A extends A0, A0, R1, B, R2, E2, C>(
 /** @internal */
 export const repeatUntil_Effect = dual<
   {
-    <A, B extends A>(f: Refinement<A, B>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
-    <A>(f: Predicate<A>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+    <A, B extends A>(f: Refinement<A, B>): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
+    <A>(f: Predicate<A>): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   },
   {
-    <R, E, A, B extends A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, B>
-    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, A>
+    <R, E, A, B extends A>(self: Effect<R, E, A>, f: Predicate<A>): Effect<R, E, B>
+    <R, E, A>(self: Effect<R, E, A>, f: Predicate<A>): Effect<R, E, A>
   }
 >(
   2,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) =>
-    repeatUntilEffect_Effect(self, (a) => core.sync(() => f(a)))
+  <R, E, A>(self: Effect<R, E, A>, f: Predicate<A>) => repeatUntilEffect_Effect(self, (a) => core.sync(() => f(a)))
 )
 
 /** @internal */
 export const repeatUntilEffect_Effect: {
   <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>
+    f: (a: A) => Effect<R2, E2, boolean>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A>
   <R, E, A, R2, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ): Effect.Effect<R | R2, E | E2, A>
+    self: Effect<R, E, A>,
+    f: (a: A) => Effect<R2, E2, boolean>
+  ): Effect<R | R2, E | E2, A>
 } = dual<
   <A, R2, E2>(
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>,
+    f: (a: A) => Effect<R2, E2, boolean>
+  ) => <R, E>(self: Effect<R, E, A>) => Effect<R | R2, E | E2, A>,
   <R, E, A, R2, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R2, E2, boolean>
-  ) => Effect.Effect<R | R2, E | E2, A>
+    self: Effect<R, E, A>,
+    f: (a: A) => Effect<R2, E2, boolean>
+  ) => Effect<R | R2, E | E2, A>
 >(2, (self, f) =>
   core.flatMap(self, (a) =>
     core.flatMap(f(a), (result) =>
@@ -1873,43 +1872,43 @@ export const repeatUntilEffect_Effect: {
 
 /** @internal */
 export const repeatWhile_Effect = dual<
-  <A>(f: Predicate<A>) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) => Effect.Effect<R, E, A>
+  <A>(f: Predicate<A>) => <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, f: Predicate<A>) => Effect<R, E, A>
 >(2, (self, f) => repeatWhileEffect_Effect(self, (a) => core.sync(() => f(a))))
 
 /** @internal */
 export const repeatWhileEffect_Effect = dual<
   <R1, A, E2>(
-    f: (a: A) => Effect.Effect<R1, E2, boolean>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
+    f: (a: A) => Effect<R1, E2, boolean>
+  ) => <R, E>(self: Effect<R, E, A>) => Effect<R | R1, E | E2, A>,
   <R, E, R1, A, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: A) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
+    self: Effect<R, E, A>,
+    f: (a: A) => Effect<R1, E2, boolean>
+  ) => Effect<R | R1, E | E2, A>
 >(2, (self, f) => repeatUntilEffect_Effect(self, (a) => effect.negate(f(a))))
 
 /** @internal */
 export const retry_Effect = dual<
   <R1, E extends E0, E0, B>(
     policy: Schedule.Schedule<R1, E0, B>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E, A>,
+  ) => <R, A>(self: Effect<R, E, A>) => Effect<R | R1, E, A>,
   <R, E extends E0, E0, A, R1, B>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     policy: Schedule.Schedule<R1, E0, B>
-  ) => Effect.Effect<R | R1, E, A>
+  ) => Effect<R | R1, E, A>
 >(2, (self, policy) => retryOrElse_Effect(self, policy, (e, _) => core.fail(e)))
 
 /** @internal */
 export const retryN_Effect = dual<
-  (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, n: number) => Effect.Effect<R, E, A>
+  (n: number) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, n: number) => Effect<R, E, A>
 >(2, (self, n) => retryN_EffectLoop(self, n))
 
 /** @internal */
 const retryN_EffectLoop = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   n: number
-): Effect.Effect<R, E, A> => {
+): Effect<R, E, A> => {
   return core.catchAll(self, (e) =>
     n < 0 ?
       core.fail(e) :
@@ -1920,13 +1919,13 @@ const retryN_EffectLoop = <R, E, A>(
 export const retryOrElse_Effect = dual<
   <R1, E extends E3, A1, R2, E2, A2, E3>(
     policy: Schedule.Schedule<R1, E3, A1>,
-    orElse: (e: E, out: A1) => Effect.Effect<R2, E2, A2>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1 | R2, E | E2, A | A2>,
+    orElse: (e: E, out: A1) => Effect<R2, E2, A2>
+  ) => <R, A>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E | E2, A | A2>,
   <R, E extends E3, A, R1, A1, R2, E2, A2, E3>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     policy: Schedule.Schedule<R1, E3, A1>,
-    orElse: (e: E, out: A1) => Effect.Effect<R2, E2, A2>
-  ) => Effect.Effect<R | R1 | R2, E | E2, A | A2>
+    orElse: (e: E, out: A1) => Effect<R2, E2, A2>
+  ) => Effect<R | R1 | R2, E | E2, A | A2>
 >(3, (self, policy, orElse) =>
   core.flatMap(
     driver(policy),
@@ -1935,10 +1934,10 @@ export const retryOrElse_Effect = dual<
 
 /** @internal */
 const retryOrElse_EffectLoop = <R, E, A, R1, A1, R2, E2, A2>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   driver: Schedule.ScheduleDriver<R1, E, A1>,
-  orElse: (e: E, out: A1) => Effect.Effect<R2, E2, A2>
-): Effect.Effect<R | R1 | R2, E | E2, A | A2> => {
+  orElse: (e: E, out: A1) => Effect<R2, E2, A2>
+): Effect<R | R1 | R2, E | E2, A | A2> => {
   return core.catchAll(
     self,
     (e) =>
@@ -1957,14 +1956,14 @@ const retryOrElse_EffectLoop = <R, E, A, R1, A1, R2, E2, A2>(
 /** @internal */
 export const retryUntil_Effect = dual<
   {
-    <E, E2 extends E>(f: Refinement<E, E2>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E2, A>
-    <E>(f: Predicate<E>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+    <E, E2 extends E>(f: Refinement<E, E2>): <R, A>(self: Effect<R, E, A>) => Effect<R, E2, A>
+    <E>(f: Predicate<E>): <R, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   },
   {
-    <R, E, A, E2 extends E>(self: Effect.Effect<R, E, A>, f: Refinement<E, E2>): Effect.Effect<R, E2, A>
-    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>): Effect.Effect<R, E, A>
+    <R, E, A, E2 extends E>(self: Effect<R, E, A>, f: Refinement<E, E2>): Effect<R, E2, A>
+    <R, E, A>(self: Effect<R, E, A>, f: Predicate<E>): Effect<R, E, A>
   }
->(2, <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) =>
+>(2, <R, E, A>(self: Effect<R, E, A>, f: Predicate<E>) =>
   retryUntilEffect_Effect(
     self,
     (e) => core.sync(() => f(e))
@@ -1973,20 +1972,20 @@ export const retryUntil_Effect = dual<
 /** @internal */
 export const retryUntilEffect_Effect: {
   <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R1 | R, E | E2, A>
+    f: (e: E) => Effect<R1, E2, boolean>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E | E2, A>
   <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ): Effect.Effect<R | R1, E | E2, A>
+    self: Effect<R, E, A>,
+    f: (e: E) => Effect<R1, E2, boolean>
+  ): Effect<R | R1, E | E2, A>
 } = dual<
   <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
+    f: (e: E) => Effect<R1, E2, boolean>
+  ) => <R, A>(self: Effect<R, E, A>) => Effect<R | R1, E | E2, A>,
   <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
+    self: Effect<R, E, A>,
+    f: (e: E) => Effect<R1, E2, boolean>
+  ) => Effect<R | R1, E | E2, A>
 >(2, (self, f) =>
   core.catchAll(self, (e) =>
     core.flatMap(f(e), (b) =>
@@ -1999,32 +1998,32 @@ export const retryUntilEffect_Effect: {
 
 /** @internal */
 export const retryWhile_Effect = dual<
-  <E>(f: Predicate<E>) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) => Effect.Effect<R, E, A>
+  <E>(f: Predicate<E>) => <R, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A>(self: Effect<R, E, A>, f: Predicate<E>) => Effect<R, E, A>
 >(2, (self, f) => retryWhileEffect_Effect(self, (e) => core.sync(() => f(e))))
 
 /** @internal */
 export const retryWhileEffect_Effect = dual<
   <R1, E, E2>(
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E2, A>,
+    f: (e: E) => Effect<R1, E2, boolean>
+  ) => <R, A>(self: Effect<R, E, A>) => Effect<R | R1, E | E2, A>,
   <R, E, A, R1, E2>(
-    self: Effect.Effect<R, E, A>,
-    f: (e: E) => Effect.Effect<R1, E2, boolean>
-  ) => Effect.Effect<R | R1, E | E2, A>
+    self: Effect<R, E, A>,
+    f: (e: E) => Effect<R1, E2, boolean>
+  ) => Effect<R | R1, E | E2, A>
 >(2, (self, f) => retryUntilEffect_Effect(self, (e) => effect.negate(f(e))))
 
 /** @internal */
 export const schedule_Effect = dual<
   <R2, Out>(
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E, Out>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R2, E, Out>,
   <R, E, A, R2, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ) => Effect.Effect<R | R2, E, Out>
+  ) => Effect<R | R2, E, Out>
 >(2, <R, E, A, R2, Out>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   schedule: Schedule.Schedule<R2, unknown, Out>
 ) => scheduleFrom_Effect(self, void 0, schedule))
 
@@ -2033,12 +2032,12 @@ export const scheduleFrom_Effect = dual<
   <R2, In, Out>(
     initial: In,
     schedule: Schedule.Schedule<R2, In, Out>
-  ) => <R, E>(self: Effect.Effect<R, E, In>) => Effect.Effect<R | R2, E, Out>,
+  ) => <R, E>(self: Effect<R, E, In>) => Effect<R | R2, E, Out>,
   <R, E, In, R2, Out>(
-    self: Effect.Effect<R, E, In>,
+    self: Effect<R, E, In>,
     initial: In,
     schedule: Schedule.Schedule<R2, In, Out>
-  ) => Effect.Effect<R | R2, E, Out>
+  ) => Effect<R | R2, E, Out>
 >(3, (self, initial, schedule) =>
   core.flatMap(
     driver(schedule),
@@ -2047,10 +2046,10 @@ export const scheduleFrom_Effect = dual<
 
 /** @internal */
 const scheduleFrom_EffectLoop = <R, E, In, R2, Out>(
-  self: Effect.Effect<R, E, In>,
+  self: Effect<R, E, In>,
   initial: In,
   driver: Schedule.ScheduleDriver<R2, In, Out>
-): Effect.Effect<R | R2, E, Out> =>
+): Effect<R | R2, E, Out> =>
   core.matchEffect(driver.next(initial), {
     onFailure: () => core.orDie(driver.last()),
     onSuccess: () => core.flatMap(self, (a) => scheduleFrom_EffectLoop(self, a, driver))

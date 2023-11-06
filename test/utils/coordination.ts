@@ -1,5 +1,5 @@
 import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -8,14 +8,14 @@ import * as Ref from "effect/Ref"
 
 export interface ChunkCoordination<A> {
   readonly queue: Queue.Queue<Exit.Exit<Option.Option<never>, Chunk.Chunk<A>>>
-  readonly offer: Effect.Effect<never, never, void>
-  readonly proceed: Effect.Effect<never, never, void>
-  readonly awaitNext: Effect.Effect<never, never, void>
+  readonly offer: Effect<never, never, void>
+  readonly proceed: Effect<never, never, void>
+  readonly awaitNext: Effect<never, never, void>
 }
 
 export const chunkCoordination = <A>(
   _chunks: Iterable<Chunk.Chunk<A>>
-): Effect.Effect<never, never, ChunkCoordination<A>> =>
+): Effect<never, never, ChunkCoordination<A>> =>
   Effect.gen(function*($) {
     const chunks = Chunk.fromIterable(_chunks)
     const queue = yield* $(Queue.unbounded<Exit.Exit<Option.Option<never>, Chunk.Chunk<A>>>())

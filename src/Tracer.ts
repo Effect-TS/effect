@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import * as defaultServices from "./internal/defaultServices.js"
@@ -129,5 +129,5 @@ export const externalSpan: (options: {
  * @since 2.0.0
  * @category constructors
  */
-export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =
+export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A> =
   defaultServices.tracerWith

@@ -3,7 +3,7 @@
  */
 import type { Cause } from "./Cause.js"
 import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type * as Fiber from "./Fiber.js"
 import type * as FiberId from "./FiberId.js"
@@ -68,7 +68,7 @@ export interface RunForkOptions {
  */
 export const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A> =
+) => <E, A>(self: Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A> =
   internal.unsafeFork
 
 /**
@@ -80,7 +80,7 @@ export const runFork: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Exit.Exit<E, A> =
+export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit.Exit<E, A> =
   internal.unsafeRunSyncExit
 
 /**
@@ -92,7 +92,7 @@ export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effe
  * @since 2.0.0
  * @category execution
  */
-export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => A = internal.unsafeRunSync
+export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => A = internal.unsafeRunSync
 
 /**
  * Executes the effect asynchronously, eventually passing the exit value to
@@ -107,7 +107,7 @@ export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R
 export const runCallback: <R>(
   runtime: Runtime<R>
 ) => <E, A>(
-  effect: Effect.Effect<R, E, A>,
+  effect: Effect<R, E, A>,
   onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
 ) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void =
   internal.unsafeRunCallback
@@ -123,7 +123,7 @@ export const runCallback: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<A> =
+export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Promise<A> =
   internal.unsafeRunPromise
 
 /**
@@ -138,7 +138,7 @@ export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effec
  */
 export const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>> = internal.unsafeRunPromiseExit
+) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit.Exit<E, A>> = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0

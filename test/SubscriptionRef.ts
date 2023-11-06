@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"

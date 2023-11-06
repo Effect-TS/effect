@@ -1,7 +1,7 @@
 import * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
 import * as Context from "../../Context.js"
-import * as Effect from "../../Effect.js"
+import { Effect } from "../../Effect.js"
 import * as Either from "../../Either.js"
 import * as Exit from "../../Exit.js"
 import type * as FiberId from "../../FiberId.js"
@@ -25,17 +25,17 @@ export const acquireUseRelease = dual<
     release: (resource: A) => STM.STM<R3, E3, A3>
   ) => <R, E>(
     acquire: STM.STM<R, E, A>
-  ) => Effect.Effect<R | R2 | R3, E | E2 | E3, A2>,
+  ) => Effect<R | R2 | R3, E | E2 | E3, A2>,
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     acquire: STM.STM<R, E, A>,
     use: (resource: A) => STM.STM<R2, E2, A2>,
     release: (resource: A) => STM.STM<R3, E3, A3>
-  ) => Effect.Effect<R | R2 | R3, E | E2 | E3, A2>
+  ) => Effect<R | R2 | R3, E | E2 | E3, A2>
 >(3, <R, E, A, R2, E2, A2, R3, E3, A3>(
   acquire: STM.STM<R, E, A>,
   use: (resource: A) => STM.STM<R2, E2, A2>,
   release: (resource: A) => STM.STM<R3, E3, A3>
-): Effect.Effect<R | R2 | R3, E | E2 | E3, A2> =>
+): Effect<R | R2 | R3, E | E2 | E3, A2> =>
   Effect.uninterruptibleMask((restore) => {
     let state: STMState.STMState<E, A> = STMState.running
     return pipe(
@@ -313,7 +313,7 @@ export const collectSTM = dual<
   }))
 
 /** @internal */
-export const commitEither = <R, E, A>(self: STM.STM<R, E, A>): Effect.Effect<R, E, A> =>
+export const commitEither = <R, E, A>(self: STM.STM<R, E, A>): Effect<R, E, A> =>
   Effect.flatten(core.commit(either(self)))
 
 /** @internal */

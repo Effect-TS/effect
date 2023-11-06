@@ -1,6 +1,6 @@
 import type * as Cause from "../Cause.js"
 import * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
@@ -26,7 +26,7 @@ import * as _supervisor from "./supervisor.js"
 /** @internal */
 export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 <E, A>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   options?: Runtime.RunForkOptions
 ): Fiber.RuntimeFiber<E, A> => {
   const fiberId = FiberId.unsafeMake()
@@ -75,7 +75,7 @@ export const unsafeFork = <R>(runtime: Runtime.Runtime<R>) =>
 /** @internal */
 export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 <E, A>(
-  effect: Effect.Effect<R, E, A>,
+  effect: Effect<R, E, A>,
   onExit?: (exit: Exit.Exit<E, A>) => void
 ): (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void) => void => {
   const fiberRuntime = unsafeFork(runtime)(effect)
@@ -96,7 +96,7 @@ export const unsafeRunCallback = <R>(runtime: Runtime.Runtime<R>) =>
 }
 
 /** @internal */
-export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>): A => {
+export const unsafeRunSync = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): A => {
   const result = unsafeRunSyncExit(runtime)(effect)
   if (result._tag === "Failure") {
     throw fiberFailure(result.i0)
@@ -189,7 +189,7 @@ export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => 
 /** @internal */
 export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure => Predicate.hasProperty(u, FiberFailureId)
 
-const fastPath = <R, E, A>(effect: Effect.Effect<R, E, A>): Exit.Exit<E, A> | undefined => {
+const fastPath = <R, E, A>(effect: Effect<R, E, A>): Exit.Exit<E, A> | undefined => {
   const op = effect as core.Primitive
   switch (op._op) {
     case "Failure":
@@ -215,7 +215,7 @@ const fastPath = <R, E, A>(effect: Effect.Effect<R, E, A>): Exit.Exit<E, A> | un
 
 /** @internal */
 export const unsafeRunSyncExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>): Exit.Exit<E, A> => {
+  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Exit.Exit<E, A> => {
     const op = fastPath(effect)
     if (op) {
       return op
@@ -231,22 +231,21 @@ export const unsafeRunSyncExit =
   }
 
 /** @internal */
-export const unsafeRunPromise =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>): Promise<A> =>
-    unsafeRunPromiseExit(runtime)(effect).then((result) => {
-      switch (result._tag) {
-        case OpCodes.OP_SUCCESS: {
-          return result.i0
-        }
-        case OpCodes.OP_FAILURE: {
-          throw fiberFailure(result.i0)
-        }
+export const unsafeRunPromise = <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Promise<A> =>
+  unsafeRunPromiseExit(runtime)(effect).then((result) => {
+    switch (result._tag) {
+      case OpCodes.OP_SUCCESS: {
+        return result.i0
       }
-    })
+      case OpCodes.OP_FAILURE: {
+        throw fiberFailure(result.i0)
+      }
+    }
+  })
 
 /** @internal */
 export const unsafeRunPromiseExit =
-  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>): Promise<Exit.Exit<E, A>> =>
+  <R>(runtime: Runtime.Runtime<R>) => <E, A>(effect: Effect<R, E, A>): Promise<Exit.Exit<E, A>> =>
     new Promise((resolve) => {
       const op = fastPath(effect)
       if (op) {
@@ -280,7 +279,7 @@ export const make = <R>(
 ): Runtime.Runtime<R> => new RuntimeImpl(options.context, options.runtimeFlags, options.fiberRefs)
 
 /** @internal */
-export const runtime = <R>(): Effect.Effect<R, never, Runtime.Runtime<R>> =>
+export const runtime = <R>(): Effect<R, never, Runtime.Runtime<R>> =>
   core.withFiberRuntime<R, never, RuntimeImpl<R>>((state, status) =>
     core.succeed(
       new RuntimeImpl<R>(
@@ -327,8 +326,8 @@ export const unsafeRunSyncExitEffect = unsafeRunSyncExit(defaultRuntime)
 
 /** @internal */
 export const asyncEffect = <R, E, A, R2, E2, X>(
-  register: (callback: (_: Effect.Effect<R, E, A>) => void) => Effect.Effect<R2, E2, X>
-): Effect.Effect<R | R2, E | E2, A> =>
+  register: (callback: (_: Effect<R, E, A>) => void) => Effect<R2, E2, X>
+): Effect<R | R2, E | E2, A> =>
   core.flatMap(
     core.deferredMake<E | E2, A>(),
     (deferred) =>

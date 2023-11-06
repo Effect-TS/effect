@@ -47,7 +47,7 @@ For best performance use capacities that are powers of two.
 **Signature**
 
 ```ts
-export declare const bounded: <A>(requestedCapacity: number) => Effect.Effect<never, never, PubSub<A>>
+export declare const bounded: <A>(requestedCapacity: number) => Effect<never, never, PubSub<A>>
 ```
 
 Added in v2.0.0
@@ -62,7 +62,7 @@ For best performance use capacities that are powers of two.
 **Signature**
 
 ```ts
-export declare const dropping: <A>(requestedCapacity: number) => Effect.Effect<never, never, PubSub<A>>
+export declare const dropping: <A>(requestedCapacity: number) => Effect<never, never, PubSub<A>>
 ```
 
 Added in v2.0.0
@@ -77,7 +77,7 @@ For best performance use capacities that are powers of two.
 **Signature**
 
 ```ts
-export declare const sliding: <A>(requestedCapacity: number) => Effect.Effect<never, never, PubSub<A>>
+export declare const sliding: <A>(requestedCapacity: number) => Effect<never, never, PubSub<A>>
 ```
 
 Added in v2.0.0
@@ -89,7 +89,7 @@ Creates an unbounded `PubSub`.
 **Signature**
 
 ```ts
-export declare const unbounded: <A>() => Effect.Effect<never, never, PubSub<A>>
+export declare const unbounded: <A>() => Effect<never, never, PubSub<A>>
 ```
 
 Added in v2.0.0
@@ -115,7 +115,7 @@ Returns `true` if the `Queue` contains zero elements, `false` otherwise.
 **Signature**
 
 ```ts
-export declare const isEmpty: <A>(self: PubSub<A>) => Effect.Effect<never, never, boolean>
+export declare const isEmpty: <A>(self: PubSub<A>) => Effect<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -128,7 +128,7 @@ otherwise.
 **Signature**
 
 ```ts
-export declare const isFull: <A>(self: PubSub<A>) => Effect.Effect<never, never, boolean>
+export declare const isFull: <A>(self: PubSub<A>) => Effect<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -140,7 +140,7 @@ Returns `true` if `shutdown` has been called, otherwise returns `false`.
 **Signature**
 
 ```ts
-export declare const isShutdown: <A>(self: PubSub<A>) => Effect.Effect<never, never, boolean>
+export declare const isShutdown: <A>(self: PubSub<A>) => Effect<never, never, boolean>
 ```
 
 Added in v2.0.0
@@ -154,7 +154,7 @@ elements to be added to the queue.
 **Signature**
 
 ```ts
-export declare const size: <A>(self: PubSub<A>) => Effect.Effect<never, never, number>
+export declare const size: <A>(self: PubSub<A>) => Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -175,20 +175,20 @@ export interface PubSub<A> extends Queue.Enqueue<A>, Pipeable {
    * Publishes a message to the `PubSub`, returning whether the message was published
    * to the `PubSub`.
    */
-  publish(value: A): Effect.Effect<never, never, boolean>
+  publish(value: A): Effect<never, never, boolean>
 
   /**
    * Publishes all of the specified messages to the `PubSub`, returning whether they
    * were published to the `PubSub`.
    */
-  publishAll(elements: Iterable<A>): Effect.Effect<never, never, boolean>
+  publishAll(elements: Iterable<A>): Effect<never, never, boolean>
 
   /**
    * Subscribes to receive messages from the `PubSub`. The resulting subscription can
    * be evaluated multiple times within the scope to take a message from the `PubSub`
    * each time.
    */
-  subscribe(): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
+  subscribe(): Effect<Scope.Scope, never, Queue.Dequeue<A>>
 }
 ```
 
@@ -205,7 +205,7 @@ shutdown, the `Effect` will resume right away.
 **Signature**
 
 ```ts
-export declare const awaitShutdown: <A>(self: PubSub<A>) => Effect.Effect<never, never, void>
+export declare const awaitShutdown: <A>(self: PubSub<A>) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -219,8 +219,8 @@ to the `PubSub`.
 
 ```ts
 export declare const publish: {
-  <A>(value: A): (self: PubSub<A>) => Effect.Effect<never, never, boolean>
-  <A>(self: PubSub<A>, value: A): Effect.Effect<never, never, boolean>
+  <A>(value: A): (self: PubSub<A>) => Effect<never, never, boolean>
+  <A>(self: PubSub<A>, value: A): Effect<never, never, boolean>
 }
 ```
 
@@ -235,8 +235,8 @@ were published to the `PubSub`.
 
 ```ts
 export declare const publishAll: {
-  <A>(elements: Iterable<A>): (self: PubSub<A>) => Effect.Effect<never, never, boolean>
-  <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect<never, never, boolean>
+  <A>(elements: Iterable<A>): (self: PubSub<A>) => Effect<never, never, boolean>
+  <A>(self: PubSub<A>, elements: Iterable<A>): Effect<never, never, boolean>
 }
 ```
 
@@ -250,7 +250,7 @@ to `offer*` and `take*` will be interrupted immediately.
 **Signature**
 
 ```ts
-export declare const shutdown: <A>(self: PubSub<A>) => Effect.Effect<never, never, void>
+export declare const shutdown: <A>(self: PubSub<A>) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -264,7 +264,7 @@ each time.
 **Signature**
 
 ```ts
-export declare const subscribe: <A>(self: PubSub<A>) => Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
+export declare const subscribe: <A>(self: PubSub<A>) => Effect<Scope.Scope, never, Queue.Dequeue<A>>
 ```
 
 Added in v2.0.0

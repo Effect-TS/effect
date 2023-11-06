@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import { Tag } from "effect/Context"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as List from "effect/List"

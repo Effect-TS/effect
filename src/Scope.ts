@@ -3,7 +3,7 @@
  */
 
 import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as ExecutionStrategy from "./ExecutionStrategy.js"
 import type * as Exit from "./Exit.js"
 import * as core from "./internal/core.js"
@@ -44,11 +44,11 @@ export interface Scope extends Pipeable {
   /**
    * @internal
    */
-  readonly fork: (strategy: ExecutionStrategy.ExecutionStrategy) => Effect.Effect<never, never, Scope.Closeable>
+  readonly fork: (strategy: ExecutionStrategy.ExecutionStrategy) => Effect<never, never, Scope.Closeable>
   /**
    * @internal
    */
-  readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect.Effect<never, never, void>
+  readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect<never, never, void>
 }
 
 /**
@@ -61,7 +61,7 @@ export interface CloseableScope extends Scope, Pipeable {
   /**
    * @internal
    */
-  readonly close: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+  readonly close: (exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
 }
 
 /**
@@ -78,7 +78,7 @@ export declare namespace Scope {
    * @since 2.0.0
    * @category model
    */
-  export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+  export type Finalizer = (exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>
   /**
    * @since 2.0.0
    * @category model
@@ -95,8 +95,8 @@ export declare namespace Scope {
  */
 export const addFinalizer: (
   self: Scope,
-  finalizer: Effect.Effect<never, never, unknown>
-) => Effect.Effect<never, never, void> = core.scopeAddFinalizer
+  finalizer: Effect<never, never, unknown>
+) => Effect<never, never, void> = core.scopeAddFinalizer
 
 /**
  * A simplified version of `addFinalizerWith` when the `finalizer` does not
@@ -105,7 +105,7 @@ export const addFinalizer: (
  * @since 2.0.0
  * @category utils
  */
-export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect.Effect<never, never, void> =
+export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effect<never, never, void> =
   core.scopeAddFinalizerExit
 
 /**
@@ -115,7 +115,7 @@ export const addFinalizerExit: (self: Scope, finalizer: Scope.Finalizer) => Effe
  * @since 2.0.0
  * @category destructors
  */
-export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void> =
+export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void> =
   core.scopeClose
 
 /**
@@ -128,8 +128,8 @@ export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) =>
  * @category utils
  */
 export const extend: {
-  (scope: Scope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: Scope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: Scope): <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, scope: Scope): Effect<Exclude<R, Scope>, E, A>
 } = fiberRuntime.scopeExtend
 
 /**
@@ -142,7 +142,7 @@ export const extend: {
 export const fork: (
   self: Scope,
   strategy: ExecutionStrategy.ExecutionStrategy
-) => Effect.Effect<never, never, CloseableScope> = core.scopeFork
+) => Effect<never, never, CloseableScope> = core.scopeFork
 
 /**
  * Uses the scope by providing it to an `Effect` workflow that needs a scope,
@@ -154,8 +154,8 @@ export const fork: (
  * @category destructors
  */
 export const use: {
-  (scope: CloseableScope): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Scope>, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, scope: CloseableScope): Effect.Effect<Exclude<R, Scope>, E, A>
+  (scope: CloseableScope): <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope>, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, scope: CloseableScope): Effect<Exclude<R, Scope>, E, A>
 } = fiberRuntime.scopeUse
 
 /**
@@ -168,4 +168,4 @@ export const use: {
  */
 export const make: (
   executionStrategy?: ExecutionStrategy.ExecutionStrategy
-) => Effect.Effect<never, never, CloseableScope> = fiberRuntime.scopeMake
+) => Effect<never, never, CloseableScope> = fiberRuntime.scopeMake

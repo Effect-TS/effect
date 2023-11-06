@@ -3,7 +3,7 @@
  */
 import type * as Chunk from "./Chunk.js"
 import type * as Duration from "./Duration.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashSet from "./HashSet.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
@@ -58,7 +58,7 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
   readonly unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void
   readonly unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
   /** */
-  <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
 
 /**
@@ -297,7 +297,7 @@ export const histogram: (
  * @since 2.0.0
  * @category aspects
  */
-export const increment: (self: Metric.Counter<number> | Metric.Counter<bigint>) => Effect.Effect<never, never, void> =
+export const increment: (self: Metric.Counter<number> | Metric.Counter<bigint>) => Effect<never, never, void> =
   internal.increment
 
 /**
@@ -305,10 +305,10 @@ export const increment: (self: Metric.Counter<number> | Metric.Counter<bigint>) 
  * @category aspects
  */
 export const incrementBy: {
-  (amount: number): (self: Metric.Counter<number>) => Effect.Effect<never, never, void>
-  (amount: bigint): (self: Metric.Counter<bigint>) => Effect.Effect<never, never, void>
-  (self: Metric.Counter<number>, amount: number): Effect.Effect<never, never, void>
-  (self: Metric.Counter<bigint>, amount: bigint): Effect.Effect<never, never, void>
+  (amount: number): (self: Metric.Counter<number>) => Effect<never, never, void>
+  (amount: bigint): (self: Metric.Counter<bigint>) => Effect<never, never, void>
+  (self: Metric.Counter<number>, amount: number): Effect<never, never, void>
+  (self: Metric.Counter<bigint>, amount: bigint): Effect<never, never, void>
 } = internal.incrementBy
 
 /**
@@ -338,10 +338,10 @@ export const mapType: {
  * @category aspects
  */
 export const set: {
-  (value: number): (self: Metric.Gauge<number>) => Effect.Effect<never, never, void>
-  (value: bigint): (self: Metric.Gauge<bigint>) => Effect.Effect<never, never, void>
-  (self: Metric.Gauge<number>, value: number): Effect.Effect<never, never, void>
-  (self: Metric.Gauge<bigint>, value: bigint): Effect.Effect<never, never, void>
+  (value: number): (self: Metric.Gauge<number>) => Effect<never, never, void>
+  (value: bigint): (self: Metric.Gauge<bigint>) => Effect<never, never, void>
+  (self: Metric.Gauge<number>, value: number): Effect<never, never, void>
+  (self: Metric.Gauge<bigint>, value: bigint): Effect<never, never, void>
 } = internal.set
 
 /**
@@ -350,7 +350,7 @@ export const set: {
  * @since 2.0.0
  * @category getters
  */
-export const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>> = internal.snapshot
+export const snapshot: Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>> = internal.snapshot
 
 /**
  * Creates a metric that ignores input and produces constant output.
@@ -504,11 +504,11 @@ export const timerWithBoundaries: (
 export const trackAll: {
   <In>(
     input: In
-  ): <Type, Out>(self: Metric<Type, In, Out>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <Type, Out>(self: Metric<Type, In, Out>) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <Type, In, Out>(
     self: Metric<Type, In, Out>,
     input: In
-  ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
 } = internal.trackAll
 
 /**
@@ -519,8 +519,8 @@ export const trackAll: {
  * @category aspects
  */
 export const trackDefect: {
-  <Type, Out>(metric: Metric<Type, unknown, Out>): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A, Type, Out>(self: Effect.Effect<R, E, A>, metric: Metric<Type, unknown, Out>): Effect.Effect<R, E, A>
+  <Type, Out>(metric: Metric<Type, unknown, Out>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A, Type, Out>(self: Effect<R, E, A>, metric: Metric<Type, unknown, Out>): Effect<R, E, A>
 } = internal.trackDefect
 
 /**
@@ -535,12 +535,12 @@ export const trackDefectWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
     f: (defect: unknown) => In
-  ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (defect: unknown) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = internal.trackDefectWith
 
 /**
@@ -554,11 +554,11 @@ export const trackDefectWith: {
 export const trackDuration: {
   <Type, Out>(
     metric: Metric<Type, Duration.Duration, Out>
-  ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, Duration.Duration, Out>
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = internal.trackDuration
 
 /**
@@ -573,12 +573,12 @@ export const trackDurationWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
-  ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = internal.trackDurationWith
 
 /**
@@ -591,11 +591,11 @@ export const trackDurationWith: {
 export const trackError: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>
-  ): <R, E extends In, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E extends In, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E extends In, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = internal.trackError
 
 /**
@@ -610,12 +610,12 @@ export const trackErrorWith: {
   <Type, In, Out, In2>(
     metric: Metric<Type, In, Out>,
     f: (error: In2) => In
-  ): <R, E extends In2, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E extends In2, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <R, E extends In2, A, Type, In, Out, In2>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (error: In2) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = internal.trackErrorWith
 
 /**
@@ -628,11 +628,11 @@ export const trackErrorWith: {
 export const trackSuccess: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>
-  ): <R, E, A extends In>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A extends In>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A extends In, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = internal.trackSuccess
 
 /**
@@ -647,12 +647,12 @@ export const trackSuccessWith: {
   <Type, In, Out, In2>(
     metric: Metric<Type, In, Out>,
     f: (value: In2) => In
-  ): <R, E, A extends In2>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A extends In2>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A extends In2, Type, In, Out, In2>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (value: In2) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 } = internal.trackSuccessWith
 
 /**
@@ -664,8 +664,8 @@ export const trackSuccessWith: {
  * @category utils
  */
 export const update: {
-  <In>(input: In): <Type, Out>(self: Metric<Type, In, Out>) => Effect.Effect<never, never, void>
-  <Type, In, Out>(self: Metric<Type, In, Out>, input: In): Effect.Effect<never, never, void>
+  <In>(input: In): <Type, Out>(self: Metric<Type, In, Out>) => Effect<never, never, void>
+  <Type, In, Out>(self: Metric<Type, In, Out>, input: In): Effect<never, never, void>
 } = internal.update
 
 /**
@@ -674,7 +674,7 @@ export const update: {
  * @since 2.0.0
  * @category getters
  */
-export const value: <Type, In, Out>(self: Metric<Type, In, Out>) => Effect.Effect<never, never, Out> = internal.value
+export const value: <Type, In, Out>(self: Metric<Type, In, Out>) => Effect<never, never, Out> = internal.value
 
 /**
  * @since 2.0.0

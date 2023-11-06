@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as Fiber from "./Fiber.js"
 import * as internal from "./internal/metric/polling.js"
 import type * as Metric from "./Metric.js"
@@ -37,7 +37,7 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
   /**
    * An effect that polls a value that may be fed to the metric.
    */
-  readonly poll: Effect.Effect<R, E, In>
+  readonly poll: Effect<R, E, In>
 }
 
 /**
@@ -48,7 +48,7 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
  */
 export const make: <Type, In, Out, R, E>(
   metric: Metric.Metric<Type, In, Out>,
-  poll: Effect.Effect<R, E, In>
+  poll: Effect<R, E, In>
 ) => PollingMetric<Type, In, R, E, Out> = internal.make
 
 /**
@@ -74,11 +74,11 @@ export const launch: {
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
     self: PollingMetric<Type, In, R, E, Out>
-  ) => Effect.Effect<R2 | R | Scope.Scope, never, Fiber.Fiber<E, A2>>
+  ) => Effect<R2 | R | Scope.Scope, never, Fiber.Fiber<E, A2>>
   <Type, In, R, E, Out, R2, A2>(
     self: PollingMetric<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
-  ): Effect.Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
+  ): Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
 } = internal.launch
 
 /**
@@ -87,8 +87,7 @@ export const launch: {
  * @since 2.0.0
  * @category utils
  */
-export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect.Effect<R, E, In> =
-  internal.poll
+export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect<R, E, In> = internal.poll
 
 /**
  * An effect that polls for a value and uses the value to update the metric.
@@ -98,7 +97,7 @@ export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out
  */
 export const pollAndUpdate: <Type, In, R, E, Out>(
   self: PollingMetric<Type, In, R, E, Out>
-) => Effect.Effect<R, E, void> = internal.pollAndUpdate
+) => Effect<R, E, void> = internal.pollAndUpdate
 
 /**
  * Returns a new polling metric whose poll function will be retried with the

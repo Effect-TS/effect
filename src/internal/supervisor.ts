@@ -1,5 +1,5 @@
 import type * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import type * as Exit from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import { pipe } from "../Function.js"
@@ -30,17 +30,17 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
 
   constructor(
     readonly underlying: Supervisor.Supervisor<any>,
-    readonly value0: () => Effect.Effect<never, never, T>
+    readonly value0: () => Effect<never, never, T>
   ) {
   }
 
-  value(): Effect.Effect<never, never, T> {
+  value(): Effect<never, never, T> {
     return this.value0()
   }
 
   onStart<R, E, A>(
     context: Context.Context<R>,
-    effect: Effect.Effect<R, E, A>,
+    effect: Effect<R, E, A>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
@@ -51,7 +51,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
     this.underlying.onEnd(value, fiber)
   }
 
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect<any, any, any>): void {
     this.underlying.onEffect(fiber, effect)
   }
 
@@ -83,13 +83,13 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   ) {
   }
 
-  value(): Effect.Effect<never, never, readonly [T0, T1]> {
+  value(): Effect<never, never, readonly [T0, T1]> {
     return core.zip(this.left.value(), this.right.value())
   }
 
   onStart<R, E, A>(
     context: Context.Context<R>,
-    effect: Effect.Effect<R, E, A>,
+    effect: Effect<R, E, A>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
@@ -102,7 +102,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
     this.right.onEnd(value, fiber)
   }
 
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect<any, any, any>): void {
     this.left.onEffect(fiber, effect)
     this.right.onEffect(fiber, effect)
   }
@@ -134,13 +134,13 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
 
   readonly fibers: Set<Fiber.RuntimeFiber<any, any>> = new Set()
 
-  value(): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> {
+  value(): Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> {
     return core.sync(() => Array.from(this.fibers))
   }
 
   onStart<R, E, A>(
     _context: Context.Context<R>,
-    _effect: Effect.Effect<R, E, A>,
+    _effect: Effect<R, E, A>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
@@ -151,7 +151,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
     this.fibers.delete(fiber)
   }
 
-  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect<any, any, any>): void {
     //
   }
 
@@ -181,16 +181,16 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
 export class Const<T> implements Supervisor.Supervisor<T> {
   readonly [SupervisorTypeId] = supervisorVariance
 
-  constructor(readonly effect: Effect.Effect<never, never, T>) {
+  constructor(readonly effect: Effect<never, never, T>) {
   }
 
-  value(): Effect.Effect<never, never, T> {
+  value(): Effect<never, never, T> {
     return this.effect
   }
 
   onStart<R, E, A>(
     _context: Context.Context<R>,
-    _effect: Effect.Effect<R, E, A>,
+    _effect: Effect<R, E, A>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {
@@ -201,7 +201,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
     //
   }
 
-  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect<any, any, any>): void {
     //
   }
 
@@ -232,13 +232,13 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
   constructor(readonly ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>) {
   }
 
-  value(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>> {
+  value(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>> {
     return core.sync(() => MutableRef.get(this.ref))
   }
 
   onStart<R, E, A>(
     _context: Context.Context<R>,
-    _effect: Effect.Effect<R, E, A>,
+    _effect: Effect<R, E, A>,
     _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
   ): void {
@@ -249,7 +249,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
     pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.remove(fiber))))
   }
 
-  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect.Effect<any, any, any>): void {
+  onEffect<E, A>(_fiber: Fiber.RuntimeFiber<E, A>, _effect: Effect<any, any, any>): void {
     //
   }
 
@@ -282,14 +282,14 @@ export const unsafeTrack = (): Supervisor.Supervisor<Array<Fiber.RuntimeFiber<an
 }
 
 /** @internal */
-export const track: Effect.Effect<
+export const track: Effect<
   never,
   never,
   Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>>
 > = core.sync(unsafeTrack)
 
 /** @internal */
-export const fromEffect = <A>(effect: Effect.Effect<never, never, A>): Supervisor.Supervisor<A> => {
+export const fromEffect = <A>(effect: Effect<never, never, A>): Supervisor.Supervisor<A> => {
   return new Const(effect)
 }
 
@@ -299,7 +299,7 @@ export const none = globalValue("effect/Supervisor/none", () => fromEffect(core.
 /** @internal */
 export const fibersIn = (
   ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
-): Effect.Effect<
+): Effect<
   never,
   never,
   Supervisor.Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>

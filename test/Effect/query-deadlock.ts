@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"

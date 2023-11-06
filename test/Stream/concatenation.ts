@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import * as Stream from "effect/Stream"

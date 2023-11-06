@@ -38,7 +38,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const clockWith: <R, E, A>(f: (clock: Clock) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+export declare const clockWith: <R, E, A>(f: (clock: Clock) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -48,7 +48,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentTimeMillis: Effect.Effect<never, never, number>
+export declare const currentTimeMillis: Effect<never, never, number>
 ```
 
 Added in v2.0.0
@@ -58,7 +58,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const currentTimeNanos: Effect.Effect<never, never, bigint>
+export declare const currentTimeNanos: Effect<never, never, bigint>
 ```
 
 Added in v2.0.0
@@ -78,7 +78,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const sleep: (duration: Duration.DurationInput) => Effect.Effect<never, never, void>
+export declare const sleep: (duration: Duration.DurationInput) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -124,7 +124,7 @@ export interface Clock {
   /**
    * Returns the current time in milliseconds.
    */
-  readonly currentTimeMillis: Effect.Effect<never, never, number>
+  readonly currentTimeMillis: Effect<never, never, number>
   /**
    * Unsafely returns the current time in nanoseconds.
    */
@@ -132,11 +132,11 @@ export interface Clock {
   /**
    * Returns the current time in nanoseconds.
    */
-  readonly currentTimeNanos: Effect.Effect<never, never, bigint>
+  readonly currentTimeNanos: Effect<never, never, bigint>
   /**
    * Asynchronously sleeps for the specified duration.
    */
-  sleep(duration: Duration.Duration): Effect.Effect<never, never, void>
+  sleep(duration: Duration.Duration): Effect<never, never, void>
 }
 ```
 

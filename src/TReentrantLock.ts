@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import * as internal from "./internal/stm/tReentrantLock.js"
 import type * as Scope from "./Scope.js"
 import type * as STM from "./STM.js"
@@ -106,7 +106,7 @@ export const fiberWriteLocks: (self: TReentrantLock) => STM.STM<never, never, nu
  * @since 2.0.0
  * @category mutations
  */
-export const lock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number> = internal.lock
+export const lock: (self: TReentrantLock) => Effect<Scope.Scope, never, number> = internal.lock
 
 /**
  * Determines if any fiber has a read or write lock.
@@ -130,7 +130,7 @@ export const make: STM.STM<never, never, TReentrantLock> = internal.make
  * @since 2.0.0
  * @category mutations
  */
-export const readLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number> = internal.readLock
+export const readLock: (self: TReentrantLock) => Effect<Scope.Scope, never, number> = internal.readLock
 
 /**
  * Retrieves the total number of acquired read locks.
@@ -173,8 +173,8 @@ export const releaseWrite: (self: TReentrantLock) => STM.STM<never, never, numbe
  * @category mutations
  */
 export const withLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 } = internal.withLock
 
 /**
@@ -184,8 +184,8 @@ export const withLock: {
  * @category mutations
  */
 export const withReadLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 } = internal.withReadLock
 
 /**
@@ -195,8 +195,8 @@ export const withReadLock: {
  * @category mutations
  */
 export const withWriteLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 } = internal.withWriteLock
 
 /**
@@ -205,7 +205,7 @@ export const withWriteLock: {
  * @since 2.0.0
  * @category mutations
  */
-export const writeLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number> = internal.writeLock
+export const writeLock: (self: TReentrantLock) => Effect<Scope.Scope, never, number> = internal.writeLock
 
 /**
  * Determines if a write lock is held by some fiber.

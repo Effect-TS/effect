@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -13,11 +13,11 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
 import { assert, describe, expect } from "vitest"
 
-export const waitForValue = <A>(ref: Effect.Effect<never, never, A>, value: A): Effect.Effect<never, never, A> => {
+export const waitForValue = <A>(ref: Effect<never, never, A>, value: A): Effect<never, never, A> => {
   return ref.pipe(Effect.zipLeft(Effect.yieldNow()), Effect.repeatUntil((a) => value === a))
 }
 
-export const waitForSize = <A>(queue: Queue.Queue<A>, size: number): Effect.Effect<never, never, number> => {
+export const waitForSize = <A>(queue: Queue.Queue<A>, size: number): Effect<never, never, number> => {
   return waitForValue(Queue.size(queue), size)
 }
 

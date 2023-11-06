@@ -148,7 +148,7 @@ See `TReentrantLock.writeLock`.
 **Signature**
 
 ```ts
-export declare const lock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
+export declare const lock: (self: TReentrantLock) => Effect<Scope.Scope, never, number>
 ```
 
 Added in v2.0.0
@@ -172,7 +172,7 @@ Obtains a read lock in a scoped context.
 **Signature**
 
 ```ts
-export declare const readLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
+export declare const readLock: (self: TReentrantLock) => Effect<Scope.Scope, never, number>
 ```
 
 Added in v2.0.0
@@ -235,8 +235,8 @@ Runs the specified workflow with a lock.
 
 ```ts
 export declare const withLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 }
 ```
 
@@ -250,8 +250,8 @@ Runs the specified workflow with a read lock.
 
 ```ts
 export declare const withReadLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 }
 ```
 
@@ -265,8 +265,8 @@ Runs the specified workflow with a write lock.
 
 ```ts
 export declare const withWriteLock: {
-  (self: TReentrantLock): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, self: TReentrantLock): Effect.Effect<R, E, A>
+  (self: TReentrantLock): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>, self: TReentrantLock): Effect<R, E, A>
 }
 ```
 
@@ -279,7 +279,7 @@ Obtains a write lock in a scoped context.
 **Signature**
 
 ```ts
-export declare const writeLock: (self: TReentrantLock) => Effect.Effect<Scope.Scope, never, number>
+export declare const writeLock: (self: TReentrantLock) => Effect<Scope.Scope, never, number>
 ```
 
 Added in v2.0.0

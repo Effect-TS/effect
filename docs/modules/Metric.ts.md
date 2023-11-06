@@ -89,7 +89,7 @@ Added in v2.0.0
 ```ts
 export declare const increment: (
   self: Metric.Counter<number> | Metric.Counter<bigint>
-) => Effect.Effect<never, never, void>
+) => Effect<never, never, void>
 ```
 
 Added in v2.0.0
@@ -100,10 +100,10 @@ Added in v2.0.0
 
 ```ts
 export declare const incrementBy: {
-  (amount: number): (self: Metric.Counter<number>) => Effect.Effect<never, never, void>
-  (amount: bigint): (self: Metric.Counter<bigint>) => Effect.Effect<never, never, void>
-  (self: Metric.Counter<number>, amount: number): Effect.Effect<never, never, void>
-  (self: Metric.Counter<bigint>, amount: bigint): Effect.Effect<never, never, void>
+  (amount: number): (self: Metric.Counter<number>) => Effect<never, never, void>
+  (amount: bigint): (self: Metric.Counter<bigint>) => Effect<never, never, void>
+  (self: Metric.Counter<number>, amount: number): Effect<never, never, void>
+  (self: Metric.Counter<bigint>, amount: bigint): Effect<never, never, void>
 }
 ```
 
@@ -115,10 +115,10 @@ Added in v2.0.0
 
 ```ts
 export declare const set: {
-  (value: number): (self: Metric.Gauge<number>) => Effect.Effect<never, never, void>
-  (value: bigint): (self: Metric.Gauge<bigint>) => Effect.Effect<never, never, void>
-  (self: Metric.Gauge<number>, value: number): Effect.Effect<never, never, void>
-  (self: Metric.Gauge<bigint>, value: bigint): Effect.Effect<never, never, void>
+  (value: number): (self: Metric.Gauge<number>) => Effect<never, never, void>
+  (value: bigint): (self: Metric.Gauge<bigint>) => Effect<never, never, void>
+  (self: Metric.Gauge<number>, value: number): Effect<never, never, void>
+  (self: Metric.Gauge<bigint>, value: bigint): Effect<never, never, void>
 }
 ```
 
@@ -136,11 +136,11 @@ that effect fails or succeeds.
 export declare const trackAll: {
   <In>(
     input: In
-  ): <Type, Out>(self: Metric<Type, In, Out>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <Type, Out>(self: Metric<Type, In, Out>) => <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <Type, In, Out>(
     self: Metric<Type, In, Out>,
     input: In
-  ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
 }
 ```
 
@@ -155,8 +155,8 @@ effects that it is applied to.
 
 ```ts
 export declare const trackDefect: {
-  <Type, Out>(metric: Metric<Type, unknown, Out>): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A, Type, Out>(self: Effect.Effect<R, E, A>, metric: Metric<Type, unknown, Out>): Effect.Effect<R, E, A>
+  <Type, Out>(metric: Metric<Type, unknown, Out>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A, Type, Out>(self: Effect<R, E, A>, metric: Metric<Type, unknown, Out>): Effect<R, E, A>
 }
 ```
 
@@ -175,12 +175,12 @@ export declare const trackDefectWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
     f: (defect: unknown) => In
-  ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (defect: unknown) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 }
 ```
 
@@ -198,11 +198,11 @@ must be `Duration`.
 export declare const trackDuration: {
   <Type, Out>(
     metric: Metric<Type, Duration.Duration, Out>
-  ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, Duration.Duration, Out>
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 }
 ```
 
@@ -221,12 +221,12 @@ export declare const trackDurationWith: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
-  ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (duration: Duration.Duration) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 }
 ```
 
@@ -243,11 +243,11 @@ the effects that it is applied to.
 export declare const trackError: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>
-  ): <R, E extends In, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E extends In, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E extends In, A, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 }
 ```
 
@@ -266,12 +266,12 @@ export declare const trackErrorWith: {
   <Type, In, Out, In2>(
     metric: Metric<Type, In, Out>,
     f: (error: In2) => In
-  ): <R, E extends In2, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E extends In2, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
   <R, E extends In2, A, Type, In, Out, In2>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (error: In2) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 }
 ```
 
@@ -288,11 +288,11 @@ the effects that it is applied to.
 export declare const trackSuccess: {
   <Type, In, Out>(
     metric: Metric<Type, In, Out>
-  ): <R, E, A extends In>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A extends In>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A extends In, Type, In, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 }
 ```
 
@@ -311,12 +311,12 @@ export declare const trackSuccessWith: {
   <Type, In, Out, In2>(
     metric: Metric<Type, In, Out>,
     f: (value: In2) => In
-  ): <R, E, A extends In2>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  ): <R, E, A extends In2>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A extends In2, Type, In, Out, In2>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     metric: Metric<Type, In, Out>,
     f: (value: In2) => In
-  ): Effect.Effect<R, E, A>
+  ): Effect<R, E, A>
 }
 ```
 
@@ -602,7 +602,7 @@ Captures a snapshot of all metrics recorded by the application.
 **Signature**
 
 ```ts
-export declare const snapshot: Effect.Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>>
+export declare const snapshot: Effect<never, never, HashSet.HashSet<MetricPair.MetricPair.Untyped>>
 ```
 
 Added in v2.0.0
@@ -614,7 +614,7 @@ Retrieves a snapshot of the value of the metric at this moment in time.
 **Signature**
 
 ```ts
-export declare const value: <Type, In, Out>(self: Metric<Type, In, Out>) => Effect.Effect<never, never, Out>
+export declare const value: <Type, In, Out>(self: Metric<Type, In, Out>) => Effect<never, never, Out>
 ```
 
 Added in v2.0.0
@@ -768,7 +768,7 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
   readonly unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void
   readonly unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
   /** */
-  <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
 ```
 
@@ -967,8 +967,8 @@ provided amount.
 
 ```ts
 export declare const update: {
-  <In>(input: In): <Type, Out>(self: Metric<Type, In, Out>) => Effect.Effect<never, never, void>
-  <Type, In, Out>(self: Metric<Type, In, Out>, input: In): Effect.Effect<never, never, void>
+  <In>(input: In): <Type, Out>(self: Metric<Type, In, Out>) => Effect<never, never, void>
+  <Type, In, Out>(self: Metric<Type, In, Out>, input: In): Effect<never, never, void>
 }
 ```
 

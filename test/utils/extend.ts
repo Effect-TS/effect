@@ -1,5 +1,5 @@
 import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
@@ -19,7 +19,7 @@ const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestEnvironme
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: () => Effect.Effect<TestServices.TestServices, E, A>,
+    self: () => Effect<TestServices.TestServices, E, A>,
     timeout: number | V.TestOptions = 5_000
   ) => {
     return it(
@@ -36,7 +36,7 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestServices.TestServices, E, A>,
+      self: () => Effect<TestServices.TestServices, E, A>,
       timeout = 5_000
     ) => {
       return it.skip(
@@ -52,7 +52,7 @@ export const effect = (() => {
     },
     only: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestServices.TestServices, E, A>,
+      self: () => Effect<TestServices.TestServices, E, A>,
       timeout = 5_000
     ) => {
       return it.only(
@@ -71,7 +71,7 @@ export const effect = (() => {
 
 export const live = <E, A>(
   name: string,
-  self: () => Effect.Effect<never, E, A>,
+  self: () => Effect<never, E, A>,
   timeout = 5_000
 ) => {
   return it(
@@ -86,7 +86,7 @@ export const live = <E, A>(
 }
 
 export const flakyTest = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   timeout: Duration.Duration = Duration.seconds(30)
 ) => {
   return pipe(
@@ -104,7 +104,7 @@ export const flakyTest = <R, E, A>(
 
 export const scoped = <E, A>(
   name: string,
-  self: () => Effect.Effect<Scope.Scope | TestServices.TestServices, E, A>,
+  self: () => Effect<Scope.Scope | TestServices.TestServices, E, A>,
   timeout = 5_000
 ) => {
   return it(
@@ -122,7 +122,7 @@ export const scoped = <E, A>(
 
 export const scopedLive = <E, A>(
   name: string,
-  self: () => Effect.Effect<Scope.Scope, E, A>,
+  self: () => Effect<Scope.Scope, E, A>,
   timeout = 5_000
 ) => {
   return it(

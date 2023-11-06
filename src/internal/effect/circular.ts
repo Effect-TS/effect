@@ -1,7 +1,7 @@
 import type * as Cause from "../../Cause.js"
 import type * as Deferred from "../../Deferred.js"
 import * as Duration from "../../Duration.js"
-import type * as Effect from "../../Effect.js"
+import type { Effect } from "../../Effect.js"
 import * as Either from "../../Either.js"
 import * as Equal from "../../Equal.js"
 import type { Equivalence } from "../../Equivalence.js"
@@ -44,7 +44,7 @@ class Semaphore {
     return this.permits - this.taken
   }
 
-  readonly take = (n: number): Effect.Effect<never, never, number> =>
+  readonly take = (n: number): Effect<never, never, number> =>
     core.asyncEither<never, never, number>((resume) => {
       if (this.free < n) {
         const observer = () => {
@@ -69,7 +69,7 @@ class Semaphore {
       return Either.right(core.succeed(n))
     })
 
-  readonly release = (n: number): Effect.Effect<never, never, void> =>
+  readonly release = (n: number): Effect<never, never, void> =>
     core.withFiberRuntime<never, never, void>((fiber) => {
       this.taken -= n
       fiber.getFiberRef(currentScheduler).scheduleTask(() => {
@@ -78,7 +78,7 @@ class Semaphore {
       return core.unit
     })
 
-  readonly withPermits = (n: number) => <R, E, A>(self: Effect.Effect<R, E, A>) =>
+  readonly withPermits = (n: number) => <R, E, A>(self: Effect<R, E, A>) =>
     core.uninterruptibleMask((restore) =>
       core.flatMap(
         restore(this.take(n)),
@@ -96,18 +96,18 @@ export const unsafeMakeSemaphore = (leases: number) => {
 export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSemaphore(permits))
 
 /** @internal */
-export const awaitAllChildren = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const awaitAllChildren = <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
   ensuringChildren(self, fiberRuntime.fiberAwaitAll)
 
 /** @internal */
 export const cached = dual<
   (
     timeToLive: Duration.DurationInput
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Effect.Effect<never, E, A>>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Effect<never, E, A>>,
   <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     timeToLive: Duration.DurationInput
-  ) => Effect.Effect<R, never, Effect.Effect<never, E, A>>
+  ) => Effect<R, never, Effect<never, E, A>>
 >(2, (self, timeToLive) => core.map(cachedInvalidate(self, timeToLive), (tuple) => tuple[0]))
 
 /** @internal */
@@ -115,15 +115,15 @@ export const cachedInvalidate = dual<
   (
     timeToLive: Duration.DurationInput
   ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R, never, [Effect.Effect<never, E, A>, Effect.Effect<never, never, void>]>,
+    self: Effect<R, E, A>
+  ) => Effect<R, never, [Effect<never, E, A>, Effect<never, never, void>]>,
   <R, E, A>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     timeToLive: Duration.DurationInput
-  ) => Effect.Effect<R, never, [Effect.Effect<never, E, A>, Effect.Effect<never, never, void>]>
+  ) => Effect<R, never, [Effect<never, E, A>, Effect<never, never, void>]>
 >(
   2,
-  <R, E, A>(self: Effect.Effect<R, E, A>, timeToLive: Duration.DurationInput) => {
+  <R, E, A>(self: Effect<R, E, A>, timeToLive: Duration.DurationInput) => {
     const duration = Duration.decode(timeToLive)
     return core.flatMap(
       core.context<R>(),
@@ -134,7 +134,7 @@ export const cachedInvalidate = dual<
             [
               core.provideContext(getCachedValue(self, duration, cache), env),
               invalidateCache(cache)
-            ] as [Effect.Effect<never, E, A>, Effect.Effect<never, never, void>]
+            ] as [Effect<never, E, A>, Effect<never, never, void>]
         )
     )
   }
@@ -142,10 +142,10 @@ export const cachedInvalidate = dual<
 
 /** @internal */
 const computeCachedValue = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
   start: number
-): Effect.Effect<R, never, Option.Option<readonly [number, Deferred.Deferred<E, A>]>> => {
+): Effect<R, never, Option.Option<readonly [number, Deferred.Deferred<E, A>]>> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
     core.deferredMake<E, A>(),
@@ -156,10 +156,10 @@ const computeCachedValue = <R, E, A>(
 
 /** @internal */
 const getCachedValue = <R, E, A>(
-  self: Effect.Effect<R, E, A>,
+  self: Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
   cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>
-): Effect.Effect<R, E, A> =>
+): Effect<R, E, A> =>
   core.uninterruptibleMask<R, E, A>((restore) =>
     pipe(
       effect.clockWith((clock) => clock.currentTimeMillis),
@@ -191,30 +191,30 @@ const getCachedValue = <R, E, A>(
 /** @internal */
 const invalidateCache = <E, A>(
   cache: Synchronized.SynchronizedRef<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>
-): Effect.Effect<never, never, void> => internalRef.set(cache, Option.none())
+): Effect<never, never, void> => internalRef.set(cache, Option.none())
 
 /** @internal */
 export const ensuringChild = dual<
   <R2, X>(
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect.Effect<R2, never, X>
+    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
   ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2, E, A>,
+    self: Effect<R, E, A>
+  ) => Effect<R | R2, E, A>,
   <R, E, A, R2, X>(
-    self: Effect.Effect<R, E, A>,
-    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect.Effect<R2, never, X>
-  ) => Effect.Effect<R | R2, E, A>
+    self: Effect<R, E, A>,
+    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
+  ) => Effect<R | R2, E, A>
 >(2, (self, f) => ensuringChildren(self, (children) => f(fiberRuntime.fiberAll(children))))
 
 /** @internal */
 export const ensuringChildren = dual<
   <R1, X>(
-    children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect.Effect<R1, never, X>
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E, A>,
+    children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect<R1, never, X>
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R | R1, E, A>,
   <R, E, A, R1, X>(
-    self: Effect.Effect<R, E, A>,
-    children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect.Effect<R1, never, X>
-  ) => Effect.Effect<R | R1, E, A>
+    self: Effect<R, E, A>,
+    children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect<R1, never, X>
+  ) => Effect<R | R1, E, A>
 >(2, (self, children) =>
   core.flatMap(supervisor.track, (supervisor) =>
     pipe(
@@ -227,21 +227,21 @@ export const ensuringChildren = dual<
 export const forkAll = dual<
   {
     (options?: { readonly discard?: false }): <R, E, A>(
-      effects: Iterable<Effect.Effect<R, E, A>>
-    ) => Effect.Effect<R, never, Fiber.Fiber<E, Array<A>>>
+      effects: Iterable<Effect<R, E, A>>
+    ) => Effect<R, never, Fiber.Fiber<E, Array<A>>>
     (options: { readonly discard: true }): <R, E, A>(
-      effects: Iterable<Effect.Effect<R, E, A>>
-    ) => Effect.Effect<R, never, void>
+      effects: Iterable<Effect<R, E, A>>
+    ) => Effect<R, never, void>
   },
   {
     <R, E, A>(
-      effects: Iterable<Effect.Effect<R, E, A>>,
+      effects: Iterable<Effect<R, E, A>>,
       options?: { readonly discard?: false }
-    ): Effect.Effect<R, never, Fiber.Fiber<E, Array<A>>>
+    ): Effect<R, never, Fiber.Fiber<E, Array<A>>>
     <R, E, A>(
-      effects: Iterable<Effect.Effect<R, E, A>>,
+      effects: Iterable<Effect<R, E, A>>,
       options: { readonly discard: true }
-    ): Effect.Effect<R, never, void>
+    ): Effect<R, never, void>
   }
 >((args) => Predicate.isIterable(args[0]), (
   effects,
@@ -253,8 +253,8 @@ export const forkAll = dual<
 
 /** @internal */
 export const forkIn = dual<
-  (scope: Scope.Scope) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Fiber.RuntimeFiber<E, A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, scope: Scope.Scope) => Effect.Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  (scope: Scope.Scope) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>,
+  <R, E, A>(self: Effect<R, E, A>, scope: Scope.Scope) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
 >(
   2,
   (self, scope) =>
@@ -279,15 +279,14 @@ export const forkIn = dual<
 
 /** @internal */
 export const forkScoped = <R, E, A>(
-  self: Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, never, Fiber.RuntimeFiber<E, A>> =>
-  fiberRuntime.scopeWith((scope) => forkIn(self, scope))
+  self: Effect<R, E, A>
+): Effect<R | Scope.Scope, never, Fiber.RuntimeFiber<E, A>> => fiberRuntime.scopeWith((scope) => forkIn(self, scope))
 
 /** @internal */
-export const fromFiber = <E, A>(fiber: Fiber.Fiber<E, A>): Effect.Effect<never, E, A> => internalFiber.join(fiber)
+export const fromFiber = <E, A>(fiber: Fiber.Fiber<E, A>): Effect<never, E, A> => internalFiber.join(fiber)
 
 /** @internal */
-export const fromFiberEffect = <R, E, A>(fiber: Effect.Effect<R, E, Fiber.Fiber<E, A>>): Effect.Effect<R, E, A> =>
+export const fromFiberEffect = <R, E, A>(fiber: Effect<R, E, Fiber.Fiber<E, A>>): Effect<R, E, A> =>
   core.suspend(() => core.flatMap(fiber, internalFiber.join))
 
 const memoKeySymbol = Symbol.for("effect/Effect/memoizeFunction.key")
@@ -312,9 +311,9 @@ class Key<A> implements Equal.Equal {
 
 /** @internal */
 export const memoizeFunction = <R, E, A, B>(
-  f: (a: A) => Effect.Effect<R, E, B>,
+  f: (a: A) => Effect<R, E, B>,
   eq?: Equivalence<A>
-): Effect.Effect<never, never, (a: A) => Effect.Effect<R, E, B>> => {
+): Effect<never, never, (a: A) => Effect<R, E, B>> => {
   return pipe(
     core.sync(() => MutableHashMap.empty<Key<A>, Deferred.Deferred<E, readonly [FiberRefsPatch.FiberRefsPatch, B]>>()),
     core.flatMap(makeSynchronized),
@@ -347,22 +346,22 @@ export const memoizeFunction = <R, E, A, B>(
 /** @internal */
 export const raceFirst = dual<
   <R2, E2, A2>(
-    that: Effect.Effect<R2, E2, A2>
+    that: Effect<R2, E2, A2>
   ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2, E2 | E, A2 | A>,
+    self: Effect<R, E, A>
+  ) => Effect<R | R2, E2 | E, A2 | A>,
   <R, E, A, R2, E2, A2>(
-    self: Effect.Effect<R, E, A>,
-    that: Effect.Effect<R2, E2, A2>
-  ) => Effect.Effect<R | R2, E2 | E, A2 | A>
+    self: Effect<R, E, A>,
+    that: Effect<R2, E2, A2>
+  ) => Effect<R | R2, E2 | E, A2 | A>
 >(2, <R, E, A, R2, E2, A2>(
-  self: Effect.Effect<R, E, A>,
-  that: Effect.Effect<R2, E2, A2>
+  self: Effect<R, E, A>,
+  that: Effect<R2, E2, A2>
 ) =>
   pipe(
     core.exit(self),
     fiberRuntime.race(core.exit(that)),
-    (effect: Effect.Effect<R | R2, never, Exit.Exit<E | E2, A | A2>>) => core.flatten(effect)
+    (effect: Effect<R | R2, never, Exit.Exit<E | E2, A | A2>>) => core.flatten(effect)
   ))
 
 /** @internal */
@@ -370,18 +369,18 @@ export const scheduleForked = dual<
   <R2, Out>(
     schedule: Schedule.Schedule<R2, unknown, Out>
   ) => <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>,
+    self: Effect<R, E, A>
+  ) => Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>,
   <R, E, A, R2, Out>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, Out>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>
+  ) => Effect<R | R2 | Scope.Scope, never, Fiber.RuntimeFiber<E, Out>>
 >(2, (self, schedule) => pipe(self, _schedule.schedule_Effect(schedule), forkScoped))
 
 /** @internal */
 export const supervised = dual<
-  <X>(supervisor: Supervisor.Supervisor<X>) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A, X>(self: Effect.Effect<R, E, A>, supervisor: Supervisor.Supervisor<X>) => Effect.Effect<R, E, A>
+  <X>(supervisor: Supervisor.Supervisor<X>) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>,
+  <R, E, A, X>(self: Effect<R, E, A>, supervisor: Supervisor.Supervisor<X>) => Effect<R, E, A>
 >(2, (self, supervisor) => {
   const supervise = core.fiberRefLocallyWith(fiberRuntime.currentSupervisor, (s) => s.zip(supervisor))
   return supervise(self)
@@ -391,8 +390,8 @@ export const supervised = dual<
 export const timeout = dual<
   (
     duration: Duration.DurationInput
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, Option.Option<A>>
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>,
+  <R, E, A>(self: Effect<R, E, A>, duration: Duration.DurationInput) => Effect<R, E, Option.Option<A>>
 >(2, (self, duration) =>
   timeoutTo(self, {
     onTimeout: Option.none,
@@ -407,14 +406,14 @@ export const timeoutFail = dual<
       readonly onTimeout: LazyArg<E1>
       readonly duration: Duration.DurationInput
     }
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E | E1, A>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E | E1, A>,
   <R, E, A, E1>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     options: {
       readonly onTimeout: LazyArg<E1>
       readonly duration: Duration.DurationInput
     }
-  ) => Effect.Effect<R, E | E1, A>
+  ) => Effect<R, E | E1, A>
 >(2, (self, { duration, onTimeout }) =>
   core.flatten(timeoutTo(self, {
     onTimeout: () => core.failSync(onTimeout),
@@ -429,14 +428,14 @@ export const timeoutFailCause = dual<
       readonly onTimeout: LazyArg<Cause.Cause<E1>>
       readonly duration: Duration.DurationInput
     }
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E | E1, A>,
+  ) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E | E1, A>,
   <R, E, A, E1>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     options: {
       readonly onTimeout: LazyArg<Cause.Cause<E1>>
       readonly duration: Duration.DurationInput
     }
-  ) => Effect.Effect<R, E | E1, A>
+  ) => Effect<R, E | E1, A>
 >(2, (self, { duration, onTimeout }) =>
   core.flatten(timeoutTo(self, {
     onTimeout: () => core.failCauseSync(onTimeout),
@@ -452,15 +451,15 @@ export const timeoutTo = dual<
       readonly onSuccess: (a: A) => B
       readonly duration: Duration.DurationInput
     }
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B | B1>,
+  ) => <R, E>(self: Effect<R, E, A>) => Effect<R, E, B | B1>,
   <R, E, A, B, B1>(
-    self: Effect.Effect<R, E, A>,
+    self: Effect<R, E, A>,
     options: {
       readonly onTimeout: LazyArg<B1>
       readonly onSuccess: (a: A) => B
       readonly duration: Duration.DurationInput
     }
-  ) => Effect.Effect<R, E, B | B1>
+  ) => Effect<R, E, B | B1>
 >(2, (self, { duration, onSuccess, onTimeout }) =>
   core.fiberIdWith((parentFiberId) =>
     fiberRuntime.raceFibersWith(
@@ -535,12 +534,12 @@ class SynchronizedImpl<A> implements Synchronized.SynchronizedRef<A> {
   readonly [internalRef.RefTypeId] = internalRef.refVariance
   constructor(
     readonly ref: Ref.Ref<A>,
-    readonly withLock: <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+    readonly withLock: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   ) {}
-  modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B> {
+  modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B> {
     return this.modifyEffect((a) => core.succeed(f(a)))
   }
-  modifyEffect<R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>): Effect.Effect<R, E, B> {
+  modifyEffect<R, E, B>(f: (a: A) => Effect<R, E, readonly [B, A]>): Effect<R, E, B> {
     return this.withLock(
       pipe(
         core.flatMap(internalRef.get(this.ref), f),
@@ -554,7 +553,7 @@ class SynchronizedImpl<A> implements Synchronized.SynchronizedRef<A> {
 }
 
 /** @internal */
-export const makeSynchronized = <A>(value: A): Effect.Effect<never, never, Synchronized.SynchronizedRef<A>> =>
+export const makeSynchronized = <A>(value: A): Effect<never, never, Synchronized.SynchronizedRef<A>> =>
   core.sync(() => unsafeMakeSynchronized(value))
 
 /** @internal */
@@ -567,12 +566,12 @@ export const unsafeMakeSynchronized = <A>(value: A): Synchronized.SynchronizedRe
 /** @internal */
 export const updateSomeAndGetEffectSynchronized = dual<
   <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ) => (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<R, E, A>,
+    pf: (a: A) => Option.Option<Effect<R, E, A>>
+  ) => (self: Synchronized.SynchronizedRef<A>) => Effect<R, E, A>,
   <A, R, E>(
     self: Synchronized.SynchronizedRef<A>,
-    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
-  ) => Effect.Effect<R, E, A>
+    pf: (a: A) => Option.Option<Effect<R, E, A>>
+  ) => Effect<R, E, A>
 >(2, (self, pf) =>
   self.modifyEffect((value) => {
     const result = pf(value)

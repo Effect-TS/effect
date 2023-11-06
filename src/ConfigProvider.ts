@@ -5,7 +5,7 @@ import type * as Config from "./Config.js"
 import type * as ConfigError from "./ConfigError.js"
 import type * as PathPatch from "./ConfigProviderPathPatch.js"
 import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type { LazyArg } from "./Function.js"
 import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/configProvider.js"
@@ -46,7 +46,7 @@ export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
   /**
    * Loads the specified configuration, or fails with a config error.
    */
-  load<A>(config: Config.Config<A>): Effect.Effect<never, ConfigError.ConfigError, A>
+  load<A>(config: Config.Config<A>): Effect<never, ConfigError.ConfigError, A>
   /**
    * Flattens this config provider into a simplified config provider that knows
    * only how to deal with flat (key/value) properties.
@@ -81,10 +81,10 @@ export declare namespace ConfigProvider {
       path: ReadonlyArray<string>,
       config: Config.Config.Primitive<A>,
       split?: boolean
-    ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+    ): Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
     enumerateChildren(
       path: ReadonlyArray<string>
-    ): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+    ): Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
   }
 
   /**
@@ -122,7 +122,7 @@ export const ConfigProvider: Context.Tag<ConfigProvider, ConfigProvider> = inter
  */
 export const make: (
   options: {
-    readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
+    readonly load: <A>(config: Config.Config<A>) => Effect<never, ConfigError.ConfigError, A>
     readonly flattened: ConfigProvider.Flat
   }
 ) => ConfigProvider = internal.make
@@ -138,10 +138,10 @@ export const makeFlat: (options: {
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
     split: boolean
-  ) => Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+  ) => Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
-  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  ) => Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
   readonly patch: PathPatch.PathPatch
 }) => ConfigProvider.Flat = internal.makeFlat
 

@@ -207,7 +207,7 @@ Set each ref to either its value or its default.
 **Signature**
 
 ```ts
-export declare const setAll: (self: FiberRefs) => Effect.Effect<never, never, void>
+export declare const setAll: (self: FiberRefs) => Effect<never, never, void>
 ```
 
 Added in v2.0.0

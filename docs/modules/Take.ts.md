@@ -130,7 +130,7 @@ the `Take<E, A>`. Error from stream when pulling is converted to
 **Signature**
 
 ```ts
-export declare const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Take<E, A>>
+export declare const fromEffect: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, never, Take<E, A>>
 ```
 
 Added in v2.0.0
@@ -157,8 +157,8 @@ to `Take.failCause`, and the end-of-stream is converted to `Take.end`.
 
 ```ts
 export declare const fromPull: <R, E, A>(
-  pull: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>
-) => Effect.Effect<R, never, Take<E, A>>
+  pull: Effect<R, Option.Option<E>, Chunk.Chunk<A>>
+) => Effect<R, never, Take<E, A>>
 ```
 
 Added in v2.0.0
@@ -196,7 +196,7 @@ Transforms a `Take<E, A>` to an `Effect<never, E, A>`.
 **Signature**
 
 ```ts
-export declare const done: <E, A>(self: Take<E, A>) => Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>>
+export declare const done: <E, A>(self: Take<E, A>) => Effect<never, Option.Option<E>, Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -240,18 +240,18 @@ yield an effect.
 ```ts
 export declare const matchEffect: {
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(options: {
-    readonly onEnd: () => Effect.Effect<R, E2, Z>
-    readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-    readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
-  }): (self: Take<E, A>) => Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+    readonly onEnd: () => Effect<R, E2, Z>
+    readonly onFailure: (cause: Cause.Cause<E>) => Effect<R2, E2, Z2>
+    readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect<R3, E3, Z3>
+  }): (self: Take<E, A>) => Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     self: Take<E, A>,
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: () => Effect<R, E2, Z>
+      readonly onFailure: (cause: Cause.Cause<E>) => Effect<R2, E2, Z2>
+      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect<R3, E3, Z3>
     }
-  ): Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+  ): Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
 }
 ```
 
@@ -342,12 +342,12 @@ Returns an effect that effectfully "peeks" at the success of this take.
 ```ts
 export declare const tap: {
   <A, R, E2, _>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): <E>(self: Take<E, A>) => Effect.Effect<R, E2 | E, void>
+    f: (chunk: Chunk.Chunk<A>) => Effect<R, E2, _>
+  ): <E>(self: Take<E, A>) => Effect<R, E2 | E, void>
   <E, A, R, E2, _>(
     self: Take<E, A>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): Effect.Effect<R, E | E2, void>
+    f: (chunk: Chunk.Chunk<A>) => Effect<R, E2, _>
+  ): Effect<R, E | E2, void>
 }
 ```
 

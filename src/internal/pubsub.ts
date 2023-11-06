@@ -1,6 +1,6 @@
 import * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import * as MutableQueue from "../MutableQueue.js"
 import * as MutableRef from "../MutableRef.js"
@@ -70,28 +70,28 @@ const removeSubscribers = <A>(
 }
 
 /** @internal */
-export const bounded = <A>(requestedCapacity: number): Effect.Effect<never, never, PubSub.PubSub<A>> =>
+export const bounded = <A>(requestedCapacity: number): Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new BackPressureStrategy()))
   )
 
 /** @internal */
-export const dropping = <A>(requestedCapacity: number): Effect.Effect<never, never, PubSub.PubSub<A>> =>
+export const dropping = <A>(requestedCapacity: number): Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
   )
 
 /** @internal */
-export const sliding = <A>(requestedCapacity: number): Effect.Effect<never, never, PubSub.PubSub<A>> =>
+export const sliding = <A>(requestedCapacity: number): Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeBoundedPubSub<A>(requestedCapacity)),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new SlidingStrategy()))
   )
 
 /** @internal */
-export const unbounded = <A>(): Effect.Effect<never, never, PubSub.PubSub<A>> =>
+export const unbounded = <A>(): Effect<never, never, PubSub.PubSub<A>> =>
   pipe(
     core.sync(() => makeUnboundedPubSub<A>()),
     core.flatMap((atomicPubSub) => makePubSub(atomicPubSub, new DroppingStrategy()))
@@ -101,38 +101,37 @@ export const unbounded = <A>(): Effect.Effect<never, never, PubSub.PubSub<A>> =>
 export const capacity = <A>(self: PubSub.PubSub<A>): number => self.capacity()
 
 /** @internal */
-export const size = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, number> => self.size()
+export const size = <A>(self: PubSub.PubSub<A>): Effect<never, never, number> => self.size()
 
 /** @internal */
-export const isFull = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isFull()
+export const isFull = <A>(self: PubSub.PubSub<A>): Effect<never, never, boolean> => self.isFull()
 
 /** @internal */
-export const isEmpty = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isEmpty()
+export const isEmpty = <A>(self: PubSub.PubSub<A>): Effect<never, never, boolean> => self.isEmpty()
 
 /** @internal */
-export const shutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.shutdown()
+export const shutdown = <A>(self: PubSub.PubSub<A>): Effect<never, never, void> => self.shutdown()
 
 /** @internal */
-export const isShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isShutdown()
+export const isShutdown = <A>(self: PubSub.PubSub<A>): Effect<never, never, boolean> => self.isShutdown()
 
 /** @internal */
-export const awaitShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.awaitShutdown()
+export const awaitShutdown = <A>(self: PubSub.PubSub<A>): Effect<never, never, void> => self.awaitShutdown()
 
 /** @internal */
 export const publish = dual<
-  <A>(value: A) => (self: PubSub.PubSub<A>) => Effect.Effect<never, never, boolean>,
-  <A>(self: PubSub.PubSub<A>, value: A) => Effect.Effect<never, never, boolean>
+  <A>(value: A) => (self: PubSub.PubSub<A>) => Effect<never, never, boolean>,
+  <A>(self: PubSub.PubSub<A>, value: A) => Effect<never, never, boolean>
 >(2, (self, value) => self.publish(value))
 
 /** @internal */
 export const publishAll = dual<
-  <A>(elements: Iterable<A>) => (self: PubSub.PubSub<A>) => Effect.Effect<never, never, boolean>,
-  <A>(self: PubSub.PubSub<A>, elements: Iterable<A>) => Effect.Effect<never, never, boolean>
+  <A>(elements: Iterable<A>) => (self: PubSub.PubSub<A>) => Effect<never, never, boolean>,
+  <A>(self: PubSub.PubSub<A>, elements: Iterable<A>) => Effect<never, never, boolean>
 >(2, (self, elements) => self.publishAll(elements))
 
 /** @internal */
-export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> =>
-  self.subscribe()
+export const subscribe = <A>(self: PubSub.PubSub<A>): Effect<Scope.Scope, never, Queue.Dequeue<A>> => self.subscribe()
 
 /** @internal */
 const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
@@ -156,7 +155,7 @@ const makeSubscription = <A>(
   pubsub: AtomicPubSub<A>,
   subscribers: Subscribers<A>,
   strategy: PubSubStrategy<A>
-): Effect.Effect<never, never, Queue.Dequeue<A>> =>
+): Effect<never, never, Queue.Dequeue<A>> =>
   core.map(core.deferredMake<never, void>(), (deferred) =>
     unsafeMakeSubscription(
       pubsub,
@@ -842,7 +841,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     return !MutableRef.get(this.shutdownFlag)
   }
 
-  size(): Effect.Effect<never, never, number> {
+  size(): Effect<never, never, number> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag)
         ? core.interrupt
@@ -857,15 +856,15 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     return Option.some(this.subscription.size())
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
+  isFull(): Effect<never, never, boolean> {
     return core.map(this.size(), (size) => size === this.capacity())
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
+  isEmpty(): Effect<never, never, boolean> {
     return core.map(this.size(), (size) => size === 0)
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  shutdown(): Effect<never, never, void> {
     return core.uninterruptible(
       core.withFiberRuntime<never, never, void>((state) => {
         MutableRef.set(this.shutdownFlag, true)
@@ -887,15 +886,15 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     )
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  isShutdown(): Effect<never, never, boolean> {
     return core.sync(() => MutableRef.get(this.shutdownFlag))
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  awaitShutdown(): Effect<never, never, void> {
     return core.deferredAwait(this.shutdownHook)
   }
 
-  take(): Effect.Effect<never, never, A> {
+  take(): Effect<never, never, A> {
     return core.withFiberRuntime<never, never, A>((state) => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -926,7 +925,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     })
   }
 
-  takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  takeAll(): Effect<never, never, Chunk.Chunk<A>> {
     return core.suspend(() => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -939,7 +938,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     })
   }
 
-  takeUpTo(this: this, max: number): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  takeUpTo(this: this, max: number): Effect<never, never, Chunk.Chunk<A>> {
     return core.suspend(() => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -952,7 +951,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     })
   }
 
-  takeBetween(min: number, max: number): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  takeBetween(min: number, max: number): Effect<never, never, Chunk.Chunk<A>> {
     return core.suspend(() => takeRemainderLoop(this, min, max, Chunk.empty()))
   }
 }
@@ -963,7 +962,7 @@ const takeRemainderLoop = <A>(
   min: number,
   max: number,
   acc: Chunk.Chunk<A>
-): Effect.Effect<never, never, Chunk.Chunk<A>> => {
+): Effect<never, never, Chunk.Chunk<A>> => {
   if (max < min) {
     return core.succeed(acc)
   }
@@ -1010,7 +1009,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     return this.pubsub.capacity
   }
 
-  size(): Effect.Effect<never, never, number> {
+  size(): Effect<never, never, number> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag) ?
         core.interrupt :
@@ -1025,23 +1024,23 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     return Option.some(this.pubsub.size())
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
+  isFull(): Effect<never, never, boolean> {
     return core.map(this.size(), (size) => size === this.capacity())
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
+  isEmpty(): Effect<never, never, boolean> {
     return core.map(this.size(), (size) => size === 0)
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  awaitShutdown(): Effect<never, never, void> {
     return core.deferredAwait(this.shutdownHook)
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  isShutdown(): Effect<never, never, boolean> {
     return core.sync(() => MutableRef.get(this.shutdownFlag))
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  shutdown(): Effect<never, never, void> {
     return core.uninterruptible(core.withFiberRuntime<never, never, void>((state) => {
       pipe(this.shutdownFlag, MutableRef.set(true))
       return pipe(
@@ -1053,7 +1052,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     }))
   }
 
-  publish(value: A): Effect.Effect<never, never, boolean> {
+  publish(value: A): Effect<never, never, boolean> {
     return core.suspend(() => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -1090,7 +1089,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     return false
   }
 
-  publishAll(elements: Iterable<A>): Effect.Effect<never, never, boolean> {
+  publishAll(elements: Iterable<A>): Effect<never, never, boolean> {
     return core.suspend(() => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -1109,7 +1108,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     })
   }
 
-  subscribe(): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> {
+  subscribe(): Effect<Scope.Scope, never, Queue.Dequeue<A>> {
     const acquire = core.tap(
       fiberRuntime.all([
         this.scope.fork(executionStrategy.sequential),
@@ -1123,11 +1122,11 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     )
   }
 
-  offer(value: A): Effect.Effect<never, never, boolean> {
+  offer(value: A): Effect<never, never, boolean> {
     return this.publish(value)
   }
 
-  offerAll(elements: Iterable<A>): Effect.Effect<never, never, boolean> {
+  offerAll(elements: Iterable<A>): Effect<never, never, boolean> {
     return this.publishAll(elements)
   }
 
@@ -1140,7 +1139,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
 export const makePubSub = <A>(
   pubsub: AtomicPubSub<A>,
   strategy: PubSubStrategy<A>
-): Effect.Effect<never, never, PubSub.PubSub<A>> =>
+): Effect<never, never, PubSub.PubSub<A>> =>
   core.flatMap(
     fiberRuntime.scopeMake(),
     (scope) =>
@@ -1232,7 +1231,7 @@ export interface PubSubStrategy<A> {
   /**
    * Describes any finalization logic associated with this strategy.
    */
-  shutdown(): Effect.Effect<never, never, void>
+  shutdown(): Effect<never, never, void>
 
   /**
    * Describes how publishers should signal to subscribers that they are
@@ -1243,7 +1242,7 @@ export interface PubSubStrategy<A> {
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>
-  ): Effect.Effect<never, never, boolean>
+  ): Effect<never, never, boolean>
 
   /**
    * Describes how subscribers should signal to publishers waiting for space
@@ -1294,7 +1293,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
     ]
   > = MutableQueue.unbounded()
 
-  shutdown(): Effect.Effect<never, never, void> {
+  shutdown(): Effect<never, never, void> {
     return core.flatMap(core.fiberId, (fiberId) =>
       core.flatMap(
         core.sync(() => unsafePollAllQueue(this.publishers)),
@@ -1315,7 +1314,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>
-  ): Effect.Effect<never, never, boolean> {
+  ): Effect<never, never, boolean> {
     return core.withFiberRuntime<never, never, boolean>((state) => {
       const deferred = core.deferredUnsafeMake<never, boolean>(state.id())
       return pipe(
@@ -1411,7 +1410,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
  * @internal
  */
 export class DroppingStrategy<A> implements PubSubStrategy<A> {
-  shutdown(): Effect.Effect<never, never, void> {
+  shutdown(): Effect<never, never, void> {
     return core.unit
   }
 
@@ -1420,7 +1419,7 @@ export class DroppingStrategy<A> implements PubSubStrategy<A> {
     _subscribers: Subscribers<A>,
     _elements: Iterable<A>,
     _isShutdown: MutableRef.MutableRef<boolean>
-  ): Effect.Effect<never, never, boolean> {
+  ): Effect<never, never, boolean> {
     return core.succeed(false)
   }
 
@@ -1455,7 +1454,7 @@ export class DroppingStrategy<A> implements PubSubStrategy<A> {
  * @internal
  */
 export class SlidingStrategy<A> implements PubSubStrategy<A> {
-  shutdown(): Effect.Effect<never, never, void> {
+  shutdown(): Effect<never, never, void> {
     return core.unit
   }
 
@@ -1464,7 +1463,7 @@ export class SlidingStrategy<A> implements PubSubStrategy<A> {
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     _isShutdown: MutableRef.MutableRef<boolean>
-  ): Effect.Effect<never, never, boolean> {
+  ): Effect<never, never, boolean> {
     return core.sync(() => {
       this.unsafeSlidingPublish(pubsub, elements)
       this.unsafeCompleteSubscribers(pubsub, subscribers)

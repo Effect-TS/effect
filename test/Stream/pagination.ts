@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import { assert, describe } from "vitest"
@@ -27,7 +27,7 @@ describe.concurrent("Stream", () => {
           s,
           (
             [n, nums]
-          ): Effect.Effect<never, never, readonly [number, Option.Option<readonly [number, Array<number>]>]> =>
+          ): Effect<never, never, readonly [number, Option.Option<readonly [number, Array<number>]>]> =>
             nums.length === 0 ?
               Effect.succeed([n, Option.none()]) :
               Effect.succeed([n, Option.some([nums[0], nums.slice(1)])])

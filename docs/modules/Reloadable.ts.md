@@ -100,7 +100,7 @@ Reloads the specified service.
 ```ts
 export declare const reload: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
 Added in v2.0.0
@@ -114,7 +114,7 @@ Forks the reload of the service in the background, ignoring any errors.
 ```ts
 export declare const reloadFork: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void>
 ```
 
 Added in v2.0.0
@@ -144,7 +144,7 @@ Retrieves the current version of the reloadable service.
 ```ts
 export declare const get: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>>
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>>
 ```
 
 Added in v2.0.0
@@ -167,7 +167,7 @@ export interface Reloadable<A> extends Reloadable.Variance<A> {
   /**
    * @internal
    */
-  reload(): Effect.Effect<never, unknown, void>
+  reload(): Effect<never, unknown, void>
 }
 ```
 

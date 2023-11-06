@@ -187,12 +187,12 @@ export declare const acquireUseRelease: {
   <A, R2, E2, A2, R3, E3, A3>(
     use: (resource: A) => STM<R2, E2, A2>,
     release: (resource: A) => STM<R3, E3, A3>
-  ): <R, E>(acquire: STM<R, E, A>) => Effect.Effect<R2 | R3 | R, E2 | E3 | E, A2>
+  ): <R, E>(acquire: STM<R, E, A>) => Effect<R2 | R3 | R, E2 | E3 | E, A2>
   <R, E, A, R2, E2, A2, R3, E3, A3>(
     acquire: STM<R, E, A>,
     use: (resource: A) => STM<R2, E2, A2>,
     release: (resource: A) => STM<R3, E3, A3>
-  ): Effect.Effect<R | R2 | R3, E | E2 | E3, A2>
+  ): Effect<R | R2 | R3, E | E2 | E3, A2>
 }
 ```
 
@@ -871,7 +871,7 @@ Commits this transaction atomically.
 **Signature**
 
 ```ts
-export declare const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A>
+export declare const commit: <R, E, A>(self: STM<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -884,7 +884,7 @@ is a success or a failure.
 **Signature**
 
 ```ts
-export declare const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A>
+export declare const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0
@@ -1883,7 +1883,7 @@ synchronization of Fibers and transactional data-types can be quite useful.
 **Signature**
 
 ```ts
-export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
+export interface STM<R, E, A> extends Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: STMUnify<this>
   [Unify.ignoreSymbol]?: STMUnifyIgnore

@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"

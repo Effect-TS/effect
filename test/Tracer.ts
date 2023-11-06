@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
 import { millis, seconds } from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { identity } from "effect/Function"

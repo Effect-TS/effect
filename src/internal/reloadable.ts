@@ -1,5 +1,5 @@
 import * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import type * as Layer from "../Layer.js"
@@ -87,7 +87,7 @@ export const autoFromConfig = <Out extends Context.Tag<any, any>, In, E, R>(
 /** @internal */
 export const get = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>> =>
+): Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => scopedRef.get(reloadable.scopedRef)
@@ -145,7 +145,7 @@ export const reloadableTag = <T extends Context.Tag<any, any>>(
 /** @internal */
 export const reload = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+): Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
   core.flatMap(
     reloadableTag(tag),
     (reloadable) => reloadable.reload()
@@ -154,7 +154,7 @@ export const reload = <T extends Context.Tag<any, any>>(
 /** @internal */
 export const reloadFork = <T extends Context.Tag<any, any>>(
   tag: T
-): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
+): Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
   core.flatMap(reloadableTag(tag), (reloadable) =>
     pipe(
       reloadable.reload(),

@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Chunk from "effect/Chunk"
 import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"

@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Random from "effect/Random"
 import * as Ref from "effect/Ref"
@@ -33,7 +33,7 @@ describe.concurrent("Effect", () => {
   it.effect("once returns an effect that will only be executed once", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
-      const effect: Effect.Effect<never, never, void> = yield* $(Ref.update(ref, (n) => n + 1), Effect.once)
+      const effect: Effect<never, never, void> = yield* $(Ref.update(ref, (n) => n + 1), Effect.once)
       yield* $(
         Effect.all(Effect.replicate(effect, 100), {
           concurrency: "unbounded",

@@ -3,7 +3,7 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
@@ -14,13 +14,13 @@ import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")
 
-const asyncExampleError = <A>(): Effect.Effect<never, unknown, A> => {
+const asyncExampleError = <A>(): Effect<never, unknown, A> => {
   return Effect.async((cb) => {
     cb(Effect.fail(ExampleError))
   })
 }
 
-const asyncUnit = <E>(): Effect.Effect<never, E, void> => {
+const asyncUnit = <E>(): Effect<never, E, void> => {
   return Effect.async((cb) => {
     cb(Effect.unit)
   })
@@ -210,7 +210,7 @@ describe.concurrent("Effect", () => {
   it.live("acquireUseRelease regression 1", () =>
     Effect.gen(function*($) {
       const makeLogger = (ref: Ref.Ref<Chunk.Chunk<string>>) => {
-        return (line: string): Effect.Effect<never, never, void> => {
+        return (line: string): Effect<never, never, void> => {
           return Ref.update(ref, Chunk.prepend(line))
         }
       }

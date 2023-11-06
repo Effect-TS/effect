@@ -1,5 +1,5 @@
 import type * as ChildExecutorDecision from "../../ChildExecutorDecision.js"
-import * as Effect from "../../Effect.js"
+import { Effect } from "../../Effect.js"
 import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
 import type * as UpstreamPullRequest from "../../UpstreamPullRequest.js"
@@ -8,7 +8,7 @@ import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */
 export interface Subexecutor<R> {
-  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined
+  close(exit: Exit.Exit<unknown, unknown>): Effect<R, never, unknown> | undefined
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R>
 }
 
@@ -55,7 +55,7 @@ export class PullFromChild<R> implements Subexecutor<R> {
   ) {
   }
 
-  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined {
+  close(exit: Exit.Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.childExecutor.close(exit)
     const fin2 = this.parentSubexecutor.close(exit)
     if (fin1 !== undefined && fin2 !== undefined) {
@@ -101,7 +101,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
   ) {
   }
 
-  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined {
+  close(exit: Exit.Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
     const fins = [
       ...this.activeChildExecutors.map((child) =>
@@ -112,7 +112,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
       fin1
     ]
     const result = fins.reduce(
-      (acc: Effect.Effect<R, never, Exit.Exit<unknown, unknown>> | undefined, next) => {
+      (acc: Effect<R, never, Exit.Exit<unknown, unknown>> | undefined, next) => {
         if (acc !== undefined && next !== undefined) {
           return Effect.zipWith(
             acc,
@@ -168,7 +168,7 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
   ) {
   }
 
-  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined {
+  close(exit: Exit.Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
     const fins = [
       ...this.activeChildExecutors.map((child) => (child !== undefined ?
@@ -178,7 +178,7 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
       fin1
     ]
     const result = fins.reduce(
-      (acc: Effect.Effect<R, never, Exit.Exit<unknown, unknown>> | undefined, next) => {
+      (acc: Effect<R, never, Exit.Exit<unknown, unknown>> | undefined, next) => {
         if (acc !== undefined && next !== undefined) {
           return Effect.zipWith(
             acc,
@@ -218,7 +218,7 @@ export class Emit<R> implements Subexecutor<R> {
   constructor(readonly value: unknown, readonly next: Subexecutor<R>) {
   }
 
-  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined {
+  close(exit: Exit.Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const result = this.next.close(exit)
     return result === undefined ? result : result
   }

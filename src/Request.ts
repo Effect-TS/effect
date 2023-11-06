@@ -5,7 +5,7 @@ import type * as _Cache from "./Cache.js"
 import type * as Data from "./Data.js"
 import type { Deferred } from "./Deferred.js"
 import type { DurationInput } from "./Duration.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import type * as Exit from "./Exit.js"
 import type { FiberId } from "./FiberId.js"
 import * as _RequestBlock from "./internal/blockedRequests.js"
@@ -127,8 +127,8 @@ export const tagged: <R extends Request<any, any> & { _tag: string }>(
  * @category request completion
  */
 export const complete: {
-  <A extends Request<any, any>>(result: Request.Result<A>): (self: A) => Effect.Effect<never, never, void>
-  <A extends Request<any, any>>(self: A, result: Request.Result<A>): Effect.Effect<never, never, void>
+  <A extends Request<any, any>>(result: Request.Result<A>): (self: A) => Effect<never, never, void>
+  <A extends Request<any, any>>(self: A, result: Request.Result<A>): Effect<never, never, void>
 } = internal.complete
 
 /**
@@ -138,8 +138,8 @@ export const complete: {
  * @category request completion
  */
 export const interruptWhenPossible: {
-  (all: Iterable<Request<any, any>>): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, void>
-  <R, E, A>(self: Effect.Effect<R, E, A>, all: Iterable<Request<any, any>>): Effect.Effect<R, E, void>
+  (all: Iterable<Request<any, any>>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, void>
+  <R, E, A>(self: Effect<R, E, A>, all: Iterable<Request<any, any>>): Effect<R, E, void>
 } = fiberRuntime.interruptWhenPossible
 
 /**
@@ -152,12 +152,12 @@ export const interruptWhenPossible: {
  */
 export const completeEffect: {
   <A extends Request<any, any>, R>(
-    effect: Effect.Effect<R, Request.Error<A>, Request.Success<A>>
-  ): (self: A) => Effect.Effect<R, never, void>
+    effect: Effect<R, Request.Error<A>, Request.Success<A>>
+  ): (self: A) => Effect<R, never, void>
   <A extends Request<any, any>, R>(
     self: A,
-    effect: Effect.Effect<R, Request.Error<A>, Request.Success<A>>
-  ): Effect.Effect<R, never, void>
+    effect: Effect<R, Request.Error<A>, Request.Success<A>>
+  ): Effect<R, never, void>
 } = internal.completeEffect
 
 /**
@@ -167,8 +167,8 @@ export const completeEffect: {
  * @category request completion
  */
 export const fail: {
-  <A extends Request<any, any>>(error: Request.Error<A>): (self: A) => Effect.Effect<never, never, void>
-  <A extends Request<any, any>>(self: A, error: Request.Error<A>): Effect.Effect<never, never, void>
+  <A extends Request<any, any>>(error: Request.Error<A>): (self: A) => Effect<never, never, void>
+  <A extends Request<any, any>>(self: A, error: Request.Error<A>): Effect<never, never, void>
 } = internal.fail
 
 /**
@@ -178,8 +178,8 @@ export const fail: {
  * @category request completion
  */
 export const succeed: {
-  <A extends Request<any, any>>(value: Request.Success<A>): (self: A) => Effect.Effect<never, never, void>
-  <A extends Request<any, any>>(self: A, value: Request.Success<A>): Effect.Effect<never, never, void>
+  <A extends Request<any, any>>(value: Request.Success<A>): (self: A) => Effect<never, never, void>
+  <A extends Request<any, any>>(self: A, value: Request.Success<A>): Effect<never, never, void>
 } = internal.succeed
 
 /**
@@ -215,7 +215,7 @@ export const makeCache = (
     readonly capacity: number
     readonly timeToLive: DurationInput
   }
-): Effect.Effect<never, never, Cache> =>
+): Effect<never, never, Cache> =>
   cache.make({
     ...options,
     lookup: () => core.map(core.deferredMake(), (handle) => ({ listeners: new internal.Listeners(), handle }))

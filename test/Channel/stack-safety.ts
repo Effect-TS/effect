@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import * as Channel from "effect/Channel"
 import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import { assert, describe } from "vitest"
 

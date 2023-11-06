@@ -57,13 +57,13 @@ and `after`, where the result of `before` can be used by `after`.
 ```ts
 export declare const around: {
   <R2, A2, R3, _>(
-    before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>
+    before: Effect<R2, never, A2>,
+    after: (a: A2) => Effect<R3, never, _>
   ): <R, A>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
   <R, A, R2, A2, R3, _>(
     self: RequestResolver<A, R>,
-    before: Effect.Effect<R2, never, A2>,
-    after: (a: A2) => Effect.Effect<R3, never, _>
+    before: Effect<R2, never, A2>,
+    after: (a: A2) => Effect<R3, never, _>
   ): RequestResolver<A, R | R2 | R3>
 }
 ```
@@ -169,7 +169,7 @@ Constructs a data source from an effectual function.
 
 ```ts
 export declare const fromEffect: <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+  f: (a: A) => Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
 ) => RequestResolver<A, R>
 ```
 
@@ -189,13 +189,13 @@ export declare const fromEffectTagged: <A extends Request.Request<any, any> & { 
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
       ? Req extends Request.Request<infer ReqE, infer ReqA>
-        ? (requests: Req[]) => Effect.Effect<any, ReqE, Iterable<ReqA>>
+        ? (requests: Req[]) => Effect<any, ReqE, Iterable<ReqA>>
         : never
       : never
   }
 >(
   fns: Fns
-) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer R, infer _E, infer _A> ? R : never>
+) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect<infer R, infer _E, infer _A> ? R : never>
 ```
 
 Added in v2.0.0
@@ -238,7 +238,7 @@ requests.
 **Signature**
 
 ```ts
-export declare const make: <R, A>(runAll: (requests: A[][]) => Effect.Effect<R, never, void>) => RequestResolver<A, R>
+export declare const make: <R, A>(runAll: (requests: A[][]) => Effect<R, never, void>) => RequestResolver<A, R>
 ```
 
 Added in v2.0.0
@@ -252,7 +252,7 @@ and returning a `RequestCompletionMap`.
 
 ```ts
 export declare const makeBatched: <R, A extends Request.Request<any, any>>(
-  run: (requests: A[]) => Effect.Effect<R, never, void>
+  run: (requests: A[]) => Effect<R, never, void>
 ) => RequestResolver<A, R>
 ```
 
@@ -267,7 +267,7 @@ requests.
 
 ```ts
 export declare const makeWithEntry: <R, A>(
-  runAll: (requests: Request.Entry<A>[][]) => Effect.Effect<R, never, void>
+  runAll: (requests: Request.Entry<A>[][]) => Effect<R, never, void>
 ) => RequestResolver<A, R>
 ```
 
@@ -360,7 +360,7 @@ export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
    * of requests that must be performed sequentially. The inner `Chunk`
    * represents a batch of requests that can be performed in parallel.
    */
-  runAll(requests: Array<Array<Request.Entry<A>>>): Effect.Effect<R, never, void>
+  runAll(requests: Array<Array<Request.Entry<A>>>): Effect<R, never, void>
 
   /**
    * Identify the data source using the specific identifier
@@ -435,7 +435,7 @@ Added in v2.0.0
 ```ts
 export declare const contextFromEffect: <R, A extends Request.Request<any, any>>(
   self: RequestResolver<A, R>
-) => Effect.Effect<R, never, RequestResolver<A, never>>
+) => Effect<R, never, RequestResolver<A, never>>
 ```
 
 Added in v2.0.0
@@ -449,10 +449,10 @@ export declare const contextFromServices: <Services extends Context.Tag<any, any
   ...services: Services
 ) => <R, A extends Request.Request<any, any>>(
   self: RequestResolver<A, R>
-) => Effect.Effect<
-  { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number],
+) => Effect<
+  { [k in keyof Services]: Effect.Context<Services[k]> }[number],
   never,
-  RequestResolver<A, Exclude<R, { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number]>>
+  RequestResolver<A, Exclude<R, { [k in keyof Services]: Effect.Context<Services[k]> }[number]>>
 >
 ```
 

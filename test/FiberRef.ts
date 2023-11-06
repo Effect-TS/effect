@@ -3,7 +3,7 @@ import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { constant, constTrue, identity } from "effect/Function"
@@ -18,7 +18,7 @@ const update2 = "update2"
 
 const increment = (n: number): number => n + 1
 
-const loseTimeAndCpu: Effect.Effect<never, never, void> = Effect.yieldNow().pipe(
+const loseTimeAndCpu: Effect<never, never, void> = Effect.yieldNow().pipe(
   Effect.zipLeft(Clock.sleep(Duration.millis(1))),
   Effect.repeatN(100)
 )

@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
@@ -8,8 +8,8 @@ import { assert, describe } from "vitest"
 
 const exactlyOnce = <R, A, A1>(
   value: A,
-  f: (_: Effect.Effect<never, never, A>) => Effect.Effect<R, string, A1>
-): Effect.Effect<R, string, A1> => {
+  f: (_: Effect<never, never, A>) => Effect<R, string, A1>
+): Effect<R, string, A1> => {
   return Effect.gen(function*($) {
     const ref = yield* $(Ref.make(0))
     const res = yield* $(f(pipe(Ref.update(ref, (n) => n + 1), Effect.zipRight(Effect.succeed(value)))))

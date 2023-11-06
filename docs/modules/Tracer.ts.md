@@ -64,7 +64,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+export declare const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
 Added in v2.0.0

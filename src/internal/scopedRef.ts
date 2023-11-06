@@ -1,5 +1,5 @@
 import * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -26,13 +26,13 @@ const scopedRefVariance = {
 }
 
 /** @internal  */
-const close = <A>(self: ScopedRef.ScopedRef<A>): Effect.Effect<never, never, void> =>
+const close = <A>(self: ScopedRef.ScopedRef<A>): Effect<never, never, void> =>
   core.flatMap(ref.get(self.ref), (tuple) => tuple[0].close(core.exitUnit))
 
 /** @internal */
 export const fromAcquire = <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, E, ScopedRef.ScopedRef<A>> =>
+  acquire: Effect<R, E, A>
+): Effect<R | Scope.Scope, E, ScopedRef.ScopedRef<A>> =>
   core.uninterruptibleMask((restore) =>
     pipe(
       fiberRuntime.scopeMake(),
@@ -69,25 +69,25 @@ export const fromAcquire = <R, E, A>(
   )
 
 /** @internal */
-export const get = <A>(self: ScopedRef.ScopedRef<A>): Effect.Effect<never, never, A> =>
+export const get = <A>(self: ScopedRef.ScopedRef<A>): Effect<never, never, A> =>
   core.map(ref.get(self.ref), (tuple) => tuple[1])
 
 /** @internal */
-export const make = <A>(evaluate: LazyArg<A>): Effect.Effect<Scope.Scope, never, ScopedRef.ScopedRef<A>> =>
+export const make = <A>(evaluate: LazyArg<A>): Effect<Scope.Scope, never, ScopedRef.ScopedRef<A>> =>
   fromAcquire(core.sync(evaluate))
 
 /** @internal */
 export const set = dual<
   <A, R, E>(
-    acquire: Effect.Effect<R, E, A>
-  ) => (self: ScopedRef.ScopedRef<A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, void>,
+    acquire: Effect<R, E, A>
+  ) => (self: ScopedRef.ScopedRef<A>) => Effect<Exclude<R, Scope.Scope>, E, void>,
   <A, R, E>(
     self: ScopedRef.ScopedRef<A>,
-    acquire: Effect.Effect<R, E, A>
-  ) => Effect.Effect<Exclude<R, Scope.Scope>, E, void>
+    acquire: Effect<R, E, A>
+  ) => Effect<Exclude<R, Scope.Scope>, E, void>
 >(2, <A, R, E>(
   self: ScopedRef.ScopedRef<A>,
-  acquire: Effect.Effect<R, E, A>
+  acquire: Effect<R, E, A>
 ) =>
   core.flatten(
     synchronized.modifyEffect(self.ref, ([oldScope, value]) =>
@@ -113,7 +113,7 @@ export const set = dual<
                       effect.ignore,
                       core.as(
                         [
-                          core.failCause(cause) as unknown as Effect.Effect<never, never, void>,
+                          core.failCause(cause) as unknown as Effect<never, never, void>,
                           [oldScope, value] as const
                         ] as const
                       )

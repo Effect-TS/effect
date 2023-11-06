@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
+import type { Effect } from "./Effect.js"
 import * as Equal from "./Equal.js"
 import type * as Fiber from "./Fiber.js"
 import { pipe } from "./Function.js"
@@ -46,18 +46,18 @@ export interface TestAnnotations {
    * Accesses an `Annotations` instance in the context and retrieves the
    * annotation of the specified type, or its default value if there is none.
    */
-  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect.Effect<never, never, A>
+  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect<never, never, A>
 
   /**
    * Accesses an `Annotations` instance in the context and appends the
    * specified annotation to the annotation map.
    */
-  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect.Effect<never, never, void>
+  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect<never, never, void>
 
   /**
    * Returns the set of all fibers in this test.
    */
-  supervisedFibers(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
+  supervisedFibers(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
 }
 
 /** @internal */
@@ -65,13 +65,13 @@ class AnnotationsImpl implements TestAnnotations {
   readonly [TestAnnotationsTypeId]: TestAnnotationsTypeId = TestAnnotationsTypeId
   constructor(readonly ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>) {
   }
-  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect.Effect<never, never, A> {
+  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect<never, never, A> {
     return core.map(Ref.get(this.ref), TestAnnotationMap.get(key))
   }
-  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect.Effect<never, never, void> {
+  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect<never, never, void> {
     return Ref.update(this.ref, TestAnnotationMap.annotate(key, value))
   }
-  supervisedFibers(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
+  supervisedFibers(): Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
     return effect.descriptorWith((descriptor) =>
       core.flatMap(this.get(TestAnnotation.fibers), (either) => {
         switch (either._tag) {

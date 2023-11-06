@@ -1,6 +1,6 @@
 import type * as Cause from "../../Cause.js"
 import type * as Channel from "../../Channel.js"
-import type * as Effect from "../../Effect.js"
+import type { Effect } from "../../Effect.js"
 import * as Exit from "../../Exit.js"
 import * as OpCodes from "../opCodes/continuation.js"
 
@@ -103,7 +103,7 @@ export interface ContinuationFinalizer<Env, OutErr, OutDone> extends
   >
 {
   readonly _tag: OpCodes.OP_CONTINUATION_FINALIZER
-  readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>
+  readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, unknown>
 }
 
 /** @internal */
@@ -166,6 +166,6 @@ export class ContinuationKImpl<
 export class ContinuationFinalizerImpl<Env, OutErr, OutDone> implements ContinuationFinalizer<Env, OutErr, OutDone> {
   readonly _tag = OpCodes.OP_CONTINUATION_FINALIZER
   readonly [ContinuationTypeId] = continuationVariance
-  constructor(readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>) {
+  constructor(readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect<Env, never, unknown>) {
   }
 }

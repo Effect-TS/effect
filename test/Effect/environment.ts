@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
 import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import { assert, describe, expect } from "vitest"
 
@@ -84,7 +84,7 @@ describe.concurrent("Effect", () => {
 
   it.effect("serviceFunctions - expose service functions", () => {
     interface Service {
-      foo: (x: string, y: number) => Effect.Effect<never, never, string>
+      foo: (x: string, y: number) => Effect<never, never, string>
     }
     const Service = Context.Tag<Service>()
     const { foo } = Effect.serviceFunctions(Service)
@@ -103,7 +103,7 @@ describe.concurrent("Effect", () => {
 
   it.effect("serviceConstants - expose service constants", () => {
     interface Service {
-      baz: Effect.Effect<never, never, string>
+      baz: Effect<never, never, string>
     }
     const Service = Context.Tag<Service>()
     const { baz } = Effect.serviceConstants(Service)
@@ -122,8 +122,8 @@ describe.concurrent("Effect", () => {
 
   it.effect("serviceMembers - expose both service functions and constants", () => {
     interface Service {
-      foo: (x: string, y: number) => Effect.Effect<never, never, string>
-      baz: Effect.Effect<never, never, string>
+      foo: (x: string, y: number) => Effect<never, never, string>
+      baz: Effect<never, never, string>
     }
     const Service = Context.Tag<Service>()
     const { constants, functions } = Effect.serviceMembers(Service)

@@ -1,4 +1,4 @@
-import type * as Effect from "../../Effect.js"
+import type { Effect } from "../../Effect.js"
 import type * as Fiber from "../../Fiber.js"
 import { dual, pipe } from "../../Function.js"
 import type * as Metric from "../../Metric.js"
@@ -22,7 +22,7 @@ export const PollingMetricTypeId: PollingMetric.PollingMetricTypeId = Symbol.for
 /** @internal */
 export const make = <Type, In, Out, R, E>(
   metric: Metric.Metric<Type, In, Out>,
-  poll: Effect.Effect<R, E, In>
+  poll: Effect<R, E, In>
 ): PollingMetric.PollingMetric<Type, In, R, E, Out> => {
   return {
     [PollingMetricTypeId]: PollingMetricTypeId,
@@ -68,11 +68,11 @@ export const launch = dual<
     schedule: Schedule.Schedule<R2, unknown, A2>
   ) => <Type, In, R, E, Out>(
     self: PollingMetric.PollingMetric<Type, In, R, E, Out>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>,
+  ) => Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>,
   <Type, In, R, E, Out, R2, A2>(
     self: PollingMetric.PollingMetric<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
-  ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>
+  ) => Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>
 >(2, (self, schedule) =>
   pipe(
     pollAndUpdate(self),
@@ -83,12 +83,12 @@ export const launch = dual<
 /** @internal */
 export const poll = <Type, In, R, E, Out>(
   self: PollingMetric.PollingMetric<Type, In, R, E, Out>
-): Effect.Effect<R, E, In> => self.poll
+): Effect<R, E, In> => self.poll
 
 /** @internal */
 export const pollAndUpdate = <Type, In, R, E, Out>(
   self: PollingMetric.PollingMetric<Type, In, R, E, Out>
-): Effect.Effect<R, E, void> => core.flatMap(self.poll, (value) => metric.update(self.metric, value))
+): Effect<R, E, void> => core.flatMap(self.poll, (value) => metric.update(self.metric, value))
 
 /** @internal */
 export const retry = dual<

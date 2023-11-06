@@ -192,7 +192,7 @@ Creates a new config provider.
 
 ```ts
 export declare const make: (options: {
-  readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
+  readonly load: <A>(config: Config.Config<A>) => Effect<never, ConfigError.ConfigError, A>
   readonly flattened: ConfigProvider.Flat
 }) => ConfigProvider
 ```
@@ -211,10 +211,10 @@ export declare const makeFlat: (options: {
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
     split: boolean
-  ) => Effect.Effect<never, ConfigError.ConfigError, readonly A[]>
+  ) => Effect<never, ConfigError.ConfigError, readonly A[]>
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
-  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  ) => Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
   readonly patch: PathPatch.PathPatch
 }) => ConfigProvider.Flat
 ```
@@ -249,7 +249,7 @@ export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
   /**
    * Loads the specified configuration, or fails with a config error.
    */
-  load<A>(config: Config.Config<A>): Effect.Effect<never, ConfigError.ConfigError, A>
+  load<A>(config: Config.Config<A>): Effect<never, ConfigError.ConfigError, A>
   /**
    * Flattens this config provider into a simplified config provider that knows
    * only how to deal with flat (key/value) properties.
@@ -324,8 +324,8 @@ export interface Flat {
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
     split?: boolean
-  ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
-  enumerateChildren(path: ReadonlyArray<string>): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  ): Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+  enumerateChildren(path: ReadonlyArray<string>): Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
 }
 ```
 

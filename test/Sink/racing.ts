@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
 import { unfoldEffect } from "effect-test/utils/unfoldEffect"
 import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import { constVoid, pipe } from "effect/Function"
 import * as Option from "effect/Option"
@@ -27,7 +27,7 @@ const sinkRaceLaw = <E, A, L>(
   stream: Stream.Stream<never, never, A>,
   sink1: Sink.Sink<never, E, A, L, A>,
   sink2: Sink.Sink<never, E, A, L, A>
-): Effect.Effect<never, never, boolean> =>
+): Effect<never, never, boolean> =>
   pipe(
     Effect.all({
       result1: pipe(stream, Stream.run(sink1), Effect.either),

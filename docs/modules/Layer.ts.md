@@ -207,10 +207,10 @@ Constructs a layer from the specified effect.
 export declare const effect: {
   <T extends Context.Tag<any, any>>(
     tag: T
-  ): <R, E>(effect: Effect.Effect<R, E, Context.Tag.Service<T>>) => Layer<R, E, Context.Tag.Identifier<T>>
+  ): <R, E>(effect: Effect<R, E, Context.Tag.Service<T>>) => Layer<R, E, Context.Tag.Identifier<T>>
   <T extends Context.Tag<any, any>, R, E>(
     tag: T,
-    effect: Effect.Effect<R, E, Context.Tag.Service<T>>
+    effect: Effect<R, E, Context.Tag.Service<T>>
   ): Layer<R, E, Context.Tag.Identifier<T>>
 }
 ```
@@ -225,7 +225,7 @@ services.
 **Signature**
 
 ```ts
-export declare const effectContext: <R, E, A>(effect: Effect.Effect<R, E, Context.Context<A>>) => Layer<R, E, A>
+export declare const effectContext: <R, E, A>(effect: Effect<R, E, Context.Context<A>>) => Layer<R, E, A>
 ```
 
 Added in v2.0.0
@@ -237,7 +237,7 @@ Constructs a layer from the specified effect discarding it's output.
 **Signature**
 
 ```ts
-export declare const effectDiscard: <R, E, _>(effect: Effect.Effect<R, E, _>) => Layer<R, E, never>
+export declare const effectDiscard: <R, E, _>(effect: Effect<R, E, _>) => Layer<R, E, never>
 ```
 
 Added in v2.0.0
@@ -328,11 +328,11 @@ export declare const scoped: {
   <T extends Context.Tag<any, any>>(
     tag: T
   ): <R, E>(
-    effect: Effect.Effect<R, E, Context.Tag.Service<T>>
+    effect: Effect<R, E, Context.Tag.Service<T>>
   ) => Layer<Exclude<R, Scope.Scope>, E, Context.Tag.Identifier<T>>
   <T extends Context.Tag<any, any>, R, E>(
     tag: T,
-    effect: Effect.Effect<R, E, Context.Tag.Service<T>>
+    effect: Effect<R, E, Context.Tag.Service<T>>
   ): Layer<Exclude<R, Scope.Scope>, E, Context.Tag.Identifier<T>>
 }
 ```
@@ -348,7 +348,7 @@ or more services.
 
 ```ts
 export declare const scopedContext: <R, E, A>(
-  effect: Effect.Effect<R, E, Context.Context<A>>
+  effect: Effect<R, E, Context.Context<A>>
 ) => Layer<Exclude<R, Scope.Scope>, E, A>
 ```
 
@@ -362,7 +362,7 @@ Constructs a layer from the specified scoped effect.
 
 ```ts
 export declare const scopedDiscard: <R, E, T>(
-  effect: Effect.Effect<R, E, T>
+  effect: Effect<R, E, T>
 ) => Layer<Exclude<R, Scope.Scope>, E, never>
 ```
 
@@ -472,7 +472,7 @@ your entire application is a layer, such as an HTTP server.
 **Signature**
 
 ```ts
-export declare const launch: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, never>
+export declare const launch: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect<RIn, E, never>
 ```
 
 Added in v2.0.0
@@ -487,7 +487,7 @@ be used to execute effects.
 ```ts
 export declare const toRuntime: <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
-) => Effect.Effect<Scope.Scope | RIn, E, Runtime.Runtime<ROut>>
+) => Effect<Scope.Scope | RIn, E, Runtime.Runtime<ROut>>
 ```
 
 Added in v2.0.0
@@ -503,7 +503,7 @@ Builds a layer into a scoped value.
 ```ts
 export declare const build: <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
-) => Effect.Effect<Scope.Scope | RIn, E, Context.Context<ROut>>
+) => Effect<Scope.Scope | RIn, E, Context.Context<ROut>>
 ```
 
 Added in v2.0.0
@@ -520,8 +520,8 @@ layer is provided to.
 
 ```ts
 export declare const buildWithScope: {
-  (scope: Scope.Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, Context.Context<ROut>>
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope.Scope): Effect.Effect<RIn, E, Context.Context<ROut>>
+  (scope: Scope.Scope): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect<RIn, E, Context.Context<ROut>>
+  <RIn, E, ROut>(self: Layer<RIn, E, ROut>, scope: Scope.Scope): Effect<RIn, E, Context.Context<ROut>>
 }
 ```
 
@@ -761,7 +761,7 @@ Added in v2.0.0
 
 ```ts
 export declare const setRequestCache: {
-  <R, E>(cache: Effect.Effect<R, E, Request.Cache>): Layer<Exclude<R, Scope.Scope>, E, never>
+  <R, E>(cache: Effect<R, E, Request.Cache>): Layer<Exclude<R, Scope.Scope>, E, never>
   (cache: Request.Cache): Layer<never, never, never>
 }
 ```
@@ -858,11 +858,11 @@ Performs the specified effect if this layer succeeds.
 ```ts
 export declare const tap: {
   <ROut, XR extends ROut, RIn2, E2, X>(
-    f: (context: Context.Context<XR>) => Effect.Effect<RIn2, E2, X>
+    f: (context: Context.Context<XR>) => Effect<RIn2, E2, X>
   ): <RIn, E>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut>
   <RIn, E, ROut, XR extends ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
-    f: (context: Context.Context<XR>) => Effect.Effect<RIn2, E2, X>
+    f: (context: Context.Context<XR>) => Effect<RIn2, E2, X>
   ): Layer<RIn | RIn2, E | E2, ROut>
 }
 ```
@@ -878,11 +878,11 @@ Performs the specified effect if this layer fails.
 ```ts
 export declare const tapError: {
   <E, XE extends E, RIn2, E2, X>(
-    f: (e: XE) => Effect.Effect<RIn2, E2, X>
+    f: (e: XE) => Effect<RIn2, E2, X>
   ): <RIn, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E | E2, ROut>
   <RIn, E, XE extends E, ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
-    f: (e: XE) => Effect.Effect<RIn2, E2, X>
+    f: (e: XE) => Effect<RIn2, E2, X>
   ): Layer<RIn | RIn2, E | E2, ROut>
 }
 ```
@@ -898,11 +898,11 @@ Performs the specified effect if this layer fails.
 ```ts
 export declare const tapErrorCause: {
   <E, XE extends E, RIn2, E2, X>(
-    f: (cause: Cause.Cause<XE>) => Effect.Effect<RIn2, E2, X>
+    f: (cause: Cause.Cause<XE>) => Effect<RIn2, E2, X>
   ): <RIn, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E | E2, ROut>
   <RIn, E, XE extends E, ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
-    f: (cause: Cause.Cause<XE>) => Effect.Effect<RIn2, E2, X>
+    f: (cause: Cause.Cause<XE>) => Effect<RIn2, E2, X>
   ): Layer<RIn | RIn2, E | E2, ROut>
 }
 ```
@@ -986,7 +986,7 @@ export declare const span: (
         readonly root?: boolean | undefined
         readonly context?: Context.Context<never> | undefined
         readonly onEnd?:
-          | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+          | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>)
           | undefined
       }
     | undefined
@@ -1024,7 +1024,7 @@ export declare const withSpan: {
           readonly root?: boolean | undefined
           readonly context?: Context.Context<never> | undefined
           readonly onEnd?:
-            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>)
             | undefined
         }
       | undefined
@@ -1040,7 +1040,7 @@ export declare const withSpan: {
           readonly root?: boolean | undefined
           readonly context?: Context.Context<never> | undefined
           readonly onEnd?:
-            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+            | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect<never, never, void>)
             | undefined
         }
       | undefined
@@ -1159,11 +1159,11 @@ Added in v2.0.0
 ```ts
 export declare const locallyEffect: {
   <RIn, E, ROut, RIn2, E2, ROut2>(
-    f: (_: Effect.Effect<RIn, E, Context.Context<ROut>>) => Effect.Effect<RIn2, E2, Context.Context<ROut2>>
+    f: (_: Effect<RIn, E, Context.Context<ROut>>) => Effect<RIn2, E2, Context.Context<ROut2>>
   ): (self: Layer<RIn, E, ROut>) => Layer<RIn2, E2, ROut2>
   <RIn, E, ROut, RIn2, E2, ROut2>(
     self: Layer<RIn, E, ROut>,
-    f: (_: Effect.Effect<RIn, E, Context.Context<ROut>>) => Effect.Effect<RIn2, E2, Context.Context<ROut2>>
+    f: (_: Effect<RIn, E, Context.Context<ROut>>) => Effect<RIn2, E2, Context.Context<ROut2>>
   ): Layer<RIn2, E2, ROut2>
 }
 ```
@@ -1203,7 +1203,7 @@ result of this layer.
 ```ts
 export declare const memoize: <RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
-) => Effect.Effect<Scope.Scope, never, Layer<RIn, E, ROut>>
+) => Effect<Scope.Scope, never, Layer<RIn, E, ROut>>
 ```
 
 Added in v2.0.0
@@ -1317,7 +1317,7 @@ Added in v2.0.0
 
 ```ts
 export declare const unwrapEffect: <R, E, R1, E1, A>(
-  self: Effect.Effect<R, E, Layer<R1, E1, A>>
+  self: Effect<R, E, Layer<R1, E1, A>>
 ) => Layer<R | R1, E | E1, A>
 ```
 
@@ -1329,7 +1329,7 @@ Added in v2.0.0
 
 ```ts
 export declare const unwrapScoped: <R, E, R1, E1, A>(
-  self: Effect.Effect<R, E, Layer<R1, E1, A>>
+  self: Effect<R, E, Layer<R1, E1, A>>
 ) => Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A>
 ```
 

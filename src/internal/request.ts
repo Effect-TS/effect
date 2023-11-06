@@ -1,4 +1,4 @@
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import { dual } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Request from "../Request.js"
@@ -47,11 +47,11 @@ export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
 export const complete = dual<
   <A extends Request.Request<any, any>>(
     result: Request.Request.Result<A>
-  ) => (self: A) => Effect.Effect<never, never, void>,
+  ) => (self: A) => Effect<never, never, void>,
   <A extends Request.Request<any, any>>(
     self: A,
     result: Request.Request.Result<A>
-  ) => Effect.Effect<never, never, void>
+  ) => Effect<never, never, void>
 >(2, (self, result) =>
   core.fiberRefGetWith(
     completedRequestMap.currentRequestMap,
@@ -70,12 +70,12 @@ export const complete = dual<
 /** @internal */
 export const completeEffect = dual<
   <A extends Request.Request<any, any>, R>(
-    effect: Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
-  ) => (self: A) => Effect.Effect<R, never, void>,
+    effect: Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+  ) => (self: A) => Effect<R, never, void>,
   <A extends Request.Request<any, any>, R>(
     self: A,
-    effect: Effect.Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
-  ) => Effect.Effect<R, never, void>
+    effect: Effect<R, Request.Request.Error<A>, Request.Request.Success<A>>
+  ) => Effect<R, never, void>
 >(2, (self, effect) =>
   core.matchEffect(effect, {
     onFailure: (error) => complete(self, core.exitFail(error) as any),
@@ -86,22 +86,22 @@ export const completeEffect = dual<
 export const fail = dual<
   <A extends Request.Request<any, any>>(
     error: Request.Request.Error<A>
-  ) => (self: A) => Effect.Effect<never, never, void>,
+  ) => (self: A) => Effect<never, never, void>,
   <A extends Request.Request<any, any>>(
     self: A,
     error: Request.Request.Error<A>
-  ) => Effect.Effect<never, never, void>
+  ) => Effect<never, never, void>
 >(2, (self, error) => complete(self, core.exitFail(error) as any))
 
 /** @internal */
 export const succeed = dual<
   <A extends Request.Request<any, any>>(
     value: Request.Request.Success<A>
-  ) => (self: A) => Effect.Effect<never, never, void>,
+  ) => (self: A) => Effect<never, never, void>,
   <A extends Request.Request<any, any>>(
     self: A,
     value: Request.Request.Success<A>
-  ) => Effect.Effect<never, never, void>
+  ) => Effect<never, never, void>
 >(2, (self, value) => complete(self, core.exitSucceed(value) as any))
 
 /** @internal */

@@ -3,7 +3,7 @@ import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
+import { Effect } from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -22,7 +22,7 @@ interface STMEnv {
 
 const STMEnv = Context.Tag<STMEnv>()
 
-const makeSTMEnv = (n: number): Effect.Effect<never, never, STMEnv> =>
+const makeSTMEnv = (n: number): Effect<never, never, STMEnv> =>
   pipe(
     TRef.make(n),
     Effect.map((ref) => ({ ref }))
@@ -33,7 +33,7 @@ class UnpureBarrier {
   open(): void {
     this.#isOpen = true
   }
-  await(): Effect.Effect<never, never, unknown> {
+  await(): Effect<never, never, unknown> {
     return Effect.async((cb) => {
       const check = () => {
         if (this.#isOpen) {
@@ -52,8 +52,8 @@ class UnpureBarrier {
 const chain = (depth: number) =>
 (
   next: (stm: STM.STM<never, never, number>) => STM.STM<never, never, number>
-): Effect.Effect<never, never, number> => {
-  const loop = (_n: number, _acc: STM.STM<never, never, number>): Effect.Effect<never, never, number> => {
+): Effect<never, never, number> => {
+  const loop = (_n: number, _acc: STM.STM<never, never, number>): Effect<never, never, number> => {
     let n = _n
     let acc = _acc
     while (n > 0) {
@@ -65,8 +65,8 @@ const chain = (depth: number) =>
   return loop(depth, STM.succeed(0))
 }
 
-const chainError = (depth: number): Effect.Effect<never, number, never> => {
-  const loop = (_n: number, _acc: STM.STM<never, number, never>): Effect.Effect<never, number, never> => {
+const chainError = (depth: number): Effect<never, number, never> => {
+  const loop = (_n: number, _acc: STM.STM<never, number, never>): Effect<never, number, never> => {
     let n = _n
     let acc = _acc
     while (n > 0) {
@@ -78,7 +78,7 @@ const chainError = (depth: number): Effect.Effect<never, number, never> => {
   return loop(depth, STM.fail(0))
 }
 
-const incrementTRefN = (n: number, ref: TRef.TRef<number>): Effect.Effect<never, never, number> =>
+const incrementTRefN = (n: number, ref: TRef.TRef<number>): Effect<never, never, number> =>
   pipe(
     TRef.get(ref),
     STM.tap((n) => pipe(ref, TRef.set(n + 1))),
@@ -91,7 +91,7 @@ const transfer = (
   receiver: TRef.TRef<number>,
   sender: TRef.TRef<number>,
   much: number
-): Effect.Effect<never, never, number> =>
+): Effect<never, never, number> =>
   pipe(
     TRef.get(sender),
     STM.tap((balance) => STM.check(() => balance >= much)),
@@ -106,7 +106,7 @@ const compute3TRefN = (
   ref1: TRef.TRef<number>,
   ref2: TRef.TRef<number>,
   ref3: TRef.TRef<number>
-): Effect.Effect<never, never, number> =>
+): Effect<never, never, number> =>
   pipe(
     STM.all([TRef.get(ref1), TRef.get(ref2)]),
     STM.tap(([v1, v2]) => pipe(ref3, TRef.set(v1 + v2))),

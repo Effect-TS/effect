@@ -46,7 +46,7 @@ export declare const make: <Key, Environment, Error, Value>(options: {
   readonly capacity: number
   readonly timeToLive: Duration.DurationInput
   readonly lookup: Lookup<Key, Environment, Error, Value>
-}) => Effect.Effect<Environment, never, Cache<Key, Error, Value>>
+}) => Effect<Environment, never, Cache<Key, Error, Value>>
 ```
 
 Added in v2.0.0
@@ -92,7 +92,7 @@ export declare const makeWith: <Key, Environment, Error, Value>(options: {
   readonly capacity: number
   readonly lookup: Lookup<Key, Environment, Error, Value>
   readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
-}) => Effect.Effect<Environment, never, Cache<Key, Error, Value>>
+}) => Effect<Environment, never, Cache<Key, Error, Value>>
 ```
 
 Added in v2.0.0
@@ -127,14 +127,14 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it.
    */
-  get(key: Key): Effect.Effect<never, Error, Value>
+  get(key: Key): Effect<never, Error, Value>
 
   /**
    * Retrieves the value associated with the specified key if it exists as a left.
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it as a right.
    */
-  getEither(key: Key): Effect.Effect<never, Error, Either<Value, Value>>
+  getEither(key: Key): Effect<never, Error, Either<Value, Value>>
 
   /**
    * Computes the value associated with the specified key, with the lookup
@@ -145,12 +145,12 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * by the lookup function. Additionally, `refresh` always triggers the
    * lookup function, disregarding the last `Error`.
    */
-  refresh(key: Key): Effect.Effect<never, Error, void>
+  refresh(key: Key): Effect<never, Error, void>
 
   /**
    * Associates the specified value with the specified key in the cache.
    */
-  set<Key, Error, Value>(this: Cache<Key, Error, Value>, key: Key, value: Value): Effect.Effect<never, never, void>
+  set<Key, Error, Value>(this: Cache<Key, Error, Value>, key: Key, value: Value): Effect<never, never, void>
 }
 ```
 
@@ -187,64 +187,64 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect.Effect<never, Error, Option.Option<Value>>
+  getOption(key: Key): Effect<never, Error, Option.Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect.Effect<never, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect<never, never, Option.Option<Value>>
 
   /**
    * Returns statistics for this cache.
    */
-  cacheStats(): Effect.Effect<never, never, CacheStats>
+  cacheStats(): Effect<never, never, CacheStats>
 
   /**
    * Returns whether a value associated with the specified key exists in the
    * cache.
    */
-  contains(key: Key): Effect.Effect<never, never, boolean>
+  contains(key: Key): Effect<never, never, boolean>
 
   /**
    * Returns statistics for the specified entry.
    */
-  entryStats(key: Key): Effect.Effect<never, never, Option.Option<EntryStats>>
+  entryStats(key: Key): Effect<never, never, Option.Option<EntryStats>>
 
   /**
    * Invalidates the value associated with the specified key.
    */
-  invalidate(key: Key): Effect.Effect<never, never, void>
+  invalidate(key: Key): Effect<never, never, void>
 
   /**
    * Invalidates the value associated with the specified key if the predicate holds.
    */
-  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect.Effect<never, never, void>
+  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect<never, never, void>
 
   /**
    * Invalidates all values in the cache.
    */
-  invalidateAll(): Effect.Effect<never, never, void>
+  invalidateAll(): Effect<never, never, void>
 
   /**
    * Returns the approximate number of values in the cache.
    */
-  size(): Effect.Effect<never, never, number>
+  size(): Effect<never, never, number>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  keys<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect.Effect<never, never, Array<Key>>
+  keys<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect<never, never, Array<Key>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  values(): Effect.Effect<never, never, Array<Value>>
+  values(): Effect<never, never, Array<Value>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  entries<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect.Effect<never, never, Array<[Key, Value]>>
+  entries<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect<never, never, Array<[Key, Value]>>
 }
 ```
 
@@ -273,7 +273,7 @@ with an error of type `Error` using an environment of type `Environment`.
 **Signature**
 
 ```ts
-export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect.Effect<Environment, Error, Value>
+export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect<Environment, Error, Value>
 ```
 
 Added in v2.0.0
