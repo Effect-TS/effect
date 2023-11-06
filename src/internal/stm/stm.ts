@@ -642,7 +642,7 @@ export const fromOption = <A>(option: Option<A>): STM<never, Option<never>, A> =
 class STMGen {
   constructor(readonly value: STM<any, any, any>) {}
   [Symbol.iterator]() {
-    return new SingleShotGen.SingleShotGen(this)
+    return new SingleShotGen(this)
   }
 }
 

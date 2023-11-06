@@ -31,37 +31,41 @@ export const LoggerTypeId: unique symbol = internal.LoggerTypeId
  */
 export type LoggerTypeId = typeof LoggerTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
-  readonly log: (
-    options: {
-      readonly fiberId: FiberId
-      readonly logLevel: LogLevel
-      readonly message: Message
-      readonly cause: Cause<unknown>
-      readonly context: FiberRefs
-      readonly spans: List<LogSpan>
-      readonly annotations: HashMap<string, unknown>
-      readonly date: Date
-    }
-  ) => Output
-}
+export * as Logger from "./Logger.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Logger {
+declare module "./Logger.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Message, Output> {
-    readonly [LoggerTypeId]: {
-      readonly _Message: (_: Message) => void
-      readonly _Output: (_: never) => Output
+  export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
+    readonly log: (
+      options: {
+        readonly fiberId: FiberId
+        readonly logLevel: LogLevel
+        readonly message: Message
+        readonly cause: Cause<unknown>
+        readonly context: FiberRefs
+        readonly spans: List<LogSpan>
+        readonly annotations: HashMap<string, unknown>
+        readonly date: Date
+      }
+    ) => Output
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Logger {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<Message, Output> {
+      readonly [LoggerTypeId]: {
+        readonly _Message: (_: Message) => void
+        readonly _Output: (_: never) => Output
+      }
     }
   }
 }

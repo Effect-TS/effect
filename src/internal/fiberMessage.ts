@@ -3,8 +3,12 @@ import type { Effect } from "../Effect.js"
 import type { FiberStatus } from "../FiberStatus.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 
-/** @internal */
-export type FiberMessage = InterruptSignal | Stateful | Resume | YieldNow
+export * as FiberMessage from "./fiberMessage.js"
+
+declare module "./fiberMessage.js" {
+  /** @internal */
+  export type FiberMessage = InterruptSignal | Stateful | Resume | YieldNow
+}
 
 /** @internal */
 export const OP_INTERRUPT_SIGNAL = "InterruptSignal" as const

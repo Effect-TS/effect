@@ -29,7 +29,7 @@ import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isObject, type Predicate, type Refinement } from "../Predicate.js"
 import { ReadonlyArray } from "../ReadonlyArray.js"
 import type { Request } from "../Request.js"
-import type { BlockedRequests } from "../RequestBlock.js"
+import type { RequestBlock } from "../RequestBlock.js"
 import type { RequestResolver } from "../RequestResolver.js"
 import type { RuntimeFlags } from "../RuntimeFlags.js"
 import { RuntimeFlagsPatch } from "../RuntimeFlagsPatch.js"
@@ -81,7 +81,7 @@ export const makeEffectError = <E>(cause: Cause<E>): EffectError<E> => ({
  * @internal
  */
 export const blocked = <R, E, A>(
-  blockedRequests: BlockedRequests.RequestBlock<R>,
+  blockedRequests: RequestBlock<R>,
   _continue: Effect<R, E, A>
 ): Effect.Blocked<R, E, A> => {
   const effect = new EffectPrimitive("Blocked") as any
@@ -94,7 +94,7 @@ export const blocked = <R, E, A>(
  * @internal
  */
 export const runRequestBlock = <R>(
-  blockedRequests: BlockedRequests.RequestBlock<R>
+  blockedRequests: RequestBlock<R>
 ): Effect.Blocked<R, never, void> => {
   const effect = new EffectPrimitive("RunBlocked") as any
   effect.i0 = blockedRequests
@@ -270,7 +270,7 @@ export interface Async extends
 /** @internal */
 export interface Blocked<R = any, E = any, A = any> extends
   Op<"Blocked", {
-    readonly i0: BlockedRequests.RequestBlock<R>
+    readonly i0: RequestBlock<R>
     readonly i1: Effect<R, E, A>
   }>
 {}
@@ -278,7 +278,7 @@ export interface Blocked<R = any, E = any, A = any> extends
 /** @internal */
 export interface RunBlocked<R = any> extends
   Op<"RunBlocked", {
-    readonly i0: BlockedRequests.RequestBlock<R>
+    readonly i0: RequestBlock<R>
   }>
 {}
 
@@ -1658,15 +1658,15 @@ export const resolverLocally = dual<
 
 /** @internal */
 export const requestBlockLocally = <R, A>(
-  self: BlockedRequests.RequestBlock<R>,
+  self: RequestBlock<R>,
   ref: FiberRef<A>,
   value: A
-): BlockedRequests.RequestBlock<R> => _blockedRequests.reduce(self, LocallyReducer(ref, value))
+): RequestBlock<R> => _blockedRequests.reduce(self, LocallyReducer(ref, value))
 
 const LocallyReducer = <R, A>(
   ref: FiberRef<A>,
   value: A
-): BlockedRequests.RequestBlock.Reducer<R, BlockedRequests.RequestBlock<R>> => ({
+): RequestBlock.Reducer<R, RequestBlock<R>> => ({
   emptyCase: () => _blockedRequests.empty,
   parCase: (left, right) => _blockedRequests.par(left, right),
   seqCase: (left, right) => _blockedRequests.seq(left, right),

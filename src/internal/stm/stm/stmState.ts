@@ -4,7 +4,7 @@ import { pipe } from "../../../Function.js"
 import { Hash } from "../../../Hash.js"
 import { hasProperty } from "../../../Predicate.js"
 import * as OpCodes from "../opCodes/stmState.js"
-import { TExitOpCodes } from "../opCodes/tExit.js"
+import * as TExitOpCodes from "../opCodes/tExit.js"
 import type { TExit } from "./tExit.js"
 
 /** @internal */

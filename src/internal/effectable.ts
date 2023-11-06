@@ -6,7 +6,7 @@ import { Hash } from "../Hash.js"
 import { pipeArguments } from "../Pipeable.js"
 import type { Sink } from "../Sink.js"
 import type { Stream } from "../Stream.js"
-import { Data } from "./data.js"
+import * as Data from "./data.js"
 import * as OpCodes from "./opCodes/effect.js"
 import { moduleVersion } from "./version.js"
 

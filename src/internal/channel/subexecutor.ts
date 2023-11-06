@@ -6,10 +6,14 @@ import type { UpstreamPullRequest } from "../../UpstreamPullRequest.js"
 import type { UpstreamPullStrategy } from "../../UpstreamPullStrategy.js"
 import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
-/** @internal */
-export interface Subexecutor<R> {
-  close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined
-  enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R>
+export * as Subexecutor from "./subexecutor.js"
+
+declare module "./subexecutor.js" {
+  /** @internal */
+  export interface Subexecutor<R> {
+    close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined
+    enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R>
+  }
 }
 
 /** @internal */

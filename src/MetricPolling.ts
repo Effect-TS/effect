@@ -21,23 +21,27 @@ export const PollingMetricTypeId: unique symbol = internal.PollingMetricTypeId
  */
 export type PollingMetricTypeId = typeof PollingMetricTypeId
 
-/**
- * A `PollingMetric` is a combination of a metric and an effect that polls for
- * updates to the metric.
- *
- * @since 2.0.0
- * @category models
- */
-export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
-  readonly [PollingMetricTypeId]: PollingMetricTypeId
+export * as PollingMetric from "./MetricPolling.js"
+
+declare module "./MetricPolling.js" {
   /**
-   * The metric that this `PollingMetric` polls to update.
+   * A `PollingMetric` is a combination of a metric and an effect that polls for
+   * updates to the metric.
+   *
+   * @since 2.0.0
+   * @category models
    */
-  readonly metric: Metric<Type, In, Out>
-  /**
-   * An effect that polls a value that may be fed to the metric.
-   */
-  readonly poll: Effect<R, E, In>
+  export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
+    readonly [PollingMetricTypeId]: PollingMetricTypeId
+    /**
+     * The metric that this `PollingMetric` polls to update.
+     */
+    readonly metric: Metric<Type, In, Out>
+    /**
+     * An effect that polls a value that may be fed to the metric.
+     */
+    readonly poll: Effect<R, E, In>
+  }
 }
 
 /**

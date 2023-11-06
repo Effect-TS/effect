@@ -2,8 +2,12 @@ import type { TRef } from "../../../TRef.js"
 import { Entry } from "./entry.js"
 import type { TxnId } from "./txnId.js"
 
-/** @internal */
-export type Journal = Map<TRef<unknown>, Entry>
+export * as Journal from "./journal.js"
+
+declare module "./journal.js" {
+  /** @internal */
+  export type Journal = Map<TRef<unknown>, Entry>
+}
 
 /** @internal */
 export type Todo = () => unknown

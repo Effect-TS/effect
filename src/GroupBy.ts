@@ -20,32 +20,36 @@ export const GroupByTypeId: unique symbol = internal.GroupByTypeId
  */
 export type GroupByTypeId = typeof GroupByTypeId
 
-/**
- * Representation of a grouped stream. This allows to filter which groups will
- * be processed. Once this is applied all groups will be processed in parallel
- * and the results will be merged in arbitrary order.
- *
- * @since 2.0.0
- * @category models
- */
-export interface GroupBy<R, E, K, V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
-  readonly grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
-}
+export * as GroupBy from "./GroupBy.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace GroupBy {
+declare module "./GroupBy.js" {
   /**
+   * Representation of a grouped stream. This allows to filter which groups will
+   * be processed. Once this is applied all groups will be processed in parallel
+   * and the results will be merged in arbitrary order.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, E, K, V> {
-    readonly [GroupByTypeId]: {
-      readonly _R: (_: never) => R
-      readonly _E: (_: never) => E
-      readonly _K: (_: never) => K
-      readonly _V: (_: never) => V
+  export interface GroupBy<R, E, K, V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
+    readonly grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace GroupBy {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<R, E, K, V> {
+      readonly [GroupByTypeId]: {
+        readonly _R: (_: never) => R
+        readonly _E: (_: never) => E
+        readonly _K: (_: never) => K
+        readonly _V: (_: never) => V
+      }
     }
   }
 }

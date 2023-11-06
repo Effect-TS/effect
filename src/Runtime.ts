@@ -30,24 +30,27 @@ export interface AsyncFiberException<E, A> {
 export interface Cancel<E, A> {
   (fiberId?: FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
+export * as Runtime from "./Runtime.js"
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Runtime<R> extends Pipeable {
+declare module "./Runtime.js" {
   /**
-   * The context used as initial for forks
+   * @since 2.0.0
+   * @category models
    */
-  readonly context: Context<R>
-  /**
-   * The runtime flags used as initial for forks
-   */
-  readonly runtimeFlags: RuntimeFlags
-  /**
-   * The fiber references used as initial for forks
-   */
-  readonly fiberRefs: FiberRefs
+  export interface Runtime<R> extends Pipeable {
+    /**
+     * The context used as initial for forks
+     */
+    readonly context: Context<R>
+    /**
+     * The runtime flags used as initial for forks
+     */
+    readonly runtimeFlags: RuntimeFlags
+    /**
+     * The fiber references used as initial for forks
+     */
+    readonly fiberRefs: FiberRefs
+  }
 }
 
 /**

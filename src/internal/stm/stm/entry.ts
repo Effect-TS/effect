@@ -1,13 +1,17 @@
 import type { TRef } from "../../../TRef.js"
 import { Versioned } from "./versioned.js"
 
-/** @internal */
-export interface Entry {
-  readonly ref: TRef<unknown>
-  readonly expected: Versioned<unknown>
-  isChanged: boolean
-  readonly isNew: boolean
-  newValue: unknown
+export * as Entry from "./entry.js"
+
+declare module "./entry.js" {
+  /** @internal */
+  export interface Entry {
+    readonly ref: TRef<unknown>
+    readonly expected: Versioned<unknown>
+    isChanged: boolean
+    readonly isNew: boolean
+    newValue: unknown
+  }
 }
 
 /** @internal */
@@ -31,7 +35,7 @@ export const unsafeSet = (self: Entry, value: unknown): void => {
 
 /** @internal */
 export const commit = (self: Entry): void => {
-  self.ref.versioned = new Versioned.Versioned(self.newValue)
+  self.ref.versioned = new Versioned(self.newValue)
 }
 
 /** @internal */

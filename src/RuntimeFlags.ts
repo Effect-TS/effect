@@ -8,16 +8,20 @@ import * as internal from "./internal/runtimeFlags.js"
 import type { Layer } from "./Layer.js"
 import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
 
-/**
- * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of
- * the Effect runtime system. They are exposed to application-level code because
- * they affect the behavior and performance of application code.
- *
- * @since 2.0.0
- * @category models
- */
-export type RuntimeFlags = number & {
-  readonly RuntimeFlags: unique symbol
+export * as RuntimeFlags from "./RuntimeFlags.js"
+
+declare module "./RuntimeFlags.js" {
+  /**
+   * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of
+   * the Effect runtime system. They are exposed to application-level code because
+   * they affect the behavior and performance of application code.
+   *
+   * @since 2.0.0
+   * @category models
+   */
+  export type RuntimeFlags = number & {
+    readonly RuntimeFlags: unique symbol
+  }
 }
 
 /**
