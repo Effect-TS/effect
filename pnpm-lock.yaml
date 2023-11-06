@@ -26,9 +26,6 @@ devDependencies:
   '@edge-runtime/vm':
     specifier: ^3.1.6
     version: 3.1.6
-  '@effect/build-utils':
-    specifier: link:../build-utils/dist
-    version: link:../build-utils/dist
   '@effect/docgen':
     specifier: ^0.3.0
     version: 0.3.0(fast-check@3.13.2)(tsx@3.14.0)(typescript@5.2.2)
@@ -41,6 +38,9 @@ devDependencies:
   '@effect/language-service':
     specifier: ^0.0.21
     version: 0.0.21
+  '@fubhy/build-utils':
+    specifier: ^0.2.0
+    version: 0.2.0
   '@types/node':
     specifier: ^20.8.4
     version: 20.8.9
@@ -937,6 +937,12 @@ packages:
   /@eslint/js@8.52.0:
     resolution: {integrity: sha512-mjZVbpaeMZludF2fsWLD0Z9gCref1Tk4i9+wddjRvpUNqqcndPkBD09N/Mapey0b3jaXbLm2kICwFv2E64QinA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    dev: true
+
+  /@fubhy/build-utils@0.2.0:
+    resolution: {integrity: sha512-lrKuH8mTdLk9o+q0l6TNyS69PRXYfaaLZUV8mYI5hTCS6Sg3THKDkusFj39FCUBzGiMjZbgjix5RdCtFKbEiXw==}
+    engines: {node: '>=16.17.1'}
+    hasBin: true
     dev: true
 
   /@humanwhocodes/config-array@0.11.13:
