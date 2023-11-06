@@ -1,5 +1,5 @@
 import * as it from "effect-test/utils/extend"
-import { Effect } from "src/Effect"
+import { Effect } from "effect/Effect"
 
 export type TestType = Effect<never, never, number>
 
