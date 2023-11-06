@@ -5,7 +5,7 @@ import { PubSub } from "../PubSub.js"
 import { Ref } from "../Ref.js"
 import type { Stream } from "../Stream.js"
 import type { SubscriptionRef } from "../SubscriptionRef.js"
-import { Synchronized } from "../SynchronizedRef.js"
+import { SynchronizedRef } from "../SynchronizedRef.js"
 import * as _circular from "./effect/circular.js"
 import * as _ref from "./ref.js"
 import * as stream from "./stream.js"
@@ -28,7 +28,7 @@ class SubscriptionRefImpl<A> implements SubscriptionRef<A> {
   // @ts-ignore
   readonly [Ref.RefTypeId] = _ref.refVariance
   // @ts-ignore
-  readonly [Synchronized.SynchronizedRefTypeId] = _circular.synchronizedVariance
+  readonly [SynchronizedRef.SynchronizedRefTypeId] = _circular.synchronizedVariance
   readonly [SubscriptionRefTypeId] = subscriptionRefVariance
   constructor(
     readonly ref: Ref<A>,

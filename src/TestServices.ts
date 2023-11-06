@@ -44,7 +44,7 @@ export const liveServices: Context<TestServices> = pipe(
   Context.make(Annotations.TestAnnotations, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
   Context.add(Live.TestLive, Live.make(defaultServices.liveServices)),
   Context.add(Sized.TestSized, Sized.make(100)),
-  Context.add(TestConfig, TestConfig.make({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
+  Context.add(TestConfig.Tag, TestConfig.make({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
 )
 
 /**
@@ -311,7 +311,7 @@ export const testConfigWith = <R, E, A>(
 ): Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
-    (services) => f(Context.get(services, TestConfig))
+    (services) => f(Context.get(services, TestConfig.Tag))
   )
 
 /**
@@ -333,7 +333,7 @@ export const withTestConfig = dual<
 >(2, (effect, config) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(TestConfig, config)
+    Context.add(TestConfig.Tag, config)
   )(effect))
 
 /**
@@ -343,7 +343,7 @@ export const withTestConfig = dual<
  * @since 2.0.0
  */
 export const withTestConfigScoped = (config: TestConfig): Effect<Scope, never, void> =>
-  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(TestConfig, config))
+  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(TestConfig.Tag, config))
 
 /**
  * Constructs a new `TestConfig` service with the specified settings.
@@ -357,7 +357,7 @@ export const testConfigLayer = (params: {
   readonly shrinks: number
 }): Layer<never, never, TestConfig> =>
   layer.scoped(
-    TestConfig,
+    TestConfig.Tag,
     Effect.suspend(() => {
       const testConfig = TestConfig.make(params)
       return pipe(

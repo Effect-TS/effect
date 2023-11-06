@@ -1,6 +1,6 @@
 import { Chunk } from "../../Chunk.js"
 import type { Differ } from "../../Differ.js"
-import { Dual } from "../../Function.js"
+import { dual } from "../../Function.js"
 import { HashSet } from "../../HashSet.js"
 import { Structural } from "../data.js"
 
@@ -117,7 +117,7 @@ export const diff = <Value>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Value>(
     that: Differ.HashSet.Patch<Value>
   ) => (
@@ -130,7 +130,7 @@ export const combine = Dual.dual<
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Value>(
     oldValue: HashSet<Value>
   ) => (

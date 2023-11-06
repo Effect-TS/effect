@@ -1,7 +1,7 @@
 import { Chunk } from "../../Chunk.js"
 import type { Differ } from "../../Differ.js"
 import { Equal } from "../../Equal.js"
-import { Dual } from "../../Function.js"
+import { dual } from "../../Function.js"
 import { HashMap } from "../../HashMap.js"
 import { Structural } from "../data.js"
 
@@ -149,7 +149,7 @@ export const diff = <Key, Value, Patch>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Key, Value, Patch>(
     that: Differ.HashMap.Patch<Key, Value, Patch>
   ) => (
@@ -162,7 +162,7 @@ export const combine = Dual.dual<
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Key, Value, Patch>(
     oldValue: HashMap<Key, Value>,
     differ: Differ<Value, Patch>

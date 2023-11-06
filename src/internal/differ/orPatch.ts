@@ -3,7 +3,7 @@ import type { Differ } from "../../Differ.js"
 import type { Either } from "../../Either.js"
 import * as E from "../../Either.js"
 import { Equal } from "../../Equal.js"
-import { Dual } from "../../Function.js"
+import { dual } from "../../Function.js"
 import { Structural } from "../data.js"
 
 /** @internal */
@@ -215,7 +215,7 @@ export const diff = <Value, Value2, Patch, Patch2>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Value, Value2, Patch, Patch2>(
     that: Differ.Or.Patch<Value, Value2, Patch, Patch2>
   ) => (
@@ -228,7 +228,7 @@ export const combine = Dual.dual<
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Value, Value2, Patch, Patch2>(
     options: {
       readonly oldValue: Either<Value, Value2>

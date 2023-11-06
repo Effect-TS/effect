@@ -1,8 +1,7 @@
 import { Chunk } from "../../Chunk.js"
 import type { Differ } from "../../Differ.js"
 import { Equal } from "../../Equal.js"
-import { Dual } from "../../Function.js"
-import { pipe } from "../../Function.js"
+import { dual, pipe } from "../../Function.js"
 import { Data } from "../data.js"
 
 /** @internal */
@@ -142,7 +141,7 @@ export const diff = <Value, Patch>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Value, Patch>(
     that: Differ.Chunk.Patch<Value, Patch>
   ) => (
@@ -155,7 +154,7 @@ export const combine = Dual.dual<
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Value, Patch>(
     oldValue: Chunk<Value>,
     differ: Differ<Value, Patch>

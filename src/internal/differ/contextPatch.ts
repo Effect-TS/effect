@@ -2,7 +2,7 @@ import { Chunk } from "../../Chunk.js"
 import type { Context, Tag } from "../../Context.js"
 import type { Differ } from "../../Differ.js"
 import { Equal } from "../../Equal.js"
-import { Dual } from "../../Function.js"
+import { dual } from "../../Function.js"
 import { makeContext } from "../context.js"
 import { Structural } from "../data.js"
 
@@ -153,7 +153,7 @@ export const diff = <Input, Output>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Output, Output2>(
     that: Differ.Context.Patch<Output, Output2>
   ) => <Input>(
@@ -166,7 +166,7 @@ export const combine = Dual.dual<
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Input>(
     context: Context<Input>
   ) => <Output>(

@@ -3,15 +3,14 @@ import type { Context } from "../Context.js"
 import type { Differ } from "../Differ.js"
 import type { Either } from "../Either.js"
 import { Equal } from "../Equal.js"
-import { Dual } from "../Function.js"
-import { constant, identity } from "../Function.js"
+import { constant, dual, identity } from "../Function.js"
 import type { HashMap } from "../HashMap.js"
 import type { HashSet } from "../HashSet.js"
-import { ChunkPatch } from "./differ/chunkPatch.js"
-import { ContextPatch } from "./differ/contextPatch.js"
-import { HashMapPatch } from "./differ/hashMapPatch.js"
-import { HashSetPatch } from "./differ/hashSetPatch.js"
-import { OrPatch } from "./differ/orPatch.js"
+import * as ChunkPatch from "./differ/chunkPatch.js"
+import * as ContextPatch from "./differ/contextPatch.js"
+import * as HashMapPatch from "./differ/hashMapPatch.js"
+import * as HashSetPatch from "./differ/hashSetPatch.js"
+import * as OrPatch from "./differ/orPatch.js"
 
 /** @internal */
 export const DifferTypeId: Differ.TypeId = Symbol.for("effect/Differ") as Differ.TypeId
@@ -82,7 +81,7 @@ export const hashSet = <Value>(): Differ<HashSet<Value>, Differ.HashSet.Patch<Va
   })
 
 /** @internal */
-export const orElseEither = Dual.dual<
+export const orElseEither = dual<
   <Value2, Patch2>(that: Differ<Value2, Patch2>) => <Value, Patch>(
     self: Differ<Value, Patch>
   ) => Differ<Either<Value, Value2>, Differ.Or.Patch<Value, Value2, Patch, Patch2>>,
@@ -110,7 +109,7 @@ export const orElseEither = Dual.dual<
   }))
 
 /** @internal */
-export const transform = Dual.dual<
+export const transform = dual<
   <Value, Value2>(
     options: {
       readonly toNew: (value: Value) => Value2
@@ -158,7 +157,7 @@ export const updateWith = <A>(f: (x: A, y: A) => A): Differ<A, (a: A) => A> =>
   })
 
 /** @internal */
-export const zip = Dual.dual<
+export const zip = dual<
   <Value2, Patch2>(that: Differ<Value2, Patch2>) => <Value, Patch>(
     self: Differ<Value, Patch>
   ) => Differ<readonly [Value, Value2], readonly [Patch, Patch2]>,

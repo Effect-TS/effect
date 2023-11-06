@@ -21,37 +21,41 @@ export const TPriorityQueueTypeId: unique symbol = internal.TPriorityQueueTypeId
  */
 export type TPriorityQueueTypeId = typeof TPriorityQueueTypeId
 
-/**
- * A `TPriorityQueue` contains values of type `A` that an `Order` is defined
- * on. Unlike a `TQueue`, `take` returns the highest priority value (the value
- * that is first in the specified ordering) as opposed to the first value
- * offered to the queue. The ordering that elements with the same priority will
- * be taken from the queue is not guaranteed.
- *
- * @since 2.0.0
- * @category models
- */
-export interface TPriorityQueue<A> extends TPriorityQueue.Variance<A> {}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TPriorityQueue<A> {
-  /** @internal */
-  readonly ref: TRef<SortedMap<A, [A, ...Array<A>]>>
-}
+export * as TPriorityQueue from "./TPriorityQueue.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace TPriorityQueue {
+declare module "./TPriorityQueue.js" {
   /**
+   * A `TPriorityQueue` contains values of type `A` that an `Order` is defined
+   * on. Unlike a `TQueue`, `take` returns the highest priority value (the value
+   * that is first in the specified ordering) as opposed to the first value
+   * offered to the queue. The ordering that elements with the same priority will
+   * be taken from the queue is not guaranteed.
+   *
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
-    readonly [TPriorityQueueTypeId]: {
-      readonly _A: (_: never) => A
+  export interface TPriorityQueue<A> extends TPriorityQueue.Variance<A> {}
+  /**
+   * @internal
+   * @since 2.0.0
+   */
+  export interface TPriorityQueue<A> {
+    /** @internal */
+    readonly ref: TRef<SortedMap<A, [A, ...Array<A>]>>
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace TPriorityQueue {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<A> {
+      readonly [TPriorityQueueTypeId]: {
+        readonly _A: (_: never) => A
+      }
     }
   }
 }

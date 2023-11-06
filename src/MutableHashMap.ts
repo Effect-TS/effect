@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import { Dual } from "./Function.js"
+import { dual } from "./Function.js"
 import { HashMap } from "./HashMap.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import { MutableRef } from "./MutableRef.js"
@@ -17,15 +17,19 @@ const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
+export * as MutableHashMap from "./MutableHashMap.js"
 
-  /** @internal */
-  readonly backingMap: MutableRef<HashMap<K, V>>
+declare module "./MutableHashMap.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+
+    /** @internal */
+    readonly backingMap: MutableRef<HashMap<K, V>>
+  }
 }
 
 const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backingMap"> = {
@@ -87,7 +91,7 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): MutableH
 export const get: {
   <K>(key: K): <V>(self: MutableHashMap<K, V>) => Option<V>
   <K, V>(self: MutableHashMap<K, V>, key: K): Option<V>
-} = Dual.dual<
+} = dual<
   <K>(key: K) => <V>(self: MutableHashMap<K, V>) => Option<V>,
   <K, V>(self: MutableHashMap<K, V>, key: K) => Option<V>
 >(2, <K, V>(self: MutableHashMap<K, V>, key: K) => HashMap.get(self.backingMap.current, key))
@@ -99,7 +103,7 @@ export const get: {
 export const has: {
   <K>(key: K): <V>(self: MutableHashMap<K, V>) => boolean
   <K, V>(self: MutableHashMap<K, V>, key: K): boolean
-} = Dual.dual<
+} = dual<
   <K>(key: K) => <V>(self: MutableHashMap<K, V>) => boolean,
   <K, V>(self: MutableHashMap<K, V>, key: K) => boolean
 >(2, (self, key) => Option.isSome(get(self, key)))
@@ -112,7 +116,7 @@ export const has: {
 export const modify: {
   <K, V>(key: K, f: (v: V) => V): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
   <K, V>(self: MutableHashMap<K, V>, key: K, f: (v: V) => V): MutableHashMap<K, V>
-} = Dual.dual<
+} = dual<
   <K, V>(key: K, f: (v: V) => V) => (self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
   <K, V>(self: MutableHashMap<K, V>, key: K, f: (v: V) => V) => MutableHashMap<K, V>
 >(
@@ -132,7 +136,7 @@ export const modify: {
 export const modifyAt: {
   <K, V>(key: K, f: (value: Option<V>) => Option<V>): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
   <K, V>(self: MutableHashMap<K, V>, key: K, f: (value: Option<V>) => Option<V>): MutableHashMap<K, V>
-} = Dual.dual<
+} = dual<
   <K, V>(
     key: K,
     f: (value: Option<V>) => Option<V>
@@ -158,7 +162,7 @@ export const modifyAt: {
 export const remove: {
   <K>(key: K): <V>(self: MutableHashMap<K, V>) => MutableHashMap<K, V>
   <K, V>(self: MutableHashMap<K, V>, key: K): MutableHashMap<K, V>
-} = Dual.dual<
+} = dual<
   <K>(key: K) => <V>(self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
   <K, V>(self: MutableHashMap<K, V>, key: K) => MutableHashMap<K, V>
 >(2, <K, V>(self: MutableHashMap<K, V>, key: K) => {
@@ -172,7 +176,7 @@ export const remove: {
 export const set: {
   <K, V>(key: K, value: V): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
   <K, V>(self: MutableHashMap<K, V>, key: K, value: V): MutableHashMap<K, V>
-} = Dual.dual<
+} = dual<
   <K, V>(key: K, value: V) => (self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
   <K, V>(self: MutableHashMap<K, V>, key: K, value: V) => MutableHashMap<K, V>
 >(3, <K, V>(self: MutableHashMap<K, V>, key: K, value: V) => {
