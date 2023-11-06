@@ -20,46 +20,50 @@ export const TRandomTypeId: unique symbol = internal.TRandomTypeId
  */
 export type TRandomTypeId = typeof TRandomTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface TRandom {
-  readonly [TRandomTypeId]: TRandomTypeId
+export * as TRandom from "./TRandom.js"
+
+declare module "./TRandom.js" {
   /**
-   * Returns the next numeric value from the pseudo-random number generator.
+   * @since 2.0.0
+   * @category models
    */
-  readonly next: STM<never, never, number>
+  export interface TRandom {
+    readonly [TRandomTypeId]: TRandomTypeId
+    /**
+     * Returns the next numeric value from the pseudo-random number generator.
+     */
+    readonly next: STM<never, never, number>
+    /**
+     * Returns the next boolean value from the pseudo-random number generator.
+     */
+    readonly nextBoolean: STM<never, never, boolean>
+    /**
+     * Returns the next integer value from the pseudo-random number generator.
+     */
+    readonly nextInt: STM<never, never, number>
+    /**
+     * Returns the next numeric value in the specified range from the
+     * pseudo-random number generator.
+     */
+    nextRange(min: number, max: number): STM<never, never, number>
+    /**
+     * Returns the next integer value in the specified range from the
+     * pseudo-random number generator.
+     */
+    nextIntBetween(min: number, max: number): STM<never, never, number>
+    /**
+     * Uses the pseudo-random number generator to shuffle the specified iterable.
+     */
+    shuffle<A>(elements: Iterable<A>): STM<never, never, Array<A>>
+  }
   /**
-   * Returns the next boolean value from the pseudo-random number generator.
+   * @internal
+   * @since 2.0.0
    */
-  readonly nextBoolean: STM<never, never, boolean>
-  /**
-   * Returns the next integer value from the pseudo-random number generator.
-   */
-  readonly nextInt: STM<never, never, number>
-  /**
-   * Returns the next numeric value in the specified range from the
-   * pseudo-random number generator.
-   */
-  nextRange(min: number, max: number): STM<never, never, number>
-  /**
-   * Returns the next integer value in the specified range from the
-   * pseudo-random number generator.
-   */
-  nextIntBetween(min: number, max: number): STM<never, never, number>
-  /**
-   * Uses the pseudo-random number generator to shuffle the specified iterable.
-   */
-  shuffle<A>(elements: Iterable<A>): STM<never, never, Array<A>>
-}
-/**
- * @internal
- * @since 2.0.0
- */
-export interface TRandom {
-  /** @internal */
-  readonly state: TRef<Random.PCGRandomState>
+  export interface TRandom {
+    /** @internal */
+    readonly state: TRef<Random.PCGRandomState>
+  }
 }
 
 /**

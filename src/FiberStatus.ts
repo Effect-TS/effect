@@ -18,11 +18,15 @@ export const FiberStatusTypeId: unique symbol = internal.FiberStatusTypeId
  */
 export type FiberStatusTypeId = typeof FiberStatusTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export type FiberStatus = Done | Running | Suspended
+export * as FiberStatus from "./FiberStatus.js"
+
+declare module "./FiberStatus.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type FiberStatus = Done | Running | Suspended
+}
 
 /**
  * @since 2.0.0
@@ -70,8 +74,7 @@ export const running: (runtimeFlags: RuntimeFlags) => FiberStatus = internal.run
  * @since 2.0.0
  * @category constructors
  */
-export const suspended: (runtimeFlags: RuntimeFlags, blockingOn: FiberId) => FiberStatus =
-  internal.suspended
+export const suspended: (runtimeFlags: RuntimeFlags, blockingOn: FiberId) => FiberStatus = internal.suspended
 
 /**
  * Returns `true` if the specified value is a `FiberStatus`, `false` otherwise.

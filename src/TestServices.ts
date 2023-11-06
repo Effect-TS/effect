@@ -22,14 +22,18 @@ import { TestConfig } from "./TestConfig.js"
 import { Live } from "./TestLive.js"
 import { Sized } from "./TestSized.js"
 
-/**
- * @since 2.0.0
- */
-export type TestServices =
-  | Annotations.TestAnnotations
-  | Live.TestLive
-  | Sized.TestSized
-  | TestConfig
+export * as TestServices from "./TestServices.js"
+
+declare module "./TestServices.js" {
+  /**
+   * @since 2.0.0
+   */
+  export type TestServices =
+    | Annotations.TestAnnotations
+    | Live.TestLive
+    | Sized.TestSized
+    | TestConfig
+}
 
 /**
  * The default Effect test services.

@@ -15,15 +15,19 @@ export const TestAnnotationMapTypeId = Symbol.for("effect/TestAnnotationMap")
  */
 export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 
-/**
- * An annotation map keeps track of annotations of different types.
- *
- * @since 2.0.0
- */
-export interface TestAnnotationMap {
-  readonly [TestAnnotationMapTypeId]: TestAnnotationMapTypeId
-  /** @internal */
-  readonly map: ReadonlyMap<TestAnnotation<unknown>, unknown>
+export * as TestAnnotationMap from "./TestAnnotationMap.js"
+
+declare module "./TestAnnotationMap.js" {
+  /**
+   * An annotation map keeps track of annotations of different types.
+   *
+   * @since 2.0.0
+   */
+  export interface TestAnnotationMap {
+    readonly [TestAnnotationMapTypeId]: TestAnnotationMapTypeId
+    /** @internal */
+    readonly map: ReadonlyMap<TestAnnotation<unknown>, unknown>
+  }
 }
 
 /** @internal */

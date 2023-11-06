@@ -24,14 +24,19 @@ const bigint1e9 = BigInt(1_000_000_000)
  */
 export type TypeId = typeof TypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Duration extends Equal, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
-  readonly value: DurationValue
+export * as Duration from "./Duration.js"
+
+declare module "./Duration.js" {
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface Duration extends Equal, Pipeable, Inspectable {
+    readonly [TypeId]: TypeId
+    readonly value: DurationValue
+  }
 }
+
 /**
  * @since 2.0.0
  * @category models

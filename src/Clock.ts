@@ -19,35 +19,39 @@ export const ClockTypeId: unique symbol = internal.ClockTypeId
  */
 export type ClockTypeId = typeof ClockTypeId
 
-/**
- * Represents a time-based clock which provides functionality related to time
- * and scheduling.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Clock {
-  readonly [ClockTypeId]: ClockTypeId
+export * as Clock from "./Clock.js"
+
+declare module "./Clock.js" {
   /**
-   * Unsafely returns the current time in milliseconds.
+   * Represents a time-based clock which provides functionality related to time
+   * and scheduling.
+   *
+   * @since 2.0.0
+   * @category models
    */
-  unsafeCurrentTimeMillis(): number
-  /**
-   * Returns the current time in milliseconds.
-   */
-  readonly currentTimeMillis: Effect<never, never, number>
-  /**
-   * Unsafely returns the current time in nanoseconds.
-   */
-  unsafeCurrentTimeNanos(): bigint
-  /**
-   * Returns the current time in nanoseconds.
-   */
-  readonly currentTimeNanos: Effect<never, never, bigint>
-  /**
-   * Asynchronously sleeps for the specified duration.
-   */
-  sleep(duration: Duration): Effect<never, never, void>
+  export interface Clock {
+    readonly [ClockTypeId]: ClockTypeId
+    /**
+     * Unsafely returns the current time in milliseconds.
+     */
+    unsafeCurrentTimeMillis(): number
+    /**
+     * Returns the current time in milliseconds.
+     */
+    readonly currentTimeMillis: Effect<never, never, number>
+    /**
+     * Unsafely returns the current time in nanoseconds.
+     */
+    unsafeCurrentTimeNanos(): bigint
+    /**
+     * Returns the current time in nanoseconds.
+     */
+    readonly currentTimeNanos: Effect<never, never, bigint>
+    /**
+     * Asynchronously sleeps for the specified duration.
+     */
+    sleep(duration: Duration): Effect<never, never, void>
+  }
 }
 
 /**
@@ -107,4 +111,4 @@ export const clockWith: <R, E, A>(f: (clock: Clock) => Effect<R, E, A>) => Effec
  * @since 2.0.0
  * @category context
  */
-export const Clock: Context.Tag<Clock, Clock> = internal.clockTag
+export const Tag: Context.Tag<Clock, Clock> = internal.clockTag

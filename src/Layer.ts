@@ -54,42 +54,48 @@ export const LayerTypeId: unique symbol = internal.LayerTypeId
  */
 export type LayerTypeId = typeof LayerTypeId
 
-/**
- * @since 2.0.0
- * @category models
- */
-export interface Layer<RIn, E, ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
+export * as Layer from "./Layer.js"
 
-/**
- * @since 2.0.0
- */
-export declare namespace Layer {
+declare module "./Layer.js" {
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<RIn, E, ROut> {
-    readonly [LayerTypeId]: {
-      readonly _RIn: (_: never) => RIn
-      readonly _E: (_: never) => E
-      readonly _ROut: (_: ROut) => void
+  export interface Layer<RIn, E, ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
+
+  /**
+   * @since 2.0.0
+   */
+  export namespace Layer {
+    /**
+     * @since 2.0.0
+     * @category models
+     */
+    export interface Variance<RIn, E, ROut> {
+      readonly [LayerTypeId]: {
+        readonly _RIn: (_: never) => RIn
+        readonly _E: (_: never) => E
+        readonly _ROut: (_: ROut) => void
+      }
     }
+    /**
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Context<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _R
+      : never
+    /**
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Error<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _E : never
+    /**
+     * @since 2.0.0
+     * @category type-level
+     */
+    export type Success<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _A
+      : never
   }
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Context<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _R : never
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Error<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _E : never
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Success<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _A : never
 }
 
 /**
@@ -226,8 +232,7 @@ export const effectDiscard: <R, E, _>(effect: Effect<R, E, _>) => Layer<R, E, ne
  * @since 2.0.0
  * @category constructors
  */
-export const effectContext: <R, E, A>(effect: Effect<R, E, Context<A>>) => Layer<R, E, A> =
-  internal.fromEffectContext
+export const effectContext: <R, E, A>(effect: Effect<R, E, Context<A>>) => Layer<R, E, A> = internal.fromEffectContext
 
 /**
  * Extends the scope of this layer, returning a new layer that when provided
