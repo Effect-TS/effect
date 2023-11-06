@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import * as Dual from "./Function"
-import { NodeInspectSymbol, toJSON, toString } from "./Inspectable"
-import type { Inspectable } from "./Inspectable"
-import type { Pipeable } from "./Pipeable"
-import { pipeArguments } from "./Pipeable"
+import * as Dual from "./Function.js"
+import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import type { Inspectable } from "./Inspectable.js"
+import type { Pipeable } from "./Pipeable.js"
+import { pipeArguments } from "./Pipeable.js"
 
 const TypeId: unique symbol = Symbol.for("effect/MutableList") as TypeId
 

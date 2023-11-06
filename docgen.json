@@ -2,21 +2,5 @@
     "$schema": "node_modules/@effect/docgen/schema.json",
     "exclude": [
         "src/internal/**/*.ts"
-    ],
-    "parseCompilerOptions": {
-        "strict": true,
-        "noEmit": true,
-        "target": "ES2021",
-        "lib": [
-            "ES2021"
-        ]
-    },
-    "examplesCompilerOptions": {
-        "strict": true,
-        "noEmit": true,
-        "target": "ES2021",
-        "lib": [
-            "ES2021"
-        ]
-    }
+    ]
 }

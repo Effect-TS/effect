@@ -1,6 +1,6 @@
 ---
 title: LogLevel.ts
-nav_order: 56
+nav_order: 50
 parent: Modules
 ---
 
@@ -171,8 +171,8 @@ Added in v2.0.0
 
 ```ts
 export interface All extends Pipeable {
-  readonly _tag: 'All'
-  readonly label: 'ALL'
+  readonly _tag: "All"
+  readonly label: "ALL"
   readonly syslog: 0
   readonly ordinal: number
 }
@@ -186,8 +186,8 @@ Added in v2.0.0
 
 ```ts
 export interface Debug extends Pipeable {
-  readonly _tag: 'Debug'
-  readonly label: 'DEBUG'
+  readonly _tag: "Debug"
+  readonly label: "DEBUG"
   readonly syslog: 7
   readonly ordinal: number
 }
@@ -201,8 +201,8 @@ Added in v2.0.0
 
 ```ts
 export interface Error extends Pipeable {
-  readonly _tag: 'Error'
-  readonly label: 'ERROR'
+  readonly _tag: "Error"
+  readonly label: "ERROR"
   readonly syslog: 3
   readonly ordinal: number
 }
@@ -216,8 +216,8 @@ Added in v2.0.0
 
 ```ts
 export interface Fatal extends Pipeable {
-  readonly _tag: 'Fatal'
-  readonly label: 'FATAL'
+  readonly _tag: "Fatal"
+  readonly label: "FATAL"
   readonly syslog: 2
   readonly ordinal: number
 }
@@ -231,8 +231,8 @@ Added in v2.0.0
 
 ```ts
 export interface Info extends Pipeable {
-  readonly _tag: 'Info'
-  readonly label: 'INFO'
+  readonly _tag: "Info"
+  readonly label: "INFO"
   readonly syslog: 6
   readonly ordinal: number
 }
@@ -245,7 +245,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Literal = LogLevel['_tag']
+export type Literal = LogLevel["_tag"]
 ```
 
 Added in v2.0.0
@@ -271,8 +271,8 @@ Added in v2.0.0
 
 ```ts
 export interface None extends Pipeable {
-  readonly _tag: 'None'
-  readonly label: 'OFF'
+  readonly _tag: "None"
+  readonly label: "OFF"
   readonly syslog: 7
   readonly ordinal: number
 }
@@ -286,8 +286,8 @@ Added in v2.0.0
 
 ```ts
 export interface Trace extends Pipeable {
-  readonly _tag: 'Trace'
-  readonly label: 'TRACE'
+  readonly _tag: "Trace"
+  readonly label: "TRACE"
   readonly syslog: 7
   readonly ordinal: number
 }
@@ -301,8 +301,8 @@ Added in v2.0.0
 
 ```ts
 export interface Warning extends Pipeable {
-  readonly _tag: 'Warning'
-  readonly label: 'WARN'
+  readonly _tag: "Warning"
+  readonly label: "WARN"
   readonly syslog: 4
   readonly ordinal: number
 }

@@ -1,10 +1,10 @@
-import type * as Cause from "../Cause"
-import type * as ConfigError from "../ConfigError"
-import * as Either from "../Either"
-import { constFalse, constTrue, dual, pipe } from "../Function"
-import * as OpCodes from "../internal/opCodes/configError"
-import { hasProperty } from "../Predicate"
-import * as RA from "../ReadonlyArray"
+import type * as Cause from "../Cause.js"
+import type * as ConfigError from "../ConfigError.js"
+import * as Either from "../Either.js"
+import { constFalse, constTrue, dual, pipe } from "../Function.js"
+import { hasProperty } from "../Predicate.js"
+import * as RA from "../ReadonlyArray.js"
+import * as OpCodes from "./opCodes/configError.js"
 
 /** @internal */
 const ConfigErrorSymbolKey = "effect/ConfigError"

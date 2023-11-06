@@ -1,6 +1,6 @@
 ---
 title: Effect.ts
-nav_order: 29
+nav_order: 23
 parent: Modules
 ---
 
@@ -509,14 +509,13 @@ cached value before the `timeToLive` duration expires.
 
 ```ts
 export declare const cachedInvalidateWithTTL: {
-  (timeToLive: Duration.DurationInput): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, never, [Effect<never, E, A>, Effect<never, never, void>]>
-  <R, E, A>(self: Effect<R, E, A>, timeToLive: Duration.DurationInput): Effect<
-    R,
-    never,
-    [Effect<never, E, A>, Effect<never, never, void>]
-  >
+  (
+    timeToLive: Duration.DurationInput
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, [Effect<never, E, A>, Effect<never, never, void>]>
+  <R, E, A>(
+    self: Effect<R, E, A>,
+    timeToLive: Duration.DurationInput
+  ): Effect<R, never, [Effect<never, E, A>, Effect<never, never, void>]>
 }
 ```
 
@@ -552,13 +551,13 @@ export declare const once: <R, E, A>(self: Effect<R, E, A>) => Effect<never, nev
 **Example**
 
 ```ts
-import * as Effect from 'effect/Effect'
-import * as Console from 'effect/Console'
+import * as Effect from "effect/Effect"
+import * as Console from "effect/Console"
 
 const program = Effect.gen(function* (_) {
-  const twice = Console.log('twice')
+  const twice = Console.log("twice")
   yield* _(twice, Effect.repeatN(1))
-  const once = yield* _(Console.log('once'), Effect.once)
+  const once = yield* _(Console.log("once"), Effect.once)
   yield* _(once, Effect.repeatN(1))
 })
 
@@ -629,9 +628,9 @@ export declare const all: <
   const Arg extends Iterable<Effect<any, any, any>> | Record<string, Effect<any, any, any>>,
   O extends {
     readonly concurrency?: Concurrency | undefined
-    readonly batching?: boolean | 'inherit' | undefined
+    readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
-    readonly mode?: 'either' | 'default' | 'validate' | undefined
+    readonly mode?: "either" | "default" | "validate" | undefined
   }
 >(
   arg: Arg,
@@ -651,7 +650,7 @@ discarding results from failed effects.
 ```ts
 export declare const allSuccesses: <R, E, A>(
   elements: Iterable<Effect<R, E, A>>,
-  options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+  options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
 ) => Effect<R, never, A[]>
 ```
 
@@ -671,9 +670,9 @@ Supports multiple arguments, a single argument tuple / array or record / struct.
 export declare const allWith: <
   O extends {
     readonly concurrency?: Concurrency | undefined
-    readonly batching?: boolean | 'inherit' | undefined
+    readonly batching?: boolean | "inherit" | undefined
     readonly discard?: boolean | undefined
-    readonly mode?: 'either' | 'default' | 'validate' | undefined
+    readonly mode?: "either" | "default" | "validate" | undefined
   }
 >(
   options?: O | undefined
@@ -741,12 +740,12 @@ predicate `f`.
 export declare const exists: {
   <R, E, A>(
     f: (a: A, i: number) => Effect<R, E, boolean>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): (elements: Iterable<A>) => Effect<R, E, boolean>
   <R, E, A>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, boolean>,
-    options?: { readonly concurrency: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency: Concurrency; readonly batching?: boolean | "inherit" }
   ): Effect<R, E, boolean>
 }
 ```
@@ -763,12 +762,12 @@ Filters the collection using the specified effectful predicate.
 export declare const filter: {
   <A, R, E>(
     f: (a: A, i: number) => Effect<R, E, boolean>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly negate?: boolean }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly negate?: boolean }
   ): (elements: Iterable<A>) => Effect<R, E, A[]>
   <A, R, E>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, boolean>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly negate?: boolean }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly negate?: boolean }
   ): Effect<R, E, A[]>
 }
 ```
@@ -817,21 +816,21 @@ Added in v2.0.0
 export declare const forEach: {
   <A, R, E, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard?: false }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard?: false }
   ): (self: Iterable<A>) => Effect<R, E, B[]>
   <A, R, E, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
-    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard: true }
+    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard: true }
   ): (self: Iterable<A>) => Effect<R, E, void>
   <A, R, E, B>(
     self: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard?: false }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard?: false }
   ): Effect<R, E, B[]>
   <A, R, E, B>(
     self: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
-    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard: true }
+    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard: true }
   ): Effect<R, E, void>
 }
 ```
@@ -863,13 +862,13 @@ export declare const mergeAll: {
   <Z, A>(
     zero: Z,
     f: (z: Z, a: A, i: number) => Z,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): <R, E>(elements: Iterable<Effect<R, E, A>>) => Effect<R, E, Z>
   <R, E, A, Z>(
     elements: Iterable<Effect<R, E, A>>,
     zero: Z,
     f: (z: Z, a: A, i: number) => Z,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): Effect<R, E, Z>
 }
 ```
@@ -887,12 +886,12 @@ Collects all successes and failures in a tupled fashion.
 export declare const partition: {
   <R, E, A, B>(
     f: (a: A) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): (elements: Iterable<A>) => Effect<R, never, readonly [E[], B[]]>
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): Effect<R, never, readonly [E[], B[]]>
 }
 ```
@@ -926,13 +925,13 @@ export declare const reduceEffect: {
   <R, E, A>(
     zero: Effect<R, E, A>,
     f: (acc: A, a: A, i: number) => A,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): (elements: Iterable<Effect<R, E, A>>) => Effect<R, E, A>
   <R, E, A>(
     elements: Iterable<Effect<R, E, A>>,
     zero: Effect<R, E, A>,
     f: (acc: A, a: A, i: number) => A,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): Effect<R, E, A>
 }
 ```
@@ -1003,21 +1002,21 @@ results.
 export declare const replicateEffect: {
   (
     n: number,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard?: false }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard?: false }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A[]>
   (
     n: number,
-    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard: true }
+    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard: true }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, void>
   <R, E, A>(
     self: Effect<R, E, A>,
     n: number,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard?: false }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard?: false }
   ): Effect<R, E, A[]>
   <R, E, A>(
     self: Effect<R, E, A>,
     n: number,
-    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard: true }
+    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard: true }
   ): Effect<R, E, void>
 }
 ```
@@ -1068,21 +1067,21 @@ will be lost. To retain all information please use `partition`.
 export declare const validateAll: {
   <R, E, A, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard?: false }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard?: false }
   ): (elements: Iterable<A>) => Effect<R, E[], B[]>
   <R, E, A, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
-    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard: true }
+    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard: true }
   ): (elements: Iterable<A>) => Effect<R, E[], void>
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard?: false }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard?: false }
   ): Effect<R, E[], B[]>
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
-    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit'; readonly discard: true }
+    options: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit"; readonly discard: true }
   ): Effect<R, E[], void>
 }
 ```
@@ -1102,12 +1101,12 @@ If `elements` is empty then `Effect.fail([])` is returned.
 export declare const validateFirst: {
   <R, E, A, B>(
     f: (a: A, i: number) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): (elements: Iterable<A>) => Effect<R, E[], B>
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect<R, E, B>,
-    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
   ): Effect<R, E[], B>
 }
 ```
@@ -1115,8 +1114,8 @@ export declare const validateFirst: {
 **Example**
 
 ```ts
-import * as Effect from 'effect/Effect'
-import * as Exit from 'effect/Exit'
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 
 const f = (n: number) => (n > 0 ? Effect.succeed(n) : Effect.fail(`${n} is negative`))
 
@@ -1126,7 +1125,7 @@ assert.deepStrictEqual(Effect.runSyncExit(Effect.validateFirst([1, -1], f)), Exi
 assert.deepStrictEqual(Effect.runSyncExit(Effect.validateFirst([-1, 2], f)), Exit.succeed(2))
 assert.deepStrictEqual(
   Effect.runSyncExit(Effect.validateFirst([-1, -2], f)),
-  Exit.fail(['-1 is negative', '-2 is negative'])
+  Exit.fail(["-1 is negative", "-2 is negative"])
 )
 ```
 
@@ -1380,7 +1379,9 @@ Added in v2.0.0
 
 ```ts
 export declare const gen: {
-  <Eff extends EffectGen<any, any, any>, AEff>(f: (resume: Adapter) => Generator<Eff, AEff, any>): Effect<
+  <Eff extends EffectGen<any, any, any>, AEff>(
+    f: (resume: Adapter) => Generator<Eff, AEff, any>
+  ): Effect<
     [Eff] extends [never] ? never : [Eff] extends [EffectGen<infer R, any, any>] ? R : never,
     [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
     AEff
@@ -1588,9 +1589,9 @@ specified layer/context/runtime and leaving the remainder `R0`
 
 ```ts
 export declare const provide: {
-  <R2, E2, A2>(layer: Layer.Layer<R2, E2, A2>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | Exclude<R, A2>, E2 | E, A>
+  <R2, E2, A2>(
+    layer: Layer.Layer<R2, E2, A2>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, A2>, E2 | E, A>
   <R2>(context: Context.Context<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
   <R2>(runtime: Runtime.Runtime<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
   <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, layer: Layer.Layer<R2, E2, A2>): Effect<R2 | Exclude<R, A2>, E | E2, A>
@@ -1610,14 +1611,15 @@ requires more than one service use `provideContext` instead.
 
 ```ts
 export declare const provideService: {
-  <T extends Context.Tag<any, any>>(tag: T, service: Context.Tag.Service<T>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<Exclude<R, Context.Tag.Identifier<T>>, E, A>
-  <R, E, A, T extends Context.Tag<any, any>>(self: Effect<R, E, A>, tag: T, service: Context.Tag.Service<T>): Effect<
-    Exclude<R, Context.Tag.Identifier<T>>,
-    E,
-    A
-  >
+  <T extends Context.Tag<any, any>>(
+    tag: T,
+    service: Context.Tag.Service<T>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, Context.Tag.Identifier<T>>, E, A>
+  <R, E, A, T extends Context.Tag<any, any>>(
+    self: Effect<R, E, A>,
+    tag: T,
+    service: Context.Tag.Service<T>
+  ): Effect<Exclude<R, Context.Tag.Identifier<T>>, E, A>
 }
 ```
 
@@ -1632,9 +1634,10 @@ requires more than one service use `provideContext` instead.
 
 ```ts
 export declare const provideServiceEffect: {
-  <T extends Context.Tag<any, any>, R1, E1>(tag: T, effect: Effect<R1, E1, Context.Tag.Service<T>>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R1 | Exclude<R, Context.Tag.Identifier<T>>, E1 | E, A>
+  <T extends Context.Tag<any, any>, R1, E1>(
+    tag: T,
+    effect: Effect<R1, E1, Context.Tag.Service<T>>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | Exclude<R, Context.Tag.Identifier<T>>, E1 | E, A>
   <R, E, A, T extends Context.Tag<any, any>, R1, E1>(
     self: Effect<R, E, A>,
     tag: T,
@@ -1756,9 +1759,10 @@ Updates the service with the required service entry.
 
 ```ts
 export declare const updateService: {
-  <T extends Context.Tag<any, any>>(tag: T, f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R | Context.Tag.Identifier<T>, E, A>
+  <T extends Context.Tag<any, any>>(
+    tag: T,
+    f: (service: Context.Tag.Service<T>) => Context.Tag.Service<T>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R | Context.Tag.Identifier<T>, E, A>
   <R, E, A, T extends Context.Tag<any, any>>(
     self: Effect<R, E, A>,
     tag: T,
@@ -1877,14 +1881,13 @@ A more powerful variation of `timed` that allows specifying the clock.
 
 ```ts
 export declare const timedWith: {
-  <R1, E1>(nanoseconds: Effect<R1, E1, bigint>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R1 | R, E1 | E, readonly [Duration.Duration, A]>
-  <R, E, A, R1, E1>(self: Effect<R, E, A>, nanoseconds: Effect<R1, E1, bigint>): Effect<
-    R | R1,
-    E | E1,
-    readonly [Duration.Duration, A]
-  >
+  <R1, E1>(
+    nanoseconds: Effect<R1, E1, bigint>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, readonly [Duration.Duration, A]>
+  <R, E, A, R1, E1>(
+    self: Effect<R, E, A>,
+    nanoseconds: Effect<R1, E1, bigint>
+  ): Effect<R | R1, E | E1, readonly [Duration.Duration, A]>
 }
 ```
 
@@ -1927,9 +1930,10 @@ timeout, it will produce the specified error.
 
 ```ts
 export declare const timeoutFail: {
-  <E1>(options: { readonly onTimeout: LazyArg<E1>; readonly duration: Duration.DurationInput }): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E1 | E, A>
+  <E1>(options: {
+    readonly onTimeout: LazyArg<E1>
+    readonly duration: Duration.DurationInput
+  }): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E1 | E, A>
   <R, E, A, E1>(
     self: Effect<R, E, A>,
     options: { readonly onTimeout: LazyArg<E1>; readonly duration: Duration.DurationInput }
@@ -1948,9 +1952,10 @@ timeout, it will produce the specified failure.
 
 ```ts
 export declare const timeoutFailCause: {
-  <E1>(options: { readonly onTimeout: LazyArg<Cause.Cause<E1>>; readonly duration: Duration.DurationInput }): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E1 | E, A>
+  <E1>(options: {
+    readonly onTimeout: LazyArg<Cause.Cause<E1>>
+    readonly duration: Duration.DurationInput
+  }): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E1 | E, A>
   <R, E, A, E1>(
     self: Effect<R, E, A>,
     options: { readonly onTimeout: LazyArg<Cause.Cause<E1>>; readonly duration: Duration.DurationInput }
@@ -2012,9 +2017,10 @@ Binds an effectful value in a `do` scope
 
 ```ts
 export declare const bind: {
-  <N extends string, K, R2, E2, A>(tag: Exclude<N, keyof K>, f: (_: K) => Effect<R2, E2, A>): <R, E>(
-    self: Effect<R, E, K>
-  ) => Effect<R2 | R, E2 | E, MergeRecord<K, { [k in N]: A }>>
+  <N extends string, K, R2, E2, A>(
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => Effect<R2, E2, A>
+  ): <R, E>(self: Effect<R, E, K>) => Effect<R2 | R, E2 | E, MergeRecord<K, { [k in N]: A }>>
   <R, E, N extends string, K, R2, E2, A>(
     self: Effect<R, E, K>,
     tag: Exclude<N, keyof K>,
@@ -2046,14 +2052,15 @@ Like bind for values
 
 ```ts
 export declare const let: {
-  <N extends string, K, A>(tag: Exclude<N, keyof K>, f: (_: K) => A): <R, E>(
-    self: Effect<R, E, K>
-  ) => Effect<R, E, MergeRecord<K, { [k in N]: A }>>
-  <R, E, K, N extends string, A>(self: Effect<R, E, K>, tag: Exclude<N, keyof K>, f: (_: K) => A): Effect<
-    R,
-    E,
-    MergeRecord<K, { [k in N]: A }>
-  >
+  <N extends string, K, A>(
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => A
+  ): <R, E>(self: Effect<R, E, K>) => Effect<R, E, MergeRecord<K, { [k in N]: A }>>
+  <R, E, K, N extends string, A>(
+    self: Effect<R, E, K>,
+    tag: Exclude<N, keyof K>,
+    f: (_: K) => A
+  ): Effect<R, E, MergeRecord<K, { [k in N]: A }>>
 }
 ```
 
@@ -2103,14 +2110,13 @@ recover from defects.
 
 ```ts
 export declare const catchAllCause: {
-  <E, R2, E2, A2>(f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2, A2 | A>
-  <R, A, E, R2, E2, A2>(self: Effect<R, E, A>, f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>): Effect<
-    R | R2,
-    E2,
-    A | A2
-  >
+  <E, R2, E2, A2>(
+    f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2, A2 | A>
+  <R, A, E, R2, E2, A2>(
+    self: Effect<R, E, A>,
+    f: (cause: Cause.Cause<E>) => Effect<R2, E2, A2>
+  ): Effect<R | R2, E2, A | A2>
 }
 ```
 
@@ -2129,14 +2135,13 @@ purposes.
 
 ```ts
 export declare const catchAllDefect: {
-  <R2, E2, A2>(f: (defect: unknown) => Effect<R2, E2, A2>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, A2 | A>
-  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, f: (defect: unknown) => Effect<R2, E2, A2>): Effect<
-    R | R2,
-    E | E2,
-    A | A2
-  >
+  <R2, E2, A2>(
+    f: (defect: unknown) => Effect<R2, E2, A2>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A2 | A>
+  <R, E, A, R2, E2, A2>(
+    self: Effect<R, E, A>,
+    f: (defect: unknown) => Effect<R2, E2, A2>
+  ): Effect<R | R2, E | E2, A | A2>
 }
 ```
 
@@ -2150,15 +2155,14 @@ Recovers from errors that match the given predicate.
 
 ```ts
 export declare const catchIf: {
-  <E, EA extends E, EB extends EA, R2, E2, A2>(refinement: Refinement<EA, EB>, f: (e: EB) => Effect<R2, E2, A2>): <
-    R,
-    A
-  >(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | Exclude<E, EB>, A2 | A>
-  <E, EX extends E, R2, E2, A2>(predicate: Predicate<EX>, f: (e: EX) => Effect<R2, E2, A2>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E | E2, A2 | A>
+  <E, EA extends E, EB extends EA, R2, E2, A2>(
+    refinement: Refinement<EA, EB>,
+    f: (e: EB) => Effect<R2, E2, A2>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | Exclude<E, EB>, A2 | A>
+  <E, EX extends E, R2, E2, A2>(
+    predicate: Predicate<EX>,
+    f: (e: EX) => Effect<R2, E2, A2>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
   <R, E, A, EA extends E, EB extends EA, R2, E2, A2>(
     self: Effect<R, E, A>,
     refinement: Refinement<EA, EB>,
@@ -2182,14 +2186,13 @@ Recovers from some or all of the error cases.
 
 ```ts
 export declare const catchSome: {
-  <E, R2, E2, A2>(pf: (e: E) => Option.Option<Effect<R2, E2, A2>>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E | E2, A2 | A>
-  <R, A, E, R2, E2, A2>(self: Effect<R, E, A>, pf: (e: E) => Option.Option<Effect<R2, E2, A2>>): Effect<
-    R | R2,
-    E | E2,
-    A | A2
-  >
+  <E, R2, E2, A2>(
+    pf: (e: E) => Option.Option<Effect<R2, E2, A2>>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
+  <R, A, E, R2, E2, A2>(
+    self: Effect<R, E, A>,
+    pf: (e: E) => Option.Option<Effect<R2, E2, A2>>
+  ): Effect<R | R2, E | E2, A | A2>
 }
 ```
 
@@ -2203,14 +2206,13 @@ Recovers from some or all of the error cases with provided cause.
 
 ```ts
 export declare const catchSomeCause: {
-  <E, R2, E2, A2>(f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E | E2, A2 | A>
-  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>): Effect<
-    R | R2,
-    E | E2,
-    A | A2
-  >
+  <E, R2, E2, A2>(
+    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A2 | A>
+  <R, E, A, R2, E2, A2>(
+    self: Effect<R, E, A>,
+    f: (cause: Cause.Cause<E>) => Option.Option<Effect<R2, E2, A2>>
+  ): Effect<R | R2, E | E2, A | A2>
 }
 ```
 
@@ -2229,14 +2231,13 @@ purposes.
 
 ```ts
 export declare const catchSomeDefect: {
-  <R2, E2, A2>(pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, A2 | A>
-  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>): Effect<
-    R | R2,
-    E | E2,
-    A | A2
-  >
+  <R2, E2, A2>(
+    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A2 | A>
+  <R, E, A, R2, E2, A2>(
+    self: Effect<R, E, A>,
+    pf: (defect: unknown) => Option.Option<Effect<R2, E2, A2>>
+  ): Effect<R | R2, E | E2, A | A2>
 }
 ```
 
@@ -2250,11 +2251,11 @@ Recovers from the specified tagged error.
 
 ```ts
 export declare const catchTag: {
-  <K extends E extends { _tag: string } ? E['_tag'] : never, E, R1, E1, A1>(
+  <K extends E extends { _tag: string } ? E["_tag"] : never, E, R1, E1, A1>(
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | Exclude<E, { _tag: K }>, A1 | A>
-  <R, E, A, K extends E extends { _tag: string } ? E['_tag'] : never, R1, E1, A1>(
+  <R, E, A, K extends E extends { _tag: string } ? E["_tag"] : never, R1, E1, A1>(
     self: Effect<R, E, A>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>
@@ -2275,7 +2276,7 @@ export declare const catchTags: {
   <
     E,
     Cases extends E extends { _tag: string }
-      ? { [K in E['_tag']]+?: ((error: Extract<E, { _tag: K }>) => Effect<any, any, any>) | undefined }
+      ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Effect<any, any, any>) | undefined }
       : {}
   >(
     cases: Cases
@@ -2300,7 +2301,7 @@ export declare const catchTags: {
     E,
     A,
     Cases extends E extends { _tag: string }
-      ? { [K in E['_tag']]+?: ((error: Extract<E, { _tag: K }>) => Effect<any, any, any>) | undefined }
+      ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Effect<any, any, any>) | undefined }
       : {}
   >(
     self: Effect<R, E, A>,
@@ -2544,9 +2545,10 @@ via the `catch` function.
 
 ```ts
 export declare const tryMap: {
-  <A, B, E1>(options: { readonly try: (a: A) => B; readonly catch: (error: unknown) => E1 }): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E1 | E, B>
+  <A, B, E1>(options: {
+    readonly try: (a: A) => B
+    readonly catch: (error: unknown) => E1
+  }): <R, E>(self: Effect<R, E, A>) => Effect<R, E1 | E, B>
   <R, E, A, B, E1>(
     self: Effect<R, E, A>,
     options: { readonly try: (a: A) => B; readonly catch: (error: unknown) => E1 }
@@ -2594,11 +2596,10 @@ wrapped Promise api.
 
 ```ts
 export declare const tryPromise: {
-  <A, E>(options: { readonly try: (signal: AbortSignal) => Promise<A>; readonly catch: (error: unknown) => E }): Effect<
-    never,
-    E,
-    A
-  >
+  <A, E>(options: {
+    readonly try: (signal: AbortSignal) => Promise<A>
+    readonly catch: (error: unknown) => E
+  }): Effect<never, E, A>
   <A>(try_: (signal: AbortSignal) => Promise<A>): Effect<never, unknown, A>
 }
 ```
@@ -2822,12 +2823,14 @@ defect if the predicate fails.
 
 ```ts
 export declare const filterOrDie: {
-  <A, B extends A, X extends A>(filter: Refinement<A, B>, orDieWith: (a: X) => unknown): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E, B>
-  <A, X extends A, Y extends A>(filter: Predicate<X>, orDieWith: (a: Y) => unknown): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E, A>
+  <A, B extends A, X extends A>(
+    filter: Refinement<A, B>,
+    orDieWith: (a: X) => unknown
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
+  <A, X extends A, Y extends A>(
+    filter: Predicate<X>,
+    orDieWith: (a: Y) => unknown
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A, B extends A, X extends A>(
     self: Effect<R, E, A>,
     filter: Refinement<A, B>,
@@ -2870,12 +2873,14 @@ of the effect if it is successful, otherwise returns the value of `orElse`.
 
 ```ts
 export declare const filterOrElse: {
-  <A, B extends A, X extends A, R2, E2, C>(filter: Refinement<A, B>, orElse: (a: X) => Effect<R2, E2, C>): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, B | C>
-  <A, X extends A, Y extends A, R2, E2, B>(filter: Predicate<X>, orElse: (a: Y) => Effect<R2, E2, B>): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, A | B>
+  <A, B extends A, X extends A, R2, E2, C>(
+    filter: Refinement<A, B>,
+    orElse: (a: X) => Effect<R2, E2, C>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, B | C>
+  <A, X extends A, Y extends A, R2, E2, B>(
+    filter: Predicate<X>,
+    orElse: (a: Y) => Effect<R2, E2, B>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A | B>
   <R, E, A, B extends A, X extends A, R2, E2, C>(
     self: Effect<R, E, A>,
     filter: Refinement<A, B>,
@@ -2900,12 +2905,14 @@ error if the predicate fails.
 
 ```ts
 export declare const filterOrFail: {
-  <A, B extends A, X extends A, E2>(filter: Refinement<A, B>, orFailWith: (a: X) => E2): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E2 | E, B>
-  <A, X extends A, Y extends A, E2>(filter: Predicate<X>, orFailWith: (a: Y) => E2): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E2 | E, A>
+  <A, B extends A, X extends A, E2>(
+    filter: Refinement<A, B>,
+    orFailWith: (a: X) => E2
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, B>
+  <A, X extends A, Y extends A, E2>(
+    filter: Predicate<X>,
+    orFailWith: (a: Y) => E2
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R, E2 | E, A>
   <R, E, A, B extends A, X extends A, E2>(
     self: Effect<R, E, A>,
     filter: Refinement<A, B>,
@@ -2956,9 +2963,9 @@ The moral equivalent of `if (!p) exp` when `p` has side-effects.
 
 ```ts
 export declare const unlessEffect: {
-  <R2, E2>(predicate: Effect<R2, E2, boolean>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, Option.Option<A>>
+  <R2, E2>(
+    predicate: Effect<R2, E2, boolean>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, Option.Option<A>>
   <R, E, A, R2, E2>(self: Effect<R, E, A>, predicate: Effect<R2, E2, boolean>): Effect<R | R2, E | E2, Option.Option<A>>
 }
 ```
@@ -2986,9 +2993,9 @@ Added in v2.0.0
 
 ```ts
 export declare const whenEffect: {
-  <R, E>(predicate: Effect<R, E, boolean>): <R2, E2, A>(
-    effect: Effect<R2, E2, A>
-  ) => Effect<R | R2, E | E2, Option.Option<A>>
+  <R, E>(
+    predicate: Effect<R, E, boolean>
+  ): <R2, E2, A>(effect: Effect<R2, E2, A>) => Effect<R | R2, E | E2, Option.Option<A>>
   <R, E, A, R2, E2>(self: Effect<R2, E2, A>, predicate: Effect<R, E, boolean>): Effect<R | R2, E | E2, Option.Option<A>>
 }
 ```
@@ -3004,14 +3011,15 @@ predicate.
 
 ```ts
 export declare const whenFiberRef: {
-  <S>(fiberRef: FiberRef.FiberRef<S>, predicate: Predicate<S>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E, readonly [S, Option.Option<A>]>
-  <R, E, A, S>(self: Effect<R, E, A>, fiberRef: FiberRef.FiberRef<S>, predicate: Predicate<S>): Effect<
-    R,
-    E,
-    readonly [S, Option.Option<A>]
-  >
+  <S>(
+    fiberRef: FiberRef.FiberRef<S>,
+    predicate: Predicate<S>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option.Option<A>]>
+  <R, E, A, S>(
+    self: Effect<R, E, A>,
+    fiberRef: FiberRef.FiberRef<S>,
+    predicate: Predicate<S>
+  ): Effect<R, E, readonly [S, Option.Option<A>]>
 }
 ```
 
@@ -3025,14 +3033,15 @@ Executes this workflow when the value of the `Ref` satisfies the predicate.
 
 ```ts
 export declare const whenRef: {
-  <S>(ref: Ref.Ref<S>, predicate: Predicate<S>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E, readonly [S, Option.Option<A>]>
-  <R, E, A, S>(self: Effect<R, E, A>, ref: Ref.Ref<S>, predicate: Predicate<S>): Effect<
-    R,
-    E,
-    readonly [S, Option.Option<A>]
-  >
+  <S>(
+    ref: Ref.Ref<S>,
+    predicate: Predicate<S>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option.Option<A>]>
+  <R, E, A, S>(
+    self: Effect<R, E, A>,
+    ref: Ref.Ref<S>,
+    predicate: Predicate<S>
+  ): Effect<R, E, readonly [S, Option.Option<A>]>
 }
 ```
 
@@ -3074,9 +3083,10 @@ function passed to `match`.
 
 ```ts
 export declare const match: {
-  <E, A, A2, A3>(options: { readonly onFailure: (error: E) => A2; readonly onSuccess: (value: A) => A3 }): <R>(
-    self: Effect<R, E, A>
-  ) => Effect<R, never, A2 | A3>
+  <E, A, A2, A3>(options: {
+    readonly onFailure: (error: E) => A2
+    readonly onSuccess: (value: A) => A3
+  }): <R>(self: Effect<R, E, A>) => Effect<R, never, A2 | A3>
   <R, E, A, A2, A3>(
     self: Effect<R, E, A>,
     options: { readonly onFailure: (error: E) => A2; readonly onSuccess: (value: A) => A3 }
@@ -3092,9 +3102,10 @@ Added in v2.0.0
 
 ```ts
 export declare const matchCause: {
-  <E, A2, A, A3>(options: { readonly onFailure: (cause: Cause.Cause<E>) => A2; readonly onSuccess: (a: A) => A3 }): <R>(
-    self: Effect<R, E, A>
-  ) => Effect<R, never, A2 | A3>
+  <E, A2, A, A3>(options: {
+    readonly onFailure: (cause: Cause.Cause<E>) => A2
+    readonly onSuccess: (a: A) => A3
+  }): <R>(self: Effect<R, E, A>) => Effect<R, never, A2 | A3>
   <R, E, A2, A, A3>(
     self: Effect<R, E, A>,
     options: { readonly onFailure: (cause: Cause.Cause<E>) => A2; readonly onSuccess: (a: A) => A3 }
@@ -3245,9 +3256,9 @@ Added in v2.0.0
 
 ```ts
 export declare const onInterrupt: {
-  <R2, X>(cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E, A>
+  <R2, X>(
+    cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
     cleanup: (interruptors: HashSet.HashSet<FiberId.FiberId>) => Effect<R2, never, X>
@@ -3530,9 +3541,9 @@ parameters back
 
 ```ts
 export declare const flipWith: {
-  <R, A, E, R2, A2, E2>(f: (effect: Effect<R, A, E>) => Effect<R2, A2, E2>): (
-    self: Effect<R, E, A>
-  ) => Effect<R2, E2, A2>
+  <R, A, E, R2, A2, E2>(
+    f: (effect: Effect<R, A, E>) => Effect<R2, A2, E2>
+  ): (self: Effect<R, E, A>) => Effect<R2, E2, A2>
   <R, A, E, R2, A2, E2>(self: Effect<R, E, A>, f: (effect: Effect<R, A, E>) => Effect<R2, A2, E2>): Effect<R2, E2, A2>
 }
 ```
@@ -3561,14 +3572,15 @@ new elements.
 
 ```ts
 export declare const mapAccum: {
-  <A, B, R, E, Z>(zero: Z, f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>): (
-    elements: Iterable<A>
-  ) => Effect<R, E, readonly [Z, B[]]>
-  <A, B, R, E, Z>(elements: Iterable<A>, zero: Z, f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>): Effect<
-    R,
-    E,
-    readonly [Z, B[]]
-  >
+  <A, B, R, E, Z>(
+    zero: Z,
+    f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>
+  ): (elements: Iterable<A>) => Effect<R, E, readonly [Z, B[]]>
+  <A, B, R, E, Z>(
+    elements: Iterable<A>,
+    zero: Z,
+    f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>
+  ): Effect<R, E, readonly [Z, B[]]>
 }
 ```
 
@@ -3583,9 +3595,10 @@ the specified `onFailure` and `onSuccess` functions.
 
 ```ts
 export declare const mapBoth: {
-  <E, A, E2, A2>(options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }): <R>(
-    self: Effect<R, E, A>
-  ) => Effect<R, E2, A2>
+  <E, A, E2, A2>(options: {
+    readonly onFailure: (e: E) => E2
+    readonly onSuccess: (a: A) => A2
+  }): <R>(self: Effect<R, E, A>) => Effect<R, E2, A2>
   <R, E, A, E2, A2>(
     self: Effect<R, E, A>,
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
@@ -4047,7 +4060,7 @@ Added in v2.0.0
 
 ```ts
 export interface Blocked<R, E, A> extends Effect<R, E, A> {
-  readonly _op: 'Blocked'
+  readonly _op: "Blocked"
   readonly i0: RequestBlock<R>
   readonly i1: Effect<R, E, A>
 }
@@ -4336,9 +4349,9 @@ time.
 
 ```ts
 export declare const repeat: {
-  <R1, A extends A0, A0, B>(schedule: Schedule.Schedule<R1, A, B>): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R1 | R, E, B>
+  <R1, A extends A0, A0, B>(
+    schedule: Schedule.Schedule<R1, A, B>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R1 | R, E, B>
   <R, E, A extends A0, A0, R1, B>(self: Effect<R, E, A>, schedule: Schedule.Schedule<R1, A0, B>): Effect<R | R1, E, B>
 }
 ```
@@ -4484,14 +4497,13 @@ attached to the current scope.
 
 ```ts
 export declare const scheduleForked: {
-  <R2, Out>(schedule: Schedule.Schedule<R2, unknown, Out>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<Scope.Scope | R2 | R, never, Fiber.RuntimeFiber<E, Out>>
-  <R, E, A, R2, Out>(self: Effect<R, E, A>, schedule: Schedule.Schedule<R2, unknown, Out>): Effect<
-    Scope.Scope | R | R2,
-    never,
-    Fiber.RuntimeFiber<E, Out>
-  >
+  <R2, Out>(
+    schedule: Schedule.Schedule<R2, unknown, Out>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, never, Fiber.RuntimeFiber<E, Out>>
+  <R, E, A, R2, Out>(
+    self: Effect<R, E, A>,
+    schedule: Schedule.Schedule<R2, unknown, Out>
+  ): Effect<Scope.Scope | R | R2, never, Fiber.RuntimeFiber<E, Out>>
 }
 ```
 
@@ -4506,14 +4518,15 @@ specified input value.
 
 ```ts
 export declare const scheduleFrom: {
-  <R2, In, Out>(initial: In, schedule: Schedule.Schedule<R2, In, Out>): <R, E>(
-    self: Effect<R, E, In>
-  ) => Effect<R2 | R, E, Out>
-  <R, E, In, R2, Out>(self: Effect<R, E, In>, initial: In, schedule: Schedule.Schedule<R2, In, Out>): Effect<
-    R | R2,
-    E,
-    Out
-  >
+  <R2, In, Out>(
+    initial: In,
+    schedule: Schedule.Schedule<R2, In, Out>
+  ): <R, E>(self: Effect<R, E, In>) => Effect<R2 | R, E, Out>
+  <R, E, In, R2, Out>(
+    self: Effect<R, E, In>,
+    initial: In,
+    schedule: Schedule.Schedule<R2, In, Out>
+  ): Effect<R | R2, E, Out>
 }
 ```
 
@@ -4754,9 +4767,9 @@ specified when the scope is closed.
 
 ```ts
 export declare const acquireRelease: {
-  <A, R2, X>(release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>): <R, E>(
-    acquire: Effect<R, E, A>
-  ) => Effect<Scope.Scope | R2 | R, E, A>
+  <A, R2, X>(
+    release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
     release: (a: A, exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
@@ -4786,9 +4799,9 @@ specified when the scope is closed.
 
 ```ts
 export declare const acquireReleaseInterruptible: {
-  <A, R2, X>(release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>): <R, E>(
-    acquire: Effect<R, E, A>
-  ) => Effect<Scope.Scope | R2 | R, E, A>
+  <A, R2, X>(
+    release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
+  ): <R, E>(acquire: Effect<R, E, A>) => Effect<Scope.Scope | R2 | R, E, A>
   <R, E, A, R2, X>(
     acquire: Effect<R, E, A>,
     release: (exit: Exit.Exit<unknown, unknown>) => Effect<R2, never, X>
@@ -4902,14 +4915,13 @@ effect if it exists. The provided effect will not be interrupted.
 
 ```ts
 export declare const onError: {
-  <E, R2, X>(cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E, A>
-  <R, A, E, R2, X>(self: Effect<R, E, A>, cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>): Effect<
-    R | R2,
-    E,
-    A
-  >
+  <E, R2, X>(
+    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
+  <R, A, E, R2, X>(
+    self: Effect<R, E, A>,
+    cleanup: (cause: Cause.Cause<E>) => Effect<R2, never, X>
+  ): Effect<R | R2, E, A>
 }
 ```
 
@@ -4924,14 +4936,13 @@ or is interrupted.
 
 ```ts
 export declare const onExit: {
-  <E, A, R2, X>(cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>): <R>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E, A>
-  <R, E, A, R2, X>(self: Effect<R, E, A>, cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>): Effect<
-    R | R2,
-    E,
-    A
-  >
+  <E, A, R2, X>(
+    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+  ): <R>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
+  <R, E, A, R2, X>(
+    self: Effect<R, E, A>,
+    cleanup: (exit: Exit.Exit<E, A>) => Effect<R2, never, X>
+  ): Effect<R | R2, E, A>
 }
 ```
 
@@ -5008,14 +5019,13 @@ without effecting the scope of any resources acquired by `use`.
 
 ```ts
 export declare const using: {
-  <A, R2, E2, A2>(use: (a: A) => Effect<R2, E2, A2>): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | Exclude<R, Scope.Scope>, E2 | E, A2>
-  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, use: (a: A) => Effect<R2, E2, A2>): Effect<
-    R2 | Exclude<R, Scope.Scope>,
-    E | E2,
-    A2
-  >
+  <A, R2, E2, A2>(
+    use: (a: A) => Effect<R2, E2, A2>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, Scope.Scope>, E2 | E, A2>
+  <R, E, A, R2, E2, A2>(
+    self: Effect<R, E, A>,
+    use: (a: A) => Effect<R2, E2, A2>
+  ): Effect<R2 | Exclude<R, Scope.Scope>, E | E2, A2>
 }
 ```
 
@@ -5211,14 +5221,15 @@ execution.
 
 ```ts
 export declare const summarized: {
-  <R2, E2, B, C>(summary: Effect<R2, E2, B>, f: (start: B, end: B) => C): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, readonly [C, A]>
-  <R, E, A, R2, E2, B, C>(self: Effect<R, E, A>, summary: Effect<R2, E2, B>, f: (start: B, end: B) => C): Effect<
-    R | R2,
-    E | E2,
-    readonly [C, A]
-  >
+  <R2, E2, B, C>(
+    summary: Effect<R2, E2, B>,
+    f: (start: B, end: B) => C
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, readonly [C, A]>
+  <R, E, A, R2, E2, B, C>(
+    self: Effect<R, E, A>,
+    summary: Effect<R2, E2, B>,
+    f: (start: B, end: B) => C
+  ): Effect<R | R2, E | E2, readonly [C, A]>
 }
 ```
 
@@ -5230,9 +5241,9 @@ Added in v2.0.0
 
 ```ts
 export declare const tap: {
-  <A, X extends A, R2, E2, _>(f: (a: X) => Effect<R2, E2, _>): <R, E>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, A>
+  <A, X extends A, R2, E2, _>(
+    f: (a: X) => Effect<R2, E2, _>
+  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
   <R, E, A, X extends A, R2, E2, _>(self: Effect<R, E, A>, f: (a: X) => Effect<R2, E2, _>): Effect<R | R2, E | E2, A>
 }
 ```
@@ -5269,14 +5280,13 @@ Returns an effect that effectually "peeks" at the defect of this effect.
 
 ```ts
 export declare const tapDefect: {
-  <R2, E2, X>(f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E2 | E, A>
-  <R, E, A, R2, E2, X>(self: Effect<R, E, A>, f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>): Effect<
-    R | R2,
-    E | E2,
-    A
-  >
+  <R2, E2, X>(
+    f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
+  <R, E, A, R2, E2, X>(
+    self: Effect<R, E, A>,
+    f: (cause: Cause.Cause<never>) => Effect<R2, E2, X>
+  ): Effect<R | R2, E | E2, A>
 }
 ```
 
@@ -5290,9 +5300,9 @@ Returns an effect that effectfully "peeks" at the failure of this effect.
 
 ```ts
 export declare const tapError: {
-  <E, XE extends E, R2, E2, X>(f: (e: XE) => Effect<R2, E2, X>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E | E2, A>
+  <E, XE extends E, R2, E2, X>(
+    f: (e: XE) => Effect<R2, E2, X>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A>
   <R, E, XE extends E, A, R2, E2, X>(self: Effect<R, E, A>, f: (e: XE) => Effect<R2, E2, X>): Effect<R | R2, E | E2, A>
 }
 ```
@@ -5308,14 +5318,13 @@ this effect.
 
 ```ts
 export declare const tapErrorCause: {
-  <E, XE extends E, R2, E2, X>(f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E | E2, A>
-  <R, E, A, XE extends E, R2, E2, X>(self: Effect<R, E, A>, f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>): Effect<
-    R | R2,
-    E | E2,
-    A
-  >
+  <E, XE extends E, R2, E2, X>(
+    f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R2 | R, E | E2, A>
+  <R, E, A, XE extends E, R2, E2, X>(
+    self: Effect<R, E, A>,
+    f: (cause: Cause.Cause<XE>) => Effect<R2, E2, X>
+  ): Effect<R | R2, E | E2, A>
 }
 ```
 
@@ -5329,11 +5338,11 @@ Returns an effect that effectfully "peeks" at the specific tagged failure of thi
 
 ```ts
 export declare const tapErrorTag: {
-  <K extends E extends { _tag: string } ? E['_tag'] : never, E, R1, E1, A1>(
+  <K extends E extends { _tag: string } ? E["_tag"] : never, E, R1, E1, A1>(
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>
   ): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E | E1, A>
-  <R, E, A, K extends E extends { _tag: string } ? E['_tag'] : never, R1, E1, A1>(
+  <R, E, A, K extends E extends { _tag: string } ? E["_tag"] : never, R1, E1, A1>(
     self: Effect<R, E, A>,
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>
@@ -5422,9 +5431,9 @@ effect succeeds.
 
 ```ts
 export declare const ensuringChild: {
-  <R2, X>(f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R2 | R, E, A>
+  <R2, X>(
+    f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E, A>
   <R, E, A, R2, X>(
     self: Effect<R, E, A>,
     f: (fiber: Fiber.Fiber<any, ReadonlyArray<unknown>>) => Effect<R2, never, X>
@@ -5443,9 +5452,9 @@ will be invoked, whether or not this effect succeeds.
 
 ```ts
 export declare const ensuringChildren: {
-  <R1, X>(children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect<R1, never, X>): <R, E, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R1 | R, E, A>
+  <R1, X>(
+    children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect<R1, never, X>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E, A>
   <R, E, A, R1, X>(
     self: Effect<R, E, A>,
     children: (fibers: ReadonlyArray<Fiber.RuntimeFiber<any, any>>) => Effect<R1, never, X>
@@ -5514,15 +5523,14 @@ composite fiber that produces a list of their results, in order.
 
 ```ts
 export declare const forkAll: {
-  (options?: { readonly discard?: false }): <R, E, A>(
-    effects: Iterable<Effect<R, E, A>>
-  ) => Effect<R, never, Fiber.Fiber<E, A[]>>
+  (options?: {
+    readonly discard?: false
+  }): <R, E, A>(effects: Iterable<Effect<R, E, A>>) => Effect<R, never, Fiber.Fiber<E, A[]>>
   (options: { readonly discard: true }): <R, E, A>(effects: Iterable<Effect<R, E, A>>) => Effect<R, never, void>
-  <R, E, A>(effects: Iterable<Effect<R, E, A>>, options?: { readonly discard?: false }): Effect<
-    R,
-    never,
-    Fiber.Fiber<E, A[]>
-  >
+  <R, E, A>(
+    effects: Iterable<Effect<R, E, A>>,
+    options?: { readonly discard?: false }
+  ): Effect<R, never, Fiber.Fiber<E, A[]>>
   <R, E, A>(effects: Iterable<Effect<R, E, A>>, options: { readonly discard: true }): Effect<R, never, void>
 }
 ```
@@ -5581,14 +5589,13 @@ Like fork but handles an error with the provided handler.
 
 ```ts
 export declare const forkWithErrorHandler: {
-  <E, X>(handler: (e: E) => Effect<never, never, X>): <R, A>(
-    self: Effect<R, E, A>
-  ) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
-  <R, E, A, X>(self: Effect<R, E, A>, handler: (e: E) => Effect<never, never, X>): Effect<
-    R,
-    never,
-    Fiber.RuntimeFiber<E, A>
-  >
+  <E, X>(
+    handler: (e: E) => Effect<never, never, X>
+  ): <R, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
+  <R, E, A, X>(
+    self: Effect<R, E, A>,
+    handler: (e: E) => Effect<never, never, X>
+  ): Effect<R, never, Fiber.RuntimeFiber<E, A>>
 }
 ```
 
@@ -5661,8 +5668,8 @@ Added in v2.0.0
 
 ```ts
 export declare const withConcurrency: {
-  (concurrency: number | 'unbounded'): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, concurrency: number | 'unbounded'): Effect<R, E, A>
+  (concurrency: number | "unbounded"): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A>(self: Effect<R, E, A>, concurrency: number | "unbounded"): Effect<R, E, A>
 }
 ```
 
@@ -6003,7 +6010,7 @@ Added in v2.0.0
 
 ```ts
 export interface EffectTypeLambda extends TypeLambda {
-  readonly type: Effect<this['Out2'], this['Out1'], this['Target']>
+  readonly type: Effect<this["Out2"], this["Out1"], this["Target"]>
 }
 ```
 
@@ -6058,7 +6065,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type ExtractMode<A> = [A] extends [{ mode: infer M }] ? M : 'default'
+export type ExtractMode<A> = [A] extends [{ mode: infer M }] ? M : "default"
 ```
 
 Added in v2.0.0
@@ -6082,9 +6089,9 @@ export type Return<
   Arg extends Iterable<EffectAny> | Record<string, EffectAny>,
   O extends {
     readonly concurrency?: Concurrency
-    readonly batching?: boolean | 'inherit'
+    readonly batching?: boolean | "inherit"
     readonly discard?: boolean
-    readonly mode?: 'default' | 'validate' | 'either'
+    readonly mode?: "default" | "validate" | "either"
   }
 > = [Arg] extends [ReadonlyArray<EffectAny>]
   ? ReturnTuple<Arg, IsDiscard<O>, ExtractMode<O>>
@@ -6107,8 +6114,8 @@ export type ReturnIterable<T extends Iterable<EffectAny>, Discard extends boolea
 ]
   ? Effect<
       R,
-      Mode extends 'either' ? never : Mode extends 'validate' ? Array<Option.Option<E>> : E,
-      Discard extends true ? void : Mode extends 'either' ? Array<Either.Either<E, A>> : Array<A>
+      Mode extends "either" ? never : Mode extends "validate" ? Array<Option.Option<E>> : E,
+      Discard extends true ? void : Mode extends "either" ? Array<Either.Either<E, A>> : Array<A>
     >
   : never
 ```
@@ -6127,11 +6134,11 @@ export type ReturnObject<T, Discard extends boolean, Mode> = [T] extends [{ [K: 
         : [T[keyof T]] extends [{ [EffectTypeId]: { _R: (_: never) => infer R } }]
         ? R
         : never,
-      Mode extends 'either'
+      Mode extends "either"
         ? never
         : keyof T extends never
         ? never
-        : Mode extends 'validate'
+        : Mode extends "validate"
         ? {
             -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
               ? Option.Option<_E>
@@ -6142,7 +6149,7 @@ export type ReturnObject<T, Discard extends boolean, Mode> = [T] extends [{ [K: 
         : never,
       Discard extends true
         ? void
-        : Mode extends 'either'
+        : Mode extends "either"
         ? {
             -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
               ? Either.Either<_E, _A>
@@ -6162,11 +6169,11 @@ Added in v2.0.0
 ```ts
 export type ReturnTuple<T extends ReadonlyArray<unknown>, Discard extends boolean, Mode> = Effect<
   T[number] extends never ? never : [T[number]] extends [{ [EffectTypeId]: { _R: (_: never) => infer R } }] ? R : never,
-  Mode extends 'either'
+  Mode extends "either"
     ? never
     : T[number] extends never
     ? never
-    : Mode extends 'validate'
+    : Mode extends "validate"
     ? {
         -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
           ? Option.Option<_E>
@@ -6179,7 +6186,7 @@ export type ReturnTuple<T extends ReadonlyArray<unknown>, Discard extends boolea
     ? void
     : T[number] extends never
     ? []
-    : Mode extends 'either'
+    : Mode extends "either"
     ? {
         -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
           ? Either.Either<_E, _A>
@@ -6321,12 +6328,12 @@ Sequentially zips the this result with the specified result. Combines both
 export declare const validate: {
   <R1, E1, B>(
     that: Effect<R1, E1, B>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, [A, B]>
   <R, E, A, R1, E1, B>(
     self: Effect<R, E, A>,
     that: Effect<R1, E1, B>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): Effect<R | R1, E | E1, [A, B]>
 }
 ```
@@ -6345,13 +6352,13 @@ export declare const validateWith: {
   <A, R1, E1, B, C>(
     that: Effect<R1, E1, B>,
     f: (a: A, b: B) => C,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): <R, E>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, C>
   <R, E, A, R1, E1, B, C>(
     self: Effect<R, E, A>,
     that: Effect<R1, E1, B>,
     f: (a: A, b: B) => C,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): Effect<R | R1, E | E1, C>
 }
 ```
@@ -6366,12 +6373,12 @@ Added in v2.0.0
 export declare const zip: {
   <R2, E2, A2>(
     that: Effect<R2, E2, A2>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, [A, A2]>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
     that: Effect<R2, E2, A2>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): Effect<R | R2, E | E2, [A, A2]>
 }
 ```
@@ -6386,12 +6393,12 @@ Added in v2.0.0
 export declare const zipLeft: {
   <R2, E2, A2>(
     that: Effect<R2, E2, A2>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
     that: Effect<R2, E2, A2>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): Effect<R | R2, E | E2, A>
 }
 ```
@@ -6406,12 +6413,12 @@ Added in v2.0.0
 export declare const zipRight: {
   <R2, E2, A2>(
     that: Effect<R2, E2, A2>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Effect<R, E, A>,
     that: Effect<R2, E2, A2>,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): Effect<R | R2, E | E2, A2>
 }
 ```
@@ -6427,13 +6434,13 @@ export declare const zipWith: {
   <R2, E2, A2, A, B>(
     that: Effect<R2, E2, A2>,
     f: (a: A, b: A2) => B,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, B>
   <R, E, A, R2, E2, A2, B>(
     self: Effect<R, E, A>,
     that: Effect<R2, E2, A2>,
     f: (a: A, b: A2) => B,
-    options?: { readonly concurrent?: boolean; readonly batching?: boolean | 'inherit' }
+    options?: { readonly concurrent?: boolean; readonly batching?: boolean | "inherit" }
   ): Effect<R | R2, E | E2, B>
 }
 ```

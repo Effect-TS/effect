@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import { identity } from "./Function"
-import type { Kind, TypeLambda } from "./HKT"
+import { identity } from "./Function.js"
+import type { Kind, TypeLambda } from "./HKT.js"
 
 /*
  * Copyright 2014 Thom Chiovoloni, released under the MIT license.
@@ -17,7 +17,7 @@ import type { Kind, TypeLambda } from "./HKT"
  * @since 2.0.0
  */
 
-import { isNullable } from "./Predicate"
+import { isNullable } from "./Predicate.js"
 
 /**
  * @category symbols

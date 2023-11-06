@@ -1,6 +1,6 @@
 ---
 title: Clock.ts
-nav_order: 16
+nav_order: 10
 parent: Modules
 ---
 

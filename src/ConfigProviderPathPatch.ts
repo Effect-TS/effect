@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as internal from "./internal/configProvider/pathPatch"
+import * as internal from "./internal/configProvider/pathPatch.js"
 
 /**
  * Represents a description of how to modify the path to a configuration

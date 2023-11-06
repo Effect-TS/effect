@@ -1,6 +1,6 @@
 ---
 title: Ordering.ts
-nav_order: 78
+nav_order: 75
 parent: Modules
 ---
 
@@ -100,18 +100,18 @@ export declare const match: {
 **Example**
 
 ```ts
-import { match } from 'effect/Ordering'
-import { constant } from 'effect/Function'
+import { match } from "effect/Ordering"
+import { constant } from "effect/Function"
 
 const toMessage = match({
-  onLessThan: constant('less than'),
-  onEqual: constant('equal'),
-  onGreaterThan: constant('greater than'),
+  onLessThan: constant("less than"),
+  onEqual: constant("equal"),
+  onGreaterThan: constant("greater than")
 })
 
-assert.deepStrictEqual(toMessage(-1), 'less than')
-assert.deepStrictEqual(toMessage(0), 'equal')
-assert.deepStrictEqual(toMessage(1), 'greater than')
+assert.deepStrictEqual(toMessage(-1), "less than")
+assert.deepStrictEqual(toMessage(0), "equal")
+assert.deepStrictEqual(toMessage(1), "greater than")
 ```
 
 Added in v2.0.0
@@ -131,7 +131,7 @@ export declare const reverse: (o: Ordering) => Ordering
 **Example**
 
 ```ts
-import { reverse } from 'effect/Ordering'
+import { reverse } from "effect/Ordering"
 
 assert.deepStrictEqual(reverse(1), -1)
 assert.deepStrictEqual(reverse(-1), 1)

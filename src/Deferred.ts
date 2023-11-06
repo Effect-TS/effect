@@ -1,16 +1,16 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "./Cause"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import type * as FiberId from "./FiberId"
-import type { LazyArg } from "./Function"
-import * as core from "./internal/core"
-import * as internal from "./internal/deferred"
-import type * as MutableRef from "./MutableRef"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
+import type * as Cause from "./Cause.js"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import type * as FiberId from "./FiberId.js"
+import type { LazyArg } from "./Function.js"
+import * as core from "./internal/core.js"
+import * as internal from "./internal/deferred.js"
+import type * as MutableRef from "./MutableRef.js"
+import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

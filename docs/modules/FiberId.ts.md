@@ -1,6 +1,6 @@
 ---
 title: FiberId.ts
-nav_order: 38
+nav_order: 32
 parent: Modules
 ---
 
@@ -172,7 +172,7 @@ Added in v2.0.0
 ```ts
 export interface Composite extends Equal.Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
-  readonly _tag: 'Composite'
+  readonly _tag: "Composite"
   readonly left: FiberId
   readonly right: FiberId
 }
@@ -197,7 +197,7 @@ Added in v2.0.0
 ```ts
 export interface None extends Equal.Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
-  readonly _tag: 'None'
+  readonly _tag: "None"
 }
 ```
 
@@ -210,7 +210,7 @@ Added in v2.0.0
 ```ts
 export interface Runtime extends Equal.Equal, Inspectable {
   readonly [FiberIdTypeId]: FiberIdTypeId
-  readonly _tag: 'Runtime'
+  readonly _tag: "Runtime"
   readonly id: number
   readonly startTimeMillis: number
 }

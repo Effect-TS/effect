@@ -1,6 +1,6 @@
 ---
 title: Match.ts
-nav_order: 58
+nav_order: 52
 parent: Modules
 ---
 
@@ -201,14 +201,14 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const tag: <R, P extends Types.Tags<'_tag', R> & string, B>(
-  ...pattern: [first: P, ...values: P[], f: (_: Extract<R, Record<'_tag', P>>) => B]
+export declare const tag: <R, P extends Types.Tags<"_tag", R> & string, B>(
+  ...pattern: [first: P, ...values: P[], f: (_: Extract<R, Record<"_tag", P>>) => B]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<'_tag', P>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<'_tag', P>>>>,
+  Types.AddWithout<F, Extract<R, Record<"_tag", P>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", P>>>>,
   B | A,
   Pr
 >
@@ -223,13 +223,13 @@ Added in v1.0.0
 ```ts
 export declare const tagStartsWith: <R, P extends string, B>(
   pattern: P,
-  f: (_: Extract<R, Record<'_tag', `${P}${string}`>>) => B
+  f: (_: Extract<R, Record<"_tag", `${P}${string}`>>) => B
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<'_tag', `${P}${string}`>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<'_tag', `${P}${string}`>>>>,
+  Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", `${P}${string}`>>>>,
   B | A,
   Pr
 >
@@ -245,7 +245,7 @@ Added in v1.0.0
 export declare const tags: <
   R,
   P extends {
-    readonly [Tag in Types.Tags<'_tag', R> & string]?: ((_: Extract<R, Record<'_tag', Tag>>) => any) | undefined
+    readonly [Tag in Types.Tags<"_tag", R> & string]?: ((_: Extract<R, Record<"_tag", Tag>>) => any) | undefined
   }
 >(
   fields: P
@@ -253,8 +253,8 @@ export declare const tags: <
   self: Matcher<I, F, R, A, Pr>
 ) => Matcher<
   I,
-  Types.AddWithout<F, Extract<R, Record<'_tag', keyof P>>>,
-  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<'_tag', keyof P>>>>,
+  Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>,
+  Types.ApplyFilters<I, Types.AddWithout<F, Extract<R, Record<"_tag", keyof P>>>>,
   A | ReturnType<P[keyof P] & {}>,
   Pr
 >
@@ -269,7 +269,7 @@ Added in v1.0.0
 ```ts
 export declare const tagsExhaustive: <
   R,
-  P extends { readonly [Tag in Types.Tags<'_tag', R> & string]: (_: Extract<R, Record<'_tag', Tag>>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => any }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -370,7 +370,7 @@ Added in v1.0.0
 
 ```ts
 export declare const typeTags: <I>() => <
-  P extends { readonly [Tag in Types.Tags<'_tag', I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
 >(
   fields: P
 ) => (input: I) => Unify<ReturnType<P[keyof P]>>
@@ -395,7 +395,7 @@ Added in v1.0.0
 ```ts
 export declare const valueTags: <
   const I,
-  P extends { readonly [Tag in Types.Tags<'_tag', I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
 >(
   fields: P
 ) => (input: I) => Unify<ReturnType<P[keyof P]>>
@@ -495,7 +495,7 @@ Added in v1.0.0
 
 ```ts
 export interface Not {
-  readonly _tag: 'Not'
+  readonly _tag: "Not"
   readonly guard: (u: unknown) => boolean
   readonly evaluate: (input: unknown) => any
 }
@@ -521,7 +521,7 @@ Added in v1.0.0
 
 ```ts
 export interface TypeMatcher<Input, Filters, Remaining, Result> extends Pipeable {
-  readonly _tag: 'TypeMatcher'
+  readonly _tag: "TypeMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: (_: Input) => unknown
     readonly _filters: (_: never) => Filters
@@ -541,7 +541,7 @@ Added in v1.0.0
 
 ```ts
 export interface ValueMatcher<Input, Filters, Remaining, Result, Provided> extends Pipeable {
-  readonly _tag: 'ValueMatcher'
+  readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: (_: Input) => unknown
     readonly _filters: (_: never) => Filters
@@ -561,7 +561,7 @@ Added in v1.0.0
 
 ```ts
 export interface When {
-  readonly _tag: 'When'
+  readonly _tag: "When"
   readonly guard: (u: unknown) => boolean
   readonly evaluate: (input: unknown) => any
 }
@@ -771,7 +771,7 @@ Added in v1.0.0
 
 ```ts
 export interface Only<X> {
-  readonly _tag: 'Only'
+  readonly _tag: "Only"
   readonly _X: X
 }
 ```
@@ -784,7 +784,7 @@ Added in v1.0.0
 
 ```ts
 export interface Without<X> {
-  readonly _tag: 'Without'
+  readonly _tag: "Without"
   readonly _X: X
 }
 ```

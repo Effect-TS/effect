@@ -1,6 +1,6 @@
 ---
 title: Layer.ts
-nav_order: 53
+nav_order: 47
 parent: Modules
 ---
 
@@ -205,14 +205,13 @@ Constructs a layer from the specified effect.
 
 ```ts
 export declare const effect: {
-  <T extends Context.Tag<any, any>>(tag: T): <R, E>(
+  <T extends Context.Tag<any, any>>(
+    tag: T
+  ): <R, E>(effect: Effect.Effect<R, E, Context.Tag.Service<T>>) => Layer<R, E, Context.Tag.Identifier<T>>
+  <T extends Context.Tag<any, any>, R, E>(
+    tag: T,
     effect: Effect.Effect<R, E, Context.Tag.Service<T>>
-  ) => Layer<R, E, Context.Tag.Identifier<T>>
-  <T extends Context.Tag<any, any>, R, E>(tag: T, effect: Effect.Effect<R, E, Context.Tag.Service<T>>): Layer<
-    R,
-    E,
-    Context.Tag.Identifier<T>
-  >
+  ): Layer<R, E, Context.Tag.Identifier<T>>
 }
 ```
 
@@ -326,14 +325,15 @@ Constructs a layer from the specified scoped effect.
 
 ```ts
 export declare const scoped: {
-  <T extends Context.Tag<any, any>>(tag: T): <R, E>(
+  <T extends Context.Tag<any, any>>(
+    tag: T
+  ): <R, E>(
     effect: Effect.Effect<R, E, Context.Tag.Service<T>>
   ) => Layer<Exclude<R, Scope.Scope>, E, Context.Tag.Identifier<T>>
-  <T extends Context.Tag<any, any>, R, E>(tag: T, effect: Effect.Effect<R, E, Context.Tag.Service<T>>): Layer<
-    Exclude<R, Scope.Scope>,
-    E,
-    Context.Tag.Identifier<T>
-  >
+  <T extends Context.Tag<any, any>, R, E>(
+    tag: T,
+    effect: Effect.Effect<R, E, Context.Tag.Service<T>>
+  ): Layer<Exclude<R, Scope.Scope>, E, Context.Tag.Identifier<T>>
 }
 ```
 
@@ -391,14 +391,13 @@ Constructs a layer from the specified value.
 
 ```ts
 export declare const succeed: {
-  <T extends Context.Tag<any, any>>(tag: T): (
+  <T extends Context.Tag<any, any>>(
+    tag: T
+  ): (resource: Context.Tag.Service<T>) => Layer<never, never, Context.Tag.Identifier<T>>
+  <T extends Context.Tag<any, any>>(
+    tag: T,
     resource: Context.Tag.Service<T>
-  ) => Layer<never, never, Context.Tag.Identifier<T>>
-  <T extends Context.Tag<any, any>>(tag: T, resource: Context.Tag.Service<T>): Layer<
-    never,
-    never,
-    Context.Tag.Identifier<T>
-  >
+  ): Layer<never, never, Context.Tag.Identifier<T>>
 }
 ```
 
@@ -438,14 +437,13 @@ Lazily constructs a layer from the specified value.
 
 ```ts
 export declare const sync: {
-  <T extends Context.Tag<any, any>>(tag: T): (
+  <T extends Context.Tag<any, any>>(
+    tag: T
+  ): (evaluate: LazyArg<Context.Tag.Service<T>>) => Layer<never, never, Context.Tag.Identifier<T>>
+  <T extends Context.Tag<any, any>>(
+    tag: T,
     evaluate: LazyArg<Context.Tag.Service<T>>
-  ) => Layer<never, never, Context.Tag.Identifier<T>>
-  <T extends Context.Tag<any, any>>(tag: T, evaluate: LazyArg<Context.Tag.Service<T>>): Layer<
-    never,
-    never,
-    Context.Tag.Identifier<T>
-  >
+  ): Layer<never, never, Context.Tag.Identifier<T>>
 }
 ```
 
@@ -554,14 +552,13 @@ Recovers from all errors.
 
 ```ts
 export declare const catchAllCause: {
-  <E, R2, E2, A2>(onError: (cause: Cause.Cause<E>) => Layer<R2, E2, A2>): <R, A>(
-    self: Layer<R, E, A>
-  ) => Layer<R2 | R, E2, A & A2>
-  <R, E, A, R2, E2, A2>(self: Layer<R, E, A>, onError: (cause: Cause.Cause<E>) => Layer<R2, E2, A2>): Layer<
-    R | R2,
-    E2,
-    A & A2
-  >
+  <E, R2, E2, A2>(
+    onError: (cause: Cause.Cause<E>) => Layer<R2, E2, A2>
+  ): <R, A>(self: Layer<R, E, A>) => Layer<R2 | R, E2, A & A2>
+  <R, E, A, R2, E2, A2>(
+    self: Layer<R, E, A>,
+    onError: (cause: Cause.Cause<E>) => Layer<R2, E2, A2>
+  ): Layer<R | R2, E2, A & A2>
 }
 ```
 
@@ -791,14 +788,13 @@ Retries constructing this layer according to the specified schedule.
 
 ```ts
 export declare const retry: {
-  <RIn2, E, X>(schedule: Schedule.Schedule<RIn2, E, X>): <RIn, ROut>(
-    self: Layer<RIn, E, ROut>
-  ) => Layer<RIn2 | RIn, E, ROut>
-  <RIn, E, ROut, RIn2, X>(self: Layer<RIn, E, ROut>, schedule: Schedule.Schedule<RIn2, E, X>): Layer<
-    RIn | RIn2,
-    E,
-    ROut
-  >
+  <RIn2, E, X>(
+    schedule: Schedule.Schedule<RIn2, E, X>
+  ): <RIn, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E, ROut>
+  <RIn, E, ROut, RIn2, X>(
+    self: Layer<RIn, E, ROut>,
+    schedule: Schedule.Schedule<RIn2, E, X>
+  ): Layer<RIn | RIn2, E, ROut>
 }
 ```
 
@@ -826,14 +822,13 @@ Constructs a layer dynamically based on the output of this layer.
 
 ```ts
 export declare const flatMap: {
-  <A, R2, E2, A2>(f: (context: Context.Context<A>) => Layer<R2, E2, A2>): <R, E>(
-    self: Layer<R, E, A>
-  ) => Layer<R2 | R, E2 | E, A2>
-  <R, E, A, R2, E2, A2>(self: Layer<R, E, A>, f: (context: Context.Context<A>) => Layer<R2, E2, A2>): Layer<
-    R | R2,
-    E | E2,
-    A2
-  >
+  <A, R2, E2, A2>(
+    f: (context: Context.Context<A>) => Layer<R2, E2, A2>
+  ): <R, E>(self: Layer<R, E, A>) => Layer<R2 | R, E2 | E, A2>
+  <R, E, A, R2, E2, A2>(
+    self: Layer<R, E, A>,
+    f: (context: Context.Context<A>) => Layer<R2, E2, A2>
+  ): Layer<R | R2, E | E2, A2>
 }
 ```
 
@@ -862,9 +857,9 @@ Performs the specified effect if this layer succeeds.
 
 ```ts
 export declare const tap: {
-  <ROut, XR extends ROut, RIn2, E2, X>(f: (context: Context.Context<XR>) => Effect.Effect<RIn2, E2, X>): <RIn, E>(
-    self: Layer<RIn, E, ROut>
-  ) => Layer<RIn2 | RIn, E2 | E, ROut>
+  <ROut, XR extends ROut, RIn2, E2, X>(
+    f: (context: Context.Context<XR>) => Effect.Effect<RIn2, E2, X>
+  ): <RIn, E>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut>
   <RIn, E, ROut, XR extends ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
     f: (context: Context.Context<XR>) => Effect.Effect<RIn2, E2, X>
@@ -882,14 +877,13 @@ Performs the specified effect if this layer fails.
 
 ```ts
 export declare const tapError: {
-  <E, XE extends E, RIn2, E2, X>(f: (e: XE) => Effect.Effect<RIn2, E2, X>): <RIn, ROut>(
-    self: Layer<RIn, E, ROut>
-  ) => Layer<RIn2 | RIn, E | E2, ROut>
-  <RIn, E, XE extends E, ROut, RIn2, E2, X>(self: Layer<RIn, E, ROut>, f: (e: XE) => Effect.Effect<RIn2, E2, X>): Layer<
-    RIn | RIn2,
-    E | E2,
-    ROut
-  >
+  <E, XE extends E, RIn2, E2, X>(
+    f: (e: XE) => Effect.Effect<RIn2, E2, X>
+  ): <RIn, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E | E2, ROut>
+  <RIn, E, XE extends E, ROut, RIn2, E2, X>(
+    self: Layer<RIn, E, ROut>,
+    f: (e: XE) => Effect.Effect<RIn2, E2, X>
+  ): Layer<RIn | RIn2, E | E2, ROut>
 }
 ```
 
@@ -903,9 +897,9 @@ Performs the specified effect if this layer fails.
 
 ```ts
 export declare const tapErrorCause: {
-  <E, XE extends E, RIn2, E2, X>(f: (cause: Cause.Cause<XE>) => Effect.Effect<RIn2, E2, X>): <RIn, ROut>(
-    self: Layer<RIn, E, ROut>
-  ) => Layer<RIn2 | RIn, E | E2, ROut>
+  <E, XE extends E, RIn2, E2, X>(
+    f: (cause: Cause.Cause<XE>) => Effect.Effect<RIn2, E2, X>
+  ): <RIn, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E | E2, ROut>
   <RIn, E, XE extends E, ROut, RIn2, E2, X>(
     self: Layer<RIn, E, ROut>,
     f: (cause: Cause.Cause<XE>) => Effect.Effect<RIn2, E2, X>
@@ -1223,14 +1217,13 @@ has the inputs and outputs of both.
 
 ```ts
 export declare const merge: {
-  <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>): <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
-  ) => Layer<RIn2 | RIn, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(self: Layer<RIn, E, ROut>, that: Layer<RIn2, E2, ROut2>): Layer<
-    RIn | RIn2,
-    E | E2,
-    ROut | ROut2
-  >
+  <RIn2, E2, ROut2>(
+    that: Layer<RIn2, E2, ROut2>
+  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut2 | ROut>
+  <RIn, E, ROut, RIn2, E2, ROut2>(
+    self: Layer<RIn, E, ROut>,
+    that: Layer<RIn2, E2, ROut2>
+  ): Layer<RIn | RIn2, E | E2, ROut | ROut2>
 }
 ```
 
@@ -1284,14 +1277,13 @@ well as any leftover inputs, and the outputs of the specified builder.
 
 ```ts
 export declare const provide: {
-  <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>): <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
-  ) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
-  <RIn, E, ROut, RIn2, E2, ROut2>(self: Layer<RIn, E, ROut>, that: Layer<RIn2, E2, ROut2>): Layer<
-    RIn | Exclude<RIn2, ROut>,
-    E | E2,
-    ROut2
-  >
+  <RIn2, E2, ROut2>(
+    that: Layer<RIn2, E2, ROut2>
+  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
+  <RIn, E, ROut, RIn2, E2, ROut2>(
+    self: Layer<RIn, E, ROut>,
+    that: Layer<RIn2, E2, ROut2>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
 }
 ```
 
@@ -1307,14 +1299,13 @@ outputs of both layers.
 
 ```ts
 export declare const provideMerge: {
-  <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>): <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
-  ) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(self: Layer<RIn, E, ROut>, that: Layer<RIn2, E2, ROut2>): Layer<
-    RIn | Exclude<RIn2, ROut>,
-    E | E2,
-    ROut | ROut2
-  >
+  <RIn2, E2, ROut2>(
+    that: Layer<RIn2, E2, ROut2>
+  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
+  <RIn, E, ROut, RIn2, E2, ROut2>(
+    self: Layer<RIn, E, ROut>,
+    that: Layer<RIn2, E2, ROut2>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
 }
 ```
 
@@ -1354,14 +1345,13 @@ well as any leftover inputs, and the outputs of the specified builder.
 
 ```ts
 export declare const use: {
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>): <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
-  <RIn2, E2, ROut2, RIn, E, ROut>(that: Layer<RIn2, E2, ROut2>, self: Layer<RIn, E, ROut>): Layer<
-    RIn | Exclude<RIn2, ROut>,
-    E2 | E,
-    ROut2
-  >
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
+  <RIn2, E2, ROut2, RIn, E, ROut>(
+    that: Layer<RIn2, E2, ROut2>,
+    self: Layer<RIn, E, ROut>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
 }
 ```
 
@@ -1377,14 +1367,13 @@ outputs of both layers.
 
 ```ts
 export declare const useMerge: {
-  <RIn, E, ROut>(self: Layer<RIn, E, ROut>): <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
-  <RIn2, E2, ROut2, RIn, E, ROut>(that: Layer<RIn2, E2, ROut2>, self: Layer<RIn, E, ROut>): Layer<
-    RIn | Exclude<RIn2, ROut>,
-    E2 | E,
-    ROut2 | ROut
-  >
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
+  <RIn2, E2, ROut2, RIn, E, ROut>(
+    that: Layer<RIn2, E2, ROut2>,
+    self: Layer<RIn, E, ROut>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
 }
 ```
 
@@ -1420,12 +1409,10 @@ function.
 
 ```ts
 export declare const zipWithPar: {
-  <R2, E2, B, A, C>(that: Layer<R2, E2, B>, f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>): <
-    R,
-    E
-  >(
-    self: Layer<R, E, A>
-  ) => Layer<R2 | R, E2 | E, C>
+  <R2, E2, B, A, C>(
+    that: Layer<R2, E2, B>,
+    f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
+  ): <R, E>(self: Layer<R, E, A>) => Layer<R2 | R, E2 | E, C>
   <R, E, R2, E2, B, A, C>(
     self: Layer<R, E, A>,
     that: Layer<R2, E2, B>,

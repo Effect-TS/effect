@@ -1,6 +1,6 @@
 ---
 title: Runtime.ts
-nav_order: 94
+nav_order: 91
 parent: Modules
 ---
 
@@ -233,7 +233,7 @@ Added in v2.0.0
 
 ```ts
 export interface AsyncFiberException<E, A> {
-  readonly _tag: 'AsyncFiberException'
+  readonly _tag: "AsyncFiberException"
   readonly fiber: Fiber.RuntimeFiber<E, A>
 }
 ```

@@ -1,6 +1,6 @@
 ---
 title: SubscriptionRef.ts
-nav_order: 115
+nav_order: 113
 parent: Modules
 ---
 
@@ -238,14 +238,15 @@ Added in v2.0.0
 
 ```ts
 export declare const modifySome: {
-  <B, A>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): (
-    self: SubscriptionRef<A>
-  ) => Effect.Effect<never, never, B>
-  <A, B>(self: SubscriptionRef<A>, fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): Effect.Effect<
-    never,
-    never,
-    B
-  >
+  <B, A>(
+    fallback: B,
+    pf: (a: A) => Option.Option<readonly [B, A]>
+  ): (self: SubscriptionRef<A>) => Effect.Effect<never, never, B>
+  <A, B>(
+    self: SubscriptionRef<A>,
+    fallback: B,
+    pf: (a: A) => Option.Option<readonly [B, A]>
+  ): Effect.Effect<never, never, B>
 }
 ```
 
@@ -257,9 +258,10 @@ Added in v2.0.0
 
 ```ts
 export declare const modifySomeEffect: {
-  <A, B, R, E>(fallback: B, pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>): (
-    self: SubscriptionRef<A>
-  ) => Effect.Effect<R, E, B>
+  <A, B, R, E>(
+    fallback: B,
+    pf: (a: A) => Option.Option<Effect.Effect<R, E, readonly [B, A]>>
+  ): (self: SubscriptionRef<A>) => Effect.Effect<R, E, B>
   <A, B, R, E>(
     self: SubscriptionRef<A>,
     fallback: B,
@@ -393,9 +395,9 @@ Added in v2.0.0
 
 ```ts
 export declare const updateSomeEffect: {
-  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): (
-    self: SubscriptionRef<A>
-  ) => Effect.Effect<R, E, void>
+  <A, R, E>(
+    pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>
+  ): (self: SubscriptionRef<A>) => Effect.Effect<R, E, void>
   <A, R, E>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<Effect.Effect<R, E, A>>): Effect.Effect<R, E, void>
 }
 ```

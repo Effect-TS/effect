@@ -1,6 +1,6 @@
 ---
 title: Equivalence.ts
-nav_order: 34
+nav_order: 28
 parent: Modules
 ---
 
@@ -290,7 +290,7 @@ Added in v2.0.0
 
 ```ts
 export interface EquivalenceTypeLambda extends TypeLambda {
-  readonly type: Equivalence<this['Target']>
+  readonly type: Equivalence<this["Target"]>
 }
 ```
 

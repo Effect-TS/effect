@@ -1,6 +1,6 @@
 ---
 title: Config.ts
-nav_order: 17
+nav_order: 11
 parent: Modules
 ---
 
@@ -517,9 +517,10 @@ fails with an error satisfying the specified predicate.
 
 ```ts
 export declare const orElseIf: {
-  <A2>(options: { readonly if: Predicate<ConfigError.ConfigError>; readonly orElse: LazyArg<Config<A2>> }): <A>(
-    self: Config<A>
-  ) => Config<A>
+  <A2>(options: {
+    readonly if: Predicate<ConfigError.ConfigError>
+    readonly orElse: LazyArg<Config<A2>>
+  }): <A>(self: Config<A>) => Config<A>
   <A, A2>(
     self: Config<A>,
     options: { readonly if: Predicate<ConfigError.ConfigError>; readonly orElse: LazyArg<Config<A2>> }
@@ -551,9 +552,10 @@ performs validation during loading.
 
 ```ts
 export declare const validate: {
-  <A, B extends A>(options: { readonly message: string; readonly validation: Refinement<A, B> }): (
-    self: Config<A>
-  ) => Config<B>
+  <A, B extends A>(options: {
+    readonly message: string
+    readonly validation: Refinement<A, B>
+  }): (self: Config<A>) => Config<B>
   <A>(options: { readonly message: string; readonly validation: Predicate<A> }): (self: Config<A>) => Config<A>
   <A, B extends A>(
     self: Config<A>,

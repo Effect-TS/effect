@@ -1,6 +1,6 @@
 ---
 title: FiberStatus.ts
-nav_order: 42
+nav_order: 36
 parent: Modules
 ---
 
@@ -72,7 +72,7 @@ Added in v2.0.0
 
 ```ts
 export interface Done extends Equal.Equal {
-  readonly _tag: 'Done'
+  readonly _tag: "Done"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
 }
 ```
@@ -95,7 +95,7 @@ Added in v2.0.0
 
 ```ts
 export interface Running extends Equal.Equal {
-  readonly _tag: 'Running'
+  readonly _tag: "Running"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
   readonly runtimeFlags: RuntimeFlags.RuntimeFlags
 }
@@ -109,7 +109,7 @@ Added in v2.0.0
 
 ```ts
 export interface Suspended extends Equal.Equal {
-  readonly _tag: 'Suspended'
+  readonly _tag: "Suspended"
   readonly [FiberStatusTypeId]: FiberStatusTypeId
   readonly runtimeFlags: RuntimeFlags.RuntimeFlags
   readonly blockingOn: FiberId.FiberId

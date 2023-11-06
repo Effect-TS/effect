@@ -1,6 +1,6 @@
 ---
 title: Scheduler.ts
-nav_order: 101
+nav_order: 98
 parent: Modules
 ---
 
@@ -118,14 +118,12 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare class MixedScheduler {
-  constructor(
+export declare class MixedScheduler { constructor(
     /**
      * @since 2.0.0
      */
     readonly maxNextTickBeforeTimer: number
-  )
-}
+  ) }
 ```
 
 Added in v2.0.0
@@ -256,8 +254,8 @@ Added in v2.0.0
 
 ```ts
 export declare const make: (
-  scheduleTask: Scheduler['scheduleTask'],
-  shouldYield?: Scheduler['shouldYield']
+  scheduleTask: Scheduler["scheduleTask"],
+  shouldYield?: Scheduler["shouldYield"]
 ) => Scheduler
 ```
 
@@ -270,7 +268,7 @@ Added in v2.0.0
 ```ts
 export declare const makeBatched: (
   callback: (runBatch: () => void) => void,
-  shouldYield?: Scheduler['shouldYield']
+  shouldYield?: Scheduler["shouldYield"]
 ) => Scheduler
 ```
 
@@ -291,7 +289,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const timer: (ms: number, shouldYield?: Scheduler['shouldYield']) => Scheduler
+export declare const timer: (ms: number, shouldYield?: Scheduler["shouldYield"]) => Scheduler
 ```
 
 Added in v2.0.0
@@ -301,7 +299,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const timerBatched: (ms: number, shouldYield?: Scheduler['shouldYield']) => Scheduler
+export declare const timerBatched: (ms: number, shouldYield?: Scheduler["shouldYield"]) => Scheduler
 ```
 
 Added in v2.0.0

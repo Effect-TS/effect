@@ -21,17 +21,17 @@
  *
  * @since 2.0.0
  */
-import type * as Chunk from "./Chunk"
-import type * as Either from "./Either"
-import type * as Equal from "./Equal"
-import type * as FiberId from "./FiberId"
-import type * as HashSet from "./HashSet"
-import type { Inspectable } from "./Inspectable"
-import * as internal from "./internal/cause"
-import { originalInstance } from "./internal/core"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type { Predicate } from "./Predicate"
+import type * as Chunk from "./Chunk.js"
+import type * as Either from "./Either.js"
+import type * as Equal from "./Equal.js"
+import type * as FiberId from "./FiberId.js"
+import type * as HashSet from "./HashSet.js"
+import type { Inspectable } from "./Inspectable.js"
+import * as internal from "./internal/cause.js"
+import { originalInstance } from "./internal/core.js"
+import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { Predicate } from "./Predicate.js"
 
 /**
  * @since 2.0.0

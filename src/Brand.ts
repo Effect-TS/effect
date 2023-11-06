@@ -16,12 +16,12 @@
  *
  * @since 2.0.0
  */
-import * as Either from "./Either"
-import { identity } from "./Function"
-import * as Option from "./Option"
-import type { Predicate, Refinement } from "./Predicate"
-import * as ReadonlyArray from "./ReadonlyArray"
-import type * as Types from "./Types"
+import * as Either from "./Either.js"
+import { identity } from "./Function.js"
+import * as Option from "./Option.js"
+import type { Predicate, Refinement } from "./Predicate.js"
+import * as ReadonlyArray from "./ReadonlyArray.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0

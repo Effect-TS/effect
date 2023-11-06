@@ -1,6 +1,6 @@
 ---
 title: Function.ts
-nav_order: 43
+nav_order: 37
 parent: Modules
 ---
 
@@ -56,10 +56,10 @@ export declare const isFunction: (input: unknown) => input is Function
 **Example**
 
 ```ts
-import { isFunction } from 'effect/Predicate'
+import { isFunction } from "effect/Predicate"
 
 assert.deepStrictEqual(isFunction(isFunction), true)
-assert.deepStrictEqual(isFunction('function'), false)
+assert.deepStrictEqual(isFunction("function"), false)
 ```
 
 Added in v2.0.0
@@ -72,7 +72,7 @@ Added in v2.0.0
 
 ```ts
 export interface FunctionTypeLambda extends TypeLambda {
-  readonly type: (a: this['In']) => this['Target']
+  readonly type: (a: this["In"]) => this["Target"]
 }
 ```
 
@@ -93,7 +93,7 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
 **Example**
 
 ```ts
-import { FunctionN } from 'effect/Function'
+import { FunctionN } from "effect/Function"
 
 const sum: FunctionN<[number, number], number> = (a, b) => a + b
 ```
@@ -115,7 +115,7 @@ export interface LazyArg<A> {
 **Example**
 
 ```ts
-import { LazyArg, constant } from 'effect/Function'
+import { LazyArg, constant } from "effect/Function"
 
 const constNull: LazyArg<null> = constant(null)
 ```
@@ -138,9 +138,9 @@ export declare const SK: <A, B>(_: A, b: B) => B
 **Example**
 
 ```ts
-import { SK } from 'effect/Function'
+import { SK } from "effect/Function"
 
-assert.deepStrictEqual(SK(0, 'hello'), 'hello')
+assert.deepStrictEqual(SK(0, "hello"), "hello")
 ```
 
 Added in v2.0.0
@@ -173,10 +173,10 @@ export declare const apply: <A>(a: A) => <B>(self: (a: A) => B) => B
 **Example**
 
 ```ts
-import { pipe, apply } from 'effect/Function'
-import { length } from 'effect/String'
+import { pipe, apply } from "effect/Function"
+import { length } from "effect/String"
 
-assert.deepStrictEqual(pipe(length, apply('hello')), 5)
+assert.deepStrictEqual(pipe(length, apply("hello")), 5)
 ```
 
 Added in v2.0.0
@@ -198,7 +198,7 @@ export declare const compose: {
 **Example**
 
 ```ts
-import { compose } from 'effect/Function'
+import { compose } from "effect/Function"
 
 const increment = (n: number) => n + 1
 const square = (n: number) => n * n
@@ -221,7 +221,7 @@ export declare const constFalse: LazyArg<boolean>
 **Example**
 
 ```ts
-import { constFalse } from 'effect/Function'
+import { constFalse } from "effect/Function"
 
 assert.deepStrictEqual(constFalse(), false)
 ```
@@ -241,7 +241,7 @@ export declare const constNull: LazyArg<null>
 **Example**
 
 ```ts
-import { constNull } from 'effect/Function'
+import { constNull } from "effect/Function"
 
 assert.deepStrictEqual(constNull(), null)
 ```
@@ -261,7 +261,7 @@ export declare const constTrue: LazyArg<boolean>
 **Example**
 
 ```ts
-import { constTrue } from 'effect/Function'
+import { constTrue } from "effect/Function"
 
 assert.deepStrictEqual(constTrue(), true)
 ```
@@ -281,7 +281,7 @@ export declare const constUndefined: LazyArg<undefined>
 **Example**
 
 ```ts
-import { constUndefined } from 'effect/Function'
+import { constUndefined } from "effect/Function"
 
 assert.deepStrictEqual(constUndefined(), undefined)
 ```
@@ -301,7 +301,7 @@ export declare const constVoid: LazyArg<void>
 **Example**
 
 ```ts
-import { constVoid } from 'effect/Function'
+import { constVoid } from "effect/Function"
 
 assert.deepStrictEqual(constVoid(), undefined)
 ```
@@ -324,7 +324,7 @@ export declare const constant: <A>(value: A) => LazyArg<A>
 **Example**
 
 ```ts
-import { constant } from 'effect/Function'
+import { constant } from "effect/Function"
 
 const constNull = constant(null)
 
@@ -353,7 +353,7 @@ function is being used in a data-first or data-last style.
 ```ts
 export declare const dual: {
   <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
-    arity: Parameters<DataFirst>['length'],
+    arity: Parameters<DataFirst>["length"],
     body: DataFirst
   ): DataLast & DataFirst
   <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
@@ -366,7 +366,7 @@ export declare const dual: {
 **Example**
 
 ```ts
-import { dual, pipe } from 'effect/Function'
+import { dual, pipe } from "effect/Function"
 
 // Exampe using arity to determine data-first or data-last style
 const sum: {
@@ -407,11 +407,11 @@ export declare const flip: <A extends unknown[], B extends unknown[], C>(
 **Example**
 
 ```ts
-import { flip } from 'effect/Function'
+import { flip } from "effect/Function"
 
 const f = (a: number) => (b: string) => a - b.length
 
-assert.deepStrictEqual(flip(f)('aaa')(2), -1)
+assert.deepStrictEqual(flip(f)("aaa")(2), -1)
 ```
 
 Added in v2.0.0
@@ -491,14 +491,14 @@ export declare function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G,
 **Example**
 
 ```ts
-import { flow } from 'effect/Function'
+import { flow } from "effect/Function"
 
 const len = (s: string): number => s.length
 const double = (n: number): number => n * 2
 
 const f = flow(len, double)
 
-assert.strictEqual(f('aaa'), 6)
+assert.strictEqual(f("aaa"), 6)
 ```
 
 Added in v2.0.0
@@ -528,7 +528,7 @@ export declare const identity: <A>(a: A) => A
 **Example**
 
 ```ts
-import { identity } from 'effect/Function'
+import { identity } from "effect/Function"
 
 assert.deepStrictEqual(identity(5), 5)
 ```
@@ -783,13 +783,13 @@ export declare function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, 
 **Example**
 
 ```ts
-import { pipe } from 'effect/Function'
+import { pipe } from "effect/Function"
 
 const length = (s: string): number => s.length
 const double = (n: number): number => n * 2
 const decrement = (n: number): number => n - 1
 
-assert.deepStrictEqual(pipe(length('hello'), double, decrement), 9)
+assert.deepStrictEqual(pipe(length("hello"), double, decrement), 9)
 ```
 
 Added in v2.0.0
@@ -807,7 +807,7 @@ export declare const tupled: <A extends readonly unknown[], B>(f: (...a: A) => B
 **Example**
 
 ```ts
-import { tupled } from 'effect/Function'
+import { tupled } from "effect/Function"
 
 const sumTupled = tupled((x: number, y: number): number => x + y)
 
@@ -829,7 +829,7 @@ export declare const unsafeCoerce: <A, B>(a: A) => B
 **Example**
 
 ```ts
-import { unsafeCoerce, identity } from 'effect/Function'
+import { unsafeCoerce, identity } from "effect/Function"
 
 assert.deepStrictEqual(unsafeCoerce, identity)
 ```
@@ -849,7 +849,7 @@ export declare const untupled: <A extends readonly unknown[], B>(f: (a: A) => B)
 **Example**
 
 ```ts
-import { untupled } from 'effect/Function'
+import { untupled } from "effect/Function"
 
 const getFirst = untupled(<A, B>(tuple: [A, B]): A => tuple[0])
 

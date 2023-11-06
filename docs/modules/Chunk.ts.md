@@ -1,6 +1,6 @@
 ---
 title: Chunk.ts
-nav_order: 15
+nav_order: 9
 parent: Modules
 ---
 
@@ -1095,7 +1095,7 @@ Added in v2.0.0
 
 ```ts
 export interface ChunkTypeLambda extends TypeLambda {
-  readonly type: Chunk<this['Target']>
+  readonly type: Chunk<this["Target"]>
 }
 ```
 

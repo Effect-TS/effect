@@ -1,6 +1,6 @@
 ---
 title: RequestBlock.ts
-nav_order: 91
+nav_order: 88
 parent: Modules
 ---
 
@@ -109,7 +109,7 @@ Added in v2.0.0
 
 ```ts
 export interface Empty {
-  readonly _tag: 'Empty'
+  readonly _tag: "Empty"
 }
 ```
 
@@ -121,7 +121,7 @@ Added in v2.0.0
 
 ```ts
 export interface Par<R> {
-  readonly _tag: 'Par'
+  readonly _tag: "Par"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
 }
@@ -173,7 +173,7 @@ Added in v2.0.0
 
 ```ts
 export interface Seq<R> {
-  readonly _tag: 'Seq'
+  readonly _tag: "Seq"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
 }
@@ -187,7 +187,7 @@ Added in v2.0.0
 
 ```ts
 export interface Single<R> {
-  readonly _tag: 'Single'
+  readonly _tag: "Single"
   readonly dataSource: RequestResolver.RequestResolver<unknown, R>
   readonly blockedRequest: Request.Entry<unknown>
 }

@@ -1,6 +1,6 @@
 ---
 title: Order.ts
-nav_order: 77
+nav_order: 74
 parent: Modules
 ---
 
@@ -278,7 +278,7 @@ Added in v2.0.0
 
 ```ts
 export interface OrderTypeLambda extends TypeLambda {
-  readonly type: Order<this['Target']>
+  readonly type: Order<this["Target"]>
 }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: Number.ts
-nav_order: 75
+nav_order: 72
 parent: Modules
 ---
 
@@ -61,10 +61,10 @@ export declare const isNumber: (input: unknown) => input is number
 **Example**
 
 ```ts
-import { isNumber } from 'effect/Number'
+import { isNumber } from "effect/Number"
 
 assert.deepStrictEqual(isNumber(2), true)
-assert.deepStrictEqual(isNumber('2'), false)
+assert.deepStrictEqual(isNumber("2"), false)
 ```
 
 Added in v2.0.0
@@ -106,7 +106,7 @@ export declare const decrement: (n: number) => number
 **Example**
 
 ```ts
-import { decrement } from 'effect/Number'
+import { decrement } from "effect/Number"
 
 assert.deepStrictEqual(decrement(3), 2)
 ```
@@ -129,8 +129,8 @@ export declare const divide: {
 **Example**
 
 ```ts
-import { divide } from 'effect/Number'
-import { some, none } from 'effect/Option'
+import { divide } from "effect/Number"
+import { some, none } from "effect/Option"
 
 assert.deepStrictEqual(divide(6, 3), some(2))
 assert.deepStrictEqual(divide(6, 0), none())
@@ -151,7 +151,7 @@ export declare const increment: (n: number) => number
 **Example**
 
 ```ts
-import { increment } from 'effect/Number'
+import { increment } from "effect/Number"
 
 assert.deepStrictEqual(increment(2), 3)
 ```
@@ -171,7 +171,7 @@ export declare const multiply: { (that: number): (self: number) => number; (self
 **Example**
 
 ```ts
-import { multiply } from 'effect/Number'
+import { multiply } from "effect/Number"
 
 assert.deepStrictEqual(multiply(2, 3), 6)
 ```
@@ -191,7 +191,7 @@ export declare const multiplyAll: (collection: Iterable<number>) => number
 **Example**
 
 ```ts
-import { multiplyAll } from 'effect/Number'
+import { multiplyAll } from "effect/Number"
 
 assert.deepStrictEqual(multiplyAll([2, 3, 4]), 24)
 ```
@@ -213,7 +213,7 @@ export declare const remainder: { (divisor: number): (self: number) => number; (
 **Example**
 
 ```ts
-import { remainder } from 'effect/Number'
+import { remainder } from "effect/Number"
 
 assert.deepStrictEqual(remainder(2, 2), 0)
 assert.deepStrictEqual(remainder(3, 2), 1)
@@ -235,7 +235,7 @@ export declare const sign: (n: number) => Ordering
 **Example**
 
 ```ts
-import { sign } from 'effect/Number'
+import { sign } from "effect/Number"
 
 assert.deepStrictEqual(sign(-5), -1)
 assert.deepStrictEqual(sign(0), 0)
@@ -257,7 +257,7 @@ export declare const subtract: { (that: number): (self: number) => number; (self
 **Example**
 
 ```ts
-import { subtract } from 'effect/Number'
+import { subtract } from "effect/Number"
 
 assert.deepStrictEqual(subtract(2, 3), -1)
 ```
@@ -277,7 +277,7 @@ export declare const sum: { (that: number): (self: number) => number; (self: num
 **Example**
 
 ```ts
-import { sum } from 'effect/Number'
+import { sum } from "effect/Number"
 
 assert.deepStrictEqual(sum(2, 3), 5)
 ```
@@ -297,7 +297,7 @@ export declare const sumAll: (collection: Iterable<number>) => number
 **Example**
 
 ```ts
-import { sumAll } from 'effect/Number'
+import { sumAll } from "effect/Number"
 
 assert.deepStrictEqual(sumAll([2, 3, 4]), 9)
 ```
@@ -319,7 +319,7 @@ export declare const unsafeDivide: { (that: number): (self: number) => number; (
 **Example**
 
 ```ts
-import { unsafeDivide } from 'effect/Number'
+import { unsafeDivide } from "effect/Number"
 
 assert.deepStrictEqual(unsafeDivide(6, 3), 2)
 ```
@@ -344,7 +344,7 @@ export declare const between: {
 **Example**
 
 ```ts
-import { between } from 'effect/Number'
+import { between } from "effect/Number"
 
 assert.deepStrictEqual(between(0, 5)(3), true)
 assert.deepStrictEqual(between(0, 5)(-1), false)
@@ -366,7 +366,7 @@ export declare const greaterThan: { (that: number): (self: number) => boolean; (
 **Example**
 
 ```ts
-import { greaterThan } from 'effect/Number'
+import { greaterThan } from "effect/Number"
 
 assert.deepStrictEqual(greaterThan(2, 3), false)
 assert.deepStrictEqual(greaterThan(3, 3), false)
@@ -391,7 +391,7 @@ export declare const greaterThanOrEqualTo: {
 **Example**
 
 ```ts
-import { greaterThanOrEqualTo } from 'effect/Number'
+import { greaterThanOrEqualTo } from "effect/Number"
 
 assert.deepStrictEqual(greaterThanOrEqualTo(2, 3), false)
 assert.deepStrictEqual(greaterThanOrEqualTo(3, 3), true)
@@ -413,7 +413,7 @@ export declare const lessThan: { (that: number): (self: number) => boolean; (sel
 **Example**
 
 ```ts
-import { lessThan } from 'effect/Number'
+import { lessThan } from "effect/Number"
 
 assert.deepStrictEqual(lessThan(2, 3), true)
 assert.deepStrictEqual(lessThan(3, 3), false)
@@ -438,7 +438,7 @@ export declare const lessThanOrEqualTo: {
 **Example**
 
 ```ts
-import { lessThanOrEqualTo } from 'effect/Number'
+import { lessThanOrEqualTo } from "effect/Number"
 
 assert.deepStrictEqual(lessThanOrEqualTo(2, 3), true)
 assert.deepStrictEqual(lessThanOrEqualTo(3, 3), true)
@@ -469,7 +469,7 @@ export declare const clamp: {
 **Example**
 
 ```ts
-import { clamp } from 'effect/Number'
+import { clamp } from "effect/Number"
 
 assert.deepStrictEqual(clamp(0, 5)(3), 3)
 assert.deepStrictEqual(clamp(0, 5)(-1), 0)
@@ -491,7 +491,7 @@ export declare const max: { (that: number): (self: number) => number; (self: num
 **Example**
 
 ```ts
-import { max } from 'effect/Number'
+import { max } from "effect/Number"
 
 assert.deepStrictEqual(max(2, 3), 3)
 ```
@@ -511,7 +511,7 @@ export declare const min: { (that: number): (self: number) => number; (self: num
 **Example**
 
 ```ts
-import { min } from 'effect/Number'
+import { min } from "effect/Number"
 
 assert.deepStrictEqual(min(2, 3), 2)
 ```

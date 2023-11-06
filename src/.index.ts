@@ -27,4 +27,4 @@ export {
    * @since 2.0.0
    */
   unsafeCoerce
-} from "effect/Function"
+} from "./Function.js"

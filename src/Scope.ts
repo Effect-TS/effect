@@ -2,13 +2,13 @@
  * @since 2.0.0
  */
 
-import type * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type * as ExecutionStrategy from "./ExecutionStrategy"
-import type * as Exit from "./Exit"
-import * as core from "./internal/core"
-import * as fiberRuntime from "./internal/fiberRuntime"
-import type { Pipeable } from "./Pipeable"
+import type * as Context from "./Context.js"
+import type * as Effect from "./Effect.js"
+import type * as ExecutionStrategy from "./ExecutionStrategy.js"
+import type * as Exit from "./Exit.js"
+import * as core from "./internal/core.js"
+import * as fiberRuntime from "./internal/fiberRuntime.js"
+import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0

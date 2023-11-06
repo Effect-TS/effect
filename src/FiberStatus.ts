@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type * as Equal from "./Equal"
-import type * as FiberId from "./FiberId"
-import * as internal from "./internal/fiberStatus"
-import type * as RuntimeFlags from "./RuntimeFlags"
+import type * as Equal from "./Equal.js"
+import type * as FiberId from "./FiberId.js"
+import * as internal from "./internal/fiberStatus.js"
+import type * as RuntimeFlags from "./RuntimeFlags.js"
 
 /**
  * @since 2.0.0

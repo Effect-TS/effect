@@ -1,6 +1,6 @@
 ---
 title: Request.ts
-nav_order: 90
+nav_order: 87
 parent: Modules
 ---
 
@@ -88,8 +88,8 @@ Constructs a new `Request`.
 
 ```ts
 export declare const tagged: <R extends Request<any, any> & { _tag: string }>(
-  tag: R['_tag']
-) => Request.Constructor<R, '_tag'>
+  tag: R["_tag"]
+) => Request.Constructor<R, "_tag">
 ```
 
 Added in v2.0.0
@@ -255,9 +255,9 @@ the request with the value of the effect workflow if it succeeds.
 
 ```ts
 export declare const completeEffect: {
-  <A extends Request<any, any>, R>(effect: Effect.Effect<R, Request.Error<A>, Request.Success<A>>): (
-    self: A
-  ) => Effect.Effect<R, never, void>
+  <A extends Request<any, any>, R>(
+    effect: Effect.Effect<R, Request.Error<A>, Request.Success<A>>
+  ): (self: A) => Effect.Effect<R, never, void>
   <A extends Request<any, any>, R>(
     self: A,
     effect: Effect.Effect<R, Request.Error<A>, Request.Success<A>>

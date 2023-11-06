@@ -1,6 +1,6 @@
 ---
 title: TestClock.ts
-nav_order: 125
+nav_order: 123
 parent: Modules
 ---
 
@@ -72,11 +72,11 @@ run in order.
 For example, here is how we can test `Effect.timeout` using `TestClock`:
 
 ```ts
-import * as Duration from 'effect/Duration'
-import * as Effect from 'effect/Effect'
-import * as Fiber from 'effect/Fiber'
-import * as TestClock from 'effect/TestClock'
-import * as Option from 'effect/Option'
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import * as TestClock from "effect/TestClock"
+import * as Option from "effect/Option"
 
 Effect.gen(function* () {
   const fiber = yield* pipe(Effect.sleep(Duration.minutes(5)), Effect.timeout(Duration.minutes(1)), Effect.fork)

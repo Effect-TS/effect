@@ -1,6 +1,6 @@
 ---
 title: Option.ts
-nav_order: 76
+nav_order: 73
 parent: Modules
 ---
 
@@ -122,10 +122,10 @@ export declare const all: <const I extends Iterable<Option<any>> | Record<string
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(O.all([O.some(1), O.some(2)]), O.some([1, 2]))
-assert.deepStrictEqual(O.all({ a: O.some(1), b: O.some('hello') }), O.some({ a: 1, b: 'hello' }))
+assert.deepStrictEqual(O.all({ a: O.some(1), b: O.some("hello") }), O.some({ a: 1, b: "hello" }))
 assert.deepStrictEqual(O.all({ a: O.some(1), b: O.none() }), O.none())
 ```
 
@@ -180,7 +180,7 @@ export declare const zipWith: {
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 type Complex = [number, number]
 
@@ -238,7 +238,7 @@ export declare const fromIterable: <A>(collection: Iterable<A>) => Option<A>
 **Example**
 
 ```ts
-import { fromIterable, some, none } from 'effect/Option'
+import { fromIterable, some, none } from "effect/Option"
 
 assert.deepStrictEqual(fromIterable([1, 2, 3]), some(1))
 assert.deepStrictEqual(fromIterable([]), none())
@@ -260,7 +260,7 @@ export declare const fromNullable: <A>(nullableValue: A) => Option<NonNullable<A
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(O.fromNullable(undefined), O.none())
 assert.deepStrictEqual(O.fromNullable(null), O.none())
@@ -282,11 +282,11 @@ export declare const getLeft: <E, A>(self: Either<E, A>) => Option<E>
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
-import * as E from 'effect/Either'
+import * as O from "effect/Option"
+import * as E from "effect/Either"
 
-assert.deepStrictEqual(O.getLeft(E.right('ok')), O.none())
-assert.deepStrictEqual(O.getLeft(E.left('a')), O.some('a'))
+assert.deepStrictEqual(O.getLeft(E.right("ok")), O.none())
+assert.deepStrictEqual(O.getLeft(E.left("a")), O.some("a"))
 ```
 
 Added in v2.0.0
@@ -306,7 +306,7 @@ export declare const getOrThrow: <A>(self: Option<A>) => A
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(O.getOrThrow(O.some(1)), 1)
 assert.throws(() => O.getOrThrow(O.none()))
@@ -332,13 +332,13 @@ export declare const getOrThrowWith: {
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(
-  O.getOrThrowWith(O.some(1), () => new Error('Unexpected None')),
+  O.getOrThrowWith(O.some(1), () => new Error("Unexpected None")),
   1
 )
-assert.throws(() => O.getOrThrowWith(O.none(), () => new Error('Unexpected None')))
+assert.throws(() => O.getOrThrowWith(O.none(), () => new Error("Unexpected None")))
 ```
 
 Added in v2.0.0
@@ -358,11 +358,11 @@ export declare const getRight: <E, A>(self: Either<E, A>) => Option<A>
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
-import * as E from 'effect/Either'
+import * as O from "effect/Option"
+import * as E from "effect/Either"
 
-assert.deepStrictEqual(O.getRight(E.right('ok')), O.some('ok'))
-assert.deepStrictEqual(O.getRight(E.left('err')), O.none())
+assert.deepStrictEqual(O.getRight(E.right("ok")), O.some("ok"))
+assert.deepStrictEqual(O.getRight(E.left("err")), O.none())
 ```
 
 Added in v2.0.0
@@ -382,7 +382,7 @@ export declare const liftNullable: <A extends readonly unknown[], B>(
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 const parse = (s: string): number | undefined => {
   const n = parseFloat(s)
@@ -391,8 +391,8 @@ const parse = (s: string): number | undefined => {
 
 const parseOption = O.liftNullable(parse)
 
-assert.deepStrictEqual(parseOption('1'), O.some(1))
-assert.deepStrictEqual(parseOption('not a number'), O.none())
+assert.deepStrictEqual(parseOption("1"), O.some(1))
+assert.deepStrictEqual(parseOption("not a number"), O.none())
 ```
 
 Added in v2.0.0
@@ -413,12 +413,12 @@ export declare const liftThrowable: <A extends readonly unknown[], B>(f: (...a: 
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 const parse = O.liftThrowable(JSON.parse)
 
-assert.deepStrictEqual(parse('1'), O.some(1))
-assert.deepStrictEqual(parse(''), O.none())
+assert.deepStrictEqual(parse("1"), O.some(1))
+assert.deepStrictEqual(parse(""), O.none())
 ```
 
 Added in v2.0.0
@@ -438,7 +438,7 @@ export declare const toArray: <A>(self: Option<A>) => A[]
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(O.toArray(O.some(1)), [1])
 assert.deepStrictEqual(O.toArray(O.none()), [])
@@ -460,7 +460,7 @@ export declare const toRefinement: <A, B extends A>(f: (a: A) => Option<B>) => (
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 const parsePositive = (n: number): O.Option<number> => (n > 0 ? O.some(n) : O.none())
 
@@ -490,12 +490,15 @@ Added in v2.0.0
 
 ```ts
 export declare const bind: {
-  <N extends string, A extends object, B>(name: Exclude<N, keyof A>, f: (a: A) => Option<B>): (
-    self: Option<A>
-  ) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
-  <A extends object, N extends string, B>(self: Option<A>, name: Exclude<N, keyof A>, f: (a: A) => Option<B>): Option<{
-    [K in N | keyof A]: K extends keyof A ? A[K] : B
-  }>
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Option<B>
+  ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+  <A extends object, N extends string, B>(
+    self: Option<A>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => Option<B>
+  ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 }
 ```
 
@@ -520,12 +523,15 @@ Added in v2.0.0
 
 ```ts
 export declare const let: {
-  <N extends string, A extends object, B>(name: Exclude<N, keyof A>, f: (a: A) => B): (
-    self: Option<A>
-  ) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
-  <A extends object, N extends string, B>(self: Option<A>, name: Exclude<N, keyof A>, f: (a: A) => B): Option<{
-    [K in N | keyof A]: K extends keyof A ? A[K] : B
-  }>
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): (self: Option<A>) => Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+  <A extends object, N extends string, B>(
+    self: Option<A>,
+    name: Exclude<N, keyof A>,
+    f: (a: A) => B
+  ): Option<{ [K in N | keyof A]: K extends keyof A ? A[K] : B }>
 }
 ```
 
@@ -561,9 +567,9 @@ export declare const containsWith: <A>(isEquivalent: (self: A, that: A) => boole
 **Example**
 
 ```ts
-import { some, none, containsWith } from 'effect/Option'
-import { Equivalence } from 'effect/Number'
-import { pipe } from 'effect/Function'
+import { some, none, containsWith } from "effect/Option"
+import { Equivalence } from "effect/Number"
+import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(pipe(some(2), containsWith(Equivalence)(2)), true)
 assert.deepStrictEqual(pipe(some(1), containsWith(Equivalence)(2)), false)
@@ -585,8 +591,8 @@ export declare const getEquivalence: <A>(isEquivalent: Equivalence.Equivalence<A
 **Example**
 
 ```ts
-import { none, some, getEquivalence } from 'effect/Option'
-import * as N from 'effect/Number'
+import { none, some, getEquivalence } from "effect/Option"
+import * as N from "effect/Number"
 
 const isEquivalent = getEquivalence(N.Equivalence)
 assert.deepStrictEqual(isEquivalent(none(), none()), true)
@@ -613,7 +619,7 @@ export declare const firstSomeOf: <A>(collection: Iterable<Option<A>>) => Option
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(O.firstSomeOf([O.none(), O.some(1), O.some(2)]), O.some(1))
 ```
@@ -636,8 +642,8 @@ export declare const orElse: {
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as O from "effect/Option"
+import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(
   pipe(
@@ -648,24 +654,24 @@ assert.deepStrictEqual(
 )
 assert.deepStrictEqual(
   pipe(
-    O.some('a'),
+    O.some("a"),
     O.orElse(() => O.none())
   ),
-  O.some('a')
+  O.some("a")
 )
 assert.deepStrictEqual(
   pipe(
     O.none(),
-    O.orElse(() => O.some('b'))
+    O.orElse(() => O.some("b"))
   ),
-  O.some('b')
+  O.some("b")
 )
 assert.deepStrictEqual(
   pipe(
-    O.some('a'),
-    O.orElse(() => O.some('b'))
+    O.some("a"),
+    O.orElse(() => O.some("b"))
   ),
-  O.some('a')
+  O.some("a")
 )
 ```
 
@@ -711,7 +717,7 @@ export declare const filter: {
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 // predicate
 const isEven = (n: number) => n % 2 === 0
@@ -721,10 +727,10 @@ assert.deepStrictEqual(O.filter(O.some(3), isEven), O.none())
 assert.deepStrictEqual(O.filter(O.some(2), isEven), O.some(2))
 
 // refinement
-const isNumber = (v: unknown): v is number => typeof v === 'number'
+const isNumber = (v: unknown): v is number => typeof v === "number"
 
 assert.deepStrictEqual(O.filter(O.none(), isNumber), O.none())
-assert.deepStrictEqual(O.filter(O.some('hello'), isNumber), O.none())
+assert.deepStrictEqual(O.filter(O.some("hello"), isNumber), O.none())
 assert.deepStrictEqual(O.filter(O.some(2), isNumber), O.some(2))
 ```
 
@@ -748,7 +754,7 @@ export declare const filterMap: {
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 const evenNumber = (n: number) => (n % 2 === 0 ? O.some(n) : O.none())
 
@@ -790,8 +796,8 @@ export declare const reduceCompact: {
 **Example**
 
 ```ts
-import { some, none, reduceCompact } from 'effect/Option'
-import { pipe } from 'effect/Function'
+import { some, none, reduceCompact } from "effect/Option"
+import { pipe } from "effect/Function"
 
 const iterable = [some(1), none(), some(2), none()]
 assert.deepStrictEqual(
@@ -835,8 +841,8 @@ export declare const getOrElse: {
 **Example**
 
 ```ts
-import { some, none, getOrElse } from 'effect/Option'
-import { pipe } from 'effect/Function'
+import { some, none, getOrElse } from "effect/Option"
+import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(
   pipe(
@@ -869,7 +875,7 @@ export declare const getOrNull: <A>(self: Option<A>) => A | null
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(O.getOrNull(O.some(1)), 1)
 assert.deepStrictEqual(O.getOrNull(O.none()), null)
@@ -890,7 +896,7 @@ export declare const getOrUndefined: <A>(self: Option<A>) => A | undefined
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 assert.deepStrictEqual(O.getOrUndefined(O.some(1)), 1)
 assert.deepStrictEqual(O.getOrUndefined(O.none()), undefined)
@@ -913,7 +919,7 @@ export declare const isNone: <A>(self: Option<A>) => self is None<A>
 **Example**
 
 ```ts
-import { some, none, isNone } from 'effect/Option'
+import { some, none, isNone } from "effect/Option"
 
 assert.deepStrictEqual(isNone(some(1)), false)
 assert.deepStrictEqual(isNone(none()), true)
@@ -934,7 +940,7 @@ export declare const isOption: (input: unknown) => input is Option<unknown>
 **Example**
 
 ```ts
-import { some, none, isOption } from 'effect/Option'
+import { some, none, isOption } from "effect/Option"
 
 assert.deepStrictEqual(isOption(some(1)), true)
 assert.deepStrictEqual(isOption(none()), true)
@@ -956,7 +962,7 @@ export declare const isSome: <A>(self: Option<A>) => self is Some<A>
 **Example**
 
 ```ts
-import { some, none, isSome } from 'effect/Option'
+import { some, none, isSome } from "effect/Option"
 
 assert.deepStrictEqual(isSome(some(1)), true)
 assert.deepStrictEqual(isSome(none()), false)
@@ -997,7 +1003,7 @@ export declare const liftPredicate: {
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 const getOption = O.liftPredicate((n: number) => n >= 0)
 
@@ -1015,8 +1021,8 @@ Added in v2.0.0
 
 ```ts
 export interface None<A> extends Data.Case, Pipeable, Inspectable {
-  readonly _tag: 'None'
-  readonly _op: 'None'
+  readonly _tag: "None"
+  readonly _op: "None"
   readonly [TypeId]: {
     readonly _A: (_: never) => A
   }
@@ -1066,8 +1072,8 @@ Added in v2.0.0
 
 ```ts
 export interface Some<A> extends Data.Case, Pipeable, Inspectable {
-  readonly _tag: 'Some'
-  readonly _op: 'Some'
+  readonly _tag: "Some"
+  readonly _op: "Some"
   readonly value: A
   readonly [TypeId]: {
     readonly _A: (_: never) => A
@@ -1099,17 +1105,17 @@ export declare const match: {
 **Example**
 
 ```ts
-import { some, none, match } from 'effect/Option'
-import { pipe } from 'effect/Function'
+import { some, none, match } from "effect/Option"
+import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(
-  pipe(some(1), match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
-  'a some containing 1'
+  pipe(some(1), match({ onNone: () => "a none", onSome: (a) => `a some containing ${a}` })),
+  "a some containing 1"
 )
 
 assert.deepStrictEqual(
-  pipe(none(), match({ onNone: () => 'a none', onSome: (a) => `a some containing ${a}` })),
-  'a none'
+  pipe(none(), match({ onNone: () => "a none", onSome: (a) => `a some containing ${a}` })),
+  "a none"
 )
 ```
 
@@ -1134,9 +1140,9 @@ export declare const getOrder: <A>(O: Order<A>) => Order<Option<A>>
 **Example**
 
 ```ts
-import { none, some, getOrder } from 'effect/Option'
-import * as N from 'effect/Number'
-import { pipe } from 'effect/Function'
+import { none, some, getOrder } from "effect/Option"
+import * as N from "effect/Number"
+import { pipe } from "effect/Function"
 
 const O = getOrder(N.Order)
 assert.deepStrictEqual(O(none(), none()), 0)
@@ -1242,8 +1248,8 @@ export declare const flatMapNullable: {
 **Example**
 
 ```ts
-import { some, none, flatMapNullable } from 'effect/Option'
-import { pipe } from 'effect/Function'
+import { some, none, flatMapNullable } from "effect/Option"
+import { pipe } from "effect/Function"
 
 interface Employee {
   company?: {
@@ -1255,14 +1261,14 @@ interface Employee {
   }
 }
 
-const employee1: Employee = { company: { address: { street: { name: 'high street' } } } }
+const employee1: Employee = { company: { address: { street: { name: "high street" } } } }
 
 assert.deepStrictEqual(
   pipe(
     some(employee1),
     flatMapNullable((employee) => employee.company?.address?.street?.name)
   ),
-  some('high street')
+  some("high street")
 )
 
 const employee2: Employee = { company: { address: { street: {} } } }
@@ -1322,7 +1328,7 @@ export declare const tap: {
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
+import * as O from "effect/Option"
 
 const getInteger = (n: number) => (Number.isInteger(n) ? O.some(n) : O.none())
 
@@ -1371,7 +1377,7 @@ Added in v2.0.0
 
 ```ts
 export interface OptionTypeLambda extends TypeLambda {
-  readonly type: Option<this['Target']>
+  readonly type: Option<this["Target"]>
 }
 ```
 
@@ -1395,8 +1401,8 @@ export declare const exists: {
 **Example**
 
 ```ts
-import { some, none, exists } from 'effect/Option'
-import { pipe } from 'effect/Function'
+import { some, none, exists } from "effect/Option"
+import { pipe } from "effect/Function"
 
 const isEven = (n: number) => n % 2 === 0
 

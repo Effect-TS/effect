@@ -1,6 +1,6 @@
 ---
 title: ReadonlyArray.ts
-nav_order: 85
+nav_order: 82
 parent: Modules
 ---
 
@@ -321,7 +321,7 @@ export declare const makeBy: <A>(n: number, f: (i: number) => A) => [A, ...A[]]
 **Example**
 
 ```ts
-import { makeBy } from 'effect/ReadonlyArray'
+import { makeBy } from "effect/ReadonlyArray"
 
 assert.deepStrictEqual(
   makeBy(5, (n) => n * 2),
@@ -356,7 +356,7 @@ export declare const range: (start: number, end: number) => [number, ...number[]
 **Example**
 
 ```ts
-import { range } from 'effect/ReadonlyArray'
+import { range } from "effect/ReadonlyArray"
 
 assert.deepStrictEqual(range(1, 3), [1, 2, 3])
 ```
@@ -378,9 +378,9 @@ export declare const replicate: { (n: number): <A>(a: A) => [A, ...A[]]; <A>(a: 
 **Example**
 
 ```ts
-import { replicate } from 'effect/ReadonlyArray'
+import { replicate } from "effect/ReadonlyArray"
 
-assert.deepStrictEqual(replicate('a', 3), ['a', 'a', 'a'])
+assert.deepStrictEqual(replicate("a", 3), ["a", "a", "a"])
 ```
 
 Added in v2.0.0
@@ -440,13 +440,13 @@ export declare const fromRecord: <K extends string, A>(self: Readonly<Record<K, 
 **Example**
 
 ```ts
-import { fromRecord } from 'effect/ReadonlyArray'
+import { fromRecord } from "effect/ReadonlyArray"
 
 const x = { a: 1, b: 2, c: 3 }
 assert.deepStrictEqual(fromRecord(x), [
-  ['a', 1],
-  ['b', 2],
-  ['c', 3],
+  ["a", 1],
+  ["b", 2],
+  ["c", 3]
 ])
 ```
 
@@ -1206,7 +1206,7 @@ export declare const isEmptyArray: <A>(self: A[]) => self is []
 **Example**
 
 ```ts
-import { isEmptyArray } from 'effect/ReadonlyArray'
+import { isEmptyArray } from "effect/ReadonlyArray"
 
 assert.deepStrictEqual(isEmptyArray([]), true)
 assert.deepStrictEqual(isEmptyArray([1, 2, 3]), false)
@@ -1227,7 +1227,7 @@ export declare const isEmptyReadonlyArray: <A>(self: readonly A[]) => self is re
 **Example**
 
 ```ts
-import { isEmptyReadonlyArray } from 'effect/ReadonlyArray'
+import { isEmptyReadonlyArray } from "effect/ReadonlyArray"
 
 assert.deepStrictEqual(isEmptyReadonlyArray([]), true)
 assert.deepStrictEqual(isEmptyReadonlyArray([1, 2, 3]), false)
@@ -1250,7 +1250,7 @@ export declare const isNonEmptyArray: <A>(self: A[]) => self is [A, ...A[]]
 **Example**
 
 ```ts
-import { isNonEmptyArray } from 'effect/ReadonlyArray'
+import { isNonEmptyArray } from "effect/ReadonlyArray"
 
 assert.deepStrictEqual(isNonEmptyArray([]), false)
 assert.deepStrictEqual(isNonEmptyArray([1, 2, 3]), true)
@@ -1273,7 +1273,7 @@ export declare const isNonEmptyReadonlyArray: <A>(self: readonly A[]) => self is
 **Example**
 
 ```ts
-import { isNonEmptyReadonlyArray } from 'effect/ReadonlyArray'
+import { isNonEmptyReadonlyArray } from "effect/ReadonlyArray"
 
 assert.deepStrictEqual(isNonEmptyReadonlyArray([]), false)
 assert.deepStrictEqual(isNonEmptyReadonlyArray([1, 2, 3]), true)
@@ -1402,9 +1402,10 @@ Added in v2.0.0
 
 ```ts
 export declare const match: {
-  <B, A, C = B>(options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (self: readonly [A, ...A[]]) => C }): (
-    self: readonly A[]
-  ) => B | C
+  <B, A, C = B>(options: {
+    readonly onEmpty: LazyArg<B>
+    readonly onNonEmpty: (self: readonly [A, ...A[]]) => C
+  }): (self: readonly A[]) => B | C
   <A, B, C = B>(
     self: readonly A[],
     options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (self: readonly [A, ...A[]]) => C }
@@ -1420,9 +1421,10 @@ Added in v2.0.0
 
 ```ts
 export declare const matchLeft: {
-  <B, A, C = B>(options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (head: A, tail: A[]) => C }): (
-    self: readonly A[]
-  ) => B | C
+  <B, A, C = B>(options: {
+    readonly onEmpty: LazyArg<B>
+    readonly onNonEmpty: (head: A, tail: A[]) => C
+  }): (self: readonly A[]) => B | C
   <A, B, C = B>(
     self: readonly A[],
     options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (head: A, tail: A[]) => C }
@@ -1438,9 +1440,10 @@ Added in v2.0.0
 
 ```ts
 export declare const matchRight: {
-  <B, A, C = B>(options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (init: A[], last: A) => C }): (
-    self: readonly A[]
-  ) => B | C
+  <B, A, C = B>(options: {
+    readonly onEmpty: LazyArg<B>
+    readonly onNonEmpty: (init: A[], last: A) => C
+  }): (self: readonly A[]) => B | C
   <A, B, C = B>(
     self: readonly A[],
     options: { readonly onEmpty: LazyArg<B>; readonly onNonEmpty: (init: A[], last: A) => C }
@@ -1565,7 +1568,7 @@ Added in v2.0.0
 
 ```ts
 export interface ReadonlyArrayTypeLambda extends TypeLambda {
-  readonly type: ReadonlyArray<this['Target']>
+  readonly type: ReadonlyArray<this["Target"]>
 }
 ```
 

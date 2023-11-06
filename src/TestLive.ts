@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context"
-import type * as DefaultServices from "./DefaultServices"
-import type * as Effect from "./Effect"
-import * as core from "./internal/core"
-import * as defaultServices from "./internal/defaultServices"
+import * as Context from "./Context.js"
+import type * as DefaultServices from "./DefaultServices.js"
+import type * as Effect from "./Effect.js"
+import * as core from "./internal/core.js"
+import * as defaultServices from "./internal/defaultServices.js"
 
 /**
  * @since 2.0.0

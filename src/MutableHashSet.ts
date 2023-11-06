@@ -1,11 +1,11 @@
 /**
  * @since 2.0.0
  */
-import * as Dual from "./Function"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable"
-import * as MutableHashMap from "./MutableHashMap"
-import type { Pipeable } from "./Pipeable"
-import { pipeArguments } from "./Pipeable"
+import * as Dual from "./Function.js"
+import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import * as MutableHashMap from "./MutableHashMap.js"
+import type { Pipeable } from "./Pipeable.js"
+import { pipeArguments } from "./Pipeable.js"
 
 const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
 

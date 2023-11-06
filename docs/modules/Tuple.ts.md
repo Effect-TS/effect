@@ -1,6 +1,6 @@
 ---
 title: Tuple.ts
-nav_order: 141
+nav_order: 139
 parent: Modules
 ---
 
@@ -103,9 +103,9 @@ export declare const tuple: <A extends readonly any[]>(...elements: A) => A
 **Example**
 
 ```ts
-import { tuple } from 'effect/Tuple'
+import { tuple } from "effect/Tuple"
 
-assert.deepStrictEqual(tuple(1, 'hello', true), [1, 'hello', true])
+assert.deepStrictEqual(tuple(1, "hello", true), [1, "hello", true])
 ```
 
 Added in v2.0.0
@@ -125,9 +125,9 @@ export declare const getFirst: <L, R>(self: readonly [L, R]) => L
 **Example**
 
 ```ts
-import { getFirst } from 'effect/Tuple'
+import { getFirst } from "effect/Tuple"
 
-assert.deepStrictEqual(getFirst(['hello', 42]), 'hello')
+assert.deepStrictEqual(getFirst(["hello", 42]), "hello")
 ```
 
 Added in v2.0.0
@@ -145,9 +145,9 @@ export declare const getSecond: <L, R>(self: readonly [L, R]) => R
 **Example**
 
 ```ts
-import { getSecond } from 'effect/Tuple'
+import { getSecond } from "effect/Tuple"
 
-assert.deepStrictEqual(getSecond(['hello', 42]), 42)
+assert.deepStrictEqual(getSecond(["hello", 42]), 42)
 ```
 
 Added in v2.0.0
@@ -162,9 +162,10 @@ Transforms both elements of a tuple using the given functions.
 
 ```ts
 export declare const mapBoth: {
-  <L1, L2, R1, R2>(options: { readonly onFirst: (e: L1) => L2; readonly onSecond: (a: R1) => R2 }): (
-    self: readonly [L1, R1]
-  ) => [L2, R2]
+  <L1, L2, R1, R2>(options: {
+    readonly onFirst: (e: L1) => L2
+    readonly onSecond: (a: R1) => R2
+  }): (self: readonly [L1, R1]) => [L2, R2]
   <L1, R1, L2, R2>(
     self: readonly [L1, R1],
     options: { readonly onFirst: (e: L1) => L2; readonly onSecond: (a: R1) => R2 }
@@ -175,11 +176,11 @@ export declare const mapBoth: {
 **Example**
 
 ```ts
-import { mapBoth } from 'effect/Tuple'
+import { mapBoth } from "effect/Tuple"
 
-assert.deepStrictEqual(mapBoth(['hello', 42], { onFirst: (s) => s.toUpperCase(), onSecond: (n) => n.toString() }), [
-  'HELLO',
-  '42',
+assert.deepStrictEqual(mapBoth(["hello", 42], { onFirst: (s) => s.toUpperCase(), onSecond: (n) => n.toString() }), [
+  "HELLO",
+  "42"
 ])
 ```
 
@@ -201,11 +202,11 @@ export declare const mapFirst: {
 **Example**
 
 ```ts
-import { mapFirst } from 'effect/Tuple'
+import { mapFirst } from "effect/Tuple"
 
 assert.deepStrictEqual(
-  mapFirst(['hello', 42], (s) => s.toUpperCase()),
-  ['HELLO', 42]
+  mapFirst(["hello", 42], (s) => s.toUpperCase()),
+  ["HELLO", 42]
 )
 ```
 
@@ -227,11 +228,11 @@ export declare const mapSecond: {
 **Example**
 
 ```ts
-import { mapSecond } from 'effect/Tuple'
+import { mapSecond } from "effect/Tuple"
 
 assert.deepStrictEqual(
-  mapSecond(['hello', 42], (n) => n.toString()),
-  ['hello', '42']
+  mapSecond(["hello", 42], (n) => n.toString()),
+  ["hello", "42"]
 )
 ```
 
@@ -245,7 +246,7 @@ Added in v2.0.0
 
 ```ts
 export interface TupleTypeLambda extends TypeLambda {
-  readonly type: [this['Out1'], this['Target']]
+  readonly type: [this["Out1"], this["Target"]]
 }
 ```
 
@@ -266,9 +267,9 @@ export declare const swap: <L, R>(self: readonly [L, R]) => [R, L]
 **Example**
 
 ```ts
-import { swap } from 'effect/Tuple'
+import { swap } from "effect/Tuple"
 
-assert.deepStrictEqual(swap(['hello', 42]), [42, 'hello'])
+assert.deepStrictEqual(swap(["hello", 42]), [42, "hello"])
 ```
 
 Added in v2.0.0

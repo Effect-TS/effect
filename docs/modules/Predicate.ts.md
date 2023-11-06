@@ -1,6 +1,6 @@
 ---
 title: Predicate.ts
-nav_order: 81
+nav_order: 78
 parent: Modules
 ---
 
@@ -85,16 +85,16 @@ export declare const and: {
 **Example**
 
 ```ts
-import * as P from 'effect/Predicate'
+import * as P from "effect/Predicate"
 
 const minLength = (n: number) => (s: string) => s.length >= n
 const maxLength = (n: number) => (s: string) => s.length <= n
 
 const length = (n: number) => P.and(minLength(n), maxLength(n))
 
-assert.deepStrictEqual(length(2)('aa'), true)
-assert.deepStrictEqual(length(2)('a'), false)
-assert.deepStrictEqual(length(2)('aaa'), false)
+assert.deepStrictEqual(length(2)("aa"), true)
+assert.deepStrictEqual(length(2)("a"), false)
+assert.deepStrictEqual(length(2)("aaa"), false)
 ```
 
 Added in v2.0.0
@@ -141,15 +141,15 @@ export declare const mapInput: {
 **Example**
 
 ```ts
-import * as P from 'effect/Predicate'
-import * as N from 'effect/Number'
+import * as P from "effect/Predicate"
+import * as N from "effect/Number"
 
 const minLength3 = P.mapInput(N.greaterThan(2), (s: string) => s.length)
 
-assert.deepStrictEqual(minLength3('a'), false)
-assert.deepStrictEqual(minLength3('aa'), false)
-assert.deepStrictEqual(minLength3('aaa'), true)
-assert.deepStrictEqual(minLength3('aaaa'), true)
+assert.deepStrictEqual(minLength3("a"), false)
+assert.deepStrictEqual(minLength3("aa"), false)
+assert.deepStrictEqual(minLength3("aaa"), true)
+assert.deepStrictEqual(minLength3("aaaa"), true)
 ```
 
 Added in v2.0.0
@@ -193,8 +193,8 @@ export declare const not: <A>(self: Predicate<A>) => Predicate<A>
 **Example**
 
 ```ts
-import * as P from 'effect/Predicate'
-import * as N from 'effect/Number'
+import * as P from "effect/Predicate"
+import * as N from "effect/Number"
 
 const isPositive = P.not(N.lessThan(0))
 
@@ -221,8 +221,8 @@ export declare const or: {
 **Example**
 
 ```ts
-import * as P from 'effect/Predicate'
-import * as N from 'effect/Number'
+import * as P from "effect/Predicate"
+import * as N from "effect/Number"
 
 const nonZero = P.or(N.lessThan(0), N.greaterThan(0))
 
@@ -333,7 +333,7 @@ export declare const isBigInt: (input: unknown) => input is bigint
 **Example**
 
 ```ts
-import { isBigInt } from 'effect/Predicate'
+import { isBigInt } from "effect/Predicate"
 
 assert.deepStrictEqual(isBigInt(1n), true)
 
@@ -355,11 +355,11 @@ export declare const isBoolean: (input: unknown) => input is boolean
 **Example**
 
 ```ts
-import { isBoolean } from 'effect/Predicate'
+import { isBoolean } from "effect/Predicate"
 
 assert.deepStrictEqual(isBoolean(true), true)
 
-assert.deepStrictEqual(isBoolean('true'), false)
+assert.deepStrictEqual(isBoolean("true"), false)
 ```
 
 Added in v2.0.0
@@ -377,7 +377,7 @@ export declare const isDate: (input: unknown) => input is Date
 **Example**
 
 ```ts
-import { isDate } from 'effect/Predicate'
+import { isDate } from "effect/Predicate"
 
 assert.deepStrictEqual(isDate(new Date()), true)
 
@@ -400,7 +400,7 @@ export declare const isError: (input: unknown) => input is Error
 **Example**
 
 ```ts
-import { isError } from 'effect/Predicate'
+import { isError } from "effect/Predicate"
 
 assert.deepStrictEqual(isError(new Error()), true)
 
@@ -423,11 +423,11 @@ export declare const isFunction: (input: unknown) => input is Function
 **Example**
 
 ```ts
-import { isFunction } from 'effect/Predicate'
+import { isFunction } from "effect/Predicate"
 
 assert.deepStrictEqual(isFunction(isFunction), true)
 
-assert.deepStrictEqual(isFunction('function'), false)
+assert.deepStrictEqual(isFunction("function"), false)
 ```
 
 Added in v2.0.0
@@ -445,7 +445,7 @@ export declare const isIterable: (input: unknown) => input is Iterable<unknown>
 **Example**
 
 ```ts
-import { isIterable } from 'effect/Predicate'
+import { isIterable } from "effect/Predicate"
 
 assert.deepStrictEqual(isIterable([]), true)
 assert.deepStrictEqual(isIterable(new Set()), true)
@@ -469,7 +469,7 @@ export declare const isNever: (input: unknown) => input is never
 **Example**
 
 ```ts
-import { isNever } from 'effect/Predicate'
+import { isNever } from "effect/Predicate"
 
 assert.deepStrictEqual(isNever(null), false)
 assert.deepStrictEqual(isNever(undefined), false)
@@ -492,10 +492,10 @@ export declare const isNotNull: <A>(input: A) => input is Exclude<A, null>
 **Example**
 
 ```ts
-import { isNotNull } from 'effect/Predicate'
+import { isNotNull } from "effect/Predicate"
 
 assert.deepStrictEqual(isNotNull(undefined), true)
-assert.deepStrictEqual(isNotNull('null'), true)
+assert.deepStrictEqual(isNotNull("null"), true)
 
 assert.deepStrictEqual(isNotNull(null), false)
 ```
@@ -515,7 +515,7 @@ export declare const isNotNullable: <A>(input: A) => input is NonNullable<A>
 **Example**
 
 ```ts
-import { isNotNullable } from 'effect/Predicate'
+import { isNotNullable } from "effect/Predicate"
 
 assert.deepStrictEqual(isNotNullable({}), true)
 assert.deepStrictEqual(isNotNullable([]), true)
@@ -539,10 +539,10 @@ export declare const isNotUndefined: <A>(input: A) => input is Exclude<A, undefi
 **Example**
 
 ```ts
-import { isNotUndefined } from 'effect/Predicate'
+import { isNotUndefined } from "effect/Predicate"
 
 assert.deepStrictEqual(isNotUndefined(null), true)
-assert.deepStrictEqual(isNotUndefined('undefined'), true)
+assert.deepStrictEqual(isNotUndefined("undefined"), true)
 
 assert.deepStrictEqual(isNotUndefined(undefined), false)
 ```
@@ -562,12 +562,12 @@ export declare const isNull: (input: unknown) => input is null
 **Example**
 
 ```ts
-import { isNull } from 'effect/Predicate'
+import { isNull } from "effect/Predicate"
 
 assert.deepStrictEqual(isNull(null), true)
 
 assert.deepStrictEqual(isNull(undefined), false)
-assert.deepStrictEqual(isNull('null'), false)
+assert.deepStrictEqual(isNull("null"), false)
 ```
 
 Added in v2.0.0
@@ -585,7 +585,7 @@ export declare const isNullable: <A>(input: A) => input is Extract<A, null | und
 **Example**
 
 ```ts
-import { isNullable } from 'effect/Predicate'
+import { isNullable } from "effect/Predicate"
 
 assert.deepStrictEqual(isNullable(null), true)
 assert.deepStrictEqual(isNullable(undefined), true)
@@ -609,11 +609,11 @@ export declare const isNumber: (input: unknown) => input is number
 **Example**
 
 ```ts
-import { isNumber } from 'effect/Predicate'
+import { isNumber } from "effect/Predicate"
 
 assert.deepStrictEqual(isNumber(2), true)
 
-assert.deepStrictEqual(isNumber('2'), false)
+assert.deepStrictEqual(isNumber("2"), false)
 ```
 
 Added in v2.0.0
@@ -631,7 +631,7 @@ export declare const isObject: (input: unknown) => input is object
 **Example**
 
 ```ts
-import { isObject } from 'effect/Predicate'
+import { isObject } from "effect/Predicate"
 
 assert.deepStrictEqual(isObject({}), true)
 assert.deepStrictEqual(isObject([]), true)
@@ -657,7 +657,7 @@ export declare const isReadonlyRecord: (
 **Example**
 
 ```ts
-import { isReadonlyRecord } from 'effect/Predicate'
+import { isReadonlyRecord } from "effect/Predicate"
 
 assert.deepStrictEqual(isReadonlyRecord({}), true)
 assert.deepStrictEqual(isReadonlyRecord({ a: 1 }), true)
@@ -683,7 +683,7 @@ export declare const isRecord: (input: unknown) => input is { [x: string]: unkno
 **Example**
 
 ```ts
-import { isRecord } from 'effect/Predicate'
+import { isRecord } from "effect/Predicate"
 
 assert.deepStrictEqual(isRecord({}), true)
 assert.deepStrictEqual(isRecord({ a: 1 }), true)
@@ -709,9 +709,9 @@ export declare const isString: (input: unknown) => input is string
 **Example**
 
 ```ts
-import { isString } from 'effect/Predicate'
+import { isString } from "effect/Predicate"
 
-assert.deepStrictEqual(isString('a'), true)
+assert.deepStrictEqual(isString("a"), true)
 
 assert.deepStrictEqual(isString(1), false)
 ```
@@ -731,11 +731,11 @@ export declare const isSymbol: (input: unknown) => input is symbol
 **Example**
 
 ```ts
-import { isSymbol } from 'effect/Predicate'
+import { isSymbol } from "effect/Predicate"
 
-assert.deepStrictEqual(isSymbol(Symbol.for('a')), true)
+assert.deepStrictEqual(isSymbol(Symbol.for("a")), true)
 
-assert.deepStrictEqual(isSymbol('a'), false)
+assert.deepStrictEqual(isSymbol("a"), false)
 ```
 
 Added in v2.0.0
@@ -756,14 +756,14 @@ export declare const isTagged: {
 **Example**
 
 ```ts
-import { isTagged } from 'effect/Predicate'
+import { isTagged } from "effect/Predicate"
 
-assert.deepStrictEqual(isTagged(1, 'a'), false)
-assert.deepStrictEqual(isTagged(null, 'a'), false)
-assert.deepStrictEqual(isTagged({}, 'a'), false)
-assert.deepStrictEqual(isTagged({ a: 'a' }, 'a'), false)
-assert.deepStrictEqual(isTagged({ _tag: 'a' }, 'a'), true)
-assert.deepStrictEqual(isTagged('a')({ _tag: 'a' }), true)
+assert.deepStrictEqual(isTagged(1, "a"), false)
+assert.deepStrictEqual(isTagged(null, "a"), false)
+assert.deepStrictEqual(isTagged({}, "a"), false)
+assert.deepStrictEqual(isTagged({ a: "a" }, "a"), false)
+assert.deepStrictEqual(isTagged({ _tag: "a" }, "a"), true)
+assert.deepStrictEqual(isTagged("a")({ _tag: "a" }), true)
 ```
 
 Added in v2.0.0
@@ -781,7 +781,7 @@ export declare const isUint8Array: (input: unknown) => input is Uint8Array
 **Example**
 
 ```ts
-import { isUint8Array } from 'effect/Predicate'
+import { isUint8Array } from "effect/Predicate"
 
 assert.deepStrictEqual(isUint8Array(new Uint8Array()), true)
 
@@ -804,12 +804,12 @@ export declare const isUndefined: (input: unknown) => input is undefined
 **Example**
 
 ```ts
-import { isUndefined } from 'effect/Predicate'
+import { isUndefined } from "effect/Predicate"
 
 assert.deepStrictEqual(isUndefined(undefined), true)
 
 assert.deepStrictEqual(isUndefined(null), false)
-assert.deepStrictEqual(isUndefined('undefined'), false)
+assert.deepStrictEqual(isUndefined("undefined"), false)
 ```
 
 Added in v2.0.0
@@ -827,7 +827,7 @@ export declare const isUnknown: (input: unknown) => input is unknown
 **Example**
 
 ```ts
-import { isUnknown } from 'effect/Predicate'
+import { isUnknown } from "effect/Predicate"
 
 assert.deepStrictEqual(isUnknown(null), true)
 assert.deepStrictEqual(isUnknown(undefined), true)
@@ -872,7 +872,7 @@ Added in v2.0.0
 
 ```ts
 export interface PredicateTypeLambda extends TypeLambda {
-  readonly type: Predicate<this['Target']>
+  readonly type: Predicate<this["Target"]>
 }
 ```
 

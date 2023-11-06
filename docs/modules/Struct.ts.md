@@ -1,6 +1,6 @@
 ---
 title: Struct.ts
-nav_order: 114
+nav_order: 112
 parent: Modules
 ---
 
@@ -44,17 +44,17 @@ export declare const getEquivalence: <R extends Record<string, Equivalence.Equiv
 **Example**
 
 ```ts
-import { getEquivalence } from 'effect/Struct'
-import * as S from 'effect/String'
-import * as N from 'effect/Number'
+import { getEquivalence } from "effect/Struct"
+import * as S from "effect/String"
+import * as N from "effect/Number"
 
 const PersonEquivalence = getEquivalence({
   name: S.Equivalence,
-  age: N.Equivalence,
+  age: N.Equivalence
 })
 
-assert.deepStrictEqual(PersonEquivalence({ name: 'John', age: 25 }, { name: 'John', age: 25 }), true)
-assert.deepStrictEqual(PersonEquivalence({ name: 'John', age: 25 }, { name: 'John', age: 40 }), false)
+assert.deepStrictEqual(PersonEquivalence({ name: "John", age: 25 }, { name: "John", age: 25 }), true)
+assert.deepStrictEqual(PersonEquivalence({ name: "John", age: 25 }, { name: "John", age: 40 }), false)
 ```
 
 Added in v2.0.0
@@ -87,27 +87,30 @@ If no transformation function is provided for a key, it will return the origiona
 
 ```ts
 export declare const evolve: {
-  <O, T extends Partial<{ [K in keyof O]: (a: O[K]) => unknown }>>(t: T): (obj: O) => {
+  <O, T extends Partial<{ [K in keyof O]: (a: O[K]) => unknown }>>(
+    t: T
+  ): (obj: O) => {
     [K in keyof O]: K extends keyof T ? (T[K] extends (...a: any) => any ? ReturnType<T[K]> : O[K]) : O[K]
   }
-  <O, T extends Partial<{ [K in keyof O]: (a: O[K]) => unknown }>>(obj: O, t: T): {
-    [K in keyof O]: K extends keyof T ? (T[K] extends (...a: any) => any ? ReturnType<T[K]> : O[K]) : O[K]
-  }
+  <O, T extends Partial<{ [K in keyof O]: (a: O[K]) => unknown }>>(
+    obj: O,
+    t: T
+  ): { [K in keyof O]: K extends keyof T ? (T[K] extends (...a: any) => any ? ReturnType<T[K]> : O[K]) : O[K] }
 }
 ```
 
 **Example**
 
 ```ts
-import { evolve } from 'effect/Struct'
-import { pipe } from 'effect/Function'
+import { evolve } from "effect/Struct"
+import { pipe } from "effect/Function"
 
 assert.deepStrictEqual(
   pipe(
-    { a: 'a', b: 1, c: 3 },
+    { a: "a", b: 1, c: 3 },
     evolve({
       a: (a) => a.length,
-      b: (b) => b * 2,
+      b: (b) => b * 2
     })
   ),
   { a: 1, b: 2, c: 3 }
@@ -131,10 +134,10 @@ export declare const omit: <S, Keys extends readonly [keyof S, ...(keyof S)[]]>(
 **Example**
 
 ```ts
-import { omit } from 'effect/Struct'
-import { pipe } from 'effect/Function'
+import { omit } from "effect/Struct"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe({ a: 'a', b: 1, c: true }, omit('c')), { a: 'a', b: 1 })
+assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, omit("c")), { a: "a", b: 1 })
 ```
 
 Added in v2.0.0
@@ -154,10 +157,10 @@ export declare const pick: <S, Keys extends readonly [keyof S, ...(keyof S)[]]>(
 **Example**
 
 ```ts
-import { pick } from 'effect/Struct'
-import { pipe } from 'effect/Function'
+import { pick } from "effect/Struct"
+import { pipe } from "effect/Function"
 
-assert.deepStrictEqual(pipe({ a: 'a', b: 1, c: true }, pick('a', 'b')), { a: 'a', b: 1 })
+assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, pick("a", "b")), { a: "a", b: 1 })
 ```
 
 Added in v2.0.0

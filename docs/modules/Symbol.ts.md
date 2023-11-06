@@ -1,6 +1,6 @@
 ---
 title: Symbol.ts
-nav_order: 117
+nav_order: 115
 parent: Modules
 ---
 
@@ -34,10 +34,10 @@ export declare const isSymbol: (u: unknown) => u is symbol
 **Example**
 
 ```ts
-import { isSymbol } from 'effect/Predicate'
+import { isSymbol } from "effect/Predicate"
 
-assert.deepStrictEqual(isSymbol(Symbol.for('a')), true)
-assert.deepStrictEqual(isSymbol('a'), false)
+assert.deepStrictEqual(isSymbol(Symbol.for("a")), true)
+assert.deepStrictEqual(isSymbol("a"), false)
 ```
 
 Added in v2.0.0

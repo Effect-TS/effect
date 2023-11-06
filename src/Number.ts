@@ -5,13 +5,13 @@
  *
  * @since 2.0.0
  */
-import * as equivalence from "./Equivalence"
-import { dual } from "./Function"
-import * as option from "./internal/Option"
-import type { Option } from "./Option"
-import * as order from "./Order"
-import type { Ordering } from "./Ordering"
-import * as predicate from "./Predicate"
+import * as equivalence from "./Equivalence.js"
+import { dual } from "./Function.js"
+import * as option from "./internal/option.js"
+import type { Option } from "./Option.js"
+import * as order from "./Order.js"
+import type { Ordering } from "./Ordering.js"
+import * as predicate from "./Predicate.js"
 
 /**
  * Tests if a value is a `number`.

@@ -1,6 +1,6 @@
 ---
 title: Encoding.ts
-nav_order: 32
+nav_order: 26
 parent: Modules
 ---
 
@@ -177,7 +177,7 @@ Represents a checked exception which occurs when decoding fails.
 
 ```ts
 export interface DecodeException {
-  readonly _tag: 'DecodeException'
+  readonly _tag: "DecodeException"
   readonly [DecodeExceptionTypeId]: DecodeExceptionTypeId
   readonly input: string
   readonly message?: string

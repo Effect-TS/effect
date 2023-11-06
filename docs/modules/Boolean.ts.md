@@ -53,7 +53,7 @@ export declare const and: { (that: boolean): (self: boolean) => boolean; (self: 
 **Example**
 
 ```ts
-import { and } from 'effect/Boolean'
+import { and } from "effect/Boolean"
 
 assert.deepStrictEqual(and(true, true), true)
 assert.deepStrictEqual(and(true, false), false)
@@ -76,7 +76,7 @@ export declare const eqv: { (that: boolean): (self: boolean) => boolean; (self: 
 **Example**
 
 ```ts
-import { eqv } from 'effect/Boolean'
+import { eqv } from "effect/Boolean"
 
 assert.deepStrictEqual(eqv(true, true), true)
 assert.deepStrictEqual(eqv(true, false), false)
@@ -99,7 +99,7 @@ export declare const implies: { (that: boolean): (self: boolean) => boolean; (se
 **Example**
 
 ```ts
-import { implies } from 'effect/Boolean'
+import { implies } from "effect/Boolean"
 
 assert.deepStrictEqual(implies(true, true), true)
 assert.deepStrictEqual(implies(true, false), false)
@@ -122,7 +122,7 @@ export declare const nand: { (that: boolean): (self: boolean) => boolean; (self:
 **Example**
 
 ```ts
-import { nand } from 'effect/Boolean'
+import { nand } from "effect/Boolean"
 
 assert.deepStrictEqual(nand(true, true), false)
 assert.deepStrictEqual(nand(true, false), true)
@@ -145,7 +145,7 @@ export declare const nor: { (that: boolean): (self: boolean) => boolean; (self: 
 **Example**
 
 ```ts
-import { nor } from 'effect/Boolean'
+import { nor } from "effect/Boolean"
 
 assert.deepStrictEqual(nor(true, true), false)
 assert.deepStrictEqual(nor(true, false), false)
@@ -168,7 +168,7 @@ export declare const not: (self: boolean) => boolean
 **Example**
 
 ```ts
-import { not } from 'effect/Boolean'
+import { not } from "effect/Boolean"
 
 assert.deepStrictEqual(not(true), false)
 assert.deepStrictEqual(not(false), true)
@@ -189,7 +189,7 @@ export declare const or: { (that: boolean): (self: boolean) => boolean; (self: b
 **Example**
 
 ```ts
-import { or } from 'effect/Boolean'
+import { or } from "effect/Boolean"
 
 assert.deepStrictEqual(or(true, true), true)
 assert.deepStrictEqual(or(true, false), true)
@@ -212,7 +212,7 @@ export declare const xor: { (that: boolean): (self: boolean) => boolean; (self: 
 **Example**
 
 ```ts
-import { xor } from 'effect/Boolean'
+import { xor } from "effect/Boolean"
 
 assert.deepStrictEqual(xor(true, true), false)
 assert.deepStrictEqual(xor(true, false), true)
@@ -237,10 +237,10 @@ export declare const isBoolean: (input: unknown) => input is boolean
 **Example**
 
 ```ts
-import { isBoolean } from 'effect/Boolean'
+import { isBoolean } from "effect/Boolean"
 
 assert.deepStrictEqual(isBoolean(true), true)
-assert.deepStrictEqual(isBoolean('true'), false)
+assert.deepStrictEqual(isBoolean("true"), false)
 ```
 
 Added in v2.0.0
@@ -286,7 +286,7 @@ export declare const match: {
 **Example**
 
 ```ts
-import * as B from 'effect/Boolean'
+import * as B from "effect/Boolean"
 
 assert.deepStrictEqual(B.match(true, { onFalse: () => "It's false!", onTrue: () => "It's true!" }), "It's true!")
 ```
@@ -308,7 +308,7 @@ export declare const every: (collection: Iterable<boolean>) => boolean
 **Example**
 
 ```ts
-import { every } from 'effect/Boolean'
+import { every } from "effect/Boolean"
 
 assert.deepStrictEqual(every([true, true, true]), true)
 assert.deepStrictEqual(every([true, false, true]), false)
@@ -329,7 +329,7 @@ export declare const some: (collection: Iterable<boolean>) => boolean
 **Example**
 
 ```ts
-import { some } from 'effect/Boolean'
+import { some } from "effect/Boolean"
 
 assert.deepStrictEqual(some([true, false, true]), true)
 assert.deepStrictEqual(some([false, false, false]), false)

@@ -1,6 +1,6 @@
 ---
 title: HashMap.ts
-nav_order: 47
+nav_order: 41
 parent: Modules
 ---
 
@@ -449,7 +449,7 @@ export type Key<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, in
 **Example**
 
 ```ts
-import * as HashMap from 'effect/HashMap'
+import * as HashMap from "effect/HashMap"
 
 declare const hm: HashMap.HashMap<string, number>
 
@@ -482,7 +482,7 @@ export type Value<T extends HashMap<any, any>> = [T] extends [HashMap<infer _K, 
 **Example**
 
 ```ts
-import * as HashMap from 'effect/HashMap'
+import * as HashMap from "effect/HashMap"
 
 declare const hm: HashMap.HashMap<string, number>
 

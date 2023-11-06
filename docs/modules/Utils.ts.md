@@ -62,14 +62,12 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare class GenKindImpl<F, R, O, E, A> {
-  constructor(
+export declare class GenKindImpl<F, R, O, E, A> { constructor(
     /**
      * @since 2.0.0
      */
     readonly value: Kind<F, R, O, E, A>
-  )
-}
+  ) }
 ```
 
 Added in v2.0.0
@@ -99,9 +97,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare class SingleShotGen<T, A> {
-  constructor(readonly self: T)
-}
+export declare class SingleShotGen<T, A> { constructor(readonly self: T) }
 ```
 
 Added in v2.0.0
@@ -257,13 +253,12 @@ export interface Adapter<Z extends TypeLambda> {
   <_R, _O, _E, _A>(self: Kind<Z, _R, _O, _E, _A>): GenKind<Z, _R, _O, _E, _A>
   <A, _R, _O, _E, _A>(a: A, ab: (a: A) => Kind<Z, _R, _O, _E, _A>): GenKind<Z, _R, _O, _E, _A>
   <A, B, _R, _O, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => Kind<Z, _R, _O, _E, _A>): GenKind<Z, _R, _O, _E, _A>
-  <A, B, C, _R, _O, _E, _A>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => Kind<Z, _R, _O, _E, _A>): GenKind<
-    Z,
-    _R,
-    _O,
-    _E,
-    _A
-  >
+  <A, B, C, _R, _O, _E, _A>(
+    a: A,
+    ab: (a: A) => B,
+    bc: (b: B) => C,
+    cd: (c: C) => Kind<Z, _R, _O, _E, _A>
+  ): GenKind<Z, _R, _O, _E, _A>
   <A, B, C, D, _R, _O, _E, _A>(
     a: A,
     ab: (a: A) => B,
@@ -530,7 +525,9 @@ Added in v2.0.0
 
 ```ts
 export interface Gen<F extends TypeLambda, Z> {
-  <K extends Variance<F, any, any, any>, A>(body: (resume: Z) => Generator<K, A>): Kind<
+  <K extends Variance<F, any, any, any>, A>(
+    body: (resume: Z) => Generator<K, A>
+  ): Kind<
     F,
     [K] extends [Variance<F, infer R, any, any>] ? R : never,
     [K] extends [Variance<F, any, infer O, any>] ? O : never,

@@ -1,6 +1,6 @@
 ---
 title: MetricKey.ts
-nav_order: 62
+nav_order: 59
 parent: Modules
 ---
 
@@ -135,9 +135,10 @@ Returns a new `MetricKey` with the specified tag appended.
 
 ```ts
 export declare const tagged: {
-  (key: string, value: string): <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey<Type>
-  ) => MetricKey<Type>
+  (
+    key: string,
+    value: string
+  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
     key: string,
@@ -156,9 +157,9 @@ Returns a new `MetricKey` with the specified tags appended.
 
 ```ts
 export declare const taggedWithLabelSet: {
-  (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey<Type>
-  ) => MetricKey<Type>
+  (
+    extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
+  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
     extraTags: HashSet.HashSet<MetricLabel.MetricLabel>
@@ -176,9 +177,9 @@ Returns a new `MetricKey` with the specified tags appended.
 
 ```ts
 export declare const taggedWithLabels: {
-  (extraTags: Iterable<MetricLabel.MetricLabel>): <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey<Type>
-  ) => MetricKey<Type>
+  (
+    extraTags: Iterable<MetricLabel.MetricLabel>
+  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
   <Type extends MetricKeyType.MetricKeyType<any, any>>(
     self: MetricKey<Type>,
     extraTags: Iterable<MetricLabel.MetricLabel>

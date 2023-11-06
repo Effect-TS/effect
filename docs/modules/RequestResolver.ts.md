@@ -1,6 +1,6 @@
 ---
 title: RequestResolver.ts
-nav_order: 92
+nav_order: 89
 parent: Modules
 ---
 
@@ -56,9 +56,10 @@ and `after`, where the result of `before` can be used by `after`.
 
 ```ts
 export declare const around: {
-  <R2, A2, R3, _>(before: Effect.Effect<R2, never, A2>, after: (a: A2) => Effect.Effect<R3, never, _>): <R, A>(
-    self: RequestResolver<A, R>
-  ) => RequestResolver<A, R2 | R3 | R>
+  <R2, A2, R3, _>(
+    before: Effect.Effect<R2, never, A2>,
+    after: (a: A2) => Effect.Effect<R3, never, _>
+  ): <R, A>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
   <R, A, R2, A2, R3, _>(
     self: RequestResolver<A, R>,
     before: Effect.Effect<R2, never, A2>,
@@ -122,13 +123,15 @@ Returns a new data source with a localized FiberRef
 
 ```ts
 export declare const locally: {
-  <A>(self: FiberRef<A>, value: A): <R, B extends Request.Request<any, any>>(
-    use: RequestResolver<B, R>
-  ) => RequestResolver<B, R>
-  <R, B extends Request.Request<any, any>, A>(use: RequestResolver<B, R>, self: FiberRef<A>, value: A): RequestResolver<
-    B,
-    R
-  >
+  <A>(
+    self: FiberRef<A>,
+    value: A
+  ): <R, B extends Request.Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
+  <R, B extends Request.Request<any, any>, A>(
+    use: RequestResolver<B, R>,
+    self: FiberRef<A>,
+    value: A
+  ): RequestResolver<B, R>
 }
 ```
 
@@ -144,9 +147,9 @@ source to complete and safely interrupting the loser.
 
 ```ts
 export declare const race: {
-  <R2, A2 extends Request.Request<any, any>>(that: RequestResolver<A2, R2>): <R, A extends Request.Request<any, any>>(
-    self: RequestResolver<A, R>
-  ) => RequestResolver<A2 | A, R2 | R>
+  <R2, A2 extends Request.Request<any, any>>(
+    that: RequestResolver<A2, R2>
+  ): <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
   <R, A extends Request.Request<any, any>, R2, A2 extends Request.Request<any, any>>(
     self: RequestResolver<A, R>,
     that: RequestResolver<A2, R2>
@@ -184,7 +187,7 @@ request list.
 ```ts
 export declare const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
   Fns extends {
-    readonly [Tag in A['_tag']]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
+    readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
       ? Req extends Request.Request<infer ReqE, infer ReqA>
         ? (requests: Req[]) => Effect.Effect<any, ReqE, Iterable<ReqA>>
         : never
@@ -292,9 +295,9 @@ Provides this data source with part of its required context.
 
 ```ts
 export declare const mapInputContext: {
-  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <A extends Request.Request<any, any>>(
-    self: RequestResolver<A, R>
-  ) => RequestResolver<A, R0>
+  <R0, R>(
+    f: (context: Context.Context<R0>) => Context.Context<R>
+  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
   <R, A extends Request.Request<any, any>, R0>(
     self: RequestResolver<A, R>,
     f: (context: Context.Context<R0>) => Context.Context<R>
@@ -312,13 +315,13 @@ Provides this data source with its required context.
 
 ```ts
 export declare const provideContext: {
-  <R>(context: Context.Context<R>): <A extends Request.Request<any, any>>(
-    self: RequestResolver<A, R>
-  ) => RequestResolver<A, never>
-  <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>, context: Context.Context<R>): RequestResolver<
-    A,
-    never
-  >
+  <R>(
+    context: Context.Context<R>
+  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, never>
+  <R, A extends Request.Request<any, any>>(
+    self: RequestResolver<A, R>,
+    context: Context.Context<R>
+  ): RequestResolver<A, never>
 }
 ```
 

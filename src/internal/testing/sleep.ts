@@ -1,6 +1,6 @@
-import type * as Deferred from "../../Deferred"
-import type * as Duration from "../../Duration"
-import type * as FiberId from "../../FiberId"
+import type * as Deferred from "../../Deferred.js"
+import type * as Duration from "../../Duration.js"
+import type * as FiberId from "../../FiberId.js"
 
 /**
  * `Sleep` represents the state of a scheduled effect, including the time the

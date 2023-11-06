@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Cache from "./Cache"
-import type * as Duration from "./Duration"
-import type * as Effect from "./Effect"
-import type * as Exit from "./Exit"
-import * as internal from "./internal/scopedCache"
-import type * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import type * as Scope from "./Scope"
+import type * as Cache from "./Cache.js"
+import type * as Duration from "./Duration.js"
+import type * as Effect from "./Effect.js"
+import type * as Exit from "./Exit.js"
+import * as internal from "./internal/scopedCache.js"
+import type * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
+import type * as Scope from "./Scope.js"
 
 /**
  * @since 2.0.0

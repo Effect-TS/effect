@@ -21,19 +21,18 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
-import * as Chunk from "./Chunk"
-import * as Either from "./Either"
-import * as Equal from "./Equal"
-import * as Equivalence from "./Equivalence"
-import { dual, identity, unsafeCoerce } from "./Function"
-import * as Hash from "./Hash"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable"
-import * as Option from "./Option"
-import type { Pipeable } from "./Pipeable"
-import { pipeArguments } from "./Pipeable"
-import type { Predicate, Refinement } from "./Predicate"
-import { hasProperty } from "./Predicate"
-import * as ReadonlyArray from "./ReadonlyArray"
+import * as Chunk from "./Chunk.js"
+import * as Either from "./Either.js"
+import * as Equal from "./Equal.js"
+import * as Equivalence from "./Equivalence.js"
+import { dual, identity, unsafeCoerce } from "./Function.js"
+import * as Hash from "./Hash.js"
+import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import * as Option from "./Option.js"
+import type { Pipeable } from "./Pipeable.js"
+import { pipeArguments } from "./Pipeable.js"
+import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
+import * as ReadonlyArray from "./ReadonlyArray.js"
 
 /**
  * Represents an immutable linked list of elements of type `A`.

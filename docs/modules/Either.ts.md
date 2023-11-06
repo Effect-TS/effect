@@ -1,6 +1,6 @@
 ---
 title: Either.ts
-nav_order: 31
+nav_order: 25
 parent: Modules
 ---
 
@@ -95,11 +95,11 @@ export declare const all: <const I extends Iterable<Either<any, any>> | Record<s
 **Example**
 
 ```ts
-import * as Either from 'effect/Either'
+import * as Either from "effect/Either"
 
 assert.deepStrictEqual(Either.all([Either.right(1), Either.right(2)]), Either.right([1, 2]))
-assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right('hello') }), Either.right({ a: 1, b: 'hello' }))
-assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.left('error') }), Either.left('error'))
+assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right("hello") }), Either.right({ a: 1, b: "hello" }))
+assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.left("error") }), Either.left("error"))
 ```
 
 Added in v2.0.0
@@ -162,15 +162,15 @@ export declare const fromNullable: {
 **Example**
 
 ```ts
-import * as Either from 'effect/Either'
+import * as Either from "effect/Either"
 
 assert.deepStrictEqual(
-  Either.fromNullable(1, () => 'fallback'),
+  Either.fromNullable(1, () => "fallback"),
   Either.right(1)
 )
 assert.deepStrictEqual(
-  Either.fromNullable(null, () => 'fallback'),
-  Either.left('fallback')
+  Either.fromNullable(null, () => "fallback"),
+  Either.left("fallback")
 )
 ```
 
@@ -190,16 +190,16 @@ export declare const fromOption: {
 **Example**
 
 ```ts
-import * as Either from 'effect/Either'
-import * as Option from 'effect/Option'
+import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 
 assert.deepStrictEqual(
-  Either.fromOption(Option.some(1), () => 'error'),
+  Either.fromOption(Option.some(1), () => "error"),
   Either.right(1)
 )
 assert.deepStrictEqual(
-  Either.fromOption(Option.none(), () => 'error'),
-  Either.left('error')
+  Either.fromOption(Option.none(), () => "error"),
+  Either.left("error")
 )
 ```
 
@@ -303,11 +303,11 @@ export declare const getLeft: <E, A>(self: Either<E, A>) => Option<E>
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
-import * as E from 'effect/Either'
+import * as O from "effect/Option"
+import * as E from "effect/Either"
 
-assert.deepStrictEqual(E.getLeft(E.right('ok')), O.none())
-assert.deepStrictEqual(E.getLeft(E.left('err')), O.some('err'))
+assert.deepStrictEqual(E.getLeft(E.right("ok")), O.none())
+assert.deepStrictEqual(E.getLeft(E.left("err")), O.some("err"))
 ```
 
 Added in v2.0.0
@@ -328,15 +328,15 @@ export declare const getOrElse: {
 **Example**
 
 ```ts
-import * as Either from 'effect/Either'
+import * as Either from "effect/Either"
 
 assert.deepStrictEqual(
-  Either.getOrElse(Either.right(1), (error) => error + '!'),
+  Either.getOrElse(Either.right(1), (error) => error + "!"),
   1
 )
 assert.deepStrictEqual(
-  Either.getOrElse(Either.left('not a number'), (error) => error + '!'),
-  'not a number!'
+  Either.getOrElse(Either.left("not a number"), (error) => error + "!"),
+  "not a number!"
 )
 ```
 
@@ -353,10 +353,10 @@ export declare const getOrNull: <E, A>(self: Either<E, A>) => A | null
 **Example**
 
 ```ts
-import * as Either from 'effect/Either'
+import * as Either from "effect/Either"
 
 assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
-assert.deepStrictEqual(Either.getOrNull(Either.left('a')), null)
+assert.deepStrictEqual(Either.getOrNull(Either.left("a")), null)
 ```
 
 Added in v2.0.0
@@ -376,10 +376,10 @@ export declare const getOrThrow: <E, A>(self: Either<E, A>) => A
 **Example**
 
 ```ts
-import * as E from 'effect/Either'
+import * as E from "effect/Either"
 
 assert.deepStrictEqual(E.getOrThrow(E.right(1)), 1)
-assert.throws(() => E.getOrThrow(E.left('error')))
+assert.throws(() => E.getOrThrow(E.left("error")))
 ```
 
 Added in v2.0.0
@@ -402,13 +402,13 @@ export declare const getOrThrowWith: {
 **Example**
 
 ```ts
-import * as E from 'effect/Either'
+import * as E from "effect/Either"
 
 assert.deepStrictEqual(
-  E.getOrThrowWith(E.right(1), () => new Error('Unexpected Left')),
+  E.getOrThrowWith(E.right(1), () => new Error("Unexpected Left")),
   1
 )
-assert.throws(() => E.getOrThrowWith(E.left('error'), () => new Error('Unexpected Left')))
+assert.throws(() => E.getOrThrowWith(E.left("error"), () => new Error("Unexpected Left")))
 ```
 
 Added in v2.0.0
@@ -424,10 +424,10 @@ export declare const getOrUndefined: <E, A>(self: Either<E, A>) => A | undefined
 **Example**
 
 ```ts
-import * as Either from 'effect/Either'
+import * as Either from "effect/Either"
 
 assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
-assert.deepStrictEqual(Either.getOrUndefined(Either.left('a')), undefined)
+assert.deepStrictEqual(Either.getOrUndefined(Either.left("a")), undefined)
 ```
 
 Added in v2.0.0
@@ -447,11 +447,11 @@ export declare const getRight: <E, A>(self: Either<E, A>) => Option<A>
 **Example**
 
 ```ts
-import * as O from 'effect/Option'
-import * as E from 'effect/Either'
+import * as O from "effect/Option"
+import * as E from "effect/Either"
 
-assert.deepStrictEqual(E.getRight(E.right('ok')), O.some('ok'))
-assert.deepStrictEqual(E.getRight(E.left('err')), O.none())
+assert.deepStrictEqual(E.getRight(E.right("ok")), O.some("ok"))
+assert.deepStrictEqual(E.getRight(E.left("err")), O.none())
 ```
 
 Added in v2.0.0
@@ -481,10 +481,10 @@ export declare const isEither: (input: unknown) => input is Either<unknown, unkn
 **Example**
 
 ```ts
-import { isEither, left, right } from 'effect/Either'
+import { isEither, left, right } from "effect/Either"
 
 assert.deepStrictEqual(isEither(right(1)), true)
-assert.deepStrictEqual(isEither(left('a')), true)
+assert.deepStrictEqual(isEither(left("a")), true)
 assert.deepStrictEqual(isEither({ right: 1 }), false)
 ```
 
@@ -503,10 +503,10 @@ export declare const isLeft: <E, A>(self: Either<E, A>) => self is Left<E, A>
 **Example**
 
 ```ts
-import { isLeft, left, right } from 'effect/Either'
+import { isLeft, left, right } from "effect/Either"
 
 assert.deepStrictEqual(isLeft(right(1)), false)
-assert.deepStrictEqual(isLeft(left('a')), true)
+assert.deepStrictEqual(isLeft(left("a")), true)
 ```
 
 Added in v2.0.0
@@ -524,10 +524,10 @@ export declare const isRight: <E, A>(self: Either<E, A>) => self is Right<E, A>
 **Example**
 
 ```ts
-import { isRight, left, right } from 'effect/Either'
+import { isRight, left, right } from "effect/Either"
 
 assert.deepStrictEqual(isRight(right(1)), true)
-assert.deepStrictEqual(isRight(left('a')), false)
+assert.deepStrictEqual(isRight(left("a")), false)
 ```
 
 Added in v2.0.0
@@ -555,9 +555,10 @@ Added in v2.0.0
 
 ```ts
 export declare const mapBoth: {
-  <E1, E2, A, B>(options: { readonly onLeft: (e: E1) => E2; readonly onRight: (a: A) => B }): (
-    self: Either<E1, A>
-  ) => Either<E2, B>
+  <E1, E2, A, B>(options: {
+    readonly onLeft: (e: E1) => E2
+    readonly onRight: (a: A) => B
+  }): (self: Either<E1, A>) => Either<E2, B>
   <E1, A, E2, B>(
     self: Either<E1, A>,
     options: { readonly onLeft: (e: E1) => E2; readonly onRight: (a: A) => B }
@@ -622,8 +623,8 @@ Added in v2.0.0
 
 ```ts
 export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
-  readonly _tag: 'Left'
-  readonly _op: 'Left'
+  readonly _tag: "Left"
+  readonly _op: "Left"
   readonly left: E
   readonly [TypeId]: {
     readonly _A: (_: never) => A
@@ -643,8 +644,8 @@ Added in v2.0.0
 
 ```ts
 export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
-  readonly _tag: 'Right'
-  readonly _op: 'Right'
+  readonly _tag: "Right"
+  readonly _op: "Right"
   readonly right: A
   readonly [TypeId]: {
     readonly _A: (_: never) => A
@@ -669,9 +670,10 @@ if the value is a `Right`the inner value is applied to the`onRight` function.
 
 ```ts
 export declare const match: {
-  <E, B, A, C = B>(options: { readonly onLeft: (e: E) => B; readonly onRight: (a: A) => C }): (
-    self: Either<E, A>
-  ) => B | C
+  <E, B, A, C = B>(options: {
+    readonly onLeft: (e: E) => B
+    readonly onRight: (a: A) => C
+  }): (self: Either<E, A>) => B | C
   <E, A, B, C = B>(self: Either<E, A>, options: { readonly onLeft: (e: E) => B; readonly onRight: (a: A) => C }): B | C
 }
 ```
@@ -679,17 +681,17 @@ export declare const match: {
 **Example**
 
 ```ts
-import * as E from 'effect/Either'
-import { pipe } from 'effect/Function'
+import * as E from "effect/Either"
+import { pipe } from "effect/Function"
 
-const onLeft = (strings: ReadonlyArray<string>): string => `strings: ${strings.join(', ')}`
+const onLeft = (strings: ReadonlyArray<string>): string => `strings: ${strings.join(", ")}`
 
 const onRight = (value: number): string => `Ok: ${value}`
 
-assert.deepStrictEqual(pipe(E.right(1), E.match({ onLeft, onRight })), 'Ok: 1')
+assert.deepStrictEqual(pipe(E.right(1), E.match({ onLeft, onRight })), "Ok: 1")
 assert.deepStrictEqual(
-  pipe(E.left(['string 1', 'string 2']), E.match({ onLeft, onRight })),
-  'strings: string 1, string 2'
+  pipe(E.left(["string 1", "string 2"]), E.match({ onLeft, onRight })),
+  "strings: string 1, string 2"
 )
 ```
 
@@ -725,7 +727,7 @@ Added in v2.0.0
 
 ```ts
 export interface EitherTypeLambda extends TypeLambda {
-  readonly type: Either<this['Out1'], this['Target']>
+  readonly type: Either<this["Out1"], this["Target"]>
 }
 ```
 

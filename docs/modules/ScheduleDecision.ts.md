@@ -1,6 +1,6 @@
 ---
 title: ScheduleDecision.ts
-nav_order: 98
+nav_order: 95
 parent: Modules
 ---
 
@@ -66,7 +66,7 @@ Added in v2.0.0
 
 ```ts
 export interface Continue {
-  readonly _tag: 'Continue'
+  readonly _tag: "Continue"
   readonly intervals: Intervals.Intervals
 }
 ```
@@ -79,7 +79,7 @@ Added in v2.0.0
 
 ```ts
 export interface Done {
-  readonly _tag: 'Done'
+  readonly _tag: "Done"
 }
 ```
 

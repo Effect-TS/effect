@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as Context from "./Context"
-import type * as Effect from "./Effect"
-import type * as FiberRef from "./FiberRef"
-import * as core from "./internal/core"
+import * as Context from "./Context.js"
+import type * as Effect from "./Effect.js"
+import type * as FiberRef from "./FiberRef.js"
+import * as core from "./internal/core.js"
 
 /**
  * @since 2.0.0

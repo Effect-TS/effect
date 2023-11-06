@@ -5,11 +5,11 @@
  *
  * @since 2.0.0
  */
-import * as equivalence from "./Equivalence"
-import type { LazyArg } from "./Function"
-import { dual } from "./Function"
-import * as order from "./Order"
-import * as predicate from "./Predicate"
+import * as equivalence from "./Equivalence.js"
+import type { LazyArg } from "./Function.js"
+import { dual } from "./Function.js"
+import * as order from "./Order.js"
+import * as predicate from "./Predicate.js"
 
 /**
  * Tests if a value is a `boolean`.

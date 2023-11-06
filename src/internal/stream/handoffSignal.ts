@@ -1,6 +1,6 @@
-import type * as Cause from "../../Cause"
-import type * as Chunk from "../../Chunk"
-import type * as SinkEndReason from "./sinkEndReason"
+import type * as Cause from "../../Cause.js"
+import type * as Chunk from "../../Chunk.js"
+import type * as SinkEndReason from "./sinkEndReason.js"
 
 /** @internal */
 export type HandoffSignal<E, A> = Emit<A> | Halt<E> | End
