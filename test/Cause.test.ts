@@ -305,28 +305,39 @@ describe.concurrent("Cause", () => {
     assert.strictEqual(Array.from(result).length, n)
   })
 
-  it("left identity", () => {
-    fc.assert(fc.property(causes, (cause) => {
-      const left = cause.pipe(Cause.flatMap(Cause.fail))
-      const right = cause
-      assert.isTrue(Equal.equals(left, right))
-    }))
+  describe("flatMap", () => {
+    it("left identity", () => {
+      fc.assert(fc.property(causes, (cause) => {
+        const left = cause.pipe(Cause.flatMap(Cause.fail))
+        const right = cause
+        assert.isTrue(Equal.equals(left, right))
+      }))
+    })
+
+    it("right identity", () => {
+      fc.assert(fc.property(errors, errorCauseFunctions, (error, f) => {
+        const left = Cause.fail(error).pipe(Cause.flatMap(f))
+        const right = f(error)
+        assert.isTrue(Equal.equals(left, right))
+      }))
+    })
+
+    it("associativity", () => {
+      fc.assert(fc.property(causes, errorCauseFunctions, errorCauseFunctions, (cause, f, g) => {
+        const left = cause.pipe(Cause.flatMap(f), Cause.flatMap(g))
+        const right = cause.pipe(Cause.flatMap((error) => f(error).pipe(Cause.flatMap(g))))
+        assert.isTrue(Equal.equals(left, right))
+      }))
+    })
   })
 
-  it("right identity", () => {
-    fc.assert(fc.property(errors, errorCauseFunctions, (error, f) => {
-      const left = Cause.fail(error).pipe(Cause.flatMap(f))
-      const right = f(error)
-      assert.isTrue(Equal.equals(left, right))
-    }))
-  })
-
-  it("associativity", () => {
-    fc.assert(fc.property(causes, errorCauseFunctions, errorCauseFunctions, (cause, f, g) => {
-      const left = cause.pipe(Cause.flatMap(f), Cause.flatMap(g))
-      const right = cause.pipe(Cause.flatMap((error) => f(error).pipe(Cause.flatMap(g))))
-      assert.isTrue(Equal.equals(left, right))
-    }))
+  it("andThen", () => {
+    const err1 = Cause.fail("err1")
+    const err2 = Cause.fail("err2")
+    expect(err1.pipe(Cause.andThen(() => err2))).toStrictEqual(err2)
+    expect(err1.pipe(Cause.andThen(err2))).toStrictEqual(err2)
+    expect(Cause.andThen(err1, () => err2)).toStrictEqual(err2)
+    expect(Cause.andThen(err1, err2)).toStrictEqual(err2)
   })
 
   describe.concurrent("stripSomeDefects", () => {

@@ -609,6 +609,17 @@ export const flatMap: {
  * @since 2.0.0
  * @category sequencing
  */
+export const andThen: {
+  <E, E2>(f: (e: E) => Cause<E2>): (self: Cause<E>) => Cause<E2>
+  <E2>(f: Cause<E2>): <E>(self: Cause<E>) => Cause<E2>
+  <E, E2>(self: Cause<E>, f: (e: E) => Cause<E2>): Cause<E2>
+  <E, E2>(self: Cause<E>, f: Cause<E2>): Cause<E2>
+} = internal.andThen
+
+/**
+ * @since 2.0.0
+ * @category sequencing
+ */
 export const flatten: <E>(self: Cause<Cause<E>>) => Cause<E> = internal.flatten
 
 /**
