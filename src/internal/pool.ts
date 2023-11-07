@@ -174,7 +174,9 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
   }
 
   get(): Effect.Effect<Scope.Scope, E, A> {
-    const acquire = (): Effect.Effect<never, never, Attempted<E, A>> =>
+    const acquire = (
+      restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>
+    ): Effect.Effect<never, never, Attempted<E, A>> =>
       core.flatMap(ref.get(this.isShuttingDown), (down) =>
         down
           ? core.interrupt
@@ -191,7 +193,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
                           ref.get(this.invalidated),
                           (set) => {
                             if (pipe(set, HashSet.has(item))) {
-                              return core.flatMap(finalizeInvalid(this, attempted), acquire)
+                              return core.zipRight(finalizeInvalid(this, attempted), acquire(restore))
                             }
                             return core.succeed(attempted)
                           }
@@ -203,9 +205,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
             }
             if (state.size >= 0) {
               return [
-                // we are in a acquireRelease block here, which already has
-                // marked this as an uninterruptible region
-                core.flatMap(allocate(this, core.interruptible), acquire),
+                core.zipRight(allocate(this, restore), acquire(restore)),
                 { size: state.size + 1, free: state.free + 1 }
               ] as const
             }
@@ -236,7 +236,9 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
       })
 
     return pipe(
-      fiberRuntime.acquireRelease(acquire(), release),
+      core.uninterruptibleMask((restore) =>
+        core.tap(acquire(restore), (a) => fiberRuntime.addFinalizer((_exit) => release(a)))
+      ),
       fiberRuntime.withEarlyRelease,
       fiberRuntime.disconnect,
       core.flatMap(([release, attempted]) =>
