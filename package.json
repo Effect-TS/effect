@@ -111,6 +111,11 @@
       "import": "./dist/esm/Chunk.js",
       "require": "./dist/cjs/Chunk.js"
     },
+    "./Chunk.int": {
+      "types": "./dist/dts/Chunk.int.d.ts",
+      "import": "./dist/esm/Chunk.int.js",
+      "require": "./dist/cjs/Chunk.int.js"
+    },
     "./Clock": {
       "types": "./dist/dts/Clock.d.ts",
       "import": "./dist/esm/Clock.js",
@@ -500,6 +505,11 @@
       "types": "./dist/dts/ReadonlyArray.d.ts",
       "import": "./dist/esm/ReadonlyArray.js",
       "require": "./dist/cjs/ReadonlyArray.js"
+    },
+    "./ReadonlyArray.int": {
+      "types": "./dist/dts/ReadonlyArray.int.d.ts",
+      "import": "./dist/esm/ReadonlyArray.int.js",
+      "require": "./dist/cjs/ReadonlyArray.int.js"
     },
     "./ReadonlyRecord": {
       "types": "./dist/dts/ReadonlyRecord.d.ts",
