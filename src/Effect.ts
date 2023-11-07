@@ -54,7 +54,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency } from "./Types.js"
+import type { Concurrency, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 // -------------------------------------------------------------------------------------
@@ -3553,7 +3553,7 @@ export const flatMap: {
  */
 export const andThen: {
   <A, X>(
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
   ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
@@ -3564,7 +3564,7 @@ export const andThen: {
   ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
@@ -3674,7 +3674,7 @@ export const summarized: {
  */
 export const tap: {
   <A, X>(
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
   ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
@@ -3685,7 +3685,7 @@ export const tap: {
   ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
   <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
   <A, R, E, X>(
     self: Effect<R, E, A>,

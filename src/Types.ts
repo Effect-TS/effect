@@ -142,3 +142,11 @@ export type Concurrency = number | "unbounded" | "inherit"
 export type Mutable<T> = {
   -readonly [P in keyof T]: T[P]
 }
+
+/**
+ * Avoid inference on a specific parameter
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export type NoInfer<A> = [A][A extends any ? 0 : never]

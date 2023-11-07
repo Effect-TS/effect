@@ -5167,7 +5167,7 @@ Executes a sequence of two `Effect`s. The second `Effect` can be dependent on th
 ```ts
 export declare const andThen: {
   <A, X>(
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
   ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
@@ -5178,7 +5178,7 @@ export declare const andThen: {
   ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
@@ -5331,7 +5331,7 @@ Added in v2.0.0
 ```ts
 export declare const tap: {
   <A, X>(
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
   ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
@@ -5342,7 +5342,7 @@ export declare const tap: {
   ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
   <A, R, E, X>(
     self: Effect<R, E, A>,
-    f: (a: A) => X
+    f: (a: NoInfer<A>) => X
   ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
   <A, R, E, X>(
     self: Effect<R, E, A>,

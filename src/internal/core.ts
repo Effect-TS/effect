@@ -35,6 +35,7 @@ import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import type * as Scope from "../Scope.js"
 import type * as Tracer from "../Tracer.js"
+import type { NoInfer } from "../Types.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
@@ -711,7 +712,7 @@ export const flatMap = dual<
 export const andThen = dual<
   {
     <A, X>(
-      f: (a: A) => X
+      f: (a: NoInfer<A>) => X
     ): <R, E>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
@@ -726,7 +727,7 @@ export const andThen = dual<
   {
     <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
-      f: (a: A) => X
+      f: (a: NoInfer<A>) => X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
       : Effect.Effect<R, E, X>
     <A, R, E, X>(
@@ -1146,7 +1147,7 @@ export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<never, never, A> =>
 export const tap = dual<
   {
     <A, X>(
-      f: (a: A) => X
+      f: (a: NoInfer<A>) => X
     ): <R, E>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
@@ -1161,7 +1162,7 @@ export const tap = dual<
   {
     <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
-      f: (a: A) => X
+      f: (a: NoInfer<A>) => X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
       : Effect.Effect<R, E, A>
     <A, R, E, X>(

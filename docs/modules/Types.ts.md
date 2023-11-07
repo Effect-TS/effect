@@ -19,6 +19,7 @@ Added in v2.0.0
   - [Equals (type alias)](#equals-type-alias)
   - [MergeLeft (type alias)](#mergeleft-type-alias)
   - [MergeRight (type alias)](#mergeright-type-alias)
+  - [NoInfer (type alias)](#noinfer-type-alias)
 - [types](#types)
   - [ExcludeTag (type alias)](#excludetag-type-alias)
   - [ExtractTag (type alias)](#extracttag-type-alias)
@@ -102,6 +103,18 @@ export type MergeRight<K, H> = Simplify<{
 ```ts
 import * as Types from "effect/Types"
 type MergeRight = Types.MergeRight<{ a: number; b: number }, { a: string }> // { a: string; b: number; }
+```
+
+Added in v2.0.0
+
+## NoInfer (type alias)
+
+Avoid inference on a specific parameter
+
+**Signature**
+
+```ts
+export type NoInfer<A> = [A][A extends any ? 0 : never]
 ```
 
 Added in v2.0.0
