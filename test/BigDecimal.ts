@@ -4,7 +4,7 @@ import { Option } from "effect/Option"
 import { assert, describe, it } from "vitest"
 
 const _ = BD.unsafeFromString
-const assertEquals = (a: BD.BigDecimal, b: BD.BigDecimal) => assertTrue(BD.equals(a, b))
+const assertEquals = (a: BD, b: BD) => assertTrue(BD.equals(a, b))
 
 describe.concurrent("BigDecimal", () => {
   it("isBigDecimal", () => {

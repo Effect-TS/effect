@@ -7,7 +7,7 @@ import { String as Str } from "effect/String"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
-class Member implements Eq.Equal {
+class Member implements Eq {
   constructor(readonly id: string) {}
 
   [Hash.symbol](): number {

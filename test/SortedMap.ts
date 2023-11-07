@@ -7,7 +7,7 @@ import { SortedMap as SM } from "effect/SortedMap"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
-class Key implements Eq.Equal {
+class Key implements Eq {
   constructor(readonly id: number) {}
 
   [Hash.symbol](): number {
@@ -19,7 +19,7 @@ class Key implements Eq.Equal {
   }
 }
 
-class Value implements Eq.Equal {
+class Value implements Eq {
   constructor(readonly id: number) {}
 
   [Hash.symbol](): number {

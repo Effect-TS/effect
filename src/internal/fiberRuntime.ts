@@ -3335,7 +3335,7 @@ const completeRace = <R, R1, R2, E2, A2, R3, E3, A3>(
   winner: Fiber.RuntimeFiber<any, any>,
   loser: Fiber.RuntimeFiber<any, any>,
   cont: (winner: Fiber.RuntimeFiber<any, any>, loser: Fiber.RuntimeFiber<any, any>) => Effect<any, any, any>,
-  ab: MRef.MutableRef<boolean>,
+  ab: MRef<boolean>,
   cb: (_: Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3>) => void
 ): void => {
   if (MRef.compareAndSet(true, false)(ab)) {

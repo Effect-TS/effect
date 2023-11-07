@@ -1022,7 +1022,7 @@ export const mapAccum = dual<
   elements: Iterable<A>,
   zero: Z,
   f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>
-): Effect.Effect<R, E, [Z, Array<B>]> =>
+): Effect<R, E, [Z, Array<B>]> =>
   core.suspend(() => {
     const iterator = elements[Symbol.iterator]()
     const builder: Array<B> = []
@@ -1057,7 +1057,7 @@ export const memoize = <R, E, A>(
   self: Effect<R, E, A>
 ): Effect<never, never, Effect<R, E, A>> =>
   pipe(
-    core.deferredMake<E, [[FiberRefsPatch.FiberRefsPatch, runtimeFlagsPatch.RuntimeFlagsPatch], A]>(),
+    core.deferredMake<E, [[FiberRefsPatch, runtimeFlagsPatch.RuntimeFlagsPatch], A]>(),
     core.flatMap((deferred) =>
       pipe(
         diffFiberRefsAndRuntimeFlags(self),

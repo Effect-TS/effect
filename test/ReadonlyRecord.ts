@@ -115,7 +115,7 @@ describe.concurrent("ReadonlyRecord", () => {
       [{ a: "e" }, { b: 1 }]
     )
     // should ignore non own properties
-    const o: RR.ReadonlyRecord<Either<string, number>> = Object.create({ a: 1 })
+    const o: RR<Either<string, number>> = Object.create({ a: 1 })
     assert.deepStrictEqual(pipe(o, RR.separate), [{}, {}])
   })
 
@@ -195,12 +195,12 @@ describe.concurrent("ReadonlyRecord", () => {
 
   it("union", () => {
     const combine = (s1: string, s2: string) => s1 + s2
-    const x: RR.ReadonlyRecord<string> = {
+    const x: RR<string> = {
       a: "a1",
       b: "b1",
       c: "c1"
     }
-    const y: RR.ReadonlyRecord<string> = {
+    const y: RR<string> = {
       b: "b2",
       c: "c2",
       d: "d2"
@@ -219,12 +219,12 @@ describe.concurrent("ReadonlyRecord", () => {
 
   it("intersection", () => {
     const combine = (s1: string, s2: string) => s1 + s2
-    const x: RR.ReadonlyRecord<string> = {
+    const x: RR<string> = {
       a: "a1",
       b: "b1",
       c: "c1"
     }
-    const y: RR.ReadonlyRecord<string> = {
+    const y: RR<string> = {
       b: "b2",
       c: "c2",
       d: "d2"
@@ -238,12 +238,12 @@ describe.concurrent("ReadonlyRecord", () => {
   })
 
   it("difference", () => {
-    const x: RR.ReadonlyRecord<string> = {
+    const x: RR<string> = {
       a: "a1",
       b: "b1",
       c: "c1"
     }
-    const y: RR.ReadonlyRecord<string> = {
+    const y: RR<string> = {
       b: "b2",
       c: "c2",
       d: "d2"

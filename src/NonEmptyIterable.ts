@@ -1,34 +1,17 @@
-/**
- * @since 2.0.0
- */
+import type { nonEmpty } from "./impl/NonEmptyIterable.js"
 
-/**
- * @category symbol
- * @since 2.0.0
- */
-export declare const nonEmpty: unique symbol
+export * from "./impl/NonEmptyIterable.js"
+export * from "./internal/Jumpers/NonEmptyIterable.js"
 
-export * as NonEmptyIterable from "./NonEmptyIterable.js"
-
-declare module "./NonEmptyIterable.js" {
-  /**
-   * @category model
-   * @since 2.0.0
-   */
-  export interface NonEmptyIterable<A> extends Iterable<A> {
-    readonly [nonEmpty]: A
-  }
+export declare namespace NonEmptyIterable {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/NonEmptyIterable.js"
 }
-
 /**
- * @category getters
+ * @category model
  * @since 2.0.0
  */
-export const unprepend = <A>(self: NonEmptyIterable<A>): [A, Iterator<A>] => {
-  const iterator = self[Symbol.iterator]()
-  const next = iterator.next()
-  if (next.done) {
-    throw new Error("BUG: NonEmptyIterator should not be empty")
-  }
-  return [next.value, iterator]
+export interface NonEmptyIterable<A> extends Iterable<A> {
+  readonly [nonEmpty]: A
 }

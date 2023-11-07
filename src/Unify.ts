@@ -1,38 +1,7 @@
-/**
- * @since 2.0.0
- */
+import type { ignoreSymbol, typeSymbol, unifySymbol } from "./impl/Unify.js"
 
-import { identity } from "./Function.js"
-
-/**
- * @since 2.0.0
- */
-export declare const unifySymbol: unique symbol
-
-/**
- * @since 2.0.0
- */
-export type unifySymbol = typeof unifySymbol
-
-/**
- * @since 2.0.0
- */
-export declare const typeSymbol: unique symbol
-
-/**
- * @since 2.0.0
- */
-export type typeSymbol = typeof typeSymbol
-
-/**
- * @since 2.0.0
- */
-export declare const ignoreSymbol: unique symbol
-
-/**
- * @since 2.0.0
- */
-export type ignoreSymbol = typeof ignoreSymbol
+export * from "./impl/Unify.js"
+export * from "./internal/Jumpers/Unify.js"
 
 type MaybeReturn<F> = F extends () => any ? ReturnType<F> : F
 
@@ -60,63 +29,19 @@ type FilterIn<A> = A extends any ? typeSymbol extends keyof A ? A : never : neve
 
 type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : never
 
-export * as Unify from "./Unify.js"
-
-declare module "./Unify.js" {
-  /**
-   * @since 2.0.0
-   */
-  export type Unify<A> = Values<
-    ExtractTypes<
-      (
-        & FilterIn<A>
-        & { [typeSymbol]: A }
-      )
-    >
-  > extends infer Z ? Z | Exclude<A, Z> | FilterOut<A> : never
+export declare namespace Unify {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/Unify.js"
 }
-
 /**
  * @since 2.0.0
  */
-export const unify: {
-  <
-    Args extends Array<any>,
-    Args2 extends Array<any>,
-    Args3 extends Array<any>,
-    Args4 extends Array<any>,
-    Args5 extends Array<any>,
-    T
-  >(
-    x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => (...args: Args5) => T
-  ): (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => (...args: Args5) => Unify<T>
-  <
-    Args extends Array<any>,
-    Args2 extends Array<any>,
-    Args3 extends Array<any>,
-    Args4 extends Array<any>,
-    T
-  >(
-    x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => T
-  ): (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => Unify<T>
-  <
-    Args extends Array<any>,
-    Args2 extends Array<any>,
-    Args3 extends Array<any>,
-    T
-  >(
-    x: (...args: Args) => (...args: Args2) => (...args: Args3) => T
-  ): (...args: Args) => (...args: Args2) => (...args: Args3) => Unify<T>
-  <
-    Args extends Array<any>,
-    Args2 extends Array<any>,
-    T
-  >(
-    x: (...args: Args) => (...args: Args2) => T
-  ): (...args: Args) => (...args: Args2) => Unify<T>
-  <
-    Args extends Array<any>,
-    T
-  >(x: (...args: Args) => T): (...args: Args) => Unify<T>
-  <T>(x: T): Unify<T>
-} = identity as any
+export type Unify<A> = Values<
+  ExtractTypes<
+    (
+      & FilterIn<A>
+      & { [typeSymbol]: A }
+    )
+  >
+> extends infer Z ? Z | Exclude<A, Z> | FilterOut<A> : never

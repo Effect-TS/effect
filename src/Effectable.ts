@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-cycle
-export * from "./Effectable.int.js"
+export * from "./impl/Effectable.js"
+export * from "./internal/Jumpers/Effectable.js"
