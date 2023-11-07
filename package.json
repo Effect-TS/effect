@@ -84,7 +84,7 @@
     "rimraf": "^5.0.5",
     "size-limit": "^10.0.2",
     "tsx": "^3.14.0",
-    "typescript": "^5.2.2",
+    "typescript": "5.4.0-dev.20231107",
     "vite": "^4.4.11",
     "vitest": "^0.34.6"
   },
