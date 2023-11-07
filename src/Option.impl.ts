@@ -11,6 +11,7 @@ import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as either from "./internal/either.js"
 import * as option from "./internal/option.js"
+import type { Option } from "./Option.js"
 import type { Order } from "./Order.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -19,27 +20,7 @@ import type { Unify } from "./Unify.js"
 import { Utils } from "./Utils.js"
 
 // eslint-disable-next-line import/no-cycle
-export * as Option from "./Option.js"
-
-declare module "./Option.int.js" {
-  /**
-   * @category models
-   * @since 2.0.0
-   */
-  export type Option<A> = None<A> | Some<A>
-}
-
-/**
- * @category symbols
- * @since 2.0.0
- */
-export const TypeId = Symbol.for("effect/Option")
-
-/**
- * @category symbols
- * @since 2.0.0
- */
-export type TypeId = typeof TypeId
+export * as Option from "./Option.impl.js"
 
 /**
  * @category models
@@ -71,6 +52,18 @@ export interface Some<A> extends Data.Case, Pipeable, Inspectable {
   [Unify.unifySymbol]?: OptionUnify<this>
   [Unify.ignoreSymbol]?: OptionUnifyIgnore
 }
+
+/**
+ * @category symbols
+ * @since 2.0.0
+ */
+export const TypeId = Symbol.for("effect/Option")
+
+/**
+ * @category symbols
+ * @since 2.0.0
+ */
+export type TypeId = typeof TypeId
 
 /**
  * @category models

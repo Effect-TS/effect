@@ -10,8 +10,8 @@ import type { ConfigProvider } from "./ConfigProvider.js"
 import type { Context } from "./Context.js"
 import type { Deferred } from "./Deferred.js"
 import type { Duration } from "./Duration.js"
+import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
-import type { Equal } from "./Equal.js"
 import type { Equivalence } from "./Equivalence.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
 import type { Exit } from "./Exit.js"
@@ -39,7 +39,6 @@ import type { LogLevel } from "./LogLevel.js"
 import type { Metric } from "./Metric.js"
 import type { MetricLabel } from "./MetricLabel.js"
 import type { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type { Random } from "./Random.js"
 import type { Ref } from "./Ref.js"
@@ -57,78 +56,7 @@ import type { Tracer } from "./Tracer.js"
 import type { Concurrency } from "./Types.js"
 import type { Unify } from "./Unify.js"
 
-// eslint-disable-next-line import/no-cycle
-export * as Effect from "./Effect.js"
-
-declare module "./Effect.int.js" {
-  /**
-   * The `Effect` interface defines a value that lazily describes a workflow or job.
-   * The workflow requires some context `R`, and may fail with an error of type `E`,
-   * or succeed with a value of type `A`.
-   *
-   * `Effect` values model resourceful interaction with the outside world, including
-   * synchronous, asynchronous, concurrent, and parallel interaction. They use a
-   * fiber-based concurrency model, with built-in support for scheduling, fine-grained
-   * interruption, structured concurrency, and high scalability.
-   *
-   * To run an `Effect` value, you need a `Runtime`, which is a type that is capable
-   * of executing `Effect` values.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal, Pipeable {
-    readonly [Unify.typeSymbol]?: unknown
-    readonly [Unify.unifySymbol]?: EffectUnify<this>
-    readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
-  }
-
-  export namespace Effect {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<R, E, A> {
-      readonly [EffectTypeId]: VarianceStruct<R, E, A>
-    }
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface VarianceStruct<R, E, A> {
-      readonly _V: string
-      readonly _R: (_: never) => R
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
-    }
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export type Unify<Ret extends Effect<any, any, any>> = Effect<
-      Context<Ret>,
-      Error<Ret>,
-      Success<Ret>
-    >
-    /**
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Context<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _R
-      : never
-    /**
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Error<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _E : never
-    /**
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _A
-      : never
-  }
-}
+export * as Effect from "./Effect.impl.js"
 
 // -------------------------------------------------------------------------------------
 // models
@@ -229,7 +157,7 @@ declare module "./Either.int.js" {
  * @since 2.0.0
  * @category models
  */
-declare module "./Option.int.js" {
+declare module "./Option.js" {
   interface None<A> extends Effect<never, Cause.NoSuchElementException, A> {
     readonly _tag: "None"
   }
@@ -5125,3 +5053,6 @@ export const fromNullable: <A>(value: A) => Effect<never, Cause.NoSuchElementExc
 export const optionFromOptional: <R, E, A>(
   self: Effect<R, E, A>
 ) => Effect<R, Exclude<E, Cause.NoSuchElementException>, Option<A>> = effect.optionFromOptional
+
+// // @ts-expect-error
+// export { Effect }

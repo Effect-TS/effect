@@ -142,7 +142,7 @@ declare module "./Either.int.js" {
  * @since 2.0.0
  * @category models
  */
-declare module "./Option.int.js" {
+declare module "./Option.js" {
   interface None<A> extends STM<never, Cause.NoSuchElementException, A> {
     readonly _tag: "None"
   }
