@@ -203,6 +203,8 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
             }
             if (state.size >= 0) {
               return [
+                // we are in a acquireRelease block here, which already has
+                // marked this as an uninterruptible region
                 core.flatMap(allocate(this, core.interruptible), acquire),
                 { size: state.size + 1, free: state.free + 1 }
               ] as const
