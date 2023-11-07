@@ -4,8 +4,8 @@
     "src"
   ],
   "compilerOptions": {
-    "outDir": "build/esm",
-    "declarationDir": "build/dts",
+    "outDir": "dist/esm",
+    "declarationDir": "dist/dts",
     "tsBuildInfoFile": ".tsbuildinfo/build.tsbuildinfo",
     "rootDir": "src"
   }
