@@ -234,4 +234,15 @@ describe("Pool", () => {
       const result = yield* $(Fiber.interrupt(fiber))
       expect(result).toEqual(Exit.interrupt(fiberId))
     }))
+
+  it.scoped("get is interruptible with dynamic size", () =>
+    Effect.gen(function*($) {
+      const get = Effect.never.pipe(Effect.forkScoped)
+      const fiberId = yield* $(Effect.fiberId)
+      const pool = yield* $(Pool.makeWithTTL({ acquire: get, min: 0, max: 10, timeToLive: Duration.infinity }))
+      yield* $(Effect.repeatN(Pool.get(pool), 9))
+      const fiber = yield* $(Effect.fork(Pool.get(pool)))
+      const result = yield* $(Fiber.interrupt(fiber))
+      expect(result).toEqual(Exit.interrupt(fiberId))
+    }))
 })

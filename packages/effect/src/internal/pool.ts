@@ -174,7 +174,9 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
   }
 
   get(): Effect.Effect<Scope.Scope, E, A> {
-    const acquire = (): Effect.Effect<never, never, Attempted<E, A>> =>
+    const acquire = (
+      restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>
+    ): Effect.Effect<never, never, Attempted<E, A>> =>
       core.flatMap(ref.get(this.isShuttingDown), (down) =>
         down
           ? core.interrupt
@@ -191,7 +193,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
                           ref.get(this.invalidated),
                           (set) => {
                             if (pipe(set, HashSet.has(item))) {
-                              return core.flatMap(finalizeInvalid(this, attempted), acquire)
+                              return core.zipRight(finalizeInvalid(this, attempted), acquire(restore))
                             }
                             return core.succeed(attempted)
                           }
@@ -203,7 +205,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
             }
             if (state.size >= 0) {
               return [
-                core.flatMap(allocate(this), acquire),
+                core.zipRight(allocate(this, restore), acquire(restore)),
                 { size: state.size + 1, free: state.free + 1 }
               ] as const
             }
@@ -215,7 +217,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
         onFailure: () =>
           core.flatten(ref.modify(this.state, (state) => {
             if (state.size <= this.min) {
-              return [allocate(this), { ...state, free: state.free + 1 }] as const
+              return [allocateUinterruptible(this), { ...state, free: state.free + 1 }] as const
             }
             return [core.unit, { ...state, size: state.size - 1 }] as const
           })),
@@ -234,7 +236,9 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
       })
 
     return pipe(
-      fiberRuntime.acquireRelease(acquire(), release),
+      core.uninterruptibleMask((restore) =>
+        core.tap(acquire(restore), (a) => fiberRuntime.addFinalizer((_exit) => release(a)))
+      ),
       fiberRuntime.withEarlyRelease,
       fiberRuntime.disconnect,
       core.flatMap(([release, attempted]) =>
@@ -251,27 +255,32 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
   }
 }
 
-const allocate = <E, A>(self: PoolImpl<E, A>): Effect.Effect<never, never, unknown> =>
-  core.uninterruptibleMask((restore) =>
-    core.flatMap(fiberRuntime.scopeMake(), (scope) =>
-      core.flatMap(
-        core.exit(restore(fiberRuntime.scopeExtend(self.creator, scope))),
-        (exit) =>
-          core.flatMap(
-            core.succeed<Attempted<E, A>>({
-              result: exit as Exit.Exit<E, A>,
-              finalizer: core.scopeClose(scope, core.exitSucceed(void 0))
-            }),
-            (attempted) =>
-              pipe(
-                queue.offer(self.items, attempted),
-                core.zipRight(self.track(attempted.result)),
-                core.zipRight(core.whenEffect(getAndShutdown(self), ref.get(self.isShuttingDown))),
-                core.as(attempted)
-              )
-          )
-      ))
-  )
+const allocate = <E, A>(
+  self: PoolImpl<E, A>,
+  restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>
+): Effect.Effect<never, never, unknown> =>
+  core.flatMap(fiberRuntime.scopeMake(), (scope) =>
+    core.flatMap(
+      core.exit(restore(fiberRuntime.scopeExtend(self.creator, scope))),
+      (exit) =>
+        core.flatMap(
+          core.succeed<Attempted<E, A>>({
+            result: exit as Exit.Exit<E, A>,
+            finalizer: core.scopeClose(scope, core.exitSucceed(void 0))
+          }),
+          (attempted) =>
+            pipe(
+              queue.offer(self.items, attempted),
+              core.zipRight(self.track(attempted.result)),
+              core.zipRight(core.whenEffect(getAndShutdown(self), ref.get(self.isShuttingDown))),
+              core.as(attempted)
+            )
+        )
+    ))
+
+const allocateUinterruptible = <E, A>(
+  self: PoolImpl<E, A>
+): Effect.Effect<never, never, unknown> => core.uninterruptibleMask((restore) => allocate(self, restore))
 
 /**
  * Returns the number of items in the pool in excess of the minimum size.
@@ -289,7 +298,7 @@ const finalizeInvalid = <E, A>(
     core.zipRight(
       core.flatten(ref.modify(self.state, (state) => {
         if (state.size <= self.min) {
-          return [allocate(self), { ...state, free: state.free + 1 }] as const
+          return [allocateUinterruptible(self), { ...state, free: state.free + 1 }] as const
         }
         return [core.unit, { ...state, size: state.size - 1 }] as const
       }))
@@ -332,21 +341,7 @@ const initialize = <E, A>(self: PoolImpl<E, A>): Effect.Effect<never, never, voi
       core.flatten(ref.modify(self.state, (state) => {
         if (state.size < self.min && state.size >= 0) {
           return [
-            core.flatMap(fiberRuntime.scopeMake(), (scope) =>
-              core.flatMap(core.exit(restore(fiberRuntime.scopeExtend(self.creator, scope))), (exit) =>
-                core.flatMap(
-                  core.succeed<Attempted<E, A>>({
-                    result: exit as Exit.Exit<E, A>,
-                    finalizer: core.scopeClose(scope, core.exitSucceed(void 0))
-                  }),
-                  (attempted) =>
-                    pipe(
-                      queue.offer(self.items, attempted),
-                      core.zipRight(self.track(attempted.result)),
-                      core.zipRight(core.whenEffect(getAndShutdown(self), ref.get(self.isShuttingDown))),
-                      core.as(attempted)
-                    )
-                ))),
+            allocate(self, restore),
             { size: state.size + 1, free: state.free + 1 }
           ] as const
         }
