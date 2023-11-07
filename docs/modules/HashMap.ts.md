@@ -35,6 +35,7 @@ Added in v2.0.0
   - [entries](#entries)
   - [keys](#keys)
   - [size](#size)
+  - [toEntries](#toentries)
   - [values](#values)
 - [mapping](#mapping)
   - [map](#map)
@@ -315,6 +316,18 @@ Returns the number of entries within the `HashMap`.
 
 ```ts
 export declare const size: <K, V>(self: HashMap<K, V>) => number
+```
+
+Added in v2.0.0
+
+## toEntries
+
+Returns an `Array<[K, V]>` of the entries within the `HashMap`.
+
+**Signature**
+
+```ts
+export declare const toEntries: <K, V>(self: HashMap<K, V>) => [K, V][]
 ```
 
 Added in v2.0.0
