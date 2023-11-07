@@ -41,9 +41,6 @@ devDependencies:
   '@effect/language-service':
     specifier: ^0.0.21
     version: 0.0.21
-  '@types/node':
-    specifier: ^20.8.4
-    version: 20.8.9
   '@typescript-eslint/eslint-plugin':
     specifier: ^6.7.5
     version: 6.9.0(@typescript-eslint/parser@6.9.0)(eslint@8.52.0)(typescript@5.2.2)

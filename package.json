@@ -60,7 +60,6 @@
     "@effect/dtslint": "^0.0.3",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
-    "@types/node": "^20.8.4",
     "@typescript-eslint/eslint-plugin": "^6.7.5",
     "@typescript-eslint/parser": "^6.7.5",
     "@vitest/browser": "^0.34.6",

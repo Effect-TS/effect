@@ -49,9 +49,6 @@
         "./test/*.js"
       ]
     },
-    "types": [
-      "node"
-    ],
     "plugins": [
       {
         "name": "@effect/language-service"
