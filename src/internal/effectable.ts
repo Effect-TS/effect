@@ -69,7 +69,19 @@ export const EffectPrototype: Effect.Effect<never, never, never> = {
 
 /** @internal */
 export const CommitPrototype = {
-  ...EffectPrototype,
+  [EffectTypeId]: effectVariance,
+  [StreamTypeId]: effectVariance,
+  [SinkTypeId]: sinkVariance,
+  [ChannelTypeId]: channelVariance,
+  [Equal.symbol](that: any) {
+    return this === that
+  },
+  [Hash.symbol]() {
+    return Hash.random(this)
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
+  },
   _op: OpCodes.OP_COMMIT
 }
 

@@ -2,11 +2,15 @@
   "extends": "./tsconfig.base.json",
   "include": [
     "test",
-    "src" // NOTE: Include `src` here instead of using project references so we can also use `@internal` types in tests (due to `stripInternal`).
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.src.json"
+    }
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
-    "rootDir": ".",
+    "rootDir": "test",
     "noEmit": true
   }
 }
