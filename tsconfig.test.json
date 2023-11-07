@@ -7,7 +7,6 @@
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
     "rootDir": ".",
-    "noEmit": true,
-    "noUnusedLocals": false
+    "noEmit": true
   }
 }
