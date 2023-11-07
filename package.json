@@ -196,10 +196,10 @@
       "import": "./dist/esm/Effect.js",
       "require": "./dist/cjs/Effect.js"
     },
-    "./Effect.helper": {
-      "types": "./dist/dts/Effect.helper.d.ts",
-      "import": "./dist/esm/Effect.helper.js",
-      "require": "./dist/cjs/Effect.helper.js"
+    "./Effect.int": {
+      "types": "./dist/dts/Effect.int.d.ts",
+      "import": "./dist/esm/Effect.int.js",
+      "require": "./dist/cjs/Effect.int.js"
     },
     "./Effectable": {
       "types": "./dist/dts/Effectable.d.ts",

@@ -139,7 +139,7 @@ export interface ChannelUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 2.0.0
  * @category models
  */
-declare module "./Effect.js" {
+declare module "./Effect.int.js" {
   interface Effect<R, E, A> extends Channel<R, unknown, unknown, unknown, E, never, A> {}
   interface EffectUnifyIgnore {
     Channel?: true
