@@ -207,6 +207,14 @@ export const keySet: <K, V>(self: HashMap<K, V>) => HashSet<K> = _keySet.keySet
 export const values: <K, V>(self: HashMap<K, V>) => IterableIterator<V> = HM.values
 
 /**
+ * Returns an `IterableIterator` of the entries within the `HashMap`.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const entries: <K, V>(self: HashMap<K, V>) => IterableIterator<[K, V]> = HM.entries
+
+/**
  * Returns the number of entries within the `HashMap`.
  *
  * @since 2.0.0

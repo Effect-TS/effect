@@ -319,6 +319,10 @@ export const values = <K, V>(self: HM.HashMap<K, V>): IterableIterator<V> =>
   new HashMapIterator(self as HashMapImpl<K, V>, (_, value) => value)
 
 /** @internal */
+export const entries = <K, V>(self: HM.HashMap<K, V>): IterableIterator<[K, V]> =>
+  new HashMapIterator(self as HashMapImpl<K, V>, (key, value) => [key, value])
+
+/** @internal */
 export const size = <K, V>(self: HM.HashMap<K, V>): number => (self as HashMapImpl<K, V>)._size
 
 /** @internal */

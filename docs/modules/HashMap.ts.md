@@ -32,6 +32,7 @@ Added in v2.0.0
 - [getter](#getter)
   - [keySet](#keyset)
 - [getters](#getters)
+  - [entries](#entries)
   - [keys](#keys)
   - [size](#size)
   - [values](#values)
@@ -281,6 +282,18 @@ export declare const keySet: <K, V>(self: HashMap<K, V>) => HashSet<K>
 Added in v2.0.0
 
 # getters
+
+## entries
+
+Returns an `IterableIterator` of the entries within the `HashMap`.
+
+**Signature**
+
+```ts
+export declare const entries: <K, V>(self: HashMap<K, V>) => IterableIterator<[K, V]>
+```
+
+Added in v2.0.0
 
 ## keys
 
