@@ -121,3 +121,24 @@ export type MergeRight<K, H> = Simplify<
  * @category models
  */
 export type Concurrency = number | "unbounded" | "inherit"
+
+/**
+ * Make all properties in `T` mutable. Supports arrays, tuples, and records as well.
+ *
+ * @example
+ * import type * as Types from "effect/Types"
+ *
+ * type MutableStruct = Types.Mutable<{ readonly a: string; readonly b: number }> // { a: string; b: number; }
+ *
+ * type MutableArray = Types.Mutable<ReadonlyArray<string>> // string[]
+ *
+ * type MutableTuple = Types.Mutable<readonly [string, number]> // [string, number]
+ *
+ * type MutableRecord = Types.Mutable<{ readonly [_: string]: number }> // { [x: string]: number; }
+ *
+ * @since 2.0.0
+ * @category types
+ */
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P]
+}
