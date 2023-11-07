@@ -96,6 +96,11 @@
       "import": "./dist/esm/Channel.js",
       "require": "./dist/cjs/Channel.js"
     },
+    "./Channel.int": {
+      "types": "./dist/dts/Channel.int.d.ts",
+      "import": "./dist/esm/Channel.int.js",
+      "require": "./dist/cjs/Channel.int.js"
+    },
     "./ChildExecutorDecision": {
       "types": "./dist/dts/ChildExecutorDecision.d.ts",
       "import": "./dist/esm/ChildExecutorDecision.js",
@@ -226,6 +231,11 @@
       "import": "./dist/esm/Exit.js",
       "require": "./dist/cjs/Exit.js"
     },
+    "./Exit.int": {
+      "types": "./dist/dts/Exit.int.d.ts",
+      "import": "./dist/esm/Exit.int.js",
+      "require": "./dist/cjs/Exit.int.js"
+    },
     "./Fiber": {
       "types": "./dist/dts/Fiber.d.ts",
       "import": "./dist/esm/Fiber.js",
@@ -305,6 +315,11 @@
       "types": "./dist/dts/Layer.d.ts",
       "import": "./dist/esm/Layer.js",
       "require": "./dist/cjs/Layer.js"
+    },
+    "./Layer.int": {
+      "types": "./dist/dts/Layer.int.d.ts",
+      "import": "./dist/esm/Layer.int.js",
+      "require": "./dist/cjs/Layer.int.js"
     },
     "./List": {
       "types": "./dist/dts/List.d.ts",
