@@ -166,6 +166,11 @@
       "import": "./dist/esm/Data.js",
       "require": "./dist/cjs/Data.js"
     },
+    "./Data.int": {
+      "types": "./dist/dts/Data.int.d.ts",
+      "import": "./dist/esm/Data.int.js",
+      "require": "./dist/cjs/Data.int.js"
+    },
     "./DefaultServices": {
       "types": "./dist/dts/DefaultServices.d.ts",
       "import": "./dist/esm/DefaultServices.js",
@@ -201,6 +206,11 @@
       "import": "./dist/esm/Effectable.js",
       "require": "./dist/cjs/Effectable.js"
     },
+    "./Effectable.int": {
+      "types": "./dist/dts/Effectable.int.d.ts",
+      "import": "./dist/esm/Effectable.int.js",
+      "require": "./dist/cjs/Effectable.int.js"
+    },
     "./Either": {
       "types": "./dist/dts/Either.d.ts",
       "import": "./dist/esm/Either.js",
@@ -221,10 +231,20 @@
       "import": "./dist/esm/Equal.js",
       "require": "./dist/cjs/Equal.js"
     },
+    "./Equal.int": {
+      "types": "./dist/dts/Equal.int.d.ts",
+      "import": "./dist/esm/Equal.int.js",
+      "require": "./dist/cjs/Equal.int.js"
+    },
     "./Equivalence": {
       "types": "./dist/dts/Equivalence.d.ts",
       "import": "./dist/esm/Equivalence.js",
       "require": "./dist/cjs/Equivalence.js"
+    },
+    "./Equivalence.int": {
+      "types": "./dist/dts/Equivalence.int.d.ts",
+      "import": "./dist/esm/Equivalence.int.js",
+      "require": "./dist/cjs/Equivalence.int.js"
     },
     "./ExecutionStrategy": {
       "types": "./dist/dts/ExecutionStrategy.d.ts",
@@ -295,6 +315,11 @@
       "types": "./dist/dts/Hash.d.ts",
       "import": "./dist/esm/Hash.js",
       "require": "./dist/cjs/Hash.js"
+    },
+    "./Hash.int": {
+      "types": "./dist/dts/Hash.int.d.ts",
+      "import": "./dist/esm/Hash.int.js",
+      "require": "./dist/cjs/Hash.int.js"
     },
     "./HashMap": {
       "types": "./dist/dts/HashMap.d.ts",
@@ -475,6 +500,11 @@
       "types": "./dist/dts/Pipeable.d.ts",
       "import": "./dist/esm/Pipeable.js",
       "require": "./dist/cjs/Pipeable.js"
+    },
+    "./Pipeable.int": {
+      "types": "./dist/dts/Pipeable.int.d.ts",
+      "import": "./dist/esm/Pipeable.int.js",
+      "require": "./dist/cjs/Pipeable.int.js"
     },
     "./Pool": {
       "types": "./dist/dts/Pool.d.ts",
@@ -815,6 +845,11 @@
       "types": "./dist/dts/Types.d.ts",
       "import": "./dist/esm/Types.js",
       "require": "./dist/cjs/Types.js"
+    },
+    "./Types.int": {
+      "types": "./dist/dts/Types.int.d.ts",
+      "import": "./dist/esm/Types.int.js",
+      "require": "./dist/cjs/Types.int.js"
     },
     "./Unify": {
       "types": "./dist/dts/Unify.d.ts",
