@@ -1,8 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "include": [
-    "src",
-    "test"
+    "test",
+    "src" // NOTE: Include `src` here instead of using project references so we can also use `@internal` types in tests (due to `stripInternal`).
   ],
   "compilerOptions": {
     "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
