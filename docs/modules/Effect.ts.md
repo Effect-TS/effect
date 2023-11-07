@@ -5330,10 +5330,24 @@ Added in v2.0.0
 
 ```ts
 export declare const tap: {
-  <A, X extends A, R2, E2, _>(
-    f: (a: X) => Effect<R2, E2, _>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
-  <R, E, A, X extends A, R2, E2, _>(self: Effect<R, E, A>, f: (a: X) => Effect<R2, E2, _>): Effect<R | R2, E | E2, A>
+  <A, X>(
+    f: (a: A) => X
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <X>(
+    f: X
+  ): <R, E, A>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: (a: A) => X
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: X
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
 }
 ```
 

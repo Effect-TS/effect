@@ -1144,14 +1144,42 @@ export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<never, never, A> =>
 
 /* @internal */
 export const tap = dual<
-  <A, X extends A, R2, E2, _>(
-    f: (a: X) => Effect.Effect<R2, E2, _>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>,
-  <R, E, A, X extends A, R2, E2, _>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: X) => Effect.Effect<R2, E2, _>
-  ) => Effect.Effect<R | R2, E | E2, A>
->(2, (self, f) => flatMap(self, (a) => as(f(a as any), a)))
+  {
+    <A, X>(
+      f: (a: A) => X
+    ): <R, E>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+    <X>(
+      f: X
+    ): <R, E, A>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+  },
+  {
+    <A, R, E, X>(
+      self: Effect.Effect<R, E, A>,
+      f: (a: A) => X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+    <A, R, E, X>(
+      self: Effect.Effect<R, E, A>,
+      f: X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+  }
+>(2, (self, f) =>
+  typeof f === "function" ?
+    flatMap(self, (a) => {
+      const b = (f as any)(a)
+      if (isEffect(b)) {
+        return as(b, a)
+      }
+      return succeed(a)
+    }) :
+    flatMap(self, (a) => as(isEffect(f) ? f : succeed(f), a)))
 
 /* @internal */
 export const transplant = <R, E, A>(
