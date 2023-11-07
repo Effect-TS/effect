@@ -203,7 +203,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
             }
             if (state.size >= 0) {
               return [
-                core.flatMap(allocate(this), acquire),
+                core.flatMap(core.interruptible(allocate(this)), acquire),
                 { size: state.size + 1, free: state.free + 1 }
               ] as const
             }
