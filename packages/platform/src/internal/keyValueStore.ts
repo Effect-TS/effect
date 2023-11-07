@@ -4,9 +4,9 @@ import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as FileSystem from "../FileSystem"
-import type * as KeyValueStore from "../KeyValueStore"
-import * as Path from "../Path"
+import * as FileSystem from "../FileSystem.js"
+import type * as KeyValueStore from "../KeyValueStore.js"
+import * as Path from "../Path.js"
 
 /** @internal */
 export const TypeId: KeyValueStore.TypeId = Symbol.for(

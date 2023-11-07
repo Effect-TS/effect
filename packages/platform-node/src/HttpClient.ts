@@ -8,7 +8,7 @@ import * as request from "@effect/platform/Http/ClientRequest"
 import * as response from "@effect/platform/Http/ClientResponse"
 import * as headers from "@effect/platform/Http/Headers"
 import * as urlParams from "@effect/platform/Http/UrlParams"
-import * as nodeClient from "./Http/NodeClient"
+import * as nodeClient from "./Http/NodeClient.js"
 
 export {
   /**

@@ -4,7 +4,7 @@
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Layer } from "effect/Layer"
-import * as internal from "./internal/commandExecutor"
+import * as internal from "./internal/commandExecutor.js"
 
 export type {
   /**

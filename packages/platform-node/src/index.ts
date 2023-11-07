@@ -1,80 +1,80 @@
 /**
  * @since 1.0.0
  */
-export * as Command from "@effect/platform-node/Command"
+export * as Command from "./Command.js"
 
 /**
  * @since 1.0.0
  */
-export * as CommandExecutor from "@effect/platform-node/CommandExecutor"
+export * as CommandExecutor from "./CommandExecutor.js"
 
 /**
  * @since 1.0.0
  */
-export * as Effectify from "@effect/platform-node/Effectify"
+export * as Effectify from "./Effectify.js"
 
 /**
  * @since 1.0.0
  */
-export * as Error from "@effect/platform-node/Error"
+export * as Error from "./Error.js"
 
 /**
  * @since 1.0.0
  */
-export * as FileSystem from "@effect/platform-node/FileSystem"
+export * as FileSystem from "./FileSystem.js"
 
 /**
  * @since 1.0.0
  */
-export * as HttpClient from "@effect/platform-node/HttpClient"
+export * as HttpClient from "./HttpClient.js"
 
 /**
  * @since 1.0.0
  */
-export * as HttpServer from "@effect/platform-node/HttpServer"
+export * as HttpServer from "./HttpServer.js"
 
 /**
  * @since 1.0.0
  *
  * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/platform/platform/KeyValueStore.ts.html).
  */
-export * as KeyValueStore from "@effect/platform-node/KeyValueStore"
+export * as KeyValueStore from "./KeyValueStore.js"
 
 /**
  * @since 1.0.0
  */
-export * as NodeContext from "@effect/platform-node/NodeContext"
+export * as NodeContext from "./NodeContext.js"
 
 /**
  * @since 1.0.0
  */
-export * as Path from "@effect/platform-node/Path"
+export * as Path from "./Path.js"
 
 /**
  * @since 1.0.0
  */
-export * as Runtime from "@effect/platform-node/Runtime"
+export * as Runtime from "./Runtime.js"
 
 /**
  * @since 1.0.0
  */
-export * as Sink from "@effect/platform-node/Sink"
+export * as Sink from "./Sink.js"
 
 /**
  * @since 1.0.0
  */
-export * as Stream from "@effect/platform-node/Stream"
+export * as Stream from "./Stream.js"
 
 /**
  * @since 1.0.0
  *
  * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
  */
-export * as Worker from "@effect/platform-node/Worker"
+export * as Worker from "./Worker.js"
 
 /**
  * @since 1.0.0
  *
  * Also includes exports from [`@effect/platform/WorkerRunner`](https://effect-ts.github.io/platform/platform/WorkerRunner.ts.html).
  */
-export * as WorkerRunner from "@effect/platform-node/WorkerRunner"
+export * as WorkerRunner from "./WorkerRunner.js"

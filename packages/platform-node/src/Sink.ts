@@ -5,8 +5,8 @@
 import type { LazyArg } from "effect/Function"
 import type { Sink } from "effect/Sink"
 import type { Writable } from "stream"
-import * as internal from "./internal/sink"
-import type { FromWritableOptions } from "./Stream"
+import * as internal from "./internal/sink.js"
+import type { FromWritableOptions } from "./Stream.js"
 
 /**
  * @category constructor

@@ -3,7 +3,7 @@
  *
  * Also includes exports from [`@effect/platform/KeyValueStore`](https://effect-ts.github.io/platform/platform/KeyValueStore.ts.html).
  */
-import * as internal from "./internal/keyValueStore"
+import * as internal from "./internal/keyValueStore.js"
 
 /**
  * @since 1.0.0

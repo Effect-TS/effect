@@ -4,11 +4,11 @@
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
-import * as internal from "../internal/http/server"
-import type * as App from "./App"
-import type * as Middleware from "./Middleware"
-import type * as Error from "./ServerError"
-import type * as ServerRequest from "./ServerRequest"
+import * as internal from "../internal/http/server.js"
+import type * as App from "./App.js"
+import type * as Middleware from "./Middleware.js"
+import type * as Error from "./ServerError.js"
+import type * as ServerRequest from "./ServerRequest.js"
 
 /**
  * @since 1.0.0

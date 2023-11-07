@@ -8,9 +8,9 @@ import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
-import type { CommandExecutor, ExitCode, Process } from "./CommandExecutor"
-import type { PlatformError } from "./Error"
-import * as internal from "./internal/command"
+import type { CommandExecutor, ExitCode, Process } from "./CommandExecutor.js"
+import type { PlatformError } from "./Error.js"
+import * as internal from "./internal/command.js"
 
 /**
  * @since 1.0.0

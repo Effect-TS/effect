@@ -8,7 +8,7 @@ import { createReadStream } from "fs"
 import { join } from "path"
 import { Writable } from "stream"
 import Tar from "tar"
-import { describe, it } from "vitest"
+import { assert, describe, it } from "vitest"
 
 const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 

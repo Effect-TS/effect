@@ -11,7 +11,7 @@ import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
 import type { IncomingHttpHeaders } from "node:http"
 import type { Readable } from "node:stream"
-import * as internal from "../internal/http/formData"
+import * as internal from "../internal/http/formData.js"
 
 /**
  * @since 1.0.0

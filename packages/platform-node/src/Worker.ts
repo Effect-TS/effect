@@ -9,7 +9,7 @@ import type * as Context from "effect/Context"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as WorkerThreads from "node:worker_threads"
-import * as internal from "./internal/worker"
+import * as internal from "./internal/worker.js"
 
 /**
  * @since 1.0.0

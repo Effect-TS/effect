@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as body from "./Http/Body"
-import * as client from "./Http/Client"
-import * as error from "./Http/ClientError"
-import * as request from "./Http/ClientRequest"
-import * as response from "./Http/ClientResponse"
-import * as headers from "./Http/Headers"
-import * as urlParams from "./Http/UrlParams"
+import * as body from "./Http/Body.js"
+import * as client from "./Http/Client.js"
+import * as error from "./Http/ClientError.js"
+import * as request from "./Http/ClientRequest.js"
+import * as response from "./Http/ClientResponse.js"
+import * as headers from "./Http/Headers.js"
+import * as urlParams from "./Http/UrlParams.js"
 
 export {
   /**

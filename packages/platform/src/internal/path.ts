@@ -3,8 +3,8 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as PathB from "path-browserify"
-import { BadArgument } from "../Error"
-import type { Path as _Path } from "../Path"
+import { BadArgument } from "../Error.js"
+import type { Path as _Path } from "../Path.js"
 
 /** @internal */
 export const Path = Tag<_Path>("@effect/platform/Path")

@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import type * as _CommandExecutor from "../CommandExecutor"
+import type * as _CommandExecutor from "../CommandExecutor.js"
 
 /** @internal */
 export const ProcessTypeId: _CommandExecutor.ProcessTypeId = Symbol.for(

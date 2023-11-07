@@ -6,10 +6,10 @@ import * as FiberRef from "effect/FiberRef"
 import { dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as internalMiddleware from "../internal/http/middleware"
-import type * as ServerError from "./ServerError"
-import type * as ServerRequest from "./ServerRequest"
-import type * as ServerResponse from "./ServerResponse"
+import * as internalMiddleware from "../internal/http/middleware.js"
+import type * as ServerError from "./ServerError.js"
+import type * as ServerRequest from "./ServerRequest.js"
+import type * as ServerResponse from "./ServerResponse.js"
 
 /**
  * @since 1.0.0
@@ -62,16 +62,14 @@ export const preResponseHandler: Effect.Effect<never, never, PreResponseHandler>
   (handlers): PreResponseHandler =>
     handlers.length === 0 ?
       noopHandler :
-      handlers.reduce((acc, handler) =>
-        function(request, response) {
-          return Effect.flatMap(
-            acc(request, response),
-            function(response) {
-              return handler(request, response)
-            }
-          )
-        }
-      )
+      handlers.reduce((acc, handler) => (function(request, response) {
+        return Effect.flatMap(
+          acc(request, response),
+          function(response) {
+            return handler(request, response)
+          }
+        )
+      }))
 )
 
 /**

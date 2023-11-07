@@ -9,7 +9,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { createServer } from "http"
 import * as Buffer from "node:buffer"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 const ServerLive = Http.server.layer(createServer, { port: 0 })
 const EnvLive = Layer.mergeAll(

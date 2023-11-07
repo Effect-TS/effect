@@ -6,9 +6,9 @@ import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
-import type * as Worker from "../Worker"
-import type * as WorkerError from "../WorkerError"
-import type * as WorkerRunner from "../WorkerRunner"
+import type * as Worker from "../Worker.js"
+import type * as WorkerError from "../WorkerError.js"
+import type * as WorkerRunner from "../WorkerRunner.js"
 
 /** @internal */
 export const PlatformRunnerTypeId: WorkerRunner.PlatformRunnerTypeId = Symbol.for(

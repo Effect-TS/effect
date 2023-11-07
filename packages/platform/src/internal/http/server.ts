@@ -2,11 +2,11 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import type * as Scope from "effect/Scope"
-import type * as App from "../../Http/App"
-import type * as Middleware from "../../Http/Middleware"
-import type * as Server from "../../Http/Server"
-import type * as Error from "../../Http/ServerError"
-import type * as ServerRequest from "../../Http/ServerRequest"
+import type * as App from "../../Http/App.js"
+import type * as Middleware from "../../Http/Middleware.js"
+import type * as Server from "../../Http/Server.js"
+import type * as Error from "../../Http/ServerError.js"
+import type * as ServerRequest from "../../Http/ServerRequest.js"
 
 /** @internal */
 export const TypeId: Server.TypeId = Symbol.for("@effect/platform/Http/Server") as Server.TypeId

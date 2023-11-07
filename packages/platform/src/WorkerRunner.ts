@@ -7,8 +7,8 @@ import type * as Fiber from "effect/Fiber"
 import type * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import * as internal from "./internal/workerRunner"
-import type { WorkerError } from "./WorkerError"
+import * as internal from "./internal/workerRunner.js"
+import type { WorkerError } from "./WorkerError.js"
 
 /**
  * @since 1.0.0

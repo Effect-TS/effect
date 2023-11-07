@@ -6,8 +6,8 @@ import { identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
-import * as Error from "../Error"
-import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem"
+import * as Error from "../Error.js"
+import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "../FileSystem.js"
 
 /** @internal */
 export const tag = Tag<FileSystem>("@effect/platform/FileSystem")

@@ -1,11 +1,11 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as FileSystem from "../../FileSystem"
-import type * as Body from "../../Http/Body"
-import * as Etag from "../../Http/Etag"
-import type * as Platform from "../../Http/Platform"
-import type * as ServerResponse from "../../Http/ServerResponse"
+import * as FileSystem from "../../FileSystem.js"
+import type * as Body from "../../Http/Body.js"
+import * as Etag from "../../Http/Etag.js"
+import type * as Platform from "../../Http/Platform.js"
+import type * as ServerResponse from "../../Http/ServerResponse.js"
 
 /** @internal */
 export const TypeId: Platform.TypeId = Symbol.for("@effect/platform/Http/Platform") as Platform.TypeId

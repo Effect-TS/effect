@@ -10,8 +10,8 @@ import type * as ConfigError from "effect/ConfigError"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
-import type * as Platform from "../Http/Platform"
-import * as internal from "../internal/http/server"
+import * as internal from "../internal/http/server.js"
+import type * as Platform from "./Platform.js"
 
 /**
  * @since 1.0.0

@@ -4,7 +4,7 @@
 
 import type { Path } from "@effect/platform/Path"
 import type { Layer } from "effect/Layer"
-import * as internal from "./internal/path"
+import * as internal from "./internal/path.js"
 
 export {
   /**

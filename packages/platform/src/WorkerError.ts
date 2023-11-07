@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type * as Data from "effect/Data"
-import * as internal from "./internal/workerError"
+import * as internal from "./internal/workerError.js"
 
 /**
  * @since 1.0.0

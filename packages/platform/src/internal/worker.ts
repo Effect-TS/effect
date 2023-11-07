@@ -10,8 +10,8 @@ import * as Layer from "effect/Layer"
 import * as Pool from "effect/Pool"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
-import type * as Worker from "../Worker"
-import type { WorkerError } from "../WorkerError"
+import type * as Worker from "../Worker.js"
+import type { WorkerError } from "../WorkerError.js"
 
 /** @internal */
 export const defaultQueue = <I>() =>

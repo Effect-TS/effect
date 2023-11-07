@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 import type * as Data from "effect/Data"
-import * as internal from "../internal/http/clientError"
-import type * as ClientRequest from "./ClientRequest"
-import type * as ClientResponse from "./ClientResponse"
+import * as internal from "../internal/http/clientError.js"
+import type * as ClientRequest from "./ClientRequest.js"
+import type * as ClientResponse from "./ClientResponse.js"
 
 /**
  * @since 1.0.0

@@ -5,7 +5,7 @@
  */
 import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Layer from "effect/Layer"
-import * as internal from "../internal/http/etag"
+import * as internal from "../internal/http/etag.js"
 
 /**
  * @since 1.0.0

@@ -2,6 +2,7 @@ import * as Fs from "@effect/platform-node/FileSystem"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
+import { assert, describe, expect, it } from "vitest"
 
 const runPromise = <E, A>(self: Effect.Effect<Fs.FileSystem, E, A>) =>
   Effect.runPromise(

@@ -1,125 +1,35 @@
 {
   "name": "@effect/platform-browser",
+  "type": "module",
   "version": "0.15.3",
   "description": "Unified interfaces for common platform-specific services",
-  "main": "dist/effect-platform-browser.cjs.js",
-  "module": "dist/effect-platform-browser.esm.js",
-  "preconstruct": {
-    "entrypoints": [
-      "*.ts"
-    ],
-    "distFilenameStrategy": "full",
-    "exports": {
-      "importConditionDefaultExport": "default"
-    }
-  },
-  "effect": {
-    "generateIndex": true
-  },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "dist"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/effect-ts/platform.git"
   },
   "homepage": "https://github.com/effect-ts/platform",
-  "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
-    "lint": "eslint src/**/*.ts test/**/*.ts",
-    "tc": "tsc --noEmit",
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
-  },
-  "keywords": [],
   "author": "Effect contributors",
   "license": "MIT",
   "sideEffects": false,
-  "dependencies": {
-    "@effect/platform": "workspace:^"
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
   },
-  "devDependencies": {
-    "effect": "2.0.0-next.54",
-    "happy-dom": "^12.10.3",
-    "vitest-localstorage-mock": "^0.0.1"
+  "dependencies": {
+    "@effect/platform": "workspace:*"
   },
   "peerDependencies": {
     "effect": "2.0.0-next.54"
   },
-  "files": [
-    "src",
-    "dist",
-    "Clipboard",
-    "Effectify",
-    "Error",
-    "HttpClient",
-    "KeyValueStore",
-    "Path",
-    "Runtime",
-    "Worker",
-    "WorkerRunner"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-platform-browser.esm.js",
-      "import": "./dist/effect-platform-browser.cjs.mjs",
-      "default": "./dist/effect-platform-browser.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./Clipboard": {
-      "types": "./dist/declarations/src/Clipboard.d.ts",
-      "module": "./Clipboard/dist/effect-platform-browser-Clipboard.esm.js",
-      "import": "./Clipboard/dist/effect-platform-browser-Clipboard.cjs.mjs",
-      "default": "./Clipboard/dist/effect-platform-browser-Clipboard.cjs.js"
-    },
-    "./Effectify": {
-      "types": "./dist/declarations/src/Effectify.d.ts",
-      "module": "./Effectify/dist/effect-platform-browser-Effectify.esm.js",
-      "import": "./Effectify/dist/effect-platform-browser-Effectify.cjs.mjs",
-      "default": "./Effectify/dist/effect-platform-browser-Effectify.cjs.js"
-    },
-    "./Error": {
-      "types": "./dist/declarations/src/Error.d.ts",
-      "module": "./Error/dist/effect-platform-browser-Error.esm.js",
-      "import": "./Error/dist/effect-platform-browser-Error.cjs.mjs",
-      "default": "./Error/dist/effect-platform-browser-Error.cjs.js"
-    },
-    "./HttpClient": {
-      "types": "./dist/declarations/src/HttpClient.d.ts",
-      "module": "./HttpClient/dist/effect-platform-browser-HttpClient.esm.js",
-      "import": "./HttpClient/dist/effect-platform-browser-HttpClient.cjs.mjs",
-      "default": "./HttpClient/dist/effect-platform-browser-HttpClient.cjs.js"
-    },
-    "./KeyValueStore": {
-      "types": "./dist/declarations/src/KeyValueStore.d.ts",
-      "module": "./KeyValueStore/dist/effect-platform-browser-KeyValueStore.esm.js",
-      "import": "./KeyValueStore/dist/effect-platform-browser-KeyValueStore.cjs.mjs",
-      "default": "./KeyValueStore/dist/effect-platform-browser-KeyValueStore.cjs.js"
-    },
-    "./Path": {
-      "types": "./dist/declarations/src/Path.d.ts",
-      "module": "./Path/dist/effect-platform-browser-Path.esm.js",
-      "import": "./Path/dist/effect-platform-browser-Path.cjs.mjs",
-      "default": "./Path/dist/effect-platform-browser-Path.cjs.js"
-    },
-    "./Runtime": {
-      "types": "./dist/declarations/src/Runtime.d.ts",
-      "module": "./Runtime/dist/effect-platform-browser-Runtime.esm.js",
-      "import": "./Runtime/dist/effect-platform-browser-Runtime.cjs.mjs",
-      "default": "./Runtime/dist/effect-platform-browser-Runtime.cjs.js"
-    },
-    "./Worker": {
-      "types": "./dist/declarations/src/Worker.d.ts",
-      "module": "./Worker/dist/effect-platform-browser-Worker.esm.js",
-      "import": "./Worker/dist/effect-platform-browser-Worker.cjs.mjs",
-      "default": "./Worker/dist/effect-platform-browser-Worker.cjs.js"
-    },
-    "./WorkerRunner": {
-      "types": "./dist/declarations/src/WorkerRunner.d.ts",
-      "module": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.esm.js",
-      "import": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.cjs.mjs",
-      "default": "./WorkerRunner/dist/effect-platform-browser-WorkerRunner.cjs.js"
-    }
+  "devDependencies": {
+    "effect": "2.0.0-next.54",
+    "happy-dom": "^12.10.3"
   }
 }

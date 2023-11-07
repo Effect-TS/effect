@@ -4,13 +4,13 @@
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
 import type * as Stream from "effect/Stream"
-import type * as PlatformError from "../Error"
-import type * as FileSystem from "../FileSystem"
-import * as internal from "../internal/http/serverResponse"
-import type * as Body from "./Body"
-import type * as Headers from "./Headers"
-import type * as Platform from "./Platform"
-import type * as UrlParams from "./UrlParams"
+import type * as PlatformError from "../Error.js"
+import type * as FileSystem from "../FileSystem.js"
+import * as internal from "../internal/http/serverResponse.js"
+import type * as Body from "./Body.js"
+import type * as Headers from "./Headers.js"
+import type * as Platform from "./Platform.js"
+import type * as UrlParams from "./UrlParams.js"
 
 /**
  * @since 1.0.0

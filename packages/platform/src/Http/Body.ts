@@ -6,9 +6,9 @@ import type * as Schema from "@effect/schema/Schema"
 import type * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type * as Stream_ from "effect/Stream"
-import type * as PlatformError from "../Error"
-import type * as FileSystem from "../FileSystem"
-import * as internal from "../internal/http/body"
+import type * as PlatformError from "../Error.js"
+import type * as FileSystem from "../FileSystem.js"
+import * as internal from "../internal/http/body.js"
 
 /**
  * @since 1.0.0

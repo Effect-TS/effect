@@ -12,7 +12,7 @@ import * as NodeFs from "node:fs"
 import type { IncomingHttpHeaders } from "node:http"
 import type { Readable } from "node:stream"
 import * as NodeStreamP from "node:stream/promises"
-import * as NodeStream from "../../Stream"
+import * as NodeStream from "../../Stream.js"
 
 export const stream = (
   source: Readable,

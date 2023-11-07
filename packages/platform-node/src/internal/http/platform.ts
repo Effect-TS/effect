@@ -5,8 +5,8 @@ import * as Layer from "effect/Layer"
 import Mime from "mime"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
-import * as FileSystem from "../../FileSystem"
-import * as Etag from "../../Http/Etag"
+import * as FileSystem from "../../FileSystem.js"
+import * as Etag from "../../Http/Etag.js"
 
 /** @internal */
 export const make = Platform.make({

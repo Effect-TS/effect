@@ -16,7 +16,7 @@ import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
-import * as internal from "../internal/http/server"
+import * as internal from "../internal/http/server.js"
 
 /**
  * @since 1.0.0

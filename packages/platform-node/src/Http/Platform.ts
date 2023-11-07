@@ -8,7 +8,7 @@ import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
-import * as internal from "../internal/http/platform"
+import * as internal from "../internal/http/platform.js"
 
 /**
  * @since 1.0.0

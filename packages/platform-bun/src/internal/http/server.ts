@@ -23,7 +23,7 @@ import * as Runtime from "effect/Runtime"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Readable } from "node:stream"
-import * as Platform from "../../Http/Platform"
+import * as Platform from "../../Http/Platform.js"
 
 /** @internal */
 export const make = (

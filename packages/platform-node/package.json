@@ -1,24 +1,11 @@
 {
   "name": "@effect/platform-node",
+  "type": "module",
   "version": "0.28.3",
   "description": "Unified interfaces for common platform-specific services",
-  "main": "dist/effect-platform-node.cjs.js",
-  "module": "dist/effect-platform-node.esm.js",
-  "preconstruct": {
-    "entrypoints": [
-      "*.ts",
-      "Http/*.ts"
-    ],
-    "distFilenameStrategy": "full",
-    "exports": {
-      "importConditionDefaultExport": "default"
-    }
-  },
-  "effect": {
-    "generateIndex": true
-  },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "dist"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -28,186 +15,31 @@
     "url": "https://github.com/effect-ts/platform.git"
   },
   "homepage": "https://github.com/effect-ts/platform",
-  "scripts": {
-    "example": "node -r ts-node/register",
-    "lint": "eslint src/**/*.ts test/**/*.ts",
-    "tc": "tsc --noEmit",
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
-  },
-  "keywords": [],
   "author": "Effect contributors",
   "license": "MIT",
   "sideEffects": false,
-  "devDependencies": {
-    "@effect/schema": "^0.47.1",
-    "@types/busboy": "^1.5.2",
-    "@types/mime": "^3.0.3",
-    "@types/tar": "^6.1.7",
-    "effect": "2.0.0-next.54",
-    "tar": "^6.2.0"
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
+  },
+  "dependencies": {
+    "@effect/platform": "workspace:*",
+    "busboy": "^1.6.0",
+    "mime": "^3.0.0"
   },
   "peerDependencies": {
     "effect": "2.0.0-next.54"
   },
-  "dependencies": {
-    "@effect/platform": "workspace:^",
-    "busboy": "^1.6.0",
-    "mime": "^3.0.0"
-  },
-  "files": [
-    "src",
-    "dist",
-    "Command",
-    "CommandExecutor",
-    "Effectify",
-    "Error",
-    "FileSystem",
-    "Http",
-    "HttpClient",
-    "HttpServer",
-    "KeyValueStore",
-    "NodeContext",
-    "Path",
-    "Runtime",
-    "Sink",
-    "Stream",
-    "Worker",
-    "WorkerRunner"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-platform-node.esm.js",
-      "import": "./dist/effect-platform-node.cjs.mjs",
-      "default": "./dist/effect-platform-node.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./Command": {
-      "types": "./dist/declarations/src/Command.d.ts",
-      "module": "./Command/dist/effect-platform-node-Command.esm.js",
-      "import": "./Command/dist/effect-platform-node-Command.cjs.mjs",
-      "default": "./Command/dist/effect-platform-node-Command.cjs.js"
-    },
-    "./CommandExecutor": {
-      "types": "./dist/declarations/src/CommandExecutor.d.ts",
-      "module": "./CommandExecutor/dist/effect-platform-node-CommandExecutor.esm.js",
-      "import": "./CommandExecutor/dist/effect-platform-node-CommandExecutor.cjs.mjs",
-      "default": "./CommandExecutor/dist/effect-platform-node-CommandExecutor.cjs.js"
-    },
-    "./Effectify": {
-      "types": "./dist/declarations/src/Effectify.d.ts",
-      "module": "./Effectify/dist/effect-platform-node-Effectify.esm.js",
-      "import": "./Effectify/dist/effect-platform-node-Effectify.cjs.mjs",
-      "default": "./Effectify/dist/effect-platform-node-Effectify.cjs.js"
-    },
-    "./Error": {
-      "types": "./dist/declarations/src/Error.d.ts",
-      "module": "./Error/dist/effect-platform-node-Error.esm.js",
-      "import": "./Error/dist/effect-platform-node-Error.cjs.mjs",
-      "default": "./Error/dist/effect-platform-node-Error.cjs.js"
-    },
-    "./FileSystem": {
-      "types": "./dist/declarations/src/FileSystem.d.ts",
-      "module": "./FileSystem/dist/effect-platform-node-FileSystem.esm.js",
-      "import": "./FileSystem/dist/effect-platform-node-FileSystem.cjs.mjs",
-      "default": "./FileSystem/dist/effect-platform-node-FileSystem.cjs.js"
-    },
-    "./Http/Etag": {
-      "types": "./dist/declarations/src/Http/Etag.d.ts",
-      "module": "./Http/Etag/dist/effect-platform-node-Http-Etag.esm.js",
-      "import": "./Http/Etag/dist/effect-platform-node-Http-Etag.cjs.mjs",
-      "default": "./Http/Etag/dist/effect-platform-node-Http-Etag.cjs.js"
-    },
-    "./Http/FormData": {
-      "types": "./dist/declarations/src/Http/FormData.d.ts",
-      "module": "./Http/FormData/dist/effect-platform-node-Http-FormData.esm.js",
-      "import": "./Http/FormData/dist/effect-platform-node-Http-FormData.cjs.mjs",
-      "default": "./Http/FormData/dist/effect-platform-node-Http-FormData.cjs.js"
-    },
-    "./Http/NodeClient": {
-      "types": "./dist/declarations/src/Http/NodeClient.d.ts",
-      "module": "./Http/NodeClient/dist/effect-platform-node-Http-NodeClient.esm.js",
-      "import": "./Http/NodeClient/dist/effect-platform-node-Http-NodeClient.cjs.mjs",
-      "default": "./Http/NodeClient/dist/effect-platform-node-Http-NodeClient.cjs.js"
-    },
-    "./Http/Platform": {
-      "types": "./dist/declarations/src/Http/Platform.d.ts",
-      "module": "./Http/Platform/dist/effect-platform-node-Http-Platform.esm.js",
-      "import": "./Http/Platform/dist/effect-platform-node-Http-Platform.cjs.mjs",
-      "default": "./Http/Platform/dist/effect-platform-node-Http-Platform.cjs.js"
-    },
-    "./Http/Server": {
-      "types": "./dist/declarations/src/Http/Server.d.ts",
-      "module": "./Http/Server/dist/effect-platform-node-Http-Server.esm.js",
-      "import": "./Http/Server/dist/effect-platform-node-Http-Server.cjs.mjs",
-      "default": "./Http/Server/dist/effect-platform-node-Http-Server.cjs.js"
-    },
-    "./Http/ServerRequest": {
-      "types": "./dist/declarations/src/Http/ServerRequest.d.ts",
-      "module": "./Http/ServerRequest/dist/effect-platform-node-Http-ServerRequest.esm.js",
-      "import": "./Http/ServerRequest/dist/effect-platform-node-Http-ServerRequest.cjs.mjs",
-      "default": "./Http/ServerRequest/dist/effect-platform-node-Http-ServerRequest.cjs.js"
-    },
-    "./HttpClient": {
-      "types": "./dist/declarations/src/HttpClient.d.ts",
-      "module": "./HttpClient/dist/effect-platform-node-HttpClient.esm.js",
-      "import": "./HttpClient/dist/effect-platform-node-HttpClient.cjs.mjs",
-      "default": "./HttpClient/dist/effect-platform-node-HttpClient.cjs.js"
-    },
-    "./HttpServer": {
-      "types": "./dist/declarations/src/HttpServer.d.ts",
-      "module": "./HttpServer/dist/effect-platform-node-HttpServer.esm.js",
-      "import": "./HttpServer/dist/effect-platform-node-HttpServer.cjs.mjs",
-      "default": "./HttpServer/dist/effect-platform-node-HttpServer.cjs.js"
-    },
-    "./KeyValueStore": {
-      "types": "./dist/declarations/src/KeyValueStore.d.ts",
-      "module": "./KeyValueStore/dist/effect-platform-node-KeyValueStore.esm.js",
-      "import": "./KeyValueStore/dist/effect-platform-node-KeyValueStore.cjs.mjs",
-      "default": "./KeyValueStore/dist/effect-platform-node-KeyValueStore.cjs.js"
-    },
-    "./NodeContext": {
-      "types": "./dist/declarations/src/NodeContext.d.ts",
-      "module": "./NodeContext/dist/effect-platform-node-NodeContext.esm.js",
-      "import": "./NodeContext/dist/effect-platform-node-NodeContext.cjs.mjs",
-      "default": "./NodeContext/dist/effect-platform-node-NodeContext.cjs.js"
-    },
-    "./Path": {
-      "types": "./dist/declarations/src/Path.d.ts",
-      "module": "./Path/dist/effect-platform-node-Path.esm.js",
-      "import": "./Path/dist/effect-platform-node-Path.cjs.mjs",
-      "default": "./Path/dist/effect-platform-node-Path.cjs.js"
-    },
-    "./Runtime": {
-      "types": "./dist/declarations/src/Runtime.d.ts",
-      "module": "./Runtime/dist/effect-platform-node-Runtime.esm.js",
-      "import": "./Runtime/dist/effect-platform-node-Runtime.cjs.mjs",
-      "default": "./Runtime/dist/effect-platform-node-Runtime.cjs.js"
-    },
-    "./Sink": {
-      "types": "./dist/declarations/src/Sink.d.ts",
-      "module": "./Sink/dist/effect-platform-node-Sink.esm.js",
-      "import": "./Sink/dist/effect-platform-node-Sink.cjs.mjs",
-      "default": "./Sink/dist/effect-platform-node-Sink.cjs.js"
-    },
-    "./Stream": {
-      "types": "./dist/declarations/src/Stream.d.ts",
-      "module": "./Stream/dist/effect-platform-node-Stream.esm.js",
-      "import": "./Stream/dist/effect-platform-node-Stream.cjs.mjs",
-      "default": "./Stream/dist/effect-platform-node-Stream.cjs.js"
-    },
-    "./Worker": {
-      "types": "./dist/declarations/src/Worker.d.ts",
-      "module": "./Worker/dist/effect-platform-node-Worker.esm.js",
-      "import": "./Worker/dist/effect-platform-node-Worker.cjs.mjs",
-      "default": "./Worker/dist/effect-platform-node-Worker.cjs.js"
-    },
-    "./WorkerRunner": {
-      "types": "./dist/declarations/src/WorkerRunner.d.ts",
-      "module": "./WorkerRunner/dist/effect-platform-node-WorkerRunner.esm.js",
-      "import": "./WorkerRunner/dist/effect-platform-node-WorkerRunner.cjs.mjs",
-      "default": "./WorkerRunner/dist/effect-platform-node-WorkerRunner.cjs.js"
-    }
+  "devDependencies": {
+    "@effect/schema": "^0.47.2",
+    "@types/busboy": "^1.5.2",
+    "@types/mime": "^3.0.3",
+    "@types/node": "^20.8.10",
+    "@types/tar": "^6.1.7",
+    "effect": "2.0.0-next.54",
+    "tar": "^6.2.0"
   }
 }

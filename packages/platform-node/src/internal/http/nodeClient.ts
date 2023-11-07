@@ -14,9 +14,9 @@ import * as Http from "node:http"
 import * as Https from "node:https"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
-import type * as NodeClient from "../../Http/NodeClient"
-import * as NodeSink from "../../Sink"
-import { IncomingMessageImpl } from "./incomingMessage"
+import type * as NodeClient from "../../Http/NodeClient.js"
+import * as NodeSink from "../../Sink.js"
+import { IncomingMessageImpl } from "./incomingMessage.js"
 
 /** @internal */
 export const HttpAgentTypeId: NodeClient.HttpAgentTypeId = Symbol.for(

@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type * as Effect from "effect/Effect"
-import * as internal from "./internal/runtime"
+import * as internal from "./internal/runtime.js"
 
 /**
  * @since 1.0.0

@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import * as app from "./Http/App"
-import * as body from "./Http/Body"
-import * as formData from "./Http/FormData"
-import * as headers from "./Http/Headers"
-import * as middleware from "./Http/Middleware"
-import * as router from "./Http/Router"
-import * as error from "./Http/ServerError"
-import * as request from "./Http/ServerRequest"
-import * as response from "./Http/ServerResponse"
-import * as urlParams from "./Http/UrlParams"
+import * as app from "./Http/App.js"
+import * as body from "./Http/Body.js"
+import * as formData from "./Http/FormData.js"
+import * as headers from "./Http/Headers.js"
+import * as middleware from "./Http/Middleware.js"
+import * as router from "./Http/Router.js"
+import * as error from "./Http/ServerError.js"
+import * as request from "./Http/ServerRequest.js"
+import * as response from "./Http/ServerResponse.js"
+import * as urlParams from "./Http/UrlParams.js"
 
 export {
   /**

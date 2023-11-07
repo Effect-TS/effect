@@ -6,7 +6,7 @@ import type { PlatformError } from "@effect/platform/Error"
 import type { Tag } from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
-import * as internal from "./internal/clipboard"
+import * as internal from "./internal/clipboard.js"
 
 /**
  * @since 1.0.0

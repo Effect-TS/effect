@@ -9,10 +9,10 @@ import type * as Layer from "effect/Layer"
 import type { Pipeable } from "effect/Pipeable"
 import type * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
-import * as internal from "../internal/http/client"
-import type * as Error from "./ClientError"
-import type * as ClientRequest from "./ClientRequest"
-import type * as ClientResponse from "./ClientResponse"
+import * as internal from "../internal/http/client.js"
+import type * as Error from "./ClientError.js"
+import type * as ClientRequest from "./ClientRequest.js"
+import type * as ClientResponse from "./ClientResponse.js"
 
 /**
  * @since 1.0.0

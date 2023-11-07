@@ -10,8 +10,8 @@ import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import * as internal from "./internal/worker"
-import type { WorkerError } from "./WorkerError"
+import * as internal from "./internal/worker.js"
+import type { WorkerError } from "./WorkerError.js"
 
 /**
  * @since 1.0.0

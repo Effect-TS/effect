@@ -8,12 +8,12 @@ import type * as Chunk from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
-import * as internal from "../internal/http/router"
-import type * as App from "./App"
-import type * as Method from "./Method"
-import type * as Error from "./ServerError"
-import type * as ServerRequest from "./ServerRequest"
-import type * as ServerResponse from "./ServerResponse"
+import * as internal from "../internal/http/router.js"
+import type * as App from "./App.js"
+import type * as Method from "./Method.js"
+import type * as Error from "./ServerError.js"
+import type * as ServerRequest from "./ServerRequest.js"
+import type * as ServerResponse from "./ServerResponse.js"
 
 /**
  * @since 1.0.0

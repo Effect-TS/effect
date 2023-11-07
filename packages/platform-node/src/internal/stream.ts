@@ -11,8 +11,8 @@ import { dual } from "effect/Function"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import type { Duplex, Readable, Writable } from "node:stream"
-import { type PlatformError, SystemError } from "../Error"
-import type { FromReadableOptions, FromWritableOptions } from "../Stream"
+import { type PlatformError, SystemError } from "../Error.js"
+import type { FromReadableOptions, FromWritableOptions } from "../Stream.js"
 
 /** @internal */
 export const fromReadable = <E, A = Uint8Array>(

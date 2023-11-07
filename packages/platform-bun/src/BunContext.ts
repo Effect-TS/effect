@@ -3,9 +3,9 @@
  */
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as CommandExecutor from "./CommandExecutor"
-import * as FileSystem from "./FileSystem"
-import * as Path from "./Path"
+import * as CommandExecutor from "./CommandExecutor.js"
+import * as FileSystem from "./FileSystem.js"
+import * as Path from "./Path.js"
 
 /**
  * @since 1.0.0

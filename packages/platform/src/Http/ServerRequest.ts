@@ -7,14 +7,14 @@ import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import type * as FileSystem from "../FileSystem"
-import * as internal from "../internal/http/serverRequest"
-import type * as Path from "../Path"
-import type * as FormData from "./FormData"
-import type * as Headers from "./Headers"
-import type * as IncomingMessage from "./IncomingMessage"
-import type { Method } from "./Method"
-import type * as Error from "./ServerError"
+import type * as FileSystem from "../FileSystem.js"
+import * as internal from "../internal/http/serverRequest.js"
+import type * as Path from "../Path.js"
+import type * as FormData from "./FormData.js"
+import type * as Headers from "./Headers.js"
+import type * as IncomingMessage from "./IncomingMessage.js"
+import type { Method } from "./Method.js"
+import type * as Error from "./ServerError.js"
 
 export {
   /**
@@ -22,7 +22,7 @@ export {
    * @category fiber refs
    */
   maxBodySize
-} from "./IncomingMessage"
+} from "./IncomingMessage.js"
 
 /**
  * @since 1.0.0

@@ -3,8 +3,8 @@
  */
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
-import * as internal from "../internal/http/middleware"
-import type * as App from "./App"
+import * as internal from "../internal/http/middleware.js"
+import type * as App from "./App.js"
 
 /**
  * @since 1.0.0

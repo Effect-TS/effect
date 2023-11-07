@@ -4,7 +4,7 @@
  * Also includes exports from [`@effect/platform/Http/ServerRequest`](https://effect-ts.github.io/platform/platform/Http/ServerRequest.ts.html).
  */
 import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
-import * as internal from "../internal/http/server"
+import * as internal from "../internal/http/server.js"
 
 /**
  * @since 1.0.0

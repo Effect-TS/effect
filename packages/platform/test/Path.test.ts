@@ -1,6 +1,7 @@
 import { BadArgument } from "@effect/platform/Error"
 import * as Path from "@effect/platform/Path"
 import * as Effect from "effect/Effect"
+import { describe, expect, it } from "vitest"
 
 const runPromise = <E, A>(effect: Effect.Effect<Path.Path, E, A>) =>
   Effect.runPromise(Effect.provide(effect, Path.layer))

@@ -1,5 +1,5 @@
 import * as Data from "effect/Data"
-import type * as WorkerError_ from "../WorkerError"
+import type * as WorkerError_ from "../WorkerError.js"
 
 /** @internal */
 export const WorkerErrorTypeId: WorkerError_.WorkerErrorTypeId = Symbol.for(

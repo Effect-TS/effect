@@ -4,7 +4,7 @@
 
 import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Layer } from "effect/Layer"
-import * as internal from "./internal/fileSystem"
+import * as internal from "./internal/fileSystem.js"
 
 export type {
   /**

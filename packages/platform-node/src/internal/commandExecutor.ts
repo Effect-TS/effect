@@ -9,9 +9,9 @@ import * as Option from "effect/Option"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as ChildProcess from "node:child_process"
-import { handleErrnoException } from "./error"
-import { fromWritable } from "./sink"
-import { fromReadable } from "./stream"
+import { handleErrnoException } from "./error.js"
+import { fromWritable } from "./sink.js"
+import { fromReadable } from "./stream.js"
 
 const inputToStdioOption = (stdin: Option.Option<Command.Command.Input>): "pipe" | "inherit" =>
   Option.match(stdin, { onNone: () => "inherit", onSome: () => "pipe" })

@@ -6,10 +6,10 @@ import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import type ReadonlyArray from "effect/ReadonlyArray"
 import * as Stream from "effect/Stream"
-import type * as Command from "../Command"
-import type * as CommandExecutor from "../CommandExecutor"
-import type { PlatformError } from "../Error"
-import * as commandExecutor from "./commandExecutor"
+import type * as Command from "../Command.js"
+import type * as CommandExecutor from "../CommandExecutor.js"
+import type { PlatformError } from "../Error.js"
+import * as commandExecutor from "./commandExecutor.js"
 
 /** @internal */
 export const CommandTypeId: Command.CommandTypeId = Symbol.for("@effect/platform/Command") as Command.CommandTypeId

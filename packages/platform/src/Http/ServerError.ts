@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 import type * as Data from "effect/Data"
-import * as internal from "../internal/http/serverError"
-import type * as ServerRequest from "./ServerRequest"
-import type * as ServerResponse from "./ServerResponse"
+import * as internal from "../internal/http/serverError.js"
+import type * as ServerRequest from "./ServerRequest.js"
+import type * as ServerResponse from "./ServerResponse.js"
 
 /**
  * @since 1.0.0

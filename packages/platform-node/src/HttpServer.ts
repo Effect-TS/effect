@@ -10,9 +10,9 @@ import * as router from "@effect/platform/Http/Router"
 import * as error from "@effect/platform/Http/ServerError"
 import * as response from "@effect/platform/Http/ServerResponse"
 import * as urlParams from "@effect/platform/Http/UrlParams"
-import * as etag from "./Http/Etag"
-import * as formData from "./Http/FormData"
-import * as server from "./Http/Server"
+import * as etag from "./Http/Etag.js"
+import * as formData from "./Http/FormData.js"
+import * as server from "./Http/Server.js"
 
 export {
   /**

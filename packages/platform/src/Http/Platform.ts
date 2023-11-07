@@ -3,12 +3,12 @@
  */
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
-import type * as Error from "../Error"
-import type * as FileSystem from "../FileSystem"
-import * as internal from "../internal/http/platform"
-import type * as Body from "./Body"
-import type * as Etag from "./Etag"
-import type * as ServerResponse from "./ServerResponse"
+import type * as Error from "../Error.js"
+import type * as FileSystem from "../FileSystem.js"
+import * as internal from "../internal/http/platform.js"
+import type * as Body from "./Body.js"
+import type * as Etag from "./Etag.js"
+import type * as ServerResponse from "./ServerResponse.js"
 
 /**
  * @since 1.0.0

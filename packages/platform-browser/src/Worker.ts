@@ -8,7 +8,7 @@ import type { Effect } from "effect"
 import type * as Context from "effect/Context"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
-import * as internal from "./internal/worker"
+import * as internal from "./internal/worker.js"
 
 /**
  * @since 1.0.0

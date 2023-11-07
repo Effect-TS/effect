@@ -5,8 +5,8 @@
 import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
-import type { BadArgument } from "./Error"
-import * as internal from "./internal/path"
+import type { BadArgument } from "./Error.js"
+import * as internal from "./internal/path.js"
 
 /**
  * @since 1.0.0

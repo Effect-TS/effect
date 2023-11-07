@@ -6,9 +6,9 @@ import type { Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
-import type { Command } from "./Command"
-import type { PlatformError } from "./Error"
-import * as internal from "./internal/commandExecutor"
+import type { Command } from "./Command.js"
+import type { PlatformError } from "./Error.js"
+import * as internal from "./internal/commandExecutor.js"
 
 /**
  * @since 1.0.0

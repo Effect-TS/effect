@@ -5,8 +5,8 @@ import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Sink from "effect/Sink"
 import type { Writable } from "node:stream"
-import type { FromWritableOptions } from "../Stream"
-import { writeInput } from "./stream"
+import type { FromWritableOptions } from "../Stream.js"
+import { writeInput } from "./stream.js"
 
 /** @internal */
 export const fromWritable = <E, A = Uint8Array | string>(

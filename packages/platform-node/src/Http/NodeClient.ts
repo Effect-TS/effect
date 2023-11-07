@@ -8,7 +8,7 @@ import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Https from "node:https"
-import * as internal from "../internal/http/nodeClient"
+import * as internal from "../internal/http/nodeClient.js"
 
 /**
  * @since 1.0.0

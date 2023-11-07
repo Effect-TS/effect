@@ -7,10 +7,10 @@ import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
-import type * as PlatformError from "./Error"
-import type * as FileSystem from "./FileSystem"
-import * as internal from "./internal/keyValueStore"
-import type * as Path from "./Path"
+import type * as PlatformError from "./Error.js"
+import type * as FileSystem from "./FileSystem.js"
+import * as internal from "./internal/keyValueStore.js"
+import type * as Path from "./Path.js"
 
 /**
  * @since 1.0.0

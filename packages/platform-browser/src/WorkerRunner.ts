@@ -9,7 +9,7 @@ import type { Effect } from "effect"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import * as internal from "./internal/workerRunner"
+import * as internal from "./internal/workerRunner.js"
 
 /**
  * @since 1.0.0

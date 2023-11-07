@@ -9,8 +9,8 @@ import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
-import type * as FileSystem from "../FileSystem"
-import * as internal from "../internal/http/formData"
+import type * as FileSystem from "../FileSystem.js"
+import * as internal from "../internal/http/formData.js"
 
 /**
  * @since 1.0.0

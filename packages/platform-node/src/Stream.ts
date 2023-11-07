@@ -8,8 +8,8 @@ import type { Effect } from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type { Stream } from "effect/Stream"
 import type { Duplex, Readable } from "stream"
-import type { PlatformError } from "./Error"
-import * as internal from "./internal/stream"
+import type { PlatformError } from "./Error.js"
+import * as internal from "./internal/stream.js"
 
 /**
  * @category models

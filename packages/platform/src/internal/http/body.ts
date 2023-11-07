@@ -3,9 +3,9 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Stream_ from "effect/Stream"
-import type * as PlatformError from "../../Error"
-import * as FileSystem from "../../FileSystem"
-import type * as Body from "../../Http/Body"
+import type * as PlatformError from "../../Error.js"
+import * as FileSystem from "../../FileSystem.js"
+import type * as Body from "../../Http/Body.js"
 
 /** @internal */
 export const TypeId: Body.TypeId = Symbol.for(

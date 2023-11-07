@@ -4,11 +4,11 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Effect from "effect/Effect"
-import * as internal from "../internal/http/clientResponse"
-import type * as Error from "./ClientError"
-import type * as ClientRequest from "./ClientRequest"
-import type * as Headers from "./Headers"
-import type * as IncomingMessage from "./IncomingMessage"
+import * as internal from "../internal/http/clientResponse.js"
+import type * as Error from "./ClientError.js"
+import type * as ClientRequest from "./ClientRequest.js"
+import type * as Headers from "./Headers.js"
+import type * as IncomingMessage from "./IncomingMessage.js"
 
 export {
   /**
@@ -26,7 +26,7 @@ export {
    * @category schema
    */
   schemaHeaders
-} from "./IncomingMessage"
+} from "./IncomingMessage.js"
 
 /**
  * @since 1.0.0

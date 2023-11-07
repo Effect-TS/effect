@@ -5,7 +5,7 @@
  */
 import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as Http from "node:http"
-import * as internal from "../internal/http/server"
+import * as internal from "../internal/http/server.js"
 
 /**
  * @since 1.0.0

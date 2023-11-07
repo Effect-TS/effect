@@ -9,8 +9,8 @@ import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as FileSystem from "../../FileSystem"
-import type * as FormData from "../../Http/FormData"
+import * as FileSystem from "../../FileSystem.js"
+import type * as FormData from "../../Http/FormData.js"
 
 /** @internal */
 export const TypeId: FormData.TypeId = Symbol.for("@effect/platform/Http/FormData") as FormData.TypeId

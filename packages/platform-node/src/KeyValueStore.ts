@@ -6,8 +6,8 @@
 import type * as PlatformError from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import * as Layer from "effect/Layer"
-import * as FileSystem from "./FileSystem"
-import * as Path from "./Path"
+import * as FileSystem from "./FileSystem.js"
+import * as Path from "./Path.js"
 
 /**
  * @since 1.0.0

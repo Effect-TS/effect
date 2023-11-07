@@ -8,8 +8,8 @@ import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
 import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
-import type { PlatformError } from "./Error"
-import * as internal from "./internal/fileSystem"
+import type { PlatformError } from "./Error.js"
+import * as internal from "./internal/fileSystem.js"
 
 /**
  * @since 1.0.0

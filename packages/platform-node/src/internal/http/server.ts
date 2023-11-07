@@ -23,10 +23,10 @@ import type * as Http from "node:http"
 import type * as Net from "node:net"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
-import * as NodeSink from "../../Sink"
-import * as internalFormData from "./formData"
-import { IncomingMessageImpl } from "./incomingMessage"
-import * as internalPlatform from "./platform"
+import * as NodeSink from "../../Sink.js"
+import * as internalFormData from "./formData.js"
+import { IncomingMessageImpl } from "./incomingMessage.js"
+import * as internalPlatform from "./platform.js"
 
 /** @internal */
 export const make = (

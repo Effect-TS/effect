@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect"
-import type { Effectify, EffectifyError } from "../Effectify"
+import type { Effectify, EffectifyError } from "../Effectify.js"
 
 /** @internal */
 export const effectify: {

@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { globalValue } from "effect/GlobalValue"
-import * as Headers from "../../Http/Headers"
-import * as IncomingMessage from "../../Http/IncomingMessage"
-import type * as Middleware from "../../Http/Middleware"
-import * as ServerRequest from "../../Http/ServerRequest"
+import * as Headers from "../../Http/Headers.js"
+import * as IncomingMessage from "../../Http/IncomingMessage.js"
+import type * as Middleware from "../../Http/Middleware.js"
+import * as ServerRequest from "../../Http/ServerRequest.js"
 
 /** @internal */
 export const make = <M extends Middleware.Middleware>(middleware: M): M => middleware

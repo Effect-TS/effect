@@ -11,9 +11,9 @@ import * as Option from "effect/Option"
 import type * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import type { ExternalSpan } from "effect/Tracer"
-import * as FileSystem from "../FileSystem"
-import type * as Headers from "./Headers"
-import type * as UrlParams from "./UrlParams"
+import * as FileSystem from "../FileSystem.js"
+import type * as Headers from "./Headers.js"
+import type * as UrlParams from "./UrlParams.js"
 
 /**
  * @since 1.0.0
