@@ -112,12 +112,6 @@ export const isNonEmpty = <K, V>(self: SortedMap<K, V>): boolean => size(self) >
 
 /**
  * @since 2.0.0
- * @category getters
- */
-export const entries = <K, V>(self: SortedMap<K, V>): Iterator<readonly [K, V]> => self[Symbol.iterator]()
-
-/**
- * @since 2.0.0
  * @category elements
  */
 export const get: {
@@ -173,12 +167,6 @@ export const map: {
 
 /**
  * @since 2.0.0
- * @category getters
- */
-export const keys = <K, V>(self: SortedMap<K, V>): IterableIterator<K> => RBT.keys(self.tree)
-
-/**
- * @since 2.0.0
  * @category folding
  */
 export const reduce: {
@@ -226,4 +214,20 @@ export const size = <K, V>(self: SortedMap<K, V>): number => RBT.size(self.tree)
  * @since 2.0.0
  * @category getters
  */
+export const keys = <K, V>(self: SortedMap<K, V>): IterableIterator<K> => RBT.keys(self.tree)
+
+/**
+ * @since 2.0.0
+ * @category getters
+ */
 export const values = <K, V>(self: SortedMap<K, V>): IterableIterator<V> => RBT.values(self.tree)
+
+/**
+ * @since 2.0.0
+ * @category getters
+ */
+export const entries = <K, V>(self: SortedMap<K, V>): IterableIterator<readonly [K, V]> => {
+  const iterator: any = self.tree[Symbol.iterator]()
+  iterator[Symbol.iterator] = () => entries(self)
+  return iterator
+}

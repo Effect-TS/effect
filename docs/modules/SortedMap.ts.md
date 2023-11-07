@@ -166,7 +166,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const entries: <K, V>(self: SortedMap<K, V>) => Iterator<readonly [K, V], any, undefined>
+export declare const entries: <K, V>(self: SortedMap<K, V>) => IterableIterator<readonly [K, V]>
 ```
 
 Added in v2.0.0
