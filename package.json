@@ -176,6 +176,11 @@
       "import": "./dist/esm/Effect.js",
       "require": "./dist/cjs/Effect.js"
     },
+    "./Effect.int": {
+      "types": "./dist/dts/Effect.int.d.ts",
+      "import": "./dist/esm/Effect.int.js",
+      "require": "./dist/cjs/Effect.int.js"
+    },
     "./Effectable": {
       "types": "./dist/dts/Effectable.d.ts",
       "import": "./dist/esm/Effectable.js",
@@ -420,6 +425,11 @@
       "types": "./dist/dts/Option.d.ts",
       "import": "./dist/esm/Option.js",
       "require": "./dist/cjs/Option.js"
+    },
+    "./Option.int": {
+      "types": "./dist/dts/Option.int.d.ts",
+      "import": "./dist/esm/Option.int.js",
+      "require": "./dist/cjs/Option.int.js"
     },
     "./Order": {
       "types": "./dist/dts/Order.d.ts",
