@@ -146,6 +146,11 @@
       "import": "./dist/esm/Context.js",
       "require": "./dist/cjs/Context.js"
     },
+    "./Context.int": {
+      "types": "./dist/dts/Context.int.d.ts",
+      "import": "./dist/esm/Context.int.js",
+      "require": "./dist/cjs/Context.int.js"
+    },
     "./Data": {
       "types": "./dist/dts/Data.d.ts",
       "import": "./dist/esm/Data.js",
@@ -190,6 +195,11 @@
       "types": "./dist/dts/Either.d.ts",
       "import": "./dist/esm/Either.js",
       "require": "./dist/cjs/Either.js"
+    },
+    "./Either.int": {
+      "types": "./dist/dts/Either.int.d.ts",
+      "import": "./dist/esm/Either.int.js",
+      "require": "./dist/cjs/Either.int.js"
     },
     "./Encoding": {
       "types": "./dist/dts/Encoding.d.ts",
@@ -536,6 +546,11 @@
       "import": "./dist/esm/STM.js",
       "require": "./dist/cjs/STM.js"
     },
+    "./STM.int": {
+      "types": "./dist/dts/STM.int.d.ts",
+      "import": "./dist/esm/STM.int.js",
+      "require": "./dist/cjs/STM.int.js"
+    },
     "./Schedule": {
       "types": "./dist/dts/Schedule.d.ts",
       "import": "./dist/esm/Schedule.js",
@@ -586,6 +601,11 @@
       "import": "./dist/esm/Sink.js",
       "require": "./dist/cjs/Sink.js"
     },
+    "./Sink.int": {
+      "types": "./dist/dts/Sink.int.d.ts",
+      "import": "./dist/esm/Sink.int.js",
+      "require": "./dist/cjs/Sink.int.js"
+    },
     "./SortedMap": {
       "types": "./dist/dts/SortedMap.d.ts",
       "import": "./dist/esm/SortedMap.js",
@@ -600,6 +620,11 @@
       "types": "./dist/dts/Stream.d.ts",
       "import": "./dist/esm/Stream.js",
       "require": "./dist/cjs/Stream.js"
+    },
+    "./Stream.int": {
+      "types": "./dist/dts/Stream.int.d.ts",
+      "import": "./dist/esm/Stream.int.js",
+      "require": "./dist/cjs/Stream.int.js"
     },
     "./StreamEmit": {
       "types": "./dist/dts/StreamEmit.d.ts",
@@ -819,7 +844,7 @@
     "prettier": "^3.0.3",
     "rimraf": "^5.0.5",
     "tsx": "^3.14.0",
-    "typescript": "^5.2.2",
+    "typescript": "5.4.0-dev.20231107",
     "vite": "^4.4.11",
     "vitest": "^0.34.6"
   }
