@@ -32,8 +32,10 @@ Added in v2.0.0
 - [getter](#getter)
   - [keySet](#keyset)
 - [getters](#getters)
+  - [entries](#entries)
   - [keys](#keys)
   - [size](#size)
+  - [toEntries](#toentries)
   - [values](#values)
 - [mapping](#mapping)
   - [map](#map)
@@ -282,6 +284,18 @@ Added in v2.0.0
 
 # getters
 
+## entries
+
+Returns an `IterableIterator` of the entries within the `HashMap`.
+
+**Signature**
+
+```ts
+export declare const entries: <K, V>(self: HashMap<K, V>) => IterableIterator<[K, V]>
+```
+
+Added in v2.0.0
+
 ## keys
 
 Returns an `IterableIterator` of the keys within the `HashMap`.
@@ -302,6 +316,18 @@ Returns the number of entries within the `HashMap`.
 
 ```ts
 export declare const size: <K, V>(self: HashMap<K, V>) => number
+```
+
+Added in v2.0.0
+
+## toEntries
+
+Returns an `Array<[K, V]>` of the entries within the `HashMap`.
+
+**Signature**
+
+```ts
+export declare const toEntries: <K, V>(self: HashMap<K, V>) => [K, V][]
 ```
 
 Added in v2.0.0

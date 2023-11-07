@@ -229,25 +229,6 @@ describe.concurrent("HashMap", () => {
     assert.isFalse(HM.isEmpty(HM.make([key(0), value("a")])))
   })
 
-  it("keys", () => {
-    const map = HM.make([0, "a"], [1, "b"])
-    const result = Array.from(HM.keys(map))
-
-    deepStrictEqual(result, [0, 1])
-  })
-
-  it("keySet", () => {
-    const hashMap = HM.make(
-      [key(0), value("a")],
-      [key(1), value("b")],
-      [key(1), value("c")]
-    )
-
-    const result = HM.keySet(hashMap)
-
-    assert.deepEqual([...result], [key(0), key(1)])
-  })
-
   it("map", () => {
     const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
     const result1 = pipe(map1, HM.map(({ s }) => s.length))
@@ -387,11 +368,44 @@ describe.concurrent("HashMap", () => {
     )
   })
 
+  it("keys", () => {
+    const map = HM.make([0, "a"], [1, "b"])
+    const result = Array.from(HM.keys(map))
+
+    deepStrictEqual(result, [0, 1])
+  })
+
+  it("keySet", () => {
+    const hashMap = HM.make(
+      [key(0), value("a")],
+      [key(1), value("b")],
+      [key(1), value("c")]
+    )
+
+    const result = HM.keySet(hashMap)
+
+    assert.deepEqual([...result], [key(0), key(1)])
+  })
+
   it("values", () => {
     const map = HM.make([key(0), value("a")], [key(1), value("b")])
     const result = Array.from(HM.values(map))
 
     deepStrictEqual(result, [value("a"), value("b")])
+  })
+
+  it("entries", () => {
+    const map = HM.make([key(0), value("a")], [key(1), value("b")])
+    const result = Array.from(HM.entries(map))
+
+    deepStrictEqual(result, [[key(0), value("a")], [key(1), value("b")]])
+  })
+
+  it("toEntries", () => {
+    const map = HM.make([key(0), value("a")], [key(1), value("b")])
+    const result = HM.toEntries(map)
+
+    deepStrictEqual(result, [[key(0), value("a")], [key(1), value("b")]])
   })
 
   it("pipe", () => {
