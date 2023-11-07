@@ -22,6 +22,7 @@ Added in v2.0.0
 - [types](#types)
   - [ExcludeTag (type alias)](#excludetag-type-alias)
   - [ExtractTag (type alias)](#extracttag-type-alias)
+  - [Mutable (type alias)](#mutable-type-alias)
   - [Simplify (type alias)](#simplify-type-alias)
   - [Tags (type alias)](#tags-type-alias)
   - [UnionToIntersection (type alias)](#uniontointersection-type-alias)
@@ -143,6 +144,34 @@ export type ExtractTag<E, K extends Tags<E>> = Extract<E, { _tag: K }>
 import * as Types from "effect/Types"
 
 type Res = Types.ExtractTag<{ _tag: "a"; a: number } | { _tag: "b"; b: number }, "b"> // { _tag: "b", b: number }
+```
+
+Added in v2.0.0
+
+## Mutable (type alias)
+
+Make all properties in `T` mutable. Supports arrays, tuples, and records as well.
+
+**Signature**
+
+```ts
+export type Mutable<T> = {
+  -readonly [P in keyof T]: T[P]
+}
+```
+
+**Example**
+
+```ts
+import type * as Types from "effect/Types"
+
+type MutableStruct = Types.Mutable<{ readonly a: string; readonly b: number }> // { a: string; b: number; }
+
+type MutableArray = Types.Mutable<ReadonlyArray<string>> // string[]
+
+type MutableTuple = Types.Mutable<readonly [string, number]> // [string, number]
+
+type MutableRecord = Types.Mutable<{ readonly [_: string]: number }> // { [x: string]: number; }
 ```
 
 Added in v2.0.0
