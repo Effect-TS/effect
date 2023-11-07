@@ -142,14 +142,6 @@ describe.concurrent("SortedMap", () => {
     assert.isFalse(SM.isNonEmpty(map2))
   })
 
-  it("keys", () => {
-    const map = makeSortedMap([0, 10], [1, 20], [2, 30])
-
-    const result = Array.from(SM.keys(map))
-
-    assert.deepEqual(result, [key(0), key(1), key(2)])
-  })
-
   it("map", () => {
     const map1 = makeSortedMap([0, 10], [1, 20], [2, 30])
 
@@ -214,11 +206,27 @@ describe.concurrent("SortedMap", () => {
     assert.strictEqual(SM.size(map), 3)
   })
 
+  it("keys", () => {
+    const map = makeSortedMap([0, 10], [1, 20], [2, 30])
+
+    const result = Array.from(SM.keys(map))
+
+    assert.deepEqual(result, [key(0), key(1), key(2)])
+  })
+
   it("values", () => {
     const map = makeSortedMap([0, 10], [1, 20], [2, 30])
 
     const result = Array.from(SM.values(map))
 
     assert.deepEqual(result, [value(10), value(20), value(30)])
+  })
+
+  it("entries", () => {
+    const map = makeSortedMap([0, 10], [1, 20], [2, 30])
+
+    const result = Array.from(SM.entries(map))
+
+    assert.deepEqual(result, [[key(0), value(10)], [key(1), value(20)], [key(2), value(30)]])
   })
 })
