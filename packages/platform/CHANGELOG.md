@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.27.3
+
+### Patch Changes
+
+- [#243](https://github.com/Effect-TS/platform/pull/243) [`1ac0a42`](https://github.com/Effect-TS/platform/commit/1ac0a4208184ef1d23d5ad41a7f0e32bc4d80d85) Thanks [@tim-smart](https://github.com/tim-smart)! - fix worker interruption
+
 ## 0.27.2
 
 ### Patch Changes
