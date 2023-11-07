@@ -124,7 +124,7 @@ export interface StreamUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 2.0.0
  * @category models
  */
-declare module "./Effect.int.js" {
+declare module "./Effect.js" {
   interface Effect<R, E, A> extends Stream<R, E, A> {}
   interface EffectUnifyIgnore {
     Stream?: true
