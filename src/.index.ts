@@ -28,5 +28,3 @@ export {
    */
   unsafeCoerce
 } from "./Function.js"
-
-export { Effect as EffectTest } from "./Effect.js"
