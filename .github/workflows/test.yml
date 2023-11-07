@@ -76,6 +76,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Install dependencies
+        uses: ./.github/actions/setup
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
