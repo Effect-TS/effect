@@ -1,9 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type { Effect } from "effect"
 import type * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
+import type * as Effect from "effect/Effect"
+import type * as Fiber from "effect/Fiber"
 import type * as Layer from "effect/Layer"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
@@ -17,7 +18,7 @@ import type { WorkerError } from "./WorkerError"
  * @category models
  */
 export interface BackingWorker<I, O> {
-  readonly run: Effect.Effect<never, WorkerError, never>
+  readonly fiber: Fiber.Fiber<WorkerError, never>
   readonly send: (message: I, transfers?: ReadonlyArray<unknown>) => Effect.Effect<never, never, void>
   readonly queue: Queue.Dequeue<BackingWorker.Message<O>>
 }

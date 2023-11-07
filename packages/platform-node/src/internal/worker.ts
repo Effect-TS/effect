@@ -29,23 +29,27 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       ))
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
       yield* _(Effect.addFinalizer(() => Queue.shutdown(queue)))
-      const run = Effect.async<never, WorkerError, never>((resume) => {
-        worker.on("message", (message: Worker.BackingWorker.Message<O>) => {
-          queue.unsafeOffer(message)
-        })
-        worker.on("messageerror", (error) => {
-          resume(Effect.fail(WorkerError("decode", error)))
-        })
-        worker.on("error", (error) => {
-          resume(Effect.fail(WorkerError("unknown", error)))
-        })
-        worker.on("exit", (code) => {
-          resume(Effect.fail(WorkerError("unknown", new Error(`exited with code ${code}`))))
-        })
-      })
+      const fiber = yield* _(
+        Effect.async<never, WorkerError, never>((resume) => {
+          worker.on("message", (message: Worker.BackingWorker.Message<O>) => {
+            queue.unsafeOffer(message)
+          })
+          worker.on("messageerror", (error) => {
+            resume(Effect.fail(WorkerError("decode", error)))
+          })
+          worker.on("error", (error) => {
+            resume(Effect.fail(WorkerError("unknown", error)))
+          })
+          worker.on("exit", (code) => {
+            resume(Effect.fail(WorkerError("unknown", new Error(`exited with code ${code}`))))
+          })
+        }),
+        Effect.interruptible,
+        Effect.forkScoped
+      )
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => worker.postMessage([0, message], transfers as any))
-      return { run, queue, send }
+      return { fiber, queue, send }
     })
   }
 })

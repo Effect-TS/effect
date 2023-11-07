@@ -1,5 +1,6 @@
 import * as Worker from "@effect/platform-bun/Worker"
 import { Console, Context, Effect, Stream } from "effect"
+import * as OS from "node:os"
 
 interface MyWorkerPool {
   readonly _: unique symbol
@@ -7,7 +8,9 @@ interface MyWorkerPool {
 const Pool = Context.Tag<MyWorkerPool, Worker.WorkerPool<number, never, number>>("@app/MyWorkerPool")
 const PoolLive = Worker.makePoolLayer(Pool, {
   spawn: () => new globalThis.Worker("./examples/worker/range.ts"),
-  size: 1
+  minSize: 0,
+  maxSize: OS.availableParallelism(),
+  timeToLive: 10000
 })
 
 Effect.gen(function*(_) {

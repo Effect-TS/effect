@@ -53,7 +53,6 @@ export const makeManager = Effect.gen(function*(_) {
     spawn<I, E, O>({ encode, permits = 1, queue, spawn, transfers = (_) => [] }: Worker.Worker.Options<I>) {
       return Effect.gen(function*(_) {
         const id = idCounter++
-        const fiberId = yield* _(Effect.fiberId)
         let requestIdCounter = 0
         const readyLatch = yield* _(Deferred.make<never, void>())
         const semaphore = yield* _(Effect.makeSemaphore(permits))
@@ -170,13 +169,15 @@ export const makeManager = Effect.gen(function*(_) {
             executeRelease
           )
 
-        const handleMessages = pipe(
+        const handleMessages = yield* _(
           Queue.take(backing.queue),
           Effect.flatMap(handleMessage),
-          Effect.forever
+          Effect.forever,
+          Effect.interruptible,
+          Effect.forkScoped
         )
 
-        const postMessages = pipe(
+        const postMessages = yield* _(
           semaphore.take(1),
           Effect.zipRight(outbound.take),
           Effect.flatMap(([id, request]) =>
@@ -195,23 +196,16 @@ export const makeManager = Effect.gen(function*(_) {
               Effect.fork
             )
           ),
-          Effect.forever
+          Effect.forever,
+          Effect.interruptible,
+          Effect.forkScoped
         )
 
-        const fiber = yield* _(
-          Effect.all([backing.run, handleMessages, postMessages], {
-            concurrency: "unbounded",
-            discard: true
-          }) as Effect.Effect<
-            never,
-            WorkerError,
-            never
-          >,
-          Effect.forkDaemon
-        )
-        yield* _(Effect.addFinalizer(() => fiber.interruptAsFork(fiberId)))
-
-        const join = Fiber.join(fiber)
+        const join = Fiber.joinAll([backing.fiber, handleMessages, postMessages]) as Effect.Effect<
+          never,
+          WorkerError,
+          never
+        >
 
         return { id, join, execute, executeEffect }
       }).pipe(Effect.parallelFinalizers)
