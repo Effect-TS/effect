@@ -25,7 +25,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal.Equal, Pipeable, Inspectable {
+export interface SortedMap<K, V> extends Iterable<[K, V]>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   /** @internal */
   readonly tree: RBT.RedBlackTree<K, V>
@@ -39,7 +39,7 @@ const SortedMapProto: Omit<SortedMap<unknown, unknown>, "tree"> = {
   [Equal.symbol]<K, V>(this: SortedMap<K, V>, that: unknown): boolean {
     return isSortedMap(that) && Equal.equals(this.tree, that.tree)
   },
-  [Symbol.iterator]<K, V>(this: SortedMap<K, V>): Iterator<readonly [K, V]> {
+  [Symbol.iterator]<K, V>(this: SortedMap<K, V>): Iterator<[K, V]> {
     return this.tree[Symbol.iterator]()
   },
   toString() {
@@ -146,7 +146,7 @@ export const has: {
  * @since 2.0.0
  * @category elements
  */
-export const headOption = <K, V>(self: SortedMap<K, V>): Option.Option<readonly [K, V]> => RBT.first(self.tree)
+export const headOption = <K, V>(self: SortedMap<K, V>): Option.Option<[K, V]> => RBT.first(self.tree)
 
 /**
  * @since 2.0.0
@@ -226,7 +226,7 @@ export const values = <K, V>(self: SortedMap<K, V>): IterableIterator<V> => RBT.
  * @since 2.0.0
  * @category getters
  */
-export const entries = <K, V>(self: SortedMap<K, V>): IterableIterator<readonly [K, V]> => {
+export const entries = <K, V>(self: SortedMap<K, V>): IterableIterator<[K, V]> => {
   const iterator: any = self.tree[Symbol.iterator]()
   iterator[Symbol.iterator] = () => entries(self)
   return iterator

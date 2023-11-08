@@ -274,13 +274,13 @@ export const collectElements = <Env, InErr, InElem, InDone, OutErr, OutElem, Out
   InDone,
   OutErr,
   never,
-  readonly [Chunk.Chunk<OutElem>, OutDone]
+  [Chunk.Chunk<OutElem>, OutDone]
 > => {
   return suspend(() => {
     const builder: Array<OutElem> = []
     return flatMap(
       pipeTo(self, collectElementsReader(builder)),
-      (value) => sync(() => [Chunk.fromIterable(builder), value] as const)
+      (value) => sync(() => [Chunk.fromIterable(builder), value])
     )
   })
 }

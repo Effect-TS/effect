@@ -880,7 +880,7 @@ The channel must not read any input.
 ```ts
 export declare const runCollect: <Env, InErr, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
-) => Effect.Effect<Env, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone]>
+) => Effect.Effect<Env, OutErr, [Chunk.Chunk<OutElem>, OutDone]>
 ```
 
 Added in v2.0.0
@@ -1891,7 +1891,7 @@ channels that output a large or unbounded number of values.
 ```ts
 export declare const doneCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Channel<Env, InErr, InElem, InDone, OutErr, never, readonly [Chunk.Chunk<OutElem>, OutDone]>
+) => Channel<Env, InErr, InElem, InDone, OutErr, never, [Chunk.Chunk<OutElem>, OutDone]>
 ```
 
 Added in v2.0.0

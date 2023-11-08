@@ -494,11 +494,11 @@ export const groupByKey = dual<
  *
  * @internal
  */
-export const groupByIterable = dual<
-  <V, K>(f: (value: V) => K) => (iterable: Iterable<V>) => Chunk.Chunk<readonly [K, Chunk.Chunk<V>]>,
-  <V, K>(iterable: Iterable<V>, f: (value: V) => K) => Chunk.Chunk<readonly [K, Chunk.Chunk<V>]>
->(2, <V, K>(iterable: Iterable<V>, f: (value: V) => K): Chunk.Chunk<readonly [K, Chunk.Chunk<V>]> => {
-  const builder: Array<readonly [K, Array<V>]> = []
+const groupByIterable = dual<
+  <V, K>(f: (value: V) => K) => (iterable: Iterable<V>) => Chunk.Chunk<[K, Chunk.Chunk<V>]>,
+  <V, K>(iterable: Iterable<V>, f: (value: V) => K) => Chunk.Chunk<[K, Chunk.Chunk<V>]>
+>(2, <V, K>(iterable: Iterable<V>, f: (value: V) => K): Chunk.Chunk<[K, Chunk.Chunk<V>]> => {
+  const builder: Array<[K, Array<V>]> = []
   const iterator = iterable[Symbol.iterator]()
   const map = new Map<K, Array<V>>()
   let next: IteratorResult<V, any>
@@ -510,11 +510,11 @@ export const groupByIterable = dual<
       innerBuilder.push(value)
     } else {
       const innerBuilder: Array<V> = [value]
-      builder.push([key, innerBuilder] as const)
+      builder.push([key, innerBuilder])
       map.set(key, innerBuilder)
     }
   }
   return Chunk.unsafeFromArray(
-    builder.map((tuple) => [tuple[0], Chunk.unsafeFromArray(tuple[1])] as const)
+    builder.map((tuple) => [tuple[0], Chunk.unsafeFromArray(tuple[1])])
   )
 })

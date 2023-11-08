@@ -1061,7 +1061,7 @@ export const orDieWith = dual<
 export const partitionMap = <A, A1, A2>(
   elements: Iterable<A>,
   f: (a: A) => Either.Either<A1, A2>
-): readonly [Array<A1>, Array<A2>] =>
+): [Array<A1>, Array<A2>] =>
   ReadonlyArray.fromIterable(elements).reduceRight(
     ([lefts, rights], current) => {
       const either = f(current)
@@ -1285,7 +1285,7 @@ export const zip = dual<
 >(2, <R, E, A, R2, E2, A2>(
   self: Effect.Effect<R, E, A>,
   that: Effect.Effect<R2, E2, A2>
-): Effect.Effect<R | R2, E | E2, [A, A2]> => flatMap(self, (a) => map(that, (b) => [a, b] as [A, A2])))
+): Effect.Effect<R | R2, E | E2, [A, A2]> => flatMap(self, (a) => map(that, (b) => [a, b])))
 
 /* @internal */
 export const zipFlatten = dual<
@@ -2397,11 +2397,11 @@ export const exitUnit: Exit.Exit<never, void> = exitSucceed(void 0)
 
 /** @internal */
 export const exitZip = dual<
-  <E2, A2>(that: Exit.Exit<E2, A2>) => <E, A>(self: Exit.Exit<E, A>) => Exit.Exit<E | E2, readonly [A, A2]>,
-  <E, A, E2, A2>(self: Exit.Exit<E, A>, that: Exit.Exit<E2, A2>) => Exit.Exit<E | E2, readonly [A, A2]>
+  <E2, A2>(that: Exit.Exit<E2, A2>) => <E, A>(self: Exit.Exit<E, A>) => Exit.Exit<E | E2, [A, A2]>,
+  <E, A, E2, A2>(self: Exit.Exit<E, A>, that: Exit.Exit<E2, A2>) => Exit.Exit<E | E2, [A, A2]>
 >(2, (self, that) =>
   exitZipWith(self, that, {
-    onSuccess: (a, a2) => [a, a2] as const,
+    onSuccess: (a, a2) => [a, a2],
     onFailure: internalCause.sequential
   }))
 
@@ -2427,11 +2427,11 @@ export const exitZipRight = dual<
 
 /** @internal */
 export const exitZipPar = dual<
-  <E2, A2>(that: Exit.Exit<E2, A2>) => <E, A>(self: Exit.Exit<E, A>) => Exit.Exit<E | E2, readonly [A, A2]>,
-  <E, A, E2, A2>(self: Exit.Exit<E, A>, that: Exit.Exit<E2, A2>) => Exit.Exit<E | E2, readonly [A, A2]>
+  <E2, A2>(that: Exit.Exit<E2, A2>) => <E, A>(self: Exit.Exit<E, A>) => Exit.Exit<E | E2, [A, A2]>,
+  <E, A, E2, A2>(self: Exit.Exit<E, A>, that: Exit.Exit<E2, A2>) => Exit.Exit<E | E2, [A, A2]>
 >(2, (self, that) =>
   exitZipWith(self, that, {
-    onSuccess: (a, a2) => [a, a2] as const,
+    onSuccess: (a, a2) => [a, a2],
     onFailure: internalCause.parallel
   }))
 

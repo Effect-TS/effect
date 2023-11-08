@@ -494,11 +494,11 @@ export const zip = dual<
     that: Metric.Metric<Type2, In2, Out2>
   ) => <Type, In, Out>(
     self: Metric.Metric<Type, In, Out>
-  ) => Metric.Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>,
+  ) => Metric.Metric<readonly [Type, Type2], readonly [In, In2], [Out, Out2]>,
   <Type, In, Out, Type2, In2, Out2>(
     self: Metric.Metric<Type, In, Out>,
     that: Metric.Metric<Type2, In2, Out2>
-  ) => Metric.Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>
+  ) => Metric.Metric<readonly [Type, Type2], readonly [In, In2], [Out, Out2]>
 >(
   2,
   <Type, In, Out, Type2, In2, Out2>(self: Metric.Metric<Type, In, Out>, that: Metric.Metric<Type2, In2, Out2>) =>
@@ -509,7 +509,7 @@ export const zip = dual<
         self.unsafeUpdate(l, extraTags)
         that.unsafeUpdate(r, extraTags)
       },
-      (extraTags) => [self.unsafeValue(extraTags), that.unsafeValue(extraTags)] as const
+      (extraTags) => [self.unsafeValue(extraTags), that.unsafeValue(extraTags)]
     )
 )
 

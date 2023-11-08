@@ -709,11 +709,11 @@ export const partition: {
       readonly concurrency?: Concurrency
       readonly batching?: boolean | "inherit"
     }
-  ): (elements: Iterable<A>) => Effect<R, never, readonly [Array<E>, Array<B>]>
+  ): (elements: Iterable<A>) => Effect<R, never, [Array<E>, Array<B>]>
   <R, E, A, B>(elements: Iterable<A>, f: (a: A) => Effect<R, E, B>, options?: {
     readonly concurrency?: Concurrency
     readonly batching?: boolean | "inherit"
-  }): Effect<R, never, readonly [Array<E>, Array<B>]>
+  }): Effect<R, never, [Array<E>, Array<B>]>
 } = fiberRuntime.partition
 
 /**
@@ -2155,12 +2155,12 @@ export const mapAccum: {
   <A, B, R, E, Z>(
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>
-  ): (elements: Iterable<A>) => Effect<R, E, readonly [Z, Array<B>]>
+  ): (elements: Iterable<A>) => Effect<R, E, [Z, Array<B>]>
   <A, B, R, E, Z>(
     elements: Iterable<A>,
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>
-  ): Effect<R, E, readonly [Z, Array<B>]>
+  ): Effect<R, E, [Z, Array<B>]>
 } = effect.mapAccum
 
 /**
@@ -2489,7 +2489,7 @@ export const using: {
  */
 export const withEarlyRelease: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<Scope.Scope | R, E, readonly [Effect<never, never, void>, A]> = fiberRuntime.withEarlyRelease
+) => Effect<Scope.Scope | R, E, [Effect<never, never, void>, A]> = fiberRuntime.withEarlyRelease
 
 // -------------------------------------------------------------------------------------
 // supervision & fibers
@@ -2539,7 +2539,7 @@ export const descriptorWith: <R, E, A>(f: (descriptor: Fiber.Fiber.Descriptor) =
  */
 export const diffFiberRefs: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<R, E, readonly [FiberRefsPatch.FiberRefsPatch, A]> = effect.diffFiberRefs
+) => Effect<R, E, [FiberRefsPatch.FiberRefsPatch, A]> = effect.diffFiberRefs
 
 /**
  * Acts on the children of this fiber (collected into a single fiber),
@@ -2848,7 +2848,7 @@ export const sleep: (duration: Duration.DurationInput) => Effect<never, never, v
  * @since 2.0.0
  * @category delays & timeouts
  */
-export const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [Duration.Duration, A]> = effect.timed
+export const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [Duration.Duration, A]> = effect.timed
 
 /**
  * A more powerful variation of `timed` that allows specifying the clock.
@@ -3499,12 +3499,12 @@ export const whenRef: {
     predicate: Predicate<S>
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => Effect<R, E, readonly [S, Option.Option<A>]>
+  ) => Effect<R, E, [S, Option.Option<A>]>
   <R, E, A, S>(
     self: Effect<R, E, A>,
     ref: Ref.Ref<S>,
     predicate: Predicate<S>
-  ): Effect<R, E, readonly [S, Option.Option<A>]>
+  ): Effect<R, E, [S, Option.Option<A>]>
 } = effect.whenRef
 
 // -------------------------------------------------------------------------------------
@@ -3617,12 +3617,12 @@ export const summarized: {
   <R2, E2, B, C>(
     summary: Effect<R2, E2, B>,
     f: (start: B, end: B) => C
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, readonly [C, A]>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, [C, A]>
   <R, E, A, R2, E2, B, C>(
     self: Effect<R, E, A>,
     summary: Effect<R2, E2, B>,
     f: (start: B, end: B) => C
-  ): Effect<R | R2, E | E2, readonly [C, A]>
+  ): Effect<R | R2, E | E2, [C, A]>
 } = effect.summarized
 
 /**

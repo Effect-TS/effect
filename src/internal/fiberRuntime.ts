@@ -240,7 +240,6 @@ const runBlockedRequests = <R>(self: RequestBlock.RequestBlock<R>) =>
 /** @internal */
 export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   readonly [internalFiber.FiberTypeId] = internalFiber.fiberVariance
-
   readonly [internalFiber.RuntimeFiberTypeId] = runtimeFiberVariance
 
   pipe() {
@@ -1615,7 +1614,7 @@ export const filter = dual<
 
 const allResolveInput = (
   input: Iterable<Effect.Effect<any, any, any>> | Record<string, Effect.Effect<any, any, any>>
-): readonly [Iterable<Effect.Effect<any, any, any>>, Option.Option<(as: ReadonlyArray<any>) => any>] => {
+): [Iterable<Effect.Effect<any, any, any>>, Option.Option<(as: ReadonlyArray<any>) => any>] => {
   if (Array.isArray(input) || Predicate.isIterable(input)) {
     return [input, Option.none()]
   }
@@ -2255,7 +2254,7 @@ export const partition = dual<
       readonly concurrency?: Concurrency
       readonly batching?: boolean | "inherit"
     }
-  ) => (elements: Iterable<A>) => Effect.Effect<R, never, readonly [Array<E>, Array<B>]>,
+  ) => (elements: Iterable<A>) => Effect.Effect<R, never, [Array<E>, Array<B>]>,
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect.Effect<R, E, B>,
@@ -2263,7 +2262,7 @@ export const partition = dual<
       readonly concurrency?: Concurrency
       readonly batching?: boolean | "inherit"
     }
-  ) => Effect.Effect<R, never, readonly [Array<E>, Array<B>]>
+  ) => Effect.Effect<R, never, [Array<E>, Array<B>]>
 >((args) => Predicate.isIterable(args[0]), (elements, f, options) =>
   pipe(
     forEachOptions(elements, (a, i) => core.either(f(a, i)), options),
@@ -2739,18 +2738,16 @@ export const withConfigProviderScoped = (value: ConfigProvider) =>
 /* @internal */
 export const withEarlyRelease = <R, E, A>(
   self: Effect.Effect<R, E, A>
-): Effect.Effect<R | Scope.Scope, E, readonly [Effect.Effect<never, never, void>, A]> =>
+): Effect.Effect<R | Scope.Scope, E, [Effect.Effect<never, never, void>, A]> =>
   scopeWith((parent) =>
     core.flatMap(core.scopeFork(parent, executionStrategy.sequential), (child) =>
       pipe(
         self,
         scopeExtend(child),
-        core.map((value) =>
-          [
-            core.fiberIdWith((fiberId) => core.scopeClose(child, core.exitInterrupt(fiberId))),
-            value
-          ] as const
-        )
+        core.map((value) => [
+          core.fiberIdWith((fiberId) => core.scopeClose(child, core.exitInterrupt(fiberId))),
+          value
+        ])
       ))
   )
 

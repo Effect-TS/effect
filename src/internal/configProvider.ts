@@ -198,7 +198,7 @@ const extend = <A, B>(
   rightDef: (n: number) => B,
   left: ReadonlyArray<A>,
   right: ReadonlyArray<B>
-): readonly [ReadonlyArray<A>, ReadonlyArray<B>] => {
+): [ReadonlyArray<A>, ReadonlyArray<B>] => {
   const leftPad = RA.unfold(
     left.length,
     (index) =>
@@ -665,7 +665,7 @@ const splitIndexInKeys = (
   return newMap
 }
 
-const splitIndexFrom = (key: string): Option.Option<readonly [string, number]> => {
+const splitIndexFrom = (key: string): Option.Option<[string, number]> => {
   const match = key.match(STR_INDEX_REGEX)
   if (match !== null) {
     const matchedString = match[1]

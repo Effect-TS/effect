@@ -994,13 +994,11 @@ Added in v2.0.0
 export declare const zip: {
   <Type2, In2, Out2>(
     that: Metric<Type2, In2, Out2>
-  ): <Type, In, Out>(
-    self: Metric<Type, In, Out>
-  ) => Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>
+  ): <Type, In, Out>(self: Metric<Type, In, Out>) => Metric<readonly [Type, Type2], readonly [In, In2], [Out, Out2]>
   <Type, In, Out, Type2, In2, Out2>(
     self: Metric<Type, In, Out>,
     that: Metric<Type2, In2, Out2>
-  ): Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>
+  ): Metric<readonly [Type, Type2], readonly [In, In2], [Out, Out2]>
 }
 ```
 

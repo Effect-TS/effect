@@ -640,7 +640,7 @@ export const mapInputInEffect: {
  */
 export const doneCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Channel<Env, InErr, InElem, InDone, OutErr, never, readonly [Chunk.Chunk<OutElem>, OutDone]> = channel.doneCollect
+) => Channel<Env, InErr, InElem, InDone, OutErr, never, [Chunk.Chunk<OutElem>, OutDone]> = channel.doneCollect
 
 /**
  * Returns a new channel which reads all the elements from upstream's output
@@ -1911,7 +1911,7 @@ export const run: <Env, InErr, InDone, OutErr, OutDone>(
  */
 export const runCollect: <Env, InErr, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
-) => Effect.Effect<Env, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone]> = channel.runCollect
+) => Effect.Effect<Env, OutErr, [Chunk.Chunk<OutElem>, OutDone]> = channel.runCollect
 
 /**
  * Runs a channel until the end is received.

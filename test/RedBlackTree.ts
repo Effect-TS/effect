@@ -172,9 +172,9 @@ describe.concurrent("RedBlackTree", () => {
       RedBlackTree.insert(3, "e")
     )
 
-    deepStrictEqual(RedBlackTree.first(tree), Option.some([-2, "d"] as const))
-    deepStrictEqual(RedBlackTree.last(tree), Option.some([3, "e"] as const))
-    deepStrictEqual(RedBlackTree.getAt(1)(tree), Option.some([-1, "c"] as const))
+    deepStrictEqual(RedBlackTree.first(tree), Option.some([-2, "d"]))
+    deepStrictEqual(RedBlackTree.last(tree), Option.some([3, "e"]))
+    deepStrictEqual(RedBlackTree.getAt(1)(tree), Option.some([-1, "c"]))
   })
 
   it("forEachGreaterThanEqual", () => {
