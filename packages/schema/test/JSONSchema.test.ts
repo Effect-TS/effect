@@ -3,9 +3,11 @@ import * as AST from "@effect/schema/AST"
 import * as JSONSchema from "@effect/schema/JSONSchema"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
-import Ajv from "ajv"
+import AjvNonEsm from "ajv"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
+
+const Ajv = AjvNonEsm.default
 
 type JsonArray = ReadonlyArray<Json>
 
@@ -24,7 +26,9 @@ const propertyTo = <I, A>(schema: S.Schema<I, A>, params?: fc.Parameters<[A]>) =
   const is = S.is(schema)
   const jsonSchema = JSONSchema.to(schema)
   // console.log(JSON.stringify(jsonSchema, null, 2))
-  const validate = new Ajv({ strictTuples: false, allowUnionTypes: true }).compile(jsonSchema)
+  const validate = new Ajv({ strictTuples: false, allowUnionTypes: true }).compile(
+    jsonSchema
+  )
   const arb = arbitrary(fc)
   // console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
   fc.assert(fc.property(arb, (a) => is(a) && validate(a)), params)

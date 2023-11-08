@@ -4,8 +4,8 @@
 
 import * as Option from "effect/Option"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
-import * as AST from "./AST"
-import type { ParseErrors, Type } from "./ParseResult"
+import * as AST from "./AST.js"
+import type { ParseErrors, Type } from "./ParseResult.js"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 

@@ -1,4 +1,5 @@
 import * as A from "@effect/schema/Arbitrary"
+import * as E from "@effect/schema/Equivalence"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Chunk from "effect/Chunk"
@@ -8,7 +9,6 @@ import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
-import * as E from "../src/Equivalence"
 
 /**
  * Tests that the generated Eq is a valid Eq

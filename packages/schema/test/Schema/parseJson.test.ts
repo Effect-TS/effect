@@ -18,12 +18,14 @@ describe("Schema/ParseJson", () => {
       "a",
       Util.isBun
         ? `JSON Parse error: Unexpected identifier "a"`
-        : `Unexpected token a in JSON at position 0`
+        : `Unexpected token 'a', "a" is not valid JSON`
     )
     await Util.expectParseFailure(
       schema,
       "{",
-      Util.isBun ? `JSON Parse error: Expected '}'` : `Unexpected end of JSON input`
+      Util.isBun
+        ? `JSON Parse error: Expected '}'`
+        : `Expected property name or '}' in JSON at position 1`
     )
   })
 
@@ -53,7 +55,7 @@ describe("Schema/ParseJson", () => {
       `{"a"}`,
       Util.isBun
         ? `JSON Parse error: Expected ':' before value in object property definition`
-        : `Unexpected token } in JSON at position 4`
+        : `Expected ':' after property name in JSON at position 4`
     )
     await Util.expectParseFailure(schema, `{"a":"b"}`, `/a Expected number, actual "b"`)
     await Util.expectEncodeSuccess(schema, { a: 1 }, `{"a":1}`)

@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as AST from "./AST"
+import type * as AST from "./AST.js"
 
 /**
  * @since 1.0.0

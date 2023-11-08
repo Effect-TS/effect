@@ -7,10 +7,10 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as FastCheck from "fast-check"
-import * as AST from "./AST"
-import * as Internal from "./internal/common"
-import * as Parser from "./Parser"
-import * as Schema from "./Schema"
+import * as AST from "./AST.js"
+import * as Internal from "./internal/common.js"
+import * as Parser from "./Parser.js"
+import * as Schema from "./Schema.js"
 
 /**
  * @category model

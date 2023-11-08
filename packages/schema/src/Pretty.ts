@@ -3,11 +3,11 @@
  */
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as AST from "./AST"
-import * as Internal from "./internal/common"
-import * as Parser from "./Parser"
-import * as Schema from "./Schema"
-import * as TreeFormatter from "./TreeFormatter"
+import * as AST from "./AST.js"
+import * as Internal from "./internal/common.js"
+import * as Parser from "./Parser.js"
+import * as Schema from "./Schema.js"
+import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * @category model

@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import type * as AST from "../AST"
+import type * as AST from "../AST.js"
 
 // ---------------------------------------------
 // hooks

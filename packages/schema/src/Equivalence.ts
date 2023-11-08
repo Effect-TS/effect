@@ -2,15 +2,15 @@
  * @since 1.0.0
  */
 
-import * as AST from "@effect/schema/AST"
-import * as Parser from "@effect/schema/Parser"
-import type * as S from "@effect/schema/Schema"
 import * as Either from "effect/Either"
 import * as Equivalence from "effect/Equivalence"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Internal from "./internal/common"
+import * as AST from "./AST.js"
+import * as Internal from "./internal/common.js"
+import * as Parser from "./Parser.js"
+import type * as S from "./Schema.js"
 
 /**
  * @category hooks

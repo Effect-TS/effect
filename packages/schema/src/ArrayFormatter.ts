@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type { ParseErrors } from "./ParseResult"
-import { formatActual, getMessage } from "./TreeFormatter"
+import type { ParseErrors } from "./ParseResult.js"
+import { formatActual, getMessage } from "./TreeFormatter.js"
 
 /**
  * @category model

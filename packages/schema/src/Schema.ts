@@ -20,14 +20,14 @@ import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as S from "effect/String"
 import type { Simplify } from "effect/Types"
-import type { Arbitrary } from "./Arbitrary"
-import * as ArrayFormatter from "./ArrayFormatter"
-import type { ParseOptions } from "./AST"
-import * as AST from "./AST"
-import * as Internal from "./internal/common"
-import * as Parser from "./Parser"
-import * as ParseResult from "./ParseResult"
-import type { Pretty } from "./Pretty"
+import type { Arbitrary } from "./Arbitrary.js"
+import * as ArrayFormatter from "./ArrayFormatter.js"
+import type { ParseOptions } from "./AST.js"
+import * as AST from "./AST.js"
+import * as Internal from "./internal/common.js"
+import * as Parser from "./Parser.js"
+import * as ParseResult from "./ParseResult.js"
+import type { Pretty } from "./Pretty.js"
 
 // ---------------------------------------------
 // model
@@ -211,7 +211,7 @@ export {
    * @since 1.0.0
    */
   validateSync
-} from "./Parser"
+} from "./Parser.js"
 /* c8 ignore end */
 
 // ---------------------------------------------

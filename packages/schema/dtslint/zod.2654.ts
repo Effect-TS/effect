@@ -1,11 +1,11 @@
-import * as S from '@effect/schema/Schema'
+import * as S from "@effect/schema/Schema"
 
 const schema1 = S.union(S.string, S.array(S.string))
 
 // $ExpectType string | readonly string[]
 type Schema1 = S.Schema.To<typeof schema1>
 
-const schema2 = S.struct({  name: S.union(S.string, S.array(S.string)) })
+const schema2 = S.struct({ name: S.union(S.string, S.array(S.string)) })
 
 // $ExpectType { readonly name: string | readonly string[]; }
 type Schema2 = S.Schema.To<typeof schema2>

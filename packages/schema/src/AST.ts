@@ -8,8 +8,8 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Internal from "./internal/common"
-import type * as ParseResult from "./ParseResult"
+import * as Internal from "./internal/common.js"
+import type * as ParseResult from "./ParseResult.js"
 
 // -------------------------------------------------------------------------------------
 // annotations

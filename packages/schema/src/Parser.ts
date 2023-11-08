@@ -8,11 +8,11 @@ import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as AST from "./AST"
-import * as Internal from "./internal/common"
-import * as ParseResult from "./ParseResult"
-import type * as Schema from "./Schema"
-import * as TreeFormatter from "./TreeFormatter"
+import * as AST from "./AST.js"
+import * as Internal from "./internal/common.js"
+import * as ParseResult from "./ParseResult.js"
+import type * as Schema from "./Schema.js"
+import * as TreeFormatter from "./TreeFormatter.js"
 
 /** @internal */
 export const getEither = (
