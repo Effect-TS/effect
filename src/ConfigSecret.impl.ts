@@ -5,6 +5,8 @@ import type { Chunk } from "./Chunk.js"
 import type { Equal } from "./Equal.js"
 import * as internal from "./internal/configSecret.js"
 
+import type { ConfigSecret } from "./ConfigSecret.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -16,36 +18,6 @@ export const ConfigSecretTypeId: unique symbol = internal.ConfigSecretTypeId
  * @category symbols
  */
 export type ConfigSecretTypeId = typeof ConfigSecretTypeId
-
-import type { ConfigSecret } from "./ConfigSecret.js"
-
-export declare namespace ConfigSecret {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./ConfigSecret.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface ConfigSecret extends ConfigSecret.Proto, Equal {
-    /** @internal */
-    readonly raw: Array<number>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace ConfigSecret {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Proto {
-      readonly [ConfigSecretTypeId]: ConfigSecretTypeId
-    }
-  }
-}
 
 /**
  * @since 2.0.0

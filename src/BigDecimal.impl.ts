@@ -25,6 +25,8 @@ import type { Ordering } from "./Ordering.js"
 import { type Pipeable, pipeArguments } from "./Pipeable.js"
 import { hasProperty } from "./Predicate.js"
 
+import type { BigDecimal } from "./BigDecimal.js"
+
 const DEFAULT_PRECISION = 100
 
 /**
@@ -38,26 +40,6 @@ export const TypeId: unique symbol = Symbol.for("effect/BigDecimal")
  * @category symbol
  */
 export type TypeId = typeof TypeId
-
-import type { BigDecimal } from "./BigDecimal.js"
-
-export declare namespace BigDecimal {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./BigDecimal.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface BigDecimal extends Equal, Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-    readonly value: bigint
-    readonly scale: number
-    /** @internal */
-    normalized?: BigDecimal
-  }
-}
 
 const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
   [TypeId]: TypeId,

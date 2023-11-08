@@ -4,6 +4,8 @@
 import * as internal from "./internal/channel/upstreamPullStrategy.js"
 import type { Option } from "./Option.js"
 
+import type { UpstreamPullStrategy } from "./UpstreamPullStrategy.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -15,35 +17,6 @@ export const UpstreamPullStrategyTypeId: unique symbol = internal.UpstreamPullSt
  * @category symbols
  */
 export type UpstreamPullStrategyTypeId = typeof UpstreamPullStrategyTypeId
-
-import type { UpstreamPullStrategy } from "./UpstreamPullStrategy.js"
-
-export declare namespace UpstreamPullStrategy {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./UpstreamPullStrategy.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type UpstreamPullStrategy<A> = PullAfterNext<A> | PullAfterAllEnqueued<A>
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace UpstreamPullStrategy {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [UpstreamPullStrategyTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * @since 2.0.0

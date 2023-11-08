@@ -3,19 +3,6 @@
  */
 import * as internal from "./internal/configProvider/pathPatch.js"
 
-export * as PathPatch from "./ConfigProviderPathPatch.js"
-
-declare module "./ConfigProviderPathPatch.js" {
-  /**
-   * Represents a description of how to modify the path to a configuration
-   * value.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type PathPatch = Empty | AndThen | MapName | Nested | Unnested
-}
-
 /**
  * @since 2.0.0
  * @category models

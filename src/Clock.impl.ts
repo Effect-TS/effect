@@ -7,6 +7,8 @@ import type { Effect } from "./Effect.js"
 import * as internal from "./internal/clock.js"
 import * as defaultServices from "./internal/defaultServices.js"
 
+import type { Clock } from "./Clock.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -18,45 +20,6 @@ export const ClockTypeId: unique symbol = internal.ClockTypeId
  * @category symbols
  */
 export type ClockTypeId = typeof ClockTypeId
-
-import type { Clock } from "./Clock.js"
-
-export declare namespace Clock {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Clock.impl.js"
-}
-  /**
-   * Represents a time-based clock which provides functionality related to time
-   * and scheduling.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Clock {
-    readonly [ClockTypeId]: ClockTypeId
-    /**
-     * Unsafely returns the current time in milliseconds.
-     */
-    unsafeCurrentTimeMillis(): number
-    /**
-     * Returns the current time in milliseconds.
-     */
-    readonly currentTimeMillis: Effect<never, never, number>
-    /**
-     * Unsafely returns the current time in nanoseconds.
-     */
-    unsafeCurrentTimeNanos(): bigint
-    /**
-     * Returns the current time in nanoseconds.
-     */
-    readonly currentTimeNanos: Effect<never, never, bigint>
-    /**
-     * Asynchronously sleeps for the specified duration.
-     */
-    sleep(duration: Duration): Effect<never, never, void>
-  }
-}
 
 /**
  * @since 2.0.0

@@ -1,5 +1,3 @@
-export * as Types from "./Types.js"
-
 /**
  * A collection of types that are commonly used types.
  *
