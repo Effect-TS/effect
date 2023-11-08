@@ -117,7 +117,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeable, Inspectable {
+export interface MutableHashMap<K, V> extends Iterable<[K, V]>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */
