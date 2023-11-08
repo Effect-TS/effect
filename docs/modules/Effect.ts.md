@@ -1883,11 +1883,11 @@ A more powerful variation of `timed` that allows specifying the clock.
 export declare const timedWith: {
   <R1, E1>(
     nanoseconds: Effect<R1, E1, bigint>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, readonly [Duration.Duration, A]>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, [Duration.Duration, A]>
   <R, E, A, R1, E1>(
     self: Effect<R, E, A>,
     nanoseconds: Effect<R1, E1, bigint>
-  ): Effect<R | R1, E | E1, readonly [Duration.Duration, A]>
+  ): Effect<R | R1, E | E1, [Duration.Duration, A]>
 }
 ```
 
@@ -3014,12 +3014,12 @@ export declare const whenFiberRef: {
   <S>(
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate<S>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option.Option<A>]>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [S, Option.Option<A>]>
   <R, E, A, S>(
     self: Effect<R, E, A>,
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate<S>
-  ): Effect<R, E, readonly [S, Option.Option<A>]>
+  ): Effect<R, E, [S, Option.Option<A>]>
 }
 ```
 
