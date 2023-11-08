@@ -5,9 +5,9 @@ import * as internal from "./internal/stm/tPriorityQueue.js"
 import type { Option } from "./Option.js"
 import type { Order } from "./Order.js"
 import type { Predicate } from "./Predicate.js"
-import type { SortedMap } from "./SortedMap.js"
 import type { STM } from "./STM.js"
-import type { TRef } from "./TRef.js"
+
+import type { TPriorityQueue } from "./TPriorityQueue.js"
 
 /**
  * @since 2.0.0
@@ -20,49 +20,6 @@ export const TPriorityQueueTypeId: unique symbol = internal.TPriorityQueueTypeId
  * @category symbols
  */
 export type TPriorityQueueTypeId = typeof TPriorityQueueTypeId
-
-import type { TPriorityQueue } from "./TPriorityQueue.js"
-
-export declare namespace TPriorityQueue {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TPriorityQueue.impl.js"
-}
-  /**
-   * A `TPriorityQueue` contains values of type `A` that an `Order` is defined
-   * on. Unlike a `TQueue`, `take` returns the highest priority value (the value
-   * that is first in the specified ordering) as opposed to the first value
-   * offered to the queue. The ordering that elements with the same priority will
-   * be taken from the queue is not guaranteed.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TPriorityQueue<A> extends TPriorityQueue.Variance<A> {}
-  /**
-   * @internal
-   * @since 2.0.0
-   */
-  export interface TPriorityQueue<A> {
-    /** @internal */
-    readonly ref: TRef<SortedMap<A, [A, ...Array<A>]>>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace TPriorityQueue {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [TPriorityQueueTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * Constructs a new empty `TPriorityQueue` with the specified `Order`.

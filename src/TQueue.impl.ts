@@ -6,6 +6,8 @@ import type { Option } from "./Option.js"
 import type { Predicate } from "./Predicate.js"
 import type { STM } from "./STM.js"
 
+import type { TQueue } from "./TQueue.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -29,45 +31,6 @@ export const TEnqueueTypeId: unique symbol = internal.TEnqueueTypeId
  * @category symbols
  */
 export type TEnqueueTypeId = typeof TEnqueueTypeId
-
-import type { TQueue } from "./TQueue.js"
-
-export declare namespace TQueue {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TQueue.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace TQueue {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface TEnqueueVariance<A> {
-      readonly [TEnqueueTypeId]: {
-        readonly _In: (_: A) => void
-      }
-    }
-
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface TDequeueVariance<A> {
-      readonly [TDequeueTypeId]: {
-        readonly _Out: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * @since 2.0.0

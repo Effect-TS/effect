@@ -1,14 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type { Chunk } from "./Chunk.js"
 import type { LazyArg } from "./Function.js"
 import type { HashMap } from "./HashMap.js"
 import * as internal from "./internal/stm/tMap.js"
 import type { Option } from "./Option.js"
 import type { STM } from "./STM.js"
-import type { TArray } from "./TArray.js"
-import type { TRef } from "./TRef.js"
+
+import type { TMap } from "./TMap.js"
 
 /**
  * @since 2.0.0
@@ -21,49 +20,6 @@ export const TMapTypeId: unique symbol = internal.TMapTypeId
  * @category symbols
  */
 export type TMapTypeId = typeof TMapTypeId
-
-import type { TMap } from "./TMap.js"
-
-export declare namespace TMap {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TMap.impl.js"
-}
-  /**
-   * Transactional map implemented on top of `TRef` and `TArray`. Resolves
-   * conflicts via chaining.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TMap<K, V> extends TMap.Variance<K, V> {}
-  /**
-   * @internal
-   * @since 2.0.0
-   */
-  export interface TMap<K, V> {
-    /** @internal */
-    readonly tBuckets: TRef<TArray<Chunk<readonly [K, V]>>>
-    /** @internal */
-    readonly tSize: TRef<number>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace TMap {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<K, V> {
-      readonly [TMapTypeId]: {
-        readonly _K: (_: never) => K
-        readonly _V: (_: never) => V
-      }
-    }
-  }
-}
 
 /**
  * Makes an empty `TMap`.

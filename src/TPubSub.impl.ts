@@ -2,13 +2,13 @@
  * @since 2.0.0
  */
 import type { Effect } from "./Effect.js"
-import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/stm/tPubSub.js"
-import type * as tQueue from "./internal/stm/tQueue.js"
+
 import type { Scope } from "./Scope.js"
 import type { STM } from "./STM.js"
 import type { TQueue } from "./TQueue.js"
-import type { TRef } from "./TRef.js"
+
+import type { TPubSub } from "./TPubSub.js"
 
 /**
  * @since 2.0.0
@@ -21,41 +21,6 @@ export const TPubSubTypeId: unique symbol = internal.TPubSubTypeId
  * @category symbols
  */
 export type TPubSubTypeId = typeof TPubSubTypeId
-
-import type { TPubSub } from "./TPubSub.js"
-
-export declare namespace TPubSub {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TPubSub.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TPubSub<A> extends TQueue.TEnqueue<A> {}
-  /**
-   * @internal
-   * @since 2.0.0
-   */
-  export interface TPubSub<A> {
-    readonly [TPubSubTypeId]: TPubSubTypeId
-    /** @internal */
-    readonly pubsubSize: TRef<number>
-    /** @internal */
-    readonly publisherHead: TRef<TRef<internal.Node<A> | undefined>>
-    /** @internal */
-    readonly publisherTail: TRef<TRef<internal.Node<A> | undefined> | undefined>
-    /** @internal */
-    readonly requestedCapacity: number
-    /** @internal */
-    readonly strategy: tQueue.TQueueStrategy
-    /** @internal */
-    readonly subscriberCount: TRef<number>
-    /** @internal */
-    readonly subscribers: TRef<HashSet<TRef<TRef<internal.Node<A>> | undefined>>>
-  }
-}
 
 /**
  * Waits until the `TPubSub` is shutdown. The `STM` returned by this method will

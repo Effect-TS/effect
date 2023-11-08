@@ -6,7 +6,8 @@ import type { Effect } from "./Effect.js"
 import * as internal from "./internal/stm/tSemaphore.js"
 import type { Scope } from "./Scope.js"
 import type { STM } from "./STM.js"
-import type { TRef } from "./TRef.js"
+
+import type { TSemaphore } from "./TSemaphore.js"
 
 /**
  * @since 2.0.0
@@ -19,41 +20,6 @@ export const TSemaphoreTypeId: unique symbol = internal.TSemaphoreTypeId
  * @category symbols
  */
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
-
-import type { TSemaphore } from "./TSemaphore.js"
-
-export declare namespace TSemaphore {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TSemaphore.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TSemaphore extends TSemaphore.Proto {}
-  /**
-   * @internal
-   * @since 2.0.0
-   */
-  export interface TSemaphore {
-    /** @internal */
-    readonly permits: TRef<number>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace TSemaphore {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Proto {
-      readonly [TSemaphoreTypeId]: TSemaphoreTypeId
-    }
-  }
-}
 
 /**
  * @since 2.0.0

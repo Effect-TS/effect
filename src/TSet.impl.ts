@@ -6,7 +6,8 @@ import * as internal from "./internal/stm/tSet.js"
 import type { Option } from "./Option.js"
 import type { Predicate } from "./Predicate.js"
 import type { STM } from "./STM.js"
-import type { TMap } from "./TMap.js"
+
+import type { TSet } from "./TSet.js"
 
 /**
  * @since 2.0.0
@@ -19,45 +20,6 @@ export const TSetTypeId: unique symbol = internal.TSetTypeId
  * @category symbols
  */
 export type TSetTypeId = typeof TSetTypeId
-
-import type { TSet } from "./TSet.js"
-
-export declare namespace TSet {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TSet.impl.js"
-}
-  /**
-   * Transactional set implemented on top of `TMap`.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TSet<A> extends TSet.Variance<A> {}
-  /**
-   * @internal
-   * @since 2.0.0
-   */
-  export interface TSet<A> {
-    /** @internal */
-    readonly tMap: TMap<A, void>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace TSet {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [TSetTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * Stores new element in the set.
