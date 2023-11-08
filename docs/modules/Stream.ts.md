@@ -2627,8 +2627,8 @@ specified function.
 
 ```ts
 export declare const groupAdjacentBy: {
-  <A, K>(f: (a: A) => K): <R, E>(self: Stream<R, E, A>) => Stream<R, E, readonly [K, Chunk.NonEmptyChunk<A>]>
-  <R, E, A, K>(self: Stream<R, E, A>, f: (a: A) => K): Stream<R, E, readonly [K, Chunk.NonEmptyChunk<A>]>
+  <A, K>(f: (a: A) => K): <R, E>(self: Stream<R, E, A>) => Stream<R, E, [K, Chunk.NonEmptyChunk<A>]>
+  <R, E, A, K>(self: Stream<R, E, A>, f: (a: A) => K): Stream<R, E, [K, Chunk.NonEmptyChunk<A>]>
 }
 ```
 
@@ -3734,8 +3734,8 @@ See also `Stream.zip` for the more common point-wise variant.
 
 ```ts
 export declare const cross: {
-  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, readonly [A, A2]>
+  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, [A, A2]>
 }
 ```
 
@@ -3880,7 +3880,7 @@ export declare const distributedWithDynamic: {
   ) => Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
   <R, E, A, _>(
     self: Stream<R, E, A>,
@@ -3888,7 +3888,7 @@ export declare const distributedWithDynamic: {
   ): Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
 }
 ```
@@ -4678,14 +4678,12 @@ export declare const partition: {
   <A>(
     predicate: Predicate<A>,
     options?: { bufferSize?: number }
-  ): <R, E>(
-    self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: { bufferSize?: number }
-  ): Effect.Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
+  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
 }
 ```
 
@@ -4705,12 +4703,12 @@ export declare const partitionEither: {
     options?: { readonly bufferSize?: number }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
+  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
     predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, readonly [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
+  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
 }
 ```
 
@@ -4729,11 +4727,11 @@ valid only within the scope.
 export declare const peel: {
   <R2, E2, A, Z>(
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Z, Stream<never, E, A>]>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Z, Stream<never, E, A>]>
   <R, E, R2, E2, A, Z>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, readonly [Z, Stream<never, E, A>]>
+  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [Z, Stream<never, E, A>]>
 }
 ```
 
@@ -5543,8 +5541,8 @@ The new stream will end when one of the sides ends.
 
 ```ts
 export declare const zip: {
-  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, readonly [A, A2]>
+  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, [A, A2]>
 }
 ```
 
@@ -5566,11 +5564,11 @@ export declare const zipAll: {
     readonly other: Stream<R2, E2, A2>
     readonly defaultSelf: A
     readonly defaultOther: A2
-  }): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
+  }): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
   <R, E, R2, E2, A2, A>(
     self: Stream<R, E, A>,
     options: { readonly other: Stream<R2, E2, A2>; readonly defaultSelf: A; readonly defaultOther: A2 }
-  ): Stream<R | R2, E | E2, readonly [A, A2]>
+  ): Stream<R | R2, E | E2, [A, A2]>
 }
 ```
 
@@ -5638,7 +5636,7 @@ export declare const zipAllSortedByKey: {
     readonly defaultSelf: A
     readonly defaultOther: A2
     readonly order: Order.Order<K>
-  }): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, readonly [A, A2]]>
+  }): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, [A, A2]]>
   <R, E, R2, E2, A2, A, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -5647,7 +5645,7 @@ export declare const zipAllSortedByKey: {
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, readonly [A, A2]]>
+  ): Stream<R | R2, E | E2, [K, [A, A2]]>
 }
 ```
 
@@ -5672,7 +5670,7 @@ export declare const zipAllSortedByKeyLeft: {
     readonly other: Stream<R2, E2, readonly [K, A2]>
     readonly defaultSelf: A
     readonly order: Order.Order<K>
-  }): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, A]>
+  }): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, A]>
   <R, E, R2, E2, A2, A, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -5680,7 +5678,7 @@ export declare const zipAllSortedByKeyLeft: {
       readonly defaultSelf: A
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, A]>
+  ): Stream<R | R2, E | E2, [K, A]>
 }
 ```
 
@@ -5705,7 +5703,7 @@ export declare const zipAllSortedByKeyRight: {
     readonly other: Stream<R2, E2, readonly [K, A2]>
     readonly defaultOther: A2
     readonly order: Order.Order<K>
-  }): <R, E, A>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, A2]>
+  }): <R, E, A>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, A2]>
   <R, E, A, R2, E2, A2, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -5713,7 +5711,7 @@ export declare const zipAllSortedByKeyRight: {
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, A2]>
+  ): Stream<R | R2, E | E2, [K, A2]>
 }
 ```
 
@@ -5741,7 +5739,7 @@ export declare const zipAllSortedByKeyWith: {
     readonly onOther: (a2: A2) => A3
     readonly onBoth: (a: A, a2: A2) => A3
     readonly order: Order.Order<K>
-  }): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, A3]>
+  }): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, A3]>
   <R, E, R2, E2, A, A3, A2, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -5751,7 +5749,7 @@ export declare const zipAllSortedByKeyWith: {
       readonly onBoth: (a: A, a2: A2) => A3
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, A3]>
+  ): Stream<R | R2, E | E2, [K, A3]>
 }
 ```
 
@@ -5802,11 +5800,11 @@ The new stream will end when one of the sides ends.
 export declare const zipFlatten: {
   <R2, E2, A2>(
     that: Stream<R2, E2, A2>
-  ): <R, E, A extends readonly any[]>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [...A, A2]>
+  ): <R, E, A extends readonly any[]>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [...A, A2]>
   <R, E, A extends readonly any[], R2, E2, A2>(
     self: Stream<R, E, A>,
     that: Stream<R2, E2, A2>
-  ): Stream<R | R2, E | E2, readonly [...A, A2]>
+  ): Stream<R | R2, E | E2, [...A, A2]>
 }
 ```
 
@@ -5826,8 +5824,8 @@ used for zipping.
 
 ```ts
 export declare const zipLatest: {
-  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, readonly [A, A2]>
+  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, [A, A2]>
 }
 ```
 
@@ -5960,7 +5958,7 @@ Zips this stream together with the index of elements.
 **Signature**
 
 ```ts
-export declare const zipWithIndex: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, number]>
+export declare const zipWithIndex: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, [A, number]>
 ```
 
 Added in v2.0.0
@@ -5972,7 +5970,7 @@ Zips each element with the next element if present.
 **Signature**
 
 ```ts
-export declare const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option.Option<A>]>
+export declare const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, [A, Option.Option<A>]>
 ```
 
 Added in v2.0.0
@@ -5985,7 +5983,7 @@ Zips each element with the previous element. Initially accompanied by
 **Signature**
 
 ```ts
-export declare const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option.Option<A>, A]>
+export declare const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, [Option.Option<A>, A]>
 ```
 
 Added in v2.0.0
@@ -5999,7 +5997,7 @@ Zips each element with both the previous and next element.
 ```ts
 export declare const zipWithPreviousAndNext: <R, E, A>(
   self: Stream<R, E, A>
-) => Stream<R, E, readonly [Option.Option<A>, A, Option.Option<A>]>
+) => Stream<R, E, [Option.Option<A>, A, Option.Option<A>]>
 ```
 
 Added in v2.0.0

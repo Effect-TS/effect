@@ -887,12 +887,12 @@ export declare const partition: {
   <R, E, A, B>(
     f: (a: A) => Effect<R, E, B>,
     options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
-  ): (elements: Iterable<A>) => Effect<R, never, readonly [E[], B[]]>
+  ): (elements: Iterable<A>) => Effect<R, never, [E[], B[]]>
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A) => Effect<R, E, B>,
     options?: { readonly concurrency?: Concurrency; readonly batching?: boolean | "inherit" }
-  ): Effect<R, never, readonly [E[], B[]]>
+  ): Effect<R, never, [E[], B[]]>
 }
 ```
 
@@ -1868,7 +1868,7 @@ Returns a new effect that executes this one and times the execution.
 **Signature**
 
 ```ts
-export declare const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [Duration.Duration, A]>
+export declare const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [Duration.Duration, A]>
 ```
 
 Added in v2.0.0
@@ -1883,11 +1883,11 @@ A more powerful variation of `timed` that allows specifying the clock.
 export declare const timedWith: {
   <R1, E1>(
     nanoseconds: Effect<R1, E1, bigint>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, readonly [Duration.Duration, A]>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | E, [Duration.Duration, A]>
   <R, E, A, R1, E1>(
     self: Effect<R, E, A>,
     nanoseconds: Effect<R1, E1, bigint>
-  ): Effect<R | R1, E | E1, readonly [Duration.Duration, A]>
+  ): Effect<R | R1, E | E1, [Duration.Duration, A]>
 }
 ```
 
@@ -3014,12 +3014,12 @@ export declare const whenFiberRef: {
   <S>(
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate<S>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option.Option<A>]>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [S, Option.Option<A>]>
   <R, E, A, S>(
     self: Effect<R, E, A>,
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate<S>
-  ): Effect<R, E, readonly [S, Option.Option<A>]>
+  ): Effect<R, E, [S, Option.Option<A>]>
 }
 ```
 
@@ -3033,15 +3033,8 @@ Executes this workflow when the value of the `Ref` satisfies the predicate.
 
 ```ts
 export declare const whenRef: {
-  <S>(
-    ref: Ref.Ref<S>,
-    predicate: Predicate<S>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [S, Option.Option<A>]>
-  <R, E, A, S>(
-    self: Effect<R, E, A>,
-    ref: Ref.Ref<S>,
-    predicate: Predicate<S>
-  ): Effect<R, E, readonly [S, Option.Option<A>]>
+  <S>(ref: Ref.Ref<S>, predicate: Predicate<S>): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [S, Option.Option<A>]>
+  <R, E, A, S>(self: Effect<R, E, A>, ref: Ref.Ref<S>, predicate: Predicate<S>): Effect<R, E, [S, Option.Option<A>]>
 }
 ```
 
@@ -3575,12 +3568,12 @@ export declare const mapAccum: {
   <A, B, R, E, Z>(
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>
-  ): (elements: Iterable<A>) => Effect<R, E, readonly [Z, B[]]>
+  ): (elements: Iterable<A>) => Effect<R, E, [Z, B[]]>
   <A, B, R, E, Z>(
     elements: Iterable<A>,
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect<R, E, readonly [Z, B]>
-  ): Effect<R, E, readonly [Z, B[]]>
+  ): Effect<R, E, [Z, B[]]>
 }
 ```
 
@@ -5041,7 +5034,7 @@ well as a finalizer that can be run to close the scope of this workflow.
 ```ts
 export declare const withEarlyRelease: <R, E, A>(
   self: Effect<R, E, A>
-) => Effect<Scope.Scope | R, E, readonly [Effect<never, never, void>, A]>
+) => Effect<Scope.Scope | R, E, [Effect<never, never, void>, A]>
 ```
 
 Added in v2.0.0
@@ -5224,12 +5217,12 @@ export declare const summarized: {
   <R2, E2, B, C>(
     summary: Effect<R2, E2, B>,
     f: (start: B, end: B) => C
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, readonly [C, A]>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, [C, A]>
   <R, E, A, R2, E2, B, C>(
     self: Effect<R, E, A>,
     summary: Effect<R2, E2, B>,
     f: (start: B, end: B) => C
-  ): Effect<R | R2, E | E2, readonly [C, A]>
+  ): Effect<R | R2, E | E2, [C, A]>
 }
 ```
 
@@ -5414,9 +5407,7 @@ Returns a new workflow that executes this one and captures the changes in
 **Signature**
 
 ```ts
-export declare const diffFiberRefs: <R, E, A>(
-  self: Effect<R, E, A>
-) => Effect<R, E, readonly [FiberRefsPatch.FiberRefsPatch, A]>
+export declare const diffFiberRefs: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, [FiberRefsPatch.FiberRefsPatch, A]>
 ```
 
 Added in v2.0.0

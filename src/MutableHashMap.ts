@@ -21,7 +21,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeable, Inspectable {
+export interface MutableHashMap<K, V> extends Iterable<[K, V]>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */
@@ -30,7 +30,7 @@ export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeabl
 
 const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backingMap"> = {
   [TypeId]: TypeId,
-  [Symbol.iterator](this: MutableHashMap<unknown, unknown>): Iterator<readonly [unknown, unknown]> {
+  [Symbol.iterator](this: MutableHashMap<unknown, unknown>): Iterator<[unknown, unknown]> {
     return this.backingMap.current[Symbol.iterator]()
   },
   toString() {

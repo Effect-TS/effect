@@ -130,8 +130,8 @@ export const Date: Order<Date> = mapInput(number, (date) => date.getTime())
  * @since 2.0.0
  */
 export const product: {
-  <B>(that: Order<B>): <A>(self: Order<A>) => Order<readonly [A, B]>
-  <A, B>(self: Order<A>, that: Order<B>): Order<readonly [A, B]>
+  <B>(that: Order<B>): <A>(self: Order<A>) => Order<readonly [A, B]> // readonly because invariant
+  <A, B>(self: Order<A>, that: Order<B>): Order<readonly [A, B]> // readonly because invariant
 } = dual(2, <A, B>(self: Order<A>, that: Order<B>): Order<readonly [A, B]> =>
   make(([xa, xb], [ya, yb]) => {
     const o = self(xa, ya)
@@ -165,8 +165,8 @@ export const all = <A>(collection: Iterable<Order<A>>): Order<ReadonlyArray<A>> 
  * @since 2.0.0
  */
 export const productMany: {
-  <A>(collection: Iterable<Order<A>>): (self: Order<A>) => Order<readonly [A, ...Array<A>]>
-  <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<readonly [A, ...Array<A>]>
+  <A>(collection: Iterable<Order<A>>): (self: Order<A>) => Order<readonly [A, ...Array<A>]> // readonly because invariant
+  <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<readonly [A, ...Array<A>]> // readonly because invariant
 } = dual(2, <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<readonly [A, ...Array<A>]> => {
   const O = all(collection)
   return make((x, y) => {

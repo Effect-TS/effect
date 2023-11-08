@@ -228,11 +228,19 @@ export const asUnit: <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<En
 export const bothInOut: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, readonly [In, In2], readonly [Out, Out2]>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<
+    Env2 | Env,
+    readonly [In, In2], // readonly because contravariant
+    [Out, Out2]
+  >
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>
-  ): Schedule<Env | Env2, readonly [In, In2], readonly [Out, Out2]>
+  ): Schedule<
+    Env | Env2,
+    readonly [In, In2], // readonly because contravariant
+    [Out, Out2]
+  >
 } = internal.bothInOut
 
 /**
@@ -550,11 +558,11 @@ export const duration: (duration: Duration.DurationInput) => Schedule<never, unk
 export const either: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>
-  ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
+  ): Schedule<Env | Env2, In & In2, [Out, Out2]>
 } = internal.either
 
 /**
@@ -567,12 +575,12 @@ export const eitherWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
+  ): Schedule<Env | Env2, In & In2, [Out, Out2]>
 } = internal.eitherWith
 
 /**
@@ -708,11 +716,11 @@ export const identity: <A>() => Schedule<never, A, A> = internal.identity
 export const intersect: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>
-  ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
+  ): Schedule<Env | Env2, In & In2, [Out, Out2]>
 } = internal.intersect
 
 /**
@@ -727,12 +735,12 @@ export const intersectWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
+  ): Schedule<Env | Env2, In & In2, [Out, Out2]>
 } = internal.intersectWith
 
 /**
@@ -1173,11 +1181,11 @@ export const unfold: <A>(initial: A, f: (a: A) => A) => Schedule<never, unknown,
 export const union: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>
-  ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
+  ): Schedule<Env | Env2, In & In2, [Out, Out2]>
 } = internal.union
 
 /**
@@ -1192,12 +1200,12 @@ export const unionWith: {
   <Env2, In2, Out2>(
     that: Schedule<Env2, In2, Out2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, readonly [Out, Out2]>
+  ): <Env, In, Out>(self: Schedule<Env, In, Out>) => Schedule<Env2 | Env, In & In2, [Out, Out2]>
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule<Env, In, Out>,
     that: Schedule<Env2, In2, Out2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): Schedule<Env | Env2, In & In2, readonly [Out, Out2]>
+  ): Schedule<Env | Env2, In & In2, [Out, Out2]>
 } = internal.unionWith
 
 /**

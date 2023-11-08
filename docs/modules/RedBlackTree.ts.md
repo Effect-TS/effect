@@ -159,8 +159,8 @@ specified index does not exist.
 
 ```ts
 export declare const getAt: {
-  (index: number): <K, V>(self: RedBlackTree<K, V>) => Option<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, index: number): Option<readonly [K, V]>
+  (index: number): <K, V>(self: RedBlackTree<K, V>) => Option<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, index: number): Option<[K, V]>
 }
 ```
 
@@ -207,7 +207,7 @@ Returns the first entry in the tree, if it exists.
 **Signature**
 
 ```ts
-export declare const first: <K, V>(self: RedBlackTree<K, V>) => Option<readonly [K, V]>
+export declare const first: <K, V>(self: RedBlackTree<K, V>) => Option<[K, V]>
 ```
 
 Added in v2.0.0
@@ -255,7 +255,7 @@ Returns the last entry in the tree, if it exists.
 **Signature**
 
 ```ts
-export declare const last: <K, V>(self: RedBlackTree<K, V>) => Option<readonly [K, V]>
+export declare const last: <K, V>(self: RedBlackTree<K, V>) => Option<[K, V]>
 ```
 
 Added in v2.0.0
@@ -305,7 +305,7 @@ A Red-Black Tree.
 **Signature**
 
 ```ts
-export interface RedBlackTree<Key, Value> extends Iterable<readonly [Key, Value]>, Equal, Pipeable, Inspectable {
+export interface RedBlackTree<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 }
 ```
@@ -352,8 +352,8 @@ tree.
 
 ```ts
 export declare const at: {
-  (index: number): <K, V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, index: number): Iterable<readonly [K, V]>
+  (index: number): <K, V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, index: number): Iterable<[K, V]>
 }
 ```
 
@@ -370,8 +370,8 @@ tree.
 
 ```ts
 export declare const atReversed: {
-  (index: number): <K, V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, index: number): Iterable<readonly [K, V]>
+  (index: number): <K, V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, index: number): Iterable<[K, V]>
 }
 ```
 
@@ -454,8 +454,8 @@ specified key.
 
 ```ts
 export declare const greaterThan: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -470,8 +470,8 @@ equal to the specified key.
 
 ```ts
 export declare const greaterThanEqual: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -486,8 +486,8 @@ than or equal to the specified key.
 
 ```ts
 export declare const greaterThanEqualReversed: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -502,8 +502,8 @@ than the specified key.
 
 ```ts
 export declare const greaterThanReversed: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -518,8 +518,8 @@ specified key.
 
 ```ts
 export declare const lessThan: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -534,8 +534,8 @@ equal to the specified key.
 
 ```ts
 export declare const lessThanEqual: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -550,8 +550,8 @@ than or equal to the specified key.
 
 ```ts
 export declare const lessThanEqualReversed: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -566,8 +566,8 @@ than the specified key.
 
 ```ts
 export declare const lessThanReversed: {
-  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
-  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<readonly [K, V]>
+  <K>(key: K): <V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
+  <K, V>(self: RedBlackTree<K, V>, key: K): Iterable<[K, V]>
 }
 ```
 
@@ -580,7 +580,7 @@ Traverse the tree in reverse order.
 **Signature**
 
 ```ts
-export declare const reversed: <K, V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
+export declare const reversed: <K, V>(self: RedBlackTree<K, V>) => Iterable<[K, V]>
 ```
 
 Added in v2.0.0

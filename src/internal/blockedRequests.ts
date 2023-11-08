@@ -199,7 +199,7 @@ export const flatten = <R>(
  */
 const step = <R>(
   requests: RequestBlock.RequestBlock<R>
-): readonly [ParallelCollection<R>, List.List<RequestBlock.RequestBlock<R>>] => {
+): [ParallelCollection<R>, List.List<RequestBlock.RequestBlock<R>>] => {
   let current: RequestBlock.RequestBlock<R> = requests
   let parallel = parallelCollectionEmpty<R>()
   let stack = List.empty<RequestBlock.RequestBlock<R>>()
@@ -209,7 +209,7 @@ const step = <R>(
     switch (current._tag) {
       case "Empty": {
         if (List.isNil(stack)) {
-          return [parallel, sequential] as const
+          return [parallel, sequential]
         }
         current = stack.head
         stack = stack.tail
@@ -399,15 +399,11 @@ export const parallelCollectionToSequentialCollection = <R>(
   self: ParallelCollection<R>
 ): SequentialCollection<R> => sequentialCollectionMake(HashMap.map(self.map, (x) => Array.of(x)) as any)
 
-/** @internal */
-export const parallelCollectionToChunk = <R>(
-  self: ParallelCollection<R>
-): Array<
-  readonly [
-    RequestResolver.RequestResolver<unknown, R>,
-    Array<Request.Entry<unknown>>
-  ]
-> => Array.from(self.map) as any
+// TODO
+// /** @internal */
+// export const parallelCollectionToChunk = <R>(
+//   self: ParallelCollection<R>
+// ): Array<[RequestResolver.RequestResolver<unknown, R>, Array<Request.Entry<unknown>>]> => Array.from(self.map) as any
 
 /** @internal */
 export const SequentialCollectionTypeId = Symbol.for(
@@ -461,12 +457,10 @@ export const sequentialCollectionKeys = <R>(
 ): Array<RequestResolver.RequestResolver<unknown, R>> => Array.from(HashMap.keys(self.map)) as any
 
 /** @internal */
-export const sequentialCollectionToChunk = <R>(self: SequentialCollection<R>): Array<
-  readonly [
-    RequestResolver.RequestResolver<unknown, R>,
-    Array<Array<Request.Entry<unknown>>>
-  ]
-> => Array.from(self.map) as any
+export const sequentialCollectionToChunk = <R>(
+  self: SequentialCollection<R>
+): Array<[RequestResolver.RequestResolver<unknown, R>, Array<Array<Request.Entry<unknown>>>]> =>
+  Array.from(self.map) as any
 
 /** @internal */
 export type RequestBlockParallelTypeId = typeof RequestBlockParallelTypeId

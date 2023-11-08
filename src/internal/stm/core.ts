@@ -767,12 +767,12 @@ export const zip = dual<
     that: STM.STM<R1, E1, A1>
   ) => <R, E, A>(
     self: STM.STM<R, E, A>
-  ) => STM.STM<R1 | R, E1 | E, readonly [A, A1]>,
+  ) => STM.STM<R1 | R, E1 | E, [A, A1]>,
   <R, E, A, R1, E1, A1>(
     self: STM.STM<R, E, A>,
     that: STM.STM<R1, E1, A1>
-  ) => STM.STM<R1 | R, E1 | E, readonly [A, A1]>
->(2, (self, that) => pipe(self, zipWith(that, (a, a1) => [a, a1] as const)))
+  ) => STM.STM<R1 | R, E1 | E, [A, A1]>
+>(2, (self, that) => pipe(self, zipWith(that, (a, a1) => [a, a1])))
 
 /** @internal */
 export const zipLeft = dual<

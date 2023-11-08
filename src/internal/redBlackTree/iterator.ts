@@ -10,7 +10,7 @@ export const Direction = {
 } as const
 
 /** @internal */
-export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
+export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
   private count = 0
 
   constructor(
@@ -40,7 +40,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   /**
    * Iterator next
    */
-  next(): IteratorResult<readonly [K, V], number> {
+  next(): IteratorResult<[K, V], number> {
     const entry = this.entry
     this.count++
     if (this.direction === Direction.Forward) {
@@ -81,14 +81,11 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   /**
    * Returns the key
    */
-  get entry(): Option.Option<readonly [K, V]> {
+  get entry(): Option.Option<[K, V]> {
+    // TODO: this is ReadonlyArray.last
     if (this.stack.length > 0) {
-      return Option.some(
-        [
-          this.stack[this.stack.length - 1]!.key,
-          this.stack[this.stack.length - 1]!.value
-        ]
-      )
+      const node = this.stack[this.stack.length - 1]!
+      return Option.some([node.key, node.value])
     }
     return Option.none()
   }

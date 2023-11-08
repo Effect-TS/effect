@@ -420,7 +420,8 @@ export const summaryTimestamp: (
     readonly quantiles: Chunk.Chunk<number>
     readonly description?: string
   }
-) => Metric.Summary<readonly [value: number, timestamp: number]> = internal.summaryTimestamp
+) => Metric.Summary<readonly [value: number, timestamp: number]> // readonly because contravariant
+ = internal.summaryTimestamp
 
 /**
  * Returns a new metric, which is identical in every way to this one, except
@@ -692,11 +693,19 @@ export const zip: {
     that: Metric<Type2, In2, Out2>
   ): <Type, In, Out>(
     self: Metric<Type, In, Out>
-  ) => Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>
+  ) => Metric<
+    readonly [Type, Type2], // readonly because invariant
+    readonly [In, In2], // readonly because contravariant
+    [Out, Out2]
+  >
   <Type, In, Out, Type2, In2, Out2>(
     self: Metric<Type, In, Out>,
     that: Metric<Type2, In2, Out2>
-  ): Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]>
+  ): Metric<
+    readonly [Type, Type2], // readonly because invariant
+    readonly [In, In2], // readonly because contravariant
+    [Out, Out2]
+  >
 } = internal.zip
 
 /**

@@ -1103,11 +1103,11 @@ export const zipWith: {
  * @category elements
  */
 export const zip: {
-  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<readonly [A, B]>
-  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<readonly [A, B]>
+  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<[A, B]>
+  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<[A, B]>
 } = dual(
   2,
-  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<readonly [A, B]> => zipWith(self, that, (a, b) => [a, b])
+  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<[A, B]> => zipWith(self, that, (a, b) => [a, b])
 )
 
 /**

@@ -124,12 +124,12 @@ export const zip = dual<
     that: Logger.Logger<Message2, Output2>
   ) => <Message, Output>(
     self: Logger.Logger<Message, Output>
-  ) => Logger.Logger<Message & Message2, readonly [Output, Output2]>,
+  ) => Logger.Logger<Message & Message2, [Output, Output2]>,
   <Message, Output, Message2, Output2>(
     self: Logger.Logger<Message, Output>,
     that: Logger.Logger<Message2, Output2>
-  ) => Logger.Logger<Message & Message2, readonly [Output, Output2]>
->(2, (self, that) => makeLogger((options) => [self.log(options), that.log(options)] as const))
+  ) => Logger.Logger<Message & Message2, [Output, Output2]>
+>(2, (self, that) => makeLogger((options) => [self.log(options), that.log(options)]))
 
 /** @internal */
 export const zipLeft = dual<

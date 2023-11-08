@@ -209,8 +209,8 @@ contains all elements for which the specified function returned a `Right`.
 
 ```ts
 export declare const partitionMap: {
-  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => readonly [List<B>, List<C>]
-  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): readonly [List<B>, List<C>]
+  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => [List<B>, List<C>]
+  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [List<B>, List<C>]
 }
 ```
 
@@ -224,8 +224,8 @@ Splits the specified list into two lists at the specified index.
 
 ```ts
 export declare const splitAt: {
-  (n: number): <A>(self: List<A>) => readonly [List<A>, List<A>]
-  <A>(self: List<A>, n: number): readonly [List<A>, List<A>]
+  (n: number): <A>(self: List<A>) => [List<A>, List<A>]
+  <A>(self: List<A>, n: number): [List<A>, List<A>]
 }
 ```
 

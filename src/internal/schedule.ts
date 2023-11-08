@@ -255,7 +255,7 @@ export const bothInOut = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     readonly [In, In2],
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -263,10 +263,10 @@ export const bothInOut = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     readonly [In, In2],
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(2, (self, that) =>
-  makeWithState([self.initial, that.initial] as const, (now, [in1, in2], state) =>
+  makeWithState([self.initial, that.initial], (now, [in1, in2], state) =>
     core.zipWith(
       self.step(now, in1, state[0]),
       that.step(now, in2, state[1]),
@@ -274,12 +274,12 @@ export const bothInOut = dual<
         if (ScheduleDecision.isContinue(lDecision) && ScheduleDecision.isContinue(rDecision)) {
           const interval = pipe(lDecision.intervals, Intervals.union(rDecision.intervals))
           return [
-            [lState, rState] as const,
-            [out, out2] as const,
+            [lState, rState],
+            [out, out2],
             ScheduleDecision.continue(interval)
-          ] as const
+          ]
         }
-        return [[lState, rState] as const, [out, out2] as const, ScheduleDecision.done] as const
+        return [[lState, rState], [out, out2], ScheduleDecision.done]
       }
     )))
 
@@ -417,8 +417,8 @@ export const mapInputEffect = dual<
 
 /** @internal */
 export const dayOfMonth = (day: number): Schedule.Schedule<never, unknown, number> => {
-  return makeWithState(
-    [Number.NEGATIVE_INFINITY, 0] as readonly [number, number],
+  return makeWithState<[number, number], never, unknown, number>(
+    [Number.NEGATIVE_INFINITY, 0],
     (now, _, state) => {
       if (!Number.isInteger(day) || day < 1 || 31 < day) {
         return core.dieSync(() =>
@@ -435,10 +435,10 @@ export const dayOfMonth = (day: number): Schedule.Schedule<never, unknown, numbe
       const interval = Interval.make(start, end)
       return core.succeed(
         [
-          [end, n + 1] as const,
+          [end, n + 1],
           n,
           ScheduleDecision.continueWith(interval)
-        ] as const
+        ]
       )
     }
   )
@@ -446,8 +446,8 @@ export const dayOfMonth = (day: number): Schedule.Schedule<never, unknown, numbe
 
 /** @internal */
 export const dayOfWeek = (day: number): Schedule.Schedule<never, unknown, number> => {
-  return makeWithState(
-    [Number.MIN_SAFE_INTEGER, 0] as readonly [number, number],
+  return makeWithState<[number, number], never, unknown, number>(
+    [Number.MIN_SAFE_INTEGER, 0],
     (now, _, state) => {
       if (!Number.isInteger(day) || day < 1 || 7 < day) {
         return core.dieSync(() =>
@@ -464,10 +464,10 @@ export const dayOfWeek = (day: number): Schedule.Schedule<never, unknown, number
       const interval = Interval.make(start, end)
       return core.succeed(
         [
-          [end, n + 1] as const,
+          [end, n + 1],
           n,
           ScheduleDecision.continueWith(interval)
-        ] as const
+        ]
       )
     }
   )
@@ -509,16 +509,16 @@ export const delays = <Env, In, Out>(
       self.step(now, input, state),
       core.flatMap((
         [state, _, decision]
-      ): Effect.Effect<never, never, readonly [any, Duration.Duration, ScheduleDecision.ScheduleDecision]> => {
+      ): Effect.Effect<never, never, [any, Duration.Duration, ScheduleDecision.ScheduleDecision]> => {
         if (ScheduleDecision.isDone(decision)) {
-          return core.succeed([state, Duration.zero, decision] as const)
+          return core.succeed([state, Duration.zero, decision])
         }
         return core.succeed(
           [
             state,
             Duration.millis(Intervals.start(decision.intervals) - now),
             decision
-          ] as const
+          ]
         )
       })
     ))
@@ -562,7 +562,7 @@ export const driver = <Env, In, Out>(
   self: Schedule.Schedule<Env, In, Out>
 ): Effect.Effect<never, never, Schedule.ScheduleDriver<Env, In, Out>> =>
   pipe(
-    ref.make<readonly [Option.Option<Out>, any]>([Option.none(), self.initial]),
+    ref.make<[Option.Option<Out>, any]>([Option.none(), self.initial]),
     core.map((ref) => new ScheduleDriverImpl(self, ref))
   )
 
@@ -591,7 +591,7 @@ export const either = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -599,7 +599,7 @@ export const either = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(2, (self, that) => union(self, that))
 
@@ -611,7 +611,7 @@ export const eitherWith = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -620,7 +620,7 @@ export const eitherWith = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(3, (self, that, f) => unionWith(self, that, f))
 
@@ -670,17 +670,17 @@ export const fibonacci = (oneInput: Duration.DurationInput): Schedule.Schedule<n
 export const fixed = (intervalInput: Duration.DurationInput): Schedule.Schedule<never, unknown, number> => {
   const interval = Duration.decode(intervalInput)
   const intervalMillis = Duration.toMillis(interval)
-  return makeWithState(
-    [Option.none(), 0] as readonly [Option.Option<readonly [number, number]>, number],
+  return makeWithState<[Option.Option<[number, number]>, number], never, unknown, number>(
+    [Option.none(), 0],
     (now, _, [option, n]) =>
       core.sync(() => {
         switch (option._tag) {
           case "None": {
             return [
-              [Option.some([now, now + intervalMillis] as const), n + 1] as const,
+              [Option.some([now, now + intervalMillis]), n + 1],
               n,
               ScheduleDecision.continueWith(Interval.after(now + intervalMillis))
-            ] as const
+            ]
           }
           case "Some": {
             const [startMillis, lastRun] = option.value
@@ -691,10 +691,10 @@ export const fixed = (intervalInput: Duration.DurationInput): Schedule.Schedule<
             const sleepTime = Equal.equals(boundary, Duration.zero) ? interval : boundary
             const nextRun = runningBehind ? now : now + Duration.toMillis(sleepTime)
             return [
-              [Option.some([startMillis, nextRun] as const), n + 1] as const,
+              [Option.some([startMillis, nextRun]), n + 1],
               n,
               ScheduleDecision.continueWith(Interval.after(nextRun))
-            ] as const
+            ]
           }
         }
       })
@@ -740,8 +740,8 @@ export const fromFunction = <A, B>(f: (a: A) => B): Schedule.Schedule<never, A, 
 
 /** @internal */
 export const hourOfDay = (hour: number): Schedule.Schedule<never, unknown, number> =>
-  makeWithState(
-    [Number.NEGATIVE_INFINITY, 0] as readonly [number, number],
+  makeWithState<[number, number], never, unknown, number>(
+    [Number.NEGATIVE_INFINITY, 0],
     (now, _, state) => {
       if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
         return core.dieSync(() =>
@@ -758,10 +758,10 @@ export const hourOfDay = (hour: number): Schedule.Schedule<never, unknown, numbe
       const interval = Interval.make(start, end)
       return core.succeed(
         [
-          [end, n + 1] as const,
+          [end, n + 1],
           n,
           ScheduleDecision.continueWith(interval)
-        ] as const
+        ]
       )
     }
   )
@@ -784,7 +784,7 @@ export const intersect = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -792,7 +792,7 @@ export const intersect = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(2, (self, that) => intersectWith(self, that, Intervals.intersect))
 
@@ -804,7 +804,7 @@ export const intersectWith = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -813,7 +813,7 @@ export const intersectWith = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(3, <Env, In, Out, Env2, In2, Out2>(
   self: Schedule.Schedule<Env, In, Out>,
@@ -822,42 +822,45 @@ export const intersectWith = dual<
 ): Schedule.Schedule<
   Env | Env2,
   In & In2,
-  readonly [Out, Out2]
+  [Out, Out2]
 > =>
-  makeWithState([self.initial, that.initial] as const, (now, input: In & In2, state) =>
-    pipe(
-      core.zipWith(
-        self.step(now, input, state[0]),
-        that.step(now, input, state[1]),
-        (a, b) => [a, b] as const
-      ),
-      core.flatMap(([
-        [lState, out, lDecision],
-        [rState, out2, rDecision]
-      ]) => {
-        if (ScheduleDecision.isContinue(lDecision) && ScheduleDecision.isContinue(rDecision)) {
-          return intersectWithLoop(
-            self,
-            that,
-            input,
-            lState,
-            out,
-            lDecision.intervals,
-            rState,
-            out2,
-            rDecision.intervals,
-            f
+  makeWithState<[any, any], Env | Env2, In & In2, [Out, Out2]>(
+    [self.initial, that.initial],
+    (now, input: In & In2, state) =>
+      pipe(
+        core.zipWith(
+          self.step(now, input, state[0]),
+          that.step(now, input, state[1]),
+          (a, b) => [a, b] as const
+        ),
+        core.flatMap(([
+          [lState, out, lDecision],
+          [rState, out2, rDecision]
+        ]) => {
+          if (ScheduleDecision.isContinue(lDecision) && ScheduleDecision.isContinue(rDecision)) {
+            return intersectWithLoop(
+              self,
+              that,
+              input,
+              lState,
+              out,
+              lDecision.intervals,
+              rState,
+              out2,
+              rDecision.intervals,
+              f
+            )
+          }
+          return core.succeed(
+            [
+              [lState, rState],
+              [out, out2],
+              ScheduleDecision.done
+            ]
           )
-        }
-        return core.succeed(
-          [
-            [lState, rState] as const,
-            [out, out2] as const,
-            ScheduleDecision.done
-          ] as const
-        )
-      })
-    )))
+        })
+      )
+  ))
 
 /** @internal */
 const intersectWithLoop = <State, State1, Env, In, Out, Env1, In1, Out2>(
@@ -874,7 +877,7 @@ const intersectWithLoop = <State, State1, Env, In, Out, Env1, In1, Out2>(
 ): Effect.Effect<
   Env | Env1,
   never,
-  readonly [readonly [State, State1], readonly [Out, Out2], ScheduleDecision.ScheduleDecision]
+  [[State, State1], [Out, Out2], ScheduleDecision.ScheduleDecision]
 > => {
   const combined = f(lInterval, rInterval)
   if (Intervals.isNonEmpty(combined)) {
@@ -993,8 +996,8 @@ export const mapEffect = dual<
 
 /** @internal */
 export const minuteOfHour = (minute: number): Schedule.Schedule<never, unknown, number> =>
-  makeWithState(
-    [Number.MIN_SAFE_INTEGER, 0] as readonly [number, number],
+  makeWithState<[number, number], never, unknown, number>(
+    [Number.MIN_SAFE_INTEGER, 0],
     (now, _, state) => {
       if (!Number.isInteger(minute) || minute < 0 || 59 < minute) {
         return core.dieSync(() =>
@@ -1014,7 +1017,7 @@ export const minuteOfHour = (minute: number): Schedule.Schedule<never, unknown, 
           [end, n + 1],
           n,
           ScheduleDecision.continueWith(interval)
-        ] as const
+        ]
       )
     }
   )
@@ -1210,7 +1213,7 @@ export const repeatForever = <Env, In, Out>(self: Schedule.Schedule<Env, In, Out
       now: number,
       input: In,
       state: any
-    ): Effect.Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]> =>
+    ): Effect.Effect<Env, never, [any, Out, ScheduleDecision.ScheduleDecision]> =>
       core.flatMap(
         self.step(now, input, state),
         ([state, out, decision]) =>
@@ -1306,8 +1309,8 @@ const runLoop = <Env, In, Out>(
 
 /** @internal */
 export const secondOfMinute = (second: number): Schedule.Schedule<never, unknown, number> =>
-  makeWithState(
-    [Number.NEGATIVE_INFINITY, 0] as readonly [number, number],
+  makeWithState<[number, number], never, unknown, number>(
+    [Number.NEGATIVE_INFINITY, 0],
     (now, _, state) => {
       if (!Number.isInteger(second) || second < 0 || 59 < second) {
         return core.dieSync(() =>
@@ -1327,7 +1330,7 @@ export const secondOfMinute = (second: number): Schedule.Schedule<never, unknown
           [end, n + 1],
           n,
           ScheduleDecision.continueWith(interval)
-        ] as const
+        ]
       )
     }
   )
@@ -1392,7 +1395,7 @@ export const union = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -1400,7 +1403,7 @@ export const union = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(2, (self, that) => unionWith(self, that, Intervals.union))
 
@@ -1412,7 +1415,7 @@ export const unionWith = dual<
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
@@ -1421,38 +1424,38 @@ export const unionWith = dual<
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(3, (self, that, f) =>
-  makeWithState([self.initial, that.initial] as const, (now, input, state) =>
+  makeWithState([self.initial, that.initial], (now, input, state) =>
     core.zipWith(
       self.step(now, input, state[0]),
       that.step(now, input, state[1]),
       ([lState, l, lDecision], [rState, r, rDecision]) => {
         if (ScheduleDecision.isDone(lDecision) && ScheduleDecision.isDone(rDecision)) {
-          return [[lState, rState] as const, [l, r] as const, ScheduleDecision.done] as const
+          return [[lState, rState], [l, r], ScheduleDecision.done]
         }
         if (ScheduleDecision.isDone(lDecision) && ScheduleDecision.isContinue(rDecision)) {
           return [
-            [lState, rState] as const,
-            [l, r] as const,
+            [lState, rState],
+            [l, r],
             ScheduleDecision.continue(rDecision.intervals)
-          ] as const
+          ]
         }
         if (ScheduleDecision.isContinue(lDecision) && ScheduleDecision.isDone(rDecision)) {
           return [
-            [lState, rState] as const,
+            [lState, rState],
             [l, r],
             ScheduleDecision.continue(lDecision.intervals)
-          ] as const
+          ]
         }
         if (ScheduleDecision.isContinue(lDecision) && ScheduleDecision.isContinue(rDecision)) {
           const combined = f(lDecision.intervals, rDecision.intervals)
           return [
-            [lState, rState] as const,
+            [lState, rState],
             [l, r],
             ScheduleDecision.continue(combined)
-          ] as const
+          ]
         }
         throw new Error(
           "BUG: Schedule.unionWith - please report an issue at https://github.com/Effect-TS/io/issues"
@@ -1543,8 +1546,8 @@ export const whileOutputEffect = dual<
 export const windowed = (intervalInput: Duration.DurationInput): Schedule.Schedule<never, unknown, number> => {
   const interval = Duration.decode(intervalInput)
   const millis = Duration.toMillis(interval)
-  return makeWithState(
-    [Option.none(), 0] as readonly [Option.Option<number>, number],
+  return makeWithState<[Option.Option<number>, number], never, unknown, number>(
+    [Option.none(), 0],
     (now, _, [option, n]) => {
       switch (option._tag) {
         case "None": {
@@ -1553,7 +1556,7 @@ export const windowed = (intervalInput: Duration.DurationInput): Schedule.Schedu
               [Option.some(now), n + 1],
               n,
               ScheduleDecision.continueWith(Interval.after(now + millis))
-            ] as const
+            ]
           )
         }
         case "Some": {
@@ -1564,7 +1567,7 @@ export const windowed = (intervalInput: Duration.DurationInput): Schedule.Schedu
               ScheduleDecision.continueWith(
                 Interval.after(now + (millis - ((now - option.value) % millis)))
               )
-            ] as const
+            ]
           )
         }
       }

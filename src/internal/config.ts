@@ -579,8 +579,8 @@ export const withDescription = dual<
 
 /** @internal */
 export const zip = dual<
-  <B>(that: Config.Config<B>) => <A>(self: Config.Config<A>) => Config.Config<readonly [A, B]>,
-  <A, B>(self: Config.Config<A>, that: Config.Config<B>) => Config.Config<readonly [A, B]>
+  <B>(that: Config.Config<B>) => <A>(self: Config.Config<A>) => Config.Config<[A, B]>,
+  <A, B>(self: Config.Config<A>, that: Config.Config<B>) => Config.Config<[A, B]>
 >(2, (self, that) => zipWith(self, that, (a, b) => [a, b]))
 
 /** @internal */

@@ -290,7 +290,7 @@ export const unsafeToNanos = (self: DurationInput): bigint => {
  * @since 2.0.0
  * @category getters
  */
-export const toHrTime = (self: DurationInput): readonly [seconds: number, nanos: number] => {
+export const toHrTime = (self: DurationInput): [seconds: number, nanos: number] => {
   const _self = decode(self)
   switch (_self.value._tag) {
     case "Infinity":
@@ -314,15 +314,24 @@ export const toHrTime = (self: DurationInput): readonly [seconds: number, nanos:
  */
 export const match: {
   <A, B>(
-    options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B }
+    options: {
+      readonly onMillis: (millis: number) => A
+      readonly onNanos: (nanos: bigint) => B
+    }
   ): (self: DurationInput) => A | B
   <A, B>(
     self: DurationInput,
-    options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B }
+    options: {
+      readonly onMillis: (millis: number) => A
+      readonly onNanos: (nanos: bigint) => B
+    }
   ): A | B
 } = dual(2, <A, B>(
   self: DurationInput,
-  options: { readonly onMillis: (millis: number) => A; readonly onNanos: (nanos: bigint) => B }
+  options: {
+    readonly onMillis: (millis: number) => A
+    readonly onNanos: (nanos: bigint) => B
+  }
 ): A | B => {
   const _self = decode(self)
   switch (_self.value._tag) {

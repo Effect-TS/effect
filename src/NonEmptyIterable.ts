@@ -20,7 +20,7 @@ export interface NonEmptyIterable<A> extends Iterable<A> {
  * @category getters
  * @since 2.0.0
  */
-export const unprepend = <A>(self: NonEmptyIterable<A>): readonly [A, Iterator<A>] => {
+export const unprepend = <A>(self: NonEmptyIterable<A>): [A, Iterator<A>] => {
   const iterator = self[Symbol.iterator]()
   const next = iterator.next()
   if (next.done) {

@@ -53,7 +53,7 @@ Duration.unsafeToNanos("1 millis")
 // toHrTime
 // -------------------------------------------------------------------------------------
 
-// $ExpectType readonly [seconds: number, nanos: number]
+// $ExpectType [seconds: number, nanos: number]
 Duration.toHrTime("1 millis")
 
 // -------------------------------------------------------------------------------------

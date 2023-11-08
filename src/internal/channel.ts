@@ -376,6 +376,7 @@ export const mapInputIn = dual<
   return core.pipeTo(reader, self)
 })
 
+/** @internal */
 export const mapInputInEffect = dual<
   <Env1, InErr, InElem0, InElem>(
     f: (a: InElem0) => Effect.Effect<Env1, InErr, InElem>
@@ -408,13 +409,13 @@ export const doneCollect = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   InDone,
   OutErr,
   never,
-  readonly [Chunk.Chunk<OutElem>, OutDone]
+  [Chunk.Chunk<OutElem>, OutDone]
 > =>
   core.suspend(() => {
     const builder: Array<OutElem> = []
     return pipe(
       core.pipeTo(self, doneCollectReader<Env, OutErr, OutElem, OutDone>(builder)),
-      core.flatMap((outDone) => core.succeed([Chunk.unsafeFromArray(builder), outDone] as const))
+      core.flatMap((outDone) => core.succeed([Chunk.unsafeFromArray(builder), outDone]))
     )
   })
 
@@ -451,7 +452,7 @@ export const drain = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 /** @internal */
 export const emitCollect = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Channel.Channel<Env, InErr, InElem, InDone, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone], void> =>
+): Channel.Channel<Env, InErr, InElem, InDone, OutErr, [Chunk.Chunk<OutElem>, OutDone], void> =>
   core.flatMap(doneCollect(self), core.write)
 
 /** @internal */
@@ -2110,7 +2111,7 @@ export const run = <Env, InErr, InDone, OutErr, OutDone>(
 /** @internal */
 export const runCollect = <Env, InErr, InDone, OutErr, OutElem, OutDone>(
   self: Channel.Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>
-): Effect.Effect<Env, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone]> => executor.run(core.collectElements(self))
+): Effect.Effect<Env, OutErr, [Chunk.Chunk<OutElem>, OutDone]> => executor.run(core.collectElements(self))
 
 /** @internal */
 export const runDrain = <Env, InErr, InDone, OutElem, OutErr, OutDone>(

@@ -104,7 +104,7 @@ export const modifySome = dual<
     const option = pf(value)
     switch (option._tag) {
       case "None": {
-        return [fallback, value] as const
+        return [fallback, value]
       }
       case "Some": {
         return option.value

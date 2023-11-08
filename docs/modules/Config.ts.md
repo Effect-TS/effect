@@ -607,8 +607,8 @@ config.
 
 ```ts
 export declare const zip: {
-  <B>(that: Config<B>): <A>(self: Config<A>) => Config<readonly [A, B]>
-  <A, B>(self: Config<A>, that: Config<B>): Config<readonly [A, B]>
+  <B>(that: Config<B>): <A>(self: Config<A>) => Config<[A, B]>
+  <A, B>(self: Config<A>, that: Config<B>): Config<[A, B]>
 }
 ```
 
