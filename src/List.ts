@@ -786,9 +786,9 @@ export const partition: {
  * @category combinators
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => readonly [List<B>, List<C>]
-  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): readonly [List<B>, List<C>]
-} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): readonly [List<B>, List<C>] => {
+  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => [List<B>, List<C>]
+  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [List<B>, List<C>]
+} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [List<B>, List<C>] => {
   const left: Array<B> = []
   const right: Array<C> = []
   for (const a of self) {
@@ -865,9 +865,9 @@ export const reverse = <A>(self: List<A>): List<A> => {
  * @category combinators
  */
 export const splitAt: {
-  (n: number): <A>(self: List<A>) => readonly [List<A>, List<A>]
-  <A>(self: List<A>, n: number): readonly [List<A>, List<A>]
-} = dual(2, <A>(self: List<A>, n: number): readonly [List<A>, List<A>] => [take(self, n), drop(self, n)])
+  (n: number): <A>(self: List<A>) => [List<A>, List<A>]
+  <A>(self: List<A>, n: number): [List<A>, List<A>]
+} = dual(2, <A>(self: List<A>, n: number): [List<A>, List<A>] => [take(self, n), drop(self, n)])
 
 /**
  * Returns the tail of the specified list, or `None` if the list is empty.
