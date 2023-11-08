@@ -19,9 +19,6 @@ export const MetricHookTypeId: unique symbol = internal.MetricHookTypeId
  */
 export type MetricHookTypeId = typeof MetricHookTypeId
 
-export * as MetricHook from "./MetricHook.js"
-
-declare module "./MetricHook.js" {
   /**
    * @since 2.0.0
    * @category models

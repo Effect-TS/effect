@@ -47,9 +47,6 @@ export const RefinedConstructorsTypeId: unique symbol = Symbol.for("effect/Brand
  */
 export type RefinedConstructorsTypeId = typeof RefinedConstructorsTypeId
 
-export * as Brand from "./Brand.js"
-
-declare module "./Brand.js" {
   /**
    * A generic interface that defines a branded type.
    *

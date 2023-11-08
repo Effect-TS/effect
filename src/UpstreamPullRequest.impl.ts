@@ -15,9 +15,6 @@ export const UpstreamPullRequestTypeId: unique symbol = internal.UpstreamPullReq
  */
 export type UpstreamPullRequestTypeId = typeof UpstreamPullRequestTypeId
 
-export * as UpstreamPullRequest from "./UpstreamPullRequest.js"
-
-declare module "./UpstreamPullRequest.js" {
   /**
    * @since 2.0.0
    * @category models

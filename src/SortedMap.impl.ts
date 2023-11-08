@@ -20,9 +20,6 @@ const TypeId: unique symbol = Symbol.for("effect/SortedMap")
  */
 export type TypeId = typeof TypeId
 
-export * as SortedMap from "./SortedMap.js"
-
-declare module "./SortedMap.js" {
   /**
    * @since 2.0.0
    * @category models

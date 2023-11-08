@@ -5,9 +5,6 @@ import * as runtimeFlags from "./internal/runtimeFlags.js"
 import * as internal from "./internal/runtimeFlagsPatch.js"
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 
-export * as RuntimeFlagsPatch from "./RuntimeFlagsPatch.js"
-
-declare module "./RuntimeFlagsPatch.js" {
   /**
    * @since 2.0.0
    * @category models

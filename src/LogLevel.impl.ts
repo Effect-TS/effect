@@ -8,9 +8,6 @@ import * as number from "./Number.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * as LogLevel from "./LogLevel.js"
-
-declare module "./LogLevel.js" {
   /**
    * A `LogLevel` represents the log level associated with an individual logging
    * operation. Log levels are used both to describe the granularity (or

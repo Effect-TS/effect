@@ -11,9 +11,6 @@ import { hasProperty } from "./Predicate.js"
  */
 export const symbol: unique symbol = Symbol.for("effect/Equal")
 
-export * as Equal from "./Equal.js"
-
-declare module "./Equal.int.js" {
   /**
    * @since 2.0.0
    * @category models

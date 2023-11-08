@@ -5,9 +5,6 @@ import * as internal from "./internal/schedule/decision.js"
 import type { Interval } from "./ScheduleInterval.js"
 import type { ScheduleIntervals } from "./ScheduleIntervals.js"
 
-export * as ScheduleDecision from "./ScheduleDecision.js"
-
-declare module "./ScheduleDecision.js" {
   /**
    * @since 2.0.0
    * @category models

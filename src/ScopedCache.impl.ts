@@ -22,9 +22,6 @@ export const ScopedCacheTypeId: unique symbol = internal.ScopedCacheTypeId
  */
 export type ScopedCacheTypeId = typeof ScopedCacheTypeId
 
-export * as ScopedCache from "./ScopedCache.js"
-
-declare module "./ScopedCache.js" {
   /**
    * @since 2.0.0
    * @category models

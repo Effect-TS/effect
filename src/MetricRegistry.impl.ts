@@ -20,9 +20,6 @@ export const MetricRegistryTypeId: unique symbol = internal.MetricRegistryTypeId
  */
 export type MetricRegistryTypeId = typeof MetricRegistryTypeId
 
-export * as MetricRegistry from "./MetricRegistry.js"
-
-declare module "./MetricRegistry.js" {
   /**
    * @since 2.0.0
    * @category models

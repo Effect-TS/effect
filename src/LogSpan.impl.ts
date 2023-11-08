@@ -3,9 +3,6 @@
  */
 import * as internal from "./internal/logSpan.js"
 
-export * as LogSpan from "./LogSpan.js"
-
-declare module "./LogSpan.js" {
   /**
    * @since 2.0.0
    * @category models

@@ -20,9 +20,6 @@ export const TSetTypeId: unique symbol = internal.TSetTypeId
  */
 export type TSetTypeId = typeof TSetTypeId
 
-export * as TSet from "./TSet.js"
-
-declare module "./TSet.js" {
   /**
    * Transactional set implemented on top of `TMap`.
    *

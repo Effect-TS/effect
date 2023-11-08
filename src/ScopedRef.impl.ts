@@ -20,9 +20,6 @@ export const ScopedRefTypeId: unique symbol = internal.ScopedRefTypeId
  */
 export type ScopedRefTypeId = typeof ScopedRefTypeId
 
-export * as ScopedRef from "./ScopedRef.js"
-
-declare module "./ScopedRef.js" {
   /**
    * A `ScopedRef` is a reference whose value is associated with resources,
    * which must be released properly. You can both get the current value of any

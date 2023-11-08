@@ -7,9 +7,6 @@ import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { Option } from "./Option.js"
 
-export * as StreamEmit from "./StreamEmit.js"
-
-declare module "./StreamEmit.js" {
   /**
    * An `Emit<R, E, A, B>` represents an asynchronous callback that can be
    * called multiple times. The callback can be called with a value of type

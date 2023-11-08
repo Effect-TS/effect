@@ -19,9 +19,6 @@ export const ClockTypeId: unique symbol = internal.ClockTypeId
  */
 export type ClockTypeId = typeof ClockTypeId
 
-export * as Clock from "./Clock.js"
-
-declare module "./Clock.js" {
   /**
    * Represents a time-based clock which provides functionality related to time
    * and scheduling.

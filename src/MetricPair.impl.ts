@@ -19,9 +19,6 @@ export const MetricPairTypeId: unique symbol = internal.MetricPairTypeId
  */
 export type MetricPairTypeId = typeof MetricPairTypeId
 
-export * as MetricPair from "./MetricPair.js"
-
-declare module "./MetricPair.js" {
   /**
    * @since 2.0.0
    * @category model

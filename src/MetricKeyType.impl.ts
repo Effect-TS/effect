@@ -81,9 +81,6 @@ export const SummaryKeyTypeTypeId: unique symbol = internal.SummaryKeyTypeTypeId
  */
 export type SummaryKeyTypeTypeId = typeof SummaryKeyTypeTypeId
 
-export * as MetricKeyType from "./MetricKeyType.js"
-
-declare module "./MetricKeyType.js" {
   /**
    * @since 2.0.0
    * @category modelz

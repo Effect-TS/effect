@@ -16,9 +16,6 @@ export const ConfigErrorTypeId: unique symbol = internal.ConfigErrorTypeId
  */
 export type ConfigErrorTypeId = typeof ConfigErrorTypeId
 
-export * as ConfigError from "./ConfigError.js"
-
-declare module "./ConfigError.js" {
   /**
    * The possible ways that loading configuration data may fail.
    *

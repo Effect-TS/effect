@@ -24,9 +24,6 @@ export type TypeId = typeof TypeId
  */
 export const Direction = RBTI.Direction
 
-export * as RedBlackTree from "./RedBlackTree.js"
-
-declare module "./RedBlackTree.js" {
   /**
    * A Red-Black Tree.
    *

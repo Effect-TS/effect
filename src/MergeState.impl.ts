@@ -19,9 +19,6 @@ export const MergeStateTypeId: unique symbol = internal.MergeStateTypeId
  */
 export type MergeStateTypeId = typeof MergeStateTypeId
 
-export * as MergeState from "./MergeState.js"
-
-declare module "./MergeState.js" {
   /**
    * @since 2.0.0
    * @category models

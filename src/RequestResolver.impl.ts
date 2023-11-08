@@ -24,9 +24,6 @@ export const RequestResolverTypeId: unique symbol = core.RequestResolverTypeId
  */
 export type RequestResolverTypeId = typeof RequestResolverTypeId
 
-export * as RequestResolver from "./RequestResolver.js"
-
-declare module "./RequestResolver.js" {
   /**
    * A `RequestResolver<A, R>` requires an environment `R` and is capable of executing
    * requests of type `A`.

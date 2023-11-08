@@ -28,9 +28,6 @@ export const SupervisorTypeId: unique symbol = internal.SupervisorTypeId
  */
 export type SupervisorTypeId = typeof SupervisorTypeId
 
-export * as Supervisor from "./Supervisor.js"
-
-declare module "./Supervisor.js" {
   /**
    * @since 2.0.0
    * @category models

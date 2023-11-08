@@ -18,9 +18,6 @@ import { Order } from "./Order.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { ReadonlyRecord as RR } from "./ReadonlyRecord.js"
 
-export * as ReadonlyArray from "./ReadonlyArray.js"
-
-declare module "./ReadonlyArray.int.js" {
   export interface ReadonlyArray<T> extends globalThis.ReadonlyArray<T> {}
   /**
    * @since 2.0.0

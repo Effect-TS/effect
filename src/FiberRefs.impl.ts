@@ -22,9 +22,6 @@ export const FiberRefsSym: unique symbol = internal.FiberRefsSym
  */
 export type FiberRefsSym = typeof FiberRefsSym
 
-export * as FiberRefs from "./FiberRefs.js"
-
-declare module "./FiberRefs.js" {
   /**
    * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
    *

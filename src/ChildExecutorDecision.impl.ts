@@ -15,9 +15,6 @@ export const ChildExecutorDecisionTypeId: unique symbol = internal.ChildExecutor
  */
 export type ChildExecutorDecisionTypeId = typeof ChildExecutorDecisionTypeId
 
-export * as ChildExecutorDecision from "./ChildExecutorDecision.js"
-
-declare module "./ChildExecutorDecision.js" {
   /**
    * @since 2.0.0
    * @category models

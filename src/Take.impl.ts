@@ -21,9 +21,6 @@ export const TakeTypeId: unique symbol = internal.TakeTypeId
  */
 export type TakeTypeId = typeof TakeTypeId
 
-export * as Take from "./Take.js"
-
-declare module "./Take.js" {
   /**
    * A `Take<E, A>` represents a single `take` from a queue modeling a stream of
    * values. A `Take` may be a failure cause `Cause<E>`, a chunk value `Chunk<A>`,

@@ -34,9 +34,6 @@ import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import { ReadonlyArray } from "./ReadonlyArray.js"
 
-export * as List from "./List.js"
-
-declare module "./List.js" {
   /**
    * Represents an immutable linked list of elements of type `A`.
    *

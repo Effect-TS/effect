@@ -10,9 +10,6 @@ import * as internal from "./internal/defaultServices.js"
 import type { Random } from "./Random.js"
 import type { Tracer } from "./Tracer.js"
 
-export * as DefaultServices from "./DefaultServices.js"
-
-declare module "./DefaultServices.js" {
   /**
 /**
  * @since 2.0.0

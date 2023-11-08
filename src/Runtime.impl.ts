@@ -30,9 +30,6 @@ export interface AsyncFiberException<E, A> {
 export interface Cancel<E, A> {
   (fiberId?: FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
-export * as Runtime from "./Runtime.js"
-
-declare module "./Runtime.js" {
   /**
    * @since 2.0.0
    * @category models

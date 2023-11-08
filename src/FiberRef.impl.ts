@@ -38,9 +38,6 @@ export const FiberRefTypeId: unique symbol = core.FiberRefTypeId
  */
 export type FiberRefTypeId = typeof FiberRefTypeId
 
-export * as FiberRef from "./FiberRef.js"
-
-declare module "./FiberRef.js" {
   /**
    * @since 2.0.0
    * @category model

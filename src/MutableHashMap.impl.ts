@@ -17,9 +17,6 @@ const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
  */
 export type TypeId = typeof TypeId
 
-export * as MutableHashMap from "./MutableHashMap.js"
-
-declare module "./MutableHashMap.js" {
   /**
    * @since 2.0.0
    * @category models

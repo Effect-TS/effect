@@ -21,9 +21,6 @@ export const TPriorityQueueTypeId: unique symbol = internal.TPriorityQueueTypeId
  */
 export type TPriorityQueueTypeId = typeof TPriorityQueueTypeId
 
-export * as TPriorityQueue from "./TPriorityQueue.js"
-
-declare module "./TPriorityQueue.js" {
   /**
    * A `TPriorityQueue` contains values of type `A` that an `Order` is defined
    * on. Unlike a `TQueue`, `take` returns the highest priority value (the value

@@ -9,9 +9,6 @@ import * as _dataSource from "./internal/dataSource.js"
 import type { Request } from "./Request.js"
 import type { RequestResolver } from "./RequestResolver.js"
 
-export * as RequestBlock from "./RequestBlock.js"
-
-declare module "./RequestBlock.js" {
   /**
    * `RequestBlock` captures a collection of blocked requests as a data
    * structure. By doing this the library is able to preserve information about

@@ -15,9 +15,6 @@ export const TestAnnotationMapTypeId = Symbol.for("effect/TestAnnotationMap")
  */
 export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 
-export * as TestAnnotationMap from "./TestAnnotationMap.js"
-
-declare module "./TestAnnotationMap.js" {
   /**
    * An annotation map keeps track of annotations of different types.
    *

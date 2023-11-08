@@ -20,9 +20,6 @@ export const TArrayTypeId: unique symbol = internal.TArrayTypeId
  */
 export type TArrayTypeId = typeof TArrayTypeId
 
-export * as TArray from "./TArray.js"
-
-declare module "./TArray.js" {
   /**
    * @since 2.0.0
    * @category models

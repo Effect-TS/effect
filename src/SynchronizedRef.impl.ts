@@ -20,9 +20,6 @@ export const SynchronizedRefTypeId: unique symbol = circular.SynchronizedTypeId
  */
 export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
 
-export * as SynchronizedRef from "./SynchronizedRef.js"
-
-declare module "./SynchronizedRef.js" {
   /**
    * @since 2.0.0
    * @category models

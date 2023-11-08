@@ -22,9 +22,6 @@ export const TPubSubTypeId: unique symbol = internal.TPubSubTypeId
  */
 export type TPubSubTypeId = typeof TPubSubTypeId
 
-export * as TPubSub from "./TPubSub.js"
-
-declare module "./TPubSub.js" {
   /**
    * @since 2.0.0
    * @category models

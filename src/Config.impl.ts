@@ -26,9 +26,6 @@ export const ConfigTypeId: unique symbol = internal.ConfigTypeId
  */
 export type ConfigTypeId = typeof ConfigTypeId
 
-export * as Config from "./Config.js"
-
-declare module "./Config.js" {
   /**
    * A `Config` describes the structure of some configuration data.
    *

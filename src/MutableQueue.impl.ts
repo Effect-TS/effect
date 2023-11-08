@@ -22,9 +22,6 @@ export type TypeId = typeof TypeId
  */
 export const EmptyMutableQueue = Symbol.for("effect/mutable/MutableQueue/Empty")
 
-export * as MutableQueue from "./MutableQueue.js"
-
-declare module "./MutableQueue.js" {
   /**
    * @since 2.0.0
    * @category model

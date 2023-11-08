@@ -31,9 +31,6 @@ export const LoggerTypeId: unique symbol = internal.LoggerTypeId
  */
 export type LoggerTypeId = typeof LoggerTypeId
 
-export * as Logger from "./Logger.js"
-
-declare module "./Logger.js" {
   /**
    * @since 2.0.0
    * @category models

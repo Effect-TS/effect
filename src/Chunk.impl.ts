@@ -26,9 +26,6 @@ const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
  */
 export type TypeId = typeof TypeId
 
-export * as Chunk from "./Chunk.js"
-
-declare module "./Chunk.int.js" {
   /**
    * @category models
    * @since 2.0.0

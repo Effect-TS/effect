@@ -60,9 +60,6 @@ type FilterIn<A> = A extends any ? typeSymbol extends keyof A ? A : never : neve
 
 type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : never
 
-export * as Unify from "./Unify.js"
-
-declare module "./Unify.js" {
   /**
    * @since 2.0.0
    */

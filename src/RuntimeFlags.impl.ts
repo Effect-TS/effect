@@ -8,9 +8,6 @@ import * as internal from "./internal/runtimeFlags.js"
 import type { Layer } from "./Layer.js"
 import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
 
-export * as RuntimeFlags from "./RuntimeFlags.js"
-
-declare module "./RuntimeFlags.js" {
   /**
    * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of
    * the Effect runtime system. They are exposed to application-level code because

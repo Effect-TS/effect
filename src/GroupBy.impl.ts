@@ -20,9 +20,6 @@ export const GroupByTypeId: unique symbol = internal.GroupByTypeId
  */
 export type GroupByTypeId = typeof GroupByTypeId
 
-export * as GroupBy from "./GroupBy.js"
-
-declare module "./GroupBy.js" {
   /**
    * Representation of a grouped stream. This allows to filter which groups will
    * be processed. Once this is applied all groups will be processed in parallel

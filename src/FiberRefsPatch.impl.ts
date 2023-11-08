@@ -6,9 +6,6 @@ import type { FiberRef } from "./FiberRef.js"
 import type { FiberRefs } from "./FiberRefs.js"
 import * as internal from "./internal/fiberRefs/patch.js"
 
-export * as FiberRefsPatch from "./FiberRefsPatch.js"
-
-declare module "./FiberRefsPatch.js" {
   /**
    * A `FiberRefsPatch` captures the changes in `FiberRef` values made by a single
    * fiber as a value. This allows fibers to apply the changes made by a workflow

@@ -16,9 +16,6 @@ export const UpstreamPullStrategyTypeId: unique symbol = internal.UpstreamPullSt
  */
 export type UpstreamPullStrategyTypeId = typeof UpstreamPullStrategyTypeId
 
-export * as UpstreamPullStrategy from "./UpstreamPullStrategy.js"
-
-declare module "./UpstreamPullStrategy.js" {
   /**
    * @since 2.0.0
    * @category models

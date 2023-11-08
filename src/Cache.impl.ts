@@ -20,9 +20,6 @@ export const CacheTypeId: unique symbol = internal.CacheTypeId
  */
 export type CacheTypeId = typeof CacheTypeId
 
-export * as Cache from "./Cache.js"
-
-declare module "./Cache.js" {
   /**
    * A `Cache` is defined in terms of a lookup function that, given a key of
    * type `Key`, can either fail with an error of type `Error` or succeed with a

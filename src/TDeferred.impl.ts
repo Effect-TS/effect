@@ -19,9 +19,6 @@ export const TDeferredTypeId: unique symbol = internal.TDeferredTypeId
  */
 export type TDeferredTypeId = typeof TDeferredTypeId
 
-export * as TDeferred from "./TDeferred.js"
-
-declare module "./TDeferred.js" {
   /**
    * @since 2.0.0
    * @category models

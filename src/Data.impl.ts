@@ -10,9 +10,6 @@ import { type Pipeable } from "./Pipeable.js"
 import type { Sink } from "./Sink.js"
 import type { Types } from "./Types.js"
 
-export * as Data from "./Data.js"
-
-declare module "./Data.int.js" {
   /**
    * @category models
    * @since 2.0.0

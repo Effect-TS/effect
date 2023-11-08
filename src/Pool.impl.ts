@@ -20,9 +20,6 @@ export const PoolTypeId: unique symbol = internal.PoolTypeId
  */
 export type PoolTypeId = typeof PoolTypeId
 
-export * as Pool from "./Pool.js"
-
-declare module "./Pool.js" {
   /**
    * A `Pool<E, A>` is a pool of items of type `A`, each of which may be
    * associated with the acquisition and release of resources. An attempt to get

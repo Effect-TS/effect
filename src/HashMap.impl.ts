@@ -18,9 +18,6 @@ const TypeId: unique symbol = HM.HashMapTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
-export * as HashMap from "./HashMap.js"
-
-declare module "./HashMap.js" {
   /**
    * @since 2.0.0
    * @category models

@@ -81,9 +81,6 @@ export const SummaryStateTypeId: unique symbol = internal.SummaryStateTypeId
  */
 export type SummaryStateTypeId = typeof SummaryStateTypeId
 
-export * as MetricState from "./MetricState.js"
-
-declare module "./MetricState.js" {
   /**
    * A `MetricState` describes the state of a metric. The type parameter of a
    * metric state corresponds to the type of the metric key (`MetricStateType`).

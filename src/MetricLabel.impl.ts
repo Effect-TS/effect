@@ -17,9 +17,6 @@ export const MetricLabelTypeId: unique symbol = internal.MetricLabelTypeId
  */
 export type MetricLabelTypeId = typeof MetricLabelTypeId
 
-export * as MetricLabel from "./MetricLabel.js"
-
-declare module "./MetricLabel.js" {
   /**
    * A `MetricLabel` represents a key value pair that allows analyzing metrics at
    * an additional level of granularity.

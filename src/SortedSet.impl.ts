@@ -21,9 +21,6 @@ const TypeId: unique symbol = Symbol.for("effect/SortedSet")
  */
 export type TypeId = typeof TypeId
 
-export * as SortedSet from "./SortedSet.js"
-
-declare module "./SortedSet.js" {
   /**
    * @since 2.0.0
    * @category models

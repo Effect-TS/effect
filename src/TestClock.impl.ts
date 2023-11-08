@@ -34,9 +34,6 @@ import type { SynchronizedRef } from "./SynchronizedRef.js"
 import * as Annotations from "./TestAnnotations.js"
 import * as Live from "./TestLive.js"
 
-export * as TestClock from "./TestClock.js"
-
-declare module "./TestClock.js" {
   /**
    * A `TestClock` makes it easy to deterministically and efficiently test effects
    * involving the passage of time.

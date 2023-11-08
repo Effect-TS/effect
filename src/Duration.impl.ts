@@ -24,9 +24,6 @@ const bigint1e9 = BigInt(1_000_000_000)
  */
 export type TypeId = typeof TypeId
 
-export * as Duration from "./Duration.js"
-
-declare module "./Duration.js" {
   /**
    * @since 2.0.0
    * @category models

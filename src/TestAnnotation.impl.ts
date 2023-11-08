@@ -26,9 +26,6 @@ export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
  */
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 
-export * as TestAnnotation from "./TestAnnotation.js"
-
-declare module "./TestAnnotation.js" {
   /**
    * @since 2.0.0
    */

@@ -8,9 +8,6 @@
  */
 export declare const nonEmpty: unique symbol
 
-export * as NonEmptyIterable from "./NonEmptyIterable.js"
-
-declare module "./NonEmptyIterable.js" {
   /**
    * @category model
    * @since 2.0.0

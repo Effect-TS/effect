@@ -44,9 +44,6 @@ export const RuntimeFiberTypeId: unique symbol = internal.RuntimeFiberTypeId
  */
 export type RuntimeFiberTypeId = typeof RuntimeFiberTypeId
 
-export * as Fiber from "./Fiber.js"
-
-declare module "./Fiber.js" {
   /**
    * A fiber is a lightweight thread of execution that never consumes more than a
    * whole thread (but may consume much less, depending on contention and

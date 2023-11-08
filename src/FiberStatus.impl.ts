@@ -18,9 +18,6 @@ export const FiberStatusTypeId: unique symbol = internal.FiberStatusTypeId
  */
 export type FiberStatusTypeId = typeof FiberStatusTypeId
 
-export * as FiberStatus from "./FiberStatus.js"
-
-declare module "./FiberStatus.js" {
   /**
    * @since 2.0.0
    * @category models

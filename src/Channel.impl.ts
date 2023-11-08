@@ -44,9 +44,6 @@ export const ChannelTypeId: unique symbol = core.ChannelTypeId
  */
 export type ChannelTypeId = typeof ChannelTypeId
 
-export * as Channel from "./Channel.js"
-
-declare module "./Channel.int.js" {
   /**
    * A `Channel` is a nexus of I/O operations, which supports both reading and
    * writing. A channel may read values of type `InElem` and write values of type

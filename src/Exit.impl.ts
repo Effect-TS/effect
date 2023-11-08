@@ -12,9 +12,6 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type { Unify } from "./Unify.js"
 
-export * as Exit from "./Exit.js"
-
-declare module "./Exit.int.js" {
   /**
    * An `Exit<E, A>` describes the result of a executing an `Effect` workflow.
    *

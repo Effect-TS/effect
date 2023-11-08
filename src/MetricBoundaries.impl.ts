@@ -18,9 +18,6 @@ export const MetricBoundariesTypeId: unique symbol = internal.MetricBoundariesTy
  */
 export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
 
-export * as MetricBoundaries from "./MetricBoundaries.js"
-
-declare module "./MetricBoundaries.js" {
   /**
    * @since 2.0.0
    * @category models

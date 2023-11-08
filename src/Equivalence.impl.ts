@@ -8,9 +8,6 @@
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
-export * as Equivalence from "./Equivalence.js"
-
-declare module "./Equivalence.int.js" {
   /**
    * @category type class
    * @since 2.0.0

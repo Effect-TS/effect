@@ -23,9 +23,6 @@ const pcgr = globalValue(
  */
 export const symbol: unique symbol = Symbol.for("effect/Hash")
 
-export * as Hash from "./Hash.js"
-
-declare module "./Hash.int.js" {
   /**
    * @since 2.0.0
    * @category models

@@ -20,9 +20,6 @@ export const ResourceTypeId: unique symbol = internal.ResourceTypeId
  */
 export type ResourceTypeId = typeof ResourceTypeId
 
-export * as Resource from "./Resource.js"
-
-declare module "./Resource.js" {
   /**
    * A `Resource` is a possibly resourceful value that is loaded into memory, and
    * which can be refreshed either manually or automatically.

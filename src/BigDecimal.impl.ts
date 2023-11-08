@@ -39,9 +39,6 @@ export const TypeId: unique symbol = Symbol.for("effect/BigDecimal")
  */
 export type TypeId = typeof TypeId
 
-export * as BigDecimal from "./BigDecimal.js"
-
-declare module "./BigDecimal.js" {
   /**
    * @since 2.0.0
    * @category models

@@ -21,9 +21,6 @@ export const TRefTypeId: unique symbol = internal.TRefTypeId
  */
 export type TRefTypeId = typeof TRefTypeId
 
-export * as TRef from "./TRef.js"
-
-declare module "./TRef.js" {
   /**
    * A `TRef<A>` is a purely functional description of a mutable reference that can
    * be modified as part of a transactional effect. The fundamental operations of

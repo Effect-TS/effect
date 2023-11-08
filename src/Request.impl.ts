@@ -27,9 +27,6 @@ export const RequestTypeId: unique symbol = internal.RequestTypeId
  */
 export type RequestTypeId = typeof RequestTypeId
 
-export * as Request from "./Request.js"
-
-declare module "./Request.js" {
   /**
    * A `Request<E, A>` is a request from a data source for a value of type `A`
    * that may fail with an `E`.

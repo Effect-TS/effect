@@ -35,9 +35,6 @@ export const FlatConfigProviderTypeId: unique symbol = internal.FlatConfigProvid
  */
 export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
 
-export * as ConfigProvider from "./ConfigProvider.js"
-
-declare module "./ConfigProvider.js" {
   /**
    * A ConfigProvider is a service that provides configuration given a description
    * of the structure of that configuration.

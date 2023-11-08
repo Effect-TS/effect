@@ -29,9 +29,6 @@ export const MetricTypeId: unique symbol = internal.MetricTypeId
  */
 export type MetricTypeId = typeof MetricTypeId
 
-export * as Metric from "./Metric.js"
-
-declare module "./Metric.js" {
   /**
    * A `Metric<Type, In, Out>` represents a concurrent metric which accepts
    * updates of type `In` and are aggregated to a stateful value of type `Out`.

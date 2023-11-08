@@ -22,9 +22,6 @@ import { TestConfig } from "./TestConfig.js"
 import * as Live from "./TestLive.js"
 import * as Sized from "./TestSized.js"
 
-export * as TestServices from "./TestServices.js"
-
-declare module "./TestServices.js" {
   /**
    * @since 2.0.0
    */

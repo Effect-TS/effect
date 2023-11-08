@@ -17,9 +17,6 @@ import type { Gen } from "./Utils.js"
 import { Utils } from "./Utils.js"
 
 // eslint-disable-next-line import/no-cycle
-export * as Either from "./Either.js"
-
-declare module "./Either.int.js" {
   /**
    * @category models
    * @since 2.0.0

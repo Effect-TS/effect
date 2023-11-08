@@ -19,9 +19,6 @@ export const TracerTypeId: unique symbol = internal.TracerTypeId
  */
 export type TracerTypeId = typeof TracerTypeId
 
-export * as Tracer from "./Tracer.js"
-
-declare module "./Tracer.js" {
   /**
    * @since 2.0.0
    */

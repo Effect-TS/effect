@@ -24,9 +24,6 @@ export const DeferredTypeId: unique symbol = internal.DeferredTypeId
  */
 export type DeferredTypeId = typeof DeferredTypeId
 
-export * as Deferred from "./Deferred.js"
-
-declare module "./Deferred.js" {
   /**
    * A `Deferred` represents an asynchronous variable that can be set exactly
    * once, with the ability for an arbitrary number of fibers to suspend (by

@@ -19,9 +19,6 @@ export const TypeId: unique symbol = defaultConsole.TypeId
  */
 export type TypeId = typeof TypeId
 
-export * as Console from "./Console.js"
-
-declare module "./Console.js" {
   /**
    * @since 2.0.0
    * @category model

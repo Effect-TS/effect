@@ -16,9 +16,6 @@ import * as timeout from "./internal/timeout.js"
  */
 export type Task = () => void
 
-export * as Scheduler from "./Scheduler.js"
-
-declare module "./Scheduler.js" {
   /**
    * @since 2.0.0
    * @category models

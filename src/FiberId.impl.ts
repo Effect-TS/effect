@@ -19,9 +19,6 @@ export const FiberIdTypeId: unique symbol = internal.FiberIdTypeId
  */
 export type FiberIdTypeId = typeof FiberIdTypeId
 
-export * as FiberId from "./FiberId.js"
-
-declare module "./FiberId.js" {
   /**
    * @since 2.0.0
    * @category models

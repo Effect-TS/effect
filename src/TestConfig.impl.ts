@@ -3,9 +3,6 @@
  */
 import { Context } from "./Context.js"
 
-export * as TestConfig from "./TestConfig.js"
-
-declare module "./TestConfig.js" {
   /**
    * The `TestConfig` service provides access to default configuration settings
    * used by tests, including the number of times to repeat tests to ensure

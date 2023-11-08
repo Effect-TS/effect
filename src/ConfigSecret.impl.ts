@@ -17,9 +17,6 @@ export const ConfigSecretTypeId: unique symbol = internal.ConfigSecretTypeId
  */
 export type ConfigSecretTypeId = typeof ConfigSecretTypeId
 
-export * as ConfigSecret from "./ConfigSecret.js"
-
-declare module "./ConfigSecret.js" {
   /**
    * @since 2.0.0
    * @category models

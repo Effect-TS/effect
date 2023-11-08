@@ -19,9 +19,6 @@ export const TReentrantLockTypeId: unique symbol = internal.TReentrantLockTypeId
  */
 export type TReentrantLockTypeId = typeof TReentrantLockTypeId
 
-export * as TReentrantLock from "./TReentrantLock.js"
-
-declare module "./TReentrantLock.js" {
   /**
    * A `TReentrantLock` is a reentrant read/write lock. Multiple readers may all
    * concurrently acquire read locks. Only one writer is allowed to acquire a

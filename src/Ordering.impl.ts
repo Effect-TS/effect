@@ -4,9 +4,6 @@
 import type { LazyArg } from "./Function.js"
 import { dual } from "./Function.js"
 
-export * as Ordering from "./Ordering.js"
-
-declare module "./Ordering.js" {
   /**
    * @category model
    * @since 2.0.0

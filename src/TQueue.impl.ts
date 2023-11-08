@@ -30,9 +30,6 @@ export const TEnqueueTypeId: unique symbol = internal.TEnqueueTypeId
  */
 export type TEnqueueTypeId = typeof TEnqueueTypeId
 
-export * as TQueue from "./TQueue.js"
-
-declare module "./TQueue.js" {
   /**
    * @since 2.0.0
    * @category models

@@ -20,9 +20,6 @@ export const TSemaphoreTypeId: unique symbol = internal.TSemaphoreTypeId
  */
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
 
-export * as TSemaphore from "./TSemaphore.js"
-
-declare module "./TSemaphore.js" {
   /**
    * @since 2.0.0
    * @category models

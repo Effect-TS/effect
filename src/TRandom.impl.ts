@@ -20,9 +20,6 @@ export const TRandomTypeId: unique symbol = internal.TRandomTypeId
  */
 export type TRandomTypeId = typeof TRandomTypeId
 
-export * as TRandom from "./TRandom.js"
-
-declare module "./TRandom.js" {
   /**
    * @since 2.0.0
    * @category models

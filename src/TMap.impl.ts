@@ -22,9 +22,6 @@ export const TMapTypeId: unique symbol = internal.TMapTypeId
  */
 export type TMapTypeId = typeof TMapTypeId
 
-export * as TMap from "./TMap.js"
-
-declare module "./TMap.js" {
   /**
    * Transactional map implemented on top of `TRef` and `TArray`. Resolves
    * conflicts via chaining.

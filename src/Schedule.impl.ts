@@ -39,9 +39,6 @@ export const ScheduleDriverTypeId: unique symbol = internal.ScheduleDriverTypeId
  */
 export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
 
-export * as Schedule from "./Schedule.js"
-
-declare module "./Schedule.js" {
   /**
    * A `Schedule<Env, In, Out>` defines a recurring schedule, which consumes
    * values of type `In`, and which returns values of type `Out`.

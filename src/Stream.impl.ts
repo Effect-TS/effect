@@ -43,9 +43,6 @@ export const StreamTypeId: unique symbol = internal.StreamTypeId
  */
 export type StreamTypeId = typeof StreamTypeId
 
-export * as Stream from "./Stream.js"
-
-declare module "./Stream.int.js" {
   /**
    * A `Stream<R, E, A>` is a description of a program that, when evaluated, may
    * emit zero or more values of type `A`, may fail with errors of type `E`, and

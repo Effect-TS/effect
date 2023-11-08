@@ -7,9 +7,6 @@ import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 
-export * as SingleProducerAsyncInput from "./SingleProducerAsyncInput.js"
-
-declare module "./SingleProducerAsyncInput.js" {
   /**
    * An MVar-like abstraction for sending data to channels asynchronously which is
    * designed for one producer and multiple consumers.

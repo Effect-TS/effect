@@ -22,9 +22,6 @@ export const SubscriptionRefTypeId: unique symbol = internal.SubscriptionRefType
  */
 export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
 
-export * as SubscriptionRef from "./SubscriptionRef.js"
-
-declare module "./SubscriptionRef.js" {
   /**
    * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
    * receive the current value as well as all changes to the value.

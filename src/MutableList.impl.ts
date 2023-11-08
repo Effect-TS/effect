@@ -15,9 +15,6 @@ const TypeId: unique symbol = Symbol.for("effect/MutableList") as TypeId
  */
 export type TypeId = typeof TypeId
 
-export * as MutableList from "./MutableList.js"
-
-declare module "./MutableList.js" {
   /**
    * @since 2.0.0
    * @category model

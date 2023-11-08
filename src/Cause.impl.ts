@@ -105,9 +105,6 @@ export const InvalidPubSubCapacityExceptionTypeId: unique symbol = internal.Inva
  */
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
-export * as Cause from "./Cause.js"
-
-declare module "./Cause.js" {
   /**
    * A `Cause` represents the full history of a failure resulting from running an
    * `Effect` workflow.

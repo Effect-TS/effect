@@ -19,9 +19,6 @@ export const KeyedPoolTypeId: unique symbol = internal.KeyedPoolTypeId
  */
 export type KeyedPoolTypeId = typeof KeyedPoolTypeId
 
-export * as KeyedPool from "./KeyedPool.js"
-
-declare module "./KeyedPool.js" {
   /**
    * A `KeyedPool<K, E, A>` is a pool of `Pool`s of items of type `A`. Each pool
    * in the `KeyedPool` is associated with a key of type `K`.

@@ -54,9 +54,6 @@ export const LayerTypeId: unique symbol = internal.LayerTypeId
  */
 export type LayerTypeId = typeof LayerTypeId
 
-export * as Layer from "./Layer.js"
-
-declare module "./Layer.int.js" {
   /**
    * @since 2.0.0
    * @category models

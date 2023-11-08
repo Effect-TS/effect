@@ -29,9 +29,6 @@ export const STMTypeId: unique symbol = core.STMTypeId
 export type STMTypeId = typeof STMTypeId
 
 // eslint-disable-next-line import/no-cycle
-export * as STM from "./STM.js"
-
-declare module "./STM.int.js" {
   /**
    * `STM<R, E, A>` represents an effect that can be performed transactionally,
    *  resulting in a failure `E` or a value `A` that may require an environment

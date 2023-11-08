@@ -4,9 +4,6 @@
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
-export * as Order from "./Order.js"
-
-declare module "./Order.js" {
   /**
    * @category type class
    * @since 2.0.0

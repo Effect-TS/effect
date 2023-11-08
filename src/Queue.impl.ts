@@ -46,9 +46,6 @@ export const QueueStrategyTypeId: unique symbol = internal.QueueStrategyTypeId
  */
 export type QueueStrategyTypeId = typeof QueueStrategyTypeId
 
-export * as Queue from "./Queue.js"
-
-declare module "./Queue.js" {
   /**
    * @since 2.0.0
    * @category models

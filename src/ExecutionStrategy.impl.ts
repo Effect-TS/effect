@@ -4,9 +4,6 @@
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/executionStrategy.js"
 
-export * as ExecutionStrategy from "./ExecutionStrategy.js"
-
-declare module "./ExecutionStrategy.js" {
   /**
    * Describes a strategy for evaluating multiple effects, potentially in
    * parallel.

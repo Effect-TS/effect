@@ -40,9 +40,6 @@ export type CloseableScopeTypeId = typeof CloseableScopeTypeId
  */
 export const Tag: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
 
-export * as Scope from "./Scope.js"
-
-declare module "./Scope.js" {
   /**
    * @since 2.0.0
    * @category models

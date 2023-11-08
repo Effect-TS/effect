@@ -2,9 +2,6 @@
  * @since 2.0.0
  */
 
-export * as Pipeable from "./Pipeable.js"
-
-declare module "./Pipeable.int.js" {
   /**
    * @since 2.0.0
    * @category models

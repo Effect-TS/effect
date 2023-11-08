@@ -18,9 +18,6 @@ export const RefTypeId: unique symbol = internal.RefTypeId
  */
 export type RefTypeId = typeof RefTypeId
 
-export * as Ref from "./Ref.js"
-
-declare module "./Ref.js" {
   /**
    * @since 2.0.0
    * @category models

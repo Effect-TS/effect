@@ -18,9 +18,6 @@ export const RandomTypeId: unique symbol = internal.RandomTypeId
  */
 export type RandomTypeId = typeof RandomTypeId
 
-export * as Random from "./Random.js"
-
-declare module "./Random.js" {
   /**
    * @since 2.0.0
    * @category models
