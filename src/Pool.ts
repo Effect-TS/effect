@@ -1,16 +1,16 @@
 import type { Data } from "./Data.js"
 import type { Effect } from "./Effect.js"
+import type { PoolTypeId } from "./impl/Pool.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { PoolTypeId } from "./Pool.impl.js"
 import type { Scope } from "./Scope.js"
 
+export * from "./impl/Pool.js"
 export * from "./internal/Jumpers/Pool.js"
-export * from "./Pool.impl.js"
 
 export declare namespace Pool {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Pool.impl.js"
+  export type * from "./impl/Pool.js"
 }
 /**
  * A `Pool<E, A>` is a pool of items of type `A`, each of which may be

@@ -1,13 +1,13 @@
-import type { Variance } from "./FiberRef.impl.js"
+import type { Variance } from "./impl/FiberRef.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * from "./FiberRef.impl.js"
+export * from "./impl/FiberRef.js"
 export * from "./internal/Jumpers/FiberRef.js"
 
 export declare namespace FiberRef {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./FiberRef.impl.js"
+  export type * from "./impl/FiberRef.js"
 }
 /**
  * @since 2.0.0

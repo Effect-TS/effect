@@ -1,1 +1,1 @@
-export * as Runtime from "../../Runtime.impl.js"
+export * as Runtime from "../../impl/Runtime.js"

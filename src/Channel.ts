@@ -1,9 +1,9 @@
-import type { ChannelUnify, ChannelUnifyIgnore } from "./Channel.impl.js"
 import type { ChannelTypeId } from "./Effectable.js"
+import type { ChannelUnify, ChannelUnifyIgnore } from "./impl/Channel.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Unify } from "./Unify.js"
 
-export * from "./Channel.impl.js"
+export * from "./impl/Channel.js"
 export * from "./internal/Jumpers/Channel.js"
 
 /**
@@ -67,5 +67,5 @@ export declare namespace Channel {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Channel.impl.js"
+  export type * from "./impl/Channel.js"
 }

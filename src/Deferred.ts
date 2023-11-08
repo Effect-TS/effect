@@ -1,10 +1,10 @@
-import type { DeferredTypeId } from "./Deferred.impl.js"
 import type { FiberId } from "./FiberId.js"
+import type { DeferredTypeId } from "./impl/Deferred.js"
 import type * as internal from "./internal/deferred.js"
 import type { MutableRef } from "./MutableRef.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * from "./Deferred.impl.js"
+export * from "./impl/Deferred.js"
 export * from "./internal/Jumpers/Deferred.js"
 
 /**
@@ -43,5 +43,5 @@ export declare namespace Deferred {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Deferred.impl.js"
+  export type * from "./impl/Deferred.js"
 }

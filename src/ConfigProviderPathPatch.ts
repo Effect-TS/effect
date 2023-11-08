@@ -1,6 +1,6 @@
-import type { AndThen, Empty, MapName, Nested, Unnested } from "./ConfigProviderPathPatch.impl.js"
+import type { AndThen, Empty, MapName, Nested, Unnested } from "./impl/ConfigProviderPathPatch.js"
 
-export * from "./ConfigProviderPathPatch.impl.js"
+export * from "./impl/ConfigProviderPathPatch.js"
 export * from "./internal/Jumpers/ConfigProviderPathPatch.js"
 
 /**
@@ -15,5 +15,5 @@ export type PathPatch = Empty | AndThen | MapName | Nested | Unnested
 export declare namespace PathPatch {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./PathPatch.impl.js"
+  export type * from "./impl/PathPatch.js"
 }

@@ -1,1 +1,1 @@
-export * as Option from "../../Option.impl.js"
+export * as Option from "../../impl/Option.js"

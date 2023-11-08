@@ -1,1 +1,1 @@
-export * as RequestResolver from "../../RequestResolver.impl.js"
+export * as RequestResolver from "../../impl/RequestResolver.js"

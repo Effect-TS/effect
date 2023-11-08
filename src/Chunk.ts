@@ -1,9 +1,9 @@
-import type { Backing, NonEmptyChunk, TypeId } from "./Chunk.impl.js"
 import type { Equal } from "./Equal.js"
+import type { Backing, NonEmptyChunk, TypeId } from "./impl/Chunk.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * from "./Chunk.impl.js"
+export * from "./impl/Chunk.js"
 export * from "./internal/Jumpers/Chunk.js"
 
 /**
@@ -41,5 +41,5 @@ export declare namespace Chunk {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Chunk.impl.js"
+  export type * from "./impl/Chunk.js"
 }

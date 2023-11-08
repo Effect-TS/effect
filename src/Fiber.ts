@@ -1,13 +1,13 @@
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
-import type { FiberTypeId, RuntimeFiber, RuntimeFiberTypeId } from "./Fiber.impl.js"
 import type { FiberId } from "./FiberId.js"
 import type { FiberStatus } from "./FiberStatus.js"
 import type { HashSet } from "./HashSet.js"
+import type { FiberTypeId, RuntimeFiber, RuntimeFiberTypeId } from "./impl/Fiber.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * from "./Fiber.impl.js"
+export * from "./impl/Fiber.js"
 export * from "./internal/Jumpers/Fiber.js"
 
 /**
@@ -65,7 +65,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
 export declare namespace Fiber {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Fiber.impl.js"
+  export type * from "./impl/Fiber.js"
 
   /**
    * @since 2.0.0

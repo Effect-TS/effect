@@ -1,17 +1,17 @@
 import type { Cache } from "./Cache.js"
 import type { Effect } from "./Effect.js"
+import type { ScopedCacheTypeId } from "./impl/ScopedCache.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
-import type { ScopedCacheTypeId } from "./ScopedCache.impl.js"
 
+export * from "./impl/ScopedCache.js"
 export * from "./internal/Jumpers/ScopedCache.js"
-export * from "./ScopedCache.impl.js"
 
 export declare namespace ScopedCache {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ScopedCache.impl.js"
+  export type * from "./impl/ScopedCache.js"
 }
 /**
  * @since 2.0.0

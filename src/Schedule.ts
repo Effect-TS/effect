@@ -1,15 +1,15 @@
 import type { Effect } from "./Effect.js"
+import type { ScheduleDriverTypeId, ScheduleTypeId } from "./impl/Schedule.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { ScheduleDriverTypeId, ScheduleTypeId } from "./Schedule.impl.js"
 import type { ScheduleDecision } from "./ScheduleDecision.js"
 
+export * from "./impl/Schedule.js"
 export * from "./internal/Jumpers/Schedule.js"
-export * from "./Schedule.impl.js"
 
 export declare namespace Schedule {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Schedule.impl.js"
+  export type * from "./impl/Schedule.js"
 }
 /**
  * A `Schedule<Env, In, Out>` defines a recurring schedule, which consumes

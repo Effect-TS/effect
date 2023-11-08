@@ -1,16 +1,16 @@
 import type { Equal } from "./Equal.js"
-import type { TypeId } from "./HashMap.impl.js"
+import type { TypeId } from "./impl/HashMap.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * from "./HashMap.impl.js"
+export * from "./impl/HashMap.js"
 export * from "./internal/Jumpers/HashMap.js"
 
 export declare namespace HashMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./HashMap.impl.js"
+  export type * from "./impl/HashMap.js"
 }
 /**
  * @since 2.0.0

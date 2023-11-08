@@ -1,2 +1,2 @@
-export * from "./Streamable.impl.js"
+export * from "./impl/Streamable.js"
 export * from "./internal/Jumpers/Streamable.js"

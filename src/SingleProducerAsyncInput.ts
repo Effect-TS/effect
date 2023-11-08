@@ -1,15 +1,15 @@
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
-import type { AsyncInputConsumer, AsyncInputProducer } from "./SingleProducerAsyncInput.impl.js"
+import type { AsyncInputConsumer, AsyncInputProducer } from "./impl/SingleProducerAsyncInput.js"
 
+export * from "./impl/SingleProducerAsyncInput.js"
 export * from "./internal/Jumpers/SingleProducerAsyncInput.js"
-export * from "./SingleProducerAsyncInput.impl.js"
 
 export declare namespace SingleProducerAsyncInput {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./SingleProducerAsyncInput.impl.js"
+  export type * from "./impl/SingleProducerAsyncInput.js"
 }
 /**
  * An MVar-like abstraction for sending data to channels asynchronously which is

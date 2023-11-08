@@ -1,1 +1,1 @@
-export * as GlobalValue from "../../GlobalValue.impl.js"
+export * as GlobalValue from "../../impl/GlobalValue.js"

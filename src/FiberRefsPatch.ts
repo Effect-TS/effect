@@ -1,12 +1,12 @@
-import type { Add, AndThen, Empty, Remove, Update } from "./FiberRefsPatch.impl.js"
+import type { Add, AndThen, Empty, Remove, Update } from "./impl/FiberRefsPatch.js"
 
-export * from "./FiberRefsPatch.impl.js"
+export * from "./impl/FiberRefsPatch.js"
 export * from "./internal/Jumpers/FiberRefsPatch.js"
 
 export declare namespace FiberRefsPatch {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./FiberRefsPatch.impl.js"
+  export type * from "./impl/FiberRefsPatch.js"
 }
 /**
  * A `FiberRefsPatch` captures the changes in `FiberRef` values made by a single

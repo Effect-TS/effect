@@ -3,13 +3,13 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Queue } from "./Queue.js"
 import type { Scope } from "./Scope.js"
 
+export * from "./impl/PubSub.js"
 export * from "./internal/Jumpers/PubSub.js"
-export * from "./PubSub.impl.js"
 
 export declare namespace PubSub {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./PubSub.impl.js"
+  export type * from "./impl/PubSub.js"
 }
 /**
  * A `PubSub<A>` is an asynchronous message hub into which publishers can publish

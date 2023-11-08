@@ -1,1 +1,1 @@
-export * as SingleProducerAsyncInput from "../../SingleProducerAsyncInput.impl.js"
+export * as SingleProducerAsyncInput from "../../impl/SingleProducerAsyncInput.js"

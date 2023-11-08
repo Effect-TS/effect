@@ -1,9 +1,9 @@
 import type { Effect } from "./Effect.js"
+import type { SynchronizedRefTypeId } from "./impl/SynchronizedRef.js"
 import type { Ref } from "./Ref.js"
-import type { SynchronizedRefTypeId } from "./SynchronizedRef.impl.js"
 
+export * from "./impl/SynchronizedRef.js"
 export * from "./internal/Jumpers/SynchronizedRef.js"
-export * from "./SynchronizedRef.impl.js"
 
 /**
  * @since 2.0.0
@@ -28,5 +28,5 @@ export declare namespace SynchronizedRef {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./SynchronizedRef.impl.js"
+  export type * from "./impl/SynchronizedRef.js"
 }

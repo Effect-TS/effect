@@ -1,10 +1,10 @@
 import type { Either } from "./Either.js"
+import type { TDeferredTypeId } from "./impl/TDeferred.js"
 import type { Option } from "./Option.js"
-import type { TDeferredTypeId } from "./TDeferred.impl.js"
 import type { TRef } from "./TRef.js"
 
+export * from "./impl/TDeferred.js"
 export * from "./internal/Jumpers/TDeferred.js"
-export * from "./TDeferred.impl.js"
 
 /**
  * @since 2.0.0
@@ -37,5 +37,5 @@ export declare namespace TDeferred {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TDeferred.impl.js"
+  export type * from "./impl/TDeferred.js"
 }

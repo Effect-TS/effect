@@ -1,15 +1,15 @@
+import type { TypeId } from "./impl/MutableHashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { MutableHashMap } from "./MutableHashMap.js"
-import type { TypeId } from "./MutableHashSet.impl.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MutableHashSet.js"
 export * from "./internal/Jumpers/MutableHashSet.js"
-export * from "./MutableHashSet.impl.js"
 
 export declare namespace MutableHashSet {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MutableHashSet.impl.js"
+  export type * from "./impl/MutableHashSet.js"
 }
 /**
  * @since 2.0.0

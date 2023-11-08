@@ -1,16 +1,16 @@
-import type { GroupByTypeId } from "./GroupBy.impl.js"
+import type { GroupByTypeId } from "./impl/GroupBy.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Queue } from "./Queue.js"
 import type { Stream } from "./Stream.js"
 import type { Take } from "./Take.js"
 
-export * from "./GroupBy.impl.js"
+export * from "./impl/GroupBy.js"
 export * from "./internal/Jumpers/GroupBy.js"
 
 export declare namespace GroupBy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./GroupBy.impl.js"
+  export type * from "./impl/GroupBy.js"
 }
 /**
  * Representation of a grouped stream. This allows to filter which groups will

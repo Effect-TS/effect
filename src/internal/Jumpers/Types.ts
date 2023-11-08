@@ -1,1 +1,1 @@
-export * as Types from "../../Types.impl.js"
+export * as Types from "../../impl/Types.js"

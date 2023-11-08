@@ -1,13 +1,13 @@
 import type { Effect } from "./Effect.js"
+import type { SubscriptionRefTypeId } from "./impl/SubscriptionRef.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { PubSub } from "./PubSub.js"
 import type { Ref } from "./Ref.js"
 import type { Stream } from "./Stream.js"
-import type { SubscriptionRefTypeId } from "./SubscriptionRef.impl.js"
 import type { SynchronizedRef } from "./SynchronizedRef.js"
 
+export * from "./impl/SubscriptionRef.js"
 export * from "./internal/Jumpers/SubscriptionRef.js"
-export * from "./SubscriptionRef.impl.js"
 
 /**
  * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
@@ -45,5 +45,5 @@ export declare namespace SubscriptionRef {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./SubscriptionRef.impl.js"
+  export type * from "./impl/SubscriptionRef.js"
 }

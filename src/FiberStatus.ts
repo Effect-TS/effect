@@ -1,12 +1,12 @@
-import type { Done, Running, Suspended } from "./FiberStatus.impl.js"
+import type { Done, Running, Suspended } from "./impl/FiberStatus.js"
 
-export * from "./FiberStatus.impl.js"
+export * from "./impl/FiberStatus.js"
 export * from "./internal/Jumpers/FiberStatus.js"
 
 export declare namespace FiberStatus {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./FiberStatus.impl.js"
+  export type * from "./impl/FiberStatus.js"
 }
 /**
  * @since 2.0.0

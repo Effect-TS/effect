@@ -1,12 +1,12 @@
-import type { NodeInspectSymbol } from "./Inspectable.impl.js"
+import type { NodeInspectSymbol } from "./impl/Inspectable.js"
 
-export * from "./Inspectable.impl.js"
+export * from "./impl/Inspectable.js"
 export * from "./internal/Jumpers/Inspectable.js"
 
 export declare namespace Inspectable {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Inspectable.impl.js"
+  export type * from "./impl/Inspectable.js"
 }
 /**
  * @since 2.0.0

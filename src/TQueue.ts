@@ -1,7 +1,7 @@
-import type { TDequeue, TDequeueTypeId, TEnqueue, TEnqueueTypeId } from "./TQueue.impl.js"
+import type { TDequeue, TDequeueTypeId, TEnqueue, TEnqueueTypeId } from "./impl/TQueue.js"
 
+export * from "./impl/TQueue.js"
 export * from "./internal/Jumpers/TQueue.js"
-export * from "./TQueue.impl.js"
 
 /**
  * @since 2.0.0
@@ -34,5 +34,5 @@ export declare namespace TQueue {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TQueue.impl.js"
+  export type * from "./impl/TQueue.js"
 }

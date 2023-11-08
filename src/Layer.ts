@@ -1,13 +1,13 @@
-import type { LayerTypeId } from "./Layer.impl.js"
+import type { LayerTypeId } from "./impl/Layer.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/Layer.js"
 export * from "./internal/Jumpers/Layer.js"
-export * from "./Layer.impl.js"
 
 export declare namespace Layer {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Layer.impl.js"
+  export type * from "./impl/Layer.js"
 }
 /**
  * @since 2.0.0

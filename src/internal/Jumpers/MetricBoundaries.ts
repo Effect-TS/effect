@@ -1,1 +1,1 @@
-export * as MetricBoundaries from "../../MetricBoundaries.impl.js"
+export * as MetricBoundaries from "../../impl/MetricBoundaries.js"

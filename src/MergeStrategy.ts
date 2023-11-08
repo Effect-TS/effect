@@ -1,12 +1,12 @@
-import type { BackPressure, BufferSliding, MergeStrategyTypeId } from "./MergeStrategy.impl.js"
+import type { BackPressure, BufferSliding, MergeStrategyTypeId } from "./impl/MergeStrategy.js"
 
+export * from "./impl/MergeStrategy.js"
 export * from "./internal/Jumpers/MergeStrategy.js"
-export * from "./MergeStrategy.impl.js"
 
 export declare namespace MergeStrategy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MergeStrategy.impl.js"
+  export type * from "./impl/MergeStrategy.js"
 }
 /**
  * @since 2.0.0

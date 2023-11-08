@@ -1,1 +1,1 @@
-export * as TSemaphore from "../../TSemaphore.impl.js"
+export * as TSemaphore from "../../impl/TSemaphore.js"

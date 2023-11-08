@@ -1,1 +1,1 @@
-export * as Deferred from "../../Deferred.impl.js"
+export * as Deferred from "../../impl/Deferred.js"

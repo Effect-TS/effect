@@ -1,2 +1,2 @@
-export * from "./Struct.impl.js"
+export * from "./impl/Struct.js"
 export * from "./internal/Jumpers/Struct.js"

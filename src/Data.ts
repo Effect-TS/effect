@@ -1,12 +1,12 @@
 import type { Equal } from "./Equal.js"
 
-export * from "./Data.impl.js"
+export * from "./impl/Data.js"
 export * from "./internal/Jumpers/Data.js"
 
 export declare namespace Data {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Data.impl.js"
+  export type * from "./impl/Data.js"
 }
 /**
  * @category models

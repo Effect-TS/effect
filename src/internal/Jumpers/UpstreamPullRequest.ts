@@ -1,1 +1,1 @@
-export * as UpstreamPullRequest from "../../UpstreamPullRequest.impl.js"
+export * as UpstreamPullRequest from "../../impl/UpstreamPullRequest.js"

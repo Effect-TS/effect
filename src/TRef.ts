@@ -1,15 +1,15 @@
+import type { TRefTypeId } from "./impl/TRef.js"
 import type * as Journal from "./internal/stm/stm/journal.js"
 import type { TxnId } from "./internal/stm/stm/txnId.js"
 import type { Versioned } from "./internal/stm/stm/versioned.js"
 import type { STM } from "./STM.js"
-import type { TRefTypeId } from "./TRef.impl.js"
 
+export * from "./impl/TRef.js"
 export * from "./internal/Jumpers/TRef.js"
-export * from "./TRef.impl.js"
 export declare namespace TRef {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TRef.impl.js"
+  export type * from "./impl/TRef.js"
 }
 /**
  * A `TRef<A>` is a purely functional description of a mutable reference that can

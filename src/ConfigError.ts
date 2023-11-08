@@ -7,9 +7,9 @@ import type {
   Or,
   SourceUnavailable,
   Unsupported
-} from "./ConfigError.impl.js"
+} from "./impl/ConfigError.js"
 
-export * from "./ConfigError.impl.js"
+export * from "./impl/ConfigError.js"
 export * from "./internal/Jumpers/ConfigError.js"
 
 /**
@@ -46,5 +46,5 @@ export declare namespace ConfigError {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ConfigError.impl.js"
+  export type * from "./impl/ConfigError.js"
 }

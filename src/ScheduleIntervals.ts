@@ -1,14 +1,14 @@
 import type { Chunk } from "./Chunk.js"
+import type { IntervalsTypeId } from "./impl/ScheduleIntervals.js"
 import type { Interval } from "./ScheduleInterval.js"
-import type { IntervalsTypeId } from "./ScheduleIntervals.impl.js"
 
+export * from "./impl/ScheduleIntervals.js"
 export * from "./internal/Jumpers/ScheduleIntervals.js"
-export * from "./ScheduleIntervals.impl.js"
 
 export declare namespace ScheduleIntervals {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ScheduleIntervals.impl.js"
+  export type * from "./impl/ScheduleIntervals.js"
 }
 /**
  * An `ScheduleIntervals` represents a list of several `Interval`s.

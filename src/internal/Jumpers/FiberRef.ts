@@ -1,1 +1,1 @@
-export * as FiberRef from "../../FiberRef.impl.js"
+export * as FiberRef from "../../impl/FiberRef.js"

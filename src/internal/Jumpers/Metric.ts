@@ -1,1 +1,1 @@
-export * as Metric from "../../Metric.impl.js"
+export * as Metric from "../../impl/Metric.js"

@@ -1,1 +1,1 @@
-export * as SubscriptionRef from "../../SubscriptionRef.impl.js"
+export * as SubscriptionRef from "../../impl/SubscriptionRef.js"

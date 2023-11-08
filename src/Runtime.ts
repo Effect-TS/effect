@@ -3,13 +3,13 @@ import type { FiberRefs } from "./FiberRefs.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 
+export * from "./impl/Runtime.js"
 export * from "./internal/Jumpers/Runtime.js"
-export * from "./Runtime.impl.js"
 
 export declare namespace Runtime {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Runtime.impl.js"
+  export type * from "./impl/Runtime.js"
 }
 /**
  * @since 2.0.0

@@ -1,10 +1,10 @@
+export * from "./impl/Ordering.js"
 export * from "./internal/Jumpers/Ordering.js"
-export * from "./Ordering.impl.js"
 
 export declare namespace Ordering {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Ordering.impl.js"
+  export type * from "./impl/Ordering.js"
 }
 /**
  * @category model

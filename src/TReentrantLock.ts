@@ -1,9 +1,9 @@
+import type { TReentrantLockTypeId } from "./impl/TReentrantLock.js"
 import type * as internal from "./internal/stm/tReentrantLock.js"
-import type { TReentrantLockTypeId } from "./TReentrantLock.impl.js"
 import type { TRef } from "./TRef.js"
 
+export * from "./impl/TReentrantLock.js"
 export * from "./internal/Jumpers/TReentrantLock.js"
-export * from "./TReentrantLock.impl.js"
 
 /**
  * A `TReentrantLock` is a reentrant read/write lock. Multiple readers may all
@@ -47,5 +47,5 @@ export declare namespace TReentrantLock {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TReentrantLock.impl.js"
+  export type * from "./impl/TReentrantLock.js"
 }

@@ -2,11 +2,11 @@ import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { Fiber } from "./Fiber.js"
+import type { SupervisorTypeId } from "./impl/Supervisor.js"
 import type { Option } from "./Option.js"
-import type { SupervisorTypeId } from "./Supervisor.impl.js"
 
+export * from "./impl/Supervisor.js"
 export * from "./internal/Jumpers/Supervisor.js"
-export * from "./Supervisor.impl.js"
 
 /**
  * @since 2.0.0
@@ -80,5 +80,5 @@ export declare namespace Supervisor {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Supervisor.impl.js"
+  export type * from "./impl/Supervisor.js"
 }

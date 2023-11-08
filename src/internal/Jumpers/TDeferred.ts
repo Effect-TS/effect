@@ -1,1 +1,1 @@
-export * as TDeferred from "../../TDeferred.impl.js"
+export * as TDeferred from "../../impl/TDeferred.js"

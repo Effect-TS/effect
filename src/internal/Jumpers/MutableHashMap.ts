@@ -1,1 +1,1 @@
-export * as MutableHashMap from "../../MutableHashMap.impl.js"
+export * as MutableHashMap from "../../impl/MutableHashMap.js"

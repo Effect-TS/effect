@@ -1,8 +1,8 @@
-import type { TArrayTypeId } from "./TArray.impl.js"
+import type { TArrayTypeId } from "./impl/TArray.js"
 import type { TRef } from "./TRef.js"
 
+export * from "./impl/TArray.js"
 export * from "./internal/Jumpers/TArray.js"
-export * from "./TArray.impl.js"
 
 /**
  * @since 2.0.0
@@ -34,5 +34,5 @@ export declare namespace TArray {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TArray.impl.js"
+  export type * from "./impl/TArray.js"
 }

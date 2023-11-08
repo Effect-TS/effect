@@ -1,2 +1,2 @@
-export * from "./BigInt.impl.js"
+export * from "./impl/BigInt.js"
 export * from "./internal/Jumpers/BigInt.js"

@@ -1,1 +1,1 @@
-export * as ReadonlyRecord from "../../ReadonlyRecord.impl.js"
+export * as ReadonlyRecord from "../../impl/ReadonlyRecord.js"

@@ -1,10 +1,10 @@
+export * from "./impl/RuntimeFlags.js"
 export * from "./internal/Jumpers/RuntimeFlags.js"
-export * from "./RuntimeFlags.impl.js"
 
 export declare namespace RuntimeFlags {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./RuntimeFlags.impl.js"
+  export type * from "./impl/RuntimeFlags.js"
 }
 /**
  * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of

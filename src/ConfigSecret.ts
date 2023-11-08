@@ -1,7 +1,7 @@
-import type { ConfigSecretTypeId } from "./ConfigSecret.impl.js"
 import type { Equal } from "./Equal.js"
+import type { ConfigSecretTypeId } from "./impl/ConfigSecret.js"
 
-export * from "./ConfigSecret.impl.js"
+export * from "./impl/ConfigSecret.js"
 export * from "./internal/Jumpers/ConfigSecret.js"
 
 /**
@@ -27,5 +27,5 @@ export declare namespace ConfigSecret {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ConfigSecret.impl.js"
+  export type * from "./impl/ConfigSecret.js"
 }

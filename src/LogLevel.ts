@@ -1,12 +1,12 @@
-import type { All, Debug, Error, Fatal, Info, None, Trace, Warning } from "./LogLevel.impl.js"
+import type { All, Debug, Error, Fatal, Info, None, Trace, Warning } from "./impl/LogLevel.js"
 
+export * from "./impl/LogLevel.js"
 export * from "./internal/Jumpers/LogLevel.js"
-export * from "./LogLevel.impl.js"
 
 export declare namespace LogLevel {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./LogLevel.impl.js"
+  export type * from "./impl/LogLevel.js"
 }
 /**
  * A `LogLevel` represents the log level associated with an individual logging

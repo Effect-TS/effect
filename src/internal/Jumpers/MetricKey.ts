@@ -1,1 +1,1 @@
-export * as MetricKey from "../../MetricKey.impl.js"
+export * as MetricKey from "../../impl/MetricKey.js"

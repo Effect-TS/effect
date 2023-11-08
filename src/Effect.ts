@@ -1,10 +1,10 @@
-import type { EffectUnify } from "./Effect.impl.js"
 import type { EffectTypeId } from "./Effectable.js"
 import type { Equal } from "./Equal.js"
+import type { EffectUnify } from "./impl/Effect.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Unify } from "./Unify.js"
 
-export * from "./Effect.impl.js"
+export * from "./impl/Effect.js"
 export * from "./internal/Jumpers/Effect.js"
 
 /**
@@ -32,7 +32,7 @@ export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal, Pipeab
 export declare namespace Effect {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Effect.impl.js"
+  export type * from "./impl/Effect.js"
   /**
    * @since 2.0.0
    * @category models

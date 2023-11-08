@@ -1,1 +1,1 @@
-export * as Ordering from "../../Ordering.impl.js"
+export * as Ordering from "../../impl/Ordering.js"

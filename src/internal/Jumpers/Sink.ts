@@ -1,1 +1,1 @@
-export * as Sink from "../../Sink.impl.js"
+export * as Sink from "../../impl/Sink.js"

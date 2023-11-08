@@ -1,1 +1,1 @@
-export * as SynchronizedRef from "../../SynchronizedRef.impl.js"
+export * as SynchronizedRef from "../../impl/SynchronizedRef.js"

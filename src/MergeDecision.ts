@@ -1,12 +1,12 @@
-import type { MergeDecisionTypeId } from "./MergeDecision.impl.js"
+import type { MergeDecisionTypeId } from "./impl/MergeDecision.js"
 
+export * from "./impl/MergeDecision.js"
 export * from "./internal/Jumpers/MergeDecision.js"
-export * from "./MergeDecision.impl.js"
 
 export declare namespace MergeDecision {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MergeDecision.impl.js"
+  export type * from "./impl/MergeDecision.js"
 }
 /**
  * @since 2.0.0

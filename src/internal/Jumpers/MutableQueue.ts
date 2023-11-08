@@ -1,1 +1,1 @@
-export * as MutableQueue from "../../MutableQueue.impl.js"
+export * as MutableQueue from "../../impl/MutableQueue.js"

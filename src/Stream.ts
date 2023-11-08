@@ -1,9 +1,9 @@
+import type { StreamTypeId, StreamUnify, StreamUnifyIgnore } from "./impl/Stream.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { StreamTypeId, StreamUnify, StreamUnifyIgnore } from "./Stream.impl.js"
 import type { Unify } from "./Unify.js"
 
+export * from "./impl/Stream.js"
 export * from "./internal/Jumpers/Stream.js"
-export * from "./Stream.impl.js"
 
 /**
  * A `Stream<R, E, A>` is a description of a program that, when evaluated, may
@@ -63,5 +63,5 @@ export declare namespace Stream {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Stream.impl.js"
+  export type * from "./impl/Stream.js"
 }

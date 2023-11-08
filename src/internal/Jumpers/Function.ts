@@ -1,1 +1,1 @@
-export * as Function from "../../Function.impl.js"
+export * as Function from "../../impl/Function.js"

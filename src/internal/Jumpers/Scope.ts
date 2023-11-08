@@ -1,1 +1,1 @@
-export * as Scope from "../../Scope.impl.js"
+export * as Scope from "../../impl/Scope.js"

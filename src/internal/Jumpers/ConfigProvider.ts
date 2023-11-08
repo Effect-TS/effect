@@ -1,1 +1,1 @@
-export * as ConfigProvider from "../../ConfigProvider.impl.js"
+export * as ConfigProvider from "../../impl/ConfigProvider.js"

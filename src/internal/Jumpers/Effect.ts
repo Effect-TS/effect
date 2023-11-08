@@ -1,1 +1,1 @@
-export * as Effect from "../../Effect.impl.js"
+export * as Effect from "../../impl/Effect.js"

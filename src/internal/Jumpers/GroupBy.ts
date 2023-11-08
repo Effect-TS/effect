@@ -1,1 +1,1 @@
-export * as GroupBy from "../../GroupBy.impl.js"
+export * as GroupBy from "../../impl/GroupBy.js"

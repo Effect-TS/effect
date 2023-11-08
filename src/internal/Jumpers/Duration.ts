@@ -1,1 +1,1 @@
-export * as Duration from "../../Duration.impl.js"
+export * as Duration from "../../impl/Duration.js"

@@ -1,1 +1,1 @@
-export * as TReentrantLock from "../../TReentrantLock.impl.js"
+export * as TReentrantLock from "../../impl/TReentrantLock.js"

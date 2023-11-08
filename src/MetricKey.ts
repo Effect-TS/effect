@@ -1,18 +1,18 @@
 import type { Equal } from "./Equal.js"
 import type { HashSet } from "./HashSet.js"
-import type { MetricKeyTypeId } from "./MetricKey.impl.js"
+import type { MetricKeyTypeId } from "./impl/MetricKey.js"
 import type { MetricKeyType } from "./MetricKeyType.js"
 import type { MetricLabel } from "./MetricLabel.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MetricKey.js"
 export * from "./internal/Jumpers/MetricKey.js"
-export * from "./MetricKey.impl.js"
 
 export declare namespace MetricKey {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MetricKey.impl.js"
+  export type * from "./impl/MetricKey.js"
 }
 /**
  * A `MetricKey` is a unique key associated with each metric. The key is based

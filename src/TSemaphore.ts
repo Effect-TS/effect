@@ -1,8 +1,8 @@
+import type { TSemaphoreTypeId } from "./impl/TSemaphore.js"
 import type { TRef } from "./TRef.js"
-import type { TSemaphoreTypeId } from "./TSemaphore.impl.js"
 
+export * from "./impl/TSemaphore.js"
 export * from "./internal/Jumpers/TSemaphore.js"
-export * from "./TSemaphore.impl.js"
 
 /**
  * @since 2.0.0
@@ -31,5 +31,5 @@ export declare namespace TSemaphore {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TSemaphore.impl.js"
+  export type * from "./impl/TSemaphore.js"
 }

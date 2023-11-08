@@ -1,13 +1,13 @@
-import { symbol } from "./Equal.impl.js"
 import type { Hash } from "./Hash.js"
+import { symbol } from "./impl/Equal.js"
 
-export * from "./Equal.impl.js"
+export * from "./impl/Equal.js"
 export * from "./internal/Jumpers/Equal.js"
 
 export declare namespace Equal {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Equal.impl.js"
+  export type * from "./impl/Equal.js"
 }
 /**
  * @since 2.0.0

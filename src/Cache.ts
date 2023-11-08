@@ -1,8 +1,8 @@
-import type { CacheTypeId, ConsumerCache } from "./Cache.impl.js"
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
+import type { CacheTypeId, ConsumerCache } from "./impl/Cache.js"
 
-export * from "./Cache.impl.js"
+export * from "./impl/Cache.js"
 export * from "./internal/Jumpers/Cache.js"
 
 /**
@@ -75,5 +75,5 @@ export declare namespace Cache {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Cache.impl.js"
+  export type * from "./impl/Cache.js"
 }

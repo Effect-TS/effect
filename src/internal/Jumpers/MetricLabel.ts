@@ -1,1 +1,1 @@
-export * as MetricLabel from "../../MetricLabel.impl.js"
+export * as MetricLabel from "../../impl/MetricLabel.js"

@@ -1,12 +1,12 @@
-import type { BothRunning, LeftDone, MergeStateTypeId, RightDone } from "./MergeState.impl.js"
+import type { BothRunning, LeftDone, MergeStateTypeId, RightDone } from "./impl/MergeState.js"
 
+export * from "./impl/MergeState.js"
 export * from "./internal/Jumpers/MergeState.js"
-export * from "./MergeState.impl.js"
 
 export declare namespace MergeState {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MergeState.impl.js"
+  export type * from "./impl/MergeState.js"
 }
 /**
  * @since 2.0.0

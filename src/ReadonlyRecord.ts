@@ -1,10 +1,10 @@
+export * from "./impl/ReadonlyRecord.js"
 export * from "./internal/Jumpers/ReadonlyRecord.js"
-export * from "./ReadonlyRecord.impl.js"
 
 export declare namespace ReadonlyRecord {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ReadonlyRecord.impl.js"
+  export type * from "./impl/ReadonlyRecord.js"
 }
 /**
  * @category models

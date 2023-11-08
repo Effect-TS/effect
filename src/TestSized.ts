@@ -1,14 +1,14 @@
 import type { Effect } from "./Effect.js"
 import type { FiberRef } from "./FiberRef.js"
-import type { TestSizedTypeId } from "./TestSized.impl.js"
+import type { TestSizedTypeId } from "./impl/TestSized.js"
 
+export * from "./impl/TestSized.js"
 export * from "./internal/Jumpers/TestSized.js"
-export * from "./TestSized.impl.js"
 
 export declare namespace TestSized {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TestSized.impl.js"
+  export type * from "./impl/TestSized.js"
 }
 /**
  * @since 2.0.0

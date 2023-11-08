@@ -1,16 +1,16 @@
 import type { Equal } from "./Equal.js"
+import type { TypeId } from "./impl/SortedSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { RedBlackTree as RBT } from "./RedBlackTree.js"
-import type { TypeId } from "./SortedSet.impl.js"
 
+export * from "./impl/SortedSet.js"
 export * from "./internal/Jumpers/SortedSet.js"
-export * from "./SortedSet.impl.js"
 
 export declare namespace SortedSet {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./SortedSet.impl.js"
+  export type * from "./impl/SortedSet.js"
 }
 /**
  * @since 2.0.0

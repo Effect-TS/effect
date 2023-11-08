@@ -1,1 +1,1 @@
-export * as Struct from "../../Struct.impl.js"
+export * as Struct from "../../impl/Struct.js"

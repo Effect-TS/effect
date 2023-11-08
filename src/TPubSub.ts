@@ -1,17 +1,17 @@
 import type { HashSet } from "./HashSet.js"
+import type { TPubSubTypeId } from "./impl/TPubSub.js"
 import type * as internal from "./internal/stm/tPubSub.js"
 import type * as tQueue from "./internal/stm/tQueue.js"
-import type { TPubSubTypeId } from "./TPubSub.impl.js"
 import type { TQueue } from "./TQueue.js"
 import type { TRef } from "./TRef.js"
 
+export * from "./impl/TPubSub.js"
 export * from "./internal/Jumpers/TPubSub.js"
-export * from "./TPubSub.impl.js"
 
 export declare namespace TPubSub {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TPubSub.impl.js"
+  export type * from "./impl/TPubSub.js"
 }
 /**
  * @since 2.0.0

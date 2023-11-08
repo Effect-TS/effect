@@ -1,12 +1,12 @@
-import type { PullAfterAllEnqueued, PullAfterNext, UpstreamPullStrategyTypeId } from "./UpstreamPullStrategy.impl.js"
+import type { PullAfterAllEnqueued, PullAfterNext, UpstreamPullStrategyTypeId } from "./impl/UpstreamPullStrategy.js"
 
+export * from "./impl/UpstreamPullStrategy.js"
 export * from "./internal/Jumpers/UpstreamPullStrategy.js"
-export * from "./UpstreamPullStrategy.impl.js"
 
 export declare namespace UpstreamPullStrategy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./UpstreamPullStrategy.impl.js"
+  export type * from "./impl/UpstreamPullStrategy.js"
 }
 /**
  * @since 2.0.0

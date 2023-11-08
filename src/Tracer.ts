@@ -1,15 +1,15 @@
 import type { Context } from "./Context.js"
 import type { Fiber } from "./Fiber.js"
+import type { ParentSpan, Span, SpanLink, TracerTypeId } from "./impl/Tracer.js"
 import type { Option } from "./Option.js"
-import type { ParentSpan, Span, SpanLink, TracerTypeId } from "./Tracer.impl.js"
 
+export * from "./impl/Tracer.js"
 export * from "./internal/Jumpers/Tracer.js"
-export * from "./Tracer.impl.js"
 
 export declare namespace Tracer {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Tracer.impl.js"
+  export type * from "./impl/Tracer.js"
 }
 /**
  * @since 2.0.0

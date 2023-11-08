@@ -1,18 +1,18 @@
 import type { Effect } from "./Effect.js"
 import type { HashSet } from "./HashSet.js"
-import type { MetricTypeId } from "./Metric.impl.js"
+import type { MetricTypeId } from "./impl/Metric.js"
 import type { MetricKeyType } from "./MetricKeyType.js"
 import type { MetricLabel } from "./MetricLabel.js"
 import type { MetricState } from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/Metric.js"
 export * from "./internal/Jumpers/Metric.js"
-export * from "./Metric.impl.js"
 
 export declare namespace Metric {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Metric.impl.js"
+  export type * from "./impl/Metric.js"
 }
 /**
  * A `Metric<Type, In, Out>` represents a concurrent metric which accepts

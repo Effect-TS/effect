@@ -1,13 +1,13 @@
-import type { TypeId, UnsafeConsole } from "./Console.impl.js"
 import type { Effect } from "./Effect.js"
+import type { TypeId, UnsafeConsole } from "./impl/Console.js"
 
-export * from "./Console.impl.js"
+export * from "./impl/Console.js"
 export * from "./internal/Jumpers/Console.js"
 
 export declare namespace Console {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Console.impl.js"
+  export type * from "./impl/Console.js"
 }
 /**
  * @since 2.0.0

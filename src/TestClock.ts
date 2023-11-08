@@ -3,13 +3,13 @@ import type { Clock } from "./Clock.js"
 import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 
+export * from "./impl/TestClock.js"
 export * from "./internal/Jumpers/TestClock.js"
-export * from "./TestClock.impl.js"
 
 export declare namespace TestClock {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TestClock.impl.js"
+  export type * from "./impl/TestClock.js"
 }
 /**
  * A `TestClock` makes it easy to deterministically and efficiently test effects

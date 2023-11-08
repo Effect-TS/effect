@@ -1,9 +1,9 @@
-import type { ConfigTypeId } from "./Config.impl.js"
 import type { ConfigError } from "./ConfigError.js"
 import type { Either } from "./Either.js"
+import type { ConfigTypeId } from "./impl/Config.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * from "./Config.impl.js"
+export * from "./impl/Config.js"
 export * from "./internal/Jumpers/Config.js"
 
 /**
@@ -56,5 +56,5 @@ export declare namespace Config {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Config.impl.js"
+  export type * from "./impl/Config.js"
 }

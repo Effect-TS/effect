@@ -1,1 +1,1 @@
-export * as ReadonlyArray from "../../ReadonlyArray.impl.js"
+export * as ReadonlyArray from "../../impl/ReadonlyArray.js"

@@ -1,16 +1,16 @@
 import type { Effect } from "./Effect.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
 import type { Exit } from "./Exit.js"
+import type { CloseableScope, ScopeTypeId } from "./impl/Scope.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { CloseableScope, ScopeTypeId } from "./Scope.impl.js"
 
+export * from "./impl/Scope.js"
 export * from "./internal/Jumpers/Scope.js"
-export * from "./Scope.impl.js"
 
 export declare namespace Scope {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Scope.impl.js"
+  export type * from "./impl/Scope.js"
 }
 /**
  * @since 2.0.0

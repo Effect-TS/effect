@@ -1,1 +1,1 @@
-export * as String from "../../String.impl.js"
+export * as String from "../../impl/String.js"

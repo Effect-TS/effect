@@ -1,15 +1,15 @@
 import type { Chunk } from "./Chunk.js"
 import type { Effect } from "./Effect.js"
+import type { EmitOps } from "./impl/StreamEmit.js"
 import type { Option } from "./Option.js"
-import type { EmitOps } from "./StreamEmit.impl.js"
 
+export * from "./impl/StreamEmit.js"
 export * from "./internal/Jumpers/StreamEmit.js"
-export * from "./StreamEmit.impl.js"
 
 export declare namespace StreamEmit {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./StreamEmit.impl.js"
+  export type * from "./impl/StreamEmit.js"
 }
 /**
  * An `Emit<R, E, A, B>` represents an asynchronous callback that can be

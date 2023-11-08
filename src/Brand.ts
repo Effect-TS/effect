@@ -1,10 +1,10 @@
-import type { BrandTypeId, RefinedConstructorsTypeId } from "./Brand.impl.js"
 import type { Either } from "./Either.js"
+import type { BrandTypeId, RefinedConstructorsTypeId } from "./impl/Brand.js"
 import type { Option } from "./Option.js"
 import type { Refinement } from "./Predicate.js"
 import type { Types } from "./Types.js"
 
-export * from "./Brand.impl.js"
+export * from "./impl/Brand.js"
 export * from "./internal/Jumpers/Brand.js"
 
 /**
@@ -119,5 +119,5 @@ export declare namespace Brand {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Brand.impl.js"
+  export type * from "./impl/Brand.js"
 }

@@ -1,1 +1,1 @@
-export * as MetricPair from "../../MetricPair.impl.js"
+export * as MetricPair from "../../impl/MetricPair.js"

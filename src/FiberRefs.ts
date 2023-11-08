@@ -1,16 +1,16 @@
 import type { FiberId } from "./FiberId.js"
 import type { FiberRef } from "./FiberRef.js"
-import type { FiberRefsSym } from "./FiberRefs.impl.js"
+import type { FiberRefsSym } from "./impl/FiberRefs.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { ReadonlyArray as Arr } from "./ReadonlyArray.js"
 
-export * from "./FiberRefs.impl.js"
+export * from "./impl/FiberRefs.js"
 export * from "./internal/Jumpers/FiberRefs.js"
 
 export declare namespace FiberRefs {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./FiberRefs.impl.js"
+  export type * from "./impl/FiberRefs.js"
 }
 /**
  * `FiberRefs` is a data type that represents a collection of `FiberRef` values.

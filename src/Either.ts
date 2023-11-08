@@ -1,12 +1,12 @@
-import type { Left, Right } from "./Either.impl.js"
+import type { Left, Right } from "./impl/Either.js"
 
-export * from "./Either.impl.js"
+export * from "./impl/Either.js"
 export * from "./internal/Jumpers/Either.js"
 
 export declare namespace Either {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Either.impl.js"
+  export type * from "./impl/Either.js"
 }
 /**
  * @category models

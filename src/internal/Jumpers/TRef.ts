@@ -1,1 +1,1 @@
-export * as TRef from "../../TRef.impl.js"
+export * as TRef from "../../impl/TRef.js"

@@ -1,7 +1,7 @@
-import type { ignoreSymbol, typeSymbol, unifySymbol } from "./Unify.impl.js"
+import type { ignoreSymbol, typeSymbol, unifySymbol } from "./impl/Unify.js"
 
+export * from "./impl/Unify.js"
 export * from "./internal/Jumpers/Unify.js"
-export * from "./Unify.impl.js"
 
 type MaybeReturn<F> = F extends () => any ? ReturnType<F> : F
 
@@ -32,7 +32,7 @@ type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : nev
 export declare namespace Unify {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Unify.impl.js"
+  export type * from "./impl/Unify.js"
 }
 /**
  * @since 2.0.0

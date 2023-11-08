@@ -1,10 +1,10 @@
+export * from "./impl/TestConfig.js"
 export * from "./internal/Jumpers/TestConfig.js"
-export * from "./TestConfig.impl.js"
 
 export declare namespace TestConfig {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TestConfig.impl.js"
+  export type * from "./impl/TestConfig.js"
 }
 /**
  * The `TestConfig` service provides access to default configuration settings

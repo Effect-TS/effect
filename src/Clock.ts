@@ -1,14 +1,14 @@
-import type { ClockTypeId } from "./Clock.impl.js"
 import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
+import type { ClockTypeId } from "./impl/Clock.js"
 
-export * from "./Clock.impl.js"
+export * from "./impl/Clock.js"
 export * from "./internal/Jumpers/Clock.js"
 
 export declare namespace Clock {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Clock.impl.js"
+  export type * from "./impl/Clock.js"
 }
 /**
  * Represents a time-based clock which provides functionality related to time

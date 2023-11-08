@@ -1,14 +1,14 @@
+import type { LinkedListNode, TypeId } from "./impl/MutableList.js"
 import type { Inspectable } from "./Inspectable.js"
-import type { LinkedListNode, TypeId } from "./MutableList.impl.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MutableList.js"
 export * from "./internal/Jumpers/MutableList.js"
-export * from "./MutableList.impl.js"
 
 export declare namespace MutableList {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MutableList.impl.js"
+  export type * from "./impl/MutableList.js"
 }
 /**
  * @since 2.0.0

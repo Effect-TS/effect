@@ -1,5 +1,5 @@
+export * from "./impl/Pipeable.js"
 export * from "./internal/Jumpers/Pipeable.js"
-export * from "./Pipeable.impl.js"
 
 /**
  * @since 2.0.0
@@ -7,7 +7,7 @@ export * from "./Pipeable.impl.js"
 export declare namespace Pipeable {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Pipeable.impl.js"
+  export type * from "./impl/Pipeable.js"
 }
 /**
  * @since 2.0.0

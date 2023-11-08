@@ -1,1 +1,1 @@
-export * as PollingMetric from "../../MetricPolling.impl.js"
+export * as PollingMetric from "../../impl/MetricPolling.js"

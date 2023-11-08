@@ -1,3 +1,4 @@
+import type { Equal } from "./Equal.js"
 import type {
   ChunkPatchTypeId,
   ContextPatchTypeId,
@@ -5,16 +6,15 @@ import type {
   HashSetPatchTypeId,
   OrPatchTypeId,
   TypeId
-} from "./Differ.impl.js"
-import type { Equal } from "./Equal.js"
+} from "./impl/Differ.js"
 
-export * from "./Differ.impl.js"
+export * from "./impl/Differ.js"
 export * from "./internal/Jumpers/Differ.js"
 
 export declare namespace Differ {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Differ.impl.js"
+  export type * from "./impl/Differ.js"
 }
 /**
  * A `Differ<Value, Patch>` knows how to compare an old value and new value of

@@ -1,14 +1,14 @@
 import type { Effect } from "./Effect.js"
-import type { ReloadableTypeId } from "./Reloadable.impl.js"
+import type { ReloadableTypeId } from "./impl/Reloadable.js"
 import type { ScopedRef } from "./ScopedRef.js"
 
+export * from "./impl/Reloadable.js"
 export * from "./internal/Jumpers/Reloadable.js"
-export * from "./Reloadable.impl.js"
 
 export declare namespace Reloadable {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Reloadable.impl.js"
+  export type * from "./impl/Reloadable.js"
 }
 /**
  * A `Reloadable` is an implementation of some service that can be dynamically

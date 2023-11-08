@@ -1,15 +1,15 @@
+import type { ScopedRefTypeId } from "./impl/ScopedRef.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
-import type { ScopedRefTypeId } from "./ScopedRef.impl.js"
 import type { SynchronizedRef } from "./SynchronizedRef.js"
 
+export * from "./impl/ScopedRef.js"
 export * from "./internal/Jumpers/ScopedRef.js"
-export * from "./ScopedRef.impl.js"
 
 export declare namespace ScopedRef {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ScopedRef.impl.js"
+  export type * from "./impl/ScopedRef.js"
 }
 /**
  * A `ScopedRef` is a reference whose value is associated with resources,

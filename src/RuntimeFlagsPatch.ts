@@ -1,10 +1,10 @@
+export * from "./impl/RuntimeFlagsPatch.js"
 export * from "./internal/Jumpers/RuntimeFlagsPatch.js"
-export * from "./RuntimeFlagsPatch.impl.js"
 
 export declare namespace RuntimeFlagsPatch {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./RuntimeFlagsPatch.impl.js"
+  export type * from "./impl/RuntimeFlagsPatch.js"
 }
 /**
  * @since 2.0.0

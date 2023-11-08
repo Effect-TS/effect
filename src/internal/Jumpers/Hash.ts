@@ -1,1 +1,1 @@
-export * as Hash from "../../Hash.impl.js"
+export * as Hash from "../../impl/Hash.js"

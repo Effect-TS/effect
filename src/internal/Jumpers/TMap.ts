@@ -1,1 +1,1 @@
-export * as TMap from "../../TMap.impl.js"
+export * as TMap from "../../impl/TMap.js"

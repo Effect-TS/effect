@@ -1,6 +1,6 @@
-import type { ChildExecutorDecisionTypeId, Close, Continue, Yield } from "./ChildExecutorDecision.impl.js"
+import type { ChildExecutorDecisionTypeId, Close, Continue, Yield } from "./impl/ChildExecutorDecision.js"
 
-export * from "./ChildExecutorDecision.impl.js"
+export * from "./impl/ChildExecutorDecision.js"
 export * from "./internal/Jumpers/ChildExecutorDecision.js"
 
 /**
@@ -23,5 +23,5 @@ export declare namespace ChildExecutorDecision {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ChildExecutorDecision.impl.js"
+  export type * from "./impl/ChildExecutorDecision.js"
 }

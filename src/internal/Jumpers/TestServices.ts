@@ -1,1 +1,1 @@
-export * as TestServices from "../../TestServices.impl.js"
+export * as TestServices from "../../impl/TestServices.js"

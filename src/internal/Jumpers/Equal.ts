@@ -1,1 +1,1 @@
-export * as Equal from "../../Equal.impl.js"
+export * as Equal from "../../impl/Equal.js"

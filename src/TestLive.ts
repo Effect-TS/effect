@@ -1,13 +1,13 @@
 import type { Effect } from "./Effect.js"
-import type { TestLiveTypeId } from "./TestLive.impl.js"
+import type { TestLiveTypeId } from "./impl/TestLive.js"
 
+export * from "./impl/TestLive.js"
 export * from "./internal/Jumpers/TestLive.js"
-export * from "./TestLive.impl.js"
 
 export declare namespace TestLive {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TestLive.impl.js"
+  export type * from "./impl/TestLive.js"
 }
 
 /**

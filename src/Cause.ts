@@ -1,6 +1,6 @@
-import type { CauseTypeId, Die, Empty, Fail, Interrupt, Parallel, Sequential } from "./Cause.impl.js"
+import type { CauseTypeId, Die, Empty, Fail, Interrupt, Parallel, Sequential } from "./impl/Cause.js"
 
-export * from "./Cause.impl.js"
+export * from "./impl/Cause.js"
 export * from "./internal/Jumpers/Cause.js"
 
 /**
@@ -38,5 +38,5 @@ export declare namespace Cause {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Cause.impl.js"
+  export type * from "./impl/Cause.js"
 }

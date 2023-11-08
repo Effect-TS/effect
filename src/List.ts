@@ -1,12 +1,12 @@
-import type { Cons, Nil } from "./List.impl.js"
+import type { Cons, Nil } from "./impl/List.js"
 
+export * from "./impl/List.js"
 export * from "./internal/Jumpers/List.js"
-export * from "./List.impl.js"
 
 export declare namespace List {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./List.impl.js"
+  export type * from "./impl/List.js"
 }
 /**
  * Represents an immutable linked list of elements of type `A`.

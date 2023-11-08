@@ -1,1 +1,1 @@
-export * as Streamable from "../../Streamable.impl.js"
+export * as Streamable from "../../impl/Streamable.js"

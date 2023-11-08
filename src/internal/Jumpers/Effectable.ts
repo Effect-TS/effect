@@ -1,1 +1,1 @@
-export * as Effectable from "../../Effectable.impl.js"
+export * as Effectable from "../../impl/Effectable.js"

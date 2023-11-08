@@ -1,1 +1,1 @@
-export * as Brand from "../../Brand.impl.js"
+export * as Brand from "../../impl/Brand.js"

@@ -1,1 +1,1 @@
-export * as Queue from "../../Queue.impl.js"
+export * as Queue from "../../impl/Queue.js"

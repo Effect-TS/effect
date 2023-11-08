@@ -1,15 +1,15 @@
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
-import type { ResourceTypeId } from "./Resource.impl.js"
+import type { ResourceTypeId } from "./impl/Resource.js"
 import type { Scope } from "./Scope.js"
 import type { ScopedRef } from "./ScopedRef.js"
 
+export * from "./impl/Resource.js"
 export * from "./internal/Jumpers/Resource.js"
-export * from "./Resource.impl.js"
 export declare namespace Resource {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Resource.impl.js"
+  export type * from "./impl/Resource.js"
 }
 /**
  * A `Resource` is a possibly resourceful value that is loaded into memory, and

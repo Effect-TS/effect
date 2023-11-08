@@ -1,14 +1,14 @@
 import type { Equal } from "./Equal.js"
-import type { MetricLabelTypeId } from "./MetricLabel.impl.js"
+import type { MetricLabelTypeId } from "./impl/MetricLabel.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MetricLabel.js"
 export * from "./internal/Jumpers/MetricLabel.js"
-export * from "./MetricLabel.impl.js"
 
 export declare namespace MetricLabel {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MetricLabel.impl.js"
+  export type * from "./impl/MetricLabel.js"
 }
 /**
  * A `MetricLabel` represents a key value pair that allows analyzing metrics at

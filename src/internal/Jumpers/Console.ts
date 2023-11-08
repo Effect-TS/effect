@@ -1,1 +1,1 @@
-export * as Console from "../../Console.impl.js"
+export * as Console from "../../impl/Console.js"

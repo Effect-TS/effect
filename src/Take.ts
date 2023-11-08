@@ -1,11 +1,11 @@
 import type { Chunk } from "./Chunk.js"
 import type { Exit } from "./Exit.js"
+import type { TakeTypeId } from "./impl/Take.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { TakeTypeId } from "./Take.impl.js"
 
+export * from "./impl/Take.js"
 export * from "./internal/Jumpers/Take.js"
-export * from "./Take.impl.js"
 
 /**
  * A `Take<E, A>` represents a single `take` from a queue modeling a stream of
@@ -37,5 +37,5 @@ export declare namespace Take {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Take.impl.js"
+  export type * from "./impl/Take.js"
 }

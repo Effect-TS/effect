@@ -1,15 +1,15 @@
 import type { Effect } from "./Effect.js"
-import type { KeyedPoolTypeId } from "./KeyedPool.impl.js"
+import type { KeyedPoolTypeId } from "./impl/KeyedPool.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 
+export * from "./impl/KeyedPool.js"
 export * from "./internal/Jumpers/KeyedPool.js"
-export * from "./KeyedPool.impl.js"
 
 export declare namespace KeyedPool {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./KeyedPool.impl.js"
+  export type * from "./impl/KeyedPool.js"
 }
 /**
  * A `KeyedPool<K, E, A>` is a pool of `Pool`s of items of type `A`. Each pool

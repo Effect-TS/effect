@@ -1,15 +1,15 @@
 import type { Equal } from "./Equal.js"
+import type { TypeId } from "./impl/RedBlackTree.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { TypeId } from "./RedBlackTree.impl.js"
 
+export * from "./impl/RedBlackTree.js"
 export * from "./internal/Jumpers/RedBlackTree.js"
-export * from "./RedBlackTree.impl.js"
 
 export declare namespace RedBlackTree {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./RedBlackTree.impl.js"
+  export type * from "./impl/RedBlackTree.js"
 }
 /**
  * A Red-Black Tree.

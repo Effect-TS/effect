@@ -1,1 +1,1 @@
-export * as HKT from "../../HKT.impl.js"
+export * as HKT from "../../impl/HKT.js"

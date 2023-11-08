@@ -1,1 +1,1 @@
-export * as HashSet from "../../HashSet.impl.js"
+export * as HashSet from "../../impl/HashSet.js"

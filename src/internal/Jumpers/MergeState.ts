@@ -1,1 +1,1 @@
-export * as MergeState from "../../MergeState.impl.js"
+export * as MergeState from "../../impl/MergeState.js"

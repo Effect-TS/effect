@@ -1,15 +1,15 @@
 import type { Effect } from "./Effect.js"
 import type { Equal } from "./Equal.js"
+import type { RequestResolverTypeId } from "./impl/RequestResolver.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Request } from "./Request.js"
-import type { RequestResolverTypeId } from "./RequestResolver.impl.js"
 
+export * from "./impl/RequestResolver.js"
 export * from "./internal/Jumpers/RequestResolver.js"
-export * from "./RequestResolver.impl.js"
 export declare namespace RequestResolver {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./RequestResolver.impl.js"
+  export type * from "./impl/RequestResolver.js"
 }
 /**
  * A `RequestResolver<A, R>` requires an environment `R` and is capable of executing

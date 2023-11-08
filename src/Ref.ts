@@ -1,9 +1,9 @@
 import type { Effect } from "./Effect.js"
+import type { RefTypeId } from "./impl/Ref.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { RefTypeId } from "./Ref.impl.js"
 
+export * from "./impl/Ref.js"
 export * from "./internal/Jumpers/Ref.js"
-export * from "./Ref.impl.js"
 
 /**
  * @since 2.0.0
@@ -29,5 +29,5 @@ export declare namespace Ref {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Ref.impl.js"
+  export type * from "./impl/Ref.js"
 }

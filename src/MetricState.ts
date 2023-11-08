@@ -1,7 +1,6 @@
 import type { Chunk } from "./Chunk.js"
 import type { Equal } from "./Equal.js"
 import type { HashMap } from "./HashMap.js"
-import type { MetricKeyType } from "./MetricKeyType.js"
 import type {
   CounterStateTypeId,
   FrequencyStateTypeId,
@@ -9,17 +8,18 @@ import type {
   HistogramStateTypeId,
   MetricStateTypeId,
   SummaryStateTypeId
-} from "./MetricState.impl.js"
+} from "./impl/MetricState.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MetricState.js"
 export * from "./internal/Jumpers/MetricState.js"
-export * from "./MetricState.impl.js"
 
 export declare namespace MetricState {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MetricState.impl.js"
+  export type * from "./impl/MetricState.js"
 }
 /**
  * A `MetricState` describes the state of a metric. The type parameter of a

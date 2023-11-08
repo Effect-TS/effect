@@ -1,14 +1,14 @@
-import type { MetricHookTypeId } from "./MetricHook.impl.js"
+import type { MetricHookTypeId } from "./impl/MetricHook.js"
 import type { MetricState } from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MetricHook.js"
 export * from "./internal/Jumpers/MetricHook.js"
-export * from "./MetricHook.impl.js"
 
 export declare namespace MetricHook {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MetricHook.impl.js"
+  export type * from "./impl/MetricHook.js"
 }
 /**
  * @since 2.0.0

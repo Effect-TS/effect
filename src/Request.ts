@@ -1,10 +1,10 @@
 import type { Data } from "./Data.js"
 import type { Exit } from "./Exit.js"
+import type { RequestTypeId } from "./impl/Request.js"
 import type { Option } from "./Option.js"
-import type { RequestTypeId } from "./Request.impl.js"
 
+export * from "./impl/Request.js"
 export * from "./internal/Jumpers/Request.js"
-export * from "./Request.impl.js"
 
 /**
  * A `Request<E, A>` is a request from a data source for a value of type `A`
@@ -72,5 +72,5 @@ export declare namespace Request {
     : never
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Request.impl.js"
+  export type * from "./impl/Request.js"
 }

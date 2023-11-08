@@ -1,13 +1,13 @@
-import type { RuntimeFiber } from "./Fiber.impl.js"
-import type { Task } from "./Scheduler.impl.js"
+import type { RuntimeFiber } from "./impl/Fiber.js"
+import type { Task } from "./impl/Scheduler.js"
 
+export * from "./impl/Scheduler.js"
 export * from "./internal/Jumpers/Scheduler.js"
-export * from "./Scheduler.impl.js"
 
 export declare namespace Scheduler {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Scheduler.impl.js"
+  export type * from "./impl/Scheduler.js"
 }
 /**
  * @since 2.0.0

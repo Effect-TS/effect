@@ -1,9 +1,9 @@
+import type { TPriorityQueueTypeId } from "./impl/TPriorityQueue.js"
 import type { SortedMap } from "./SortedMap.js"
-import type { TPriorityQueueTypeId } from "./TPriorityQueue.impl.js"
 import type { TRef } from "./TRef.js"
 
+export * from "./impl/TPriorityQueue.js"
 export * from "./internal/Jumpers/TPriorityQueue.js"
-export * from "./TPriorityQueue.impl.js"
 
 /**
  * A `TPriorityQueue` contains values of type `A` that an `Order` is defined
@@ -40,5 +40,5 @@ export declare namespace TPriorityQueue {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TPriorityQueue.impl.js"
+  export type * from "./impl/TPriorityQueue.js"
 }

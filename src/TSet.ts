@@ -1,8 +1,8 @@
+import type { TSetTypeId } from "./impl/TSet.js"
 import type { TMap } from "./TMap.js"
-import type { TSetTypeId } from "./TSet.impl.js"
 
+export * from "./impl/TSet.js"
 export * from "./internal/Jumpers/TSet.js"
-export * from "./TSet.impl.js"
 
 /**
  * Transactional set implemented on top of `TMap`.
@@ -35,5 +35,5 @@ export declare namespace TSet {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TSet.impl.js"
+  export type * from "./impl/TSet.js"
 }

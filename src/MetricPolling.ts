@@ -1,15 +1,15 @@
 import type { Effect } from "./Effect.js"
+import type { PollingMetricTypeId } from "./impl/MetricPolling.js"
 import type { Metric } from "./Metric.js"
-import type { PollingMetricTypeId } from "./MetricPolling.impl.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MetricPolling.js"
 export * from "./internal/Jumpers/MetricPolling.js"
-export * from "./MetricPolling.impl.js"
 
 export declare namespace PollingMetric {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MetricPolling.impl.js"
+  export type * from "./impl/MetricPolling.js"
 }
 
 /**

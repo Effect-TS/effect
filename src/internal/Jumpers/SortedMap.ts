@@ -1,1 +1,1 @@
-export * as SortedMap from "../../SortedMap.impl.js"
+export * as SortedMap from "../../impl/SortedMap.js"

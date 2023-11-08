@@ -1,2 +1,2 @@
-export * from "./Boolean.impl.js"
+export * from "./impl/Boolean.js"
 export * from "./internal/Jumpers/Boolean.js"

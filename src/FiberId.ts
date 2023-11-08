@@ -1,12 +1,12 @@
-import type { Composite, None, Runtime } from "./FiberId.impl.js"
+import type { Composite, None, Runtime } from "./impl/FiberId.js"
 
-export * from "./FiberId.impl.js"
+export * from "./impl/FiberId.js"
 export * from "./internal/Jumpers/FiberId.js"
 
 export declare namespace FiberId {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./FiberId.impl.js"
+  export type * from "./impl/FiberId.js"
 }
 /**
  * @since 2.0.0

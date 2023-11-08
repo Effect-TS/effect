@@ -1,1 +1,1 @@
-export * as LogLevel from "../../LogLevel.impl.js"
+export * as LogLevel from "../../impl/LogLevel.js"

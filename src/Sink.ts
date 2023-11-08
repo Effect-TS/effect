@@ -1,8 +1,8 @@
+import type { SinkTypeId } from "./impl/Sink.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { SinkTypeId } from "./Sink.impl.js"
 
+export * from "./impl/Sink.js"
 export * from "./internal/Jumpers/Sink.js"
-export * from "./Sink.impl.js"
 
 /**
  * A `Sink<R, E, In, L, Z>` is used to consume elements produced by a `Stream`.
@@ -41,5 +41,5 @@ export declare namespace Sink {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Sink.impl.js"
+  export type * from "./impl/Sink.js"
 }

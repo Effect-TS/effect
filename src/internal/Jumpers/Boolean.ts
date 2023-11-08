@@ -1,1 +1,1 @@
-export * as Boolean from "../../Boolean.impl.js"
+export * as Boolean from "../../impl/Boolean.js"

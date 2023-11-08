@@ -1,12 +1,12 @@
-import type { Failure, Success } from "./Exit.impl.js"
+import type { Failure, Success } from "./impl/Exit.js"
 
-export * from "./Exit.impl.js"
+export * from "./impl/Exit.js"
 export * from "./internal/Jumpers/Exit.js"
 
 export declare namespace Exit {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Exit.impl.js"
+  export type * from "./impl/Exit.js"
 }
 /**
  * An `Exit<E, A>` describes the result of a executing an `Effect` workflow.

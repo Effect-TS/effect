@@ -1,12 +1,12 @@
-import type { Parallel, ParallelN, Sequential } from "./ExecutionStrategy.impl.js"
+import type { Parallel, ParallelN, Sequential } from "./impl/ExecutionStrategy.js"
 
-export * from "./ExecutionStrategy.impl.js"
+export * from "./impl/ExecutionStrategy.js"
 export * from "./internal/Jumpers/ExecutionStrategy.js"
 
 export declare namespace ExecutionStrategy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ExecutionStrategy.impl.js"
+  export type * from "./impl/ExecutionStrategy.js"
 }
 /**
  * Describes a strategy for evaluating multiple effects, potentially in

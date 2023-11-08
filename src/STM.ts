@@ -1,10 +1,10 @@
 import type { Effect } from "./Effect.js"
+import type { STMTypeId, STMUnify, STMUnifyIgnore } from "./impl/STM.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { STMTypeId, STMUnify, STMUnifyIgnore } from "./STM.impl.js"
 import type { Unify } from "./Unify.js"
 
+export * from "./impl/STM.js"
 export * from "./internal/Jumpers/STM.js"
-export * from "./STM.impl.js"
 
 /**
  * `STM<R, E, A>` represents an effect that can be performed transactionally,
@@ -67,5 +67,5 @@ export declare namespace STM {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./STM.impl.js"
+  export type * from "./impl/STM.js"
 }

@@ -1,1 +1,1 @@
-export * as RedBlackTree from "../../RedBlackTree.impl.js"
+export * as RedBlackTree from "../../impl/RedBlackTree.js"

@@ -1,1 +1,1 @@
-export * as Number from "../../Number.impl.js"
+export * as Number from "../../impl/Number.js"

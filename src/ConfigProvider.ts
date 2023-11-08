@@ -1,12 +1,12 @@
 import type { Config } from "./Config.js"
 import type { ConfigError } from "./ConfigError.js"
-import type { ConfigProviderTypeId, FlatConfigProviderTypeId } from "./ConfigProvider.impl.js"
 import type { PathPatch } from "./ConfigProviderPathPatch.js"
 import type { Effect } from "./Effect.js"
 import type { HashSet } from "./HashSet.js"
+import type { ConfigProviderTypeId, FlatConfigProviderTypeId } from "./impl/ConfigProvider.js"
 import type { Pipeable } from "./Pipeable.js"
 
-export * from "./ConfigProvider.impl.js"
+export * from "./impl/ConfigProvider.js"
 export * from "./internal/Jumpers/ConfigProvider.js"
 
 /**
@@ -81,5 +81,5 @@ export declare namespace ConfigProvider {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ConfigProvider.impl.js"
+  export type * from "./impl/ConfigProvider.js"
 }

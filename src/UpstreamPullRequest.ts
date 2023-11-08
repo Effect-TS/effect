@@ -1,11 +1,11 @@
-import type { NoUpstream, Pulled, UpstreamPullRequestTypeId } from "./UpstreamPullRequest.impl.js"
+import type { NoUpstream, Pulled, UpstreamPullRequestTypeId } from "./impl/UpstreamPullRequest.js"
 
+export * from "./impl/UpstreamPullRequest.js"
 export * from "./internal/Jumpers/UpstreamPullRequest.js"
-export * from "./UpstreamPullRequest.impl.js"
 export declare namespace UpstreamPullRequest {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./UpstreamPullRequest.impl.js"
+  export type * from "./impl/UpstreamPullRequest.js"
 }
 /**
  * @since 2.0.0

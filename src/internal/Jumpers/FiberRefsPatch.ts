@@ -1,1 +1,1 @@
-export * as FiberRefsPatch from "../../FiberRefsPatch.impl.js"
+export * as FiberRefsPatch from "../../impl/FiberRefsPatch.js"

@@ -1,7 +1,6 @@
 import type { Chunk } from "./Chunk.js"
 import type { Duration } from "./Duration.js"
 import type { Equal } from "./Equal.js"
-import type { MetricBoundaries } from "./MetricBoundaries.js"
 import type {
   CounterKeyTypeTypeId,
   FrequencyKeyTypeTypeId,
@@ -9,16 +8,17 @@ import type {
   HistogramKeyTypeTypeId,
   MetricKeyTypeTypeId,
   SummaryKeyTypeTypeId
-} from "./MetricKeyType.impl.js"
+} from "./impl/MetricKeyType.js"
+import type { MetricBoundaries } from "./MetricBoundaries.js"
 import type { MetricState } from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export * from "./impl/MetricKeyType.js"
 export * from "./internal/Jumpers/MetricKeyType.js"
-export * from "./MetricKeyType.impl.js"
 export declare namespace MetricKeyType {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./MetricKeyType.impl.js"
+  export type * from "./impl/MetricKeyType.js"
 }
 /**
  * @since 2.0.0

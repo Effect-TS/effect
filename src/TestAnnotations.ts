@@ -1,13 +1,13 @@
 import type { Effect } from "./Effect.js"
 import type { Fiber } from "./Fiber.js"
+import type { TestAnnotationsTypeId } from "./impl/TestAnnotations.js"
 import type { Ref } from "./Ref.js"
 import type { SortedSet } from "./SortedSet.js"
 import type { TestAnnotation } from "./TestAnnotation.js"
 import type { TestAnnotationMap } from "./TestAnnotationMap.js"
-import type { TestAnnotationsTypeId } from "./TestAnnotations.impl.js"
 
+export * from "./impl/TestAnnotations.js"
 export * from "./internal/Jumpers/TestAnnotations.js"
-export * from "./TestAnnotations.impl.js"
 
 /**
  * The `Annotations` trait provides access to an annotation map that tests can
@@ -45,5 +45,5 @@ export interface TestAnnotations {
 export declare namespace TestAnnotations {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TestAnnotations.impl.js"
+  export type * from "./impl/TestAnnotations.js"
 }

@@ -1,7 +1,7 @@
-import type { NonEmptyArray, NonEmptyReadonlyArray } from "./ReadonlyArray.impl.js"
+import type { NonEmptyArray, NonEmptyReadonlyArray } from "./impl/ReadonlyArray.js"
 
+export * from "./impl/ReadonlyArray.js"
 export * from "./internal/Jumpers/ReadonlyArray.js"
-export * from "./ReadonlyArray.impl.js"
 
 export interface ReadonlyArray<T> extends globalThis.ReadonlyArray<T> {}
 /**
@@ -21,5 +21,5 @@ export declare namespace ReadonlyArray {
 
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./ReadonlyArray.impl.js"
+  export type * from "./impl/ReadonlyArray.js"
 }

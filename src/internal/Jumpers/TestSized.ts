@@ -1,1 +1,1 @@
-export * as TestSized from "../../TestSized.impl.js"
+export * as TestSized from "../../impl/TestSized.js"

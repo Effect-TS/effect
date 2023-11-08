@@ -1,10 +1,10 @@
 import type { Chunk } from "./Chunk.js"
+import type { TMapTypeId } from "./impl/TMap.js"
 import type { TArray } from "./TArray.js"
-import type { TMapTypeId } from "./TMap.impl.js"
 import type { TRef } from "./TRef.js"
 
+export * from "./impl/TMap.js"
 export * from "./internal/Jumpers/TMap.js"
-export * from "./TMap.impl.js"
 
 /**
  * Transactional map implemented on top of `TRef` and `TArray`. Resolves
@@ -41,5 +41,5 @@ export declare namespace TMap {
   }
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./TMap.impl.js"
+  export type * from "./impl/TMap.js"
 }

@@ -1,1 +1,1 @@
-export * as MutableList from "../../MutableList.impl.js"
+export * as MutableList from "../../impl/MutableList.js"

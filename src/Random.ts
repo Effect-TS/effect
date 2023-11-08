@@ -1,14 +1,14 @@
 import type { Chunk } from "./Chunk.js"
 import type { Effect } from "./Effect.js"
-import type { RandomTypeId } from "./Random.impl.js"
+import type { RandomTypeId } from "./impl/Random.js"
 
+export * from "./impl/Random.js"
 export * from "./internal/Jumpers/Random.js"
-export * from "./Random.impl.js"
 
 export declare namespace Random {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./Random.impl.js"
+  export type * from "./impl/Random.js"
 }
 /**
  * @since 2.0.0
