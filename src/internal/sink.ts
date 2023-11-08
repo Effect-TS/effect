@@ -173,10 +173,10 @@ export const collectAllToSetN = <In>(n: number): Sink.Sink<never, never, In, In,
 /** @internal */
 export const collectAllUntil = <In>(p: Predicate<In>): Sink.Sink<never, never, In, In, Chunk.Chunk<In>> => {
   return pipe(
-    fold<readonly [Chunk.Chunk<In>, boolean], In>(
+    fold<[Chunk.Chunk<In>, boolean], In>(
       [Chunk.empty(), true],
       (tuple) => tuple[1],
-      ([chunk, _], input) => [pipe(chunk, Chunk.append(input)), !p(input)] as const
+      ([chunk, _], input) => [pipe(chunk, Chunk.append(input)), !p(input)]
     ),
     map((tuple) => tuple[0])
   )
@@ -185,7 +185,7 @@ export const collectAllUntil = <In>(p: Predicate<In>): Sink.Sink<never, never, I
 /** @internal */
 export const collectAllUntilEffect = <In, R, E>(p: (input: In) => Effect.Effect<R, E, boolean>) => {
   return pipe(
-    foldEffect<readonly [Chunk.Chunk<In>, boolean], R, E, In>(
+    foldEffect<[Chunk.Chunk<In>, boolean], R, E, In>(
       [Chunk.empty(), true],
       (tuple) => tuple[1],
       ([chunk, _], input) => pipe(p(input), Effect.map((bool) => [pipe(chunk, Chunk.append(input)), !bool]))
@@ -340,7 +340,7 @@ const collectAllWhileWithLoop = <R, E, In, L extends In, Z, S>(
 /** @internal */
 export const collectLeftover = <R, E, In, L, Z>(
   self: Sink.Sink<R, E, In, L, Z>
-): Sink.Sink<R, E, In, never, readonly [Z, Chunk.Chunk<L>]> =>
+): Sink.Sink<R, E, In, never, [Z, Chunk.Chunk<L>]> =>
   new SinkImpl(pipe(core.collectElements(toChannel(self)), channel.map(([chunks, z]) => [z, Chunk.flatten(chunks)])))
 
 /** @internal */
@@ -867,7 +867,7 @@ const foldChunkSplit = <S, In>(
   f: (z: S, input: In) => S,
   index: number,
   length: number
-): readonly [S, Chunk.Chunk<In>] => {
+): [S, Chunk.Chunk<In>] => {
   if (index === length) {
     return [s, Chunk.empty()]
   }
@@ -875,7 +875,7 @@ const foldChunkSplit = <S, In>(
   if (contFn(s1)) {
     return foldChunkSplit(s1, chunk, contFn, f, index + 1, length)
   }
-  return [s1, pipe(chunk, Chunk.drop(index + 1))] as const
+  return [s1, pipe(chunk, Chunk.drop(index + 1))]
 }
 
 /** @internal */
@@ -1044,7 +1044,7 @@ const foldChunkSplitEffect = <S, R, E, In>(
   chunk: Chunk.Chunk<In>,
   contFn: Predicate<S>,
   f: (s: S, input: In) => Effect.Effect<R, E, S>
-): Effect.Effect<R, E, readonly [S, Option.Option<Chunk.Chunk<In>>]> =>
+): Effect.Effect<R, E, [S, Option.Option<Chunk.Chunk<In>>]> =>
   foldChunkSplitEffectInternal(s, chunk, 0, chunk.length, contFn, f)
 
 /** @internal */
@@ -1055,16 +1055,16 @@ const foldChunkSplitEffectInternal = <S, R, E, In>(
   length: number,
   contFn: Predicate<S>,
   f: (s: S, input: In) => Effect.Effect<R, E, S>
-): Effect.Effect<R, E, readonly [S, Option.Option<Chunk.Chunk<In>>]> => {
+): Effect.Effect<R, E, [S, Option.Option<Chunk.Chunk<In>>]> => {
   if (index === length) {
-    return Effect.succeed([s, Option.none()] as const)
+    return Effect.succeed([s, Option.none()])
   }
   return pipe(
     f(s, pipe(chunk, Chunk.unsafeGet(index))),
     Effect.flatMap((s1) =>
       contFn(s1) ?
         foldChunkSplitEffectInternal(s1, chunk, index + 1, length, contFn, f) :
-        Effect.succeed([s1, Option.some(pipe(chunk, Chunk.drop(index + 1)))] as const)
+        Effect.succeed([s1, Option.some(pipe(chunk, Chunk.drop(index + 1)))])
     )
   )
 }
@@ -1094,10 +1094,10 @@ export const foldLeftEffect = <S, R, E, In>(
 /** @internal */
 export const foldUntil = <S, In>(s: S, max: number, f: (z: S, input: In) => S): Sink.Sink<never, never, In, In, S> =>
   pipe(
-    fold<readonly [S, number], In>(
+    fold<[S, number], In>(
       [s, 0],
       (tuple) => tuple[1] < max,
-      ([output, count], input) => [f(output, input), count + 1] as const
+      ([output, count], input) => [f(output, input), count + 1]
     ),
     map((tuple) => tuple[0])
   )
@@ -1201,9 +1201,9 @@ const foldWeightedDecomposeFold = <In, S>(
   costFn: (s: S, input: In) => number,
   decompose: (input: In) => Chunk.Chunk<In>,
   f: (s: S, input: In) => S
-): readonly [S, number, boolean, Chunk.Chunk<In>] => {
+): [S, number, boolean, Chunk.Chunk<In>] => {
   if (index === input.length) {
-    return [s, cost, dirty, Chunk.empty<In>()] as const
+    return [s, cost, dirty, Chunk.empty<In>()]
   }
   const elem = pipe(input, Chunk.unsafeGet(index))
   const total = cost + costFn(s, elem)
@@ -1215,12 +1215,12 @@ const foldWeightedDecomposeFold = <In, S>(
     // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
     // minimize "injury", we only allow this when we haven't added anything else
     // to the aggregate (dirty = false).
-    return [f(s, elem), total, true, pipe(input, Chunk.drop(index + 1))] as const
+    return [f(s, elem), total, true, pipe(input, Chunk.drop(index + 1))]
   }
   if (decomposed.length <= 1 && dirty) {
     // If the state is dirty and `elem` cannot be decomposed, we stop folding
     // and include `elem` in the leftovers.
-    return [s, cost, dirty, pipe(input, Chunk.drop(index))] as const
+    return [s, cost, dirty, pipe(input, Chunk.drop(index))]
   }
   // `elem` got decomposed, so we will recurse with the decomposed elements pushed
   // into the chunk we're processing and see if we can aggregate further.
@@ -1305,9 +1305,9 @@ const foldWeightedDecomposeEffectFold = <S, In, R, E, R2, E2, R3, E3>(
   dirty: boolean,
   cost: number,
   index: number
-): Effect.Effect<R | R2 | R3, E | E2 | E3, readonly [S, number, boolean, Chunk.Chunk<In>]> => {
+): Effect.Effect<R | R2 | R3, E | E2 | E3, [S, number, boolean, Chunk.Chunk<In>]> => {
   if (index === input.length) {
-    return Effect.succeed([s, cost, dirty, Chunk.empty<In>()] as const)
+    return Effect.succeed([s, cost, dirty, Chunk.empty<In>()])
   }
   const elem = pipe(input, Chunk.unsafeGet(index))
   return pipe(
@@ -1331,13 +1331,13 @@ const foldWeightedDecomposeEffectFold = <S, In, R, E, R2, E2, R3, E3>(
             // to the aggregate (dirty = false).
             return pipe(
               f(s, elem),
-              Effect.map((s) => [s, total, true, pipe(input, Chunk.drop(index + 1))] as const)
+              Effect.map((s) => [s, total, true, pipe(input, Chunk.drop(index + 1))])
             )
           }
           if (decomposed.length <= 1 && dirty) {
             // If the state is dirty and `elem` cannot be decomposed, we stop folding
             // and include `elem` in th leftovers.
-            return Effect.succeed([s, cost, dirty, pipe(input, Chunk.drop(index))] as const)
+            return Effect.succeed([s, cost, dirty, pipe(input, Chunk.drop(index))])
           }
           // `elem` got decomposed, so we will recurse with the decomposed elements pushed
           // into the chunk we're processing and see if we can aggregate further.
@@ -1897,19 +1897,19 @@ export const summarized = dual<
   <R2, E2, Z2, Z3>(
     summary: Effect.Effect<R2, E2, Z2>,
     f: (start: Z2, end: Z2) => Z3
-  ) => <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In, L, readonly [Z, Z3]>,
+  ) => <R, E, In, L, Z>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In, L, [Z, Z3]>,
   <R, E, In, L, Z, R2, E2, Z2, Z3>(
     self: Sink.Sink<R, E, In, L, Z>,
     summary: Effect.Effect<R2, E2, Z2>,
     f: (start: Z2, end: Z2) => Z3
-  ) => Sink.Sink<R2 | R, E2 | E, In, L, readonly [Z, Z3]>
+  ) => Sink.Sink<R2 | R, E2 | E, In, L, [Z, Z3]>
 >(
   3,
   <R, E, In, L, Z, R2, E2, Z2, Z3>(
     self: Sink.Sink<R, E, In, L, Z>,
     summary: Effect.Effect<R2, E2, Z2>,
     f: (start: Z2, end: Z2) => Z3
-  ): Sink.Sink<R | R2, E | E2, In, L, readonly [Z, Z3]> => {
+  ): Sink.Sink<R | R2, E | E2, In, L, [Z, Z3]> => {
     const newChannel = pipe(
       core.fromEffect(summary),
       core.flatMap((start) =>
@@ -1919,7 +1919,7 @@ export const summarized = dual<
           core.flatMap((done) =>
             pipe(
               core.fromEffect(summary),
-              channel.map((end) => [done, f(start, end)] as const)
+              channel.map((end) => [done, f(start, end)])
             )
           )
         )
@@ -1973,7 +1973,7 @@ export const unwrapScoped = <R, E, In, L, Z>(
 /** @internal */
 export const withDuration = <R, E, In, L, Z>(
   self: Sink.Sink<R, E, In, L, Z>
-): Sink.Sink<R, E, In, L, readonly [Z, Duration.Duration]> =>
+): Sink.Sink<R, E, In, L, [Z, Duration.Duration]> =>
   pipe(self, summarized(Clock.currentTimeMillis, (start, end) => Duration.millis(end - start)))
 
 /** @internal */
@@ -1981,19 +1981,19 @@ export const zip = dual<
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink.Sink<R2, E2, In2, L2, Z2>,
     options?: { readonly concurrent?: boolean }
-  ) => <R, E>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, readonly [Z, Z2]>,
+  ) => <R, E>(self: Sink.Sink<R, E, In, L, Z>) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, [Z, Z2]>,
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink.Sink<R, E, In, L, Z>,
     that: Sink.Sink<R2, E2, In2, L2, Z2>,
     options?: { readonly concurrent?: boolean }
-  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, readonly [Z, Z2]>
+  ) => Sink.Sink<R2 | R, E2 | E, In & In2, L | L2, [Z, Z2]>
 >(
   (args) => isSink(args[1]),
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink.Sink<R, E, In, L, Z>,
     that: Sink.Sink<R2, E2, In2, L2, Z2>,
     options?: { readonly concurrent?: boolean }
-  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, readonly [Z, Z2]> => zipWith(self, that, (z, z2) => [z, z2], options)
+  ): Sink.Sink<R | R2, E | E2, In & In2, L | L2, [Z, Z2]> => zipWith(self, that, (z, z2) => [z, z2], options)
 )
 
 /** @internal */

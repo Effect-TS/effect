@@ -1738,7 +1738,7 @@ them as part of the sink's result.
 ```ts
 export declare const collectLeftover: <R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-) => Sink<R, E, In, never, readonly [Z, Chunk.Chunk<L>]>
+) => Sink<R, E, In, never, [Z, Chunk.Chunk<L>]>
 ```
 
 Added in v2.0.0
@@ -1857,12 +1857,12 @@ export declare const summarized: {
   <R2, E2, Z2, Z3>(
     summary: Effect.Effect<R2, E2, Z2>,
     f: (start: Z2, end: Z2) => Z3
-  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, readonly [Z, Z3]>
+  ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In, L, [Z, Z3]>
   <R, E, In, L, Z, R2, E2, Z2, Z3>(
     self: Sink<R, E, In, L, Z>,
     summary: Effect.Effect<R2, E2, Z2>,
     f: (start: Z2, end: Z2) => Z3
-  ): Sink<R | R2, E | E2, In, L, readonly [Z, Z3]>
+  ): Sink<R | R2, E | E2, In, L, [Z, Z3]>
 }
 ```
 
@@ -1877,7 +1877,7 @@ Returns the sink that executes this one and times its execution.
 ```ts
 export declare const withDuration: <R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-) => Sink<R, E, In, L, readonly [Z, Duration.Duration]>
+) => Sink<R, E, In, L, [Z, Duration.Duration]>
 ```
 
 Added in v2.0.0
@@ -1897,12 +1897,12 @@ export declare const zip: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
     options?: { readonly concurrent?: boolean }
-  ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, readonly [Z, Z2]>
+  ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, [Z, Z2]>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
     options?: { readonly concurrent?: boolean }
-  ): Sink<R | R2, E | E2, In & In2, L | L2, readonly [Z, Z2]>
+  ): Sink<R | R2, E | E2, In & In2, L | L2, [Z, Z2]>
 }
 ```
 
