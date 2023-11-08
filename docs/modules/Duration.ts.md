@@ -171,7 +171,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const toHrTime: (self: DurationInput) => readonly [seconds: number, nanos: number]
+export declare const toHrTime: (self: DurationInput) => [seconds: number, nanos: number]
 ```
 
 Added in v2.0.0
