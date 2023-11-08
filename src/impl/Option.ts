@@ -18,9 +18,6 @@ import type { Pipeable } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import type { Unify } from "../Unify.js"
 import { Utils } from "../Utils.js"
-import type {} from "../Option.amb.js"
-
-// export * as Option from "./Option.js"
 
 /**
  * @category models
