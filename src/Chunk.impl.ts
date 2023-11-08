@@ -7,66 +7,25 @@ import { Equivalence } from "./Equivalence.js"
 import { dual, identity, pipe } from "./Function.js"
 import { Hash } from "./Hash.js"
 import type { TypeLambda } from "./HKT.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import type { NonEmptyIterable } from "./NonEmptyIterable.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import { Order } from "./Order.js"
-import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import { ReadonlyArray as RA } from "./ReadonlyArray.js"
 import type { NonEmptyReadonlyArray } from "./ReadonlyArray.js"
 
-const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
+import type { Chunk } from "./Chunk.js"
+
+export const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
 
 /**
  * @category symbol
  * @since 2.0.0
  */
 export type TypeId = typeof TypeId
-
-import type { Chunk } from "./Chunk.js"
-
-export declare namespace Chunk {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Chunk.impl.js"
-}
-  /**
-   * @category models
-   * @since 2.0.0
-   */
-  export interface Chunk<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
-    readonly [TypeId]: {
-      readonly _A: (_: never) => A
-    }
-    readonly length: number
-    /** @internal */
-    right: Chunk<A>
-    /** @internal */
-    left: Chunk<A>
-    /** @internal */
-    backing: Backing<A>
-    /** @internal */
-    depth: number
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace Chunk {
-    /**
-     * @since 2.0.0
-     */
-    export type Infer<T extends Chunk<any>> = T extends Chunk<infer A> ? A : never
-
-    /**
-     * @since 2.0.0
-     */
-    export type With<T extends Chunk<any>, A> = T extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
-  }
-}
 
 /**
  * @category model
@@ -82,7 +41,7 @@ export interface ChunkTypeLambda extends TypeLambda {
   readonly type: Chunk<this["Target"]>
 }
 
-type Backing<A> =
+export type Backing<A> =
   | IArray<A>
   | IConcat<A>
   | ISingleton<A>

@@ -1,7 +1,7 @@
 import type { Effect } from "./Effect.js"
-import type { Exit } from "./Exit.impl.js"
+import type { Either } from "./Either.js"
+import type { Exit } from "./Exit.js"
 import type { AsyncInputConsumer, AsyncInputProducer } from "./SingleProducerAsyncInput.impl.js"
-import type { Either } from "./StreamHaltStrategy.js"
 
 export * from "./internal/Jumpers/SingleProducerAsyncInput.js"
 export * from "./SingleProducerAsyncInput.impl.js"

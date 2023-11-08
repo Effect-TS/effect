@@ -20,29 +20,6 @@ import { ReadonlyRecord as RR } from "./ReadonlyRecord.js"
 
 import type { ReadonlyArray } from "./ReadonlyArray.js"
 
-export declare namespace ReadonlyArray {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./ReadonlyArray.impl.js"
-}
-  export interface ReadonlyArray<T> extends globalThis.ReadonlyArray<T> {}
-  /**
-   * @since 2.0.0
-   */
-  export namespace ReadonlyArray {
-    /**
-     * @since 2.0.0
-     */
-    export type Infer<T extends ReadonlyArray<any>> = T[number]
-
-    /**
-     * @since 2.0.0
-     */
-    export type With<T extends ReadonlyArray<any>, A> = T extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
-      : Array<A>
-  }
-}
-
 /**
  * @category type lambdas
  * @since 2.0.0

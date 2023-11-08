@@ -3,8 +3,6 @@
  */
 import type { Cause } from "./Cause.js"
 import type { Effect } from "./Effect.js"
-import type { Either } from "./Either.js"
-import type { Exit } from "./Exit.js"
 import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 
 import type { SingleProducerAsyncInput } from "./SingleProducerAsyncInput.js"

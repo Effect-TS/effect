@@ -4,7 +4,6 @@
 import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
-import type { Fiber } from "./Fiber.js"
 import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/tracer.js"
 import type { Option } from "./Option.js"

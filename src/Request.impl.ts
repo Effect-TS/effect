@@ -2,18 +2,17 @@
  * @since 2.0.0
  */
 import type * as _Cache from "./Cache.js"
-import type { Data } from "./Data.js"
 import type { Deferred } from "./Deferred.js"
 import type { DurationInput } from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type { Exit } from "./Exit.js"
 import type { FiberId } from "./FiberId.js"
 import * as _RequestBlock from "./internal/blockedRequests.js"
 import * as cache from "./internal/cache.js"
 import * as core from "./internal/core.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/request.js"
-import type { Option } from "./Option.js"
+
+import type { Request } from "./Request.js"
 
 /**
  * @since 2.0.0
@@ -26,80 +25,6 @@ export const RequestTypeId: unique symbol = internal.RequestTypeId
  * @category symbols
  */
 export type RequestTypeId = typeof RequestTypeId
-
-import type { Request } from "./Request.js"
-
-export declare namespace Request {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Request.impl.js"
-}
-  /**
-   * A `Request<E, A>` is a request from a data source for a value of type `A`
-   * that may fail with an `E`.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Request<E, A> extends Request.Variance<E, A>, Data.Case {}
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace Request {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<E, A> {
-      readonly [RequestTypeId]: {
-        readonly _E: (_: never) => E
-        readonly _A: (_: never) => A
-      }
-    }
-
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Constructor<R extends Request<any, any>, T extends keyof R = never> {
-      (args: Omit<R, T | keyof (Data.Case & Request.Variance<Request.Error<R>, Request.Success<R>>)>): R
-    }
-
-    /**
-     * A utility type to extract the error type from a `Request`.
-     *
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Error<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _E : never
-
-    /**
-     * A utility type to extract the value type from a `Request`.
-     *
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Success<T extends Request<any, any>> = [T] extends [Request<infer _E, infer _A>] ? _A : never
-
-    /**
-     * A utility type to extract the result type from a `Request`.
-     *
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Result<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit<E, A> : never
-
-    /**
-     * A utility type to extract the optional result type from a `Request`.
-     *
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type OptionalResult<T extends Request<any, any>> = T extends Request<infer E, infer A> ? Exit<E, Option<A>>
-      : never
-  }
-}
 
 /**
  * Returns `true` if the specified value is a `Request`, `false` otherwise.
