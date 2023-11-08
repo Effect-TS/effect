@@ -775,8 +775,8 @@ export const concatAll: <R, E, A>(streams: Chunk.Chunk<Stream<R, E, A>>) => Stre
  * @category utils
  */
 export const cross: {
-  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, readonly [A, A2]>
+  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, [A, A2]>
 } = internal.cross
 
 /**
@@ -925,7 +925,7 @@ export const distributedWithDynamic: {
   ) => Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
   <R, E, A, _>(
     self: Stream<R, E, A>,
@@ -936,7 +936,7 @@ export const distributedWithDynamic: {
   ): Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
 } = internal.distributedWithDynamic
 
@@ -1622,8 +1622,8 @@ export const fromSchedule: <R, A>(schedule: Schedule.Schedule<R, unknown, A>) =>
  * @category grouping
  */
 export const groupAdjacentBy: {
-  <A, K>(f: (a: A) => K): <R, E>(self: Stream<R, E, A>) => Stream<R, E, readonly [K, Chunk.NonEmptyChunk<A>]>
-  <R, E, A, K>(self: Stream<R, E, A>, f: (a: A) => K): Stream<R, E, readonly [K, Chunk.NonEmptyChunk<A>]>
+  <A, K>(f: (a: A) => K): <R, E>(self: Stream<R, E, A>) => Stream<R, E, [K, Chunk.NonEmptyChunk<A>]>
+  <R, E, A, K>(self: Stream<R, E, A>, f: (a: A) => K): Stream<R, E, [K, Chunk.NonEmptyChunk<A>]>
 } = internal.groupAdjacentBy
 
 /**
@@ -2438,12 +2438,12 @@ export const partition: {
     options?: { bufferSize?: number }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: { bufferSize?: number }
-  ): Effect.Effect<Scope.Scope | R, E, readonly [Stream<never, E, A>, Stream<never, E, A>]>
+  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
 } = internal.partition
 
 /**
@@ -2459,12 +2459,12 @@ export const partitionEither: {
     options?: { readonly bufferSize?: number }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
+  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
     predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
     options?: { readonly bufferSize?: number }
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, readonly [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
+  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
 } = internal.partitionEither
 
 /**
@@ -2479,11 +2479,11 @@ export const partitionEither: {
 export const peel: {
   <R2, E2, A, Z>(
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Z, Stream<never, E, A>]>
+  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Z, Stream<never, E, A>]>
   <R, E, R2, E2, A, Z>(
     self: Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, readonly [Z, Stream<never, E, A>]>
+  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [Z, Stream<never, E, A>]>
 } = internal.peel
 
 /**
@@ -4047,8 +4047,8 @@ export const withSpan: {
  * @category zipping
  */
 export const zip: {
-  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, readonly [A, A2]>
+  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, [A, A2]>
 } = internal.zip
 
 /**
@@ -4063,11 +4063,11 @@ export const zip: {
 export const zipFlatten: {
   <R2, E2, A2>(
     that: Stream<R2, E2, A2>
-  ): <R, E, A extends ReadonlyArray<any>>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [...A, A2]>
+  ): <R, E, A extends ReadonlyArray<any>>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [...A, A2]>
   <R, E, A extends ReadonlyArray<any>, R2, E2, A2>(
     self: Stream<R, E, A>,
     that: Stream<R2, E2, A2>
-  ): Stream<R | R2, E | E2, readonly [...A, A2]>
+  ): Stream<R | R2, E | E2, [...A, A2]>
 } = internal.zipFlatten
 
 /**
@@ -4082,12 +4082,20 @@ export const zipFlatten: {
  */
 export const zipAll: {
   <R2, E2, A2, A>(
-    options: { readonly other: Stream<R2, E2, A2>; readonly defaultSelf: A; readonly defaultOther: A2 }
-  ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
+    options: {
+      readonly other: Stream<R2, E2, A2>
+      readonly defaultSelf: A
+      readonly defaultOther: A2
+    }
+  ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
   <R, E, R2, E2, A2, A>(
     self: Stream<R, E, A>,
-    options: { readonly other: Stream<R2, E2, A2>; readonly defaultSelf: A; readonly defaultOther: A2 }
-  ): Stream<R | R2, E | E2, readonly [A, A2]>
+    options: {
+      readonly other: Stream<R2, E2, A2>
+      readonly defaultSelf: A
+      readonly defaultOther: A2
+    }
+  ): Stream<R | R2, E | E2, [A, A2]>
 } = internal.zipAll
 
 /**
@@ -4145,7 +4153,7 @@ export const zipAllSortedByKey: {
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, readonly [A, A2]]>
+  ): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, [A, A2]]>
   <R, E, R2, E2, A2, A, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -4154,7 +4162,7 @@ export const zipAllSortedByKey: {
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, readonly [A, A2]]>
+  ): Stream<R | R2, E | E2, [K, [A, A2]]>
 } = internal.zipAllSortedByKey
 
 /**
@@ -4177,7 +4185,7 @@ export const zipAllSortedByKeyLeft: {
       readonly defaultSelf: A
       readonly order: Order.Order<K>
     }
-  ): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, A]>
+  ): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, A]>
   <R, E, R2, E2, A2, A, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -4185,7 +4193,7 @@ export const zipAllSortedByKeyLeft: {
       readonly defaultSelf: A
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, A]>
+  ): Stream<R | R2, E | E2, [K, A]>
 } = internal.zipAllSortedByKeyLeft
 
 /**
@@ -4208,7 +4216,7 @@ export const zipAllSortedByKeyRight: {
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): <R, E, A>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, A2]>
+  ): <R, E, A>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, A2]>
   <R, E, A, R2, E2, A2, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -4216,7 +4224,7 @@ export const zipAllSortedByKeyRight: {
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, A2]>
+  ): Stream<R | R2, E | E2, [K, A2]>
 } = internal.zipAllSortedByKeyRight
 
 /**
@@ -4242,7 +4250,7 @@ export const zipAllSortedByKeyWith: {
       readonly onBoth: (a: A, a2: A2) => A3
       readonly order: Order.Order<K>
     }
-  ): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, readonly [K, A3]>
+  ): <R, E>(self: Stream<R, E, readonly [K, A]>) => Stream<R2 | R, E2 | E, [K, A3]>
   <R, E, R2, E2, A, A3, A2, K>(
     self: Stream<R, E, readonly [K, A]>,
     options: {
@@ -4252,7 +4260,7 @@ export const zipAllSortedByKeyWith: {
       readonly onBoth: (a: A, a2: A2) => A3
       readonly order: Order.Order<K>
     }
-  ): Stream<R | R2, E | E2, readonly [K, A3]>
+  ): Stream<R | R2, E | E2, [K, A3]>
 } = internal.zipAllSortedByKeyWith
 
 /**
@@ -4298,8 +4306,8 @@ export const zipAllWith: {
  * @category zipping
  */
 export const zipLatest: {
-  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, readonly [A, A2]>
-  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, readonly [A, A2]>
+  <R2, E2, A2>(that: Stream<R2, E2, A2>): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, [A, A2]>
+  <R, E, A, R2, E2, A2>(self: Stream<R, E, A>, that: Stream<R2, E2, A2>): Stream<R | R2, E | E2, [A, A2]>
 } = internal.zipLatest
 
 /**
@@ -4408,8 +4416,7 @@ export const zipWithChunks: {
  * @since 2.0.0
  * @category zipping
  */
-export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, Option.Option<A>]> =
-  internal.zipWithNext
+export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, [A, Option.Option<A>]> = internal.zipWithNext
 
 /**
  * Zips each element with the previous element. Initially accompanied by
@@ -4418,7 +4425,7 @@ export const zipWithNext: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, reado
  * @since 2.0.0
  * @category zipping
  */
-export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [Option.Option<A>, A]> =
+export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, [Option.Option<A>, A]> =
   internal.zipWithPrevious
 
 /**
@@ -4429,7 +4436,7 @@ export const zipWithPrevious: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, r
  */
 export const zipWithPreviousAndNext: <R, E, A>(
   self: Stream<R, E, A>
-) => Stream<R, E, readonly [Option.Option<A>, A, Option.Option<A>]> = internal.zipWithPreviousAndNext
+) => Stream<R, E, [Option.Option<A>, A, Option.Option<A>]> = internal.zipWithPreviousAndNext
 
 /**
  * Zips this stream together with the index of elements.
@@ -4437,8 +4444,7 @@ export const zipWithPreviousAndNext: <R, E, A>(
  * @since 2.0.0
  * @category zipping
  */
-export const zipWithIndex: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, readonly [A, number]> =
-  internal.zipWithIndex
+export const zipWithIndex: <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, [A, number]> = internal.zipWithIndex
 
 // -------------------------------------------------------------------------------------
 // Do notation
