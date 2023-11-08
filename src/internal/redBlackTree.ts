@@ -81,14 +81,16 @@ export const isRedBlackTree: {
 export const empty = <K, V = never>(ord: Order.Order<K>): RBT.RedBlackTree<K, V> => makeImpl<K, V>(ord, undefined)
 
 /** @internal */
-export const fromIterable =
-  <K, V>(ord: Order.Order<K>) => (entries: Iterable<readonly [K, V]>): RBT.RedBlackTree<K, V> => {
-    let tree = empty<K, V>(ord)
-    for (const [key, value] of entries) {
-      tree = insert(tree, key, value)
-    }
-    return tree
+export const fromIterable = Dual.dual<
+  <K, V>(ord: Order.Order<K>) => (entries: Iterable<readonly [K, V]>) => RBT.RedBlackTree<K, V>,
+  <K, V>(entries: Iterable<readonly [K, V]>, ord: Order.Order<K>) => RBT.RedBlackTree<K, V>
+>(2, <K, V>(entries: Iterable<readonly [K, V]>, ord: Order.Order<K>) => {
+  let tree = empty<K, V>(ord)
+  for (const [key, value] of entries) {
+    tree = insert(tree, key, value)
   }
+  return tree
+})
 
 /** @internal */
 export const make =

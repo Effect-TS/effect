@@ -95,7 +95,7 @@ export const fromIterable: {
 } = Dual.dual(
   2,
   <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A> =>
-    fromTree(RBT.fromIterable<A, boolean>(ord)(Array.from(iterable).map((k) => [k, true])))
+    fromTree(RBT.fromIterable(Array.from(iterable).map((k) => [k, true]), ord))
 )
 
 /**

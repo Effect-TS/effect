@@ -85,7 +85,7 @@ export const empty = <K, V = never>(ord: Order<K>): SortedMap<K, V> => makeImpl<
  * @category constructors
  */
 export const fromIterable = <K>(ord: Order<K>) => <V>(iterable: Iterable<readonly [K, V]>): SortedMap<K, V> =>
-  makeImpl(RBT.fromIterable<K, V>(ord)(iterable))
+  makeImpl(RBT.fromIterable(iterable, ord))
 
 /**
  * @since 2.0.0
