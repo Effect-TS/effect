@@ -1,18 +1,22 @@
+import { pipe } from "effect/Function"
+import type { Order } from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as SortedSet from "effect/SortedSet"
 
-declare const nss: SortedSet.SortedSet<number | string>
+declare const numberOrString: SortedSet.SortedSet<number | string>
+declare const stringIterable: Iterable<string>
+declare const stringOrUndefinedOrder: Order<string | undefined>
 
 // -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
 
-if (SortedSet.every(nss, Predicate.isString)) {
-  nss // $ExpectType SortedSet<string>
+if (SortedSet.every(numberOrString, Predicate.isString)) {
+  numberOrString // $ExpectType SortedSet<string>
 }
 
-if (SortedSet.every(Predicate.isString)(nss)) {
-  nss // $ExpectType SortedSet<string>
+if (SortedSet.every(Predicate.isString)(numberOrString)) {
+  numberOrString // $ExpectType SortedSet<string>
 }
 
 // -------------------------------------------------------------------------------------
@@ -20,7 +24,17 @@ if (SortedSet.every(Predicate.isString)(nss)) {
 // -------------------------------------------------------------------------------------
 
 // $ExpectType [SortedSet<number>, SortedSet<string>]
-SortedSet.partition(nss, Predicate.isString)
+SortedSet.partition(numberOrString, Predicate.isString)
 
 // $ExpectType [SortedSet<number>, SortedSet<string>]
-nss.pipe(SortedSet.partition(Predicate.isString))
+numberOrString.pipe(SortedSet.partition(Predicate.isString))
+
+// -------------------------------------------------------------------------------------
+// fromIterable
+// -------------------------------------------------------------------------------------
+
+// $ExpectType SortedSet<string>
+SortedSet.fromIterable(stringIterable, stringOrUndefinedOrder)
+
+// $ExpectType SortedSet<string>
+pipe(stringIterable, SortedSet.fromIterable(stringOrUndefinedOrder))
