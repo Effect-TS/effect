@@ -84,8 +84,14 @@ export const empty = <K, V = never>(ord: Order<K>): SortedMap<K, V> => makeImpl<
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterable = <K>(ord: Order<K>) => <V>(iterable: Iterable<readonly [K, V]>): SortedMap<K, V> =>
-  makeImpl(RBT.fromIterable<K, V>(ord)(iterable))
+export const fromIterable: {
+  <B>(ord: Order<B>): <K extends B, V>(iterable: Iterable<readonly [K, V]>) => SortedMap<K, V>
+  <K extends B, V, B>(iterable: Iterable<readonly [K, V]>, ord: Order<B>): SortedMap<K, V>
+} = Dual.dual(
+  2,
+  <K extends B, V, B>(iterable: Iterable<readonly [K, V]>, ord: Order<B>): SortedMap<K, V> =>
+    makeImpl(RBT.fromIterable(iterable, ord))
+)
 
 /**
  * @since 2.0.0

@@ -97,7 +97,10 @@ Constructs a new tree from an iterable of key-value pairs.
 **Signature**
 
 ```ts
-export declare const fromIterable: <K, V>(ord: Order<K>) => (entries: Iterable<readonly [K, V]>) => RedBlackTree<K, V>
+export declare const fromIterable: {
+  <B>(ord: Order<B>): <K extends B, V>(entries: Iterable<readonly [K, V]>) => RedBlackTree<K, V>
+  <K extends B, V, B>(entries: Iterable<readonly [K, V]>, ord: Order<B>): RedBlackTree<K, V>
+}
 ```
 
 Added in v2.0.0

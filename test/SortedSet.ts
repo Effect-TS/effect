@@ -24,10 +24,15 @@ const OrdMember: Order.Order<Member> = pipe(Str.Order, Order.mapInput((member) =
 function makeNumericSortedSet(
   ...numbers: Array<number>
 ): SortedSet.SortedSet<number> {
-  return SortedSet.fromIterable((self, that: number) => self > that ? 1 : self < that ? -1 : 0)(numbers)
+  return SortedSet.fromIterable(numbers, (self, that: number) => self > that ? 1 : self < that ? -1 : 0)
 }
 
 describe.concurrent("SortedSet", () => {
+  it("fromIterable", () => {
+    expect(Array.from(SortedSet.fromIterable(["c", "a", "b"], Str.Order))).toStrictEqual(["a", "b", "c"])
+    expect(Array.from(pipe(["c", "a", "b"], SortedSet.fromIterable(Str.Order)))).toStrictEqual(["a", "b", "c"])
+  })
+
   it("is", () => {
     const set = makeNumericSortedSet(0, 1, 2)
     const arr = Array.from(set)

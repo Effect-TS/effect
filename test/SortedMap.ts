@@ -41,13 +41,13 @@ function value(n: number): Value {
 
 function makeSortedMap(...numbers: Array<readonly [number, number]>): SM.SortedMap<Key, Value> {
   const entries = numbers.map(([k, v]) => [key(k), value(v)] as const)
-  return SM.fromIterable((self: Key, that: Key) => self.id > that.id ? 1 : self.id < that.id ? -1 : 0)(entries)
+  return SM.fromIterable(entries, (self: Key, that: Key) => self.id > that.id ? 1 : self.id < that.id ? -1 : 0)
 }
 
 function makeNumericSortedMap(
   ...numbers: Array<readonly [number, number]>
 ): SM.SortedMap<number, number> {
-  return SM.fromIterable((self: number, that: number) => self > that ? 1 : self < that ? -1 : 0)(numbers)
+  return SM.fromIterable(numbers, (self: number, that: number) => self > that ? 1 : self < that ? -1 : 0)
 }
 
 describe.concurrent("SortedMap", () => {

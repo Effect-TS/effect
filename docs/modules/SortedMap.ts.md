@@ -61,7 +61,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromIterable: <K>(ord: Order<K>) => <V>(iterable: Iterable<readonly [K, V]>) => SortedMap<K, V>
+export declare const fromIterable: {
+  <B>(ord: Order<B>): <K extends B, V>(iterable: Iterable<readonly [K, V]>) => SortedMap<K, V>
+  <K extends B, V, B>(iterable: Iterable<readonly [K, V]>, ord: Order<B>): SortedMap<K, V>
+}
 ```
 
 Added in v2.0.0
