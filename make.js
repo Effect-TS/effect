@@ -6,10 +6,10 @@ const f = () => {
     .filter((_) => !excludes.includes(_) && !/\.(int|impl)\./.test(_) && !_.startsWith("."))
     .forEach((file) => {
       if (fs.existsSync(`./src/${file}.impl.ts`)) return
-      const int = `${file}.int.ts`
+      const fileWithoutExt = file.substring(0, file.length - 3)
+      const int = `${fileWithoutExt}.int.ts`
       const intExists = fs.existsSync(`./src/${int}`)
       const src = intExists ? int : file
-      const fileWithoutExt = file.substring(0, file.length - 3)
       fs.copyFileSync(`./src/${src}`, `./src/${fileWithoutExt}.impl.ts`)
       if (intExists) fs.rmSync(`./src/${int}`)
       fs.writeFileSync(
