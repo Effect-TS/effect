@@ -43,7 +43,7 @@ export interface TRef<A> {
 /**
  * @since 2.0.0
  */
-export namespace TRef {
+export declare namespace TRef {
   /**
    * @since 2.0.0
    */

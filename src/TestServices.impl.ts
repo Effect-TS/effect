@@ -24,21 +24,6 @@ import * as Sized from "./TestSized.js"
 
 import type { TestServices } from "./TestServices.js"
 
-export declare namespace TestServices {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TestServices.impl.js"
-}
-  /**
-   * @since 2.0.0
-   */
-  export type TestServices =
-    | Annotations.TestAnnotations
-    | Live.TestLive
-    | Sized.TestSized
-    | TestConfig
-}
-
 /**
  * The default Effect test services.
  *

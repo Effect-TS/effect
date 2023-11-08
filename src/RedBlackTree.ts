@@ -24,7 +24,7 @@ export interface RedBlackTree<Key, Value> extends Iterable<readonly [Key, Value]
 /**
  * @since 2.0.0
  */
-export namespace RedBlackTree {
+export declare namespace RedBlackTree {
   /**
    * @since 2.0.0
    */

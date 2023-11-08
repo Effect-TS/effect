@@ -29,7 +29,7 @@ export interface MetricKeyType<In, Out> extends MetricKeyType.Variance<In, Out>,
 /**
  * @since 2.0.0
  */
-export namespace MetricKeyType {
+export declare namespace MetricKeyType {
   /**
    * @since 2.0.0
    * @category models

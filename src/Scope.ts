@@ -32,7 +32,7 @@ export interface Scope extends Pipeable {
 /**
  * @since 2.0.0
  */
-export namespace Scope {
+export declare namespace Scope {
   /**
    * @since 2.0.0
    * @category model

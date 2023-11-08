@@ -6,23 +6,9 @@
  * @category symbol
  * @since 2.0.0
  */
-export declare const nonEmpty: unique symbol
-
 import type { NonEmptyIterable } from "./NonEmptyIterable.js"
 
-export declare namespace NonEmptyIterable {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./NonEmptyIterable.impl.js"
-}
-  /**
-   * @category model
-   * @since 2.0.0
-   */
-  export interface NonEmptyIterable<A> extends Iterable<A> {
-    readonly [nonEmpty]: A
-  }
-}
+export declare const nonEmpty: unique symbol
 
 /**
  * @category getters

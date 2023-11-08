@@ -16,7 +16,7 @@ export type UpstreamPullRequest<A> = Pulled<A> | NoUpstream
 /**
  * @since 2.0.0
  */
-export namespace UpstreamPullRequest {
+export declare namespace UpstreamPullRequest {
   /**
    * @since 2.0.0
    * @category models

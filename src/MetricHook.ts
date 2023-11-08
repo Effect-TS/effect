@@ -22,7 +22,7 @@ export interface MetricHook<In, Out> extends MetricHook.Variance<In, Out>, Pipea
 /**
  * @since 2.0.0
  */
-export namespace MetricHook {
+export declare namespace MetricHook {
   /**
    * @since 2.0.0
    * @category models

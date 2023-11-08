@@ -17,7 +17,7 @@ export type UpstreamPullStrategy<A> = PullAfterNext<A> | PullAfterAllEnqueued<A>
 /**
  * @since 2.0.0
  */
-export namespace UpstreamPullStrategy {
+export declare namespace UpstreamPullStrategy {
   /**
    * @since 2.0.0
    * @category models

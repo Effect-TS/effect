@@ -34,7 +34,7 @@ export interface MetricState<A> extends MetricState.Variance<A>, Equal, Pipeable
 /**
  * @since 2.0.0
  */
-export namespace MetricState {
+export declare namespace MetricState {
   /**
    * @since 2.0.0
    * @category models

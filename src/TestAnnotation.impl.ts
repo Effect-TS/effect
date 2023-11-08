@@ -13,6 +13,8 @@ import type { MutableRef } from "./MutableRef.js"
 import { hasProperty } from "./Predicate.js"
 import type { SortedSet } from "./SortedSet.js"
 
+import type { TestAnnotation } from "./TestAnnotation.js"
+
 /** @internal */
 const TestAnnotationSymbolKey = "effect/TestAnnotation"
 
@@ -25,25 +27,6 @@ export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
  * @since 2.0.0
  */
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
-
-import type { TestAnnotation } from "./TestAnnotation.js"
-
-export declare namespace TestAnnotation {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TestAnnotation.impl.js"
-}
-  /**
-   * @since 2.0.0
-   */
-  export interface TestAnnotation<A> extends Equal {
-    readonly [TestAnnotationTypeId]: TestAnnotationTypeId
-    readonly identifier: string
-    readonly tag: Context.Tag<A, A>
-    readonly initial: A
-    readonly combine: (a: A, b: A) => A
-  }
-}
 
 /** @internal */
 class TestAnnotationImpl<A> implements Equal {

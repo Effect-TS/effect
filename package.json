@@ -1386,11 +1386,6 @@
       "import": "./dist/esm/TestContext.js",
       "require": "./dist/cjs/TestContext.js"
     },
-    "./TestContext.impl": {
-      "types": "./dist/dts/TestContext.impl.d.ts",
-      "import": "./dist/esm/TestContext.impl.js",
-      "require": "./dist/cjs/TestContext.impl.js"
-    },
     "./TestLive": {
       "types": "./dist/dts/TestLive.d.ts",
       "import": "./dist/esm/TestLive.js",

@@ -3,12 +3,13 @@
  */
 import { Chunk } from "./Chunk.js"
 import { dual } from "./Function.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import { MutableList } from "./MutableList.js"
-import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
-const TypeId: unique symbol = Symbol.for("effect/MutableQueue") as TypeId
+import type { MutableQueue } from "./MutableQueue.js"
+
+export const TypeId: unique symbol = Symbol.for("effect/MutableQueue") as TypeId
 
 /**
  * @since 2.0.0
@@ -21,37 +22,6 @@ export type TypeId = typeof TypeId
  * @category symbol
  */
 export const EmptyMutableQueue = Symbol.for("effect/mutable/MutableQueue/Empty")
-
-import type { MutableQueue } from "./MutableQueue.js"
-
-export declare namespace MutableQueue {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MutableQueue.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category model
-   */
-  export interface MutableQueue<A> extends Iterable<A>, Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-
-    /** @internal */
-    queue: MutableList<A>
-    /** @internal */
-    capacity: number | undefined
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace MutableQueue {
-    /**
-     * @since 2.0.0
-     */
-    export type Empty = typeof EmptyMutableQueue
-  }
-}
 
 const MutableQueueProto: Omit<MutableQueue<unknown>, "queue" | "capacity"> = {
   [TypeId]: TypeId,

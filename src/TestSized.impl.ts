@@ -16,19 +16,6 @@ export const TestSizedTypeId = Symbol.for("effect/TestSized")
  */
 export type TestSizedTypeId = typeof TestSizedTypeId
 
-export * as TestSized from "./TestSized.js"
-declare module "./TestSized.js" {
-  /**
-   * @since 2.0.0
-   */
-  export interface TestSized {
-    readonly [TestSizedTypeId]: TestSizedTypeId
-    readonly fiberRef: FiberRef<number>
-    size(): Effect<never, never, number>
-    withSize(size: number): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
-  }
-}
-
 /**
  * @since 2.0.0
  */
