@@ -66,7 +66,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromIterable: <K>(ord: Order<K>) => (iterable: Iterable<K>) => SortedSet<K>
+export declare const fromIterable: {
+  <B>(ord: Order<B>): <A extends B>(iterable: Iterable<A>) => SortedSet<A>
+  <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A>
+}
 ```
 
 Added in v2.0.0

@@ -89,8 +89,14 @@ export const empty = <A>(O: Order<A>): SortedSet<A> => fromTree(RBT.empty(O))
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterable = <K>(ord: Order<K>) => (iterable: Iterable<K>): SortedSet<K> =>
-  fromTree(RBT.fromIterable<K, boolean>(ord)(Array.from(iterable).map((k) => [k, true])))
+export const fromIterable: {
+  <B>(ord: Order<B>): <A extends B>(iterable: Iterable<A>) => SortedSet<A>
+  <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A>
+} = Dual.dual(
+  2,
+  <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A> =>
+    fromTree(RBT.fromIterable<A, boolean>(ord)(Array.from(iterable).map((k) => [k, true])))
+)
 
 /**
  * @since 2.0.0
@@ -98,7 +104,7 @@ export const fromIterable = <K>(ord: Order<K>) => (iterable: Iterable<K>): Sorte
  */
 export const make =
   <K>(ord: Order<K>) => <Entries extends ReadonlyArray<K>>(...entries: Entries): SortedSet<Entries[number]> =>
-    fromIterable(ord)(entries)
+    fromIterable(entries, ord)
 
 /**
  * @since 2.0.0
