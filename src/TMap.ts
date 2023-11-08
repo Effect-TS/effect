@@ -285,8 +285,8 @@ export const removeAll: {
  * @category mutations
  */
 export const removeIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<readonly [K, V]>>
+  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
+  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
 } = internal.removeIf
 
 /**
@@ -307,8 +307,8 @@ export const removeIfDiscard: {
  * @category mutations
  */
 export const retainIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<readonly [K, V]>>
+  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
+  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
 } = internal.retainIf
 
 /**
@@ -407,7 +407,7 @@ export const takeSomeSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> = internal.toArray
+export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> = internal.toArray // TODO: readonly, wrong name
 
 /**
  * Collects all bindings into a `HashMap`.
@@ -423,7 +423,7 @@ export const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMa
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyArray<readonly [K, V]>> =
+export const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyArray<readonly [K, V]>> = // TODO: readonly
   internal.toReadonlyArray
 
 /**
