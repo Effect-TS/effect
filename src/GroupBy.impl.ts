@@ -2,11 +2,12 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/groupBy.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type { Queue } from "./Queue.js"
 import type { Stream } from "./Stream.js"
 import type { Take } from "./Take.js"
+
+import type { GroupBy } from "./GroupBy.js"
 
 /**
  * @since 2.0.0
@@ -19,44 +20,6 @@ export const GroupByTypeId: unique symbol = internal.GroupByTypeId
  * @category symbols
  */
 export type GroupByTypeId = typeof GroupByTypeId
-
-import type { GroupBy } from "./GroupBy.js"
-
-export declare namespace GroupBy {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./GroupBy.impl.js"
-}
-  /**
-   * Representation of a grouped stream. This allows to filter which groups will
-   * be processed. Once this is applied all groups will be processed in parallel
-   * and the results will be merged in arbitrary order.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface GroupBy<R, E, K, V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
-    readonly grouped: Stream<R, E, readonly [K, Queue.Dequeue<Take<E, V>>]>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace GroupBy {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<R, E, K, V> {
-      readonly [GroupByTypeId]: {
-        readonly _R: (_: never) => R
-        readonly _E: (_: never) => E
-        readonly _K: (_: never) => K
-        readonly _V: (_: never) => V
-      }
-    }
-  }
-}
 
 /**
  * Run the function across all groups, collecting the results in an

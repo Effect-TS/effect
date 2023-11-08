@@ -16,8 +16,9 @@ import type { List } from "./List.js"
 import type { LogLevel } from "./LogLevel.js"
 import type { LogSpan } from "./LogSpan.js"
 import type { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
+
+import type { Logger } from "./Logger.js"
 
 /**
  * @since 2.0.0
@@ -30,49 +31,6 @@ export const LoggerTypeId: unique symbol = internal.LoggerTypeId
  * @category symbols
  */
 export type LoggerTypeId = typeof LoggerTypeId
-
-import type { Logger } from "./Logger.js"
-
-export declare namespace Logger {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Logger.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
-    readonly log: (
-      options: {
-        readonly fiberId: FiberId
-        readonly logLevel: LogLevel
-        readonly message: Message
-        readonly cause: Cause<unknown>
-        readonly context: FiberRefs
-        readonly spans: List<LogSpan>
-        readonly annotations: HashMap<string, unknown>
-        readonly date: Date
-      }
-    ) => Output
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace Logger {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<Message, Output> {
-      readonly [LoggerTypeId]: {
-        readonly _Message: (_: Message) => void
-        readonly _Output: (_: never) => Output
-      }
-    }
-  }
-}
 
 /**
  * @category constructors

@@ -34,13 +34,14 @@ import * as circularLayer from "./internal/layer/circular.js"
 import * as query from "./internal/query.js"
 import type { LogLevel } from "./LogLevel.js"
 import type { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Request } from "./Request.js"
 import type { Runtime } from "./Runtime.js"
 import type { Schedule } from "./Schedule.js"
 import { Scheduler } from "./Scheduler.js"
 import type { Scope } from "./Scope.js"
 import type { Tracer } from "./Tracer.js"
+
+import type { Layer } from "./Layer.js"
 
 /**
  * @since 2.0.0
@@ -53,54 +54,6 @@ export const LayerTypeId: unique symbol = internal.LayerTypeId
  * @category symbols
  */
 export type LayerTypeId = typeof LayerTypeId
-
-import type { Layer } from "./Layer.js"
-
-export declare namespace Layer {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Layer.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Layer<RIn, E, ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace Layer {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<RIn, E, ROut> {
-      readonly [LayerTypeId]: {
-        readonly _RIn: (_: never) => RIn
-        readonly _E: (_: never) => E
-        readonly _ROut: (_: ROut) => void
-      }
-    }
-    /**
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Context<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _R
-      : never
-    /**
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Error<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _E : never
-    /**
-     * @since 2.0.0
-     * @category type-level
-     */
-    export type Success<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _A
-      : never
-  }
-}
 
 /**
  * Returns `true` if the specified value is a `Layer`, `false` otherwise.

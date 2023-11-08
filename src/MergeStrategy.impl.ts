@@ -3,6 +3,8 @@
  */
 import * as internal from "./internal/channel/mergeStrategy.js"
 
+import type { MergeStrategy } from "./MergeStrategy.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -14,33 +16,6 @@ export const MergeStrategyTypeId: unique symbol = internal.MergeStrategyTypeId
  * @category symbols
  */
 export type MergeStrategyTypeId = typeof MergeStrategyTypeId
-
-import type { MergeStrategy } from "./MergeStrategy.js"
-
-export declare namespace MergeStrategy {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MergeStrategy.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type MergeStrategy = BackPressure | BufferSliding
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace MergeStrategy {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Proto {
-      readonly [MergeStrategyTypeId]: MergeStrategyTypeId
-    }
-  }
-}
 
 /**
  * @since 2.0.0

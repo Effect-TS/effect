@@ -7,6 +7,8 @@ import type { Exit } from "./Exit.js"
 import type { Fiber } from "./Fiber.js"
 import * as internal from "./internal/channel/mergeState.js"
 
+import type { MergeState } from "./MergeState.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -18,36 +20,6 @@ export const MergeStateTypeId: unique symbol = internal.MergeStateTypeId
  * @category symbols
  */
 export type MergeStateTypeId = typeof MergeStateTypeId
-
-import type { MergeState } from "./MergeState.js"
-
-export declare namespace MergeState {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MergeState.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> =
-    | BothRunning<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
-    | LeftDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
-    | RightDone<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace MergeState {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Proto {
-      readonly [MergeStateTypeId]: MergeStateTypeId
-    }
-  }
-}
 
 /**
  * @since 2.0.0
