@@ -1455,8 +1455,8 @@ export const orTry: {
  * @category traversing
  */
 export const partition: {
-  <R, E, A, A2>(f: (a: A) => STM<R, E, A2>): (elements: Iterable<A>) => STM<R, never, readonly [Array<E>, Array<A2>]>
-  <R, E, A, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>): STM<R, never, readonly [Array<E>, Array<A2>]>
+  <R, E, A, A2>(f: (a: A) => STM<R, E, A2>): (elements: Iterable<A>) => STM<R, never, [Array<E>, Array<A2>]>
+  <R, E, A, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>): STM<R, never, [Array<E>, Array<A2>]>
 } = stm.partition
 
 /**
@@ -1769,12 +1769,12 @@ export const summarized: {
     f: (before: A2, after: A2) => A3
   ): <R, E, A>(
     self: STM<R, E, A>
-  ) => STM<R2 | R, E2 | E, readonly [A3, A]>
+  ) => STM<R2 | R, E2 | E, [A3, A]>
   <R, E, A, R2, E2, A2, A3>(
     self: STM<R, E, A>,
     summary: STM<R2, E2, A2>,
     f: (before: A2, after: A2) => A3
-  ): STM<R | R2, E | E2, readonly [A3, A]>
+  ): STM<R | R2, E | E2, [A3, A]>
 } = stm.summarized
 
 /**
@@ -1944,8 +1944,8 @@ export const whenSTM: {
  * @category zipping
  */
 export const zip: {
-  <R1, E1, A1>(that: STM<R1, E1, A1>): <R, E, A>(self: STM<R, E, A>) => STM<R1 | R, E1 | E, readonly [A, A1]>
-  <R, E, A, R1, E1, A1>(self: STM<R, E, A>, that: STM<R1, E1, A1>): STM<R | R1, E | E1, readonly [A, A1]>
+  <R1, E1, A1>(that: STM<R1, E1, A1>): <R, E, A>(self: STM<R, E, A>) => STM<R1 | R, E1 | E, [A, A1]>
+  <R, E, A, R1, E1, A1>(self: STM<R, E, A>, that: STM<R1, E1, A1>): STM<R | R1, E | E1, [A, A1]>
 } = core.zip
 
 /**
