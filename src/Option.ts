@@ -30,6 +30,12 @@ export * from "./internal/Jumpers/Option.js"
 export type Option<A> = None<A> | Some<A>
 
 export declare namespace Option {
+  // opt1: much more convenient of course, but while it works, the compiler gives an error
+  // @ts-expect-error
+  export type * from "./impl/Option.js"
+
+  // opt2: have to manually (or automate process) these exports
+  // much less convenient, but it doesn't require silencing compiler
   export type { None, OptionUnify, Some, TypeId }
 
   export {
@@ -50,5 +56,6 @@ export declare namespace Option {
     none,
     orElse,
     some
+    // TODO: all the rest
   }
 }
