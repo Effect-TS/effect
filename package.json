@@ -55,7 +55,7 @@
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
     "@edge-runtime/vm": "^3.1.6",
-    "@effect/build-utils": "^0.3.0",
+    "@effect/build-utils": "^0.3.1",
     "@effect/docgen": "^0.3.0",
     "@effect/dtslint": "^0.0.3",
     "@effect/eslint-plugin": "^0.1.2",
@@ -946,5 +946,3 @@
     }
   ]
 }
-
-
