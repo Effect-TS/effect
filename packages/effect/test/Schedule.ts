@@ -161,9 +161,9 @@ describe.concurrent("Schedule", () => {
           )
         )
         assert.deepStrictEqual(Array.from(result), [
-          [0, Duration.minutes(1)] as const,
-          [1, Duration.minutes(2)] as const,
-          [2, Duration.minutes(4)] as const
+          [0, Duration.minutes(1)],
+          [1, Duration.minutes(2)],
+          [2, Duration.minutes(4)]
         ])
       }))
     it.effect("respect Schedule.upTo even if more input is provided than needed", () =>

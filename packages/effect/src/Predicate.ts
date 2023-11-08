@@ -501,8 +501,9 @@ export const compose: {
  * @category combining
  * @since 2.0.0
  */
-export const product = <A, B>(self: Predicate<A>, that: Predicate<B>): Predicate<readonly [A, B]> => ([a, b]) =>
-  self(a) && that(b)
+export const product =
+  <A, B>(self: Predicate<A>, that: Predicate<B>): Predicate<readonly [A, B]> /* readonly because contravariant */ =>
+  ([a, b]) => self(a) && that(b)
 
 /**
  * @category combining
@@ -533,7 +534,7 @@ export const all = <A>(
 export const productMany = <A>(
   self: Predicate<A>,
   collection: Iterable<Predicate<A>>
-): Predicate<readonly [A, ...Array<A>]> => {
+): Predicate<readonly [A, ...Array<A>]> /* readonly because contravariant */ => {
   const rest = all(collection)
   return ([head, ...tail]) => self(head) === false ? false : rest(tail)
 }

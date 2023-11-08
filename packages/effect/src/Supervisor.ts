@@ -81,7 +81,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * the function of the specified supervisor, producing a tuple of the outputs
    * produced by both supervisors.
    */
-  zip<A>(right: Supervisor<A>): Supervisor<readonly [T, A]>
+  zip<A>(right: Supervisor<A>): Supervisor<[T, A]>
 }
 
 /**
@@ -219,7 +219,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    */
   zip<A>(
     right: Supervisor<A>
-  ): Supervisor<readonly [T, A]> {
+  ): Supervisor<[T, A]> {
     return new internal.Zip(this, right)
   }
 

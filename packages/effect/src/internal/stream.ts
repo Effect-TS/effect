@@ -1562,17 +1562,17 @@ export const concatAll = <R, E, A>(streams: Chunk.Chunk<Stream.Stream<R, E, A>>)
 export const cross = dual<
   <R2, E2, A2>(
     that: Stream.Stream<R2, E2, A2>
-  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>,
+  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, [A, A2]>,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>
+  ) => Stream.Stream<R2 | R, E2 | E, [A, A2]>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ): Stream.Stream<R | R2, E | E2, readonly [A, A2]> => pipe(self, crossWith(that, (a, a2) => [a, a2]))
+  ): Stream.Stream<R | R2, E | E2, [A, A2]> => pipe(self, crossWith(that, (a, a2) => [a, a2]))
 )
 
 /** @internal */
@@ -1898,7 +1898,7 @@ export const distributedWithDynamic = dual<
   ) => Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >,
   <R, E, A, _>(
     self: Stream.Stream<R, E, A>,
@@ -1909,7 +1909,7 @@ export const distributedWithDynamic = dual<
   ) => Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
 >(2, <R, E, A, _>(
   self: Stream.Stream<R, E, A>,
@@ -1920,9 +1920,10 @@ export const distributedWithDynamic = dual<
 ): Effect.Effect<
   R | Scope.Scope,
   never,
-  Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+  Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
 > => distributedWithDynamicCallback(self, options.maximumLag, options.decide, () => Effect.unit))
 
+/** @internal */
 export const distributedWithDynamicCallback = dual<
   <E, A, _>(
     maximumLag: number,
@@ -1933,7 +1934,7 @@ export const distributedWithDynamicCallback = dual<
   ) => Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >,
   <R, E, A, _>(
     self: Stream.Stream<R, E, A>,
@@ -1943,7 +1944,7 @@ export const distributedWithDynamicCallback = dual<
   ) => Effect.Effect<
     Scope.Scope | R,
     never,
-    Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+    Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
   >
 >(4, <R, E, A, _>(
   self: Stream.Stream<R, E, A>,
@@ -1953,7 +1954,7 @@ export const distributedWithDynamicCallback = dual<
 ): Effect.Effect<
   R | Scope.Scope,
   never,
-  Effect.Effect<never, never, readonly [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
+  Effect.Effect<never, never, [number, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>]>
 > =>
   pipe(
     Effect.acquireRelease(
@@ -2009,14 +2010,14 @@ export const distributedWithDynamicCallback = dual<
           )
         const queuesLock = yield* $(Effect.makeSemaphore(1))
         const newQueue = yield* $(
-          Ref.make<Effect.Effect<never, never, readonly [number, Queue.Queue<Exit.Exit<Option.Option<E>, A>>]>>(
+          Ref.make<Effect.Effect<never, never, [number, Queue.Queue<Exit.Exit<Option.Option<E>, A>>]>>(
             pipe(
               Queue.bounded<Exit.Exit<Option.Option<E>, A>>(maximumLag),
               Effect.flatMap((queue) => {
                 const id = newDistributedWithDynamicId()
                 return pipe(
                   Ref.update(queuesRef, (map) => map.set(id, queue)),
-                  Effect.as([id, queue] as const)
+                  Effect.as([id, queue])
                 )
               })
             )
@@ -3139,24 +3140,24 @@ const readChunkStreamByobReader = <E>(
 export const groupAdjacentBy = dual<
   <A, K>(
     f: (a: A) => K
-  ) => <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, readonly [K, Chunk.NonEmptyChunk<A>]>,
+  ) => <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, [K, Chunk.NonEmptyChunk<A>]>,
   <R, E, A, K>(
     self: Stream.Stream<R, E, A>,
     f: (a: A) => K
-  ) => Stream.Stream<R, E, readonly [K, Chunk.NonEmptyChunk<A>]>
+  ) => Stream.Stream<R, E, [K, Chunk.NonEmptyChunk<A>]>
 >(
   2,
   <R, E, A, K>(
     self: Stream.Stream<R, E, A>,
     f: (a: A) => K
-  ): Stream.Stream<R, E, readonly [K, Chunk.NonEmptyChunk<A>]> => {
-    type Output = readonly [K, Chunk.NonEmptyChunk<A>]
+  ): Stream.Stream<R, E, [K, Chunk.NonEmptyChunk<A>]> => {
+    type Output = [K, Chunk.NonEmptyChunk<A>]
     const groupAdjacentByChunk = (
       state: Option.Option<Output>,
       chunk: Chunk.Chunk<A>
-    ): readonly [Option.Option<Output>, Chunk.Chunk<Output>] => {
+    ): [Option.Option<Output>, Chunk.Chunk<Output>] => {
       if (Chunk.isEmpty(chunk)) {
-        return [state, Chunk.empty()] as const
+        return [state, Chunk.empty()]
       }
       const builder: Array<Output> = []
       let from = 0
@@ -3205,7 +3206,7 @@ export const groupAdjacentBy = dual<
       }
       const nonEmptyChunk = Chunk.appendAll(previousChunk, Chunk.unsafeFromArray(Array.from(chunk).slice(from, until)))
       const output = Chunk.unsafeFromArray(builder)
-      return [Option.some([key, nonEmptyChunk as Chunk.NonEmptyChunk<A>] as const), output]
+      return [Option.some([key, nonEmptyChunk as Chunk.NonEmptyChunk<A>]), output]
     }
 
     const groupAdjacent = (
@@ -4251,15 +4252,15 @@ export const peel = dual<
     sink: Sink.Sink<R2, E2, A, A, Z>
   ) => <R, E>(
     self: Stream.Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Z, Stream.Stream<never, E, A>]>,
+  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Z, Stream.Stream<never, E, A>]>,
   <R, E, R2, E2, A, Z>(
     self: Stream.Stream<R, E, A>,
     sink: Sink.Sink<R2, E2, A, A, Z>
-  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, readonly [Z, Stream.Stream<never, E, A>]>
+  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Z, Stream.Stream<never, E, A>]>
 >(2, <R, E, R2, E2, A, Z>(
   self: Stream.Stream<R, E, A>,
   sink: Sink.Sink<R2, E2, A, A, Z>
-): Effect.Effect<R | R2 | Scope.Scope, E2 | E, readonly [Z, Stream.Stream<never, E, A>]> => {
+): Effect.Effect<R | R2 | Scope.Scope, E2 | E, [Z, Stream.Stream<never, E, A>]> => {
   type Signal = Emit | Halt | End
   const OP_EMIT = "Emit" as const
   type OP_EMIT = typeof OP_EMIT
@@ -4358,7 +4359,7 @@ export const peel = dual<
             run(consumer),
             Effect.forkScoped,
             Effect.zipRight(Deferred.await(deferred)),
-            Effect.map((z) => [z, new StreamImpl(producer)] as const)
+            Effect.map((z) => [z, new StreamImpl(producer)] as [Z, StreamImpl<never, E, A>])
           )
         })
       )
@@ -4374,12 +4375,12 @@ export const partition = dual<
     options?: { bufferSize?: number }
   ) => <R, E>(
     self: Stream.Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, E, readonly [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>,
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>,
   <R, E, A>(
     self: Stream.Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: { bufferSize?: number }
-  ) => Effect.Effect<Scope.Scope | R, E, readonly [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>
 >(
   (args) => typeof args[1] === "function",
   <R, E, A>(
@@ -4389,7 +4390,7 @@ export const partition = dual<
   ): Effect.Effect<
     R | Scope.Scope,
     E,
-    readonly [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]
+    [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]
   > =>
     partitionEither(
       self,
@@ -4408,7 +4409,7 @@ export const partitionEither = dual<
   ) => Effect.Effect<
     Scope.Scope | R2 | R,
     E2 | E,
-    readonly [Stream.Stream<never, E2 | E, A2>, Stream.Stream<never, E2 | E, A3>]
+    [Stream.Stream<never, E2 | E, A2>, Stream.Stream<never, E2 | E, A3>]
   >,
   <R, E, A, R2, E2, A2, A3>(
     self: Stream.Stream<R, E, A>,
@@ -4417,7 +4418,7 @@ export const partitionEither = dual<
   ) => Effect.Effect<
     Scope.Scope | R2 | R,
     E2 | E,
-    readonly [Stream.Stream<never, E2 | E, A2>, Stream.Stream<never, E2 | E, A3>]
+    [Stream.Stream<never, E2 | E, A2>, Stream.Stream<never, E2 | E, A3>]
   >
 >(
   (args) => typeof args[1] === "function",
@@ -4428,7 +4429,7 @@ export const partitionEither = dual<
   ): Effect.Effect<
     R | R2 | Scope.Scope,
     E | E2,
-    readonly [Stream.Stream<never, E | E2, A2>, Stream.Stream<never, E | E2, A3>]
+    [Stream.Stream<never, E | E2, A2>, Stream.Stream<never, E | E2, A3>]
   > =>
     pipe(
       mapEffectSequential(self, predicate),
@@ -6890,17 +6891,17 @@ export const withSpan = dual<
 export const zip = dual<
   <R2, E2, A2>(
     that: Stream.Stream<R2, E2, A2>
-  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>,
+  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, [A, A2]>,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>
+  ) => Stream.Stream<R2 | R, E2 | E, [A, A2]>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ): Stream.Stream<R | R2, E | E2, readonly [A, A2]> => pipe(self, zipWith(that, (a, a2) => [a, a2]))
+  ): Stream.Stream<R | R2, E | E2, [A, A2]> => pipe(self, zipWith(that, (a, a2) => [a, a2]))
 )
 
 /** @internal */
@@ -6909,17 +6910,17 @@ export const zipFlatten = dual<
     that: Stream.Stream<R2, E2, A2>
   ) => <R, E, A extends ReadonlyArray<any>>(
     self: Stream.Stream<R, E, A>
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [...A, A2]>,
+  ) => Stream.Stream<R2 | R, E2 | E, [...A, A2]>,
   <R, E, A extends ReadonlyArray<any>, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [...A, A2]>
+  ) => Stream.Stream<R2 | R, E2 | E, [...A, A2]>
 >(
   2,
   <R, E, A extends ReadonlyArray<any>, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ): Stream.Stream<R | R2, E | E2, readonly [...A, A2]> => pipe(self, zipWith(that, (a, a2) => [...a, a2]))
+  ): Stream.Stream<R | R2, E | E2, [...A, A2]> => pipe(self, zipWith(that, (a, a2) => [...a, a2]))
 )
 
 /** @internal */
@@ -6930,7 +6931,7 @@ export const zipAll = dual<
       readonly defaultSelf: A
       readonly defaultOther: A2
     }
-  ) => <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>,
+  ) => <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, [A, A2]>,
   <R, E, R2, E2, A2, A>(
     self: Stream.Stream<R, E, A>,
     options: {
@@ -6938,7 +6939,7 @@ export const zipAll = dual<
       readonly defaultSelf: A
       readonly defaultOther: A2
     }
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>
+  ) => Stream.Stream<R2 | R, E2 | E, [A, A2]>
 >(
   2,
   <R, E, R2, E2, A2, A>(
@@ -6948,7 +6949,7 @@ export const zipAll = dual<
       readonly defaultSelf: A
       readonly defaultOther: A2
     }
-  ): Stream.Stream<R | R2, E | E2, readonly [A, A2]> =>
+  ): Stream.Stream<R | R2, E | E2, [A, A2]> =>
     zipAllWith(self, {
       other: options.other,
       onSelf: (a) => [a, options.defaultOther],
@@ -7020,7 +7021,7 @@ export const zipAllSortedByKey = dual<
     }
   ) => <R, E>(
     self: Stream.Stream<R, E, readonly [K, A]>
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [K, readonly [A, A2]]>,
+  ) => Stream.Stream<R2 | R, E2 | E, [K, [A, A2]]>,
   <R, E, R2, E2, A2, A, K>(
     self: Stream.Stream<R, E, readonly [K, A]>,
     options: {
@@ -7029,7 +7030,7 @@ export const zipAllSortedByKey = dual<
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [K, readonly [A, A2]]>
+  ) => Stream.Stream<R2 | R, E2 | E, [K, [A, A2]]>
 >(
   2,
   <R, E, R2, E2, A2, A, K>(
@@ -7040,12 +7041,12 @@ export const zipAllSortedByKey = dual<
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): Stream.Stream<R | R2, E | E2, readonly [K, readonly [A, A2]]> =>
+  ): Stream.Stream<R | R2, E | E2, [K, [A, A2]]> =>
     zipAllSortedByKeyWith(self, {
       other: options.other,
-      onSelf: (a) => [a, options.defaultOther] as const,
-      onOther: (a2) => [options.defaultSelf, a2] as const,
-      onBoth: (a, a2) => [a, a2] as const,
+      onSelf: (a) => [a, options.defaultOther],
+      onOther: (a2) => [options.defaultSelf, a2],
+      onBoth: (a, a2) => [a, a2],
       order: options.order
     })
 )
@@ -7058,7 +7059,7 @@ export const zipAllSortedByKeyLeft = dual<
       readonly defaultSelf: A
       readonly order: Order.Order<K>
     }
-  ) => <R, E>(self: Stream.Stream<R, E, readonly [K, A]>) => Stream.Stream<R2 | R, E2 | E, readonly [K, A]>,
+  ) => <R, E>(self: Stream.Stream<R, E, readonly [K, A]>) => Stream.Stream<R2 | R, E2 | E, [K, A]>,
   <R, E, R2, E2, A2, A, K>(
     self: Stream.Stream<R, E, readonly [K, A]>,
     options: {
@@ -7066,7 +7067,7 @@ export const zipAllSortedByKeyLeft = dual<
       readonly defaultSelf: A
       readonly order: Order.Order<K>
     }
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [K, A]>
+  ) => Stream.Stream<R2 | R, E2 | E, [K, A]>
 >(
   2,
   <R, E, R2, E2, A2, A, K>(
@@ -7076,7 +7077,7 @@ export const zipAllSortedByKeyLeft = dual<
       readonly defaultSelf: A
       readonly order: Order.Order<K>
     }
-  ): Stream.Stream<R | R2, E | E2, readonly [K, A]> =>
+  ): Stream.Stream<R | R2, E | E2, [K, A]> =>
     zipAllSortedByKeyWith(self, {
       other: options.other,
       onSelf: identity,
@@ -7094,7 +7095,7 @@ export const zipAllSortedByKeyRight = dual<
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ) => <R, E, A>(self: Stream.Stream<R, E, readonly [K, A]>) => Stream.Stream<R2 | R, E2 | E, readonly [K, A2]>,
+  ) => <R, E, A>(self: Stream.Stream<R, E, readonly [K, A]>) => Stream.Stream<R2 | R, E2 | E, [K, A2]>,
   <R, E, A, R2, E2, A2, K>(
     self: Stream.Stream<R, E, readonly [K, A]>,
     options: {
@@ -7102,7 +7103,7 @@ export const zipAllSortedByKeyRight = dual<
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [K, A2]>
+  ) => Stream.Stream<R2 | R, E2 | E, [K, A2]>
 >(
   2,
   <R, E, A, R2, E2, A2, K>(
@@ -7112,7 +7113,7 @@ export const zipAllSortedByKeyRight = dual<
       readonly defaultOther: A2
       readonly order: Order.Order<K>
     }
-  ): Stream.Stream<R | R2, E | E2, readonly [K, A2]> =>
+  ): Stream.Stream<R | R2, E | E2, [K, A2]> =>
     zipAllSortedByKeyWith(self, {
       other: options.other,
       onSelf: () => options.defaultOther,
@@ -7132,7 +7133,7 @@ export const zipAllSortedByKeyWith = dual<
       readonly onBoth: (a: A, a2: A2) => A3
       readonly order: Order.Order<K>
     }
-  ) => <R, E>(self: Stream.Stream<R, E, readonly [K, A]>) => Stream.Stream<R2 | R, E2 | E, readonly [K, A3]>,
+  ) => <R, E>(self: Stream.Stream<R, E, readonly [K, A]>) => Stream.Stream<R2 | R, E2 | E, [K, A3]>,
   <R, E, R2, E2, A, A3, A2, K>(
     self: Stream.Stream<R, E, readonly [K, A]>,
     options: {
@@ -7142,7 +7143,7 @@ export const zipAllSortedByKeyWith = dual<
       readonly onBoth: (a: A, a2: A2) => A3
       readonly order: Order.Order<K>
     }
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [K, A3]>
+  ) => Stream.Stream<R2 | R, E2 | E, [K, A3]>
 >(
   2,
   <R, E, R2, E2, A, A3, A2, K>(
@@ -7154,7 +7155,7 @@ export const zipAllSortedByKeyWith = dual<
       readonly onBoth: (a: A, a2: A2) => A3
       readonly order: Order.Order<K>
     }
-  ): Stream.Stream<R | R2, E | E2, readonly [K, A3]> => {
+  ): Stream.Stream<R | R2, E | E2, [K, A3]> => {
     const pull = (
       state: ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>,
       pullLeft: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<readonly [K, A]>>,
@@ -7165,7 +7166,7 @@ export const zipAllSortedByKeyWith = dual<
       Exit.Exit<
         Option.Option<E | E2>,
         readonly [
-          Chunk.Chunk<readonly [K, A3]>,
+          Chunk.Chunk<[K, A3]>,
           ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
         ]
       >
@@ -7179,7 +7180,7 @@ export const zipAllSortedByKeyWith = dual<
               onSuccess: (leftChunk) =>
                 Exit.succeed(
                   [
-                    Chunk.map(leftChunk, ([k, a]) => [k, options.onSelf(a)] as const),
+                    Chunk.map(leftChunk, ([k, a]) => [k, options.onSelf(a)]),
                     ZipAllState.DrainLeft
                   ] as const
                 )
@@ -7194,7 +7195,7 @@ export const zipAllSortedByKeyWith = dual<
               onSuccess: (rightChunk) =>
                 Exit.succeed(
                   [
-                    Chunk.map(rightChunk, ([k, a2]) => [k, options.onOther(a2)] as const),
+                    Chunk.map(rightChunk, ([k, a2]) => [k, options.onOther(a2)]),
                     ZipAllState.DrainRight
                   ] as const
                 )
@@ -7227,7 +7228,7 @@ export const zipAllSortedByKeyWith = dual<
                   return Effect.succeed(
                     Exit.succeed(
                       [
-                        pipe(leftOption.value, Chunk.map(([k, a]) => [k, options.onSelf(a)] as const)),
+                        pipe(leftOption.value, Chunk.map(([k, a]) => [k, options.onSelf(a)])),
                         ZipAllState.DrainLeft
                       ] as const
                     )
@@ -7240,7 +7241,7 @@ export const zipAllSortedByKeyWith = dual<
                   return Effect.succeed(
                     Exit.succeed(
                       [
-                        pipe(rightOption.value, Chunk.map(([k, a2]) => [k, options.onOther(a2)] as const)),
+                        pipe(rightOption.value, Chunk.map(([k, a2]) => [k, options.onOther(a2)])),
                         ZipAllState.DrainRight
                       ] as const
                     )
@@ -7257,7 +7258,7 @@ export const zipAllSortedByKeyWith = dual<
               onNone: () =>
                 Effect.succeed(
                   Exit.succeed([
-                    pipe(state.rightChunk, Chunk.map(([k, a2]) => [k, options.onOther(a2)] as const)),
+                    pipe(state.rightChunk, Chunk.map(([k, a2]) => [k, options.onOther(a2)])),
                     ZipAllState.DrainRight
                   ])
                 ),
@@ -7266,7 +7267,7 @@ export const zipAllSortedByKeyWith = dual<
                   Exit.Exit<
                     Option.Option<E | E2>,
                     readonly [
-                      Chunk.Chunk<readonly [K, A3]>,
+                      Chunk.Chunk<[K, A3]>,
                       ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
                     ]
                   >
@@ -7285,7 +7286,7 @@ export const zipAllSortedByKeyWith = dual<
                 Effect.succeed(
                   Exit.succeed(
                     [
-                      Chunk.map(state.leftChunk, ([k, a]) => [k, options.onSelf(a)] as const),
+                      Chunk.map(state.leftChunk, ([k, a]) => [k, options.onSelf(a)]),
                       ZipAllState.DrainLeft
                     ] as const
                   )
@@ -7295,7 +7296,7 @@ export const zipAllSortedByKeyWith = dual<
                   Exit.Exit<
                     Option.Option<E | E2>,
                     readonly [
-                      Chunk.Chunk<readonly [K, A3]>,
+                      Chunk.Chunk<[K, A3]>,
                       ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
                     ]
                   >
@@ -7313,11 +7314,11 @@ export const zipAllSortedByKeyWith = dual<
       leftChunk: Chunk.Chunk<readonly [K, A]>,
       rightChunk: Chunk.Chunk<readonly [K, A2]>
     ): readonly [
-      Chunk.Chunk<readonly [K, A3]>,
+      Chunk.Chunk<[K, A3]>,
       ZipAllState.ZipAllState<readonly [K, A], readonly [K, A2]>
     ] => {
       const hasNext = <T>(chunk: Chunk.Chunk<T>, index: number) => index < chunk.length - 1
-      const builder: Array<readonly [K, A3]> = []
+      const builder: Array<[K, A3]> = []
       let state:
         | ZipAllState.ZipAllState<
           readonly [K, A],
@@ -7357,7 +7358,7 @@ export const zipAllSortedByKeyWith = dual<
             loop = false
           }
         } else if (compare < 0) {
-          builder.push([k1, options.onSelf(a)] as const)
+          builder.push([k1, options.onSelf(a)])
           if (hasNext(leftChunk, leftIndex)) {
             leftIndex = leftIndex + 1
             leftTuple = pipe(leftChunk, Chunk.unsafeGet(leftIndex))
@@ -7375,7 +7376,7 @@ export const zipAllSortedByKeyWith = dual<
             loop = false
           }
         } else {
-          builder.push([k2, options.onOther(a2)] as const)
+          builder.push([k2, options.onOther(a2)])
           if (hasNext(rightChunk, rightIndex)) {
             rightIndex = rightIndex + 1
             rightTuple = pipe(rightChunk, Chunk.unsafeGet(rightIndex))
@@ -7394,7 +7395,7 @@ export const zipAllSortedByKeyWith = dual<
           }
         }
       }
-      return [Chunk.unsafeFromArray(builder), state!] as const
+      return [Chunk.unsafeFromArray(builder), state!]
     }
     return combineChunks(self, options.other, ZipAllState.PullBoth, pull)
   }
@@ -7601,17 +7602,17 @@ export const zipAllWith = dual<
 export const zipLatest = dual<
   <R2, E2, A2>(
     that: Stream.Stream<R2, E2, A2>
-  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>,
+  ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R2 | R, E2 | E, [A, A2]>,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ) => Stream.Stream<R2 | R, E2 | E, readonly [A, A2]>
+  ) => Stream.Stream<R2 | R, E2 | E, [A, A2]>
 >(
   2,
   <R, E, A, R2, E2, A2>(
     self: Stream.Stream<R, E, A>,
     that: Stream.Stream<R2, E2, A2>
-  ): Stream.Stream<R | R2, E | E2, readonly [A, A2]> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
+  ): Stream.Stream<R | R2, E | E2, [A, A2]> => pipe(self, zipLatestWith(that, (a, a2) => [a, a2]))
 )
 
 /** @internal */
@@ -7906,13 +7907,13 @@ export const zipWithChunks = dual<
 })
 
 /** @internal */
-export const zipWithIndex = <R, E, A>(self: Stream.Stream<R, E, A>): Stream.Stream<R, E, readonly [A, number]> =>
-  pipe(self, mapAccum(0, (index, a) => [index + 1, [a, index] as const] as const))
+export const zipWithIndex = <R, E, A>(self: Stream.Stream<R, E, A>): Stream.Stream<R, E, [A, number]> =>
+  pipe(self, mapAccum(0, (index, a) => [index + 1, [a, index]]))
 
 /** @internal */
 export const zipWithNext = <R, E, A>(
   self: Stream.Stream<R, E, A>
-): Stream.Stream<R, E, readonly [A, Option.Option<A>]> => {
+): Stream.Stream<R, E, [A, Option.Option<A>]> => {
   const process = (
     last: Option.Option<A>
   ): Channel.Channel<never, never, Chunk.Chunk<A>, unknown, never, Chunk.Chunk<readonly [A, Option.Option<A>]>, void> =>
@@ -7952,10 +7953,10 @@ export const zipWithNext = <R, E, A>(
 /** @internal */
 export const zipWithPrevious = <R, E, A>(
   self: Stream.Stream<R, E, A>
-): Stream.Stream<R, E, readonly [Option.Option<A>, A]> =>
+): Stream.Stream<R, E, [Option.Option<A>, A]> =>
   pipe(
     self,
-    mapAccum<Option.Option<A>, A, readonly [Option.Option<A>, A]>(
+    mapAccum<Option.Option<A>, A, [Option.Option<A>, A]>(
       Option.none(),
       (prev, curr) => [Option.some(curr), [prev, curr]]
     )
@@ -7964,10 +7965,10 @@ export const zipWithPrevious = <R, E, A>(
 /** @internal */
 export const zipWithPreviousAndNext = <R, E, A>(
   self: Stream.Stream<R, E, A>
-): Stream.Stream<R, E, readonly [Option.Option<A>, A, Option.Option<A>]> =>
+): Stream.Stream<R, E, [Option.Option<A>, A, Option.Option<A>]> =>
   pipe(
     zipWithNext(zipWithPrevious(self)),
-    map(([[prev, curr], next]) => [prev, curr, pipe(next, Option.map((tuple) => tuple[1]))] as const)
+    map(([[prev, curr], next]) => [prev, curr, pipe(next, Option.map((tuple) => tuple[1]))])
   )
 
 /** @internal */
@@ -7975,17 +7976,17 @@ const zipChunks = <A, B, C>(
   left: Chunk.Chunk<A>,
   right: Chunk.Chunk<B>,
   f: (a: A, b: B) => C
-): readonly [Chunk.Chunk<C>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<B>>] => {
+): [Chunk.Chunk<C>, Either.Either<Chunk.Chunk<A>, Chunk.Chunk<B>>] => {
   if (left.length > right.length) {
     return [
       pipe(left, Chunk.take(right.length), Chunk.zipWith(right, f)),
       Either.left(pipe(left, Chunk.drop(right.length)))
-    ] as const
+    ]
   }
   return [
     pipe(left, Chunk.zipWith(pipe(right, Chunk.take(left.length)), f)),
     Either.right(pipe(right, Chunk.drop(left.length)))
-  ] as const
+  ]
 }
 
 // Do notation

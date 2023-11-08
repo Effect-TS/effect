@@ -685,7 +685,7 @@ export const filter = dual<
  */
 const evaluateCause = (
   self: Cause.Cause<unknown>
-): readonly [HashSet.HashSet<unknown>, Chunk.Chunk<Cause.Cause<unknown>>] => {
+): [HashSet.HashSet<unknown>, Chunk.Chunk<Cause.Cause<unknown>>] => {
   let cause: Cause.Cause<unknown> | undefined = self
   const stack: Array<Cause.Cause<unknown>> = []
   let _parallel = HashSet.empty<unknown>()

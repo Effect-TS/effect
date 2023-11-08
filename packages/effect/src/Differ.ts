@@ -398,9 +398,15 @@ export const updateWith: <A>(f: (x: A, y: A) => A) => Differ<A, (a: A) => A> = i
 export const zip: {
   <Value2, Patch2>(that: Differ<Value2, Patch2>): <Value, Patch>(
     self: Differ<Value, Patch>
-  ) => Differ<readonly [Value, Value2], readonly [Patch, Patch2]>
+  ) => Differ<
+    readonly [Value, Value2], // readonly because invariant
+    readonly [Patch, Patch2] // readonly because invariant
+  >
   <Value, Patch, Value2, Patch2>(
     self: Differ<Value, Patch>,
     that: Differ<Value2, Patch2>
-  ): Differ<readonly [Value, Value2], readonly [Patch, Patch2]>
+  ): Differ<
+    readonly [Value, Value2], // readonly because invariant
+    readonly [Patch, Patch2] // readonly because invariant
+  >
 } = internal.zip

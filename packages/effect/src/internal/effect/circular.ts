@@ -129,7 +129,7 @@ export const cachedInvalidate = dual<
       core.context<R>(),
       (env) =>
         core.map(
-          makeSynchronized<Option.Option<[number, Deferred.Deferred<E, A>]>>(Option.none()),
+          makeSynchronized<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>(Option.none()),
           (cache) =>
             [
               core.provideContext(getCachedValue(self, duration, cache), env),
@@ -145,12 +145,12 @@ const computeCachedValue = <R, E, A>(
   self: Effect.Effect<R, E, A>,
   timeToLive: Duration.DurationInput,
   start: number
-): Effect.Effect<R, never, Option.Option<readonly [number, Deferred.Deferred<E, A>]>> => {
+): Effect.Effect<R, never, Option.Option<[number, Deferred.Deferred<E, A>]>> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
     core.deferredMake<E, A>(),
     core.tap((deferred) => core.intoDeferred(self, deferred)),
-    core.map((deferred) => Option.some([start + timeToLiveMillis, deferred] as const))
+    core.map((deferred) => Option.some([start + timeToLiveMillis, deferred]))
   )
 }
 
@@ -590,9 +590,9 @@ export const updateSomeAndGetEffectSynchronized = dual<
 
 /** @internal */
 export const zipFiber = dual<
-  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, readonly [A, A2]>,
-  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, readonly [A, A2]>
->(2, (self, that) => zipWithFiber(self, that, (a, b) => [a, b] as const))
+  <E2, A2>(that: Fiber.Fiber<E2, A2>) => <E, A>(self: Fiber.Fiber<E, A>) => Fiber.Fiber<E | E2, [A, A2]>,
+  <E, A, E2, A2>(self: Fiber.Fiber<E, A>, that: Fiber.Fiber<E2, A2>) => Fiber.Fiber<E | E2, [A, A2]>
+>(2, (self, that) => zipWithFiber(self, that, (a, b) => [a, b]))
 
 /** @internal */
 export const zipLeftFiber = dual<

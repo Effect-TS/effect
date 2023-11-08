@@ -352,17 +352,16 @@ export const descriptor: Effect.Effect<never, never, Fiber.Fiber.Descriptor> = d
 /* @internal */
 export const diffFiberRefs = <R, E, A>(
   self: Effect.Effect<R, E, A>
-): Effect.Effect<R, E, readonly [FiberRefsPatch.FiberRefsPatch, A]> => summarized(self, fiberRefs, fiberRefsPatch.diff)
+): Effect.Effect<R, E, [FiberRefsPatch.FiberRefsPatch, A]> => summarized(self, fiberRefs, fiberRefsPatch.diff)
 
 /* @internal */
 export const diffFiberRefsAndRuntimeFlags = <R, E, A>(
   self: Effect.Effect<R, E, A>
-) =>
+): Effect.Effect<R, E, [[FiberRefsPatch.FiberRefsPatch, runtimeFlagsPatch.RuntimeFlagsPatch], A]> =>
   summarized(
     self,
     core.zip(fiberRefs, core.runtimeFlags),
-    ([refs, flags], [refsNew, flagsNew]) =>
-      [fiberRefsPatch.diff(refs, refsNew), runtimeFlags.diff(flags, flagsNew)] as const
+    ([refs, flags], [refsNew, flagsNew]) => [fiberRefsPatch.diff(refs, refsNew), runtimeFlags.diff(flags, flagsNew)]
   )
 
 /* @internal */
@@ -1017,17 +1016,17 @@ export const mapAccum = dual<
   <A, B, R, E, Z>(
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect.Effect<R, E, readonly [Z, B]>
-  ) => (elements: Iterable<A>) => Effect.Effect<R, E, readonly [Z, Array<B>]>,
+  ) => (elements: Iterable<A>) => Effect.Effect<R, E, [Z, Array<B>]>,
   <A, B, R, E, Z>(
     elements: Iterable<A>,
     zero: Z,
     f: (z: Z, a: A, i: number) => Effect.Effect<R, E, readonly [Z, B]>
-  ) => Effect.Effect<R, E, readonly [Z, Array<B>]>
+  ) => Effect.Effect<R, E, [Z, Array<B>]>
 >(3, <A, B, R, E, Z>(
   elements: Iterable<A>,
   zero: Z,
   f: (z: Z, a: A, i: number) => Effect.Effect<R, E, readonly [Z, B]>
-) =>
+): Effect.Effect<R, E, [Z, Array<B>]> =>
   core.suspend(() => {
     const iterator = elements[Symbol.iterator]()
     const builder: Array<B> = []
@@ -1042,7 +1041,7 @@ export const mapAccum = dual<
           return z
         }))
     }
-    return core.map(result, (z) => [z, builder] as const)
+    return core.map(result, (z) => [z, builder])
   }))
 
 /* @internal */
@@ -1062,16 +1061,7 @@ export const memoize = <R, E, A>(
   self: Effect.Effect<R, E, A>
 ): Effect.Effect<never, never, Effect.Effect<R, E, A>> =>
   pipe(
-    core.deferredMake<
-      E,
-      readonly [
-        readonly [
-          FiberRefsPatch.FiberRefsPatch,
-          runtimeFlagsPatch.RuntimeFlagsPatch
-        ],
-        A
-      ]
-    >(),
+    core.deferredMake<E, [[FiberRefsPatch.FiberRefsPatch, runtimeFlagsPatch.RuntimeFlagsPatch], A]>(),
     core.flatMap((deferred) =>
       pipe(
         diffFiberRefsAndRuntimeFlags(self),
@@ -1357,18 +1347,18 @@ export const summarized = dual<
   <R2, E2, B, C>(
     summary: Effect.Effect<R2, E2, B>,
     f: (start: B, end: B) => C
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, readonly [C, A]>,
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, [C, A]>,
   <R, E, A, R2, E2, B, C>(
     self: Effect.Effect<R, E, A>,
     summary: Effect.Effect<R2, E2, B>,
     f: (start: B, end: B) => C
-  ) => Effect.Effect<R | R2, E | E2, readonly [C, A]>
+  ) => Effect.Effect<R | R2, E | E2, [C, A]>
 >(
   3,
   (self, summary, f) =>
     core.flatMap(
       summary,
-      (start) => core.flatMap(self, (value) => core.map(summary, (end) => [f(start, end), value] as const))
+      (start) => core.flatMap(self, (value) => core.map(summary, (end) => [f(start, end), value]))
     )
 )
 
@@ -1588,17 +1578,17 @@ export const tapErrorCause = dual<
 /* @internal */
 export const timed = <R, E, A>(
   self: Effect.Effect<R, E, A>
-): Effect.Effect<R, E, readonly [Duration.Duration, A]> => timedWith(self, Clock.currentTimeNanos)
+): Effect.Effect<R, E, [Duration.Duration, A]> => timedWith(self, Clock.currentTimeNanos)
 
 /* @internal */
 export const timedWith = dual<
   <R1, E1>(
     nanoseconds: Effect.Effect<R1, E1, bigint>
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, readonly [Duration.Duration, A]>,
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R1, E | E1, [Duration.Duration, A]>,
   <R, E, A, R1, E1>(
     self: Effect.Effect<R, E, A>,
     nanoseconds: Effect.Effect<R1, E1, bigint>
-  ) => Effect.Effect<R | R1, E | E1, readonly [Duration.Duration, A]>
+  ) => Effect.Effect<R | R1, E | E1, [Duration.Duration, A]>
 >(
   2,
   (self, nanos) => summarized(self, nanos, (start, end) => Duration.nanos(end - start))
@@ -1799,18 +1789,18 @@ export const whenFiberRef = dual<
   <S>(
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate.Predicate<S>
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, readonly [S, Option.Option<A>]>,
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, [S, Option.Option<A>]>,
   <R, E, A, S>(
     self: Effect.Effect<R, E, A>,
     fiberRef: FiberRef.FiberRef<S>,
     predicate: Predicate.Predicate<S>
-  ) => Effect.Effect<R, E, readonly [S, Option.Option<A>]>
+  ) => Effect.Effect<R, E, [S, Option.Option<A>]>
 >(
   3,
   <R, E, A, S>(self: Effect.Effect<R, E, A>, fiberRef: FiberRef.FiberRef<S>, predicate: Predicate.Predicate<S>) =>
     core.flatMap(core.fiberRefGet(fiberRef), (s) =>
       predicate(s)
-        ? core.map(self, (a) => [s, Option.some(a)] as const)
+        ? core.map(self, (a) => [s, Option.some(a)])
         : core.succeed<[S, Option.Option<A>]>([s, Option.none()]))
 )
 
@@ -1819,18 +1809,18 @@ export const whenRef = dual<
   <S>(
     ref: Ref.Ref<S>,
     predicate: Predicate.Predicate<S>
-  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, readonly [S, Option.Option<A>]>,
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, [S, Option.Option<A>]>,
   <R, E, A, S>(
     self: Effect.Effect<R, E, A>,
     ref: Ref.Ref<S>,
     predicate: Predicate.Predicate<S>
-  ) => Effect.Effect<R, E, readonly [S, Option.Option<A>]>
+  ) => Effect.Effect<R, E, [S, Option.Option<A>]>
 >(
   3,
   <R, E, A, S>(self: Effect.Effect<R, E, A>, ref: Ref.Ref<S>, predicate: Predicate.Predicate<S>) =>
     core.flatMap(Ref.get(ref), (s) =>
       predicate(s)
-        ? core.map(self, (a) => [s, Option.some(a)] as const)
+        ? core.map(self, (a) => [s, Option.some(a)])
         : core.succeed<[S, Option.Option<A>]>([s, Option.none()]))
 )
 

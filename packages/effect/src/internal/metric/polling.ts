@@ -121,7 +121,7 @@ export const zip = dual<
     readonly [In, In2],
     R | R2,
     E | E2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >,
   <Type, In, R, E, Out, Type2, In2, R2, E2, Out2>(
     self: PollingMetric.PollingMetric<Type, In, R, E, Out>,
@@ -131,7 +131,7 @@ export const zip = dual<
     readonly [In, In2],
     R | R2,
     E | E2,
-    readonly [Out, Out2]
+    [Out, Out2]
   >
 >(2, (self, that) => ({
   [PollingMetricTypeId]: PollingMetricTypeId,

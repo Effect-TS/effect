@@ -1250,11 +1250,11 @@ export const partition = dual<
     f: (a: A) => STM.STM<R, E, A2>
   ) => (
     elements: Iterable<A>
-  ) => STM.STM<R, never, readonly [Array<E>, Array<A2>]>,
+  ) => STM.STM<R, never, [Array<E>, Array<A2>]>,
   <R, E, A, A2>(
     elements: Iterable<A>,
     f: (a: A) => STM.STM<R, E, A2>
-  ) => STM.STM<R, never, readonly [Array<E>, Array<A2>]>
+  ) => STM.STM<R, never, [Array<E>, Array<A2>]>
 >(2, (elements, f) =>
   pipe(
     forEach(elements, (a) => either(f(a))),
@@ -1310,18 +1310,18 @@ export const summarized = dual<
     f: (before: A2, after: A2) => A3
   ) => <R, E, A>(
     self: STM.STM<R, E, A>
-  ) => STM.STM<R2 | R, E2 | E, readonly [A3, A]>,
+  ) => STM.STM<R2 | R, E2 | E, [A3, A]>,
   <R, E, A, R2, E2, A2, A3>(
     self: STM.STM<R, E, A>,
     summary: STM.STM<R2, E2, A2>,
     f: (before: A2, after: A2) => A3
-  ) => STM.STM<R2 | R, E2 | E, readonly [A3, A]>
+  ) => STM.STM<R2 | R, E2 | E, [A3, A]>
 >(3, (self, summary, f) =>
   core.flatMap(summary, (start) =>
     core.flatMap(self, (value) =>
       core.map(
         summary,
-        (end) => [f(start, end), value] as const
+        (end) => [f(start, end), value]
       ))))
 
 /** @internal */

@@ -18,21 +18,21 @@ export const TRandomTypeId: TRandom.TRandomTypeId = Symbol.for(
   TRandomSymbolKey
 ) as TRandom.TRandomTypeId
 
-const randomInteger = (state: Random.PCGRandomState): readonly [number, Random.PCGRandomState] => {
+const randomInteger = (state: Random.PCGRandomState): [number, Random.PCGRandomState] => {
   const prng = new Random.PCGRandom()
   prng.setState(state)
   return [prng.integer(0), prng.getState()]
 }
 
 const randomIntegerBetween = (low: number, high: number) => {
-  return (state: Random.PCGRandomState): readonly [number, Random.PCGRandomState] => {
+  return (state: Random.PCGRandomState): [number, Random.PCGRandomState] => {
     const prng = new Random.PCGRandom()
     prng.setState(state)
     return [prng.integer(high - low) + low, prng.getState()]
   }
 }
 
-const randomNumber = (state: Random.PCGRandomState): readonly [number, Random.PCGRandomState] => {
+const randomNumber = (state: Random.PCGRandomState): [number, Random.PCGRandomState] => {
   const prng = new Random.PCGRandom()
   prng.setState(state)
   return [prng.number(), prng.getState()]
@@ -40,7 +40,7 @@ const randomNumber = (state: Random.PCGRandomState): readonly [number, Random.PC
 
 const withState = <A>(
   state: TRef.TRef<Random.PCGRandomState>,
-  f: (state: Random.PCGRandomState) => readonly [A, Random.PCGRandomState]
+  f: (state: Random.PCGRandomState) => [A, Random.PCGRandomState]
 ): STM.STM<never, never, A> => {
   return pipe(state, tRef.modify(f))
 }

@@ -59,6 +59,7 @@ export type ErasedContinuation<R> = Continuation.Continuation<
 /** @internal */
 export type ErasedFinalizer<R> = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R, never, unknown>
 
+/** @internal */
 export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   private _activeSubexecutor: Subexecutor.Subexecutor<Env> | undefined = undefined
 
@@ -648,7 +649,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     upstreamFinished: boolean,
     queue: ReadonlyArray<Subexecutor.PullFromChild<Env> | undefined>,
     strategy: UpstreamPullStrategy.UpstreamPullStrategy<unknown>
-  ): readonly [Option.Option<unknown>, ReadonlyArray<Subexecutor.PullFromChild<Env> | undefined>] {
+  ): [Option.Option<unknown>, ReadonlyArray<Subexecutor.PullFromChild<Env> | undefined>] {
     switch (strategy._tag) {
       case UpstreamPullStrategyOpCodes.OP_PULL_AFTER_NEXT: {
         const shouldPrepend = !upstreamFinished || queue.some((subexecutor) => subexecutor !== undefined)
