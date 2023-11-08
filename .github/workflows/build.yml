@@ -29,6 +29,8 @@ jobs:
       - run: pnpm docgen
       - name: Check docs state
         run: git add docs && git diff-index --cached HEAD --exit-code docs
+      - name: Check module size
+        run: pnpm size-limit
       - name: Create Release Pull Request or Publish
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: changesets
