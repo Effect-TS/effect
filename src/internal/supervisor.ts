@@ -67,7 +67,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
-  zip<B>(right: Supervisor.Supervisor<B>): Supervisor.Supervisor<readonly [T, B]> {
+  zip<B>(right: Supervisor.Supervisor<B>): Supervisor.Supervisor<[T, B]> {
     return new Zip(this, right)
   }
 }
@@ -83,7 +83,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   ) {
   }
 
-  value(): Effect.Effect<never, never, readonly [T0, T1]> {
+  value(): Effect.Effect<never, never, [T0, T1]> {
     return core.zip(this.left.value(), this.right.value())
   }
 
@@ -117,18 +117,20 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
     this.right.onResume(fiber)
   }
 
-  map<B>(f: (a: readonly [T0, T1]) => B): Supervisor.Supervisor<B> {
+  map<B>(f: (a: [T0, T1]) => B): Supervisor.Supervisor<B> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
-  zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<readonly [readonly [T0, T1], A]> {
+  zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<[[T0, T1], A]> {
     return new Zip(this, right)
   }
 }
 
+/** @internal */
 export const isZip = (self: unknown): self is Zip<any, any> =>
   hasProperty(self, SupervisorTypeId) && isTagged(self, "Zip")
 
+/** @internal */
 export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any, any>>> {
   readonly [SupervisorTypeId] = supervisorVariance
 
@@ -169,7 +171,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
 
   zip<A>(
     right: Supervisor.Supervisor<A>
-  ): Supervisor.Supervisor<readonly [Array<Fiber.RuntimeFiber<any, any>>, A]> {
+  ): Supervisor.Supervisor<[Array<Fiber.RuntimeFiber<any, any>>, A]> {
     return new Zip(this, right)
   }
 
@@ -178,6 +180,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
   }
 }
 
+/** @internal */
 export class Const<T> implements Supervisor.Supervisor<T> {
   readonly [SupervisorTypeId] = supervisorVariance
 
@@ -217,7 +220,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
     return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
   }
 
-  zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<readonly [T, A]> {
+  zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<[T, A]> {
     return new Zip(this, right)
   }
 
@@ -267,7 +270,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
 
   zip<A>(
     right: Supervisor.Supervisor<A>
-  ): Supervisor.Supervisor<readonly [SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>, A]> {
+  ): Supervisor.Supervisor<[SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>, A]> {
     return new Zip(this, right)
   }
 

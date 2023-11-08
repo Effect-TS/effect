@@ -150,7 +150,7 @@ Added in v2.0.0
 ```ts
 zip<A>(
     right: Supervisor<A>
-  ): Supervisor<readonly [T, A]>
+  ): Supervisor<[T, A]>
 ```
 
 Added in v2.0.0
@@ -293,7 +293,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * the function of the specified supervisor, producing a tuple of the outputs
    * produced by both supervisors.
    */
-  zip<A>(right: Supervisor<A>): Supervisor<readonly [T, A]>
+  zip<A>(right: Supervisor<A>): Supervisor<[T, A]>
 }
 ```
 
