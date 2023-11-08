@@ -189,7 +189,7 @@ describe.concurrent("Stream", () => {
         const stream = Stream.repeatEffectWithSchedule(effect, schedule)
         return yield* $(
           Stream.runCollect(stream),
-          Effect.provide(TestContext)
+          Effect.provide(TestContext.TestContext)
         )
       })
       const result = await Effect.runPromise(effect)
