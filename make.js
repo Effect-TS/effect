@@ -5,8 +5,8 @@ const f = () => {
   fs.readdirSync("./src")
     .filter((_) => !excludes.includes(_) && !/\.(int|impl)\./.test(_) && !_.startsWith("."))
     .forEach((file) => {
-      if (fs.existsSync(`./src/${file}.impl.ts`)) return
       const fileWithoutExt = file.substring(0, file.length - 3)
+      if (fs.existsSync(`./src/${fileWithoutExt}.impl.ts`)) return
       const int = `${fileWithoutExt}.int.ts`
       const intExists = fs.existsSync(`./src/${int}`)
       const src = intExists ? int : file
