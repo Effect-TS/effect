@@ -23,3 +23,16 @@ jobs:
       - run: pnpm check
       - run: pnpm lint
       - run: pnpm dtslint
+
+  treeshaking:
+    name: Tree shaking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Check size limits
+        uses: andresz1/size-limit-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
