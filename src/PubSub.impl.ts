@@ -3,7 +3,6 @@
  */
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/pubsub.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Queue } from "./Queue.js"
 import type { Scope } from "./Scope.js"
 

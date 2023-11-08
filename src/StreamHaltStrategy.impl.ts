@@ -2,16 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/stream/haltStrategy.js"
-
-export * as HaltStrategy from "./StreamHaltStrategy.js"
-
-declare module "./StreamHaltStrategy.js" {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type HaltStrategy = Left | Right | Both | Either
-}
+import type { HaltStrategy } from "./StreamHaltStrategy.js"
 
 /**
  * @since 2.0.0

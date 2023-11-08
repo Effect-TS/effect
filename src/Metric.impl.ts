@@ -15,7 +15,6 @@ import type { MetricLabel } from "./MetricLabel.js"
 import type { MetricPair } from "./MetricPair.js"
 import type { MetricRegistry } from "./MetricRegistry.js"
 import type { MetricState } from "./MetricState.js"
-import type { Pipeable } from "./Pipeable.js"
 
 import type { Metric } from "./Metric.js"
 

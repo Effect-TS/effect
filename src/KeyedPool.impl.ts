@@ -4,7 +4,6 @@
 import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/keyedPool.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 
 import type { KeyedPool } from "./KeyedPool.js"
