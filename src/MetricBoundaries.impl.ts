@@ -2,9 +2,9 @@
  * @since 2.0.0
  */
 import type { Chunk } from "./Chunk.js"
-import type { Equal } from "./Equal.js"
 import * as internal from "./internal/metric/boundaries.js"
-import type { Pipeable } from "./Pipeable.js"
+
+import type { MetricBoundaries } from "./MetricBoundaries.js"
 
 /**
  * @since 2.0.0
@@ -17,23 +17,6 @@ export const MetricBoundariesTypeId: unique symbol = internal.MetricBoundariesTy
  * @category symbols
  */
 export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
-
-import type { MetricBoundaries } from "./MetricBoundaries.js"
-
-export declare namespace MetricBoundaries {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MetricBoundaries.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface MetricBoundaries extends Equal, Pipeable {
-    readonly [MetricBoundariesTypeId]: MetricBoundariesTypeId
-    readonly values: Chunk<number>
-  }
-}
 
 /**
  * @since 2.0.0

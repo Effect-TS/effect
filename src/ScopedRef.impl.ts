@@ -4,9 +4,9 @@
 import type { Effect } from "./Effect.js"
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/scopedRef.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
-import type { SynchronizedRef } from "./SynchronizedRef.js"
+
+import type { ScopedRef } from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
@@ -19,44 +19,6 @@ export const ScopedRefTypeId: unique symbol = internal.ScopedRefTypeId
  * @category symbols
  */
 export type ScopedRefTypeId = typeof ScopedRefTypeId
-
-import type { ScopedRef } from "./ScopedRef.js"
-
-export declare namespace ScopedRef {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./ScopedRef.impl.js"
-}
-  /**
-   * A `ScopedRef` is a reference whose value is associated with resources,
-   * which must be released properly. You can both get the current value of any
-   * `ScopedRef`, as well as set it to a new value (which may require new
-   * resources). The reference itself takes care of properly releasing resources
-   * for the old value whenever a new value is obtained.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
-    /** @internal */
-    readonly ref: SynchronizedRef<readonly [Scope.Closeable, A]>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace ScopedRef {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [ScopedRefTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * Creates a new `ScopedRef` from an effect that resourcefully produces a

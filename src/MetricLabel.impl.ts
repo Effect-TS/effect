@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type { Equal } from "./Equal.js"
 import * as internal from "./internal/metric/label.js"
-import type { Pipeable } from "./Pipeable.js"
+
+import type { MetricLabel } from "./MetricLabel.js"
 
 /**
  * @since 2.0.0
@@ -16,31 +16,6 @@ export const MetricLabelTypeId: unique symbol = internal.MetricLabelTypeId
  * @category symbols
  */
 export type MetricLabelTypeId = typeof MetricLabelTypeId
-
-import type { MetricLabel } from "./MetricLabel.js"
-
-export declare namespace MetricLabel {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MetricLabel.impl.js"
-}
-  /**
-   * A `MetricLabel` represents a key value pair that allows analyzing metrics at
-   * an additional level of granularity.
-   *
-   * For example if a metric tracks the response time of a service labels could
-   * be used to create separate versions that track response times for different
-   * clients.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface MetricLabel extends Equal, Pipeable {
-    readonly [MetricLabelTypeId]: MetricLabelTypeId
-    readonly key: string
-    readonly value: string
-  }
-}
 
 /**
  * @since 2.0.0
