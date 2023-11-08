@@ -129,7 +129,7 @@ export const cachedInvalidate = dual<
       core.context<R>(),
       (env) =>
         core.map(
-          makeSynchronized<Option.Option<[number, Deferred.Deferred<E, A>]>>(Option.none()),
+          makeSynchronized<Option.Option<readonly [number, Deferred.Deferred<E, A>]>>(Option.none()),
           (cache) =>
             [
               core.provideContext(getCachedValue(self, duration, cache), env),
