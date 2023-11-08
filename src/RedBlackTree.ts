@@ -70,8 +70,8 @@ export const empty: <K, V = never>(ord: Order<K>) => RedBlackTree<K, V> = RBT.em
  * @category constructors
  */
 export const fromIterable: {
-  <B, V>(ord: Order<B>): <K extends B>(entries: Iterable<readonly [K, V]>) => RedBlackTree<K, V>
-  <K extends B, B, V>(entries: Iterable<readonly [K, V]>, ord: Order<B>): RedBlackTree<K, V>
+  <B>(ord: Order<B>): <K extends B, V>(entries: Iterable<readonly [K, V]>) => RedBlackTree<K, V>
+  <K extends B, V, B>(entries: Iterable<readonly [K, V]>, ord: Order<B>): RedBlackTree<K, V>
 } = RBT.fromIterable
 
 /**
