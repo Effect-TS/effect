@@ -19,6 +19,11 @@ export const FiberIdTypeId: unique symbol = internal.FiberIdTypeId
  */
 export type FiberIdTypeId = typeof FiberIdTypeId
 
+export declare namespace FiberId {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./FiberId.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

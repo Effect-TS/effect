@@ -19,6 +19,11 @@ export const TypeId: unique symbol = defaultConsole.TypeId
  */
 export type TypeId = typeof TypeId
 
+export declare namespace Console {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Console.impl.js"
+}
   /**
    * @since 2.0.0
    * @category model

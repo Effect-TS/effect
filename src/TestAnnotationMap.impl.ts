@@ -15,6 +15,11 @@ export const TestAnnotationMapTypeId = Symbol.for("effect/TestAnnotationMap")
  */
 export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 
+export declare namespace TestAnnotationMap {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TestAnnotationMap.impl.js"
+}
   /**
    * An annotation map keeps track of annotations of different types.
    *

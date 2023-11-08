@@ -18,6 +18,11 @@ export const RefTypeId: unique symbol = internal.RefTypeId
  */
 export type RefTypeId = typeof RefTypeId
 
+export declare namespace Ref {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Ref.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

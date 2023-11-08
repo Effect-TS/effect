@@ -21,6 +21,11 @@ export const TPriorityQueueTypeId: unique symbol = internal.TPriorityQueueTypeId
  */
 export type TPriorityQueueTypeId = typeof TPriorityQueueTypeId
 
+export declare namespace TPriorityQueue {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TPriorityQueue.impl.js"
+}
   /**
    * A `TPriorityQueue` contains values of type `A` that an `Order` is defined
    * on. Unlike a `TQueue`, `take` returns the highest priority value (the value

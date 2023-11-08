@@ -29,6 +29,11 @@ export const MetricTypeId: unique symbol = internal.MetricTypeId
  */
 export type MetricTypeId = typeof MetricTypeId
 
+export declare namespace Metric {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Metric.impl.js"
+}
   /**
    * A `Metric<Type, In, Out>` represents a concurrent metric which accepts
    * updates of type `In` and are aggregated to a stateful value of type `Out`.

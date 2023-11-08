@@ -54,6 +54,11 @@ export const LayerTypeId: unique symbol = internal.LayerTypeId
  */
 export type LayerTypeId = typeof LayerTypeId
 
+export declare namespace Layer {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Layer.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

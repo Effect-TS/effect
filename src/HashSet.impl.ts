@@ -16,6 +16,11 @@ const TypeId: unique symbol = HS.HashSetTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
+export declare namespace HashSet {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./HashSet.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

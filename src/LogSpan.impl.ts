@@ -3,6 +3,11 @@
  */
 import * as internal from "./internal/logSpan.js"
 
+export declare namespace LogSpan {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./LogSpan.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

@@ -24,6 +24,11 @@ export const RequestResolverTypeId: unique symbol = core.RequestResolverTypeId
  */
 export type RequestResolverTypeId = typeof RequestResolverTypeId
 
+export declare namespace RequestResolver {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./RequestResolver.impl.js"
+}
   /**
    * A `RequestResolver<A, R>` requires an environment `R` and is capable of executing
    * requests of type `A`.

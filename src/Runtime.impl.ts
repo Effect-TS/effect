@@ -30,6 +30,11 @@ export interface AsyncFiberException<E, A> {
 export interface Cancel<E, A> {
   (fiberId?: FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
+export declare namespace Runtime {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Runtime.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

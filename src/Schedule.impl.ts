@@ -39,6 +39,11 @@ export const ScheduleDriverTypeId: unique symbol = internal.ScheduleDriverTypeId
  */
 export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
 
+export declare namespace Schedule {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Schedule.impl.js"
+}
   /**
    * A `Schedule<Env, In, Out>` defines a recurring schedule, which consumes
    * values of type `In`, and which returns values of type `Out`.

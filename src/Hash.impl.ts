@@ -23,6 +23,11 @@ const pcgr = globalValue(
  */
 export const symbol: unique symbol = Symbol.for("effect/Hash")
 
+export declare namespace Hash {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Hash.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

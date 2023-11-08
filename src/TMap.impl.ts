@@ -22,6 +22,11 @@ export const TMapTypeId: unique symbol = internal.TMapTypeId
  */
 export type TMapTypeId = typeof TMapTypeId
 
+export declare namespace TMap {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TMap.impl.js"
+}
   /**
    * Transactional map implemented on top of `TRef` and `TArray`. Resolves
    * conflicts via chaining.

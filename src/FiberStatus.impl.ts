@@ -18,6 +18,11 @@ export const FiberStatusTypeId: unique symbol = internal.FiberStatusTypeId
  */
 export type FiberStatusTypeId = typeof FiberStatusTypeId
 
+export declare namespace FiberStatus {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./FiberStatus.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

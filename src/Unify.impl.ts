@@ -60,6 +60,11 @@ type FilterIn<A> = A extends any ? typeSymbol extends keyof A ? A : never : neve
 
 type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : never
 
+export declare namespace Unify {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Unify.impl.js"
+}
   /**
    * @since 2.0.0
    */

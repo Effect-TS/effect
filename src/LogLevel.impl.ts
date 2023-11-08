@@ -8,6 +8,11 @@ import * as number from "./Number.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 
+export declare namespace LogLevel {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./LogLevel.impl.js"
+}
   /**
    * A `LogLevel` represents the log level associated with an individual logging
    * operation. Log levels are used both to describe the granularity (or

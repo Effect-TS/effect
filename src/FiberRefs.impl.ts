@@ -22,6 +22,11 @@ export const FiberRefsSym: unique symbol = internal.FiberRefsSym
  */
 export type FiberRefsSym = typeof FiberRefsSym
 
+export declare namespace FiberRefs {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./FiberRefs.impl.js"
+}
   /**
    * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
    *

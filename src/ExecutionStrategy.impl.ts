@@ -4,6 +4,11 @@
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/executionStrategy.js"
 
+export declare namespace ExecutionStrategy {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./ExecutionStrategy.impl.js"
+}
   /**
    * Describes a strategy for evaluating multiple effects, potentially in
    * parallel.

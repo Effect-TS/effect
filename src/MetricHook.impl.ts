@@ -19,6 +19,11 @@ export const MetricHookTypeId: unique symbol = internal.MetricHookTypeId
  */
 export type MetricHookTypeId = typeof MetricHookTypeId
 
+export declare namespace MetricHook {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./MetricHook.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

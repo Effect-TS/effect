@@ -20,6 +20,11 @@ export const PoolTypeId: unique symbol = internal.PoolTypeId
  */
 export type PoolTypeId = typeof PoolTypeId
 
+export declare namespace Pool {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Pool.impl.js"
+}
   /**
    * A `Pool<E, A>` is a pool of items of type `A`, each of which may be
    * associated with the acquisition and release of resources. An attempt to get

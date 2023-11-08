@@ -20,6 +20,11 @@ export const ScopedRefTypeId: unique symbol = internal.ScopedRefTypeId
  */
 export type ScopedRefTypeId = typeof ScopedRefTypeId
 
+export declare namespace ScopedRef {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./ScopedRef.impl.js"
+}
   /**
    * A `ScopedRef` is a reference whose value is associated with resources,
    * which must be released properly. You can both get the current value of any

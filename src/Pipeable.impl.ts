@@ -2,6 +2,11 @@
  * @since 2.0.0
  */
 
+export declare namespace Pipeable {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Pipeable.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

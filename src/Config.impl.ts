@@ -26,6 +26,11 @@ export const ConfigTypeId: unique symbol = internal.ConfigTypeId
  */
 export type ConfigTypeId = typeof ConfigTypeId
 
+export declare namespace Config {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Config.impl.js"
+}
   /**
    * A `Config` describes the structure of some configuration data.
    *

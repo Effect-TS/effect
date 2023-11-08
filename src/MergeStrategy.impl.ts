@@ -15,6 +15,11 @@ export const MergeStrategyTypeId: unique symbol = internal.MergeStrategyTypeId
  */
 export type MergeStrategyTypeId = typeof MergeStrategyTypeId
 
+export declare namespace MergeStrategy {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./MergeStrategy.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

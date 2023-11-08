@@ -7,6 +7,11 @@ import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 
+export declare namespace SingleProducerAsyncInput {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./SingleProducerAsyncInput.impl.js"
+}
   /**
    * An MVar-like abstraction for sending data to channels asynchronously which is
    * designed for one producer and multiple consumers.

@@ -10,6 +10,11 @@ import * as internal from "./internal/defaultServices.js"
 import type { Random } from "./Random.js"
 import type { Tracer } from "./Tracer.js"
 
+export declare namespace DefaultServices {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./DefaultServices.impl.js"
+}
   /**
 /**
  * @since 2.0.0

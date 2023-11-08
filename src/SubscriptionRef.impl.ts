@@ -22,6 +22,11 @@ export const SubscriptionRefTypeId: unique symbol = internal.SubscriptionRefType
  */
 export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
 
+export declare namespace SubscriptionRef {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./SubscriptionRef.impl.js"
+}
   /**
    * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
    * receive the current value as well as all changes to the value.

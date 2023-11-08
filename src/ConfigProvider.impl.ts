@@ -35,6 +35,11 @@ export const FlatConfigProviderTypeId: unique symbol = internal.FlatConfigProvid
  */
 export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
 
+export declare namespace ConfigProvider {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./ConfigProvider.impl.js"
+}
   /**
    * A ConfigProvider is a service that provides configuration given a description
    * of the structure of that configuration.

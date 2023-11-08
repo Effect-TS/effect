@@ -21,6 +21,11 @@ const TypeId: unique symbol = Symbol.for("effect/SortedSet")
  */
 export type TypeId = typeof TypeId
 
+export declare namespace SortedSet {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./SortedSet.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

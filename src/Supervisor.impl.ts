@@ -28,6 +28,11 @@ export const SupervisorTypeId: unique symbol = internal.SupervisorTypeId
  */
 export type SupervisorTypeId = typeof SupervisorTypeId
 
+export declare namespace Supervisor {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Supervisor.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

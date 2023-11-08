@@ -27,6 +27,11 @@ export const TypeId: unique symbol = internal.DifferTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
+export declare namespace Differ {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Differ.impl.js"
+}
   /**
    * A `Differ<Value, Patch>` knows how to compare an old value and new value of
    * type `Value` to produce a patch of type `Patch` that describes the

@@ -22,6 +22,11 @@ export type TypeId = typeof TypeId
  */
 export const EmptyMutableQueue = Symbol.for("effect/mutable/MutableQueue/Empty")
 
+export declare namespace MutableQueue {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./MutableQueue.impl.js"
+}
   /**
    * @since 2.0.0
    * @category model

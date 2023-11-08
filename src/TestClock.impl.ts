@@ -34,6 +34,11 @@ import type { SynchronizedRef } from "./SynchronizedRef.js"
 import * as Annotations from "./TestAnnotations.js"
 import * as Live from "./TestLive.js"
 
+export declare namespace TestClock {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TestClock.impl.js"
+}
   /**
    * A `TestClock` makes it easy to deterministically and efficiently test effects
    * involving the passage of time.

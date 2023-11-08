@@ -30,6 +30,11 @@ export const TEnqueueTypeId: unique symbol = internal.TEnqueueTypeId
  */
 export type TEnqueueTypeId = typeof TEnqueueTypeId
 
+export declare namespace TQueue {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TQueue.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

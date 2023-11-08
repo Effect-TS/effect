@@ -24,6 +24,11 @@ export type TypeId = typeof TypeId
  */
 export const Direction = RBTI.Direction
 
+export declare namespace RedBlackTree {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./RedBlackTree.impl.js"
+}
   /**
    * A Red-Black Tree.
    *

@@ -20,6 +20,11 @@ export const TRandomTypeId: unique symbol = internal.TRandomTypeId
  */
 export type TRandomTypeId = typeof TRandomTypeId
 
+export declare namespace TRandom {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TRandom.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

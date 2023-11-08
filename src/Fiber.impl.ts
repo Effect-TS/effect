@@ -44,6 +44,11 @@ export const RuntimeFiberTypeId: unique symbol = internal.RuntimeFiberTypeId
  */
 export type RuntimeFiberTypeId = typeof RuntimeFiberTypeId
 
+export declare namespace Fiber {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Fiber.impl.js"
+}
   /**
    * A fiber is a lightweight thread of execution that never consumes more than a
    * whole thread (but may consume much less, depending on contention and

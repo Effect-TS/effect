@@ -40,6 +40,11 @@ export type CloseableScopeTypeId = typeof CloseableScopeTypeId
  */
 export const Tag: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
 
+export declare namespace Scope {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Scope.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

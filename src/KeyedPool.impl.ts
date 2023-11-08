@@ -19,6 +19,11 @@ export const KeyedPoolTypeId: unique symbol = internal.KeyedPoolTypeId
  */
 export type KeyedPoolTypeId = typeof KeyedPoolTypeId
 
+export declare namespace KeyedPool {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./KeyedPool.impl.js"
+}
   /**
    * A `KeyedPool<K, E, A>` is a pool of `Pool`s of items of type `A`. Each pool
    * in the `KeyedPool` is associated with a key of type `K`.

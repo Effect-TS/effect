@@ -15,6 +15,11 @@ export const UpstreamPullRequestTypeId: unique symbol = internal.UpstreamPullReq
  */
 export type UpstreamPullRequestTypeId = typeof UpstreamPullRequestTypeId
 
+export declare namespace UpstreamPullRequest {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./UpstreamPullRequest.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

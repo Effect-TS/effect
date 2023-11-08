@@ -46,6 +46,11 @@ export const QueueStrategyTypeId: unique symbol = internal.QueueStrategyTypeId
  */
 export type QueueStrategyTypeId = typeof QueueStrategyTypeId
 
+export declare namespace Queue {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Queue.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

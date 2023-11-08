@@ -20,6 +20,11 @@ export const ResourceTypeId: unique symbol = internal.ResourceTypeId
  */
 export type ResourceTypeId = typeof ResourceTypeId
 
+export declare namespace Resource {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Resource.impl.js"
+}
   /**
    * A `Resource` is a possibly resourceful value that is loaded into memory, and
    * which can be refreshed either manually or automatically.

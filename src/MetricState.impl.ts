@@ -81,6 +81,11 @@ export const SummaryStateTypeId: unique symbol = internal.SummaryStateTypeId
  */
 export type SummaryStateTypeId = typeof SummaryStateTypeId
 
+export declare namespace MetricState {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./MetricState.impl.js"
+}
   /**
    * A `MetricState` describes the state of a metric. The type parameter of a
    * metric state corresponds to the type of the metric key (`MetricStateType`).

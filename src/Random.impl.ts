@@ -18,6 +18,11 @@ export const RandomTypeId: unique symbol = internal.RandomTypeId
  */
 export type RandomTypeId = typeof RandomTypeId
 
+export declare namespace Random {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Random.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

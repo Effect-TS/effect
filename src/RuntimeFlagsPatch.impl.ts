@@ -5,6 +5,11 @@ import * as runtimeFlags from "./internal/runtimeFlags.js"
 import * as internal from "./internal/runtimeFlagsPatch.js"
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 
+export declare namespace RuntimeFlagsPatch {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./RuntimeFlagsPatch.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

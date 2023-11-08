@@ -20,6 +20,11 @@ export const ReloadableTypeId: unique symbol = internal.ReloadableTypeId
  */
 export type ReloadableTypeId = typeof ReloadableTypeId
 
+export declare namespace Reloadable {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Reloadable.impl.js"
+}
   /**
    * A `Reloadable` is an implementation of some service that can be dynamically
    * reloaded, or swapped out for another implementation on-the-fly.

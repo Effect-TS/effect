@@ -12,6 +12,11 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type { Unify } from "./Unify.js"
 
+export declare namespace Exit {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Exit.impl.js"
+}
   /**
    * An `Exit<E, A>` describes the result of a executing an `Effect` workflow.
    *

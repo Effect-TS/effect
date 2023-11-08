@@ -22,6 +22,11 @@ export const ScopedCacheTypeId: unique symbol = internal.ScopedCacheTypeId
  */
 export type ScopedCacheTypeId = typeof ScopedCacheTypeId
 
+export declare namespace ScopedCache {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./ScopedCache.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

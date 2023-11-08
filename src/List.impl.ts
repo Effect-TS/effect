@@ -34,6 +34,11 @@ import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import { ReadonlyArray } from "./ReadonlyArray.js"
 
+export declare namespace List {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./List.impl.js"
+}
   /**
    * Represents an immutable linked list of elements of type `A`.
    *

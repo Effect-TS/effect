@@ -8,6 +8,11 @@ import * as internal from "./internal/runtimeFlags.js"
 import type { Layer } from "./Layer.js"
 import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
 
+export declare namespace RuntimeFlags {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./RuntimeFlags.impl.js"
+}
   /**
    * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of
    * the Effect runtime system. They are exposed to application-level code because

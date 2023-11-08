@@ -44,6 +44,11 @@ export const ChannelTypeId: unique symbol = core.ChannelTypeId
  */
 export type ChannelTypeId = typeof ChannelTypeId
 
+export declare namespace Channel {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Channel.impl.js"
+}
   /**
    * A `Channel` is a nexus of I/O operations, which supports both reading and
    * writing. A channel may read values of type `InElem` and write values of type

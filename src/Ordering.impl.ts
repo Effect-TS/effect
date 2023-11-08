@@ -4,6 +4,11 @@
 import type { LazyArg } from "./Function.js"
 import { dual } from "./Function.js"
 
+export declare namespace Ordering {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Ordering.impl.js"
+}
   /**
    * @category model
    * @since 2.0.0

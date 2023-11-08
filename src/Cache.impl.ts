@@ -20,6 +20,11 @@ export const CacheTypeId: unique symbol = internal.CacheTypeId
  */
 export type CacheTypeId = typeof CacheTypeId
 
+export declare namespace Cache {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Cache.impl.js"
+}
   /**
    * A `Cache` is defined in terms of a lookup function that, given a key of
    * type `Key`, can either fail with an error of type `Error` or succeed with a

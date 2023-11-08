@@ -8,6 +8,11 @@
  */
 export declare const nonEmpty: unique symbol
 
+export declare namespace NonEmptyIterable {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./NonEmptyIterable.impl.js"
+}
   /**
    * @category model
    * @since 2.0.0

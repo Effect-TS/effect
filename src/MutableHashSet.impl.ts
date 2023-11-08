@@ -15,6 +15,11 @@ const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
  */
 export type TypeId = typeof TypeId
 
+export declare namespace MutableHashSet {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./MutableHashSet.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

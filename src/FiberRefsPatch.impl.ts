@@ -6,6 +6,11 @@ import type { FiberRef } from "./FiberRef.js"
 import type { FiberRefs } from "./FiberRefs.js"
 import * as internal from "./internal/fiberRefs/patch.js"
 
+export declare namespace FiberRefsPatch {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./FiberRefsPatch.impl.js"
+}
   /**
    * A `FiberRefsPatch` captures the changes in `FiberRef` values made by a single
    * fiber as a value. This allows fibers to apply the changes made by a workflow

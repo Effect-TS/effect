@@ -105,6 +105,11 @@ export const InvalidPubSubCapacityExceptionTypeId: unique symbol = internal.Inva
  */
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
+export declare namespace Cause {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Cause.impl.js"
+}
   /**
    * A `Cause` represents the full history of a failure resulting from running an
    * `Effect` workflow.

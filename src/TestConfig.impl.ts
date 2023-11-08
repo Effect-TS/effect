@@ -3,6 +3,11 @@
  */
 import { Context } from "./Context.js"
 
+export declare namespace TestConfig {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TestConfig.impl.js"
+}
   /**
    * The `TestConfig` service provides access to default configuration settings
    * used by tests, including the number of times to repeat tests to ensure

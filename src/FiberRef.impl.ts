@@ -38,6 +38,11 @@ export const FiberRefTypeId: unique symbol = core.FiberRefTypeId
  */
 export type FiberRefTypeId = typeof FiberRefTypeId
 
+export declare namespace FiberRef {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./FiberRef.impl.js"
+}
   /**
    * @since 2.0.0
    * @category model

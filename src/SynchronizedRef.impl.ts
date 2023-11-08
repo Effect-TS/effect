@@ -20,6 +20,11 @@ export const SynchronizedRefTypeId: unique symbol = circular.SynchronizedTypeId
  */
 export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
 
+export declare namespace SynchronizedRef {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./SynchronizedRef.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

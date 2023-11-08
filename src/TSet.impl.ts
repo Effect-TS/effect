@@ -20,6 +20,11 @@ export const TSetTypeId: unique symbol = internal.TSetTypeId
  */
 export type TSetTypeId = typeof TSetTypeId
 
+export declare namespace TSet {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TSet.impl.js"
+}
   /**
    * Transactional set implemented on top of `TMap`.
    *

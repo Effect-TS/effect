@@ -27,6 +27,11 @@ export const RequestTypeId: unique symbol = internal.RequestTypeId
  */
 export type RequestTypeId = typeof RequestTypeId
 
+export declare namespace Request {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Request.impl.js"
+}
   /**
    * A `Request<E, A>` is a request from a data source for a value of type `A`
    * that may fail with an `E`.

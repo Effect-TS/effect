@@ -19,6 +19,11 @@ export const ClockTypeId: unique symbol = internal.ClockTypeId
  */
 export type ClockTypeId = typeof ClockTypeId
 
+export declare namespace Clock {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Clock.impl.js"
+}
   /**
    * Represents a time-based clock which provides functionality related to time
    * and scheduling.

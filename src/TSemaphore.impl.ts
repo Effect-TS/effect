@@ -20,6 +20,11 @@ export const TSemaphoreTypeId: unique symbol = internal.TSemaphoreTypeId
  */
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
 
+export declare namespace TSemaphore {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TSemaphore.impl.js"
+}
   /**
    * @since 2.0.0
    * @category models

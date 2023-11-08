@@ -17,6 +17,11 @@ import type { Gen } from "./Utils.js"
 import { Utils } from "./Utils.js"
 
 // eslint-disable-next-line import/no-cycle
+export declare namespace Either {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Either.impl.js"
+}
   /**
    * @category models
    * @since 2.0.0

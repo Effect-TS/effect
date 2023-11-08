@@ -8,6 +8,11 @@
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
+export declare namespace Equivalence {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Equivalence.impl.js"
+}
   /**
    * @category type class
    * @since 2.0.0

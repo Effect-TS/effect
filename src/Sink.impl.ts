@@ -34,6 +34,11 @@ export const SinkTypeId: unique symbol = internal.SinkTypeId
  */
 export type SinkTypeId = typeof SinkTypeId
 
+export declare namespace Sink {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Sink.impl.js"
+}
   /**
    * A `Sink<R, E, In, L, Z>` is used to consume elements produced by a `Stream`.
    * You can think of a sink as a function that will consume a variable amount of

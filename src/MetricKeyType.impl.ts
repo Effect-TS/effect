@@ -81,6 +81,11 @@ export const SummaryKeyTypeTypeId: unique symbol = internal.SummaryKeyTypeTypeId
  */
 export type SummaryKeyTypeTypeId = typeof SummaryKeyTypeTypeId
 
+export declare namespace MetricKeyType {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./MetricKeyType.impl.js"
+}
   /**
    * @since 2.0.0
    * @category modelz

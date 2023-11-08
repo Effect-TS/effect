@@ -19,6 +19,11 @@ export const TReentrantLockTypeId: unique symbol = internal.TReentrantLockTypeId
  */
 export type TReentrantLockTypeId = typeof TReentrantLockTypeId
 
+export declare namespace TReentrantLock {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TReentrantLock.impl.js"
+}
   /**
    * A `TReentrantLock` is a reentrant read/write lock. Multiple readers may all
    * concurrently acquire read locks. Only one writer is allowed to acquire a

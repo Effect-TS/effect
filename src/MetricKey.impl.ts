@@ -24,6 +24,11 @@ export const MetricKeyTypeId: unique symbol = internal.MetricKeyTypeId
  */
 export type MetricKeyTypeId = typeof MetricKeyTypeId
 
+export declare namespace MetricKey {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./MetricKey.impl.js"
+}
   /**
    * A `MetricKey` is a unique key associated with each metric. The key is based
    * on a combination of the metric type, the name and tags associated with the

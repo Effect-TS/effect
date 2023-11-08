@@ -26,6 +26,11 @@ const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
  */
 export type TypeId = typeof TypeId
 
+export declare namespace Chunk {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Chunk.impl.js"
+}
   /**
    * @category models
    * @since 2.0.0

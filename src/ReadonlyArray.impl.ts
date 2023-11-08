@@ -18,6 +18,11 @@ import { Order } from "./Order.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { ReadonlyRecord as RR } from "./ReadonlyRecord.js"
 
+export declare namespace ReadonlyArray {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./ReadonlyArray.impl.js"
+}
   export interface ReadonlyArray<T> extends globalThis.ReadonlyArray<T> {}
   /**
    * @since 2.0.0
