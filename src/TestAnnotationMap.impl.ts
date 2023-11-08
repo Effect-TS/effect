@@ -15,7 +15,7 @@ export const TestAnnotationMapTypeId = Symbol.for("effect/TestAnnotationMap")
  */
 export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 
-import type { TestAnnotationMap } from "../../TestAnnotationMap.js"
+import type { TestAnnotationMap } from "./TestAnnotationMap.js"
 
 export declare namespace TestAnnotationMap {
   // eslint-disable-next-line import/no-cycle

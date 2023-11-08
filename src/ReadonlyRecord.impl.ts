@@ -12,7 +12,7 @@ import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import { Option } from "./Option.js"
 
-import type { ReadonlyRecord } from "../../ReadonlyRecord.js"
+import type { ReadonlyRecord } from "./ReadonlyRecord.js"
 
 export declare namespace ReadonlyRecord {
   // eslint-disable-next-line import/no-cycle

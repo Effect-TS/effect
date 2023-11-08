@@ -81,7 +81,7 @@ export const SummaryStateTypeId: unique symbol = internal.SummaryStateTypeId
  */
 export type SummaryStateTypeId = typeof SummaryStateTypeId
 
-import type { MetricState } from "../../MetricState.js"
+import type { MetricState } from "./MetricState.js"
 
 export declare namespace MetricState {
   // eslint-disable-next-line import/no-cycle

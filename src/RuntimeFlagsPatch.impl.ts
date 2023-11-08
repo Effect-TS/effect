@@ -5,7 +5,7 @@ import * as runtimeFlags from "./internal/runtimeFlags.js"
 import * as internal from "./internal/runtimeFlagsPatch.js"
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 
-import type { RuntimeFlagsPatch } from "../../RuntimeFlagsPatch.js"
+import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
 
 export declare namespace RuntimeFlagsPatch {
   // eslint-disable-next-line import/no-cycle

@@ -21,7 +21,7 @@ export const TPriorityQueueTypeId: unique symbol = internal.TPriorityQueueTypeId
  */
 export type TPriorityQueueTypeId = typeof TPriorityQueueTypeId
 
-import type { TPriorityQueue } from "../../TPriorityQueue.js"
+import type { TPriorityQueue } from "./TPriorityQueue.js"
 
 export declare namespace TPriorityQueue {
   // eslint-disable-next-line import/no-cycle

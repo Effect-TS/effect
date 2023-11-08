@@ -20,7 +20,7 @@ export const TSemaphoreTypeId: unique symbol = internal.TSemaphoreTypeId
  */
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
 
-import type { TSemaphore } from "../../TSemaphore.js"
+import type { TSemaphore } from "./TSemaphore.js"
 
 export declare namespace TSemaphore {
   // eslint-disable-next-line import/no-cycle

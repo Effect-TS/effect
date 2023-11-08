@@ -20,7 +20,7 @@ export const SynchronizedRefTypeId: unique symbol = circular.SynchronizedTypeId
  */
 export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
 
-import type { SynchronizedRef } from "../../SynchronizedRef.js"
+import type { SynchronizedRef } from "./SynchronizedRef.js"
 
 export declare namespace SynchronizedRef {
   // eslint-disable-next-line import/no-cycle

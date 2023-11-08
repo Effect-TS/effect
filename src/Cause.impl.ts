@@ -105,7 +105,7 @@ export const InvalidPubSubCapacityExceptionTypeId: unique symbol = internal.Inva
  */
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
-import type { Cause } from "../../Cause.js"
+import type { Cause } from "./Cause.js"
 
 export declare namespace Cause {
   // eslint-disable-next-line import/no-cycle

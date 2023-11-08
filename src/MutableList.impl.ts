@@ -15,7 +15,7 @@ const TypeId: unique symbol = Symbol.for("effect/MutableList") as TypeId
  */
 export type TypeId = typeof TypeId
 
-import type { MutableList } from "../../MutableList.js"
+import type { MutableList } from "./MutableList.js"
 
 export declare namespace MutableList {
   // eslint-disable-next-line import/no-cycle

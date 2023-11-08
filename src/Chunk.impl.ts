@@ -26,7 +26,7 @@ const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
  */
 export type TypeId = typeof TypeId
 
-import type { Chunk } from "../../Chunk.js"
+import type { Chunk } from "./Chunk.js"
 
 export declare namespace Chunk {
   // eslint-disable-next-line import/no-cycle

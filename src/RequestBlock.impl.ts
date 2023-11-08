@@ -9,7 +9,7 @@ import * as _dataSource from "./internal/dataSource.js"
 import type { Request } from "./Request.js"
 import type { RequestResolver } from "./RequestResolver.js"
 
-import type { RequestBlock } from "../../RequestBlock.js"
+import type { RequestBlock } from "./RequestBlock.js"
 
 export declare namespace RequestBlock {
   // eslint-disable-next-line import/no-cycle

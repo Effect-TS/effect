@@ -15,7 +15,7 @@ const TypeId: unique symbol = Symbol.for("effect/MutableRef") as TypeId
  */
 export type TypeId = typeof TypeId
 
-import type { MutableRef } from "../../MutableRef.js"
+import type { MutableRef } from "./MutableRef.js"
 
 export declare namespace MutableRef {
   // eslint-disable-next-line import/no-cycle

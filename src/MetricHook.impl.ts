@@ -19,7 +19,7 @@ export const MetricHookTypeId: unique symbol = internal.MetricHookTypeId
  */
 export type MetricHookTypeId = typeof MetricHookTypeId
 
-import type { MetricHook } from "../../MetricHook.js"
+import type { MetricHook } from "./MetricHook.js"
 
 export declare namespace MetricHook {
   // eslint-disable-next-line import/no-cycle

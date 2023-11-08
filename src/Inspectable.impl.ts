@@ -16,7 +16,7 @@ export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
  */
 export type NodeInspectSymbol = typeof NodeInspectSymbol
 
-import type { Inspectable } from "../../Inspectable.js"
+import type { Inspectable } from "./Inspectable.js"
 
 export declare namespace Inspectable {
   // eslint-disable-next-line import/no-cycle

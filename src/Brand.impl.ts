@@ -47,7 +47,7 @@ export const RefinedConstructorsTypeId: unique symbol = Symbol.for("effect/Brand
  */
 export type RefinedConstructorsTypeId = typeof RefinedConstructorsTypeId
 
-import type { Brand } from "../../Brand.js"
+import type { Brand } from "./Brand.js"
 
 export declare namespace Brand {
   // eslint-disable-next-line import/no-cycle

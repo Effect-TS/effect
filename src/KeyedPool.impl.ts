@@ -19,7 +19,7 @@ export const KeyedPoolTypeId: unique symbol = internal.KeyedPoolTypeId
  */
 export type KeyedPoolTypeId = typeof KeyedPoolTypeId
 
-import type { KeyedPool } from "../../KeyedPool.js"
+import type { KeyedPool } from "./KeyedPool.js"
 
 export declare namespace KeyedPool {
   // eslint-disable-next-line import/no-cycle

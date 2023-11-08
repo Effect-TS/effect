@@ -34,7 +34,7 @@ import type { SynchronizedRef } from "./SynchronizedRef.js"
 import * as Annotations from "./TestAnnotations.js"
 import * as Live from "./TestLive.js"
 
-import type { TestClock } from "../../TestClock.js"
+import type { TestClock } from "./TestClock.js"
 
 export declare namespace TestClock {
   // eslint-disable-next-line import/no-cycle

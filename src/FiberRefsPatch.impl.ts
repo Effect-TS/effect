@@ -6,7 +6,7 @@ import type { FiberRef } from "./FiberRef.js"
 import type { FiberRefs } from "./FiberRefs.js"
 import * as internal from "./internal/fiberRefs/patch.js"
 
-import type { FiberRefsPatch } from "../../FiberRefsPatch.js"
+import type { FiberRefsPatch } from "./FiberRefsPatch.js"
 
 export declare namespace FiberRefsPatch {
   // eslint-disable-next-line import/no-cycle

@@ -7,7 +7,7 @@ import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 
-import type { SingleProducerAsyncInput } from "../../SingleProducerAsyncInput.js"
+import type { SingleProducerAsyncInput } from "./SingleProducerAsyncInput.js"
 
 export declare namespace SingleProducerAsyncInput {
   // eslint-disable-next-line import/no-cycle

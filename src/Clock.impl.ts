@@ -19,7 +19,7 @@ export const ClockTypeId: unique symbol = internal.ClockTypeId
  */
 export type ClockTypeId = typeof ClockTypeId
 
-import type { Clock } from "../../Clock.js"
+import type { Clock } from "./Clock.js"
 
 export declare namespace Clock {
   // eslint-disable-next-line import/no-cycle

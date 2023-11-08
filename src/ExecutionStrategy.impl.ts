@@ -4,7 +4,7 @@
 import type { LazyArg } from "./Function.js"
 import * as internal from "./internal/executionStrategy.js"
 
-import type { ExecutionStrategy } from "../../ExecutionStrategy.js"
+import type { ExecutionStrategy } from "./ExecutionStrategy.js"
 
 export declare namespace ExecutionStrategy {
   // eslint-disable-next-line import/no-cycle

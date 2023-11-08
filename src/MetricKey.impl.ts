@@ -24,7 +24,7 @@ export const MetricKeyTypeId: unique symbol = internal.MetricKeyTypeId
  */
 export type MetricKeyTypeId = typeof MetricKeyTypeId
 
-import type { MetricKey } from "../../MetricKey.js"
+import type { MetricKey } from "./MetricKey.js"
 
 export declare namespace MetricKey {
   // eslint-disable-next-line import/no-cycle

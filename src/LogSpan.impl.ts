@@ -3,7 +3,7 @@
  */
 import * as internal from "./internal/logSpan.js"
 
-import type { LogSpan } from "../../LogSpan.js"
+import type { LogSpan } from "./LogSpan.js"
 
 export declare namespace LogSpan {
   // eslint-disable-next-line import/no-cycle

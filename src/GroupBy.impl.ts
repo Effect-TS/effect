@@ -20,7 +20,7 @@ export const GroupByTypeId: unique symbol = internal.GroupByTypeId
  */
 export type GroupByTypeId = typeof GroupByTypeId
 
-import type { GroupBy } from "../../GroupBy.js"
+import type { GroupBy } from "./GroupBy.js"
 
 export declare namespace GroupBy {
   // eslint-disable-next-line import/no-cycle

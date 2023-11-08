@@ -8,7 +8,7 @@
  */
 export declare const nonEmpty: unique symbol
 
-import type { NonEmptyIterable } from "../../NonEmptyIterable.js"
+import type { NonEmptyIterable } from "./NonEmptyIterable.js"
 
 export declare namespace NonEmptyIterable {
   // eslint-disable-next-line import/no-cycle

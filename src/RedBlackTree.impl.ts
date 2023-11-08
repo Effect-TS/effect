@@ -24,7 +24,7 @@ export type TypeId = typeof TypeId
  */
 export const Direction = RBTI.Direction
 
-import type { RedBlackTree } from "../../RedBlackTree.js"
+import type { RedBlackTree } from "./RedBlackTree.js"
 
 export declare namespace RedBlackTree {
   // eslint-disable-next-line import/no-cycle

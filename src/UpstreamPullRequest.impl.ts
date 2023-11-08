@@ -15,7 +15,7 @@ export const UpstreamPullRequestTypeId: unique symbol = internal.UpstreamPullReq
  */
 export type UpstreamPullRequestTypeId = typeof UpstreamPullRequestTypeId
 
-import type { UpstreamPullRequest } from "../../UpstreamPullRequest.js"
+import type { UpstreamPullRequest } from "./UpstreamPullRequest.js"
 
 export declare namespace UpstreamPullRequest {
   // eslint-disable-next-line import/no-cycle

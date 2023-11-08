@@ -44,7 +44,7 @@ export const ChannelTypeId: unique symbol = core.ChannelTypeId
  */
 export type ChannelTypeId = typeof ChannelTypeId
 
-import type { Channel } from "../../Channel.js"
+import type { Channel } from "./Channel.js"
 
 export declare namespace Channel {
   // eslint-disable-next-line import/no-cycle

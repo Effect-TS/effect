@@ -22,7 +22,7 @@ export const SubscriptionRefTypeId: unique symbol = internal.SubscriptionRefType
  */
 export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
 
-import type { SubscriptionRef } from "../../SubscriptionRef.js"
+import type { SubscriptionRef } from "./SubscriptionRef.js"
 
 export declare namespace SubscriptionRef {
   // eslint-disable-next-line import/no-cycle

@@ -10,7 +10,7 @@ import * as internal from "./internal/defaultServices.js"
 import type { Random } from "./Random.js"
 import type { Tracer } from "./Tracer.js"
 
-import type { DefaultServices } from "../../DefaultServices.js"
+import type { DefaultServices } from "./DefaultServices.js"
 
 export declare namespace DefaultServices {
   // eslint-disable-next-line import/no-cycle

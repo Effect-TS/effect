@@ -108,7 +108,7 @@ export type TypeId = typeof TypeId
 export type ValidTagsById<R> = R extends infer S ? Tag<S, any> : never
 
 // eslint-disable-next-line import/no-cycle
-import type { Context } from "../../Context.js"
+import type { Context } from "./Context.js"
 
 export declare namespace Context {
   // eslint-disable-next-line import/no-cycle

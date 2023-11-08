@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 
-import type { Pipeable } from "../../Pipeable.js"
+import type { Pipeable } from "./Pipeable.js"
 
 export declare namespace Pipeable {
   // eslint-disable-next-line import/no-cycle

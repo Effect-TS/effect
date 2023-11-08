@@ -18,7 +18,7 @@ import { Order } from "./Order.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import { ReadonlyRecord as RR } from "./ReadonlyRecord.js"
 
-import type { ReadonlyArray } from "../../ReadonlyArray.js"
+import type { ReadonlyArray } from "./ReadonlyArray.js"
 
 export declare namespace ReadonlyArray {
   // eslint-disable-next-line import/no-cycle

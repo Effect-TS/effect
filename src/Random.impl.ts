@@ -18,7 +18,7 @@ export const RandomTypeId: unique symbol = internal.RandomTypeId
  */
 export type RandomTypeId = typeof RandomTypeId
 
-import type { Random } from "../../Random.js"
+import type { Random } from "./Random.js"
 
 export declare namespace Random {
   // eslint-disable-next-line import/no-cycle

@@ -18,7 +18,7 @@ export const FiberStatusTypeId: unique symbol = internal.FiberStatusTypeId
  */
 export type FiberStatusTypeId = typeof FiberStatusTypeId
 
-import type { FiberStatus } from "../../FiberStatus.js"
+import type { FiberStatus } from "./FiberStatus.js"
 
 export declare namespace FiberStatus {
   // eslint-disable-next-line import/no-cycle

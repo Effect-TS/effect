@@ -24,7 +24,7 @@ const bigint1e9 = BigInt(1_000_000_000)
  */
 export type TypeId = typeof TypeId
 
-import type { Duration } from "../../Duration.js"
+import type { Duration } from "./Duration.js"
 
 export declare namespace Duration {
   // eslint-disable-next-line import/no-cycle

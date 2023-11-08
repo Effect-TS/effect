@@ -20,7 +20,7 @@ export const ScopedRefTypeId: unique symbol = internal.ScopedRefTypeId
  */
 export type ScopedRefTypeId = typeof ScopedRefTypeId
 
-import type { ScopedRef } from "../../ScopedRef.js"
+import type { ScopedRef } from "./ScopedRef.js"
 
 export declare namespace ScopedRef {
   // eslint-disable-next-line import/no-cycle

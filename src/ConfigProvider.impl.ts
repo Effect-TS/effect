@@ -35,7 +35,7 @@ export const FlatConfigProviderTypeId: unique symbol = internal.FlatConfigProvid
  */
 export type FlatConfigProviderTypeId = typeof FlatConfigProviderTypeId
 
-import type { ConfigProvider } from "../../ConfigProvider.js"
+import type { ConfigProvider } from "./ConfigProvider.js"
 
 export declare namespace ConfigProvider {
   // eslint-disable-next-line import/no-cycle

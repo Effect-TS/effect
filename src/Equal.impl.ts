@@ -11,7 +11,7 @@ import { hasProperty } from "./Predicate.js"
  */
 export const symbol: unique symbol = Symbol.for("effect/Equal")
 
-import type { Equal } from "../../Equal.js"
+import type { Equal } from "./Equal.js"
 
 export declare namespace Equal {
   // eslint-disable-next-line import/no-cycle

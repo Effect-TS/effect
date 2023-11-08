@@ -22,7 +22,7 @@ export const TPubSubTypeId: unique symbol = internal.TPubSubTypeId
  */
 export type TPubSubTypeId = typeof TPubSubTypeId
 
-import type { TPubSub } from "../../TPubSub.js"
+import type { TPubSub } from "./TPubSub.js"
 
 export declare namespace TPubSub {
   // eslint-disable-next-line import/no-cycle

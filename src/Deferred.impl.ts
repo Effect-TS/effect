@@ -24,7 +24,7 @@ export const DeferredTypeId: unique symbol = internal.DeferredTypeId
  */
 export type DeferredTypeId = typeof DeferredTypeId
 
-import type { Deferred } from "../../Deferred.js"
+import type { Deferred } from "./Deferred.js"
 
 export declare namespace Deferred {
   // eslint-disable-next-line import/no-cycle

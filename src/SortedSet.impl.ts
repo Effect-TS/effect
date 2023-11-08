@@ -21,7 +21,7 @@ const TypeId: unique symbol = Symbol.for("effect/SortedSet")
  */
 export type TypeId = typeof TypeId
 
-import type { SortedSet } from "../../SortedSet.js"
+import type { SortedSet } from "./SortedSet.js"
 
 export declare namespace SortedSet {
   // eslint-disable-next-line import/no-cycle

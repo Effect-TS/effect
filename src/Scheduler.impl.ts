@@ -16,7 +16,7 @@ import * as timeout from "./internal/timeout.js"
  */
 export type Task = () => void
 
-import type { Scheduler } from "../../Scheduler.js"
+import type { Scheduler } from "./Scheduler.js"
 
 export declare namespace Scheduler {
   // eslint-disable-next-line import/no-cycle

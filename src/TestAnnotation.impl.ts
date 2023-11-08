@@ -26,7 +26,7 @@ export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
  */
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 
-import type { TestAnnotation } from "../../TestAnnotation.js"
+import type { TestAnnotation } from "./TestAnnotation.js"
 
 export declare namespace TestAnnotation {
   // eslint-disable-next-line import/no-cycle

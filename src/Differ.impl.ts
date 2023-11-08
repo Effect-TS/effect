@@ -27,7 +27,7 @@ export const TypeId: unique symbol = internal.DifferTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
-import type { Differ } from "../../Differ.js"
+import type { Differ } from "./Differ.js"
 
 export declare namespace Differ {
   // eslint-disable-next-line import/no-cycle

@@ -34,7 +34,7 @@ import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import { ReadonlyArray } from "./ReadonlyArray.js"
 
-import type { List } from "../../List.js"
+import type { List } from "./List.js"
 
 export declare namespace List {
   // eslint-disable-next-line import/no-cycle

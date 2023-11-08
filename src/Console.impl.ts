@@ -19,7 +19,7 @@ export const TypeId: unique symbol = defaultConsole.TypeId
  */
 export type TypeId = typeof TypeId
 
-import type { Console } from "../../Console.js"
+import type { Console } from "./Console.js"
 
 export declare namespace Console {
   // eslint-disable-next-line import/no-cycle

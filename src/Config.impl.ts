@@ -26,7 +26,7 @@ export const ConfigTypeId: unique symbol = internal.ConfigTypeId
  */
 export type ConfigTypeId = typeof ConfigTypeId
 
-import type { Config } from "../../Config.js"
+import type { Config } from "./Config.js"
 
 export declare namespace Config {
   // eslint-disable-next-line import/no-cycle

@@ -54,7 +54,7 @@ export const LayerTypeId: unique symbol = internal.LayerTypeId
  */
 export type LayerTypeId = typeof LayerTypeId
 
-import type { Layer } from "../../Layer.js"
+import type { Layer } from "./Layer.js"
 
 export declare namespace Layer {
   // eslint-disable-next-line import/no-cycle

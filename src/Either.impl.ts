@@ -17,7 +17,7 @@ import type { Gen } from "./Utils.js"
 import { Utils } from "./Utils.js"
 
 // eslint-disable-next-line import/no-cycle
-import type { Either } from "../../Either.js"
+import type { Either } from "./Either.js"
 
 export declare namespace Either {
   // eslint-disable-next-line import/no-cycle

@@ -20,7 +20,7 @@ export const CacheTypeId: unique symbol = internal.CacheTypeId
  */
 export type CacheTypeId = typeof CacheTypeId
 
-import type { Cache } from "../../Cache.js"
+import type { Cache } from "./Cache.js"
 
 export declare namespace Cache {
   // eslint-disable-next-line import/no-cycle

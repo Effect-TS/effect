@@ -5,7 +5,7 @@ import * as internal from "./internal/schedule/decision.js"
 import type { Interval } from "./ScheduleInterval.js"
 import type { ScheduleIntervals } from "./ScheduleIntervals.js"
 
-import type { ScheduleDecision } from "../../ScheduleDecision.js"
+import type { ScheduleDecision } from "./ScheduleDecision.js"
 
 export declare namespace ScheduleDecision {
   // eslint-disable-next-line import/no-cycle

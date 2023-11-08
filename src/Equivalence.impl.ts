@@ -8,7 +8,7 @@
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
-import type { Equivalence } from "../../Equivalence.js"
+import type { Equivalence } from "./Equivalence.js"
 
 export declare namespace Equivalence {
   // eslint-disable-next-line import/no-cycle

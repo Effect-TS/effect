@@ -17,7 +17,7 @@ export const MergeDecisionTypeId: unique symbol = internal.MergeDecisionTypeId
  */
 export type MergeDecisionTypeId = typeof MergeDecisionTypeId
 
-import type { MergeDecision } from "../../MergeDecision.js"
+import type { MergeDecision } from "./MergeDecision.js"
 
 export declare namespace MergeDecision {
   // eslint-disable-next-line import/no-cycle

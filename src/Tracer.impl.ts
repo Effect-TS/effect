@@ -19,7 +19,7 @@ export const TracerTypeId: unique symbol = internal.TracerTypeId
  */
 export type TracerTypeId = typeof TracerTypeId
 
-import type { Tracer } from "../../Tracer.js"
+import type { Tracer } from "./Tracer.js"
 
 export declare namespace Tracer {
   // eslint-disable-next-line import/no-cycle

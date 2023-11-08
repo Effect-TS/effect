@@ -20,7 +20,7 @@ export const ResourceTypeId: unique symbol = internal.ResourceTypeId
  */
 export type ResourceTypeId = typeof ResourceTypeId
 
-import type { Resource } from "../../Resource.js"
+import type { Resource } from "./Resource.js"
 
 export declare namespace Resource {
   // eslint-disable-next-line import/no-cycle

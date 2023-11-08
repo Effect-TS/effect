@@ -17,7 +17,7 @@ export const MetricLabelTypeId: unique symbol = internal.MetricLabelTypeId
  */
 export type MetricLabelTypeId = typeof MetricLabelTypeId
 
-import type { MetricLabel } from "../../MetricLabel.js"
+import type { MetricLabel } from "./MetricLabel.js"
 
 export declare namespace MetricLabel {
   // eslint-disable-next-line import/no-cycle

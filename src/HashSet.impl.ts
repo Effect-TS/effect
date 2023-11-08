@@ -16,7 +16,7 @@ const TypeId: unique symbol = HS.HashSetTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
-import type { HashSet } from "../../HashSet.js"
+import type { HashSet } from "./HashSet.js"
 
 export declare namespace HashSet {
   // eslint-disable-next-line import/no-cycle
