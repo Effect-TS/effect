@@ -8,6 +8,8 @@ import type { Layer } from "./Layer.js"
 import type { Schedule } from "./Schedule.js"
 import type { ScopedRef } from "./ScopedRef.js"
 
+import type { Reloadable } from "./Reloadable.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -19,47 +21,6 @@ export const ReloadableTypeId: unique symbol = internal.ReloadableTypeId
  * @category symbols
  */
 export type ReloadableTypeId = typeof ReloadableTypeId
-
-import type { Reloadable } from "./Reloadable.js"
-
-export declare namespace Reloadable {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Reloadable.impl.js"
-}
-  /**
-   * A `Reloadable` is an implementation of some service that can be dynamically
-   * reloaded, or swapped out for another implementation on-the-fly.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Reloadable<A> extends Reloadable.Variance<A> {
-    /**
-     * @internal
-     */
-    readonly scopedRef: ScopedRef<A>
-    /**
-     * @internal
-     */
-    reload(): Effect<never, unknown, void>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace Reloadable {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [ReloadableTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * Makes a new reloadable service from a layer that describes the construction

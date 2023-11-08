@@ -9,32 +9,15 @@ import { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
-const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
+import type { MutableHashMap } from "./MutableHashMap.js"
+
+export const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
 
 /**
  * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
-
-import type { MutableHashMap } from "./MutableHashMap.js"
-
-export declare namespace MutableHashMap {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MutableHashMap.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface MutableHashMap<K, V> extends Iterable<readonly [K, V]>, Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-
-    /** @internal */
-    readonly backingMap: MutableRef<HashMap<K, V>>
-  }
-}
 
 const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backingMap"> = {
   [TypeId]: TypeId,

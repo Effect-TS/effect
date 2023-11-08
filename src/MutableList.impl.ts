@@ -3,38 +3,17 @@
  */
 import { dual } from "./Function.js"
 import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import type { Inspectable } from "./Inspectable.js"
-import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
-const TypeId: unique symbol = Symbol.for("effect/MutableList") as TypeId
+import type { MutableList } from "./MutableList.js"
+
+export const TypeId: unique symbol = Symbol.for("effect/MutableList") as TypeId
 
 /**
  * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
-
-import type { MutableList } from "./MutableList.js"
-
-export declare namespace MutableList {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MutableList.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category model
-   */
-  export interface MutableList<A> extends Iterable<A>, Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-
-    /** @internal */
-    head: LinkedListNode<A> | undefined
-    /** @internal */
-    tail: LinkedListNode<A> | undefined
-  }
-}
 
 const MutableListProto: Omit<MutableList<unknown>, "head" | "tail"> = {
   [TypeId]: TypeId,
@@ -84,7 +63,7 @@ interface MutableListImpl<A> extends MutableList<A> {
 }
 
 /** @internal */
-class LinkedListNode<T> {
+export class LinkedListNode<T> {
   removed = false
   prev: LinkedListNode<T> | undefined = undefined
   next: LinkedListNode<T> | undefined = undefined

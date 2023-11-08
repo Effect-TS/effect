@@ -2,37 +2,19 @@
  * @since 2.0.0
  */
 import { dual } from "./Function.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import { MutableHashMap } from "./MutableHashMap.js"
-import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
-const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
+import type { MutableHashSet } from "./MutableHashSet.js"
+
+export const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
 
 /**
  * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
-
-import type { MutableHashSet } from "./MutableHashSet.js"
-
-export declare namespace MutableHashSet {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MutableHashSet.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-
-    /** @internal */
-    readonly keyMap: MutableHashMap<V, boolean>
-  }
-}
 
 const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {
   [TypeId]: TypeId,
