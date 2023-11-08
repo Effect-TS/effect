@@ -1,6 +1,6 @@
 import type { Request } from "./Request.js"
 import type { Empty, Par, Seq, Single } from "./RequestBlock.impl.js"
-import type { RequestResolver } from "./RequestResolver.impl.js"
+import type { RequestResolver } from "./RequestResolver.js"
 
 export * from "./internal/Jumpers/RequestBlock.js"
 export * from "./RequestBlock.impl.js"

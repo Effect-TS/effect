@@ -115,7 +115,7 @@ export const atForwards = dual<
 const at = <K, V>(
   self: RBT<K, V>,
   index: number,
-  direction: RBT.RedBlackTree.Direction
+  direction: RBT.Direction
 ): Iterable<readonly [K, V]> => {
   return {
     [Symbol.iterator]: () => {
@@ -431,7 +431,7 @@ export const keysBackward = <K, V>(self: RBT<K, V>): IterableIterator<K> => keys
 
 const keys = <K, V>(
   self: RBT<K, V>,
-  direction: RBT.RedBlackTree.Direction
+  direction: RBT.Direction
 ): IterableIterator<K> => {
   const begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>
   let count = 0
@@ -498,7 +498,7 @@ export const greaterThanForwards = dual<
 const greaterThan = <K, V>(
   self: RBT<K, V>,
   key: K,
-  direction: RBT.RedBlackTree.Direction
+  direction: RBT.Direction
 ): Iterable<readonly [K, V]> => {
   return {
     [Symbol.iterator]: () => {
@@ -539,7 +539,7 @@ export const greaterThanEqualForwards = dual<
 const greaterThanEqual = <K, V>(
   self: RBT<K, V>,
   key: K,
-  direction: RBT.RedBlackTree.Direction = Direction.Forward
+  direction: RBT.Direction = Direction.Forward
 ): Iterable<readonly [K, V]> => {
   return {
     [Symbol.iterator]: () => {
@@ -580,7 +580,7 @@ export const lessThanForwards = dual<
 const lessThan = <K, V>(
   self: RBT<K, V>,
   key: K,
-  direction: RBT.RedBlackTree.Direction
+  direction: RBT.Direction
 ): Iterable<readonly [K, V]> => {
   return {
     [Symbol.iterator]: () => {
@@ -621,7 +621,7 @@ export const lessThanEqualForwards = dual<
 const lessThanEqual = <K, V>(
   self: RBT<K, V>,
   key: K,
-  direction: RBT.RedBlackTree.Direction
+  direction: RBT.Direction
 ): Iterable<readonly [K, V]> => {
   return {
     [Symbol.iterator]: () => {
@@ -863,7 +863,7 @@ export const valuesBackward = <K, V>(self: RBT<K, V>): IterableIterator<V> => va
 /** @internal */
 const values = <K, V>(
   self: RBT<K, V>,
-  direction: RBT.RedBlackTree.Direction
+  direction: RBT.Direction
 ): IterableIterator<V> => {
   const begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>
   let count = 0

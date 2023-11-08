@@ -30,7 +30,7 @@ import type { TestServices } from "./TestServices.js"
  * @since 2.0.0
  */
 export const liveServices: Context<TestServices> = pipe(
-  Context.make(Annotations.TestAnnotations, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
+  Context.make(Annotations.Tag, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
   Context.add(Live.Tag, Live.make(defaultServices.liveServices)),
   Context.add(Sized.Tag, Sized.make(100)),
   Context.add(TestConfig.Tag, TestConfig.make({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
@@ -61,7 +61,7 @@ export const annotationsWith = <R, E, A>(
 ): Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
-    (services) => f(Context.get(services, Annotations.TestAnnotations))
+    (services) => f(Context.get(services, Annotations.Tag))
   )
 
 /**
@@ -76,7 +76,7 @@ export const withAnnotations = dual<
 >(2, (effect, annotations) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(Annotations.TestAnnotations, annotations)
+    Context.add(Annotations.Tag, annotations)
   )(effect))
 
 /**
@@ -90,7 +90,7 @@ export const withAnnotationsScoped = (
 ): Effect<Scope, never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(
     currentServices,
-    Context.add(Annotations.TestAnnotations, annotations)
+    Context.add(Annotations.Tag, annotations)
   )
 
 /**
@@ -100,7 +100,7 @@ export const withAnnotationsScoped = (
  */
 export const annotationsLayer = (): Layer<never, never, Annotations.TestAnnotations> =>
   layer.scoped(
-    Annotations.TestAnnotations,
+    Annotations.Tag,
     pipe(
       core.sync(() => ref.unsafeMake(TestAnnotationMap.empty())),
       core.map(Annotations.make),

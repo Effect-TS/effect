@@ -1,5 +1,6 @@
 import type { Clock } from "./Clock.js"
 import type { ConfigProvider } from "./ConfigProvider.js"
+import type { Console } from "./Console.js"
 import type { Random } from "./Random.js"
 import type { Tracer } from "./Tracer.js"
 

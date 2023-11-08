@@ -11,8 +11,6 @@ import { dual } from "./Function.js"
 import * as order from "./Order.js"
 import * as predicate from "./Predicate.js"
 
-export * as Boolean from "./Boolean.js"
-
 /**
  * Tests if a value is a `boolean`.
  *

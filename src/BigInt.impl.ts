@@ -17,8 +17,6 @@ const bigint0 = BigInt(0)
 const bigint1 = BigInt(1)
 const bigint2 = BigInt(2)
 
-export * as BigInt from "./BigInt.js"
-
 /**
  * Tests if a value is a `bigint`.
  *

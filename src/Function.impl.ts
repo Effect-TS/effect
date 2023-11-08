@@ -3,8 +3,6 @@
  */
 import type { TypeLambda } from "./HKT.js"
 
-export * as Function from "./Function.js"
-
 /**
  * @category type lambdas
  * @since 2.0.0

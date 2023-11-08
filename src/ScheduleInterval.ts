@@ -16,7 +16,7 @@ export interface Interval {
   readonly endMillis: number
 }
 
-export declare namespace ScheduleInterval {
+export declare namespace Interval {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
   export type * from "./ScheduleInterval.impl.js"

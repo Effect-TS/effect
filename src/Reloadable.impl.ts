@@ -6,7 +6,6 @@ import type { Effect } from "./Effect.js"
 import * as internal from "./internal/reloadable.js"
 import type { Layer } from "./Layer.js"
 import type { Schedule } from "./Schedule.js"
-import type { ScopedRef } from "./ScopedRef.js"
 
 import type { Reloadable } from "./Reloadable.js"
 

@@ -1,4 +1,4 @@
-import type { TestAnnotations } from "./TestAnnotations.impl.js"
+import type { TestAnnotations } from "./TestAnnotations.js"
 import type { TestConfig } from "./TestConfig.js"
 import type { TestLive } from "./TestLive.js"
 import type { TestSized } from "./TestSized.js"

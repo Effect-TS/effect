@@ -3,7 +3,6 @@
  */
 import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
-import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import * as internal from "./internal/cache.js"
 import type { Option } from "./Option.js"

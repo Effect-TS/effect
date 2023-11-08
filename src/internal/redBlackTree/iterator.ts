@@ -5,8 +5,8 @@ import type { Node } from "./node.js"
 
 /** @internal */
 export const Direction = {
-  Forward: 0 as RBT.RedBlackTree.Direction,
-  Backward: 1 << 0 as RBT.RedBlackTree.Direction
+  Forward: 0 as RBT.Direction,
+  Backward: 1 << 0 as RBT.Direction
 } as const
 
 /** @internal */
@@ -16,7 +16,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   constructor(
     readonly self: RBT<K, V>,
     readonly stack: Array<Node<K, V>>,
-    readonly direction: RBT.RedBlackTree.Direction
+    readonly direction: RBT.Direction
   ) {}
 
   /**

@@ -3,10 +3,9 @@
  */
 import { dual } from "./Function.js"
 import { HashMap } from "./HashMap.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import { MutableRef } from "./MutableRef.js"
 import { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 
 import type { MutableHashMap } from "./MutableHashMap.js"

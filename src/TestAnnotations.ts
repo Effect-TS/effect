@@ -41,3 +41,9 @@ export interface TestAnnotations {
    */
   supervisedFibers(): Effect<never, never, SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
 }
+
+export declare namespace TestAnnotations {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TestAnnotations.impl.js"
+}

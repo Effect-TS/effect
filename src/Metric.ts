@@ -1,9 +1,9 @@
 import type { Effect } from "./Effect.js"
 import type { HashSet } from "./HashSet.js"
 import type { MetricTypeId } from "./Metric.impl.js"
-import type { MetricKeyType } from "./MetricKeyType.impl.js"
-import type { MetricLabel } from "./MetricLabel.impl.js"
-import type { MetricState } from "./MetricState.impl.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
+import type { MetricLabel } from "./MetricLabel.js"
+import type { MetricState } from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
 
 export * from "./internal/Jumpers/Metric.js"
