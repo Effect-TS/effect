@@ -24,8 +24,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm dtslint
 
-  treeshaking:
-    name: Tree shaking
+  size:
+    name: Size
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,3 +36,4 @@ jobs:
         uses: andresz1/size-limit-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_step: install
