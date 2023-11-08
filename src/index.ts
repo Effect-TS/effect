@@ -611,7 +611,7 @@ export { ScheduleDecision } from "./ScheduleDecision.js"
 /**
  * @since 2.0.0
  */
-export { Interval as ScheduleInterval } from "./ScheduleInterval.js"
+export { ScheduleInterval } from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0

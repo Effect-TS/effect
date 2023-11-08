@@ -1,6 +1,6 @@
 import type { Backing, NonEmptyChunk, TypeId } from "./Chunk.impl.js"
 import type { Equal } from "./Equal.js"
-import type { Inspectable } from "./Inspectable.impl.js"
+import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 
 export * from "./Chunk.impl.js"

@@ -388,7 +388,7 @@ export const live = (data: Data): Layer<Annotations.TestAnnotations | Live.TestL
   layer.scoped(
     Tag,
     effect.gen(function*($) {
-      const live = yield* $(Live.TestLive)
+      const live = yield* $(Live.Tag)
       const annotations = yield* $(Annotations.TestAnnotations)
       const clockState = yield* $(core.sync(() => ref.unsafeMake(data)))
       const warningState = yield* $(circular.makeSynchronized(WarningData.start))

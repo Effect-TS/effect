@@ -8,8 +8,6 @@ import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as order from "./Order.js"
 
-export * as Tuple from "./Tuple.js"
-
 /**
  * @category type lambdas
  * @since 2.0.0

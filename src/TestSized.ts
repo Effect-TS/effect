@@ -5,6 +5,11 @@ import type { TestSizedTypeId } from "./TestSized.impl.js"
 export * from "./internal/Jumpers/TestSized.js"
 export * from "./TestSized.impl.js"
 
+export declare namespace TestSized {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TestSized.impl.js"
+}
 /**
  * @since 2.0.0
  */

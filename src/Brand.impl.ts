@@ -19,7 +19,7 @@
 import { Either } from "./Either.js"
 import { identity } from "./Function.js"
 import { Option } from "./Option.js"
-import type { Predicate, Refinement } from "./Predicate.js"
+import type { Predicate } from "./Predicate.js"
 import { ReadonlyArray } from "./ReadonlyArray.js"
 import type { Types } from "./Types.js"
 

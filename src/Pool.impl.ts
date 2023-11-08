@@ -1,11 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type { Data } from "./Data.js"
 import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/pool.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 
 import type { Pool } from "./Pool.js"

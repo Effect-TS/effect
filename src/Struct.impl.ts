@@ -9,8 +9,6 @@ import { dual } from "./Function.js"
 import * as order from "./Order.js"
 import type { Simplify } from "./Types.js"
 
-export * as Struct from "./Struct.js"
-
 /**
  * Create a new object by picking properties of an existing object.
  *

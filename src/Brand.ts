@@ -1,6 +1,7 @@
 import type { BrandTypeId, RefinedConstructorsTypeId } from "./Brand.impl.js"
+import type { Either } from "./Either.js"
+import type { Option } from "./Option.js"
 import type { Refinement } from "./Predicate.js"
-import type { Either } from "./StreamHaltStrategy.js"
 import type { Types } from "./Types.js"
 
 export * from "./Brand.impl.js"

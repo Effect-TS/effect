@@ -4,6 +4,12 @@ import type { TestLiveTypeId } from "./TestLive.impl.js"
 export * from "./internal/Jumpers/TestLive.js"
 export * from "./TestLive.impl.js"
 
+export declare namespace TestLive {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./TestLive.impl.js"
+}
+
 /**
  * The `Live` trait provides access to the "live" default Effect services from
  * within tests for workflows such as printing test results to the console or

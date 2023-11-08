@@ -5,8 +5,6 @@
 import * as equivalence from "./Equivalence.js"
 import * as predicate from "./Predicate.js"
 
-export * as Symbol from "./Symbol.js"
-
 /**
  * Tests if a value is a `symbol`.
  *

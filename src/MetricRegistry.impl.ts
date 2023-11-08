@@ -1,12 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/metric/registry.js"
-import type { MetricHook } from "./MetricHook.js"
-import type { MetricKey } from "./MetricKey.js"
-import type { MetricKeyType } from "./MetricKeyType.js"
-import type { MetricPair } from "./MetricPair.js"
 
 import type { MetricRegistry } from "./MetricRegistry.js"
 

@@ -31,7 +31,7 @@ import type { TestServices } from "./TestServices.js"
  */
 export const liveServices: Context<TestServices> = pipe(
   Context.make(Annotations.TestAnnotations, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
-  Context.add(Live.TestLive, Live.make(defaultServices.liveServices)),
+  Context.add(Live.Tag, Live.make(defaultServices.liveServices)),
   Context.add(Sized.Tag, Sized.make(100)),
   Context.add(TestConfig.Tag, TestConfig.make({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
 )
@@ -144,7 +144,7 @@ export const supervisedFibers = (): Effect<
  * @since 2.0.0
  */
 export const liveWith = <R, E, A>(f: (live: Live.TestLive) => Effect<R, E, A>): Effect<R, E, A> =>
-  core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, Live.TestLive)))
+  core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, Live.Tag)))
 
 /**
  * Retrieves the `Live` service for this test.
@@ -165,7 +165,7 @@ export const withLive = dual<
 >(2, (effect, live) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(Live.TestLive, live)
+    Context.add(Live.Tag, live)
   )(effect))
 
 /**
@@ -175,7 +175,7 @@ export const withLive = dual<
  * @since 2.0.0
  */
 export const withLiveScoped = (live: Live.TestLive): Effect<Scope, never, void> =>
-  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Live.TestLive, live))
+  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Live.Tag, live))
 
 /**
  * Constructs a new `Live` service wrapped in a layer.
@@ -184,7 +184,7 @@ export const withLiveScoped = (live: Live.TestLive): Effect<Scope, never, void> 
  */
 export const liveLayer = (): Layer<DefaultServices, never, Live.TestLive> =>
   layer.scoped(
-    Live.TestLive,
+    Live.Tag,
     pipe(
       core.context<DefaultServices>(),
       core.map(Live.make),

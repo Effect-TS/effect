@@ -5,11 +5,9 @@
 import { Context } from "./Context.js"
 import { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
-import type { Equal } from "./Equal.js"
 import type { FiberRef } from "./FiberRef.js"
 import * as core from "./internal/core.js"
 import * as internal from "./internal/dataSource.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Request } from "./Request.js"
 
 import type { RequestResolver } from "./RequestResolver.js"

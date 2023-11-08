@@ -5,6 +5,7 @@ import { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { FiberRef } from "./FiberRef.js"
 import * as core from "./internal/core.js"
+import type { TestSized } from "./TestSized.js"
 
 /**
  * @since 2.0.0

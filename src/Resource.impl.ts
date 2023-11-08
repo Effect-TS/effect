@@ -2,11 +2,9 @@
  * @since 2.0.0
  */
 import type { Effect } from "./Effect.js"
-import type { Exit } from "./Exit.js"
 import * as internal from "./internal/resource.js"
 import type { Schedule } from "./Schedule.js"
 import type { Scope } from "./Scope.js"
-import type { ScopedRef } from "./ScopedRef.js"
 
 import type { Resource } from "./Resource.js"
 

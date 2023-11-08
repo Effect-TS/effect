@@ -1,6 +1,6 @@
 import type { Effect } from "./Effect.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { PubSub } from "./PubSub.impl.js"
+import type { PubSub } from "./PubSub.js"
 import type { Ref } from "./Ref.js"
 import type { Stream } from "./Stream.js"
 import type { SubscriptionRefTypeId } from "./SubscriptionRef.impl.js"
