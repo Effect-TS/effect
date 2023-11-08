@@ -10,28 +10,13 @@ import { globalValue } from "./GlobalValue.js"
 import * as core from "./internal/core.js"
 import * as timeout from "./internal/timeout.js"
 
+import type { Scheduler } from "./Scheduler.js"
+
 /**
  * @since 2.0.0
  * @category models
  */
 export type Task = () => void
-
-import type { Scheduler } from "./Scheduler.js"
-
-export declare namespace Scheduler {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Scheduler.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Scheduler {
-    shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
-    scheduleTask(task: Task, priority: number): void
-  }
-}
 
 /**
  * @since 2.0.0

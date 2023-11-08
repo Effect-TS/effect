@@ -5,41 +5,24 @@ import { Equal } from "./Equal.js"
 import type * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import { Hash } from "./Hash.js"
-import type { Inspectable } from "./Inspectable.js"
 import { NodeInspectSymbol, toString } from "./Inspectable.js"
 import { Option } from "./Option.js"
 import * as order from "./Order.js"
-import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, isBigInt, isNumber } from "./Predicate.js"
 
-const TypeId: unique symbol = Symbol.for("effect/Duration")
+import type { Duration } from "./Duration.js"
 
 const bigint1e3 = BigInt(1_000)
 const bigint1e9 = BigInt(1_000_000_000)
+
+export const TypeId: unique symbol = Symbol.for("effect/Duration")
 
 /**
  * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
-
-import type { Duration } from "./Duration.js"
-
-export declare namespace Duration {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Duration.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Duration extends Equal, Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-    readonly value: DurationValue
-  }
-}
 
 /**
  * @since 2.0.0

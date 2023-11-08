@@ -9,6 +9,8 @@ import * as defaultServices from "./internal/defaultServices.js"
 import * as internal from "./internal/tracer.js"
 import type { Option } from "./Option.js"
 
+import type { Tracer } from "./Tracer.js"
+
 /**
  * @since 2.0.0
  */
@@ -18,29 +20,6 @@ export const TracerTypeId: unique symbol = internal.TracerTypeId
  * @since 2.0.0
  */
 export type TracerTypeId = typeof TracerTypeId
-
-import type { Tracer } from "./Tracer.js"
-
-export declare namespace Tracer {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Tracer.impl.js"
-}
-  /**
-   * @since 2.0.0
-   */
-  export interface Tracer {
-    readonly [TracerTypeId]: TracerTypeId
-    readonly span: (
-      name: string,
-      parent: Option<ParentSpan>,
-      context: Context<never>,
-      links: ReadonlyArray<SpanLink>,
-      startTime: bigint
-    ) => Span
-    readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
-  }
-}
 
 /**
  * @since 2.0.0

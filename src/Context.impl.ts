@@ -7,12 +7,22 @@
  *
  * @since 2.0.0
  */
-import type { Equal } from "./Equal.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/context.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Unify } from "./Unify.js"
+
+// eslint-disable-next-line import/no-cycle
+import type { Context } from "./Context.js"
+
+export const TypeId: unique symbol = internal.TypeId as TypeId
+
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
+export type TypeId = typeof TypeId
 
 const TagTypeId: unique symbol = internal.TagTypeId
 
@@ -93,39 +103,11 @@ export declare namespace Tag {
 export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Tag<Identifier, Service> =
   internal.makeTag
 
-const TypeId: unique symbol = internal.TypeId as TypeId
-
-/**
- * @since 2.0.0
- * @category symbol
- */
-export type TypeId = typeof TypeId
-
 /**
  * @since 2.0.0
  * @category models
  */
 export type ValidTagsById<R> = R extends infer S ? Tag<S, any> : never
-
-// eslint-disable-next-line import/no-cycle
-import type { Context } from "./Context.js"
-
-export declare namespace Context {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Context.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Context<Services> extends Equal, Pipeable, Inspectable {
-    readonly [TypeId]: {
-      readonly _S: (_: Services) => unknown
-    }
-    readonly unsafeMap: Map<Tag<any, any>, any>
-  }
-}
 
 /**
  * @since 2.0.0

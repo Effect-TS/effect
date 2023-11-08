@@ -7,8 +7,6 @@ import * as internal from "./internal/effectable.js"
 import type { Sink } from "./Sink.js"
 import type { Stream } from "./Stream.js"
 
-export * as Effectable from "./Effectable.js"
-
 /**
  * @since 2.0.0
  * @category type ids

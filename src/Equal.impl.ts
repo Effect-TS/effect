@@ -5,27 +5,13 @@ import type { Equivalence } from "./Equivalence.js"
 import { Hash } from "./Hash.js"
 import { hasProperty } from "./Predicate.js"
 
+import type { Equal } from "./Equal.js"
+
 /**
  * @since 2.0.0
  * @category symbols
  */
 export const symbol: unique symbol = Symbol.for("effect/Equal")
-
-import type { Equal } from "./Equal.js"
-
-export declare namespace Equal {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Equal.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Equal extends Hash {
-    [symbol](that: Equal): boolean
-  }
-}
 
 /**
  * @since 2.0.0

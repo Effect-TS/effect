@@ -6,6 +6,8 @@ import { globalValue } from "./GlobalValue.js"
 import { hasProperty } from "./Predicate.js"
 import { PCGRandom } from "./Utils.js"
 
+import type { Hash } from "./Hash.js"
+
 /** @internal */
 const randomHashCache = globalValue(
   Symbol.for("effect/Hash/randomHashCache"),
@@ -22,22 +24,6 @@ const pcgr = globalValue(
  * @category symbols
  */
 export const symbol: unique symbol = Symbol.for("effect/Hash")
-
-import type { Hash } from "./Hash.js"
-
-export declare namespace Hash {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Hash.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Hash {
-    [symbol](): number
-  }
-}
 
 /**
  * @since 2.0.0

@@ -125,7 +125,7 @@ export interface STMTypeLambda extends TypeLambda {
  * @since 2.0.0
  * @category models
  */
-declare module "./Context.int.js" {
+declare module "./Context.impl.js" {
   interface Tag<Identifier, Service> extends STM<Identifier, never, Service> {}
 }
 
@@ -133,7 +133,7 @@ declare module "./Context.int.js" {
  * @since 2.0.0
  * @category models
  */
-declare module "./Either.int.js" {
+declare module "./Either.impl.js" {
   interface Left<E, A> extends STM<never, E, A> {
     readonly _tag: "Left"
   }

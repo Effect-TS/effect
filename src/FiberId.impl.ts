@@ -7,6 +7,8 @@ import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/fiberId.js"
 import type { Option } from "./Option.js"
 
+import type { FiberId } from "./FiberId.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -18,20 +20,6 @@ export const FiberIdTypeId: unique symbol = internal.FiberIdTypeId
  * @category symbols
  */
 export type FiberIdTypeId = typeof FiberIdTypeId
-
-import type { FiberId } from "./FiberId.js"
-
-export declare namespace FiberId {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./FiberId.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type FiberId = None | Runtime | Composite
-}
 
 /**
  * @since 2.0.0

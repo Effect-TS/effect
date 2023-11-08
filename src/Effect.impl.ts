@@ -124,7 +124,7 @@ export interface Blocked<R, E, A> extends Effect<R, E, A> {
  * @since 2.0.0
  * @category models
  */
-declare module "./Context.int.js" {
+declare module "./Context.impl.js" {
   interface Tag<Identifier, Service> extends Effect<Identifier, never, Service> {}
   interface TagUnifyIgnore {
     Effect?: true
@@ -137,7 +137,7 @@ declare module "./Context.int.js" {
  * @since 2.0.0
  * @category models
  */
-declare module "./Either.int.js" {
+declare module "./Either.impl.js" {
   interface Left<E, A> extends Effect<never, E, A> {
     readonly _tag: "Left"
   }
