@@ -1,1 +1,1 @@
-export * as ConfigProviderPathPatch from "../../ConfigProviderPathPatch.impl.js"
+export * as PathPatch from "../../ConfigProviderPathPatch.impl.js"
