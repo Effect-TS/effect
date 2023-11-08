@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-cycle
-export * from "./ReadonlyArray.int.js"
+export * from "./ReadonlyArray.impl.js"
+export * from "./internal/Jumpers/ReadonlyArray.js"

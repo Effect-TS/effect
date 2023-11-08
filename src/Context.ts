@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-cycle
-export * from "./Context.int.js"
+export * from "./Context.impl.js"
+export * from "./internal/Jumpers/Context.js"

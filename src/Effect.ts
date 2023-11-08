@@ -1,7 +1,7 @@
 import type { EffectUnify } from "./Effect.impl.js"
-import type { EffectTypeId } from "./Effectable.int.js"
-import type { Equal } from "./Equal.int.js"
-import type { Pipeable } from "./Pipeable.int.js"
+import type { EffectTypeId } from "./Effectable.js"
+import type { Equal } from "./Equal.js"
+import type { Pipeable } from "./Pipeable.js"
 import type { Unify } from "./Unify.js"
 
 export * from "./Effect.impl.js"

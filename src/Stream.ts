@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-cycle
-export * from "./Stream.int.js"
+export * from "./Stream.impl.js"
+export * from "./internal/Jumpers/Stream.js"

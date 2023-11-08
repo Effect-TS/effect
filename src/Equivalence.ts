@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-cycle
-export * from "./Equivalence.int.js"
+export * from "./Equivalence.impl.js"
+export * from "./internal/Jumpers/Equivalence.js"

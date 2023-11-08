@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-cycle
-export * from "./STM.int.js"
+export * from "./STM.impl.js"
+export * from "./internal/Jumpers/STM.js"

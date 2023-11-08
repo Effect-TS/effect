@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-cycle
-export * from "./Hash.int.js"
+export * from "./Hash.impl.js"
+export * from "./internal/Jumpers/Hash.js"
