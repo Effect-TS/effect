@@ -9,7 +9,6 @@ import type { Effect } from "./Effect.js"
 import type { LazyArg } from "./Function.js"
 import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/configProvider.js"
-import type { Pipeable } from "./Pipeable.js"
 
 import type { ConfigProvider } from "./ConfigProvider.js"
 

@@ -5,7 +5,8 @@ import type { Either } from "./Either.js"
 import * as internal from "./internal/stm/tDeferred.js"
 import type { Option } from "./Option.js"
 import type { STM } from "./STM.js"
-import type { TRef } from "./TRef.js"
+
+import type { TDeferred } from "./TDeferred.js"
 
 /**
  * @since 2.0.0
@@ -18,44 +19,6 @@ export const TDeferredTypeId: unique symbol = internal.TDeferredTypeId
  * @category symbols
  */
 export type TDeferredTypeId = typeof TDeferredTypeId
-
-import type { TDeferred } from "./TDeferred.js"
-
-export declare namespace TDeferred {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TDeferred.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TDeferred<E, A> extends TDeferred.Variance<E, A> {}
-  /**
-   * @internal
-   * @since 2.0.0
-   */
-  export interface TDeferred<E, A> {
-    /** @internal */
-    readonly ref: TRef<Option<Either<E, A>>>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace TDeferred {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<E, A> {
-      readonly [TDeferredTypeId]: {
-        readonly _E: (_: never) => E
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 const _await: <E, A>(self: TDeferred<E, A>) => STM<never, E, A> = internal._await
 export {

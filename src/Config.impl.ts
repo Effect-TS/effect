@@ -11,7 +11,6 @@ import type { HashSet } from "./HashSet.js"
 import * as internal from "./internal/config.js"
 import type { LogLevel } from "./LogLevel.js"
 import type { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 
 import type { Config } from "./Config.js"

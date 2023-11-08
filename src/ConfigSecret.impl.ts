@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 import type { Chunk } from "./Chunk.js"
-import type { Equal } from "./Equal.js"
 import * as internal from "./internal/configSecret.js"
 
 import type { ConfigSecret } from "./ConfigSecret.js"

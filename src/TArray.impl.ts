@@ -6,7 +6,8 @@ import type { Option } from "./Option.js"
 import type { Order } from "./Order.js"
 import type { Predicate } from "./Predicate.js"
 import type { STM } from "./STM.js"
-import type { TRef } from "./TRef.js"
+
+import type { TArray } from "./TArray.js"
 
 /**
  * @since 2.0.0
@@ -19,43 +20,6 @@ export const TArrayTypeId: unique symbol = internal.TArrayTypeId
  * @category symbols
  */
 export type TArrayTypeId = typeof TArrayTypeId
-
-import type { TArray } from "./TArray.js"
-
-export declare namespace TArray {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./TArray.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface TArray<A> extends TArray.Variance<A> {}
-  /**
-   * @internal
-   * @since 2.0.0
-   */
-  export interface TArray<A> {
-    /** @internal */
-    readonly chunk: Array<TRef<A>>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace TArray {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [TArrayTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * Finds the result of applying a partial function to the first value in its

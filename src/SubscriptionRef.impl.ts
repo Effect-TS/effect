@@ -4,11 +4,10 @@
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/subscriptionRef.js"
 import type { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
-import type { PubSub } from "./PubSub.js"
 import { Ref } from "./Ref.js"
-import type { Stream } from "./Stream.js"
 import { SynchronizedRef } from "./SynchronizedRef.js"
+
+import type { SubscriptionRef } from "./SubscriptionRef.js"
 
 /**
  * @since 2.0.0
@@ -21,50 +20,6 @@ export const SubscriptionRefTypeId: unique symbol = internal.SubscriptionRefType
  * @category symbols
  */
 export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
-
-import type { SubscriptionRef } from "./SubscriptionRef.js"
-
-export declare namespace SubscriptionRef {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./SubscriptionRef.impl.js"
-}
-  /**
-   * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
-   * receive the current value as well as all changes to the value.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, SynchronizedRef<A>, Pipeable {
-    /** @internal */
-    readonly ref: Ref<A>
-    /** @internal */
-    readonly pubsub: PubSub<A>
-    /** @internal */
-    readonly semaphore: Effect.Semaphore
-    /**
-     * A stream containing the current value of the `Ref` as well as all changes
-     * to that value.
-     */
-    readonly changes: Stream<never, never, A>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace SubscriptionRef {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [SubscriptionRefTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * @since 2.0.0

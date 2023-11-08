@@ -8,6 +8,8 @@ import * as internal from "./internal/synchronizedRef.js"
 import type { Option } from "./Option.js"
 import type { Ref } from "./Ref.js"
 
+import type { SynchronizedRef } from "./SynchronizedRef.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -19,37 +21,6 @@ export const SynchronizedRefTypeId: unique symbol = circular.SynchronizedTypeId
  * @category symbols
  */
 export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
-
-import type { SynchronizedRef } from "./SynchronizedRef.js"
-
-export declare namespace SynchronizedRef {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./SynchronizedRef.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref<A> {
-    modifyEffect<R, E, B>(f: (a: A) => Effect<R, E, readonly [B, A]>): Effect<R, E, B>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace SynchronizedRef {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Variance<A> {
-      readonly [SynchronizedRefTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * @since 2.0.0
