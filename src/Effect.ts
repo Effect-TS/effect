@@ -5,6 +5,7 @@ import type { Pipeable } from "./Pipeable.int.js"
 import type { Unify } from "./Unify.js"
 
 export * from "./Effect.impl.js"
+export * from "./internal/Jumpers/Effect.js"
 
 /**
  * The `Effect` interface defines a value that lazily describes a workflow or job.

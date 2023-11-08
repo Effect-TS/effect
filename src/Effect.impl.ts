@@ -56,8 +56,6 @@ import type { Tracer } from "./Tracer.js"
 import type { Concurrency } from "./Types.js"
 import type { Unify } from "./Unify.js"
 
-export * as Effect from "./Effect.impl.js"
-
 // -------------------------------------------------------------------------------------
 // models
 // -------------------------------------------------------------------------------------
