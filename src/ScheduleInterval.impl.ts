@@ -4,6 +4,7 @@
 import type { Duration } from "./Duration.js"
 import * as internal from "./internal/schedule/interval.js"
 import type { Option } from "./Option.js"
+import type { Interval } from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0
@@ -16,23 +17,6 @@ export const IntervalTypeId: unique symbol = internal.IntervalTypeId
  * @category symbols
  */
 export type IntervalTypeId = typeof IntervalTypeId
-
-export * as Interval from "./ScheduleInterval.js"
-
-declare module "./ScheduleInterval.js" {
-  /**
-   * An `Interval` represents an interval of time. ScheduleIntervals can encompass all
-   * time, or no time at all.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Interval {
-    readonly [IntervalTypeId]: IntervalTypeId
-    readonly startMillis: number
-    readonly endMillis: number
-  }
-}
 
 /**
  * Constructs a new interval from the two specified endpoints. If the start

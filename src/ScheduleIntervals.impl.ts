@@ -5,6 +5,8 @@ import type { Chunk } from "./Chunk.js"
 import * as internal from "./internal/schedule/intervals.js"
 import type { Interval } from "./ScheduleInterval.js"
 
+import type { ScheduleIntervals } from "./ScheduleIntervals.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -16,25 +18,6 @@ export const IntervalsTypeId: unique symbol = internal.IntervalsTypeId
  * @category symbols
  */
 export type IntervalsTypeId = typeof IntervalsTypeId
-
-import type { ScheduleIntervals } from "./ScheduleIntervals.js"
-
-export declare namespace ScheduleIntervals {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./ScheduleIntervals.impl.js"
-}
-  /**
-   * An `ScheduleIntervals` represents a list of several `Interval`s.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export interface ScheduleIntervals {
-    readonly [IntervalsTypeId]: IntervalsTypeId
-    readonly intervals: Chunk<Interval>
-  }
-}
 
 /**
  * Creates a new `ScheduleIntervals` from a `List` of `Interval`s.

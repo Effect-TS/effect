@@ -3,6 +3,8 @@
  */
 import * as internal from "./internal/channel/childExecutorDecision.js"
 
+import type { ChildExecutorDecision } from "./ChildExecutorDecision.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -14,33 +16,6 @@ export const ChildExecutorDecisionTypeId: unique symbol = internal.ChildExecutor
  * @category symbols
  */
 export type ChildExecutorDecisionTypeId = typeof ChildExecutorDecisionTypeId
-
-import type { ChildExecutorDecision } from "./ChildExecutorDecision.js"
-
-export declare namespace ChildExecutorDecision {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./ChildExecutorDecision.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type ChildExecutorDecision = Continue | Close | Yield
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace ChildExecutorDecision {
-    /**
-     * @since 2.0.0
-     * @category models
-     */
-    export interface Proto {
-      readonly [ChildExecutorDecisionTypeId]: ChildExecutorDecisionTypeId
-    }
-  }
-}
 
 /**
  * Continue executing the current substream
