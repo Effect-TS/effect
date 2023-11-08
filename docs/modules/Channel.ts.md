@@ -1944,7 +1944,7 @@ channel, which it then writes as output of the returned channel.
 ```ts
 export declare const emitCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Channel<Env, InErr, InElem, InDone, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone], void>
+) => Channel<Env, InErr, InElem, InDone, OutErr, [Chunk.Chunk<OutElem>, OutDone], void>
 ```
 
 Added in v2.0.0

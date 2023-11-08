@@ -681,7 +681,7 @@ export const embedInput: {
  */
 export const emitCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-) => Channel<Env, InErr, InElem, InDone, OutErr, readonly [Chunk.Chunk<OutElem>, OutDone], void> = channel.emitCollect
+) => Channel<Env, InErr, InElem, InDone, OutErr, [Chunk.Chunk<OutElem>, OutDone], void> = channel.emitCollect
 
 /**
  * Returns a new channel with an attached finalizer. The finalizer is
