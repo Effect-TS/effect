@@ -3,36 +3,18 @@
  */
 import { Equal } from "./Equal.js"
 import { dual } from "./Function.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
-import type { Pipeable } from "./Pipeable.js"
+import { NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
 import { pipeArguments } from "./Pipeable.js"
 
-const TypeId: unique symbol = Symbol.for("effect/MutableRef") as TypeId
+import type { MutableRef } from "./MutableRef.js"
+
+export const TypeId: unique symbol = Symbol.for("effect/MutableRef") as TypeId
 
 /**
  * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
-
-import type { MutableRef } from "./MutableRef.js"
-
-export declare namespace MutableRef {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./MutableRef.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface MutableRef<T> extends Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-
-    /** @internal */
-    current: T
-  }
-}
 
 const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {
   [TypeId]: TypeId,

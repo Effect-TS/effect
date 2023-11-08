@@ -10,24 +10,6 @@ import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
 
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 
-export declare namespace RuntimeFlags {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./RuntimeFlags.impl.js"
-}
-  /**
-   * Represents a set of `RuntimeFlag`s. `RuntimeFlag`s affect the operation of
-   * the Effect runtime system. They are exposed to application-level code because
-   * they affect the behavior and performance of application code.
-   *
-   * @since 2.0.0
-   * @category models
-   */
-  export type RuntimeFlags = number & {
-    readonly RuntimeFlags: unique symbol
-  }
-}
-
 /**
  * Represents a flag that can be set to enable or disable a particular feature
  * of the Effect runtime.

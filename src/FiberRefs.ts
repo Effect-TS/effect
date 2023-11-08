@@ -1,5 +1,5 @@
 import type { FiberId } from "./FiberId.js"
-import type { FiberRef } from "./FiberRef.impl.js"
+import type { FiberRef } from "./FiberRef.js"
 import type { FiberRefsSym } from "./FiberRefs.impl.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { ReadonlyArray as Arr } from "./ReadonlyArray.js"

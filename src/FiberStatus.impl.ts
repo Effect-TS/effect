@@ -6,6 +6,8 @@ import type { FiberId } from "./FiberId.js"
 import * as internal from "./internal/fiberStatus.js"
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 
+import type { FiberStatus } from "./FiberStatus.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -17,20 +19,6 @@ export const FiberStatusTypeId: unique symbol = internal.FiberStatusTypeId
  * @category symbols
  */
 export type FiberStatusTypeId = typeof FiberStatusTypeId
-
-import type { FiberStatus } from "./FiberStatus.js"
-
-export declare namespace FiberStatus {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./FiberStatus.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type FiberStatus = Done | Running | Suspended
-}
 
 /**
  * @since 2.0.0

@@ -2,35 +2,18 @@
  * @since 2.0.0
  */
 
-import type { Equal } from "./Equal.js"
-import type { Inspectable } from "./Inspectable.js"
 import * as HS from "./internal/hashSet.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 
-const TypeId: unique symbol = HS.HashSetTypeId as TypeId
+import type { HashSet } from "./HashSet.js"
+
+export const TypeId: unique symbol = HS.HashSetTypeId as TypeId
 
 /**
  * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
-
-import type { HashSet } from "./HashSet.js"
-
-export declare namespace HashSet {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./HashSet.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface HashSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
-    readonly [TypeId]: TypeId
-  }
-}
 
 /**
  * @since 2.0.0

@@ -18,13 +18,14 @@ import type { LogLevel } from "./LogLevel.js"
 import type { LogSpan } from "./LogSpan.js"
 import type { MetricLabel } from "./MetricLabel.js"
 import type { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Request } from "./Request.js"
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 import { Scheduler } from "./Scheduler.js"
 import type { Scope } from "./Scope.js"
 import type { Supervisor } from "./Supervisor.js"
 import type { Tracer } from "./Tracer.js"
+
+import type { FiberRef } from "./FiberRef.js"
 
 /**
  * @since 2.0.0
@@ -37,33 +38,6 @@ export const FiberRefTypeId: unique symbol = core.FiberRefTypeId
  * @category symbols
  */
 export type FiberRefTypeId = typeof FiberRefTypeId
-
-import type { FiberRef } from "./FiberRef.js"
-
-export declare namespace FiberRef {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./FiberRef.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category model
-   */
-  export interface FiberRef<A> extends Variance<A>, Pipeable {
-    /** @internal */
-    readonly initial: A
-    /** @internal */
-    readonly diff: (oldValue: A, newValue: A) => unknown
-    /** @internal */
-    readonly combine: (first: unknown, second: unknown) => unknown
-    /** @internal */
-    readonly patch: (patch: unknown) => (oldValue: A) => A
-    /** @internal */
-    readonly fork: unknown
-    /** @internal */
-    readonly join: (oldValue: A, newValue: A) => A
-  }
-}
 
 /**
  * @since 2.0.0

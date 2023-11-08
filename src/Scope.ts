@@ -1,2 +1,46 @@
-export * from "./Scope.impl.js"
+import type { Effect } from "./Effect.js"
+import type { ExecutionStrategy } from "./ExecutionStrategy.js"
+import type { Exit } from "./Exit.js"
+import type { Pipeable } from "./Pipeable.js"
+import type { CloseableScope, ScopeTypeId } from "./Scope.impl.js"
+
 export * from "./internal/Jumpers/Scope.js"
+export * from "./Scope.impl.js"
+
+export declare namespace Scope {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./Scope.impl.js"
+}
+/**
+ * @since 2.0.0
+ * @category models
+ */
+export interface Scope extends Pipeable {
+  readonly [ScopeTypeId]: ScopeTypeId
+  readonly strategy: ExecutionStrategy
+  /**
+   * @internal
+   */
+  readonly fork: (strategy: ExecutionStrategy) => Effect<never, never, Scope.Closeable>
+  /**
+   * @internal
+   */
+  readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect<never, never, void>
+}
+
+/**
+ * @since 2.0.0
+ */
+export namespace Scope {
+  /**
+   * @since 2.0.0
+   * @category model
+   */
+  export type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, void>
+  /**
+   * @since 2.0.0
+   * @category model
+   */
+  export type Closeable = CloseableScope
+}

@@ -4,7 +4,8 @@
 import type { Effect } from "./Effect.js"
 import * as internal from "./internal/ref.js"
 import type { Option } from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
+
+import type { Ref } from "./Ref.js"
 
 /**
  * @since 2.0.0
@@ -17,37 +18,6 @@ export const RefTypeId: unique symbol = internal.RefTypeId
  * @category symbols
  */
 export type RefTypeId = typeof RefTypeId
-
-import type { Ref } from "./Ref.js"
-
-export declare namespace Ref {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Ref.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Ref<A> extends Ref.Variance<A>, Pipeable {
-    modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B>
-  }
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export namespace Ref {
-    /**
-     * @since 2.0.0
-     */
-    export interface Variance<A> {
-      readonly [RefTypeId]: {
-        readonly _A: (_: never) => A
-      }
-    }
-  }
-}
 
 /**
  * @since 2.0.0

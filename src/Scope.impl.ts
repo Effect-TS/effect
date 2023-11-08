@@ -10,6 +10,8 @@ import * as core from "./internal/core.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import type { Pipeable } from "./Pipeable.js"
 
+import type { Scope } from "./Scope.js"
+
 /**
  * @since 2.0.0
  * @category symbols
@@ -39,47 +41,6 @@ export type CloseableScopeTypeId = typeof CloseableScopeTypeId
  * @category context
  */
 export const Tag: Context.Tag<Scope, Scope> = fiberRuntime.scopeTag
-
-import type { Scope } from "./Scope.js"
-
-export declare namespace Scope {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./Scope.impl.js"
-}
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Scope extends Pipeable {
-    readonly [ScopeTypeId]: ScopeTypeId
-    readonly strategy: ExecutionStrategy
-    /**
-     * @internal
-     */
-    readonly fork: (strategy: ExecutionStrategy) => Effect<never, never, Scope.Closeable>
-    /**
-     * @internal
-     */
-    readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect<never, never, void>
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  export namespace Scope {
-    /**
-     * @since 2.0.0
-     * @category model
-     */
-    export type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, void>
-    /**
-     * @since 2.0.0
-     * @category model
-     */
-    export type Closeable = CloseableScope
-  }
-}
 
 /**
  * @since 2.0.0
