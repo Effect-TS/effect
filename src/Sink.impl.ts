@@ -34,6 +34,8 @@ export const SinkTypeId: unique symbol = internal.SinkTypeId
  */
 export type SinkTypeId = typeof SinkTypeId
 
+import type { Sink } from "../../Sink.js"
+
 export declare namespace Sink {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

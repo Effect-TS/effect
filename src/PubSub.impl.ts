@@ -7,6 +7,8 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Queue } from "./Queue.js"
 import type { Scope } from "./Scope.js"
 
+import type { PubSub } from "../../PubSub.js"
+
 export declare namespace PubSub {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

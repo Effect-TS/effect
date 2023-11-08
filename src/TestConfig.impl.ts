@@ -3,6 +3,8 @@
  */
 import { Context } from "./Context.js"
 
+import type { TestConfig } from "../../TestConfig.js"
+
 export declare namespace TestConfig {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

@@ -20,6 +20,8 @@ export const ReloadableTypeId: unique symbol = internal.ReloadableTypeId
  */
 export type ReloadableTypeId = typeof ReloadableTypeId
 
+import type { Reloadable } from "../../Reloadable.js"
+
 export declare namespace Reloadable {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

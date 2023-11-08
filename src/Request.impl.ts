@@ -27,6 +27,8 @@ export const RequestTypeId: unique symbol = internal.RequestTypeId
  */
 export type RequestTypeId = typeof RequestTypeId
 
+import type { Request } from "../../Request.js"
+
 export declare namespace Request {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

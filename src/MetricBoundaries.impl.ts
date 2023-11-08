@@ -18,6 +18,8 @@ export const MetricBoundariesTypeId: unique symbol = internal.MetricBoundariesTy
  */
 export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
 
+import type { MetricBoundaries } from "../../MetricBoundaries.js"
+
 export declare namespace MetricBoundaries {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

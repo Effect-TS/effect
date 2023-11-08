@@ -39,6 +39,8 @@ export const TypeId: unique symbol = Symbol.for("effect/BigDecimal")
  */
 export type TypeId = typeof TypeId
 
+import type { BigDecimal } from "../../BigDecimal.js"
+
 export declare namespace BigDecimal {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

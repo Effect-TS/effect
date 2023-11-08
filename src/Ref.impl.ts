@@ -18,6 +18,8 @@ export const RefTypeId: unique symbol = internal.RefTypeId
  */
 export type RefTypeId = typeof RefTypeId
 
+import type { Ref } from "../../Ref.js"
+
 export declare namespace Ref {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

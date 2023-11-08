@@ -19,6 +19,8 @@ export const MergeStateTypeId: unique symbol = internal.MergeStateTypeId
  */
 export type MergeStateTypeId = typeof MergeStateTypeId
 
+import type { MergeState } from "../../MergeState.js"
+
 export declare namespace MergeState {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

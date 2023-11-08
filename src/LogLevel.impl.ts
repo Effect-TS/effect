@@ -8,6 +8,8 @@ import * as number from "./Number.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 
+import type { LogLevel } from "../../LogLevel.js"
+
 export declare namespace LogLevel {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

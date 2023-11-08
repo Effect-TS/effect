@@ -4,6 +4,8 @@
 import { dual } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
+import type { Order } from "../../Order.js"
+
 export declare namespace Order {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

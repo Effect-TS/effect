@@ -20,6 +20,8 @@ const TypeId: unique symbol = Symbol.for("effect/SortedMap")
  */
 export type TypeId = typeof TypeId
 
+import type { SortedMap } from "../../SortedMap.js"
+
 export declare namespace SortedMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

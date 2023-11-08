@@ -17,6 +17,8 @@ export const IntervalsTypeId: unique symbol = internal.IntervalsTypeId
  */
 export type IntervalsTypeId = typeof IntervalsTypeId
 
+import type { ScheduleIntervals } from "../../ScheduleIntervals.js"
+
 export declare namespace ScheduleIntervals {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

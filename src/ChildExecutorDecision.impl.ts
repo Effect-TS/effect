@@ -15,6 +15,8 @@ export const ChildExecutorDecisionTypeId: unique symbol = internal.ChildExecutor
  */
 export type ChildExecutorDecisionTypeId = typeof ChildExecutorDecisionTypeId
 
+import type { ChildExecutorDecision } from "../../ChildExecutorDecision.js"
+
 export declare namespace ChildExecutorDecision {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

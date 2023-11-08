@@ -19,6 +19,8 @@ export const MetricPairTypeId: unique symbol = internal.MetricPairTypeId
  */
 export type MetricPairTypeId = typeof MetricPairTypeId
 
+import type { MetricPair } from "../../MetricPair.js"
+
 export declare namespace MetricPair {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

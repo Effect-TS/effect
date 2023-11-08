@@ -4,6 +4,8 @@
 import { dual, isFunction as isFunction_ } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 
+import type { Predicate } from "../../Predicate.js"
+
 export declare namespace Predicate {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

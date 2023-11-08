@@ -19,6 +19,8 @@ export const TDeferredTypeId: unique symbol = internal.TDeferredTypeId
  */
 export type TDeferredTypeId = typeof TDeferredTypeId
 
+import type { TDeferred } from "../../TDeferred.js"
+
 export declare namespace TDeferred {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

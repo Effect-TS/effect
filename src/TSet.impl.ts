@@ -20,6 +20,8 @@ export const TSetTypeId: unique symbol = internal.TSetTypeId
  */
 export type TSetTypeId = typeof TSetTypeId
 
+import type { TSet } from "../../TSet.js"
+
 export declare namespace TSet {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

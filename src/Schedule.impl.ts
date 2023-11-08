@@ -39,6 +39,8 @@ export const ScheduleDriverTypeId: unique symbol = internal.ScheduleDriverTypeId
  */
 export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
 
+import type { Schedule } from "../../Schedule.js"
+
 export declare namespace Schedule {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

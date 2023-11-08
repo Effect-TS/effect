@@ -20,6 +20,8 @@ export const PoolTypeId: unique symbol = internal.PoolTypeId
  */
 export type PoolTypeId = typeof PoolTypeId
 
+import type { Pool } from "../../Pool.js"
+
 export declare namespace Pool {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

@@ -16,6 +16,8 @@ export const UpstreamPullStrategyTypeId: unique symbol = internal.UpstreamPullSt
  */
 export type UpstreamPullStrategyTypeId = typeof UpstreamPullStrategyTypeId
 
+import type { UpstreamPullStrategy } from "../../UpstreamPullStrategy.js"
+
 export declare namespace UpstreamPullStrategy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

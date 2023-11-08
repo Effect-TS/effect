@@ -21,6 +21,8 @@ export const TakeTypeId: unique symbol = internal.TakeTypeId
  */
 export type TakeTypeId = typeof TakeTypeId
 
+import type { Take } from "../../Take.js"
+
 export declare namespace Take {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

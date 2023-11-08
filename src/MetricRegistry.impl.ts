@@ -20,6 +20,8 @@ export const MetricRegistryTypeId: unique symbol = internal.MetricRegistryTypeId
  */
 export type MetricRegistryTypeId = typeof MetricRegistryTypeId
 
+import type { MetricRegistry } from "../../MetricRegistry.js"
+
 export declare namespace MetricRegistry {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

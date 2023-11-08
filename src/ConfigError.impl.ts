@@ -16,6 +16,8 @@ export const ConfigErrorTypeId: unique symbol = internal.ConfigErrorTypeId
  */
 export type ConfigErrorTypeId = typeof ConfigErrorTypeId
 
+import type { ConfigError } from "../../ConfigError.js"
+
 export declare namespace ConfigError {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

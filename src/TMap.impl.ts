@@ -22,6 +22,8 @@ export const TMapTypeId: unique symbol = internal.TMapTypeId
  */
 export type TMapTypeId = typeof TMapTypeId
 
+import type { TMap } from "../../TMap.js"
+
 export declare namespace TMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

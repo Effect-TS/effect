@@ -22,6 +22,8 @@ import { TestConfig } from "./TestConfig.js"
 import * as Live from "./TestLive.js"
 import * as Sized from "./TestSized.js"
 
+import type { TestServices } from "../../TestServices.js"
+
 export declare namespace TestServices {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

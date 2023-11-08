@@ -21,6 +21,8 @@ export const TRefTypeId: unique symbol = internal.TRefTypeId
  */
 export type TRefTypeId = typeof TRefTypeId
 
+import type { TRef } from "../../TRef.js"
+
 export declare namespace TRef {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

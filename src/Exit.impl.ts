@@ -12,6 +12,8 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type { Unify } from "./Unify.js"
 
+import type { Exit } from "../../Exit.js"
+
 export declare namespace Exit {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

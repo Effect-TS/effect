@@ -8,6 +8,8 @@ import * as internal from "./internal/runtimeFlags.js"
 import type { Layer } from "./Layer.js"
 import type { RuntimeFlagsPatch } from "./RuntimeFlagsPatch.js"
 
+import type { RuntimeFlags } from "../../RuntimeFlags.js"
+
 export declare namespace RuntimeFlags {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

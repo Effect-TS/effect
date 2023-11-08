@@ -17,6 +17,8 @@ const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
  */
 export type TypeId = typeof TypeId
 
+import type { MutableHashMap } from "../../MutableHashMap.js"
+
 export declare namespace MutableHashMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

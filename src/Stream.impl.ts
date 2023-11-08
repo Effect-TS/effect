@@ -43,6 +43,8 @@ export const StreamTypeId: unique symbol = internal.StreamTypeId
  */
 export type StreamTypeId = typeof StreamTypeId
 
+import type { Stream } from "../../Stream.js"
+
 export declare namespace Stream {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

@@ -7,6 +7,8 @@ import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { Option } from "./Option.js"
 
+import type { StreamEmit } from "../../StreamEmit.js"
+
 export declare namespace StreamEmit {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

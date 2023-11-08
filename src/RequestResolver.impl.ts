@@ -24,6 +24,8 @@ export const RequestResolverTypeId: unique symbol = core.RequestResolverTypeId
  */
 export type RequestResolverTypeId = typeof RequestResolverTypeId
 
+import type { RequestResolver } from "../../RequestResolver.js"
+
 export declare namespace RequestResolver {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

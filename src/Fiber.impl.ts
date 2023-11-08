@@ -44,6 +44,8 @@ export const RuntimeFiberTypeId: unique symbol = internal.RuntimeFiberTypeId
  */
 export type RuntimeFiberTypeId = typeof RuntimeFiberTypeId
 
+import type { Fiber } from "../../Fiber.js"
+
 export declare namespace Fiber {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

@@ -22,6 +22,8 @@ export const FiberRefsSym: unique symbol = internal.FiberRefsSym
  */
 export type FiberRefsSym = typeof FiberRefsSym
 
+import type { FiberRefs } from "../../FiberRefs.js"
+
 export declare namespace FiberRefs {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

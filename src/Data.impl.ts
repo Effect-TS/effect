@@ -10,6 +10,8 @@ import { type Pipeable } from "./Pipeable.js"
 import type { Sink } from "./Sink.js"
 import type { Types } from "./Types.js"
 
+import type { Data } from "../../Data.js"
+
 export declare namespace Data {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

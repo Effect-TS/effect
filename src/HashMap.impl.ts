@@ -18,6 +18,8 @@ const TypeId: unique symbol = HM.HashMapTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
+import type { HashMap } from "../../HashMap.js"
+
 export declare namespace HashMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

@@ -19,6 +19,8 @@ export const TReentrantLockTypeId: unique symbol = internal.TReentrantLockTypeId
  */
 export type TReentrantLockTypeId = typeof TReentrantLockTypeId
 
+import type { TReentrantLock } from "../../TReentrantLock.js"
+
 export declare namespace TReentrantLock {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

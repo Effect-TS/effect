@@ -29,6 +29,8 @@ export const STMTypeId: unique symbol = core.STMTypeId
 export type STMTypeId = typeof STMTypeId
 
 // eslint-disable-next-line import/no-cycle
+import type { STM } from "../../STM.js"
+
 export declare namespace STM {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

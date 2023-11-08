@@ -20,6 +20,8 @@ export const TArrayTypeId: unique symbol = internal.TArrayTypeId
  */
 export type TArrayTypeId = typeof TArrayTypeId
 
+import type { TArray } from "../../TArray.js"
+
 export declare namespace TArray {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

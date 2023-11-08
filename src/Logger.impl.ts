@@ -31,6 +31,8 @@ export const LoggerTypeId: unique symbol = internal.LoggerTypeId
  */
 export type LoggerTypeId = typeof LoggerTypeId
 
+import type { Logger } from "../../Logger.js"
+
 export declare namespace Logger {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
