@@ -758,8 +758,8 @@ Zips this chunk pointwise with the specified chunk.
 
 ```ts
 export declare const zip: {
-  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<readonly [A, B]>
-  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<readonly [A, B]>
+  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<[A, B]>
+  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<[A, B]>
 }
 ```
 
