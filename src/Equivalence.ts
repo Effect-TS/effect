@@ -132,8 +132,8 @@ export const Date: Equivalence<Date> = mapInput(number, (date) => date.getTime()
  * @since 2.0.0
  */
 export const product: {
-  <B>(that: Equivalence<B>): <A>(self: Equivalence<A>) => Equivalence<readonly [A, B]>
-  <A, B>(self: Equivalence<A>, that: Equivalence<B>): Equivalence<readonly [A, B]>
+  <B>(that: Equivalence<B>): <A>(self: Equivalence<A>) => Equivalence<readonly [A, B]> // readonly because invariant
+  <A, B>(self: Equivalence<A>, that: Equivalence<B>): Equivalence<readonly [A, B]> // readonly because invariant
 } = dual(
   2,
   <A, B>(self: Equivalence<A>, that: Equivalence<B>): Equivalence<readonly [A, B]> =>
@@ -169,7 +169,7 @@ export const all = <A>(collection: Iterable<Equivalence<A>>): Equivalence<Readon
 export const productMany = <A>(
   self: Equivalence<A>,
   collection: Iterable<Equivalence<A>>
-): Equivalence<readonly [A, ...Array<A>]> => {
+): Equivalence<readonly [A, ...Array<A>]> /* readonly because invariant */ => {
   const equivalence = all(collection)
   return make((x, y) => !self(x[0], y[0]) ? false : equivalence(x.slice(1), y.slice(1)))
 }
