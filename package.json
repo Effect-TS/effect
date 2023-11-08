@@ -421,6 +421,11 @@
       "import": "./dist/esm/Option.js",
       "require": "./dist/cjs/Option.js"
     },
+    "./Option.amb.d": {
+      "types": "./dist/dts/Option.amb.d.d.ts",
+      "import": "./dist/esm/Option.amb.d.js",
+      "require": "./dist/cjs/Option.amb.d.js"
+    },
     "./Order": {
       "types": "./dist/dts/Order.d.ts",
       "import": "./dist/esm/Order.js",
