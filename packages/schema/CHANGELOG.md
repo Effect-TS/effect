@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.47.3
+
+### Patch Changes
+
+- [#546](https://github.com/Effect-TS/schema/pull/546) [`b6e8e12`](https://github.com/Effect-TS/schema/commit/b6e8e1232f90f8d01519eb90c43eaa5c6422503a) Thanks [@rjdellecese](https://github.com/rjdellecese)! - added S.uppercased, S.uppercase, and S.Uppercase
+
 ## 0.47.2
 
 ### Patch Changes
