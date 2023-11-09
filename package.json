@@ -25,7 +25,11 @@
     "functional-programming"
   ],
   "effect": {
-    "generateIndex": false
+    "generateIndex": false,
+    "publicModules": [
+      "*.ts",
+      "./impl/*.ts"
+    ]
   },
   "keywords": [
     "typescript",
