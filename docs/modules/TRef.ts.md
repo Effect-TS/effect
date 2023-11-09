@@ -69,7 +69,7 @@ export interface TRef<A> extends TRef.Variance<A> {
   /**
    * Note: the method is unbound, exposed only for potential extensions.
    */
-  modify<B>(f: (a: A) => readonly [B, A]): STM.STM<never, never, B>
+  modify: <B>(f: (a: A) => readonly [B, A]) => STM.STM<never, never, B>
 }
 ```
 
@@ -265,7 +265,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<A> {
   readonly [TRefTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

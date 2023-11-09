@@ -18,7 +18,7 @@ export const TRefTypeId: TRef.TRefTypeId = Symbol.for(
 
 /** @internal */
 const tRefVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */

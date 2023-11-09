@@ -45,7 +45,7 @@ export const difference = dual<
   ))
 
 /** @internal */
-export const empty = <A>(): STM.STM<never, never, TSet.TSet<A>> => fromIterable([])
+export const empty = <A>(): STM.STM<never, never, TSet.TSet<A>> => fromIterable<A>([])
 
 /** @internal */
 export const forEach = dual<
@@ -56,7 +56,7 @@ export const forEach = dual<
 /** @internal */
 export const fromIterable = <A>(iterable: Iterable<A>): STM.STM<never, never, TSet.TSet<A>> =>
   core.map(
-    tMap.fromIterable(Array.from(iterable).map((a) => [a, void 0])),
+    tMap.fromIterable(Array.from(iterable).map((a): [A, void] => [a, void 0])),
     (tMap) => new TSetImpl(tMap)
   )
 

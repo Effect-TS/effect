@@ -391,6 +391,6 @@ export const unbounded = <A>(): STM.STM<never, never, TQueue.TQueue<A>> =>
 
 const makeQueue = <A>(requestedCapacity: number, strategy: TQueueStrategy): STM.STM<never, never, TQueue.TQueue<A>> =>
   core.map(
-    tRef.make<Array<A>>([]),
-    (ref) => new TQueueImpl(ref, requestedCapacity, strategy)
+    tRef.make<Array<A> | undefined>([]),
+    (ref) => new TQueueImpl<A>(ref, requestedCapacity, strategy)
   )
