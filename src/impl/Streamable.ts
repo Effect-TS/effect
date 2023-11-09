@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import { pipeArguments } from "../Pipeable.js"
 import { Stream } from "../Stream.js"
 

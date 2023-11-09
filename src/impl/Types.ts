@@ -1,10 +1,4 @@
 /**
- * A collection of types that are commonly used types.
- *
- * @since 2.0.0
- */
-
-/**
  * Returns the tags in a type.
  * @example
  * import { Types } from "effect/Types"

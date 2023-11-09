@@ -1,11 +1,3 @@
-/**
- * This module provides utility functions and type class instances for working with the `string` type in TypeScript.
- * It includes functions for basic string manipulation, as well as type class instances for
- * `Equivalence` and `Order`.
- *
- * @since 2.0.0
- */
-
 import * as equivalence from "../Equivalence.js"
 import { dual } from "../Function.js"
 import * as readonlyArray from "../internal/readonlyArray.js"

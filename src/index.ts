@@ -35,10 +35,22 @@ export {
  */
 export { BigDecimal } from "./BigDecimal.js"
 
-
+/**
+ * This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
+ * It includes functions for basic arithmetic operations, as well as type class instances for
+ * `Equivalence` and `Order`.
+ *
+ * @since 2.0.0
+ */
 export { BigInt } from "./BigInt.js"
 
-
+/**
+ * This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
+ * It includes functions for basic boolean operations, as well as type class instances for
+ * `Equivalence` and `Order`.
+ *
+ * @since 2.0.0
+ */
 export { Boolean } from "./Boolean.js"
 
 /**
@@ -259,7 +271,9 @@ export { Duration } from "./Duration.js"
  */
 export { Effect } from "./Effect.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { Effectable } from "./Effectable.js"
 
 /**
@@ -268,7 +282,15 @@ export { Effectable } from "./Effectable.js"
  */
 export { Either } from "./Either.js"
 
-
+/**
+ * This module provides encoding & decoding functionality for:
+ *
+ * - base64 (RFC4648)
+ * - base64 (URL)
+ * - hex
+ *
+ * @since 2.0.0
+ */
 export { Encoding } from "./Encoding.js"
 
 /**
@@ -361,10 +383,14 @@ export { FiberRefsPatch } from "./FiberRefsPatch.js"
  */
 export { FiberStatus } from "./FiberStatus.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { Function } from "./Function.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { GlobalValue } from "./GlobalValue.js"
 
 /**
@@ -377,7 +403,9 @@ export { GlobalValue } from "./GlobalValue.js"
  */
 export { GroupBy } from "./GroupBy.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { HKT } from "./HKT.js"
 
 /**
@@ -457,7 +485,9 @@ export { LogSpan } from "./LogSpan.js"
  */
 export { Logger } from "./Logger.js"
 
-
+/**
+ * @since 1.0.0
+ */
 export { Match } from "./Match.js"
 
 /**
@@ -610,7 +640,13 @@ export { MutableRef } from "./MutableRef.js"
  */
 export { NonEmptyIterable } from "./NonEmptyIterable.js"
 
-
+/**
+ * This module provides utility functions and type class instances for working with the `number` type in TypeScript.
+ * It includes functions for basic arithmetic operations, as well as type class instances for
+ * `Equivalence` and `Order`.
+ *
+ * @since 2.0.0
+ */
 export { Number } from "./Number.js"
 
 /**
@@ -994,13 +1030,25 @@ export { StreamEmit } from "./StreamEmit.js"
  */
 export { StreamHaltStrategy } from "./StreamHaltStrategy.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { Streamable } from "./Streamable.js"
 
-
+/**
+ * This module provides utility functions and type class instances for working with the `string` type in TypeScript.
+ * It includes functions for basic string manipulation, as well as type class instances for
+ * `Equivalence` and `Order`.
+ *
+ * @since 2.0.0
+ */
 export { String } from "./String.js"
 
-
+/**
+ * This module provides utility functions for working with structs in TypeScript.
+ *
+ * @since 2.0.0
+ */
 export { Struct } from "./Struct.js"
 
 /**
@@ -1018,7 +1066,9 @@ export { SubscriptionRef } from "./SubscriptionRef.js"
  */
 export { Supervisor } from "./Supervisor.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { Symbol } from "./Symbol.js"
 
 /**
@@ -1215,7 +1265,9 @@ export { TestClock } from "./TestClock.js"
  */
 export { TestConfig } from "./TestConfig.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { TestContext } from "./TestContext.js"
 
 /**
@@ -1243,10 +1295,18 @@ export { TestSized } from "./TestSized.js"
  */
 export { Tracer } from "./Tracer.js"
 
-
+/**
+ * This module provides utility functions for working with tuples in TypeScript.
+ *
+ * @since 2.0.0
+ */
 export { Tuple } from "./Tuple.js"
 
-
+/**
+ * A collection of types that are commonly used types.
+ *
+ * @since 2.0.0
+ */
 export { Types } from "./Types.js"
 
 /**
@@ -1266,5 +1326,7 @@ export { UpstreamPullRequest } from "./UpstreamPullRequest.js"
  */
 export { UpstreamPullStrategy } from "./UpstreamPullStrategy.js"
 
-
+/**
+ * @since 2.0.0
+ */
 export { Utils } from "./Utils.js"

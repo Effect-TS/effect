@@ -1,10 +1,3 @@
-/**
- * This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
- * It includes functions for basic boolean operations, as well as type class instances for
- * `Equivalence` and `Order`.
- *
- * @since 2.0.0
- */
 import * as equivalence from "../Equivalence.js"
 import type { LazyArg } from "../Function.js"
 import { dual } from "../Function.js"

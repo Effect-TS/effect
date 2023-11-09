@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import type { Either } from "../Either.js"
 import * as internal from "../internal/matcher.js"
 import type { Option } from "../Option.js"

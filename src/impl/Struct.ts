@@ -1,9 +1,3 @@
-/**
- * This module provides utility functions for working with structs in TypeScript.
- *
- * @since 2.0.0
- */
-
 import { Equivalence } from "../Equivalence.js"
 import { dual } from "../Function.js"
 import * as order from "../Order.js"
