@@ -17,10 +17,10 @@ Added in v2.0.0
   - [fromIterable](#fromiterable)
   - [make](#make)
 - [destructors](#destructors)
+  - [toArray](#toarray)
   - [toChunk](#tochunk)
   - [toHashMap](#tohashmap)
-  - [toReadonlyArray](#toreadonlyarray)
-  - [toReadonlyMap](#toreadonlymap)
+  - [toMap](#tomap)
 - [elements](#elements)
   - [find](#find)
   - [findAll](#findall)
@@ -35,8 +35,6 @@ Added in v2.0.0
 - [folding](#folding)
   - [reduce](#reduce)
   - [reduceSTM](#reducestm)
-  - [reduceWithIndex](#reducewithindex)
-  - [reduceWithIndexSTM](#reducewithindexstm)
 - [getters](#getters)
   - [isEmpty](#isempty)
   - [size](#size)
@@ -110,6 +108,18 @@ Added in v2.0.0
 
 # destructors
 
+## toArray
+
+Collects all bindings into an `Array`.
+
+**Signature**
+
+```ts
+export declare const toArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
+```
+
+Added in v2.0.0
+
 ## toChunk
 
 Collects all bindings into a `Chunk`.
@@ -117,7 +127,7 @@ Collects all bindings into a `Chunk`.
 **Signature**
 
 ```ts
-export declare const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, (readonly [K, V])[]>
+export declare const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Chunk.Chunk<[K, V]>>
 ```
 
 Added in v2.0.0
@@ -134,26 +144,14 @@ export declare const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never
 
 Added in v2.0.0
 
-## toReadonlyArray
+## toMap
 
-Collects all bindings into a `ReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, readonly (readonly [K, V])[]>
-```
-
-Added in v2.0.0
-
-## toReadonlyMap
-
-Collects all bindings into a `ReadonlyMap`.
+Collects all bindings into a `Map`.
 
 **Signature**
 
 ```ts
-export declare const toReadonlyMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>>
+export declare const toMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>>
 ```
 
 Added in v2.0.0
@@ -324,8 +322,8 @@ Atomically folds using a pure function.
 
 ```ts
 export declare const reduce: {
-  <Z, V>(zero: Z, f: (acc: Z, value: V) => Z): <K>(self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => Z): STM.STM<never, never, Z>
+  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
+  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
 }
 ```
 
@@ -339,36 +337,6 @@ Atomically folds using a transactional function.
 
 ```ts
 export declare const reduceSTM: {
-  <Z, V, R, E>(zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): <K>(self: TMap<K, V>) => STM.STM<R, E, Z>
-  <K, V, Z, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
-}
-```
-
-Added in v2.0.0
-
-## reduceWithIndex
-
-Atomically folds using a pure function.
-
-**Signature**
-
-```ts
-export declare const reduceWithIndex: {
-  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
-}
-```
-
-Added in v2.0.0
-
-## reduceWithIndexSTM
-
-Atomically folds using a transactional function.
-
-**Signature**
-
-```ts
-export declare const reduceWithIndexSTM: {
   <Z, V, K, R, E>(zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): (self: TMap<K, V>) => STM.STM<R, E, Z>
   <Z, V, K, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
 }
@@ -474,8 +442,8 @@ Removes bindings matching predicate and returns the removed entries.
 
 ```ts
 export declare const removeIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, (readonly [K, V])[]>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, (readonly [K, V])[]>
+  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
+  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, [K, V][]>
 }
 ```
 
@@ -504,8 +472,8 @@ Retains bindings matching predicate and returns removed bindings.
 
 ```ts
 export declare const retainIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, (readonly [K, V])[]>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, (readonly [K, V])[]>
+  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
+  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, [K, V][]>
 }
 ```
 
