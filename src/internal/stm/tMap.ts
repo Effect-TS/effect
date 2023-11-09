@@ -675,7 +675,7 @@ export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Arra
   )
 
 /** @internal */
-export const toReadonlyMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, ReadonlyMap<K, V>> =>
+export const toMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Map<K, V>> =>
   reduce(
     self,
     new Map<K, V>(),

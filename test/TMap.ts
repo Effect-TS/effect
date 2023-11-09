@@ -339,11 +339,11 @@ describe.concurrent("TMap", () => {
       assert.lengthOf(pipe(entries, ReadonlyArray.differenceWith(equivalentElements())(result)), 0)
     })))
 
-  it.it("toReadonlyMap - collect all elements", () =>
+  it.it("toMap - collect all elements", () =>
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),
-        STM.flatMap(TMap.toReadonlyMap)
+        STM.flatMap(TMap.toMap)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
       assert.lengthOf(pipe(Array.from(result), ReadonlyArray.differenceWith(equivalentElements())(entries)), 0)

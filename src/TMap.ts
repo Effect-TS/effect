@@ -404,13 +404,12 @@ export const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMa
 export const toArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>> = internal.toArray
 
 /**
- * Collects all bindings into a `ReadonlyMap`.
+ * Collects all bindings into a `Map`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>> =
-  internal.toReadonlyMap
+export const toMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>> = internal.toMap
 
 /**
  * Atomically updates all bindings using a pure function.

@@ -20,7 +20,7 @@ Added in v2.0.0
   - [toArray](#toarray)
   - [toChunk](#tochunk)
   - [toHashMap](#tohashmap)
-  - [toReadonlyMap](#toreadonlymap)
+  - [toMap](#tomap)
 - [elements](#elements)
   - [find](#find)
   - [findAll](#findall)
@@ -144,14 +144,14 @@ export declare const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never
 
 Added in v2.0.0
 
-## toReadonlyMap
+## toMap
 
-Collects all bindings into a `ReadonlyMap`.
+Collects all bindings into a `Map`.
 
 **Signature**
 
 ```ts
-export declare const toReadonlyMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>>
+export declare const toMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>>
 ```
 
 Added in v2.0.0
