@@ -68,7 +68,7 @@ export const makeFlat = (
     readonly enumerateChildren: (
       path: ReadonlyArray<string>
     ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
-    readonly patch: PathPatch.PathPatch
+    readonly patch: PathPatch.ConfigProviderPathPatch
   }
 ): ConfigProvider.ConfigProvider.Flat => ({
   [FlatConfigProviderTypeId]: FlatConfigProviderTypeId,

@@ -1,122 +1,22 @@
-/**
- * @since 2.0.0
- */
-import type * as Check from "./Chunk.js"
-import * as internal from "./internal/schedule/intervals.js"
-import type * as Interval from "./ScheduleInterval.js"
+import type { Chunk } from "./Chunk.js"
+import type { IntervalsTypeId } from "./impl/ScheduleIntervals.js"
+import type { ScheduleInterval } from "./ScheduleInterval.js"
 
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const IntervalsTypeId: unique symbol = internal.IntervalsTypeId
+export * from "./impl/ScheduleIntervals.js"
+export * from "./internal/Jumpers/ScheduleIntervals.js"
 
+export declare namespace ScheduleIntervals {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/ScheduleIntervals.js"
+}
 /**
- * @since 2.0.0
- * @category symbols
- */
-export type IntervalsTypeId = typeof IntervalsTypeId
-
-/**
- * An `Intervals` represents a list of several `Interval`s.
+ * An `ScheduleIntervals` represents a list of several `ScheduleInterval`s.
  *
  * @since 2.0.0
  * @category models
  */
-export interface Intervals {
+export interface ScheduleIntervals {
   readonly [IntervalsTypeId]: IntervalsTypeId
-  readonly intervals: Check.Chunk<Interval.Interval>
+  readonly intervals: Chunk<ScheduleInterval>
 }
-
-/**
- * Creates a new `Intervals` from a `List` of `Interval`s.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const make: (intervals: Check.Chunk<Interval.Interval>) => Intervals = internal.make
-
-/**
- * Constructs an empty list of `Interval`s.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const empty: Intervals = internal.empty
-
-/**
- * Constructs `Intervals` from the specified `Iterable<Interval>`.
- *
- * @since 2.0.0
- * @category constructors
- */
-export const fromIterable: (intervals: Iterable<Interval.Interval>) => Intervals = internal.fromIterable
-
-/**
- * Computes the union of this `Intervals` and  that `Intervals`
- *
- * @since 2.0.0
- * @category utils
- */
-export const union: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
-} = internal.union
-
-/**
- * Produces the intersection of this `Intervals` and that `Intervals`.
- *
- * @since 2.0.0
- * @category utils
- */
-export const intersect: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
-} = internal.intersect
-
-/**
- * The start of the earliest interval in the specified `Intervals`.
- *
- * @since 2.0.0
- * @category getters
- */
-export const start: (self: Intervals) => number = internal.start
-
-/**
- * The end of the latest interval in the specified `Intervals`.
- *
- * @since 2.0.0
- * @category getters
- */
-export const end: (self: Intervals) => number = internal.end
-
-/**
- * Returns `true` if the start of this `Intervals` is before the start of that
- * `Intervals`, `false` otherwise.
- *
- * @since 2.0.0
- * @category ordering
- */
-export const lessThan: {
-  (that: Intervals): (self: Intervals) => boolean
-  (self: Intervals, that: Intervals): boolean
-} = internal.lessThan
-
-/**
- * Returns `true` if this `Intervals` is non-empty, `false` otherwise.
- *
- * @since 2.0.0
- * @category getters
- */
-export const isNonEmpty: (self: Intervals) => boolean = internal.isNonEmpty
-
-/**
- * Returns the maximum of the two `Intervals` (i.e. which has the latest start).
- *
- * @since 2.0.0
- * @category ordering
- */
-export const max: {
-  (that: Intervals): (self: Intervals) => Intervals
-  (self: Intervals, that: Intervals): Intervals
-} = internal.max

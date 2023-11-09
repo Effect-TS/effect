@@ -1,27 +1,14 @@
-/**
- * @since 2.0.0
- */
-import type * as Chunk from "./Chunk.js"
-import type * as Equal from "./Equal.js"
-import * as internal from "./internal/configSecret.js"
+import type { Equal } from "./Equal.js"
+import type { ConfigSecretTypeId } from "./impl/ConfigSecret.js"
 
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const ConfigSecretTypeId: unique symbol = internal.ConfigSecretTypeId
-
-/**
- * @since 2.0.0
- * @category symbols
- */
-export type ConfigSecretTypeId = typeof ConfigSecretTypeId
+export * from "./impl/ConfigSecret.js"
+export * from "./internal/Jumpers/ConfigSecret.js"
 
 /**
  * @since 2.0.0
  * @category models
  */
-export interface ConfigSecret extends ConfigSecret.Proto, Equal.Equal {
+export interface ConfigSecret extends ConfigSecret.Proto, Equal {
   /** @internal */
   readonly raw: Array<number>
 }
@@ -37,40 +24,8 @@ export declare namespace ConfigSecret {
   export interface Proto {
     readonly [ConfigSecretTypeId]: ConfigSecretTypeId
   }
+
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/ConfigSecret.js"
 }
-
-/**
- * @since 2.0.0
- * @category refinements
- */
-export const isConfigSecret: (u: unknown) => u is ConfigSecret = internal.isConfigSecret
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const make: (bytes: Array<number>) => ConfigSecret = internal.make
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const fromChunk: (chunk: Chunk.Chunk<string>) => ConfigSecret = internal.fromChunk
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const fromString: (text: string) => ConfigSecret = internal.fromString
-
-/**
- * @since 2.0.0
- * @category getters
- */
-export const value: (self: ConfigSecret) => string = internal.value
-
-/**
- * @since 2.0.0
- * @category unsafe
- */
-export const unsafeWipe: (self: ConfigSecret) => void = internal.unsafeWipe

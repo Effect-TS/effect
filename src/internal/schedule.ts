@@ -607,7 +607,7 @@ export const either = dual<
 export const eitherWith = dual<
   <Env2, In2, Out2>(
     that: Schedule.Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
@@ -616,7 +616,7 @@ export const eitherWith = dual<
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
     that: Schedule.Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
@@ -800,7 +800,7 @@ export const intersect = dual<
 export const intersectWith = dual<
   <Env2, In2, Out2>(
     that: Schedule.Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
@@ -809,7 +809,7 @@ export const intersectWith = dual<
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
     that: Schedule.Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,
@@ -818,7 +818,7 @@ export const intersectWith = dual<
 >(3, <Env, In, Out, Env2, In2, Out2>(
   self: Schedule.Schedule<Env, In, Out>,
   that: Schedule.Schedule<Env2, In2, Out2>,
-  f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+  f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
 ): Schedule.Schedule<
   Env | Env2,
   In & In2,
@@ -869,11 +869,11 @@ const intersectWithLoop = <State, State1, Env, In, Out, Env1, In1, Out2>(
   input: In & In1,
   lState: State,
   out: Out,
-  lInterval: Intervals.Intervals,
+  lInterval: Intervals.ScheduleIntervals,
   rState: State1,
   out2: Out2,
-  rInterval: Intervals.Intervals,
-  f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+  rInterval: Intervals.ScheduleIntervals,
+  f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
 ): Effect.Effect<
   Env | Env1,
   never,
@@ -1411,7 +1411,7 @@ export const union = dual<
 export const unionWith = dual<
   <Env2, In2, Out2>(
     that: Schedule.Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
   ) => <Env, In, Out>(self: Schedule.Schedule<Env, In, Out>) => Schedule.Schedule<
     Env | Env2,
     In & In2,
@@ -1420,7 +1420,7 @@ export const unionWith = dual<
   <Env, In, Out, Env2, In2, Out2>(
     self: Schedule.Schedule<Env, In, Out>,
     that: Schedule.Schedule<Env2, In2, Out2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
+    f: (x: Intervals.ScheduleIntervals, y: Intervals.ScheduleIntervals) => Intervals.ScheduleIntervals
   ) => Schedule.Schedule<
     Env | Env2,
     In & In2,

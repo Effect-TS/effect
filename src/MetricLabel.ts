@@ -1,22 +1,15 @@
-/**
- * @since 2.0.0
- */
-import type * as Equal from "./Equal.js"
-import * as internal from "./internal/metric/label.js"
+import type { Equal } from "./Equal.js"
+import type { MetricLabelTypeId } from "./impl/MetricLabel.js"
 import type { Pipeable } from "./Pipeable.js"
 
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const MetricLabelTypeId: unique symbol = internal.MetricLabelTypeId
+export * from "./impl/MetricLabel.js"
+export * from "./internal/Jumpers/MetricLabel.js"
 
-/**
- * @since 2.0.0
- * @category symbols
- */
-export type MetricLabelTypeId = typeof MetricLabelTypeId
-
+export declare namespace MetricLabel {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/MetricLabel.js"
+}
 /**
  * A `MetricLabel` represents a key value pair that allows analyzing metrics at
  * an additional level of granularity.
@@ -28,20 +21,8 @@ export type MetricLabelTypeId = typeof MetricLabelTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MetricLabel extends Equal.Equal, Pipeable {
+export interface MetricLabel extends Equal, Pipeable {
   readonly [MetricLabelTypeId]: MetricLabelTypeId
   readonly key: string
   readonly value: string
 }
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const make: (key: string, value: string) => MetricLabel = internal.make
-
-/**
- * @since 2.0.0
- * @category refinements
- */
-export const isMetricLabel: (u: unknown) => u is MetricLabel = internal.isMetricLabel

@@ -1,21 +1,14 @@
-/**
- * @since 2.0.0
- */
-import * as Context from "./Context.js"
-import type * as DefaultServices from "./DefaultServices.js"
-import type * as Effect from "./Effect.js"
-import * as core from "./internal/core.js"
-import * as defaultServices from "./internal/defaultServices.js"
+import type { Effect } from "./Effect.js"
+import type { TestLiveTypeId } from "./impl/TestLive.js"
 
-/**
- * @since 2.0.0
- */
-export const TestLiveTypeId = Symbol.for("effect/TestLive")
+export * from "./impl/TestLive.js"
+export * from "./internal/Jumpers/TestLive.js"
 
-/**
- * @since 2.0.0
- */
-export type TestLiveTypeId = typeof TestLiveTypeId
+export declare namespace TestLive {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/TestLive.js"
+}
 
 /**
  * The `Live` trait provides access to the "live" default Effect services from
@@ -27,29 +20,5 @@ export type TestLiveTypeId = typeof TestLiveTypeId
  */
 export interface TestLive {
   readonly [TestLiveTypeId]: TestLiveTypeId
-  provide<R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  provide<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
-
-/**
- * @since 2.0.0
- */
-export const TestLive: Context.Tag<TestLive, TestLive> = Context.Tag<TestLive>(
-  Symbol.for("effect/TestLive")
-)
-
-/** @internal */
-class LiveImpl implements TestLive {
-  readonly [TestLiveTypeId]: TestLiveTypeId = TestLiveTypeId
-  constructor(readonly services: Context.Context<DefaultServices.DefaultServices>) {}
-  provide<R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> {
-    return core.fiberRefLocallyWith(
-      defaultServices.currentServices,
-      Context.merge(this.services)
-    )(effect)
-  }
-}
-
-/**
- * @since 2.0.0
- */
-export const make = (services: Context.Context<DefaultServices.DefaultServices>): TestLive => new LiveImpl(services)

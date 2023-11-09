@@ -1,8 +1,11 @@
-/**
- * @since 2.0.0
- */
-import * as Context from "./Context.js"
+export * from "./impl/TestConfig.js"
+export * from "./internal/Jumpers/TestConfig.js"
 
+export declare namespace TestConfig {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/TestConfig.js"
+}
 /**
  * The `TestConfig` service provides access to default configuration settings
  * used by tests, including the number of times to repeat tests to ensure
@@ -30,20 +33,3 @@ export interface TestConfig {
    */
   readonly shrinks: number
 }
-
-/**
- * @since 2.0.0
- */
-export const TestConfig: Context.Tag<TestConfig, TestConfig> = Context.Tag<TestConfig>(
-  Symbol.for("effect/TestConfig")
-)
-
-/**
- * @since 2.0.0
- */
-export const make = (params: {
-  readonly repeats: number
-  readonly retries: number
-  readonly samples: number
-  readonly shrinks: number
-}): TestConfig => params

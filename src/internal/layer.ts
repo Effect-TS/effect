@@ -903,7 +903,7 @@ export const scope: Layer.Layer<never, never, Scope.Scope.Closeable> = scopedCon
       fiberRuntime.scopeMake(),
       (scope, exit) => scope.close(exit)
     ),
-    (scope) => Context.make(Scope.Scope, scope)
+    (scope) => Context.make(Scope.Tag, scope)
   )
 )
 

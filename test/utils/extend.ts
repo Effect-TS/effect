@@ -14,7 +14,7 @@ export type API = TestAPI<{}>
 
 export const it: API = V.it
 
-const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestEnvironment.TestContext)
+const TestEnv = Layer.provide(Logger.remove(Logger.defaultLogger), TestEnvironment.Tag)
 
 export const effect = (() => {
   const f = <E, A>(

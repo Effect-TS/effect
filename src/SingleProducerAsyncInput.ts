@@ -1,12 +1,16 @@
-/**
- * @since 2.0.0
- */
-import type * as Cause from "./Cause.js"
-import type * as Effect from "./Effect.js"
-import type * as Either from "./Either.js"
-import type * as Exit from "./Exit.js"
-import * as internal from "./internal/channel/singleProducerAsyncInput.js"
+import type { Effect } from "./Effect.js"
+import type { Either } from "./Either.js"
+import type { Exit } from "./Exit.js"
+import type { AsyncInputConsumer, AsyncInputProducer } from "./impl/SingleProducerAsyncInput.js"
 
+export * from "./impl/SingleProducerAsyncInput.js"
+export * from "./internal/Jumpers/SingleProducerAsyncInput.js"
+
+export declare namespace SingleProducerAsyncInput {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/SingleProducerAsyncInput.js"
+}
 /**
  * An MVar-like abstraction for sending data to channels asynchronously which is
  * designed for one producer and multiple consumers.
@@ -29,40 +33,6 @@ import * as internal from "./internal/channel/singleProducerAsyncInput.js"
 export interface SingleProducerAsyncInput<Err, Elem, Done>
   extends AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
 {
-  close(): Effect.Effect<never, never, unknown>
-  take(): Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
+  close(): Effect<never, never, unknown>
+  take(): Effect<never, never, Exit<Either<Err, Done>, Elem>>
 }
-
-/**
- * Producer-side view of `SingleProducerAsyncInput` for variance purposes.
- *
- * @since 2.0.0
- * @category models
- */
-export interface AsyncInputProducer<Err, Elem, Done> {
-  awaitRead(): Effect.Effect<never, never, unknown>
-  done(value: Done): Effect.Effect<never, never, unknown>
-  emit(element: Elem): Effect.Effect<never, never, unknown>
-  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown>
-}
-
-/**
- * Consumer-side view of `SingleProducerAsyncInput` for variance purposes.
- *
- * @since 2.0.0
- * @category models
- */
-export interface AsyncInputConsumer<Err, Elem, Done> {
-  takeWith<A>(
-    onError: (cause: Cause.Cause<Err>) => A,
-    onElement: (element: Elem) => A,
-    onDone: (value: Done) => A
-  ): Effect.Effect<never, never, A>
-}
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const make: <Err, Elem, Done>() => Effect.Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> =
-  internal.make

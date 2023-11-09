@@ -1,47 +1,34 @@
-/**
- * @since 2.0.0
- */
-import type * as HashSet from "./HashSet.js"
-import * as internal from "./internal/metric/registry.js"
-import type * as MetricHook from "./MetricHook.js"
-import type * as MetricKey from "./MetricKey.js"
-import type * as MetricKeyType from "./MetricKeyType.js"
-import type * as MetricPair from "./MetricPair.js"
+import type { HashSet } from "./HashSet.js"
+import type { MetricRegistryTypeId } from "./impl/MetricRegistry.js"
+import type { MetricHook } from "./MetricHook.js"
+import type { MetricKey } from "./MetricKey.js"
+import type { MetricKeyType } from "./MetricKeyType.js"
+import type { MetricPair } from "./MetricPair.js"
 
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const MetricRegistryTypeId: unique symbol = internal.MetricRegistryTypeId
+export * from "./impl/MetricRegistry.js"
+export * from "./internal/Jumpers/MetricRegistry.js"
 
-/**
- * @since 2.0.0
- * @category symbols
- */
-export type MetricRegistryTypeId = typeof MetricRegistryTypeId
-
+export declare namespace MetricRegistry {
+  // eslint-disable-next-line import/no-cycle
+  // @ts-expect-error
+  export type * from "./impl/MetricRegistry.js"
+}
 /**
  * @since 2.0.0
  * @category models
  */
 export interface MetricRegistry {
   readonly [MetricRegistryTypeId]: MetricRegistryTypeId
-  snapshot(): HashSet.HashSet<MetricPair.MetricPair.Untyped>
-  get<Type extends MetricKeyType.MetricKeyType<any, any>>(
-    key: MetricKey.MetricKey<Type>
-  ): MetricHook.MetricHook<
-    MetricKeyType.MetricKeyType.InType<typeof key["keyType"]>,
-    MetricKeyType.MetricKeyType.OutType<typeof key["keyType"]>
+  snapshot(): HashSet<MetricPair.Untyped>
+  get<Type extends MetricKeyType<any, any>>(
+    key: MetricKey<Type>
+  ): MetricHook<
+    MetricKeyType.InType<typeof key["keyType"]>,
+    MetricKeyType.OutType<typeof key["keyType"]>
   >
-  getCounter<A extends (number | bigint)>(key: MetricKey.MetricKey.Counter<A>): MetricHook.MetricHook.Counter<A>
-  getFrequency(key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency
-  getGauge<A extends (number | bigint)>(key: MetricKey.MetricKey.Gauge<A>): MetricHook.MetricHook.Gauge<A>
-  getHistogram(key: MetricKey.MetricKey.Histogram): MetricHook.MetricHook.Histogram
-  getSummary(key: MetricKey.MetricKey.Summary): MetricHook.MetricHook.Summary
+  getCounter<A extends (number | bigint)>(key: MetricKey.Counter<A>): MetricHook.Counter<A>
+  getFrequency(key: MetricKey.Frequency): MetricHook.Frequency
+  getGauge<A extends (number | bigint)>(key: MetricKey.Gauge<A>): MetricHook.Gauge<A>
+  getHistogram(key: MetricKey.Histogram): MetricHook.Histogram
+  getSummary(key: MetricKey.Summary): MetricHook.Summary
 }
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const make: (_: void) => MetricRegistry = internal.make

@@ -460,7 +460,7 @@ export const as = dual<
 
 /** @internal */
 export const _async = <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => void,
+  register: (emit: Emit.StreamEmit<R, E, A, void>) => void,
   outputBuffer = 16
 ): Stream.Stream<R, E, A> =>
   asyncOption((cb) => {
@@ -470,7 +470,7 @@ export const _async = <R, E, A>(
 
 /** @internal */
 export const asyncEffect = <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R, E, unknown>,
+  register: (emit: Emit.StreamEmit<R, E, A, void>) => Effect.Effect<R, E, unknown>,
   outputBuffer = 16
 ): Stream.Stream<R, E, A> =>
   pipe(
@@ -526,7 +526,7 @@ export const asyncEffect = <R, E, A>(
 /** @internal */
 export const asyncInterrupt = <R, E, A>(
   register: (
-    emit: Emit.Emit<R, E, A, void>
+    emit: Emit.StreamEmit<R, E, A, void>
   ) => Either.Either<Effect.Effect<R, never, unknown>, Stream.Stream<R, E, A>>,
   outputBuffer = 16
 ): Stream.Stream<R, E, A> =>
@@ -589,7 +589,7 @@ export const asyncInterrupt = <R, E, A>(
 
 /** @internal */
 export const asyncOption = <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Option.Option<Stream.Stream<R, E, A>>,
+  register: (emit: Emit.StreamEmit<R, E, A, void>) => Option.Option<Stream.Stream<R, E, A>>,
   outputBuffer = 16
 ): Stream.Stream<R, E, A> =>
   asyncInterrupt(
@@ -603,7 +603,7 @@ export const asyncOption = <R, E, A>(
 
 /** @internal */
 export const asyncScoped = <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R, E, unknown>,
+  register: (emit: Emit.StreamEmit<R, E, A, void>) => Effect.Effect<R, E, unknown>,
   outputBuffer = 16
 ): Stream.Stream<Exclude<R, Scope.Scope>, E, A> =>
   pipe(

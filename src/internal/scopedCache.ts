@@ -435,7 +435,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
         core.flatMap(Scope.make(), (scope) =>
           pipe(
             this.scopedLookup(key),
-            core.provideContext(pipe(this.context, Context.add(Scope.Scope, scope))),
+            core.provideContext(pipe(this.context, Context.add(Scope.Tag, scope))),
             core.exit,
             core.map((exit) => [exit, ((exit) => Scope.close(scope, exit)) as Scope.Scope.Finalizer] as const)
           )),
