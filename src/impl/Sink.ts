@@ -75,7 +75,7 @@ export interface SinkUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 2.0.0
  * @category models
  */
-declare module "./Effect.js" {
+declare module "../Effect.js" {
   interface Effect<R, E, A> extends Sink<R, E, unknown, never, A> {}
   interface EffectUnifyIgnore {
     Sink?: true

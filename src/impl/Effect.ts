@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type { Effect } from "../Effect.js"
 import type * as Cause from "./Cause.js"
 import type * as Chunk from "./Chunk.js"
 import type * as Clock from "./Clock.js"
@@ -11,7 +12,6 @@ import type * as Context from "./Context.js"
 import type * as Deferred from "./Deferred.js"
 import type * as Duration from "./Duration.js"
 import type * as Either from "./Either.js"
-import type * as Equal from "./Equal.js"
 import type { Equivalence } from "./Equivalence.js"
 import type { ExecutionStrategy } from "./ExecutionStrategy.js"
 import type * as Exit from "./Exit.js"
@@ -39,7 +39,6 @@ import type { LogLevel } from "./LogLevel.js"
 import type * as Metric from "./Metric.js"
 import type * as MetricLabel from "./MetricLabel.js"
 import type * as Option from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Random from "./Random.js"
 import type * as Ref from "./Ref.js"
@@ -56,6 +55,8 @@ import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type { Concurrency } from "./Types.js"
 import type * as Unify from "./Unify.js"
+
+export type { Effect }
 
 // -------------------------------------------------------------------------------------
 // models
@@ -82,28 +83,6 @@ export const EffectTypeId: unique symbol = core.EffectTypeId
  * @category symbols
  */
 export type EffectTypeId = typeof EffectTypeId
-
-/**
- * The `Effect` interface defines a value that lazily describes a workflow or job.
- * The workflow requires some context `R`, and may fail with an error of type `E`,
- * or succeed with a value of type `A`.
- *
- * `Effect` values model resourceful interaction with the outside world, including
- * synchronous, asynchronous, concurrent, and parallel interaction. They use a
- * fiber-based concurrency model, with built-in support for scheduling, fine-grained
- * interruption, structured concurrency, and high scalability.
- *
- * To run an `Effect` value, you need a `Runtime`, which is a type that is capable
- * of executing `Effect` values.
- *
- * @since 2.0.0
- * @category models
- */
-export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
-  readonly [Unify.typeSymbol]?: unknown
-  readonly [Unify.unifySymbol]?: EffectUnify<this>
-  readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
-}
 
 /**
  * @since 2.0.0
@@ -190,53 +169,6 @@ declare module "./Option.js" {
     Tag?: true
     Either?: true
   }
-}
-
-/**
- * @since 2.0.0
- */
-export declare namespace Effect {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<R, E, A> {
-    readonly [EffectTypeId]: VarianceStruct<R, E, A>
-  }
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface VarianceStruct<R, E, A> {
-    readonly _V: string
-    readonly _R: (_: never) => R
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
-  }
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Unify<Ret extends Effect<any, any, any>> = Effect<
-    Context<Ret>,
-    Error<Ret>,
-    Success<Ret>
-  >
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Context<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _R : never
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Error<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _E : never
-  /**
-   * @since 2.0.0
-   * @category type-level
-   */
-  export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _A : never
 }
 
 // -------------------------------------------------------------------------------------
