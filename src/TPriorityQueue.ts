@@ -220,5 +220,4 @@ export const toChunk: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Chun
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, ReadonlyArray<A>> =
-  internal.toReadonlyArray
+export const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Array<A>> = internal.toArray

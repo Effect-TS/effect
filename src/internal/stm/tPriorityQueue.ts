@@ -250,7 +250,7 @@ export const toChunk = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<neve
   })
 
 /** @internal */
-export const toReadonlyArray = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, ReadonlyArray<A>> =>
+export const toArray = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Array<A>> =>
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {

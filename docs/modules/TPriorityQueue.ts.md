@@ -17,8 +17,8 @@ Added in v2.0.0
   - [fromIterable](#fromiterable)
   - [make](#make)
 - [destructors](#destructors)
+  - [toArray](#toarray)
   - [toChunk](#tochunk)
-  - [toReadonlyArray](#toreadonlyarray)
 - [getters](#getters)
   - [isEmpty](#isempty)
   - [isNonEmpty](#isnonempty)
@@ -87,6 +87,18 @@ Added in v2.0.0
 
 # destructors
 
+## toArray
+
+Collects all values into an array.
+
+**Signature**
+
+```ts
+export declare const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A[]>
+```
+
+Added in v2.0.0
+
 ## toChunk
 
 Collects all values into a `Chunk`.
@@ -95,18 +107,6 @@ Collects all values into a `Chunk`.
 
 ```ts
 export declare const toChunk: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Chunk.Chunk<A>>
-```
-
-Added in v2.0.0
-
-## toReadonlyArray
-
-Collects all values into an array.
-
-**Signature**
-
-```ts
-export declare const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, readonly A[]>
 ```
 
 Added in v2.0.0
