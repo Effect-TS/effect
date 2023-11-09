@@ -68,10 +68,10 @@ export const EffectPrototype: Effect.Effect<never, never, never> = {
 }
 
 /** @internal */
-export const CommitPrototype = {
+export const CommitPrototype: Effect.Effect<never, never, never> = {
   ...EffectPrototype,
   _op: OpCodes.OP_COMMIT
-}
+} as any
 
 /** @internal */
 export const StructuralCommitPrototype = {
