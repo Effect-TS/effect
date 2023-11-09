@@ -205,8 +205,8 @@ export const toHashSet = <A>(self: TSet.TSet<A>): STM.STM<never, never, HashSet.
   )
 
 /** @internal */
-export const toReadonlyArray = <A>(self: TSet.TSet<A>): STM.STM<never, never, ReadonlyArray<A>> =>
-  reduce<ReadonlyArray<A>, A>(
+export const toArray = <A>(self: TSet.TSet<A>): STM.STM<never, never, Array<A>> =>
+  reduce<Array<A>, A>(
     self,
     [],
     (acc, value) => [...acc, value]
@@ -214,7 +214,7 @@ export const toReadonlyArray = <A>(self: TSet.TSet<A>): STM.STM<never, never, Re
 
 /** @internal */
 export const toReadonlySet = <A>(self: TSet.TSet<A>): STM.STM<never, never, ReadonlySet<A>> =>
-  core.map(toReadonlyArray(self), (values) => new Set(values))
+  core.map(toArray(self), (values) => new Set(values))
 
 /** @internal */
 export const transform = dual<
