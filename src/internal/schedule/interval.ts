@@ -1,7 +1,7 @@
-import { Duration } from "../../Duration.js"
-import { dual } from "../../Function.js"
-import { Option } from "../../Option.js"
-import type { Interval } from "../../ScheduleInterval.js"
+import { Duration } from "../../exports/Duration.js"
+import { dual } from "../../exports/Function.js"
+import { Option } from "../../exports/Option.js"
+import type { Interval } from "../../exports/ScheduleInterval.js"
 
 /** @internal */
 const IntervalSymbolKey = "effect/ScheduleInterval"

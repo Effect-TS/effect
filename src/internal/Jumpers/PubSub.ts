@@ -1,1 +1,1 @@
-export * as PubSub from "../../impl/PubSub.js"
+export * as PubSub from "../../PubSub.js"

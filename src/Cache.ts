@@ -1,79 +1,181 @@
-import type { Effect } from "./Effect.js"
-import type { Either } from "./Either.js"
-import type { CacheTypeId, ConsumerCache } from "./impl/Cache.js"
+/**
+ * @since 2.0.0
+ */
+import type { Duration } from "./exports/Duration.js"
+import type { Effect } from "./exports/Effect.js"
+import type { Exit } from "./exports/Exit.js"
+import type { Option } from "./exports/Option.js"
+import * as internal from "./internal/cache.js"
 
-export * from "./impl/Cache.js"
-export * from "./internal/Jumpers/Cache.js"
+import type { Cache } from "./exports/Cache.js"
 
 /**
- * A `Cache` is defined in terms of a lookup function that, given a key of
- * type `Key`, can either fail with an error of type `Error` or succeed with a
- * value of type `Value`. Getting a value from the cache will either return
- * the previous result of the lookup function if it is available or else
- * compute a new result with the lookup function, put it in the cache, and
- * return it.
+ * @since 2.0.0
+ * @category symbols
+ */
+export const CacheTypeId: unique symbol = internal.CacheTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type CacheTypeId = typeof CacheTypeId
+
+/**
+ * A ConsumerCache models a portion of a cache which is safe to share without allowing to create new values or access existing ones.
  *
- * A cache also has a specified capacity and time to live. When the cache is
- * at capacity the least recently accessed values in the cache will be
- * removed to make room for new values. Getting a value with a life older than
- * the specified time to live will result in a new value being computed with
- * the lookup function and returned when available.
- *
- * The cache is safe for concurrent access. If multiple fibers attempt to get
- * the same key the lookup function will only be computed once and the result
- * will be returned to all fibers.
+ * It can be used safely to give over control for request management without leaking writer side details.
  *
  * @since 2.0.0
  * @category models
  */
-export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Value> {
+export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Error, Value> {
   /**
    * Retrieves the value associated with the specified key if it exists.
-   * Otherwise computes the value with the lookup function, puts it in the
-   * cache, and returns it.
+   * Otherwise returns `Option.none`.
    */
-  get(key: Key): Effect<never, Error, Value>
+  getOption(key: Key): Effect<never, Error, Option<Value>>
 
   /**
-   * Retrieves the value associated with the specified key if it exists as a left.
-   * Otherwise computes the value with the lookup function, puts it in the
-   * cache, and returns it as a right.
+   * Retrieves the value associated with the specified key if it exists and the
+   * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getEither(key: Key): Effect<never, Error, Either<Value, Value>>
+  getOptionComplete(key: Key): Effect<never, never, Option<Value>>
 
   /**
-   * Computes the value associated with the specified key, with the lookup
-   * function, and puts it in the cache. The difference between this and
-   * `get` method is that `refresh` triggers (re)computation of the value
-   * without invalidating it in the cache, so any request to the associated
-   * key can still be served while the value is being re-computed/retrieved
-   * by the lookup function. Additionally, `refresh` always triggers the
-   * lookup function, disregarding the last `Error`.
+   * Returns statistics for this cache.
    */
-  refresh(key: Key): Effect<never, Error, void>
+  cacheStats(): Effect<never, never, CacheStats>
 
   /**
-   * Associates the specified value with the specified key in the cache.
+   * Returns whether a value associated with the specified key exists in the
+   * cache.
    */
-  set<Key, Error, Value>(this: Cache<Key, Error, Value>, key: Key, value: Value): Effect<never, never, void>
+  contains(key: Key): Effect<never, never, boolean>
+
+  /**
+   * Returns statistics for the specified entry.
+   */
+  entryStats(key: Key): Effect<never, never, Option<EntryStats>>
+
+  /**
+   * Invalidates the value associated with the specified key.
+   */
+  invalidate(key: Key): Effect<never, never, void>
+
+  /**
+   * Invalidates the value associated with the specified key if the predicate holds.
+   */
+  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect<never, never, void>
+
+  /**
+   * Invalidates all values in the cache.
+   */
+  invalidateAll(): Effect<never, never, void>
+
+  /**
+   * Returns the approximate number of values in the cache.
+   */
+  size(): Effect<never, never, number>
+
+  /**
+   * Returns an approximation of the values in the cache.
+   */
+  keys<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect<never, never, Array<Key>>
+
+  /**
+   * Returns an approximation of the values in the cache.
+   */
+  values(): Effect<never, never, Array<Value>>
+
+  /**
+   * Returns an approximation of the values in the cache.
+   */
+  entries<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect<never, never, Array<[Key, Value]>>
 }
 
 /**
+ * Constructs a new cache with the specified capacity, time to live, and
+ * lookup function.
+ *
  * @since 2.0.0
+ * @category constructors
  */
-export declare namespace Cache {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<Key, Error, Value> {
-    readonly [CacheTypeId]: {
-      readonly _Key: (_: Key) => void
-      readonly _Error: (_: never) => Error
-      readonly _Value: (_: never) => Value
-    }
+export const make: <Key, Environment, Error, Value>(
+  options: {
+    readonly capacity: number
+    readonly timeToLive: Duration.DurationInput
+    readonly lookup: Lookup<Key, Environment, Error, Value>
   }
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./impl/Cache.js"
+) => Effect<Environment, never, Cache<Key, Error, Value>> = internal.make
+
+/**
+ * Constructs a new cache with the specified capacity, time to live, and
+ * lookup function, where the time to live can depend on the `Exit` value
+ * returned by the lookup function.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const makeWith: <Key, Environment, Error, Value>(
+  options: {
+    readonly capacity: number
+    readonly lookup: Lookup<Key, Environment, Error, Value>
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
+  }
+) => Effect<Environment, never, Cache<Key, Error, Value>> = internal.makeWith
+
+/**
+ * `CacheStats` represents a snapshot of statistics for the cache as of a
+ * point in time.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export interface CacheStats {
+  readonly hits: number
+  readonly misses: number
+  readonly size: number
 }
+
+/**
+ * Constructs a new `CacheStats` from the specified values.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const makeCacheStats: (
+  options: {
+    readonly hits: number
+    readonly misses: number
+    readonly size: number
+  }
+) => CacheStats = internal.makeCacheStats
+
+/**
+ * Represents a snapshot of statistics for an entry in the cache.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export interface EntryStats {
+  readonly loadedMillis: number
+}
+
+/**
+ * Constructs a new `EntryStats` from the specified values.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const makeEntryStats: (loadedMillis: number) => EntryStats = internal.makeEntryStats
+
+/**
+ * A `Lookup` represents a lookup function that, given a key of type `Key`, can
+ * return an effect that will either produce a value of type `Value` or fail
+ * with an error of type `Error` using an environment of type `Environment`.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect<Environment, Error, Value>

@@ -1,1 +1,1 @@
-export * as TArray from "../../impl/TArray.js"
+export * as TArray from "../../TArray.js"

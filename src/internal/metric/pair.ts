@@ -1,8 +1,8 @@
-import type { MetricKey } from "../../MetricKey.js"
-import type { MetricKeyType } from "../../MetricKeyType.js"
-import type { MetricPair } from "../../MetricPair.js"
-import type { MetricState } from "../../MetricState.js"
-import { pipeArguments } from "../../Pipeable.js"
+import type { MetricKey } from "../../exports/MetricKey.js"
+import type { MetricKeyType } from "../../exports/MetricKeyType.js"
+import type { MetricPair } from "../../exports/MetricPair.js"
+import type { MetricState } from "../../exports/MetricState.js"
+import { pipeArguments } from "../../exports/Pipeable.js"
 
 /** @internal */
 const MetricPairSymbolKey = "effect/MetricPair"

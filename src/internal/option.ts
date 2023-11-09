@@ -2,11 +2,11 @@
  * @since 2.0.0
  */
 
-import { Equal } from "../Equal.js"
-import { Hash } from "../Hash.js"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import type { Option } from "../Option.js"
-import { hasProperty } from "../Predicate.js"
+import { Equal } from "../exports/Equal.js"
+import { Hash } from "../exports/Hash.js"
+import { NodeInspectSymbol, toJSON, toString } from "../exports/Inspectable.js"
+import type { Option } from "../exports/Option.js"
+import { hasProperty } from "../exports/Predicate.js"
 import { EffectPrototype } from "./effectable.js"
 
 const TypeId: Option.TypeId = Symbol.for("effect/Option") as Option.TypeId

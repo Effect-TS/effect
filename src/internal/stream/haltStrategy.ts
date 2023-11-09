@@ -1,5 +1,5 @@
-import { dual } from "../../Function.js"
-import type { HaltStrategy } from "../../StreamHaltStrategy.js"
+import { dual } from "../../exports/Function.js"
+import type { HaltStrategy } from "../../exports/StreamHaltStrategy.js"
 import * as OpCodes from "../opCodes/streamHaltStrategy.js"
 
 /** @internal */

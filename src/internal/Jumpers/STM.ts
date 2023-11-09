@@ -1,1 +1,1 @@
-export * as STM from "../../impl/STM.js"
+export * as STM from "../../STM.js"

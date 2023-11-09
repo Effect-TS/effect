@@ -1,5 +1,5 @@
-import type { Console } from "../../Console.js"
-import { Context } from "../../Context.js"
+import type { Console } from "../../exports/Console.js"
+import { Context } from "../../exports/Context.js"
 import * as core from "../core.js"
 
 /** @internal */

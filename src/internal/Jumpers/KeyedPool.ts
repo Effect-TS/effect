@@ -1,1 +1,1 @@
-export * as KeyedPool from "../../impl/KeyedPool.js"
+export * as KeyedPool from "../../KeyedPool.js"

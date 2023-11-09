@@ -1,4 +1,4 @@
-import type { Exit } from "../../../Exit.js"
+import type { Exit } from "../../../exports/Exit.js"
 import * as OpCodes from "../opCodes/tryCommit.js"
 import type { Journal } from "./journal.js"
 

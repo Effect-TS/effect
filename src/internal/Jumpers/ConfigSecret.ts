@@ -1,1 +1,1 @@
-export * as ConfigSecret from "../../impl/ConfigSecret.js"
+export * as ConfigSecret from "../../ConfigSecret.js"

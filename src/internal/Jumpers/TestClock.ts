@@ -1,1 +1,1 @@
-export * as TestClock from "../../impl/TestClock.js"
+export * as TestClock from "../../TestClock.js"

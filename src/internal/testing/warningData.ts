@@ -1,4 +1,4 @@
-import type { Fiber } from "../../Fiber.js"
+import type { Fiber } from "../../exports/Fiber.js"
 
 /**
  * `WarningData` describes the state of the warning message that is displayed

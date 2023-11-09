@@ -1,7 +1,7 @@
-import { Chunk } from "../../Chunk.js"
-import type { Differ } from "../../Differ.js"
-import { dual } from "../../Function.js"
-import { HashSet } from "../../HashSet.js"
+import { Chunk } from "../../exports/Chunk.js"
+import type { Differ } from "../../exports/Differ.js"
+import { dual } from "../../exports/Function.js"
+import { HashSet } from "../../exports/HashSet.js"
 import { Structural } from "../data.js"
 
 /** @internal */

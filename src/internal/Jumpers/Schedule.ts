@@ -1,1 +1,1 @@
-export * as Schedule from "../../impl/Schedule.js"
+export * as Schedule from "../../Schedule.js"

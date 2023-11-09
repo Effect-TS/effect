@@ -1,1 +1,1 @@
-export * as NonEmptyIterable from "../../impl/NonEmptyIterable.js"
+export * as NonEmptyIterable from "../../NonEmptyIterable.js"

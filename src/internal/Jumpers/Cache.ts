@@ -1,1 +1,1 @@
-export * as Cache from "../../impl/Cache.js"
+export * as Cache from "../../Cache.js"

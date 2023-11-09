@@ -1,10 +1,10 @@
-import type { Effect } from "../../Effect.js"
-import type { Either } from "../../Either.js"
-import type { Exit } from "../../Exit.js"
-import type { Fiber } from "../../Fiber.js"
-import { dual } from "../../Function.js"
-import type { MergeState } from "../../MergeState.js"
-import { hasProperty } from "../../Predicate.js"
+import type { Effect } from "../../exports/Effect.js"
+import type { Either } from "../../exports/Either.js"
+import type { Exit } from "../../exports/Exit.js"
+import type { Fiber } from "../../exports/Fiber.js"
+import { dual } from "../../exports/Function.js"
+import type { MergeState } from "../../exports/MergeState.js"
+import { hasProperty } from "../../exports/Predicate.js"
 import * as OpCodes from "../opCodes/channelMergeState.js"
 
 /** @internal */

@@ -16,7 +16,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "effect-test": path.join(__dirname, "test"),
-      "effect": path.join(__dirname, "src")
+      "effect/impl": path.join(__dirname, "src"),
+      "effect/internal": path.join(__dirname, "src", "internal"),
+      "effect": path.join(__dirname, "src", "exports")
     }
   }
 })

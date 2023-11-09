@@ -1,7 +1,7 @@
-import { Chunk } from "../../Chunk.js"
-import type { Differ } from "../../Differ.js"
-import { Equal } from "../../Equal.js"
-import { dual, pipe } from "../../Function.js"
+import { Chunk } from "../../exports/Chunk.js"
+import type { Differ } from "../../exports/Differ.js"
+import { Equal } from "../../exports/Equal.js"
+import { dual, pipe } from "../../exports/Function.js"
 import * as Data from "../data.js"
 
 /** @internal */

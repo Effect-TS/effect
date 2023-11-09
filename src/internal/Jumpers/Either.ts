@@ -1,1 +1,1 @@
-export * as Either from "../../impl/Either.js"
+export * as Either from "../../Either.js"

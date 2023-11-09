@@ -1,1 +1,1 @@
-export * as Channel from "../../impl/Channel.js"
+export * as Channel from "../../Channel.js"

@@ -1,1 +1,1 @@
-export * as Random from "../../impl/Random.js"
+export * as Random from "../../Random.js"

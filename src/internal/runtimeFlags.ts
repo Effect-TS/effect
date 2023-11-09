@@ -1,7 +1,7 @@
-import type { Differ } from "../Differ.js"
-import { dual } from "../Function.js"
-import type { RuntimeFlags } from "../RuntimeFlags.js"
-import type { RuntimeFlagsPatch } from "../RuntimeFlagsPatch.js"
+import type { Differ } from "../exports/Differ.js"
+import { dual } from "../exports/Function.js"
+import type { RuntimeFlags } from "../exports/RuntimeFlags.js"
+import type { RuntimeFlagsPatch } from "../exports/RuntimeFlagsPatch.js"
 import * as internalDiffer from "./differ.js"
 import * as runtimeFlagsPatch from "./runtimeFlagsPatch.js"
 

@@ -1,5 +1,5 @@
-import type { Effect } from "../Effect.js"
-import type { Concurrency } from "../Types.js"
+import type { Effect } from "../exports/Effect.js"
+import type { Concurrency } from "../exports/Types.js"
 import * as core from "./core.js"
 
 /** @internal */

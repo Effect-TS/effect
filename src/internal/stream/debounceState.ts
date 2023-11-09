@@ -1,5 +1,5 @@
-import type { Chunk } from "../../Chunk.js"
-import type { Fiber } from "../../Fiber.js"
+import type { Chunk } from "../../exports/Chunk.js"
+import type { Fiber } from "../../exports/Fiber.js"
 import type { HandoffSignal } from "./handoffSignal.js"
 
 /** @internal */

@@ -1,5 +1,5 @@
-import type { Cause } from "../../Cause.js"
-import type { Chunk } from "../../Chunk.js"
+import type { Cause } from "../../exports/Cause.js"
+import type { Chunk } from "../../exports/Chunk.js"
 import type { SinkEndReason } from "./sinkEndReason.js"
 
 /** @internal */

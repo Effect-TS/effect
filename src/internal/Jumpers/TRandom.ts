@@ -1,1 +1,1 @@
-export * as TRandom from "../../impl/TRandom.js"
+export * as TRandom from "../../TRandom.js"

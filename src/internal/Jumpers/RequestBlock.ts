@@ -1,1 +1,1 @@
-export * as RequestBlock from "../../impl/RequestBlock.js"
+export * as RequestBlock from "../../RequestBlock.js"

@@ -1,1 +1,1 @@
-export * as BigInt from "../../impl/BigInt.js"
+export * as BigInt from "../../BigInt.js"

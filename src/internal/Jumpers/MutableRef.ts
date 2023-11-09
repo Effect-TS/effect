@@ -1,1 +1,1 @@
-export * as MutableRef from "../../impl/MutableRef.js"
+export * as MutableRef from "../../MutableRef.js"

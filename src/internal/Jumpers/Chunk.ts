@@ -1,1 +1,1 @@
-export * as Chunk from "../../impl/Chunk.js"
+export * as Chunk from "../../Chunk.js"

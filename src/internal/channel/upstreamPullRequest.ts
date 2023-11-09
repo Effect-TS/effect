@@ -1,6 +1,6 @@
-import { dual } from "../../Function.js"
-import { hasProperty } from "../../Predicate.js"
-import type { UpstreamPullRequest } from "../../UpstreamPullRequest.js"
+import { dual } from "../../exports/Function.js"
+import { hasProperty } from "../../exports/Predicate.js"
+import type { UpstreamPullRequest } from "../../exports/UpstreamPullRequest.js"
 import * as OpCodes from "../opCodes/channelUpstreamPullRequest.js"
 
 /** @internal */

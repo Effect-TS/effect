@@ -1,8 +1,8 @@
-import { Chunk } from "../../Chunk.js"
-import type { Context, Tag } from "../../Context.js"
-import type { Differ } from "../../Differ.js"
-import { Equal } from "../../Equal.js"
-import { dual } from "../../Function.js"
+import { Chunk } from "../../exports/Chunk.js"
+import type { Context, Tag } from "../../exports/Context.js"
+import type { Differ } from "../../exports/Differ.js"
+import { Equal } from "../../exports/Equal.js"
+import { dual } from "../../exports/Function.js"
 import { makeContext } from "../context.js"
 import { Structural } from "../data.js"
 

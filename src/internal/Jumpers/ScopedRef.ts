@@ -1,1 +1,1 @@
-export * as ScopedRef from "../../impl/ScopedRef.js"
+export * as ScopedRef from "../../ScopedRef.js"

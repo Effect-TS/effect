@@ -1,24 +1,43 @@
-import type { Effect } from "./Effect.js"
-import type { TestLiveTypeId } from "./impl/TestLive.js"
+/**
+ * @since 2.0.0
+ */
+import { Context } from "./exports/Context.js"
+import type { DefaultServices } from "./exports/DefaultServices.js"
+import type { Effect } from "./exports/Effect.js"
+import type { TestLive } from "./exports/TestLive.js"
+import * as core from "./internal/core.js"
+import * as defaultServices from "./internal/defaultServices.js"
 
-export * from "./impl/TestLive.js"
-export * from "./internal/Jumpers/TestLive.js"
+/**
+ * @since 2.0.0
+ */
+export const TestLiveTypeId = Symbol.for("effect/TestLive")
 
-export declare namespace TestLive {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./impl/TestLive.js"
+/**
+ * @since 2.0.0
+ */
+export type TestLiveTypeId = typeof TestLiveTypeId
+
+/**
+ * @since 2.0.0
+ */
+export const Tag: Context.Tag<TestLive, TestLive> = Context.Tag<TestLive>(
+  Symbol.for("effect/TestLive")
+)
+
+/** @internal */
+class LiveImpl implements TestLive {
+  readonly [TestLiveTypeId]: TestLiveTypeId = TestLiveTypeId
+  constructor(readonly services: Context<DefaultServices>) {}
+  provide<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
+    return core.fiberRefLocallyWith(
+      defaultServices.currentServices,
+      Context.merge(this.services)
+    )(effect)
+  }
 }
 
 /**
- * The `Live` trait provides access to the "live" default Effect services from
- * within tests for workflows such as printing test results to the console or
- * timing out tests where it is necessary to access the real implementations of
- * these services.
- *
  * @since 2.0.0
  */
-export interface TestLive {
-  readonly [TestLiveTypeId]: TestLiveTypeId
-  provide<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A>
-}
+export const make = (services: Context<DefaultServices>): TestLive => new LiveImpl(services)

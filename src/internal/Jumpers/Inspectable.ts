@@ -1,1 +1,1 @@
-export * as Inspectable from "../../impl/Inspectable.js"
+export * as Inspectable from "../../Inspectable.js"

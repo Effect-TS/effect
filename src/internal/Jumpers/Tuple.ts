@@ -1,1 +1,1 @@
-export * as Tuple from "../../impl/Tuple.js"
+export * as Tuple from "../../Tuple.js"

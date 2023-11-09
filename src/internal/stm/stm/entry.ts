@@ -1,4 +1,4 @@
-import type { TRef } from "../../../TRef.js"
+import type { TRef } from "../../../exports/TRef.js"
 import { Versioned } from "./versioned.js"
 
 export * as Entry from "./entry.js"

@@ -1,1 +1,1 @@
-export * as FiberStatus from "../../impl/FiberStatus.js"
+export * as FiberStatus from "../../FiberStatus.js"

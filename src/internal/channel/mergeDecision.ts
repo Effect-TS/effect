@@ -1,8 +1,8 @@
-import type { Effect } from "../../Effect.js"
-import type { Exit } from "../../Exit.js"
-import { dual } from "../../Function.js"
-import type { MergeDecision } from "../../MergeDecision.js"
-import { hasProperty } from "../../Predicate.js"
+import type { Effect } from "../../exports/Effect.js"
+import type { Exit } from "../../exports/Exit.js"
+import { dual } from "../../exports/Function.js"
+import type { MergeDecision } from "../../exports/MergeDecision.js"
+import { hasProperty } from "../../exports/Predicate.js"
 import * as OpCodes from "../opCodes/channelMergeDecision.js"
 
 /** @internal */

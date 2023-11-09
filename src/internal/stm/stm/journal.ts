@@ -1,4 +1,4 @@
-import type { TRef } from "../../../TRef.js"
+import type { TRef } from "../../../exports/TRef.js"
 import { Entry } from "./entry.js"
 import type { TxnId } from "./txnId.js"
 

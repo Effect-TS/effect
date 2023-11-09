@@ -1,1 +1,1 @@
-export * as TQueue from "../../impl/TQueue.js"
+export * as TQueue from "../../TQueue.js"

@@ -1,1 +1,1 @@
-export * as Differ from "../../impl/Differ.js"
+export * as Differ from "../../Differ.js"

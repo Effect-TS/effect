@@ -1,9 +1,9 @@
-import type { Cause } from "../Cause.js"
-import type { ConfigError } from "../ConfigError.js"
-import { Either } from "../Either.js"
-import { constFalse, constTrue, dual, pipe } from "../Function.js"
-import { hasProperty } from "../Predicate.js"
-import { ReadonlyArray as RA } from "../ReadonlyArray.js"
+import type { Cause } from "../exports/Cause.js"
+import type { ConfigError } from "../exports/ConfigError.js"
+import { Either } from "../exports/Either.js"
+import { constFalse, constTrue, dual, pipe } from "../exports/Function.js"
+import { hasProperty } from "../exports/Predicate.js"
+import { ReadonlyArray as RA } from "../exports/ReadonlyArray.js"
 import * as OpCodes from "./opCodes/configError.js"
 
 /** @internal */

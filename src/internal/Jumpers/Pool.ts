@@ -1,1 +1,1 @@
-export * as Pool from "../../impl/Pool.js"
+export * as Pool from "../../Pool.js"

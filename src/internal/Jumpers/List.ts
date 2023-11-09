@@ -1,1 +1,1 @@
-export * as List from "../../impl/List.js"
+export * as List from "../../List.js"

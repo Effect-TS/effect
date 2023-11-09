@@ -1,1 +1,1 @@
-export * as Stream from "../../impl/Stream.js"
+export * as Stream from "../../Stream.js"

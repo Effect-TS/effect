@@ -1,9 +1,9 @@
-import { equals } from "../../Equal.js"
-import type { FiberId } from "../../FiberId.js"
-import type { FiberRefs } from "../../FiberRefs.js"
-import type { FiberRefsPatch } from "../../FiberRefsPatch.js"
-import { dual } from "../../Function.js"
-import { ReadonlyArray as Arr } from "../../ReadonlyArray.js"
+import { equals } from "../../exports/Equal.js"
+import type { FiberId } from "../../exports/FiberId.js"
+import type { FiberRefs } from "../../exports/FiberRefs.js"
+import type { FiberRefsPatch } from "../../exports/FiberRefsPatch.js"
+import { dual } from "../../exports/Function.js"
+import { ReadonlyArray as Arr } from "../../exports/ReadonlyArray.js"
 import * as _fiberRefs from "../fiberRefs.js"
 
 /** @internal */

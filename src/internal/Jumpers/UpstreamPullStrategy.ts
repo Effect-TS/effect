@@ -1,1 +1,1 @@
-export * as UpstreamPullStrategy from "../../impl/UpstreamPullStrategy.js"
+export * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"

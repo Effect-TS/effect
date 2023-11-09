@@ -1,1 +1,1 @@
-export * as BigDecimal from "../../impl/BigDecimal.js"
+export * as BigDecimal from "../../BigDecimal.js"

@@ -1,1 +1,1 @@
-export * as ScheduleDecision from "../../impl/ScheduleDecision.js"
+export * as ScheduleDecision from "../../ScheduleDecision.js"

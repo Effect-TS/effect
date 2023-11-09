@@ -1,9 +1,9 @@
-import { Chunk } from "../../Chunk.js"
-import type { Differ } from "../../Differ.js"
-import type { Either } from "../../Either.js"
-import * as E from "../../Either.js"
-import { Equal } from "../../Equal.js"
-import { dual } from "../../Function.js"
+import { Chunk } from "../../exports/Chunk.js"
+import type { Differ } from "../../exports/Differ.js"
+import type { Either } from "../../exports/Either.js"
+import * as E from "../../exports/Either.js"
+import { Equal } from "../../exports/Equal.js"
+import { dual } from "../../exports/Function.js"
 import { Structural } from "../data.js"
 
 /** @internal */

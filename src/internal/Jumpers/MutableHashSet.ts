@@ -1,1 +1,1 @@
-export * as MutableHashSet from "../../impl/MutableHashSet.js"
+export * as MutableHashSet from "../../MutableHashSet.js"

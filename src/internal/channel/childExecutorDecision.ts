@@ -1,6 +1,6 @@
-import type { ChildExecutorDecision } from "../../ChildExecutorDecision.js"
-import { dual } from "../../Function.js"
-import { hasProperty } from "../../Predicate.js"
+import type { ChildExecutorDecision } from "../../exports/ChildExecutorDecision.js"
+import { dual } from "../../exports/Function.js"
+import { hasProperty } from "../../exports/Predicate.js"
 import * as OpCodes from "../opCodes/channelChildExecutorDecision.js"
 
 /** @internal */

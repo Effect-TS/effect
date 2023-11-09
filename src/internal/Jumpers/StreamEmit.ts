@@ -1,1 +1,1 @@
-export * as StreamEmit from "../../impl/StreamEmit.js"
+export * as StreamEmit from "../../StreamEmit.js"

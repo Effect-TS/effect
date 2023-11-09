@@ -1,9 +1,9 @@
-import { Chunk } from "../Chunk.js"
-import type { ConfigSecret } from "../ConfigSecret.js"
-import { Equal } from "../Equal.js"
-import { pipe } from "../Function.js"
-import { Hash } from "../Hash.js"
-import { hasProperty } from "../Predicate.js"
+import { Chunk } from "../exports/Chunk.js"
+import type { ConfigSecret } from "../exports/ConfigSecret.js"
+import { Equal } from "../exports/Equal.js"
+import { pipe } from "../exports/Function.js"
+import { Hash } from "../exports/Hash.js"
+import { hasProperty } from "../exports/Predicate.js"
 
 /** @internal */
 const ConfigSecretSymbolKey = "effect/ConfigSecret"

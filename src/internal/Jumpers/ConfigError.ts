@@ -1,1 +1,1 @@
-export * as ConfigError from "../../impl/ConfigError.js"
+export * as ConfigError from "../../ConfigError.js"

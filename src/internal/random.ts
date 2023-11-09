@@ -1,9 +1,9 @@
-import { Chunk } from "../Chunk.js"
-import { Context } from "../Context.js"
-import type { Effect } from "../Effect.js"
-import { pipe } from "../Function.js"
-import type { Random } from "../Random.js"
-import { PCGRandom } from "../Utils.js"
+import { Chunk } from "../exports/Chunk.js"
+import { Context } from "../exports/Context.js"
+import type { Effect } from "../exports/Effect.js"
+import { pipe } from "../exports/Function.js"
+import type { Random } from "../exports/Random.js"
+import { PCGRandom } from "../exports/Utils.js"
 import * as core from "./core.js"
 
 /** @internal */

@@ -1,25 +1,20 @@
-import type { Clock } from "./Clock.js"
-import type { ConfigProvider } from "./ConfigProvider.js"
-import type { Console } from "./Console.js"
-import type { Random } from "./Random.js"
-import type { Tracer } from "./Tracer.js"
-
-export * from "./impl/DefaultServices.js"
-export * from "./internal/Jumpers/DefaultServices.js"
-
-export declare namespace DefaultServices {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./impl/DefaultServices.js"
-}
-/**
 /**
  * @since 2.0.0
- * @category models
  */
-export type DefaultServices =
-  | Clock
-  | Console
-  | Random
-  | ConfigProvider
-  | Tracer
+import type { Context } from "./exports/Context.js"
+import type { FiberRef } from "./exports/FiberRef.js"
+import * as internal from "./internal/defaultServices.js"
+
+import type { DefaultServices } from "./exports/DefaultServices.js"
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const liveServices: Context<DefaultServices> = internal.liveServices
+
+/**
+ * @since 2.0.0
+ * @category fiberRefs
+ */
+export const currentServices: FiberRef<Context<DefaultServices>> = internal.currentServices

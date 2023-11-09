@@ -1,1 +1,1 @@
-export * as TPubSub from "../../impl/TPubSub.js"
+export * as TPubSub from "../../TPubSub.js"

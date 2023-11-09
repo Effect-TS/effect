@@ -1,1 +1,1 @@
-export * as MetricKeyType from "../../impl/MetricKeyType.js"
+export * as MetricKeyType from "../../MetricKeyType.js"

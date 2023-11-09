@@ -1,1 +1,1 @@
-export * as MetricRegistry from "../../impl/MetricRegistry.js"
+export * as MetricRegistry from "../../MetricRegistry.js"

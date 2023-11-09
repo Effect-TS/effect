@@ -1,1 +1,1 @@
-export * as Predicate from "../../impl/Predicate.js"
+export * as Predicate from "../../Predicate.js"

@@ -1,1 +1,1 @@
-export * as ScopedCache from "../../impl/ScopedCache.js"
+export * as ScopedCache from "../../ScopedCache.js"

@@ -1,1 +1,1 @@
-export * as Match from "../../impl/Match.js"
+export * as Match from "../../Match.js"

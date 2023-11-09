@@ -1,1 +1,1 @@
-export * as SortedSet from "../../impl/SortedSet.js"
+export * as SortedSet from "../../SortedSet.js"

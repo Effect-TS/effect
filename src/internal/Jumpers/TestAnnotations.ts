@@ -1,1 +1,1 @@
-export * as TestAnnotations from "../../impl/TestAnnotations.js"
+export * as TestAnnotations from "../../TestAnnotations.js"

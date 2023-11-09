@@ -1,7 +1,7 @@
-import { dual } from "../../Function.js"
-import type { Option } from "../../Option.js"
-import { hasProperty } from "../../Predicate.js"
-import type { UpstreamPullStrategy } from "../../UpstreamPullStrategy.js"
+import { dual } from "../../exports/Function.js"
+import type { Option } from "../../exports/Option.js"
+import { hasProperty } from "../../exports/Predicate.js"
+import type { UpstreamPullStrategy } from "../../exports/UpstreamPullStrategy.js"
 import * as OpCodes from "../opCodes/channelUpstreamPullStrategy.js"
 
 /** @internal */

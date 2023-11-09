@@ -1,1 +1,1 @@
-export * as Equivalence from "../../impl/Equivalence.js"
+export * as Equivalence from "../../Equivalence.js"

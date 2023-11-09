@@ -1,1 +1,1 @@
-export * as MetricHook from "../../impl/MetricHook.js"
+export * as MetricHook from "../../MetricHook.js"

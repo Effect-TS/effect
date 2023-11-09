@@ -1,6 +1,6 @@
-import type { Cause } from "../Cause.js"
-import type { Effect } from "../Effect.js"
-import type { FiberStatus } from "../FiberStatus.js"
+import type { Cause } from "../exports/Cause.js"
+import type { Effect } from "../exports/Effect.js"
+import type { FiberStatus } from "../exports/FiberStatus.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 
 export * as FiberMessage from "./fiberMessage.js"

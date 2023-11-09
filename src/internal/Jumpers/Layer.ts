@@ -1,1 +1,1 @@
-export * as Layer from "../../impl/Layer.js"
+export * as Layer from "../../Layer.js"

@@ -1,1 +1,1 @@
-export * as HashMap from "../../impl/HashMap.js"
+export * as HashMap from "../../HashMap.js"

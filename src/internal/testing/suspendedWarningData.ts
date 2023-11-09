@@ -1,4 +1,4 @@
-import type { Fiber } from "../../Fiber.js"
+import type { Fiber } from "../../exports/Fiber.js"
 
 /** @internal */
 export type SuspendedWarningData = Start | Pending | Done

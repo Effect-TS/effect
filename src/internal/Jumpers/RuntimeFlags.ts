@@ -1,1 +1,1 @@
-export * as RuntimeFlags from "../../impl/RuntimeFlags.js"
+export * as RuntimeFlags from "../../RuntimeFlags.js"

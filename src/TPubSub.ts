@@ -1,41 +1,160 @@
-import type { HashSet } from "./HashSet.js"
-import type { TPubSubTypeId } from "./impl/TPubSub.js"
-import type * as internal from "./internal/stm/tPubSub.js"
-import type * as tQueue from "./internal/stm/tQueue.js"
-import type { TQueue } from "./TQueue.js"
-import type { TRef } from "./TRef.js"
-
-export * from "./impl/TPubSub.js"
-export * from "./internal/Jumpers/TPubSub.js"
-
-export declare namespace TPubSub {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./impl/TPubSub.js"
-}
 /**
  * @since 2.0.0
- * @category models
  */
-export interface TPubSub<A> extends TQueue.TEnqueue<A> {}
+import type { Effect } from "./exports/Effect.js"
+import * as internal from "./internal/stm/tPubSub.js"
+
+import type { Scope } from "./exports/Scope.js"
+import type { STM } from "./exports/STM.js"
+import type { TQueue } from "./exports/TQueue.js"
+
+import type { TPubSub } from "./exports/TPubSub.js"
+
 /**
- * @internal
  * @since 2.0.0
+ * @category symbols
  */
-export interface TPubSub<A> {
-  readonly [TPubSubTypeId]: TPubSubTypeId
-  /** @internal */
-  readonly pubsubSize: TRef<number>
-  /** @internal */
-  readonly publisherHead: TRef<TRef<internal.Node<A> | undefined>>
-  /** @internal */
-  readonly publisherTail: TRef<TRef<internal.Node<A> | undefined> | undefined>
-  /** @internal */
-  readonly requestedCapacity: number
-  /** @internal */
-  readonly strategy: tQueue.TQueueStrategy
-  /** @internal */
-  readonly subscriberCount: TRef<number>
-  /** @internal */
-  readonly subscribers: TRef<HashSet<TRef<TRef<internal.Node<A>> | undefined>>>
-}
+export const TPubSubTypeId: unique symbol = internal.TPubSubTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type TPubSubTypeId = typeof TPubSubTypeId
+
+/**
+ * Waits until the `TPubSub` is shutdown. The `STM` returned by this method will
+ * not resume until the queue has been shutdown. If the `TPubSub` is already
+ * shutdown, the `STM` will resume right away.
+ *
+ * @since 2.0.0
+ * @category mutations
+ */
+export const awaitShutdown: <A>(self: TPubSub<A>) => STM<never, never, void> = internal.awaitShutdown
+
+/**
+ * Creates a bounded `TPubSub` with the back pressure strategy. The `TPubSub` will retain
+ * messages until they have been taken by all subscribers, applying back
+ * pressure to publishers if the `TPubSub` is at capacity.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const bounded: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>> = internal.bounded
+
+/**
+ * Returns the number of elements the `TPubSub` can hold.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const capacity: <A>(self: TPubSub<A>) => number = internal.capacity
+
+/**
+ * Creates a bounded `TPubSub` with the dropping strategy. The `TPubSub` will drop new
+ * messages if the `TPubSub` is at capacity.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const dropping: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>> = internal.dropping
+
+/**
+ * Returns `true` if the `TPubSub` contains zero elements, `false` otherwise.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const isEmpty: <A>(self: TPubSub<A>) => STM<never, never, boolean> = internal.isEmpty
+
+/**
+ * Returns `true` if the `TPubSub` contains at least one element, `false`
+ * otherwise.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const isFull: <A>(self: TPubSub<A>) => STM<never, never, boolean> = internal.isFull
+
+/**
+ * Returns `true` if `shutdown` has been called, otherwise returns `false`.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const isShutdown: <A>(self: TPubSub<A>) => STM<never, never, boolean> = internal.isShutdown
+
+/**
+ * Publishes a message to the `TPubSub`, returning whether the message was published
+ * to the `TPubSub`.
+ *
+ * @since 2.0.0
+ * @category mutations
+ */
+export const publish: {
+  <A>(value: A): (self: TPubSub<A>) => STM<never, never, boolean>
+  <A>(self: TPubSub<A>, value: A): STM<never, never, boolean>
+} = internal.publish
+
+/**
+ * Publishes all of the specified messages to the `TPubSub`, returning whether they
+ * were published to the `TPubSub`.
+ *
+ * @since 2.0.0
+ * @category mutations
+ */
+export const publishAll: {
+  <A>(iterable: Iterable<A>): (self: TPubSub<A>) => STM<never, never, boolean>
+  <A>(self: TPubSub<A>, iterable: Iterable<A>): STM<never, never, boolean>
+} = internal.publishAll
+
+/**
+ * Retrieves the size of the `TPubSub`, which is equal to the number of elements
+ * in the `TPubSub`. This may be negative if fibers are suspended waiting for
+ * elements to be added to the `TPubSub`.
+ *
+ * @since 2.0.0
+ * @category getters
+ */
+export const size: <A>(self: TPubSub<A>) => STM<never, never, number> = internal.size
+
+/**
+ * Creates a bounded `TPubSub` with the sliding strategy. The `TPubSub` will add new
+ * messages and drop old messages if the `TPubSub` is at capacity.
+ *
+ * For best performance use capacities that are powers of two.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const sliding: <A>(requestedCapacity: number) => STM<never, never, TPubSub<A>> = internal.sliding
+
+/**
+ * Subscribes to receive messages from the `TPubSub`. The resulting subscription can
+ * be evaluated multiple times to take a message from the `TPubSub` each time. The
+ * caller is responsible for unsubscribing from the `TPubSub` by shutting down the
+ * queue.
+ *
+ * @since 2.0.0
+ * @category mutations
+ */
+export const subscribe: <A>(self: TPubSub<A>) => STM<never, never, TQueue.TDequeue<A>> = internal.subscribe
+
+/**
+ * Subscribes to receive messages from the `TPubSub`. The resulting subscription can
+ * be evaluated multiple times within the scope to take a message from the `TPubSub`
+ * each time.
+ *
+ * @since 2.0.0
+ * @category mutations
+ */
+export const subscribeScoped: <A>(self: TPubSub<A>) => Effect<Scope, never, TQueue.TDequeue<A>> =
+  internal.subscribeScoped
+
+/**
+ * Creates an unbounded `TPubSub`.
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const unbounded: <A>() => STM<never, never, TPubSub<A>> = internal.unbounded

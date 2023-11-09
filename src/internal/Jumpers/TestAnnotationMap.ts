@@ -1,1 +1,1 @@
-export * as TestAnnotationMap from "../../impl/TestAnnotationMap.js"
+export * as TestAnnotationMap from "../../TestAnnotationMap.js"

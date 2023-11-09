@@ -1,1 +1,1 @@
-export * as LogSpan from "../../impl/LogSpan.js"
+export * as LogSpan from "../../LogSpan.js"

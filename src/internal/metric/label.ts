@@ -1,9 +1,9 @@
-import { Equal } from "../../Equal.js"
-import { pipe } from "../../Function.js"
-import { Hash } from "../../Hash.js"
-import type { MetricLabel } from "../../MetricLabel.js"
-import { pipeArguments } from "../../Pipeable.js"
-import { hasProperty } from "../../Predicate.js"
+import { Equal } from "../../exports/Equal.js"
+import { pipe } from "../../exports/Function.js"
+import { Hash } from "../../exports/Hash.js"
+import type { MetricLabel } from "../../exports/MetricLabel.js"
+import { pipeArguments } from "../../exports/Pipeable.js"
+import { hasProperty } from "../../exports/Predicate.js"
 
 /** @internal */
 const MetricLabelSymbolKey = "effect/MetricLabel"

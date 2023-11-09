@@ -1,9 +1,9 @@
-import type { Cause } from "../../Cause.js"
-import { Chunk } from "../../Chunk.js"
-import { Effect } from "../../Effect.js"
-import { Option } from "../../Option.js"
-import { Queue } from "../../Queue.js"
-import type { Take } from "../../Take.js"
+import type { Cause } from "../../exports/Cause.js"
+import { Chunk } from "../../exports/Chunk.js"
+import { Effect } from "../../exports/Effect.js"
+import { Option } from "../../exports/Option.js"
+import { Queue } from "../../exports/Queue.js"
+import type { Take } from "../../exports/Take.js"
 import * as take from "../take.js"
 
 /** @internal */

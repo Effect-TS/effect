@@ -1,7 +1,7 @@
-import type { Cause } from "../../Cause.js"
-import type { Channel } from "../../Channel.js"
-import type { Effect } from "../../Effect.js"
-import { Exit } from "../../Exit.js"
+import type { Cause } from "../../exports/Cause.js"
+import type { Channel } from "../../exports/Channel.js"
+import type { Effect } from "../../exports/Effect.js"
+import { Exit } from "../../exports/Exit.js"
 import * as OpCodes from "../opCodes/continuation.js"
 
 /** @internal */

@@ -1,1 +1,1 @@
-export * as Supervisor from "../../impl/Supervisor.js"
+export * as Supervisor from "../../Supervisor.js"

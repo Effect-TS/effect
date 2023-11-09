@@ -1,5 +1,5 @@
-import { globalValue } from "../GlobalValue.js"
-import type { Request } from "../Request.js"
+import { globalValue } from "../exports/GlobalValue.js"
+import type { Request } from "../exports/Request.js"
 import { fiberRefUnsafeMake } from "./core.js"
 
 /** @internal */

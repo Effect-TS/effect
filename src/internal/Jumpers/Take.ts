@@ -1,1 +1,1 @@
-export * as Take from "../../impl/Take.js"
+export * as Take from "../../Take.js"

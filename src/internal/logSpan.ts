@@ -1,4 +1,4 @@
-import type { LogSpan } from "../LogSpan.js"
+import type { LogSpan } from "../exports/LogSpan.js"
 
 /** @internal */
 export const make = (label: string, startTime: number): LogSpan => ({

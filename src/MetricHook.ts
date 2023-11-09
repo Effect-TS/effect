@@ -1,78 +1,72 @@
-import type { MetricHookTypeId } from "./impl/MetricHook.js"
-import type { MetricState } from "./MetricState.js"
-import type { Pipeable } from "./Pipeable.js"
-
-export * from "./impl/MetricHook.js"
-export * from "./internal/Jumpers/MetricHook.js"
-
-export declare namespace MetricHook {
-  // eslint-disable-next-line import/no-cycle
-  // @ts-expect-error
-  export type * from "./impl/MetricHook.js"
-}
 /**
  * @since 2.0.0
- * @category models
  */
-export interface MetricHook<In, Out> extends MetricHook.Variance<In, Out>, Pipeable {
-  readonly get: () => Out
+import type { LazyArg } from "./exports/Function.js"
+import type { MetricKey } from "./exports/MetricKey.js"
+import * as internal from "./internal/metric/hook.js"
+
+import type { MetricHook } from "./exports/MetricHook.js"
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const MetricHookTypeId: unique symbol = internal.MetricHookTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type MetricHookTypeId = typeof MetricHookTypeId
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const make: <In, Out>(options: {
+  readonly get: LazyArg<Out>
   readonly update: (input: In) => void
-}
+}) => MetricHook<In, Out> = internal.make
 
 /**
  * @since 2.0.0
+ * @category constructors
  */
-export declare namespace MetricHook {
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Root = MetricHook<any, MetricState.Untyped>
+export const counter: <A extends (number | bigint)>(key: MetricKey.Counter<A>) => MetricHook.Counter<A> =
+  internal.counter
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Untyped = MetricHook<any, any>
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const frequency: (_key: MetricKey.Frequency) => MetricHook.Frequency = internal.frequency
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Counter<A extends (number | bigint)> = MetricHook<A, MetricState.Counter<A>>
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const gauge: {
+  (key: MetricKey.Gauge<number>, startAt: number): MetricHook.Gauge<number>
+  (key: MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.Gauge<bigint>
+} = internal.gauge
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Gauge<A extends (number | bigint)> = MetricHook<A, MetricState.Gauge<A>>
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const histogram: (key: MetricKey.Histogram) => MetricHook.Histogram = internal.histogram
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Frequency = MetricHook<string, MetricState.Frequency>
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const summary: (key: MetricKey.Summary) => MetricHook.Summary = internal.summary
 
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Histogram = MetricHook<number, MetricState.Histogram>
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export type Summary = MetricHook<readonly [number, number], MetricState.Summary>
-
-  /**
-   * @since 2.0.0
-   * @category models
-   */
-  export interface Variance<In, Out> {
-    readonly [MetricHookTypeId]: {
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
-    }
-  }
-}
+/**
+ * @since 2.0.0
+ * @category utils
+ */
+export const onUpdate: {
+  <In, Out>(f: (input: In) => void): (self: MetricHook<In, Out>) => MetricHook<In, Out>
+  <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void): MetricHook<In, Out>
+} = internal.onUpdate

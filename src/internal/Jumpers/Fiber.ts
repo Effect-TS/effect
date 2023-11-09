@@ -1,1 +1,1 @@
-export * as Fiber from "../../impl/Fiber.js"
+export * as Fiber from "../../Fiber.js"

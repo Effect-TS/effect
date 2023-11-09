@@ -1,1 +1,1 @@
-export * as Symbol from "../../impl/Symbol.js"
+export * as Symbol from "../../Symbol.js"

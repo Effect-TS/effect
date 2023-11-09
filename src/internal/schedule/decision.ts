@@ -1,7 +1,7 @@
-import { Chunk } from "../../Chunk.js"
-import type { ScheduleDecision } from "../../ScheduleDecision.js"
-import type { Interval } from "../../ScheduleInterval.js"
-import { ScheduleIntervals } from "../../ScheduleIntervals.js"
+import { Chunk } from "../../exports/Chunk.js"
+import type { ScheduleDecision } from "../../exports/ScheduleDecision.js"
+import type { Interval } from "../../exports/ScheduleInterval.js"
+import { ScheduleIntervals } from "../../exports/ScheduleIntervals.js"
 
 /** @internal */
 export const OP_CONTINUE = "Continue" as const

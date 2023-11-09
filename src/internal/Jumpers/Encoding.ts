@@ -1,1 +1,1 @@
-export * as Encoding from "../../impl/Encoding.js"
+export * as Encoding from "../../Encoding.js"

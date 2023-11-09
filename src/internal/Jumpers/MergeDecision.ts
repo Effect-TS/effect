@@ -1,1 +1,1 @@
-export * as MergeDecision from "../../impl/MergeDecision.js"
+export * as MergeDecision from "../../MergeDecision.js"

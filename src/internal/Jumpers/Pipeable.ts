@@ -1,1 +1,1 @@
-export * as Pipeable from "../../impl/Pipeable.js"
+export * as Pipeable from "../../Pipeable.js"

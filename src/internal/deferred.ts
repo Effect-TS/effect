@@ -1,5 +1,5 @@
-import type { Deferred } from "../Deferred.js"
-import type { Effect } from "../Effect.js"
+import type { Deferred } from "../exports/Deferred.js"
+import type { Effect } from "../exports/Effect.js"
 import * as OpCodes from "./opCodes/deferred.js"
 
 /** @internal */

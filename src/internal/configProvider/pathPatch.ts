@@ -1,10 +1,10 @@
-import type { ConfigError } from "../../ConfigError.js"
-import type { PathPatch } from "../../ConfigProviderPathPatch.js"
-import { Either } from "../../Either.js"
-import { dual, pipe } from "../../Function.js"
-import { List } from "../../List.js"
-import { Option } from "../../Option.js"
-import { ReadonlyArray as RA } from "../../ReadonlyArray.js"
+import type { ConfigError } from "../../exports/ConfigError.js"
+import type { PathPatch } from "../../exports/ConfigProviderPathPatch.js"
+import { Either } from "../../exports/Either.js"
+import { dual, pipe } from "../../exports/Function.js"
+import { List } from "../../exports/List.js"
+import { Option } from "../../exports/Option.js"
+import { ReadonlyArray as RA } from "../../exports/ReadonlyArray.js"
 import * as configError from "../configError.js"
 
 /** @internal */

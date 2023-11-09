@@ -1,1 +1,1 @@
-export * as Reloadable from "../../impl/Reloadable.js"
+export * as Reloadable from "../../Reloadable.js"

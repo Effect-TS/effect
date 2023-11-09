@@ -1,1 +1,1 @@
-export * as Resource from "../../impl/Resource.js"
+export * as Resource from "../../Resource.js"

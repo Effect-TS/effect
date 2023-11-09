@@ -1,8 +1,8 @@
-import { Equal } from "../../../Equal.js"
-import type { FiberId } from "../../../FiberId.js"
-import { pipe } from "../../../Function.js"
-import { Hash } from "../../../Hash.js"
-import { hasProperty } from "../../../Predicate.js"
+import { Equal } from "../../../exports/Equal.js"
+import type { FiberId } from "../../../exports/FiberId.js"
+import { pipe } from "../../../exports/Function.js"
+import { Hash } from "../../../exports/Hash.js"
+import { hasProperty } from "../../../exports/Predicate.js"
 import * as OpCodes from "../opCodes/tExit.js"
 
 /** @internal */

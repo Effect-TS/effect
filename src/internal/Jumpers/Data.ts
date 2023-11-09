@@ -1,1 +1,1 @@
-export * as Data from "../../impl/Data.js"
+export * as Data from "../../Data.js"

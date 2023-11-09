@@ -1,8 +1,8 @@
-import { Chunk } from "../../Chunk.js"
-import { dual, pipe } from "../../Function.js"
-import { Option } from "../../Option.js"
-import { Interval } from "../../ScheduleInterval.js"
-import type { ScheduleIntervals } from "../../ScheduleIntervals.js"
+import { Chunk } from "../../exports/Chunk.js"
+import { dual, pipe } from "../../exports/Function.js"
+import { Option } from "../../exports/Option.js"
+import { Interval } from "../../exports/ScheduleInterval.js"
+import type { ScheduleIntervals } from "../../exports/ScheduleIntervals.js"
 
 /** @internal */
 const IntervalsSymbolKey = "effect/ScheduleIntervals"

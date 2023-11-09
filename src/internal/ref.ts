@@ -1,9 +1,9 @@
-import type { Effect } from "../Effect.js"
-import { dual } from "../Function.js"
-import { MutableRef } from "../MutableRef.js"
-import { Option } from "../Option.js"
-import { pipeArguments } from "../Pipeable.js"
-import type { Ref } from "../Ref.js"
+import type { Effect } from "../exports/Effect.js"
+import { dual } from "../exports/Function.js"
+import { MutableRef } from "../exports/MutableRef.js"
+import { Option } from "../exports/Option.js"
+import { pipeArguments } from "../exports/Pipeable.js"
+import type { Ref } from "../exports/Ref.js"
 import * as core from "./core.js"
 
 /** @internal */

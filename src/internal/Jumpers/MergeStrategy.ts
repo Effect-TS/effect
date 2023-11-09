@@ -1,1 +1,1 @@
-export * as MergeStrategy from "../../impl/MergeStrategy.js"
+export * as MergeStrategy from "../../MergeStrategy.js"

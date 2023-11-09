@@ -1,4 +1,4 @@
-import type { Chunk } from "../../Chunk.js"
+import type { Chunk } from "../../exports/Chunk.js"
 
 /** @internal */
 export type ZipAllState<A, A2> = DrainLeft | DrainRight | PullBoth | PullLeft<A2> | PullRight<A>

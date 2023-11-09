@@ -1,1 +1,1 @@
-export * as TPriorityQueue from "../../impl/TPriorityQueue.js"
+export * as TPriorityQueue from "../../TPriorityQueue.js"

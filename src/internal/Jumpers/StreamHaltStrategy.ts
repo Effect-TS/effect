@@ -1,1 +1,1 @@
-export * as HaltStrategy from "../../impl/StreamHaltStrategy.js"
+export * as HaltStrategy from "../../StreamHaltStrategy.js"
