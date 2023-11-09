@@ -23,7 +23,7 @@ export type List<A> = Cons<A> | Nil<A>
 /**
  * @since 2.0.0
  */
-export namespace List {
+export declare namespace List {
   /**
    * @since 2.0.0
    */
