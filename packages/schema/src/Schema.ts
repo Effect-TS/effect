@@ -1737,6 +1737,31 @@ export const lowercased =
  * @category type id
  * @since 1.0.0
  */
+export const UppercasedTypeId = Symbol.for("@effect/schema/TypeId/Uppercased")
+
+/**
+ * Verifies that a string is uppercased
+ *
+ * Note. This combinator does not make any transformations, it only validates.
+ * If what you were looking for was a combinator to uppercase strings, then check out the `uppercase` combinator.
+ *
+ * @category string filters
+ * @since 1.0.0
+ */
+export const uppercased =
+  <A extends string>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+    self.pipe(
+      filter((a): a is A => a === a.toUpperCase(), {
+        typeId: UppercasedTypeId,
+        description: "an uppercase string",
+        ...options
+      })
+    )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
 export const LengthTypeId = Symbol.for("@effect/schema/TypeId/Length")
 
 /**
@@ -1795,6 +1820,29 @@ export const lowercase = <I, A extends string>(self: Schema<I, A>): Schema<I, A>
  * @since 1.0.0
  */
 export const Lowercase: Schema<string> = lowercase(string)
+
+/**
+ * This combinator converts a string to uppercase
+ *
+ * @category string transformations
+ * @since 1.0.0
+ */
+export const uppercase = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
+  transform(
+    self,
+    to(self).pipe(uppercased()),
+    (s) => s.toUpperCase(),
+    identity,
+    { strict: false }
+  )
+
+/**
+ * This combinator converts a string to uppercase
+ *
+ * @category string transformations
+ * @since 1.0.0
+ */
+export const Uppercase: Schema<string> = uppercase(string)
 
 /**
  * This combinator allows removing whitespaces from the beginning and end of a string.
