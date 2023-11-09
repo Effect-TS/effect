@@ -335,19 +335,19 @@ export const removeAll = dual<
 export const removeIf = dual<
   <K, V>(
     predicate: (key: K, value: V) => boolean
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>>,
+  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>,
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean
-  ) => STM.STM<never, never, Array<readonly [K, V]>>
+  ) => STM.STM<never, never, Array<[K, V]>>
 >(2, <K, V>(
   self: TMap.TMap<K, V>,
   predicate: (key: K, value: V) => boolean
 ) =>
-  core.effect<never, Array<readonly [K, V]>>((journal) => {
+  core.effect<never, Array<[K, V]>>((journal) => {
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
     const capacity = buckets.chunk.length
-    const removed: Array<readonly [K, V]> = []
+    const removed: Array<[K, V]> = []
     let index = 0
     let newSize = 0
     while (index < capacity) {
@@ -356,11 +356,12 @@ export const removeIf = dual<
       let next: IteratorResult<readonly [K, V], any>
       let newBucket = Chunk.empty<readonly [K, V]>()
       while ((next = iterator.next()) && !next.done) {
-        if (!predicate(next.value[0], next.value[1])) {
+        const [k, v] = next.value
+        if (!predicate(k, v)) {
           newBucket = Chunk.prepend(newBucket, next.value)
           newSize = newSize + 1
         } else {
-          removed.push(next.value)
+          removed.push([k, v])
         }
       }
       tRef.unsafeSet(buckets.chunk[index], newBucket, journal)
