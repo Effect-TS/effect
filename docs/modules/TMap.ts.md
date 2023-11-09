@@ -472,8 +472,8 @@ Retains bindings matching predicate and returns removed bindings.
 
 ```ts
 export declare const retainIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, (readonly [K, V])[]>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, (readonly [K, V])[]>
+  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
+  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, [K, V][]>
 }
 ```
 

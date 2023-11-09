@@ -333,13 +333,8 @@ export const removeAll = dual<
 
 /** @internal */
 export const removeIf = dual<
-  <K, V>(
-    predicate: (key: K, value: V) => boolean
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>,
-  <K, V>(
-    self: TMap.TMap<K, V>,
-    predicate: (key: K, value: V) => boolean
-  ) => STM.STM<never, never, Array<[K, V]>>
+  <K, V>(predicate: (key: K, value: V) => boolean) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>,
+  <K, V>(self: TMap.TMap<K, V>, predicate: (key: K, value: V) => boolean) => STM.STM<never, never, Array<[K, V]>>
 >(2, <K, V>(
   self: TMap.TMap<K, V>,
   predicate: (key: K, value: V) => boolean
@@ -403,13 +398,8 @@ export const removeIfDiscard = dual<
 
 /** @internal */
 export const retainIf = dual<
-  <K, V>(
-    predicate: (key: K, value: V) => boolean
-  ) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>>,
-  <K, V>(
-    self: TMap.TMap<K, V>,
-    predicate: (key: K, value: V) => boolean
-  ) => STM.STM<never, never, Array<readonly [K, V]>>
+  <K, V>(predicate: (key: K, value: V) => boolean) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>,
+  <K, V>(self: TMap.TMap<K, V>, predicate: (key: K, value: V) => boolean) => STM.STM<never, never, Array<[K, V]>>
 >(
   2,
   (self, predicate) => removeIf(self, (key, value) => !predicate(key, value))
