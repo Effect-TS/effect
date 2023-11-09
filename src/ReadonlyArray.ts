@@ -3,7 +3,8 @@ import type { NonEmptyArray, NonEmptyReadonlyArray } from "./impl/ReadonlyArray.
 export * from "./impl/ReadonlyArray.js"
 export * from "./internal/Jumpers/ReadonlyArray.js"
 
-export interface ReadonlyArray<T> extends globalThis.ReadonlyArray<T> {}
+export type ReadonlyArray<T> = globalThis.ReadonlyArray<T>
+
 /**
  * @since 2.0.0
  */

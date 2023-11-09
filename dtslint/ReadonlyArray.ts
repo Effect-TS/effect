@@ -20,7 +20,7 @@ if (ReadonlyArray.isEmptyReadonlyArray(readonlyNumbers)) {
   readonlyNumbers
 }
 
-// $ExpectType <A>(c: readonly A[]) => Option<readonly []>
+// $ExpectType <A>(c: ReadonlyArray<A>) => Option<readonly []>
 Option.liftPredicate(ReadonlyArray.isEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
@@ -44,7 +44,7 @@ if (ReadonlyArray.isNonEmptyReadonlyArray(readonlyNumbers)) {
   readonlyNumbers
 }
 
-// $ExpectType <A>(c: readonly A[]) => Option<readonly [A, ...A[]]>
+// $ExpectType <A>(c: ReadonlyArray<A>) => Option<readonly [A, ...A[]]>
 Option.liftPredicate(ReadonlyArray.isNonEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
@@ -116,11 +116,11 @@ if (ReadonlyArray.some(Predicate.isString)(numbersOrStrings)) {
 // -------------------------------------------------------------------------------------
 
 if (ReadonlyArray.every(numbersOrStrings, Predicate.isString)) {
-  numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
+  numbersOrStrings // $ExpectType (string | number)[] & ReadonlyArray<string>
 }
 
 if (ReadonlyArray.every(Predicate.isString)(numbersOrStrings)) {
-  numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
+  numbersOrStrings // $ExpectType (string | number)[] & ReadonlyArray<string>
 }
 
 // -------------------------------------------------------------------------------------
