@@ -325,4 +325,9 @@ describe.concurrent("List", () => {
     expect(r5).toEqual(List.make(2, 4, 6))
     expect(testStructuralSharing(r5, share3)).toBe(2)
   })
+
+  it("toArray", () => {
+    expect(List.toArray(List.empty())).toStrictEqual([])
+    expect(List.toArray(List.make(1, 2, 3))).toStrictEqual([1, 2, 3])
+  })
 })

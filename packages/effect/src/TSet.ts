@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type * as Chunk from "./Chunk.js"
 import type * as HashSet from "./HashSet.js"
 import * as internal from "./internal/stm/tSet.js"
 import type * as Option from "./Option.js"
@@ -288,7 +289,7 @@ export const takeSomeSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Array<A>> = internal.toChunk
+export const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Chunk.Chunk<A>> = internal.toChunk
 
 /**
  * Collects all elements into a `HashSet`.
@@ -299,12 +300,12 @@ export const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Array<A>> = in
 export const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.HashSet<A>> = internal.toHashSet
 
 /**
- * Collects all elements into a `ReadonlyArray`.
+ * Collects all elements into a `Array`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyArray: <A>(self: TSet<A>) => STM.STM<never, never, ReadonlyArray<A>> = internal.toReadonlyArray
+export const toArray: <A>(self: TSet<A>) => STM.STM<never, never, Array<A>> = internal.toArray
 
 /**
  * Collects all elements into a `ReadonlySet`.

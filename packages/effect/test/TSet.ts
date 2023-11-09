@@ -1,4 +1,5 @@
 import * as it from "effect-test/utils/extend"
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
@@ -34,7 +35,7 @@ describe.concurrent("TSet", () => {
         const set1 = yield* $(TSet.make(1, 2, 3))
         const set2 = yield* $(TSet.make(1, 4, 5))
         yield* $(pipe(set1, TSet.difference(set2)))
-        return yield* $(TSet.toReadonlyArray(set1))
+        return yield* $(TSet.toArray(set1))
       })
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [2, 3])
@@ -86,7 +87,7 @@ describe.concurrent("TSet", () => {
         const set1 = yield* $(TSet.make(1, 2, 3))
         const set2 = yield* $(TSet.make(1, 4, 5))
         yield* $(pipe(set1, TSet.intersection(set2)))
-        return yield* $(TSet.toReadonlyArray(set1))
+        return yield* $(TSet.toArray(set1))
       })
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [1])
@@ -225,7 +226,7 @@ describe.concurrent("TSet", () => {
       const transaction = pipe(
         TSet.make(1, 2, 3),
         STM.tap((set) => TSet.transform(set, (n) => n * 2)),
-        STM.flatMap(TSet.toReadonlyArray)
+        STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [2, 4, 6])
@@ -236,7 +237,7 @@ describe.concurrent("TSet", () => {
       const transaction = pipe(
         TSet.make(1, 2, 3),
         STM.tap(TSet.transform(() => 1)),
-        STM.flatMap(TSet.toReadonlyArray)
+        STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [1])
@@ -247,7 +248,7 @@ describe.concurrent("TSet", () => {
       const transaction = pipe(
         TSet.make(1, 2, 3),
         STM.tap((set) => TSet.transformSTM(set, (n) => STM.succeed(n * 2))),
-        STM.flatMap(TSet.toReadonlyArray)
+        STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [2, 4, 6])
@@ -258,7 +259,7 @@ describe.concurrent("TSet", () => {
       const transaction = pipe(
         TSet.make(1, 2, 3),
         STM.tap(TSet.transformSTM(() => STM.succeed(1))),
-        STM.flatMap(TSet.toReadonlyArray)
+        STM.flatMap(TSet.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [1])
@@ -280,9 +281,19 @@ describe.concurrent("TSet", () => {
         const set1 = yield* $(TSet.make(1, 2, 3))
         const set2 = yield* $(TSet.make(1, 4, 5))
         yield* $(pipe(set1, TSet.union(set2)))
-        return yield* $(TSet.toReadonlyArray(set1))
+        return yield* $(TSet.toArray(set1))
       })
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [1, 2, 3, 4, 5])
+    }))
+
+  it.effect("toChunk", () =>
+    Effect.gen(function*($) {
+      const transaction = STM.gen(function*($) {
+        const set = yield* $(TSet.make(1, 2, 3))
+        return yield* $(TSet.toChunk(set))
+      })
+      const result = yield* $(STM.commit(transaction))
+      assert.deepStrictEqual(result, Chunk.make(1, 2, 3))
     }))
 })

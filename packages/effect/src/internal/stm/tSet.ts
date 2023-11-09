@@ -1,9 +1,10 @@
+import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import * as HashSet from "../../HashSet.js"
 import type * as Option from "../../Option.js"
 import type { Predicate } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
-import type * as STM from "../../STM.js"
+import * as STM from "../../STM.js"
 import type * as TMap from "../../TMap.js"
 import type * as TSet from "../../TSet.js"
 import * as core from "./core.js"
@@ -192,7 +193,8 @@ export const takeSomeSTM = dual<
 >(2, (self, pf) => tMap.takeSomeSTM(self.tMap, (key) => pf(key)))
 
 /** @internal */
-export const toChunk = <A>(self: TSet.TSet<A>): STM.STM<never, never, Array<A>> => tMap.keys(self.tMap)
+export const toChunk = <A>(self: TSet.TSet<A>): STM.STM<never, never, Chunk.Chunk<A>> =>
+  tMap.keys(self.tMap).pipe(STM.map(Chunk.unsafeFromArray))
 
 /** @internal */
 export const toHashSet = <A>(self: TSet.TSet<A>): STM.STM<never, never, HashSet.HashSet<A>> =>
@@ -203,8 +205,8 @@ export const toHashSet = <A>(self: TSet.TSet<A>): STM.STM<never, never, HashSet.
   )
 
 /** @internal */
-export const toReadonlyArray = <A>(self: TSet.TSet<A>): STM.STM<never, never, ReadonlyArray<A>> =>
-  reduce<ReadonlyArray<A>, A>(
+export const toArray = <A>(self: TSet.TSet<A>): STM.STM<never, never, Array<A>> =>
+  reduce<Array<A>, A>(
     self,
     [],
     (acc, value) => [...acc, value]
@@ -212,7 +214,7 @@ export const toReadonlyArray = <A>(self: TSet.TSet<A>): STM.STM<never, never, Re
 
 /** @internal */
 export const toReadonlySet = <A>(self: TSet.TSet<A>): STM.STM<never, never, ReadonlySet<A>> =>
-  core.map(toReadonlyArray(self), (values) => new Set(values))
+  core.map(toArray(self), (values) => new Set(values))
 
 /** @internal */
 export const transform = dual<

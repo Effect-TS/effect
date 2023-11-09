@@ -72,7 +72,7 @@ describe.concurrent("TPriorityQueue", () => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
         STM.tap(TPriorityQueue.removeIf(f)),
-        STM.flatMap(TPriorityQueue.toReadonlyArray)
+        STM.flatMap(TPriorityQueue.toArray)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
       const filtered = RA.filter(events, (a) => !f(a))
@@ -86,7 +86,7 @@ describe.concurrent("TPriorityQueue", () => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
         STM.tap(TPriorityQueue.retainIf(f)),
-        STM.flatMap(TPriorityQueue.toReadonlyArray)
+        STM.flatMap(TPriorityQueue.toArray)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
       const filtered = RA.filter(events, f)
@@ -169,7 +169,7 @@ describe.concurrent("TPriorityQueue", () => {
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
-        STM.flatMap(TPriorityQueue.toArray),
+        STM.flatMap(TPriorityQueue.toChunk),
         STM.map((chunk) => Array.from(chunk))
       )
       const result = await Effect.runPromise(STM.commit(transaction))
@@ -182,7 +182,7 @@ describe.concurrent("TPriorityQueue", () => {
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
-        STM.flatMap(TPriorityQueue.toReadonlyArray)
+        STM.flatMap(TPriorityQueue.toArray)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
       assert.lengthOf(pipe(result, RA.differenceWith(equivalentElements())(events)), 0)

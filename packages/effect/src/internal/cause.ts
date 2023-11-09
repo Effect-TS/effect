@@ -700,26 +700,26 @@ const evaluateCause = (
         break
       }
       case OpCodes.OP_FAIL: {
+        _parallel = HashSet.add(_parallel, cause.error)
         if (stack.length === 0) {
-          return [pipe(_parallel, HashSet.add(cause.error)), _sequential]
+          return [_parallel, _sequential]
         }
-        _parallel = pipe(_parallel, HashSet.add(cause.error))
         cause = stack.pop()
         break
       }
       case OpCodes.OP_DIE: {
+        _parallel = HashSet.add(_parallel, cause.defect)
         if (stack.length === 0) {
-          return [pipe(_parallel, HashSet.add(cause.defect)), _sequential]
+          return [_parallel, _sequential]
         }
-        _parallel = pipe(_parallel, HashSet.add(cause.defect))
         cause = stack.pop()
         break
       }
       case OpCodes.OP_INTERRUPT: {
+        _parallel = HashSet.add(_parallel, cause.fiberId as unknown)
         if (stack.length === 0) {
-          return [pipe(_parallel, HashSet.add(cause.fiberId as unknown)), _sequential]
+          return [_parallel, _sequential]
         }
-        _parallel = pipe(_parallel, HashSet.add(cause.fiberId as unknown))
         cause = stack.pop()
         break
       }
@@ -741,7 +741,7 @@ const evaluateCause = (
             break
           }
           default: {
-            _sequential = pipe(_sequential, Chunk.prepend(cause.right))
+            _sequential = Chunk.prepend(_sequential, cause.right)
             cause = cause.left
             break
           }
