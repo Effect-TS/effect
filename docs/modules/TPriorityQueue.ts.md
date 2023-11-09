@@ -18,7 +18,7 @@ Added in v2.0.0
   - [make](#make)
 - [destructors](#destructors)
   - [toArray](#toarray)
-  - [toReadonlyArray](#toreadonlyarray)
+  - [toChunk](#tochunk)
 - [getters](#getters)
   - [isEmpty](#isempty)
   - [isNonEmpty](#isnonempty)
@@ -89,7 +89,7 @@ Added in v2.0.0
 
 ## toArray
 
-Collects all values into a chunk.
+Collects all values into an array.
 
 **Signature**
 
@@ -99,14 +99,14 @@ export declare const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, nev
 
 Added in v2.0.0
 
-## toReadonlyArray
+## toChunk
 
-Collects all values into an array.
+Collects all values into a `Chunk`.
 
 **Signature**
 
 ```ts
-export declare const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, readonly A[]>
+export declare const toChunk: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0

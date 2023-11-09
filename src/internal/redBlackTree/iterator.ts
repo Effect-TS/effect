@@ -1,4 +1,5 @@
 import * as Option from "../../Option.js"
+import * as ReadonlyArray from "../../ReadonlyArray.js"
 import type * as RBT from "../../RedBlackTree.js"
 import type { RedBlackTreeImpl } from "../redBlackTree.js"
 import type * as Node from "./node.js"
@@ -82,12 +83,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
    * Returns the key
    */
   get entry(): Option.Option<[K, V]> {
-    // TODO: this is ReadonlyArray.last
-    if (this.stack.length > 0) {
-      const node = this.stack[this.stack.length - 1]!
-      return Option.some([node.key, node.value])
-    }
-    return Option.none()
+    return Option.map(ReadonlyArray.last(this.stack), (node) => [node.key, node.value])
   }
 
   /**

@@ -17,9 +17,9 @@ Added in v2.0.0
   - [fromIterable](#fromiterable)
   - [make](#make)
 - [destructors](#destructors)
+  - [toArray](#toarray)
   - [toChunk](#tochunk)
   - [toHashSet](#tohashset)
-  - [toReadonlyArray](#toreadonlyarray)
   - [toReadonlySet](#toreadonlyset)
 - [elements](#elements)
   - [forEach](#foreach)
@@ -100,6 +100,18 @@ Added in v2.0.0
 
 # destructors
 
+## toArray
+
+Collects all elements into a `Array`.
+
+**Signature**
+
+```ts
+export declare const toArray: <A>(self: TSet<A>) => STM.STM<never, never, A[]>
+```
+
+Added in v2.0.0
+
 ## toChunk
 
 Collects all elements into a `Chunk`.
@@ -107,7 +119,7 @@ Collects all elements into a `Chunk`.
 **Signature**
 
 ```ts
-export declare const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, A[]>
+export declare const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -120,18 +132,6 @@ Collects all elements into a `HashSet`.
 
 ```ts
 export declare const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.HashSet<A>>
-```
-
-Added in v2.0.0
-
-## toReadonlyArray
-
-Collects all elements into a `ReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const toReadonlyArray: <A>(self: TSet<A>) => STM.STM<never, never, readonly A[]>
 ```
 
 Added in v2.0.0

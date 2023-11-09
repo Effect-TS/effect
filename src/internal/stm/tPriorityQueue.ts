@@ -1,3 +1,4 @@
+import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import * as Option from "../../Option.js"
 import type * as Order from "../../Order.js"
@@ -239,17 +240,17 @@ export const takeUpTo = dual<
   }))
 
 /** @internal */
-export const toChunk = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Array<A>> =>
+export const toChunk = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Chunk.Chunk<A>> =>
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {
       builder.push(...entry[1])
     }
-    return [builder, map]
+    return [Chunk.unsafeFromArray(builder), map]
   })
 
 /** @internal */
-export const toReadonlyArray = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, ReadonlyArray<A>> =>
+export const toArray = <A>(self: TPriorityQueue.TPriorityQueue<A>): STM.STM<never, never, Array<A>> =>
   tRef.modify(self.ref, (map) => {
     const builder: Array<A> = []
     for (const entry of map) {

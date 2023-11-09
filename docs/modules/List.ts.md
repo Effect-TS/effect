@@ -48,8 +48,8 @@ Added in v2.0.0
   - [nil](#nil)
   - [of](#of)
 - [conversions](#conversions)
+  - [toArray](#toarray)
   - [toChunk](#tochunk)
-  - [toReadonlyArray](#toreadonlyarray)
 - [elements](#elements)
   - [every](#every)
   - [findFirst](#findfirst)
@@ -430,6 +430,18 @@ Added in v2.0.0
 
 # conversions
 
+## toArray
+
+Converts the specified `List` to an `Array`.
+
+**Signature**
+
+```ts
+export declare const toArray: <A>(self: List<A>) => A[]
+```
+
+Added in v2.0.0
+
 ## toChunk
 
 Converts the specified `List` to a `Chunk`.
@@ -438,18 +450,6 @@ Converts the specified `List` to a `Chunk`.
 
 ```ts
 export declare const toChunk: <A>(self: List<A>) => Chunk.Chunk<A>
-```
-
-Added in v2.0.0
-
-## toReadonlyArray
-
-Converts the specified `List` to a `ReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const toReadonlyArray: <A>(self: List<A>) => readonly A[]
 ```
 
 Added in v2.0.0

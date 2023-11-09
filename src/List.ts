@@ -79,19 +79,19 @@ export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable
 }
 
 /**
- * Converts the specified `List` to a `ReadonlyArray`.
+ * Converts the specified `List` to an `Array`.
  *
  * @category conversions
  * @since 2.0.0
  */
-export const toReadonlyArray = <A>(self: List<A>): ReadonlyArray<A> => Array.from(self)
+export const toArray = <A>(self: List<A>): Array<A> => Array.from(self)
 
 /**
  * @category equivalence
  * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<List<A>> =>
-  Equivalence.mapInput(ReadonlyArray.getEquivalence(isEquivalent), toReadonlyArray<A>)
+  Equivalence.mapInput(ReadonlyArray.getEquivalence(isEquivalent), toArray<A>)
 
 const _equivalence = getEquivalence(Equal.equals)
 
@@ -105,7 +105,7 @@ const ConsProto: Omit<Cons<unknown>, "head" | "tail"> = {
     return {
       _id: "List",
       _tag: "Cons",
-      values: toReadonlyArray(this).map(toJSON)
+      values: toArray(this).map(toJSON)
     }
   },
   [NodeInspectSymbol]() {
@@ -117,7 +117,7 @@ const ConsProto: Omit<Cons<unknown>, "head" | "tail"> = {
       _equivalence(this, that)
   },
   [Hash.symbol](this: Cons<unknown>): number {
-    return Hash.array(toReadonlyArray(this))
+    return Hash.array(toArray(this))
   },
   [Symbol.iterator](this: Cons<unknown>): Iterator<unknown> {
     let done = false
@@ -177,7 +177,7 @@ const NilProto: Nil<unknown> = {
     return this.toJSON()
   },
   [Hash.symbol](): number {
-    return Hash.array(toReadonlyArray(this))
+    return Hash.array(toArray(this))
   },
   [Equal.symbol](that: unknown): boolean {
     return isList(that) && this._tag === that._tag
