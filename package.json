@@ -24,7 +24,11 @@
     "functional-programming"
   ],
   "effect": {
-    "generateIndex": false
+    "generateIndex": false,
+    "publicModules": [
+      "*.ts",
+      "./impl/*.ts"
+    ]
   },
   "keywords": [
     "typescript",
@@ -775,6 +779,721 @@
       "types": "./dist/dts/Utils.d.ts",
       "import": "./dist/esm/Utils.js",
       "require": "./dist/cjs/Utils.js"
+    },
+    "./impl/BigDecimal": {
+      "types": "./dist/dts/impl/BigDecimal.d.ts",
+      "import": "./dist/esm/impl/BigDecimal.js",
+      "require": "./dist/cjs/impl/BigDecimal.js"
+    },
+    "./impl/BigInt": {
+      "types": "./dist/dts/impl/BigInt.d.ts",
+      "import": "./dist/esm/impl/BigInt.js",
+      "require": "./dist/cjs/impl/BigInt.js"
+    },
+    "./impl/Boolean": {
+      "types": "./dist/dts/impl/Boolean.d.ts",
+      "import": "./dist/esm/impl/Boolean.js",
+      "require": "./dist/cjs/impl/Boolean.js"
+    },
+    "./impl/Brand": {
+      "types": "./dist/dts/impl/Brand.d.ts",
+      "import": "./dist/esm/impl/Brand.js",
+      "require": "./dist/cjs/impl/Brand.js"
+    },
+    "./impl/Cache": {
+      "types": "./dist/dts/impl/Cache.d.ts",
+      "import": "./dist/esm/impl/Cache.js",
+      "require": "./dist/cjs/impl/Cache.js"
+    },
+    "./impl/Cause": {
+      "types": "./dist/dts/impl/Cause.d.ts",
+      "import": "./dist/esm/impl/Cause.js",
+      "require": "./dist/cjs/impl/Cause.js"
+    },
+    "./impl/Channel": {
+      "types": "./dist/dts/impl/Channel.d.ts",
+      "import": "./dist/esm/impl/Channel.js",
+      "require": "./dist/cjs/impl/Channel.js"
+    },
+    "./impl/ChildExecutorDecision": {
+      "types": "./dist/dts/impl/ChildExecutorDecision.d.ts",
+      "import": "./dist/esm/impl/ChildExecutorDecision.js",
+      "require": "./dist/cjs/impl/ChildExecutorDecision.js"
+    },
+    "./impl/Chunk": {
+      "types": "./dist/dts/impl/Chunk.d.ts",
+      "import": "./dist/esm/impl/Chunk.js",
+      "require": "./dist/cjs/impl/Chunk.js"
+    },
+    "./impl/Clock": {
+      "types": "./dist/dts/impl/Clock.d.ts",
+      "import": "./dist/esm/impl/Clock.js",
+      "require": "./dist/cjs/impl/Clock.js"
+    },
+    "./impl/Config": {
+      "types": "./dist/dts/impl/Config.d.ts",
+      "import": "./dist/esm/impl/Config.js",
+      "require": "./dist/cjs/impl/Config.js"
+    },
+    "./impl/ConfigError": {
+      "types": "./dist/dts/impl/ConfigError.d.ts",
+      "import": "./dist/esm/impl/ConfigError.js",
+      "require": "./dist/cjs/impl/ConfigError.js"
+    },
+    "./impl/ConfigProvider": {
+      "types": "./dist/dts/impl/ConfigProvider.d.ts",
+      "import": "./dist/esm/impl/ConfigProvider.js",
+      "require": "./dist/cjs/impl/ConfigProvider.js"
+    },
+    "./impl/ConfigProviderPathPatch": {
+      "types": "./dist/dts/impl/ConfigProviderPathPatch.d.ts",
+      "import": "./dist/esm/impl/ConfigProviderPathPatch.js",
+      "require": "./dist/cjs/impl/ConfigProviderPathPatch.js"
+    },
+    "./impl/ConfigSecret": {
+      "types": "./dist/dts/impl/ConfigSecret.d.ts",
+      "import": "./dist/esm/impl/ConfigSecret.js",
+      "require": "./dist/cjs/impl/ConfigSecret.js"
+    },
+    "./impl/Console": {
+      "types": "./dist/dts/impl/Console.d.ts",
+      "import": "./dist/esm/impl/Console.js",
+      "require": "./dist/cjs/impl/Console.js"
+    },
+    "./impl/Context": {
+      "types": "./dist/dts/impl/Context.d.ts",
+      "import": "./dist/esm/impl/Context.js",
+      "require": "./dist/cjs/impl/Context.js"
+    },
+    "./impl/Data": {
+      "types": "./dist/dts/impl/Data.d.ts",
+      "import": "./dist/esm/impl/Data.js",
+      "require": "./dist/cjs/impl/Data.js"
+    },
+    "./impl/DefaultServices": {
+      "types": "./dist/dts/impl/DefaultServices.d.ts",
+      "import": "./dist/esm/impl/DefaultServices.js",
+      "require": "./dist/cjs/impl/DefaultServices.js"
+    },
+    "./impl/Deferred": {
+      "types": "./dist/dts/impl/Deferred.d.ts",
+      "import": "./dist/esm/impl/Deferred.js",
+      "require": "./dist/cjs/impl/Deferred.js"
+    },
+    "./impl/Differ": {
+      "types": "./dist/dts/impl/Differ.d.ts",
+      "import": "./dist/esm/impl/Differ.js",
+      "require": "./dist/cjs/impl/Differ.js"
+    },
+    "./impl/Duration": {
+      "types": "./dist/dts/impl/Duration.d.ts",
+      "import": "./dist/esm/impl/Duration.js",
+      "require": "./dist/cjs/impl/Duration.js"
+    },
+    "./impl/Effect": {
+      "types": "./dist/dts/impl/Effect.d.ts",
+      "import": "./dist/esm/impl/Effect.js",
+      "require": "./dist/cjs/impl/Effect.js"
+    },
+    "./impl/Effectable": {
+      "types": "./dist/dts/impl/Effectable.d.ts",
+      "import": "./dist/esm/impl/Effectable.js",
+      "require": "./dist/cjs/impl/Effectable.js"
+    },
+    "./impl/Either": {
+      "types": "./dist/dts/impl/Either.d.ts",
+      "import": "./dist/esm/impl/Either.js",
+      "require": "./dist/cjs/impl/Either.js"
+    },
+    "./impl/Encoding": {
+      "types": "./dist/dts/impl/Encoding.d.ts",
+      "import": "./dist/esm/impl/Encoding.js",
+      "require": "./dist/cjs/impl/Encoding.js"
+    },
+    "./impl/Equal": {
+      "types": "./dist/dts/impl/Equal.d.ts",
+      "import": "./dist/esm/impl/Equal.js",
+      "require": "./dist/cjs/impl/Equal.js"
+    },
+    "./impl/Equivalence": {
+      "types": "./dist/dts/impl/Equivalence.d.ts",
+      "import": "./dist/esm/impl/Equivalence.js",
+      "require": "./dist/cjs/impl/Equivalence.js"
+    },
+    "./impl/ExecutionStrategy": {
+      "types": "./dist/dts/impl/ExecutionStrategy.d.ts",
+      "import": "./dist/esm/impl/ExecutionStrategy.js",
+      "require": "./dist/cjs/impl/ExecutionStrategy.js"
+    },
+    "./impl/Exit": {
+      "types": "./dist/dts/impl/Exit.d.ts",
+      "import": "./dist/esm/impl/Exit.js",
+      "require": "./dist/cjs/impl/Exit.js"
+    },
+    "./impl/Fiber": {
+      "types": "./dist/dts/impl/Fiber.d.ts",
+      "import": "./dist/esm/impl/Fiber.js",
+      "require": "./dist/cjs/impl/Fiber.js"
+    },
+    "./impl/FiberId": {
+      "types": "./dist/dts/impl/FiberId.d.ts",
+      "import": "./dist/esm/impl/FiberId.js",
+      "require": "./dist/cjs/impl/FiberId.js"
+    },
+    "./impl/FiberRef": {
+      "types": "./dist/dts/impl/FiberRef.d.ts",
+      "import": "./dist/esm/impl/FiberRef.js",
+      "require": "./dist/cjs/impl/FiberRef.js"
+    },
+    "./impl/FiberRefs": {
+      "types": "./dist/dts/impl/FiberRefs.d.ts",
+      "import": "./dist/esm/impl/FiberRefs.js",
+      "require": "./dist/cjs/impl/FiberRefs.js"
+    },
+    "./impl/FiberRefsPatch": {
+      "types": "./dist/dts/impl/FiberRefsPatch.d.ts",
+      "import": "./dist/esm/impl/FiberRefsPatch.js",
+      "require": "./dist/cjs/impl/FiberRefsPatch.js"
+    },
+    "./impl/FiberStatus": {
+      "types": "./dist/dts/impl/FiberStatus.d.ts",
+      "import": "./dist/esm/impl/FiberStatus.js",
+      "require": "./dist/cjs/impl/FiberStatus.js"
+    },
+    "./impl/Function": {
+      "types": "./dist/dts/impl/Function.d.ts",
+      "import": "./dist/esm/impl/Function.js",
+      "require": "./dist/cjs/impl/Function.js"
+    },
+    "./impl/GlobalValue": {
+      "types": "./dist/dts/impl/GlobalValue.d.ts",
+      "import": "./dist/esm/impl/GlobalValue.js",
+      "require": "./dist/cjs/impl/GlobalValue.js"
+    },
+    "./impl/GroupBy": {
+      "types": "./dist/dts/impl/GroupBy.d.ts",
+      "import": "./dist/esm/impl/GroupBy.js",
+      "require": "./dist/cjs/impl/GroupBy.js"
+    },
+    "./impl/HKT": {
+      "types": "./dist/dts/impl/HKT.d.ts",
+      "import": "./dist/esm/impl/HKT.js",
+      "require": "./dist/cjs/impl/HKT.js"
+    },
+    "./impl/Hash": {
+      "types": "./dist/dts/impl/Hash.d.ts",
+      "import": "./dist/esm/impl/Hash.js",
+      "require": "./dist/cjs/impl/Hash.js"
+    },
+    "./impl/HashMap": {
+      "types": "./dist/dts/impl/HashMap.d.ts",
+      "import": "./dist/esm/impl/HashMap.js",
+      "require": "./dist/cjs/impl/HashMap.js"
+    },
+    "./impl/HashSet": {
+      "types": "./dist/dts/impl/HashSet.d.ts",
+      "import": "./dist/esm/impl/HashSet.js",
+      "require": "./dist/cjs/impl/HashSet.js"
+    },
+    "./impl/Inspectable": {
+      "types": "./dist/dts/impl/Inspectable.d.ts",
+      "import": "./dist/esm/impl/Inspectable.js",
+      "require": "./dist/cjs/impl/Inspectable.js"
+    },
+    "./impl/KeyedPool": {
+      "types": "./dist/dts/impl/KeyedPool.d.ts",
+      "import": "./dist/esm/impl/KeyedPool.js",
+      "require": "./dist/cjs/impl/KeyedPool.js"
+    },
+    "./impl/Layer": {
+      "types": "./dist/dts/impl/Layer.d.ts",
+      "import": "./dist/esm/impl/Layer.js",
+      "require": "./dist/cjs/impl/Layer.js"
+    },
+    "./impl/List": {
+      "types": "./dist/dts/impl/List.d.ts",
+      "import": "./dist/esm/impl/List.js",
+      "require": "./dist/cjs/impl/List.js"
+    },
+    "./impl/LogLevel": {
+      "types": "./dist/dts/impl/LogLevel.d.ts",
+      "import": "./dist/esm/impl/LogLevel.js",
+      "require": "./dist/cjs/impl/LogLevel.js"
+    },
+    "./impl/LogSpan": {
+      "types": "./dist/dts/impl/LogSpan.d.ts",
+      "import": "./dist/esm/impl/LogSpan.js",
+      "require": "./dist/cjs/impl/LogSpan.js"
+    },
+    "./impl/Logger": {
+      "types": "./dist/dts/impl/Logger.d.ts",
+      "import": "./dist/esm/impl/Logger.js",
+      "require": "./dist/cjs/impl/Logger.js"
+    },
+    "./impl/Match": {
+      "types": "./dist/dts/impl/Match.d.ts",
+      "import": "./dist/esm/impl/Match.js",
+      "require": "./dist/cjs/impl/Match.js"
+    },
+    "./impl/MergeDecision": {
+      "types": "./dist/dts/impl/MergeDecision.d.ts",
+      "import": "./dist/esm/impl/MergeDecision.js",
+      "require": "./dist/cjs/impl/MergeDecision.js"
+    },
+    "./impl/MergeState": {
+      "types": "./dist/dts/impl/MergeState.d.ts",
+      "import": "./dist/esm/impl/MergeState.js",
+      "require": "./dist/cjs/impl/MergeState.js"
+    },
+    "./impl/MergeStrategy": {
+      "types": "./dist/dts/impl/MergeStrategy.d.ts",
+      "import": "./dist/esm/impl/MergeStrategy.js",
+      "require": "./dist/cjs/impl/MergeStrategy.js"
+    },
+    "./impl/Metric": {
+      "types": "./dist/dts/impl/Metric.d.ts",
+      "import": "./dist/esm/impl/Metric.js",
+      "require": "./dist/cjs/impl/Metric.js"
+    },
+    "./impl/MetricBoundaries": {
+      "types": "./dist/dts/impl/MetricBoundaries.d.ts",
+      "import": "./dist/esm/impl/MetricBoundaries.js",
+      "require": "./dist/cjs/impl/MetricBoundaries.js"
+    },
+    "./impl/MetricHook": {
+      "types": "./dist/dts/impl/MetricHook.d.ts",
+      "import": "./dist/esm/impl/MetricHook.js",
+      "require": "./dist/cjs/impl/MetricHook.js"
+    },
+    "./impl/MetricKey": {
+      "types": "./dist/dts/impl/MetricKey.d.ts",
+      "import": "./dist/esm/impl/MetricKey.js",
+      "require": "./dist/cjs/impl/MetricKey.js"
+    },
+    "./impl/MetricKeyType": {
+      "types": "./dist/dts/impl/MetricKeyType.d.ts",
+      "import": "./dist/esm/impl/MetricKeyType.js",
+      "require": "./dist/cjs/impl/MetricKeyType.js"
+    },
+    "./impl/MetricLabel": {
+      "types": "./dist/dts/impl/MetricLabel.d.ts",
+      "import": "./dist/esm/impl/MetricLabel.js",
+      "require": "./dist/cjs/impl/MetricLabel.js"
+    },
+    "./impl/MetricPair": {
+      "types": "./dist/dts/impl/MetricPair.d.ts",
+      "import": "./dist/esm/impl/MetricPair.js",
+      "require": "./dist/cjs/impl/MetricPair.js"
+    },
+    "./impl/MetricPolling": {
+      "types": "./dist/dts/impl/MetricPolling.d.ts",
+      "import": "./dist/esm/impl/MetricPolling.js",
+      "require": "./dist/cjs/impl/MetricPolling.js"
+    },
+    "./impl/MetricRegistry": {
+      "types": "./dist/dts/impl/MetricRegistry.d.ts",
+      "import": "./dist/esm/impl/MetricRegistry.js",
+      "require": "./dist/cjs/impl/MetricRegistry.js"
+    },
+    "./impl/MetricState": {
+      "types": "./dist/dts/impl/MetricState.d.ts",
+      "import": "./dist/esm/impl/MetricState.js",
+      "require": "./dist/cjs/impl/MetricState.js"
+    },
+    "./impl/MutableHashMap": {
+      "types": "./dist/dts/impl/MutableHashMap.d.ts",
+      "import": "./dist/esm/impl/MutableHashMap.js",
+      "require": "./dist/cjs/impl/MutableHashMap.js"
+    },
+    "./impl/MutableHashSet": {
+      "types": "./dist/dts/impl/MutableHashSet.d.ts",
+      "import": "./dist/esm/impl/MutableHashSet.js",
+      "require": "./dist/cjs/impl/MutableHashSet.js"
+    },
+    "./impl/MutableList": {
+      "types": "./dist/dts/impl/MutableList.d.ts",
+      "import": "./dist/esm/impl/MutableList.js",
+      "require": "./dist/cjs/impl/MutableList.js"
+    },
+    "./impl/MutableQueue": {
+      "types": "./dist/dts/impl/MutableQueue.d.ts",
+      "import": "./dist/esm/impl/MutableQueue.js",
+      "require": "./dist/cjs/impl/MutableQueue.js"
+    },
+    "./impl/MutableRef": {
+      "types": "./dist/dts/impl/MutableRef.d.ts",
+      "import": "./dist/esm/impl/MutableRef.js",
+      "require": "./dist/cjs/impl/MutableRef.js"
+    },
+    "./impl/NonEmptyIterable": {
+      "types": "./dist/dts/impl/NonEmptyIterable.d.ts",
+      "import": "./dist/esm/impl/NonEmptyIterable.js",
+      "require": "./dist/cjs/impl/NonEmptyIterable.js"
+    },
+    "./impl/Number": {
+      "types": "./dist/dts/impl/Number.d.ts",
+      "import": "./dist/esm/impl/Number.js",
+      "require": "./dist/cjs/impl/Number.js"
+    },
+    "./impl/Option": {
+      "types": "./dist/dts/impl/Option.d.ts",
+      "import": "./dist/esm/impl/Option.js",
+      "require": "./dist/cjs/impl/Option.js"
+    },
+    "./impl/Order": {
+      "types": "./dist/dts/impl/Order.d.ts",
+      "import": "./dist/esm/impl/Order.js",
+      "require": "./dist/cjs/impl/Order.js"
+    },
+    "./impl/Ordering": {
+      "types": "./dist/dts/impl/Ordering.d.ts",
+      "import": "./dist/esm/impl/Ordering.js",
+      "require": "./dist/cjs/impl/Ordering.js"
+    },
+    "./impl/Pipeable": {
+      "types": "./dist/dts/impl/Pipeable.d.ts",
+      "import": "./dist/esm/impl/Pipeable.js",
+      "require": "./dist/cjs/impl/Pipeable.js"
+    },
+    "./impl/Pool": {
+      "types": "./dist/dts/impl/Pool.d.ts",
+      "import": "./dist/esm/impl/Pool.js",
+      "require": "./dist/cjs/impl/Pool.js"
+    },
+    "./impl/Predicate": {
+      "types": "./dist/dts/impl/Predicate.d.ts",
+      "import": "./dist/esm/impl/Predicate.js",
+      "require": "./dist/cjs/impl/Predicate.js"
+    },
+    "./impl/PubSub": {
+      "types": "./dist/dts/impl/PubSub.d.ts",
+      "import": "./dist/esm/impl/PubSub.js",
+      "require": "./dist/cjs/impl/PubSub.js"
+    },
+    "./impl/Queue": {
+      "types": "./dist/dts/impl/Queue.d.ts",
+      "import": "./dist/esm/impl/Queue.js",
+      "require": "./dist/cjs/impl/Queue.js"
+    },
+    "./impl/Random": {
+      "types": "./dist/dts/impl/Random.d.ts",
+      "import": "./dist/esm/impl/Random.js",
+      "require": "./dist/cjs/impl/Random.js"
+    },
+    "./impl/ReadonlyArray": {
+      "types": "./dist/dts/impl/ReadonlyArray.d.ts",
+      "import": "./dist/esm/impl/ReadonlyArray.js",
+      "require": "./dist/cjs/impl/ReadonlyArray.js"
+    },
+    "./impl/ReadonlyRecord": {
+      "types": "./dist/dts/impl/ReadonlyRecord.d.ts",
+      "import": "./dist/esm/impl/ReadonlyRecord.js",
+      "require": "./dist/cjs/impl/ReadonlyRecord.js"
+    },
+    "./impl/RedBlackTree": {
+      "types": "./dist/dts/impl/RedBlackTree.d.ts",
+      "import": "./dist/esm/impl/RedBlackTree.js",
+      "require": "./dist/cjs/impl/RedBlackTree.js"
+    },
+    "./impl/Ref": {
+      "types": "./dist/dts/impl/Ref.d.ts",
+      "import": "./dist/esm/impl/Ref.js",
+      "require": "./dist/cjs/impl/Ref.js"
+    },
+    "./impl/Reloadable": {
+      "types": "./dist/dts/impl/Reloadable.d.ts",
+      "import": "./dist/esm/impl/Reloadable.js",
+      "require": "./dist/cjs/impl/Reloadable.js"
+    },
+    "./impl/Request": {
+      "types": "./dist/dts/impl/Request.d.ts",
+      "import": "./dist/esm/impl/Request.js",
+      "require": "./dist/cjs/impl/Request.js"
+    },
+    "./impl/RequestBlock": {
+      "types": "./dist/dts/impl/RequestBlock.d.ts",
+      "import": "./dist/esm/impl/RequestBlock.js",
+      "require": "./dist/cjs/impl/RequestBlock.js"
+    },
+    "./impl/RequestResolver": {
+      "types": "./dist/dts/impl/RequestResolver.d.ts",
+      "import": "./dist/esm/impl/RequestResolver.js",
+      "require": "./dist/cjs/impl/RequestResolver.js"
+    },
+    "./impl/Resource": {
+      "types": "./dist/dts/impl/Resource.d.ts",
+      "import": "./dist/esm/impl/Resource.js",
+      "require": "./dist/cjs/impl/Resource.js"
+    },
+    "./impl/Runtime": {
+      "types": "./dist/dts/impl/Runtime.d.ts",
+      "import": "./dist/esm/impl/Runtime.js",
+      "require": "./dist/cjs/impl/Runtime.js"
+    },
+    "./impl/RuntimeFlags": {
+      "types": "./dist/dts/impl/RuntimeFlags.d.ts",
+      "import": "./dist/esm/impl/RuntimeFlags.js",
+      "require": "./dist/cjs/impl/RuntimeFlags.js"
+    },
+    "./impl/RuntimeFlagsPatch": {
+      "types": "./dist/dts/impl/RuntimeFlagsPatch.d.ts",
+      "import": "./dist/esm/impl/RuntimeFlagsPatch.js",
+      "require": "./dist/cjs/impl/RuntimeFlagsPatch.js"
+    },
+    "./impl/STM": {
+      "types": "./dist/dts/impl/STM.d.ts",
+      "import": "./dist/esm/impl/STM.js",
+      "require": "./dist/cjs/impl/STM.js"
+    },
+    "./impl/Schedule": {
+      "types": "./dist/dts/impl/Schedule.d.ts",
+      "import": "./dist/esm/impl/Schedule.js",
+      "require": "./dist/cjs/impl/Schedule.js"
+    },
+    "./impl/ScheduleDecision": {
+      "types": "./dist/dts/impl/ScheduleDecision.d.ts",
+      "import": "./dist/esm/impl/ScheduleDecision.js",
+      "require": "./dist/cjs/impl/ScheduleDecision.js"
+    },
+    "./impl/ScheduleInterval": {
+      "types": "./dist/dts/impl/ScheduleInterval.d.ts",
+      "import": "./dist/esm/impl/ScheduleInterval.js",
+      "require": "./dist/cjs/impl/ScheduleInterval.js"
+    },
+    "./impl/ScheduleIntervals": {
+      "types": "./dist/dts/impl/ScheduleIntervals.d.ts",
+      "import": "./dist/esm/impl/ScheduleIntervals.js",
+      "require": "./dist/cjs/impl/ScheduleIntervals.js"
+    },
+    "./impl/Scheduler": {
+      "types": "./dist/dts/impl/Scheduler.d.ts",
+      "import": "./dist/esm/impl/Scheduler.js",
+      "require": "./dist/cjs/impl/Scheduler.js"
+    },
+    "./impl/Scope": {
+      "types": "./dist/dts/impl/Scope.d.ts",
+      "import": "./dist/esm/impl/Scope.js",
+      "require": "./dist/cjs/impl/Scope.js"
+    },
+    "./impl/ScopedCache": {
+      "types": "./dist/dts/impl/ScopedCache.d.ts",
+      "import": "./dist/esm/impl/ScopedCache.js",
+      "require": "./dist/cjs/impl/ScopedCache.js"
+    },
+    "./impl/ScopedRef": {
+      "types": "./dist/dts/impl/ScopedRef.d.ts",
+      "import": "./dist/esm/impl/ScopedRef.js",
+      "require": "./dist/cjs/impl/ScopedRef.js"
+    },
+    "./impl/SingleProducerAsyncInput": {
+      "types": "./dist/dts/impl/SingleProducerAsyncInput.d.ts",
+      "import": "./dist/esm/impl/SingleProducerAsyncInput.js",
+      "require": "./dist/cjs/impl/SingleProducerAsyncInput.js"
+    },
+    "./impl/Sink": {
+      "types": "./dist/dts/impl/Sink.d.ts",
+      "import": "./dist/esm/impl/Sink.js",
+      "require": "./dist/cjs/impl/Sink.js"
+    },
+    "./impl/SortedMap": {
+      "types": "./dist/dts/impl/SortedMap.d.ts",
+      "import": "./dist/esm/impl/SortedMap.js",
+      "require": "./dist/cjs/impl/SortedMap.js"
+    },
+    "./impl/SortedSet": {
+      "types": "./dist/dts/impl/SortedSet.d.ts",
+      "import": "./dist/esm/impl/SortedSet.js",
+      "require": "./dist/cjs/impl/SortedSet.js"
+    },
+    "./impl/Stream": {
+      "types": "./dist/dts/impl/Stream.d.ts",
+      "import": "./dist/esm/impl/Stream.js",
+      "require": "./dist/cjs/impl/Stream.js"
+    },
+    "./impl/StreamEmit": {
+      "types": "./dist/dts/impl/StreamEmit.d.ts",
+      "import": "./dist/esm/impl/StreamEmit.js",
+      "require": "./dist/cjs/impl/StreamEmit.js"
+    },
+    "./impl/StreamHaltStrategy": {
+      "types": "./dist/dts/impl/StreamHaltStrategy.d.ts",
+      "import": "./dist/esm/impl/StreamHaltStrategy.js",
+      "require": "./dist/cjs/impl/StreamHaltStrategy.js"
+    },
+    "./impl/Streamable": {
+      "types": "./dist/dts/impl/Streamable.d.ts",
+      "import": "./dist/esm/impl/Streamable.js",
+      "require": "./dist/cjs/impl/Streamable.js"
+    },
+    "./impl/String": {
+      "types": "./dist/dts/impl/String.d.ts",
+      "import": "./dist/esm/impl/String.js",
+      "require": "./dist/cjs/impl/String.js"
+    },
+    "./impl/Struct": {
+      "types": "./dist/dts/impl/Struct.d.ts",
+      "import": "./dist/esm/impl/Struct.js",
+      "require": "./dist/cjs/impl/Struct.js"
+    },
+    "./impl/SubscriptionRef": {
+      "types": "./dist/dts/impl/SubscriptionRef.d.ts",
+      "import": "./dist/esm/impl/SubscriptionRef.js",
+      "require": "./dist/cjs/impl/SubscriptionRef.js"
+    },
+    "./impl/Supervisor": {
+      "types": "./dist/dts/impl/Supervisor.d.ts",
+      "import": "./dist/esm/impl/Supervisor.js",
+      "require": "./dist/cjs/impl/Supervisor.js"
+    },
+    "./impl/Symbol": {
+      "types": "./dist/dts/impl/Symbol.d.ts",
+      "import": "./dist/esm/impl/Symbol.js",
+      "require": "./dist/cjs/impl/Symbol.js"
+    },
+    "./impl/SynchronizedRef": {
+      "types": "./dist/dts/impl/SynchronizedRef.d.ts",
+      "import": "./dist/esm/impl/SynchronizedRef.js",
+      "require": "./dist/cjs/impl/SynchronizedRef.js"
+    },
+    "./impl/TArray": {
+      "types": "./dist/dts/impl/TArray.d.ts",
+      "import": "./dist/esm/impl/TArray.js",
+      "require": "./dist/cjs/impl/TArray.js"
+    },
+    "./impl/TDeferred": {
+      "types": "./dist/dts/impl/TDeferred.d.ts",
+      "import": "./dist/esm/impl/TDeferred.js",
+      "require": "./dist/cjs/impl/TDeferred.js"
+    },
+    "./impl/TMap": {
+      "types": "./dist/dts/impl/TMap.d.ts",
+      "import": "./dist/esm/impl/TMap.js",
+      "require": "./dist/cjs/impl/TMap.js"
+    },
+    "./impl/TPriorityQueue": {
+      "types": "./dist/dts/impl/TPriorityQueue.d.ts",
+      "import": "./dist/esm/impl/TPriorityQueue.js",
+      "require": "./dist/cjs/impl/TPriorityQueue.js"
+    },
+    "./impl/TPubSub": {
+      "types": "./dist/dts/impl/TPubSub.d.ts",
+      "import": "./dist/esm/impl/TPubSub.js",
+      "require": "./dist/cjs/impl/TPubSub.js"
+    },
+    "./impl/TQueue": {
+      "types": "./dist/dts/impl/TQueue.d.ts",
+      "import": "./dist/esm/impl/TQueue.js",
+      "require": "./dist/cjs/impl/TQueue.js"
+    },
+    "./impl/TRandom": {
+      "types": "./dist/dts/impl/TRandom.d.ts",
+      "import": "./dist/esm/impl/TRandom.js",
+      "require": "./dist/cjs/impl/TRandom.js"
+    },
+    "./impl/TReentrantLock": {
+      "types": "./dist/dts/impl/TReentrantLock.d.ts",
+      "import": "./dist/esm/impl/TReentrantLock.js",
+      "require": "./dist/cjs/impl/TReentrantLock.js"
+    },
+    "./impl/TRef": {
+      "types": "./dist/dts/impl/TRef.d.ts",
+      "import": "./dist/esm/impl/TRef.js",
+      "require": "./dist/cjs/impl/TRef.js"
+    },
+    "./impl/TSemaphore": {
+      "types": "./dist/dts/impl/TSemaphore.d.ts",
+      "import": "./dist/esm/impl/TSemaphore.js",
+      "require": "./dist/cjs/impl/TSemaphore.js"
+    },
+    "./impl/TSet": {
+      "types": "./dist/dts/impl/TSet.d.ts",
+      "import": "./dist/esm/impl/TSet.js",
+      "require": "./dist/cjs/impl/TSet.js"
+    },
+    "./impl/Take": {
+      "types": "./dist/dts/impl/Take.d.ts",
+      "import": "./dist/esm/impl/Take.js",
+      "require": "./dist/cjs/impl/Take.js"
+    },
+    "./impl/TestAnnotation": {
+      "types": "./dist/dts/impl/TestAnnotation.d.ts",
+      "import": "./dist/esm/impl/TestAnnotation.js",
+      "require": "./dist/cjs/impl/TestAnnotation.js"
+    },
+    "./impl/TestAnnotationMap": {
+      "types": "./dist/dts/impl/TestAnnotationMap.d.ts",
+      "import": "./dist/esm/impl/TestAnnotationMap.js",
+      "require": "./dist/cjs/impl/TestAnnotationMap.js"
+    },
+    "./impl/TestAnnotations": {
+      "types": "./dist/dts/impl/TestAnnotations.d.ts",
+      "import": "./dist/esm/impl/TestAnnotations.js",
+      "require": "./dist/cjs/impl/TestAnnotations.js"
+    },
+    "./impl/TestClock": {
+      "types": "./dist/dts/impl/TestClock.d.ts",
+      "import": "./dist/esm/impl/TestClock.js",
+      "require": "./dist/cjs/impl/TestClock.js"
+    },
+    "./impl/TestConfig": {
+      "types": "./dist/dts/impl/TestConfig.d.ts",
+      "import": "./dist/esm/impl/TestConfig.js",
+      "require": "./dist/cjs/impl/TestConfig.js"
+    },
+    "./impl/TestContext": {
+      "types": "./dist/dts/impl/TestContext.d.ts",
+      "import": "./dist/esm/impl/TestContext.js",
+      "require": "./dist/cjs/impl/TestContext.js"
+    },
+    "./impl/TestLive": {
+      "types": "./dist/dts/impl/TestLive.d.ts",
+      "import": "./dist/esm/impl/TestLive.js",
+      "require": "./dist/cjs/impl/TestLive.js"
+    },
+    "./impl/TestServices": {
+      "types": "./dist/dts/impl/TestServices.d.ts",
+      "import": "./dist/esm/impl/TestServices.js",
+      "require": "./dist/cjs/impl/TestServices.js"
+    },
+    "./impl/TestSized": {
+      "types": "./dist/dts/impl/TestSized.d.ts",
+      "import": "./dist/esm/impl/TestSized.js",
+      "require": "./dist/cjs/impl/TestSized.js"
+    },
+    "./impl/Tracer": {
+      "types": "./dist/dts/impl/Tracer.d.ts",
+      "import": "./dist/esm/impl/Tracer.js",
+      "require": "./dist/cjs/impl/Tracer.js"
+    },
+    "./impl/Tuple": {
+      "types": "./dist/dts/impl/Tuple.d.ts",
+      "import": "./dist/esm/impl/Tuple.js",
+      "require": "./dist/cjs/impl/Tuple.js"
+    },
+    "./impl/Types": {
+      "types": "./dist/dts/impl/Types.d.ts",
+      "import": "./dist/esm/impl/Types.js",
+      "require": "./dist/cjs/impl/Types.js"
+    },
+    "./impl/Unify": {
+      "types": "./dist/dts/impl/Unify.d.ts",
+      "import": "./dist/esm/impl/Unify.js",
+      "require": "./dist/cjs/impl/Unify.js"
+    },
+    "./impl/UpstreamPullRequest": {
+      "types": "./dist/dts/impl/UpstreamPullRequest.d.ts",
+      "import": "./dist/esm/impl/UpstreamPullRequest.js",
+      "require": "./dist/cjs/impl/UpstreamPullRequest.js"
+    },
+    "./impl/UpstreamPullStrategy": {
+      "types": "./dist/dts/impl/UpstreamPullStrategy.d.ts",
+      "import": "./dist/esm/impl/UpstreamPullStrategy.js",
+      "require": "./dist/cjs/impl/UpstreamPullStrategy.js"
+    },
+    "./impl/Utils": {
+      "types": "./dist/dts/impl/Utils.d.ts",
+      "import": "./dist/esm/impl/Utils.js",
+      "require": "./dist/cjs/impl/Utils.js"
     }
   },
   "devDependencies": {
