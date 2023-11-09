@@ -190,7 +190,7 @@ export const make = <Entries extends ReadonlyArray<readonly [any, any]>>(
 export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HM.HashMap<K, V> => {
   const map = beginMutation(empty<K, V>())
   for (const entry of entries) {
-    set(entry[0], entry[1])(map)
+    set(map, entry[0], entry[1])
   }
   return endMutation(map)
 }
