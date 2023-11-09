@@ -1,6 +1,7 @@
 /**
  * @since 2.0.0
  */
+import type * as Chunk from "./Chunk.js"
 import * as internal from "./internal/stm/tPriorityQueue.js"
 import type * as Option from "./Option.js"
 import type * as Order from "./Order.js"
@@ -206,12 +207,12 @@ export const takeUpTo: {
 } = internal.takeUpTo
 
 /**
- * Collects all values into a chunk.
+ * Collects all values into a `Chunk`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Array<A>> = internal.toChunk
+export const toChunk: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Chunk.Chunk<A>> = internal.toChunk
 
 /**
  * Collects all values into an array.

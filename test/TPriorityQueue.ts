@@ -169,7 +169,7 @@ describe.concurrent("TPriorityQueue", () => {
     fc.assert(fc.asyncProperty(eventsArb, async (events) => {
       const transaction = pipe(
         TPriorityQueue.fromIterable(orderByTime)(events),
-        STM.flatMap(TPriorityQueue.toArray),
+        STM.flatMap(TPriorityQueue.toChunk),
         STM.map((chunk) => Array.from(chunk))
       )
       const result = await Effect.runPromise(STM.commit(transaction))
