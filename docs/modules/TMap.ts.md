@@ -17,9 +17,9 @@ Added in v2.0.0
   - [fromIterable](#fromiterable)
   - [make](#make)
 - [destructors](#destructors)
+  - [toArray](#toarray)
   - [toChunk](#tochunk)
   - [toHashMap](#tohashmap)
-  - [toReadonlyArray](#toreadonlyarray)
   - [toReadonlyMap](#toreadonlymap)
 - [elements](#elements)
   - [find](#find)
@@ -108,6 +108,18 @@ Added in v2.0.0
 
 # destructors
 
+## toArray
+
+Collects all bindings into an `Array`.
+
+**Signature**
+
+```ts
+export declare const toArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
+```
+
+Added in v2.0.0
+
 ## toChunk
 
 Collects all bindings into a `Chunk`.
@@ -128,18 +140,6 @@ Collects all bindings into a `HashMap`.
 
 ```ts
 export declare const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMap.HashMap<K, V>>
-```
-
-Added in v2.0.0
-
-## toReadonlyArray
-
-Collects all bindings into a `ReadonlyArray`.
-
-**Signature**
-
-```ts
-export declare const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, readonly (readonly [K, V])[]>
 ```
 
 Added in v2.0.0

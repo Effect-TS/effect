@@ -233,7 +233,7 @@ export const isEmpty = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, bool
 
 /** @internal */
 export const keys = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Array<K>> =>
-  core.map(toArray(self), RA.map((entry) => entry[0]))
+  core.map(toReadonlyArray(self), RA.map((entry) => entry[0]))
 
 /** @internal */
 export const make = <K, V>(...entries: Array<readonly [K, V]>): STM.STM<never, never, TMap.TMap<K, V>> =>
@@ -289,7 +289,7 @@ export const reduceSTM = dual<
   ) => STM.STM<R, E, Z>
 >(3, (self, zero, f) =>
   core.flatMap(
-    toArray(self),
+    toReadonlyArray(self),
     stm.reduce(zero, (acc, entry) => f(acc, entry[1], entry[0]))
   ))
 
@@ -633,8 +633,7 @@ export const takeSomeSTM = dual<
     )
   ))
 
-/** @internal */
-export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Array<readonly [K, V]>> =>
+const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, ReadonlyArray<readonly [K, V]>> =>
   core.effect<never, Array<readonly [K, V]>>((journal) => {
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
     const capacity = buckets.chunk.length
@@ -665,11 +664,14 @@ export const toHashMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Ha
   )
 
 /** @internal */
-export const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, ReadonlyArray<readonly [K, V]>> =>
+export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Array<[K, V]>> =>
   reduce(
     self,
-    [] as ReadonlyArray<readonly [K, V]>,
-    (acc, value, key) => [[key, value] as const, ...acc]
+    [] as Array<[K, V]>,
+    (acc, value, key) => {
+      acc.unshift([key, value])
+      return acc
+    }
   )
 
 /** @internal */
@@ -729,7 +731,7 @@ export const transformSTM = dual<
   <K, V, R, E>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<R, E, readonly [K, V]>) =>
     pipe(
       core.flatMap(
-        toArray(self),
+        toReadonlyArray(self),
         stm.forEach((entry) => f(entry[0], entry[1]))
       ),
       core.flatMap((newData) =>
@@ -798,4 +800,4 @@ export const updateWith = dual<
 
 /** @internal */
 export const values = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Array<V>> =>
-  core.map(toArray(self), RA.map((entry) => entry[1]))
+  core.map(toReadonlyArray(self), RA.map((entry) => entry[1]))

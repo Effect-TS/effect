@@ -396,13 +396,12 @@ export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Chunk.Ch
 export const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMap.HashMap<K, V>> = internal.toHashMap
 
 /**
- * Collects all bindings into a `ReadonlyArray`.
+ * Collects all bindings into an `Array`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyArray<readonly [K, V]>> = // TODO: readonly
-  internal.toReadonlyArray
+export const toArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>> = internal.toArray
 
 /**
  * Collects all bindings into a `ReadonlyMap`.

@@ -44,7 +44,7 @@ describe.concurrent("TMap", () => {
     Effect.gen(function*($) {
       const transaction = pipe(
         TMap.fromIterable([["a", 1], ["b", 2], ["c", 2], ["b", 3]]),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [["a", 1], ["b", 3], ["c", 2]])
@@ -285,7 +285,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.empty<HashContainer, number>(),
         STM.tap((map) => STM.all(entries.map((entry) => pipe(map, TMap.set(entry[0], entry[1]))))),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.lengthOf(pipe(result, ReadonlyArray.differenceWith(equivalentElements())(entries)), 0)
@@ -298,7 +298,7 @@ describe.concurrent("TMap", () => {
         TMap.make(["a", 1]),
         STM.tap(TMap.setIfAbsent("b", 2)),
         STM.tap(TMap.setIfAbsent("a", 10)),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["a", 1], ["b", 2]]
@@ -332,7 +332,7 @@ describe.concurrent("TMap", () => {
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
       assert.lengthOf(pipe(result, ReadonlyArray.differenceWith(equivalentElements())(entries)), 0)
@@ -355,7 +355,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.make(["a", 1], ["aa", 2], ["aaa", 3]),
         STM.tap((map) => TMap.transform(map, (key, value) => [key.replaceAll("a", "b"), value * 2])),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["b", 2], ["bb", 4], ["bbb", 6]]
@@ -368,7 +368,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.make([new HashContainer(-1), 1], [new HashContainer(-2), 2], [new HashContainer(-3), 3]),
         STM.tap((map) => TMap.transform(map, (key, value) => [new HashContainer(key.i * -2), value * 2])),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [[new HashContainer(2), 2], [new HashContainer(4), 4], [new HashContainer(6), 6]]
@@ -381,7 +381,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.make(["a", 1], ["aa", 2], ["aaa", 3]),
         STM.tap((map) => TMap.transform(map, (_, value) => ["key", value * 2])),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [["key", 6]])
@@ -392,7 +392,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.make(["a", 1], ["aa", 2], ["aaa", 3]),
         STM.tap((map) => TMap.transformSTM(map, (key, value) => STM.succeed([key.replaceAll("a", "b"), value * 2]))),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["b", 2], ["bb", 4], ["bbb", 6]]
@@ -405,7 +405,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.make(["a", 1], ["aa", 2], ["aaa", 3]),
         STM.tap((map) => TMap.transformSTM(map, (_, value) => STM.succeed(["key", value * 2]))),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [["key", 6]])
@@ -416,7 +416,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.make(["a", 1], ["aa", 2], ["aaa", 3]),
         STM.tap((map) => TMap.transformValues(map, (value) => value * 2)),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["a", 2], ["aa", 4], ["aaa", 6]]
@@ -446,7 +446,7 @@ describe.concurrent("TMap", () => {
       const transaction = pipe(
         TMap.make(["a", 1], ["aa", 2], ["aaa", 3]),
         STM.tap((map) => TMap.transformValuesSTM(map, (value) => STM.succeed(value * 2))),
-        STM.flatMap(TMap.toReadonlyArray)
+        STM.flatMap(TMap.toArray)
       )
       const result = yield* $(STM.commit(transaction))
       const expected = [["a", 2], ["aa", 4], ["aaa", 6]]
@@ -462,7 +462,7 @@ describe.concurrent("TMap", () => {
         yield* $(pipe(map, TMap.updateWith<string, number>("b", () => Option.none())))
         yield* $(pipe(map, TMap.updateWith("c", () => Option.some(3))))
         yield* $(pipe(map, TMap.updateWith<string, number>("d", () => Option.none())))
-        return yield* $(TMap.toReadonlyArray(map))
+        return yield* $(TMap.toArray(map))
       })
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [["a", 2], ["c", 3]])
