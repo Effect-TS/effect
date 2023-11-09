@@ -68,6 +68,7 @@
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@size-limit/preset-small-lib": "^10.0.2",
+    "@size-limit/esbuild-why": "^10.0.2",
     "@types/node": "^20.8.4",
     "@typescript-eslint/eslint-plugin": "^6.7.5",
     "@typescript-eslint/parser": "^6.7.5",
