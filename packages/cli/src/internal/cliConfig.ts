@@ -4,9 +4,9 @@ import * as Layer from "effect/Layer"
 import type * as CliConfig from "../CliConfig"
 
 /** @internal */
-export const make = (isCaseSensitive: boolean, autoCorrectLimit: number): CliConfig.CliConfig => ({
-  isCaseSensitive,
-  autoCorrectLimit
+export const make = (params: Partial<CliConfig.CliConfig> = {}): CliConfig.CliConfig => ({
+  ...defaultConfig,
+  ...params
 })
 
 /** @internal */
@@ -14,16 +14,19 @@ export const Tag = Context.Tag<CliConfig.CliConfig>()
 
 /** @internal */
 export const defaultConfig: CliConfig.CliConfig = {
-  isCaseSensitive: true,
-  autoCorrectLimit: 2
+  isCaseSensitive: false,
+  autoCorrectLimit: 2,
+  finalCheckBuiltIn: true,
+  showAllNames: true,
+  showTypes: true
 }
 
 /** @internal */
 export const defaultLayer: Layer.Layer<never, never, CliConfig.CliConfig> = Layer.succeed(Tag, defaultConfig)
 
 /** @internal */
-export const layer = (config: CliConfig.CliConfig): Layer.Layer<never, never, CliConfig.CliConfig> =>
-  Layer.succeed(Tag, config)
+export const layer = (config: Partial<CliConfig.CliConfig> = {}): Layer.Layer<never, never, CliConfig.CliConfig> =>
+  Layer.succeed(Tag, make(config))
 
 /** @internal */
 export const normalizeCase = dual<

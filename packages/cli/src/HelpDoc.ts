@@ -4,7 +4,7 @@
 import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type { Span } from "./HelpDoc/Span"
-import * as internal from "./internal/helpDoc"
+import * as InternalHelpDoc from "./internal/helpDoc"
 
 /**
  * A `HelpDoc` models the full documentation for a command-line application.
@@ -81,73 +81,73 @@ export interface Sequence {
  * @since 1.0.0
  * @category refinements
  */
-export const isEmpty: (helpDoc: HelpDoc) => helpDoc is Empty = internal.isEmpty
+export const isEmpty: (helpDoc: HelpDoc) => helpDoc is Empty = InternalHelpDoc.isEmpty
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isHeader: (helpDoc: HelpDoc) => helpDoc is Header = internal.isHeader
+export const isHeader: (helpDoc: HelpDoc) => helpDoc is Header = InternalHelpDoc.isHeader
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isParagraph: (helpDoc: HelpDoc) => helpDoc is Paragraph = internal.isParagraph
+export const isParagraph: (helpDoc: HelpDoc) => helpDoc is Paragraph = InternalHelpDoc.isParagraph
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isDescriptionList: (helpDoc: HelpDoc) => helpDoc is DescriptionList = internal.isDescriptionList
+export const isDescriptionList: (helpDoc: HelpDoc) => helpDoc is DescriptionList = InternalHelpDoc.isDescriptionList
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isEnumeration: (helpDoc: HelpDoc) => helpDoc is Enumeration = internal.isEnumeration
+export const isEnumeration: (helpDoc: HelpDoc) => helpDoc is Enumeration = InternalHelpDoc.isEnumeration
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isSequence: (helpDoc: HelpDoc) => helpDoc is Sequence = internal.isSequence
+export const isSequence: (helpDoc: HelpDoc) => helpDoc is Sequence = InternalHelpDoc.isSequence
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const empty: HelpDoc = internal.empty
+export const empty: HelpDoc = InternalHelpDoc.empty
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const blocks: (helpDocs: Iterable<HelpDoc>) => HelpDoc = internal.blocks
+export const blocks: (helpDocs: Iterable<HelpDoc>) => HelpDoc = InternalHelpDoc.blocks
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const h1: (value: string | Span) => HelpDoc = internal.h1
+export const h1: (value: string | Span) => HelpDoc = InternalHelpDoc.h1
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const h2: (value: string | Span) => HelpDoc = internal.h2
+export const h2: (value: string | Span) => HelpDoc = InternalHelpDoc.h2
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const h3: (value: string | Span) => HelpDoc = internal.h3
+export const h3: (value: string | Span) => HelpDoc = InternalHelpDoc.h3
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const p: (value: string | Span) => HelpDoc = internal.p
+export const p: (value: string | Span) => HelpDoc = InternalHelpDoc.p
 
 /**
  * @since 1.0.0
@@ -155,19 +155,19 @@ export const p: (value: string | Span) => HelpDoc = internal.p
  */
 export const descriptionList: (
   definitions: NonEmptyReadonlyArray<[Span, HelpDoc]>
-) => HelpDoc = internal.descriptionList
+) => HelpDoc = InternalHelpDoc.descriptionList
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const enumeration: (elements: NonEmptyReadonlyArray<HelpDoc>) => HelpDoc = internal.enumeration
+export const enumeration: (elements: NonEmptyReadonlyArray<HelpDoc>) => HelpDoc = InternalHelpDoc.enumeration
 
 /**
  * @since 1.0.0
  * @category getters
  */
-export const getSpan: (self: HelpDoc) => Span = internal.getSpan
+export const getSpan: (self: HelpDoc) => Span = InternalHelpDoc.getSpan
 
 /**
  * @since 1.0.0
@@ -176,7 +176,7 @@ export const getSpan: (self: HelpDoc) => Span = internal.getSpan
 export const sequence: {
   (that: HelpDoc): (self: HelpDoc) => HelpDoc
   (self: HelpDoc, that: HelpDoc): HelpDoc
-} = internal.sequence
+} = InternalHelpDoc.sequence
 
 /**
  * @since 1.0.0
@@ -185,7 +185,7 @@ export const sequence: {
 export const orElse: {
   (that: HelpDoc): (self: HelpDoc) => HelpDoc
   (self: HelpDoc, that: HelpDoc): HelpDoc
-} = internal.orElse
+} = InternalHelpDoc.orElse
 
 /**
  * @since 1.0.0
@@ -194,16 +194,16 @@ export const orElse: {
 export const mapDescriptionList: {
   (f: (span: Span, helpDoc: HelpDoc) => readonly [Span, HelpDoc]): (self: HelpDoc) => HelpDoc
   (self: HelpDoc, f: (span: Span, helpDoc: HelpDoc) => readonly [Span, HelpDoc]): HelpDoc
-} = internal.mapDescriptionList
+} = InternalHelpDoc.mapDescriptionList
 
 /**
  * @since 1.0.0
  * @category rendering
  */
-export const toAnsiDoc: (self: HelpDoc) => AnsiDoc = internal.toAnsiDoc
+export const toAnsiDoc: (self: HelpDoc) => AnsiDoc = InternalHelpDoc.toAnsiDoc
 
 /**
  * @since 1.0.0
  * @category rendering
  */
-export const toAnsiText: (self: HelpDoc) => string = internal.toAnsiText
+export const toAnsiText: (self: HelpDoc) => string = InternalHelpDoc.toAnsiText

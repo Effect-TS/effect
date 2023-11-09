@@ -5,7 +5,7 @@ import type { Effect } from "effect/Effect"
 import type { Command } from "./Command"
 import type { HelpDoc } from "./HelpDoc"
 import type { Span } from "./HelpDoc/Span"
-import * as internal from "./internal/cliApp"
+import * as InternalCliApp from "./internal/cliApp"
 import type { ValidationError } from "./ValidationError"
 
 /**
@@ -34,7 +34,7 @@ export const make: <A>(
     summary?: Span | undefined
     footer?: HelpDoc | undefined
   }
-) => CliApp<A> = internal.make
+) => CliApp<A> = InternalCliApp.make
 
 /**
  * @since 1.0.0
@@ -50,4 +50,4 @@ export const run: {
     args: ReadonlyArray<string>,
     f: (a: A) => Effect<R, E, void>
   ): Effect<R, ValidationError | E, void>
-} = internal.run
+} = InternalCliApp.run

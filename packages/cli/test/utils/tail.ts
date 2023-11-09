@@ -10,4 +10,4 @@ export const command: Command.Command<{
   readonly name: "tail"
   readonly options: number
   readonly args: string
-}> = Command.make("tail", { options, args })
+}> = Command.standard("tail", { options, args })

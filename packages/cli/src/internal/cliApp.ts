@@ -3,24 +3,29 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import type * as BuiltInOption from "../BuiltInOption"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import type * as BuiltInOptions from "../BuiltInOptions"
 import type * as CliApp from "../CliApp"
+import type * as CliConfig from "../CliConfig"
 import type * as Command from "../Command"
 import type * as HelpDoc from "../HelpDoc"
 import type * as Span from "../HelpDoc/Span"
 import type * as ValidationError from "../ValidationError"
-import * as cliConfig from "./cliConfig"
-import * as command from "./command"
-import * as commandDirective from "./commandDirective"
-import * as doc from "./helpDoc"
-import * as span from "./helpDoc/span"
-import * as terminal from "./terminal"
-import * as _usage from "./usage"
-import * as validationError from "./validationError"
+import * as InternalCliConfig from "./cliConfig"
+import * as InternalCommand from "./command"
+import * as InternalHelpDoc from "./helpDoc"
+import * as InternalSpan from "./helpDoc/span"
+import * as InternalTerminal from "./terminal"
+import * as InternalUsage from "./usage"
+import * as InternalValidationError from "./validationError"
+
+// =============================================================================
+// Constructors
+// =============================================================================
 
 const defaultConfig = {
-  summary: span.empty,
-  footer: doc.empty
+  summary: InternalSpan.empty,
+  footer: InternalHelpDoc.empty
 }
 
 /** @internal */
@@ -31,6 +36,10 @@ export const make = <A>(config: {
   summary?: Span.Span
   footer?: HelpDoc.HelpDoc
 }): CliApp.CliApp<A> => Object.assign({}, defaultConfig, config)
+
+// =============================================================================
+// Combinators
+// =============================================================================
 
 /** @internal */
 export const run = dual<
@@ -43,104 +52,104 @@ export const run = dual<
     args: ReadonlyArray<string>,
     f: (a: A) => Effect.Effect<R, E, void>
   ) => Effect.Effect<R, E | ValidationError.ValidationError, void>
->(3, (self, args, f) =>
+>(3, <R, E, A>(
+  self: CliApp.CliApp<A>,
+  args: ReadonlyArray<string>,
+  f: (a: A) => Effect.Effect<R, E, void>
+): Effect.Effect<R, E | ValidationError.ValidationError, void> =>
   Effect.contextWithEffect((context: Context.Context<never>) => {
-    const config = Option.getOrElse(Context.getOption(context, cliConfig.Tag), () => cliConfig.defaultConfig)
-    return Effect.matchEffect(
-      command.parse(self.command, [...prefixCommand(self.command), ...args], config),
-      {
-        onFailure: (error) => Effect.zipRight(printDocs(error), Effect.fail(error)),
-        onSuccess: (directive) =>
-          commandDirective.isUserDefined(directive)
-            ? f(directive.value)
-            : Effect.catchSome(
-              runBuiltIn(directive.option, self),
-              (error) =>
-                validationError.isValidationError(error) ?
-                  Option.some(Effect.zipRight(printDocs(error), Effect.fail(error))) :
-                  Option.none()
+    const config = Option.getOrElse(
+      Context.getOption(context, InternalCliConfig.Tag),
+      () => InternalCliConfig.defaultConfig
+    )
+    const prefixedArgs = ReadonlyArray.appendAll(prefixCommand(self.command), args)
+    return self.command.parse(prefixedArgs, config).pipe(Effect.matchEffect({
+      onFailure: (e) => Effect.zipRight(printDocs(e.error), Effect.fail(e)),
+      onSuccess: (directive): Effect.Effect<R, E | ValidationError.ValidationError, void> => {
+        switch (directive._tag) {
+          case "UserDefined": {
+            return f(directive.value)
+          }
+          case "BuiltIn": {
+            return handleBuiltInOption(self, directive.option, config).pipe(
+              Effect.catchSome((e) =>
+                InternalValidationError.isValidationError(e)
+                  ? Option.some(Effect.zipRight(printDocs(e.error), Effect.fail(e)))
+                  : Option.none()
+              )
             )
+          }
+        }
       }
-    )
-  }).pipe(Effect.provide(terminal.layer)))
+    }))
+  }).pipe(Effect.provide(InternalTerminal.layer)))
 
-const prefixCommandMap: {
-  [K in command.Instruction["_tag"]]: (self: Extract<command.Instruction, { _tag: K }>) => ReadonlyArray<string>
-} = {
-  Single: (self) => [self.name],
-  Map: (self) => prefixCommandMap[self.command._tag](self.command as any),
-  OrElse: () => [],
-  Subcommands: (self) => prefixCommandMap[self.parent._tag](self.parent as any)
+// =============================================================================
+// Internals
+// =============================================================================
+
+const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<never, never, void> =>
+  Console.log(InternalHelpDoc.toAnsiText(error))
+
+const handleBuiltInOption = <A>(
+  self: CliApp.CliApp<A>,
+  builtIn: BuiltInOptions.BuiltInOptions,
+  config: CliConfig.CliConfig
+): Effect.Effect<never, ValidationError.ValidationError, void> => {
+  switch (builtIn._tag) {
+    case "ShowHelp": {
+      const banner = InternalHelpDoc.h1(InternalSpan.code(self.name))
+      const header = InternalHelpDoc.p(InternalSpan.concat(
+        InternalSpan.text(`${self.name} ${self.version} -- `),
+        self.summary
+      ))
+      const usage = InternalHelpDoc.sequence(
+        InternalHelpDoc.h1("USAGE"),
+        pipe(
+          InternalUsage.enumerate(builtIn.usage, config),
+          ReadonlyArray.map((span) => InternalHelpDoc.p(InternalSpan.concat(InternalSpan.text("$ "), span))),
+          ReadonlyArray.reduceRight(InternalHelpDoc.empty, (left, right) => InternalHelpDoc.sequence(left, right))
+        )
+      )
+      const helpDoc = pipe(
+        banner,
+        InternalHelpDoc.sequence(header),
+        InternalHelpDoc.sequence(usage),
+        InternalHelpDoc.sequence(builtIn.helpDoc),
+        InternalHelpDoc.sequence(self.footer)
+      )
+      return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
+    }
+    case "ShowCompletionScript": {
+      return Console.log("Showing completion script")
+    }
+    case "ShowCompletions": {
+      return Console.log("Showing completions")
+    }
+    case "ShowWizard": {
+      return Console.log("Showing the wizard")
+    }
+  }
 }
 
-const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> =>
-  prefixCommandMap[(self as command.Instruction)._tag](self as any)
-
-const runBuiltInMap: {
-  [K in BuiltInOption.BuiltInOption["_tag"]]: (
-    self: Extract<BuiltInOption.BuiltInOption, { _tag: K }>,
-    cliApp: CliApp.CliApp<any>
-  ) => Effect.Effect<never, never, void>
-} = {
-  ShowCompletions: () =>
-    //   case ShowCompletions(index, _) =>
-    //     envs.flatMap { envMap =>
-    //       val compWords = envMap.collect {
-    //         case (idx, word) if idx.startsWith("COMP_WORD_") =>
-    //           (idx.drop("COMP_WORD_".length).toInt, word)
-    //       }.toList.sortBy(_._1).map(_._2)
-
-    //       Completion
-    //         .complete(compWords, index, self.command, self.config)
-    //         .flatMap { completions =>
-    //           ZIO.foreachDiscard(completions)(word => printLine(word))
-    //         }
-    //     }
-    Console.log("Showing Completions"),
-  ShowCompletionScript: () =>
-    //   case ShowCompletionScript(path, shellType) =>
-    //     printLine(
-    //       CompletionScript(path, if (self.command.names.nonEmpty) self.command.names else Set(self.name), shellType)
-    //     )
-    Console.log("Showing Completion Script"),
-  ShowHelp: (self, cliApp) => {
-    const banner = doc.h1(span.code(cliApp.name))
-    const header = doc.p(span.concat(span.text(`${cliApp.name} v${cliApp.version} -- `), cliApp.summary))
-    const usage = doc.sequence(
-      doc.h1("USAGE"),
-      doc.p(span.concat(span.text("$ "), doc.getSpan(_usage.helpDoc(self.usage))))
-    )
-    // TODO: add rendering of built-in options such as help
-    const helpDoc = pipe(
-      banner,
-      doc.sequence(header),
-      doc.sequence(usage),
-      doc.sequence(self.helpDoc),
-      doc.sequence(cliApp.footer)
-    )
-    const helpText = doc.toAnsiText(helpDoc)
-    return Console.log(helpText)
-  },
-  Wizard: () =>
-    //     val subcommands = command.getSubcommands
-    //     for {
-    //       subcommandName <- if (subcommands.size == 1) ZIO.succeed(subcommands.keys.head)
-    //                         else
-    //                           (print("Command" + subcommands.keys.mkString("(", "|", "): ")) *> readLine).orDie
-    //       subcommand <-
-    //         ZIO
-    //           .fromOption(subcommands.get(subcommandName))
-    //           .orElseFail(ValidationError(ValidationErrorType.InvalidValue, HelpDoc.p("Invalid subcommand")))
-    //       args   <- subcommand.generateArgs
-    //       _      <- Console.printLine(s"Executing command: ${(prefix(self.command) ++ args).mkString(" ")}")
-    //       result <- self.run(args)
-    //     } yield result
-    Console.log("Running Wizard")
+const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> => {
+  let command: Command.Command<unknown> | undefined = self
+  let prefix: ReadonlyArray<string> = ReadonlyArray.empty()
+  while (command !== undefined) {
+    if (InternalCommand.isStandard(command) || InternalCommand.isGetUserInput(command)) {
+      prefix = ReadonlyArray.of(command.name)
+      command = undefined
+    }
+    if (InternalCommand.isMap(command)) {
+      command = command.command
+    }
+    if (InternalCommand.isOrElse(command)) {
+      prefix = ReadonlyArray.empty()
+      command = undefined
+    }
+    if (InternalCommand.isSubcommands(command)) {
+      command = command.parent
+    }
+  }
+  return prefix
 }
-
-const runBuiltIn = <A>(
-  self: BuiltInOption.BuiltInOption,
-  cliApp: CliApp.CliApp<A>
-): Effect.Effect<never, never, void> => runBuiltInMap[self._tag](self as any, cliApp)
-
-const printDocs = (error: ValidationError.ValidationError) => Console.log(doc.toAnsiText(error.error))

@@ -11,7 +11,7 @@ export * as AutoCorrect from "@effect/cli/AutoCorrect"
 /**
  * @since 1.0.0
  */
-export * as BuiltInOption from "@effect/cli/BuiltInOption"
+export * as BuiltInOptions from "@effect/cli/BuiltInOptions"
 
 /**
  * @since 1.0.0
@@ -47,6 +47,14 @@ export * as HelpDoc from "@effect/cli/HelpDoc"
  * @since 1.0.0
  */
 export * as Options from "@effect/cli/Options"
+
+/**
+ * Abstraction employed by Wizard class. Parameter trait encompass `Command`,
+ * `Options` and `Args` interfaces.
+ *
+ * The `Wizard` processes subtypes of `Parameter` in different manners.
+ */
+export * as Parameter from "@effect/cli/Parameter"
 
 /**
  * @since 1.0.0

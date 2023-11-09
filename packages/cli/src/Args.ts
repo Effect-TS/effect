@@ -1,14 +1,15 @@
 /**
  * @since 1.0.0
  */
-import type { Chunk, NonEmptyChunk } from "effect/Chunk"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { CliConfig } from "./CliConfig"
 import type { HelpDoc } from "./HelpDoc"
-import * as internal from "./internal/args"
+import * as InternalArgs from "./internal/args"
+import type { Parameter } from "./Parameter"
 import type { Usage } from "./Usage"
 import type { ValidationError } from "./ValidationError"
 
@@ -16,7 +17,7 @@ import type { ValidationError } from "./ValidationError"
  * @since 1.0.0
  * @category symbols
  */
-export const ArgsTypeId: unique symbol = internal.ArgsTypeId
+export const ArgsTypeId: unique symbol = InternalArgs.ArgsTypeId
 
 /**
  * @since 1.0.0
@@ -30,7 +31,17 @@ export type ArgsTypeId = typeof ArgsTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Args<A> extends Args.Variance<A>, Pipeable {}
+export interface Args<A> extends Args.Variance<A>, Parameter, Pipeable {
+  get maxSize(): number
+  get minSize(): number
+  get identifier(): Option<string>
+  get usage(): Usage
+  validate(
+    args: ReadonlyArray<string>,
+    config: CliConfig
+  ): Effect<never, ValidationError, readonly [ReadonlyArray<string>, A]>
+  addDescription(description: string): Args<A>
+}
 
 /**
  * @since 1.0.0
@@ -57,43 +68,94 @@ export declare namespace Args {
 
 /**
  * @since 1.0.0
- * @category combinators
  */
-export const addDescription: {
-  (description: string): <A>(self: Args<A>) => Args<A>
-  <A>(self: Args<A>, description: string): Args<A>
-} = internal.addDescription
+export declare namespace All {
+  /**
+   * @since 1.0.0
+   */
+  export type ArgsAny = Args<any>
+
+  /**
+   * @since 1.0.0
+   */
+  export type ReturnIterable<T extends Iterable<ArgsAny>> = [T] extends [Iterable<Args.Variance<infer A>>]
+    ? Args<Array<A>>
+    : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type ReturnTuple<T extends ReadonlyArray<unknown>> = Args<
+    T[number] extends never ? []
+      : {
+        -readonly [K in keyof T]: [T[K]] extends [Args.Variance<infer _A>] ? _A : never
+      }
+  > extends infer X ? X : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type ReturnObject<T> = [T] extends [{ [K: string]: ArgsAny }] ? Args<
+      {
+        -readonly [K in keyof T]: [T[K]] extends [Args.Variance<infer _A>] ? _A : never
+      }
+    >
+    : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type Return<
+    Arg extends Iterable<ArgsAny> | Record<string, ArgsAny>
+  > = [Arg] extends [ReadonlyArray<ArgsAny>] ? ReturnTuple<Arg>
+    : [Arg] extends [Iterable<ArgsAny>] ? ReturnIterable<Arg>
+    : [Arg] extends [Record<string, ArgsAny>] ? ReturnObject<Arg>
+    : never
+}
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isArgs: (u: unknown) => u is Args<unknown> = InternalArgs.isArgs
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const all: <const Arg extends Iterable<Args<any>> | Record<string, Args<any>>>(arg: Arg) => All.Return<Arg> =
+  InternalArgs.all
 
 /**
  * @since 1.0.0
  * @category combinators
  */
 export const atLeast: {
-  (times: 0): <A>(self: Args<A>) => Args<Chunk<A>>
-  (times: number): <A>(self: Args<A>) => Args<NonEmptyChunk<A>>
-  <A>(self: Args<A>, times: 0): Args<Chunk<A>>
-  <A>(self: Args<A>, times: number): Args<NonEmptyChunk<A>>
-} = internal.atLeast
+  (times: 0): <A>(self: Args<A>) => Args<ReadonlyArray<A>>
+  (times: number): <A>(self: Args<A>) => Args<NonEmptyReadonlyArray<A>>
+  <A>(self: Args<A>, times: 0): Args<ReadonlyArray<A>>
+  <A>(self: Args<A>, times: number): Args<NonEmptyReadonlyArray<A>>
+} = InternalArgs.atLeast
 
 /**
  * @since 1.0.0
  * @category combinators
  */
 export const atMost: {
-  (times: number): <A>(self: Args<A>) => Args<Chunk<A>>
-  <A>(self: Args<A>, times: number): Args<Chunk<A>>
-} = internal.atMost
+  (times: number): <A>(self: Args<A>) => Args<ReadonlyArray<A>>
+  <A>(self: Args<A>, times: number): Args<ReadonlyArray<A>>
+} = InternalArgs.atMost
 
 /**
  * @since 1.0.0
  * @category combinators
  */
 export const between: {
-  (min: 0, max: number): <A>(self: Args<A>) => Args<Chunk<A>>
-  (min: number, max: number): <A>(self: Args<A>) => Args<NonEmptyChunk<A>>
-  <A>(self: Args<A>, min: 0, max: number): Args<Chunk<A>>
-  <A>(self: Args<A>, min: number, max: number): Args<NonEmptyChunk<A>>
-} = internal.between
+  (min: 0, max: number): <A>(self: Args<A>) => Args<ReadonlyArray<A>>
+  (min: number, max: number): <A>(self: Args<A>) => Args<NonEmptyReadonlyArray<A>>
+  <A>(self: Args<A>, min: 0, max: number): Args<ReadonlyArray<A>>
+  <A>(self: Args<A>, min: number, max: number): Args<NonEmptyReadonlyArray<A>>
+} = InternalArgs.between
 
 /**
  * Creates a boolean argument.
@@ -103,7 +165,7 @@ export const between: {
  * @since 1.0.0
  * @category constructors
  */
-export const boolean: (options?: Args.ArgsConfig) => Args<boolean> = internal.boolean
+export const boolean: (options?: Args.ArgsConfig) => Args<boolean> = InternalArgs.boolean
 
 /**
  * Creates a choice argument.
@@ -114,7 +176,7 @@ export const boolean: (options?: Args.ArgsConfig) => Args<boolean> = internal.bo
  * @category constructors
  */
 export const choice: <A>(choices: NonEmptyReadonlyArray<[string, A]>, config?: Args.ArgsConfig) => Args<A> =
-  internal.choice
+  InternalArgs.choice
 
 /**
  * Creates a date argument.
@@ -124,7 +186,7 @@ export const choice: <A>(choices: NonEmptyReadonlyArray<[string, A]>, config?: A
  * @since 1.0.0
  * @category constructors
  */
-export const date: (config?: Args.ArgsConfig) => Args<globalThis.Date> = internal.date
+export const date: (config?: Args.ArgsConfig) => Args<globalThis.Date> = InternalArgs.date
 
 /**
  * Creates a floating point number argument.
@@ -134,13 +196,7 @@ export const date: (config?: Args.ArgsConfig) => Args<globalThis.Date> = interna
  * @since 1.0.0
  * @category constructors
  */
-export const float: (config?: Args.ArgsConfig) => Args<number> = internal.float
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const helpDoc: <A>(self: Args<A>) => HelpDoc = internal.helpDoc
+export const float: (config?: Args.ArgsConfig) => Args<number> = InternalArgs.float
 
 /**
  * Creates an integer argument.
@@ -150,13 +206,7 @@ export const helpDoc: <A>(self: Args<A>) => HelpDoc = internal.helpDoc
  * @since 1.0.0
  * @category constructors
  */
-export const integer: (config?: Args.ArgsConfig) => Args<number> = internal.integer
-
-/**
- * @since 1.0.0
- * @category refinements
- */
-export const isArgs: (u: unknown) => u is Args<unknown> = internal.isArgs
+export const integer: (config?: Args.ArgsConfig) => Args<number> = InternalArgs.integer
 
 /**
  * @since 1.0.0
@@ -165,7 +215,7 @@ export const isArgs: (u: unknown) => u is Args<unknown> = internal.isArgs
 export const map: {
   <A, B>(f: (a: A) => B): (self: Args<A>) => Args<B>
   <A, B>(self: Args<A>, f: (a: A) => B): Args<B>
-} = internal.map
+} = InternalArgs.map
 
 /**
  * @since 1.0.0
@@ -174,7 +224,7 @@ export const map: {
 export const mapOrFail: {
   <A, B>(f: (a: A) => Either<HelpDoc, B>): (self: Args<A>) => Args<B>
   <A, B>(self: Args<A>, f: (a: A) => Either<HelpDoc, B>): Args<B>
-} = internal.mapOrFail
+} = InternalArgs.mapOrFail
 
 /**
  * @since 1.0.0
@@ -183,19 +233,7 @@ export const mapOrFail: {
 export const mapTryCatch: {
   <A, B>(f: (a: A) => B, onError: (e: unknown) => HelpDoc): (self: Args<A>) => Args<B>
   <A, B>(self: Args<A>, f: (a: A) => B, onError: (e: unknown) => HelpDoc): Args<B>
-} = internal.mapTryCatch
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const maxSize: <A>(self: Args<A>) => number = internal.maxSize
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const minSize: <A>(self: Args<A>) => number = internal.minSize
+} = InternalArgs.mapTryCatch
 
 /**
  *  Creates an empty argument.
@@ -203,19 +241,20 @@ export const minSize: <A>(self: Args<A>) => number = internal.minSize
  * @since 1.0.0
  * @category constructors
  */
-export const none: Args<void> = internal.none
+export const none: Args<void> = InternalArgs.none
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const repeat: <A>(self: Args<A>) => Args<Chunk<A>> = internal.repeat
+export const repeated: <A>(self: Args<A>) => Args<ReadonlyArray<A>> = InternalArgs.repeated
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const repeat1: <A>(self: Args<A>) => Args<NonEmptyChunk<A>> = internal.repeat1
+export const repeatedAtLeastOnce: <A>(self: Args<A>) => Args<NonEmptyReadonlyArray<A>> =
+  InternalArgs.repeatedAtLeastOnce
 
 /**
  * Creates a text argument.
@@ -225,54 +264,4 @@ export const repeat1: <A>(self: Args<A>) => Args<NonEmptyChunk<A>> = internal.re
  * @since 1.0.0
  * @category constructors
  */
-export const text: (config?: Args.ArgsConfig) => Args<string> = internal.text
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const uid: <A>(self: Args<A>) => Option<string> = internal.uid
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const usage: <A>(self: Args<A>) => Usage = internal.usage
-
-/**
- * @since 1.0.0
- * @category validation
- */
-export const validate: {
-  (
-    args: ReadonlyArray<string>
-  ): <A>(self: Args<A>) => Effect<never, ValidationError, readonly [ReadonlyArray<string>, A]>
-  <A>(self: Args<A>, args: ReadonlyArray<string>): Effect<never, ValidationError, readonly [ReadonlyArray<string>, A]>
-} = internal.validate
-
-/**
- * @since 1.0.0
- * @category zipping
- */
-export const zip: {
-  <B>(that: Args<B>): <A>(self: Args<A>) => Args<readonly [A, B]>
-  <A, B>(self: Args<A>, that: Args<B>): Args<readonly [A, B]>
-} = internal.zip
-
-/**
- * @since 1.0.0
- * @category zipping
- */
-export const zipFlatten: {
-  <B>(that: Args<B>): <A extends ReadonlyArray<any>>(self: Args<A>) => Args<[...A, B]>
-  <A extends ReadonlyArray<any>, B>(self: Args<A>, that: Args<B>): Args<[...A, B]>
-} = internal.zipFlatten
-
-/**
- * @since 1.0.0
- * @category zipping
- */
-export const zipWith: {
-  <B, A, C>(that: Args<B>, f: (a: A, b: B) => C): (self: Args<A>) => Args<C>
-  <A, B, C>(self: Args<A>, that: Args<B>, f: (a: A, b: B) => C): Args<C>
-} = internal.zipWith
+export const text: (config?: Args.ArgsConfig) => Args<string> = InternalArgs.text

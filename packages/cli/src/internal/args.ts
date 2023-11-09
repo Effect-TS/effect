@@ -1,21 +1,21 @@
-import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type * as Args from "../Args"
+import type * as CliConfig from "../CliConfig"
 import type * as HelpDoc from "../HelpDoc"
+import type * as Parameter from "../Parameter"
 import type * as Primitive from "../Primitive"
 import type * as Usage from "../Usage"
 import type * as ValidationError from "../ValidationError"
-import * as doc from "./helpDoc"
-import * as span from "./helpDoc/span"
-import * as primitive from "./primitive"
-import * as _usage from "./usage"
-import * as validationError from "./validationError"
+import * as InternalHelpDoc from "./helpDoc"
+import * as InternalSpan from "./helpDoc/span"
+import * as InternalPrimitive from "./primitive"
+import * as InternalUsage from "./usage"
+import * as InternalValidationError from "./validationError"
 
 const ArgsSymbolKey = "@effect/cli/Args"
 
@@ -24,119 +24,412 @@ export const ArgsTypeId: Args.ArgsTypeId = Symbol.for(
   ArgsSymbolKey
 ) as Args.ArgsTypeId
 
-/** @internal */
-export type Op<Tag extends string, Body = {}> = Args.Args<never> & Body & {
-  readonly _tag: Tag
+const proto = {
+  _A: (_: never) => _
 }
 
-const proto = {
-  [ArgsTypeId]: {
-    _A: (_: never) => _
-  },
+/** @internal */
+export class Empty implements Args.Args<void> {
+  readonly [ArgsTypeId] = proto
+  readonly _tag = "Empty"
+
+  get minSize(): number {
+    return 0
+  }
+
+  get maxSize(): number {
+    return 0
+  }
+
+  get identifier(): Option.Option<string> {
+    return Option.none()
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.empty
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.empty
+  }
+
+  get shortDescription(): string {
+    return ""
+  }
+
+  validate(
+    args: ReadonlyArray<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, void]> {
+    return Effect.succeed([args, undefined])
+  }
+
+  addDescription(_description: string): Args.Args<void> {
+    return new Empty()
+  }
+
   pipe() {
     return pipeArguments(this, arguments)
   }
 }
 
 /** @internal */
-export type Instruction =
-  | Empty
-  | Map
-  | Single
-  | Variadic
-  | Zip
+export class Single<A> implements Args.Args<A>, Parameter.Input {
+  readonly [ArgsTypeId] = proto
+  readonly _tag = "Single"
+
+  constructor(
+    readonly pseudoName: Option.Option<string>,
+    readonly primitiveType: Primitive.Primitive<A>,
+    readonly description: HelpDoc.HelpDoc = InternalHelpDoc.empty
+  ) {}
+
+  get minSize(): number {
+    return 1
+  }
+
+  get maxSize(): number {
+    return 1
+  }
+
+  get identifier(): Option.Option<string> {
+    return Option.some(this.name)
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.descriptionList([[
+      InternalSpan.weak(this.name),
+      InternalHelpDoc.sequence(
+        InternalHelpDoc.p(this.primitiveType.help),
+        this.description
+      )
+    ]])
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.named(ReadonlyArray.of(this.name), this.primitiveType.choices)
+  }
+
+  get shortDescription(): string {
+    return `Argument $name: ${InternalSpan.getText(InternalHelpDoc.getSpan(this.description))}`
+  }
+
+  isValid(
+    input: string,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+    const args = ReadonlyArray.of(input)
+    return this.validate(args, config).pipe(Effect.as(args))
+  }
+
+  validate(
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]> {
+    return Effect.suspend(() => {
+      if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+        const head = ReadonlyArray.headNonEmpty(args)
+        const tail = ReadonlyArray.tailNonEmpty(args)
+        return this.primitiveType.validate(Option.some(head), config).pipe(
+          Effect.mapBoth({
+            onFailure: (text) => InternalHelpDoc.p(text),
+            onSuccess: (a) => [tail, a] as const
+          })
+        )
+      }
+      const choices = this.primitiveType.choices
+      if (Option.isSome(this.pseudoName) && Option.isSome(choices)) {
+        return Effect.fail(InternalHelpDoc.p(
+          `Missing argument <${this.pseudoName.value}> with choices ${choices.value}`
+        ))
+      }
+      if (Option.isSome(this.pseudoName)) {
+        return Effect.fail(InternalHelpDoc.p(
+          `Missing argument <${this.pseudoName.value}>`
+        ))
+      }
+      if (Option.isSome(choices)) {
+        return Effect.fail(InternalHelpDoc.p(
+          `Missing argument ${this.primitiveType.typeName} with choices ${choices.value}`
+        ))
+      }
+      return Effect.fail(InternalHelpDoc.p(
+        `Missing argument ${this.primitiveType.typeName}`
+      ))
+    }).pipe(Effect.mapError((help) => InternalValidationError.invalidArgument(help)))
+  }
+
+  parse(
+    _args: ReadonlyArray<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+    return Effect.succeed([ReadonlyArray.empty(), ReadonlyArray.empty()])
+  }
+
+  addDescription(description: string): Args.Args<A> {
+    const desc = InternalHelpDoc.sequence(this.description, InternalHelpDoc.p(description))
+    return new Single(this.pseudoName, this.primitiveType, desc)
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+
+  private get name(): string {
+    const name = Option.getOrElse(this.pseudoName, () => this.primitiveType.typeName)
+    return `<${name}>`
+  }
+}
+
+export class Both<A, B> implements Args.Args<readonly [A, B]> {
+  readonly [ArgsTypeId] = proto
+  readonly _tag = "Both"
+
+  constructor(
+    readonly left: Args.Args<A>,
+    readonly right: Args.Args<B>
+  ) {}
+
+  get minSize(): number {
+    return this.left.minSize + this.right.minSize
+  }
+
+  get maxSize(): number {
+    return this.left.maxSize + this.right.maxSize
+  }
+
+  get identifier(): Option.Option<string> {
+    const ids = ReadonlyArray.compact([this.left.identifier, this.right.identifier])
+    return ReadonlyArray.match(ids, {
+      onEmpty: () => Option.none(),
+      onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
+    })
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.sequence(this.left.help, this.right.help)
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.concat(this.left.usage, this.right.usage)
+  }
+
+  get shortDescription(): string {
+    return ""
+  }
+
+  validate(
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, readonly [A, B]]> {
+    return this.left.validate(args, config).pipe(
+      Effect.flatMap(([args, a]) =>
+        this.right.validate(args, config).pipe(
+          Effect.map(([args, b]) => [args, [a, b]] as const)
+        )
+      )
+    )
+  }
+
+  addDescription(description: string): Args.Args<readonly [A, B]> {
+    return new Both(
+      this.left.addDescription(description),
+      this.right.addDescription(description)
+    )
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /** @internal */
-export interface Empty extends Op<"Empty"> {}
+export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input {
+  readonly [ArgsTypeId] = proto
+  readonly _tag = "Variadic"
 
-/** @internal */
-export interface Single extends
-  Op<"Single", {
-    readonly pseudoName: Option.Option<string>
-    readonly primitiveType: Primitive.Primitive<unknown>
-    readonly description: HelpDoc.HelpDoc
-  }>
-{}
-
-/** @internal */
-export interface Map extends
-  Op<"Map", {
-    readonly value: Instruction
-    readonly f: (a: unknown) => Either.Either<HelpDoc.HelpDoc, unknown>
-  }>
-{}
-
-/** @internal */
-export interface Variadic extends
-  Op<"Variadic", {
-    readonly value: Instruction
-    readonly min: Option.Option<number>
+  constructor(
+    readonly value: Args.Args<A>,
+    readonly min: Option.Option<number>,
     readonly max: Option.Option<number>
-  }>
-{}
+  ) {}
+
+  get minSize(): number {
+    return Math.floor(Option.getOrElse(this.min, () => 0) * this.value.minSize)
+  }
+
+  get maxSize(): number {
+    return Math.floor(Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER / 2) * this.value.maxSize)
+  }
+
+  get identifier(): Option.Option<string> {
+    return this.value.identifier
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.mapDescriptionList(this.value.help, (oldSpan, oldBlock) => {
+      const min = this.minSize
+      const max = this.maxSize
+      const newSpan = InternalSpan.text(Option.isSome(this.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`)
+      const newBlock = InternalHelpDoc.p(
+        Option.isSome(this.max)
+          ? `This argument must be repeated at least ${min} times and may be repeated up to ${max} times.`
+          : min === 0
+          ? "This argument may be repeated zero or more times."
+          : `This argument must be repeated at least ${min} times.`
+      )
+      return [InternalSpan.concat(oldSpan, newSpan), InternalHelpDoc.sequence(oldBlock, newBlock)]
+    })
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.repeated(this.value.usage)
+  }
+
+  get shortDescription(): string {
+    return InternalHelpDoc.toAnsiText(this.help)
+  }
+
+  validate(
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<A>]> {
+    const min1 = Option.getOrElse(this.min, () => 0)
+    const max1 = Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER)
+    const loop = (
+      args: ReadonlyArray<string>,
+      acc: ReadonlyArray<A>
+    ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<A>]> => {
+      if (acc.length >= max1) {
+        return Effect.succeed([args, acc])
+      }
+      return this.value.validate(args, config).pipe(Effect.matchEffect({
+        onFailure: (failure) =>
+          acc.length >= min1 && ReadonlyArray.isEmptyReadonlyArray(args)
+            ? Effect.succeed([args, acc])
+            : Effect.fail(failure),
+        onSuccess: ([args, a]) => loop(args, ReadonlyArray.prepend(acc, a))
+      }))
+    }
+    return loop(args, ReadonlyArray.empty()).pipe(Effect.map(([args, acc]) => [args, ReadonlyArray.reverse(acc)]))
+  }
+
+  parse(
+    _args: ReadonlyArray<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+    return Effect.succeed([ReadonlyArray.empty(), ReadonlyArray.empty()])
+  }
+
+  isValid(
+    input: string,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+    const args = input.split(" ")
+    return this.validate(args, config).pipe(Effect.as(args))
+  }
+
+  addDescription(description: string): Args.Args<ReadonlyArray<A>> {
+    return new Variadic(this.value.addDescription(description), this.min, this.max)
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /** @internal */
-export interface Zip extends
-  Op<"Zip", {
-    readonly left: Instruction
-    readonly right: Instruction
-  }>
-{}
+export class Map<A, B> implements Args.Args<B> {
+  readonly [ArgsTypeId] = proto
+  readonly _tag = "Map"
+
+  constructor(
+    readonly args: Args.Args<A>,
+    readonly f: (value: A) => Either.Either<HelpDoc.HelpDoc, B>
+  ) {}
+
+  get minSize(): number {
+    return this.args.minSize
+  }
+
+  get maxSize(): number {
+    return this.args.maxSize
+  }
+
+  get identifier(): Option.Option<string> {
+    return this.args.identifier
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return this.args.help
+  }
+
+  get usage(): Usage.Usage {
+    return this.args.usage
+  }
+
+  get shortDescription(): string {
+    return this.args.shortDescription
+  }
+
+  validate(
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, B]> {
+    return this.args.validate(args, config).pipe(
+      Effect.flatMap(([leftover, a]) =>
+        Either.match(this.f(a), {
+          onLeft: (doc) => Effect.fail(InternalValidationError.invalidArgument(doc)),
+          onRight: (b) => Effect.succeed([leftover, b] as const)
+        })
+      )
+    )
+  }
+
+  addDescription(description: string): Args.Args<B> {
+    return new Map(this.args.addDescription(description), this.f)
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+// =============================================================================
+// Refinements
+// =============================================================================
 
 /** @internal */
 export const isArgs = (u: unknown): u is Args.Args<unknown> => typeof u === "object" && u != null && ArgsTypeId in u
 
-const addDescriptionMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>, description: string) => Args.Args<any>
-} = {
-  Empty: (self) => self,
-  Single: (self, description) =>
-    single(self.pseudoName, self.primitiveType, doc.sequence(self.description, doc.p(description))),
-  Map: (self, description) => mapOrFail(addDescriptionMap[self.value._tag](self.value as any, description), self.f),
-  Variadic: (self, description) =>
-    variadic(addDescriptionMap[self.value._tag](self.value as any, description), self.min, self.max),
-  Zip: (self, description) =>
-    zip(
-      addDescriptionMap[self.left._tag](self.left as any, description),
-      addDescriptionMap[self.right._tag](self.right as any, description)
-    )
-}
+/** @internal */
+export const isEmpty = (u: unknown): u is Empty => isArgs(u) && "_tag" in u && u._tag === "Empty"
 
 /** @internal */
-export const addDescription = dual<
-  (description: string) => <A>(self: Args.Args<A>) => Args.Args<A>,
-  <A>(self: Args.Args<A>, description: string) => Args.Args<A>
->(2, (self, description) => addDescriptionMap[(self as Instruction)._tag](self as any, description))
+export const isSingle = (u: unknown): u is Single<unknown> => isArgs(u) && "_tag" in u && u._tag === "Single"
 
-/* @internal */
-export const all: {
-  <A, T extends ReadonlyArray<Args.Args<any>>>(
-    self: Args.Args<A>,
-    ...args: T
-  ): Args.Args<
-    readonly [
-      A,
-      ...(T["length"] extends 0 ? []
-        : Readonly<{ [K in keyof T]: [T[K]] extends [Args.Args<infer A>] ? A : never }>)
-    ]
-  >
-  <T extends ReadonlyArray<Args.Args<any>>>(
-    args: [...T]
-  ): Args.Args<
-    T[number] extends never ? []
-      : Readonly<{ [K in keyof T]: [T[K]] extends [Args.Args<infer A>] ? A : never }>
-  >
-  <T extends Readonly<{ [K: string]: Args.Args<any> }>>(
-    args: T
-  ): Args.Args<
-    Readonly<{ [K in keyof T]: [T[K]] extends [Args.Args<infer A>] ? A : never }>
-  >
-} = function() {
+/** @internal */
+export const isBoth = (u: unknown): u is Both<unknown, unknown> => isArgs(u) && "_tag" in u && u._tag === "Both"
+
+/** @internal */
+export const isVariadic = (u: unknown): u is Variadic<unknown> => isArgs(u) && "_tag" in u && u._tag === "Variadic"
+
+/** @internal */
+export const isMap = (u: unknown): u is Map<unknown, unknown> => isArgs(u) && "_tag" in u && u._tag === "Map"
+
+// =============================================================================
+// Constructors
+// =============================================================================
+
+/** @internal */
+export const all: <
+  const Arg extends Iterable<Args.Args<any>> | Record<string, Args.Args<any>>
+>(arg: Arg) => Args.All.Return<Arg> = function() {
   if (arguments.length === 1) {
     if (isArgs(arguments[0])) {
-      return map(arguments[0], (x) => [x])
+      return map(arguments[0], (x) => [x]) as any
     } else if (Array.isArray(arguments[0])) {
-      return tuple(arguments[0])
+      return allTupled(arguments[0]) as any
     } else {
       const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Args.Args<any> }>)
       let result = map(entries[0][1], (value) => ({ [entries[0][0]]: value }))
@@ -145,102 +438,79 @@ export const all: {
       }
       const rest = entries.slice(1)
       for (const [key, options] of rest) {
-        result = zipWith(result, options, (record, value) => ({ ...record, [key]: value }))
+        result = map(new Both(result, options), ([record, value]) => ({
+          ...record,
+          [key]: value
+        }))
       }
       return result as any
     }
   }
-  return tuple(arguments[0])
+  return allTupled(arguments[0]) as any
 }
+
+/** @internal */
+export const boolean = (config: Args.Args.ArgsConfig = {}): Args.Args<boolean> =>
+  new Single(Option.fromNullable(config.name), InternalPrimitive.boolean(Option.none()))
+
+/** @internal */
+export const choice = <A>(
+  choices: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>,
+  config: Args.Args.ArgsConfig = {}
+): Args.Args<A> => new Single(Option.fromNullable(config.name), InternalPrimitive.choice(choices))
+
+/** @internal */
+export const date = (config: Args.Args.ArgsConfig = {}): Args.Args<globalThis.Date> =>
+  new Single(Option.fromNullable(config.name), InternalPrimitive.date)
+
+/** @internal */
+export const float = (config: Args.Args.ArgsConfig = {}): Args.Args<number> =>
+  new Single(Option.fromNullable(config.name), InternalPrimitive.float)
+
+/** @internal */
+export const integer = (config: Args.Args.ArgsConfig = {}): Args.Args<number> =>
+  new Single(Option.fromNullable(config.name), InternalPrimitive.integer)
+
+/** @internal */
+export const none: Args.Args<void> = new Empty()
+
+/** @internal */
+export const text = (config: Args.Args.ArgsConfig = {}): Args.Args<string> =>
+  new Single(Option.fromNullable(config.name), InternalPrimitive.text)
+
+// =============================================================================
+// Combinators
+// =============================================================================
 
 /** @internal */
 export const atLeast = dual<
   {
-    (times: 0): <A>(self: Args.Args<A>) => Args.Args<Chunk.Chunk<A>>
-    (times: number): <A>(self: Args.Args<A>) => Args.Args<Chunk.NonEmptyChunk<A>>
+    (times: 0): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>
+    (times: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   },
   {
-    <A>(self: Args.Args<A>, times: 0): Args.Args<Chunk.Chunk<A>>
-    <A>(self: Args.Args<A>, times: number): Args.Args<Chunk.NonEmptyChunk<A>>
+    <A>(self: Args.Args<A>, times: 0): Args.Args<ReadonlyArray<A>>
+    <A>(self: Args.Args<A>, times: number): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   }
->(2, (self, times) => variadic(self, Option.some(times), Option.none()) as any)
+>(2, (self, times) => new Variadic(self, Option.some(times), Option.none()) as any)
 
 /** @internal */
 export const atMost = dual<
-  (times: number) => <A>(self: Args.Args<A>) => Args.Args<Chunk.Chunk<A>>,
-  <A>(self: Args.Args<A>, times: number) => Args.Args<Chunk.Chunk<A>>
->(2, (self, times) => variadic(self, Option.none(), Option.some(times)))
+  (times: number) => <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>,
+  <A>(self: Args.Args<A>, times: number) => Args.Args<ReadonlyArray<A>>
+>(2, (self, times) => new Variadic(self, Option.none(), Option.some(times)))
 
 /** @internal */
 export const between = dual<
   {
-    (min: 0, max: number): <A>(self: Args.Args<A>) => Args.Args<Chunk.Chunk<A>>
-    (min: number, max: number): <A>(self: Args.Args<A>) => Args.Args<Chunk.NonEmptyChunk<A>>
+    (min: 0, max: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>
+    (min: number, max: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   },
   {
-    <A>(self: Args.Args<A>, min: 0, max: number): Args.Args<Chunk.Chunk<A>>
-    <A>(self: Args.Args<A>, min: number, max: number): Args.Args<Chunk.NonEmptyChunk<A>>
+    <A>(self: Args.Args<A>, min: 0, max: number): Args.Args<ReadonlyArray<A>>
+    <A>(self: Args.Args<A>, min: number, max: number): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   }
->(3, (self, min, max) => variadic(self, Option.some(min), Option.some(max)) as any)
-
-/** @internal */
-export const boolean = (config: Args.Args.ArgsConfig = {}): Args.Args<boolean> =>
-  single(Option.fromNullable(config.name), primitive.boolean(Option.none()))
-
-/** @internal */
-export const choice = <A>(
-  choices: NonEmptyReadonlyArray<readonly [string, A]>,
-  config: Args.Args.ArgsConfig = {}
-): Args.Args<A> => single(Option.fromNullable(config.name), primitive.choice(choices))
-
-/** @internal */
-export const date = (config: Args.Args.ArgsConfig = {}): Args.Args<globalThis.Date> =>
-  single(Option.fromNullable(config.name), primitive.date)
-
-/** @internal */
-export const float = (config: Args.Args.ArgsConfig = {}): Args.Args<number> =>
-  single(Option.fromNullable(config.name), primitive.float)
-
-const helpDocMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => HelpDoc.HelpDoc
-} = {
-  Empty: () => doc.empty,
-  Single: (self) =>
-    doc.descriptionList([[
-      span.weak(singleName(self)),
-      doc.sequence(doc.p(primitive.helpDoc(self.primitiveType)), self.description)
-    ]]),
-  Map: (self) => helpDocMap[self.value._tag](self.value as any),
-  Variadic: (self) =>
-    doc.mapDescriptionList(
-      helpDocMap[self.value._tag](self.value as any),
-      (oldSpan, oldBlock) => {
-        const min = minSize(self)
-        const max = maxSize(self)
-        const newSpan = span.text(Option.isSome(self.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`)
-        const newBlock = doc.p(
-          Option.isSome(self.max)
-            ? `This argument must be repeated at least ${min} times and may be repeated up to ${max} times.`
-            : min === 0
-            ? "This argument may be repeated zero or more times."
-            : `This argument must be repeated at least ${min} times.`
-        )
-        return [span.concat(oldSpan, newSpan), doc.sequence(oldBlock, newBlock)]
-      }
-    ),
-  Zip: (self) =>
-    doc.sequence(
-      helpDocMap[self.left._tag](self.left as any),
-      helpDocMap[self.right._tag](self.right as any)
-    )
-}
-
-/** @internal */
-export const helpDoc = <A>(self: Args.Args<A>): HelpDoc.HelpDoc => helpDocMap[(self as Instruction)._tag](self as any)
-
-/** @internal */
-export const integer = (config: Args.Args.ArgsConfig = {}): Args.Args<number> =>
-  single(Option.fromNullable(config.name), primitive.integer)
+>(3, (self, min, max) => new Variadic(self, Option.some(min), Option.some(max)) as any)
 
 /** @internal */
 export const map = dual<
@@ -252,13 +522,7 @@ export const map = dual<
 export const mapOrFail = dual<
   <A, B>(f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>) => (self: Args.Args<A>) => Args.Args<B>,
   <A, B>(self: Args.Args<A>, f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>) => Args.Args<B>
->(2, (self, f) => {
-  const op = Object.create(proto)
-  op._tag = "Map"
-  op.value = self
-  op.f = f
-  return op
-})
+>(2, (self, f) => new Map(self, f))
 
 /** @internal */
 export const mapTryCatch = dual<
@@ -273,260 +537,42 @@ export const mapTryCatch = dual<
     }
   }))
 
-const minSizeMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => number
-} = {
-  Empty: () => 0,
-  Single: () => 1,
-  Map: (self) => minSizeMap[self.value._tag](self.value as any),
-  Variadic: (self) => Option.getOrElse(self.min, () => 0) * minSizeMap[self.value._tag](self.value as any),
-  Zip: (self) => minSizeMap[self.left._tag](self.left as any) + minSizeMap[self.right._tag](self.right as any)
-}
+/** @internal */
+export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
+  new Variadic(self, Option.none(), Option.none())
 
 /** @internal */
-export const minSize = <A>(self: Args.Args<A>): number => minSizeMap[(self as Instruction)._tag](self as any)
-
-const maxSizeMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => number
-} = {
-  Empty: () => 0,
-  Single: () => 1,
-  Map: (self) => maxSizeMap[self.value._tag](self.value as any),
-  Variadic: (self) =>
-    Option.getOrElse(self.max, () => Math.floor(Number.MAX_SAFE_INTEGER / 2)) *
-    maxSizeMap[self.value._tag](self.value as any),
-  Zip: (self) => maxSizeMap[self.left._tag](self.left as any) + maxSizeMap[self.right._tag](self.right as any)
-}
-
-/** @internal */
-export const maxSize = <A>(self: Args.Args<A>): number => maxSizeMap[(self as Instruction)._tag](self as any)
-
-/** @internal */
-export const none: Args.Args<void> = (() => {
-  const op = Object.create(proto)
-  op._tag = "Empty"
-  return op
-})()
-
-/** @internal */
-export const repeat = <A>(self: Args.Args<A>): Args.Args<Chunk.Chunk<A>> => variadic(self, Option.none(), Option.none())
-
-/** @internal */
-export const repeat1 = <A>(self: Args.Args<A>): Args.Args<Chunk.NonEmptyChunk<A>> =>
-  map(variadic(self, Option.some(1), Option.none()), (chunk) => {
-    if (Chunk.isNonEmpty(chunk)) {
-      return chunk
+export const repeatedAtLeastOnce = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>> =>
+  map(new Variadic(self, Option.some(1), Option.none()), (values) => {
+    if (ReadonlyArray.isNonEmptyReadonlyArray(values)) {
+      return values
     }
-    const message = Option.match(uid(self), {
+    const message = Option.match(self.identifier, {
       onNone: () => "An anonymous variadic argument",
       onSome: (identifier) => `The variadic option '${identifier}' `
     })
     throw new Error(`${message} is not respecting the required minimum of 1`)
   })
 
-/** @internal */
-export const text = (config: Args.Args.ArgsConfig = {}): Args.Args<string> =>
-  single(Option.fromNullable(config.name), primitive.text)
+// =============================================================================
+// Internals
+// =============================================================================
 
-const uidMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => Option.Option<string>
-} = {
-  Empty: () => Option.none(),
-  Single: (self) => Option.some(singleName(self)),
-  Map: (self) => uidMap[self.value._tag](self.value as any),
-  Variadic: (self) => uidMap[self.value._tag](self.value as any),
-  Zip: (self) => combineUids(self.left, self.right)
-}
-
-/** @internal */
-export const uid = <A>(self: Args.Args<A>): Option.Option<string> => uidMap[(self as Instruction)._tag](self as any)
-
-const usageMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => Usage.Usage
-} = {
-  Empty: () => _usage.empty,
-  Single: (self) => _usage.named(Chunk.of(singleName(self)), primitive.choices(self.primitiveType)),
-  Map: (self) => usageMap[self.value._tag](self.value as any),
-  Variadic: (self) => _usage.repeated(usageMap[self.value._tag](self.value as any)),
-  Zip: (self) =>
-    _usage.concat(
-      usageMap[self.left._tag](self.left as any),
-      usageMap[self.right._tag](self.right as any)
-    )
-}
-
-/** @internal */
-export const usage = <A>(self: Args.Args<A>): Usage.Usage => usageMap[(self as Instruction)._tag](self as any)
-
-const validateMap: {
-  [K in Instruction["_tag"]]: (
-    self: Extract<Instruction, { _tag: K }>,
-    args: ReadonlyArray<string>
-  ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, any]>
-} = {
-  Empty: (_, args) => Effect.succeed([args, void 0]),
-  Single: (self, args) => {
-    if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-      return Effect.mapBoth(primitive.validate(self.primitiveType, Option.some(args[0])), {
-        onFailure: (text) => validationError.invalidArgument(doc.p(text)),
-        onSuccess: (a) => [args.slice(1), a]
-      })
-    }
-    const choices = primitive.choices(self.primitiveType)
-    let message = ""
-    if (Option.isSome(self.pseudoName) && Option.isSome(choices)) {
-      message = `Missing argument <${self.pseudoName.value}> with values: ${choices.value}`
-    }
-    if (Option.isSome(self.pseudoName) && Option.isNone(choices)) {
-      message = `Missing argument <${self.pseudoName.value}>`
-    }
-    if (Option.isNone(self.pseudoName) && Option.isSome(choices)) {
-      message = `Missing a ${primitive.typeName(self.primitiveType)} argument with values: ${choices.value}`
-    }
-    message = `Missing a ${primitive.typeName(self.primitiveType)} argument`
-    return Effect.fail(validationError.invalidArgument(doc.p(message)))
-  },
-  Map: (self, args) =>
-    Effect.flatMap(
-      validateMap[self.value._tag](self.value as any, args),
-      ([remainder, a]) =>
-        Either.match(self.f(a), {
-          onLeft: (doc) => Effect.fail(validationError.invalidArgument(doc)),
-          onRight: (value) => Effect.succeed([remainder, value])
-        })
-    ),
-  Variadic: (self, args) => {
-    const min = Option.getOrElse(self.min, () => 0)
-    const max = Option.getOrElse(self.max, () => Infinity)
-    const loop = (
-      args: ReadonlyArray<string>,
-      acc: Chunk.Chunk<unknown>
-    ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, Chunk.Chunk<unknown>]> =>
-      acc.length >= max
-        ? Effect.succeed([args, acc])
-        : Effect.matchEffect(validateMap[self.value._tag](self.value as any, args), {
-          onFailure: (error) =>
-            acc.length >= min && ReadonlyArray.isEmptyReadonlyArray(args) ?
-              Effect.succeed([args, acc]) :
-              Effect.fail(error),
-          onSuccess: (tuple) => loop(tuple[0], Chunk.append(acc, tuple[1]))
-        })
-    return loop(args, Chunk.empty())
-  },
-  Zip: (self, args) =>
-    Effect.flatMap(
-      validateMap[self.left._tag](self.left as any, args),
-      ([args, a]) =>
-        Effect.map(
-          validateMap[self.right._tag](self.right as any, args),
-          ([args, b]) => [args, [a, b]]
-        )
-    )
-}
-
-/** @internal */
-export const validate = dual<
-  (
-    args: ReadonlyArray<string>
-  ) => <A>(
-    self: Args.Args<A>
-  ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]>,
-  <A>(
-    self: Args.Args<A>,
-    args: ReadonlyArray<string>
-  ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]>
->(2, (self, args) => validateMap[(self as Instruction)._tag](self as any, args))
-
-/** @internal */
-export const zip = dual<
-  <B>(that: Args.Args<B>) => <A>(self: Args.Args<A>) => Args.Args<readonly [A, B]>,
-  <A, B>(self: Args.Args<A>, that: Args.Args<B>) => Args.Args<readonly [A, B]>
->(2, (self, that) => {
-  const op = Object.create(proto)
-  op._tag = "Zip"
-  op.left = self
-  op.right = that
-  return op
-})
-
-/** @internal */
-export const zipFlatten = dual<
-  <B>(
-    that: Args.Args<B>
-  ) => <A extends ReadonlyArray<any>>(
-    self: Args.Args<A>
-  ) => Args.Args<[...A, B]>,
-  <A extends ReadonlyArray<any>, B>(
-    self: Args.Args<A>,
-    that: Args.Args<B>
-  ) => Args.Args<[...A, B]>
->(2, (self, that) => map(zip(self, that), ([a, b]) => [...a, b]))
-
-/** @internal */
-export const zipWith = dual<
-  <B, A, C>(that: Args.Args<B>, f: (a: A, b: B) => C) => (self: Args.Args<A>) => Args.Args<C>,
-  <A, B, C>(self: Args.Args<A>, that: Args.Args<B>, f: (a: A, b: B) => C) => Args.Args<C>
->(3, (self, that, f) => map(zip(self, that), ([a, b]) => f(a, b)))
-
-const single = <A>(
-  pseudoName: Option.Option<string>,
-  primitiveType: Primitive.Primitive<A>,
-  description: HelpDoc.HelpDoc = doc.empty
-): Args.Args<A> => {
-  const op = Object.create(proto)
-  op._tag = "Single"
-  op.pseudoName = pseudoName
-  op.primitiveType = primitiveType
-  op.description = description
-  return op
-}
-
-const singleName = (self: Single): string =>
-  `<${Option.getOrElse(self.pseudoName, () => primitive.typeName(self.primitiveType))}>`
-
-const variadic = <A>(
-  value: Args.Args<A>,
-  min: Option.Option<number>,
-  max: Option.Option<number>
-): Args.Args<Chunk.Chunk<A>> => {
-  const op = Object.create(proto)
-  op._tag = "Variadic"
-  op.value = value
-  op.min = min
-  op.max = max
-  return op
-}
-
-const combineUids = (left: Instruction, right: Instruction): Option.Option<string> => {
-  const l = uidMap[left._tag](left as any)
-  const r = uidMap[right._tag](right as any)
-  if (Option.isNone(l) && Option.isNone(r)) {
-    return Option.none()
-  }
-  if (Option.isNone(l) && Option.isSome(r)) {
-    return Option.some(r.value)
-  }
-  if (Option.isSome(l) && Option.isNone(r)) {
-    return Option.some(l.value)
-  }
-  return Option.some(`${(l as Option.Some<string>).value}, ${(r as Option.Some<string>).value}`)
-}
-
-const tuple = <T extends ArrayLike<Args.Args<any>>>(tuple: T): Args.Args<
+const allTupled = <const T extends ArrayLike<Args.Args<any>>>(arg: T): Args.Args<
   {
     [K in keyof T]: [T[K]] extends [Args.Args<infer A>] ? A : never
   }
 > => {
-  if (tuple.length === 0) {
+  if (arg.length === 0) {
     return none as any
   }
-  if (tuple.length === 1) {
-    return map(tuple[0], (x) => [x]) as any
+  if (arg.length === 1) {
+    return map(arg[0], (x) => [x]) as any
   }
-  let result = map(tuple[0], (x) => [x])
-  for (let i = 1; i < tuple.length; i++) {
-    const args = tuple[i]
-    result = zipFlatten(result, args)
+  let result = map(arg[0], (x) => [x])
+  for (let i = 1; i < arg.length; i++) {
+    const curr = arg[i]
+    result = map(new Both(result, curr), ([a, b]) => [...a, b])
   }
   return result as any
 }

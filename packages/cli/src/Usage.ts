@@ -1,10 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { Chunk } from "effect/Chunk"
 import type { Option } from "effect/Option"
+import type { CliConfig } from "./CliConfig"
 import type { HelpDoc } from "./HelpDoc"
-import * as internal from "./internal/usage"
+import type { Span } from "./HelpDoc/Span"
+import * as InternalUsage from "./internal/usage"
 
 /**
  * @since 1.0.0
@@ -34,7 +35,7 @@ export interface Mixed {
  */
 export interface Named {
   readonly _tag: "Named"
-  readonly names: Chunk<string>
+  readonly names: ReadonlyArray<string>
   readonly acceptedValues: Option<string>
 }
 
@@ -83,7 +84,7 @@ export interface Concat {
 export const alternation: {
   (that: Usage): (self: Usage) => Usage
   (self: Usage, that: Usage): Usage
-} = internal.alternation
+} = InternalUsage.alternation
 
 /**
  * @since 1.0.0
@@ -92,40 +93,49 @@ export const alternation: {
 export const concat: {
   (that: Usage): (self: Usage) => Usage
   (self: Usage, that: Usage): Usage
-} = internal.concat
+} = InternalUsage.concat
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const empty: Usage = internal.empty
-
-/**
- * @since 1.0.0
- * @category combinators
- */
-export const helpDoc: (self: Usage) => HelpDoc = internal.helpDoc
+export const empty: Usage = InternalUsage.empty
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const mixed: Usage = internal.mixed
+export const enumerate: {
+  (config: CliConfig): (self: Usage) => ReadonlyArray<Span>
+  (self: Usage, config: CliConfig): ReadonlyArray<Span>
+} = InternalUsage.enumerate
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getHelp: (self: Usage) => HelpDoc = InternalUsage.getHelp
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const named: (names: Chunk<string>, acceptedValues: Option<string>) => Usage = internal.named
+export const mixed: Usage = InternalUsage.mixed
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const named: (names: ReadonlyArray<string>, acceptedValues: Option<string>) => Usage = InternalUsage.named
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const optional: (self: Usage) => Usage = internal.optional
+export const optional: (self: Usage) => Usage = InternalUsage.optional
 
 /**
  * @since 1.0.0
  * @category combinators
  */
-export const repeated: (self: Usage) => Usage = internal.repeated
+export const repeated: (self: Usage) => Usage = InternalUsage.repeated

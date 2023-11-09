@@ -5,14 +5,15 @@ import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { CliConfig } from "./CliConfig"
 import type { Span } from "./HelpDoc/Span"
-import * as internal from "./internal/primitive"
+import * as InternalPrimitive from "./internal/primitive"
 
 /**
  * @since 1.0.0
  * @category symbol
  */
-export const PrimitiveTypeId: unique symbol = internal.PrimitiveTypeId as PrimitiveTypeId
+export const PrimitiveTypeId: unique symbol = InternalPrimitive.PrimitiveTypeId as PrimitiveTypeId
 
 /**
  * @since 1.0.0
@@ -28,7 +29,12 @@ export type PrimitiveTypeId = typeof PrimitiveTypeId
  * @since 1.0.0
  * @category models
  */
-export type Primitive<A> = Bool | Date | Choice<A> | Float | Integer | Text
+export interface Primitive<A> extends Primitive.Variance<A> {
+  get typeName(): string
+  get help(): Span
+  get choices(): Option<string>
+  validate(value: Option<string>, config: CliConfig): Effect<never, string, A>
+}
 
 /**
  * @since 1.0.0
@@ -57,141 +63,43 @@ export declare namespace Primitive {
 }
 
 /**
- * Represents a boolean value.
- *
- * True values can be passed as one of: `["true", "1", "y", "yes" or "on"]`.
- * False value can be passed as one of: `["false", "o", "n", "no" or "off"]`.
- *
- * @since 1.0.0
- * @category models
- */
-export interface Bool extends Primitive.Variance<boolean> {
-  readonly _tag: "Bool"
-  /**
-   * The default value to use if the parameter is not provided.
-   */
-  readonly defaultValue: Option<boolean>
-}
-
-/**
- * Represents a date in ISO-8601 format, such as `2007-12-03T10:15:30`.
- *
- * @since 1.0.0
- * @category models
- */
-export interface Date extends Primitive.Variance<globalThis.Date> {
-  readonly _tag: "Date"
-}
-
-/**
- * Represents a value selected from set of allowed values.
- *
- * @since 1.0.0
- * @category models
- */
-export interface Choice<A> extends Primitive.Variance<A> {
-  readonly _tag: "Choice"
-  /**
-   * The list of allowed parameter-value pairs.
-   */
-  readonly choices: NonEmptyReadonlyArray<readonly [string, A]>
-}
-
-/**
- * Represents a floating point number.
- *
- * @since 1.0.0
- * @category models
- */
-export interface Float extends Primitive.Variance<number> {
-  readonly _tag: "Float"
-}
-
-/**
- * Represents an integer.
- *
- * @since 1.0.0
- * @category models
- */
-export interface Integer extends Primitive.Variance<number> {
-  readonly _tag: "Integer"
-}
-
-/**
- * Represents a string value.
- *
- * @since 1.0.0
- * @category models
- */
-export interface Text extends Primitive.Variance<string> {
-  readonly _tag: "Text"
-}
-
-/**
  * @since 1.0.0
  * @category Predicates
  */
-export const isBool: <A>(self: Primitive<A>) => boolean = internal.isBool
+export const isBool: <A>(self: Primitive<A>) => boolean = InternalPrimitive.isBool
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const boolean: (defaultValue: Option<boolean>) => Primitive<boolean> = internal.boolean
+export const boolean: (defaultValue: Option<boolean>) => Primitive<boolean> = InternalPrimitive.boolean
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const choice: <A>(choices: NonEmptyReadonlyArray<readonly [string, A]>) => Primitive<A> = internal.choice
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const choices: <A>(self: Primitive<A>) => Option<string> = internal.choices
+export const choice: <A>(alternatives: NonEmptyReadonlyArray<[string, A]>) => Primitive<A> = InternalPrimitive.choice
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const date: Primitive<globalThis.Date> = internal.date
+export const date: Primitive<globalThis.Date> = InternalPrimitive.date
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const float: Primitive<number> = internal.float
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const helpDoc: <A>(self: Primitive<A>) => Span = internal.helpDoc
+export const float: Primitive<number> = InternalPrimitive.float
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const integer: Primitive<number> = internal.integer
+export const integer: Primitive<number> = InternalPrimitive.integer
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const text: Primitive<string> = internal.text
-
-/**
- * @since 1.0.0
- * @category getters
- */
-export const typeName: <A>(self: Primitive<A>) => string = internal.typeName
-
-/**
- * @since 1.0.0
- * @category validation
- */
-export const validate: {
-  (value: Option<string>): <A>(self: Primitive<A>) => Effect<never, string, A>
-  <A>(self: Primitive<A>, value: Option<string>): Effect<never, string, A>
-} = internal.validate
+export const text: Primitive<string> = InternalPrimitive.text

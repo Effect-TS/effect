@@ -1,5 +1,5 @@
 import * as Option from "effect/Option"
-import type * as BuiltInOption from "../BuiltInOption"
+import type * as BuiltInOptions from "../BuiltInOptions"
 import type * as Command from "../Command"
 import type * as HelpDoc from "../HelpDoc"
 import type * as Options from "../Options"
@@ -9,7 +9,7 @@ import * as options from "./options"
 import * as _shellType from "./shellType"
 
 /** @internal */
-export const showCompletions = (index: number, shellType: ShellType.ShellType): BuiltInOption.BuiltInOption => ({
+export const showCompletions = (index: number, shellType: ShellType.ShellType): BuiltInOptions.BuiltInOptions => ({
   _tag: "ShowCompletions",
   index,
   shellType
@@ -19,47 +19,49 @@ export const showCompletions = (index: number, shellType: ShellType.ShellType): 
 export const showCompletionScript = (
   pathToExecutable: string,
   shellType: ShellType.ShellType
-): BuiltInOption.BuiltInOption => ({
+): BuiltInOptions.BuiltInOptions => ({
   _tag: "ShowCompletionScript",
   pathToExecutable,
   shellType
 })
 
 /** @internal */
-export const showHelp = (usage: Usage.Usage, helpDoc: HelpDoc.HelpDoc): BuiltInOption.BuiltInOption => ({
+export const showHelp = (usage: Usage.Usage, helpDoc: HelpDoc.HelpDoc): BuiltInOptions.BuiltInOptions => ({
   _tag: "ShowHelp",
   usage,
   helpDoc
 })
 
 /** @internal */
-export const wizard = (commmand: Command.Command<unknown>): BuiltInOption.BuiltInOption => ({
-  _tag: "Wizard",
+export const showWizard = (commmand: Command.Command<unknown>): BuiltInOptions.BuiltInOptions => ({
+  _tag: "ShowWizard",
   commmand
 })
 
 /** @internal */
-export const isShowCompletionScript = (self: BuiltInOption.BuiltInOption): self is BuiltInOption.ShowCompletionScript =>
-  self._tag === "ShowCompletionScript"
+export const isShowCompletionScript = (
+  self: BuiltInOptions.BuiltInOptions
+): self is BuiltInOptions.ShowCompletionScript => self._tag === "ShowCompletionScript"
 
 /** @internal */
-export const isShowCompletions = (self: BuiltInOption.BuiltInOption): self is BuiltInOption.ShowCompletions =>
+export const isShowCompletions = (self: BuiltInOptions.BuiltInOptions): self is BuiltInOptions.ShowCompletions =>
   self._tag === "ShowCompletions"
 
 /** @internal */
-export const isShowHelp = (self: BuiltInOption.BuiltInOption): self is BuiltInOption.ShowHelp =>
+export const isShowHelp = (self: BuiltInOptions.BuiltInOptions): self is BuiltInOptions.ShowHelp =>
   self._tag === "ShowHelp"
 
 /** @internal */
-export const isWizard = (self: BuiltInOption.BuiltInOption): self is BuiltInOption.Wizard => self._tag === "Wizard"
+export const isShowWizard = (self: BuiltInOptions.BuiltInOptions): self is BuiltInOptions.ShowWizard =>
+  self._tag === "ShowWizard"
 
 /** @internal */
 export const builtInOptions = <A>(
   command: Command.Command<A>,
   usage: Usage.Usage,
   helpDoc: HelpDoc.HelpDoc
-): Options.Options<Option.Option<BuiltInOption.BuiltInOption>> => {
-  const help = options.alias(options.boolean("help"), "h")
+): Options.Options<Option.Option<BuiltInOptions.BuiltInOptions>> => {
+  const help = options.boolean("help").pipe(options.withAlias("h"))
   // TODO: after path/file primitives added
   // const completionScriptPath = options.optional(options.file("shell-completion-script"))
   const shellCompletionScriptPath = options.optional(options.text("shell-completion-script"))
@@ -78,7 +80,7 @@ export const builtInOptions = <A>(
       return Option.some(showHelp(usage, helpDoc))
     }
     if (builtIn.wizard) {
-      return Option.some(wizard(command))
+      return Option.some(showWizard(command))
     }
     if (Option.isSome(builtIn.shellCompletionScriptPath) && Option.isSome(builtIn.shellType)) {
       return Option.some(showCompletionScript(builtIn.shellCompletionScriptPath.value, builtIn.shellType.value))

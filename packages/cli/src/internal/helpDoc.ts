@@ -4,10 +4,10 @@ import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
 import { dual } from "effect/Function"
-import * as RA from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as HelpDoc from "../HelpDoc"
 import type * as Span from "../HelpDoc/Span"
-import * as span from "./helpDoc/span"
+import * as InternalSpan from "./helpDoc/span"
 
 /** @internal */
 export const isEmpty = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Empty => helpDoc._tag === "Empty"
@@ -60,8 +60,8 @@ export const orElse = dual<
 
 /** @internal */
 export const blocks = (helpDocs: Iterable<HelpDoc.HelpDoc>): HelpDoc.HelpDoc => {
-  const elements = RA.fromIterable(helpDocs)
-  if (RA.isNonEmptyReadonlyArray(elements)) {
+  const elements = ReadonlyArray.fromIterable(helpDocs)
+  if (ReadonlyArray.isNonEmptyReadonlyArray(elements)) {
     return elements.slice(1).reduce(sequence, elements[0])
   }
   return empty
@@ -69,18 +69,18 @@ export const blocks = (helpDocs: Iterable<HelpDoc.HelpDoc>): HelpDoc.HelpDoc => 
 
 /** @internal */
 export const getSpan = (self: HelpDoc.HelpDoc): Span.Span =>
-  isHeader(self) || isParagraph(self) ? self.value : span.empty
+  isHeader(self) || isParagraph(self) ? self.value : InternalSpan.empty
 
 /** @internal */
 export const descriptionList = (
-  definitions: RA.NonEmptyReadonlyArray<readonly [Span.Span, HelpDoc.HelpDoc]>
+  definitions: ReadonlyArray.NonEmptyReadonlyArray<readonly [Span.Span, HelpDoc.HelpDoc]>
 ): HelpDoc.HelpDoc => ({
   _tag: "DescriptionList",
   definitions
 })
 
 /** @internal */
-export const enumeration = (elements: RA.NonEmptyReadonlyArray<HelpDoc.HelpDoc>): HelpDoc.HelpDoc => ({
+export const enumeration = (elements: ReadonlyArray.NonEmptyReadonlyArray<HelpDoc.HelpDoc>): HelpDoc.HelpDoc => ({
   _tag: "Enumeration",
   elements
 })
@@ -88,28 +88,28 @@ export const enumeration = (elements: RA.NonEmptyReadonlyArray<HelpDoc.HelpDoc>)
 /** @internal */
 export const h1 = (value: string | Span.Span): HelpDoc.HelpDoc => ({
   _tag: "Header",
-  value: typeof value === "string" ? span.text(value) : value,
+  value: typeof value === "string" ? InternalSpan.text(value) : value,
   level: 1
 })
 
 /** @internal */
 export const h2 = (value: string | Span.Span): HelpDoc.HelpDoc => ({
   _tag: "Header",
-  value: typeof value === "string" ? span.text(value) : value,
+  value: typeof value === "string" ? InternalSpan.text(value) : value,
   level: 2
 })
 
 /** @internal */
 export const h3 = (value: string | Span.Span): HelpDoc.HelpDoc => ({
   _tag: "Header",
-  value: typeof value === "string" ? span.text(value) : value,
+  value: typeof value === "string" ? InternalSpan.text(value) : value,
   level: 3
 })
 
 /** @internal */
 export const p = (value: string | Span.Span): HelpDoc.HelpDoc => ({
   _tag: "Paragraph",
-  value: typeof value === "string" ? span.text(value) : value
+  value: typeof value === "string" ? InternalSpan.text(value) : value
 })
 
 /** @internal */
@@ -123,15 +123,15 @@ export const mapDescriptionList = dual<
   ) => HelpDoc.HelpDoc
 >(2, (self, f) =>
   isDescriptionList(self)
-    ? descriptionList(RA.map(self.definitions, ([span, helpDoc]) => f(span, helpDoc)))
+    ? descriptionList(ReadonlyArray.map(self.definitions, ([span, helpDoc]) => f(span, helpDoc)))
     : self)
 
 const helpDocToAnsiDoc: {
   [K in HelpDoc.HelpDoc["_tag"]]: (self: Extract<HelpDoc.HelpDoc, { _tag: K }>) => AnsiDoc.AnsiDoc
 } = {
   Empty: () => Doc.empty,
-  Paragraph: (self) => Doc.cat(span.toAnsiDoc(self.value), Doc.hardLine),
-  Header: (self) => Doc.cat(Doc.annotate(span.toAnsiDoc(self.value), AnsiStyle.bold), Doc.hardLine),
+  Paragraph: (self) => Doc.cat(InternalSpan.toAnsiDoc(self.value), Doc.hardLine),
+  Header: (self) => Doc.cat(Doc.annotate(InternalSpan.toAnsiDoc(self.value), AnsiStyle.bold), Doc.hardLine),
   Enumeration: (self) =>
     Doc.indent(
       Doc.vsep(self.elements.map((doc) =>
@@ -145,7 +145,7 @@ const helpDocToAnsiDoc: {
   DescriptionList: (self) =>
     Doc.vsep(self.definitions.map(([s, d]) =>
       Doc.cats([
-        Doc.annotate(span.toAnsiDoc(s), AnsiStyle.bold),
+        Doc.annotate(InternalSpan.toAnsiDoc(s), AnsiStyle.bold),
         Doc.empty,
         Doc.indent(helpDocToAnsiDoc[d._tag](d as any), 2)
       ])

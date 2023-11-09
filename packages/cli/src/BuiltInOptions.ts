@@ -5,7 +5,7 @@
 import type { Option } from "effect/Option"
 import type { Command } from "./Command"
 import type { HelpDoc } from "./HelpDoc"
-import * as internal from "./internal/builtInOption"
+import * as InternalBuiltInOptions from "./internal/builtInOptions"
 import type { Options } from "./Options"
 import type { ShellType } from "./ShellType"
 import type { Usage } from "./Usage"
@@ -14,7 +14,7 @@ import type { Usage } from "./Usage"
  * @since 1.0.0
  * @category models
  */
-export type BuiltInOption = ShowHelp | ShowCompletionScript | ShowCompletions | Wizard
+export type BuiltInOptions = ShowHelp | ShowCompletionScript | ShowCompletions | ShowWizard
 
 /**
  * @since 1.0.0
@@ -50,8 +50,8 @@ export interface ShowCompletions {
  * @since 1.0.0
  * @category models
  */
-export interface Wizard {
-  readonly _tag: "Wizard"
+export interface ShowWizard {
+  readonly _tag: "ShowWizard"
   readonly commmand: Command<unknown>
 }
 
@@ -63,54 +63,56 @@ export const builtInOptions: <A>(
   command: Command<A>,
   usage: Usage,
   helpDoc: HelpDoc
-) => Options<Option<BuiltInOption>> = internal.builtInOptions
+) => Options<Option<BuiltInOptions>> = InternalBuiltInOptions.builtInOptions
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isShowCompletionScript: (self: BuiltInOption) => self is ShowCompletionScript =
-  internal.isShowCompletionScript
+export const isShowCompletionScript: (self: BuiltInOptions) => self is ShowCompletionScript =
+  InternalBuiltInOptions.isShowCompletionScript
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isShowCompletions: (self: BuiltInOption) => self is ShowCompletions = internal.isShowCompletions
+export const isShowCompletions: (self: BuiltInOptions) => self is ShowCompletions =
+  InternalBuiltInOptions.isShowCompletions
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isShowHelp: (self: BuiltInOption) => self is ShowHelp = internal.isShowHelp
+export const isShowHelp: (self: BuiltInOptions) => self is ShowHelp = InternalBuiltInOptions.isShowHelp
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isWizard: (self: BuiltInOption) => self is Wizard = internal.isWizard
+export const isShowWizard: (self: BuiltInOptions) => self is ShowWizard = InternalBuiltInOptions.isShowWizard
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const showCompletions: (index: number, shellType: ShellType) => BuiltInOption = internal.showCompletions
+export const showCompletions: (index: number, shellType: ShellType) => BuiltInOptions =
+  InternalBuiltInOptions.showCompletions
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const showCompletionScript: (pathToExecutable: string, shellType: ShellType) => BuiltInOption =
-  internal.showCompletionScript
+export const showCompletionScript: (pathToExecutable: string, shellType: ShellType) => BuiltInOptions =
+  InternalBuiltInOptions.showCompletionScript
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOption = internal.showHelp
+export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOptions = InternalBuiltInOptions.showHelp
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const wizard: (commmand: Command<unknown>) => BuiltInOption = internal.wizard
+export const showWizard: (commmand: Command<unknown>) => BuiltInOptions = InternalBuiltInOptions.showWizard

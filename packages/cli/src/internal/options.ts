@@ -1,4 +1,4 @@
-import * as Chunk from "effect/Chunk"
+import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
@@ -6,20 +6,21 @@ import * as HashMap from "effect/HashMap"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
-import type { Predicate } from "effect/Predicate"
-import * as RA from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as CliConfig from "../CliConfig"
 import type * as HelpDoc from "../HelpDoc"
 import type * as Options from "../Options"
+import type * as Parameter from "../Parameter"
 import type * as Primitive from "../Primitive"
 import type * as Usage from "../Usage"
 import type * as ValidationError from "../ValidationError"
-import * as autoCorrect from "./autoCorrect"
-import * as doc from "./helpDoc"
-import * as span from "./helpDoc/span"
-import * as primitive from "./primitive"
-import * as _usage from "./usage"
-import * as validationError from "./validationError"
+import * as InternalAutoCorrect from "./autoCorrect"
+import * as InternalCliConfig from "./cliConfig"
+import * as InternalHelpDoc from "./helpDoc"
+import * as InternalSpan from "./helpDoc/span"
+import * as InternalPrimitive from "./primitive"
+import * as InternalUsage from "./usage"
+import * as InternalValidationError from "./validationError"
 
 const OptionsSymbolKey = "@effect/cli/Options"
 
@@ -28,154 +29,683 @@ export const OptionsTypeId: Options.OptionsTypeId = Symbol.for(
   OptionsSymbolKey
 ) as Options.OptionsTypeId
 
-/** @internal */
-export type Op<Tag extends string, Body = {}> = Options.Options<never> & Body & {
-  readonly _tag: Tag
+const proto = {
+  _A: (_: never) => _
 }
 
-const proto = {
-  [OptionsTypeId]: {
-    _A: (_: never) => _
-  },
+/** @internal */
+export class Empty implements Options.Options<void> {
+  readonly [OptionsTypeId] = proto
+  readonly _tag = "Empty"
+
+  get identifier(): Option.Option<string> {
+    return Option.none()
+  }
+
+  get flattened(): ReadonlyArray<Parameter.Input> {
+    return ReadonlyArray.empty()
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.empty
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.empty
+  }
+
+  get shortDescription(): string {
+    return ""
+  }
+
+  modifySingle(_f: <_>(single: Single<_>) => Single<_>): Options.Options<void> {
+    return new Empty()
+  }
+
+  validate(
+    _args: HashMap.HashMap<string, ReadonlyArray<string>>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, void> {
+    return Effect.unit
+  }
+
   pipe() {
     return pipeArguments(this, arguments)
   }
 }
 
 /** @internal */
-export type Instruction =
-  | Empty
-  | Single
-  | Map
-  | OrElse
-  | KeyValueMap
-  | Variadic
-  | WithDefault
-  | ZipWith
+export class Single<A> implements Options.Options<A>, Parameter.Input {
+  readonly [OptionsTypeId] = proto
+  readonly _tag = "Single"
+
+  constructor(
+    readonly name: string,
+    readonly aliases: ReadonlyArray<string>,
+    readonly primitiveType: Primitive.Primitive<A>,
+    readonly description: HelpDoc.HelpDoc = InternalHelpDoc.empty,
+    readonly pseudoName: Option.Option<string> = Option.none()
+  ) {}
+
+  get identifier(): Option.Option<string> {
+    return Option.some(this.fullName)
+  }
+
+  get flattened(): ReadonlyArray<Parameter.Input> {
+    return ReadonlyArray.of(this)
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.descriptionList(ReadonlyArray.of([
+      InternalHelpDoc.getSpan(InternalUsage.getHelp(this.usage)),
+      InternalHelpDoc.sequence(InternalHelpDoc.p(this.primitiveType.help), this.description)
+    ]))
+  }
+
+  get usage(): Usage.Usage {
+    const acceptedValues = InternalPrimitive.isBool(this.primitiveType)
+      ? Option.none()
+      : Option.orElse(this.primitiveType.choices, () => Option.some(this.placeholder))
+    return InternalUsage.named(this.names, acceptedValues)
+  }
+
+  get names(): ReadonlyArray<string> {
+    return pipe(
+      ReadonlyArray.prepend(this.aliases, this.name),
+      ReadonlyArray.map((str) => this.makeFullName(str)),
+      ReadonlyArray.sort(Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])),
+      ReadonlyArray.map((tuple) => tuple[1])
+    )
+  }
+
+  get shortDescription(): string {
+    return `Option ${this.name}. ${InternalSpan.getText(InternalHelpDoc.getSpan(this.description))}`
+  }
+
+  modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<A> {
+    return f(this)
+  }
+
+  isValid(
+    input: string,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+    // There will always be at least one name in names
+    const args = ReadonlyArray.make(this.names[0]!, input)
+    return this.parse(args, config).pipe(Effect.as(args))
+  }
+
+  parse(
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+    return processArgs(args).pipe(
+      Effect.flatMap((args) => {
+        if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+          const head = ReadonlyArray.headNonEmpty(args)
+          const tail = ReadonlyArray.tailNonEmpty(args)
+          const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
+          const normalizedNames = ReadonlyArray.map(this.names, (name) => InternalCliConfig.normalizeCase(config, name))
+          if (ReadonlyArray.contains(normalizedNames, normalizedArgv0)) {
+            if (InternalPrimitive.isBool(this.primitiveType)) {
+              if (ReadonlyArray.isNonEmptyReadonlyArray(tail) && tail[0] === "true") {
+                return Effect.succeed([ReadonlyArray.make(head, "true"), ReadonlyArray.drop(tail, 1)])
+              }
+              if (ReadonlyArray.isNonEmptyReadonlyArray(tail) && tail[0] === "false") {
+                return Effect.succeed([ReadonlyArray.make(head, "false"), ReadonlyArray.drop(tail, 1)])
+              }
+              return Effect.succeed([ReadonlyArray.of(head), tail])
+            }
+            if (ReadonlyArray.isNonEmptyReadonlyArray(tail)) {
+              return Effect.succeed([ReadonlyArray.make(head, tail[0]), ReadonlyArray.drop(tail, 1)])
+            }
+            const error = InternalHelpDoc.p(`Expected a value following option: '${this.fullName}'`)
+            return Effect.fail(InternalValidationError.missingValue(error))
+          }
+          const fullName = this.fullName
+          if (
+            this.name.length > config.autoCorrectLimit + 1 &&
+            InternalAutoCorrect.levensteinDistance(head, fullName, config) <= config.autoCorrectLimit
+          ) {
+            const error = InternalHelpDoc.p(`The flag '${head}' is not recognized. Did you mean '${fullName}'?`)
+            return Effect.fail(InternalValidationError.correctedFlag(error))
+          }
+          const error = InternalHelpDoc.p(`Expected to find option: '${fullName}'`)
+          return Effect.fail(InternalValidationError.missingFlag(error))
+        }
+        const error = InternalHelpDoc.p(`Expected to find option: '${this.fullName}'`)
+        return Effect.fail(InternalValidationError.missingFlag(error))
+      })
+    )
+  }
+
+  validate(
+    args: HashMap.HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, A> {
+    const names = ReadonlyArray.filterMap(this.names, (name) => HashMap.get(args, name))
+    if (ReadonlyArray.isNonEmptyReadonlyArray(names)) {
+      const head = ReadonlyArray.headNonEmpty(names)
+      const tail = ReadonlyArray.tailNonEmpty(names)
+      if (ReadonlyArray.isEmptyReadonlyArray(tail)) {
+        if (ReadonlyArray.isEmptyReadonlyArray(head)) {
+          return this.primitiveType.validate(Option.none(), config).pipe(
+            Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
+          )
+        }
+        if (
+          ReadonlyArray.isNonEmptyReadonlyArray(head) &&
+          ReadonlyArray.isEmptyReadonlyArray(ReadonlyArray.tailNonEmpty(head))
+        ) {
+          const value = ReadonlyArray.headNonEmpty(head)
+          return this.primitiveType.validate(Option.some(value), config).pipe(
+            Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
+          )
+        }
+        return Effect.fail(InternalValidationError.keyValuesDetected(InternalHelpDoc.empty, head))
+      }
+      const error = InternalHelpDoc.p(`More than one reference to option '${this.fullName}' detected`)
+      return Effect.fail(InternalValidationError.invalidValue(error))
+    }
+    const error = InternalHelpDoc.p(`Expected to find option: '${this.fullName}'`)
+    return Effect.fail(InternalValidationError.missingValue(error))
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+
+  private get placeholder(): string {
+    const pseudoName = Option.getOrElse(this.pseudoName, () => this.primitiveType.typeName)
+    return `<${pseudoName}>`
+  }
+
+  private get fullName(): string {
+    return this.makeFullName(this.name)[1]
+  }
+
+  private makeFullName(str: string): readonly [boolean, string] {
+    return str.length === 1 ? [true, `-${str}`] : [false, `--${str}`]
+  }
+}
 
 /** @internal */
-export interface Empty extends Op<"Empty"> {}
+export class Map<A, B> implements Options.Options<B> {
+  readonly [OptionsTypeId] = proto
+  readonly _tag = "Map"
+
+  constructor(
+    readonly options: Options.Options<A>,
+    readonly f: (a: A) => Either.Either<ValidationError.ValidationError, B>
+  ) {}
+
+  get identifier(): Option.Option<string> {
+    return this.options.identifier
+  }
+
+  get flattened(): ReadonlyArray<Parameter.Input> {
+    return this.options.flattened
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return this.options.help
+  }
+
+  get usage(): Usage.Usage {
+    return this.options.usage
+  }
+
+  get shortDescription(): string {
+    return this.options.shortDescription
+  }
+
+  modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<B> {
+    return new Map(this.options.modifySingle(f), this.f)
+  }
+
+  validate(
+    args: HashMap.HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, B> {
+    return this.options.validate(args, config).pipe(Effect.flatMap((a) => this.f(a)))
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /** @internal */
-export interface Single extends
-  Op<"Single", {
-    readonly name: string
-    readonly aliases: Chunk.Chunk<string>
-    readonly primitiveType: Primitive.Primitive<unknown>
-    readonly description: HelpDoc.HelpDoc
-  }>
-{}
+export class OrElse<A, B> implements Options.Options<Either.Either<A, B>> {
+  readonly [OptionsTypeId] = proto
+  readonly _tag = "OrElse"
 
-export interface Map extends
-  Op<"Map", {
-    readonly value: Instruction
-    readonly f: (a: unknown) => Either.Either<ValidationError.ValidationError, unknown>
-  }>
-{}
+  constructor(
+    readonly left: Options.Options<A>,
+    readonly right: Options.Options<B>
+  ) {}
+
+  get identifier(): Option.Option<string> {
+    const ids = ReadonlyArray.compact([this.left.identifier, this.right.identifier])
+    return ReadonlyArray.match(ids, {
+      onEmpty: () => Option.none(),
+      onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
+    })
+  }
+
+  get flattened(): ReadonlyArray<Parameter.Input> {
+    return ReadonlyArray.appendAll(this.left.flattened, this.right.flattened)
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.sequence(this.left.help, this.right.help)
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.alternation(this.left.usage, this.right.usage)
+  }
+
+  get shortDescription(): string {
+    return ""
+  }
+
+  modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<Either.Either<A, B>> {
+    return new OrElse(this.left.modifySingle(f), this.right.modifySingle(f))
+  }
+
+  validate(
+    args: HashMap.HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, Either.Either<A, B>> {
+    return this.left.validate(args, config).pipe(
+      Effect.matchEffect({
+        onFailure: (err1) =>
+          this.right.validate(args, config).pipe(
+            Effect.mapBoth({
+              onFailure: (err2) =>
+                // orElse option is only missing in case neither option was given
+                InternalValidationError.isMissingValue(err1) && InternalValidationError.isMissingValue(err2)
+                  ? InternalValidationError.missingValue(InternalHelpDoc.sequence(err1.error, err2.error))
+                  : InternalValidationError.invalidValue(InternalHelpDoc.sequence(err1.error, err2.error)),
+              onSuccess: (b) => Either.right(b)
+            })
+          ),
+        onSuccess: (a) =>
+          this.right.validate(args, config).pipe(Effect.matchEffect({
+            onFailure: () => Effect.succeed(Either.left(a)),
+            onSuccess: () => {
+              // The `identifier` will only be `None` for `Options.Empty`, which
+              // means the user would have had to purposefully compose
+              // `Options.Empty | otherArgument`
+              const leftUid = Option.getOrElse(this.left.identifier, () => "???")
+              const rightUid = Option.getOrElse(this.right.identifier, () => "???")
+              const error = InternalHelpDoc.p(
+                "Collision between two options detected - you can only specify " +
+                  `one of either: ['${leftUid}', '${rightUid}']`
+              )
+              return Effect.fail(InternalValidationError.invalidValue(error))
+            }
+          }))
+      })
+    )
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /** @internal */
-export interface OrElse extends
-  Op<"OrElse", {
-    readonly left: Instruction
-    readonly right: Instruction
-  }>
-{}
+export class Both<A, B> implements Options.Options<readonly [A, B]> {
+  readonly [OptionsTypeId] = proto
+  readonly _tag = "Both"
+
+  constructor(
+    readonly left: Options.Options<A>,
+    readonly right: Options.Options<B>
+  ) {}
+
+  get identifier(): Option.Option<string> {
+    const ids = ReadonlyArray.compact([this.left.identifier, this.right.identifier])
+    return ReadonlyArray.match(ids, {
+      onEmpty: () => Option.none(),
+      onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
+    })
+  }
+
+  get flattened(): ReadonlyArray<Parameter.Input> {
+    return ReadonlyArray.appendAll(this.left.flattened, this.right.flattened)
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.sequence(this.left.help, this.right.help)
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.concat(this.left.usage, this.right.usage)
+  }
+
+  get shortDescription(): string {
+    return ""
+  }
+
+  modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<readonly [A, B]> {
+    return new Both(this.left.modifySingle(f), this.right.modifySingle(f))
+  }
+
+  validate(
+    args: HashMap.HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [A, B]> {
+    return this.left.validate(args, config).pipe(
+      Effect.catchAll((err1) =>
+        this.right.validate(args, config).pipe(Effect.matchEffect({
+          onFailure: (err2) => {
+            const error = InternalHelpDoc.sequence(err1.error, err2.error)
+            return Effect.fail(InternalValidationError.missingValue(error))
+          },
+          onSuccess: () => Effect.fail(err1)
+        }))
+      ),
+      Effect.zip(this.right.validate(args, config))
+    )
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /** @internal */
-export interface KeyValueMap extends
-  Op<"KeyValueMap", {
-    readonly argumentOption: Single
-  }>
-{}
+export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
+  readonly [OptionsTypeId] = proto
+  readonly _tag = "WithDefault"
+
+  constructor(
+    readonly options: Options.Options<A>,
+    readonly fallback: A
+  ) {}
+
+  get identifier(): Option.Option<string> {
+    return this.options.identifier
+  }
+
+  get flattened(): ReadonlyArray<Parameter.Input> {
+    return this.options.flattened
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.mapDescriptionList(this.options.help, (span, block) => {
+      const optionalDescription = Option.isOption(this.fallback)
+        ? Option.match(this.fallback, {
+          onNone: () => InternalHelpDoc.p("This setting is optional."),
+          onSome: () => InternalHelpDoc.p(`This setting is optional. Defaults to: ${this.fallback}`)
+        })
+        : InternalHelpDoc.p("This setting is optional.")
+      return [span, InternalHelpDoc.sequence(block, optionalDescription)] as const
+    })
+  }
+
+  get usage(): Usage.Usage {
+    return InternalUsage.optional(this.options.usage)
+  }
+
+  get shortDescription(): string {
+    return this.options.shortDescription
+  }
+
+  modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<A> {
+    return new WithDefault(this.options.modifySingle(f), this.fallback)
+  }
+
+  isValid(
+    input: string,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+    return Effect.sync(() => {
+      if (isBool(this.options)) {
+        if (Schema.is(InternalPrimitive.trueValues)(input)) {
+          const identifier = Option.getOrElse(this.options.identifier, () => "")
+          return ReadonlyArray.of(identifier)
+        }
+        return ReadonlyArray.empty()
+      }
+      if (input.length === 0) {
+        return ReadonlyArray.empty()
+      }
+      const identifier = Option.getOrElse(this.options.identifier, () => "")
+      return ReadonlyArray.make(identifier, input)
+    })
+  }
+
+  parse(
+    _args: ReadonlyArray<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+    const error = InternalHelpDoc.p("Encountered an error in command design while parsing")
+    return Effect.fail(InternalValidationError.commandMismatch(error))
+  }
+
+  validate(
+    args: HashMap.HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, A> {
+    return this.options.validate(args, config).pipe(
+      Effect.catchTag("MissingValue", () => Effect.succeed(this.fallback))
+    )
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /** @internal */
-export interface Variadic extends
-  Op<"Variadic", {
-    readonly options: Single
-    readonly min: Option.Option<number>
-    readonly max: Option.Option<number>
-  }>
-{}
+export class KeyValueMap implements Options.Options<HashMap.HashMap<string, string>>, Parameter.Input {
+  readonly [OptionsTypeId] = proto
+  readonly _tag = "KeyValueMap"
 
-/** @internal */
-export interface WithDefault extends
-  Op<"WithDefault", {
-    readonly options: Instruction
-    readonly default: unknown
-  }>
-{}
+  constructor(readonly argumentOption: Single<string>) {}
 
-/** @internal */
-export interface ZipWith extends
-  Op<"Zip", {
-    readonly left: Instruction
-    readonly right: Instruction
-  }>
-{}
+  get identifier(): Option.Option<string> {
+    return this.argumentOption.identifier
+  }
+
+  get flattened(): ReadonlyArray<Parameter.Input> {
+    return ReadonlyArray.of(this)
+  }
+
+  get help(): HelpDoc.HelpDoc {
+    return this.argumentOption.help
+  }
+
+  get usage(): Usage.Usage {
+    return this.argumentOption.usage
+  }
+
+  get shortDescription(): string {
+    return this.argumentOption.shortDescription
+  }
+
+  modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<HashMap.HashMap<string, string>> {
+    return new KeyValueMap(f(this.argumentOption))
+  }
+
+  isValid(
+    input: string,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+    const identifier = Option.getOrElse(this.identifier, () => "")
+    const args = input.split(" ")
+    return this.validate(HashMap.make([identifier, args]), config).pipe(
+      Effect.as(ReadonlyArray.prepend(args, identifier))
+    )
+  }
+
+  parse(
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+    const names = ReadonlyArray.map(
+      this.argumentOption.names,
+      (name) => InternalCliConfig.normalizeCase(config, name)
+    )
+    if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+      const head = ReadonlyArray.headNonEmpty(args)
+      const tail = ReadonlyArray.tailNonEmpty(args)
+      if (ReadonlyArray.contains(names, head)) {
+        let keyValues: ReadonlyArray<string> = ReadonlyArray.empty()
+        let leftover: ReadonlyArray<string> = tail
+        while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
+          // Will either be the flag or a key/value pair
+          const flagOrKeyValue = ReadonlyArray.headNonEmpty(leftover).trim()
+          // The input can be in the form of "-d key1=value1 -d key2=value2"
+          if (
+            leftover.length >= 2 && ReadonlyArray.contains(
+              names,
+              InternalCliConfig.normalizeCase(config, flagOrKeyValue)
+            )
+          ) {
+            const keyValueString = leftover[1]!.trim()
+            const split = keyValueString.split("=")
+            if (split.length < 2 || split[1] === "" || split[1] === "=") {
+              break
+            } else {
+              keyValues = ReadonlyArray.prepend(keyValues, keyValueString)
+              leftover = leftover.slice(2)
+            }
+            // Or, it can be in the form of "-d key1=value1 key2=value2"
+          } else {
+            const split = flagOrKeyValue.split("=")
+            if (split.length < 2 || split[1] === "" || split[1] === "=") {
+              break
+            } else {
+              keyValues = ReadonlyArray.prepend(keyValues, flagOrKeyValue)
+              leftover = leftover.slice(1)
+              continue
+            }
+          }
+        }
+        return ReadonlyArray.isEmptyReadonlyArray(keyValues)
+          ? Effect.succeed([ReadonlyArray.empty(), args])
+          : Effect.succeed([ReadonlyArray.prepend(keyValues, head), leftover])
+      }
+    }
+    return Effect.succeed([ReadonlyArray.empty(), args])
+  }
+
+  validate(
+    args: HashMap.HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, ValidationError.ValidationError, HashMap.HashMap<string, string>> {
+    const extractKeyValue = (
+      keyValue: string
+    ): Effect.Effect<never, ValidationError.ValidationError, readonly [string, string]> => {
+      const split = keyValue.trim().split("=")
+      if (ReadonlyArray.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
+        return Effect.succeed(split as unknown as readonly [string, string])
+      }
+      const error = InternalHelpDoc.p(`Expected a key/value pair but received '${keyValue}'`)
+      return Effect.fail(InternalValidationError.invalidArgument(error))
+    }
+    return this.argumentOption.validate(args, config).pipe(Effect.matchEffect({
+      onFailure: (e) =>
+        InternalValidationError.isKeyValuesDetected(e)
+          ? Effect.forEach(e.keyValues, (kv) => extractKeyValue(kv)).pipe(Effect.map(HashMap.fromIterable))
+          : Effect.fail(e),
+      onSuccess: (kv) => extractKeyValue(kv as string).pipe(Effect.map(HashMap.make))
+    }))
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+// =============================================================================
+// Refinements
+// =============================================================================
 
 /** @internal */
 export const isOptions = (u: unknown): u is Options.Options<unknown> =>
   typeof u === "object" && u != null && OptionsTypeId in u
 
 /** @internal */
-export const alias = dual<
-  (alias: string) => <A>(self: Options.Options<A>) => Options.Options<A>,
-  <A>(self: Options.Options<A>, alias: string) => Options.Options<A>
->(2, (self, alias) =>
-  modifySingle(self as Instruction, (original) => {
-    const op = Object.create(proto)
-    op._tag = "Single"
-    op.name = original.name
-    op.aliases = Chunk.append(original.aliases, alias)
-    op.primitiveType = original.primitiveType
-    op.description = original.description
-    return op
-  }))
+export const isEmpty = (u: unknown): u is Empty => isOptions(u) && "_tag" in u && u._tag === "Empty"
 
 /** @internal */
-export const atLeast = dual<
-  {
-    (times: 0): <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>
-    (times: number): <A>(self: Options.Options<A>) => Options.Options<Chunk.NonEmptyChunk<A>>
-  },
-  {
-    <A>(self: Options.Options<A>, times: 0): Options.Options<Chunk.Chunk<A>>
-    <A>(self: Options.Options<A>, times: number): Options.Options<Chunk.NonEmptyChunk<A>>
+export const isSingle = (u: unknown): u is Single<unknown> => isOptions(u) && "_tag" in u && u._tag === "Single"
+
+/** @internal */
+export const isMap = (u: unknown): u is Map<unknown, unknown> => isOptions(u) && "_tag" in u && u._tag === "Map"
+
+/** @internal */
+export const isOrElse = (u: unknown): u is OrElse<unknown, unknown> =>
+  isOptions(u) && "_tag" in u && u._tag === "OrElse"
+
+/** @internal */
+export const isBoth = (u: unknown): u is Both<unknown, unknown> => isOptions(u) && "_tag" in u && u._tag === "Both"
+
+/** @internal */
+export const isWithDefault = (u: unknown): u is WithDefault<unknown> =>
+  isOptions(u) && "_tag" in u && u._tag === "WithDefault"
+
+/** @internal */
+export const isKeyValueMap = (u: unknown): u is KeyValueMap => isOptions(u) && "_tag" in u && u._tag === "KeyValueMap"
+
+// =============================================================================
+// Constructors
+// =============================================================================
+
+/** @internal */
+export const all: <
+  const Arg extends Iterable<Options.Options<any>> | Record<string, Options.Options<any>>
+>(arg: Arg) => Options.All.Return<Arg> = function() {
+  if (arguments.length === 1) {
+    if (isOptions(arguments[0])) {
+      return map(arguments[0], (x) => [x]) as any
+    } else if (Array.isArray(arguments[0])) {
+      return allTupled(arguments[0]) as any
+    } else {
+      const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Options.Options<any> }>)
+      let result = map(entries[0][1], (value) => ({ [entries[0][0]]: value }))
+      if (entries.length === 1) {
+        return result as any
+      }
+      const rest = entries.slice(1)
+      for (const [key, options] of rest) {
+        result = map(new Both(result, options), ([record, value]) => ({
+          ...record,
+          [key]: value
+        }))
+      }
+      return result as any
+    }
   }
->(2, (self, times) => variadic(self, Option.some(times), Option.none()) as any)
-
-/** @internal */
-export const atMost = dual<
-  (times: number) => <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>,
-  <A>(self: Options.Options<A>, times: number) => Options.Options<Chunk.Chunk<A>>
->(2, (self, times) => variadic(self, Option.none(), Option.some(times)))
-
-/** @internal */
-export const between = dual<
-  {
-    (min: 0, max: number): <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>
-    (min: number, max: number): <A>(self: Options.Options<A>) => Options.Options<Chunk.NonEmptyChunk<A>>
-  },
-  {
-    <A>(self: Options.Options<A>, min: 0, max: number): Options.Options<Chunk.Chunk<A>>
-    <A>(self: Options.Options<A>, min: number, max: number): Options.Options<Chunk.NonEmptyChunk<A>>
-  }
->(3, (self, min, max) => variadic(self, Option.some(min), Option.some(max)) as any)
+  return allTupled(arguments[0]) as any
+}
 
 const defaultBooleanOptions = {
   ifPresent: true,
-  negationNames: []
+  negationNames: [],
+  aliases: []
 }
 
 /** @internal */
 export const boolean = (name: string, options: Options.Options.BooleanOptionConfig = {}): Options.Options<boolean> => {
-  const { ifPresent, negationNames } = { ...defaultBooleanOptions, ...options }
-  const option = single(name, Chunk.empty(), primitive.boolean(Option.some(ifPresent)))
-  if (RA.isNonEmptyReadonlyArray(negationNames)) {
-    const negationOption = single(
-      negationNames[0],
-      Chunk.unsafeFromArray(negationNames.slice(1)),
-      primitive.boolean(Option.some(!ifPresent))
+  const { aliases, ifPresent, negationNames } = { ...defaultBooleanOptions, ...options }
+  const option = new Single(
+    name,
+    aliases,
+    InternalPrimitive.boolean(Option.some(ifPresent))
+  )
+  if (ReadonlyArray.isNonEmptyReadonlyArray(negationNames)) {
+    const head = ReadonlyArray.headNonEmpty(negationNames)
+    const tail = ReadonlyArray.tailNonEmpty(negationNames)
+    const negationOption = new Single(
+      head,
+      tail,
+      InternalPrimitive.boolean(Option.some(!ifPresent))
     )
     return withDefault(orElse(option, negationOption), !ifPresent)
   }
@@ -183,24 +713,23 @@ export const boolean = (name: string, options: Options.Options.BooleanOptionConf
 }
 
 /** @internal */
-export const choice = <A extends string, C extends RA.NonEmptyReadonlyArray<A>>(
+export const choice = <A extends string, C extends ReadonlyArray.NonEmptyReadonlyArray<A>>(
   name: string,
   choices: C
-): Options.Options<C[number]> =>
-  single(
-    name,
-    Chunk.empty(),
-    primitive.choice(RA.map(choices, (choice) => [choice, choice] as const))
-  )
+): Options.Options<C[number]> => {
+  const primitive = InternalPrimitive.choice(ReadonlyArray.map(choices, (choice) => [choice, choice]))
+  return new Single(name, ReadonlyArray.empty(), primitive)
+}
 
 /** @internal */
-export const choiceWithValue = <C extends RA.NonEmptyReadonlyArray<readonly [string, any]>>(
+export const choiceWithValue = <C extends ReadonlyArray.NonEmptyReadonlyArray<[string, any]>>(
   name: string,
   choices: C
-): Options.Options<C[number][1]> => single(name, Chunk.empty(), primitive.choice(choices))
+): Options.Options<C[number][1]> => new Single(name, ReadonlyArray.empty(), InternalPrimitive.choice(choices))
 
 /** @internal */
-export const date = (name: string): Options.Options<Date> => single(name, Chunk.empty(), primitive.date)
+export const date = (name: string): Options.Options<Date> =>
+  new Single(name, ReadonlyArray.empty(), InternalPrimitive.date)
 
 /** @internal */
 export const filterMap = dual<
@@ -209,106 +738,66 @@ export const filterMap = dual<
 >(3, (self, f, message) =>
   mapOrFail(self, (a) =>
     Option.match(f(a), {
-      onNone: () => Either.left(validationError.invalidValue(doc.p(message))),
+      onNone: () => Either.left(InternalValidationError.invalidValue(InternalHelpDoc.p(message))),
       onSome: Either.right
     })))
 
 /** @internal */
-export const float = (name: string): Options.Options<number> => single(name, Chunk.empty(), primitive.float)
-
-const helpDocMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => HelpDoc.HelpDoc
-} = {
-  Empty: () => doc.empty,
-  Single: (self) =>
-    doc.descriptionList(RA.of([
-      doc.getSpan(_usage.helpDoc(usage(self))),
-      doc.sequence(doc.p(primitive.helpDoc(self.primitiveType)), self.description)
-    ])),
-  Map: (self) => helpDocMap[self.value._tag](self.value as any),
-  OrElse: (self) => {
-    const left = helpDocMap[self.left._tag](self.left as any)
-    const right = helpDocMap[self.right._tag](self.right as any)
-    return doc.sequence(left, right)
-  },
-  KeyValueMap: (self) => helpDocMap[self.argumentOption._tag](self.argumentOption as any),
-  Variadic: (self) => helpDocMap[self.options._tag](self.options as any),
-  WithDefault: (self) => {
-    const helpDoc = helpDocMap[self.options._tag](self.options as any)
-    return doc.mapDescriptionList(helpDoc, (span, block) => [
-      span,
-      doc.sequence(
-        block,
-        doc.p(
-          Option.isOption(self.default) ?
-            "This setting is optional." :
-            `This setting is optional. (Defaults to: '${JSON.stringify(self.default)}')`
-        )
-      )
-    ])
-  },
-  Zip: (self) => {
-    const left = helpDocMap[self.left._tag](self.left as any)
-    const right = helpDocMap[self.right._tag](self.right as any)
-    return doc.sequence(left, right)
-  }
-}
+export const float = (name: string): Options.Options<number> =>
+  new Single(name, ReadonlyArray.empty(), InternalPrimitive.float)
 
 /** @internal */
-export const helpDoc = <A>(self: Options.Options<A>): HelpDoc.HelpDoc =>
-  helpDocMap[(self as Instruction)._tag](self as any)
+export const integer = (name: string): Options.Options<number> =>
+  new Single(name, ReadonlyArray.empty(), InternalPrimitive.integer)
 
 /** @internal */
-export const integer = (name: string): Options.Options<number> => single(name, Chunk.empty(), primitive.integer)
-
-const isBoolMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => boolean
-} = {
-  Empty: () => false,
-  Single: (self) => primitive.isBool(self.primitiveType),
-  Map: (self) => isBoolMap[self.value._tag](self.value as any),
-  OrElse: () => false,
-  KeyValueMap: () => false,
-  Variadic: () => false,
-  WithDefault: (self) => isBoolMap[self.options._tag](self.options as any),
-  Zip: () => false
-}
-
-/** @internal */
-export const isBool = <A>(self: Options.Options<A>): boolean => isBoolMap[(self as Instruction)._tag](self as any)
-
-/** @internal */
-export const keyValueMap = (name: string): Options.Options<HashMap.HashMap<string, string>> => {
-  const op = Object.create(proto)
-  op._tag = "KeyValueMap"
-  op.argumentOption = single(name, Chunk.empty(), primitive.text)
-  return op
-}
-
-/** @internal */
-export const keyValueMapFromOption = (
-  argumentOption: Options.Options<string>
+export const keyValueMap = (
+  option: string | Options.Options<string>
 ): Options.Options<HashMap.HashMap<string, string>> => {
-  if ((argumentOption as Instruction)._tag !== "Single") {
-    throw new Error("argumentOption must be a single option")
+  if (typeof option === "string") {
+    const single = new Single(option, ReadonlyArray.empty(), InternalPrimitive.text)
+    return new KeyValueMap(single)
   }
-  const op = Object.create(proto)
-  op._tag = "KeyValueMap"
-  op.argumentOption = argumentOption
-  return op
+  if (!isSingle(option)) {
+    throw new Error("InvalidArgumentException: the provided option must be a single option")
+  } else {
+    return new KeyValueMap(option as Single<string>)
+  }
+}
+
+/** @internal */
+export const none: Options.Options<void> = new Empty()
+
+/** @internal */
+export const text = (name: string): Options.Options<string> =>
+  new Single(name, ReadonlyArray.empty(), InternalPrimitive.text)
+
+// =============================================================================
+// Combinators
+// =============================================================================
+
+/** @internal */
+export const isBool = <A>(self: Options.Options<A>): boolean => {
+  if (isEmpty(self)) {
+    return false
+  }
+  if (isWithDefault(self)) {
+    return isBool(self.options)
+  }
+  if (isSingle(self)) {
+    return InternalPrimitive.isBool(self.primitiveType)
+  }
+  if (isMap(self)) {
+    return isBool(self.options)
+  }
+  return false
 }
 
 /** @internal */
 export const map = dual<
   <A, B>(f: (a: A) => B) => (self: Options.Options<A>) => Options.Options<B>,
   <A, B>(self: Options.Options<A>, f: (a: A) => B) => Options.Options<B>
->(2, <A, B>(self: Options.Options<A>, f: (a: A) => B) => {
-  const op = Object.create(proto)
-  op._tag = "Map"
-  op.value = self
-  op.f = (a: A) => Either.right(f(a))
-  return op
-})
+>(2, (self, f) => new Map(self, (a) => Either.right(f(a))))
 
 /** @internal */
 export const mapOrFail = dual<
@@ -319,13 +808,7 @@ export const mapOrFail = dual<
     self: Options.Options<A>,
     f: (a: A) => Either.Either<ValidationError.ValidationError, B>
   ) => Options.Options<B>
->(2, (self, f) => {
-  const op = Object.create(proto)
-  op._tag = "Map"
-  op.value = self
-  op.f = f
-  return op
-})
+>(2, (self, f) => new Map(self, f))
 
 /** @internal */
 export const mapTryCatch = dual<
@@ -336,16 +819,9 @@ export const mapTryCatch = dual<
     try {
       return Either.right(f(a))
     } catch (e) {
-      return Either.left(validationError.invalidValue(onError(e)))
+      return Either.left(InternalValidationError.invalidValue(onError(e)))
     }
   }))
-
-/** @internal */
-export const none: Options.Options<void> = (() => {
-  const op = Object.create(proto)
-  op._tag = "Empty"
-  return op
-})()
 
 /** @internal */
 export const optional = <A>(self: Options.Options<A>): Options.Options<Option.Option<A>> =>
@@ -353,226 +829,15 @@ export const optional = <A>(self: Options.Options<A>): Options.Options<Option.Op
 
 /** @internal */
 export const orElse = dual<
-  <A>(that: Options.Options<A>) => <B>(self: Options.Options<B>) => Options.Options<A | B>,
+  <B>(that: Options.Options<B>) => <A>(self: Options.Options<A>) => Options.Options<A | B>,
   <A, B>(self: Options.Options<A>, that: Options.Options<B>) => Options.Options<A | B>
->(2, (self, that) => map(orElseEither(self, that), Either.merge))
+>(2, (self, that) => orElseEither(self, that).pipe(map(Either.merge)))
 
 /** @internal */
 export const orElseEither = dual<
-  <A>(that: Options.Options<A>) => <B>(self: Options.Options<B>) => Options.Options<Either.Either<B, A>>,
-  <A, B>(self: Options.Options<A>, that: Options.Options<B>) => Options.Options<Either.Either<B, A>>
->(2, (self, that) => {
-  const op = Object.create(proto)
-  op._tag = "OrElse"
-  op.left = self
-  op.right = that
-  return op
-})
-
-/** @internal */
-export const repeat = <A>(self: Options.Options<A>): Options.Options<Chunk.Chunk<A>> =>
-  variadic(self, Option.none(), Option.none())
-
-/** @internal */
-export const repeat1 = <A>(self: Options.Options<A>): Options.Options<Chunk.NonEmptyChunk<A>> =>
-  variadic(self, Option.some(1), Option.none()) as any
-
-/** @internal */
-export const text = (name: string): Options.Options<string> => single(name, Chunk.empty(), primitive.text)
-
-const uidMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => Option.Option<string>
-} = {
-  Empty: () => Option.none(),
-  Single: (self) => Option.some(singleFullName(self)),
-  Map: (self) => uidMap[self.value._tag](self.value as any),
-  OrElse: (self) => combineUids(self.left, self.right),
-  KeyValueMap: (self) => uidMap[self.argumentOption._tag](self.argumentOption as any),
-  Variadic: (self) => uidMap[self.options._tag](self.options as any),
-  WithDefault: (self) => uidMap[self.options._tag](self.options as any),
-  Zip: (self) => combineUids(self.left, self.right)
-}
-
-/** @internal */
-export const uid = <A>(self: Options.Options<A>): Option.Option<string> =>
-  uidMap[(self as Instruction)._tag](self as any)
-
-const usageMap: {
-  [K in Instruction["_tag"]]: (self: Extract<Instruction, { _tag: K }>) => Usage.Usage
-} = {
-  Empty: () => _usage.empty,
-  Single: (self) => {
-    const names = singleNames(self)
-    const acceptedValues = primitive.isBool(self.primitiveType)
-      ? Option.none()
-      : Option.orElse(
-        primitive.choices(self.primitiveType),
-        () => Option.some(primitive.typeName(self.primitiveType))
-      )
-    return _usage.named(names, acceptedValues)
-  },
-  Map: (self) => usageMap[self.value._tag](self.value as any),
-  OrElse: (self) => {
-    const left = usageMap[self.left._tag](self.left as any)
-    const right = usageMap[self.right._tag](self.right as any)
-    return _usage.alternation(left, right)
-  },
-  KeyValueMap: (self) => usageMap[self.argumentOption._tag](self.argumentOption as any),
-  Variadic: (self) => _usage.optional(usageMap[self.options._tag](self.options as any)),
-  WithDefault: (self) => _usage.optional(usageMap[self.options._tag](self.options as any)),
-  Zip: (self) => {
-    const left = usageMap[self.left._tag](self.left as any)
-    const right = usageMap[self.right._tag](self.right as any)
-    return _usage.concat(left, right)
-  }
-}
-
-/** @internal */
-export const usage = <A>(self: Options.Options<A>): Usage.Usage => usageMap[(self as Instruction)._tag](self as any)
-
-const validateMap: {
-  [K in Instruction["_tag"]]: (
-    self: Extract<Instruction, { _tag: K }>,
-    args: ReadonlyArray<string>,
-    config: CliConfig.CliConfig
-  ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, any]>
-} = {
-  Empty: (_, args) => Effect.succeed([args, void 0]),
-  Single: (self, args, config) => {
-    if (RA.isNonEmptyReadonlyArray(args)) {
-      const [rest, supported] = processSingleArg(self, args[0], args.slice(1), config)
-      if (supported) {
-        if (primitive.isBool(self.primitiveType)) {
-          return Effect.mapBoth(primitive.validate(self.primitiveType, Option.none()), {
-            onFailure: (error) => validationError.invalidValue(doc.p(error)),
-            onSuccess: (a) => [rest, a]
-          })
-        }
-        return Effect.mapBoth(primitive.validate(self.primitiveType, RA.head(rest)), {
-          onFailure: (error) => validationError.invalidValue(doc.p(error)),
-          onSuccess: (a) => [rest.slice(1), a]
-        })
-      }
-      const fullName = singleFullName(self)
-      const distance = autoCorrect.levensteinDistance(args[0], fullName, config)
-      if (self.name.length > config.autoCorrectLimit + 1 && distance <= config.autoCorrectLimit) {
-        const message = `The flag '${args[0]}' is not recognized. Did you mean '${fullName}'?`
-        const error = validationError.invalidValue(doc.p(span.error(message)))
-        return Effect.fail(error)
-      }
-      return Effect.map(
-        validateMap[self._tag](self, rest, config),
-        (tuple) => [RA.prepend(tuple[0], args[0]), tuple[1]]
-      )
-    }
-    const error = validationError.missingValue(
-      doc.p(span.error(`Expected to find option: '${singleFullName(self)}'`))
-    )
-    return Effect.fail(error)
-  },
-  Map: (self, args, config) =>
-    Effect.flatMap(
-      validateMap[self.value._tag](self.value as any, args, config),
-      (tuple) =>
-        Either.match(self.f(tuple[1]), {
-          onLeft: Effect.fail,
-          onRight: (a) => Effect.succeed([tuple[0], a])
-        })
-    ),
-  OrElse: (self, args, config) =>
-    Effect.matchEffect(validateMap[self.left._tag](self.left as any, args, config), {
-      onFailure: (error1) =>
-        Effect.matchEffect(validateMap[self.right._tag](self.right as any, args, config), {
-          onFailure: (error2) => {
-            const message = doc.sequence(error1.error, error2.error)
-            // The option is only considered "missing" if neither option was given
-            if (validationError.isMissingValue(error1) && validationError.isMissingValue(error2)) {
-              return Effect.fail(validationError.missingValue(message))
-            }
-            return Effect.fail(validationError.invalidValue(message))
-          },
-          onSuccess: (tuple) => Effect.succeed([tuple[0], Either.right(tuple[1])])
-        }),
-      onSuccess: (tuple) =>
-        Effect.matchEffect(validateMap[self.right._tag](self.right as any, tuple[0], config), {
-          onFailure: () => Effect.succeed([tuple[0], Either.left(tuple[1])]),
-          onSuccess: () => {
-            const left = uid(self.left)
-            const right = uid(self.right)
-            if (Option.isNone(left) || Option.isNone(right)) {
-              const message = "Collision between two options detected. Could not render option identifiers."
-              const error = validationError.invalidValue(doc.p(span.error(message)))
-              return Effect.fail(error)
-            }
-            const message = "Collision between two options detected." +
-              ` You can only specify one of either: ['${left.value}', '${right.value}'].`
-            const error = validationError.invalidValue(doc.p(span.error(message)))
-            return Effect.fail(error)
-          }
-        })
-    }),
-  KeyValueMap: (self, args, config) =>
-    Effect.map(
-      validateMap[self.argumentOption._tag](self.argumentOption as any, args, config),
-      (tuple) => processKeyValueMapArg(self, tuple[0], tuple[1], config)
-    ),
-  Variadic: (self, args, config) => {
-    const min = Option.getOrElse(self.min, () => 0)
-    const max = Option.getOrElse(self.max, () => Infinity)
-    const loop = (
-      args: ReadonlyArray<string>,
-      acc: Chunk.Chunk<unknown>
-    ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, Chunk.Chunk<unknown>]> =>
-      Effect.matchEffect(validateMap[self.options._tag](self.options as any, args, config), {
-        onFailure: (error) => {
-          if (!validationError.isMissingValue(error)) {
-            return Effect.fail(error)
-          } else if (acc.length < min) {
-            return Effect.fail(validationError.missingValue(
-              doc.p(span.error(`Expected at least ${min} value(s) for option: '${singleFullName(self.options)}'`))
-            ))
-          }
-
-          return Effect.succeed([args, acc])
-        },
-        onSuccess: (tuple) => {
-          acc = Chunk.append(acc, tuple[1])
-          if (acc.length > max) {
-            return Effect.fail(validationError.extraneousValue(
-              doc.p(span.error(`Expected at most ${max} value(s) for option: '${singleFullName(self.options)}'`))
-            ))
-          }
-          return loop(tuple[0], acc)
-        }
-      })
-    return loop(args, Chunk.empty())
-  },
-  WithDefault: (self, args, config) =>
-    Effect.catchSome(
-      validateMap[self.options._tag](self.options as any, args, config),
-      (error) =>
-        validationError.isMissingValue(error)
-          ? Option.some(Effect.succeed([args, self.default]))
-          : Option.none()
-    ),
-  Zip: (self, args, config) =>
-    pipe(
-      validateMap[self.left._tag](self.left as any, args, config),
-      Effect.catchAll(
-        (error1) =>
-          Effect.matchEffect(validateMap[self.right._tag](self.right as any, args, config), {
-            onFailure: (error2) => Effect.fail(validationError.missingValue(doc.sequence(error1.error, error2.error))),
-            onSuccess: () => Effect.fail(error1)
-          })
-      ),
-      Effect.flatMap(([args, a]) =>
-        pipe(
-          validateMap[self.right._tag](self.right as any, args, config),
-          Effect.map(([args, b]) => [args, [a, b]])
-        )
-      )
-    )
-}
+  <B>(that: Options.Options<B>) => <A>(self: Options.Options<A>) => Options.Options<Either.Either<A, B>>,
+  <A, B>(self: Options.Options<A>, that: Options.Options<B>) => Options.Options<Either.Either<A, B>>
+>(2, (self, that) => new OrElse(self, that))
 
 /** @internal */
 export const validate = dual<
@@ -581,274 +846,266 @@ export const validate = dual<
     config: CliConfig.CliConfig
   ) => <A>(
     self: Options.Options<A>
-  ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]>,
+  ) => Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
+  >,
   <A>(
     self: Options.Options<A>,
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]>
->(3, (self, args, config) => validateMap[(self as Instruction)._tag](self as any, args, config))
+  ) => Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
+  >
+>(3, (self, args, config) =>
+  matchOptions(args, self.flattened, config).pipe(
+    Effect.flatMap(([error, commandArgs, matchedOptions]) =>
+      self.validate(matchedOptions, config).pipe(
+        Effect.catchAll((e) =>
+          Option.match(error, {
+            onNone: () => Effect.fail(e),
+            onSome: (err) => Effect.fail(err)
+          })
+        ),
+        Effect.map((a) => [error, commandArgs, a] as const)
+      )
+    )
+  ))
 
-const variadic = <A>(
-  self: Options.Options<A>,
-  min: Option.Option<number>,
-  max: Option.Option<number>
-): Options.Options<Chunk.Chunk<A>> => {
-  const op = Object.create(proto)
-  op._tag = "Variadic"
-  op.options = self
-  op.min = min
-  op.max = max
-  return op
-}
+/** @internal */
+export const withAlias = dual<
+  (alias: string) => <A>(self: Options.Options<A>) => Options.Options<A>,
+  <A>(self: Options.Options<A>, alias: string) => Options.Options<A>
+>(2, (self, alias) =>
+  self.modifySingle((single) => {
+    const aliases = ReadonlyArray.append(single.aliases, alias)
+    return new Single(single.name, aliases, single.primitiveType, single.description, single.pseudoName)
+  }))
 
 /** @internal */
 export const withDefault = dual<
-  <A>(value: A) => (self: Options.Options<A>) => Options.Options<A>,
-  <A>(self: Options.Options<A>, value: A) => Options.Options<A>
->(2, (self, value) => {
-  const op = Object.create(proto)
-  op._tag = "WithDefault"
-  op.options = self
-  op.default = value
-  return op
-})
+  <A>(fallback: A) => (self: Options.Options<A>) => Options.Options<A>,
+  <A>(self: Options.Options<A>, fallback: A) => Options.Options<A>
+>(2, (self, fallback) => new WithDefault(self, fallback))
 
 /** @internal */
 export const withDescription = dual<
   (description: string) => <A>(self: Options.Options<A>) => Options.Options<A>,
   <A>(self: Options.Options<A>, description: string) => Options.Options<A>
->(2, (self, description) =>
-  modifySingle(self as Instruction, (original) => {
-    const op = Object.create(proto)
-    op._tag = "Single"
-    op.name = original.name
-    op.aliases = original.aliases
-    op.primitiveType = original.primitiveType
-    op.description = doc.sequence(original.description, doc.p(description))
-    return op
+>(2, (self, desc) =>
+  self.modifySingle((single) => {
+    const description = InternalHelpDoc.sequence(single.description, InternalHelpDoc.p(desc))
+    return new Single(single.name, single.aliases, single.primitiveType, description, single.pseudoName)
   }))
 
 /** @internal */
-export const zip = dual<
-  <B>(that: Options.Options<B>) => <A>(self: Options.Options<A>) => Options.Options<readonly [A, B]>,
-  <A, B>(self: Options.Options<A>, that: Options.Options<B>) => Options.Options<readonly [A, B]>
->(2, (self, that) => {
-  const op = Object.create(proto)
-  op._tag = "Zip"
-  op.left = self
-  op.right = that
-  return op
-})
-
-/** @internal */
-export const zipFlatten = dual<
-  <B>(
-    that: Options.Options<B>
-  ) => <A extends ReadonlyArray<any>>(
-    self: Options.Options<A>
-  ) => Options.Options<[...A, B]>,
-  <A extends ReadonlyArray<any>, B>(
-    self: Options.Options<A>,
-    that: Options.Options<B>
-  ) => Options.Options<[...A, B]>
->(2, (self, that) => map(zip(self, that), ([a, b]) => [...a, b]))
-
-/** @internal */
-export const zipWith = dual<
-  <B, A, C>(that: Options.Options<B>, f: (a: A, b: B) => C) => (self: Options.Options<A>) => Options.Options<C>,
-  <A, B, C>(self: Options.Options<A>, that: Options.Options<B>, f: (a: A, b: B) => C) => Options.Options<C>
->(3, (self, that, f) => map(zip(self, that), ([a, b]) => f(a, b)))
-
-/* @internal */
-export const all: {
-  <A, T extends ReadonlyArray<Options.Options<any>>>(
-    self: Options.Options<A>,
-    ...args: T
-  ): Options.Options<
-    readonly [
-      A,
-      ...(T["length"] extends 0 ? []
-        : Readonly<{ [K in keyof T]: [T[K]] extends [Options.Options<infer A>] ? A : never }>)
-    ]
-  >
-  <T extends ReadonlyArray<Options.Options<any>>>(
-    args: [...T]
-  ): Options.Options<
-    T[number] extends never ? []
-      : Readonly<{ [K in keyof T]: [T[K]] extends [Options.Options<infer A>] ? A : never }>
-  >
-  <T extends Readonly<{ [K: string]: Options.Options<any> }>>(
-    args: T
-  ): Options.Options<
-    Readonly<{ [K in keyof T]: [T[K]] extends [Options.Options<infer A>] ? A : never }>
-  >
-} = function() {
-  if (arguments.length === 1) {
-    if (isOptions(arguments[0])) {
-      return map(arguments[0], (x) => [x])
-    } else if (Array.isArray(arguments[0])) {
-      return tuple(arguments[0])
-    } else {
-      const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Options.Options<any> }>)
-      let result = map(entries[0][1], (value) => ({ [entries[0][0]]: value }))
-      if (entries.length === 1) {
-        return result as any
-      }
-      const rest = entries.slice(1)
-      for (const [key, options] of rest) {
-        result = zipWith(result, options, (record, value) => ({ ...record, [key]: value }))
-      }
-      return result as any
-    }
-  }
-  return tuple(arguments[0])
-}
-
-const single = <A>(
-  name: string,
-  aliases: Chunk.Chunk<string>,
-  primitiveType: Primitive.Primitive<A>,
-  description: HelpDoc.HelpDoc = doc.empty
-): Options.Options<A> => {
-  const op = Object.create(proto)
-  op._tag = "Single"
-  op.name = name
-  op.aliases = aliases
-  op.primitiveType = primitiveType
-  op.description = description
-  return op
-}
-
-const singleModifierMap: {
-  [K in Instruction["_tag"]]: (
-    self: Extract<Instruction, { _tag: K }>,
-    f: (single: Single) => Single
-  ) => Options.Options<any>
-} = {
-  Empty: (self) => self,
-  Single: (self, f) => f(self),
-  Map: (self, f) => mapOrFail(modifySingle(self.value, f), self.f),
-  OrElse: (self, f) => orElseEither(modifySingle(self.left, f), modifySingle(self.right, f)),
-  KeyValueMap: (self, f) => keyValueMapFromOption(f(self.argumentOption)),
-  Variadic: (self, f) => variadic(f(self.options), self.min, self.max),
-  WithDefault: (self, f) => withDefault(modifySingle(self.options, f), self.default),
-  Zip: (self, f) => zip(modifySingle(self.left, f), modifySingle(self.right, f))
-}
-
-const singleFullName = (self: Single): string => makeSingleFullName(self.name)[1]
-
-const singleNames = (self: Single): Chunk.Chunk<string> =>
-  pipe(
-    Chunk.prepend(self.aliases, self.name),
-    Chunk.map(makeSingleFullName),
-    Chunk.sort(Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])),
-    Chunk.map((tuple) => tuple[1])
-  )
-
-const makeSingleFullName = (s: string): readonly [boolean, string] =>
-  s.length === 1 ? [true, `-${s}`] : [false, `--${s}`]
-
-const modifySingle = (self: Instruction, f: (single: Single) => Single): Options.Options<any> =>
-  singleModifierMap[self._tag](self as any, f)
-
-const processKeyValueMapArg = (
-  self: KeyValueMap,
-  input: ReadonlyArray<string>,
-  first: string,
-  config: CliConfig.CliConfig
-): readonly [ReadonlyArray<string>, HashMap.HashMap<string, string>] => {
-  const [remaining, chunk] = processVariadicArg(repeat(self.argumentOption) as any, input, first, config)
-  const createMapEntry = (input: string): readonly [string, string] =>
-    input.split("=").slice(0, 2) as unknown as readonly [string, string]
-  return [remaining, HashMap.fromIterable(Chunk.map(chunk, createMapEntry))]
-}
-
-const processVariadicArg = (
-  self: Variadic,
-  input: ReadonlyArray<string>,
-  first: string,
-  config: CliConfig.CliConfig
-): readonly [ReadonlyArray<string>, Chunk.Chunk<string>] => {
-  const max = Option.getOrElse(self.max, () => Infinity)
-  const makeFullName = (s: string): string => s.length === 1 ? `-${s}` : `--${s}`
-  const supports = (s: string, config: CliConfig.CliConfig): boolean => {
-    const argumentNames = Chunk.prepend(
-      Chunk.map(self.options.aliases, makeFullName),
-      makeFullName(self.options.name)
+export const withPseudoName = dual<
+  (pseudoName: string) => <A>(self: Options.Options<A>) => Options.Options<A>,
+  <A>(self: Options.Options<A>, pseudoName: string) => Options.Options<A>
+>(2, (self, pseudoName) =>
+  self.modifySingle((single) =>
+    new Single(
+      single.name,
+      single.aliases,
+      single.primitiveType,
+      single.description,
+      Option.some(pseudoName)
     )
-    return config.isCaseSensitive
-      ? Chunk.contains(argumentNames, s)
-      : Chunk.some(argumentNames, (name) => name.toLowerCase() === s.toLowerCase())
-  }
+  ))
 
-  const createChunk = (input: ReadonlyArray<string>): Chunk.Chunk<string> =>
-    Chunk.fromIterable(RA.filter(input, (s) => !s.startsWith("-")))
+// =============================================================================
+// Internals
+// =============================================================================
 
-  const tuple = RA.span(RA.fromIterable(input), (s) => !s.startsWith("-") || supports(s, config))
-  const remaining = tuple[1]
-
-  let chunk: Chunk.Chunk<string> = Chunk.prepend(createChunk(tuple[0]), first)
-  if (max < Infinity) {
-    chunk = Chunk.take(chunk, max)
-  }
-
-  return [remaining, chunk]
-}
-
-const processSingleArg = (
-  self: Single,
-  arg: string,
-  remaining: ReadonlyArray<string>,
-  config: CliConfig.CliConfig
-): readonly [ReadonlyArray<string>, boolean] => {
-  const process = (predicate: Predicate<string>): readonly [ReadonlyArray<string>, boolean] => {
-    if (predicate(arg)) {
-      return [remaining, true]
-    }
-    if (arg.startsWith("--")) {
-      const splitArg = arg.split("=")
-      return splitArg.length === 2
-        ? [RA.prepend(remaining, splitArg[1]), predicate(splitArg[0])]
-        : [remaining, false]
-    }
-    return [remaining, false]
-  }
-  return config.isCaseSensitive
-    ? process((arg) => Chunk.contains(singleNames(self), arg))
-    : process((arg) => Chunk.some(singleNames(self), (name) => name.toLowerCase() === arg.toLowerCase()))
-}
-
-const combineUids = (left: Instruction, right: Instruction): Option.Option<string> => {
-  const l = uidMap[left._tag](left as any)
-  const r = uidMap[right._tag](right as any)
-  if (Option.isNone(l) && Option.isNone(r)) {
-    return Option.none()
-  }
-  if (Option.isNone(l) && Option.isSome(r)) {
-    return Option.some(r.value)
-  }
-  if (Option.isSome(l) && Option.isNone(r)) {
-    return Option.some(l.value)
-  }
-  return Option.some(`${(l as Option.Some<string>).value}, ${(r as Option.Some<string>).value}`)
-}
-
-const tuple = <T extends ArrayLike<Options.Options<any>>>(tuple: T): Options.Options<
+const allTupled = <const T extends ArrayLike<Options.Options<any>>>(arg: T): Options.Options<
   {
     [K in keyof T]: [T[K]] extends [Options.Options<infer A>] ? A : never
   }
 > => {
-  if (tuple.length === 0) {
+  if (arg.length === 0) {
     return none as any
   }
-  if (tuple.length === 1) {
-    return map(tuple[0], (x) => [x]) as any
+  if (arg.length === 1) {
+    return map(arg[0], (x) => [x]) as any
   }
-  let result = map(tuple[0], (x) => [x])
-  for (let i = 1; i < tuple.length; i++) {
-    const options = tuple[i]
-    result = zipFlatten(result, options)
+  let result = map(arg[0], (x) => [x])
+  for (let i = 1; i < arg.length; i++) {
+    const curr = arg[i]
+    result = map(new Both(result, curr), ([a, b]) => [...a, b])
   }
   return result as any
+}
+
+const CLUSTERED_REGEX = /^-{1}([^-]{2,}$)/
+const FLAG_REGEX = /^(--[^=]+)(?:=(.+))?$/
+
+const processArgs = (
+  args: ReadonlyArray<string>
+): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> => {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+    const head = ReadonlyArray.headNonEmpty(args)
+    const tail = ReadonlyArray.tailNonEmpty(args)
+    if (CLUSTERED_REGEX.test(head.trim())) {
+      const unclustered = head.substring(1).split("").map((c) => `-${c}`)
+      return Effect.fail(InternalValidationError.unclusteredFlag(InternalHelpDoc.empty, unclustered, tail))
+    }
+    if (head.startsWith("--")) {
+      const result = FLAG_REGEX.exec(head)
+      if (result !== null && result[2] !== undefined) {
+        return Effect.succeed(ReadonlyArray.prependAll(tail, [result[1], result[2]]))
+      }
+    }
+    return Effect.succeed(args)
+  }
+  return Effect.succeed(ReadonlyArray.empty())
+}
+
+/**
+ * Returns a possible `ValidationError` when parsing the commands, leftover
+ * arguments from `input` and a mapping between each flag and its values.
+ */
+const matchOptions = (
+  input: ReadonlyArray<string>,
+  options: ReadonlyArray<Parameter.Input>,
+  config: CliConfig.CliConfig
+): Effect.Effect<
+  never,
+  never,
+  readonly [
+    Option.Option<ValidationError.ValidationError>,
+    ReadonlyArray<string>,
+    HashMap.HashMap<string, ReadonlyArray<string>>
+  ]
+> => {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(input) && ReadonlyArray.isNonEmptyReadonlyArray(options)) {
+    return findOptions(input, options, config).pipe(
+      Effect.flatMap(([otherArgs, otherOptions, map1]) => {
+        if (HashMap.isEmpty(map1)) {
+          return Effect.succeed([Option.none(), input, map1] as const)
+        }
+        return matchOptions(otherArgs, otherOptions, config).pipe(
+          Effect.map(([error, otherArgs, map2]) =>
+            [error, otherArgs, merge(map1, ReadonlyArray.fromIterable(map2))] as const
+          )
+        )
+      }),
+      Effect.catchAll((e) => Effect.succeed([Option.some(e), input, HashMap.empty()] as const))
+    )
+  }
+  return ReadonlyArray.isEmptyReadonlyArray(input)
+    ? Effect.succeed([Option.none(), ReadonlyArray.empty(), HashMap.empty()])
+    : Effect.succeed([Option.none(), input, HashMap.empty()])
+}
+
+/**
+ * Returns the leftover arguments, leftover options, and a mapping between the
+ * first argument with its values if it corresponds to an option flag.
+ */
+const findOptions = (
+  input: ReadonlyArray<string>,
+  options: ReadonlyArray<Parameter.Input>,
+  config: CliConfig.CliConfig
+): Effect.Effect<
+  never,
+  ValidationError.ValidationError,
+  readonly [
+    ReadonlyArray<string>,
+    ReadonlyArray<Parameter.Input>,
+    HashMap.HashMap<string, ReadonlyArray<string>>
+  ]
+> => {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(options)) {
+    const head = ReadonlyArray.headNonEmpty(options)
+    const tail = ReadonlyArray.tailNonEmpty(options)
+    return head.parse(input, config).pipe(
+      Effect.flatMap(([nameValues, leftover]) => {
+        if (ReadonlyArray.isNonEmptyReadonlyArray(nameValues)) {
+          const name = ReadonlyArray.headNonEmpty(nameValues)
+          const values: ReadonlyArray<string> = ReadonlyArray.tailNonEmpty(nameValues)
+          return Effect.succeed([leftover, tail, HashMap.make([name, values])] as const)
+        }
+        return findOptions(leftover, tail, config).pipe(
+          Effect.map(([otherArgs, otherOptions, map]) =>
+            [otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as const
+          )
+        )
+      }),
+      Effect.catchTags({
+        CorrectedFlag: (e) =>
+          findOptions(input, tail, config).pipe(
+            Effect.catchSome(() => Option.some(Effect.fail(e))),
+            Effect.flatMap(([otherArgs, otherOptions, map]) =>
+              Effect.fail(e).pipe(
+                Effect.when(() => HashMap.isEmpty(map)),
+                Effect.as([otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as const)
+              )
+            )
+          ),
+        MissingFlag: () =>
+          findOptions(input, tail, config).pipe(
+            Effect.map(([otherArgs, otherOptions, map]) =>
+              [otherArgs, ReadonlyArray.prepend(otherOptions, head), map] as const
+            )
+          ),
+        UnclusteredFlag: (e) =>
+          matchUnclustered(e.unclustered, e.rest, options, config).pipe(Effect.catchAll(() => Effect.fail(e)))
+      })
+    )
+  }
+  return Effect.succeed([input, ReadonlyArray.empty(), HashMap.empty()])
+}
+
+const matchUnclustered = (
+  input: ReadonlyArray<string>,
+  tail: ReadonlyArray<string>,
+  options: ReadonlyArray<Parameter.Input>,
+  config: CliConfig.CliConfig
+): Effect.Effect<
+  never,
+  ValidationError.ValidationError,
+  readonly [
+    ReadonlyArray<string>,
+    ReadonlyArray<Parameter.Input>,
+    HashMap.HashMap<string, ReadonlyArray<string>>
+  ]
+> => {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(input)) {
+    const flag = ReadonlyArray.headNonEmpty(input)
+    const otherFlags = ReadonlyArray.tailNonEmpty(input)
+    return findOptions(ReadonlyArray.of(flag), options, config).pipe(
+      Effect.flatMap(([_, opts1, map1]) => {
+        if (HashMap.isEmpty(map1)) {
+          return Effect.fail(
+            InternalValidationError.unclusteredFlag(InternalHelpDoc.empty, ReadonlyArray.empty(), tail)
+          )
+        }
+        return matchUnclustered(otherFlags, tail, opts1, config).pipe(
+          Effect.map(([_, opts2, map2]) => [tail, opts2, merge(map1, ReadonlyArray.fromIterable(map2))])
+        )
+      })
+    )
+  }
+  return Effect.succeed([tail, options, HashMap.empty()])
+}
+
+/**
+ * Sums the list associated with the same key.
+ */
+const merge = (
+  map1: HashMap.HashMap<string, ReadonlyArray<string>>,
+  map2: ReadonlyArray<readonly [string, ReadonlyArray<string>]>
+): HashMap.HashMap<string, ReadonlyArray<string>> => {
+  if (ReadonlyArray.isNonEmptyReadonlyArray(map2)) {
+    const head = ReadonlyArray.headNonEmpty(map2)
+    const tail = ReadonlyArray.tailNonEmpty(map2)
+    const newMap = Option.match(HashMap.get(map1, head[0]), {
+      onNone: () => HashMap.set(map1, head[0], head[1]),
+      onSome: (elems) => HashMap.set(map1, head[0], ReadonlyArray.appendAll(elems, head[1]))
+    })
+    return merge(newMap, tail)
+  }
+  return map1
 }

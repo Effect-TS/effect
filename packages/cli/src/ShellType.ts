@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "./internal/shellType"
+import * as InternalShellType from "./internal/shellType"
 import type { Options } from "./Options"
 
 /**
@@ -30,16 +30,16 @@ export interface ZShell {
  * @since 1.0.0
  * @category constructors
  */
-export const bash: ShellType = internal.bash
+export const bash: ShellType = InternalShellType.bash
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const zShell: ShellType = internal.zShell
+export const zShell: ShellType = InternalShellType.zShell
 
 /**
  * @since 1.0.0
  * @category options
  */
-export const shellOption: Options<ShellType> = internal.shellOption
+export const shellOption: Options<ShellType> = InternalShellType.shellOption

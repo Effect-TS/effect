@@ -3,7 +3,7 @@ import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import { dual } from "effect/Function"
-import * as RA from "effect/ReadonlyArray"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Span from "../../HelpDoc/Span"
 
 /** @internal */
@@ -49,6 +49,27 @@ export const uri = (value: string): Span.Span => ({
 })
 
 /** @internal */
+export const isCode = (self: Span.Span): self is Span.Code => self._tag === "Code"
+
+/** @internal */
+export const isError = (self: Span.Span): self is Span.Error => self._tag === "Error"
+
+/** @internal */
+export const isSequence = (self: Span.Span): self is Span.Sequence => self._tag === "Sequence"
+
+/** @internal */
+export const isStrong = (self: Span.Span): self is Span.Strong => self._tag === "Strong"
+
+/** @internal */
+export const isText = (self: Span.Span): self is Span.Text => self._tag === "Text"
+
+/** @internal */
+export const isUri = (self: Span.Span): self is Span.URI => self._tag === "URI"
+
+/** @internal */
+export const isWeak = (self: Span.Span): self is Span.Weak => self._tag === "Weak"
+
+/** @internal */
 export const concat = dual<
   (that: Span.Span) => (self: Span.Span) => Span.Span,
   (self: Span.Span, that: Span.Span) => Span.Span
@@ -58,10 +79,28 @@ export const concat = dual<
   right: that
 }))
 
+export const getText = (self: Span.Span): string => {
+  switch (self._tag) {
+    case "Text":
+    case "Code":
+    case "URI": {
+      return self.value
+    }
+    case "Error":
+    case "Weak":
+    case "Strong": {
+      return getText(self.value)
+    }
+    case "Sequence": {
+      return getText(self.left) + getText(self.right)
+    }
+  }
+}
+
 /** @internal */
 export const spans = (spans: Iterable<Span.Span>): Span.Span => {
-  const elements = RA.fromIterable(spans)
-  if (RA.isNonEmptyReadonlyArray(elements)) {
+  const elements = ReadonlyArray.fromIterable(spans)
+  if (ReadonlyArray.isNonEmptyReadonlyArray(elements)) {
     return elements.slice(1).reduce(concat, elements[0])
   }
   return empty
@@ -70,40 +109,48 @@ export const spans = (spans: Iterable<Span.Span>): Span.Span => {
 /** @internal */
 export const isEmpty = (self: Span.Span): boolean => size(self) === 0
 
-const sizeMap: {
-  [K in Span.Span["_tag"]]: (self: Extract<Span.Span, { _tag: K }>) => number
-} = {
-  Code: (self) => self.value.length,
-  Text: (self) => self.value.length,
-  Error: (self) => sizeMap[self.value._tag](self.value as any),
-  Weak: (self) => sizeMap[self.value._tag](self.value as any),
-  Strong: (self) => sizeMap[self.value._tag](self.value as any),
-  URI: (self) => self.value.length,
-  Sequence: (self) => {
-    const left = sizeMap[self.left._tag](self.left as any)
-    const right = sizeMap[self.right._tag](self.right as any)
-    return left + right
+/** @internal */
+export const size = (self: Span.Span): number => {
+  switch (self._tag) {
+    case "Code":
+    case "Text":
+    case "URI": {
+      return self.value.length
+    }
+    case "Error":
+    case "Strong":
+    case "Weak": {
+      return size(self.value)
+    }
+    case "Sequence": {
+      return size(self.left) + size(self.right)
+    }
   }
 }
 
 /** @internal */
-export const size = (self: Span.Span): number => sizeMap[self._tag](self as any)
-
-const spanToAnsiDoc: {
-  [K in Span.Span["_tag"]]: (self: Extract<Span.Span, { _tag: K }>) => AnsiDoc.AnsiDoc
-} = {
-  Text: (self) => Doc.text(self.value),
-  Code: (self) => Doc.annotate(Doc.text(self.value), AnsiStyle.color(Color.white)),
-  Error: (self) => Doc.annotate(spanToAnsiDoc[self.value._tag](self.value as any), AnsiStyle.color(Color.red)),
-  Weak: (self) => Doc.annotate(spanToAnsiDoc[self.value._tag](self.value as any), AnsiStyle.dullColor(Color.black)),
-  Strong: (self) => Doc.annotate(spanToAnsiDoc[self.value._tag](self.value as any), AnsiStyle.bold),
-  URI: (self) => Doc.annotate(Doc.text(self.value), AnsiStyle.underlined),
-  Sequence: (self) =>
-    Doc.cat(
-      spanToAnsiDoc[self.left._tag](self.left as any),
-      spanToAnsiDoc[self.right._tag](self.right as any)
-    )
+export const toAnsiDoc = (self: Span.Span): AnsiDoc.AnsiDoc => {
+  switch (self._tag) {
+    case "Text": {
+      return Doc.text(self.value)
+    }
+    case "Code": {
+      return Doc.annotate(Doc.text(self.value), AnsiStyle.color(Color.white))
+    }
+    case "Error": {
+      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.color(Color.red))
+    }
+    case "Weak": {
+      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.dullColor(Color.black))
+    }
+    case "Strong": {
+      return Doc.annotate(toAnsiDoc(self.value), AnsiStyle.bold)
+    }
+    case "URI": {
+      return Doc.annotate(Doc.text(self.value), AnsiStyle.underlined)
+    }
+    case "Sequence": {
+      return Doc.cat(toAnsiDoc(self.left), toAnsiDoc(self.right))
+    }
+  }
 }
-
-/** @internal */
-export const toAnsiDoc = (self: Span.Span): AnsiDoc.AnsiDoc => spanToAnsiDoc[self._tag](self as any)

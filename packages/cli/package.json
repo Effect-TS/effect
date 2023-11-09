@@ -57,11 +57,11 @@
   "effect": {
     "generateIndex": true
   },
-  "packageManager": "pnpm@8.9.0",
+  "packageManager": "pnpm@8.10.2",
   "peerDependencies": {
-    "@effect/printer": "^0.22.1",
-    "@effect/printer-ansi": "^0.22.1",
-    "@effect/schema": "^0.47.1",
+    "@effect/printer": "^0.18.0",
+    "@effect/printer-ansi": "^0.18.0",
+    "@effect/schema": "^0.43.0",
     "effect": "2.0.0-next.54"
   },
   "devDependencies": {
@@ -69,26 +69,26 @@
     "@babel/preset-typescript": "^7.23.2",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
-    "@effect/build-utils": "^0.1.9",
-    "@effect/docgen": "^0.2.1",
+    "@effect/build-utils": "^0.3.0",
+    "@effect/docgen": "^0.3.0",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@effect/printer": "^0.22.1",
     "@effect/printer-ansi": "^0.22.1",
-    "@effect/schema": "^0.47.1",
+    "@effect/schema": "^0.47.2",
     "@preconstruct/cli": "^2.8.1",
     "@types/chai": "^4.3.9",
     "@types/node": "^20.8.10",
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "@typescript-eslint/parser": "^6.9.1",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
     "@vitejs/plugin-react": "^4.1.1",
     "@vitest/coverage-v8": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "effect": "2.0.0-next.54",
     "error-stack-parser": "^2.1.4",
-    "eslint": "^8.52.0",
+    "eslint": "^8.53.0",
     "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-codegen": "0.17.0",
+    "eslint-plugin-codegen": "0.18.1",
     "eslint-plugin-deprecation": "^2.0.0",
     "eslint-plugin-import": "^2.29.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
@@ -106,7 +106,7 @@
     "dist",
     "Args",
     "AutoCorrect",
-    "BuiltInOption",
+    "BuiltInOptions",
     "CliApp",
     "CliConfig",
     "Command",
@@ -114,6 +114,7 @@
     "Exists",
     "HelpDoc",
     "Options",
+    "Parameter",
     "Primitive",
     "Prompt",
     "ShellType",
@@ -141,11 +142,11 @@
       "import": "./AutoCorrect/dist/effect-cli-AutoCorrect.cjs.mjs",
       "default": "./AutoCorrect/dist/effect-cli-AutoCorrect.cjs.js"
     },
-    "./BuiltInOption": {
-      "types": "./dist/declarations/src/BuiltInOption.d.ts",
-      "module": "./BuiltInOption/dist/effect-cli-BuiltInOption.esm.js",
-      "import": "./BuiltInOption/dist/effect-cli-BuiltInOption.cjs.mjs",
-      "default": "./BuiltInOption/dist/effect-cli-BuiltInOption.cjs.js"
+    "./BuiltInOptions": {
+      "types": "./dist/declarations/src/BuiltInOptions.d.ts",
+      "module": "./BuiltInOptions/dist/effect-cli-BuiltInOptions.esm.js",
+      "import": "./BuiltInOptions/dist/effect-cli-BuiltInOptions.cjs.mjs",
+      "default": "./BuiltInOptions/dist/effect-cli-BuiltInOptions.cjs.js"
     },
     "./CliApp": {
       "types": "./dist/declarations/src/CliApp.d.ts",
@@ -194,6 +195,12 @@
       "module": "./Options/dist/effect-cli-Options.esm.js",
       "import": "./Options/dist/effect-cli-Options.cjs.mjs",
       "default": "./Options/dist/effect-cli-Options.cjs.js"
+    },
+    "./Parameter": {
+      "types": "./dist/declarations/src/Parameter.d.ts",
+      "module": "./Parameter/dist/effect-cli-Parameter.esm.js",
+      "import": "./Parameter/dist/effect-cli-Parameter.cjs.mjs",
+      "default": "./Parameter/dist/effect-cli-Parameter.cjs.js"
     },
     "./Primitive": {
       "types": "./dist/declarations/src/Primitive.d.ts",

@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type { BuiltInOption } from "./BuiltInOption"
-import * as internal from "./internal/commandDirective"
+import type { BuiltInOptions } from "./BuiltInOptions"
+import * as InternalCommandDirective from "./internal/commandDirective"
 
 /**
  * @since 1.0.0
@@ -16,7 +16,7 @@ export type CommandDirective<A> = BuiltIn | UserDefined<A>
  */
 export interface BuiltIn {
   readonly _tag: "BuiltIn"
-  readonly option: BuiltInOption
+  readonly option: BuiltInOptions
 }
 
 /**
@@ -33,19 +33,20 @@ export interface UserDefined<A> {
  * @since 1.0.0
  * @category constructors
  */
-export const builtIn: (option: BuiltInOption) => CommandDirective<never> = internal.builtIn
+export const builtIn: (option: BuiltInOptions) => CommandDirective<never> = InternalCommandDirective.builtIn
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isBuiltIn: <A>(self: CommandDirective<A>) => self is BuiltIn = internal.isBuiltIn
+export const isBuiltIn: <A>(self: CommandDirective<A>) => self is BuiltIn = InternalCommandDirective.isBuiltIn
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isUserDefined: <A>(self: CommandDirective<A>) => self is UserDefined<A> = internal.isUserDefined
+export const isUserDefined: <A>(self: CommandDirective<A>) => self is UserDefined<A> =
+  InternalCommandDirective.isUserDefined
 
 /**
  * @since 1.0.0
@@ -54,10 +55,11 @@ export const isUserDefined: <A>(self: CommandDirective<A>) => self is UserDefine
 export const map: {
   <A, B>(f: (a: A) => B): (self: CommandDirective<A>) => CommandDirective<B>
   <A, B>(self: CommandDirective<A>, f: (a: A) => B): CommandDirective<B>
-} = internal.map
+} = InternalCommandDirective.map
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const userDefined: <A>(leftover: ReadonlyArray<string>, value: A) => CommandDirective<A> = internal.userDefined
+export const userDefined: <A>(leftover: ReadonlyArray<string>, value: A) => CommandDirective<A> =
+  InternalCommandDirective.userDefined

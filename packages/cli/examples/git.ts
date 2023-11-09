@@ -52,13 +52,13 @@ export interface RemoveRemote extends Data.Case {
 export const RemoveRemote = Data.tagged<RemoveRemote>("RemoveRemote")
 
 const add: Command.Command<GitSubcommand> = pipe(
-  Command.make("add", { options: Options.boolean("m"), args: Args.text({ name: "directory" }) }),
+  Command.standard("add", { options: Options.boolean("m"), args: Args.text({ name: "directory" }) }),
   Command.withHelp(HelpDoc.p("Description of the `git add` subcommand")),
   Command.map(({ args: directory, options: modified }) => Add({ modified, directory }))
 )
 
 const addRemote: Command.Command<RemoteSubcommand> = pipe(
-  Command.make("add", {
+  Command.standard("add", {
     options: Options.all({
       name: Options.text("name"),
       url: Options.text("url")
@@ -69,20 +69,20 @@ const addRemote: Command.Command<RemoteSubcommand> = pipe(
 )
 
 const removeRemote: Command.Command<RemoteSubcommand> = pipe(
-  Command.make("remove", { args: Args.text({ name: "name" }) }),
+  Command.standard("remove", { args: Args.text({ name: "name" }) }),
   Command.withHelp(HelpDoc.p("Description of the `git remote remove` subcommand")),
   Command.map(({ args: name }) => RemoveRemote({ name }))
 )
 
 const remote: Command.Command<GitSubcommand> = pipe(
-  Command.make("remote", { options: Options.alias(Options.boolean("verbose"), "v") }),
+  Command.standard("remote", { options: Options.boolean("verbose").pipe(Options.withAlias("v")) }),
   Command.withHelp("Description of the `git remote` subcommand"),
   Command.subcommands([addRemote, removeRemote]),
   Command.map(({ options: verbose, subcommand }) => Remote({ verbose, subcommand }))
 )
 
 const git: Command.Command<Git> = pipe(
-  Command.make("git", { options: Options.alias(Options.boolean("version"), "v") }),
+  Command.standard("git", { options: Options.boolean("version").pipe(Options.withAlias("v")) }),
   Command.subcommands([add, remote]),
   Command.map(({ options: version, subcommand }) => Git({ version, subcommand }))
 )
