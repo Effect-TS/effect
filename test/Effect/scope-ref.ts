@@ -16,7 +16,7 @@ const logRef = (msg: string) =>
   Effect.gen(function*($) {
     const stack = yield* $(FiberRef.get(ref))
     const value = yield* $(env)
-    yield* $(Effect.log(`${value} | ${msg} | ${List.toReadonlyArray(stack).join(" > ")}`))
+    yield* $(Effect.log(`${value} | ${msg} | ${List.toArray(stack).join(" > ")}`))
   })
 
 describe("Effect", () => {
