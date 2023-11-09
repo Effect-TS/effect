@@ -219,8 +219,8 @@ export const merge: {
  * @category folding
  */
 export const reduce: {
-  <Z, V>(zero: Z, f: (acc: Z, value: V) => Z): <K>(self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => Z): STM.STM<never, never, Z>
+  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
+  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
 } = internal.reduce
 
 /**
@@ -230,31 +230,9 @@ export const reduce: {
  * @category folding
  */
 export const reduceSTM: {
-  <Z, V, R, E>(zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): <K>(self: TMap<K, V>) => STM.STM<R, E, Z>
-  <K, V, Z, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
-} = internal.reduceSTM
-
-/**
- * Atomically folds using a pure function.
- *
- * @since 2.0.0
- * @category folding
- */
-export const reduceWithIndex: {
-  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
-} = internal.reduceWithIndex
-
-/**
- * Atomically folds using a transactional function.
- *
- * @since 2.0.0
- * @category folding
- */
-export const reduceWithIndexSTM: {
   <Z, V, K, R, E>(zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): (self: TMap<K, V>) => STM.STM<R, E, Z>
   <Z, V, K, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
-} = internal.reduceWithIndexSTM
+} = internal.reduceSTM
 
 /**
  * Removes binding for given key.
@@ -285,8 +263,8 @@ export const removeAll: {
  * @category mutations
  */
 export const removeIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
+  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<[K, V]>>
 } = internal.removeIf
 
 /**
@@ -307,8 +285,8 @@ export const removeIfDiscard: {
  * @category mutations
  */
 export const retainIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<readonly [K, V]>> // TODO: readonly
+  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<[K, V]>>
 } = internal.retainIf
 
 /**
@@ -407,7 +385,7 @@ export const takeSomeSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> = internal.toArray // TODO: readonly, wrong name
+export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Chunk.Chunk<[K, V]>> = internal.toChunk
 
 /**
  * Collects all bindings into a `HashMap`.
@@ -418,22 +396,20 @@ export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<re
 export const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMap.HashMap<K, V>> = internal.toHashMap
 
 /**
- * Collects all bindings into a `ReadonlyArray`.
+ * Collects all bindings into an `Array`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyArray<readonly [K, V]>> = // TODO: readonly
-  internal.toReadonlyArray
+export const toArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>> = internal.toArray
 
 /**
- * Collects all bindings into a `ReadonlyMap`.
+ * Collects all bindings into a `Map`.
  *
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlyMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>> =
-  internal.toReadonlyMap
+export const toMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>> = internal.toMap
 
 /**
  * Atomically updates all bindings using a pure function.

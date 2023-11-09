@@ -89,7 +89,7 @@ export const reduce = dual<
   <Z, A>(zero: Z, f: (accumulator: Z, value: A) => Z) => (self: TSet.TSet<A>) => STM.STM<never, never, Z>,
   <Z, A>(self: TSet.TSet<A>, zero: Z, f: (accumulator: Z, value: A) => Z) => STM.STM<never, never, Z>
 >(3, (self, zero, f) =>
-  tMap.reduceWithIndex(
+  tMap.reduce(
     self.tMap,
     zero,
     (acc, _, key) => f(acc, key)
@@ -100,7 +100,7 @@ export const reduceSTM = dual<
   <Z, A, R, E>(zero: Z, f: (accumulator: Z, value: A) => STM.STM<R, E, Z>) => (self: TSet.TSet<A>) => STM.STM<R, E, Z>,
   <Z, A, R, E>(self: TSet.TSet<A>, zero: Z, f: (accumulator: Z, value: A) => STM.STM<R, E, Z>) => STM.STM<R, E, Z>
 >(3, (self, zero, f) =>
-  tMap.reduceWithIndexSTM(
+  tMap.reduceSTM(
     self.tMap,
     zero,
     (acc, _, key) => f(acc, key)
