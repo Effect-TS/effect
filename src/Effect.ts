@@ -3,6 +3,7 @@ import type { EffectTypeId, EffectUnify, EffectUnifyIgnore } from "./impl/Effect
 import type { Pipeable } from "./impl/Pipeable.js"
 import type { Unify } from "./Unify.js"
 
+// export * as Effect from "./impl/Effect.js" // causes errors
 export * from "./impl/internal/Jumpers/Effect.js"
 
 /**
