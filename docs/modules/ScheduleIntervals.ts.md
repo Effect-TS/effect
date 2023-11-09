@@ -38,7 +38,7 @@ Added in v2.0.0
 
 ## empty
 
-Constructs an empty list of `Interval`s.
+Constructs an empty list of `ScheduleInterval`s.
 
 **Signature**
 
@@ -50,24 +50,24 @@ Added in v2.0.0
 
 ## fromIterable
 
-Constructs `ScheduleIntervals` from the specified `Iterable<Interval>`.
+Constructs `ScheduleIntervals` from the specified `Iterable<ScheduleInterval>`.
 
 **Signature**
 
 ```ts
-export declare const fromIterable: (intervals: Iterable<Interval>) => ScheduleIntervals
+export declare const fromIterable: (intervals: Iterable<ScheduleInterval>) => ScheduleIntervals
 ```
 
 Added in v2.0.0
 
 ## make
 
-Creates a new `ScheduleIntervals` from a `List` of `Interval`s.
+Creates a new `ScheduleIntervals` from a `List` of `ScheduleInterval`s.
 
 **Signature**
 
 ```ts
-export declare const make: (intervals: Check.Chunk<Interval>) => ScheduleIntervals
+export declare const make: (intervals: Check.Chunk<ScheduleInterval>) => ScheduleIntervals
 ```
 
 Added in v2.0.0
@@ -114,14 +114,14 @@ Added in v2.0.0
 
 ## ScheduleIntervals (interface)
 
-An `ScheduleIntervals` represents a list of several `Interval`s.
+An `ScheduleIntervals` represents a list of several `ScheduleInterval`s.
 
 **Signature**
 
 ```ts
 export interface ScheduleIntervals {
   readonly [IntervalsTypeId]: IntervalsTypeId
-  readonly intervals: Check.Chunk<Interval>
+  readonly intervals: Check.Chunk<ScheduleInterval>
 }
 ```
 

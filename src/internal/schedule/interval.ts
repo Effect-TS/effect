@@ -1,25 +1,25 @@
 import { Duration } from "../../Duration.js"
 import { dual } from "../../Function.js"
 import { Option } from "../../Option.js"
-import type { Interval } from "../../ScheduleInterval.js"
+import type { ScheduleInterval } from "../../ScheduleInterval.js"
 
 /** @internal */
 const IntervalSymbolKey = "effect/ScheduleInterval"
 
 /** @internal */
-export const IntervalTypeId: Interval.IntervalTypeId = Symbol.for(
+export const IntervalTypeId: ScheduleInterval.IntervalTypeId = Symbol.for(
   IntervalSymbolKey
-) as Interval.IntervalTypeId
+) as ScheduleInterval.IntervalTypeId
 
 /** @internal */
-export const empty: Interval = {
+export const empty: ScheduleInterval = {
   [IntervalTypeId]: IntervalTypeId,
   startMillis: 0,
   endMillis: 0
 }
 
 /** @internal */
-export const make = (startMillis: number, endMillis: number): Interval => {
+export const make = (startMillis: number, endMillis: number): ScheduleInterval => {
   if (startMillis > endMillis) {
     return empty
   }
@@ -32,14 +32,14 @@ export const make = (startMillis: number, endMillis: number): Interval => {
 
 /** @internal */
 export const lessThan = dual<
-  (that: Interval) => (self: Interval) => boolean,
-  (self: Interval, that: Interval) => boolean
+  (that: ScheduleInterval) => (self: ScheduleInterval) => boolean,
+  (self: ScheduleInterval, that: ScheduleInterval) => boolean
 >(2, (self, that) => min(self, that) === self)
 
 /** @internal */
 export const min = dual<
-  (that: Interval) => (self: Interval) => Interval,
-  (self: Interval, that: Interval) => Interval
+  (that: ScheduleInterval) => (self: ScheduleInterval) => ScheduleInterval,
+  (self: ScheduleInterval, that: ScheduleInterval) => ScheduleInterval
 >(2, (self, that) => {
   if (self.endMillis <= that.startMillis) return self
   if (that.endMillis <= self.startMillis) return that
@@ -51,24 +51,24 @@ export const min = dual<
 
 /** @internal */
 export const max = dual<
-  (that: Interval) => (self: Interval) => Interval,
-  (self: Interval, that: Interval) => Interval
+  (that: ScheduleInterval) => (self: ScheduleInterval) => ScheduleInterval,
+  (self: ScheduleInterval, that: ScheduleInterval) => ScheduleInterval
 >(2, (self, that) => min(self, that) === self ? that : self)
 
 /** @internal */
-export const isEmpty = (self: Interval): boolean => {
+export const isEmpty = (self: ScheduleInterval): boolean => {
   return self.startMillis >= self.endMillis
 }
 
 /** @internal */
-export const isNonEmpty = (self: Interval): boolean => {
+export const isNonEmpty = (self: ScheduleInterval): boolean => {
   return !isEmpty(self)
 }
 
 /** @internal */
 export const intersect = dual<
-  (that: Interval) => (self: Interval) => Interval,
-  (self: Interval, that: Interval) => Interval
+  (that: ScheduleInterval) => (self: ScheduleInterval) => ScheduleInterval,
+  (self: ScheduleInterval, that: ScheduleInterval) => ScheduleInterval
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)
@@ -76,14 +76,14 @@ export const intersect = dual<
 })
 
 /** @internal */
-export const size = (self: Interval): Duration => {
+export const size = (self: ScheduleInterval): Duration => {
   return Duration.millis(self.endMillis - self.startMillis)
 }
 
 /** @internal */
 export const union = dual<
-  (that: Interval) => (self: Interval) => Option<Interval>,
-  (self: Interval, that: Interval) => Option<Interval>
+  (that: ScheduleInterval) => (self: ScheduleInterval) => Option<ScheduleInterval>,
+  (self: ScheduleInterval, that: ScheduleInterval) => Option<ScheduleInterval>
 >(2, (self, that) => {
   const start = Math.max(self.startMillis, that.startMillis)
   const end = Math.min(self.endMillis, that.endMillis)
@@ -91,11 +91,11 @@ export const union = dual<
 })
 
 /** @internal */
-export const after = (startMilliseconds: number): Interval => {
+export const after = (startMilliseconds: number): ScheduleInterval => {
   return make(startMilliseconds, Number.POSITIVE_INFINITY)
 }
 
 /** @internal */
-export const before = (endMilliseconds: number): Interval => {
+export const before = (endMilliseconds: number): ScheduleInterval => {
   return make(Number.NEGATIVE_INFINITY, endMilliseconds)
 }

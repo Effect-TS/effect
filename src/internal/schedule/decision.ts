@@ -1,6 +1,6 @@
 import { Chunk } from "../../Chunk.js"
 import type { ScheduleDecision } from "../../ScheduleDecision.js"
-import type { Interval } from "../../ScheduleInterval.js"
+import type { ScheduleInterval } from "../../ScheduleInterval.js"
 import { ScheduleIntervals } from "../../ScheduleIntervals.js"
 
 /** @internal */
@@ -24,7 +24,7 @@ export const _continue = (intervals: ScheduleIntervals): ScheduleDecision => {
 }
 
 /** @internal */
-export const continueWith = (interval: Interval): ScheduleDecision => {
+export const continueWith = (interval: ScheduleInterval): ScheduleDecision => {
   return {
     _tag: OP_CONTINUE,
     intervals: ScheduleIntervals.make(Chunk.of(interval))

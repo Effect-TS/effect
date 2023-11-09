@@ -3,7 +3,7 @@
  */
 import type { Chunk } from "../Chunk.js"
 import * as internal from "../internal/schedule/intervals.js"
-import type { Interval } from "../ScheduleInterval.js"
+import type { ScheduleInterval } from "../ScheduleInterval.js"
 
 import type { ScheduleIntervals } from "../ScheduleIntervals.js"
 
@@ -20,15 +20,15 @@ export const IntervalsTypeId: unique symbol = internal.IntervalsTypeId
 export type IntervalsTypeId = typeof IntervalsTypeId
 
 /**
- * Creates a new `ScheduleIntervals` from a `List` of `Interval`s.
+ * Creates a new `ScheduleIntervals` from a `List` of `ScheduleInterval`s.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const make: (intervals: Chunk<Interval>) => ScheduleIntervals = internal.make
+export const make: (intervals: Chunk<ScheduleInterval>) => ScheduleIntervals = internal.make
 
 /**
- * Constructs an empty list of `Interval`s.
+ * Constructs an empty list of `ScheduleInterval`s.
  *
  * @since 2.0.0
  * @category constructors
@@ -36,12 +36,12 @@ export const make: (intervals: Chunk<Interval>) => ScheduleIntervals = internal.
 export const empty: ScheduleIntervals = internal.empty
 
 /**
- * Constructs `ScheduleIntervals` from the specified `Iterable<Interval>`.
+ * Constructs `ScheduleIntervals` from the specified `Iterable<ScheduleInterval>`.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterable: (intervals: Iterable<Interval>) => ScheduleIntervals = internal.fromIterable
+export const fromIterable: (intervals: Iterable<ScheduleInterval>) => ScheduleIntervals = internal.fromIterable
 
 /**
  * Computes the union of this `ScheduleIntervals` and  that `ScheduleIntervals`

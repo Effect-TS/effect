@@ -15,7 +15,7 @@ import { Random } from "../Random.js"
 import type { Ref } from "../Ref.js"
 import type { Schedule } from "../Schedule.js"
 import { ScheduleDecision } from "../ScheduleDecision.js"
-import { Interval } from "../ScheduleInterval.js"
+import { ScheduleInterval } from "../ScheduleInterval.js"
 import { ScheduleIntervals } from "../ScheduleIntervals.js"
 import * as internalCause from "./cause.js"
 import * as effect from "./core-effect.js"
@@ -429,7 +429,7 @@ export const dayOfMonth = (day: number): Schedule<never, unknown, number> => {
       const day0 = nextDayOfMonth(now, day, initial)
       const start = beginningOfDay(day0)
       const end = endOfDay(day0)
-      const interval = Interval.make(start, end)
+      const interval = ScheduleInterval.make(start, end)
       return core.succeed(
         [
           [end, n + 1],
@@ -458,7 +458,7 @@ export const dayOfWeek = (day: number): Schedule<never, unknown, number> => {
       const day0 = nextDay(now, day, initial)
       const start = beginningOfDay(day0)
       const end = endOfDay(day0)
-      const interval = Interval.make(start, end)
+      const interval = ScheduleInterval.make(start, end)
       return core.succeed(
         [
           [end, n + 1],
@@ -575,7 +575,7 @@ export const duration = (
         ? [
           false,
           duration,
-          ScheduleDecision.continueWith(Interval.after(now + durationMillis))
+          ScheduleDecision.continueWith(ScheduleInterval.after(now + durationMillis))
         ] as const
         : [false, Duration.zero, ScheduleDecision.done] as const
     ))
@@ -676,7 +676,7 @@ export const fixed = (intervalInput: Duration.DurationInput): Schedule<never, un
             return [
               [Option.some([now, now + intervalMillis]), n + 1],
               n,
-              ScheduleDecision.continueWith(Interval.after(now + intervalMillis))
+              ScheduleDecision.continueWith(ScheduleInterval.after(now + intervalMillis))
             ]
           }
           case "Some": {
@@ -690,7 +690,7 @@ export const fixed = (intervalInput: Duration.DurationInput): Schedule<never, un
             return [
               [Option.some([startMillis, nextRun]), n + 1],
               n,
-              ScheduleDecision.continueWith(Interval.after(nextRun))
+              ScheduleDecision.continueWith(ScheduleInterval.after(nextRun))
             ]
           }
         }
@@ -712,7 +712,7 @@ export const fromDelays = (
       core.sync(() => {
         if (cont) {
           const x = durations[0]!
-          const interval = Interval.after(now + Duration.toMillis(x))
+          const interval = ScheduleInterval.after(now + Duration.toMillis(x))
           if (durations.length >= 2) {
             return [
               [durations.slice(1), true] as const,
@@ -751,7 +751,7 @@ export const hourOfDay = (hour: number): Schedule<never, unknown, number> =>
       const hour0 = nextHour(now, hour, initial)
       const start = beginningOfHour(hour0)
       const end = endOfHour(hour0)
-      const interval = Interval.make(start, end)
+      const interval = ScheduleInterval.make(start, end)
       return core.succeed(
         [
           [end, n + 1],
@@ -769,7 +769,7 @@ export const identity = <A>(): Schedule<never, A, A> =>
       [
         state,
         input,
-        ScheduleDecision.continueWith(Interval.after(now))
+        ScheduleDecision.continueWith(ScheduleInterval.after(now))
       ] as const
     ))
 
@@ -1007,7 +1007,7 @@ export const minuteOfHour = (minute: number): Schedule<never, unknown, number> =
       const minute0 = nextMinute(now, minute, initial)
       const start = beginningOfMinute(minute0)
       const end = endOfMinute(minute0)
-      const interval = Interval.make(start, end)
+      const interval = ScheduleInterval.make(start, end)
       return core.succeed(
         [
           [end, n + 1],
@@ -1047,14 +1047,14 @@ export const modifyDelayEffect = dual<
           return core.succeed([state, out, decision] as const)
         }
         const intervals = decision.intervals
-        const delay = Interval.size(Interval.make(now, ScheduleIntervals.start(intervals)))
+        const delay = ScheduleInterval.size(ScheduleInterval.make(now, ScheduleIntervals.start(intervals)))
         return core.map(f(out, delay), (durationInput) => {
           const duration = Duration.decode(durationInput)
           const oldStart = ScheduleIntervals.start(intervals)
           const newStart = now + Duration.toMillis(duration)
           const delta = newStart - oldStart
           const newEnd = Math.min(Math.max(0, ScheduleIntervals.end(intervals) + delta), Number.MAX_SAFE_INTEGER)
-          const newInterval = Interval.make(newStart, newEnd)
+          const newInterval = ScheduleInterval.make(newStart, newEnd)
           return [state, out, ScheduleDecision.continueWith(newInterval)] as const
         })
       })
@@ -1320,7 +1320,7 @@ export const secondOfMinute = (second: number): Schedule<never, unknown, number>
       const second0 = nextSecond(now, second, initial)
       const start = beginningOfSecond(second0)
       const end = endOfSecond(second0)
-      const interval = Interval.make(start, end)
+      const interval = ScheduleInterval.make(start, end)
       return core.succeed(
         [
           [end, n + 1],
@@ -1380,7 +1380,7 @@ export const unfold = <A>(initial: A, f: (a: A) => A): Schedule<never, unknown, 
       [
         f(state),
         state,
-        ScheduleDecision.continueWith(Interval.after(now))
+        ScheduleDecision.continueWith(ScheduleInterval.after(now))
       ] as const
     ))
 
@@ -1551,7 +1551,7 @@ export const windowed = (intervalInput: Duration.DurationInput): Schedule<never,
             [
               [Option.some(now), n + 1],
               n,
-              ScheduleDecision.continueWith(Interval.after(now + millis))
+              ScheduleDecision.continueWith(ScheduleInterval.after(now + millis))
             ]
           )
         }
@@ -1561,7 +1561,7 @@ export const windowed = (intervalInput: Duration.DurationInput): Schedule<never,
               [Option.some(option.value), n + 1],
               n,
               ScheduleDecision.continueWith(
-                Interval.after(now + (millis - ((now - option.value) % millis)))
+                ScheduleInterval.after(now + (millis - ((now - option.value) % millis)))
               )
             ]
           )
@@ -2067,7 +2067,7 @@ export const elapsed: Schedule<never, unknown, Duration> = makeWithState(
           [
             Option.some(now),
             Duration.zero,
-            ScheduleDecision.continueWith(Interval.after(now))
+            ScheduleDecision.continueWith(ScheduleInterval.after(now))
           ] as const
         )
       }
@@ -2076,7 +2076,7 @@ export const elapsed: Schedule<never, unknown, Duration> = makeWithState(
           [
             Option.some(state.value),
             Duration.millis(now - state.value),
-            ScheduleDecision.continueWith(Interval.after(now))
+            ScheduleDecision.continueWith(ScheduleInterval.after(now))
           ] as const
         )
       }

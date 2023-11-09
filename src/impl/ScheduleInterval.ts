@@ -4,7 +4,7 @@
 import type { Duration } from "../Duration.js"
 import * as internal from "../internal/schedule/interval.js"
 import type { Option } from "../Option.js"
-import type { Interval } from "../ScheduleInterval.js"
+import type { ScheduleInterval } from "../ScheduleInterval.js"
 
 /**
  * @since 2.0.0
@@ -26,114 +26,114 @@ export type IntervalTypeId = typeof IntervalTypeId
  * @since 2.0.0
  * @category constructors
  */
-export const make: (startMillis: number, endMillis: number) => Interval = internal.make
+export const make: (startMillis: number, endMillis: number) => ScheduleInterval = internal.make
 
 /**
- * An `Interval` of zero-width.
+ * An `ScheduleInterval` of zero-width.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const empty: Interval = internal.empty
+export const empty: ScheduleInterval = internal.empty
 
 /**
- * Returns `true` if this `Interval` is less than `that` interval, `false`
+ * Returns `true` if this `ScheduleInterval` is less than `that` interval, `false`
  * otherwise.
  *
  * @since 2.0.0
  * @category ordering
  */
 export const lessThan: {
-  (that: Interval): (self: Interval) => boolean
-  (self: Interval, that: Interval): boolean
+  (that: ScheduleInterval): (self: ScheduleInterval) => boolean
+  (self: ScheduleInterval, that: ScheduleInterval): boolean
 } = internal.lessThan
 
 /**
- * Returns the minimum of two `Interval`s.
+ * Returns the minimum of two `ScheduleInterval`s.
  *
  * @since 2.0.0
  * @category ordering
  */
 export const min: {
-  (that: Interval): (self: Interval) => Interval
-  (self: Interval, that: Interval): Interval
+  (that: ScheduleInterval): (self: ScheduleInterval) => ScheduleInterval
+  (self: ScheduleInterval, that: ScheduleInterval): ScheduleInterval
 } = internal.min
 
 /**
- * Returns the maximum of two `Interval`s.
+ * Returns the maximum of two `ScheduleInterval`s.
  *
  * @since 2.0.0
  * @category ordering
  */
 export const max: {
-  (that: Interval): (self: Interval) => Interval
-  (self: Interval, that: Interval): Interval
+  (that: ScheduleInterval): (self: ScheduleInterval) => ScheduleInterval
+  (self: ScheduleInterval, that: ScheduleInterval): ScheduleInterval
 } = internal.max
 
 /**
- * Returns `true` if the specified `Interval` is empty, `false` otherwise.
+ * Returns `true` if the specified `ScheduleInterval` is empty, `false` otherwise.
  *
  * @since 2.0.0
  * @category ordering
  */
-export const isEmpty: (self: Interval) => boolean = internal.isEmpty
+export const isEmpty: (self: ScheduleInterval) => boolean = internal.isEmpty
 
 /**
- * Returns `true` if the specified `Interval` is non-empty, `false` otherwise.
+ * Returns `true` if the specified `ScheduleInterval` is non-empty, `false` otherwise.
  *
  * @since 2.0.0
  * @category ordering
  */
-export const isNonEmpty: (self: Interval) => boolean = internal.isNonEmpty
+export const isNonEmpty: (self: ScheduleInterval) => boolean = internal.isNonEmpty
 
 /**
- * Computes a new `Interval` which is the intersection of this `Interval` and
- * that `Interval`.
+ * Computes a new `ScheduleInterval` which is the intersection of this `ScheduleInterval` and
+ * that `ScheduleInterval`.
  *
  * @since 2.0.0
  * @category ordering
  */
 export const intersect: {
-  (that: Interval): (self: Interval) => Interval
-  (self: Interval, that: Interval): Interval
+  (that: ScheduleInterval): (self: ScheduleInterval) => ScheduleInterval
+  (self: ScheduleInterval, that: ScheduleInterval): ScheduleInterval
 } = internal.intersect
 
 /**
- * Calculates the size of the `Interval` as the `Duration` from the start of the
+ * Calculates the size of the `ScheduleInterval` as the `Duration` from the start of the
  * interval to the end of the interval.
  *
  * @since 2.0.0
  * @category getters
  */
-export const size: (self: Interval) => Duration = internal.size
+export const size: (self: ScheduleInterval) => Duration = internal.size
 
 /**
- * Computes a new `Interval` which is the union of this `Interval` and that
- * `Interval` as a `Some`, otherwise returns `None` if the two intervals cannot
+ * Computes a new `ScheduleInterval` which is the union of this `ScheduleInterval` and that
+ * `ScheduleInterval` as a `Some`, otherwise returns `None` if the two intervals cannot
  * form a union.
  *
  * @since 2.0.0
  * @category utils
  */
 export const union: {
-  (that: Interval): (self: Interval) => Option<Interval>
-  (self: Interval, that: Interval): Option<Interval>
+  (that: ScheduleInterval): (self: ScheduleInterval) => Option<ScheduleInterval>
+  (self: ScheduleInterval, that: ScheduleInterval): Option<ScheduleInterval>
 } = internal.union
 
 /**
- * Construct an `Interval` that includes all time equal to and after the
+ * Construct an `ScheduleInterval` that includes all time equal to and after the
  * specified start time.
  *
  * @since 2.0.0
  * @category constructors
  */
-export const after: (startMilliseconds: number) => Interval = internal.after
+export const after: (startMilliseconds: number) => ScheduleInterval = internal.after
 
 /**
- * Construct an `Interval` that includes all time equal to and before the
+ * Construct an `ScheduleInterval` that includes all time equal to and before the
  * specified end time.
  *
  * @category constructors
  * @since 2.0.0
  */
-export const before: (endMilliseconds: number) => Interval = internal.before
+export const before: (endMilliseconds: number) => ScheduleInterval = internal.before

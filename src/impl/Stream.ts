@@ -25,7 +25,7 @@ import type { Schedule } from "../Schedule.js"
 import type { Scope } from "../Scope.js"
 import type { Sink } from "../Sink.js"
 import type { StreamEmit as Emit } from "../StreamEmit.js"
-import type { HaltStrategy } from "../StreamHaltStrategy.js"
+import type { StreamHaltStrategy } from "../StreamHaltStrategy.js"
 import type { Take } from "../Take.js"
 import type { Tracer } from "../Tracer.js"
 import type { Unify } from "../Unify.js"
@@ -2057,12 +2057,12 @@ export const mapErrorCause: {
 export const merge: {
   <R2, E2, A2>(
     that: Stream<R2, E2, A2>,
-    options?: { readonly haltStrategy?: HaltStrategy.HaltStrategyInput }
+    options?: { readonly haltStrategy?: StreamHaltStrategy.HaltStrategyInput }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2 | A>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     that: Stream<R2, E2, A2>,
-    options?: { readonly haltStrategy?: HaltStrategy.HaltStrategyInput }
+    options?: { readonly haltStrategy?: StreamHaltStrategy.HaltStrategyInput }
   ): Stream<R | R2, E | E2, A | A2>
 } = internal.merge
 
@@ -2106,7 +2106,7 @@ export const mergeWith: {
     options: {
       readonly onSelf: (a: A) => A3
       readonly onOther: (a2: A2) => A4
-      readonly haltStrategy?: HaltStrategy.HaltStrategyInput
+      readonly haltStrategy?: StreamHaltStrategy.HaltStrategyInput
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A3 | A4>
   <R, E, R2, E2, A2, A, A3, A4>(
@@ -2115,7 +2115,7 @@ export const mergeWith: {
     options: {
       readonly onSelf: (a: A) => A3
       readonly onOther: (a2: A2) => A4
-      readonly haltStrategy?: HaltStrategy.HaltStrategyInput
+      readonly haltStrategy?: StreamHaltStrategy.HaltStrategyInput
     }
   ): Stream<R | R2, E | E2, A3 | A4>
 } = internal.mergeWith

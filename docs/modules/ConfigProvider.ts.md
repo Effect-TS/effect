@@ -215,7 +215,7 @@ export declare const makeFlat: (options: {
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
   ) => Effect<never, ConfigError, HashSet<string>>
-  readonly patch: PathPatch
+  readonly patch: ConfigProviderPathPatch
 }) => ConfigProvider.Flat
 ```
 
@@ -319,7 +319,7 @@ special support for implementing them.
 ```ts
 export interface Flat {
   readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
-  patch: PathPatch
+  patch: ConfigProviderPathPatch
   load<A>(
     path: ReadonlyArray<string>,
     config: Config.Primitive<A>,

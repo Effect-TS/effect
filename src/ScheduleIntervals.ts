@@ -1,6 +1,6 @@
 import type { Chunk } from "./Chunk.js"
 import type { IntervalsTypeId } from "./impl/ScheduleIntervals.js"
-import type { Interval } from "./ScheduleInterval.js"
+import type { ScheduleInterval } from "./ScheduleInterval.js"
 
 export * from "./impl/ScheduleIntervals.js"
 export * from "./internal/Jumpers/ScheduleIntervals.js"
@@ -11,12 +11,12 @@ export declare namespace ScheduleIntervals {
   export type * from "./impl/ScheduleIntervals.js"
 }
 /**
- * An `ScheduleIntervals` represents a list of several `Interval`s.
+ * An `ScheduleIntervals` represents a list of several `ScheduleInterval`s.
  *
  * @since 2.0.0
  * @category models
  */
 export interface ScheduleIntervals {
   readonly [IntervalsTypeId]: IntervalsTypeId
-  readonly intervals: Chunk<Interval>
+  readonly intervals: Chunk<ScheduleInterval>
 }

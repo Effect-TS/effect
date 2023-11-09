@@ -1,7 +1,7 @@
 import { Chunk } from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import { Option } from "../../Option.js"
-import { Interval } from "../../ScheduleInterval.js"
+import { ScheduleInterval } from "../../ScheduleInterval.js"
 import type { ScheduleIntervals } from "../../ScheduleIntervals.js"
 
 /** @internal */
@@ -13,7 +13,7 @@ export const IntervalsTypeId: ScheduleIntervals.IntervalsTypeId = Symbol.for(
 ) as ScheduleIntervals.IntervalsTypeId
 
 /** @internal */
-export const make = (intervals: Chunk<Interval>): ScheduleIntervals => {
+export const make = (intervals: Chunk<ScheduleInterval>): ScheduleIntervals => {
   return {
     [IntervalsTypeId]: IntervalsTypeId,
     intervals
@@ -23,7 +23,7 @@ export const make = (intervals: Chunk<Interval>): ScheduleIntervals => {
 export const empty: ScheduleIntervals = make(Chunk.empty())
 
 /** @internal */
-export const fromIterable = (intervals: Iterable<Interval>): ScheduleIntervals =>
+export const fromIterable = (intervals: Iterable<ScheduleInterval>): ScheduleIntervals =>
   Array.from(intervals).reduce(
     (intervals, interval) => pipe(intervals, union(make(Chunk.of(interval)))),
     empty
@@ -58,10 +58,10 @@ export const union = dual<
 
 /** @internal */
 const unionLoop = (
-  _self: Chunk<Interval>,
-  _that: Chunk<Interval>,
-  _interval: Interval,
-  _acc: Chunk<Interval>
+  _self: Chunk<ScheduleInterval>,
+  _that: Chunk<ScheduleInterval>,
+  _interval: ScheduleInterval,
+  _acc: Chunk<ScheduleInterval>
 ): ScheduleIntervals => {
   let self = _self
   let that = _that
@@ -75,7 +75,7 @@ const unionLoop = (
         that = Chunk.tailNonEmpty(that)
         self = Chunk.empty()
       } else {
-        interval = Interval.make(interval.startMillis, Chunk.headNonEmpty(that).endMillis)
+        interval = ScheduleInterval.make(interval.startMillis, Chunk.headNonEmpty(that).endMillis)
         that = Chunk.tailNonEmpty(that)
         self = Chunk.empty()
       }
@@ -86,7 +86,7 @@ const unionLoop = (
         that = Chunk.empty()
         self = Chunk.tailNonEmpty(self)
       } else {
-        interval = Interval.make(interval.startMillis, Chunk.headNonEmpty(self).endMillis)
+        interval = ScheduleInterval.make(interval.startMillis, Chunk.headNonEmpty(self).endMillis)
         that = Chunk.empty()
         self = Chunk.tailNonEmpty(self)
       }
@@ -97,7 +97,7 @@ const unionLoop = (
           interval = Chunk.headNonEmpty(self)
           self = Chunk.tailNonEmpty(self)
         } else {
-          interval = Interval.make(interval.startMillis, Chunk.headNonEmpty(self).endMillis)
+          interval = ScheduleInterval.make(interval.startMillis, Chunk.headNonEmpty(self).endMillis)
           self = Chunk.tailNonEmpty(self)
         }
       } else if (interval.endMillis < Chunk.headNonEmpty(that).startMillis) {
@@ -105,7 +105,7 @@ const unionLoop = (
         interval = Chunk.headNonEmpty(that)
         that = Chunk.tailNonEmpty(that)
       } else {
-        interval = Interval.make(interval.startMillis, Chunk.headNonEmpty(that).endMillis)
+        interval = ScheduleInterval.make(interval.startMillis, Chunk.headNonEmpty(that).endMillis)
         that = Chunk.tailNonEmpty(that)
       }
     } else {
@@ -125,17 +125,17 @@ export const intersect = dual<
 
 /** @internal */
 const intersectLoop = (
-  _left: Chunk<Interval>,
-  _right: Chunk<Interval>,
-  _acc: Chunk<Interval>
+  _left: Chunk<ScheduleInterval>,
+  _right: Chunk<ScheduleInterval>,
+  _acc: Chunk<ScheduleInterval>
 ): ScheduleIntervals => {
   let left = _left
   let right = _right
   let acc = _acc
   while (Chunk.isNonEmpty(left) && Chunk.isNonEmpty(right)) {
-    const interval = pipe(Chunk.headNonEmpty(left), Interval.intersect(Chunk.headNonEmpty(right)))
-    const intervals = Interval.isEmpty(interval) ? acc : pipe(acc, Chunk.prepend(interval))
-    if (pipe(Chunk.headNonEmpty(left), Interval.lessThan(Chunk.headNonEmpty(right)))) {
+    const interval = pipe(Chunk.headNonEmpty(left), ScheduleInterval.intersect(Chunk.headNonEmpty(right)))
+    const intervals = ScheduleInterval.isEmpty(interval) ? acc : pipe(acc, Chunk.prepend(interval))
+    if (pipe(Chunk.headNonEmpty(left), ScheduleInterval.lessThan(Chunk.headNonEmpty(right)))) {
       left = Chunk.tailNonEmpty(left)
     } else {
       right = Chunk.tailNonEmpty(right)
@@ -150,7 +150,7 @@ export const start = (self: ScheduleIntervals): number => {
   return pipe(
     self.intervals,
     Chunk.head,
-    Option.getOrElse(() => Interval.empty)
+    Option.getOrElse(() => ScheduleInterval.empty)
   ).startMillis
 }
 
@@ -159,7 +159,7 @@ export const end = (self: ScheduleIntervals): number => {
   return pipe(
     self.intervals,
     Chunk.head,
-    Option.getOrElse(() => Interval.empty)
+    Option.getOrElse(() => ScheduleInterval.empty)
   ).endMillis
 }
 

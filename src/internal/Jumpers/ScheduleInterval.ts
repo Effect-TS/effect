@@ -1,1 +1,1 @@
-export * as Interval from "../../impl/ScheduleInterval.js"
+export * as ScheduleInterval from "../../impl/ScheduleInterval.js"

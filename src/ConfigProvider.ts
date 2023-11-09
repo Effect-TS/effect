@@ -1,6 +1,6 @@
 import type { Config } from "./Config.js"
 import type { ConfigError } from "./ConfigError.js"
-import type { PathPatch } from "./ConfigProviderPathPatch.js"
+import type { ConfigProviderPathPatch } from "./ConfigProviderPathPatch.js"
 import type { Effect } from "./Effect.js"
 import type { HashSet } from "./HashSet.js"
 import type { ConfigProviderTypeId, FlatConfigProviderTypeId } from "./impl/ConfigProvider.js"
@@ -50,7 +50,7 @@ export declare namespace ConfigProvider {
    */
   export interface Flat {
     readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
-    patch: PathPatch
+    patch: ConfigProviderPathPatch
     load<A>(
       path: ReadonlyArray<string>,
       config: Config.Primitive<A>,

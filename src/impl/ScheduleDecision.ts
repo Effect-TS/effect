@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "../internal/schedule/decision.js"
-import type { Interval } from "../ScheduleInterval.js"
+import type { ScheduleInterval } from "../ScheduleInterval.js"
 import type { ScheduleIntervals } from "../ScheduleIntervals.js"
 
 import type { ScheduleDecision } from "../ScheduleDecision.js"
@@ -37,7 +37,7 @@ export {
  * @since 2.0.0
  * @category constructors
  */
-export const continueWith: (interval: Interval) => ScheduleDecision = internal.continueWith
+export const continueWith: (interval: ScheduleInterval) => ScheduleDecision = internal.continueWith
 
 /**
  * @since 2.0.0

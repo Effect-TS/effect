@@ -23,7 +23,7 @@ Added in v2.0.0
 - [models](#models)
   - [Both (interface)](#both-interface)
   - [Either (interface)](#either-interface)
-  - [HaltStrategy (type alias)](#haltstrategy-type-alias)
+  - [StreamHaltStrategy (type alias)](#haltstrategy-type-alias)
   - [HaltStrategyInput (type alias)](#haltstrategyinput-type-alias)
   - [Left (interface)](#left-interface)
   - [Right (interface)](#right-interface)
@@ -42,7 +42,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const Both: HaltStrategy
+export declare const Both: StreamHaltStrategy
 ```
 
 Added in v2.0.0
@@ -52,7 +52,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const Either: HaltStrategy
+export declare const Either: StreamHaltStrategy
 ```
 
 Added in v2.0.0
@@ -62,7 +62,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const Left: HaltStrategy
+export declare const Left: StreamHaltStrategy
 ```
 
 Added in v2.0.0
@@ -72,7 +72,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const Right: HaltStrategy
+export declare const Right: StreamHaltStrategy
 ```
 
 Added in v2.0.0
@@ -82,7 +82,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromInput: (input: HaltStrategyInput) => HaltStrategy
+export declare const fromInput: (input: HaltStrategyInput) => StreamHaltStrategy
 ```
 
 Added in v2.0.0
@@ -95,8 +95,8 @@ Added in v2.0.0
 
 ```ts
 export declare const match: {
-  <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z): (self: HaltStrategy) => Z
-  <Z>(self: HaltStrategy, onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z): Z
+  <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z): (self: StreamHaltStrategy) => Z
+  <Z>(self: StreamHaltStrategy, onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z): Z
 }
 ```
 
@@ -128,12 +128,12 @@ export interface Either {
 
 Added in v2.0.0
 
-## HaltStrategy (type alias)
+## StreamHaltStrategy (type alias)
 
 **Signature**
 
 ```ts
-export type HaltStrategy = Left | Right | Both | Either
+export type StreamHaltStrategy = Left | Right | Both | Either
 ```
 
 Added in v2.0.0
@@ -143,7 +143,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type HaltStrategyInput = HaltStrategy | "left" | "right" | "both" | "either"
+export type HaltStrategyInput = StreamHaltStrategy | "left" | "right" | "both" | "either"
 ```
 
 Added in v2.0.0
@@ -179,7 +179,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const isBoth: (self: HaltStrategy) => self is Both
+export declare const isBoth: (self: StreamHaltStrategy) => self is Both
 ```
 
 Added in v2.0.0
@@ -189,7 +189,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const isEither: (self: HaltStrategy) => self is Either
+export declare const isEither: (self: StreamHaltStrategy) => self is Either
 ```
 
 Added in v2.0.0
@@ -199,7 +199,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const isLeft: (self: HaltStrategy) => self is Left
+export declare const isLeft: (self: StreamHaltStrategy) => self is Left
 ```
 
 Added in v2.0.0
@@ -209,7 +209,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const isRight: (self: HaltStrategy) => self is Right
+export declare const isRight: (self: StreamHaltStrategy) => self is Right
 ```
 
 Added in v2.0.0

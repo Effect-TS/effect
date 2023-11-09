@@ -3,7 +3,7 @@
  */
 import type { Config } from "../Config.js"
 import type { ConfigError } from "../ConfigError.js"
-import type { PathPatch } from "../ConfigProviderPathPatch.js"
+import type { ConfigProviderPathPatch } from "../ConfigProviderPathPatch.js"
 import type { Context } from "../Context.js"
 import type { Effect } from "../Effect.js"
 import type { LazyArg } from "../Function.js"
@@ -72,7 +72,7 @@ export const makeFlat: (options: {
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
   ) => Effect<never, ConfigError, HashSet<string>>
-  readonly patch: PathPatch
+  readonly patch: ConfigProviderPathPatch
 }) => ConfigProvider.Flat = internal.makeFlat
 
 /**

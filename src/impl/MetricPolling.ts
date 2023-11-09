@@ -5,7 +5,7 @@ import type { Effect } from "../Effect.js"
 import type { Fiber } from "../Fiber.js"
 import * as internal from "../internal/metric/polling.js"
 import type { Metric } from "../Metric.js"
-import type { PollingMetric } from "../MetricPolling.js"
+import type { MetricPolling } from "../MetricPolling.js"
 import type { Schedule } from "../Schedule.js"
 import type { Scope } from "../Scope.js"
 
@@ -30,7 +30,7 @@ export type PollingMetricTypeId = typeof PollingMetricTypeId
 export const make: <Type, In, Out, R, E>(
   metric: Metric<Type, In, Out>,
   poll: Effect<R, E, In>
-) => PollingMetric<Type, In, R, E, Out> = internal.make
+) => MetricPolling<Type, In, R, E, Out> = internal.make
 
 /**
  * Collects all of the polling metrics into a single polling metric, which
@@ -40,8 +40,8 @@ export const make: <Type, In, Out, R, E>(
  * @category constructors
  */
 export const collectAll: <R, E, Out>(
-  iterable: Iterable<PollingMetric<any, any, R, E, Out>>
-) => PollingMetric<Array<any>, Array<any>, R, E, Array<Out>> = internal.collectAll
+  iterable: Iterable<MetricPolling<any, any, R, E, Out>>
+) => MetricPolling<Array<any>, Array<any>, R, E, Array<Out>> = internal.collectAll
 
 /**
  * Returns an effect that will launch the polling metric in a background
@@ -54,10 +54,10 @@ export const launch: {
   <R2, A2>(
     schedule: Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
-    self: PollingMetric<Type, In, R, E, Out>
+    self: MetricPolling<Type, In, R, E, Out>
   ) => Effect<R2 | R | Scope, never, Fiber<E, A2>>
   <Type, In, R, E, Out, R2, A2>(
-    self: PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule<R2, unknown, A2>
   ): Effect<Scope | R | R2, never, Fiber<E, A2>>
 } = internal.launch
@@ -68,7 +68,7 @@ export const launch: {
  * @since 2.0.0
  * @category utils
  */
-export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect<R, E, In> = internal.poll
+export const poll: <Type, In, R, E, Out>(self: MetricPolling<Type, In, R, E, Out>) => Effect<R, E, In> = internal.poll
 
 /**
  * An effect that polls for a value and uses the value to update the metric.
@@ -77,7 +77,7 @@ export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out
  * @category utils
  */
 export const pollAndUpdate: <Type, In, R, E, Out>(
-  self: PollingMetric<Type, In, R, E, Out>
+  self: MetricPolling<Type, In, R, E, Out>
 ) => Effect<R, E, void> = internal.pollAndUpdate
 
 /**
@@ -90,11 +90,11 @@ export const pollAndUpdate: <Type, In, R, E, Out>(
 export const retry: {
   <R2, E, _>(
     policy: Schedule<R2, E, _>
-  ): <Type, In, R, Out>(self: PollingMetric<Type, In, R, E, Out>) => PollingMetric<Type, In, R2 | R, E, Out>
+  ): <Type, In, R, Out>(self: MetricPolling<Type, In, R, E, Out>) => MetricPolling<Type, In, R2 | R, E, Out>
   <Type, In, R, Out, R2, E, _>(
-    self: PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling<Type, In, R, E, Out>,
     policy: Schedule<R2, E, _>
-  ): PollingMetric<Type, In, R | R2, E, Out>
+  ): MetricPolling<Type, In, R | R2, E, Out>
 } = internal.retry
 
 /**
@@ -105,10 +105,10 @@ export const retry: {
  */
 export const zip: {
   <Type2, In2, R2, E2, Out2>(
-    that: PollingMetric<Type2, In2, R2, E2, Out2>
+    that: MetricPolling<Type2, In2, R2, E2, Out2>
   ): <Type, In, R, E, Out>(
-    self: PollingMetric<Type, In, R, E, Out>
-  ) => PollingMetric<
+    self: MetricPolling<Type, In, R, E, Out>
+  ) => MetricPolling<
     readonly [Type, Type2], // readonly because invariant
     readonly [In, In2], // readonly because contravariant
     R2 | R,
@@ -116,9 +116,9 @@ export const zip: {
     [Out, Out2]
   >
   <Type, In, R, E, Out, Type2, In2, R2, E2, Out2>(
-    self: PollingMetric<Type, In, R, E, Out>,
-    that: PollingMetric<Type2, In2, R2, E2, Out2>
-  ): PollingMetric<
+    self: MetricPolling<Type, In, R, E, Out>,
+    that: MetricPolling<Type2, In2, R2, E2, Out2>
+  ): MetricPolling<
     readonly [Type, Type2], // readonly because invariant
     readonly [In, In2], // readonly because contravariant
     R | R2,

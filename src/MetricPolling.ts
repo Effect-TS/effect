@@ -6,23 +6,23 @@ import type { Pipeable } from "./Pipeable.js"
 export * from "./impl/MetricPolling.js"
 export * from "./internal/Jumpers/MetricPolling.js"
 
-export declare namespace PollingMetric {
+export declare namespace MetricPolling {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
   export type * from "./impl/MetricPolling.js"
 }
 
 /**
- * A `PollingMetric` is a combination of a metric and an effect that polls for
+ * A `MetricPolling` is a combination of a metric and an effect that polls for
  * updates to the metric.
  *
  * @since 2.0.0
  * @category models
  */
-export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
+export interface MetricPolling<Type, In, R, E, Out> extends Pipeable {
   readonly [PollingMetricTypeId]: PollingMetricTypeId
   /**
-   * The metric that this `PollingMetric` polls to update.
+   * The metric that this `MetricPolling` polls to update.
    */
   readonly metric: Metric<Type, In, Out>
   /**
@@ -30,6 +30,3 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
    */
   readonly poll: Effect<R, E, In>
 }
-
-// TODO: align module names
-export { PollingMetric as MetricPolling }

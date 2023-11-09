@@ -20,7 +20,7 @@ Added in v2.0.0
 - [getters](#getters)
   - [size](#size)
 - [models](#models)
-  - [Interval (interface)](#interval-interface)
+  - [ScheduleInterval (interface)](#interval-interface)
 - [ordering](#ordering)
   - [intersect](#intersect)
   - [isEmpty](#isempty)
@@ -40,38 +40,38 @@ Added in v2.0.0
 
 ## after
 
-Construct an `Interval` that includes all time equal to and after the
+Construct an `ScheduleInterval` that includes all time equal to and after the
 specified start time.
 
 **Signature**
 
 ```ts
-export declare const after: (startMilliseconds: number) => Interval
+export declare const after: (startMilliseconds: number) => ScheduleInterval
 ```
 
 Added in v2.0.0
 
 ## before
 
-Construct an `Interval` that includes all time equal to and before the
+Construct an `ScheduleInterval` that includes all time equal to and before the
 specified end time.
 
 **Signature**
 
 ```ts
-export declare const before: (endMilliseconds: number) => Interval
+export declare const before: (endMilliseconds: number) => ScheduleInterval
 ```
 
 Added in v2.0.0
 
 ## empty
 
-An `Interval` of zero-width.
+An `ScheduleInterval` of zero-width.
 
 **Signature**
 
 ```ts
-export declare const empty: Interval
+export declare const empty: ScheduleInterval
 ```
 
 Added in v2.0.0
@@ -85,7 +85,7 @@ returned.
 **Signature**
 
 ```ts
-export declare const make: (startMillis: number, endMillis: number) => Interval
+export declare const make: (startMillis: number, endMillis: number) => ScheduleInterval
 ```
 
 Added in v2.0.0
@@ -94,28 +94,28 @@ Added in v2.0.0
 
 ## size
 
-Calculates the size of the `Interval` as the `Duration` from the start of the
+Calculates the size of the `ScheduleInterval` as the `Duration` from the start of the
 interval to the end of the interval.
 
 **Signature**
 
 ```ts
-export declare const size: (self: Interval) => Duration
+export declare const size: (self: ScheduleInterval) => Duration
 ```
 
 Added in v2.0.0
 
 # models
 
-## Interval (interface)
+## ScheduleInterval (interface)
 
-An `Interval` represents an interval of time. ScheduleIntervals can encompass all
+An `ScheduleInterval` represents an interval of time. ScheduleIntervals can encompass all
 time, or no time at all.
 
 **Signature**
 
 ```ts
-export interface Interval {
+export interface ScheduleInterval {
   readonly [IntervalTypeId]: IntervalTypeId
   readonly startMillis: number
   readonly endMillis: number
@@ -128,15 +128,15 @@ Added in v2.0.0
 
 ## intersect
 
-Computes a new `Interval` which is the intersection of this `Interval` and
-that `Interval`.
+Computes a new `ScheduleInterval` which is the intersection of this `ScheduleInterval` and
+that `ScheduleInterval`.
 
 **Signature**
 
 ```ts
 export declare const intersect: {
-  (that: Interval): (self: Interval) => Interval
-  (self: Interval, that: Interval): Interval
+  (that: ScheduleInterval): (self: ScheduleInterval) => ScheduleInterval
+  (self: ScheduleInterval, that: ScheduleInterval): ScheduleInterval
 }
 ```
 
@@ -144,39 +144,39 @@ Added in v2.0.0
 
 ## isEmpty
 
-Returns `true` if the specified `Interval` is empty, `false` otherwise.
+Returns `true` if the specified `ScheduleInterval` is empty, `false` otherwise.
 
 **Signature**
 
 ```ts
-export declare const isEmpty: (self: Interval) => boolean
+export declare const isEmpty: (self: ScheduleInterval) => boolean
 ```
 
 Added in v2.0.0
 
 ## isNonEmpty
 
-Returns `true` if the specified `Interval` is non-empty, `false` otherwise.
+Returns `true` if the specified `ScheduleInterval` is non-empty, `false` otherwise.
 
 **Signature**
 
 ```ts
-export declare const isNonEmpty: (self: Interval) => boolean
+export declare const isNonEmpty: (self: ScheduleInterval) => boolean
 ```
 
 Added in v2.0.0
 
 ## lessThan
 
-Returns `true` if this `Interval` is less than `that` interval, `false`
+Returns `true` if this `ScheduleInterval` is less than `that` interval, `false`
 otherwise.
 
 **Signature**
 
 ```ts
 export declare const lessThan: {
-  (that: Interval): (self: Interval) => boolean
-  (self: Interval, that: Interval): boolean
+  (that: ScheduleInterval): (self: ScheduleInterval) => boolean
+  (self: ScheduleInterval, that: ScheduleInterval): boolean
 }
 ```
 
@@ -184,24 +184,24 @@ Added in v2.0.0
 
 ## max
 
-Returns the maximum of two `Interval`s.
+Returns the maximum of two `ScheduleInterval`s.
 
 **Signature**
 
 ```ts
-export declare const max: { (that: Interval): (self: Interval) => Interval; (self: Interval, that: Interval): Interval }
+export declare const max: { (that: ScheduleInterval): (self: ScheduleInterval) => ScheduleInterval; (self: ScheduleInterval, that: ScheduleInterval): ScheduleInterval }
 ```
 
 Added in v2.0.0
 
 ## min
 
-Returns the minimum of two `Interval`s.
+Returns the minimum of two `ScheduleInterval`s.
 
 **Signature**
 
 ```ts
-export declare const min: { (that: Interval): (self: Interval) => Interval; (self: Interval, that: Interval): Interval }
+export declare const min: { (that: ScheduleInterval): (self: ScheduleInterval) => ScheduleInterval; (self: ScheduleInterval, that: ScheduleInterval): ScheduleInterval }
 ```
 
 Added in v2.0.0
@@ -232,16 +232,16 @@ Added in v2.0.0
 
 ## union
 
-Computes a new `Interval` which is the union of this `Interval` and that
-`Interval` as a `Some`, otherwise returns `None` if the two intervals cannot
+Computes a new `ScheduleInterval` which is the union of this `ScheduleInterval` and that
+`ScheduleInterval` as a `Some`, otherwise returns `None` if the two intervals cannot
 form a union.
 
 **Signature**
 
 ```ts
 export declare const union: {
-  (that: Interval): (self: Interval) => Option<Interval>
-  (self: Interval, that: Interval): Option<Interval>
+  (that: ScheduleInterval): (self: ScheduleInterval) => Option<ScheduleInterval>
+  (self: ScheduleInterval, that: ScheduleInterval): Option<ScheduleInterval>
 }
 ```
 

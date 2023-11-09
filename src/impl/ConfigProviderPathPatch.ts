@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type { PathPatch } from "../ConfigProviderPathPatch.js"
+import type { ConfigProviderPathPatch } from "../ConfigProviderPathPatch.js"
 import * as internal from "../internal/configProvider/pathPatch.js"
 
 /**
@@ -18,8 +18,8 @@ export interface Empty {
  */
 export interface AndThen {
   readonly _tag: "AndThen"
-  readonly first: PathPatch
-  readonly second: PathPatch
+  readonly first: ConfigProviderPathPatch
+  readonly second: ConfigProviderPathPatch
 }
 
 /**
@@ -53,15 +53,15 @@ export interface Unnested {
  * @since 2.0.0
  * @category constructors
  */
-export const empty: PathPatch = internal.empty
+export const empty: ConfigProviderPathPatch = internal.empty
 
 /**
  * @since 2.0.0
  * @category constructors
  */
 export const andThen: {
-  (that: PathPatch): (self: PathPatch) => PathPatch
-  (self: PathPatch, that: PathPatch): PathPatch
+  (that: ConfigProviderPathPatch): (self: ConfigProviderPathPatch) => ConfigProviderPathPatch
+  (self: ConfigProviderPathPatch, that: ConfigProviderPathPatch): ConfigProviderPathPatch
 } = internal.andThen
 
 /**
@@ -69,8 +69,8 @@ export const andThen: {
  * @category constructors
  */
 export const mapName: {
-  (f: (string: string) => string): (self: PathPatch) => PathPatch
-  (self: PathPatch, f: (string: string) => string): PathPatch
+  (f: (string: string) => string): (self: ConfigProviderPathPatch) => ConfigProviderPathPatch
+  (self: ConfigProviderPathPatch, f: (string: string) => string): ConfigProviderPathPatch
 } = internal.mapName
 
 /**
@@ -78,8 +78,8 @@ export const mapName: {
  * @category constructors
  */
 export const nested: {
-  (name: string): (self: PathPatch) => PathPatch
-  (self: PathPatch, name: string): PathPatch
+  (name: string): (self: ConfigProviderPathPatch) => ConfigProviderPathPatch
+  (self: ConfigProviderPathPatch, name: string): ConfigProviderPathPatch
 } = internal.nested
 
 /**
@@ -87,6 +87,6 @@ export const nested: {
  * @category constructors
  */
 export const unnested: {
-  (name: string): (self: PathPatch) => PathPatch
-  (self: PathPatch, name: string): PathPatch
+  (name: string): (self: ConfigProviderPathPatch) => ConfigProviderPathPatch
+  (self: ConfigProviderPathPatch, name: string): ConfigProviderPathPatch
 } = internal.unnested

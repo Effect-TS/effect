@@ -10,13 +10,10 @@ export * from "./internal/Jumpers/ConfigProviderPathPatch.js"
  * @since 2.0.0
  * @category models
  */
-export type PathPatch = Empty | AndThen | MapName | Nested | Unnested
+export type ConfigProviderPathPatch = Empty | AndThen | MapName | Nested | Unnested
 
-export declare namespace PathPatch {
+export declare namespace ConfigProviderPathPatch {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
-  export type * from "./impl/PathPatch.js"
+  export type * from "./impl/ConfigProviderPathPatch.js"
 }
-
-// TODO: align module names
-export { PathPatch as ConfigProviderPathPatch }

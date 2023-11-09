@@ -7,13 +7,10 @@ export * from "./internal/Jumpers/StreamHaltStrategy.js"
  * @since 2.0.0
  * @category models
  */
-export type HaltStrategy = Left | Right | Both | Either
+export type StreamHaltStrategy = Left | Right | Both | Either
 
-export declare namespace HaltStrategy {
+export declare namespace StreamHaltStrategy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
   export type * from "./impl/StreamHaltStrategy.js"
 }
-
-// TODO: align module names
-export { HaltStrategy as StreamHaltStrategy }

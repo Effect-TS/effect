@@ -1,7 +1,7 @@
 import type { Config } from "../Config.js"
 import type { ConfigError } from "../ConfigError.js"
 import type { ConfigProvider } from "../ConfigProvider.js"
-import type { PathPatch } from "../ConfigProviderPathPatch.js"
+import type { ConfigProviderPathPatch } from "../ConfigProviderPathPatch.js"
 import { Context } from "../Context.js"
 import type { Effect } from "../Effect.js"
 import { Either } from "../Either.js"
@@ -68,7 +68,7 @@ export const makeFlat = (
     readonly enumerateChildren: (
       path: ReadonlyArray<string>
     ) => Effect<never, ConfigError, HashSet<string>>
-    readonly patch: PathPatch
+    readonly patch: ConfigProviderPathPatch
   }
 ): ConfigProvider.Flat => ({
   [FlatConfigProviderTypeId]: FlatConfigProviderTypeId,

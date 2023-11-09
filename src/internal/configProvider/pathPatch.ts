@@ -1,5 +1,5 @@
 import type { ConfigError } from "../../ConfigError.js"
-import type { PathPatch } from "../../ConfigProviderPathPatch.js"
+import type { ConfigProviderPathPatch } from "../../ConfigProviderPathPatch.js"
 import { Either } from "../../Either.js"
 import { dual, pipe } from "../../Function.js"
 import { List } from "../../List.js"
@@ -8,14 +8,14 @@ import { ReadonlyArray as RA } from "../../ReadonlyArray.js"
 import * as configError from "../configError.js"
 
 /** @internal */
-export const empty: PathPatch = {
+export const empty: ConfigProviderPathPatch = {
   _tag: "Empty"
 }
 
 /** @internal */
 export const andThen = dual<
-  (that: PathPatch) => (self: PathPatch) => PathPatch,
-  (self: PathPatch, that: PathPatch) => PathPatch
+  (that: ConfigProviderPathPatch) => (self: ConfigProviderPathPatch) => ConfigProviderPathPatch,
+  (self: ConfigProviderPathPatch, that: ConfigProviderPathPatch) => ConfigProviderPathPatch
 >(2, (self, that) => ({
   _tag: "AndThen",
   first: self,
@@ -24,38 +24,38 @@ export const andThen = dual<
 
 /** @internal */
 export const mapName = dual<
-  (f: (string: string) => string) => (self: PathPatch) => PathPatch,
-  (self: PathPatch, f: (string: string) => string) => PathPatch
+  (f: (string: string) => string) => (self: ConfigProviderPathPatch) => ConfigProviderPathPatch,
+  (self: ConfigProviderPathPatch, f: (string: string) => string) => ConfigProviderPathPatch
 >(2, (self, f) => andThen(self, { _tag: "MapName", f }))
 
 /** @internal */
 export const nested = dual<
-  (name: string) => (self: PathPatch) => PathPatch,
-  (self: PathPatch, name: string) => PathPatch
+  (name: string) => (self: ConfigProviderPathPatch) => ConfigProviderPathPatch,
+  (self: ConfigProviderPathPatch, name: string) => ConfigProviderPathPatch
 >(2, (self, name) => andThen(self, { _tag: "Nested", name }))
 
 /** @internal */
 export const unnested = dual<
-  (name: string) => (self: PathPatch) => PathPatch,
-  (self: PathPatch, name: string) => PathPatch
+  (name: string) => (self: ConfigProviderPathPatch) => ConfigProviderPathPatch,
+  (self: ConfigProviderPathPatch, name: string) => ConfigProviderPathPatch
 >(2, (self, name) => andThen(self, { _tag: "Unnested", name }))
 
 /** @internal */
 export const patch = dual<
   (
-    patch: PathPatch
+    patch: ConfigProviderPathPatch
   ) => (
     path: ReadonlyArray<string>
   ) => Either<ConfigError, ReadonlyArray<string>>,
   (
     path: ReadonlyArray<string>,
-    patch: PathPatch
+    patch: ConfigProviderPathPatch
   ) => Either<ConfigError, ReadonlyArray<string>>
 >(2, (path, patch) => {
-  let input: List<PathPatch> = List.of(patch)
+  let input: List<ConfigProviderPathPatch> = List.of(patch)
   let output: ReadonlyArray<string> = path
   while (List.isCons(input)) {
-    const patch: PathPatch = input.head
+    const patch: ConfigProviderPathPatch = input.head
     switch (patch._tag) {
       case "Empty": {
         input = input.tail
