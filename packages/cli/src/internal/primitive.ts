@@ -4,11 +4,11 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as CliConfig from "../CliConfig"
-import type * as Span from "../HelpDoc/Span"
-import type * as Primitive from "../Primitive"
-import * as InternalCliConfig from "./cliConfig"
-import * as InternalSpan from "./helpDoc/span"
+import type * as CliConfig from "../CliConfig.js"
+import type * as Span from "../HelpDoc/Span.js"
+import type * as Primitive from "../Primitive.js"
+import * as InternalCliConfig from "./cliConfig.js"
+import * as InternalSpan from "./helpDoc/span.js"
 
 const PrimitiveSymbolKey = "@effect/cli/Primitive"
 
@@ -53,10 +53,14 @@ export class Bool implements Primitive.Primitive<boolean> {
     return Option.some("true | false")
   }
 
-  validate(value: Option.Option<string>, config: CliConfig.CliConfig): Effect.Effect<never, string, boolean> {
+  validate(
+    value: Option.Option<string>,
+    config: CliConfig.CliConfig
+  ): Effect.Effect<never, string, boolean> {
     return Option.map(value, (str) => InternalCliConfig.normalizeCase(config, str)).pipe(
       Option.match({
-        onNone: () => Effect.orElseFail(this.defaultValue, () => `Missing default value for boolean parameter`),
+        onNone: () =>
+          Effect.orElseFail(this.defaultValue, () => `Missing default value for boolean parameter`),
         onSome: (value) =>
           Schema.is(trueValues)(value)
             ? Effect.succeed(true)
@@ -86,14 +90,19 @@ export class Date implements Primitive.Primitive<globalThis.Date> {
   }
 
   get help(): Span.Span {
-    return InternalSpan.text("A date without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30.")
+    return InternalSpan.text(
+      "A date without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30."
+    )
   }
 
   get choices(): Option.Option<string> {
     return Option.some("date")
   }
 
-  validate(value: Option.Option<string>, _config: CliConfig.CliConfig): Effect.Effect<never, string, globalThis.Date> {
+  validate(
+    value: Option.Option<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, string, globalThis.Date> {
     return attempt(
       value,
       this.typeName,
@@ -134,7 +143,10 @@ export class Choice<A> implements Primitive.Primitive<A> {
     return Option.some(choices)
   }
 
-  validate(value: Option.Option<string>, _config: CliConfig.CliConfig): Effect.Effect<never, string, A> {
+  validate(
+    value: Option.Option<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, string, A> {
     return Effect.orElseFail(
       value,
       () => `Choice options to not have a default value`
@@ -184,7 +196,10 @@ export class Float implements Primitive.Primitive<number> {
     return Option.none()
   }
 
-  validate(value: Option.Option<string>, _config: CliConfig.CliConfig): Effect.Effect<never, string, number> {
+  validate(
+    value: Option.Option<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, string, number> {
     const numberFromString = Schema.string.pipe(Schema.numberFromString)
     return attempt(value, this.typeName, Schema.parse(numberFromString))
   }
@@ -215,7 +230,10 @@ export class Integer implements Primitive.Primitive<number> {
     return Option.none()
   }
 
-  validate(value: Option.Option<string>, _config: CliConfig.CliConfig): Effect.Effect<never, string, number> {
+  validate(
+    value: Option.Option<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, string, number> {
     const intFromString = Schema.string.pipe(Schema.numberFromString, Schema.int())
     return attempt(value, this.typeName, Schema.parse(intFromString))
   }
@@ -246,7 +264,10 @@ export class Text implements Primitive.Primitive<string> {
     return Option.none()
   }
 
-  validate(value: Option.Option<string>, _config: CliConfig.CliConfig): Effect.Effect<never, string, string> {
+  validate(
+    value: Option.Option<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<never, string, string> {
     return attempt(value, this.typeName, Schema.parse(Schema.string))
   }
 
@@ -260,7 +281,8 @@ export class Text implements Primitive.Primitive<string> {
 // =============================================================================
 
 /** @internal */
-export const boolean = (defaultValue: Option.Option<boolean>): Primitive.Primitive<boolean> => new Bool(defaultValue)
+export const boolean = (defaultValue: Option.Option<boolean>): Primitive.Primitive<boolean> =>
+  new Bool(defaultValue)
 
 /** @internal */
 export const choice = <A>(

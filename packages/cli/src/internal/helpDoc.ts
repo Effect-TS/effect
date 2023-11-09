@@ -5,18 +5,21 @@ import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
 import { dual } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as HelpDoc from "../HelpDoc"
-import type * as Span from "../HelpDoc/Span"
-import * as InternalSpan from "./helpDoc/span"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as Span from "../HelpDoc/Span.js"
+import * as InternalSpan from "./helpDoc/span.js"
 
 /** @internal */
-export const isEmpty = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Empty => helpDoc._tag === "Empty"
+export const isEmpty = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Empty =>
+  helpDoc._tag === "Empty"
 
 /** @internal */
-export const isHeader = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Header => helpDoc._tag === "Header"
+export const isHeader = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Header =>
+  helpDoc._tag === "Header"
 
 /** @internal */
-export const isParagraph = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Paragraph => helpDoc._tag === "Paragraph"
+export const isParagraph = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Paragraph =>
+  helpDoc._tag === "Paragraph"
 
 /** @internal */
 export const isDescriptionList = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.DescriptionList =>
@@ -27,7 +30,8 @@ export const isEnumeration = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Enum
   helpDoc._tag === "Enumeration"
 
 /** @internal */
-export const isSequence = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Sequence => helpDoc._tag === "Sequence"
+export const isSequence = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Sequence =>
+  helpDoc._tag === "Sequence"
 
 /** @internal */
 export const empty: HelpDoc.HelpDoc = {
@@ -80,7 +84,9 @@ export const descriptionList = (
 })
 
 /** @internal */
-export const enumeration = (elements: ReadonlyArray.NonEmptyReadonlyArray<HelpDoc.HelpDoc>): HelpDoc.HelpDoc => ({
+export const enumeration = (
+  elements: ReadonlyArray.NonEmptyReadonlyArray<HelpDoc.HelpDoc>
+): HelpDoc.HelpDoc => ({
   _tag: "Enumeration",
   elements
 })
@@ -131,7 +137,8 @@ const helpDocToAnsiDoc: {
 } = {
   Empty: () => Doc.empty,
   Paragraph: (self) => Doc.cat(InternalSpan.toAnsiDoc(self.value), Doc.hardLine),
-  Header: (self) => Doc.cat(Doc.annotate(InternalSpan.toAnsiDoc(self.value), AnsiStyle.bold), Doc.hardLine),
+  Header: (self) =>
+    Doc.cat(Doc.annotate(InternalSpan.toAnsiDoc(self.value), AnsiStyle.bold), Doc.hardLine),
   Enumeration: (self) =>
     Doc.indent(
       Doc.vsep(self.elements.map((doc) =>
@@ -162,4 +169,5 @@ export const toAnsiDoc = (self: HelpDoc.HelpDoc): AnsiDoc.AnsiDoc =>
   Optimize.optimize(helpDocToAnsiDoc[self._tag](self as any), Optimize.Deep)
 
 /** @internal */
-export const toAnsiText = (self: HelpDoc.HelpDoc): string => AnsiRender.prettyDefault(toAnsiDoc(self))
+export const toAnsiText = (self: HelpDoc.HelpDoc): string =>
+  AnsiRender.prettyDefault(toAnsiDoc(self))

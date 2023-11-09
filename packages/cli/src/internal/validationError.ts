@@ -1,5 +1,5 @@
-import type * as HelpDoc from "../HelpDoc"
-import type * as ValidationError from "../ValidationError"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as ValidationError from "../ValidationError.js"
 
 const ValidationErrorSymbolKey = "@effect/cli/ValidationError"
 
@@ -18,44 +18,54 @@ export const isValidationError = (u: unknown): u is ValidationError.ValidationEr
   typeof u === "object" && u != null && ValidationErrorTypeId in u
 
 /** @internal */
-export const isCommandMismatch = (self: ValidationError.ValidationError): self is ValidationError.CommandMismatch =>
-  self._tag === "CommandMismatch"
+export const isCommandMismatch = (
+  self: ValidationError.ValidationError
+): self is ValidationError.CommandMismatch => self._tag === "CommandMismatch"
 
 /** @internal */
-export const isCorrectedFlag = (self: ValidationError.ValidationError): self is ValidationError.CorrectedFlag =>
-  self._tag === "CorrectedFlag"
+export const isCorrectedFlag = (
+  self: ValidationError.ValidationError
+): self is ValidationError.CorrectedFlag => self._tag === "CorrectedFlag"
 
 /** @internal */
-export const isInvalidArgument = (self: ValidationError.ValidationError): self is ValidationError.InvalidArgument =>
-  self._tag === "InvalidArgument"
+export const isInvalidArgument = (
+  self: ValidationError.ValidationError
+): self is ValidationError.InvalidArgument => self._tag === "InvalidArgument"
 
 /** @internal */
-export const isInvalidValue = (self: ValidationError.ValidationError): self is ValidationError.InvalidValue =>
-  self._tag === "InvalidValue"
+export const isInvalidValue = (
+  self: ValidationError.ValidationError
+): self is ValidationError.InvalidValue => self._tag === "InvalidValue"
 
 /** @internal */
-export const isKeyValuesDetected = (self: ValidationError.ValidationError): self is ValidationError.KeyValuesDetected =>
-  self._tag === "KeyValuesDetected"
+export const isKeyValuesDetected = (
+  self: ValidationError.ValidationError
+): self is ValidationError.KeyValuesDetected => self._tag === "KeyValuesDetected"
 
 /** @internal */
-export const isMissingFlag = (self: ValidationError.ValidationError): self is ValidationError.MissingFlag =>
-  self._tag === "MissingFlag"
+export const isMissingFlag = (
+  self: ValidationError.ValidationError
+): self is ValidationError.MissingFlag => self._tag === "MissingFlag"
 
 /** @internal */
-export const isMissingValue = (self: ValidationError.ValidationError): self is ValidationError.MissingValue =>
-  self._tag === "MissingValue"
+export const isMissingValue = (
+  self: ValidationError.ValidationError
+): self is ValidationError.MissingValue => self._tag === "MissingValue"
 
 /** @internal */
-export const isMissingSubcommand = (self: ValidationError.ValidationError): self is ValidationError.MissingSubcommand =>
-  self._tag === "MissingSubcommand"
+export const isMissingSubcommand = (
+  self: ValidationError.ValidationError
+): self is ValidationError.MissingSubcommand => self._tag === "MissingSubcommand"
 
 /** @internal */
-export const isNoBuiltInMatch = (self: ValidationError.ValidationError): self is ValidationError.NoBuiltInMatch =>
-  self._tag === "NoBuiltInMatch"
+export const isNoBuiltInMatch = (
+  self: ValidationError.ValidationError
+): self is ValidationError.NoBuiltInMatch => self._tag === "NoBuiltInMatch"
 
 /** @internal */
-export const isUnclusteredFlag = (self: ValidationError.ValidationError): self is ValidationError.UnclusteredFlag =>
-  self._tag === "UnclusteredFlag"
+export const isUnclusteredFlag = (
+  self: ValidationError.ValidationError
+): self is ValidationError.UnclusteredFlag => self._tag === "UnclusteredFlag"
 
 /** @internal */
 export const commandMismatch = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {

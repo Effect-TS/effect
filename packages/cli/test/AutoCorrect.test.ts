@@ -22,6 +22,8 @@ describe("AutoCorrect", () => {
 
   it("should calculate the correct Levenstein distance for non-ASCII characters", () => {
     expect(AutoCorrect.levensteinDistance("とんかつ", "とかつ", CliConfig.defaultConfig)).toBe(1)
-    expect(AutoCorrect.levensteinDistance("¯\\_(ツ)_/¯", "_(ツ)_/¯", CliConfig.defaultConfig)).toBe(2)
+    expect(AutoCorrect.levensteinDistance("¯\\_(ツ)_/¯", "_(ツ)_/¯", CliConfig.defaultConfig)).toBe(
+      2
+    )
   })
 })

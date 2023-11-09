@@ -5,10 +5,10 @@ import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
 import { Effect, pipe } from "effect"
-import type * as Prompt from "../../Prompt"
-import * as prompt from "../prompt"
-import * as promptAction from "./action"
-import * as ansiUtils from "./ansi-utils"
+import type * as Prompt from "../../Prompt.js"
+import * as prompt from "../prompt.js"
+import * as promptAction from "./action.js"
+import * as ansiUtils from "./ansi-utils.js"
 
 interface State {
   readonly cursor: number
@@ -53,7 +53,9 @@ const renderNextFrame = (promptMsg: string, input: AnsiDoc.AnsiDoc, offset: numb
       Doc.cat(Doc.space),
       Doc.cat(Doc.annotate(pointerSmall, AnsiStyle.color(Color.black))),
       Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green)))),
+      Doc.cat(
+        Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green)))
+      ),
       Doc.cat(ansiUtils.moveCursor(offset))
     )
     return AnsiRender.prettyDefault(Optimize.optimize(doc, Optimize.Deep))
@@ -75,7 +77,10 @@ const renderSubmission = (promptMsg: string, input: AnsiDoc.AnsiDoc) =>
     return AnsiRender.prettyDefault(Optimize.optimize(doc, Optimize.Deep))
   })
 
-const renderInput = (value: string, type: NonNullable<Prompt.Prompt.TextOptions["type"]>): AnsiDoc.AnsiDoc => {
+const renderInput = (
+  value: string,
+  type: NonNullable<Prompt.Prompt.TextOptions["type"]>
+): AnsiDoc.AnsiDoc => {
   switch (type) {
     case "hidden": {
       return Doc.empty

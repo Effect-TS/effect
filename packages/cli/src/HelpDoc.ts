@@ -3,8 +3,8 @@
  */
 import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
-import type { Span } from "./HelpDoc/Span"
-import * as InternalHelpDoc from "./internal/helpDoc"
+import type { Span } from "./HelpDoc/Span.js"
+import * as InternalHelpDoc from "./internal/helpDoc.js"
 
 /**
  * A `HelpDoc` models the full documentation for a command-line application.
@@ -99,13 +99,15 @@ export const isParagraph: (helpDoc: HelpDoc) => helpDoc is Paragraph = InternalH
  * @since 1.0.0
  * @category refinements
  */
-export const isDescriptionList: (helpDoc: HelpDoc) => helpDoc is DescriptionList = InternalHelpDoc.isDescriptionList
+export const isDescriptionList: (helpDoc: HelpDoc) => helpDoc is DescriptionList =
+  InternalHelpDoc.isDescriptionList
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isEnumeration: (helpDoc: HelpDoc) => helpDoc is Enumeration = InternalHelpDoc.isEnumeration
+export const isEnumeration: (helpDoc: HelpDoc) => helpDoc is Enumeration =
+  InternalHelpDoc.isEnumeration
 
 /**
  * @since 1.0.0
@@ -161,7 +163,8 @@ export const descriptionList: (
  * @since 1.0.0
  * @category constructors
  */
-export const enumeration: (elements: NonEmptyReadonlyArray<HelpDoc>) => HelpDoc = InternalHelpDoc.enumeration
+export const enumeration: (elements: NonEmptyReadonlyArray<HelpDoc>) => HelpDoc =
+  InternalHelpDoc.enumeration
 
 /**
  * @since 1.0.0

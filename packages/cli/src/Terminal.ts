@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { Context, Effect, Layer } from "effect"
-import * as internal from "./internal/terminal"
+import * as internal from "./internal/terminal.js"
 
 /**
  * Represents a teletype-style (TTY) terminal interface that allows for

@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import type { CliConfig } from "./CliConfig"
-import * as InternalAutoCorrect from "./internal/autoCorrect"
+import type { CliConfig } from "./CliConfig.js"
+import * as InternalAutoCorrect from "./internal/autoCorrect.js"
 
 /**
  * @since 1.0.0

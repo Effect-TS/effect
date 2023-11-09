@@ -1,5 +1,5 @@
-import type * as CliConfig from "../CliConfig"
-import * as cliConfig from "./cliConfig"
+import type * as CliConfig from "../CliConfig.js"
+import * as cliConfig from "./cliConfig.js"
 
 /** @internal */
 export const levensteinDistance = (

@@ -187,20 +187,36 @@ describe("Command", () => {
           name: "git",
           options: void 0,
           args: void 0,
-          subcommand: Option.some({ name: "rebase", options: [true, "drop"], args: ["upstream", "branch"] })
+          subcommand: Option.some({
+            name: "rebase",
+            options: [true, "drop"],
+            args: ["upstream", "branch"]
+          })
         }
         expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
       }).pipe(runEffect))
 
     it("should parse a subcommand with required and optional options and arguments", () =>
       Effect.gen(function*(_) {
-        const args = ReadonlyArray.make("git", "rebase", "-i", "--empty", "ask", "upstream", "branch")
+        const args = ReadonlyArray.make(
+          "git",
+          "rebase",
+          "-i",
+          "--empty",
+          "ask",
+          "upstream",
+          "branch"
+        )
         const result = yield* _(git.parse(args, CliConfig.defaultConfig))
         const expected = {
           name: "git",
           options: void 0,
           args: void 0,
-          subcommand: Option.some({ name: "rebase", options: [true, "ask"], args: ["upstream", "branch"] })
+          subcommand: Option.some({
+            name: "rebase",
+            options: [true, "ask"],
+            args: ["upstream", "branch"]
+          })
         }
         expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
       }).pipe(runEffect))
@@ -261,8 +277,14 @@ describe("Command", () => {
 
     it("should correctly display help documentation for a command", () => {
       const child3 = Command.standard("child3").pipe(Command.withHelp("help 3"))
-      const child2 = Command.standard("child2").pipe(Command.withHelp("help 2"), Command.orElse(child3))
-      const child1 = Command.standard("child1").pipe(Command.subcommands([child2]), Command.withHelp("help 1"))
+      const child2 = Command.standard("child2").pipe(
+        Command.withHelp("help 2"),
+        Command.orElse(child3)
+      )
+      const child1 = Command.standard("child1").pipe(
+        Command.subcommands([child2]),
+        Command.withHelp("help 1")
+      )
       const parent = Command.standard("parent").pipe(Command.subcommands([child1]))
       const result = Render.prettyDefault(Doc.unAnnotate(HelpDoc.toAnsiDoc(parent.help)))
       expect(result).toBe(String.stripMargin(
@@ -283,7 +305,13 @@ describe("Command", () => {
     const params1 = ReadonlyArray.make("command", "--help")
     const params2 = ReadonlyArray.make("command", "-h")
     const params3 = ReadonlyArray.make("command", "--wizard")
-    const params4 = ReadonlyArray.make("command", "--shell-completion-index", "1", "--shell-type", "sh")
+    const params4 = ReadonlyArray.make(
+      "command",
+      "--shell-completion-index",
+      "1",
+      "--shell-type",
+      "sh"
+    )
     const params5 = ReadonlyArray.make("command", "-a", "--help")
     const params6 = ReadonlyArray.make("command", "--help", "--wizard", "-b")
     const params7 = ReadonlyArray.make("command", "-hdf", "--help")
@@ -309,10 +337,22 @@ describe("Command", () => {
 
     it("should trigger built-in options if they are alone", () =>
       Effect.gen(function*(_) {
-        const result1 = yield* _(command.parse(params1, CliConfig.defaultConfig), Effect.map(directiveType))
-        const result2 = yield* _(command.parse(params2, CliConfig.defaultConfig), Effect.map(directiveType))
-        const result3 = yield* _(command.parse(params3, CliConfig.defaultConfig), Effect.map(directiveType))
-        const result4 = yield* _(command.parse(params4, CliConfig.defaultConfig), Effect.map(directiveType))
+        const result1 = yield* _(
+          command.parse(params1, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
+        const result2 = yield* _(
+          command.parse(params2, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
+        const result3 = yield* _(
+          command.parse(params3, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
+        const result4 = yield* _(
+          command.parse(params4, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
         expect(result1).toBe("help")
         expect(result2).toBe("help")
         expect(result3).toBe("wizard")
@@ -321,21 +361,33 @@ describe("Command", () => {
 
     it("should not trigger help if an option matches", () =>
       Effect.gen(function*(_) {
-        const result = yield* _(command.parse(params5, CliConfig.defaultConfig), Effect.map(directiveType))
+        const result = yield* _(
+          command.parse(params5, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
         expect(result).toBe("user")
       }).pipe(runEffect))
 
     it("should trigger help even if not alone", () =>
       Effect.gen(function*(_) {
-        const result1 = yield* _(command.parse(params6, CliConfig.defaultConfig), Effect.map(directiveType))
-        const result2 = yield* _(command.parse(params7, CliConfig.defaultConfig), Effect.map(directiveType))
+        const result1 = yield* _(
+          command.parse(params6, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
+        const result2 = yield* _(
+          command.parse(params7, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
         expect(result1).toBe("help")
         expect(result2).toBe("help")
       }).pipe(runEffect))
 
     it("should trigger wizard even if not alone", () =>
       Effect.gen(function*(_) {
-        const result = yield* _(command.parse(params8, CliConfig.defaultConfig), Effect.map(directiveType))
+        const result = yield* _(
+          command.parse(params8, CliConfig.defaultConfig),
+          Effect.map(directiveType)
+        )
         expect(result).toBe("wizard")
       }).pipe(runEffect))
   })

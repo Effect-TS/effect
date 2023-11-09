@@ -4,11 +4,11 @@ import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
 import { Effect, pipe } from "effect"
-import type * as Prompt from "../../Prompt"
-import * as prompt from "../prompt"
-import * as promptAction from "./action"
-import * as ansiUtils from "./ansi-utils"
-import * as utils from "./utils"
+import type * as Prompt from "../../Prompt.js"
+import * as prompt from "../prompt.js"
+import * as promptAction from "./action.js"
+import * as ansiUtils from "./ansi-utils.js"
+import * as utils from "./utils.js"
 
 interface State {
   readonly cursor: number
@@ -16,7 +16,11 @@ interface State {
 
 const renderBeep = AnsiRender.prettyDefault(ansiUtils.beep)
 
-const renderChoices = (state: State, choices: Prompt.Prompt.SelectOptions["choices"], pointer: Doc.Doc<never>) => {
+const renderChoices = (
+  state: State,
+  choices: Prompt.Prompt.SelectOptions["choices"],
+  pointer: Doc.Doc<never>
+) => {
   const { endIndex, startIndex } = utils.displayRange(state.cursor, choices.length)
   const choicesToRender = choices.slice(startIndex, endIndex)
   const selectedStyle = AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green))
@@ -48,7 +52,11 @@ const renderChoices = (state: State, choices: Prompt.Prompt.SelectOptions["choic
   return Doc.vsep(docs)
 }
 
-const renderNextFrame = (promptMsg: string, state: State, choices: Prompt.Prompt.SelectOptions["choices"]) =>
+const renderNextFrame = (
+  promptMsg: string,
+  state: State,
+  choices: Prompt.Prompt.SelectOptions["choices"]
+) =>
   Effect.map(ansiUtils.figures, ({ pointer, pointerSmall }) => {
     const renderedChoices = renderChoices(state, choices, pointer)
     const doc = pipe(
@@ -66,7 +74,11 @@ const renderNextFrame = (promptMsg: string, state: State, choices: Prompt.Prompt
     return AnsiRender.prettyDefault(Optimize.optimize(doc, Optimize.Deep))
   })
 
-const renderSubmission = (promptMsg: string, state: State, choices: Prompt.Prompt.SelectOptions["choices"]) =>
+const renderSubmission = (
+  promptMsg: string,
+  state: State,
+  choices: Prompt.Prompt.SelectOptions["choices"]
+) =>
   Effect.map(ansiUtils.figures, ({ ellipsis, tick }) => {
     const selected = Doc.text(choices[state.cursor].title)
     const doc = pipe(

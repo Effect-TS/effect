@@ -1,9 +1,9 @@
 import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
 import { Effect, Effectable, Function, pipe, Pipeable, Ref } from "effect"
-import type * as Prompt from "../Prompt"
-import type * as Terminal from "../Terminal"
-import * as ansiUtils from "./prompt/ansi-utils"
-import * as terminal from "./terminal"
+import type * as Prompt from "../Prompt.js"
+import type * as Terminal from "../Terminal.js"
+import * as ansiUtils from "./prompt/ansi-utils.js"
+import * as terminal from "./terminal.js"
 
 /** @internal */
 const PromptSymbolKey = "@effect/cli/Prompt"

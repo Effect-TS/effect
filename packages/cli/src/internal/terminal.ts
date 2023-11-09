@@ -2,7 +2,7 @@ import * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 import { Context, Effect, Layer, pipe } from "effect"
 import * as readline from "node:readline"
-import type * as Terminal from "../Terminal"
+import type * as Terminal from "../Terminal.js"
 
 /** @internal */
 export const Tag = Context.Tag<Terminal.Terminal>()

@@ -3,12 +3,12 @@
  */
 
 import type { Option } from "effect/Option"
-import type { Command } from "./Command"
-import type { HelpDoc } from "./HelpDoc"
-import * as InternalBuiltInOptions from "./internal/builtInOptions"
-import type { Options } from "./Options"
-import type { ShellType } from "./ShellType"
-import type { Usage } from "./Usage"
+import type { Command } from "./Command.js"
+import type { HelpDoc } from "./HelpDoc.js"
+import * as InternalBuiltInOptions from "./internal/builtInOptions.js"
+import type { Options } from "./Options.js"
+import type { ShellType } from "./ShellType.js"
+import type { Usage } from "./Usage.js"
 
 /**
  * @since 1.0.0
@@ -83,13 +83,15 @@ export const isShowCompletions: (self: BuiltInOptions) => self is ShowCompletion
  * @since 1.0.0
  * @category refinements
  */
-export const isShowHelp: (self: BuiltInOptions) => self is ShowHelp = InternalBuiltInOptions.isShowHelp
+export const isShowHelp: (self: BuiltInOptions) => self is ShowHelp =
+  InternalBuiltInOptions.isShowHelp
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isShowWizard: (self: BuiltInOptions) => self is ShowWizard = InternalBuiltInOptions.isShowWizard
+export const isShowWizard: (self: BuiltInOptions) => self is ShowWizard =
+  InternalBuiltInOptions.isShowWizard
 
 /**
  * @since 1.0.0
@@ -102,17 +104,21 @@ export const showCompletions: (index: number, shellType: ShellType) => BuiltInOp
  * @since 1.0.0
  * @category constructors
  */
-export const showCompletionScript: (pathToExecutable: string, shellType: ShellType) => BuiltInOptions =
-  InternalBuiltInOptions.showCompletionScript
+export const showCompletionScript: (
+  pathToExecutable: string,
+  shellType: ShellType
+) => BuiltInOptions = InternalBuiltInOptions.showCompletionScript
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOptions = InternalBuiltInOptions.showHelp
+export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOptions =
+  InternalBuiltInOptions.showHelp
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const showWizard: (commmand: Command<unknown>) => BuiltInOptions = InternalBuiltInOptions.showWizard
+export const showWizard: (commmand: Command<unknown>) => BuiltInOptions =
+  InternalBuiltInOptions.showWizard

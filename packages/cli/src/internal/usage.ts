@@ -1,13 +1,13 @@
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as CliConfig from "../CliConfig"
-import type * as HelpDoc from "../HelpDoc"
-import type * as Span from "../HelpDoc/Span"
-import type * as Usage from "../Usage"
-import * as InternalCliConfig from "./cliConfig"
-import * as InternalHelpDoc from "./helpDoc"
-import * as InternalSpan from "./helpDoc/span"
+import type * as CliConfig from "../CliConfig.js"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as Span from "../HelpDoc/Span.js"
+import type * as Usage from "../Usage.js"
+import * as InternalCliConfig from "./cliConfig.js"
+import * as InternalHelpDoc from "./helpDoc.js"
+import * as InternalSpan from "./helpDoc/span.js"
 
 // =============================================================================
 // Constructors
@@ -77,7 +77,10 @@ export const getHelp = (self: Usage.Usage): HelpDoc.HelpDoc => {
     if (ReadonlyArray.isNonEmptyReadonlyArray(tail)) {
       return pipe(
         ReadonlyArray.map(spans, (span) => InternalHelpDoc.p(span)),
-        ReadonlyArray.reduceRight(InternalHelpDoc.empty, (left, right) => InternalHelpDoc.sequence(left, right))
+        ReadonlyArray.reduceRight(
+          InternalHelpDoc.empty,
+          (left, right) => InternalHelpDoc.sequence(left, right)
+        )
       )
     }
     return InternalHelpDoc.p(head)
@@ -214,13 +217,14 @@ const render = (self: Usage.Usage, config: CliConfig.CliConfig): ReadonlyArray<S
     case "Concat": {
       const leftSpan = render(self.left, config)
       const rightSpan = render(self.right, config)
-      const separator =
-        ReadonlyArray.isNonEmptyReadonlyArray(leftSpan) && ReadonlyArray.isNonEmptyReadonlyArray(rightSpan)
-          ? InternalSpan.space
-          : InternalSpan.empty
+      const separator = ReadonlyArray.isNonEmptyReadonlyArray(leftSpan) &&
+          ReadonlyArray.isNonEmptyReadonlyArray(rightSpan)
+        ? InternalSpan.space
+        : InternalSpan.empty
       return ReadonlyArray.flatMap(
         leftSpan,
-        (left) => ReadonlyArray.map(rightSpan, (right) => InternalSpan.spans([left, separator, right]))
+        (left) =>
+          ReadonlyArray.map(rightSpan, (right) => InternalSpan.spans([left, separator, right]))
       )
     }
   }

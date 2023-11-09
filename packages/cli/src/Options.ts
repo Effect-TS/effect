@@ -7,12 +7,12 @@ import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
-import type { CliConfig } from "./CliConfig"
-import type { HelpDoc } from "./HelpDoc"
-import * as InternalOptions from "./internal/options"
-import type { Input, Parameter } from "./Parameter"
-import type { Usage } from "./Usage"
-import type { ValidationError } from "./ValidationError"
+import type { CliConfig } from "./CliConfig.js"
+import type { HelpDoc } from "./HelpDoc.js"
+import * as InternalOptions from "./internal/options.js"
+import type { Input, Parameter } from "./Parameter.js"
+import type { Usage } from "./Usage.js"
+import type { ValidationError } from "./ValidationError.js"
 
 /**
  * @since 1.0.0
@@ -34,7 +34,10 @@ export interface Options<A> extends Options.Variance<A>, Parameter, Pipeable {
   get identifier(): Option<string>
   get usage(): Usage
   get flattened(): ReadonlyArray<Input>
-  validate(args: HashMap<string, ReadonlyArray<string>>, config: CliConfig): Effect<never, ValidationError, A>
+  validate(
+    args: HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig
+  ): Effect<never, ValidationError, A>
   /** @internal */
   modifySingle(f: <_>(single: InternalOptions.Single<_>) => InternalOptions.Single<_>): Options<A>
 }
@@ -76,8 +79,8 @@ export declare namespace All {
   /**
    * @since 1.0.0
    */
-  export type ReturnIterable<T extends Iterable<OptionsAny>> = [T] extends [Iterable<Options.Variance<infer A>>]
-    ? Options<Array<A>>
+  export type ReturnIterable<T extends Iterable<OptionsAny>> = [T] extends
+    [Iterable<Options.Variance<infer A>>] ? Options<Array<A>>
     : never
 
   /**
@@ -217,7 +220,8 @@ export const integer: (name: string) => Options<number> = InternalOptions.intege
  * @since 1.0.0
  * @category constructors
  */
-export const keyValueMap: (name: string) => Options<HashMap<string, string>> = InternalOptions.keyValueMap
+export const keyValueMap: (name: string) => Options<HashMap<string, string>> =
+  InternalOptions.keyValueMap
 
 /**
  * @since 1.0.0

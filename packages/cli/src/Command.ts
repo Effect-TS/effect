@@ -7,17 +7,17 @@ import type { HashMap } from "effect/HashMap"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
-import type { Args } from "./Args"
-import type { CliConfig } from "./CliConfig"
-import type { CommandDirective } from "./CommandDirective"
-import type { HelpDoc } from "./HelpDoc"
-import * as InternalCommand from "./internal/command"
-import type { Options } from "./Options"
-import type { Named } from "./Parameter"
-import type { Prompt } from "./Prompt"
-import type { Terminal } from "./Terminal"
-import type { Usage } from "./Usage"
-import type { ValidationError } from "./ValidationError"
+import type { Args } from "./Args.js"
+import type { CliConfig } from "./CliConfig.js"
+import type { CommandDirective } from "./CommandDirective.js"
+import type { HelpDoc } from "./HelpDoc.js"
+import * as InternalCommand from "./internal/command.js"
+import type { Options } from "./Options.js"
+import type { Named } from "./Parameter.js"
+import type { Prompt } from "./Prompt.js"
+import type { Terminal } from "./Terminal.js"
+import type { Usage } from "./Usage.js"
+import type { ValidationError } from "./ValidationError.js"
 
 /**
  * @since 1.0.0
@@ -44,7 +44,10 @@ export type CommandTypeId = typeof CommandTypeId
 export interface Command<A> extends Command.Variance<A>, Named, Pipeable {
   get usage(): Usage
   get subcommands(): HashMap<string, Command<unknown>>
-  parse(args: ReadonlyArray<string>, config: CliConfig): Effect<Terminal, ValidationError, CommandDirective<A>>
+  parse(
+    args: ReadonlyArray<string>,
+    config: CliConfig
+  ): Effect<Terminal, ValidationError, CommandDirective<A>>
 }
 
 /**
@@ -74,11 +77,12 @@ export declare namespace Command {
    * @since 1.0.0
    * @category models
    */
-  export type ParsedStandardCommand<Name extends string, OptionsType, ArgsType> = Command.ComputeParsedType<{
-    readonly name: Name
-    readonly options: OptionsType
-    readonly args: ArgsType
-  }>
+  export type ParsedStandardCommand<Name extends string, OptionsType, ArgsType> =
+    Command.ComputeParsedType<{
+      readonly name: Name
+      readonly options: OptionsType
+      readonly args: ArgsType
+    }>
 
   /**
    * @since 1.0.0
@@ -93,8 +97,8 @@ export declare namespace Command {
    * @since 1.0.0
    * @category models
    */
-  export type ParsedSubcommand<A extends NonEmptyReadonlyArray<any>> = A[number] extends Command<any>
-    ? GetParsedType<A[number]>
+  export type ParsedSubcommand<A extends NonEmptyReadonlyArray<any>> = A[number] extends
+    Command<any> ? GetParsedType<A[number]>
     : never
 
   /**
@@ -123,7 +127,8 @@ export declare namespace Command {
 export const standard: <Name extends string, OptionsType = void, ArgsType = void>(
   name: Name,
   config?: Command.ConstructorConfig<OptionsType, ArgsType>
-) => Command<{ readonly name: Name; readonly options: OptionsType; readonly args: ArgsType }> = InternalCommand.standard
+) => Command<{ readonly name: Name; readonly options: OptionsType; readonly args: ArgsType }> =
+  InternalCommand.standard
 
 /**
  * @since 1.0.0
@@ -171,13 +176,17 @@ export const subcommands: {
   ): <A>(
     self: Command<A>
   ) => Command<
-    Command.ComputeParsedType<A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>>
+    Command.ComputeParsedType<
+      A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>
+    >
   >
   <A, Subcommands extends NonEmptyReadonlyArray<Command<any>>>(
     self: Command<A>,
     subcommands: [...Subcommands]
   ): Command<
-    Command.ComputeParsedType<A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>>
+    Command.ComputeParsedType<
+      A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>
+    >
   >
 } = InternalCommand.subcommands
 

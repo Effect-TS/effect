@@ -7,20 +7,20 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as CliConfig from "../CliConfig"
-import type * as HelpDoc from "../HelpDoc"
-import type * as Options from "../Options"
-import type * as Parameter from "../Parameter"
-import type * as Primitive from "../Primitive"
-import type * as Usage from "../Usage"
-import type * as ValidationError from "../ValidationError"
-import * as InternalAutoCorrect from "./autoCorrect"
-import * as InternalCliConfig from "./cliConfig"
-import * as InternalHelpDoc from "./helpDoc"
-import * as InternalSpan from "./helpDoc/span"
-import * as InternalPrimitive from "./primitive"
-import * as InternalUsage from "./usage"
-import * as InternalValidationError from "./validationError"
+import type * as CliConfig from "../CliConfig.js"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as Options from "../Options.js"
+import type * as Parameter from "../Parameter.js"
+import type * as Primitive from "../Primitive.js"
+import type * as Usage from "../Usage.js"
+import type * as ValidationError from "../ValidationError.js"
+import * as InternalAutoCorrect from "./autoCorrect.js"
+import * as InternalCliConfig from "./cliConfig.js"
+import * as InternalHelpDoc from "./helpDoc.js"
+import * as InternalSpan from "./helpDoc/span.js"
+import * as InternalPrimitive from "./primitive.js"
+import * as InternalUsage from "./usage.js"
+import * as InternalValidationError from "./validationError.js"
 
 const OptionsSymbolKey = "@effect/cli/Options"
 
@@ -113,7 +113,9 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
     return pipe(
       ReadonlyArray.prepend(this.aliases, this.name),
       ReadonlyArray.map((str) => this.makeFullName(str)),
-      ReadonlyArray.sort(Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])),
+      ReadonlyArray.sort(
+        Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])
+      ),
       ReadonlyArray.map((tuple) => tuple[1])
     )
   }
@@ -138,26 +140,42 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
   parse(
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+  ): Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, ReadonlyArray<string>]
+  > {
     return processArgs(args).pipe(
       Effect.flatMap((args) => {
         if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
           const head = ReadonlyArray.headNonEmpty(args)
           const tail = ReadonlyArray.tailNonEmpty(args)
           const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
-          const normalizedNames = ReadonlyArray.map(this.names, (name) => InternalCliConfig.normalizeCase(config, name))
+          const normalizedNames = ReadonlyArray.map(
+            this.names,
+            (name) => InternalCliConfig.normalizeCase(config, name)
+          )
           if (ReadonlyArray.contains(normalizedNames, normalizedArgv0)) {
             if (InternalPrimitive.isBool(this.primitiveType)) {
               if (ReadonlyArray.isNonEmptyReadonlyArray(tail) && tail[0] === "true") {
-                return Effect.succeed([ReadonlyArray.make(head, "true"), ReadonlyArray.drop(tail, 1)])
+                return Effect.succeed([
+                  ReadonlyArray.make(head, "true"),
+                  ReadonlyArray.drop(tail, 1)
+                ])
               }
               if (ReadonlyArray.isNonEmptyReadonlyArray(tail) && tail[0] === "false") {
-                return Effect.succeed([ReadonlyArray.make(head, "false"), ReadonlyArray.drop(tail, 1)])
+                return Effect.succeed([
+                  ReadonlyArray.make(head, "false"),
+                  ReadonlyArray.drop(tail, 1)
+                ])
               }
               return Effect.succeed([ReadonlyArray.of(head), tail])
             }
             if (ReadonlyArray.isNonEmptyReadonlyArray(tail)) {
-              return Effect.succeed([ReadonlyArray.make(head, tail[0]), ReadonlyArray.drop(tail, 1)])
+              return Effect.succeed([
+                ReadonlyArray.make(head, tail[0]),
+                ReadonlyArray.drop(tail, 1)
+              ])
             }
             const error = InternalHelpDoc.p(`Expected a value following option: '${this.fullName}'`)
             return Effect.fail(InternalValidationError.missingValue(error))
@@ -165,9 +183,12 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
           const fullName = this.fullName
           if (
             this.name.length > config.autoCorrectLimit + 1 &&
-            InternalAutoCorrect.levensteinDistance(head, fullName, config) <= config.autoCorrectLimit
+            InternalAutoCorrect.levensteinDistance(head, fullName, config) <=
+              config.autoCorrectLimit
           ) {
-            const error = InternalHelpDoc.p(`The flag '${head}' is not recognized. Did you mean '${fullName}'?`)
+            const error = InternalHelpDoc.p(
+              `The flag '${head}' is not recognized. Did you mean '${fullName}'?`
+            )
             return Effect.fail(InternalValidationError.correctedFlag(error))
           }
           const error = InternalHelpDoc.p(`Expected to find option: '${fullName}'`)
@@ -204,7 +225,9 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
         }
         return Effect.fail(InternalValidationError.keyValuesDetected(InternalHelpDoc.empty, head))
       }
-      const error = InternalHelpDoc.p(`More than one reference to option '${this.fullName}' detected`)
+      const error = InternalHelpDoc.p(
+        `More than one reference to option '${this.fullName}' detected`
+      )
       return Effect.fail(InternalValidationError.invalidValue(error))
     }
     const error = InternalHelpDoc.p(`Expected to find option: '${this.fullName}'`)
@@ -324,9 +347,14 @@ export class OrElse<A, B> implements Options.Options<Either.Either<A, B>> {
             Effect.mapBoth({
               onFailure: (err2) =>
                 // orElse option is only missing in case neither option was given
-                InternalValidationError.isMissingValue(err1) && InternalValidationError.isMissingValue(err2)
-                  ? InternalValidationError.missingValue(InternalHelpDoc.sequence(err1.error, err2.error))
-                  : InternalValidationError.invalidValue(InternalHelpDoc.sequence(err1.error, err2.error)),
+                InternalValidationError.isMissingValue(err1) &&
+                  InternalValidationError.isMissingValue(err2)
+                  ? InternalValidationError.missingValue(
+                    InternalHelpDoc.sequence(err1.error, err2.error)
+                  )
+                  : InternalValidationError.invalidValue(
+                    InternalHelpDoc.sequence(err1.error, err2.error)
+                  ),
               onSuccess: (b) => Either.right(b)
             })
           ),
@@ -481,7 +509,11 @@ export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
   parse(
     _args: ReadonlyArray<string>,
     _config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+  ): Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, ReadonlyArray<string>]
+  > {
     const error = InternalHelpDoc.p("Encountered an error in command design while parsing")
     return Effect.fail(InternalValidationError.commandMismatch(error))
   }
@@ -501,7 +533,9 @@ export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
 }
 
 /** @internal */
-export class KeyValueMap implements Options.Options<HashMap.HashMap<string, string>>, Parameter.Input {
+export class KeyValueMap
+  implements Options.Options<HashMap.HashMap<string, string>>, Parameter.Input
+{
   readonly [OptionsTypeId] = proto
   readonly _tag = "KeyValueMap"
 
@@ -527,7 +561,9 @@ export class KeyValueMap implements Options.Options<HashMap.HashMap<string, stri
     return this.argumentOption.shortDescription
   }
 
-  modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<HashMap.HashMap<string, string>> {
+  modifySingle(
+    f: <_>(single: Single<_>) => Single<_>
+  ): Options.Options<HashMap.HashMap<string, string>> {
     return new KeyValueMap(f(this.argumentOption))
   }
 
@@ -545,7 +581,11 @@ export class KeyValueMap implements Options.Options<HashMap.HashMap<string, stri
   parse(
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+  ): Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, ReadonlyArray<string>]
+  > {
     const names = ReadonlyArray.map(
       this.argumentOption.names,
       (name) => InternalCliConfig.normalizeCase(config, name)
@@ -611,7 +651,9 @@ export class KeyValueMap implements Options.Options<HashMap.HashMap<string, stri
     return this.argumentOption.validate(args, config).pipe(Effect.matchEffect({
       onFailure: (e) =>
         InternalValidationError.isKeyValuesDetected(e)
-          ? Effect.forEach(e.keyValues, (kv) => extractKeyValue(kv)).pipe(Effect.map(HashMap.fromIterable))
+          ? Effect.forEach(e.keyValues, (kv) => extractKeyValue(kv)).pipe(
+            Effect.map(HashMap.fromIterable)
+          )
           : Effect.fail(e),
       onSuccess: (kv) => extractKeyValue(kv as string).pipe(Effect.map(HashMap.make))
     }))
@@ -634,24 +676,28 @@ export const isOptions = (u: unknown): u is Options.Options<unknown> =>
 export const isEmpty = (u: unknown): u is Empty => isOptions(u) && "_tag" in u && u._tag === "Empty"
 
 /** @internal */
-export const isSingle = (u: unknown): u is Single<unknown> => isOptions(u) && "_tag" in u && u._tag === "Single"
+export const isSingle = (u: unknown): u is Single<unknown> =>
+  isOptions(u) && "_tag" in u && u._tag === "Single"
 
 /** @internal */
-export const isMap = (u: unknown): u is Map<unknown, unknown> => isOptions(u) && "_tag" in u && u._tag === "Map"
+export const isMap = (u: unknown): u is Map<unknown, unknown> =>
+  isOptions(u) && "_tag" in u && u._tag === "Map"
 
 /** @internal */
 export const isOrElse = (u: unknown): u is OrElse<unknown, unknown> =>
   isOptions(u) && "_tag" in u && u._tag === "OrElse"
 
 /** @internal */
-export const isBoth = (u: unknown): u is Both<unknown, unknown> => isOptions(u) && "_tag" in u && u._tag === "Both"
+export const isBoth = (u: unknown): u is Both<unknown, unknown> =>
+  isOptions(u) && "_tag" in u && u._tag === "Both"
 
 /** @internal */
 export const isWithDefault = (u: unknown): u is WithDefault<unknown> =>
   isOptions(u) && "_tag" in u && u._tag === "WithDefault"
 
 /** @internal */
-export const isKeyValueMap = (u: unknown): u is KeyValueMap => isOptions(u) && "_tag" in u && u._tag === "KeyValueMap"
+export const isKeyValueMap = (u: unknown): u is KeyValueMap =>
+  isOptions(u) && "_tag" in u && u._tag === "KeyValueMap"
 
 // =============================================================================
 // Constructors
@@ -667,7 +713,9 @@ export const all: <
     } else if (Array.isArray(arguments[0])) {
       return allTupled(arguments[0]) as any
     } else {
-      const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Options.Options<any> }>)
+      const entries = Object.entries(
+        arguments[0] as Readonly<{ [K: string]: Options.Options<any> }>
+      )
       let result = map(entries[0][1], (value) => ({ [entries[0][0]]: value }))
       if (entries.length === 1) {
         return result as any
@@ -692,7 +740,10 @@ const defaultBooleanOptions = {
 }
 
 /** @internal */
-export const boolean = (name: string, options: Options.Options.BooleanOptionConfig = {}): Options.Options<boolean> => {
+export const boolean = (
+  name: string,
+  options: Options.Options.BooleanOptionConfig = {}
+): Options.Options<boolean> => {
   const { aliases, ifPresent, negationNames } = { ...defaultBooleanOptions, ...options }
   const option = new Single(
     name,
@@ -717,7 +768,9 @@ export const choice = <A extends string, C extends ReadonlyArray.NonEmptyReadonl
   name: string,
   choices: C
 ): Options.Options<C[number]> => {
-  const primitive = InternalPrimitive.choice(ReadonlyArray.map(choices, (choice) => [choice, choice]))
+  const primitive = InternalPrimitive.choice(
+    ReadonlyArray.map(choices, (choice) => [choice, choice])
+  )
   return new Single(name, ReadonlyArray.empty(), primitive)
 }
 
@@ -725,7 +778,8 @@ export const choice = <A extends string, C extends ReadonlyArray.NonEmptyReadonl
 export const choiceWithValue = <C extends ReadonlyArray.NonEmptyReadonlyArray<[string, any]>>(
   name: string,
   choices: C
-): Options.Options<C[number][1]> => new Single(name, ReadonlyArray.empty(), InternalPrimitive.choice(choices))
+): Options.Options<C[number][1]> =>
+  new Single(name, ReadonlyArray.empty(), InternalPrimitive.choice(choices))
 
 /** @internal */
 export const date = (name: string): Options.Options<Date> =>
@@ -733,8 +787,15 @@ export const date = (name: string): Options.Options<Date> =>
 
 /** @internal */
 export const filterMap = dual<
-  <A, B>(f: (a: A) => Option.Option<B>, message: string) => (self: Options.Options<A>) => Options.Options<B>,
-  <A, B>(self: Options.Options<A>, f: (a: A) => Option.Option<B>, message: string) => Options.Options<B>
+  <A, B>(
+    f: (a: A) => Option.Option<B>,
+    message: string
+  ) => (self: Options.Options<A>) => Options.Options<B>,
+  <A, B>(
+    self: Options.Options<A>,
+    f: (a: A) => Option.Option<B>,
+    message: string
+  ) => Options.Options<B>
 >(3, (self, f, message) =>
   mapOrFail(self, (a) =>
     Option.match(f(a), {
@@ -812,8 +873,15 @@ export const mapOrFail = dual<
 
 /** @internal */
 export const mapTryCatch = dual<
-  <A, B>(f: (a: A) => B, onError: (e: unknown) => HelpDoc.HelpDoc) => (self: Options.Options<A>) => Options.Options<B>,
-  <A, B>(self: Options.Options<A>, f: (a: A) => B, onError: (e: unknown) => HelpDoc.HelpDoc) => Options.Options<B>
+  <A, B>(
+    f: (a: A) => B,
+    onError: (e: unknown) => HelpDoc.HelpDoc
+  ) => (self: Options.Options<A>) => Options.Options<B>,
+  <A, B>(
+    self: Options.Options<A>,
+    f: (a: A) => B,
+    onError: (e: unknown) => HelpDoc.HelpDoc
+  ) => Options.Options<B>
 >(3, (self, f, onError) =>
   mapOrFail(self, (a) => {
     try {
@@ -835,7 +903,9 @@ export const orElse = dual<
 
 /** @internal */
 export const orElseEither = dual<
-  <B>(that: Options.Options<B>) => <A>(self: Options.Options<A>) => Options.Options<Either.Either<A, B>>,
+  <B>(
+    that: Options.Options<B>
+  ) => <A>(self: Options.Options<A>) => Options.Options<Either.Either<A, B>>,
   <A, B>(self: Options.Options<A>, that: Options.Options<B>) => Options.Options<Either.Either<A, B>>
 >(2, (self, that) => new OrElse(self, that))
 
@@ -882,7 +952,13 @@ export const withAlias = dual<
 >(2, (self, alias) =>
   self.modifySingle((single) => {
     const aliases = ReadonlyArray.append(single.aliases, alias)
-    return new Single(single.name, aliases, single.primitiveType, single.description, single.pseudoName)
+    return new Single(
+      single.name,
+      aliases,
+      single.primitiveType,
+      single.description,
+      single.pseudoName
+    )
   }))
 
 /** @internal */
@@ -898,7 +974,13 @@ export const withDescription = dual<
 >(2, (self, desc) =>
   self.modifySingle((single) => {
     const description = InternalHelpDoc.sequence(single.description, InternalHelpDoc.p(desc))
-    return new Single(single.name, single.aliases, single.primitiveType, description, single.pseudoName)
+    return new Single(
+      single.name,
+      single.aliases,
+      single.primitiveType,
+      description,
+      single.pseudoName
+    )
   }))
 
 /** @internal */
@@ -950,7 +1032,9 @@ const processArgs = (
     const tail = ReadonlyArray.tailNonEmpty(args)
     if (CLUSTERED_REGEX.test(head.trim())) {
       const unclustered = head.substring(1).split("").map((c) => `-${c}`)
-      return Effect.fail(InternalValidationError.unclusteredFlag(InternalHelpDoc.empty, unclustered, tail))
+      return Effect.fail(
+        InternalValidationError.unclusteredFlag(InternalHelpDoc.empty, unclustered, tail)
+      )
     }
     if (head.startsWith("--")) {
       const result = FLAG_REGEX.exec(head)
@@ -980,7 +1064,9 @@ const matchOptions = (
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
 > => {
-  if (ReadonlyArray.isNonEmptyReadonlyArray(input) && ReadonlyArray.isNonEmptyReadonlyArray(options)) {
+  if (
+    ReadonlyArray.isNonEmptyReadonlyArray(input) && ReadonlyArray.isNonEmptyReadonlyArray(options)
+  ) {
     return findOptions(input, options, config).pipe(
       Effect.flatMap(([otherArgs, otherOptions, map1]) => {
         if (HashMap.isEmpty(map1)) {
@@ -1051,7 +1137,9 @@ const findOptions = (
             )
           ),
         UnclusteredFlag: (e) =>
-          matchUnclustered(e.unclustered, e.rest, options, config).pipe(Effect.catchAll(() => Effect.fail(e)))
+          matchUnclustered(e.unclustered, e.rest, options, config).pipe(
+            Effect.catchAll(() => Effect.fail(e))
+          )
       })
     )
   }
@@ -1079,11 +1167,17 @@ const matchUnclustered = (
       Effect.flatMap(([_, opts1, map1]) => {
         if (HashMap.isEmpty(map1)) {
           return Effect.fail(
-            InternalValidationError.unclusteredFlag(InternalHelpDoc.empty, ReadonlyArray.empty(), tail)
+            InternalValidationError.unclusteredFlag(
+              InternalHelpDoc.empty,
+              ReadonlyArray.empty(),
+              tail
+            )
           )
         }
         return matchUnclustered(otherFlags, tail, opts1, config).pipe(
-          Effect.map(([_, opts2, map2]) => [tail, opts2, merge(map1, ReadonlyArray.fromIterable(map2))])
+          Effect.map((
+            [_, opts2, map2]
+          ) => [tail, opts2, merge(map1, ReadonlyArray.fromIterable(map2))])
         )
       })
     )

@@ -1,15 +1,18 @@
 import * as Option from "effect/Option"
-import type * as BuiltInOptions from "../BuiltInOptions"
-import type * as Command from "../Command"
-import type * as HelpDoc from "../HelpDoc"
-import type * as Options from "../Options"
-import type * as ShellType from "../ShellType"
-import type * as Usage from "../Usage"
-import * as options from "./options"
-import * as _shellType from "./shellType"
+import type * as BuiltInOptions from "../BuiltInOptions.js"
+import type * as Command from "../Command.js"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as Options from "../Options.js"
+import type * as ShellType from "../ShellType.js"
+import type * as Usage from "../Usage.js"
+import * as options from "./options.js"
+import * as _shellType from "./shellType.js"
 
 /** @internal */
-export const showCompletions = (index: number, shellType: ShellType.ShellType): BuiltInOptions.BuiltInOptions => ({
+export const showCompletions = (
+  index: number,
+  shellType: ShellType.ShellType
+): BuiltInOptions.BuiltInOptions => ({
   _tag: "ShowCompletions",
   index,
   shellType
@@ -26,7 +29,10 @@ export const showCompletionScript = (
 })
 
 /** @internal */
-export const showHelp = (usage: Usage.Usage, helpDoc: HelpDoc.HelpDoc): BuiltInOptions.BuiltInOptions => ({
+export const showHelp = (
+  usage: Usage.Usage,
+  helpDoc: HelpDoc.HelpDoc
+): BuiltInOptions.BuiltInOptions => ({
   _tag: "ShowHelp",
   usage,
   helpDoc
@@ -44,16 +50,18 @@ export const isShowCompletionScript = (
 ): self is BuiltInOptions.ShowCompletionScript => self._tag === "ShowCompletionScript"
 
 /** @internal */
-export const isShowCompletions = (self: BuiltInOptions.BuiltInOptions): self is BuiltInOptions.ShowCompletions =>
-  self._tag === "ShowCompletions"
+export const isShowCompletions = (
+  self: BuiltInOptions.BuiltInOptions
+): self is BuiltInOptions.ShowCompletions => self._tag === "ShowCompletions"
 
 /** @internal */
 export const isShowHelp = (self: BuiltInOptions.BuiltInOptions): self is BuiltInOptions.ShowHelp =>
   self._tag === "ShowHelp"
 
 /** @internal */
-export const isShowWizard = (self: BuiltInOptions.BuiltInOptions): self is BuiltInOptions.ShowWizard =>
-  self._tag === "ShowWizard"
+export const isShowWizard = (
+  self: BuiltInOptions.BuiltInOptions
+): self is BuiltInOptions.ShowWizard => self._tag === "ShowWizard"
 
 /** @internal */
 export const builtInOptions = <A>(
@@ -83,10 +91,14 @@ export const builtInOptions = <A>(
       return Option.some(showWizard(command))
     }
     if (Option.isSome(builtIn.shellCompletionScriptPath) && Option.isSome(builtIn.shellType)) {
-      return Option.some(showCompletionScript(builtIn.shellCompletionScriptPath.value, builtIn.shellType.value))
+      return Option.some(
+        showCompletionScript(builtIn.shellCompletionScriptPath.value, builtIn.shellType.value)
+      )
     }
     if (Option.isSome(builtIn.shellType) && Option.isSome(builtIn.shellCompletionIndex)) {
-      return Option.some(showCompletions(builtIn.shellCompletionIndex.value, builtIn.shellType.value))
+      return Option.some(
+        showCompletions(builtIn.shellCompletionIndex.value, builtIn.shellType.value)
+      )
     }
     return Option.none()
   })

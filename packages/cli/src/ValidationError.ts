@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type { HelpDoc } from "./HelpDoc"
-import * as internal from "./internal/validationError"
+import type { HelpDoc } from "./HelpDoc.js"
+import * as internal from "./internal/validationError.js"
 
 /**
  * @since 1.0.0
@@ -133,31 +133,36 @@ export declare namespace ValidationError {
  * @since 1.0.0
  * @category refinements
  */
-export const isCommandMismatch: (self: ValidationError) => self is CommandMismatch = internal.isCommandMismatch
+export const isCommandMismatch: (self: ValidationError) => self is CommandMismatch =
+  internal.isCommandMismatch
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isCorrectedFlag: (self: ValidationError) => self is CorrectedFlag = internal.isCorrectedFlag
+export const isCorrectedFlag: (self: ValidationError) => self is CorrectedFlag =
+  internal.isCorrectedFlag
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isInvalidArgument: (self: ValidationError) => self is InvalidArgument = internal.isInvalidArgument
+export const isInvalidArgument: (self: ValidationError) => self is InvalidArgument =
+  internal.isInvalidArgument
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isInvalidValue: (self: ValidationError) => self is InvalidValue = internal.isInvalidValue
+export const isInvalidValue: (self: ValidationError) => self is InvalidValue =
+  internal.isInvalidValue
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isKeyValuesDetected: (self: ValidationError) => self is KeyValuesDetected = internal.isKeyValuesDetected
+export const isKeyValuesDetected: (self: ValidationError) => self is KeyValuesDetected =
+  internal.isKeyValuesDetected
 
 /**
  * @since 1.0.0
@@ -169,25 +174,29 @@ export const isMissingFlag: (self: ValidationError) => self is MissingFlag = int
  * @since 1.0.0
  * @category refinements
  */
-export const isMissingValue: (self: ValidationError) => self is MissingValue = internal.isMissingValue
+export const isMissingValue: (self: ValidationError) => self is MissingValue =
+  internal.isMissingValue
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isMissingSubcommand: (self: ValidationError) => self is MissingSubcommand = internal.isMissingSubcommand
+export const isMissingSubcommand: (self: ValidationError) => self is MissingSubcommand =
+  internal.isMissingSubcommand
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isNoBuiltInMatch: (self: ValidationError) => self is NoBuiltInMatch = internal.isNoBuiltInMatch
+export const isNoBuiltInMatch: (self: ValidationError) => self is NoBuiltInMatch =
+  internal.isNoBuiltInMatch
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isUnclusteredFlag: (self: ValidationError) => self is UnclusteredFlag = internal.isUnclusteredFlag
+export const isUnclusteredFlag: (self: ValidationError) => self is UnclusteredFlag =
+  internal.isUnclusteredFlag
 
 /**
  * @since 1.0.0
@@ -217,8 +226,10 @@ export const invalidValue: (error: HelpDoc) => ValidationError = internal.invali
  * @since 1.0.0
  * @category constructors
  */
-export const keyValuesDetected: (error: HelpDoc, keyValues: ReadonlyArray<string>) => ValidationError =
-  internal.keyValuesDetected
+export const keyValuesDetected: (
+  error: HelpDoc,
+  keyValues: ReadonlyArray<string>
+) => ValidationError = internal.keyValuesDetected
 
 /**
  * @since 1.0.0

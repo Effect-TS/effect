@@ -1,4 +1,4 @@
-import type * as PromptAction from "../../Prompt/Action"
+import type * as PromptAction from "../../Prompt/Action.js"
 
 /** @internal */
 export const beep: PromptAction.PromptAction<never, never> = {

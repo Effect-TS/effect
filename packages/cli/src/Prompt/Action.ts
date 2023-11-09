@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "../internal/prompt/action"
+import * as internal from "../internal/prompt/action.js"
 
 /**
  * @since 1.0.0

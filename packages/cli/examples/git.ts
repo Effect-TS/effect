@@ -52,7 +52,10 @@ export interface RemoveRemote extends Data.Case {
 export const RemoveRemote = Data.tagged<RemoveRemote>("RemoveRemote")
 
 const add: Command.Command<GitSubcommand> = pipe(
-  Command.standard("add", { options: Options.boolean("m"), args: Args.text({ name: "directory" }) }),
+  Command.standard("add", {
+    options: Options.boolean("m"),
+    args: Args.text({ name: "directory" })
+  }),
   Command.withHelp(HelpDoc.p("Description of the `git add` subcommand")),
   Command.map(({ args: directory, options: modified }) => Add({ modified, directory }))
 )
@@ -87,30 +90,33 @@ const git: Command.Command<Git> = pipe(
   Command.map(({ options: version, subcommand }) => Git({ version, subcommand }))
 )
 
-const handleRemoteSubcomand = (verbose: boolean) => (command: RemoteSubcommand): Effect.Effect<never, never, void> => {
-  switch (command._tag) {
-    case "AddRemote": {
-      const msg = `Executing 'git remote add' with '--name' set to '${command.name}', ` +
-        `'--url' set to '${command.url}', and '--verbose' set to ${verbose}`
-      return Effect.log(msg)
-    }
-    case "RemoveRemote": {
-      const msg = `Executing 'git remote remove' with '--name' set to '${command.name}', ` +
-        `and '--verbose' set to ${verbose}`
-      return Effect.log(msg)
+const handleRemoteSubcomand =
+  (verbose: boolean) => (command: RemoteSubcommand): Effect.Effect<never, never, void> => {
+    switch (command._tag) {
+      case "AddRemote": {
+        const msg = `Executing 'git remote add' with '--name' set to '${command.name}', ` +
+          `'--url' set to '${command.url}', and '--verbose' set to ${verbose}`
+        return Effect.log(msg)
+      }
+      case "RemoveRemote": {
+        const msg = `Executing 'git remote remove' with '--name' set to '${command.name}', ` +
+          `and '--verbose' set to ${verbose}`
+        return Effect.log(msg)
+      }
     }
   }
-}
 
 const handleGitSubcommand = (command: GitSubcommand): Effect.Effect<never, never, void> => {
   switch (command._tag) {
     case "Add": {
-      const msg = `Executing 'git add ${command.directory}' with modified flag set to '${command.modified}'`
+      const msg =
+        `Executing 'git add ${command.directory}' with modified flag set to '${command.modified}'`
       return Effect.log(msg)
     }
     case "Remote": {
       return Option.match(command.subcommand, {
-        onNone: () => Effect.log(`Executing 'git remote' with verbose flag set to '${command.verbose}'`),
+        onNone: () =>
+          Effect.log(`Executing 'git remote' with verbose flag set to '${command.verbose}'`),
         onSome: handleRemoteSubcomand(command.verbose)
       })
     }

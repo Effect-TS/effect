@@ -4,7 +4,7 @@ import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import { dual } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as Span from "../../HelpDoc/Span"
+import type * as Span from "../../HelpDoc/Span.js"
 
 /** @internal */
 export const text = (value: string): Span.Span => ({

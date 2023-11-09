@@ -17,19 +17,25 @@ const validation = <A>(
   args: ReadonlyArray<string>,
   config: CliConfig.CliConfig
 ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]> =>
-  Options.validate(options, args, config).pipe(Effect.flatMap(([err, rest, a]) =>
-    Option.match(err, {
-      onNone: () => Effect.succeed([rest, a]),
-      onSome: Effect.fail
-    })
-  ))
+  Options.validate(options, args, config).pipe(
+    Effect.flatMap(([err, rest, a]) =>
+      Option.match(err, {
+        onNone: () => Effect.succeed([rest, a]),
+        onSome: Effect.fail
+      })
+    )
+  )
 
 describe("Options", () => {
   it("should validate without ambiguity", () =>
     Effect.gen(function*(_) {
       const args = ReadonlyArray.make("--firstName", "--lastName", "--lastName", "--firstName")
-      const result1 = yield* _(validation(Options.all([firstName, lastName]), args, CliConfig.defaultConfig))
-      const result2 = yield* _(validation(Options.all([lastName, firstName]), args, CliConfig.defaultConfig))
+      const result1 = yield* _(
+        validation(Options.all([firstName, lastName]), args, CliConfig.defaultConfig)
+      )
+      const result2 = yield* _(
+        validation(Options.all([lastName, firstName]), args, CliConfig.defaultConfig)
+      )
       const expected1 = [ReadonlyArray.empty(), ReadonlyArray.make("--lastName", "--firstName")]
       const expected2 = [ReadonlyArray.empty(), ReadonlyArray.make("--firstName", "--lastName")]
       expect(result1).toEqual(expected1)
@@ -86,8 +92,12 @@ describe("Options", () => {
       const result3 = yield* _(validation(option, ["-v"], CliConfig.defaultConfig))
       const result4 = yield* _(validation(option, ["--silent"], CliConfig.defaultConfig))
       const result5 = yield* _(validation(option, ["-s"], CliConfig.defaultConfig))
-      const result6 = yield* _(Effect.flip(validation(option, ["--verbose", "--silent"], CliConfig.defaultConfig)))
-      const result7 = yield* _(Effect.flip(validation(option, ["-v", "-s"], CliConfig.defaultConfig)))
+      const result6 = yield* _(
+        Effect.flip(validation(option, ["--verbose", "--silent"], CliConfig.defaultConfig))
+      )
+      const result7 = yield* _(
+        Effect.flip(validation(option, ["-v", "-s"], CliConfig.defaultConfig))
+      )
       expect(result1).toEqual([[], false])
       expect(result2).toEqual([[], true])
       expect(result3).toEqual([[], true])
@@ -116,7 +126,9 @@ describe("Options", () => {
 
   it("validates a text option", () =>
     Effect.gen(function*(_) {
-      const result = yield* _(validation(firstName, ["--firstName", "John"], CliConfig.defaultConfig))
+      const result = yield* _(
+        validation(firstName, ["--firstName", "John"], CliConfig.defaultConfig)
+      )
       expect(result).toEqual([[], "John"])
     }).pipe(Effect.runPromise))
 
@@ -360,7 +372,15 @@ describe("Options", () => {
 
   it("keyValueMap - validate should keep non-key-value parameters that follow the key-value pairs (only the first key/value pair is preceded by alias)", () =>
     Effect.gen(function*(_) {
-      const args = ReadonlyArray.make("-d", "key1=val1", "key2=val2", "key3=val3", "arg1", "arg2", "--verbose")
+      const args = ReadonlyArray.make(
+        "-d",
+        "key1=val1",
+        "key2=val2",
+        "key3=val3",
+        "arg1",
+        "arg2",
+        "--verbose"
+      )
       const result = yield* _(validation(defs, args, CliConfig.defaultConfig))
       expect(result).toEqual([
         ["arg1", "arg2", "--verbose"],

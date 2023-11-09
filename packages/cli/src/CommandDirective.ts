@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type { BuiltInOptions } from "./BuiltInOptions"
-import * as InternalCommandDirective from "./internal/commandDirective"
+import type { BuiltInOptions } from "./BuiltInOptions.js"
+import * as InternalCommandDirective from "./internal/commandDirective.js"
 
 /**
  * @since 1.0.0
@@ -33,13 +33,15 @@ export interface UserDefined<A> {
  * @since 1.0.0
  * @category constructors
  */
-export const builtIn: (option: BuiltInOptions) => CommandDirective<never> = InternalCommandDirective.builtIn
+export const builtIn: (option: BuiltInOptions) => CommandDirective<never> =
+  InternalCommandDirective.builtIn
 
 /**
  * @since 1.0.0
  * @category refinements
  */
-export const isBuiltIn: <A>(self: CommandDirective<A>) => self is BuiltIn = InternalCommandDirective.isBuiltIn
+export const isBuiltIn: <A>(self: CommandDirective<A>) => self is BuiltIn =
+  InternalCommandDirective.isBuiltIn
 
 /**
  * @since 1.0.0

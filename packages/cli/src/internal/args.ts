@@ -4,18 +4,18 @@ import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as Args from "../Args"
-import type * as CliConfig from "../CliConfig"
-import type * as HelpDoc from "../HelpDoc"
-import type * as Parameter from "../Parameter"
-import type * as Primitive from "../Primitive"
-import type * as Usage from "../Usage"
-import type * as ValidationError from "../ValidationError"
-import * as InternalHelpDoc from "./helpDoc"
-import * as InternalSpan from "./helpDoc/span"
-import * as InternalPrimitive from "./primitive"
-import * as InternalUsage from "./usage"
-import * as InternalValidationError from "./validationError"
+import type * as Args from "../Args.js"
+import type * as CliConfig from "../CliConfig.js"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as Parameter from "../Parameter.js"
+import type * as Primitive from "../Primitive.js"
+import type * as Usage from "../Usage.js"
+import type * as ValidationError from "../ValidationError.js"
+import * as InternalHelpDoc from "./helpDoc.js"
+import * as InternalSpan from "./helpDoc/span.js"
+import * as InternalPrimitive from "./primitive.js"
+import * as InternalUsage from "./usage.js"
+import * as InternalValidationError from "./validationError.js"
 
 const ArgsSymbolKey = "@effect/cli/Args"
 
@@ -162,7 +162,11 @@ export class Single<A> implements Args.Args<A>, Parameter.Input {
   parse(
     _args: ReadonlyArray<string>,
     _config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+  ): Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, ReadonlyArray<string>]
+  > {
     return Effect.succeed([ReadonlyArray.empty(), ReadonlyArray.empty()])
   }
 
@@ -221,7 +225,11 @@ export class Both<A, B> implements Args.Args<readonly [A, B]> {
   validate(
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, readonly [A, B]]> {
+  ): Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, readonly [A, B]]
+  > {
     return this.left.validate(args, config).pipe(
       Effect.flatMap(([args, a]) =>
         this.right.validate(args, config).pipe(
@@ -259,7 +267,9 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
   }
 
   get maxSize(): number {
-    return Math.floor(Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER / 2) * this.value.maxSize)
+    return Math.floor(
+      Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER / 2) * this.value.maxSize
+    )
   }
 
   get identifier(): Option.Option<string> {
@@ -270,7 +280,9 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
     return InternalHelpDoc.mapDescriptionList(this.value.help, (oldSpan, oldBlock) => {
       const min = this.minSize
       const max = this.maxSize
-      const newSpan = InternalSpan.text(Option.isSome(this.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`)
+      const newSpan = InternalSpan.text(
+        Option.isSome(this.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`
+      )
       const newBlock = InternalHelpDoc.p(
         Option.isSome(this.max)
           ? `This argument must be repeated at least ${min} times and may be repeated up to ${max} times.`
@@ -293,13 +305,21 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
   validate(
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<A>]> {
+  ): Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, ReadonlyArray<A>]
+  > {
     const min1 = Option.getOrElse(this.min, () => 0)
     const max1 = Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER)
     const loop = (
       args: ReadonlyArray<string>,
       acc: ReadonlyArray<A>
-    ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<A>]> => {
+    ): Effect.Effect<
+      never,
+      ValidationError.ValidationError,
+      readonly [ReadonlyArray<string>, ReadonlyArray<A>]
+    > => {
       if (acc.length >= max1) {
         return Effect.succeed([args, acc])
       }
@@ -311,13 +331,19 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
         onSuccess: ([args, a]) => loop(args, ReadonlyArray.prepend(acc, a))
       }))
     }
-    return loop(args, ReadonlyArray.empty()).pipe(Effect.map(([args, acc]) => [args, ReadonlyArray.reverse(acc)]))
+    return loop(args, ReadonlyArray.empty()).pipe(
+      Effect.map(([args, acc]) => [args, ReadonlyArray.reverse(acc)])
+    )
   }
 
   parse(
     _args: ReadonlyArray<string>,
     _config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]> {
+  ): Effect.Effect<
+    never,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, ReadonlyArray<string>]
+  > {
     return Effect.succeed([ReadonlyArray.empty(), ReadonlyArray.empty()])
   }
 
@@ -400,22 +426,27 @@ export class Map<A, B> implements Args.Args<B> {
 // =============================================================================
 
 /** @internal */
-export const isArgs = (u: unknown): u is Args.Args<unknown> => typeof u === "object" && u != null && ArgsTypeId in u
+export const isArgs = (u: unknown): u is Args.Args<unknown> =>
+  typeof u === "object" && u != null && ArgsTypeId in u
 
 /** @internal */
 export const isEmpty = (u: unknown): u is Empty => isArgs(u) && "_tag" in u && u._tag === "Empty"
 
 /** @internal */
-export const isSingle = (u: unknown): u is Single<unknown> => isArgs(u) && "_tag" in u && u._tag === "Single"
+export const isSingle = (u: unknown): u is Single<unknown> =>
+  isArgs(u) && "_tag" in u && u._tag === "Single"
 
 /** @internal */
-export const isBoth = (u: unknown): u is Both<unknown, unknown> => isArgs(u) && "_tag" in u && u._tag === "Both"
+export const isBoth = (u: unknown): u is Both<unknown, unknown> =>
+  isArgs(u) && "_tag" in u && u._tag === "Both"
 
 /** @internal */
-export const isVariadic = (u: unknown): u is Variadic<unknown> => isArgs(u) && "_tag" in u && u._tag === "Variadic"
+export const isVariadic = (u: unknown): u is Variadic<unknown> =>
+  isArgs(u) && "_tag" in u && u._tag === "Variadic"
 
 /** @internal */
-export const isMap = (u: unknown): u is Map<unknown, unknown> => isArgs(u) && "_tag" in u && u._tag === "Map"
+export const isMap = (u: unknown): u is Map<unknown, unknown> =>
+  isArgs(u) && "_tag" in u && u._tag === "Map"
 
 // =============================================================================
 // Constructors
@@ -504,11 +535,18 @@ export const atMost = dual<
 export const between = dual<
   {
     (min: 0, max: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>
-    (min: number, max: number): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
+    (
+      min: number,
+      max: number
+    ): <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   },
   {
     <A>(self: Args.Args<A>, min: 0, max: number): Args.Args<ReadonlyArray<A>>
-    <A>(self: Args.Args<A>, min: number, max: number): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
+    <A>(
+      self: Args.Args<A>,
+      min: number,
+      max: number
+    ): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   }
 >(3, (self, min, max) => new Variadic(self, Option.some(min), Option.some(max)) as any)
 
@@ -526,8 +564,15 @@ export const mapOrFail = dual<
 
 /** @internal */
 export const mapTryCatch = dual<
-  <A, B>(f: (a: A) => B, onError: (e: unknown) => HelpDoc.HelpDoc) => (self: Args.Args<A>) => Args.Args<B>,
-  <A, B>(self: Args.Args<A>, f: (a: A) => B, onError: (e: unknown) => HelpDoc.HelpDoc) => Args.Args<B>
+  <A, B>(
+    f: (a: A) => B,
+    onError: (e: unknown) => HelpDoc.HelpDoc
+  ) => (self: Args.Args<A>) => Args.Args<B>,
+  <A, B>(
+    self: Args.Args<A>,
+    f: (a: A) => B,
+    onError: (e: unknown) => HelpDoc.HelpDoc
+  ) => Args.Args<B>
 >(3, (self, f, onError) =>
   mapOrFail(self, (a) => {
     try {
@@ -542,7 +587,9 @@ export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
   new Variadic(self, Option.none(), Option.none())
 
 /** @internal */
-export const repeatedAtLeastOnce = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>> =>
+export const repeatedAtLeastOnce = <A>(
+  self: Args.Args<A>
+): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>> =>
   map(new Variadic(self, Option.some(1), Option.none()), (values) => {
     if (ReadonlyArray.isNonEmptyReadonlyArray(values)) {
       return values

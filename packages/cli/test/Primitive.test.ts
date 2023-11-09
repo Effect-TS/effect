@@ -25,7 +25,9 @@ describe("Primitive", () => {
     it("validates that invalid boolean representations are rejected", () =>
       Effect.gen(function*(_) {
         const bool = Primitive.boolean(Option.none())
-        const result = yield* _(Effect.flip(bool.validate(Option.some("bad"), CliConfig.defaultConfig)))
+        const result = yield* _(
+          Effect.flip(bool.validate(Option.some("bad"), CliConfig.defaultConfig))
+        )
         expect(result).toBe("Unable to recognize 'bad' as a valid boolean")
       }).pipe(Effect.runPromise))
 
@@ -40,16 +42,20 @@ describe("Primitive", () => {
 
   describe("Choice", () => {
     it("validates a choice that is one of the alternatives", () =>
-      fc.assert(fc.asyncProperty(pairsArb, ([[selectedName, selectedValue], pairs]) =>
-        Effect.gen(function*(_) {
-          const alternatives = Function.unsafeCoerce<
-            ReadonlyArray<[string, number]>,
-            ReadonlyArray.NonEmptyReadonlyArray<[string, number]>
-          >(pairs)
-          const choice = Primitive.choice(alternatives)
-          const result = yield* _(choice.validate(Option.some(selectedName), CliConfig.defaultConfig))
-          expect(result).toEqual(selectedValue)
-        }).pipe(Effect.runPromise))))
+      fc.assert(
+        fc.asyncProperty(pairsArb, ([[selectedName, selectedValue], pairs]) =>
+          Effect.gen(function*(_) {
+            const alternatives = Function.unsafeCoerce<
+              ReadonlyArray<[string, number]>,
+              ReadonlyArray.NonEmptyReadonlyArray<[string, number]>
+            >(pairs)
+            const choice = Primitive.choice(alternatives)
+            const result = yield* _(
+              choice.validate(Option.some(selectedName), CliConfig.defaultConfig)
+            )
+            expect(result).toEqual(selectedValue)
+          }).pipe(Effect.runPromise))
+      ))
 
     it("does not validate a choice that is not one of the alternatives", () =>
       fc.assert(fc.asyncProperty(pairsArb, ([tuple, pairs]) =>
@@ -60,14 +66,20 @@ describe("Primitive", () => {
             ReadonlyArray.NonEmptyReadonlyArray<[string, number]>
           >(ReadonlyArray.filter(pairs, (pair) => !Equal.equals(tuple, pair)))
           const choice = Primitive.choice(alternatives)
-          const result = yield* _(Effect.flip(choice.validate(Option.some(selectedName), CliConfig.defaultConfig)))
+          const result = yield* _(
+            Effect.flip(choice.validate(Option.some(selectedName), CliConfig.defaultConfig))
+          )
           expect(result).toMatch(/^Expected one of the following cases:\s.*/)
         }).pipe(Effect.runPromise))))
   })
 
   simplePrimitiveTestSuite(Primitive.date, fc.date(), "Date")
 
-  simplePrimitiveTestSuite(Primitive.float, fc.float({ noNaN: true }).filter((n) => n !== 0), "Float")
+  simplePrimitiveTestSuite(
+    Primitive.float,
+    fc.float({ noNaN: true }).filter((n) => n !== 0),
+    "Float"
+  )
 
   simplePrimitiveTestSuite(Primitive.integer, fc.integer(), "Integer")
 
@@ -75,7 +87,9 @@ describe("Primitive", () => {
     it("validates all user-defined text", () =>
       fc.assert(fc.asyncProperty(fc.string(), (str) =>
         Effect.gen(function*(_) {
-          const result = yield* _(Primitive.text.validate(Option.some(str), CliConfig.defaultConfig))
+          const result = yield* _(
+            Primitive.text.validate(Option.some(str), CliConfig.defaultConfig)
+          )
           expect(result).toEqual(str)
         }).pipe(Effect.runPromise))))
   })
@@ -97,7 +111,9 @@ const simplePrimitiveTestSuite = <A>(
 
     it(`validates that invalid values are rejected`, () =>
       Effect.gen(function*(_) {
-        const result = yield* _(Effect.flip(primitive.validate(Option.some("bad"), CliConfig.defaultConfig)))
+        const result = yield* _(
+          Effect.flip(primitive.validate(Option.some("bad"), CliConfig.defaultConfig))
+        )
         expect(result).toBe(`'bad' is not a ${primitive.typeName}`)
       }).pipe(Effect.runPromise))
   })

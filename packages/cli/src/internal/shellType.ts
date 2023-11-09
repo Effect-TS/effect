@@ -1,6 +1,6 @@
-import type * as Options from "../Options"
-import type * as ShellType from "../ShellType"
-import * as InternalOptions from "./options"
+import type * as Options from "../Options.js"
+import type * as ShellType from "../ShellType.js"
+import * as InternalOptions from "./options.js"
 
 /** @internal */
 export const bash: ShellType.ShellType = {
@@ -13,8 +13,11 @@ export const zShell: ShellType.ShellType = {
 }
 
 /** @internal */
-export const shellOption: Options.Options<ShellType.ShellType> = InternalOptions.choiceWithValue("shell-type", [
-  ["sh", bash],
-  ["bash", bash],
-  ["zsh", zShell]
-])
+export const shellOption: Options.Options<ShellType.ShellType> = InternalOptions.choiceWithValue(
+  "shell-type",
+  [
+    ["sh", bash],
+    ["bash", bash],
+    ["zsh", zShell]
+  ]
+)

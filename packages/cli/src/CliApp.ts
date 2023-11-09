@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 import type { Effect } from "effect/Effect"
-import type { Command } from "./Command"
-import type { HelpDoc } from "./HelpDoc"
-import type { Span } from "./HelpDoc/Span"
-import * as InternalCliApp from "./internal/cliApp"
-import type { ValidationError } from "./ValidationError"
+import type { Command } from "./Command.js"
+import type { HelpDoc } from "./HelpDoc.js"
+import type { Span } from "./HelpDoc/Span.js"
+import * as InternalCliApp from "./internal/cliApp.js"
+import type { ValidationError } from "./ValidationError.js"
 
 /**
  * A `CliApp<A>` is a complete description of a command-line application.

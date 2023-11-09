@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as InternalSpan from "../internal/helpDoc/span"
+import * as InternalSpan from "../internal/helpDoc/span.js"
 
 /**
  * @since 1.0.0

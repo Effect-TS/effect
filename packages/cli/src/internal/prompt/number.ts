@@ -5,11 +5,11 @@ import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
 import { Effect, pipe } from "effect"
-import type * as Prompt from "../../Prompt"
-import type * as PromptAction from "../../Prompt/Action"
-import * as prompt from "../prompt"
-import * as promptAction from "./action"
-import * as ansiUtils from "./ansi-utils"
+import type * as Prompt from "../../Prompt.js"
+import type * as PromptAction from "../../Prompt/Action.js"
+import * as prompt from "../prompt.js"
+import * as promptAction from "./action.js"
+import * as ansiUtils from "./ansi-utils.js"
 
 interface State {
   readonly cursor: number
@@ -51,7 +51,9 @@ const renderError = (promptMsg: string, errorMsg: string, input: AnsiDoc.AnsiDoc
       Doc.cat(Doc.space),
       Doc.cat(Doc.annotate(pointerSmall, AnsiStyle.color(Color.black))),
       Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.red)))),
+      Doc.cat(
+        Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.red)))
+      ),
       Doc.cat(ansiUtils.cursorSave),
       Doc.cat(Doc.hardLine),
       Doc.cat(Doc.annotate(pointerSmall, AnsiStyle.color(Color.red))),
@@ -75,7 +77,9 @@ const renderNextFrame = (promptMsg: string, input: AnsiDoc.AnsiDoc) =>
       Doc.cat(Doc.space),
       Doc.cat(Doc.annotate(pointerSmall, AnsiStyle.color(Color.black))),
       Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green))))
+      Doc.cat(
+        Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green)))
+      )
     )
     return AnsiRender.prettyDefault(Optimize.optimize(doc, Optimize.Deep))
   })
@@ -286,7 +290,8 @@ export const float = (options: Prompt.Prompt.FloatOptions): Prompt.Prompt<number
         }
         case "Submit": {
           return Effect.matchEffect(parseFloat(state.value), {
-            onFailure: () => Effect.succeed(promptAction.error("Must provide a floating point value")),
+            onFailure: () =>
+              Effect.succeed(promptAction.error("Must provide a floating point value")),
             onSuccess: (n) =>
               Effect.flatMap(
                 Effect.sync(() => round(n, opts.precision)),

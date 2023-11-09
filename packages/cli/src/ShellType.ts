@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as InternalShellType from "./internal/shellType"
-import type { Options } from "./Options"
+import * as InternalShellType from "./internal/shellType.js"
+import type { Options } from "./Options.js"
 
 /**
  * @since 1.0.0

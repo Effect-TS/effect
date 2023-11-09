@@ -1,87 +1,84 @@
 /**
  * @since 1.0.0
  */
-export * as Args from "@effect/cli/Args"
+export * as Args from "./Args.js"
 
 /**
  * @since 1.0.0
  */
-export * as AutoCorrect from "@effect/cli/AutoCorrect"
+export * as AutoCorrect from "./AutoCorrect.js"
 
 /**
  * @since 1.0.0
  */
-export * as BuiltInOptions from "@effect/cli/BuiltInOptions"
+export * as BuiltInOptions from "./BuiltInOptions.js"
 
 /**
  * @since 1.0.0
  */
-export * as CliApp from "@effect/cli/CliApp"
+export * as CliApp from "./CliApp.js"
 
 /**
  * @since 1.0.0
  */
-export * as CliConfig from "@effect/cli/CliConfig"
+export * as CliConfig from "./CliConfig.js"
 
 /**
  * @since 1.0.0
  */
-export * as Command from "@effect/cli/Command"
+export * as Command from "./Command.js"
 
 /**
  * @since 1.0.0
  */
-export * as CommandDirective from "@effect/cli/CommandDirective"
+export * as CommandDirective from "./CommandDirective.js"
 
 /**
  * @since 1.0.0
  */
-export * as Exists from "@effect/cli/Exists"
+export * as Exists from "./Exists.js"
 
 /**
  * @since 1.0.0
  */
-export * as HelpDoc from "@effect/cli/HelpDoc"
+export * as HelpDoc from "./HelpDoc.js"
 
 /**
  * @since 1.0.0
  */
-export * as Options from "@effect/cli/Options"
-
-/**
- * Abstraction employed by Wizard class. Parameter trait encompass `Command`,
- * `Options` and `Args` interfaces.
- *
- * The `Wizard` processes subtypes of `Parameter` in different manners.
- */
-export * as Parameter from "@effect/cli/Parameter"
+export * as Options from "./Options.js"
 
 /**
  * @since 1.0.0
  */
-export * as Primitive from "@effect/cli/Primitive"
+export * as Parameter from "./Parameter.js"
 
 /**
  * @since 1.0.0
  */
-export * as Prompt from "@effect/cli/Prompt"
+export * as Primitive from "./Primitive.js"
 
 /**
  * @since 1.0.0
  */
-export * as ShellType from "@effect/cli/ShellType"
+export * as Prompt from "./Prompt.js"
 
 /**
  * @since 1.0.0
  */
-export * as Terminal from "@effect/cli/Terminal"
+export * as ShellType from "./ShellType.js"
 
 /**
  * @since 1.0.0
  */
-export * as Usage from "@effect/cli/Usage"
+export * as Terminal from "./Terminal.js"
 
 /**
  * @since 1.0.0
  */
-export * as ValidationError from "@effect/cli/ValidationError"
+export * as Usage from "./Usage.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as ValidationError from "./ValidationError.js"

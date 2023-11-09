@@ -3,7 +3,7 @@
  */
 import type * as Context from "effect/Context"
 import type * as Layer from "effect/Layer"
-import * as InternalCliConfig from "./internal/cliConfig"
+import * as InternalCliConfig from "./internal/cliConfig.js"
 
 /**
  * Represents how arguments from the command-line are to be parsed.
@@ -59,7 +59,8 @@ export const defaultLayer: Layer.Layer<never, never, CliConfig> = InternalCliCon
  * @since 1.0.0
  * @category context
  */
-export const layer: (config?: Partial<CliConfig>) => Layer.Layer<never, never, CliConfig> = InternalCliConfig.layer
+export const layer: (config?: Partial<CliConfig>) => Layer.Layer<never, never, CliConfig> =
+  InternalCliConfig.layer
 
 /**
  * @since 1.0.0

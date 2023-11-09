@@ -4,20 +4,20 @@ import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as BuiltInOptions from "../BuiltInOptions"
-import type * as CliApp from "../CliApp"
-import type * as CliConfig from "../CliConfig"
-import type * as Command from "../Command"
-import type * as HelpDoc from "../HelpDoc"
-import type * as Span from "../HelpDoc/Span"
-import type * as ValidationError from "../ValidationError"
-import * as InternalCliConfig from "./cliConfig"
-import * as InternalCommand from "./command"
-import * as InternalHelpDoc from "./helpDoc"
-import * as InternalSpan from "./helpDoc/span"
-import * as InternalTerminal from "./terminal"
-import * as InternalUsage from "./usage"
-import * as InternalValidationError from "./validationError"
+import type * as BuiltInOptions from "../BuiltInOptions.js"
+import type * as CliApp from "../CliApp.js"
+import type * as CliConfig from "../CliConfig.js"
+import type * as Command from "../Command.js"
+import type * as HelpDoc from "../HelpDoc.js"
+import type * as Span from "../HelpDoc/Span.js"
+import type * as ValidationError from "../ValidationError.js"
+import * as InternalCliConfig from "./cliConfig.js"
+import * as InternalCommand from "./command.js"
+import * as InternalHelpDoc from "./helpDoc.js"
+import * as InternalSpan from "./helpDoc/span.js"
+import * as InternalTerminal from "./terminal.js"
+import * as InternalUsage from "./usage.js"
+import * as InternalValidationError from "./validationError.js"
 
 // =============================================================================
 // Constructors
@@ -107,8 +107,13 @@ const handleBuiltInOption = <A>(
         InternalHelpDoc.h1("USAGE"),
         pipe(
           InternalUsage.enumerate(builtIn.usage, config),
-          ReadonlyArray.map((span) => InternalHelpDoc.p(InternalSpan.concat(InternalSpan.text("$ "), span))),
-          ReadonlyArray.reduceRight(InternalHelpDoc.empty, (left, right) => InternalHelpDoc.sequence(left, right))
+          ReadonlyArray.map((span) =>
+            InternalHelpDoc.p(InternalSpan.concat(InternalSpan.text("$ "), span))
+          ),
+          ReadonlyArray.reduceRight(
+            InternalHelpDoc.empty,
+            (left, right) => InternalHelpDoc.sequence(left, right)
+          )
         )
       )
       const helpDoc = pipe(
