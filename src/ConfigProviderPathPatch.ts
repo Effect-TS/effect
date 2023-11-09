@@ -17,3 +17,6 @@ export declare namespace PathPatch {
   // @ts-expect-error
   export type * from "./impl/PathPatch.js"
 }
+
+// TODO: align module names
+export { PathPatch as ConfigProviderPathPatch }

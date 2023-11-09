@@ -30,3 +30,6 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
    */
   readonly poll: Effect<R, E, In>
 }
+
+// TODO: align module names
+export { PollingMetric as MetricPolling }

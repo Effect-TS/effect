@@ -152,7 +152,7 @@ export { ConfigProvider } from "./ConfigProvider.js"
 /**
  * @since 2.0.0
  */
-export { PathPatch as ConfigProviderPathPatch } from "./ConfigProviderPathPatch.js"
+export { ConfigProviderPathPatch } from "./ConfigProviderPathPatch.js"
 
 /**
  * @since 2.0.0
@@ -433,7 +433,7 @@ export { MetricPair } from "./MetricPair.js"
 /**
  * @since 2.0.0
  */
-export { PollingMetric as MetricPolling } from "./MetricPolling.js"
+export { MetricPolling } from "./MetricPolling.js"
 
 /**
  * @since 2.0.0
@@ -611,12 +611,12 @@ export { ScheduleDecision } from "./ScheduleDecision.js"
 /**
  * @since 2.0.0
  */
-export { Interval as ScheduleInterval } from "./ScheduleInterval.js"
+export { ScheduleInterval } from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0
  */
-export { ScheduleIntervals as ScheduleIntervals } from "./ScheduleIntervals.js"
+export { ScheduleIntervals } from "./ScheduleIntervals.js"
 
 /**
  * @since 2.0.0

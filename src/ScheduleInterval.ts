@@ -21,3 +21,6 @@ export declare namespace Interval {
   // @ts-expect-error
   export type * from "./impl/ScheduleInterval.js"
 }
+
+// TODO: align module names
+export { Interval as ScheduleInterval }

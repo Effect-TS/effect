@@ -14,3 +14,6 @@ export declare namespace HaltStrategy {
   // @ts-expect-error
   export type * from "./impl/StreamHaltStrategy.js"
 }
+
+// TODO: align module names
+export { HaltStrategy as StreamHaltStrategy }
