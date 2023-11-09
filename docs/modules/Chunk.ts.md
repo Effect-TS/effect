@@ -30,6 +30,7 @@ Added in v2.0.0
   - [range](#range)
 - [conversions](#conversions)
   - [fromIterable](#fromiterable)
+  - [toArray](#toarray)
   - [toReadonlyArray](#toreadonlyarray)
 - [elements](#elements)
   - [chunksOf](#chunksof)
@@ -311,6 +312,18 @@ Converts from an `Iterable<A>`
 
 ```ts
 export declare const fromIterable: <A>(self: Iterable<A>) => Chunk<A>
+```
+
+Added in v2.0.0
+
+## toArray
+
+Converts the specified `Chunk` to a `Array`.
+
+**Signature**
+
+```ts
+export declare const toArray: <A>(self: Chunk<A>) => A[]
 ```
 
 Added in v2.0.0

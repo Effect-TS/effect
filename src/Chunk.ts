@@ -279,6 +279,14 @@ const copyToArray = <A>(self: Chunk<A>, array: Array<any>, initial: number): voi
 }
 
 /**
+ * Converts the specified `Chunk` to a `Array`.
+ *
+ * @category conversions
+ * @since 2.0.0
+ */
+export const toArray = <A>(self: Chunk<A>): Array<A> => toReadonlyArray(self).slice()
+
+/**
  * Converts the specified `Chunk` to a `ReadonlyArray`.
  *
  * @category conversions
