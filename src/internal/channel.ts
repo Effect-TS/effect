@@ -23,7 +23,7 @@ import { Scope } from "../Scope.js"
 import type { SingleProducerAsyncInput } from "../SingleProducerAsyncInput.js"
 import type { Tracer } from "../Tracer.js"
 import * as executor from "./channel/channelExecutor.js"
-import type { ChannelState } from "./channel/channelState.js"
+import type * as ChannelState from "./channel/channelState.js"
 import * as mergeDecision from "./channel/mergeDecision.js"
 import * as mergeState from "./channel/mergeState.js"
 import * as _mergeStrategy from "./channel/mergeStrategy.js"
@@ -2177,12 +2177,12 @@ export const toPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
         return finalize === undefined ? Effect.unit : finalize
       }
     ),
-    (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState<Env, OutErr>, exec))
+    (exec) => Effect.suspend(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
   )
 
 /** @internal */
 const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  channelState: ChannelState<Env, OutErr>,
+  channelState: ChannelState.ChannelState<Env, OutErr>,
   exec: executor.ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Effect<Env, OutErr, Either<OutDone, OutElem>> => {
   const state = channelState as ChannelState.Primitive
@@ -2199,13 +2199,13 @@ const interpretToPull = <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     case ChannelStateOpCodes.OP_FROM_EFFECT: {
       return pipe(
         state.effect as Effect<Env, OutErr, Either<OutDone, OutElem>>,
-        Effect.flatMap(() => interpretToPull(exec.run() as ChannelState<Env, OutErr>, exec))
+        Effect.flatMap(() => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
       )
     }
     case ChannelStateOpCodes.OP_READ: {
       return executor.readUpstream(
         state,
-        () => interpretToPull(exec.run() as ChannelState<Env, OutErr>, exec),
+        () => interpretToPull(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
         (cause) => Effect.failCause(cause) as Effect<Env, OutErr, Either<OutDone, OutElem>>
       )
     }

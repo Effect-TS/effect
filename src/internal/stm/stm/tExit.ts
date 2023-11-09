@@ -14,20 +14,16 @@ export const TExitTypeId = Symbol.for(TExitSymbolKey)
 /** @internal */
 export type TExitTypeId = typeof TExitTypeId
 
-export * as TExit from "./tExit.js"
+/** @internal */
+export type TExit<E, A> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
 
-declare module "./tExit.js" {
+/** @internal */
+export namespace TExit {
   /** @internal */
-  export type TExit<E, A> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
-
-  /** @internal */
-  export namespace TExit {
-    /** @internal */
-    export interface Variance<E, A> {
-      readonly [TExitTypeId]: {
-        readonly _E: (_: never) => E
-        readonly _A: (_: never) => A
-      }
+  export interface Variance<E, A> {
+    readonly [TExitTypeId]: {
+      readonly _E: (_: never) => E
+      readonly _A: (_: never) => A
     }
   }
 }

@@ -10,29 +10,25 @@ export const ContinuationTypeId = Symbol.for("effect/ChannelContinuation")
 /** @internal */
 export type ContinuationTypeId = typeof ContinuationTypeId
 
-export * as Continuation from "./continuation.js"
+/** @internal */
+export interface Continuation<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2>
+  extends Continuation.Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2>
+{}
 
-declare module "./continuation.js" {
+/** @internal */
+export namespace Continuation {
   /** @internal */
-  export interface Continuation<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2>
-    extends Continuation.Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2>
-  {}
-
-  /** @internal */
-  export namespace Continuation {
-    /** @internal */
-    export interface Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2> {
-      readonly [ContinuationTypeId]: {
-        readonly _Env: (_: never) => Env
-        readonly _InErr: (_: InErr) => void
-        readonly _InElem: (_: InElem) => void
-        readonly _InDone: (_: InDone) => void
-        readonly _OutErr: (_: never) => OutErr
-        readonly _OutDone: (_: never) => OutDone
-        readonly _OutErr2: (_: never) => OutErr2
-        readonly _OutElem: (_: never) => OutElem
-        readonly _OutDone2: (_: never) => OutDone2
-      }
+  export interface Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2> {
+    readonly [ContinuationTypeId]: {
+      readonly _Env: (_: never) => Env
+      readonly _InErr: (_: InErr) => void
+      readonly _InElem: (_: InElem) => void
+      readonly _InDone: (_: InDone) => void
+      readonly _OutErr: (_: never) => OutErr
+      readonly _OutDone: (_: never) => OutDone
+      readonly _OutErr2: (_: never) => OutErr2
+      readonly _OutElem: (_: never) => OutElem
+      readonly _OutDone2: (_: never) => OutDone2
     }
   }
 }

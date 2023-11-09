@@ -3,8 +3,8 @@ import { Option } from "../../Option.js"
 import type { STM } from "../../STM.js"
 import type { TRef } from "../../TRef.js"
 import * as core from "./core.js"
-import { Entry } from "./stm/entry.js"
-import type { Journal } from "./stm/journal.js"
+import * as Entry from "./stm/entry.js"
+import type * as Journal from "./stm/journal.js"
 import type { TxnId } from "./stm/txnId.js"
 import { Versioned } from "./stm/versioned.js"
 
@@ -158,7 +158,7 @@ export const updateSomeAndGet = dual<
 )
 
 /** @internal */
-const getOrMakeEntry = <A>(self: TRef<A>, journal: Journal): Entry => {
+const getOrMakeEntry = <A>(self: TRef<A>, journal: Journal.Journal): Entry.Entry => {
   if (journal.has(self)) {
     return journal.get(self)!
   }
@@ -169,20 +169,20 @@ const getOrMakeEntry = <A>(self: TRef<A>, journal: Journal): Entry => {
 
 /** @internal */
 export const unsafeGet: {
-  (journal: Journal): <A>(self: TRef<A>) => A
-  <A>(self: TRef<A>, journal: Journal): A
+  (journal: Journal.Journal): <A>(self: TRef<A>) => A
+  <A>(self: TRef<A>, journal: Journal.Journal): A
 } = dual<
-  (journal: Journal) => <A>(self: TRef<A>) => A,
-  <A>(self: TRef<A>, journal: Journal) => A
->(2, <A>(self: TRef<A>, journal: Journal) => Entry.unsafeGet(getOrMakeEntry(self, journal)) as A)
+  (journal: Journal.Journal) => <A>(self: TRef<A>) => A,
+  <A>(self: TRef<A>, journal: Journal.Journal) => A
+>(2, <A>(self: TRef<A>, journal: Journal.Journal) => Entry.unsafeGet(getOrMakeEntry(self, journal)) as A)
 
 /** @internal */
 export const unsafeSet: {
-  <A>(value: A, journal: Journal): (self: TRef<A>) => void
-  <A>(self: TRef<A>, value: A, journal: Journal): void
+  <A>(value: A, journal: Journal.Journal): (self: TRef<A>) => void
+  <A>(self: TRef<A>, value: A, journal: Journal.Journal): void
 } = dual<
-  <A>(value: A, journal: Journal) => (self: TRef<A>) => void,
-  <A>(self: TRef<A>, value: A, journal: Journal) => void
+  <A>(value: A, journal: Journal.Journal) => (self: TRef<A>) => void,
+  <A>(self: TRef<A>, value: A, journal: Journal.Journal) => void
 >(3, (self, value, journal) => {
   const entry = getOrMakeEntry(self, journal)
   Entry.unsafeSet(entry, value)

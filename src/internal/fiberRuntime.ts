@@ -51,7 +51,7 @@ import * as defaultServices from "./defaultServices.js"
 import { consoleTag } from "./defaultServices/console.js"
 import * as executionStrategy from "./executionStrategy.js"
 import * as internalFiber from "./fiber.js"
-import { FiberMessage } from "./fiberMessage.js"
+import * as FiberMessage from "./fiberMessage.js"
 import * as fiberRefs from "./fiberRefs.js"
 import * as fiberScope from "./fiberScope.js"
 import * as internalLogger from "./logger.js"
@@ -63,7 +63,7 @@ import { complete } from "./request.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 import { OpSupervision } from "./runtimeFlags.js"
 import * as supervisor from "./supervisor.js"
-import { SupervisorPatch } from "./supervisor/patch.js"
+import * as SupervisorPatch from "./supervisor/patch.js"
 import * as tracer from "./tracer.js"
 import { moduleVersion } from "./version.js"
 
@@ -179,7 +179,7 @@ const drainQueueWhileRunningTable = {
     self: FiberRuntime<any, any>,
     runtimeFlags: RuntimeFlags,
     cur: Effect<any, any, any>,
-    message: FiberMessage & { _tag: FiberMessage.OP_INTERRUPT_SIGNAL }
+    message: FiberMessage.FiberMessage & { _tag: FiberMessage.OP_INTERRUPT_SIGNAL }
   ) => {
     self.processNewInterruptSignal(message.cause)
     return _runtimeFlags.interruptible(runtimeFlags) ? core.exitFailCause(message.cause) : cur
@@ -188,7 +188,7 @@ const drainQueueWhileRunningTable = {
     _self: FiberRuntime<any, any>,
     _runtimeFlags: RuntimeFlags,
     _cur: Effect<any, any, any>,
-    _message: FiberMessage
+    _message: FiberMessage.FiberMessage
   ) => {
     throw new Error("It is illegal to have multiple concurrent run loops in a single fiber")
   },
@@ -196,7 +196,7 @@ const drainQueueWhileRunningTable = {
     self: FiberRuntime<any, any>,
     runtimeFlags: RuntimeFlags,
     cur: Effect<any, any, any>,
-    message: FiberMessage & { _tag: FiberMessage.OP_STATEFUL }
+    message: FiberMessage.FiberMessage & { _tag: FiberMessage.OP_STATEFUL }
   ) => {
     message.onFiber(self, FiberStatus.running(runtimeFlags))
     return cur
@@ -205,7 +205,7 @@ const drainQueueWhileRunningTable = {
     _self: FiberRuntime<any, any>,
     _runtimeFlags: RuntimeFlags,
     cur: Effect<any, any, any>,
-    _message: FiberMessage & { _tag: FiberMessage.OP_YIELD_NOW }
+    _message: FiberMessage.FiberMessage & { _tag: FiberMessage.OP_YIELD_NOW }
   ) => {
     return core.flatMap(core.yieldNow(), () => cur)
   }
@@ -250,7 +250,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   private _fiberId: FiberId.Runtime
   public _runtimeFlags: RuntimeFlags
 
-  private _queue = new Array<FiberMessage>()
+  private _queue = new Array<FiberMessage.FiberMessage>()
   private _children: Set<FiberRuntime<any, any>> | null = null
   private _observers = new Array<(exit: Exit<E, A>) => void>()
   private _running = false
@@ -385,7 +385,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   /**
    * Adds a message to be processed by the fiber on the fiber.
    */
-  tell(message: FiberMessage): void {
+  tell(message: FiberMessage.FiberMessage): void {
     this._queue.push(message)
     if (!this._running) {
       this._running = true
@@ -811,7 +811,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    *
    * **NOTE**: This method must be invoked by the fiber itself.
    */
-  evaluateMessageWhileSuspended(message: FiberMessage): EvaluationSignal {
+  evaluateMessageWhileSuspended(message: FiberMessage.FiberMessage): EvaluationSignal {
     switch (message._tag) {
       case FiberMessage.OP_YIELD_NOW: {
         return EvaluationSignalYieldNow

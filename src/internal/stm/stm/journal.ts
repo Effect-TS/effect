@@ -1,13 +1,9 @@
 import type { TRef } from "../../../TRef.js"
-import { Entry } from "./entry.js"
+import * as Entry from "./entry.js"
 import type { TxnId } from "./txnId.js"
 
-export * as Journal from "./journal.js"
-
-declare module "./journal.js" {
-  /** @internal */
-  export type Journal = Map<TRef<unknown>, Entry>
-}
+/** @internal */
+export type Journal = Map<TRef<unknown>, Entry.Entry>
 
 /** @internal */
 export type Todo = () => unknown
@@ -61,7 +57,7 @@ export const analyzeJournal = (journal: Journal): JournalAnalysis => {
 
 /** @internal */
 export const prepareResetJournal = (journal: Journal): () => void => {
-  const saved: Journal = new Map<TRef<unknown>, Entry>()
+  const saved: Journal = new Map<TRef<unknown>, Entry.Entry>()
   for (const entry of journal) {
     saved.set(entry[0], Entry.copy(entry[1]))
   }

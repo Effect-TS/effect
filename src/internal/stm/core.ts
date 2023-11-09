@@ -23,11 +23,11 @@ import { SinkTypeId } from "../sink.js"
 import * as OpCodes from "./opCodes/stm.js"
 import * as TExitOpCodes from "./opCodes/tExit.js"
 import * as TryCommitOpCodes from "./opCodes/tryCommit.js"
-import { Journal } from "./stm/journal.js"
-import { STMState } from "./stm/stmState.js"
-import { TExit } from "./stm/tExit.js"
-import { TryCommit } from "./stm/tryCommit.js"
-import { TxnId } from "./stm/txnId.js"
+import * as Journal from "./stm/journal.js"
+import * as STMState from "./stm/stmState.js"
+import * as TExit from "./stm/tExit.js"
+import * as TryCommit from "./stm/tryCommit.js"
+import * as TxnId from "./stm/txnId.js"
 
 /** @internal */
 const STMSymbolKey = "effect/STM"
@@ -201,7 +201,7 @@ export const unsafeAtomically = <R, E, A>(
       }
       case TryCommitOpCodes.OP_SUSPEND: {
         const txnId = TxnId.make()
-        const state: { value: STMState<E, A> } = { value: STMState.running }
+        const state: { value: STMState.STMState<E, A> } = { value: STMState.running }
         const effect = Effect.async(
           (k: (effect: Effect<R, E, A>) => unknown): void =>
             tryCommitAsync(fiberId, self, txnId, state, env, scheduler, priority, k)
@@ -232,12 +232,12 @@ export const unsafeAtomically = <R, E, A>(
 const tryCommit = <R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
-  state: { value: STMState<E, A> },
+  state: { value: STMState.STMState<E, A> },
   env: Context<R>,
   scheduler: Scheduler,
   priority: number
-): TryCommit<E, A> => {
-  const journal: Journal = new Map()
+): TryCommit.TryCommit<E, A> => {
+  const journal: Journal.Journal = new Map()
   const tExit = new STMDriver(stm, journal, fiberId, env).run()
   const analysis = Journal.analyzeJournal(journal)
 
@@ -295,8 +295,8 @@ const tryCommitSync = <R, E, A>(
   env: Context<R>,
   scheduler: Scheduler,
   priority: number
-): TryCommit<E, A> => {
-  const journal: Journal = new Map()
+): TryCommit.TryCommit<E, A> => {
+  const journal: Journal.Journal = new Map()
   const tExit = new STMDriver(stm, journal, fiberId, env).run()
   const analysis = Journal.analyzeJournal(journal)
 
@@ -349,8 +349,8 @@ const tryCommitSync = <R, E, A>(
 const tryCommitAsync = <R, E, A>(
   fiberId: FiberId,
   self: STM<R, E, A>,
-  txnId: TxnId,
-  state: { value: STMState<E, A> },
+  txnId: TxnId.TxnId,
+  state: { value: STMState.STMState<E, A> },
   context: Context<R>,
   scheduler: Scheduler,
   priority: number,
@@ -378,10 +378,10 @@ const tryCommitAsync = <R, E, A>(
 /** @internal */
 const completeTodos = <E, A>(
   exit: Exit<E, A>,
-  journal: Journal,
+  journal: Journal.Journal,
   scheduler: Scheduler,
   priority: number
-): TryCommit<E, A> => {
+): TryCommit.TryCommit<E, A> => {
   const todos = Journal.collectTodos(journal)
   if (todos.size > 0) {
     scheduler.scheduleTask(() => Journal.execTodos(todos), priority)
@@ -418,7 +418,7 @@ export class STMDriver<R, E, A> {
 
   constructor(
     readonly self: STM<R, E, A>,
-    readonly journal: Journal,
+    readonly journal: Journal.Journal,
     readonly fiberId: FiberId,
     r0: Context<R>
   ) {
@@ -461,9 +461,9 @@ export class STMDriver<R, E, A> {
     return current
   }
 
-  run(): TExit<E, A> {
+  run(): TExit.TExit<E, A> {
     let curr = this.self as Primitive | Context.Tag<any, any> | Either<any, any> | Option<any> | undefined
-    let exit: TExit<unknown, unknown> | undefined = undefined
+    let exit: TExit.TExit<unknown, unknown> | undefined = undefined
     while (exit === undefined && curr !== undefined) {
       try {
         const current = curr
@@ -566,7 +566,7 @@ export class STMDriver<R, E, A> {
         curr = die(e) as Primitive
       }
     }
-    return exit as TExit<E, A>
+    return exit as TExit.TExit<E, A>
   }
 }
 
@@ -621,7 +621,7 @@ export const dieSync = (evaluate: LazyArg<unknown>): STM<never, never, never> =>
 
 /** @internal */
 export const effect = <R, A>(
-  f: (journal: Journal, fiberId: FiberId, environment: Context<R>) => A
+  f: (journal: Journal.Journal, fiberId: FiberId, environment: Context<R>) => A
 ): STM<R, never, A> => withSTMRuntime((_) => succeed(f(_.journal, _.fiberId, _.getEnv())))
 
 /** @internal */

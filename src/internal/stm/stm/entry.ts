@@ -1,17 +1,13 @@
 import type { TRef } from "../../../TRef.js"
 import { Versioned } from "./versioned.js"
 
-export * as Entry from "./entry.js"
-
-declare module "./entry.js" {
-  /** @internal */
-  export interface Entry {
-    readonly ref: TRef<unknown>
-    readonly expected: Versioned<unknown>
-    isChanged: boolean
-    readonly isNew: boolean
-    newValue: unknown
-  }
+/** @internal */
+export interface Entry {
+  readonly ref: TRef<unknown>
+  readonly expected: Versioned<unknown>
+  isChanged: boolean
+  readonly isNew: boolean
+  newValue: unknown
 }
 
 /** @internal */

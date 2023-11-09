@@ -1,7 +1,7 @@
 import { FiberId } from "../FiberId.js"
 import { globalValue } from "../GlobalValue.js"
 import type { RuntimeFlags } from "../RuntimeFlags.js"
-import { FiberMessage } from "./fiberMessage.js"
+import * as FiberMessage from "./fiberMessage.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 

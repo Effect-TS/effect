@@ -10,19 +10,15 @@ export const ChannelStateTypeId = Symbol.for("effect/ChannelState")
 /** @internal */
 export type ChannelStateTypeId = typeof ChannelStateTypeId
 
-export * as ChannelState from "./channelState.js"
+/** @internal */
+export interface ChannelState<R, E> extends ChannelState.Variance<R, E> {}
 
-declare module "./channelState.js" {
-  /** @internal */
-  export interface ChannelState<R, E> extends ChannelState.Variance<R, E> {}
-
-  /** @internal */
-  export namespace ChannelState {
-    export interface Variance<R, E> {
-      readonly [ChannelStateTypeId]: {
-        readonly _R: (_: never) => R
-        readonly _E: (_: never) => E
-      }
+/** @internal */
+export namespace ChannelState {
+  export interface Variance<R, E> {
+    readonly [ChannelStateTypeId]: {
+      readonly _R: (_: never) => R
+      readonly _E: (_: never) => E
     }
   }
 }

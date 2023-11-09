@@ -1,10 +1,6 @@
-export * as TxnId from "./txnId.js"
-
-declare module "./txnId.js" {
-  /** @internal */
-  export type TxnId = number & {
-    readonly TransactioId: unique symbol
-  }
+/** @internal */
+export type TxnId = number & {
+  readonly TransactioId: unique symbol
 }
 
 /** @internal */

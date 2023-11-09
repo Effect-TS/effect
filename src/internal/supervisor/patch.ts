@@ -6,12 +6,8 @@ import { HashSet } from "../../HashSet.js"
 import type { Supervisor } from "../../Supervisor.js"
 import * as supervisor from "../supervisor.js"
 
-export * as SupervisorPatch from "./patch.js"
-
-declare module "./patch.js" {
-  /** @internal */
-  export type SupervisorPatch = Empty | AddSupervisor | RemoveSupervisor | AndThen
-}
+/** @internal */
+export type SupervisorPatch = Empty | AddSupervisor | RemoveSupervisor | AndThen
 
 /** @internal */
 export const OP_EMPTY = "Empty" as const

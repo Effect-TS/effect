@@ -3,11 +3,8 @@ import * as OpCodes from "../opCodes/tryCommit.js"
 import type { Journal } from "./journal.js"
 
 /** @internal */
-export * as TryCommit from "./tryCommit.js"
 
-declare module "./tryCommit.js" {
-  export type TryCommit<E, A> = Done<E, A> | Suspend
-}
+export type TryCommit<E, A> = Done<E, A> | Suspend
 
 /** @internal */
 export interface Done<E, A> {

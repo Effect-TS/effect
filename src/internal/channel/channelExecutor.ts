@@ -17,9 +17,9 @@ import * as ChildExecutorDecisionOpCodes from "../opCodes/channelChildExecutorDe
 import * as ChannelStateOpCodes from "../opCodes/channelState.js"
 import * as UpstreamPullStrategyOpCodes from "../opCodes/channelUpstreamPullStrategy.js"
 import * as ContinuationOpCodes from "../opCodes/continuation.js"
-import { ChannelState } from "./channelState.js"
-import { Continuation } from "./continuation.js"
-import { Subexecutor } from "./subexecutor.js"
+import * as ChannelState from "./channelState.js"
+import * as Continuation from "./continuation.js"
+import * as Subexecutor from "./subexecutor.js"
 import * as upstreamPullRequest from "./upstreamPullRequest.js"
 
 export type ErasedChannel<R> = Channel<
@@ -44,7 +44,7 @@ export type ErasedExecutor<R> = ChannelExecutor<
 >
 
 /** @internal */
-export type ErasedContinuation<R> = Continuation<
+export type ErasedContinuation<R> = Continuation.Continuation<
   R,
   unknown,
   unknown,
@@ -61,7 +61,7 @@ export type ErasedFinalizer<R> = (exit: Exit<unknown, unknown>) => Effect<R, nev
 
 /** @internal */
 export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  private _activeSubexecutor: Subexecutor<Env> | undefined = undefined
+  private _activeSubexecutor: Subexecutor.Subexecutor<Env> | undefined = undefined
 
   private _cancelled: Exit<OutErr, OutDone> | undefined = undefined
 
@@ -95,8 +95,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     this._providedEnv = providedEnv
   }
 
-  run(): ChannelState<Env, unknown> {
-    let result: ChannelState<Env, unknown> | undefined = undefined
+  run(): ChannelState.ChannelState<Env, unknown> {
+    let result: ChannelState.ChannelState<Env, unknown> | undefined = undefined
     while (result === undefined) {
       if (this._cancelled !== undefined) {
         result = this.processCancellation()
@@ -269,7 +269,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                           Effect.unit
                       }
                     })
-                  ) as ChannelState<Env, unknown> | undefined
+                  ) as ChannelState.ChannelState<Env, unknown> | undefined
 
                   break
                 }
@@ -467,7 +467,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     )
   }
 
-  doneSucceed(value: unknown): ChannelState<Env, unknown> | undefined {
+  doneSucceed(value: unknown): ChannelState.ChannelState<Env, unknown> | undefined {
     if (this._doneStack.length === 0) {
       this._done = Exit.succeed(value)
       this._currentChannel = undefined
@@ -502,7 +502,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return ChannelState.FromEffect(effect)
   }
 
-  doneHalt(cause: Cause<unknown>): ChannelState<Env, unknown> | undefined {
+  doneHalt(cause: Cause<unknown>): ChannelState.ChannelState<Env, unknown> | undefined {
     if (this._doneStack.length === 0) {
       this._done = Exit.failCause(cause)
       this._currentChannel = undefined
@@ -537,14 +537,14 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return ChannelState.FromEffect(effect)
   }
 
-  processCancellation(): ChannelState<Env, unknown> {
+  processCancellation(): ChannelState.ChannelState<Env, unknown> {
     this._currentChannel = undefined
     this._done = this._cancelled
     this._cancelled = undefined
     return ChannelState.Done()
   }
 
-  runBracketOut(bracketOut: core.BracketOut): ChannelState<Env, unknown> {
+  runBracketOut(bracketOut: core.BracketOut): ChannelState.ChannelState<Env, unknown> {
     const effect = Effect.uninterruptible(
       Effect.matchCauseEffect(this.provide(bracketOut.acquire() as Effect<Env, OutErr, OutDone>), {
         onFailure: (cause) =>
@@ -558,7 +558,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
           })
       })
     )
-    return ChannelState.FromEffect(effect) as ChannelState<Env, unknown>
+    return ChannelState.FromEffect(effect) as ChannelState.ChannelState<Env, unknown>
   }
 
   provide(effect: Effect<unknown, unknown, unknown>): Effect<unknown, unknown, unknown> {
@@ -577,7 +577,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     this._doneStack.push(new Continuation.ContinuationFinalizerImpl(f))
   }
 
-  runSubexecutor(): ChannelState<Env, unknown> | undefined {
+  runSubexecutor(): ChannelState.ChannelState<Env, unknown> | undefined {
     const subexecutor = this._activeSubexecutor as Subexecutor.Primitive<Env>
     switch (subexecutor._tag) {
       case Subexecutor.OP_PULL_FROM_CHILD: {
@@ -602,7 +602,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     }
   }
 
-  replaceSubexecutor(nextSubExec: Subexecutor<Env>): void {
+  replaceSubexecutor(nextSubExec: Subexecutor.Subexecutor<Env>): void {
     this._currentChannel = undefined
     this._activeSubexecutor = nextSubExec
   }
@@ -621,7 +621,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   finishSubexecutorWithCloseEffect(
     subexecutorDone: Exit<unknown, unknown>,
     ...closeFuncs: Array<(exit: Exit<unknown, unknown>) => Effect<Env, never, unknown> | undefined>
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<Env, unknown> | undefined {
     this.addFinalizer(() =>
       pipe(
         closeFuncs,
@@ -662,10 +662,10 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   pullFromChild(
     childExecutor: ErasedExecutor<Env>,
-    parentSubexecutor: Subexecutor<Env>,
+    parentSubexecutor: Subexecutor.Subexecutor<Env>,
     onEmitted: (emitted: unknown) => ChildExecutorDecision,
     subexecutor: Subexecutor.PullFromChild<Env>
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<Env, unknown> | undefined {
     return ChannelState.Read(
       childExecutor,
       identity,
@@ -705,7 +705,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   finishWithDoneValue(
     childExecutor: ErasedExecutor<Env>,
-    parentSubexecutor: Subexecutor<Env>,
+    parentSubexecutor: Subexecutor.Subexecutor<Env>,
     doneValue: unknown
   ): void {
     const subexecutor = parentSubexecutor as Subexecutor.Primitive<Env>
@@ -757,9 +757,9 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   handleSubexecutorFailure(
     childExecutor: ErasedExecutor<Env>,
-    parentSubexecutor: Subexecutor<Env>,
+    parentSubexecutor: Subexecutor.Subexecutor<Env>,
     cause: Cause<unknown>
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<Env, unknown> | undefined {
     return this.finishSubexecutorWithCloseEffect(
       Exit.failCause(cause),
       (exit) => parentSubexecutor.close(exit),
@@ -769,7 +769,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   pullFromUpstream(
     subexecutor: Subexecutor.PullFromUpstream<Env>
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<Env, unknown> | undefined {
     if (subexecutor.activeChildExecutors.length === 0) {
       return this.performPullFromUpstream(subexecutor)
     }
@@ -804,7 +804,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   performPullFromUpstream(
     subexecutor: Subexecutor.PullFromUpstream<Env>
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<Env, unknown> | undefined {
     return ChannelState.Read(
       subexecutor.upstreamExecutor,
       (effect) => {
@@ -930,14 +930,14 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         return state === undefined ?
           undefined :
           // NOTE: assuming finalizers cannot fail
-          ChannelState.effectOrUndefinedIgnored(state as ChannelState<Env, never>)
+          ChannelState.effectOrUndefinedIgnored(state as ChannelState.ChannelState<Env, never>)
       }
     )
   }
 
   drainChildExecutors(
     subexecutor: Subexecutor.DrainChildExecutors<Env>
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState.ChannelState<Env, unknown> | undefined {
     if (subexecutor.activeChildExecutors.length === 0) {
       const lastClose = this._closeLastSubstream
       if (lastClose !== undefined) {
@@ -1117,7 +1117,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
       (exec) =>
         Effect.suspend(() =>
           pipe(
-            runScopedInterpret(exec.run() as ChannelState<Env, OutErr>, exec),
+            runScopedInterpret(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
             Effect.intoDeferred(channelDeferred),
             Effect.zipRight(Deferred.await(channelDeferred)),
             Effect.zipLeft(Deferred.await(scopeDeferred))
@@ -1160,7 +1160,7 @@ export const runScoped = <Env, InErr, InDone, OutErr, OutDone>(
 
 /** @internal */
 const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
-  channelState: ChannelState<Env, OutErr>,
+  channelState: ChannelState.ChannelState<Env, OutErr>,
   exec: ChannelExecutor<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): Effect<Env, OutErr, OutDone> => {
   const op = channelState as ChannelState.Primitive
@@ -1168,13 +1168,13 @@ const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
     case ChannelStateOpCodes.OP_FROM_EFFECT: {
       return pipe(
         op.effect as Effect<Env, OutErr, OutDone>,
-        Effect.flatMap(() => runScopedInterpret(exec.run() as ChannelState<Env, OutErr>, exec))
+        Effect.flatMap(() => runScopedInterpret(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec))
       )
     }
     case ChannelStateOpCodes.OP_EMIT: {
       // Can't really happen because Out <:< Nothing. So just skip ahead.
       return runScopedInterpret<Env, InErr, InDone, OutErr, OutDone>(
-        exec.run() as ChannelState<Env, OutErr>,
+        exec.run() as ChannelState.ChannelState<Env, OutErr>,
         exec
       )
     }
@@ -1184,7 +1184,7 @@ const runScopedInterpret = <Env, InErr, InDone, OutErr, OutDone>(
     case ChannelStateOpCodes.OP_READ: {
       return readUpstream(
         op,
-        () => runScopedInterpret(exec.run() as ChannelState<Env, OutErr>, exec),
+        () => runScopedInterpret(exec.run() as ChannelState.ChannelState<Env, OutErr>, exec),
         Effect.failCause
       ) as Effect<Env, OutErr, OutDone>
     }

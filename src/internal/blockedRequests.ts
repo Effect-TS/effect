@@ -10,8 +10,6 @@ import type { Request } from "../Request.js"
 import type { RequestBlock } from "../RequestBlock.js"
 import type { RequestResolver } from "../RequestResolver.js"
 
-export * as BlockedRequests from "./blockedRequests.js"
-
 /** @internal */
 export const empty: RequestBlock<never> = {
   _tag: "Empty"

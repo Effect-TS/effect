@@ -16,12 +16,8 @@ export const STMStateTypeId = Symbol.for(STMStateSymbolKey)
 /** @internal */
 export type STMStateTypeId = typeof STMStateTypeId
 
-export * as STMState from "./stmState.js"
-
-declare module "./stmState.js" {
-  /** @internal */
-  export type STMState<E, A> = Done<E, A> | Interrupted | Running
-}
+/** @internal */
+export type STMState<E, A> = Done<E, A> | Interrupted | Running
 
 /** @internal */
 export interface Done<E, A> extends Equal {

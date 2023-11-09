@@ -15,8 +15,8 @@ import type { STM } from "../../STM.js"
 import * as effectCore from "../core.js"
 import { SingleShotGen } from "../singleShotGen.js"
 import * as core from "./core.js"
-import { Journal } from "./stm/journal.js"
-import { STMState } from "./stm/stmState.js"
+import * as Journal from "./stm/journal.js"
+import * as STMState from "./stm/stmState.js"
 
 /** @internal */
 export const acquireUseRelease = dual<
@@ -37,7 +37,7 @@ export const acquireUseRelease = dual<
   release: (resource: A) => STM<R3, E3, A3>
 ): Effect<R | R2 | R3, E | E2 | E3, A2> =>
   Effect.uninterruptibleMask((restore) => {
-    let state: STMState<E, A> = STMState.running
+    let state: STMState.STMState<E, A> = STMState.running
     return pipe(
       restore(
         core.unsafeAtomically(
