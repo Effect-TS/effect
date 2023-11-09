@@ -350,9 +350,9 @@ Added in v2.0.0
 
 ```ts
 export declare const mapInputOptions: {
-  <Message, Message2>(f: (options: Logger.Options<Message2>) => Logger.Options<Message>): <Output>(
-    self: Logger<Message, Output>
-  ) => Logger<Message2, Output>
+  <Message, Message2>(
+    f: (options: Logger.Options<Message2>) => Logger.Options<Message>
+  ): <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>
   <Output, Message, Message2>(
     self: Logger<Message, Output>,
     f: (options: Logger.Options<Message2>) => Logger.Options<Message>
