@@ -6,7 +6,7 @@ import type * as Runner from "@effect/platform/WorkerRunner"
 import type { RpcRouter } from "@effect/rpc/Router"
 import type * as Effect from "effect/Effect"
 import type { Scope } from "effect/Scope"
-import * as internal from "./internal/server"
+import * as internal from "./internal/server.js"
 
 /**
  * @category constructors

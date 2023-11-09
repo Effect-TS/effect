@@ -1,29 +1,29 @@
 /**
  * @since 1.0.0
  */
-export * as Client from "@effect/rpc-workers/Client"
+export * as Client from "./Client.js"
 
 /**
  * @since 1.0.0
  */
-export * as Resolver from "@effect/rpc-workers/Resolver"
+export * as Resolver from "./Resolver.js"
 
 /**
  * @since 1.0.0
  */
-export * as Router from "@effect/rpc-workers/Router"
+export * as Router from "./Router.js"
 
 /**
  * @since 1.0.0
  */
-export * as Schema from "@effect/rpc-workers/Schema"
+export * as Schema from "./Schema.js"
 
 /**
  * @since 1.0.0
  */
-export * as SchemaC from "@effect/rpc-workers/SchemaC"
+export * as SchemaC from "./SchemaC.js"
 
 /**
  * @since 1.0.0
  */
-export * as Server from "@effect/rpc-workers/Server"
+export * as Server from "./Server.js"

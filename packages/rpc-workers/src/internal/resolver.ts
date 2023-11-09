@@ -5,8 +5,8 @@ import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
-import type * as WWResolver from "../Resolver"
-import * as schema from "../Schema"
+import type * as WWResolver from "../Resolver.js"
+import * as schema from "../Schema.js"
 
 /** @internal */
 export const RpcWorkerPool = Tag<WWResolver.RpcWorkerPool>()

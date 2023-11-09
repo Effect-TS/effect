@@ -6,7 +6,7 @@ import * as Client from "@effect/rpc/Client"
 import type { RpcError } from "@effect/rpc/Error"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
 import type * as Effect from "effect/Effect"
-import * as Resolver from "./Resolver"
+import * as Resolver from "./Resolver.js"
 
 /**
  * @since 1.0.0

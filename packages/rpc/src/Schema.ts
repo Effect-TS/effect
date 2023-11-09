@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 import * as Schema from "@effect/schema/Schema"
-import * as internal from "./internal/schema"
-import type { Json } from "./internal/schema"
-import type { RpcRequest } from "./Resolver"
+import * as internal from "./internal/schema.js"
+import type { Json } from "./internal/schema.js"
+import type { RpcRequest } from "./Resolver.js"
 
 /**
  * @since 1.0.0

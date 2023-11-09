@@ -85,11 +85,10 @@ export const withConstructorTagged: {
   ): SchemaC<I, A, Omit<A, "_tag">> =>
     withConstructor(
       self,
-      (input) =>
-        ({
-          _tag: tag,
-          ...input
-        }) as A
+      (input) => (({
+        _tag: tag,
+        ...input
+      }) as A)
     )
 )
 

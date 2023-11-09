@@ -1,7 +1,7 @@
 import * as Http from "@effect/platform/HttpClient"
 import * as Client from "@effect/rpc-http/Client"
 import { Console, Effect } from "effect"
-import { schema } from "./schema"
+import { schema } from "./schema.js"
 
 // Create the client
 const client = Client.make(

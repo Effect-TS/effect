@@ -5,7 +5,7 @@ import * as S from "@effect/schema/Schema"
 import { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 const makeCounter = () => {
   let count = 0

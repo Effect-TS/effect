@@ -2,7 +2,7 @@ import type { ParseOptions } from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { RpcDecodeFailure, RpcEncodeFailure } from "../Error"
+import { RpcDecodeFailure, RpcEncodeFailure } from "../Error.js"
 
 /** @internal */
 export const decodeEither = <I, A>(schema: Schema.Schema<I, A>) => {

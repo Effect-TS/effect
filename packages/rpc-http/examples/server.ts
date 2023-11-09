@@ -4,7 +4,7 @@ import * as Router from "@effect/rpc-http/Router"
 import * as Server from "@effect/rpc-http/Server"
 import { Chunk, Console, Effect } from "effect"
 import { createServer } from "http"
-import { schema, UserId } from "./schema"
+import { schema, UserId } from "./schema.js"
 
 // Implement the RPC server router
 const router = Router.make(schema, {

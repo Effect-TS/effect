@@ -5,9 +5,9 @@ import type { Context, Tag } from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import type { Layer } from "effect/Layer"
-import * as internal from "./internal/router"
-import type { RpcSchema, RpcService } from "./Schema"
-import type { RpcUndecodedClient } from "./Server"
+import * as internal from "./internal/router.js"
+import type { RpcSchema, RpcService } from "./Schema.js"
+import type { RpcUndecodedClient } from "./Server.js"
 
 /**
  * @category handler models

@@ -1,9 +1,9 @@
-import { schema, UserId } from "@effect/rpc-http-node/examples/schema"
 import * as Router from "@effect/rpc-http-node/Router"
 import * as Server from "@effect/rpc-http-node/Server"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Http from "node:http"
+import { schema, UserId } from "./schema.js"
 
 // Implement the RPC server router
 const router = Router.make(schema, {

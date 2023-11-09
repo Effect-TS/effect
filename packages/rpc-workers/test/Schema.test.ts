@@ -1,7 +1,7 @@
 import * as _ from "@effect/rpc-workers/Schema"
 import { typeEquals } from "@effect/rpc-workers/test/utils"
 import * as S from "@effect/schema/Schema"
-import { describe, it } from "vitest"
+import { describe, expect, it } from "vitest"
 
 describe("Schema", () => {
   it("allow WebWorkerType", () => {

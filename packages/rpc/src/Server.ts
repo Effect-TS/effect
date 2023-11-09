@@ -4,11 +4,11 @@
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Scope } from "effect/Scope"
-import type { RpcDecodeFailure, RpcEncodeFailure } from "./Error"
-import * as internal from "./internal/server"
-import type { RpcResponse } from "./Resolver"
-import type { RpcHandler, RpcHandlers, RpcRouter } from "./Router"
-import type { RpcRequestSchema, RpcSchema, RpcService } from "./Schema"
+import type { RpcDecodeFailure, RpcEncodeFailure } from "./Error.js"
+import * as internal from "./internal/server.js"
+import type { RpcResponse } from "./Resolver.js"
+import type { RpcHandler, RpcHandlers, RpcRouter } from "./Router.js"
+import type { RpcRequestSchema, RpcSchema, RpcService } from "./Schema.js"
 
 /**
  * @category constructors

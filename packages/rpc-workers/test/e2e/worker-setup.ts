@@ -3,7 +3,7 @@ import * as Router from "@effect/rpc-workers/Router"
 import * as Server from "@effect/rpc-workers/Server"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { Name, schemaWithSetup } from "./schema"
+import { Name, schemaWithSetup } from "./schema.js"
 
 const router = Router.make(schemaWithSetup, {
   __setup: (port) =>

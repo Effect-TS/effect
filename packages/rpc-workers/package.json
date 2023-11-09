@@ -1,109 +1,39 @@
 {
   "name": "@effect/rpc-workers",
+  "type": "module",
   "version": "0.17.1",
   "description": "",
-  "main": "dist/effect-rpc-workers.cjs.js",
-  "module": "dist/effect-rpc-workers.esm.js",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "dist"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/effect-ts/rpc.git"
   },
   "homepage": "https://github.com/effect-ts/rpc",
-  "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
-    "lint": "eslint src/**/*.ts test/**/*.ts",
-    "tc": "tsc --noEmit",
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
-  },
-  "preconstruct": {
-    "entrypoints": [
-      "*.ts"
-    ],
-    "distFilenameStrategy": "full",
-    "exports": {
-      "importConditionDefaultExport": "default"
-    }
-  },
-  "effect": {
-    "generateIndex": true,
-    "includeInternal": true
-  },
-  "keywords": [],
   "author": "Effect contributors",
   "license": "MIT",
   "sideEffects": false,
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
+  },
   "dependencies": {
     "@effect/rpc": "workspace:^"
   },
   "devDependencies": {
-    "@effect/platform": "^0.27.1",
-    "@effect/platform-browser": "^0.15.1",
-    "@effect/schema": "^0.47.1",
+    "@effect/platform": "^0.27.3",
+    "@effect/platform-browser": "^0.15.3",
+    "@effect/schema": "^0.47.2",
     "effect": "2.0.0-next.54"
   },
   "peerDependencies": {
     "@effect/platform": "^0.27.1",
     "@effect/schema": "^0.47.1",
     "effect": "2.0.0-next.54"
-  },
-  "files": [
-    "src",
-    "dist",
-    "internal",
-    "Client",
-    "Resolver",
-    "Router",
-    "Schema",
-    "SchemaC",
-    "Server"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-rpc-workers.esm.js",
-      "import": "./dist/effect-rpc-workers.cjs.mjs",
-      "default": "./dist/effect-rpc-workers.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./Client": {
-      "types": "./dist/declarations/src/Client.d.ts",
-      "module": "./Client/dist/effect-rpc-workers-Client.esm.js",
-      "import": "./Client/dist/effect-rpc-workers-Client.cjs.mjs",
-      "default": "./Client/dist/effect-rpc-workers-Client.cjs.js"
-    },
-    "./Resolver": {
-      "types": "./dist/declarations/src/Resolver.d.ts",
-      "module": "./Resolver/dist/effect-rpc-workers-Resolver.esm.js",
-      "import": "./Resolver/dist/effect-rpc-workers-Resolver.cjs.mjs",
-      "default": "./Resolver/dist/effect-rpc-workers-Resolver.cjs.js"
-    },
-    "./Router": {
-      "types": "./dist/declarations/src/Router.d.ts",
-      "module": "./Router/dist/effect-rpc-workers-Router.esm.js",
-      "import": "./Router/dist/effect-rpc-workers-Router.cjs.mjs",
-      "default": "./Router/dist/effect-rpc-workers-Router.cjs.js"
-    },
-    "./Schema": {
-      "types": "./dist/declarations/src/Schema.d.ts",
-      "module": "./Schema/dist/effect-rpc-workers-Schema.esm.js",
-      "import": "./Schema/dist/effect-rpc-workers-Schema.cjs.mjs",
-      "default": "./Schema/dist/effect-rpc-workers-Schema.cjs.js"
-    },
-    "./SchemaC": {
-      "types": "./dist/declarations/src/SchemaC.d.ts",
-      "module": "./SchemaC/dist/effect-rpc-workers-SchemaC.esm.js",
-      "import": "./SchemaC/dist/effect-rpc-workers-SchemaC.cjs.mjs",
-      "default": "./SchemaC/dist/effect-rpc-workers-SchemaC.cjs.js"
-    },
-    "./Server": {
-      "types": "./dist/declarations/src/Server.d.ts",
-      "module": "./Server/dist/effect-rpc-workers-Server.esm.js",
-      "import": "./Server/dist/effect-rpc-workers-Server.cjs.mjs",
-      "default": "./Server/dist/effect-rpc-workers-Server.cjs.js"
-    }
   }
 }

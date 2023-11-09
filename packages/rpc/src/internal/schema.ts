@@ -4,9 +4,9 @@ import type * as Effect from "effect/Effect"
 import { dual, identity, pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
-import type { RpcEncodeFailure } from "../Error"
-import type * as schema from "../Schema"
-import * as Codec from "./codec"
+import type { RpcEncodeFailure } from "../Error.js"
+import type * as schema from "../Schema.js"
+import * as Codec from "./codec.js"
 
 type JsonArray = ReadonlyArray<Json>
 type JsonObject = { readonly [key: string]: Json }

@@ -8,7 +8,7 @@ import type { Tag } from "effect/Context"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type { Scope } from "effect/Scope"
-import * as internal from "./internal/resolver"
+import * as internal from "./internal/resolver.js"
 
 /**
  * @category tags

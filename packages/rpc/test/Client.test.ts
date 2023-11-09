@@ -14,7 +14,7 @@ import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as RR from "effect/RequestResolver"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 const SomeError = S.struct({
   _tag: S.literal("SomeError"),

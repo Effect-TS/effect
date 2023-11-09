@@ -4,8 +4,8 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type * as ROA from "effect/ReadonlyArray"
-import type { SchemaC } from "./SchemaC"
-import { withConstructorTagged } from "./SchemaC"
+import type { SchemaC } from "./SchemaC.js"
+import { withConstructorTagged } from "./SchemaC.js"
 
 /**
  * @category models

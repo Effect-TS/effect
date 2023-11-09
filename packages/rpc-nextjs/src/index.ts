@@ -1,29 +1,29 @@
 /**
  * @since 1.0.0
  */
-export * as Client from "@effect/rpc-nextjs/Client"
+export * as Client from "./Client.js"
 
 /**
  * @since 1.0.0
  */
-export * as Resolver from "@effect/rpc-nextjs/Resolver"
+export * as Resolver from "./Resolver.js"
 
 /**
  * @since 1.0.0
  */
-export * as Router from "@effect/rpc-nextjs/Router"
+export * as Router from "./Router.js"
 
 /**
  * @since 1.0.0
  */
-export * as Schema from "@effect/rpc-nextjs/Schema"
+export * as Schema from "./Schema.js"
 
 /**
  * @since 1.0.0
  */
-export * as SchemaC from "@effect/rpc-nextjs/SchemaC"
+export * as SchemaC from "./SchemaC.js"
 
 /**
  * @since 1.0.0
  */
-export * as Server from "@effect/rpc-nextjs/Server"
+export * as Server from "./Server.js"

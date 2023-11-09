@@ -6,9 +6,9 @@ import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
-import type { RpcError, RpcTransportError } from "../Error"
-import type * as resolver from "../Resolver"
-import * as Codec from "./codec"
+import type { RpcError, RpcTransportError } from "../Error.js"
+import type * as resolver from "../Resolver.js"
+import * as Codec from "./codec.js"
 
 const requestProto: Request.Request<any, any> = {
   [Request.RequestTypeId]: {

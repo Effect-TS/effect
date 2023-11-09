@@ -3,7 +3,7 @@
  */
 import type * as Client from "@effect/platform/Http/Client"
 import type { RpcResolver } from "@effect/rpc/Resolver"
-import * as internal from "./internal/resolver"
+import * as internal from "./internal/resolver.js"
 
 /**
  * @category constructors

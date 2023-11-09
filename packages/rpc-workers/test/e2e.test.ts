@@ -1,6 +1,4 @@
-/* eslint-disable import/no-duplicates */
 import "@vitest/web-worker"
-
 import * as Worker from "@effect/platform-browser/Worker"
 import * as Client from "@effect/rpc-workers/Client"
 import * as Resolver from "@effect/rpc-workers/Resolver"
@@ -11,31 +9,25 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { describe, expect, it } from "vitest"
-import { schema, schemaWithSetup } from "./e2e/schema"
-// @ts-expect-error
-import TestSharedWorker from "./e2e/worker?sharedworker"
-// @ts-expect-error
-import TestWorker from "./e2e/worker?worker"
-// @ts-expect-error
-import TestWorkerSetup from "./e2e/worker-setup?worker"
+import { schema, schemaWithSetup } from "./e2e/schema.js"
 
 // TODO: test more than one worker
 const PoolLive = Resolver.makePoolLayer({
-  spawn: () => new TestWorker(),
+  spawn: () => new globalThis.Worker(new URL("./e2e/worker", import.meta.url)),
   size: 1
 }).pipe(
   Layer.use(Worker.layerManager)
 )
 
 const SetupPoolLive = Resolver.makePoolLayer({
-  spawn: () => new TestWorkerSetup(),
+  spawn: () => new globalThis.Worker(new URL("./e2e/worker-setup", import.meta.url)),
   size: 1
 }).pipe(
   Layer.use(Worker.layerManager)
 )
 
 const SharedPoolLive = Resolver.makePoolLayer({
-  spawn: () => new TestSharedWorker(),
+  spawn: () => new globalThis.SharedWorker(new URL("./e2e/worker", import.meta.url)),
   size: 1
 }).pipe(
   Layer.use(Worker.layerManager)

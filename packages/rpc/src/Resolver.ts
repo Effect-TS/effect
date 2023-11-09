@@ -4,9 +4,9 @@
 import type * as Effect from "effect/Effect"
 import type * as Request from "effect/Request"
 import type * as Resolver from "effect/RequestResolver"
-import type { RpcError, RpcTransportError } from "./Error"
-import * as internal from "./internal/resolver"
-import type { RpcSchema } from "./Schema"
+import type { RpcError, RpcTransportError } from "./Error.js"
+import * as internal from "./internal/resolver.js"
+import type { RpcSchema } from "./Schema.js"
 
 /**
  * @category models

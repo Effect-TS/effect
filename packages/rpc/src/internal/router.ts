@@ -3,9 +3,9 @@ import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
-import type { RpcHandler, RpcHandlers, RpcRouter } from "../Router"
-import type { RpcService } from "../Schema"
-import { makeUndecodedClient } from "./server"
+import type { RpcHandler, RpcHandlers, RpcRouter } from "../Router.js"
+import type { RpcService } from "../Schema.js"
+import { makeUndecodedClient } from "./server.js"
 
 /** @internal */
 export const make = <

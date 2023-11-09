@@ -4,7 +4,7 @@
 import type * as App from "@effect/platform/Http/App"
 import type * as ServerError from "@effect/platform/Http/ServerError"
 import type { RpcRouter } from "@effect/rpc/Router"
-import * as internal from "./internal/server"
+import * as internal from "./internal/server.js"
 
 /**
  * @category constructors

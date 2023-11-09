@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 import type { Effect } from "effect/Effect"
-import type { RpcError } from "./Error"
-import * as internal from "./internal/client"
-import type { RpcResolver } from "./Resolver"
-import type { RpcSchema, RpcService } from "./Schema"
-import type { UndecodedRpcResponse } from "./Server"
+import type { RpcError } from "./Error.js"
+import * as internal from "./internal/client.js"
+import type { RpcResolver } from "./Resolver.js"
+import type { RpcSchema, RpcService } from "./Schema.js"
+import type { UndecodedRpcResponse } from "./Server.js"
 /**
  * Represents an RPC method signature.
  *

@@ -1,110 +1,33 @@
 {
   "name": "@effect/rpc",
+  "type": "module",
   "version": "0.17.1",
   "description": "",
-  "main": "dist/effect-rpc.cjs.js",
-  "module": "dist/effect-rpc.esm.js",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "dist"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/effect-ts/rpc.git"
   },
   "homepage": "https://github.com/effect-ts/rpc",
-  "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
-    "lint": "eslint src/**/*.ts test/**/*.ts",
-    "tc": "tsc --noEmit",
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
-  },
-  "preconstruct": {
-    "entrypoints": [
-      "*.ts"
-    ],
-    "distFilenameStrategy": "full",
-    "exports": {
-      "importConditionDefaultExport": "default"
-    }
-  },
-  "effect": {
-    "generateIndex": true,
-    "includeInternal": true
-  },
-  "keywords": [],
   "author": "Effect contributors",
   "license": "MIT",
   "sideEffects": false,
+  "scripts": {
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
+  },
   "devDependencies": {
-    "@effect/schema": "^0.47.1",
+    "@effect/schema": "^0.47.2",
     "effect": "2.0.0-next.54"
   },
   "peerDependencies": {
     "@effect/schema": "^0.47.1",
     "effect": "2.0.0-next.54"
-  },
-  "files": [
-    "src",
-    "dist",
-    "internal",
-    "Client",
-    "Error",
-    "Resolver",
-    "Router",
-    "Schema",
-    "SchemaC",
-    "Server"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-rpc.esm.js",
-      "import": "./dist/effect-rpc.cjs.mjs",
-      "default": "./dist/effect-rpc.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./Client": {
-      "types": "./dist/declarations/src/Client.d.ts",
-      "module": "./Client/dist/effect-rpc-Client.esm.js",
-      "import": "./Client/dist/effect-rpc-Client.cjs.mjs",
-      "default": "./Client/dist/effect-rpc-Client.cjs.js"
-    },
-    "./Error": {
-      "types": "./dist/declarations/src/Error.d.ts",
-      "module": "./Error/dist/effect-rpc-Error.esm.js",
-      "import": "./Error/dist/effect-rpc-Error.cjs.mjs",
-      "default": "./Error/dist/effect-rpc-Error.cjs.js"
-    },
-    "./Resolver": {
-      "types": "./dist/declarations/src/Resolver.d.ts",
-      "module": "./Resolver/dist/effect-rpc-Resolver.esm.js",
-      "import": "./Resolver/dist/effect-rpc-Resolver.cjs.mjs",
-      "default": "./Resolver/dist/effect-rpc-Resolver.cjs.js"
-    },
-    "./Router": {
-      "types": "./dist/declarations/src/Router.d.ts",
-      "module": "./Router/dist/effect-rpc-Router.esm.js",
-      "import": "./Router/dist/effect-rpc-Router.cjs.mjs",
-      "default": "./Router/dist/effect-rpc-Router.cjs.js"
-    },
-    "./Schema": {
-      "types": "./dist/declarations/src/Schema.d.ts",
-      "module": "./Schema/dist/effect-rpc-Schema.esm.js",
-      "import": "./Schema/dist/effect-rpc-Schema.cjs.mjs",
-      "default": "./Schema/dist/effect-rpc-Schema.cjs.js"
-    },
-    "./SchemaC": {
-      "types": "./dist/declarations/src/SchemaC.d.ts",
-      "module": "./SchemaC/dist/effect-rpc-SchemaC.esm.js",
-      "import": "./SchemaC/dist/effect-rpc-SchemaC.cjs.mjs",
-      "default": "./SchemaC/dist/effect-rpc-SchemaC.cjs.js"
-    },
-    "./Server": {
-      "types": "./dist/declarations/src/Server.d.ts",
-      "module": "./Server/dist/effect-rpc-Server.esm.js",
-      "import": "./Server/dist/effect-rpc-Server.cjs.mjs",
-      "default": "./Server/dist/effect-rpc-Server.cjs.js"
-    }
   }
 }

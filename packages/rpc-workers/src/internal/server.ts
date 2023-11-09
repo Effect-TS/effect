@@ -8,7 +8,7 @@ import * as Server from "@effect/rpc/Server"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
-import { getTransferables } from "../Schema"
+import { getTransferables } from "../Schema.js"
 
 /** @internal */
 export const make = <R extends RpcRouter.Base>(router: R): Effect.Effect<
