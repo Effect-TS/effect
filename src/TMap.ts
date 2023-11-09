@@ -219,8 +219,8 @@ export const merge: {
  * @category folding
  */
 export const reduce: {
-  <Z, V>(zero: Z, f: (acc: Z, value: V) => Z): <K>(self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => Z): STM.STM<never, never, Z>
+  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
+  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
 } = internal.reduce
 
 /**
@@ -230,31 +230,9 @@ export const reduce: {
  * @category folding
  */
 export const reduceSTM: {
-  <Z, V, R, E>(zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): <K>(self: TMap<K, V>) => STM.STM<R, E, Z>
-  <K, V, Z, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
-} = internal.reduceSTM
-
-/**
- * Atomically folds using a pure function.
- *
- * @since 2.0.0
- * @category folding
- */
-export const reduceWithIndex: {
-  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
-} = internal.reduceWithIndex
-
-/**
- * Atomically folds using a transactional function.
- *
- * @since 2.0.0
- * @category folding
- */
-export const reduceWithIndexSTM: {
   <Z, V, K, R, E>(zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): (self: TMap<K, V>) => STM.STM<R, E, Z>
   <Z, V, K, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
-} = internal.reduceWithIndexSTM
+} = internal.reduceSTM
 
 /**
  * Removes binding for given key.

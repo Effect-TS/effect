@@ -121,7 +121,7 @@ export const findSTM = dual<
   self: TMap.TMap<K, V>,
   f: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
 ) =>
-  reduceWithIndexSTM(self, Option.none<A>(), (acc, value, key) =>
+  reduceSTM(self, Option.none<A>(), (acc, value, key) =>
     Option.isNone(acc) ?
       core.matchSTM(f(key, value), {
         onFailure: Option.match({
@@ -164,7 +164,7 @@ export const findAllSTM = dual<
   pf: (key: K, value: V) => STM.STM<R, Option.Option<E>, A>
 ) =>
   core.map(
-    reduceWithIndexSTM(self, Chunk.empty<A>(), (acc, value, key) =>
+    reduceSTM(self, Chunk.empty<A>(), (acc, value, key) =>
       core.matchSTM(pf(key, value), {
         onFailure: Option.match({
           onNone: () => core.succeed(acc),
@@ -180,7 +180,7 @@ export const forEach = dual<
   <K, V, R, E, _>(f: (key: K, value: V) => STM.STM<R, E, _>) => (self: TMap.TMap<K, V>) => STM.STM<R, E, void>,
   <K, V, R, E, _>(self: TMap.TMap<K, V>, f: (key: K, value: V) => STM.STM<R, E, _>) => STM.STM<R, E, void>
 >(2, (self, f) =>
-  reduceWithIndexSTM(
+  reduceSTM(
     self,
     void 0 as void,
     (_, value, key) => stm.asUnit(f(key, value))
@@ -257,28 +257,6 @@ export const merge = dual<
 
 /** @internal */
 export const reduce = dual<
-  <Z, V>(zero: Z, f: (acc: Z, value: V) => Z) => <K>(self: TMap.TMap<K, V>) => STM.STM<never, never, Z>,
-  <K, V, Z>(self: TMap.TMap<K, V>, zero: Z, f: (acc: Z, value: V) => Z) => STM.STM<never, never, Z>
->(3, (self, zero, f) =>
-  reduceWithIndex(
-    self,
-    zero,
-    (acc, value) => f(acc, value)
-  ))
-
-/** @internal */
-export const reduceSTM = dual<
-  <Z, V, R, E>(zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>) => <K>(self: TMap.TMap<K, V>) => STM.STM<R, E, Z>,
-  <K, V, Z, R, E>(self: TMap.TMap<K, V>, zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>) => STM.STM<R, E, Z>
->(3, (self, zero, f) =>
-  reduceWithIndexSTM(
-    self,
-    zero,
-    (acc, value) => f(acc, value)
-  ))
-
-/** @internal */
-export const reduceWithIndex = dual<
   <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Z>,
   <K, V, Z>(self: TMap.TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z) => STM.STM<never, never, Z>
 >(
@@ -299,7 +277,7 @@ export const reduceWithIndex = dual<
 )
 
 /** @internal */
-export const reduceWithIndexSTM = dual<
+export const reduceSTM = dual<
   <Z, V, K, R, E>(
     zero: Z,
     f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>
@@ -681,7 +659,7 @@ export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Arra
 
 /** @internal */
 export const toHashMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, HashMap.HashMap<K, V>> =>
-  reduceWithIndex(
+  reduce(
     self,
     HashMap.empty<K, V>(),
     (acc, value, key) => pipe(acc, HashMap.set(key, value))
@@ -689,7 +667,7 @@ export const toHashMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Ha
 
 /** @internal */
 export const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, ReadonlyArray<readonly [K, V]>> =>
-  reduceWithIndex(
+  reduce(
     self,
     [] as ReadonlyArray<readonly [K, V]>,
     (acc, value, key) => [[key, value] as const, ...acc]
@@ -697,7 +675,7 @@ export const toReadonlyArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, nev
 
 /** @internal */
 export const toReadonlyMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, ReadonlyMap<K, V>> =>
-  reduceWithIndex(
+  reduce(
     self,
     new Map<K, V>(),
     (acc, value, key) => acc.set(key, value)

@@ -35,8 +35,6 @@ Added in v2.0.0
 - [folding](#folding)
   - [reduce](#reduce)
   - [reduceSTM](#reducestm)
-  - [reduceWithIndex](#reducewithindex)
-  - [reduceWithIndexSTM](#reducewithindexstm)
 - [getters](#getters)
   - [isEmpty](#isempty)
   - [size](#size)
@@ -324,8 +322,8 @@ Atomically folds using a pure function.
 
 ```ts
 export declare const reduce: {
-  <Z, V>(zero: Z, f: (acc: Z, value: V) => Z): <K>(self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => Z): STM.STM<never, never, Z>
+  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
+  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
 }
 ```
 
@@ -339,36 +337,6 @@ Atomically folds using a transactional function.
 
 ```ts
 export declare const reduceSTM: {
-  <Z, V, R, E>(zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): <K>(self: TMap<K, V>) => STM.STM<R, E, Z>
-  <K, V, Z, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
-}
-```
-
-Added in v2.0.0
-
-## reduceWithIndex
-
-Atomically folds using a pure function.
-
-**Signature**
-
-```ts
-export declare const reduceWithIndex: {
-  <Z, K, V>(zero: Z, f: (acc: Z, value: V, key: K) => Z): (self: TMap<K, V>) => STM.STM<never, never, Z>
-  <K, V, Z>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => Z): STM.STM<never, never, Z>
-}
-```
-
-Added in v2.0.0
-
-## reduceWithIndexSTM
-
-Atomically folds using a transactional function.
-
-**Signature**
-
-```ts
-export declare const reduceWithIndexSTM: {
   <Z, V, K, R, E>(zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): (self: TMap<K, V>) => STM.STM<R, E, Z>
   <Z, V, K, R, E>(self: TMap<K, V>, zero: Z, f: (acc: Z, value: V, key: K) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
 }
