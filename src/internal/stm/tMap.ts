@@ -649,6 +649,14 @@ export const toArray = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Arra
   })
 
 /** @internal */
+export const toChunk = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, Chunk.Chunk<[K, V]>> =>
+  reduce(
+    self,
+    Chunk.empty<[K, V]>(),
+    (acc, value, key) => Chunk.append(acc, [key, value])
+  )
+
+/** @internal */
 export const toHashMap = <K, V>(self: TMap.TMap<K, V>): STM.STM<never, never, HashMap.HashMap<K, V>> =>
   reduce(
     self,

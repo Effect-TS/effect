@@ -385,7 +385,7 @@ export const takeSomeSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Array<readonly [K, V]>> = internal.toArray // TODO: readonly, wrong name
+export const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Chunk.Chunk<[K, V]>> = internal.toChunk
 
 /**
  * Collects all bindings into a `HashMap`.

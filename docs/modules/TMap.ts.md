@@ -115,7 +115,7 @@ Collects all bindings into a `Chunk`.
 **Signature**
 
 ```ts
-export declare const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, (readonly [K, V])[]>
+export declare const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, Chunk.Chunk<[K, V]>>
 ```
 
 Added in v2.0.0

@@ -1,5 +1,6 @@
 import { equivalentElements } from "effect-test/utils/equals"
 import * as it from "effect-test/utils/extend"
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
@@ -10,7 +11,7 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as STM from "effect/STM"
 import * as TMap from "effect/TMap"
 import * as fc from "fast-check"
-import { assert, describe } from "vitest"
+import { assert, describe, expect } from "vitest"
 
 class HashContainer implements Equal.Equal {
   constructor(readonly i: number) {}
@@ -322,6 +323,7 @@ describe.concurrent("TMap", () => {
         STM.flatMap(TMap.toChunk)
       )
       const result = await Effect.runPromise(STM.commit(transaction))
+      expect(Chunk.isChunk(result)).toBe(true)
       assert.lengthOf(pipe(Array.from(result), ReadonlyArray.differenceWith(equivalentElements())(entries)), 0)
       assert.lengthOf(pipe(entries, ReadonlyArray.differenceWith(equivalentElements())(Array.from(result))), 0)
     })))
