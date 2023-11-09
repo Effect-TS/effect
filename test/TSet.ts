@@ -1,4 +1,5 @@
 import * as it from "effect-test/utils/extend"
+import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as STM from "effect/STM"
@@ -284,5 +285,15 @@ describe.concurrent("TSet", () => {
       })
       const result = yield* $(STM.commit(transaction))
       assert.deepStrictEqual(result, [1, 2, 3, 4, 5])
+    }))
+
+  it.effect("toChunk", () =>
+    Effect.gen(function*($) {
+      const transaction = STM.gen(function*($) {
+        const set = yield* $(TSet.make(1, 2, 3))
+        return yield* $(TSet.toChunk(set))
+      })
+      const result = yield* $(STM.commit(transaction))
+      assert.deepStrictEqual(result, Chunk.make(1, 2, 3))
     }))
 })

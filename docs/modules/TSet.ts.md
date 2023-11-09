@@ -107,7 +107,7 @@ Collects all elements into a `Chunk`.
 **Signature**
 
 ```ts
-export declare const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, A[]>
+export declare const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0

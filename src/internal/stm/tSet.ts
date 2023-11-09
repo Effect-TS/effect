@@ -1,9 +1,10 @@
+import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import * as HashSet from "../../HashSet.js"
 import type * as Option from "../../Option.js"
 import type { Predicate } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
-import type * as STM from "../../STM.js"
+import * as STM from "../../STM.js"
 import type * as TMap from "../../TMap.js"
 import type * as TSet from "../../TSet.js"
 import * as core from "./core.js"
@@ -192,7 +193,8 @@ export const takeSomeSTM = dual<
 >(2, (self, pf) => tMap.takeSomeSTM(self.tMap, (key) => pf(key)))
 
 /** @internal */
-export const toChunk = <A>(self: TSet.TSet<A>): STM.STM<never, never, Array<A>> => tMap.keys(self.tMap)
+export const toChunk = <A>(self: TSet.TSet<A>): STM.STM<never, never, Chunk.Chunk<A>> =>
+  tMap.keys(self.tMap).pipe(STM.map(Chunk.unsafeFromArray))
 
 /** @internal */
 export const toHashSet = <A>(self: TSet.TSet<A>): STM.STM<never, never, HashSet.HashSet<A>> =>
