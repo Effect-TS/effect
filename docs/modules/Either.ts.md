@@ -43,6 +43,7 @@ Added in v2.0.0
   - [isLeft](#isleft)
   - [isRight](#isright)
 - [mapping](#mapping)
+  - [flip](#flip)
   - [map](#map)
   - [mapBoth](#mapboth)
   - [mapLeft](#mapleft)
@@ -59,8 +60,6 @@ Added in v2.0.0
   - [TypeId (type alias)](#typeid-type-alias)
 - [type lambdas](#type-lambdas)
   - [EitherTypeLambda (interface)](#eithertypelambda-interface)
-- [utils](#utils)
-  - [reverse](#reverse)
 
 ---
 
@@ -534,6 +533,19 @@ Added in v2.0.0
 
 # mapping
 
+## flip
+
+Returns an `Either` that swaps the error/success cases. This allows you to
+use all methods on the error channel, possibly before flipping back.
+
+**Signature**
+
+```ts
+export declare const flip: <E, A>(self: Either<E, A>) => Either<A, E>
+```
+
+Added in v2.0.0
+
 ## map
 
 Maps the `Right` side of an `Either` value to a new `Either` value.
@@ -729,18 +741,6 @@ Added in v2.0.0
 export interface EitherTypeLambda extends TypeLambda {
   readonly type: Either<this["Out1"], this["Target"]>
 }
-```
-
-Added in v2.0.0
-
-# utils
-
-## reverse
-
-**Signature**
-
-```ts
-export declare const reverse: <E, A>(self: Either<E, A>) => Either<A, E>
 ```
 
 Added in v2.0.0
