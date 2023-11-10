@@ -181,7 +181,7 @@ const getCachedValue = <R, E, A>(
       core.flatMap((option) =>
         Option.isNone(option) ?
           core.dieMessage(
-            "BUG: Effect.cachedInvalidate - please report an issue at https://github.com/Effect-TS/io/issues"
+            "BUG: Effect.cachedInvalidate - please report an issue at https://github.com/Effect-TS/effect/issues"
           ) :
           restore(core.deferredAwait(option.value[1]))
       )

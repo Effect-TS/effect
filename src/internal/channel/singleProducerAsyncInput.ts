@@ -156,7 +156,7 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
                 ]
               }
               throw new Error(
-                "Bug: Channel.SingleProducerAsyncInput.emit - Queue was empty! Please report an issue at https://github.com/Effect-TS/stream/issues"
+                "Bug: Channel.SingleProducerAsyncInput.emit - Queue was empty! please report an issue at https://github.com/Effect-TS/effect/issues"
               )
             }
             case OP_STATE_ERROR: {

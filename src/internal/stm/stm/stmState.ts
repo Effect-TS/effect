@@ -123,7 +123,9 @@ export const fromTExit = <E, A>(tExit: TExit.TExit<E, A>): STMState<E, A> => {
       return done(Exit.succeed(tExit.value))
     }
     case TExitOpCodes.OP_RETRY: {
-      throw new Error("BUG: STM.STMState.fromTExit - please report an issue at https://github.com/Effect-TS/io/issues")
+      throw new Error(
+        "BUG: STM.STMState.fromTExit - please report an issue at https://github.com/Effect-TS/effect/issues"
+      )
     }
   }
 }

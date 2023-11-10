@@ -96,7 +96,7 @@ export const compose = <A>(
   if (Either.isLeft(left) && Either.isRight(right)) {
     return right
   }
-  throw new Error("BUG: TestAnnotation.compose - please report an issue at https://github.com/Effect-TS/io/issues")
+  throw new Error("BUG: TestAnnotation.compose - please report an issue at https://github.com/Effect-TS/effect/issues")
 }
 
 /**

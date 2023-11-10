@@ -414,7 +414,7 @@ const fromFlatLoop = <A>(
                   )
                 }
                 throw new Error(
-                  "BUG: ConfigProvider.fromFlatLoop - please report an issue at https://github.com/Effect-TS/io/issues"
+                  "BUG: ConfigProvider.fromFlatLoop - please report an issue at https://github.com/Effect-TS/effect/issues"
                 )
               })
             )
@@ -534,7 +534,7 @@ const orElseFlat = (
                     return core.succeed(pipe(left.right, HashSet.union(right.right)))
                   }
                   throw new Error(
-                    "BUG: ConfigProvider.orElseFlat - please report an issue at https://github.com/Effect-TS/io/issues"
+                    "BUG: ConfigProvider.orElseFlat - please report an issue at https://github.com/Effect-TS/effect/issues"
                   )
                 })
               )

@@ -64,7 +64,7 @@ class MetricRegistryImpl implements MetricRegistry.MetricRegistry {
         return this.getSummary(key as unknown as MetricKey.MetricKey.Summary) as any
       }
       throw new Error(
-        "BUG: MetricRegistry.get - unknown MetricKeyType - please report an issue at https://github.com/Effect-TS/io/issues"
+        "BUG: MetricRegistry.get - unknown MetricKeyType - please report an issue at https://github.com/Effect-TS/effect/issues"
       )
     } else {
       return hook as any
