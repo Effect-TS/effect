@@ -38,8 +38,8 @@
     "effect": "2.0.0-next.54"
   },
   "devDependencies": {
-    "@effect/schema": "^0.47.2",
-    "bun-types": "^1.0.9",
+    "@effect/schema": "^0.47.3",
+    "bun-types": "^1.0.11",
     "effect": "2.0.0-next.54"
   }
 }

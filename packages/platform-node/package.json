@@ -42,11 +42,11 @@
     "effect": "2.0.0-next.54"
   },
   "devDependencies": {
-    "@effect/schema": "^0.47.2",
-    "@types/busboy": "^1.5.2",
-    "@types/mime": "^3.0.3",
-    "@types/node": "^20.8.10",
-    "@types/tar": "^6.1.7",
+    "@effect/schema": "^0.47.3",
+    "@types/busboy": "^1.5.3",
+    "@types/mime": "^3.0.4",
+    "@types/node": "^20.9.0",
+    "@types/tar": "^6.1.8",
     "effect": "2.0.0-next.54",
     "tar": "^6.2.0"
   }
