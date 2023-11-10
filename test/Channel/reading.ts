@@ -1,20 +1,20 @@
 import * as it from "effect-test/utils/extend"
-import * as Channel from "effect/Channel"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
+import { Channel } from "effect/Channel"
+import { Effect } from "effect/Effect"
+import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HashSet from "effect/HashSet"
-import * as MergeDecision from "effect/MergeDecision"
-import * as Option from "effect/Option"
-import * as Random from "effect/Random"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
+import { Hash } from "effect/Hash"
+import { HashSet } from "effect/HashSet"
+import { MergeDecision } from "effect/MergeDecision"
+import { Option } from "effect/Option"
+import { Random } from "effect/Random"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 export const mapper = <A, B>(
   f: (a: A) => B
-): Channel.Channel<never, unknown, A, unknown, never, B, void> => {
+): Channel<never, unknown, A, unknown, never, B, void> => {
   return Channel.readWith({
     onInput: (a: A) =>
       Channel.flatMap(
@@ -27,8 +27,8 @@ export const mapper = <A, B>(
 }
 
 export const refWriter = <A>(
-  ref: Ref.Ref<ReadonlyArray<A>>
-): Channel.Channel<never, unknown, A, unknown, never, never, void> => {
+  ref: Ref<ReadonlyArray<A>>
+): Channel<never, unknown, A, unknown, never, never, void> => {
   return Channel.readWith({
     onInput: (a: A) =>
       Channel.flatMap(
@@ -41,8 +41,8 @@ export const refWriter = <A>(
 }
 
 export const refReader = <A>(
-  ref: Ref.Ref<ReadonlyArray<A>>
-): Channel.Channel<never, unknown, unknown, unknown, never, A, void> => {
+  ref: Ref<ReadonlyArray<A>>
+): Channel<never, unknown, unknown, unknown, never, A, void> => {
   return pipe(
     Channel.fromEffect(
       Ref.modify(ref, (array) => {
@@ -62,7 +62,7 @@ export const refReader = <A>(
 describe.concurrent("Channel", () => {
   it.effect("simple reads", () =>
     Effect.gen(function*($) {
-      class Whatever implements Equal.Equal {
+      class Whatever implements Equal {
         constructor(readonly i: number) {}
         [Hash.symbol](): number {
           return Hash.hash(this.i)
@@ -104,7 +104,7 @@ describe.concurrent("Channel", () => {
       const innerChannel = pipe(
         Channel.fromEffect(Ref.make<ReadonlyArray<number>>([])),
         Channel.flatMap((ref) => {
-          const inner = (): Channel.Channel<never, unknown, number, unknown, never, number, void> =>
+          const inner = (): Channel<never, unknown, number, unknown, never, number, void> =>
             Channel.readWith({
               onInput: (input: number) =>
                 pipe(
@@ -137,7 +137,7 @@ describe.concurrent("Channel", () => {
   it.effect("read pipelining 2", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make<ReadonlyArray<number>>([]))
-      const intProducer: Channel.Channel<
+      const intProducer: Channel<
         never,
         unknown,
         unknown,
@@ -148,7 +148,7 @@ describe.concurrent("Channel", () => {
       > = Channel.writeAll(1, 2, 3, 4, 5)
       const readIntsN = (
         n: number
-      ): Channel.Channel<never, unknown, number, unknown, never, number, string> =>
+      ): Channel<never, unknown, number, unknown, never, number, string> =>
         n > 0
           ? Channel.readWith({
             onInput: (i: number) => pipe(Channel.write(i), Channel.flatMap(() => readIntsN(n - 1))),
@@ -160,7 +160,7 @@ describe.concurrent("Channel", () => {
       const sum = (
         label: string,
         n: number
-      ): Channel.Channel<never, unknown, number, unknown, unknown, never, void> =>
+      ): Channel<never, unknown, number, unknown, unknown, never, void> =>
         Channel.readWith({
           onInput: (input: number) => sum(label, n + input),
           onFailure: () => Channel.fromEffect(Ref.update(ref, (array) => [...array, n])),

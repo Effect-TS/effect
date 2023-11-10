@@ -1,14 +1,14 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Cause } from "effect/Cause"
+import { Deferred } from "effect/Deferred"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { constFalse, constTrue, pipe } from "effect/Function"
-import * as HashSet from "effect/HashSet"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
+import { HashSet } from "effect/HashSet"
+import { Option } from "effect/Option"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
@@ -187,7 +187,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("zip/parallel - paralellizes simple success values", () =>
     Effect.gen(function*($) {
-      const countdown = (n: number): Effect.Effect<never, never, number> => {
+      const countdown = (n: number): Effect<never, never, number> => {
         return n === 0
           ? Effect.succeed(0)
           : pipe(

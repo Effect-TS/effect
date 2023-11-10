@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
+import { Deferred } from "effect/Deferred"
+import { Effect } from "effect/Effect"
 import { identity, pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
-import * as Scope from "effect/Scope"
+import { Ref } from "effect/Ref"
+import { Scope } from "effect/Scope"
 import { assert, describe, expect } from "vitest"
 
 type Action = Acquire | Use | Release
@@ -39,7 +39,7 @@ const isAcquire = (self: Action): self is Use => self.op === OP_ACQUIRE
 const isUse = (self: Action): self is Use => self.op === OP_USE
 const isRelease = (self: Action): self is Use => self.op === OP_RELEASE
 
-const resource = (id: number, ref: Ref.Ref<ReadonlyArray<Action>>): Effect.Effect<Scope.Scope, never, number> => {
+const resource = (id: number, ref: Ref<ReadonlyArray<Action>>): Effect<Scope, never, number> => {
   return pipe(
     Ref.update(ref, (actions) => [...actions, acquire(id)]),
     Effect.as(id),

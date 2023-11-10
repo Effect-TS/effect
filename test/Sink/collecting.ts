@@ -1,10 +1,10 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
 import { constTrue, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { Option } from "effect/Option"
+import { Sink } from "effect/Sink"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {

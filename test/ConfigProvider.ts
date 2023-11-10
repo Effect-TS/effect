@@ -1,18 +1,18 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Config from "effect/Config"
-import * as ConfigError from "effect/ConfigError"
-import * as ConfigProvider from "effect/ConfigProvider"
-import * as ConfigSecret from "effect/ConfigSecret"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
-import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
-import * as LogLevel from "effect/LogLevel"
-import * as Option from "effect/Option"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Config } from "effect/Config"
+import { ConfigError } from "effect/ConfigError"
+import { ConfigProvider } from "effect/ConfigProvider"
+import { ConfigSecret } from "effect/ConfigSecret"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Equal } from "effect/Equal"
+import { Exit } from "effect/Exit"
+import { HashMap } from "effect/HashMap"
+import { HashSet } from "effect/HashSet"
+import { LogLevel } from "effect/LogLevel"
+import { Option } from "effect/Option"
 import { assert, describe, expect } from "vitest"
 
 interface HostPort {
@@ -20,7 +20,7 @@ interface HostPort {
   readonly port: number
 }
 
-const hostPortConfig: Config.Config<HostPort> = Config.all({
+const hostPortConfig: Config<HostPort> = Config.all({
   host: Config.string("host"),
   port: Config.integer("port")
 })
@@ -29,7 +29,7 @@ interface HostPorts {
   readonly hostPorts: ReadonlyArray<HostPort>
 }
 
-const hostPortsConfig: Config.Config<HostPorts> = Config.all({
+const hostPortsConfig: Config<HostPorts> = Config.all({
   hostPorts: Config.array(hostPortConfig, "hostPorts")
 })
 
@@ -38,7 +38,7 @@ interface ServiceConfig {
   readonly timeout: number
 }
 
-const serviceConfigConfig: Config.Config<ServiceConfig> = Config.all({
+const serviceConfigConfig: Config<ServiceConfig> = Config.all({
   hostPort: hostPortConfig.pipe(Config.nested("hostPort")),
   timeout: Config.integer("timeout")
 })
@@ -52,7 +52,7 @@ interface StockDay {
   readonly volume: number
 }
 
-const stockDayConfig: Config.Config<StockDay> = Config.all({
+const stockDayConfig: Config<StockDay> = Config.all({
   date: Config.date("date"),
   open: Config.number("open"),
   close: Config.number("close"),
@@ -62,18 +62,18 @@ const stockDayConfig: Config.Config<StockDay> = Config.all({
 })
 
 interface SNP500 {
-  readonly stockDays: HashMap.HashMap<string, StockDay>
+  readonly stockDays: HashMap<string, StockDay>
 }
 
-const snp500Config: Config.Config<SNP500> = Config.all({
+const snp500Config: Config<SNP500> = Config.all({
   stockDays: Config.hashMap(stockDayConfig)
 })
 
 interface WebScrapingTargets {
-  readonly targets: HashSet.HashSet<string>
+  readonly targets: HashSet<string>
 }
 
-const webScrapingTargetsConfig: Config.Config<WebScrapingTargets> = Config.all({
+const webScrapingTargetsConfig: Config<WebScrapingTargets> = Config.all({
   targets: Config.hashSet(Config.string(), "targets")
 })
 
@@ -83,7 +83,7 @@ const webScrapingTargetsConfigWithDefault = Config.all({
   )
 })
 
-const provider = (map: Map<string, string>): ConfigProvider.ConfigProvider => {
+const provider = (map: Map<string, string>): ConfigProvider => {
   return ConfigProvider.fromMap(map)
 }
 

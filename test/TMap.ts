@@ -1,19 +1,19 @@
 import { equivalentElements } from "effect-test/utils/equals"
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
+import { Equal } from "effect/Equal"
+import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as Option from "effect/Option"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as STM from "effect/STM"
-import * as TMap from "effect/TMap"
+import { Hash } from "effect/Hash"
+import { Option } from "effect/Option"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { STM } from "effect/STM"
+import { TMap } from "effect/TMap"
 import * as fc from "fast-check"
 import { assert, describe, expect } from "vitest"
 
-class HashContainer implements Equal.Equal {
+class HashContainer implements Equal {
   constructor(readonly i: number) {}
   [Hash.symbol](): number {
     return this.i
@@ -328,7 +328,7 @@ describe.concurrent("TMap", () => {
       assert.lengthOf(pipe(entries, ReadonlyArray.differenceWith(equivalentElements())(Array.from(result))), 0)
     })))
 
-  it.it("toReadonlyArray - collect all elements", () =>
+  it.it("toArray - collect all elements", () =>
     fc.assert(fc.asyncProperty(mapEntriesArb, async (entries) => {
       const transaction = pipe(
         TMap.fromIterable(entries),

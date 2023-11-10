@@ -1,8 +1,8 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as FiberRef from "effect/FiberRef"
-import * as TestClock from "effect/TestClock"
+import { Effect } from "effect/Effect"
+import { Fiber } from "effect/Fiber"
+import { FiberRef } from "effect/FiberRef"
+import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

@@ -1,16 +1,16 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
+import { FiberId } from "effect/FiberId"
 import { pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
-import * as Stream from "effect/Stream"
+import { Option } from "effect/Option"
+import { Ref } from "effect/Ref"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {
@@ -150,7 +150,7 @@ describe.concurrent("Stream", () => {
   it.it("unwrapScoped", async () => {
     const awaiter = Deferred.unsafeMake<never, void>(FiberId.none)
     const program = Effect.gen(function*($) {
-      const stream = (deferred: Deferred.Deferred<never, void>, ref: Ref.Ref<ReadonlyArray<string>>) =>
+      const stream = (deferred: Deferred<never, void>, ref: Ref<ReadonlyArray<string>>) =>
         pipe(
           Effect.acquireRelease(
             Ref.update(ref, (array) => [...array, "acquire outer"]),

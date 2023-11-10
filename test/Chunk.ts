@@ -1,14 +1,14 @@
-import * as Util from "effect-test/util"
-import * as Chunk from "effect/Chunk"
-import * as Duration from "effect/Duration"
+import { Util } from "effect-test/util"
+import { Chunk } from "effect/Chunk"
+import { Duration } from "effect/Duration"
 import * as E from "effect/Either"
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { identity, pipe } from "effect/Function"
 import * as N from "effect/Number"
-import * as Option from "effect/Option"
-import * as Order from "effect/Order"
+import { Option } from "effect/Option"
+import { Order } from "effect/Order"
 import type { Predicate } from "effect/Predicate"
-import * as RA from "effect/ReadonlyArray"
+import { ReadonlyArray as RA } from "effect/ReadonlyArray"
 import * as fc from "fast-check"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
@@ -265,7 +265,7 @@ describe.concurrent("Chunk", () => {
     describe.concurrent("Given a prepended Chunk and an index out of bounds", () => {
       it("should throw", () => {
         fc.assert(fc.property(fc.array(fc.anything()), (array) => {
-          let chunk: Chunk.Chunk<unknown> = Chunk.empty()
+          let chunk: Chunk<unknown> = Chunk.empty()
           array.forEach((e) => {
             chunk = pipe(chunk, Chunk.prepend(e))
           })
@@ -302,7 +302,7 @@ describe.concurrent("Chunk", () => {
     describe.concurrent("Given a concat Chunk and an index out of bounds", () => {
       it("should throw", () => {
         fc.assert(fc.property(fc.array(fc.anything()), fc.array(fc.anything()), (arr1, arr2) => {
-          const chunk: Chunk.Chunk<unknown> = Chunk.appendAll(Chunk.fromIterable(arr2))(Chunk.unsafeFromArray(arr1))
+          const chunk: Chunk<unknown> = Chunk.appendAll(Chunk.fromIterable(arr2))(Chunk.unsafeFromArray(arr1))
           expect(() => pipe(chunk, Chunk.unsafeGet(arr1.length + arr2.length))).toThrow()
         }))
       })
@@ -858,7 +858,7 @@ describe.concurrent("Chunk", () => {
       a: string
       b: number
     }
-    const chunk: Chunk.Chunk<X> = Chunk.make({ a: "a", b: 2 }, { a: "b", b: 1 })
+    const chunk: Chunk<X> = Chunk.make({ a: "a", b: 2 }, { a: "b", b: 1 })
     expect(Chunk.sortWith(chunk, (x) => x.b, Order.number)).toEqual(Chunk.make({ a: "b", b: 1 }, { a: "a", b: 2 }))
   })
 

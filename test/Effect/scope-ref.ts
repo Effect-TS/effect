@@ -1,10 +1,10 @@
 import * as it from "effect-test/utils/extend"
 import { Tag } from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as FiberRef from "effect/FiberRef"
-import * as Layer from "effect/Layer"
-import * as List from "effect/List"
-import * as Logger from "effect/Logger"
+import { Effect } from "effect/Effect"
+import { FiberRef } from "effect/FiberRef"
+import { Layer } from "effect/Layer"
+import { List } from "effect/List"
+import { Logger } from "effect/Logger"
 import { assert, describe } from "vitest"
 
 const ref = FiberRef.unsafeMake(List.empty<string>())

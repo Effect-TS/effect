@@ -1,6 +1,6 @@
 import { pipe } from "effect/Function"
-import * as RuntimeFlags from "effect/RuntimeFlags"
-import * as RuntimeFlagsPatch from "effect/RuntimeFlagsPatch"
+import { RuntimeFlags } from "effect/RuntimeFlags"
+import { RuntimeFlagsPatch } from "effect/RuntimeFlagsPatch"
 import * as fc from "fast-check"
 import { assert, describe, it } from "vitest"
 

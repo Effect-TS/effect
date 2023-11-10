@@ -1,24 +1,24 @@
 import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
 import * as WatchableLookup from "effect-test/utils/cache/WatchableLookup"
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Context from "effect/Context"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Context } from "effect/Context"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { dual, identity, pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HashMap from "effect/HashMap"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as Scope from "effect/Scope"
-import * as ScopedCache from "effect/ScopedCache"
-import * as TestClock from "effect/TestClock"
-import * as TestServices from "effect/TestServices"
+import { Hash } from "effect/Hash"
+import { HashMap } from "effect/HashMap"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Ref } from "effect/Ref"
+import { Schedule } from "effect/Schedule"
+import { Scope } from "effect/Scope"
+import { ScopedCache } from "effect/ScopedCache"
+import { TestClock } from "effect/TestClock"
+import { TestServices } from "effect/TestServices"
 import * as fc from "fast-check"
 import { describe, expect } from "vitest"
 
@@ -28,8 +28,8 @@ const hash = dual<
 >(2, (x, y) => Hash.number(x ^ y))
 
 const hashEffect = dual<
-  (y: number) => (x: number) => Effect.Effect<never, never, number>,
-  (x: number, y: number) => Effect.Effect<never, never, number>
+  (y: number) => (x: number) => Effect<never, never, number>,
+  (x: number, y: number) => Effect<never, never, number>
 >(2, (x, y) => Effect.sync(() => hash(x, y)))
 
 describe.concurrent("ScopedCache", () => {
@@ -337,9 +337,9 @@ describe.concurrent("ScopedCache", () => {
         const scope1 = yield* $(Scope.make())
         const scope2 = yield* $(Scope.make())
         const acquire1 = Effect.provide(scoped, Context.make(Scope.Tag, scope1))
-        const release1: Scope.Scope.Finalizer = (exit) => Scope.close(scope1, exit)
+        const release1: Scope.Finalizer = (exit) => Scope.close(scope1, exit)
         const acquire2 = Effect.provide(scoped, Context.make(Scope.Tag, scope2))
-        const release2: Scope.Scope.Finalizer = (exit) => Scope.close(scope2, exit)
+        const release2: Scope.Finalizer = (exit) => Scope.close(scope2, exit)
         yield* $(subResource.assertNotAcquired())
         yield* $(acquire2)
         yield* $(subResource.assertAcquiredOnceAndNotCleaned())
@@ -399,8 +399,8 @@ describe.concurrent("ScopedCache", () => {
           cache.get(void 0),
           Context.make(Scope.Tag, scope2)
         ))
-        const release1: Scope.Scope.Finalizer = (exit) => Scope.close(scope1, exit)
-        const release2: Scope.Scope.Finalizer = (exit) => Scope.close(scope2, exit)
+        const release1: Scope.Finalizer = (exit) => Scope.close(scope1, exit)
+        const release2: Scope.Finalizer = (exit) => Scope.close(scope2, exit)
         return [release1, release2] as const
       })))
       yield* $(subResource.assertAcquiredOnceAndNotCleaned())
@@ -425,8 +425,8 @@ describe.concurrent("ScopedCache", () => {
         const scoped = cache.get(void 0)
         yield* $(Effect.provide(scoped, Context.make(Scope.Tag, scope1)))
         yield* $(Effect.provide(scoped, Context.make(Scope.Tag, scope2)))
-        const release1: Scope.Scope.Finalizer = (exit) => Scope.close(scope1, exit)
-        const release2: Scope.Scope.Finalizer = (exit) => Scope.close(scope2, exit)
+        const release1: Scope.Finalizer = (exit) => Scope.close(scope1, exit)
+        const release2: Scope.Finalizer = (exit) => Scope.close(scope2, exit)
         return [release1, release2] as const
       })))
       yield* $(subResource.assertAcquiredOnceAndNotCleaned())
@@ -542,7 +542,7 @@ describe.concurrent("ScopedCache", () => {
           cache.get(void 0),
           Context.make(Scope.Tag, scope)
         )
-        const release: Scope.Scope.Finalizer = (exit) => Scope.close(scope, exit)
+        const release: Scope.Finalizer = (exit) => Scope.close(scope, exit)
         yield* $(acquire)
         yield* $(TestClock.adjust(Duration.seconds(11)))
         yield* $(Effect.scoped(Effect.asUnit(cache.get(void 0))))
@@ -606,7 +606,7 @@ describe.concurrent("ScopedCache", () => {
   it.effect("refresh - should update the cache with a new value", () =>
     Effect.gen(function*($) {
       const inc = (n: number) => n * 10
-      const retrieve = (multiplier: Ref.Ref<number>) => (key: number) =>
+      const retrieve = (multiplier: Ref<number>) => (key: number) =>
         pipe(
           Ref.updateAndGet(multiplier, inc),
           Effect.map((multiplier) => key * multiplier)
@@ -656,7 +656,7 @@ describe.concurrent("ScopedCache", () => {
     Effect.gen(function*($) {
       const error = Cause.RuntimeException("Must be a multiple of 3")
       const inc = (n: number) => n + 1
-      const retrieve = (number: Ref.Ref<number>) => (key: number) =>
+      const retrieve = (number: Ref<number>) => (key: number) =>
         pipe(
           Ref.updateAndGet(number, inc),
           Effect.flatMap((n) =>
@@ -824,7 +824,7 @@ describe.concurrent("ScopedCache", () => {
           cache.get(void 0),
           Context.make(Scope.Tag, scope)
         )
-        const release: Scope.Scope.Finalizer = (exit) => Scope.close(scope, exit)
+        const release: Scope.Finalizer = (exit) => Scope.close(scope, exit)
         yield* $(acquire)
         yield* $(TestClock.adjust(Duration.seconds(11)))
         yield* $(cache.refresh(void 0))

@@ -1,11 +1,11 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
 import { equals } from "effect/Equal"
-import * as Exit from "effect/Exit"
+import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
-import * as Ref from "effect/Ref"
+import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
@@ -86,7 +86,7 @@ describe.concurrent("Effect", () => {
         pipe(
           Effect.acquireUseRelease(
             Effect.succeed(42),
-            (): Effect.Effect<never, unknown, unknown> => {
+            (): Effect<never, unknown, unknown> => {
               throw useDied
             },
             () => Ref.set(release, true)

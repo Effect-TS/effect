@@ -1,14 +1,14 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Clock from "effect/Clock"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
-import * as FiberRef from "effect/FiberRef"
+import { Chunk } from "effect/Chunk"
+import { Clock } from "effect/Clock"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Fiber } from "effect/Fiber"
+import { FiberRef } from "effect/FiberRef"
 import { constant, constTrue, identity } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Runtime from "effect/Runtime"
+import { Option } from "effect/Option"
+import { Runtime } from "effect/Runtime"
 import { assert, describe } from "vitest"
 
 const initial = "initial"
@@ -18,7 +18,7 @@ const update2 = "update2"
 
 const increment = (n: number): number => n + 1
 
-const loseTimeAndCpu: Effect.Effect<never, never, void> = Effect.yieldNow().pipe(
+const loseTimeAndCpu: Effect<never, never, void> = Effect.yieldNow().pipe(
   Effect.zipLeft(Clock.sleep(Duration.millis(1))),
   Effect.repeatN(100)
 )
@@ -340,7 +340,7 @@ describe.concurrent("FiberRef", () => {
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make<boolean>(true, { fork: constTrue }))
       const deferred = yield* $(Deferred.make<never, boolean>())
-      const runtime: Runtime.Runtime<never> = yield* $(
+      const runtime: Runtime<never> = yield* $(
         Effect.runtime<never>().pipe(Effect.locally(fiberRef, false))
       )
       yield* $(
@@ -353,7 +353,7 @@ describe.concurrent("FiberRef", () => {
     Effect.gen(function*($) {
       const fiberRef = yield* $(FiberRef.make<boolean>(true, { fork: constTrue }))
       const deferred = yield* $(Deferred.make<never, boolean>())
-      const runtime: Runtime.Runtime<never> = yield* $(Effect.locally(Effect.runtime<never>(), fiberRef, false))
+      const runtime: Runtime<never> = yield* $(Effect.locally(Effect.runtime<never>(), fiberRef, false))
       const fiber = yield* $(
         Effect.sync(() => Runtime.runFork(runtime)(Effect.intoDeferred(FiberRef.get(fiberRef), deferred)))
       )

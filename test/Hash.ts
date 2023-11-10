@@ -1,6 +1,6 @@
 import { absurd, identity } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HashSet from "effect/HashSet"
+import { Hash } from "effect/Hash"
+import { HashSet } from "effect/HashSet"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("Hash", () => {
@@ -11,7 +11,7 @@ describe.concurrent("Hash", () => {
   })
 
   it("number", () => {
-    const set: HashSet.HashSet<number> = HashSet.make(Infinity)
+    const set: HashSet<number> = HashSet.make(Infinity)
     expect(HashSet.has(set, Infinity)).toBe(true)
     expect(HashSet.has(set, -Infinity)).toBe(false)
   })
@@ -25,25 +25,25 @@ describe.concurrent("Hash", () => {
   it("symbol", () => {
     const a = Symbol.for("effect-test/Hash/a")
     const b = Symbol.for("effect-test/Hash/b")
-    const set: HashSet.HashSet<symbol> = HashSet.make(a)
+    const set: HashSet<symbol> = HashSet.make(a)
     expect(HashSet.has(set, a)).toBe(true)
     expect(HashSet.has(set, b)).toBe(false)
   })
 
   it("undefined", () => {
-    const set: HashSet.HashSet<number | undefined> = HashSet.make(1, undefined)
+    const set: HashSet<number | undefined> = HashSet.make(1, undefined)
     expect(HashSet.has(set, undefined)).toBe(true)
     expect(HashSet.has(set, 2)).toBe(false)
   })
 
   it("null", () => {
-    const set: HashSet.HashSet<number | null> = HashSet.make(1, null)
+    const set: HashSet<number | null> = HashSet.make(1, null)
     expect(HashSet.has(set, null)).toBe(true)
     expect(HashSet.has(set, 2)).toBe(false)
   })
 
   it("function", () => {
-    const set: HashSet.HashSet<Function> = HashSet.make(identity)
+    const set: HashSet<Function> = HashSet.make(identity)
     expect(HashSet.has(set, identity)).toBe(true)
     expect(HashSet.has(set, absurd)).toBe(false)
   })

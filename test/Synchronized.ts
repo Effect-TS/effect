@@ -1,10 +1,10 @@
 import * as it from "effect-test/utils/extend"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
-import * as Option from "effect/Option"
-import * as Synchronized from "effect/SynchronizedRef"
+import { Deferred } from "effect/Deferred"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
+import { Option } from "effect/Option"
+import { SynchronizedRef } from "effect/SynchronizedRef"
 import { assert, describe } from "vitest"
 
 const current = "value"
@@ -36,57 +36,57 @@ const isClosed = (self: State): boolean => self._tag === "Closed"
 describe.concurrent("SynchronizedRef", () => {
   it.effect("get", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Synchronized.make(current), Effect.flatMap(Synchronized.get))
+      const result = yield* $(SynchronizedRef.make(current), Effect.flatMap(SynchronizedRef.get))
       assert.strictEqual(result, current)
     }))
   it.effect("getAndUpdateEffect - happy path", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Synchronized.make(current))
-      const result1 = yield* $(Synchronized.getAndUpdateEffect(ref, () => Effect.succeed(update)))
-      const result2 = yield* $(Synchronized.get(ref))
+      const ref = yield* $(SynchronizedRef.make(current))
+      const result1 = yield* $(SynchronizedRef.getAndUpdateEffect(ref, () => Effect.succeed(update)))
+      const result2 = yield* $(SynchronizedRef.get(ref))
       assert.strictEqual(result1, current)
       assert.strictEqual(result2, update)
     }))
   it.effect("getAndUpdateEffect - with failure", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Synchronized.make(current))
-      const result = yield* $(Synchronized.getAndUpdateEffect(ref, (_) => Effect.fail(failure)), Effect.exit)
+      const ref = yield* $(SynchronizedRef.make(current))
+      const result = yield* $(SynchronizedRef.getAndUpdateEffect(ref, (_) => Effect.fail(failure)), Effect.exit)
       assert.deepStrictEqual(result, Exit.fail(failure))
     }))
   it.effect("getAndUpdateSomeEffect - happy path", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Synchronized.make<State>(Active))
-      const result1 = yield* $(Synchronized.getAndUpdateSomeEffect(ref, (state) =>
+      const ref = yield* $(SynchronizedRef.make<State>(Active))
+      const result1 = yield* $(SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
         isClosed(state) ?
           Option.some(Effect.succeed(Changed)) :
           Option.none()))
-      const result2 = yield* $(Synchronized.get(ref))
+      const result2 = yield* $(SynchronizedRef.get(ref))
       assert.deepStrictEqual(result1, Active)
       assert.deepStrictEqual(result2, Active)
     }))
   it.effect("getAndUpdateSomeEffect - twice", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Synchronized.make<State>(Active))
-      const result1 = yield* $(Synchronized.getAndUpdateSomeEffect(ref, (state) =>
+      const ref = yield* $(SynchronizedRef.make<State>(Active))
+      const result1 = yield* $(SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
         isActive(state) ?
           Option.some(Effect.succeed(Changed)) :
           Option.none()))
-      const result2 = yield* $(Synchronized.getAndUpdateSomeEffect(ref, (state) =>
+      const result2 = yield* $(SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
         isClosed(state)
           ? Option.some(Effect.succeed(Active))
           : isChanged(state)
           ? Option.some(Effect.succeed(Closed))
           : Option.none()))
-      const result3 = yield* $(Synchronized.get(ref))
+      const result3 = yield* $(SynchronizedRef.get(ref))
       assert.deepStrictEqual(result1, Active)
       assert.deepStrictEqual(result2, Changed)
       assert.deepStrictEqual(result3, Closed)
     }))
   it.effect("getAndUpdateSomeEffect - with failure", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Synchronized.make<State>(Active))
+      const ref = yield* $(SynchronizedRef.make<State>(Active))
       const result = yield* $(
-        Synchronized.getAndUpdateSomeEffect(ref, (state) =>
+        SynchronizedRef.getAndUpdateSomeEffect(ref, (state) =>
           isActive(state) ?
             Option.some(Effect.fail(failure)) :
             Option.none()),
@@ -96,15 +96,15 @@ describe.concurrent("SynchronizedRef", () => {
     }))
   it.effect("getAndUpdateSomeEffect - interrupt parent fiber and update", () =>
     Effect.gen(function*($) {
-      const deferred = yield* $(Deferred.make<never, Synchronized.SynchronizedRef<State>>())
+      const deferred = yield* $(Deferred.make<never, SynchronizedRef<State>>())
       const latch = yield* $(Deferred.make<never, void>())
-      const makeAndWait = Deferred.complete(deferred, Synchronized.make<State>(Active)).pipe(
+      const makeAndWait = Deferred.complete(deferred, SynchronizedRef.make<State>(Active)).pipe(
         Effect.zipRight(Deferred.await(latch))
       )
       const fiber = yield* $(Effect.fork(makeAndWait))
       const ref = yield* $(Deferred.await(deferred))
       yield* $(Fiber.interrupt(fiber))
-      const result = yield* $(Synchronized.updateAndGetEffect(ref, (_) => Effect.succeed(Closed)))
+      const result = yield* $(SynchronizedRef.updateAndGetEffect(ref, (_) => Effect.succeed(Closed)))
       assert.deepStrictEqual(result, Closed)
     }))
 })

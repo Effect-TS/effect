@@ -1,19 +1,19 @@
 import * as it from "effect-test/utils/extend"
-import type * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import type { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Effect } from "effect/Effect"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
 import * as internalQueue from "effect/internal/queue"
-import type * as MutableQueue from "effect/MutableQueue"
-import type * as MutableRef from "effect/MutableRef"
-import type * as Option from "effect/Option"
+import type { MutableQueue } from "effect/MutableQueue"
+import type { MutableRef } from "effect/MutableRef"
+import type { Option } from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
-import * as PubSub from "effect/PubSub"
-import * as Queue from "effect/Queue"
-import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
+import { PubSub } from "effect/PubSub"
+import { Queue } from "effect/Queue"
+import { Sink } from "effect/Sink"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {
@@ -85,19 +85,19 @@ describe.concurrent("Sink", () => {
     }))
 })
 
-const createQueueSpy = <A>(queue: Queue.Queue<A>): Queue.Queue<A> => new QueueSpy(queue)
+const createQueueSpy = <A>(queue: Queue<A>): Queue<A> => new QueueSpy(queue)
 
-class QueueSpy<A> implements Queue.Queue<A> {
+class QueueSpy<A> implements Queue<A> {
   readonly [Queue.DequeueTypeId] = internalQueue.dequeueVariance
   readonly [Queue.EnqueueTypeId] = internalQueue.enqueueVariance
   private isShutdownInternal = false
   readonly queue: Queue.BackingQueue<A>
-  readonly shutdownFlag: MutableRef.MutableRef<boolean>
-  readonly shutdownHook: Deferred.Deferred<never, void>
+  readonly shutdownFlag: MutableRef<boolean>
+  readonly shutdownHook: Deferred<never, void>
   readonly strategy: Queue.Strategy<A>
-  readonly takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  readonly takers: MutableQueue<Deferred<never, A>>
 
-  constructor(readonly backingQueue: Queue.Queue<A>) {
+  constructor(readonly backingQueue: Queue<A>) {
     this.queue = backingQueue.queue
     this.shutdownFlag = backingQueue.shutdownFlag
     this.shutdownHook = backingQueue.shutdownHook
@@ -125,15 +125,15 @@ class QueueSpy<A> implements Queue.Queue<A> {
     return Queue.capacity(this.backingQueue)
   }
 
-  size(): Effect.Effect<never, never, number> {
+  size(): Effect<never, never, number> {
     return Queue.size(this.backingQueue)
   }
 
-  unsafeSize(): Option.Option<number> {
+  unsafeSize(): Option<number> {
     return this.backingQueue.unsafeSize()
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  awaitShutdown(): Effect<never, never, void> {
     return Queue.awaitShutdown(this.backingQueue)
   }
 
@@ -141,45 +141,45 @@ class QueueSpy<A> implements Queue.Queue<A> {
     return !this.isShutdownInternal
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  isShutdown(): Effect<never, never, boolean> {
     return Effect.sync(() => this.isShutdownInternal)
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  shutdown(): Effect<never, never, void> {
     return Effect.sync(() => {
       this.isShutdownInternal = true
     })
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
+  isFull(): Effect<never, never, boolean> {
     return Queue.isFull(this.backingQueue)
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
+  isEmpty(): Effect<never, never, boolean> {
     return Queue.isEmpty(this.backingQueue)
   }
 
-  take(): Effect.Effect<never, never, A> {
+  take(): Effect<never, never, A> {
     return Queue.take(this.backingQueue)
   }
 
-  takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  takeAll(): Effect<never, never, Chunk<A>> {
     return Queue.takeAll(this.backingQueue)
   }
 
-  takeUpTo(max: number): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  takeUpTo(max: number): Effect<never, never, Chunk<A>> {
     return Queue.takeUpTo(this.backingQueue, max)
   }
 
-  takeBetween(min: number, max: number): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  takeBetween(min: number, max: number): Effect<never, never, Chunk<A>> {
     return Queue.takeBetween(this.backingQueue, min, max)
   }
 
-  takeN(n: number): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  takeN(n: number): Effect<never, never, Chunk<A>> {
     return Queue.takeN(this.backingQueue, n)
   }
 
-  poll(): Effect.Effect<never, never, Option.Option<A>> {
+  poll(): Effect<never, never, Option<A>> {
     return Queue.poll(this.backingQueue)
   }
 }

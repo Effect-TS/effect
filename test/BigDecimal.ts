@@ -1,11 +1,11 @@
 import { assertFalse, assertTrue, deepStrictEqual } from "effect-test/util"
-import * as BD from "effect/BigDecimal"
-import * as Option from "effect/Option"
+import { BigDecimal as BD } from "effect/BigDecimal"
+import { Option } from "effect/Option"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 const _ = BD.unsafeFromString
-const assertEquals = (a: BD.BigDecimal, b: BD.BigDecimal) => assertTrue(BD.equals(a, b))
+const assertEquals = (a: BD, b: BD) => assertTrue(BD.equals(a, b))
 
 describe.concurrent("BigDecimal", () => {
   it("isBigDecimal", () => {

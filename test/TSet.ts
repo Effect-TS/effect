@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as STM from "effect/STM"
-import * as TSet from "effect/TSet"
+import { STM } from "effect/STM"
+import { TSet } from "effect/TSet"
 import { assert, describe } from "vitest"
 
 describe.concurrent("TSet", () => {

@@ -1,23 +1,23 @@
 import { chunkCoordination } from "effect-test/utils/coordination"
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Deferred from "effect/Deferred"
-import * as Duration from "effect/Duration"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Deferred } from "effect/Deferred"
+import { Duration } from "effect/Duration"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
+import { Fiber } from "effect/Fiber"
 import { constTrue, constVoid, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Queue from "effect/Queue"
-import * as Ref from "effect/Ref"
-import * as Schedule from "effect/Schedule"
-import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
-import * as Take from "effect/Take"
-import * as TestClock from "effect/TestClock"
-import * as TestServices from "effect/TestServices"
+import { Option } from "effect/Option"
+import { Queue } from "effect/Queue"
+import { Ref } from "effect/Ref"
+import { Schedule } from "effect/Schedule"
+import { Sink } from "effect/Sink"
+import { Stream } from "effect/Stream"
+import { Take } from "effect/Take"
+import { TestClock } from "effect/TestClock"
+import { TestServices } from "effect/TestServices"
 import { assert, describe } from "vitest"
 
 Stream.onError
@@ -141,7 +141,7 @@ describe.concurrent("Stream", () => {
   // Explicitly uses live Clock
   it.effect("issue from zio-kafka", () =>
     Effect.gen(function*($) {
-      const queue = yield* $(Queue.unbounded<Take.Take<never, number>>())
+      const queue = yield* $(Queue.unbounded<Take<never, number>>())
       const fiber = yield* $(
         Stream.fromQueue(queue),
         Stream.flattenTake,

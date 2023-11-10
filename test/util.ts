@@ -1,5 +1,7 @@
 import { assert } from "vitest"
 
+export * as Util from "./util.js"
+
 export const assertTrue = (self: boolean) => {
   assert.strictEqual(self, true)
 }

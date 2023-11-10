@@ -1,13 +1,13 @@
 import * as it from "effect-test/utils/extend"
-import * as Cause from "effect/Cause"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import * as Exit from "effect/Exit"
+import { Cause } from "effect/Cause"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
+import { Exit } from "effect/Exit"
 import { identity, pipe } from "effect/Function"
-import * as Option from "effect/Option"
-import * as Ref from "effect/Ref"
-import * as Stream from "effect/Stream"
+import { Option } from "effect/Option"
+import { Ref } from "effect/Ref"
+import { Stream } from "effect/Stream"
 import { assert, describe, expect } from "vitest"
 
 describe.concurrent("Stream", () => {
@@ -140,7 +140,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("catchAllCause - propagates the right Exit value to the failing stream (ZIO #3609)", () =>
     Effect.gen(function*($) {
-      const ref = yield* $(Ref.make<Exit.Exit<unknown, unknown>>(Exit.unit))
+      const ref = yield* $(Ref.make<Exit<unknown, unknown>>(Exit.unit))
       yield* $(
         Stream.acquireRelease(
           Effect.unit,

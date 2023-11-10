@@ -1,7 +1,7 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
-import * as Flags from "effect/RuntimeFlags"
-import * as Patch from "effect/RuntimeFlagsPatch"
+import { Effect } from "effect/Effect"
+import { RuntimeFlags as Flags } from "effect/RuntimeFlags"
+import { RuntimeFlagsPatch as Patch } from "effect/RuntimeFlagsPatch"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

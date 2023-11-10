@@ -1,9 +1,9 @@
 import * as it from "effect-test/utils/extend"
-import * as Chunk from "effect/Chunk"
-import * as Effect from "effect/Effect"
+import { Chunk } from "effect/Chunk"
+import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as Stream from "effect/Stream"
+import { ReadonlyArray } from "effect/ReadonlyArray"
+import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

@@ -1,6 +1,6 @@
 import * as it from "effect-test/utils/extend"
-import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
+import { Effect } from "effect/Effect"
+import { Either } from "effect/Either"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
@@ -33,7 +33,7 @@ describe.concurrent("Effect", () => {
   it.effect("an applicative operation that starts with a failure should fail", () =>
     Effect.gen(function*($) {
       const result = yield* $(
-        (Effect.fail("a") as Effect.Effect<never, string, typeof add>).pipe(
+        (Effect.fail("a") as Effect<never, string, typeof add>).pipe(
           Effect.ap(Effect.succeed(1)),
           Effect.ap(Effect.succeed(2))
         ),

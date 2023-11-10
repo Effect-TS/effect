@@ -1,12 +1,12 @@
 import { deepStrictEqual } from "effect-test/util"
-import * as Equal from "effect/Equal"
+import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import * as Hash from "effect/Hash"
-import * as HashSet from "effect/HashSet"
+import { Hash } from "effect/Hash"
+import { HashSet } from "effect/HashSet"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
-class Value implements Equal.Equal {
+class Value implements Equal {
   constructor(readonly n: number) {}
 
   [Hash.symbol](): number {
@@ -23,7 +23,7 @@ describe.concurrent("HashSet", () => {
     return new Value(n)
   }
 
-  function makeTestHashSet(...values: Array<number>): HashSet.HashSet<Value> {
+  function makeTestHashSet(...values: Array<number>): HashSet<Value> {
     return HashSet.mutate<Value>((set) => {
       for (const _value of values) {
         HashSet.add(value(_value))(set)
