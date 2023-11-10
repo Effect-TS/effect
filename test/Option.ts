@@ -34,11 +34,15 @@ describe.concurrent("Option", () => {
       yield* $(_.none())
       return yield* $(_.some(2))
     })
+    const f = _.gen(function*($) {
+      yield* $(_.none())
+    })
     expect(a).toEqual(_.some(3))
     expect(b).toEqual(_.some(10))
     expect(c).toEqual(_.some(undefined))
     expect(d).toEqual(_.some(2))
     expect(e).toEqual(_.none())
+    expect(f).toEqual(_.none())
   })
 
   it("toString", () => {
@@ -450,5 +454,13 @@ describe.concurrent("Option", () => {
 
   it(".pipe()", () => {
     expect(_.some(1).pipe(_.map((n) => n + 1))).toEqual(_.some(2))
+  })
+
+  it("lift2", () => {
+    const f = _.lift2((a: number, b: number): number => a + b)
+    expect(f(_.none(), _.none())).toStrictEqual(_.none())
+    expect(f(_.some(1), _.none())).toStrictEqual(_.none())
+    expect(f(_.none(), _.some(2))).toStrictEqual(_.none())
+    expect(f(_.some(1), _.some(2))).toStrictEqual(_.some(3))
   })
 })

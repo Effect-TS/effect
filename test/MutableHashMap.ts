@@ -310,7 +310,7 @@ describe.concurrent("MutableHashMap", () => {
     )).toEqual(O.none())
   })
 
-  it("pipe", () => {
+  it("pipe()", () => {
     expect(HM.empty<string, string>().pipe(HM.set("key", "value"))).toEqual(HM.make(["key", "value"]))
   })
 })
