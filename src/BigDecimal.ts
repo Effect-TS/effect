@@ -543,18 +543,29 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
- * import { between, unsafeFromString } from "effect/BigDecimal"
+ * import * as BigDecimal from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("3")), true)
- * assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("-1")), false)
- * assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("6")), false)
+ * const between = BigDecimal.between({
+ *   minimum: BigDecimal.unsafeFromString("1"),
+ *   maximum: BigDecimal.unsafeFromString("5") }
+ * )
+ *
+ * assert.deepStrictEqual(between(BigDecimal.unsafeFromString("3")), true)
+ * assert.deepStrictEqual(between(BigDecimal.unsafeFromString("0")), false)
+ * assert.deepStrictEqual(between(BigDecimal.unsafeFromString("6")), false)
  *
  * @since 2.0.0
  * @category predicates
  */
 export const between: {
-  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => boolean
-  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): boolean
+  (options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): (self: BigDecimal) => boolean
+  (self: BigDecimal, options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): boolean
 } = order.between(Order)
 
 /**

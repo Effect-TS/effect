@@ -413,8 +413,14 @@ export const Order: order.Order<Duration> = order.make((self, that) =>
  * @since 2.0.0
  */
 export const between: {
-  (minimum: DurationInput, maximum: DurationInput): (self: DurationInput) => boolean
-  (self: DurationInput, minimum: DurationInput, maximum: DurationInput): boolean
+  (options: {
+    minimum: DurationInput
+    maximum: DurationInput
+  }): (self: DurationInput) => boolean
+  (self: DurationInput, options: {
+    minimum: DurationInput
+    maximum: DurationInput
+  }): boolean
 } = order.between(order.mapInput(Order, decode))
 
 /**

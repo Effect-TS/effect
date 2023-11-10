@@ -265,18 +265,26 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
- * import { between } from 'effect/Number'
+ * import * as Number from 'effect/Number'
  *
- * assert.deepStrictEqual(between(0, 5)(3), true)
- * assert.deepStrictEqual(between(0, 5)(-1), false)
- * assert.deepStrictEqual(between(0, 5)(6), false)
+ * const between = Number.between({ minimum: 0, maximum: 5 })
+ *
+ * assert.deepStrictEqual(between(3), true)
+ * assert.deepStrictEqual(between(-1), false)
+ * assert.deepStrictEqual(between(6), false)
  *
  * @category predicates
  * @since 2.0.0
  */
 export const between: {
-  (minimum: number, maximum: number): (self: number) => boolean
-  (self: number, minimum: number, maximum: number): boolean
+  (options: {
+    minimum: number
+    maximum: number
+  }): (self: number) => boolean
+  (self: number, options: {
+    minimum: number
+    maximum: number
+  }): boolean
 } = order.between(Order)
 
 /**

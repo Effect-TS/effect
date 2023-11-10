@@ -158,11 +158,13 @@ describe.concurrent("BigDecimal", () => {
   })
 
   it("between", () => {
-    deepStrictEqual(BD.between(_("0"), _("5"))(_("3")), true)
-    deepStrictEqual(BD.between(_("0"), _("5"))(_("-1")), false)
-    deepStrictEqual(BD.between(_("0"), _("5"))(_("6")), false)
-    deepStrictEqual(BD.between(_("0.02"), _("5"))(_("0.0123")), false)
-    deepStrictEqual(BD.between(_("0.02"), _("5"))(_("0.05")), true)
+    deepStrictEqual(BD.between({ minimum: _("0"), maximum: _("5") })(_("3")), true)
+    deepStrictEqual(BD.between({ minimum: _("0"), maximum: _("5") })(_("-1")), false)
+    deepStrictEqual(BD.between({ minimum: _("0"), maximum: _("5") })(_("6")), false)
+    deepStrictEqual(BD.between({ minimum: _("0.02"), maximum: _("5") })(_("0.0123")), false)
+    deepStrictEqual(BD.between({ minimum: _("0.02"), maximum: _("5") })(_("0.05")), true)
+
+    deepStrictEqual(BD.between(_("3"), { minimum: _("0"), maximum: _("5") }), true)
   })
 
   it("clamp", () => {

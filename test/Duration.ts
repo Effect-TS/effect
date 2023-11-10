@@ -97,10 +97,21 @@ describe.concurrent("Duration", () => {
   })
 
   it("between", () => {
-    assert.isTrue(Duration.between(Duration.hours(1), Duration.minutes(59), Duration.minutes(61)))
-    assert.isTrue(Duration.between(Duration.minutes(1), Duration.seconds(59), Duration.seconds(61)))
+    assert.isTrue(Duration.between(Duration.hours(1), {
+      minimum: Duration.minutes(59),
+      maximum: Duration.minutes(61)
+    }))
+    assert.isTrue(
+      Duration.between(Duration.minutes(1), {
+        minimum: Duration.seconds(59),
+        maximum: Duration.seconds(61)
+      })
+    )
 
-    assert.isTrue(Duration.between("1 minutes", "59 seconds", "61 seconds"))
+    assert.isTrue(Duration.between("1 minutes", {
+      minimum: "59 seconds",
+      maximum: "61 seconds"
+    }))
   })
 
   it("times", () => {

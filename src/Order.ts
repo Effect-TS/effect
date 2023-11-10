@@ -338,10 +338,19 @@ export const clamp = <A>(O: Order<A>): {
  * @since 2.0.0
  */
 export const between = <A>(O: Order<A>): {
-  (minimum: A, maximum: A): (self: A) => boolean
-  (self: A, minimum: A, maximum: A): boolean
+  (options: {
+    minimum: A
+    maximum: A
+  }): (self: A) => boolean
+  (self: A, options: {
+    minimum: A
+    maximum: A
+  }): boolean
 } =>
   dual(
-    3,
-    (self: A, minimum: A, maximum: A): boolean => !lessThan(O)(self, minimum) && !greaterThan(O)(self, maximum)
+    2,
+    (self: A, options: {
+      minimum: A
+      maximum: A
+    }): boolean => !lessThan(O)(self, options.minimum) && !greaterThan(O)(self, options.maximum)
   )

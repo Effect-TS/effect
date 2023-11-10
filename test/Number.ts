@@ -98,9 +98,11 @@ describe.concurrent("Number", () => {
   })
 
   it("between", () => {
-    assert.deepStrictEqual(Number.between(0, 5)(3), true)
-    assert.deepStrictEqual(Number.between(0, 5)(-1), false)
-    assert.deepStrictEqual(Number.between(0, 5)(6), false)
+    assert.deepStrictEqual(Number.between({ minimum: 0, maximum: 5 })(3), true)
+    assert.deepStrictEqual(Number.between({ minimum: 0, maximum: 5 })(-1), false)
+    assert.deepStrictEqual(Number.between({ minimum: 0, maximum: 5 })(6), false)
+
+    assert.deepStrictEqual(Number.between(3, { minimum: 0, maximum: 5 }), true)
   })
 
   it("clamp", () => {

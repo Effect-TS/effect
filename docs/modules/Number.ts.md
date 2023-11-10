@@ -336,19 +336,21 @@ Checks if a `number` is between a `minimum` and `maximum` value (inclusive).
 
 ```ts
 export declare const between: {
-  (minimum: number, maximum: number): (self: number) => boolean
-  (self: number, minimum: number, maximum: number): boolean
+  (options: { minimum: number; maximum: number }): (self: number) => boolean
+  (self: number, options: { minimum: number; maximum: number }): boolean
 }
 ```
 
 **Example**
 
 ```ts
-import { between } from "effect/Number"
+import * as Number from "effect/Number"
 
-assert.deepStrictEqual(between(0, 5)(3), true)
-assert.deepStrictEqual(between(0, 5)(-1), false)
-assert.deepStrictEqual(between(0, 5)(6), false)
+const between = Number.between({ minimum: 0, maximum: 5 })
+
+assert.deepStrictEqual(between(3), true)
+assert.deepStrictEqual(between(-1), false)
+assert.deepStrictEqual(between(6), false)
 ```
 
 Added in v2.0.0

@@ -294,8 +294,8 @@ Test whether a value is between a minimum and a maximum (inclusive).
 
 ```ts
 export declare const between: <A>(O: Order<A>) => {
-  (minimum: A, maximum: A): (self: A) => boolean
-  (self: A, minimum: A, maximum: A): boolean
+  (options: { minimum: A; maximum: A }): (self: A) => boolean
+  (self: A, options: { minimum: A; maximum: A }): boolean
 }
 ```
 

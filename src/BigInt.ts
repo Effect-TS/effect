@@ -278,18 +278,26 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
- * import { between } from 'effect/BigInt'
+ * import * as BigInt from 'effect/BigInt'
  *
- * assert.deepStrictEqual(between(0n, 5n)(3n), true)
- * assert.deepStrictEqual(between(0n, 5n)(-1n), false)
- * assert.deepStrictEqual(between(0n, 5n)(6n), false)
+ * const between = BigInt.between({ minimum: 0n, maximum: 5n })
+ *
+ * assert.deepStrictEqual(between(3n), true)
+ * assert.deepStrictEqual(between(-1n), false)
+ * assert.deepStrictEqual(between(6n), false)
  *
  * @category predicates
  * @since 2.0.0
  */
 export const between: {
-  (minimum: bigint, maximum: bigint): (self: bigint) => boolean
-  (self: bigint, minimum: bigint, maximum: bigint): boolean
+  (options: {
+    minimum: bigint
+    maximum: bigint
+  }): (self: bigint) => boolean
+  (self: bigint, options: {
+    minimum: bigint
+    maximum: bigint
+  }): boolean
 } = order.between(Order)
 
 /**
