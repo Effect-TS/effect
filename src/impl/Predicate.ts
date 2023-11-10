@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import { dual, isFunction as isFunction_ } from "../Function.js"
 import type { TypeLambda } from "../HKT.js"
 import type { Predicate } from "../Predicate.js"

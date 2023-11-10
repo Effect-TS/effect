@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import type * as Effect from "../Effect.js"
 import * as internal from "../internal/stm/tSemaphore.js"
 import type * as Scope from "../Scope.js"

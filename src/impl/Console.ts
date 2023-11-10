@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Console } from "../Console.js"
 import type { Effect } from "../Effect.js"
 import * as internal from "../internal/console.js"

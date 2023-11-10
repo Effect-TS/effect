@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Cause from "../Cause.js"
 import type { Channel } from "../Channel.js"
 import type * as ChildExecutorDecision from "../ChildExecutorDecision.js"

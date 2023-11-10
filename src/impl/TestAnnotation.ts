@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import * as Either from "../Either.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
 import type * as Exit from "../Exit.js"

@@ -1,4 +1,6 @@
 /**
+ * This module provides utility functions for working with arrays in TypeScript.
+ *
  * @since 2.0.0
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "./impl/ReadonlyArray.js"

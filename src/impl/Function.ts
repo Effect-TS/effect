@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { TypeLambda } from "../HKT.js"
 
 /**

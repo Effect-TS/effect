@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Chunk } from "../Chunk.js"
 import type { Either } from "../Either.js"
 import * as Equal from "../Equal.js"

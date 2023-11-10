@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import { dual, pipe } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
 import type * as TestAnnotation from "../TestAnnotation.js"

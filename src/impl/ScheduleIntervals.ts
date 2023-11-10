@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Check from "../Chunk.js"
 import * as internal from "../internal/schedule/intervals.js"
 import type * as Interval from "../ScheduleInterval.js"

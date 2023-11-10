@@ -5,7 +5,6 @@ import type { Equal } from "./Equal.js"
 import type { TypeId } from "./impl/SortedMap.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
-
 import type { RedBlackTree as RBT } from "./RedBlackTree.js"
 
 /**

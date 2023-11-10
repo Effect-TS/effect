@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Cache } from "../Cache.js"
 import type * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"

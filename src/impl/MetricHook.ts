@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { LazyArg } from "../Function.js"
 import * as internal from "../internal/metric/hook.js"
 import type { MetricHook } from "../MetricHook.js"

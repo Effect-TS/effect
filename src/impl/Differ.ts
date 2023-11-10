@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Chunk } from "../Chunk.js"
 import type { Context } from "../Context.js"
 import type { Differ } from "../Differ.js"

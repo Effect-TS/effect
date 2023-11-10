@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import type { Effect } from "../Effect.js"
 import type { RuntimeFiber } from "../Fiber.js"
 import type { FiberRef } from "../FiberRef.js"

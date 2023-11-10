@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as equivalence from "../Equivalence.js"
 import type { LazyArg } from "../Function.js"
 import { dual } from "../Function.js"

@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import { identity } from "../Function.js"
 import type { Unify } from "../Unify.js"
 

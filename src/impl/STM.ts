@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import type * as Context from "../Context.js"

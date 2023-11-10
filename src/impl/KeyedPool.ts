@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import * as internal from "../internal/keyedPool.js"

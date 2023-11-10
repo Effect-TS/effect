@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as internal from "../internal/channel/upstreamPullStrategy.js"
 import type * as Option from "../Option.js"
 import type { UpstreamPullStrategy } from "../UpstreamPullStrategy.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Cause from "../Cause.js"
 import type { ConfigError } from "../ConfigError.js"
 import * as internal from "../internal/configError.js"

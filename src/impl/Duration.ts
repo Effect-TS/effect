@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Duration } from "../Duration.js"
 import * as Equal from "../Equal.js"
 import type * as equivalence from "../Equivalence.js"

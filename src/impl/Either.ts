@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import type * as Data from "../Data.js"
 import type { Either } from "../Either.js"
 import * as Equivalence from "../Equivalence.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Equal from "../Equal.js"
 import type * as FiberId from "../FiberId.js"
 import type { FiberStatus } from "../FiberStatus.js"

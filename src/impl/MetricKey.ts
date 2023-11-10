@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Chunk from "../Chunk.js"
 import type * as Duration from "../Duration.js"
 import type * as HashSet from "../HashSet.js"

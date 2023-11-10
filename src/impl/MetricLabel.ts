@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as internal from "../internal/metric/label.js"
 import type { MetricLabel } from "../MetricLabel.js"
 

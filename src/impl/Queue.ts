@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Chunk from "../Chunk.js"
 import type * as Deferred from "../Deferred.js"
 import type * as Effect from "../Effect.js"

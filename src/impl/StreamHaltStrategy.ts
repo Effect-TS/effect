@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as internal from "../internal/stream/haltStrategy.js"
 import type { StreamHaltStrategy } from "../StreamHaltStrategy.js"
 

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Effect from "../Effect.js"
 import type * as Fiber from "../Fiber.js"
 import * as internal from "../internal/metric/polling.js"

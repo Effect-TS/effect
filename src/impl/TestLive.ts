@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as Context from "../Context.js"
 import type * as DefaultServices from "../DefaultServices.js"
 import type * as Effect from "../Effect.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Chunk } from "../Chunk.js"
 import * as RBT from "../internal/redBlackTree.js"
 import * as RBTI from "../internal/redBlackTree/iterator.js"

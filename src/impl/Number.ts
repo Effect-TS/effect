@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as equivalence from "../Equivalence.js"
 import { dual } from "../Function.js"
 import * as option from "../internal/option.js"

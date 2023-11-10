@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Config from "../Config.js"
 import type * as ConfigError from "../ConfigError.js"
 import type { ConfigProvider } from "../ConfigProvider.js"

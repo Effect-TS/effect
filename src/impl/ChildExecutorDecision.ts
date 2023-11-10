@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { ChildExecutorDecision } from "../ChildExecutorDecision.js"
 import * as internal from "../internal/channel/childExecutorDecision.js"
 

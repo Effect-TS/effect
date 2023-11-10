@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Cause from "../Cause.js"
 import type { Deferred } from "../Deferred.js"
 import type * as Effect from "../Effect.js"

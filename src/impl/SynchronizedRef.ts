@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Effect from "../Effect.js"
 import * as circular from "../internal/effect/circular.js"
 import * as ref from "../internal/ref.js"

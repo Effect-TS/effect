@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Chunk from "../Chunk.js"
 import type { ConfigSecret } from "../ConfigSecret.js"
 import * as internal from "../internal/configSecret.js"

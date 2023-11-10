@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Context from "../Context.js"
 import type { FiberRef } from "../FiberRef.js"
 import * as _RequestBlock from "../internal/blockedRequests.js"

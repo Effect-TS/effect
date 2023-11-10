@@ -1,4 +1,7 @@
 /**
+ * A `Supervisor<T>` is allowed to supervise the launching and termination of
+ * fibers, producing some visible value of type `T` from the supervision.
+ *
  * @since 2.0.0
  */
 import type { Context } from "./Context.js"

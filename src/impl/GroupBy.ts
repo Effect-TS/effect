@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { GroupBy } from "../GroupBy.js"
 import * as internal from "../internal/groupBy.js"
 import type { Predicate } from "../Predicate.js"

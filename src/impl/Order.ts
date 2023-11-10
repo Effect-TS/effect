@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import { dual } from "../Function.js"
 import type { TypeLambda } from "../HKT.js"
 import type { Order } from "../Order.js"

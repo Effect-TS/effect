@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import { pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import type { Hash } from "../Hash.js"

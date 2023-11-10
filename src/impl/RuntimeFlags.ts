@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import type * as Differ from "../Differ.js"
 import * as circular from "../internal/layer/circular.js"
 import * as internal from "../internal/runtimeFlags.js"

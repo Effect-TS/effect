@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Effect from "../Effect.js"
 import type * as Either from "../Either.js"
 import type * as Exit from "../Exit.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Effect } from "../Effect.js"
 import type { LazyArg } from "../Function.js"
 import * as fiberRuntime from "../internal/fiberRuntime.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as equivalence from "../Equivalence.js"
 import * as predicate from "../Predicate.js"
 

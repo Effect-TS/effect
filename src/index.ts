@@ -72,6 +72,21 @@ export {
 
 export {
   /**
+   * This module provides types and utility functions to create and work with branded types,
+   * which are TypeScript types with an added type tag to prevent accidental usage of a value in the wrong context.
+   *
+   * The `refined` and `nominal` functions are both used to create branded types in TypeScript.
+   * The main difference between them is that `refined` allows for validation of the data, while `nominal` does not.
+   *
+   * The `nominal` function is used to create a new branded type that has the same underlying type as the input, but with a different name.
+   * This is useful when you want to distinguish between two values of the same type that have different meanings.
+   * The `nominal` function does not perform any validation of the input data.
+   *
+   * On the other hand, the `refined` function is used to create a new branded type that has the same underlying type as the input,
+   * but with a different name, and it also allows for validation of the input data.
+   * The `refined` function takes a predicate that is used to validate the input data.
+   * If the input data fails the validation, a `BrandErrors` is returned, which provides information about the specific validation failure.
+   *
    * @since 2.0.0
    */
   Brand
@@ -86,6 +101,26 @@ export {
 
 export {
   /**
+   * The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
+   * work with any error type that we want. However, there is a lot of information
+   * that is not inside an arbitrary `E` value. So as a result, an `Effect` needs
+   * somewhere to store things like unexpected errors or defects, stack and
+   * execution traces, causes of fiber interruptions, and so forth.
+   *
+   * Effect-TS is very strict about preserving the full information related to a
+   * failure. It captures all type of errors into the `Cause` data type. `Effect`
+   * uses the `Cause<E>` data type to store the full story of failure. So its
+   * error model is lossless. It doesn't throw information related to the failure
+   * result. So we can figure out exactly what happened during the operation of
+   * our effects.
+   *
+   * It is important to note that `Cause` is an underlying data type representing
+   * errors occuring within an `Effect` workflow. Thus, we don't usually deal with
+   * `Cause`s directly. Even though it is not a data type that we deal with very
+   * often, the `Cause` of a failing `Effect` workflow can be accessed at any
+   * time, which gives us total access to all parallel and sequential errors in
+   * occurring within our codebase.
+   *
    * @since 2.0.0
    */
   Cause
@@ -163,6 +198,12 @@ export {
 
 export {
   /**
+   * This module provides a data structure called `Context` that can be used for dependency injection in effectful
+   * programs. It is essentially a table mapping `Tag`s to their implementations (called `Service`s), and can be used to
+   * manage dependencies in a type-safe way. The `Context` data structure is essentially a way of providing access to a set
+   * of related services that can be passed around as a single unit. This module provides functions to create, modify, and
+   * query the contents of a `Context`, as well as a number of utility types for working with tags and services.
+   *
    * @since 2.0.0
    */
   Context
@@ -213,7 +254,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Effectable
 } from "./Effectable.js"
@@ -247,8 +287,11 @@ export {
 
 export {
   /**
+   * This module provides an implementation of the `Equivalence` type class, which defines a binary relation
+   * that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
+   * These properties are also known in mathematics as an "equivalence relation".
+   *
    * @since 2.0.0
-   * @internal
    */
   Equivalence
 } from "./Equivalence.js"
@@ -312,7 +355,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Function
 } from "./Function.js"
@@ -320,7 +362,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   GlobalValue
 } from "./GlobalValue.js"
@@ -335,7 +376,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   HKT
 } from "./HKT.js"
@@ -377,6 +417,22 @@ export {
 
 export {
   /**
+   * A `Layer<RIn, E, ROut>` describes how to build one or more services in your
+   * application. Services can be injected into effects via
+   * `Effect.provideService`. Effects can require services via `Effect.service`.
+   *
+   * Layer can be thought of as recipes for producing bundles of services, given
+   * their dependencies (other services).
+   *
+   * Construction of services can be effectful and utilize resources that must be
+   * acquired and safely released when the services are done being utilized.
+   *
+   * By default layers are shared, meaning that if the same layer is used twice
+   * the layer will only be allocated a single time.
+   *
+   * Because of their excellent composition properties, layers are the idiomatic
+   * way in Effect-TS to create services that depend on other services.
+   *
    * @since 2.0.0
    */
   Layer
@@ -384,6 +440,15 @@ export {
 
 export {
   /**
+   * A data type for immutable linked lists representing ordered collections of elements of type `A`.
+   *
+   * This data type is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
+   *
+   * **Performance**
+   *
+   * - Time: `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list. This includes the index-based lookup of elements, `length`, `append` and `reverse`.
+   * - Space: `List` implements structural sharing of the tail list. This means that many operations are either zero- or constant-memory cost.
+   *
    * @since 2.0.0
    */
   List
@@ -571,7 +636,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Order
 } from "./Order.js"
@@ -579,7 +643,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Ordering
 } from "./Ordering.js"
@@ -587,7 +650,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Pipeable
 } from "./Pipeable.js"
@@ -602,7 +664,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Predicate
 } from "./Predicate.js"
@@ -630,6 +691,8 @@ export {
 
 export {
   /**
+   * This module provides utility functions for working with arrays in TypeScript.
+   *
    * @since 2.0.0
    */
   ReadonlyArray
@@ -637,8 +700,9 @@ export {
 
 export {
   /**
+   * This module provides utility functions for working with records in TypeScript.
+   *
    * @since 2.0.0
-   * @internal
    */
   ReadonlyRecord
 } from "./ReadonlyRecord.js"
@@ -702,7 +766,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   RuntimeFlags
 } from "./RuntimeFlags.js"
@@ -710,7 +773,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   RuntimeFlagsPatch
 } from "./RuntimeFlagsPatch.js"
@@ -830,7 +892,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Streamable
 } from "./Streamable.js"
@@ -864,6 +925,9 @@ export {
 
 export {
   /**
+   * A `Supervisor<T>` is allowed to supervise the launching and termination of
+   * fibers, producing some visible value of type `T` from the supervision.
+   *
    * @since 2.0.0
    */
   Supervisor
@@ -872,7 +936,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Symbol
 } from "./Symbol.js"
@@ -999,7 +1062,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   TestConfig
 } from "./TestConfig.js"
@@ -1081,7 +1143,6 @@ export {
 export {
   /**
    * @since 2.0.0
-   * @internal
    */
   Utils
 } from "./Utils.js"

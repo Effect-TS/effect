@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Cause from "../Cause.js"
 import type * as Channel from "../Channel.js"
 import type * as Chunk from "../Chunk.js"

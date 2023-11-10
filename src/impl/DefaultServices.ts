@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Context from "../Context.js"
 import type { DefaultServices } from "../DefaultServices.js"
 import type * as FiberRef from "../FiberRef.js"

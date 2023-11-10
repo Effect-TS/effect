@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as internal from "../internal/metric/registry.js"
 import type { MetricRegistry } from "../MetricRegistry.js"
 

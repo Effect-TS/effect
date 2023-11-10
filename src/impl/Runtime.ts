@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Cause } from "../Cause.js"
 import type * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"

@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import type { HashMap } from "../HashMap.js"
 import type { HashSet } from "../HashSet.js"
 import * as HM from "../internal/hashMap.js"

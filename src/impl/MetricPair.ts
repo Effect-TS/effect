@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as internal from "../internal/metric/pair.js"
 import type * as MetricKey from "../MetricKey.js"
 import type * as MetricKeyType from "../MetricKeyType.js"

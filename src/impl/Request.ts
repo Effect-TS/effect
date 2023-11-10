@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as _Cache from "../Cache.js"
 import type { Deferred } from "../Deferred.js"
 import type { DurationInput } from "../Duration.js"

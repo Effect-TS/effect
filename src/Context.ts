@@ -1,4 +1,10 @@
 /**
+ * This module provides a data structure called `Context` that can be used for dependency injection in effectful
+ * programs. It is essentially a table mapping `Tag`s to their implementations (called `Service`s), and can be used to
+ * manage dependencies in a type-safe way. The `Context` data structure is essentially a way of providing access to a set
+ * of related services that can be passed around as a single unit. This module provides functions to create, modify, and
+ * query the contents of a `Context`, as well as a number of utility types for working with tags and services.
+ *
  * @since 2.0.0
  */
 import type { Equal } from "./Equal.js"

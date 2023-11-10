@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Context from "../Context.js"
 import * as internal from "../internal/stm/tRandom.js"
 import type * as Layer from "../Layer.js"

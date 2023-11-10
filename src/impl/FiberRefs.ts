@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Effect from "../Effect.js"
 import type * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"

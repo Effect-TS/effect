@@ -1,8 +1,15 @@
 /**
+ * This module provides utility functions for working with records in TypeScript.
+ *
+ * @since 2.0.0
+ */
+
+/**
  * @since 2.0.0
  * @internal
  */
 export * from "./impl/ReadonlyRecord.js"
+
 /**
  * @since 2.0.0
  * @internal

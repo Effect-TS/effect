@@ -1,9 +1,3 @@
-/**
- * This module provides utility functions for working with arrays in TypeScript.
- *
- * @since 2.0.0
- */
-
 import type { Either } from "../Either.js"
 import * as E from "../Either.js"
 import * as Equal from "../Equal.js"

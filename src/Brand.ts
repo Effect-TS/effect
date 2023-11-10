@@ -1,4 +1,19 @@
 /**
+ * This module provides types and utility functions to create and work with branded types,
+ * which are TypeScript types with an added type tag to prevent accidental usage of a value in the wrong context.
+ *
+ * The `refined` and `nominal` functions are both used to create branded types in TypeScript.
+ * The main difference between them is that `refined` allows for validation of the data, while `nominal` does not.
+ *
+ * The `nominal` function is used to create a new branded type that has the same underlying type as the input, but with a different name.
+ * This is useful when you want to distinguish between two values of the same type that have different meanings.
+ * The `nominal` function does not perform any validation of the input data.
+ *
+ * On the other hand, the `refined` function is used to create a new branded type that has the same underlying type as the input,
+ * but with a different name, and it also allows for validation of the input data.
+ * The `refined` function takes a predicate that is used to validate the input data.
+ * If the input data fails the validation, a `BrandErrors` is returned, which provides information about the specific validation failure.
+ *
  * @since 2.0.0
  */
 import type { Either } from "./Either.js"

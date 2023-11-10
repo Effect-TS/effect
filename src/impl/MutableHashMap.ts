@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as Dual from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"

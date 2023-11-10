@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as Chunk from "../Chunk.js"
 import * as Dual from "../Function.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"

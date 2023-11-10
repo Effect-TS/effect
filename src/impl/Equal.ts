@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Equal } from "../Equal.js"
 import type { Equivalence } from "../Equivalence.js"
 import * as Hash from "../Hash.js"

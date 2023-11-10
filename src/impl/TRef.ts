@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import * as internal from "../internal/stm/tRef.js"
 import type * as Option from "../Option.js"
 import type * as STM from "../STM.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Effect from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import * as core from "../internal/core.js"

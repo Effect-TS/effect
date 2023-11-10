@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Either from "../Either.js"
 import * as internal from "../internal/stm/tDeferred.js"
 import type * as Option from "../Option.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Channel from "../Channel.js"
 import type { Data } from "../Data.js"
 import * as Effect from "../Effect.js"

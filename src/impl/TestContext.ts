@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as DefaultServices from "../DefaultServices.js"
 import { pipe } from "../Function.js"
 import * as defaultServices from "../internal/defaultServices.js"

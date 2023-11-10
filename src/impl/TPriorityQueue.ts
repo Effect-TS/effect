@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Chunk from "../Chunk.js"
 import * as internal from "../internal/stm/tPriorityQueue.js"
 import type * as Option from "../Option.js"

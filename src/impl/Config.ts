@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type * as Chunk from "../Chunk.js"
 import type { Config } from "../Config.js"
 import type * as ConfigError from "../ConfigError.js"

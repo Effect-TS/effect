@@ -1,7 +1,3 @@
-/**
- * @since 2.0.0
- */
-
 import * as Context from "../Context.js"
 import * as Effect from "../Effect.js"
 import type * as Either from "../Either.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { Clock } from "../Clock.js"
 import type * as Context from "../Context.js"
 import type * as Duration from "../Duration.js"

@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import * as internal from "../internal/schedule/decision.js"
 import type { ScheduleDecision } from "../ScheduleDecision.js"
 import type * as Interval from "../ScheduleInterval.js"

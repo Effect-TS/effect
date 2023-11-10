@@ -1,6 +1,3 @@
-/**
- * @since 2.0.0
- */
 import type { ConfigProviderPathPatch } from "../ConfigProviderPathPatch.js"
 import * as internal from "../internal/configProvider/pathPatch.js"
 
