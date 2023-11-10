@@ -58,6 +58,7 @@ Added in v1.0.0
   - [number](#number)
   - [record](#record)
   - [string](#string)
+  - [symbol](#symbol)
   - [undefined](#undefined)
 - [type ids](#type-ids)
   - [MatcherTypeId](#matchertypeid)
@@ -703,6 +704,16 @@ Added in v1.0.0
 
 ```ts
 export declare const string: Predicate.Refinement<unknown, string>
+```
+
+Added in v1.0.0
+
+## symbol
+
+**Signature**
+
+```ts
+export declare const symbol: Predicate.Refinement<unknown, symbol>
 ```
 
 Added in v1.0.0

@@ -778,4 +778,14 @@ describe("Match", () => {
     expect(match({ type: "B" })).toEqual(2)
     expect(match({})).toEqual(3)
   })
+
+  it("symbol", () => {
+    const match = pipe(
+      M.type<unknown>(),
+      M.when(M.symbol, (_) => "symbol"),
+      M.orElse(() => "else")
+    )
+    expect(match(Symbol.for("a"))).toEqual("symbol")
+    expect(match(123)).toEqual("else")
+  })
 })
