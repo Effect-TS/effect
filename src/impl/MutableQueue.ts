@@ -1,10 +1,10 @@
 /**
  * @since 2.0.0
  */
-import * as Chunk from "../Chunk.js"
-import * as Dual from "../Function.js"
+import { Chunk } from "../Chunk.js"
+import { dual } from "../Function.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import * as MutableList from "../MutableList.js"
+import { MutableList } from "../MutableList.js"
 import type { MutableQueue } from "../MutableQueue.js"
 import { pipeArguments } from "../Pipeable.js"
 
@@ -117,7 +117,7 @@ export const capacity = <A>(self: MutableQueue<A>): number => self.capacity === 
 export const offer: {
   <A>(self: MutableQueue<A>, value: A): boolean
   <A>(value: A): (self: MutableQueue<A>) => boolean
-} = Dual.dual<
+} = dual<
   <A>(value: A) => (self: MutableQueue<A>) => boolean,
   <A>(self: MutableQueue<A>, value: A) => boolean
 >(2, <A>(self: MutableQueue<A>, value: A) => {
@@ -137,11 +137,11 @@ export const offer: {
  * @since 2.0.0
  */
 export const offerAll: {
-  <A>(values: Iterable<A>): (self: MutableQueue<A>) => Chunk.Chunk<A>
-  <A>(self: MutableQueue<A>, values: Iterable<A>): Chunk.Chunk<A>
-} = Dual.dual<
-  <A>(values: Iterable<A>) => (self: MutableQueue<A>) => Chunk.Chunk<A>,
-  <A>(self: MutableQueue<A>, values: Iterable<A>) => Chunk.Chunk<A>
+  <A>(values: Iterable<A>): (self: MutableQueue<A>) => Chunk<A>
+  <A>(self: MutableQueue<A>, values: Iterable<A>): Chunk<A>
+} = dual<
+  <A>(values: Iterable<A>) => (self: MutableQueue<A>) => Chunk<A>,
+  <A>(self: MutableQueue<A>, values: Iterable<A>) => Chunk<A>
 >(2, <A>(self: MutableQueue<A>, values: Iterable<A>) => {
   const iterator = values[Symbol.iterator]()
   let next: IteratorResult<A> | undefined
@@ -170,7 +170,7 @@ export const offerAll: {
 export const poll: {
   <D>(def: D): <A>(self: MutableQueue<A>) => D | A
   <A, D>(self: MutableQueue<A>, def: D): A | D
-} = Dual.dual<
+} = dual<
   <D>(def: D) => <A>(self: MutableQueue<A>) => A | D,
   <A, D>(self: MutableQueue<A>, def: D) => A | D
 >(2, (self, def) => {
@@ -188,11 +188,11 @@ export const poll: {
  * @since 2.0.0
  */
 export const pollUpTo: {
-  (n: number): <A>(self: MutableQueue<A>) => Chunk.Chunk<A>
-  <A>(self: MutableQueue<A>, n: number): Chunk.Chunk<A>
-} = Dual.dual<
-  (n: number) => <A>(self: MutableQueue<A>) => Chunk.Chunk<A>,
-  <A>(self: MutableQueue<A>, n: number) => Chunk.Chunk<A>
+  (n: number): <A>(self: MutableQueue<A>) => Chunk<A>
+  <A>(self: MutableQueue<A>, n: number): Chunk<A>
+} = dual<
+  (n: number) => <A>(self: MutableQueue<A>) => Chunk<A>,
+  <A>(self: MutableQueue<A>, n: number) => Chunk<A>
 >(2, <A>(self: MutableQueue<A>, n: number) => {
   let result = Chunk.empty<A>()
   let count = 0

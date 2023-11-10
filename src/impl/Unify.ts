@@ -3,6 +3,7 @@
  */
 
 import { identity } from "../Function.js"
+
 import type { Unify } from "../Unify.js"
 
 /**

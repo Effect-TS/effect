@@ -1,30 +1,31 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "../Cause.js"
-import type * as Chunk from "../Chunk.js"
-import type * as Context from "../Context.js"
-import type * as Differ from "../Differ.js"
-import type * as Effect from "../Effect.js"
-import type { FiberRef } from "../FiberRef.js"
+import type { Cause } from "../Cause.js"
+import type { Chunk } from "../Chunk.js"
+import type { Context } from "../Context.js"
+import type { Differ } from "../Differ.js"
+import type { Effect } from "../Effect.js"
 import type { LazyArg } from "../Function.js"
-import type * as HashMap from "../HashMap.js"
-import type * as HashSet from "../HashSet.js"
+import type { HashMap } from "../HashMap.js"
+import type { HashSet } from "../HashSet.js"
 import * as core from "../internal/core.js"
 import * as fiberRuntime from "../internal/fiberRuntime.js"
 import * as query from "../internal/query.js"
-import type * as List from "../List.js"
-import type * as Logger from "../Logger.js"
-import type * as LogLevel from "../LogLevel.js"
-import type * as LogSpan from "../LogSpan.js"
-import type * as MetricLabel from "../MetricLabel.js"
-import type * as Option from "../Option.js"
-import type * as Request from "../Request.js"
-import type * as RuntimeFlags from "../RuntimeFlags.js"
-import * as Scheduler from "../Scheduler.js"
-import type * as Scope from "../Scope.js"
-import type * as Supervisor from "../Supervisor.js"
-import type * as Tracer from "../Tracer.js"
+import type { List } from "../List.js"
+import type { Logger } from "../Logger.js"
+import type { LogLevel } from "../LogLevel.js"
+import type { LogSpan } from "../LogSpan.js"
+import type { MetricLabel } from "../MetricLabel.js"
+import type { Option } from "../Option.js"
+import type { Request } from "../Request.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
+import { Scheduler } from "../Scheduler.js"
+import type { Scope } from "../Scope.js"
+import type { Supervisor } from "../Supervisor.js"
+import type { Tracer } from "../Tracer.js"
+
+import type { FiberRef } from "../FiberRef.js"
 
 /**
  * @since 2.0.0
@@ -58,13 +59,13 @@ export const make: <A>(
     readonly fork?: (a: A) => A
     readonly join?: (left: A, right: A) => A
   }
-) => Effect.Effect<Scope.Scope, never, FiberRef<A>> = fiberRuntime.fiberRefMake
+) => Effect<Scope, never, FiberRef<A>> = fiberRuntime.fiberRefMake
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<Scope.Scope, never, FiberRef<Value>> =
+export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect<Scope, never, FiberRef<Value>> =
   fiberRuntime.fiberRefMakeWith
 
 /**
@@ -72,16 +73,16 @@ export const makeWith: <Value>(ref: LazyArg<FiberRef<Value>>) => Effect.Effect<S
  * @category constructors
  */
 export const makeContext: <A>(
-  initial: Context.Context<A>
-) => Effect.Effect<Scope.Scope, never, FiberRef<Context.Context<A>>> = fiberRuntime.fiberRefMakeContext
+  initial: Context<A>
+) => Effect<Scope, never, FiberRef<Context<A>>> = fiberRuntime.fiberRefMakeContext
 
 /**
  * @since 2.0.0
  * @category constructors
  */
 export const makeRuntimeFlags: (
-  initial: RuntimeFlags.RuntimeFlags
-) => Effect.Effect<Scope.Scope, never, FiberRef<RuntimeFlags.RuntimeFlags>> = fiberRuntime.fiberRefMakeRuntimeFlags
+  initial: RuntimeFlags
+) => Effect<Scope, never, FiberRef<RuntimeFlags>> = fiberRuntime.fiberRefMakeRuntimeFlags
 
 /**
  * @since 2.0.0
@@ -99,21 +100,19 @@ export const unsafeMake: <Value>(
  * @since 2.0.0
  * @category constructors
  */
-export const unsafeMakeHashSet: <A>(initial: HashSet.HashSet<A>) => FiberRef<HashSet.HashSet<A>> =
-  core.fiberRefUnsafeMakeHashSet
+export const unsafeMakeHashSet: <A>(initial: HashSet<A>) => FiberRef<HashSet<A>> = core.fiberRefUnsafeMakeHashSet
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const unsafeMakeContext: <A>(initial: Context.Context<A>) => FiberRef<Context.Context<A>> =
-  core.fiberRefUnsafeMakeContext
+export const unsafeMakeContext: <A>(initial: Context<A>) => FiberRef<Context<A>> = core.fiberRefUnsafeMakeContext
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const unsafeMakeSupervisor: (initial: Supervisor.Supervisor<any>) => FiberRef<Supervisor.Supervisor<any>> =
+export const unsafeMakeSupervisor: (initial: Supervisor<any>) => FiberRef<Supervisor<any>> =
   fiberRuntime.fiberRefUnsafeMakeSupervisor
 
 /**
@@ -123,7 +122,7 @@ export const unsafeMakeSupervisor: (initial: Supervisor.Supervisor<any>) => Fibe
 export const unsafeMakePatch: <Value, Patch>(
   initial: Value,
   options: {
-    readonly differ: Differ.Differ<Value, Patch>
+    readonly differ: Differ<Value, Patch>
     readonly fork: Patch
     readonly join?: (oldV: Value, newV: Value) => Value
   }
@@ -133,15 +132,15 @@ export const unsafeMakePatch: <Value, Patch>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <A>(self: FiberRef<A>) => Effect.Effect<never, never, A> = core.fiberRefGet
+export const get: <A>(self: FiberRef<A>) => Effect<never, never, A> = core.fiberRefGet
 
 /**
  * @since 2.0.0
  * @category utils
  */
 export const getAndSet: {
-  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, value: A): Effect.Effect<never, never, A>
+  <A>(value: A): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, value: A): Effect<never, never, A>
 } = core.fiberRefGetAndSet
 
 /**
@@ -149,8 +148,8 @@ export const getAndSet: {
  * @category utils
  */
 export const getAndUpdate: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect<never, never, A>
 } = core.fiberRefGetAndUpdate
 
 /**
@@ -158,8 +157,8 @@ export const getAndUpdate: {
  * @category utils
  */
 export const getAndUpdateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = core.fiberRefGetAndUpdateSome
 
 /**
@@ -167,8 +166,8 @@ export const getAndUpdateSome: {
  * @category utils
  */
 export const getWith: {
-  <A, R, E, B>(f: (a: A) => Effect.Effect<R, E, B>): (self: FiberRef<A>) => Effect.Effect<R, E, B>
-  <A, R, E, B>(self: FiberRef<A>, f: (a: A) => Effect.Effect<R, E, B>): Effect.Effect<R, E, B>
+  <A, R, E, B>(f: (a: A) => Effect<R, E, B>): (self: FiberRef<A>) => Effect<R, E, B>
+  <A, R, E, B>(self: FiberRef<A>, f: (a: A) => Effect<R, E, B>): Effect<R, E, B>
 } = core.fiberRefGetWith
 
 /**
@@ -176,11 +175,11 @@ export const getWith: {
  * @category utils
  */
 export const set: {
-  <A>(value: A): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, value: A): Effect.Effect<never, never, void>
+  <A>(value: A): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, value: A): Effect<never, never, void>
 } = core.fiberRefSet
 
-const _delete: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void> = core.fiberRefDelete
+const _delete: <A>(self: FiberRef<A>) => Effect<never, never, void> = core.fiberRefDelete
 
 export {
   /**
@@ -194,15 +193,15 @@ export {
  * @since 2.0.0
  * @category utils
  */
-export const reset: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void> = core.fiberRefReset
+export const reset: <A>(self: FiberRef<A>) => Effect<never, never, void> = core.fiberRefReset
 
 /**
  * @since 2.0.0
  * @category utils
  */
 export const modify: {
-  <A, B>(f: (a: A) => readonly [B, A]): (self: FiberRef<A>) => Effect.Effect<never, never, B>
-  <A, B>(self: FiberRef<A>, f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
+  <A, B>(f: (a: A) => readonly [B, A]): (self: FiberRef<A>) => Effect<never, never, B>
+  <A, B>(self: FiberRef<A>, f: (a: A) => readonly [B, A]): Effect<never, never, B>
 } = core.fiberRefModify
 
 /**
@@ -212,16 +211,16 @@ export const modify: {
 export const modifySome: <A, B>(
   self: FiberRef<A>,
   def: B,
-  f: (a: A) => Option.Option<readonly [B, A]>
-) => Effect.Effect<never, never, B> = core.fiberRefModifySome
+  f: (a: A) => Option<readonly [B, A]>
+) => Effect<never, never, B> = core.fiberRefModifySome
 
 /**
  * @since 2.0.0
  * @category utils
  */
 export const update: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, void>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect<never, never, void>
 } = core.fiberRefUpdate
 
 /**
@@ -229,8 +228,8 @@ export const update: {
  * @category utils
  */
 export const updateSome: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, void>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, void>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, void>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, void>
 } = core.fiberRefUpdateSome
 
 /**
@@ -238,8 +237,8 @@ export const updateSome: {
  * @category utils
  */
 export const updateAndGet: {
-  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, f: (a: A) => A): Effect.Effect<never, never, A>
+  <A>(f: (a: A) => A): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, f: (a: A) => A): Effect<never, never, A>
 } = core.fiberRefUpdateAndGet
 
 /**
@@ -247,8 +246,8 @@ export const updateAndGet: {
  * @category utils
  */
 export const updateSomeAndGet: {
-  <A>(pf: (a: A) => Option.Option<A>): (self: FiberRef<A>) => Effect.Effect<never, never, A>
-  <A>(self: FiberRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<never, never, A>
+  <A>(pf: (a: A) => Option<A>): (self: FiberRef<A>) => Effect<never, never, A>
+  <A>(self: FiberRef<A>, pf: (a: A) => Option<A>): Effect<never, never, A>
 } = core.fiberRefUpdateSomeAndGet
 
 /**
@@ -273,7 +272,7 @@ export const currentRequestCacheEnabled: FiberRef<boolean> = query.currentCacheE
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentContext: FiberRef<Context.Context<never>> = core.currentContext
+export const currentContext: FiberRef<Context<never>> = core.currentContext
 
 /**
  * @since 2.0.0
@@ -291,61 +290,61 @@ export const currentMaxOpsBeforeYield: FiberRef<number> = core.currentMaxOpsBefo
  * @since 2.0.0
  * @category fiberRefs
  */
-export const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>> = core.currentUnhandledErrorLogLevel
+export const unhandledErrorLogLevel: FiberRef<Option<LogLevel>> = core.currentUnhandledErrorLogLevel
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLogAnnotations: FiberRef<HashMap.HashMap<string, unknown>> = core.currentLogAnnotations
+export const currentLogAnnotations: FiberRef<HashMap<string, unknown>> = core.currentLogAnnotations
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLoggers: FiberRef<HashSet.HashSet<Logger.Logger<unknown, any>>> = fiberRuntime.currentLoggers
+export const currentLoggers: FiberRef<HashSet<Logger<unknown, any>>> = fiberRuntime.currentLoggers
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLogLevel: FiberRef<LogLevel.LogLevel> = core.currentLogLevel
+export const currentLogLevel: FiberRef<LogLevel> = core.currentLogLevel
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentMinimumLogLevel: FiberRef<LogLevel.LogLevel> = fiberRuntime.currentMinimumLogLevel
+export const currentMinimumLogLevel: FiberRef<LogLevel> = fiberRuntime.currentMinimumLogLevel
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentLogSpan: FiberRef<List.List<LogSpan.LogSpan>> = core.currentLogSpan
+export const currentLogSpan: FiberRef<List<LogSpan>> = core.currentLogSpan
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentRuntimeFlags: FiberRef<RuntimeFlags.RuntimeFlags> = fiberRuntime.currentRuntimeFlags
+export const currentRuntimeFlags: FiberRef<RuntimeFlags> = fiberRuntime.currentRuntimeFlags
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentScheduler: FiberRef<Scheduler.Scheduler> = Scheduler.currentScheduler
+export const currentScheduler: FiberRef<Scheduler> = Scheduler.currentScheduler
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentSupervisor: FiberRef<Supervisor.Supervisor<any>> = fiberRuntime.currentSupervisor
+export const currentSupervisor: FiberRef<Supervisor<any>> = fiberRuntime.currentSupervisor
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentMetricLabels: FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>> = core.currentMetricLabels
+export const currentMetricLabels: FiberRef<HashSet<MetricLabel>> = core.currentMetricLabels
 
 /**
  * @since 2.0.0
@@ -357,17 +356,16 @@ export const currentTracerTimingEnabled: FiberRef<boolean> = core.currentTracerT
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentTracerSpanAnnotations: FiberRef<HashMap.HashMap<string, unknown>> =
-  core.currentTracerSpanAnnotations
+export const currentTracerSpanAnnotations: FiberRef<HashMap<string, unknown>> = core.currentTracerSpanAnnotations
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const currentTracerSpanLinks: FiberRef<Chunk.Chunk<Tracer.SpanLink>> = core.currentTracerSpanLinks
+export const currentTracerSpanLinks: FiberRef<Chunk<Tracer.SpanLink>> = core.currentTracerSpanLinks
 
 /**
  * @since 2.0.0
  * @category fiberRefs
  */
-export const interruptedCause: FiberRef<Cause.Cause<never>> = core.currentInterruptedCause
+export const interruptedCause: FiberRef<Cause<never>> = core.currentInterruptedCause

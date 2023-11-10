@@ -1,8 +1,8 @@
-import type * as Clock from "../Clock.js"
-import * as Context from "../Context.js"
-import * as Duration from "../Duration.js"
-import type * as Effect from "../Effect.js"
-import * as Either from "../Either.js"
+import type { Clock } from "../Clock.js"
+import { Context } from "../Context.js"
+import { Duration } from "../Duration.js"
+import type { Effect } from "../Effect.js"
+import { Either } from "../Either.js"
 import { constFalse } from "../Function.js"
 import * as core from "./core.js"
 import * as timeout from "./timeout.js"
@@ -14,14 +14,14 @@ const ClockSymbolKey = "effect/Clock"
 export const ClockTypeId: Clock.ClockTypeId = Symbol.for(ClockSymbolKey) as Clock.ClockTypeId
 
 /** @internal */
-export const clockTag: Context.Tag<Clock.Clock, Clock.Clock> = Context.Tag(ClockTypeId)
+export const clockTag: Context.Tag<Clock, Clock> = Context.Tag(ClockTypeId)
 
 /** @internal */
 export const MAX_TIMER_MILLIS = 2 ** 31 - 1
 
 /** @internal */
 export const globalClockScheduler: Clock.ClockScheduler = {
-  unsafeSchedule(task: Clock.Task, duration: Duration.Duration): Clock.CancelToken {
+  unsafeSchedule(task: Clock.Task, duration: Duration): Clock.CancelToken {
     const millis = Duration.toMillis(duration)
     // If the duration is greater than the value allowable by the JS timer
     // functions, treat the value as an infinite duration
@@ -66,7 +66,7 @@ const processOrPerformanceNow = (function() {
 })()
 
 /** @internal */
-class ClockImpl implements Clock.Clock {
+class ClockImpl implements Clock {
   readonly [ClockTypeId]: Clock.ClockTypeId = ClockTypeId
 
   unsafeCurrentTimeMillis(): number {
@@ -77,15 +77,15 @@ class ClockImpl implements Clock.Clock {
     return processOrPerformanceNow()
   }
 
-  currentTimeMillis: Effect.Effect<never, never, number> = core.sync(() => this.unsafeCurrentTimeMillis())
+  currentTimeMillis: Effect<never, never, number> = core.sync(() => this.unsafeCurrentTimeMillis())
 
-  currentTimeNanos: Effect.Effect<never, never, bigint> = core.sync(() => this.unsafeCurrentTimeNanos())
+  currentTimeNanos: Effect<never, never, bigint> = core.sync(() => this.unsafeCurrentTimeNanos())
 
-  scheduler(): Effect.Effect<never, never, Clock.ClockScheduler> {
+  scheduler(): Effect<never, never, Clock.ClockScheduler> {
     return core.succeed(globalClockScheduler)
   }
 
-  sleep(duration: Duration.Duration): Effect.Effect<never, never, void> {
+  sleep(duration: Duration): Effect<never, never, void> {
     return core.asyncEither<never, never, void>((cb) => {
       const canceler = globalClockScheduler.unsafeSchedule(() => cb(core.unit), duration)
       return Either.left(core.asUnit(core.sync(canceler)))
@@ -94,4 +94,4 @@ class ClockImpl implements Clock.Clock {
 }
 
 /** @internal */
-export const make = (): Clock.Clock => new ClockImpl()
+export const make = (): Clock => new ClockImpl()

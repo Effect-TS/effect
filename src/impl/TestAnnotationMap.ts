@@ -3,7 +3,8 @@
  */
 import { dual, pipe } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
-import type * as TestAnnotation from "../TestAnnotation.js"
+import type { TestAnnotation } from "../TestAnnotation.js"
+
 import type { TestAnnotationMap } from "../TestAnnotationMap.js"
 
 /**
@@ -19,7 +20,7 @@ export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 /** @internal */
 class TestAnnotationMapImpl implements TestAnnotationMap {
   readonly [TestAnnotationMapTypeId]: TestAnnotationMapTypeId = TestAnnotationMapTypeId
-  constructor(readonly map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>) {
+  constructor(readonly map: ReadonlyMap<TestAnnotation<unknown>, unknown>) {
   }
 }
 
@@ -36,7 +37,7 @@ export const empty: (_: void) => TestAnnotationMap = () => new TestAnnotationMap
 /**
  * @since 2.0.0
  */
-export const make = (map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>): TestAnnotationMap => {
+export const make = (map: ReadonlyMap<TestAnnotation<unknown>, unknown>): TestAnnotationMap => {
   return new TestAnnotationMapImpl(map)
 }
 
@@ -44,22 +45,22 @@ export const make = (map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, un
  * @since 2.0.0
  */
 export const overwrite = dual<
-  <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
-  <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap
+  <A>(key: TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
+  <A>(self: TestAnnotationMap, key: TestAnnotation<A>, value: A) => TestAnnotationMap
 >(3, (self, key, value) =>
   make(
-    (self.map as Map<TestAnnotation.TestAnnotation<unknown>, unknown>)
-      .set(key as TestAnnotation.TestAnnotation<unknown>, value)
+    (self.map as Map<TestAnnotation<unknown>, unknown>)
+      .set(key as TestAnnotation<unknown>, value)
   ))
 
 /**
  * @since 2.0.0
  */
 export const update = dual<
-  <A>(key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => (self: TestAnnotationMap) => TestAnnotationMap,
-  <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap
->(3, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => {
-  let value = self.map.get(key as TestAnnotation.TestAnnotation<unknown>)
+  <A>(key: TestAnnotation<A>, f: (value: A) => A) => (self: TestAnnotationMap) => TestAnnotationMap,
+  <A>(self: TestAnnotationMap, key: TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap
+>(3, <A>(self: TestAnnotationMap, key: TestAnnotation<A>, f: (value: A) => A) => {
+  let value = self.map.get(key as TestAnnotation<unknown>)
   if (value === undefined) {
     value = key.initial
   }
@@ -73,10 +74,10 @@ export const update = dual<
  * @since 2.0.0
  */
 export const get = dual<
-  <A>(key: TestAnnotation.TestAnnotation<A>) => (self: TestAnnotationMap) => A,
-  <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => A
->(2, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => {
-  const value = self.map.get(key as TestAnnotation.TestAnnotation<unknown>)
+  <A>(key: TestAnnotation<A>) => (self: TestAnnotationMap) => A,
+  <A>(self: TestAnnotationMap, key: TestAnnotation<A>) => A
+>(2, <A>(self: TestAnnotationMap, key: TestAnnotation<A>) => {
+  const value = self.map.get(key as TestAnnotation<unknown>)
   if (value === undefined) {
     return key.initial as A
   }
@@ -89,8 +90,8 @@ export const get = dual<
  * @since 2.0.0
  */
 export const annotate = dual<
-  <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
-  <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap
+  <A>(key: TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
+  <A>(self: TestAnnotationMap, key: TestAnnotation<A>, value: A) => TestAnnotationMap
 >(3, (self, key, value) => update(self, key, (_) => key.combine(_, value)))
 
 /**
@@ -100,7 +101,7 @@ export const combine = dual<
   (that: TestAnnotationMap) => (self: TestAnnotationMap) => TestAnnotationMap,
   (self: TestAnnotationMap, that: TestAnnotationMap) => TestAnnotationMap
 >(2, (self, that) => {
-  const result = new Map<TestAnnotation.TestAnnotation<unknown>, unknown>(self.map)
+  const result = new Map<TestAnnotation<unknown>, unknown>(self.map)
   for (const entry of that.map) {
     if (result.has(entry[0])) {
       const value = result.get(entry[0])!

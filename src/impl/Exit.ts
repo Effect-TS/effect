@@ -1,17 +1,18 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "../Cause.js"
-import type * as Effect from "../Effect.js"
-import type * as Either from "../Either.js"
-import type { Exit } from "../Exit.js"
-import type * as FiberId from "../FiberId.js"
+import type { Cause } from "../Cause.js"
+import type { Effect } from "../Effect.js"
+import type { Either } from "../Either.js"
+import type { FiberId } from "../FiberId.js"
 import type { Inspectable } from "../Inspectable.js"
 import * as core from "../internal/core.js"
-import type * as Option from "../Option.js"
+import type { Option } from "../Option.js"
 import type { Pipeable } from "../Pipeable.js"
 import type { Predicate } from "../Predicate.js"
-import type * as Unify from "../Unify.js"
+import type { Unify } from "../Unify.js"
+
+import type { Exit } from "../Exit.js"
 
 /**
  * Represents a failed `Effect` workflow containing the `Cause` of the failure
@@ -20,15 +21,15 @@ import type * as Unify from "../Unify.js"
  * @since 2.0.0
  * @category models
  */
-export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Failure<E, A> extends Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Failure"
   readonly _op: "Failure"
-  readonly cause: Cause.Cause<E>
+  readonly cause: Cause<E>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
   [Unify.ignoreSymbol]?: ExitUnifyIgnore
   /** @internal */
-  readonly i0: Cause.Cause<E>
+  readonly i0: Cause<E>
 }
 
 /**
@@ -54,7 +55,7 @@ export interface ExitUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 2.0.0
  * @category models
  */
-export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Success<E, A> extends Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Success"
   readonly _op: "Success"
   readonly value: A
@@ -125,7 +126,7 @@ export const asUnit: <E, A>(self: Exit<E, A>) => Exit<E, void> = core.exitAsUnit
  * @since 2.0.0
  * @category getters
  */
-export const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<E>> = core.exitCauseOption
+export const causeOption: <E, A>(self: Exit<E, A>) => Option<Cause<E>> = core.exitCauseOption
 
 /**
  * Collects all of the specified exit values into a `Some<Exit<E, List<A>>>`. If
@@ -137,7 +138,7 @@ export const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<
 export const all: <E, A>(
   exits: Iterable<Exit<E, A>>,
   options?: { readonly parallel?: boolean } | undefined
-) => Option.Option<Exit<E, Array<A>>> = core.exitCollectAll
+) => Option<Exit<E, Array<A>>> = core.exitCollectAll
 
 /**
  * Constructs a new `Exit.Failure` from the specified unrecoverable defect.
@@ -174,7 +175,7 @@ export const fail: <E>(error: E) => Exit<E, never> = core.exitFail
  * @since 2.0.0
  * @category constructors
  */
-export const failCause: <E>(cause: Cause.Cause<E>) => Exit<E, never> = core.exitFailCause
+export const failCause: <E>(cause: Cause<E>) => Exit<E, never> = core.exitFailCause
 
 /**
  * @since 2.0.0
@@ -191,12 +192,12 @@ export const flatMap: {
  */
 export const flatMapEffect: {
   <E, A, R, E2, A2>(
-    f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>
-  ): (self: Exit<E, A>) => Effect.Effect<R, E2, Exit<E, A2>>
+    f: (a: A) => Effect<R, E2, Exit<E, A2>>
+  ): (self: Exit<E, A>) => Effect<R, E2, Exit<E, A2>>
   <E, A, R, E2, A2>(
     self: Exit<E, A>,
-    f: (a: A) => Effect.Effect<R, E2, Exit<E, A2>>
-  ): Effect.Effect<R, E2, Exit<E, A2>>
+    f: (a: A) => Effect<R, E2, Exit<E, A2>>
+  ): Effect<R, E2, Exit<E, A2>>
 } = core.exitFlatMapEffect
 
 /**
@@ -210,8 +211,8 @@ export const flatten: <E, E1, A>(self: Exit<E, Exit<E1, A>>) => Exit<E | E1, A> 
  * @category traversing
  */
 export const forEachEffect: {
-  <A, R, E2, B>(f: (a: A) => Effect.Effect<R, E2, B>): <E>(self: Exit<E, A>) => Effect.Effect<R, never, Exit<E2 | E, B>>
-  <E, A, R, E2, B>(self: Exit<E, A>, f: (a: A) => Effect.Effect<R, E2, B>): Effect.Effect<R, never, Exit<E | E2, B>>
+  <A, R, E2, B>(f: (a: A) => Effect<R, E2, B>): <E>(self: Exit<E, A>) => Effect<R, never, Exit<E2 | E, B>>
+  <E, A, R, E2, B>(self: Exit<E, A>, f: (a: A) => Effect<R, E2, B>): Effect<R, never, Exit<E | E2, B>>
 } = core.exitForEachEffect
 
 /**
@@ -220,7 +221,7 @@ export const forEachEffect: {
  * @since 2.0.0
  * @category conversions
  */
-export const fromEither: <E, A>(either: Either.Either<E, A>) => Exit<E, A> = core.exitFromEither
+export const fromEither: <E, A>(either: Either<E, A>) => Exit<E, A> = core.exitFromEither
 
 /**
  * Converts an `Option<A>` into an `Exit<void, A>`.
@@ -228,7 +229,7 @@ export const fromEither: <E, A>(either: Either.Either<E, A>) => Exit<E, A> = cor
  * @since 2.0.0
  * @category conversions
  */
-export const fromOption: <A>(option: Option.Option<A>) => Exit<void, A> = core.exitFromOption
+export const fromOption: <A>(option: Option<A>) => Exit<void, A> = core.exitFromOption
 
 /**
  * Returns the `A` if specified exit is a `Success`, otherwise returns the
@@ -239,8 +240,8 @@ export const fromOption: <A>(option: Option.Option<A>) => Exit<void, A> = core.e
  * @category getters
  */
 export const getOrElse: {
-  <E, A2>(orElse: (cause: Cause.Cause<E>) => A2): <A1>(self: Exit<E, A1>) => A1 | A2
-  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause.Cause<E>) => A2): A1 | A2
+  <E, A2>(orElse: (cause: Cause<E>) => A2): <A1>(self: Exit<E, A1>) => A1 | A2
+  <E, A1, A2>(self: Exit<E, A1>, orElse: (cause: Cause<E>) => A2): A1 | A2
 } = core.exitGetOrElse
 
 /**
@@ -250,7 +251,7 @@ export const getOrElse: {
  * @since 2.0.0
  * @category constructors
  */
-export const interrupt: (fiberId: FiberId.FiberId) => Exit<never, never> = core.exitInterrupt
+export const interrupt: (fiberId: FiberId) => Exit<never, never> = core.exitInterrupt
 
 /**
  * Maps over the `Success` value of the specified exit using the provided
@@ -301,8 +302,8 @@ export const mapError: {
  * @category mapping
  */
 export const mapErrorCause: {
-  <E, E2>(f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): <A>(self: Exit<E, A>) => Exit<E2, A>
-  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause.Cause<E>) => Cause.Cause<E2>): Exit<E2, A>
+  <E, E2>(f: (cause: Cause<E>) => Cause<E2>): <A>(self: Exit<E, A>) => Exit<E2, A>
+  <E, A, E2>(self: Exit<E, A>, f: (cause: Cause<E>) => Cause<E2>): Exit<E2, A>
 } = core.exitMapErrorCause
 
 /**
@@ -311,11 +312,11 @@ export const mapErrorCause: {
  */
 export const match: {
   <E, A, Z1, Z2>(
-    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
+    options: { readonly onFailure: (cause: Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
   ): (self: Exit<E, A>) => Z1 | Z2
   <E, A, Z1, Z2>(
     self: Exit<E, A>,
-    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
+    options: { readonly onFailure: (cause: Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
   ): Z1 | Z2
 } = core.exitMatch
 
@@ -326,17 +327,17 @@ export const match: {
 export const matchEffect: {
   <E, A, R, E2, A2, R2, E3, A3>(
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-      readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
+      readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
+      readonly onSuccess: (a: A) => Effect<R2, E3, A3>
     }
-  ): (self: Exit<E, A>) => Effect.Effect<R | R2, E2 | E3, A2 | A3>
+  ): (self: Exit<E, A>) => Effect<R | R2, E2 | E3, A2 | A3>
   <E, A, R, E2, A2, R2, E3, A3>(
     self: Exit<E, A>,
     options: {
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R, E2, A2>
-      readonly onSuccess: (a: A) => Effect.Effect<R2, E3, A3>
+      readonly onFailure: (cause: Cause<E>) => Effect<R, E2, A2>
+      readonly onSuccess: (a: A) => Effect<R2, E3, A3>
     }
-  ): Effect.Effect<R | R2, E2 | E3, A2 | A3>
+  ): Effect<R | R2, E2 | E3, A2 | A3>
 } = core.exitMatchEffect
 
 /**
@@ -439,7 +440,7 @@ export const zipWith: {
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ): (self: Exit<E, A>) => Exit<E | E2, C>
   <E, E2, A, B, C>(
@@ -447,7 +448,7 @@ export const zipWith: {
     that: Exit<E2, B>,
     options: {
       readonly onSuccess: (a: A, b: B) => C
-      readonly onFailure: (cause: Cause.Cause<E>, cause2: Cause.Cause<E2>) => Cause.Cause<E | E2>
+      readonly onFailure: (cause: Cause<E>, cause2: Cause<E2>) => Cause<E | E2>
     }
   ): Exit<E | E2, C>
 } = core.exitZipWith

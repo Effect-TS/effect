@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as Equivalence from "../Equivalence.js"
+import { Equivalence } from "../Equivalence.js"
 import { dual } from "../Function.js"
 import type { TypeLambda } from "../HKT.js"
 import * as order from "../Order.js"
@@ -162,10 +162,10 @@ export const swap = <L, R>(self: readonly [L, R]): [R, L] => [self[1], self[0]]
  * @category combinators
  * @since 2.0.0
  */
-export const getEquivalence: <T extends ReadonlyArray<Equivalence.Equivalence<any>>>(
+export const getEquivalence: <T extends ReadonlyArray<Equivalence<any>>>(
   ...isEquivalents: T
-) => Equivalence.Equivalence<
-  Readonly<{ [I in keyof T]: [T[I]] extends [Equivalence.Equivalence<infer A>] ? A : never }>
+) => Equivalence<
+  Readonly<{ [I in keyof T]: [T[I]] extends [Equivalence<infer A>] ? A : never }>
 > = Equivalence.tuple
 
 /**

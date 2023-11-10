@@ -1,7 +1,7 @@
 /**
  * Returns the tags in a type.
  * @example
- * import * as Types from "effect/Types"
+ * import { Types } from "effect/Types"
  *
  * type Res = Types.Tags<string | { _tag: "a" } | { _tag: "b" } > // "a" | "b"
  *
@@ -13,7 +13,7 @@ export type Tags<E> = E extends { _tag: string } ? E["_tag"] : never
 /**
  * Excludes the tagged object from the type.
  * @example
- * import * as Types from "effect/Types"
+ * import { Types } from "effect/Types"
  *
  * type Res = Types.ExcludeTag<string | { _tag: "a" } | { _tag: "b" }, "a"> // string | { _tag: "b" }
  *
@@ -26,7 +26,7 @@ export type ExcludeTag<E, K extends Tags<E>> = Exclude<E, { _tag: K }>
  * Extracts the type of the given tag.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import { Types } from "effect/Types"
  *
  * type Res = Types.ExtractTag<{ _tag: "a", a: number } | { _tag: "b", b: number }, "b"> // { _tag: "b", b: number }
  *
@@ -48,7 +48,7 @@ export type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) ext
  * Simplifies the type signature of a type.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import { Types } from "effect/Types"
  *
  * type Res = Types.Simplify<{ a: number } & { b: number }> // { a: number; b: number; }
  *
@@ -63,7 +63,7 @@ export type Simplify<A> = {
  * Determines if two types are equal.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import { Types } from "effect/Types"
  *
  * type Res1 = Types.Equals<{ a: number }, { a: number }> // true
  * type Res2 = Types.Equals<{ a: number }, { b: number }> // false
@@ -80,7 +80,7 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
  * Merges two object where the keys of the left object take precedence in the case of a conflict.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import { Types } from "effect/Types"
  * type MergeLeft = Types.MergeLeft<{ a: number, b: number; }, { a: string }> // { a: number; b: number; }
  *
  * @since 2.0.0
@@ -96,7 +96,7 @@ export type MergeLeft<K, H> = Simplify<
  * Merges two object where the keys of the right object take precedence in the case of a conflict.
  *
  * @example
- * import * as Types from "effect/Types"
+ * import { Types } from "effect/Types"
  * type MergeRight = Types.MergeRight<{ a: number, b: number; }, { a: string }> // { a: string; b: number; }
  *
  * @since 2.0.0

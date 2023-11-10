@@ -17,12 +17,12 @@
  * @since 2.0.0
  */
 import type { Brand } from "../Brand.js"
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import { identity } from "../Function.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import type { Predicate } from "../Predicate.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
-import type * as Types from "../Types.js"
+import { ReadonlyArray } from "../ReadonlyArray.js"
+import type { Types } from "../Types.js"
 
 /**
  * @since 2.0.0
@@ -89,9 +89,9 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * @param onFailure - Takes the unbranded value that did not pass the `refinement` predicate and returns a `BrandErrors`.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type Int = number & Brand.Brand<"Int">
+ * type Int = number & Brand<"Int">
  *
  * const Int = Brand.refined<Int>(
  *   (n) => Number.isInteger(n),
@@ -111,7 +111,7 @@ export const refined: <A extends Brand<any>>(
   refinement: Predicate<Brand.Unbranded<A>>,
   onFailure: (a: Brand.Unbranded<A>) => Brand.BrandErrors
 ): Brand.Constructor<A> => {
-  const either = (args: Brand.Unbranded<A>): Either.Either<Brand.BrandErrors, A> =>
+  const either = (args: Brand.Unbranded<A>): Either<Brand.BrandErrors, A> =>
     refinement(args) ? Either.right(args as A) : Either.left(onFailure(args))
   // @ts-expect-error
   return Object.assign((args) =>
@@ -135,9 +135,9 @@ export const refined: <A extends Brand<any>>(
  * If you also want to perform some validation, see {@link refined}.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type UserId = number & Brand.Brand<"UserId">
+ * type UserId = number & Brand<"UserId">
  *
  * const UserId = Brand.nominal<UserId>()
  *
@@ -163,14 +163,14 @@ export const nominal: <A extends Brand<any>>() => Brand.Constructor<A> = <A exte
  * This API is useful when you want to validate that the input data passes multiple brand validators.
  *
  * @example
- * import * as Brand from "effect/Brand"
+ * import { Brand } from "effect/Brand"
  *
- * type Int = number & Brand.Brand<"Int">
+ * type Int = number & Brand<"Int">
  * const Int = Brand.refined<Int>(
  *   (n) => Number.isInteger(n),
  *   (n) => Brand.error(`Expected ${n} to be an integer`)
  * )
- * type Positive = number & Brand.Brand<"Positive">
+ * type Positive = number & Brand<"Positive">
  * const Positive = Brand.refined<Positive>(
  *   (n) => n > 0,
  *   (n) => Brand.error(`Expected ${n} to be positive`)
@@ -198,8 +198,8 @@ export const all: <Brands extends readonly [Brand.Constructor<any>, ...Array<Bra
     }[number]
   > extends infer X extends Brand<any> ? X : Brand<any>
 > => {
-  const either = (args: any): Either.Either<Brand.BrandErrors, any> => {
-    let result: Either.Either<Brand.BrandErrors, any> = Either.right(args)
+  const either = (args: any): Either<Brand.BrandErrors, any> => {
+    let result: Either<Brand.BrandErrors, any> = Either.right(args)
     for (const brand of brands) {
       const nextResult = brand.either(args)
       if (Either.isLeft(result) && Either.isLeft(nextResult)) {

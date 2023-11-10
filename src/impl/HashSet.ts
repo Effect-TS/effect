@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-
 import type { HashSet } from "../HashSet.js"
 import * as HS from "../internal/hashSet.js"
 import type { Predicate, Refinement } from "../Predicate.js"

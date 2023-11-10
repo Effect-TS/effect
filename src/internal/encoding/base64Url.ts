@@ -1,4 +1,4 @@
-import * as Either from "../../Either.js"
+import { Either } from "../../Either.js"
 import type * as Encoding from "../../Encoding.js"
 import * as Base64 from "./base64.js"
 import { DecodeException } from "./common.js"
@@ -8,7 +8,7 @@ export const encode = (data: Uint8Array) =>
   Base64.encode(data).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
 
 /** @internal */
-export const decode = (str: string): Either.Either<Encoding.DecodeException, Uint8Array> => {
+export const decode = (str: string): Either<Encoding.DecodeException, Uint8Array> => {
   const length = str.length
   if (length % 4 === 1) {
     return Either.left(

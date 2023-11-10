@@ -1,10 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "../Chunk.js"
-import type * as Duration from "../Duration.js"
+import type { Chunk } from "../Chunk.js"
+import type { Duration } from "../Duration.js"
 import * as internal from "../internal/metric/keyType.js"
-import type * as MetricBoundaries from "../MetricBoundaries.js"
+import type { MetricBoundaries } from "../MetricBoundaries.js"
+
 import type { MetricKeyType } from "../MetricKeyType.js"
 
 /**
@@ -101,7 +102,7 @@ export const gauge: <A extends number | bigint>() => MetricKeyType.Gauge<A> = in
  * @since 2.0.0
  * @category constructors
  */
-export const histogram: (boundaries: MetricBoundaries.MetricBoundaries) => MetricKeyType.Histogram = internal.histogram
+export const histogram: (boundaries: MetricBoundaries) => MetricKeyType.Histogram = internal.histogram
 
 /**
  * @since 2.0.0
@@ -112,7 +113,7 @@ export const summary: (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
   }
 ) => MetricKeyType.Summary = internal.summary
 

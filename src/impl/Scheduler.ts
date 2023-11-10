@@ -9,6 +9,7 @@ import { dual } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as core from "../internal/core.js"
 import * as timeout from "../internal/timeout.js"
+
 import type { Scheduler } from "../Scheduler.js"
 
 /**

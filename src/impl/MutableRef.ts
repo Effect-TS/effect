@@ -1,8 +1,8 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "../Equal.js"
-import * as Dual from "../Function.js"
+import { Equal } from "../Equal.js"
+import { dual } from "../Function.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import type { MutableRef } from "../MutableRef.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -55,7 +55,7 @@ export const make = <T>(value: T): MutableRef<T> => {
 export const compareAndSet: {
   <T>(oldValue: T, newValue: T): (self: MutableRef<T>) => boolean
   <T>(self: MutableRef<T>, oldValue: T, newValue: T): boolean
-} = Dual.dual<
+} = dual<
   <T>(oldValue: T, newValue: T) => (self: MutableRef<T>) => boolean,
   <T>(self: MutableRef<T>, oldValue: T, newValue: T) => boolean
 >(3, (self, oldValue, newValue) => {
@@ -103,7 +103,7 @@ export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdat
 export const getAndSet: {
   <T>(value: T): (self: MutableRef<T>) => T
   <T>(self: MutableRef<T>, value: T): T
-} = Dual.dual<
+} = dual<
   <T>(value: T) => (self: MutableRef<T>) => T,
   <T>(self: MutableRef<T>, value: T) => T
 >(2, (self, value) => {
@@ -119,7 +119,7 @@ export const getAndSet: {
 export const getAndUpdate: {
   <T>(f: (value: T) => T): (self: MutableRef<T>) => T
   <T>(self: MutableRef<T>, f: (value: T) => T): T
-} = Dual.dual<
+} = dual<
   <T>(f: (value: T) => T) => (self: MutableRef<T>) => T,
   <T>(self: MutableRef<T>, f: (value: T) => T) => T
 >(2, (self, f) => getAndSet(self, f(get(self))))
@@ -143,7 +143,7 @@ export const incrementAndGet = (self: MutableRef<number>): number => updateAndGe
 export const set: {
   <T>(value: T): (self: MutableRef<T>) => MutableRef<T>
   <T>(self: MutableRef<T>, value: T): MutableRef<T>
-} = Dual.dual<
+} = dual<
   <T>(value: T) => (self: MutableRef<T>) => MutableRef<T>,
   <T>(self: MutableRef<T>, value: T) => MutableRef<T>
 >(2, (self, value) => {
@@ -158,7 +158,7 @@ export const set: {
 export const setAndGet: {
   <T>(value: T): (self: MutableRef<T>) => T
   <T>(self: MutableRef<T>, value: T): T
-} = Dual.dual<
+} = dual<
   <T>(value: T) => (self: MutableRef<T>) => T,
   <T>(self: MutableRef<T>, value: T) => T
 >(2, (self, value) => {
@@ -173,7 +173,7 @@ export const setAndGet: {
 export const update: {
   <T>(f: (value: T) => T): (self: MutableRef<T>) => MutableRef<T>
   <T>(self: MutableRef<T>, f: (value: T) => T): MutableRef<T>
-} = Dual.dual<
+} = dual<
   <T>(f: (value: T) => T) => (self: MutableRef<T>) => MutableRef<T>,
   <T>(self: MutableRef<T>, f: (value: T) => T) => MutableRef<T>
 >(2, (self, f) => set(self, f(get(self))))
@@ -185,7 +185,7 @@ export const update: {
 export const updateAndGet: {
   <T>(f: (value: T) => T): (self: MutableRef<T>) => T
   <T>(self: MutableRef<T>, f: (value: T) => T): T
-} = Dual.dual<
+} = dual<
   <T>(f: (value: T) => T) => (self: MutableRef<T>) => T,
   <T>(self: MutableRef<T>, f: (value: T) => T) => T
 >(2, (self, f) => setAndGet(self, f(get(self))))

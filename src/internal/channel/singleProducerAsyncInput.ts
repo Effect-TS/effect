@@ -1,11 +1,11 @@
-import * as Cause from "../../Cause.js"
-import * as Deferred from "../../Deferred.js"
-import * as Effect from "../../Effect.js"
-import * as Either from "../../Either.js"
-import * as Exit from "../../Exit.js"
+import { Cause } from "../../Cause.js"
+import { Deferred } from "../../Deferred.js"
+import { Effect } from "../../Effect.js"
+import { Either } from "../../Either.js"
+import { Exit } from "../../Exit.js"
 import { pipe } from "../../Function.js"
-import * as Ref from "../../Ref.js"
-import type * as SingleProducerAsyncInput from "../../SingleProducerAsyncInput.js"
+import { Ref } from "../../Ref.js"
+import type { SingleProducerAsyncInput } from "../../SingleProducerAsyncInput.js"
 
 /** @internal */
 type State<Err, Elem, _Done> =
@@ -41,19 +41,19 @@ type OP_STATE_DONE = typeof OP_STATE_DONE
 /** @internal */
 interface Empty {
   readonly _tag: OP_STATE_EMPTY
-  readonly notifyProducer: Deferred.Deferred<never, void>
+  readonly notifyProducer: Deferred<never, void>
 }
 
 /** @internal */
 interface Emit<Err, Elem, Done> {
   readonly _tag: OP_STATE_EMIT
-  readonly notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either.Either<Done, Elem>>>
+  readonly notifyConsumers: ReadonlyArray<Deferred<Err, Either<Done, Elem>>>
 }
 
 /** @internal */
 interface Error<Err> {
   readonly _tag: OP_STATE_ERROR
-  readonly cause: Cause.Cause<Err>
+  readonly cause: Cause<Err>
 }
 
 /** @internal */
@@ -63,21 +63,21 @@ interface Done<_Done> {
 }
 
 /** @internal */
-const stateEmpty = (notifyProducer: Deferred.Deferred<never, void>): State<never, never, never> => ({
+const stateEmpty = (notifyProducer: Deferred<never, void>): State<never, never, never> => ({
   _tag: OP_STATE_EMPTY,
   notifyProducer
 })
 
 /** @internal */
 const stateEmit = <Err, Elem, Done>(
-  notifyConsumers: ReadonlyArray<Deferred.Deferred<Err, Either.Either<Done, Elem>>>
+  notifyConsumers: ReadonlyArray<Deferred<Err, Either<Done, Elem>>>
 ): State<Err, Elem, Done> => ({
   _tag: OP_STATE_EMIT,
   notifyConsumers
 })
 
 /** @internal */
-const stateError = <Err>(cause: Cause.Cause<Err>): State<Err, never, never> => ({
+const stateError = <Err>(cause: Cause<Err>): State<Err, never, never> => ({
   _tag: OP_STATE_ERROR,
   cause
 })
@@ -89,13 +89,11 @@ const stateDone = <Done>(done: Done): State<never, never, Done> => ({
 })
 
 /** @internal */
-class SingleProducerAsyncInputImpl<Err, Elem, Done>
-  implements SingleProducerAsyncInput.SingleProducerAsyncInput<Err, Elem, Done>
-{
-  constructor(readonly ref: Ref.Ref<State<Err, Elem, Done>>) {
+class SingleProducerAsyncInputImpl<Err, Elem, Done> implements SingleProducerAsyncInput<Err, Elem, Done> {
+  constructor(readonly ref: Ref<State<Err, Elem, Done>>) {
   }
 
-  awaitRead(): Effect.Effect<never, never, unknown> {
+  awaitRead(): Effect<never, never, unknown> {
     return Effect.flatten(
       Ref.modify(this.ref, (state) =>
         state._tag === OP_STATE_EMPTY ?
@@ -104,11 +102,11 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     )
   }
 
-  close(): Effect.Effect<never, never, unknown> {
+  close(): Effect<never, never, unknown> {
     return Effect.fiberIdWith((fiberId) => this.error(Cause.interrupt(fiberId)))
   }
 
-  done(value: Done): Effect.Effect<never, never, unknown> {
+  done(value: Done): Effect<never, never, unknown> {
     return Effect.flatten(
       Ref.modify(this.ref, (state) => {
         switch (state._tag) {
@@ -136,7 +134,7 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     )
   }
 
-  emit(element: Elem): Effect.Effect<never, never, unknown> {
+  emit(element: Elem): Effect<never, never, unknown> {
     return Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
@@ -170,7 +168,7 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
       ))
   }
 
-  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown> {
+  error(cause: Cause<Err>): Effect<never, never, unknown> {
     return Effect.flatten(
       Ref.modify(this.ref, (state) => {
         switch (state._tag) {
@@ -198,20 +196,20 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     )
   }
 
-  take(): Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>> {
+  take(): Effect<never, never, Exit<Either<Err, Done>, Elem>> {
     return this.takeWith(
       (cause) => Exit.failCause(Cause.map(cause, Either.left)),
-      (elem) => Exit.succeed(elem) as Exit.Exit<Either.Either<Err, Done>, Elem>,
+      (elem) => Exit.succeed(elem) as Exit<Either<Err, Done>, Elem>,
       (done) => Exit.fail(Either.right(done))
     )
   }
 
   takeWith<A>(
-    onError: (cause: Cause.Cause<Err>) => A,
+    onError: (cause: Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (value: Done) => A
-  ): Effect.Effect<never, never, A> {
-    return Effect.flatMap(Deferred.make<Err, Either.Either<Done, Elem>>(), (deferred) =>
+  ): Effect<never, never, A> {
+    return Effect.flatMap(Deferred.make<Err, Either<Done, Elem>>(), (deferred) =>
       Effect.flatten(
         Ref.modify(this.ref, (state) => {
           switch (state._tag) {
@@ -249,10 +247,10 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
 }
 
 /** @internal */
-export const make = <Err, Elem, Done>(): Effect.Effect<
+export const make = <Err, Elem, Done>(): Effect<
   never,
   never,
-  SingleProducerAsyncInput.SingleProducerAsyncInput<Err, Elem, Done>
+  SingleProducerAsyncInput<Err, Elem, Done>
 > =>
   pipe(
     Deferred.make<never, void>(),

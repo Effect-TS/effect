@@ -1,12 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
+import type { Context } from "../Context.js"
+import type { Effect } from "../Effect.js"
 import * as internal from "../internal/reloadable.js"
-import type * as Layer from "../Layer.js"
+import type { Layer } from "../Layer.js"
+import type { Schedule } from "../Schedule.js"
+
 import type { Reloadable } from "../Reloadable.js"
-import type * as Schedule from "../Schedule.js"
 
 /**
  * @since 2.0.0
@@ -31,10 +32,10 @@ export type ReloadableTypeId = typeof ReloadableTypeId
 export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
-    readonly schedule: Schedule.Schedule<R, unknown, unknown>
+    readonly layer: Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly schedule: Schedule<R, unknown, unknown>
   }
-) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.auto
+) => Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.auto
 
 /**
  * Makes a new reloadable service from a layer that describes the construction
@@ -47,10 +48,10 @@ export const auto: <Out extends Context.Tag<any, any>, In, E, R>(
 export const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, R>(
   tag: Out,
   options: {
-    readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>>
-    readonly scheduleFromConfig: (context: Context.Context<In>) => Schedule.Schedule<R, unknown, unknown>
+    readonly layer: Layer<In, E, Context.Tag.Identifier<Out>>
+    readonly scheduleFromConfig: (context: Context<In>) => Schedule<R, unknown, unknown>
   }
-) => Layer.Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.autoFromConfig
+) => Layer<In | R, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.autoFromConfig
 
 /**
  * Retrieves the current version of the reloadable service.
@@ -60,7 +61,7 @@ export const autoFromConfig: <Out extends Context.Tag<any, any>, In, E, R>(
  */
 export const get: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>> = internal.get
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, never, Context.Tag.Service<T>> = internal.get
 
 /**
  * Makes a new reloadable service from a layer that describes the construction
@@ -71,8 +72,8 @@ export const get: <T extends Context.Tag<any, any>>(
  */
 export const manual: <Out extends Context.Tag<any, any>, In, E>(
   tag: Out,
-  options: { readonly layer: Layer.Layer<In, E, Context.Tag.Identifier<Out>> }
-) => Layer.Layer<In, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.manual
+  options: { readonly layer: Layer<In, E, Context.Tag.Identifier<Out>> }
+) => Layer<In, E, Reloadable<Context.Tag.Identifier<Out>>> = internal.manual
 
 /**
  * Reloads the specified service.
@@ -82,7 +83,7 @@ export const manual: <Out extends Context.Tag<any, any>, In, E>(
  */
 export const reload: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void> = internal.reload
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void> = internal.reload
 
 /**
  * @since 2.0.0
@@ -100,4 +101,4 @@ export const tag: <T extends Context.Tag<any, any>>(
  */
 export const reloadFork: <T extends Context.Tag<any, any>>(
   tag: T
-) => Effect.Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void> = internal.reloadFork
+) => Effect<Reloadable<Context.Tag.Identifier<T>>, unknown, void> = internal.reloadFork

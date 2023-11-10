@@ -2,12 +2,12 @@
  * @since 2.0.0
  */
 
-import type { NonEmptyIterable } from "../NonEmptyIterable.js"
-
 /**
  * @category symbol
  * @since 2.0.0
  */
+import type { NonEmptyIterable } from "../NonEmptyIterable.js"
+
 export declare const nonEmpty: unique symbol
 
 /**

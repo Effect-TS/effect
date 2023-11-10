@@ -3,7 +3,7 @@
  */
 import * as equivalence from "../Equivalence.js"
 import { dual } from "../Function.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import * as order from "../Order.js"
 import type { Ordering } from "../Ordering.js"
 import * as predicate from "../Predicate.js"
@@ -107,11 +107,11 @@ export const subtract: {
  * @since 2.0.0
  */
 export const divide: {
-  (that: bigint): (self: bigint) => Option.Option<bigint>
-  (self: bigint, that: bigint): Option.Option<bigint>
+  (that: bigint): (self: bigint) => Option<bigint>
+  (self: bigint, that: bigint): Option<bigint>
 } = dual(
   2,
-  (self: bigint, that: bigint): Option.Option<bigint> => that === bigint0 ? Option.none() : Option.some(self / that)
+  (self: bigint, that: bigint): Option<bigint> => that === bigint0 ? Option.none() : Option.some(self / that)
 )
 
 /**
@@ -493,7 +493,7 @@ export const unsafeSqrt = (n: bigint): bigint => {
  * @category math
  * @since 2.0.0
  */
-export const sqrt = (n: bigint): Option.Option<bigint> =>
+export const sqrt = (n: bigint): Option<bigint> =>
   greaterThanOrEqualTo(n, bigint0) ? Option.some(unsafeSqrt(n)) : Option.none<bigint>()
 
 /**

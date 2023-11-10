@@ -3,6 +3,7 @@
  */
 import type { LazyArg } from "../Function.js"
 import { dual } from "../Function.js"
+
 import type { Ordering } from "../Ordering.js"
 
 /**

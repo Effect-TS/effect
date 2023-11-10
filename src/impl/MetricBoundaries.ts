@@ -1,8 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "../Chunk.js"
+import type { Chunk } from "../Chunk.js"
 import * as internal from "../internal/metric/boundaries.js"
+
 import type { MetricBoundaries } from "../MetricBoundaries.js"
 
 /**
@@ -27,7 +28,7 @@ export const isMetricBoundaries: (u: unknown) => u is MetricBoundaries = interna
  * @since 2.0.0
  * @category constructors
  */
-export const fromChunk: (chunk: Chunk.Chunk<number>) => MetricBoundaries = internal.fromChunk
+export const fromChunk: (chunk: Chunk<number>) => MetricBoundaries = internal.fromChunk
 
 /**
  * A helper method to create histogram bucket boundaries for a histogram

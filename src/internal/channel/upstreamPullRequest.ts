@@ -1,6 +1,6 @@
 import { dual } from "../../Function.js"
 import { hasProperty } from "../../Predicate.js"
-import type * as UpstreamPullRequest from "../../UpstreamPullRequest.js"
+import type { UpstreamPullRequest } from "../../UpstreamPullRequest.js"
 import * as OpCodes from "../opCodes/channelUpstreamPullRequest.js"
 
 /** @internal */
@@ -22,7 +22,7 @@ const proto = {
 }
 
 /** @internal */
-export const Pulled = <A>(value: A): UpstreamPullRequest.UpstreamPullRequest<A> => {
+export const Pulled = <A>(value: A): UpstreamPullRequest<A> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_PULLED
   op.value = value
@@ -30,7 +30,7 @@ export const Pulled = <A>(value: A): UpstreamPullRequest.UpstreamPullRequest<A> 
 }
 
 /** @internal */
-export const NoUpstream = (activeDownstreamCount: number): UpstreamPullRequest.UpstreamPullRequest<never> => {
+export const NoUpstream = (activeDownstreamCount: number): UpstreamPullRequest<never> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_NO_UPSTREAM
   op.activeDownstreamCount = activeDownstreamCount
@@ -38,17 +38,17 @@ export const NoUpstream = (activeDownstreamCount: number): UpstreamPullRequest.U
 }
 
 /** @internal */
-export const isUpstreamPullRequest = (u: unknown): u is UpstreamPullRequest.UpstreamPullRequest<unknown> =>
+export const isUpstreamPullRequest = (u: unknown): u is UpstreamPullRequest<unknown> =>
   hasProperty(u, UpstreamPullRequestTypeId)
 
 /** @internal */
 export const isPulled = <A>(
-  self: UpstreamPullRequest.UpstreamPullRequest<A>
+  self: UpstreamPullRequest<A>
 ): self is UpstreamPullRequest.Pulled<A> => self._tag === OpCodes.OP_PULLED
 
 /** @internal */
 export const isNoUpstream = <A>(
-  self: UpstreamPullRequest.UpstreamPullRequest<A>
+  self: UpstreamPullRequest<A>
 ): self is UpstreamPullRequest.NoUpstream => self._tag === OpCodes.OP_NO_UPSTREAM
 
 /** @internal */
@@ -58,16 +58,16 @@ export const match = dual<
       readonly onPulled: (value: A) => Z
       readonly onNoUpstream: (activeDownstreamCount: number) => Z
     }
-  ) => (self: UpstreamPullRequest.UpstreamPullRequest<A>) => Z,
+  ) => (self: UpstreamPullRequest<A>) => Z,
   <A, Z>(
-    self: UpstreamPullRequest.UpstreamPullRequest<A>,
+    self: UpstreamPullRequest<A>,
     options: {
       readonly onPulled: (value: A) => Z
       readonly onNoUpstream: (activeDownstreamCount: number) => Z
     }
   ) => Z
 >(2, <A, Z>(
-  self: UpstreamPullRequest.UpstreamPullRequest<A>,
+  self: UpstreamPullRequest<A>,
   { onNoUpstream, onPulled }: {
     readonly onPulled: (value: A) => Z
     readonly onNoUpstream: (activeDownstreamCount: number) => Z

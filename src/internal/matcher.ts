@@ -1,4 +1,4 @@
-import * as Either from "../Either.js"
+import { Either } from "../Either.js"
 import { identity } from "../Function.js"
 import type {
   Case,
@@ -11,9 +11,9 @@ import type {
   ValueMatcher,
   When
 } from "../Match.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import type * as Predicate from "../Predicate.js"
+import type { Predicate } from "../Predicate.js"
 import type { Unify } from "../Unify.js"
 
 /** @internal */
@@ -87,7 +87,7 @@ const ValueMatcherProto: Omit<
 
 function makeValueMatcher<I, R, RA, A, Pr>(
   provided: Pr,
-  value: Either.Either<RA, Pr>
+  value: Either<RA, Pr>
 ): ValueMatcher<I, R, RA, A, Pr> {
   const matcher = Object.create(ValueMatcherProto)
   matcher.provided = provided
@@ -113,9 +113,9 @@ const makeNot = (
   evaluate
 })
 
-const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
+const makePredicate = (pattern: unknown): Predicate<unknown> => {
   if (typeof pattern === "function") {
-    return pattern as Predicate.Predicate<unknown>
+    return pattern as Predicate<unknown>
   } else if (Array.isArray(pattern)) {
     const predicates = pattern.map(makePredicate)
     const len = predicates.length
@@ -160,7 +160,7 @@ const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
 
 const makeOrPredicate = (
   patterns: ReadonlyArray<unknown>
-): Predicate.Predicate<unknown> => {
+): Predicate<unknown> => {
   const predicates = patterns.map(makePredicate)
   const len = predicates.length
 
@@ -177,7 +177,7 @@ const makeOrPredicate = (
 
 const makeAndPredicate = (
   patterns: ReadonlyArray<unknown>
-): Predicate.Predicate<unknown> => {
+): Predicate<unknown> => {
   const predicates = patterns.map(makePredicate)
   const len = predicates.length
 
@@ -525,14 +525,14 @@ export const orElseAbsurd = <I, R, RA, A, Pr>(
 /** @internal */
 export const either: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Either.Either<R, Unify<A>>
-  : Either.Either<R, Unify<A>> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
+) => [Pr] extends [never] ? (input: I) => Either<R, Unify<A>>
+  : Either<R, Unify<A>> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
     if (self._tag === "ValueMatcher") {
       return self.value
     }
 
     const len = self.cases.length
-    return (input: I): Either.Either<RA, A> => {
+    return (input: I): Either<RA, A> => {
       for (let i = 0; i < len; i++) {
         const _case = self.cases[i]
         if (_case._tag === "When" && _case.guard(input) === true) {
@@ -549,8 +549,8 @@ export const either: <I, F, R, A, Pr>(
 /** @internal */
 export const option: <I, F, R, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
-) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>>
-  : Option.Option<Unify<A>> = (<I, A>(self: Matcher<I, any, any, A, I>) => {
+) => [Pr] extends [never] ? (input: I) => Option<Unify<A>>
+  : Option<Unify<A>> = (<I, A>(self: Matcher<I, any, any, A, I>) => {
     const toEither = either(self)
     if (Either.isEither(toEither)) {
       return Either.match(toEither, {
@@ -558,7 +558,7 @@ export const option: <I, F, R, A, Pr>(
         onRight: Option.some
       })
     }
-    return (input: I): Option.Option<A> =>
+    return (input: I): Option<A> =>
       Either.match((toEither as any)(input), {
         onLeft: () => Option.none(),
         onRight: Option.some as any

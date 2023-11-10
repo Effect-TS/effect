@@ -1,6 +1,6 @@
-import type * as Chunk from "../../Chunk.js"
-import type * as Fiber from "../../Fiber.js"
-import type * as HandoffSignal from "./handoffSignal.js"
+import type { Chunk } from "../../Chunk.js"
+import type { Fiber } from "../../Fiber.js"
+import type { HandoffSignal } from "./handoffSignal.js"
 
 /** @internal */
 export type DebounceState<E, A> = NotStarted | Previous<A> | Current<E, A>
@@ -30,13 +30,13 @@ export interface NotStarted {
 /** @internal */
 export interface Previous<A> {
   readonly _tag: OP_PREVIOUS
-  readonly fiber: Fiber.Fiber<never, Chunk.Chunk<A>>
+  readonly fiber: Fiber<never, Chunk<A>>
 }
 
 /** @internal */
 export interface Current<E, A> {
   readonly _tag: OP_CURRENT
-  readonly fiber: Fiber.Fiber<E, HandoffSignal.HandoffSignal<E, A>>
+  readonly fiber: Fiber<E, HandoffSignal<E, A>>
 }
 
 /** @internal */
@@ -45,13 +45,13 @@ export const notStarted: DebounceState<never, never> = {
 }
 
 /** @internal */
-export const previous = <A>(fiber: Fiber.Fiber<never, Chunk.Chunk<A>>): DebounceState<never, A> => ({
+export const previous = <A>(fiber: Fiber<never, Chunk<A>>): DebounceState<never, A> => ({
   _tag: OP_PREVIOUS,
   fiber
 })
 
 /** @internal */
-export const current = <E, A>(fiber: Fiber.Fiber<E, HandoffSignal.HandoffSignal<E, A>>): DebounceState<E, A> => ({
+export const current = <E, A>(fiber: Fiber<E, HandoffSignal<E, A>>): DebounceState<E, A> => ({
   _tag: OP_CURRENT,
   fiber
 })

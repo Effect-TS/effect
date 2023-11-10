@@ -21,19 +21,20 @@
  * Licensed under Apache License 2.0
  * (http://www.apache.org/licenses/LICENSE-2.0).
  */
-import * as Chunk from "../Chunk.js"
-import * as Either from "../Either.js"
-import * as Equal from "../Equal.js"
-import * as Equivalence from "../Equivalence.js"
+import { Chunk } from "../Chunk.js"
+import { Either } from "../Either.js"
+import { Equal } from "../Equal.js"
+import { Equivalence } from "../Equivalence.js"
 import { dual, identity, unsafeCoerce } from "../Function.js"
-import * as Hash from "../Hash.js"
+import { Hash } from "../Hash.js"
 import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import type { List } from "../List.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import type { Pipeable } from "../Pipeable.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
-import * as ReadonlyArray from "../ReadonlyArray.js"
+import { ReadonlyArray } from "../ReadonlyArray.js"
+
+import type { List } from "../List.js"
 
 /**
  * @since 2.0.0
@@ -51,7 +52,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Nil<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Nil"
 }
@@ -60,7 +61,7 @@ export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable 
  * @since 2.0.0
  * @category models
  */
-export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Cons<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Cons"
   readonly head: A
@@ -79,7 +80,7 @@ export const toArray = <A>(self: List<A>): Array<A> => Array.from(self)
  * @category equivalence
  * @since 2.0.0
  */
-export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<List<A>> =>
+export const getEquivalence = <A>(isEquivalent: Equivalence<A>): Equivalence<List<A>> =>
   Equivalence.mapInput(ReadonlyArray.getEquivalence(isEquivalent), toArray<A>)
 
 const _equivalence = getEquivalence(Equal.equals)
@@ -577,9 +578,9 @@ const partialFill = <A>(
  * @category combinators
  */
 export const filterMap: {
-  <A, B>(f: (a: A) => Option.Option<B>): (self: List<A>) => List<B>
-  <A, B>(self: List<A>, f: (a: A) => Option.Option<B>): List<B>
-} = dual(2, <A, B>(self: List<A>, f: (a: A) => Option.Option<B>): List<B> => {
+  <A, B>(f: (a: A) => Option<B>): (self: List<A>) => List<B>
+  <A, B>(self: List<A>, f: (a: A) => Option<B>): List<B>
+} = dual(2, <A, B>(self: List<A>, f: (a: A) => Option<B>): List<B> => {
   const bs: Array<B> = []
   for (const a of self) {
     const oa = f(a)
@@ -596,7 +597,7 @@ export const filterMap: {
  * @since 2.0.0
  * @category combinators
  */
-export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(self, identity)
+export const compact = <A>(self: List<Option<A>>): List<A> => filterMap(self, identity)
 
 /**
  * Returns the first element that satisfies the specified
@@ -606,11 +607,11 @@ export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(s
  * @since 2.0.0
  */
 export const findFirst: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option.Option<B>
-  <A>(predicate: Predicate<A>): (self: List<A>) => Option.Option<A>
-  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option.Option<B>
-  <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A>
-} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A> => {
+  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option<B>
+  <A>(predicate: Predicate<A>): (self: List<A>) => Option<A>
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option<B>
+  <A>(self: List<A>, predicate: Predicate<A>): Option<A>
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option<A> => {
   let these = self
   while (!isNil(these)) {
     if (predicate(these.head)) {
@@ -687,7 +688,7 @@ export const forEach: {
  * @since 2.0.0
  * @category getters
  */
-export const head = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option.none() : Option.some(self.head)
+export const head = <A>(self: List<A>): Option<A> => isNil(self) ? Option.none() : Option.some(self.head)
 
 /**
  * Returns the last element of the specified list, or `None` if the list is
@@ -696,7 +697,7 @@ export const head = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option
  * @since 2.0.0
  * @category getters
  */
-export const last = <A>(self: List<A>): Option.Option<A> => isNil(self) ? Option.none() : Option.some(unsafeLast(self)!)
+export const last = <A>(self: List<A>): Option<A> => isNil(self) ? Option.none() : Option.some(unsafeLast(self)!)
 
 /**
  * Applies the specified mapping function to each element of the list.
@@ -760,9 +761,9 @@ export const partition: {
  * @category combinators
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => [List<B>, List<C>]
-  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [List<B>, List<C>]
-} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [List<B>, List<C>] => {
+  <A, B, C>(f: (a: A) => Either<B, C>): (self: List<A>) => [List<B>, List<C>]
+  <A, B, C>(self: List<A>, f: (a: A) => Either<B, C>): [List<B>, List<C>]
+} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either<B, C>): [List<B>, List<C>] => {
   const left: Array<B> = []
   const right: Array<C> = []
   for (const a of self) {
@@ -849,7 +850,7 @@ export const splitAt: {
  * @since 2.0.0
  * @category getters
  */
-export const tail = <A>(self: List<A>): Option.Option<List<A>> => isNil(self) ? Option.none() : Option.some(self.tail)
+export const tail = <A>(self: List<A>): Option<List<A>> => isNil(self) ? Option.none() : Option.some(self.tail)
 
 /**
  * Takes the specified number of elements from the beginning of the specified
@@ -883,7 +884,7 @@ export const take: {
  * @since 2.0.0
  * @category conversions
  */
-export const toChunk = <A>(self: List<A>): Chunk.Chunk<A> => Chunk.fromIterable(self)
+export const toChunk = <A>(self: List<A>): Chunk<A> => Chunk.fromIterable(self)
 
 /**
  * Unsafely returns the first element of the specified `List`.

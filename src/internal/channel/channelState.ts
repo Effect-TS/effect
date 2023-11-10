@@ -1,5 +1,5 @@
-import * as Effect from "../../Effect.js"
-import type * as Exit from "../../Exit.js"
+import { Effect } from "../../Effect.js"
+import type { Exit } from "../../Exit.js"
 import { hasProperty } from "../../Predicate.js"
 import * as OpCodes from "../opCodes/channelState.js"
 import type { ErasedExecutor } from "./channelExecutor.js"
@@ -14,7 +14,7 @@ export type ChannelStateTypeId = typeof ChannelStateTypeId
 export interface ChannelState<R, E> extends ChannelState.Variance<R, E> {}
 
 /** @internal */
-export declare namespace ChannelState {
+export namespace ChannelState {
   export interface Variance<R, E> {
     readonly [ChannelStateTypeId]: {
       readonly _R: (_: never) => R
@@ -55,7 +55,7 @@ export interface Emit extends Op<OpCodes.OP_EMIT, {}> {}
 /** @internal */
 export interface FromEffect extends
   Op<OpCodes.OP_FROM_EFFECT, {
-    readonly effect: Effect.Effect<unknown, unknown, unknown>
+    readonly effect: Effect<unknown, unknown, unknown>
   }>
 {}
 
@@ -63,9 +63,9 @@ export interface FromEffect extends
 export interface Read extends
   Op<OpCodes.OP_READ, {
     readonly upstream: ErasedExecutor<unknown>
-    readonly onEffect: (effect: Effect.Effect<unknown, never, void>) => Effect.Effect<unknown, never, void>
-    readonly onEmit: (value: unknown) => Effect.Effect<unknown, never, void>
-    readonly onDone: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown, never, void>
+    readonly onEffect: (effect: Effect<unknown, never, void>) => Effect<unknown, never, void>
+    readonly onEmit: (value: unknown) => Effect<unknown, never, void>
+    readonly onDone: (exit: Exit<unknown, unknown>) => Effect<unknown, never, void>
   }>
 {}
 
@@ -84,7 +84,7 @@ export const Emit = (): ChannelState<never, never> => {
 }
 
 /** @internal */
-export const FromEffect = <R, E, _>(effect: Effect.Effect<R, E, _>): ChannelState<R, E> => {
+export const FromEffect = <R, E, _>(effect: Effect<R, E, _>): ChannelState<R, E> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_FROM_EFFECT
   op.effect = effect
@@ -94,9 +94,9 @@ export const FromEffect = <R, E, _>(effect: Effect.Effect<R, E, _>): ChannelStat
 /** @internal */
 export const Read = <R>(
   upstream: ErasedExecutor<R>,
-  onEffect: (effect: Effect.Effect<R, never, void>) => Effect.Effect<R, never, void>,
-  onEmit: (value: unknown) => Effect.Effect<R, never, void> | undefined,
-  onDone: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R, never, void> | undefined
+  onEffect: (effect: Effect<R, never, void>) => Effect<R, never, void>,
+  onEmit: (value: unknown) => Effect<R, never, void> | undefined,
+  onDone: (exit: Exit<unknown, unknown>) => Effect<R, never, void> | undefined
 ): ChannelState<R, never> => {
   const op = Object.create(proto)
   op._tag = OpCodes.OP_READ
@@ -124,9 +124,9 @@ export const isFromEffect = <R, E>(self: ChannelState<R, E>): self is FromEffect
 export const isRead = <R, E>(self: ChannelState<R, E>): self is Read => (self as Primitive)._tag === OpCodes.OP_READ
 
 /** @internal */
-export const effect = <R, E>(self: ChannelState<R, E>): Effect.Effect<R, E, void> =>
-  isFromEffect(self) ? self.effect as Effect.Effect<R, E, void> : Effect.unit
+export const effect = <R, E>(self: ChannelState<R, E>): Effect<R, E, void> =>
+  isFromEffect(self) ? self.effect as Effect<R, E, void> : Effect.unit
 
 /** @internal */
-export const effectOrUndefinedIgnored = <R, E>(self: ChannelState<R, E>): Effect.Effect<R, E, void> | undefined =>
-  isFromEffect(self) ? Effect.ignore(self.effect as Effect.Effect<R, E, void>) : undefined
+export const effectOrUndefinedIgnored = <R, E>(self: ChannelState<R, E>): Effect<R, E, void> | undefined =>
+  isFromEffect(self) ? Effect.ignore(self.effect as Effect<R, E, void>) : undefined

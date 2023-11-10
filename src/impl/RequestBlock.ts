@@ -1,14 +1,15 @@
 /**
  * @since 2.0.0
  */
-import type * as Context from "../Context.js"
+import type { Context } from "../Context.js"
 import type { FiberRef } from "../FiberRef.js"
 import * as _RequestBlock from "../internal/blockedRequests.js"
 import * as core from "../internal/core.js"
 import * as _dataSource from "../internal/dataSource.js"
-import type * as Request from "../Request.js"
+import type { Request } from "../Request.js"
+import type { RequestResolver } from "../RequestResolver.js"
+
 import type { RequestBlock } from "../RequestBlock.js"
-import type * as RequestResolver from "../RequestResolver.js"
 
 /**
  * @since 2.0.0
@@ -44,7 +45,7 @@ export interface Seq<R> {
  */
 export interface Single<R> {
   readonly _tag: "Single"
-  readonly dataSource: RequestResolver.RequestResolver<unknown, R>
+  readonly dataSource: RequestResolver<unknown, R>
   readonly blockedRequest: Request.Entry<unknown>
 }
 
@@ -53,7 +54,7 @@ export interface Single<R> {
  * @category constructors
  */
 export const single: <R, A>(
-  dataSource: RequestResolver.RequestResolver<A, R>,
+  dataSource: RequestResolver<A, R>,
   blockedRequest: Request.Entry<A>
 ) => RequestBlock<R> = _RequestBlock.single
 
@@ -69,7 +70,7 @@ export const empty: RequestBlock<never> = _RequestBlock.empty
  */
 export const mapRequestResolvers: <R, A, R2>(
   self: RequestBlock<R>,
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
+  f: (dataSource: RequestResolver<A, R>) => RequestResolver<A, R2>
 ) => RequestBlock<R | R2> = _RequestBlock.mapRequestResolvers
 
 /**
@@ -100,11 +101,11 @@ export const sequential: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) 
  */
 export const mapInputContext = <R0, R>(
   self: RequestBlock<R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
+  f: (context: Context<R0>) => Context<R>
 ): RequestBlock<R0> => reduce(self, MapInputContextReducer(f))
 
 const MapInputContextReducer = <R0, R>(
-  f: (context: Context.Context<R0>) => Context.Context<R>
+  f: (context: Context<R0>) => Context<R>
 ): RequestBlock.Reducer<R, RequestBlock<R0>> => ({
   emptyCase: () => empty,
   parCase: (left, right) => parallel(left, right),

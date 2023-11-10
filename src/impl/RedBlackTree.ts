@@ -6,6 +6,7 @@ import * as RBT from "../internal/redBlackTree.js"
 import * as RBTI from "../internal/redBlackTree/iterator.js"
 import type { Option } from "../Option.js"
 import type { Order } from "../Order.js"
+
 import type { RedBlackTree } from "../RedBlackTree.js"
 
 /**

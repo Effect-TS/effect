@@ -2,16 +2,16 @@
  * @since 2.0.0
  */
 import type { Cause } from "../Cause.js"
-import type * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
-import type * as Exit from "../Exit.js"
-import type * as Fiber from "../Fiber.js"
-import type * as FiberId from "../FiberId.js"
-import type * as FiberRefs from "../FiberRefs.js"
+import type { Context } from "../Context.js"
+import type { Effect } from "../Effect.js"
+import type { Exit } from "../Exit.js"
+import type { Fiber } from "../Fiber.js"
+import type { FiberId } from "../FiberId.js"
+import type { FiberRefs } from "../FiberRefs.js"
 import type { Inspectable } from "../Inspectable.js"
 import * as internal from "../internal/runtime.js"
 import type { Runtime } from "../Runtime.js"
-import type * as RuntimeFlags from "../RuntimeFlags.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
 import type { Scheduler } from "../Scheduler.js"
 
 /**
@@ -28,7 +28,7 @@ export interface AsyncFiberException<E, A> {
  * @category models
  */
 export interface Cancel<E, A> {
-  (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void): void
+  (fiberId?: FiberId, onExit?: (exit: Exit<E, A>) => void): void
 }
 
 /**
@@ -37,7 +37,7 @@ export interface Cancel<E, A> {
  */
 export interface RunForkOptions {
   scheduler?: Scheduler
-  updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  updateRefs?: (refs: FiberRefs, fiberId: FiberId.Runtime) => FiberRefs
 }
 
 /**
@@ -49,7 +49,7 @@ export interface RunForkOptions {
  */
 export const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A> =
+) => <E, A>(self: Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A> =
   internal.unsafeFork
 
 /**
@@ -61,7 +61,7 @@ export const runFork: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Exit.Exit<E, A> =
+export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Exit<E, A> =
   internal.unsafeRunSyncExit
 
 /**
@@ -73,7 +73,7 @@ export const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effe
  * @since 2.0.0
  * @category execution
  */
-export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => A = internal.unsafeRunSync
+export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => A = internal.unsafeRunSync
 
 /**
  * Executes the effect asynchronously, eventually passing the exit value to
@@ -88,9 +88,9 @@ export const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R
 export const runCallback: <R>(
   runtime: Runtime<R>
 ) => <E, A>(
-  effect: Effect.Effect<R, E, A>,
-  onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined
-) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void =
+  effect: Effect<R, E, A>,
+  onExit?: ((exit: Exit<E, A>) => void) | undefined
+) => (fiberId?: FiberId | undefined, onExit?: ((exit: Exit<E, A>) => void) | undefined) => void =
   internal.unsafeRunCallback
 
 /**
@@ -104,7 +104,7 @@ export const runCallback: <R>(
  * @since 2.0.0
  * @category execution
  */
-export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<A> =
+export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect<R, E, A>) => Promise<A> =
   internal.unsafeRunPromise
 
 /**
@@ -119,7 +119,7 @@ export const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effec
  */
 export const runPromiseExit: <R>(
   runtime: Runtime<R>
-) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>> = internal.unsafeRunPromiseExit
+) => <E, A>(effect: Effect<R, E, A>) => Promise<Exit<E, A>> = internal.unsafeRunPromiseExit
 
 /**
  * @since 2.0.0
@@ -131,7 +131,7 @@ export const defaultRuntime: Runtime<never> = internal.defaultRuntime
  * @since 2.0.0
  * @category constructors
  */
-export const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags = internal.defaultRuntimeFlags
+export const defaultRuntimeFlags: RuntimeFlags = internal.defaultRuntimeFlags
 
 /**
  * @since 2.0.0
@@ -139,9 +139,9 @@ export const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags = internal.defaultRu
  */
 export const make: <R>(
   options: {
-    readonly context: Context.Context<R>
-    readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-    readonly fiberRefs: FiberRefs.FiberRefs
+    readonly context: Context<R>
+    readonly runtimeFlags: RuntimeFlags
+    readonly fiberRefs: FiberRefs
   }
 ) => Runtime<R> = internal.make
 

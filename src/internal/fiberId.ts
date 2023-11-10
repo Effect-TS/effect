@@ -1,12 +1,12 @@
-import * as Equal from "../Equal.js"
-import type * as FiberId from "../FiberId.js"
+import { Equal } from "../Equal.js"
+import type { FiberId } from "../FiberId.js"
 import { dual, pipe } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
-import * as Hash from "../Hash.js"
-import * as HashSet from "../HashSet.js"
+import { Hash } from "../Hash.js"
+import { HashSet } from "../HashSet.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import * as MutableRef from "../MutableRef.js"
-import * as Option from "../Option.js"
+import { MutableRef } from "../MutableRef.js"
+import { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 
 /** @internal */
@@ -105,8 +105,8 @@ class Composite implements FiberId.Composite {
   readonly [FiberIdTypeId]: FiberId.FiberIdTypeId = FiberIdTypeId
   readonly _tag = OP_COMPOSITE
   constructor(
-    readonly left: FiberId.FiberId,
-    readonly right: FiberId.FiberId
+    readonly left: FiberId,
+    readonly right: FiberId
   ) {}
   [Hash.symbol](): number {
     return pipe(
@@ -139,40 +139,40 @@ class Composite implements FiberId.Composite {
 }
 
 /** @internal */
-export const none: FiberId.FiberId = new None()
+export const none: FiberId = new None()
 
 /** @internal */
-export const runtime = (id: number, startTimeMillis: number): FiberId.FiberId => {
+export const runtime = (id: number, startTimeMillis: number): FiberId => {
   return new Runtime(id, startTimeMillis)
 }
 
 /** @internal */
-export const composite = (left: FiberId.FiberId, right: FiberId.FiberId): FiberId.FiberId => {
+export const composite = (left: FiberId, right: FiberId): FiberId => {
   return new Composite(left, right)
 }
 
 /** @internal */
-export const isFiberId = (self: unknown): self is FiberId.FiberId => hasProperty(self, FiberIdTypeId)
+export const isFiberId = (self: unknown): self is FiberId => hasProperty(self, FiberIdTypeId)
 
 /** @internal */
-export const isNone = (self: FiberId.FiberId): self is FiberId.None => {
+export const isNone = (self: FiberId): self is FiberId.None => {
   return self._tag === OP_NONE || pipe(toSet(self), HashSet.every((id) => isNone(id)))
 }
 
 /** @internal */
-export const isRuntime = (self: FiberId.FiberId): self is FiberId.Runtime => {
+export const isRuntime = (self: FiberId): self is FiberId.Runtime => {
   return self._tag === OP_RUNTIME
 }
 
 /** @internal */
-export const isComposite = (self: FiberId.FiberId): self is FiberId.Composite => {
+export const isComposite = (self: FiberId): self is FiberId.Composite => {
   return self._tag === OP_COMPOSITE
 }
 
 /** @internal */
 export const combine = dual<
-  (that: FiberId.FiberId) => (self: FiberId.FiberId) => FiberId.FiberId,
-  (self: FiberId.FiberId, that: FiberId.FiberId) => FiberId.FiberId
+  (that: FiberId) => (self: FiberId) => FiberId,
+  (self: FiberId, that: FiberId) => FiberId
 >(2, (self, that) => {
   if (self._tag === OP_NONE) {
     return that
@@ -184,18 +184,18 @@ export const combine = dual<
 })
 
 /** @internal */
-export const combineAll = (fiberIds: HashSet.HashSet<FiberId.FiberId>): FiberId.FiberId => {
-  return pipe(fiberIds, HashSet.reduce(none as FiberId.FiberId, (a, b) => combine(b)(a)))
+export const combineAll = (fiberIds: HashSet<FiberId>): FiberId => {
+  return pipe(fiberIds, HashSet.reduce(none as FiberId, (a, b) => combine(b)(a)))
 }
 
 /** @internal */
 export const getOrElse = dual<
-  (that: FiberId.FiberId) => (self: FiberId.FiberId) => FiberId.FiberId,
-  (self: FiberId.FiberId, that: FiberId.FiberId) => FiberId.FiberId
+  (that: FiberId) => (self: FiberId) => FiberId,
+  (self: FiberId, that: FiberId) => FiberId
 >(2, (self, that) => isNone(self) ? that : self)
 
 /** @internal */
-export const ids = (self: FiberId.FiberId): HashSet.HashSet<number> => {
+export const ids = (self: FiberId): HashSet<number> => {
   switch (self._tag) {
     case OP_NONE: {
       return HashSet.empty()
@@ -215,24 +215,24 @@ const _fiberCounter = globalValue(
 )
 
 /** @internal */
-export const make = (id: number, startTimeSeconds: number): FiberId.FiberId => {
+export const make = (id: number, startTimeSeconds: number): FiberId => {
   return new Runtime(id, startTimeSeconds)
 }
 
 /** @internal */
-export const threadName = (self: FiberId.FiberId): string => {
+export const threadName = (self: FiberId): string => {
   const identifiers = Array.from(ids(self)).map((n) => `#${n}`).join(",")
   return identifiers
 }
 
 /** @internal */
-export const toOption = (self: FiberId.FiberId): Option.Option<FiberId.FiberId> => {
+export const toOption = (self: FiberId): Option<FiberId> => {
   const fiberIds = toSet(self)
   if (HashSet.size(fiberIds) === 0) {
     return Option.none()
   }
   let first = true
-  let acc: FiberId.FiberId
+  let acc: FiberId
   for (const fiberId of fiberIds) {
     if (first) {
       acc = fiberId
@@ -247,7 +247,7 @@ export const toOption = (self: FiberId.FiberId): Option.Option<FiberId.FiberId> 
 }
 
 /** @internal */
-export const toSet = (self: FiberId.FiberId): HashSet.HashSet<FiberId.Runtime> => {
+export const toSet = (self: FiberId): HashSet<FiberId.Runtime> => {
   switch (self._tag) {
     case OP_NONE: {
       return HashSet.empty()

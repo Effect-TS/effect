@@ -1,8 +1,8 @@
-import * as FiberId from "../FiberId.js"
+import { FiberId } from "../FiberId.js"
 import { globalValue } from "../GlobalValue.js"
-import type * as RuntimeFlags from "../RuntimeFlags.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
 import * as FiberMessage from "./fiberMessage.js"
-import type * as FiberRuntime from "./fiberRuntime.js"
+import type { FiberRuntime } from "./fiberRuntime.js"
 import * as _runtimeFlags from "./runtimeFlags.js"
 
 /** @internal */
@@ -23,16 +23,16 @@ export type FiberScopeTypeId = typeof FiberScopeTypeId
  */
 export interface FiberScope {
   readonly [FiberScopeTypeId]: FiberScopeTypeId
-  get fiberId(): FiberId.FiberId
-  add(runtimeFlags: RuntimeFlags.RuntimeFlags, child: FiberRuntime.FiberRuntime<any, any>): void
+  get fiberId(): FiberId
+  add(runtimeFlags: RuntimeFlags, child: FiberRuntime<any, any>): void
 }
 
 /** @internal */
 class Global implements FiberScope {
   readonly [FiberScopeTypeId]: FiberScopeTypeId = FiberScopeTypeId
   readonly fiberId = FiberId.none
-  readonly roots = new Set<FiberRuntime.FiberRuntime<any, any>>()
-  add(_runtimeFlags: RuntimeFlags.RuntimeFlags, child: FiberRuntime.FiberRuntime<any, any>): void {
+  readonly roots = new Set<FiberRuntime<any, any>>()
+  add(_runtimeFlags: RuntimeFlags, child: FiberRuntime<any, any>): void {
     this.roots.add(child)
     child.addObserver(() => {
       this.roots.delete(child)
@@ -44,11 +44,11 @@ class Global implements FiberScope {
 class Local implements FiberScope {
   readonly [FiberScopeTypeId]: FiberScopeTypeId = FiberScopeTypeId
   constructor(
-    readonly fiberId: FiberId.FiberId,
-    readonly parent: FiberRuntime.FiberRuntime<any, any>
+    readonly fiberId: FiberId,
+    readonly parent: FiberRuntime<any, any>
   ) {
   }
-  add(_runtimeFlags: RuntimeFlags.RuntimeFlags, child: FiberRuntime.FiberRuntime<any, any>): void {
+  add(_runtimeFlags: RuntimeFlags, child: FiberRuntime<any, any>): void {
     this.parent.tell(
       FiberMessage.stateful((parentFiber) => {
         parentFiber.addChild(child)
@@ -61,7 +61,7 @@ class Local implements FiberScope {
 }
 
 /** @internal */
-export const unsafeMake = (fiber: FiberRuntime.FiberRuntime<any, any>): FiberScope => {
+export const unsafeMake = (fiber: FiberRuntime<any, any>): FiberScope => {
   return new Local(fiber.id(), fiber)
 }
 

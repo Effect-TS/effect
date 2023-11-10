@@ -1,12 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "../Chunk.js"
-import type * as HashSet from "../HashSet.js"
+import type { Chunk } from "../Chunk.js"
+import type { HashSet } from "../HashSet.js"
 import * as internal from "../internal/stm/tSet.js"
-import type * as Option from "../Option.js"
+import type { Option } from "../Option.js"
 import type { Predicate } from "../Predicate.js"
-import type * as STM from "../STM.js"
+import type { STM } from "../STM.js"
+
 import type { TSet } from "../TSet.js"
 
 /**
@@ -21,15 +22,9 @@ export const TSetTypeId: unique symbol = internal.TSetTypeId
  */
 export type TSetTypeId = typeof TSetTypeId
 
-/**
- * Stores new element in the set.
- *
- * @since 2.0.0
- * @category mutations
- */
 export const add: {
-  <A>(value: A): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, value: A): STM<never, never, void>
 } = internal.add
 
 /**
@@ -40,8 +35,8 @@ export const add: {
  * @category mutations
  */
 export const difference: {
-  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, other: TSet<A>): STM.STM<never, never, void>
+  <A>(other: TSet<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, other: TSet<A>): STM<never, never, void>
 } = internal.difference
 
 /**
@@ -50,7 +45,7 @@ export const difference: {
  * @since 2.0.0
  * @category constructors
  */
-export const empty: <A>() => STM.STM<never, never, TSet<A>> = internal.empty
+export const empty: <A>() => STM<never, never, TSet<A>> = internal.empty
 
 /**
  * Atomically performs transactional-effect for each element in set.
@@ -59,8 +54,8 @@ export const empty: <A>() => STM.STM<never, never, TSet<A>> = internal.empty
  * @category elements
  */
 export const forEach: {
-  <A, R, E>(f: (value: A) => STM.STM<R, E, void>): (self: TSet<A>) => STM.STM<R, E, void>
-  <A, R, E>(self: TSet<A>, f: (value: A) => STM.STM<R, E, void>): STM.STM<R, E, void>
+  <A, R, E>(f: (value: A) => STM<R, E, void>): (self: TSet<A>) => STM<R, E, void>
+  <A, R, E>(self: TSet<A>, f: (value: A) => STM<R, E, void>): STM<R, E, void>
 } = internal.forEach
 
 /**
@@ -69,7 +64,7 @@ export const forEach: {
  * @since 2.0.0
  * @category constructors
  */
-export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, TSet<A>> = internal.fromIterable
+export const fromIterable: <A>(iterable: Iterable<A>) => STM<never, never, TSet<A>> = internal.fromIterable
 
 /**
  * Tests whether or not set contains an element.
@@ -78,8 +73,8 @@ export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, T
  * @category elements
  */
 export const has: {
-  <A>(value: A): (self: TSet<A>) => STM.STM<never, never, boolean>
-  <A>(self: TSet<A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): (self: TSet<A>) => STM<never, never, boolean>
+  <A>(self: TSet<A>, value: A): STM<never, never, boolean>
 } = internal.has
 
 /**
@@ -90,8 +85,8 @@ export const has: {
  * @category mutations
  */
 export const intersection: {
-  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, other: TSet<A>): STM.STM<never, never, void>
+  <A>(other: TSet<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, other: TSet<A>): STM<never, never, void>
 } = internal.intersection
 
 /**
@@ -100,7 +95,7 @@ export const intersection: {
  * @since 2.0.0
  * @category getters
  */
-export const isEmpty: <A>(self: TSet<A>) => STM.STM<never, never, boolean> = internal.isEmpty
+export const isEmpty: <A>(self: TSet<A>) => STM<never, never, boolean> = internal.isEmpty
 
 /**
  * Makes a new `TSet` that is initialized with specified values.
@@ -110,7 +105,7 @@ export const isEmpty: <A>(self: TSet<A>) => STM.STM<never, never, boolean> = int
  */
 export const make: <Elements extends Array<any>>(
   ...elements: Elements
-) => STM.STM<never, never, TSet<Elements[number]>> = internal.make
+) => STM<never, never, TSet<Elements[number]>> = internal.make
 
 /**
  * Atomically folds using a pure function.
@@ -119,8 +114,8 @@ export const make: <Elements extends Array<any>>(
  * @category folding
  */
 export const reduce: {
-  <Z, A>(zero: Z, f: (accumulator: Z, value: A) => Z): (self: TSet<A>) => STM.STM<never, never, Z>
-  <Z, A>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => Z): STM.STM<never, never, Z>
+  <Z, A>(zero: Z, f: (accumulator: Z, value: A) => Z): (self: TSet<A>) => STM<never, never, Z>
+  <Z, A>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => Z): STM<never, never, Z>
 } = internal.reduce
 
 /**
@@ -130,8 +125,8 @@ export const reduce: {
  * @category folding
  */
 export const reduceSTM: {
-  <Z, A, R, E>(zero: Z, f: (accumulator: Z, value: A) => STM.STM<R, E, Z>): (self: TSet<A>) => STM.STM<R, E, Z>
-  <Z, A, R, E>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => STM.STM<R, E, Z>): STM.STM<R, E, Z>
+  <Z, A, R, E>(zero: Z, f: (accumulator: Z, value: A) => STM<R, E, Z>): (self: TSet<A>) => STM<R, E, Z>
+  <Z, A, R, E>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => STM<R, E, Z>): STM<R, E, Z>
 } = internal.reduceSTM
 
 /**
@@ -141,8 +136,8 @@ export const reduceSTM: {
  * @category mutations
  */
 export const remove: {
-  <A>(value: A): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, value: A): STM.STM<never, never, void>
+  <A>(value: A): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, value: A): STM<never, never, void>
 } = internal.remove
 
 /**
@@ -152,8 +147,8 @@ export const remove: {
  * @category mutations
  */
 export const removeAll: {
-  <A>(iterable: Iterable<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, iterable: Iterable<A>): STM.STM<never, never, void>
+  <A>(iterable: Iterable<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, iterable: Iterable<A>): STM<never, never, void>
 } = internal.removeAll
 
 /**
@@ -163,8 +158,8 @@ export const removeAll: {
  * @category mutations
  */
 export const removeIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, Array<A>>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, Array<A>>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, Array<A>>
 } = internal.removeIf
 
 /**
@@ -174,8 +169,8 @@ export const removeIf: {
  * @category mutations
  */
 export const removeIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, void>
 } = internal.removeIfDiscard
 
 /**
@@ -185,8 +180,8 @@ export const removeIfDiscard: {
  * @category mutations
  */
 export const retainIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, Array<A>>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, Array<A>>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, Array<A>>
 } = internal.retainIf
 
 /**
@@ -196,8 +191,8 @@ export const retainIf: {
  * @category mutations
  */
 export const retainIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, predicate: Predicate<A>): STM<never, never, void>
 } = internal.retainIfDiscard
 
 /**
@@ -206,7 +201,7 @@ export const retainIfDiscard: {
  * @since 2.0.0
  * @category getters
  */
-export const size: <A>(self: TSet<A>) => STM.STM<never, never, number> = internal.size
+export const size: <A>(self: TSet<A>) => STM<never, never, number> = internal.size
 
 /**
  * Takes the first matching value, or retries until there is one.
@@ -215,8 +210,8 @@ export const size: <A>(self: TSet<A>) => STM.STM<never, never, number> = interna
  * @category mutations
  */
 export const takeFirst: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, B>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, B>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM<never, never, B>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM<never, never, B>
 } = internal.takeFirst
 
 /**
@@ -226,8 +221,8 @@ export const takeFirst: {
  * @category mutations
  */
 export const takeFirstSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, B>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, B>
+  <A, R, E, B>(pf: (a: A) => STM<R, Option<E>, B>): (self: TSet<A>) => STM<R, E, B>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM<R, Option<E>, B>): STM<R, E, B>
 } = internal.takeFirstSTM
 
 /**
@@ -237,8 +232,8 @@ export const takeFirstSTM: {
  * @category mutations
  */
 export const takeSome: {
-  <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<never, never, [B, ...Array<B>]>
-  <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<never, never, [B, ...Array<B>]>
+  <A, B>(pf: (a: A) => Option<B>): (self: TSet<A>) => STM<never, never, [B, ...Array<B>]>
+  <A, B>(self: TSet<A>, pf: (a: A) => Option<B>): STM<never, never, [B, ...Array<B>]>
 } = internal.takeSome
 
 /**
@@ -248,8 +243,8 @@ export const takeSome: {
  * @category mutations
  */
 export const takeSomeSTM: {
-  <A, R, E, B>(pf: (a: A) => STM.STM<R, Option.Option<E>, B>): (self: TSet<A>) => STM.STM<R, E, [B, ...Array<B>]>
-  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM.STM<R, Option.Option<E>, B>): STM.STM<R, E, [B, ...Array<B>]>
+  <A, R, E, B>(pf: (a: A) => STM<R, Option<E>, B>): (self: TSet<A>) => STM<R, E, [B, ...Array<B>]>
+  <A, R, E, B>(self: TSet<A>, pf: (a: A) => STM<R, Option<E>, B>): STM<R, E, [B, ...Array<B>]>
 } = internal.takeSomeSTM
 
 /**
@@ -258,7 +253,7 @@ export const takeSomeSTM: {
  * @since 2.0.0
  * @category destructors
  */
-export const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Chunk.Chunk<A>> = internal.toChunk
+export const toChunk: <A>(self: TSet<A>) => STM<never, never, Chunk<A>> = internal.toChunk
 
 /**
  * Collects all elements into a `HashSet`.
@@ -266,7 +261,7 @@ export const toChunk: <A>(self: TSet<A>) => STM.STM<never, never, Chunk.Chunk<A>
  * @since 2.0.0
  * @category destructors
  */
-export const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.HashSet<A>> = internal.toHashSet
+export const toHashSet: <A>(self: TSet<A>) => STM<never, never, HashSet<A>> = internal.toHashSet
 
 /**
  * Collects all elements into a `Array`.
@@ -274,7 +269,7 @@ export const toHashSet: <A>(self: TSet<A>) => STM.STM<never, never, HashSet.Hash
  * @since 2.0.0
  * @category destructors
  */
-export const toArray: <A>(self: TSet<A>) => STM.STM<never, never, Array<A>> = internal.toArray
+export const toArray: <A>(self: TSet<A>) => STM<never, never, Array<A>> = internal.toArray
 
 /**
  * Collects all elements into a `ReadonlySet`.
@@ -282,7 +277,7 @@ export const toArray: <A>(self: TSet<A>) => STM.STM<never, never, Array<A>> = in
  * @since 2.0.0
  * @category destructors
  */
-export const toReadonlySet: <A>(self: TSet<A>) => STM.STM<never, never, ReadonlySet<A>> = internal.toReadonlySet
+export const toReadonlySet: <A>(self: TSet<A>) => STM<never, never, ReadonlySet<A>> = internal.toReadonlySet
 
 /**
  * Atomically updates all elements using a pure function.
@@ -291,8 +286,8 @@ export const toReadonlySet: <A>(self: TSet<A>) => STM.STM<never, never, Readonly
  * @category mutations
  */
 export const transform: {
-  <A>(f: (a: A) => A): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, f: (a: A) => A): STM.STM<never, never, void>
+  <A>(f: (a: A) => A): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, f: (a: A) => A): STM<never, never, void>
 } = internal.transform
 
 /**
@@ -302,8 +297,8 @@ export const transform: {
  * @category mutations
  */
 export const transformSTM: {
-  <A, R, E>(f: (a: A) => STM.STM<R, E, A>): (self: TSet<A>) => STM.STM<R, E, void>
-  <A, R, E>(self: TSet<A>, f: (a: A) => STM.STM<R, E, A>): STM.STM<R, E, void>
+  <A, R, E>(f: (a: A) => STM<R, E, A>): (self: TSet<A>) => STM<R, E, void>
+  <A, R, E>(self: TSet<A>, f: (a: A) => STM<R, E, A>): STM<R, E, void>
 } = internal.transformSTM
 
 /**
@@ -314,6 +309,6 @@ export const transformSTM: {
  * @category mutations
  */
 export const union: {
-  <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, other: TSet<A>): STM.STM<never, never, void>
+  <A>(other: TSet<A>): (self: TSet<A>) => STM<never, never, void>
+  <A>(self: TSet<A>, other: TSet<A>): STM<never, never, void>
 } = internal.union

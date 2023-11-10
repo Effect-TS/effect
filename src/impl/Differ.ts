@@ -3,9 +3,8 @@
  */
 import type { Chunk } from "../Chunk.js"
 import type { Context } from "../Context.js"
-import type { Differ } from "../Differ.js"
 import type { Either } from "../Either.js"
-import * as Dual from "../Function.js"
+import { dual } from "../Function.js"
 import type { HashMap } from "../HashMap.js"
 import type { HashSet } from "../HashSet.js"
 import * as internal from "../internal/differ.js"
@@ -14,6 +13,8 @@ import * as ContextPatch from "../internal/differ/contextPatch.js"
 import * as HashMapPatch from "../internal/differ/hashMapPatch.js"
 import * as HashSetPatch from "../internal/differ/hashSetPatch.js"
 import * as OrPatch from "../internal/differ/orPatch.js"
+
+import type { Differ } from "../Differ.js"
 
 /**
  * @since 2.0.0
@@ -76,7 +77,7 @@ export const diff: {
     oldValue: Value,
     newValue: Value
   ): Patch
-} = Dual.dual(
+} = dual(
   3,
   <Value, Patch>(
     self: Differ<Value, Patch>,
@@ -104,7 +105,7 @@ export const combine: {
     first: Patch,
     second: Patch
   ): Patch
-} = Dual.dual(
+} = dual(
   3,
   <Value, Patch>(
     self: Differ<Value, Patch>,
@@ -129,7 +130,7 @@ export const patch: {
     patch: Patch,
     oldValue: Value
   ): Value
-} = Dual.dual(
+} = dual(
   3,
   <Patch, Value>(
     self: Differ<Value, Patch>,

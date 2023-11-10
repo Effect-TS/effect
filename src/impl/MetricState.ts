@@ -1,11 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "../Chunk.js"
-import type * as HashMap from "../HashMap.js"
+import type { Chunk } from "../Chunk.js"
+import type { HashMap } from "../HashMap.js"
 import * as internal from "../internal/metric/state.js"
+import type { Option } from "../Option.js"
+
 import type { MetricState } from "../MetricState.js"
-import type * as Option from "../Option.js"
 
 /**
  * @since 2.0.0
@@ -92,7 +93,7 @@ export const counter: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: (occurrences: HashMap.HashMap<string, number>) => MetricState.Frequency = internal.frequency
+export const frequency: (occurrences: HashMap<string, number>) => MetricState.Frequency = internal.frequency
 
 /**
  * @since 2.0.0
@@ -109,7 +110,7 @@ export const gauge: {
  */
 export const histogram: (
   options: {
-    readonly buckets: Chunk.Chunk<readonly [number, number]>
+    readonly buckets: Chunk<readonly [number, number]>
     readonly count: number
     readonly min: number
     readonly max: number
@@ -124,7 +125,7 @@ export const histogram: (
 export const summary: (
   options: {
     readonly error: number
-    readonly quantiles: Chunk.Chunk<readonly [number, Option.Option<number>]>
+    readonly quantiles: Chunk<readonly [number, Option<number>]>
     readonly count: number
     readonly min: number
     readonly max: number

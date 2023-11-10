@@ -1,10 +1,9 @@
 import type { Chunk } from "../Chunk.js"
 import type { Context } from "../Context.js"
-import type * as Differ from "../Differ.js"
+import type { Differ } from "../Differ.js"
 import type { Either } from "../Either.js"
-import * as Equal from "../Equal.js"
-import * as Dual from "../Function.js"
-import { constant, identity } from "../Function.js"
+import { Equal } from "../Equal.js"
+import { constant, dual, identity } from "../Function.js"
 import type { HashMap } from "../HashMap.js"
 import type { HashSet } from "../HashSet.js"
 import * as ChunkPatch from "./differ/chunkPatch.js"
@@ -32,7 +31,7 @@ export const make = <Value, Patch>(
     readonly combine: (first: Patch, second: Patch) => Patch
     readonly patch: (patch: Patch, oldValue: Value) => Value
   }
-): Differ.Differ<Value, Patch> => {
+): Differ<Value, Patch> => {
   const differ = Object.create(DifferProto)
   differ.empty = params.empty
   differ.diff = params.diff
@@ -42,7 +41,7 @@ export const make = <Value, Patch>(
 }
 
 /** @internal */
-export const environment = <A>(): Differ.Differ<Context<A>, Differ.Differ.Context.Patch<A, A>> =>
+export const environment = <A>(): Differ<Context<A>, Differ.Context.Patch<A, A>> =>
   make({
     empty: ContextPatch.empty(),
     combine: (first, second) => ContextPatch.combine(second)(first),
@@ -52,8 +51,8 @@ export const environment = <A>(): Differ.Differ<Context<A>, Differ.Differ.Contex
 
 /** @internal */
 export const chunk = <Value, Patch>(
-  differ: Differ.Differ<Value, Patch>
-): Differ.Differ<Chunk<Value>, Differ.Differ.Chunk.Patch<Value, Patch>> =>
+  differ: Differ<Value, Patch>
+): Differ<Chunk<Value>, Differ.Chunk.Patch<Value, Patch>> =>
   make({
     empty: ChunkPatch.empty(),
     combine: (first, second) => ChunkPatch.combine(second)(first),
@@ -63,8 +62,8 @@ export const chunk = <Value, Patch>(
 
 /** @internal */
 export const hashMap = <Key, Value, Patch>(
-  differ: Differ.Differ<Value, Patch>
-): Differ.Differ<HashMap<Key, Value>, Differ.Differ.HashMap.Patch<Key, Value, Patch>> =>
+  differ: Differ<Value, Patch>
+): Differ<HashMap<Key, Value>, Differ.HashMap.Patch<Key, Value, Patch>> =>
   make({
     empty: HashMapPatch.empty(),
     combine: (first, second) => HashMapPatch.combine(second)(first),
@@ -73,7 +72,7 @@ export const hashMap = <Key, Value, Patch>(
   })
 
 /** @internal */
-export const hashSet = <Value>(): Differ.Differ<HashSet<Value>, Differ.Differ.HashSet.Patch<Value>> =>
+export const hashSet = <Value>(): Differ<HashSet<Value>, Differ.HashSet.Patch<Value>> =>
   make({
     empty: HashSetPatch.empty(),
     combine: (first, second) => HashSetPatch.combine(second)(first),
@@ -82,14 +81,14 @@ export const hashSet = <Value>(): Differ.Differ<HashSet<Value>, Differ.Differ.Ha
   })
 
 /** @internal */
-export const orElseEither = Dual.dual<
-  <Value2, Patch2>(that: Differ.Differ<Value2, Patch2>) => <Value, Patch>(
-    self: Differ.Differ<Value, Patch>
-  ) => Differ.Differ<Either<Value, Value2>, Differ.Differ.Or.Patch<Value, Value2, Patch, Patch2>>,
+export const orElseEither = dual<
+  <Value2, Patch2>(that: Differ<Value2, Patch2>) => <Value, Patch>(
+    self: Differ<Value, Patch>
+  ) => Differ<Either<Value, Value2>, Differ.Or.Patch<Value, Value2, Patch, Patch2>>,
   <Value, Patch, Value2, Patch2>(
-    self: Differ.Differ<Value, Patch>,
-    that: Differ.Differ<Value2, Patch2>
-  ) => Differ.Differ<Either<Value, Value2>, Differ.Differ.Or.Patch<Value, Value2, Patch, Patch2>>
+    self: Differ<Value, Patch>,
+    that: Differ<Value2, Patch2>
+  ) => Differ<Either<Value, Value2>, Differ.Or.Patch<Value, Value2, Patch, Patch2>>
 >(2, (self, that) =>
   make({
     empty: OrPatch.empty(),
@@ -110,20 +109,20 @@ export const orElseEither = Dual.dual<
   }))
 
 /** @internal */
-export const transform = Dual.dual<
+export const transform = dual<
   <Value, Value2>(
     options: {
       readonly toNew: (value: Value) => Value2
       readonly toOld: (value: Value2) => Value
     }
-  ) => <Patch>(self: Differ.Differ<Value, Patch>) => Differ.Differ<Value2, Patch>,
+  ) => <Patch>(self: Differ<Value, Patch>) => Differ<Value2, Patch>,
   <Value, Patch, Value2>(
-    self: Differ.Differ<Value, Patch>,
+    self: Differ<Value, Patch>,
     options: {
       readonly toNew: (value: Value) => Value2
       readonly toOld: (value: Value2) => Value
     }
-  ) => Differ.Differ<Value2, Patch>
+  ) => Differ<Value2, Patch>
 >(2, (self, { toNew, toOld }) =>
   make({
     empty: self.empty,
@@ -133,10 +132,10 @@ export const transform = Dual.dual<
   }))
 
 /** @internal */
-export const update = <A>(): Differ.Differ<A, (a: A) => A> => updateWith((_, a) => a)
+export const update = <A>(): Differ<A, (a: A) => A> => updateWith((_, a) => a)
 
 /** @internal */
-export const updateWith = <A>(f: (x: A, y: A) => A): Differ.Differ<A, (a: A) => A> =>
+export const updateWith = <A>(f: (x: A, y: A) => A): Differ<A, (a: A) => A> =>
   make({
     empty: identity,
     combine: (first, second) => {
@@ -158,14 +157,14 @@ export const updateWith = <A>(f: (x: A, y: A) => A): Differ.Differ<A, (a: A) => 
   })
 
 /** @internal */
-export const zip = Dual.dual<
-  <Value2, Patch2>(that: Differ.Differ<Value2, Patch2>) => <Value, Patch>(
-    self: Differ.Differ<Value, Patch>
-  ) => Differ.Differ<readonly [Value, Value2], readonly [Patch, Patch2]>,
+export const zip = dual<
+  <Value2, Patch2>(that: Differ<Value2, Patch2>) => <Value, Patch>(
+    self: Differ<Value, Patch>
+  ) => Differ<readonly [Value, Value2], readonly [Patch, Patch2]>,
   <Value, Patch, Value2, Patch2>(
-    self: Differ.Differ<Value, Patch>,
-    that: Differ.Differ<Value2, Patch2>
-  ) => Differ.Differ<readonly [Value, Value2], readonly [Patch, Patch2]>
+    self: Differ<Value, Patch>,
+    that: Differ<Value2, Patch2>
+  ) => Differ<readonly [Value, Value2], readonly [Patch, Patch2]>
 >(2, (self, that) =>
   make({
     empty: [self.empty, that.empty] as const,

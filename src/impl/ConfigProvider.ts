@@ -1,14 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Config from "../Config.js"
-import type * as ConfigError from "../ConfigError.js"
+import type { Config } from "../Config.js"
+import type { ConfigError } from "../ConfigError.js"
 import type { ConfigProvider } from "../ConfigProvider.js"
-import type * as PathPatch from "../ConfigProviderPathPatch.js"
-import type * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
+import type { ConfigProviderPathPatch } from "../ConfigProviderPathPatch.js"
+import type { Context } from "../Context.js"
+import type { Effect } from "../Effect.js"
 import type { LazyArg } from "../Function.js"
-import type * as HashSet from "../HashSet.js"
+import type { HashSet } from "../HashSet.js"
 import * as internal from "../internal/configProvider.js"
 
 /**
@@ -51,7 +51,7 @@ export const Tag: Context.Tag<ConfigProvider, ConfigProvider> = internal.configP
  */
 export const make: (
   options: {
-    readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
+    readonly load: <A>(config: Config<A>) => Effect<never, ConfigError, A>
     readonly flattened: ConfigProvider.Flat
   }
 ) => ConfigProvider = internal.make
@@ -65,13 +65,13 @@ export const make: (
 export const makeFlat: (options: {
   readonly load: <A>(
     path: ReadonlyArray<string>,
-    config: Config.Config.Primitive<A>,
+    config: Config.Primitive<A>,
     split: boolean
-  ) => Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+  ) => Effect<never, ConfigError, ReadonlyArray<A>>
   readonly enumerateChildren: (
     path: ReadonlyArray<string>
-  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
-  readonly patch: PathPatch.ConfigProviderPathPatch
+  ) => Effect<never, ConfigError, HashSet<string>>
+  readonly patch: ConfigProviderPathPatch
 }) => ConfigProvider.Flat = internal.makeFlat
 
 /**

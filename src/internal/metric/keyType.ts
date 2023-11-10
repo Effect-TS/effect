@@ -1,10 +1,10 @@
-import type * as Chunk from "../../Chunk.js"
-import * as Duration from "../../Duration.js"
-import * as Equal from "../../Equal.js"
+import type { Chunk } from "../../Chunk.js"
+import { Duration } from "../../Duration.js"
+import { Equal } from "../../Equal.js"
 import { pipe } from "../../Function.js"
-import * as Hash from "../../Hash.js"
-import type * as MetricBoundaries from "../../MetricBoundaries.js"
-import type * as MetricKeyType from "../../MetricKeyType.js"
+import { Hash } from "../../Hash.js"
+import type { MetricBoundaries } from "../../MetricBoundaries.js"
+import type { MetricKeyType } from "../../MetricKeyType.js"
 import { pipeArguments } from "../../Pipeable.js"
 import { hasProperty } from "../../Predicate.js"
 
@@ -63,7 +63,7 @@ const metricKeyTypeVariance = {
 }
 
 /** @internal */
-class CounterKeyType<A extends (number | bigint)> implements MetricKeyType.MetricKeyType.Counter<A> {
+class CounterKeyType<A extends (number | bigint)> implements MetricKeyType.Counter<A> {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [CounterKeyTypeTypeId]: MetricKeyType.CounterKeyTypeTypeId = CounterKeyTypeTypeId
   constructor(readonly incremental: boolean, readonly bigint: boolean) {}
@@ -79,7 +79,7 @@ class CounterKeyType<A extends (number | bigint)> implements MetricKeyType.Metri
 }
 
 /** @internal */
-class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
+class FrequencyKeyType implements MetricKeyType.Frequency {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [FrequencyKeyTypeTypeId]: MetricKeyType.FrequencyKeyTypeTypeId = FrequencyKeyTypeTypeId;
   [Hash.symbol](): number {
@@ -94,7 +94,7 @@ class FrequencyKeyType implements MetricKeyType.MetricKeyType.Frequency {
 }
 
 /** @internal */
-class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.MetricKeyType.Gauge<A> {
+class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.Gauge<A> {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [GaugeKeyTypeTypeId]: MetricKeyType.GaugeKeyTypeTypeId = GaugeKeyTypeTypeId
   constructor(readonly bigint: boolean) {}
@@ -113,10 +113,10 @@ class GaugeKeyType<A extends (number | bigint)> implements MetricKeyType.MetricK
  * @category model
  * @since 2.0.0
  */
-export class HistogramKeyType implements MetricKeyType.MetricKeyType.Histogram {
+export class HistogramKeyType implements MetricKeyType.Histogram {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [HistogramKeyTypeTypeId]: MetricKeyType.HistogramKeyTypeTypeId = HistogramKeyTypeTypeId
-  constructor(readonly boundaries: MetricBoundaries.MetricBoundaries) {}
+  constructor(readonly boundaries: MetricBoundaries) {}
   [Hash.symbol](): number {
     return pipe(
       Hash.hash(HistogramKeyTypeSymbolKey),
@@ -132,14 +132,14 @@ export class HistogramKeyType implements MetricKeyType.MetricKeyType.Histogram {
 }
 
 /** @internal */
-class SummaryKeyType implements MetricKeyType.MetricKeyType.Summary {
+class SummaryKeyType implements MetricKeyType.Summary {
   readonly [MetricKeyTypeTypeId] = metricKeyTypeVariance
   readonly [SummaryKeyTypeTypeId]: MetricKeyType.SummaryKeyTypeTypeId = SummaryKeyTypeTypeId
   constructor(
-    readonly maxAge: Duration.Duration,
+    readonly maxAge: Duration,
     readonly maxSize: number,
     readonly error: number,
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
   ) {}
   [Hash.symbol](): number {
     return pipe(
@@ -179,7 +179,7 @@ export const counter: <A extends number | bigint>(options?: {
  * @since 2.0.0
  * @category constructors
  */
-export const frequency: MetricKeyType.MetricKeyType.Frequency = new FrequencyKeyType()
+export const frequency: MetricKeyType.Frequency = new FrequencyKeyType()
 
 /**
  * @since 2.0.0
@@ -196,7 +196,7 @@ export const gauge: <A extends number | bigint>(options?: {
  * @since 2.0.0
  * @category constructors
  */
-export const histogram = (boundaries: MetricBoundaries.MetricBoundaries): MetricKeyType.MetricKeyType.Histogram => {
+export const histogram = (boundaries: MetricBoundaries): MetricKeyType.Histogram => {
   return new HistogramKeyType(boundaries)
 }
 
@@ -209,9 +209,9 @@ export const summary = (
     readonly maxAge: Duration.DurationInput
     readonly maxSize: number
     readonly error: number
-    readonly quantiles: Chunk.Chunk<number>
+    readonly quantiles: Chunk<number>
   }
-): MetricKeyType.MetricKeyType.Summary => {
+): MetricKeyType.Summary => {
   return new SummaryKeyType(Duration.decode(options.maxAge), options.maxSize, options.error, options.quantiles)
 }
 
@@ -219,40 +219,35 @@ export const summary = (
  * @since 2.0.0
  * @category refinements
  */
-export const isMetricKeyType = (u: unknown): u is MetricKeyType.MetricKeyType<unknown, unknown> =>
-  hasProperty(u, MetricKeyTypeTypeId)
+export const isMetricKeyType = (u: unknown): u is MetricKeyType<unknown, unknown> => hasProperty(u, MetricKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isCounterKey = (u: unknown): u is MetricKeyType.MetricKeyType.Counter<number | bigint> =>
+export const isCounterKey = (u: unknown): u is MetricKeyType.Counter<number | bigint> =>
   hasProperty(u, CounterKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isFrequencyKey = (u: unknown): u is MetricKeyType.MetricKeyType.Frequency =>
-  hasProperty(u, FrequencyKeyTypeTypeId)
+export const isFrequencyKey = (u: unknown): u is MetricKeyType.Frequency => hasProperty(u, FrequencyKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isGaugeKey = (u: unknown): u is MetricKeyType.MetricKeyType.Gauge<number | bigint> =>
-  hasProperty(u, GaugeKeyTypeTypeId)
+export const isGaugeKey = (u: unknown): u is MetricKeyType.Gauge<number | bigint> => hasProperty(u, GaugeKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isHistogramKey = (u: unknown): u is MetricKeyType.MetricKeyType.Histogram =>
-  hasProperty(u, HistogramKeyTypeTypeId)
+export const isHistogramKey = (u: unknown): u is MetricKeyType.Histogram => hasProperty(u, HistogramKeyTypeTypeId)
 
 /**
  * @since 2.0.0
  * @category refinements
  */
-export const isSummaryKey = (u: unknown): u is MetricKeyType.MetricKeyType.Summary =>
-  hasProperty(u, SummaryKeyTypeTypeId)
+export const isSummaryKey = (u: unknown): u is MetricKeyType.Summary => hasProperty(u, SummaryKeyTypeTypeId)

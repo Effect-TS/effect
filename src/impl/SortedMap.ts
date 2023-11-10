@@ -1,16 +1,16 @@
 /**
  * @since 2.0.0
  */
-import * as Equal from "../Equal.js"
-import * as Dual from "../Function.js"
-import { pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
+import { Equal } from "../Equal.js"
+import { dual, pipe } from "../Function.js"
+import { Hash } from "../Hash.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import type { Order } from "../Order.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
-import * as RBT from "../RedBlackTree.js"
+import { RedBlackTree as RBT } from "../RedBlackTree.js"
+
 import type { SortedMap } from "../SortedMap.js"
 
 /**
@@ -53,7 +53,7 @@ const SortedMapProto: Omit<SortedMap<unknown, unknown>, "tree"> = {
   }
 }
 
-const makeImpl = <K, V>(tree: RBT.RedBlackTree<K, V>): SortedMap<K, V> => {
+const makeImpl = <K, V>(tree: RBT<K, V>): SortedMap<K, V> => {
   const self = Object.create(SortedMapProto)
   self.tree = tree
   return self
@@ -81,7 +81,7 @@ export const empty = <K, V = never>(ord: Order<K>): SortedMap<K, V> => makeImpl<
 export const fromIterable: {
   <B>(ord: Order<B>): <K extends B, V>(iterable: Iterable<readonly [K, V]>) => SortedMap<K, V>
   <K extends B, V, B>(iterable: Iterable<readonly [K, V]>, ord: Order<B>): SortedMap<K, V>
-} = Dual.dual(
+} = dual(
   2,
   <K extends B, V, B>(iterable: Iterable<readonly [K, V]>, ord: Order<B>): SortedMap<K, V> =>
     makeImpl(RBT.fromIterable(iterable, ord))
@@ -115,11 +115,11 @@ export const isNonEmpty = <K, V>(self: SortedMap<K, V>): boolean => size(self) >
  * @category elements
  */
 export const get: {
-  <K>(key: K): <V>(self: SortedMap<K, V>) => Option.Option<V>
-  <K, V>(self: SortedMap<K, V>, key: K): Option.Option<V>
-} = Dual.dual<
-  <K>(key: K) => <V>(self: SortedMap<K, V>) => Option.Option<V>,
-  <K, V>(self: SortedMap<K, V>, key: K) => Option.Option<V>
+  <K>(key: K): <V>(self: SortedMap<K, V>) => Option<V>
+  <K, V>(self: SortedMap<K, V>, key: K): Option<V>
+} = dual<
+  <K>(key: K) => <V>(self: SortedMap<K, V>) => Option<V>,
+  <K, V>(self: SortedMap<K, V>, key: K) => Option<V>
 >(2, (self, key) => RBT.findFirst(self.tree, key))
 
 /**
@@ -137,7 +137,7 @@ export const getOrder = <K, V>(self: SortedMap<K, V>): Order<K> => RBT.getOrder(
 export const has: {
   <K>(key: K): <V>(self: SortedMap<K, V>) => boolean
   <K, V>(self: SortedMap<K, V>, key: K): boolean
-} = Dual.dual<
+} = dual<
   <K>(key: K) => <V>(self: SortedMap<K, V>) => boolean,
   <K, V>(self: SortedMap<K, V>, key: K) => boolean
 >(2, (self, key) => Option.isSome(get(self, key)))
@@ -146,7 +146,7 @@ export const has: {
  * @since 2.0.0
  * @category elements
  */
-export const headOption = <K, V>(self: SortedMap<K, V>): Option.Option<[K, V]> => RBT.first(self.tree)
+export const headOption = <K, V>(self: SortedMap<K, V>): Option<[K, V]> => RBT.first(self.tree)
 
 /**
  * @since 2.0.0
@@ -155,7 +155,7 @@ export const headOption = <K, V>(self: SortedMap<K, V>): Option.Option<[K, V]> =
 export const map: {
   <A, K, B>(f: (a: A, k: K) => B): (self: SortedMap<K, A>) => SortedMap<K, B>
   <K, A, B>(self: SortedMap<K, A>, f: (a: A, k: K) => B): SortedMap<K, B>
-} = Dual.dual<
+} = dual<
   <A, K, B>(f: (a: A, k: K) => B) => (self: SortedMap<K, A>) => SortedMap<K, B>,
   <K, A, B>(self: SortedMap<K, A>, f: (a: A, k: K) => B) => SortedMap<K, B>
 >(2, <K, A, B>(self: SortedMap<K, A>, f: (a: A, k: K) => B) =>
@@ -172,7 +172,7 @@ export const map: {
 export const reduce: {
   <B, A, K>(zero: B, f: (acc: B, value: A, key: K) => B): (self: SortedMap<K, A>) => B
   <K, A, B>(self: SortedMap<K, A>, zero: B, f: (acc: B, value: A, key: K) => B): B
-} = Dual.dual<
+} = dual<
   <B, A, K>(zero: B, f: (acc: B, value: A, key: K) => B) => (self: SortedMap<K, A>) => B,
   <K, A, B>(self: SortedMap<K, A>, zero: B, f: (acc: B, value: A, key: K) => B) => B
 >(3, (self, zero, f) => RBT.reduce(self.tree, zero, f))
@@ -184,7 +184,7 @@ export const reduce: {
 export const remove: {
   <K>(key: K): <V>(self: SortedMap<K, V>) => SortedMap<K, V>
   <K, V>(self: SortedMap<K, V>, key: K): SortedMap<K, V>
-} = Dual.dual<
+} = dual<
   <K>(key: K) => <V>(self: SortedMap<K, V>) => SortedMap<K, V>,
   <K, V>(self: SortedMap<K, V>, key: K) => SortedMap<K, V>
 >(2, (self, key) => makeImpl(RBT.removeFirst(self.tree, key)))
@@ -196,7 +196,7 @@ export const remove: {
 export const set: {
   <K, V>(key: K, value: V): (self: SortedMap<K, V>) => SortedMap<K, V>
   <K, V>(self: SortedMap<K, V>, key: K, value: V): SortedMap<K, V>
-} = Dual.dual<
+} = dual<
   <K, V>(key: K, value: V) => (self: SortedMap<K, V>) => SortedMap<K, V>,
   <K, V>(self: SortedMap<K, V>, key: K, value: V) => SortedMap<K, V>
 >(3, (self, key, value) =>

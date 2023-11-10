@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import * as Equivalence from "../Equivalence.js"
+import { Equivalence } from "../Equivalence.js"
 import { dual } from "../Function.js"
 import * as order from "../Order.js"
 import type { Simplify } from "../Types.js"
@@ -78,10 +78,10 @@ export const omit = <S, Keys extends readonly [keyof S, ...Array<keyof S>]>(
  * @category combinators
  * @since 2.0.0
  */
-export const getEquivalence: <R extends Record<string, Equivalence.Equivalence<any>>>(
+export const getEquivalence: <R extends Record<string, Equivalence<any>>>(
   isEquivalents: R
-) => Equivalence.Equivalence<
-  { readonly [K in keyof R]: [R[K]] extends [Equivalence.Equivalence<infer A>] ? A : never }
+) => Equivalence<
+  { readonly [K in keyof R]: [R[K]] extends [Equivalence<infer A>] ? A : never }
 > = Equivalence.struct
 
 /**

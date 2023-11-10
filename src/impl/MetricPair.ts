@@ -2,10 +2,11 @@
  * @since 2.0.0
  */
 import * as internal from "../internal/metric/pair.js"
-import type * as MetricKey from "../MetricKey.js"
-import type * as MetricKeyType from "../MetricKeyType.js"
+import type { MetricKey } from "../MetricKey.js"
+import type { MetricKeyType } from "../MetricKeyType.js"
+import type { MetricState } from "../MetricState.js"
+
 import type { MetricPair } from "../MetricPair.js"
-import type * as MetricState from "../MetricState.js"
 
 /**
  * @since 2.0.0
@@ -23,16 +24,16 @@ export type MetricPairTypeId = typeof MetricPairTypeId
  * @since 2.0.0
  * @category constructors
  */
-export const make: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState<MetricKeyType.MetricKeyType.OutType<Type>>
+export const make: <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState<MetricKeyType.OutType<Type>>
 ) => MetricPair.Untyped = internal.make
 
 /**
  * @since 2.0.0
  * @category unsafe
  */
-export const unsafeMake: <Type extends MetricKeyType.MetricKeyType<any, any>>(
-  metricKey: MetricKey.MetricKey<Type>,
-  metricState: MetricState.MetricState.Untyped
+export const unsafeMake: <Type extends MetricKeyType<any, any>>(
+  metricKey: MetricKey<Type>,
+  metricState: MetricState.Untyped
 ) => MetricPair.Untyped = internal.unsafeMake

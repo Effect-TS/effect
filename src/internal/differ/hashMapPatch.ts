@@ -1,14 +1,14 @@
-import * as Chunk from "../../Chunk.js"
-import type * as Differ from "../../Differ.js"
-import * as Equal from "../../Equal.js"
-import * as Dual from "../../Function.js"
-import * as HashMap from "../../HashMap.js"
+import { Chunk } from "../../Chunk.js"
+import type { Differ } from "../../Differ.js"
+import { Equal } from "../../Equal.js"
+import { dual } from "../../Function.js"
+import { HashMap } from "../../HashMap.js"
 import { Structural } from "../data.js"
 
 /** @internal */
-export const HashMapPatchTypeId: Differ.Differ.HashMap.TypeId = Symbol.for(
+export const HashMapPatchTypeId: Differ.HashMap.TypeId = Symbol.for(
   "effect/DifferHashMapPatch"
-) as Differ.Differ.HashMap.TypeId
+) as Differ.HashMap.TypeId
 
 function variance<A, B>(a: A): B {
   return a as unknown as B
@@ -24,7 +24,7 @@ const PatchProto = {
   }
 }
 
-interface Empty<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Value, Patch> {
+interface Empty<Key, Value, Patch> extends Differ.HashMap.Patch<Key, Value, Patch> {
   readonly _tag: "Empty"
 }
 
@@ -35,12 +35,12 @@ const EmptyProto = Object.assign(Object.create(PatchProto), {
 const _empty = Object.create(EmptyProto)
 
 /** @internal */
-export const empty = <Key, Value, Patch>(): Differ.Differ.HashMap.Patch<Key, Value, Patch> => _empty
+export const empty = <Key, Value, Patch>(): Differ.HashMap.Patch<Key, Value, Patch> => _empty
 
-interface AndThen<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Value, Patch> {
+interface AndThen<Key, Value, Patch> extends Differ.HashMap.Patch<Key, Value, Patch> {
   readonly _tag: "AndThen"
-  readonly first: Differ.Differ.HashMap.Patch<Key, Value, Patch>
-  readonly second: Differ.Differ.HashMap.Patch<Key, Value, Patch>
+  readonly first: Differ.HashMap.Patch<Key, Value, Patch>
+  readonly second: Differ.HashMap.Patch<Key, Value, Patch>
 }
 
 const AndThenProto = Object.assign(Object.create(PatchProto), {
@@ -48,16 +48,16 @@ const AndThenProto = Object.assign(Object.create(PatchProto), {
 })
 
 const makeAndThen = <Key, Value, Patch>(
-  first: Differ.Differ.HashMap.Patch<Key, Value, Patch>,
-  second: Differ.Differ.HashMap.Patch<Key, Value, Patch>
-): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
+  first: Differ.HashMap.Patch<Key, Value, Patch>,
+  second: Differ.HashMap.Patch<Key, Value, Patch>
+): Differ.HashMap.Patch<Key, Value, Patch> => {
   const o = Object.create(AndThenProto)
   o.first = first
   o.second = second
   return o
 }
 
-interface Add<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Value, Patch> {
+interface Add<Key, Value, Patch> extends Differ.HashMap.Patch<Key, Value, Patch> {
   readonly _tag: "Add"
   readonly key: Key
   readonly value: Value
@@ -67,14 +67,14 @@ const AddProto = Object.assign(Object.create(PatchProto), {
   _tag: "Add"
 })
 
-const makeAdd = <Key, Value, Patch>(key: Key, value: Value): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
+const makeAdd = <Key, Value, Patch>(key: Key, value: Value): Differ.HashMap.Patch<Key, Value, Patch> => {
   const o = Object.create(AddProto)
   o.key = key
   o.value = value
   return o
 }
 
-interface Remove<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Value, Patch> {
+interface Remove<Key, Value, Patch> extends Differ.HashMap.Patch<Key, Value, Patch> {
   readonly _tag: "Remove"
   readonly key: Key
 }
@@ -83,13 +83,13 @@ const RemoveProto = Object.assign(Object.create(PatchProto), {
   _tag: "Remove"
 })
 
-const makeRemove = <Key, Value, Patch>(key: Key): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
+const makeRemove = <Key, Value, Patch>(key: Key): Differ.HashMap.Patch<Key, Value, Patch> => {
   const o = Object.create(RemoveProto)
   o.key = key
   return o
 }
 
-interface Update<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Value, Patch> {
+interface Update<Key, Value, Patch> extends Differ.HashMap.Patch<Key, Value, Patch> {
   readonly _tag: "Update"
   readonly key: Key
   readonly patch: Patch
@@ -99,7 +99,7 @@ const UpdateProto = Object.assign(Object.create(PatchProto), {
   _tag: "Update"
 })
 
-const makeUpdate = <Key, Value, Patch>(key: Key, patch: Patch): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
+const makeUpdate = <Key, Value, Patch>(key: Key, patch: Patch): Differ.HashMap.Patch<Key, Value, Patch> => {
   const o = Object.create(UpdateProto)
   o.key = key
   o.patch = patch
@@ -116,11 +116,11 @@ type Instruction =
 /** @internal */
 export const diff = <Key, Value, Patch>(
   options: {
-    readonly oldValue: HashMap.HashMap<Key, Value>
-    readonly newValue: HashMap.HashMap<Key, Value>
-    readonly differ: Differ.Differ<Value, Patch>
+    readonly oldValue: HashMap<Key, Value>
+    readonly newValue: HashMap<Key, Value>
+    readonly differ: Differ<Value, Patch>
   }
-): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
+): Differ.HashMap.Patch<Key, Value, Patch> => {
   const [removed, patch] = HashMap.reduce(
     [options.oldValue, empty<Key, Value, Patch>()] as const,
     ([map, patch], newValue: Value, key: Key) => {
@@ -149,38 +149,38 @@ export const diff = <Key, Value, Patch>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Key, Value, Patch>(
-    that: Differ.Differ.HashMap.Patch<Key, Value, Patch>
+    that: Differ.HashMap.Patch<Key, Value, Patch>
   ) => (
-    self: Differ.Differ.HashMap.Patch<Key, Value, Patch>
-  ) => Differ.Differ.HashMap.Patch<Key, Value, Patch>,
+    self: Differ.HashMap.Patch<Key, Value, Patch>
+  ) => Differ.HashMap.Patch<Key, Value, Patch>,
   <Key, Value, Patch>(
-    self: Differ.Differ.HashMap.Patch<Key, Value, Patch>,
-    that: Differ.Differ.HashMap.Patch<Key, Value, Patch>
-  ) => Differ.Differ.HashMap.Patch<Key, Value, Patch>
+    self: Differ.HashMap.Patch<Key, Value, Patch>,
+    that: Differ.HashMap.Patch<Key, Value, Patch>
+  ) => Differ.HashMap.Patch<Key, Value, Patch>
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Key, Value, Patch>(
-    oldValue: HashMap.HashMap<Key, Value>,
-    differ: Differ.Differ<Value, Patch>
+    oldValue: HashMap<Key, Value>,
+    differ: Differ<Value, Patch>
   ) => (
-    self: Differ.Differ.HashMap.Patch<Key, Value, Patch>
-  ) => HashMap.HashMap<Key, Value>,
+    self: Differ.HashMap.Patch<Key, Value, Patch>
+  ) => HashMap<Key, Value>,
   <Key, Value, Patch>(
-    self: Differ.Differ.HashMap.Patch<Key, Value, Patch>,
-    oldValue: HashMap.HashMap<Key, Value>,
-    differ: Differ.Differ<Value, Patch>
-  ) => HashMap.HashMap<Key, Value>
+    self: Differ.HashMap.Patch<Key, Value, Patch>,
+    oldValue: HashMap<Key, Value>,
+    differ: Differ<Value, Patch>
+  ) => HashMap<Key, Value>
 >(3, <Key, Value, Patch>(
-  self: Differ.Differ.HashMap.Patch<Key, Value, Patch>,
-  oldValue: HashMap.HashMap<Key, Value>,
-  differ: Differ.Differ<Value, Patch>
+  self: Differ.HashMap.Patch<Key, Value, Patch>,
+  oldValue: HashMap<Key, Value>,
+  differ: Differ<Value, Patch>
 ) => {
   let map = oldValue
-  let patches: Chunk.Chunk<Differ.Differ.HashMap.Patch<Key, Value, Patch>> = Chunk.of(self)
+  let patches: Chunk<Differ.HashMap.Patch<Key, Value, Patch>> = Chunk.of(self)
   while (Chunk.isNonEmpty(patches)) {
     const head: Instruction = Chunk.headNonEmpty(patches) as Instruction
     const tail = Chunk.tailNonEmpty(patches)

@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "../internal/channel/upstreamPullRequest.js"
+
 import type { UpstreamPullRequest } from "../UpstreamPullRequest.js"
 
 /**

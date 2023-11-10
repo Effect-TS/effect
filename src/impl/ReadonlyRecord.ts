@@ -6,11 +6,12 @@
 
 import type { Either } from "../Either.js"
 import * as E from "../Either.js"
-import * as Equal from "../Equal.js"
+import { Equal } from "../Equal.js"
 import type { Equivalence } from "../Equivalence.js"
 import { dual, identity } from "../Function.js"
 import type { TypeLambda } from "../HKT.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
+
 import type { ReadonlyRecord } from "../ReadonlyRecord.js"
 
 /**
@@ -222,11 +223,11 @@ export const has: {
  * @since 2.0.0
  */
 export const get: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<A>
-  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<A>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option<A>
+  <A>(self: ReadonlyRecord<A>, key: string): Option<A>
 } = dual(
   2,
-  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<A> => has(self, key) ? Option.some(self[key]) : Option.none()
+  <A>(self: ReadonlyRecord<A>, key: string): Option<A> => has(self, key) ? Option.some(self[key]) : Option.none()
 )
 
 /**
@@ -255,11 +256,11 @@ export const get: {
  * @since 2.0.0
  */
 export const modifyOption: {
-  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option.Option<Record<string, A | B>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option.Option<Record<string, A | B>>
+  <A, B>(key: string, f: (a: A) => B): (self: ReadonlyRecord<A>) => Option<Record<string, A | B>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option<Record<string, A | B>>
 } = dual(
   3,
-  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option.Option<Record<string, A | B>> => {
+  <A, B>(self: ReadonlyRecord<A>, key: string, f: (a: A) => B): Option<Record<string, A | B>> => {
     if (!has(self, key)) {
       return Option.none()
     }
@@ -289,12 +290,11 @@ export const modifyOption: {
  * @since 2.0.0
  */
 export const replaceOption: {
-  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option.Option<Record<string, A | B>>
-  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option.Option<Record<string, A | B>>
+  <B>(key: string, b: B): <A>(self: ReadonlyRecord<A>) => Option<Record<string, A | B>>
+  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option<Record<string, A | B>>
 } = dual(
   3,
-  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option.Option<Record<string, A | B>> =>
-    modifyOption(self, key, () => b)
+  <A, B>(self: ReadonlyRecord<A>, key: string, b: B): Option<Record<string, A | B>> => modifyOption(self, key, () => b)
 )
 
 /**
@@ -338,13 +338,12 @@ export const remove: {
  * @since 2.0.0
  */
 export const pop: {
-  (key: string): <A>(self: ReadonlyRecord<A>) => Option.Option<[A, Record<string, A>]>
-  <A>(self: ReadonlyRecord<A>, key: string): Option.Option<[A, Record<string, A>]>
+  (key: string): <A>(self: ReadonlyRecord<A>) => Option<[A, Record<string, A>]>
+  <A>(self: ReadonlyRecord<A>, key: string): Option<[A, Record<string, A>]>
 } = dual(2, <A>(
   self: ReadonlyRecord<A>,
   key: string
-): Option.Option<[A, Record<string, A>]> =>
-  has(self, key) ? Option.some([self[key], remove(self, key)]) : Option.none())
+): Option<[A, Record<string, A>]> => has(self, key) ? Option.some([self[key], remove(self, key)]) : Option.none())
 
 /**
  * Maps a record into another record by applying a transformation function to each of its values.
@@ -397,11 +396,11 @@ export const map: {
  * @since 2.0.0
  */
 export const filterMap: {
-  <K extends string, A, B>(f: (a: A, key: K) => Option.Option<B>): (self: Record<K, A>) => Record<string, B>
-  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option.Option<B>): Record<string, B>
+  <K extends string, A, B>(f: (a: A, key: K) => Option<B>): (self: Record<K, A>) => Record<string, B>
+  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => Option<B>): Record<string, B>
 } = dual(2, <A, B>(
   self: Record<string, A>,
-  f: (a: A, key: string) => Option.Option<B>
+  f: (a: A, key: string) => Option<B>
 ): Record<string, B> => {
   const out: Record<string, B> = {}
   for (const key of Object.keys(self)) {
@@ -476,7 +475,7 @@ export const filter: {
  * @category filtering
  * @since 2.0.0
  */
-export const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A> = filterMap(
+export const compact: <A>(self: ReadonlyRecord<Option<A>>) => Record<string, A> = filterMap(
   identity
 )
 

@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "../Chunk.js"
+import type { Chunk } from "../Chunk.js"
 import type { ConfigSecret } from "../ConfigSecret.js"
 import * as internal from "../internal/configSecret.js"
 
@@ -33,7 +33,7 @@ export const make: (bytes: Array<number>) => ConfigSecret = internal.make
  * @since 2.0.0
  * @category constructors
  */
-export const fromChunk: (chunk: Chunk.Chunk<string>) => ConfigSecret = internal.fromChunk
+export const fromChunk: (chunk: Chunk<string>) => ConfigSecret = internal.fromChunk
 
 /**
  * @since 2.0.0

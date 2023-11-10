@@ -1,18 +1,18 @@
-import type * as Config from "../Config.js"
-import type * as ConfigError from "../ConfigError.js"
-import type * as ConfigProvider from "../ConfigProvider.js"
-import type * as PathPatch from "../ConfigProviderPathPatch.js"
-import * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
-import * as Either from "../Either.js"
+import type { Config } from "../Config.js"
+import type { ConfigError } from "../ConfigError.js"
+import type { ConfigProvider } from "../ConfigProvider.js"
+import type { ConfigProviderPathPatch } from "../ConfigProviderPathPatch.js"
+import { Context } from "../Context.js"
+import type { Effect } from "../Effect.js"
+import { Either } from "../Either.js"
 import type { LazyArg } from "../Function.js"
 import { dual, pipe } from "../Function.js"
-import * as HashMap from "../HashMap.js"
-import * as HashSet from "../HashSet.js"
+import { HashMap } from "../HashMap.js"
+import { HashSet } from "../HashSet.js"
 import * as number from "../Number.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import * as RA from "../ReadonlyArray.js"
+import { ReadonlyArray as RA } from "../ReadonlyArray.js"
 import * as _config from "./config.js"
 import * as configError from "./configError.js"
 import * as pathPatch from "./configProvider/pathPatch.js"
@@ -31,7 +31,7 @@ export const ConfigProviderTypeId: ConfigProvider.ConfigProviderTypeId = Symbol.
 ) as ConfigProvider.ConfigProviderTypeId
 
 /** @internal */
-export const configProviderTag: Context.Tag<ConfigProvider.ConfigProvider, ConfigProvider.ConfigProvider> = Context.Tag(
+export const configProviderTag: Context.Tag<ConfigProvider, ConfigProvider> = Context.Tag(
   ConfigProviderTypeId
 )
 
@@ -46,10 +46,10 @@ export const FlatConfigProviderTypeId: ConfigProvider.FlatConfigProviderTypeId =
 /** @internal */
 export const make = (
   options: {
-    readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
-    readonly flattened: ConfigProvider.ConfigProvider.Flat
+    readonly load: <A>(config: Config<A>) => Effect<never, ConfigError, A>
+    readonly flattened: ConfigProvider.Flat
   }
-): ConfigProvider.ConfigProvider => ({
+): ConfigProvider => ({
   [ConfigProviderTypeId]: ConfigProviderTypeId,
   pipe() {
     return pipeArguments(this, arguments)
@@ -62,15 +62,15 @@ export const makeFlat = (
   options: {
     readonly load: <A>(
       path: ReadonlyArray<string>,
-      config: Config.Config.Primitive<A>,
+      config: Config.Primitive<A>,
       split: boolean
-    ) => Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+    ) => Effect<never, ConfigError, ReadonlyArray<A>>
     readonly enumerateChildren: (
       path: ReadonlyArray<string>
-    ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
-    readonly patch: PathPatch.ConfigProviderPathPatch
+    ) => Effect<never, ConfigError, HashSet<string>>
+    readonly patch: ConfigProviderPathPatch
   }
-): ConfigProvider.ConfigProvider.Flat => ({
+): ConfigProvider.Flat => ({
   [FlatConfigProviderTypeId]: FlatConfigProviderTypeId,
   patch: options.patch,
   load: (path, config, split = true) => options.load(path, config, split),
@@ -78,7 +78,7 @@ export const makeFlat = (
 })
 
 /** @internal */
-export const fromFlat = (flat: ConfigProvider.ConfigProvider.Flat): ConfigProvider.ConfigProvider =>
+export const fromFlat = (flat: ConfigProvider.Flat): ConfigProvider =>
   make({
     load: (config) =>
       core.flatMap(fromFlatLoop(flat, RA.empty(), config, false), (chunk) =>
@@ -97,8 +97,8 @@ export const fromFlat = (flat: ConfigProvider.ConfigProvider.Flat): ConfigProvid
 
 /** @internal */
 export const fromEnv = (
-  config: Partial<ConfigProvider.ConfigProvider.FromEnvConfig> = {}
-): ConfigProvider.ConfigProvider => {
+  config: Partial<ConfigProvider.FromEnvConfig> = {}
+): ConfigProvider => {
   const { pathDelim, seqDelim } = Object.assign({}, { pathDelim: "_", seqDelim: "," }, config)
   const makePathString = (path: ReadonlyArray<string>): string => pipe(path, RA.join(pathDelim))
   const unmakePathString = (pathString: string): ReadonlyArray<string> => pathString.split(pathDelim)
@@ -108,9 +108,9 @@ export const fromEnv = (
 
   const load = <A>(
     path: ReadonlyArray<string>,
-    primitive: Config.Config.Primitive<A>,
+    primitive: Config.Primitive<A>,
     split = true
-  ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>> => {
+  ): Effect<never, ConfigError, ReadonlyArray<A>> => {
     const pathString = makePathString(path)
     const current = getEnv()
     const valueOpt = pathString in current ? Option.some(current[pathString]!) : Option.none()
@@ -123,7 +123,7 @@ export const fromEnv = (
 
   const enumerateChildren = (
     path: ReadonlyArray<string>
-  ): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>> =>
+  ): Effect<never, ConfigError, HashSet<string>> =>
     core.sync(() => {
       const current = getEnv()
       const keys = Object.keys(current)
@@ -147,8 +147,8 @@ export const fromEnv = (
 /** @internal */
 export const fromMap = (
   map: Map<string, string>,
-  config: Partial<ConfigProvider.ConfigProvider.FromMapConfig> = {}
-): ConfigProvider.ConfigProvider => {
+  config: Partial<ConfigProvider.FromMapConfig> = {}
+): ConfigProvider => {
   const { pathDelim, seqDelim } = Object.assign({ seqDelim: ",", pathDelim: "." }, config)
   const makePathString = (path: ReadonlyArray<string>): string => pipe(path, RA.join(pathDelim))
   const unmakePathString = (pathString: string): ReadonlyArray<string> => pathString.split(pathDelim)
@@ -159,9 +159,9 @@ export const fromMap = (
   )
   const load = <A>(
     path: ReadonlyArray<string>,
-    primitive: Config.Config.Primitive<A>,
+    primitive: Config.Primitive<A>,
     split = true
-  ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>> => {
+  ): Effect<never, ConfigError, ReadonlyArray<A>> => {
     const pathString = makePathString(path)
     const valueOpt = mapWithIndexSplit.has(pathString) ?
       Option.some(mapWithIndexSplit.get(pathString)!) :
@@ -174,7 +174,7 @@ export const fromMap = (
   }
   const enumerateChildren = (
     path: ReadonlyArray<string>
-  ): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>> =>
+  ): Effect<never, ConfigError, HashSet<string>> =>
     core.sync(() => {
       const keyPaths = Array.from(mapWithIndexSplit.keys()).map(unmakePathString)
       const filteredKeyPaths = keyPaths.filter((keyPath) => {
@@ -219,29 +219,29 @@ const extend = <A, B>(
 }
 
 const fromFlatLoop = <A>(
-  flat: ConfigProvider.ConfigProvider.Flat,
+  flat: ConfigProvider.Flat,
   prefix: ReadonlyArray<string>,
-  config: Config.Config<A>,
+  config: Config<A>,
   split: boolean
-): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>> => {
+): Effect<never, ConfigError, ReadonlyArray<A>> => {
   const op = config as _config.ConfigPrimitive
   switch (op._tag) {
     case OpCodes.OP_CONSTANT: {
-      return core.succeed(RA.of(op.value)) as Effect.Effect<
+      return core.succeed(RA.of(op.value)) as Effect<
         never,
-        ConfigError.ConfigError,
+        ConfigError,
         ReadonlyArray<A>
       >
     }
     case OpCodes.OP_DESCRIBED: {
       return core.suspend(
         () => fromFlatLoop(flat, prefix, op.config, split)
-      ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+      ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
     }
     case OpCodes.OP_FAIL: {
-      return core.fail(configError.MissingData(prefix, op.message)) as Effect.Effect<
+      return core.fail(configError.MissingData(prefix, op.message)) as Effect<
         never,
-        ConfigError.ConfigError,
+        ConfigError,
         ReadonlyArray<A>
       >
     }
@@ -257,12 +257,12 @@ const fromFlatLoop = <A>(
           }
           return core.fail(error1)
         })
-      ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+      ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
     }
     case OpCodes.OP_LAZY: {
-      return core.suspend(() => fromFlatLoop(flat, prefix, op.config(), split)) as Effect.Effect<
+      return core.suspend(() => fromFlatLoop(flat, prefix, op.config(), split)) as Effect<
         never,
-        ConfigError.ConfigError,
+        ConfigError,
         ReadonlyArray<A>
       >
     }
@@ -279,7 +279,7 @@ const fromFlatLoop = <A>(
             )
           )
         )
-      ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+      ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
     }
     case OpCodes.OP_NESTED: {
       return core.suspend(() =>
@@ -289,7 +289,7 @@ const fromFlatLoop = <A>(
           op.config,
           split
         )
-      ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+      ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
     }
     case OpCodes.OP_PRIMITIVE: {
       return pipe(
@@ -306,7 +306,7 @@ const fromFlatLoop = <A>(
             })
           )
         )
-      ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+      ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
     }
     case OpCodes.OP_SEQUENCE: {
       return pipe(
@@ -319,7 +319,7 @@ const fromFlatLoop = <A>(
               if (indices.length === 0) {
                 return core.suspend(() =>
                   core.map(fromFlatLoop(flat, patchedPrefix, op.config, true), RA.of)
-                ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+                ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
               }
               return pipe(
                 core.forEachSequential(
@@ -333,7 +333,7 @@ const fromFlatLoop = <A>(
                   }
                   return RA.of(flattened)
                 })
-              ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+              ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
             })
           )
         )
@@ -372,7 +372,7 @@ const fromFlatLoop = <A>(
             )
           )
         )
-      ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+      ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
     }
     case OpCodes.OP_ZIP_WITH: {
       return core.suspend(() =>
@@ -420,13 +420,13 @@ const fromFlatLoop = <A>(
             )
           )
         )
-      ) as unknown as Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+      ) as unknown as Effect<never, ConfigError, ReadonlyArray<A>>
     }
   }
 }
 
 const fromFlatLoopFail =
-  (prefix: ReadonlyArray<string>, path: string) => (index: number): Either.Either<ConfigError.ConfigError, unknown> =>
+  (prefix: ReadonlyArray<string>, path: string) => (index: number): Either<ConfigError, unknown> =>
     Either.left(
       configError.MissingData(
         prefix,
@@ -436,14 +436,14 @@ const fromFlatLoopFail =
 
 /** @internal */
 export const mapInputPath = dual<
-  (f: (path: string) => string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider,
-  (self: ConfigProvider.ConfigProvider, f: (path: string) => string) => ConfigProvider.ConfigProvider
+  (f: (path: string) => string) => (self: ConfigProvider) => ConfigProvider,
+  (self: ConfigProvider, f: (path: string) => string) => ConfigProvider
 >(2, (self, f) => fromFlat(mapInputPathFlat(self.flattened, f)))
 
 const mapInputPathFlat = (
-  self: ConfigProvider.ConfigProvider.Flat,
+  self: ConfigProvider.Flat,
   f: (path: string) => string
-): ConfigProvider.ConfigProvider.Flat =>
+): ConfigProvider.Flat =>
   makeFlat({
     load: (path, config, split = true) => self.load(path, config, split),
     enumerateChildren: (path) => self.enumerateChildren(path),
@@ -452,8 +452,8 @@ const mapInputPathFlat = (
 
 /** @internal */
 export const nested = dual<
-  (name: string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider,
-  (self: ConfigProvider.ConfigProvider, name: string) => ConfigProvider.ConfigProvider
+  (name: string) => (self: ConfigProvider) => ConfigProvider,
+  (self: ConfigProvider, name: string) => ConfigProvider
 >(2, (self, name) =>
   fromFlat(makeFlat({
     load: (path, config) => self.flattened.load(path, config, true),
@@ -463,8 +463,8 @@ export const nested = dual<
 
 /** @internal */
 export const unnested = dual<
-  (name: string) => (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider,
-  (self: ConfigProvider.ConfigProvider, name: string) => ConfigProvider.ConfigProvider
+  (name: string) => (self: ConfigProvider) => ConfigProvider,
+  (self: ConfigProvider, name: string) => ConfigProvider
 >(2, (self, name) =>
   fromFlat(makeFlat({
     load: (path, config) => self.flattened.load(path, config, true),
@@ -475,20 +475,20 @@ export const unnested = dual<
 /** @internal */
 export const orElse = dual<
   (
-    that: LazyArg<ConfigProvider.ConfigProvider>
+    that: LazyArg<ConfigProvider>
   ) => (
-    self: ConfigProvider.ConfigProvider
-  ) => ConfigProvider.ConfigProvider,
+    self: ConfigProvider
+  ) => ConfigProvider,
   (
-    self: ConfigProvider.ConfigProvider,
-    that: LazyArg<ConfigProvider.ConfigProvider>
-  ) => ConfigProvider.ConfigProvider
+    self: ConfigProvider,
+    that: LazyArg<ConfigProvider>
+  ) => ConfigProvider
 >(2, (self, that) => fromFlat(orElseFlat(self.flattened, () => that().flattened)))
 
 const orElseFlat = (
-  self: ConfigProvider.ConfigProvider.Flat,
-  that: LazyArg<ConfigProvider.ConfigProvider.Flat>
-): ConfigProvider.ConfigProvider.Flat =>
+  self: ConfigProvider.Flat,
+  that: LazyArg<ConfigProvider.Flat>
+): ConfigProvider.Flat =>
   makeFlat({
     load: (path, config, split) =>
       pipe(
@@ -546,36 +546,31 @@ const orElseFlat = (
   })
 
 /** @internal */
-export const constantCase = (self: ConfigProvider.ConfigProvider): ConfigProvider.ConfigProvider =>
-  mapInputPath(self, StringUtils.constantCase)
+export const constantCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.constantCase)
 
 /** @internal */
-export const kebabCase = (self: ConfigProvider.ConfigProvider): ConfigProvider.ConfigProvider =>
-  mapInputPath(self, StringUtils.kebabCase)
+export const kebabCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.kebabCase)
 
 /** @internal */
-export const lowerCase = (self: ConfigProvider.ConfigProvider): ConfigProvider.ConfigProvider =>
-  mapInputPath(self, StringUtils.lowerCase)
+export const lowerCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.lowerCase)
 
 /** @internal */
-export const snakeCase = (self: ConfigProvider.ConfigProvider): ConfigProvider.ConfigProvider =>
-  mapInputPath(self, StringUtils.snakeCase)
+export const snakeCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.snakeCase)
 
 /** @internal */
-export const upperCase = (self: ConfigProvider.ConfigProvider): ConfigProvider.ConfigProvider =>
-  mapInputPath(self, StringUtils.upperCase)
+export const upperCase = (self: ConfigProvider): ConfigProvider => mapInputPath(self, StringUtils.upperCase)
 
 /** @internal */
 export const within = dual<
   (
     path: ReadonlyArray<string>,
-    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider
-  ) => (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider,
+    f: (self: ConfigProvider) => ConfigProvider
+  ) => (self: ConfigProvider) => ConfigProvider,
   (
-    self: ConfigProvider.ConfigProvider,
+    self: ConfigProvider,
     path: ReadonlyArray<string>,
-    f: (self: ConfigProvider.ConfigProvider) => ConfigProvider.ConfigProvider
-  ) => ConfigProvider.ConfigProvider
+    f: (self: ConfigProvider) => ConfigProvider
+  ) => ConfigProvider
 >(3, (self, path, f) => {
   const unnest = RA.reduce(path, self, (provider, name) => unnested(provider, name))
   const nest = RA.reduceRight(path, f(unnest), (provider, name) => nested(provider, name))
@@ -590,10 +585,10 @@ const splitPathString = (text: string, delim: string): ReadonlyArray<string> => 
 const parsePrimitive = <A>(
   text: string,
   path: ReadonlyArray<string>,
-  primitive: Config.Config.Primitive<A>,
+  primitive: Config.Primitive<A>,
   delimiter: string,
   split: boolean
-): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>> => {
+): Effect<never, ConfigError, ReadonlyArray<A>> => {
   if (!split) {
     return pipe(
       primitive.parse(text),
@@ -616,7 +611,7 @@ const escapeRegex = (string: string): string => {
   return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&")
 }
 
-const indicesFrom = (quotedIndices: HashSet.HashSet<string>): Effect.Effect<never, never, ReadonlyArray<number>> =>
+const indicesFrom = (quotedIndices: HashSet<string>): Effect<never, never, ReadonlyArray<number>> =>
   pipe(
     core.forEachSequential(quotedIndices, parseQuotedIndex),
     core.mapBoth({
@@ -630,7 +625,7 @@ const indicesFrom = (quotedIndices: HashSet.HashSet<string>): Effect.Effect<neve
 const STR_INDEX_REGEX = /(^.+)(\[(\d+)\])$/
 const QUOTED_INDEX_REGEX = /^(\[(\d+)\])$/
 
-const parseQuotedIndex = (str: string): Option.Option<number> => {
+const parseQuotedIndex = (str: string): Option<number> => {
   const match = str.match(QUOTED_INDEX_REGEX)
   if (match !== null) {
     const matchedIndex = match[2]
@@ -665,7 +660,7 @@ const splitIndexInKeys = (
   return newMap
 }
 
-const splitIndexFrom = (key: string): Option.Option<[string, number]> => {
+const splitIndexFrom = (key: string): Option<[string, number]> => {
   const match = key.match(STR_INDEX_REGEX)
   if (match !== null) {
     const matchedString = match[1]
@@ -684,7 +679,7 @@ const splitIndexFrom = (key: string): Option.Option<[string, number]> => {
   return Option.none()
 }
 
-const parseInteger = (str: string): Option.Option<number> => {
+const parseInteger = (str: string): Option<number> => {
   const parsedIndex = Number.parseInt(str)
   return Number.isNaN(parsedIndex) ?
     Option.none() :

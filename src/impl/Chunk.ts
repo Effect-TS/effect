@@ -1,23 +1,23 @@
 /**
  * @since 2.0.0
  */
-import type { Chunk } from "../Chunk.js"
 import type { Either } from "../Either.js"
-import * as Equal from "../Equal.js"
-import * as Equivalence from "../Equivalence.js"
+import { Equal } from "../Equal.js"
+import { Equivalence } from "../Equivalence.js"
 import { dual, identity, pipe } from "../Function.js"
-import * as Hash from "../Hash.js"
+import { Hash } from "../Hash.js"
 import type { TypeLambda } from "../HKT.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import type { NonEmptyIterable } from "../NonEmptyIterable.js"
 import type { Option } from "../Option.js"
 import * as O from "../Option.js"
-import * as Order from "../Order.js"
-
+import { Order } from "../Order.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
-import * as RA from "../ReadonlyArray.js"
+import { ReadonlyArray as RA } from "../ReadonlyArray.js"
 import type { NonEmptyReadonlyArray } from "../ReadonlyArray.js"
+
+import type { Chunk } from "../Chunk.js"
 
 /**
  * @category symbol
@@ -104,7 +104,7 @@ const emptyArray: ReadonlyArray<never> = []
  * @category equivalence
  * @since 2.0.0
  */
-export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Chunk<A>> =>
+export const getEquivalence = <A>(isEquivalent: Equivalence<A>): Equivalence<Chunk<A>> =>
   Equivalence.make((self, that) =>
     self.length === that.length && toReadonlyArray(self).every((value, i) => isEquivalent(value, unsafeGet(that, i)))
   )
@@ -911,11 +911,11 @@ export const size = <A>(self: Chunk<A>): number => self.length
  * @category elements
  */
 export const sort: {
-  <B>(O: Order.Order<B>): <A extends B>(self: Chunk<A>) => Chunk<A>
-  <A extends B, B>(self: Chunk<A>, O: Order.Order<B>): Chunk<A>
+  <B>(O: Order<B>): <A extends B>(self: Chunk<A>) => Chunk<A>
+  <A extends B, B>(self: Chunk<A>, O: Order<B>): Chunk<A>
 } = dual(
   2,
-  <A extends B, B>(self: Chunk<A>, O: Order.Order<B>): Chunk<A> => unsafeFromArray(RA.sort(toReadonlyArray(self), O))
+  <A extends B, B>(self: Chunk<A>, O: Order<B>): Chunk<A> => unsafeFromArray(RA.sort(toReadonlyArray(self), O))
 )
 
 /**
@@ -923,11 +923,11 @@ export const sort: {
  * @category elements
  */
 export const sortWith: {
-  <A, B>(f: (a: A) => B, order: Order.Order<B>): (self: Chunk<A>) => Chunk<A>
-  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order.Order<B>): Chunk<A>
+  <A, B>(f: (a: A) => B, order: Order<B>): (self: Chunk<A>) => Chunk<A>
+  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order<B>): Chunk<A>
 } = dual(
   3,
-  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order.Order<B>): Chunk<A> => sort(self, Order.mapInput(order, f))
+  <A, B>(self: Chunk<A>, f: (a: A) => B, order: Order<B>): Chunk<A> => sort(self, Order.mapInput(order, f))
 )
 
 /**

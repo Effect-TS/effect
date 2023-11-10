@@ -1,11 +1,8 @@
-/**
- * @since 2.0.0
- */
-import type * as Channel from "../Channel.js"
-import type * as Effect from "../Effect.js"
+import type { Channel } from "../Channel.js"
+import type { Effect } from "../Effect.js"
 import * as internal from "../internal/effectable.js"
-import type * as Sink from "../Sink.js"
-import type * as Stream from "../Stream.js"
+import type { Sink } from "../Sink.js"
+import type { Stream } from "../Stream.js"
 
 /**
  * @since 2.0.0
@@ -60,26 +57,26 @@ export type ChannelTypeId = Channel.ChannelTypeId
  * @category models
  */
 export interface CommitPrimitive {
-  new<R, E, A>(): Effect.Effect<R, E, A>
+  new<R, E, A>(): Effect<R, E, A>
 }
 
 /**
  * @since 2.0.0
  * @category prototypes
  */
-export const EffectPrototype: Effect.Effect<never, never, never> = internal.EffectPrototype
+export const EffectPrototype: Effect<never, never, never> = internal.EffectPrototype
 
 /**
  * @since 2.0.0
  * @category prototypes
  */
-export const CommitPrototype: Effect.Effect<never, never, never> = internal.CommitPrototype
+export const CommitPrototype: Effect<never, never, never> = internal.CommitPrototype
 
 /**
  * @since 2.0.0
  * @category prototypes
  */
-export const StructuralCommitPrototype: Effect.Effect<never, never, never> = internal.StructuralCommitPrototype
+export const StructuralCommitPrototype: Effect<never, never, never> = internal.StructuralCommitPrototype
 
 const Base: CommitPrimitive = internal.Base
 const StructuralBase: CommitPrimitive = internal.StructuralBase
@@ -92,7 +89,7 @@ export abstract class Class<R, E, A> extends Base<R, E, A> {
   /**
    * @since 2.0.0
    */
-  abstract commit(): Effect.Effect<R, E, A>
+  abstract commit(): Effect<R, E, A>
 }
 
 /**
@@ -103,5 +100,5 @@ export abstract class StructuralClass<R, E, A> extends StructuralBase<R, E, A> {
   /**
    * @since 2.0.0
    */
-  abstract commit(): Effect.Effect<R, E, A>
+  abstract commit(): Effect<R, E, A>
 }

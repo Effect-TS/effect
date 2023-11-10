@@ -1,9 +1,9 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "../Duration.js"
+import type { Duration } from "../Duration.js"
 import * as internal from "../internal/schedule/interval.js"
-import type * as Option from "../Option.js"
+import type { Option } from "../Option.js"
 import type { ScheduleInterval } from "../ScheduleInterval.js"
 
 /**
@@ -105,7 +105,7 @@ export const intersect: {
  * @since 2.0.0
  * @category getters
  */
-export const size: (self: ScheduleInterval) => Duration.Duration = internal.size
+export const size: (self: ScheduleInterval) => Duration = internal.size
 
 /**
  * Computes a new `ScheduleInterval` which is the union of this `ScheduleInterval` and that
@@ -116,8 +116,8 @@ export const size: (self: ScheduleInterval) => Duration.Duration = internal.size
  * @category utils
  */
 export const union: {
-  (that: ScheduleInterval): (self: ScheduleInterval) => Option.Option<ScheduleInterval>
-  (self: ScheduleInterval, that: ScheduleInterval): Option.Option<ScheduleInterval>
+  (that: ScheduleInterval): (self: ScheduleInterval) => Option<ScheduleInterval>
+  (self: ScheduleInterval, that: ScheduleInterval): Option<ScheduleInterval>
 } = internal.union
 
 /**

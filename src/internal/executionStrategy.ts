@@ -1,4 +1,4 @@
-import type * as ExecutionStrategy from "../ExecutionStrategy.js"
+import type { ExecutionStrategy } from "../ExecutionStrategy.js"
 import { dual } from "../Function.js"
 import type { LazyArg } from "../Function.js"
 
@@ -21,28 +21,26 @@ export const OP_PARALLEL_N = "ParallelN" as const
 export type OP_PARALLEL_N = typeof OP_PARALLEL_N
 
 /** @internal */
-export const sequential: ExecutionStrategy.ExecutionStrategy = { _tag: OP_SEQUENTIAL }
+export const sequential: ExecutionStrategy = { _tag: OP_SEQUENTIAL }
 
 /** @internal */
-export const parallel: ExecutionStrategy.ExecutionStrategy = { _tag: OP_PARALLEL }
+export const parallel: ExecutionStrategy = { _tag: OP_PARALLEL }
 
 /** @internal */
-export const parallelN = (parallelism: number): ExecutionStrategy.ExecutionStrategy => ({
+export const parallelN = (parallelism: number): ExecutionStrategy => ({
   _tag: OP_PARALLEL_N,
   parallelism
 })
 
 /** @internal */
-export const isSequential = (self: ExecutionStrategy.ExecutionStrategy): self is ExecutionStrategy.Sequential =>
+export const isSequential = (self: ExecutionStrategy): self is ExecutionStrategy.Sequential =>
   self._tag === OP_SEQUENTIAL
 
 /** @internal */
-export const isParallel = (self: ExecutionStrategy.ExecutionStrategy): self is ExecutionStrategy.Parallel =>
-  self._tag === OP_PARALLEL
+export const isParallel = (self: ExecutionStrategy): self is ExecutionStrategy.Parallel => self._tag === OP_PARALLEL
 
 /** @internal */
-export const isParallelN = (self: ExecutionStrategy.ExecutionStrategy): self is ExecutionStrategy.ParallelN =>
-  self._tag === OP_PARALLEL_N
+export const isParallelN = (self: ExecutionStrategy): self is ExecutionStrategy.ParallelN => self._tag === OP_PARALLEL_N
 
 /** @internal */
 export const match = dual<
@@ -50,9 +48,9 @@ export const match = dual<
     onSequential: LazyArg<A>,
     onParallel: LazyArg<A>,
     onParallelN: (n: number) => A
-  ) => (self: ExecutionStrategy.ExecutionStrategy) => A,
+  ) => (self: ExecutionStrategy) => A,
   <A>(
-    self: ExecutionStrategy.ExecutionStrategy,
+    self: ExecutionStrategy,
     onSequential: LazyArg<A>,
     onParallel: LazyArg<A>,
     onParallelN: (n: number) => A

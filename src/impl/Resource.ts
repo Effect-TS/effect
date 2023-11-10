@@ -1,11 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import * as internal from "../internal/resource.js"
+import type { Schedule } from "../Schedule.js"
+import type { Scope } from "../Scope.js"
+
 import type { Resource } from "../Resource.js"
-import type * as Schedule from "../Schedule.js"
-import type * as Scope from "../Scope.js"
 
 /**
  * @since 2.0.0
@@ -30,9 +31,9 @@ export type ResourceTypeId = typeof ResourceTypeId
  * @category constructors
  */
 export const auto: <R, E, A, R2, Out>(
-  acquire: Effect.Effect<R, E, A>,
-  policy: Schedule.Schedule<R2, unknown, Out>
-) => Effect.Effect<Scope.Scope | R | R2, never, Resource<E, A>> = internal.auto
+  acquire: Effect<R, E, A>,
+  policy: Schedule<R2, unknown, Out>
+) => Effect<Scope | R | R2, never, Resource<E, A>> = internal.auto
 
 /**
  * Retrieves the current value stored in the cache.
@@ -40,7 +41,7 @@ export const auto: <R, E, A, R2, Out>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = internal.get
+export const get: <E, A>(self: Resource<E, A>) => Effect<never, E, A> = internal.get
 
 /**
  * Creates a new `Resource` value that must be manually refreshed by calling
@@ -53,8 +54,8 @@ export const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A> = i
  * @category constructors
  */
 export const manual: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<Scope.Scope | R, never, Resource<E, A>> = internal.manual
+  acquire: Effect<R, E, A>
+) => Effect<Scope | R, never, Resource<E, A>> = internal.manual
 
 /**
  * Refreshes the cache. This method will not return until either the refresh
@@ -63,4 +64,4 @@ export const manual: <R, E, A>(
  * @since 2.0.0
  * @category utils
  */
-export const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, void> = internal.refresh
+export const refresh: <E, A>(self: Resource<E, A>) => Effect<never, E, void> = internal.refresh

@@ -1,10 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Either from "../Either.js"
+import type { Either } from "../Either.js"
 import * as internal from "../internal/stm/tDeferred.js"
-import type * as Option from "../Option.js"
-import type * as STM from "../STM.js"
+import type { Option } from "../Option.js"
+import type { STM } from "../STM.js"
+
 import type { TDeferred } from "../TDeferred.js"
 
 /**
@@ -19,7 +20,7 @@ export const TDeferredTypeId: unique symbol = internal.TDeferredTypeId
  */
 export type TDeferredTypeId = typeof TDeferredTypeId
 
-const _await: <E, A>(self: TDeferred<E, A>) => STM.STM<never, E, A> = internal._await
+const _await: <E, A>(self: TDeferred<E, A>) => STM<never, E, A> = internal._await
 export {
   /**
    * @since 2.0.0
@@ -33,8 +34,8 @@ export {
  * @category mutations
  */
 export const done: {
-  <E, A>(either: Either.Either<E, A>): (self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, either: Either.Either<E, A>): STM.STM<never, never, boolean>
+  <E, A>(either: Either<E, A>): (self: TDeferred<E, A>) => STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, either: Either<E, A>): STM<never, never, boolean>
 } = internal.done
 
 /**
@@ -42,28 +43,27 @@ export const done: {
  * @category mutations
  */
 export const fail: {
-  <E>(error: E): <A>(self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, error: E): STM.STM<never, never, boolean>
+  <E>(error: E): <A>(self: TDeferred<E, A>) => STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, error: E): STM<never, never, boolean>
 } = internal.fail
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>() => STM.STM<never, never, TDeferred<E, A>> = internal.make
+export const make: <E, A>() => STM<never, never, TDeferred<E, A>> = internal.make
 
 /**
  * @since 2.0.0
  * @category getters
  */
-export const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option.Option<Either.Either<E, A>>> =
-  internal.poll
+export const poll: <E, A>(self: TDeferred<E, A>) => STM<never, never, Option<Either<E, A>>> = internal.poll
 
 /**
  * @since 2.0.0
  * @category mutations
  */
 export const succeed: {
-  <A>(value: A): <E>(self: TDeferred<E, A>) => STM.STM<never, never, boolean>
-  <E, A>(self: TDeferred<E, A>, value: A): STM.STM<never, never, boolean>
+  <A>(value: A): <E>(self: TDeferred<E, A>) => STM<never, never, boolean>
+  <E, A>(self: TDeferred<E, A>, value: A): STM<never, never, boolean>
 } = internal.succeed

@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "../internal/logSpan.js"
+
 import type { LogSpan } from "../LogSpan.js"
 
 /**

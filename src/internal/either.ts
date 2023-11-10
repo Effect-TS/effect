@@ -2,10 +2,10 @@
  * @since 2.0.0
  */
 
-import type * as Either from "../Either.js"
-import * as Equal from "../Equal.js"
+import type { Either } from "../Either.js"
+import { Equal } from "../Equal.js"
 import { dual } from "../Function.js"
-import * as Hash from "../Hash.js"
+import { Hash } from "../Hash.js"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import type { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
@@ -22,7 +22,7 @@ const CommonProto = {
   [TypeId]: {
     _A: (_: never) => _
   },
-  [NodeInspectSymbol]<E, A>(this: Either.Either<E, A>) {
+  [NodeInspectSymbol]<E, A>(this: Either<E, A>) {
     return this.toJSON()
   },
   toString<E, A>(this: Either.Left<E, A>) {
@@ -67,23 +67,23 @@ const LeftProto = Object.assign(Object.create(CommonProto), {
 })
 
 /** @internal */
-export const isEither = (input: unknown): input is Either.Either<unknown, unknown> => hasProperty(input, TypeId)
+export const isEither = (input: unknown): input is Either<unknown, unknown> => hasProperty(input, TypeId)
 
 /** @internal */
-export const isLeft = <E, A>(ma: Either.Either<E, A>): ma is Either.Left<E, A> => ma._tag === "Left"
+export const isLeft = <E, A>(ma: Either<E, A>): ma is Either.Left<E, A> => ma._tag === "Left"
 
 /** @internal */
-export const isRight = <E, A>(ma: Either.Either<E, A>): ma is Either.Right<E, A> => ma._tag === "Right"
+export const isRight = <E, A>(ma: Either<E, A>): ma is Either.Right<E, A> => ma._tag === "Right"
 
 /** @internal */
-export const left = <E>(left: E): Either.Either<E, never> => {
+export const left = <E>(left: E): Either<E, never> => {
   const a = Object.create(LeftProto)
   a.left = left
   return a
 }
 
 /** @internal */
-export const right = <A>(right: A): Either.Either<never, A> => {
+export const right = <A>(right: A): Either<never, A> => {
   const a = Object.create(RightProto)
   a.right = right
   return a
@@ -91,17 +91,16 @@ export const right = <A>(right: A): Either.Either<never, A> => {
 
 /** @internal */
 export const getLeft = <E, A>(
-  self: Either.Either<E, A>
+  self: Either<E, A>
 ): Option<E> => (isRight(self) ? option.none : option.some(self.left))
 
 /** @internal */
 export const getRight = <E, A>(
-  self: Either.Either<E, A>
+  self: Either<E, A>
 ): Option<A> => (isLeft(self) ? option.none : option.some(self.right))
 
 /** @internal */
 export const fromOption = dual(
   2,
-  <A, E>(self: Option<A>, onNone: () => E): Either.Either<E, A> =>
-    option.isNone(self) ? left(onNone()) : right(self.value)
+  <A, E>(self: Option<A>, onNone: () => E): Either<E, A> => option.isNone(self) ? left(onNone()) : right(self.value)
 )

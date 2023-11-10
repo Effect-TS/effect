@@ -1,17 +1,17 @@
 /**
  * @since 2.0.0
  */
-import type * as Chunk from "../Chunk.js"
+import type { Chunk } from "../Chunk.js"
 import type { Config } from "../Config.js"
-import type * as ConfigError from "../ConfigError.js"
-import type * as ConfigSecret from "../ConfigSecret.js"
-import type * as Either from "../Either.js"
+import type { ConfigError } from "../ConfigError.js"
+import type { ConfigSecret } from "../ConfigSecret.js"
+import type { Either } from "../Either.js"
 import type { LazyArg } from "../Function.js"
-import type * as HashMap from "../HashMap.js"
-import type * as HashSet from "../HashSet.js"
+import type { HashMap } from "../HashMap.js"
+import type { HashSet } from "../HashSet.js"
 import * as internal from "../internal/config.js"
-import type * as LogLevel from "../LogLevel.js"
-import type * as Option from "../Option.js"
+import type { LogLevel } from "../LogLevel.js"
+import type { Option } from "../Option.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 
 /**
@@ -67,7 +67,7 @@ export const boolean: (name?: string | undefined) => Config<boolean> = internal.
  * @since 2.0.0
  * @category constructors
  */
-export const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk.Chunk<A>> = internal.chunk
+export const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk<A>> = internal.chunk
 
 /**
  * Constructs a config for a date value.
@@ -107,7 +107,7 @@ export const integer: (name?: string | undefined) => Config<number> = internal.i
  * @since 2.0.0
  * @category constructors
  */
-export const logLevel: (name?: string | undefined) => Config<LogLevel.LogLevel> = internal.logLevel
+export const logLevel: (name?: string | undefined) => Config<LogLevel> = internal.logLevel
 
 /**
  * This function returns `true` if the specified value is an `Config` value,
@@ -162,8 +162,8 @@ export const mapAttempt: {
  * @category utils
  */
 export const mapOrFail: {
-  <A, B>(f: (a: A) => Either.Either<ConfigError.ConfigError, B>): (self: Config<A>) => Config<B>
-  <A, B>(self: Config<A>, f: (a: A) => Either.Either<ConfigError.ConfigError, B>): Config<B>
+  <A, B>(f: (a: A) => Either<ConfigError, B>): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => Either<ConfigError, B>): Config<B>
 } = internal.mapOrFail
 
 /**
@@ -202,14 +202,14 @@ export const orElse: {
 export const orElseIf: {
   <A2>(
     options: {
-      readonly if: Predicate<ConfigError.ConfigError>
+      readonly if: Predicate<ConfigError>
       readonly orElse: LazyArg<Config<A2>>
     }
   ): <A>(self: Config<A>) => Config<A>
   <A, A2>(
     self: Config<A>,
     options: {
-      readonly if: Predicate<ConfigError.ConfigError>
+      readonly if: Predicate<ConfigError>
       readonly orElse: LazyArg<Config<A2>>
     }
   ): Config<A>
@@ -222,7 +222,7 @@ export const orElseIf: {
  * @since 2.0.0
  * @category utils
  */
-export const option: <A>(self: Config<A>) => Config<Option.Option<A>> = internal.option
+export const option: <A>(self: Config<A>) => Config<Option<A>> = internal.option
 
 /**
  * Constructs a new primitive config.
@@ -232,7 +232,7 @@ export const option: <A>(self: Config<A>) => Config<Option.Option<A>> = internal
  */
 export const primitive: <A>(
   description: string,
-  parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
+  parse: (text: string) => Either<ConfigError, A>
 ) => Config<A> = internal.primitive
 
 /**
@@ -250,7 +250,7 @@ export const repeat: <A>(self: Config<A>) => Config<Array<A>> = internal.repeat
  * @since 2.0.0
  * @category constructors
  */
-export const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSecret> = internal.secret
+export const secret: (name?: string | undefined) => Config<ConfigSecret> = internal.secret
 
 /**
  * Constructs a config for a sequence of values.
@@ -258,7 +258,7 @@ export const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSe
  * @since 2.0.0
  * @category constructors
  */
-export const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet.HashSet<A>> = internal.hashSet
+export const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet<A>> = internal.hashSet
 
 /**
  * Constructs a config for a string value.
@@ -298,8 +298,7 @@ export const sync: <A>(value: LazyArg<A>) => Config<A> = internal.sync
  * @since 2.0.0
  * @category constructors
  */
-export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap.HashMap<string, A>> =
-  internal.hashMap
+export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap<string, A>> = internal.hashMap
 
 /**
  * Constructs a config from some configuration wrapped with the `Wrap<A>` utility type.
@@ -307,7 +306,7 @@ export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Confi
  * For example:
  *
  * ```
- * import { Config, unwrap } from "../Config"
+ * import { Config, unwrap } from "./Config"
  *
  * interface Options { key: string }
  *

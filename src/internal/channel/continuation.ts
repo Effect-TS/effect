@@ -1,7 +1,7 @@
-import type * as Cause from "../../Cause.js"
-import type * as Channel from "../../Channel.js"
-import type * as Effect from "../../Effect.js"
-import * as Exit from "../../Exit.js"
+import type { Cause } from "../../Cause.js"
+import type { Channel } from "../../Channel.js"
+import type { Effect } from "../../Effect.js"
+import { Exit } from "../../Exit.js"
 import * as OpCodes from "../opCodes/continuation.js"
 
 /** @internal */
@@ -16,7 +16,7 @@ export interface Continuation<Env, InErr, InElem, InDone, OutErr, OutErr2, OutEl
 {}
 
 /** @internal */
-export declare namespace Continuation {
+export namespace Continuation {
   /** @internal */
   export interface Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2> {
     readonly [ContinuationTypeId]: {
@@ -79,13 +79,13 @@ export interface ContinuationK<
   readonly _tag: OpCodes.OP_CONTINUATION_K
   readonly onSuccess: (
     o: OutDone
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   readonly onHalt: (
-    c: Cause.Cause<OutErr>
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+    c: Cause<OutErr>
+  ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   readonly onExit: (
-    exit: Exit.Exit<OutErr, OutDone>
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+    exit: Exit<OutErr, OutDone>
+  ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
 }
 
 /** @internal */
@@ -103,7 +103,7 @@ export interface ContinuationFinalizer<Env, OutErr, OutDone> extends
   >
 {
   readonly _tag: OpCodes.OP_CONTINUATION_FINALIZER
-  readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>
+  readonly finalizer: (exit: Exit<OutErr, OutDone>) => Effect<Env, never, unknown>
 }
 
 /** @internal */
@@ -149,15 +149,15 @@ export class ContinuationKImpl<
   constructor(
     readonly onSuccess: (
       o: OutDone
-    ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>,
+    ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>,
     readonly onHalt: (
-      c: Cause.Cause<OutErr>
-    ) => Channel.Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+      c: Cause<OutErr>
+    ) => Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   ) {
   }
   onExit(
-    exit: Exit.Exit<OutErr, OutDone>
-  ): Channel.Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
+    exit: Exit<OutErr, OutDone>
+  ): Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
     return Exit.isFailure(exit) ? this.onHalt(exit.cause) : this.onSuccess(exit.value)
   }
 }
@@ -166,6 +166,6 @@ export class ContinuationKImpl<
 export class ContinuationFinalizerImpl<Env, OutErr, OutDone> implements ContinuationFinalizer<Env, OutErr, OutDone> {
   readonly _tag = OpCodes.OP_CONTINUATION_FINALIZER
   readonly [ContinuationTypeId] = continuationVariance
-  constructor(readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>) {
+  constructor(readonly finalizer: (exit: Exit<OutErr, OutDone>) => Effect<Env, never, unknown>) {
   }
 }

@@ -1,11 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as Duration from "../Duration.js"
-import type * as Effect from "../Effect.js"
-import type * as Exit from "../Exit.js"
+import type { Duration } from "../Duration.js"
+import type { Effect } from "../Effect.js"
+import type { Exit } from "../Exit.js"
 import * as internal from "../internal/scopedCache.js"
-import type * as Scope from "../Scope.js"
+import type { Scope } from "../Scope.js"
+
 import type { ScopedCache } from "../ScopedCache.js"
 
 /**
@@ -33,7 +34,7 @@ export const make: <Key, Environment, Error, Value>(
     readonly capacity: number
     readonly timeToLive: Duration.DurationInput
   }
-) => Effect.Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>> = internal.make
+) => Effect<Scope | Environment, never, ScopedCache<Key, Error, Value>> = internal.make
 
 /**
  * Constructs a new cache with the specified capacity, time to live, and
@@ -47,9 +48,9 @@ export const makeWith: <Key, Environment, Error, Value>(
   options: {
     readonly capacity: number
     readonly lookup: Lookup<Key, Environment, Error, Value>
-    readonly timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
+    readonly timeToLive: (exit: Exit<Error, Value>) => Duration.DurationInput
   }
-) => Effect.Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>> = internal.makeWith
+) => Effect<Scope | Environment, never, ScopedCache<Key, Error, Value>> = internal.makeWith
 
 /**
  * Similar to `Cache.Lookup`, but executes the lookup function within a `Scope`.
@@ -59,4 +60,4 @@ export const makeWith: <Key, Environment, Error, Value>(
  */
 export type Lookup<Key, Environment, Error, Value> = (
   key: Key
-) => Effect.Effect<Environment | Scope.Scope, Error, Value>
+) => Effect<Environment | Scope, Error, Value>

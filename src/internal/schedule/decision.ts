@@ -1,7 +1,7 @@
-import * as Chunk from "../../Chunk.js"
-import type * as ScheduleDecision from "../../ScheduleDecision.js"
-import type * as Interval from "../../ScheduleInterval.js"
-import * as Intervals from "../../ScheduleIntervals.js"
+import { Chunk } from "../../Chunk.js"
+import type { ScheduleDecision } from "../../ScheduleDecision.js"
+import type { ScheduleInterval } from "../../ScheduleInterval.js"
+import { ScheduleIntervals } from "../../ScheduleIntervals.js"
 
 /** @internal */
 export const OP_CONTINUE = "Continue" as const
@@ -16,7 +16,7 @@ export const OP_DONE = "Done" as const
 export type OP_DONE = typeof OP_DONE
 
 /** @internal */
-export const _continue = (intervals: Intervals.ScheduleIntervals): ScheduleDecision.ScheduleDecision => {
+export const _continue = (intervals: ScheduleIntervals): ScheduleDecision => {
   return {
     _tag: OP_CONTINUE,
     intervals
@@ -24,24 +24,24 @@ export const _continue = (intervals: Intervals.ScheduleIntervals): ScheduleDecis
 }
 
 /** @internal */
-export const continueWith = (interval: Interval.ScheduleInterval): ScheduleDecision.ScheduleDecision => {
+export const continueWith = (interval: ScheduleInterval): ScheduleDecision => {
   return {
     _tag: OP_CONTINUE,
-    intervals: Intervals.make(Chunk.of(interval))
+    intervals: ScheduleIntervals.make(Chunk.of(interval))
   }
 }
 
 /** @internal */
-export const done: ScheduleDecision.ScheduleDecision = {
+export const done: ScheduleDecision = {
   _tag: OP_DONE
 }
 
 /** @internal */
-export const isContinue = (self: ScheduleDecision.ScheduleDecision): self is ScheduleDecision.Continue => {
+export const isContinue = (self: ScheduleDecision): self is ScheduleDecision.Continue => {
   return self._tag === OP_CONTINUE
 }
 
 /** @internal */
-export const isDone = (self: ScheduleDecision.ScheduleDecision): self is ScheduleDecision.Done => {
+export const isDone = (self: ScheduleDecision): self is ScheduleDecision.Done => {
   return self._tag === OP_DONE
 }

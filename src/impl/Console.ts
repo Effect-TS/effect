@@ -1,12 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type { Console } from "../Console.js"
 import type { Effect } from "../Effect.js"
 import * as internal from "../internal/console.js"
 import * as defaultConsole from "../internal/defaultServices/console.js"
-import type * as Layer from "../Layer.js"
+import type { Layer } from "../Layer.js"
 import type { Scope } from "../Scope.js"
+
+import type { Console } from "../Console.js"
 
 /**
  * @since 2.0.0
@@ -61,7 +62,7 @@ export const withConsole: {
  * @since 2.0.0
  * @category default services
  */
-export const setConsole: <A extends Console>(console: A) => Layer.Layer<never, never, never> = internal.setConsole
+export const setConsole: <A extends Console>(console: A) => Layer<never, never, never> = internal.setConsole
 
 /**
  * @since 2.0.0

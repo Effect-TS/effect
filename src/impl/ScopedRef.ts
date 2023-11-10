@@ -1,10 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import type { LazyArg } from "../Function.js"
 import * as internal from "../internal/scopedRef.js"
-import type * as Scope from "../Scope.js"
+import type { Scope } from "../Scope.js"
+
 import type { ScopedRef } from "../ScopedRef.js"
 
 /**
@@ -27,8 +28,8 @@ export type ScopedRefTypeId = typeof ScopedRefTypeId
  * @category constructors
  */
 export const fromAcquire: <R, E, A>(
-  acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<Scope.Scope | R, E, ScopedRef<A>> = internal.fromAcquire
+  acquire: Effect<R, E, A>
+) => Effect<Scope | R, E, ScopedRef<A>> = internal.fromAcquire
 
 /**
  * Retrieves the current value of the scoped reference.
@@ -36,7 +37,7 @@ export const fromAcquire: <R, E, A>(
  * @since 2.0.0
  * @category getters
  */
-export const get: <A>(self: ScopedRef<A>) => Effect.Effect<never, never, A> = internal.get
+export const get: <A>(self: ScopedRef<A>) => Effect<never, never, A> = internal.get
 
 /**
  * Creates a new `ScopedRef` from the specified value. This method should
@@ -45,7 +46,7 @@ export const get: <A>(self: ScopedRef<A>) => Effect.Effect<never, never, A> = in
  * @since 2.0.0
  * @category constructors
  */
-export const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never, ScopedRef<A>> = internal.make
+export const make: <A>(evaluate: LazyArg<A>) => Effect<Scope, never, ScopedRef<A>> = internal.make
 
 /**
  * Sets the value of this reference to the specified resourcefully-created
@@ -59,6 +60,6 @@ export const make: <A>(evaluate: LazyArg<A>) => Effect.Effect<Scope.Scope, never
  * @category getters
  */
 export const set: {
-  <A, R, E>(acquire: Effect.Effect<R, E, A>): (self: ScopedRef<A>) => Effect.Effect<Exclude<R, Scope.Scope>, E, void>
-  <A, R, E>(self: ScopedRef<A>, acquire: Effect.Effect<R, E, A>): Effect.Effect<Exclude<R, Scope.Scope>, E, void>
+  <A, R, E>(acquire: Effect<R, E, A>): (self: ScopedRef<A>) => Effect<Exclude<R, Scope>, E, void>
+  <A, R, E>(self: ScopedRef<A>, acquire: Effect<R, E, A>): Effect<Exclude<R, Scope>, E, void>
 } = internal.set

@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "../internal/channel/mergeStrategy.js"
+
 import type { MergeStrategy } from "../MergeStrategy.js"
 
 /**

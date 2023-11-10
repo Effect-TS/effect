@@ -1,11 +1,12 @@
 /**
  * @since 2.0.0
  */
-import type * as FiberId from "../FiberId.js"
-import type * as FiberRef from "../FiberRef.js"
-import type * as FiberRefs from "../FiberRefs.js"
-import type { FiberRefsPatch } from "../FiberRefsPatch.js"
+import type { FiberId } from "../FiberId.js"
+import type { FiberRef } from "../FiberRef.js"
+import type { FiberRefs } from "../FiberRefs.js"
 import * as internal from "../internal/fiberRefs/patch.js"
+
+import type { FiberRefsPatch } from "../FiberRefsPatch.js"
 
 /**
  * @since 2.0.0
@@ -21,7 +22,7 @@ export interface Empty {
  */
 export interface Add {
   readonly _tag: "Add"
-  readonly fiberRef: FiberRef.FiberRef<unknown>
+  readonly fiberRef: FiberRef<unknown>
   readonly value: unknown
 }
 
@@ -31,7 +32,7 @@ export interface Add {
  */
 export interface Remove {
   readonly _tag: "Remove"
-  readonly fiberRef: FiberRef.FiberRef<unknown>
+  readonly fiberRef: FiberRef<unknown>
 }
 
 /**
@@ -40,7 +41,7 @@ export interface Remove {
  */
 export interface Update {
   readonly _tag: "Update"
-  readonly fiberRef: FiberRef.FiberRef<unknown>
+  readonly fiberRef: FiberRef<unknown>
   readonly patch: unknown
 }
 
@@ -67,7 +68,7 @@ export const empty: FiberRefsPatch = internal.empty
  * @since 2.0.0
  * @category constructors
  */
-export const diff: (oldValue: FiberRefs.FiberRefs, newValue: FiberRefs.FiberRefs) => FiberRefsPatch = internal.diff
+export const diff: (oldValue: FiberRefs, newValue: FiberRefs) => FiberRefsPatch = internal.diff
 
 /**
  * Combines this patch and the specified patch to create a new patch that
@@ -90,6 +91,6 @@ export const combine: {
  * @category destructors
  */
 export const patch: {
-  (fiberId: FiberId.Runtime, oldValue: FiberRefs.FiberRefs): (self: FiberRefsPatch) => FiberRefs.FiberRefs
-  (self: FiberRefsPatch, fiberId: FiberId.Runtime, oldValue: FiberRefs.FiberRefs): FiberRefs.FiberRefs
+  (fiberId: FiberId.Runtime, oldValue: FiberRefs): (self: FiberRefsPatch) => FiberRefs
+  (self: FiberRefsPatch, fiberId: FiberId.Runtime, oldValue: FiberRefs): FiberRefs
 } = internal.patch

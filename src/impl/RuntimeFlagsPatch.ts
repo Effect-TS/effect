@@ -3,7 +3,8 @@
  */
 import * as runtimeFlags from "../internal/runtimeFlags.js"
 import * as internal from "../internal/runtimeFlagsPatch.js"
-import type * as RuntimeFlags from "../RuntimeFlags.js"
+import type { RuntimeFlags } from "../RuntimeFlags.js"
+
 import type { RuntimeFlagsPatch } from "../RuntimeFlagsPatch.js"
 
 /**

@@ -1,14 +1,13 @@
-import * as Chunk from "../../Chunk.js"
-import type * as Differ from "../../Differ.js"
-import * as Equal from "../../Equal.js"
-import * as Dual from "../../Function.js"
-import { pipe } from "../../Function.js"
+import { Chunk } from "../../Chunk.js"
+import type { Differ } from "../../Differ.js"
+import { Equal } from "../../Equal.js"
+import { dual, pipe } from "../../Function.js"
 import * as Data from "../data.js"
 
 /** @internal */
-export const ChunkPatchTypeId: Differ.Differ.Chunk.TypeId = Symbol.for(
+export const ChunkPatchTypeId: Differ.Chunk.TypeId = Symbol.for(
   "effect/DifferChunkPatch"
-) as Differ.Differ.Chunk.TypeId
+) as Differ.Chunk.TypeId
 
 function variance<A, B>(a: A): B {
   return a as unknown as B
@@ -22,7 +21,7 @@ const PatchProto = {
   }
 }
 
-interface Empty<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
+interface Empty<Value, Patch> extends Differ.Chunk.Patch<Value, Patch> {
   readonly _tag: "Empty"
 }
 
@@ -35,12 +34,12 @@ const _empty = Object.create(EmptyProto)
 /**
  * @internal
  */
-export const empty = <Value, Patch>(): Differ.Differ.Chunk.Patch<Value, Patch> => _empty
+export const empty = <Value, Patch>(): Differ.Chunk.Patch<Value, Patch> => _empty
 
-interface AndThen<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
+interface AndThen<Value, Patch> extends Differ.Chunk.Patch<Value, Patch> {
   readonly _tag: "AndThen"
-  readonly first: Differ.Differ.Chunk.Patch<Value, Patch>
-  readonly second: Differ.Differ.Chunk.Patch<Value, Patch>
+  readonly first: Differ.Chunk.Patch<Value, Patch>
+  readonly second: Differ.Chunk.Patch<Value, Patch>
 }
 
 const AndThenProto = Object.assign(Object.create(PatchProto), {
@@ -48,31 +47,31 @@ const AndThenProto = Object.assign(Object.create(PatchProto), {
 })
 
 const makeAndThen = <Value, Patch>(
-  first: Differ.Differ.Chunk.Patch<Value, Patch>,
-  second: Differ.Differ.Chunk.Patch<Value, Patch>
-): Differ.Differ.Chunk.Patch<Value, Patch> => {
+  first: Differ.Chunk.Patch<Value, Patch>,
+  second: Differ.Chunk.Patch<Value, Patch>
+): Differ.Chunk.Patch<Value, Patch> => {
   const o = Object.create(AndThenProto)
   o.first = first
   o.second = second
   return o
 }
 
-interface Append<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
+interface Append<Value, Patch> extends Differ.Chunk.Patch<Value, Patch> {
   readonly _tag: "Append"
-  readonly values: Chunk.Chunk<Value>
+  readonly values: Chunk<Value>
 }
 
 const AppendProto = Object.assign(Object.create(PatchProto), {
   _tag: "Append"
 })
 
-const makeAppend = <Value, Patch>(values: Chunk.Chunk<Value>): Differ.Differ.Chunk.Patch<Value, Patch> => {
+const makeAppend = <Value, Patch>(values: Chunk<Value>): Differ.Chunk.Patch<Value, Patch> => {
   const o = Object.create(AppendProto)
   o.values = values
   return o
 }
 
-interface Slice<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
+interface Slice<Value, Patch> extends Differ.Chunk.Patch<Value, Patch> {
   readonly _tag: "Slice"
   readonly from: number
   readonly until: number
@@ -82,14 +81,14 @@ const SliceProto = Object.assign(Object.create(PatchProto), {
   _tag: "Slice"
 })
 
-const makeSlice = <Value, Patch>(from: number, until: number): Differ.Differ.Chunk.Patch<Value, Patch> => {
+const makeSlice = <Value, Patch>(from: number, until: number): Differ.Chunk.Patch<Value, Patch> => {
   const o = Object.create(SliceProto)
   o.from = from
   o.until = until
   return o
 }
 
-interface Update<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
+interface Update<Value, Patch> extends Differ.Chunk.Patch<Value, Patch> {
   readonly _tag: "Update"
   readonly index: number
   readonly patch: Patch
@@ -99,7 +98,7 @@ const UpdateProto = Object.assign(Object.create(PatchProto), {
   _tag: "Update"
 })
 
-const makeUpdate = <Value, Patch>(index: number, patch: Patch): Differ.Differ.Chunk.Patch<Value, Patch> => {
+const makeUpdate = <Value, Patch>(index: number, patch: Patch): Differ.Chunk.Patch<Value, Patch> => {
   const o = Object.create(UpdateProto)
   o.index = index
   o.patch = patch
@@ -116,11 +115,11 @@ type Instruction =
 /** @internal */
 export const diff = <Value, Patch>(
   options: {
-    readonly oldValue: Chunk.Chunk<Value>
-    readonly newValue: Chunk.Chunk<Value>
-    readonly differ: Differ.Differ<Value, Patch>
+    readonly oldValue: Chunk<Value>
+    readonly newValue: Chunk<Value>
+    readonly differ: Differ<Value, Patch>
   }
-): Differ.Differ.Chunk.Patch<Value, Patch> => {
+): Differ.Chunk.Patch<Value, Patch> => {
   let i = 0
   let patch = empty<Value, Patch>()
   while (i < options.oldValue.length && i < options.newValue.length) {
@@ -142,36 +141,36 @@ export const diff = <Value, Patch>(
 }
 
 /** @internal */
-export const combine = Dual.dual<
+export const combine = dual<
   <Value, Patch>(
-    that: Differ.Differ.Chunk.Patch<Value, Patch>
+    that: Differ.Chunk.Patch<Value, Patch>
   ) => (
-    self: Differ.Differ.Chunk.Patch<Value, Patch>
-  ) => Differ.Differ.Chunk.Patch<Value, Patch>,
+    self: Differ.Chunk.Patch<Value, Patch>
+  ) => Differ.Chunk.Patch<Value, Patch>,
   <Value, Patch>(
-    self: Differ.Differ.Chunk.Patch<Value, Patch>,
-    that: Differ.Differ.Chunk.Patch<Value, Patch>
-  ) => Differ.Differ.Chunk.Patch<Value, Patch>
+    self: Differ.Chunk.Patch<Value, Patch>,
+    that: Differ.Chunk.Patch<Value, Patch>
+  ) => Differ.Chunk.Patch<Value, Patch>
 >(2, (self, that) => makeAndThen(self, that))
 
 /** @internal */
-export const patch = Dual.dual<
+export const patch = dual<
   <Value, Patch>(
-    oldValue: Chunk.Chunk<Value>,
-    differ: Differ.Differ<Value, Patch>
-  ) => (self: Differ.Differ.Chunk.Patch<Value, Patch>) => Chunk.Chunk<Value>,
+    oldValue: Chunk<Value>,
+    differ: Differ<Value, Patch>
+  ) => (self: Differ.Chunk.Patch<Value, Patch>) => Chunk<Value>,
   <Value, Patch>(
-    self: Differ.Differ.Chunk.Patch<Value, Patch>,
-    oldValue: Chunk.Chunk<Value>,
-    differ: Differ.Differ<Value, Patch>
-  ) => Chunk.Chunk<Value>
+    self: Differ.Chunk.Patch<Value, Patch>,
+    oldValue: Chunk<Value>,
+    differ: Differ<Value, Patch>
+  ) => Chunk<Value>
 >(3, <Value, Patch>(
-  self: Differ.Differ.Chunk.Patch<Value, Patch>,
-  oldValue: Chunk.Chunk<Value>,
-  differ: Differ.Differ<Value, Patch>
+  self: Differ.Chunk.Patch<Value, Patch>,
+  oldValue: Chunk<Value>,
+  differ: Differ<Value, Patch>
 ) => {
   let chunk = oldValue
-  let patches: Chunk.Chunk<Differ.Differ.Chunk.Patch<Value, Patch>> = Chunk.of(self)
+  let patches: Chunk<Differ.Chunk.Patch<Value, Patch>> = Chunk.of(self)
   while (Chunk.isNonEmpty(patches)) {
     const head: Instruction = Chunk.headNonEmpty(patches) as Instruction
     const tail = Chunk.tailNonEmpty(patches)

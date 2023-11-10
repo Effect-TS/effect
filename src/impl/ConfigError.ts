@@ -1,7 +1,7 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "../Cause.js"
+import type { Cause } from "../Cause.js"
 import type { ConfigError } from "../ConfigError.js"
 import * as internal from "../internal/configError.js"
 
@@ -30,7 +30,7 @@ export interface ConfigErrorReducer<C, Z> {
     context: C,
     path: Array<string>,
     message: string,
-    cause: Cause.Cause<unknown>
+    cause: Cause<unknown>
   ) => Z
   readonly unsupportedCase: (context: C, path: Array<string>, message: string) => Z
 }
@@ -83,7 +83,7 @@ export interface SourceUnavailable extends ConfigError.Proto {
   readonly _tag: "SourceUnavailable"
   readonly path: Array<string>
   readonly message: string
-  readonly cause: Cause.Cause<unknown>
+  readonly cause: Cause<unknown>
 }
 
 /**
@@ -137,7 +137,7 @@ export const InvalidData: (path: Array<string>, message: string, options?: Optio
 export const SourceUnavailable: (
   path: Array<string>,
   message: string,
-  cause: Cause.Cause<unknown>,
+  cause: Cause<unknown>,
   options?: Options
 ) => ConfigError = internal.SourceUnavailable
 

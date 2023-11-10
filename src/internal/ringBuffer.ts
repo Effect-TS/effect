@@ -1,6 +1,6 @@
-import * as Chunk from "../Chunk.js"
+import { Chunk } from "../Chunk.js"
 import { constUndefined } from "../Function.js"
-import * as Option from "../Option.js"
+import { Option } from "../Option.js"
 
 /** @internal */
 export class RingBuffer<A> {
@@ -12,7 +12,7 @@ export class RingBuffer<A> {
     this.array = Array.from({ length: capacity }, constUndefined)
   }
 
-  head(): Option.Option<A> {
+  head(): Option<A> {
     return Option.fromNullable(this.array[this.current])
   }
 
@@ -38,7 +38,7 @@ export class RingBuffer<A> {
     }
   }
 
-  toChunk(): Chunk.Chunk<A> {
+  toChunk(): Chunk<A> {
     const begin = this.current - this.size
     const newArray = begin < 0
       ? [
@@ -47,7 +47,7 @@ export class RingBuffer<A> {
       ]
       : this.array.slice(begin, this.current)
 
-    return Chunk.fromIterable(newArray) as Chunk.Chunk<A>
+    return Chunk.fromIterable(newArray) as Chunk<A>
   }
 
   private increment(): void {

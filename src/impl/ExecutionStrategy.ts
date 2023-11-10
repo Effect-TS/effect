@@ -1,9 +1,10 @@
 /**
  * @since 2.0.0
  */
-import type { ExecutionStrategy } from "../ExecutionStrategy.js"
 import type { LazyArg } from "../Function.js"
 import * as internal from "../internal/executionStrategy.js"
+
+import type { ExecutionStrategy } from "../ExecutionStrategy.js"
 
 /**
  * Execute effects sequentially.

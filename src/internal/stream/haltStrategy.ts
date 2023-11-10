@@ -1,29 +1,29 @@
 import { dual } from "../../Function.js"
-import type * as HaltStrategy from "../../StreamHaltStrategy.js"
+import type { StreamHaltStrategy } from "../../StreamHaltStrategy.js"
 import * as OpCodes from "../opCodes/streamHaltStrategy.js"
 
 /** @internal */
-export const Left: HaltStrategy.StreamHaltStrategy = {
+export const Left: StreamHaltStrategy = {
   _tag: OpCodes.OP_LEFT
 }
 
 /** @internal */
-export const Right: HaltStrategy.StreamHaltStrategy = {
+export const Right: StreamHaltStrategy = {
   _tag: OpCodes.OP_RIGHT
 }
 
 /** @internal */
-export const Both: HaltStrategy.StreamHaltStrategy = {
+export const Both: StreamHaltStrategy = {
   _tag: OpCodes.OP_BOTH
 }
 
 /** @internal */
-export const Either: HaltStrategy.StreamHaltStrategy = {
+export const Either: StreamHaltStrategy = {
   _tag: OpCodes.OP_EITHER
 }
 
 /** @internal */
-export const fromInput = (input: HaltStrategy.HaltStrategyInput): HaltStrategy.StreamHaltStrategy => {
+export const fromInput = (input: StreamHaltStrategy.HaltStrategyInput): StreamHaltStrategy => {
   switch (input) {
     case "left":
       return Left
@@ -39,38 +39,29 @@ export const fromInput = (input: HaltStrategy.HaltStrategyInput): HaltStrategy.S
 }
 
 /** @internal */
-export const isLeft = (self: HaltStrategy.StreamHaltStrategy): self is HaltStrategy.Left =>
-  self._tag === OpCodes.OP_LEFT
+export const isLeft = (self: StreamHaltStrategy): self is StreamHaltStrategy.Left => self._tag === OpCodes.OP_LEFT
 
 /** @internal */
-export const isRight = (self: HaltStrategy.StreamHaltStrategy): self is HaltStrategy.Right =>
-  self._tag === OpCodes.OP_RIGHT
+export const isRight = (self: StreamHaltStrategy): self is StreamHaltStrategy.Right => self._tag === OpCodes.OP_RIGHT
 
 /** @internal */
-export const isBoth = (self: HaltStrategy.StreamHaltStrategy): self is HaltStrategy.Both =>
-  self._tag === OpCodes.OP_BOTH
+export const isBoth = (self: StreamHaltStrategy): self is StreamHaltStrategy.Both => self._tag === OpCodes.OP_BOTH
 
 /** @internal */
-export const isEither = (self: HaltStrategy.StreamHaltStrategy): self is HaltStrategy.Either =>
-  self._tag === OpCodes.OP_EITHER
+export const isEither = (self: StreamHaltStrategy): self is StreamHaltStrategy.Either => self._tag === OpCodes.OP_EITHER
 
 /** @internal */
 export const match = dual<
+  <Z>(onLeft: () => Z, onRight: () => Z, onBoth: () => Z, onEither: () => Z) => (self: StreamHaltStrategy) => Z,
   <Z>(
-    onLeft: () => Z,
-    onRight: () => Z,
-    onBoth: () => Z,
-    onEither: () => Z
-  ) => (self: HaltStrategy.StreamHaltStrategy) => Z,
-  <Z>(
-    self: HaltStrategy.StreamHaltStrategy,
+    self: StreamHaltStrategy,
     onLeft: () => Z,
     onRight: () => Z,
     onBoth: () => Z,
     onEither: () => Z
   ) => Z
 >(5, <Z>(
-  self: HaltStrategy.StreamHaltStrategy,
+  self: StreamHaltStrategy,
   onLeft: () => Z,
   onRight: () => Z,
   onBoth: () => Z,

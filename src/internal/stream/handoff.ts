@@ -1,8 +1,8 @@
-import * as Deferred from "../../Deferred.js"
-import * as Effect from "../../Effect.js"
+import { Deferred } from "../../Deferred.js"
+import { Effect } from "../../Effect.js"
 import { dual, pipe } from "../../Function.js"
-import * as Option from "../../Option.js"
-import * as Ref from "../../Ref.js"
+import { Option } from "../../Option.js"
+import { Ref } from "../../Ref.js"
 
 /** @internal */
 export const HandoffTypeId = Symbol.for("effect/Stream/Handoff")
@@ -18,7 +18,33 @@ export type HandoffTypeId = typeof HandoffTypeId
  * @internal
  */
 export interface Handoff<A> extends Handoff.Variance<A> {
-  readonly ref: Ref.Ref<Handoff.State<A>>
+  readonly ref: Ref<Handoff.State<A>>
+}
+
+/** @internal */
+export namespace Handoff {
+  /** @internal */
+  export interface Variance<A> {
+    readonly [HandoffTypeId]: {
+      readonly _A: (_: never) => A
+    }
+  }
+
+  /** @internal */
+  export type State<A> = Empty | Full<A>
+
+  /** @internal */
+  export interface Empty {
+    readonly _tag: OP_HANDOFF_STATE_EMPTY
+    readonly notifyConsumer: Deferred<never, void>
+  }
+
+  /** @internal */
+  export interface Full<A> {
+    readonly _tag: OP_HANDOFF_STATE_FULL
+    readonly value: A
+    readonly notifyProducer: Deferred<never, void>
+  }
 }
 
 /** @internal */
@@ -34,39 +60,13 @@ export const OP_HANDOFF_STATE_FULL = "Full" as const
 export type OP_HANDOFF_STATE_FULL = typeof OP_HANDOFF_STATE_FULL
 
 /** @internal */
-export declare namespace Handoff {
-  /** @internal */
-  export interface Variance<A> {
-    readonly [HandoffTypeId]: {
-      readonly _A: (_: never) => A
-    }
-  }
-
-  /** @internal */
-  export type State<A> = Empty | Full<A>
-
-  /** @internal */
-  export interface Empty {
-    readonly _tag: OP_HANDOFF_STATE_EMPTY
-    readonly notifyConsumer: Deferred.Deferred<never, void>
-  }
-
-  /** @internal */
-  export interface Full<A> {
-    readonly _tag: OP_HANDOFF_STATE_FULL
-    readonly value: A
-    readonly notifyProducer: Deferred.Deferred<never, void>
-  }
-}
-
-/** @internal */
-const handoffStateEmpty = (notifyConsumer: Deferred.Deferred<never, void>): Handoff.State<never> => ({
+const handoffStateEmpty = (notifyConsumer: Deferred<never, void>): Handoff.State<never> => ({
   _tag: OP_HANDOFF_STATE_EMPTY,
   notifyConsumer
 })
 
 /** @internal */
-const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, void>): Handoff.State<A> => ({
+const handoffStateFull = <A>(value: A, notifyProducer: Deferred<never, void>): Handoff.State<A> => ({
   _tag: OP_HANDOFF_STATE_FULL,
   value,
   notifyProducer
@@ -74,8 +74,8 @@ const handoffStateFull = <A>(value: A, notifyProducer: Deferred.Deferred<never, 
 
 /** @internal */
 const handoffStateMatch = <A, Z>(
-  onEmpty: (notifyConsumer: Deferred.Deferred<never, void>) => Z,
-  onFull: (value: A, notifyProducer: Deferred.Deferred<never, void>) => Z
+  onEmpty: (notifyConsumer: Deferred<never, void>) => Z,
+  onFull: (value: A, notifyProducer: Deferred<never, void>) => Z
 ) => {
   return (self: Handoff.State<A>): Z => {
     switch (self._tag) {
@@ -95,7 +95,7 @@ const handoffVariance = {
 }
 
 /** @internal */
-export const make = <A>(): Effect.Effect<never, never, Handoff<A>> =>
+export const make = <A>(): Effect<never, never, Handoff<A>> =>
   pipe(
     Deferred.make<never, void>(),
     Effect.flatMap((deferred) => Ref.make(handoffStateEmpty(deferred))),
@@ -107,9 +107,9 @@ export const make = <A>(): Effect.Effect<never, never, Handoff<A>> =>
 
 /** @internal */
 export const offer = dual<
-  <A>(value: A) => (self: Handoff<A>) => Effect.Effect<never, never, void>,
-  <A>(self: Handoff<A>, value: A) => Effect.Effect<never, never, void>
->(2, (self, value): Effect.Effect<never, never, void> => {
+  <A>(value: A) => (self: Handoff<A>) => Effect<never, never, void>,
+  <A>(self: Handoff<A>, value: A) => Effect<never, never, void>
+>(2, (self, value): Effect<never, never, void> => {
   return Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>
@@ -136,7 +136,7 @@ export const offer = dual<
 })
 
 /** @internal */
-export const take = <A>(self: Handoff<A>): Effect.Effect<never, never, A> =>
+export const take = <A>(self: Handoff<A>): Effect<never, never, A> =>
   Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>
@@ -162,7 +162,7 @@ export const take = <A>(self: Handoff<A>): Effect.Effect<never, never, A> =>
     ))
 
 /** @internal */
-export const poll = <A>(self: Handoff<A>): Effect.Effect<never, never, Option.Option<A>> =>
+export const poll = <A>(self: Handoff<A>): Effect<never, never, Option<A>> =>
   Effect.flatMap(Deferred.make<never, void>(), (deferred) =>
     Effect.flatten(
       Ref.modify(self.ref, (state) =>

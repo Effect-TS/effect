@@ -1,13 +1,14 @@
 /**
  * @since 2.0.0
  */
-import type * as Effect from "../Effect.js"
+import type { Effect } from "../Effect.js"
 import { dual, pipe } from "../Function.js"
 import * as core from "../internal/core.js"
-import type { LogLevel } from "../LogLevel.js"
 import * as number from "../Number.js"
 import * as order from "../Order.js"
 import type { Pipeable } from "../Pipeable.js"
+
+import type { LogLevel } from "../LogLevel.js"
 
 /**
  * @since 2.0.0
@@ -165,11 +166,11 @@ export const allLevels = core.allLogLevels
  * @category utils
  */
 export const locally: {
-  (self: LogLevel): <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>
-  <R, E, B>(use: Effect.Effect<R, E, B>, self: LogLevel): Effect.Effect<R, E, B>
+  (self: LogLevel): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
+  <R, E, B>(use: Effect<R, E, B>, self: LogLevel): Effect<R, E, B>
 } = dual<
-  (self: LogLevel) => <R, E, B>(use: Effect.Effect<R, E, B>) => Effect.Effect<R, E, B>,
-  <R, E, B>(use: Effect.Effect<R, E, B>, self: LogLevel) => Effect.Effect<R, E, B>
+  (self: LogLevel) => <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>,
+  <R, E, B>(use: Effect<R, E, B>, self: LogLevel) => Effect<R, E, B>
 >(2, (use, self) => core.fiberRefLocally(use, core.currentLogLevel, self))
 
 /**

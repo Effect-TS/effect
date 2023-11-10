@@ -1,12 +1,13 @@
 /**
  * @since 2.0.0
  */
-import type * as Cause from "../Cause.js"
-import type * as Chunk from "../Chunk.js"
-import type * as Effect from "../Effect.js"
-import type * as Exit from "../Exit.js"
+import type { Cause } from "../Cause.js"
+import type { Chunk } from "../Chunk.js"
+import type { Effect } from "../Effect.js"
+import type { Exit } from "../Exit.js"
 import * as internal from "../internal/take.js"
-import type * as Option from "../Option.js"
+import type { Option } from "../Option.js"
+
 import type { Take } from "../Take.js"
 
 /**
@@ -27,7 +28,7 @@ export type TakeTypeId = typeof TakeTypeId
  * @since 2.0.0
  * @category constructors
  */
-export const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<never, A> = internal.chunk
+export const chunk: <A>(chunk: Chunk<A>) => Take<never, A> = internal.chunk
 
 /**
  * Creates a failing `Take` with the specified defect.
@@ -51,7 +52,7 @@ export const dieMessage: (message: string) => Take<never, never> = internal.dieM
  * @since 2.0.0
  * @category destructors
  */
-export const done: <E, A>(self: Take<E, A>) => Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>> = internal.done
+export const done: <E, A>(self: Take<E, A>) => Effect<never, Option<E>, Chunk<A>> = internal.done
 
 /**
  * Represents the end-of-stream marker.
@@ -75,7 +76,7 @@ export const fail: <E>(error: E) => Take<E, never> = internal.fail
  * @since 2.0.0
  * @category constructors
  */
-export const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never> = internal.failCause
+export const failCause: <E>(cause: Cause<E>) => Take<E, never> = internal.failCause
 
 /**
  * Creates an effect from `Effect<R, E, A>` that does not fail, but succeeds with
@@ -85,8 +86,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never> = internal.
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Take<E, A>> =
-  internal.fromEffect
+export const fromEffect: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, never, Take<E, A>> = internal.fromEffect
 
 /**
  * Creates a `Take` from an `Exit`.
@@ -94,7 +94,7 @@ export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Eff
  * @since 2.0.0
  * @category constructors
  */
-export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fromExit
+export const fromExit: <E, A>(exit: Exit<E, A>) => Take<E, A> = internal.fromExit
 
 /**
  * Creates effect from `Effect<R, Option<E>, Chunk<A>>` that does not fail, but
@@ -105,8 +105,8 @@ export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fr
  * @category constructors
  */
 export const fromPull: <R, E, A>(
-  pull: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>
-) => Effect.Effect<R, never, Take<E, A>> = internal.fromPull
+  pull: Effect<R, Option<E>, Chunk<A>>
+) => Effect<R, never, Take<E, A>> = internal.fromPull
 
 /**
  * Checks if this `take` is done (`Take.end`).
@@ -138,7 +138,7 @@ export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
  * @since 2.0.0
  * @category constructors
  */
-export const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A> = internal.make
+export const make: <E, A>(exit: Exit<Option<E>, Chunk<A>>) => Take<E, A> = internal.make
 
 /**
  * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.
@@ -162,16 +162,16 @@ export const match: {
   <Z, E, Z2, A, Z3>(
     options: {
       readonly onEnd: () => Z
-      readonly onFailure: (cause: Cause.Cause<E>) => Z2
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Z3
+      readonly onFailure: (cause: Cause<E>) => Z2
+      readonly onSuccess: (chunk: Chunk<A>) => Z3
     }
   ): (self: Take<E, A>) => Z | Z2 | Z3
   <Z, E, Z2, A, Z3>(
     self: Take<E, A>,
     options: {
       readonly onEnd: () => Z
-      readonly onFailure: (cause: Cause.Cause<E>) => Z2
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Z3
+      readonly onFailure: (cause: Cause<E>) => Z2
+      readonly onSuccess: (chunk: Chunk<A>) => Z3
     }
   ): Z | Z2 | Z3
 } = internal.match
@@ -188,19 +188,19 @@ export const match: {
 export const matchEffect: {
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: () => Effect<R, E2, Z>
+      readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, Z2>
+      readonly onSuccess: (chunk: Chunk<A>) => Effect<R3, E3, Z3>
     }
-  ): (self: Take<E, A>) => Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+  ): (self: Take<E, A>) => Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     self: Take<E, A>,
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
-      readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
-      readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
+      readonly onEnd: () => Effect<R, E2, Z>
+      readonly onFailure: (cause: Cause<E>) => Effect<R2, E2, Z2>
+      readonly onSuccess: (chunk: Chunk<A>) => Effect<R3, E3, Z3>
     }
-  ): Effect.Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
+  ): Effect<R | R2 | R3, E2 | E | E3, Z | Z2 | Z3>
 } = internal.matchEffect
 
 /**
@@ -219,10 +219,10 @@ export const of: <A>(value: A) => Take<never, A> = internal.of
  */
 export const tap: {
   <A, R, E2, _>(
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): <E>(self: Take<E, A>) => Effect.Effect<R, E2 | E, void>
+    f: (chunk: Chunk<A>) => Effect<R, E2, _>
+  ): <E>(self: Take<E, A>) => Effect<R, E2 | E, void>
   <E, A, R, E2, _>(
     self: Take<E, A>,
-    f: (chunk: Chunk.Chunk<A>) => Effect.Effect<R, E2, _>
-  ): Effect.Effect<R, E | E2, void>
+    f: (chunk: Chunk<A>) => Effect<R, E2, _>
+  ): Effect<R, E | E2, void>
 } = internal.tap

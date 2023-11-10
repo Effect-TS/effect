@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import { pipeArguments } from "../Pipeable.js"
-import * as Stream from "../Stream.js"
+import { Stream } from "../Stream.js"
 
 const streamVariance = {
   _R: (_: never) => _,
@@ -14,7 +14,7 @@ const streamVariance = {
  * @since 2.0.0
  * @category constructors
  */
-export abstract class Class<R, E, A> implements Stream.Stream<R, E, A> {
+export abstract class Class<R, E, A> implements Stream<R, E, A> {
   /**
    * @since 2.0.0
    */
@@ -30,7 +30,7 @@ export abstract class Class<R, E, A> implements Stream.Stream<R, E, A> {
   /**
    * @since 2.0.0
    */
-  abstract toStream(): Stream.Stream<R, E, A>
+  abstract toStream(): Stream<R, E, A>
 
   /**
    * @internal

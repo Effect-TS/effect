@@ -4,17 +4,18 @@
  *
  * @since 2.0.0
  */
-import type * as Context from "../Context.js"
-import type * as Effect from "../Effect.js"
-import type * as Exit from "../Exit.js"
-import type * as Fiber from "../Fiber.js"
+import type { Context } from "../Context.js"
+import type { Effect } from "../Effect.js"
+import type { Exit } from "../Exit.js"
+import type { Fiber } from "../Fiber.js"
 import * as core from "../internal/core.js"
 import * as circular from "../internal/layer/circular.js"
 import * as internal from "../internal/supervisor.js"
-import type * as Layer from "../Layer.js"
-import type * as MutableRef from "../MutableRef.js"
-import type * as Option from "../Option.js"
-import type * as SortedSet from "../SortedSet.js"
+import type { Layer } from "../Layer.js"
+import type { MutableRef } from "../MutableRef.js"
+import type { Option } from "../Option.js"
+import type { SortedSet } from "../SortedSet.js"
+
 import type { Supervisor } from "../Supervisor.js"
 
 /**
@@ -33,7 +34,7 @@ export type SupervisorTypeId = typeof SupervisorTypeId
  * @since 2.0.0
  * @category context
  */
-export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never, never, never> = circular.addSupervisor
+export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer<never, never, never> = circular.addSupervisor
 
 /**
  * Creates a new supervisor that tracks children in a set.
@@ -42,8 +43,8 @@ export const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never,
  * @category constructors
  */
 export const fibersIn: (
-  ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>
-) => Effect.Effect<never, never, Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>> = internal.fibersIn
+  ref: MutableRef<SortedSet<Fiber.RuntimeFiber<any, any>>>
+) => Effect<never, never, Supervisor<SortedSet<Fiber.RuntimeFiber<any, any>>>> = internal.fibersIn
 
 /**
  * Creates a new supervisor that constantly yields effect when polled
@@ -51,7 +52,7 @@ export const fibersIn: (
  * @since 2.0.0
  * @category constructors
  */
-export const fromEffect: <A>(effect: Effect.Effect<never, never, A>) => Supervisor<A> = internal.fromEffect
+export const fromEffect: <A>(effect: Effect<never, never, A>) => Supervisor<A> = internal.fromEffect
 
 /**
  * A supervisor that doesn't do anything in response to supervision events.
@@ -67,7 +68,7 @@ export const none: Supervisor<void> = internal.none
  * @since 2.0.0
  * @category constructors
  */
-export const track: Effect.Effect<never, never, Supervisor<Array<Fiber.RuntimeFiber<any, any>>>> = internal.track
+export const track: Effect<never, never, Supervisor<Array<Fiber.RuntimeFiber<any, any>>>> = internal.track
 
 /**
  * Unsafely creates a new supervisor that tracks children in a set.
@@ -85,15 +86,15 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  abstract value(): Effect.Effect<never, never, T>
+  abstract value(): Effect<never, never, T>
 
   /**
    * @since 2.0.0
    */
   onStart<R, E, A>(
-    _context: Context.Context<R>,
-    _effect: Effect.Effect<R, E, A>,
-    _parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
+    _context: Context<R>,
+    _effect: Effect<R, E, A>,
+    _parent: Option<Fiber.RuntimeFiber<any, any>>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     //
@@ -103,7 +104,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   onEnd<E, A>(
-    _value: Exit.Exit<E, A>,
+    _value: Exit<E, A>,
     _fiber: Fiber.RuntimeFiber<E, A>
   ): void {
     //
@@ -114,7 +115,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    */
   onEffect<E, A>(
     _fiber: Fiber.RuntimeFiber<E, A>,
-    _effect: Effect.Effect<any, any, any>
+    _effect: Effect<any, any, any>
   ): void {
     //
   }
