@@ -125,25 +125,67 @@ describe.concurrent("Function", () => {
     deepStrictEqual((Function.flow as any)(...[f, g, f, g, f, g, f, g, f, g]), undefined)
   })
 
-  it("dual", () => {
-    // arity as number
-    const f = Function.dual<
-      (that: number) => (self: number) => number,
-      (self: number, that: number) => number
-    >(2, (a: number, b: number): number => a - b)
-    deepStrictEqual(f(3, 2), 1)
-    deepStrictEqual(Function.pipe(3, f(2)), 1)
-    // should ignore excess arguments
-    deepStrictEqual(f.apply(null, [3, 2, 100] as any), 1)
+  describe("dual", () => {
+    it("arity as predicate", () => {
+      const f = Function.dual<
+        (that: number) => (self: number) => number,
+        (self: number, that: number) => number
+      >((args) => args.length >= 2, (a: number, b: number): number => a - b)
+      deepStrictEqual(f(3, 2), 1)
+      deepStrictEqual(Function.pipe(3, f(2)), 1)
+      // should ignore excess arguments
+      deepStrictEqual(f.apply(null, [3, 2, 100] as any), 1)
+    })
 
-    // arity as predicate
-    const g = Function.dual<
-      (that: number) => (self: number) => number,
-      (self: number, that: number) => number
-    >((args) => args.length >= 2, (a: number, b: number): number => a - b)
-    deepStrictEqual(g(3, 2), 1)
-    deepStrictEqual(Function.pipe(3, g(2)), 1)
-    // should ignore excess arguments
-    deepStrictEqual(g.apply(null, [3, 2, 100] as any), 1)
+    it("arity: 0", () => {
+      expect(() =>
+        Function.dual<
+          () => () => number,
+          () => number
+        >(0, (): number => 2)
+      ).toThrow(new RangeError("Invalid arity 0"))
+    })
+
+    it("arity: 1", () => {
+      expect(() =>
+        Function.dual<
+          () => (self: number) => number,
+          (self: number) => number
+        >(1, (self: number): number => self * 2)
+      ).toThrow(new RangeError("Invalid arity 1"))
+    })
+
+    it("arity: 2", () => {
+      const f = Function.dual<
+        (that: number) => (self: number) => number,
+        (self: number, that: number) => number
+      >(2, (a: number, b: number): number => a - b)
+      deepStrictEqual(f(3, 2), 1)
+      deepStrictEqual(Function.pipe(3, f(2)), 1)
+      // should ignore excess arguments
+      deepStrictEqual(f.apply(null, [3, 2, 100] as any), 1)
+    })
+
+    it("arity: 5", () => {
+      const f = Function.dual<
+        (a: string, b: string, c: string, d: string) => (self: string) => string,
+        (self: string, a: string, b: string, c: string, d: string) => string
+      >(5, (self: string, a: string, b: string, c: string, d: string): string => self + a + b + c + d)
+      deepStrictEqual(f("_", "a", "b", "c", "d"), "_abcd")
+      deepStrictEqual(Function.pipe("_", f("a", "b", "c", "d")), "_abcd")
+      // should ignore excess arguments
+      deepStrictEqual(f.apply(null, ["_", "a", "b", "c", "d", "e"] as any), "_abcd")
+    })
+
+    it("arity > 5", () => {
+      const f = Function.dual<
+        (a: string, b: string, c: string, d: string, e: string) => (self: string) => string,
+        (self: string, a: string, b: string, c: string, d: string, e: string) => string
+      >(6, (self: string, a: string, b: string, c: string, d: string, e: string): string => self + a + b + c + d + e)
+      deepStrictEqual(f("_", "a", "b", "c", "d", "e"), "_abcde")
+      deepStrictEqual(Function.pipe("_", f("a", "b", "c", "d", "e")), "_abcde")
+      // should ignore excess arguments
+      deepStrictEqual(f.apply(null, ["_", "a", "b", "c", "d", "e", "f"] as any), "_abcde")
+    })
   })
 })
