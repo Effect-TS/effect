@@ -22,14 +22,14 @@ export interface TupleTypeLambda extends TypeLambda {
  * @param elements - The list of elements to create the tuple from.
  *
  * @example
- * import { tuple } from "effect/Tuple"
+ * import { make } from "effect/Tuple"
  *
- * assert.deepStrictEqual(tuple(1, 'hello', true), [1, 'hello', true])
+ * assert.deepStrictEqual(make(1, 'hello', true), [1, 'hello', true])
  *
  * @category constructors
  * @since 2.0.0
  */
-export const tuple = <A extends ReadonlyArray<any>>(...elements: A): A => elements
+export const make = <A extends ReadonlyArray<any>>(...elements: A): A => elements
 
 /**
  * Return the first element of a tuple.

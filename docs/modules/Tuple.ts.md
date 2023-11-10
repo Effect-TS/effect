@@ -20,7 +20,7 @@ Added in v2.0.0
 - [concatenating](#concatenating)
   - [appendElement](#appendelement)
 - [constructors](#constructors)
-  - [tuple](#tuple)
+  - [make](#make)
 - [getters](#getters)
   - [getFirst](#getfirst)
   - [getSecond](#getsecond)
@@ -90,22 +90,22 @@ Added in v2.0.0
 
 # constructors
 
-## tuple
+## make
 
 Constructs a new tuple from the provided values.
 
 **Signature**
 
 ```ts
-export declare const tuple: <A extends readonly any[]>(...elements: A) => A
+export declare const make: <A extends readonly any[]>(...elements: A) => A
 ```
 
 **Example**
 
 ```ts
-import { tuple } from "effect/Tuple"
+import { make } from "effect/Tuple"
 
-assert.deepStrictEqual(tuple(1, "hello", true), [1, "hello", true])
+assert.deepStrictEqual(make(1, "hello", true), [1, "hello", true])
 ```
 
 Added in v2.0.0

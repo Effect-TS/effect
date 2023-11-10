@@ -1,16 +1,19 @@
 import { pipe } from "effect/Function"
 import * as T from "effect/Tuple"
 
-//
-// tuple
-//
+// -------------------------------------------------------------------------------------
+// make
+// -------------------------------------------------------------------------------------
 
 // $ExpectType [string, number, boolean]
-T.tuple("a", 1, true)
+T.make("a", 1, true)
 
-//
+// -------------------------------------------------------------------------------------
 // appendElement
-//
+// -------------------------------------------------------------------------------------
 
 // $ExpectType [string, number, boolean]
-pipe(T.tuple("a", 1), T.appendElement(true))
+pipe(T.make("a", 1), T.appendElement(true))
+
+// $ExpectType [string, number, boolean]
+T.appendElement(T.make("a", 1), true)
