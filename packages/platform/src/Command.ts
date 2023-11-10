@@ -85,6 +85,7 @@ export interface StandardCommand extends Command.Proto, Pipeable {
   readonly args: ReadonlyArray<string>
   readonly env: HashMap<string, string>
   readonly cwd: Option<string>
+  readonly shell: boolean | string
   readonly stdin: Option<Command.Input>
   readonly stdout: Command.Output
   readonly stderr: Command.Output
@@ -191,6 +192,18 @@ export const pipeTo: {
   (into: Command): (self: Command) => Command
   (self: Command, into: Command): Command
 } = internal.pipeTo
+
+/**
+ * Allows for specifying whether or not a `Command` should be run inside a
+ * shell.
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const runInShell: {
+  (shell: string | boolean): (self: Command) => Command
+  (self: Command, shell: string | boolean): Command
+} = internal.runInShell
 
 /**
  * Start running the command and return a handle to the running process.

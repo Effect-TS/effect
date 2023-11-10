@@ -54,6 +54,7 @@ const runCommand =
                   outputToStdioOption(command.stderr)
                 ],
                 cwd: Option.getOrElse(command.cwd, constUndefined),
+                shell: command.shell,
                 env: { ...env, ...Object.fromEntries(command.env) }
               })
               let exited = false

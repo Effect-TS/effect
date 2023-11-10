@@ -69,6 +69,24 @@ const flattenLoop = (self: Command.Command): Chunk.NonEmptyChunk<Command.Standar
 }
 
 /** @internal */
+export const runInShell = dual<
+  (shell: boolean | string) => (self: Command.Command) => Command.Command,
+  (self: Command.Command, shell: boolean | string) => Command.Command
+>(2, (self: Command.Command, shell: boolean | string): Command.Command => {
+  switch (self._tag) {
+    case "StandardCommand": {
+      return { ...self, shell }
+    }
+    case "PipedCommand": {
+      return pipeTo(
+        runInShell(self.left, shell),
+        runInShell(self.right, shell)
+      )
+    }
+  }
+})
+
+/** @internal */
 export const lines = (
   command: Command.Command,
   encoding = "utf-8"
@@ -83,6 +101,7 @@ export const make = (command: string, ...args: Array<string>): Command.Command =
   args,
   env: HashMap.empty(),
   cwd: Option.none(),
+  shell: false,
   // The initial process input here does not matter, we just want the child
   // process to default to `"pipe"` for the stdin stream.
   stdin: Option.some(Stream.empty),
