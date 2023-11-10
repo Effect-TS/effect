@@ -245,7 +245,9 @@ const tryCommit = <R, E, A>(
   if (analysis === Journal.JournalAnalysisReadWrite) {
     Journal.commitJournal(journal)
   } else if (analysis === Journal.JournalAnalysisInvalid) {
-    throw new Error("BUG: STM.TryCommit.tryCommit - please report an issue at https://github.com/Effect-TS/io/issues")
+    throw new Error(
+      "BUG: STM.TryCommit.tryCommit - please report an issue at https://github.com/Effect-TS/effect/issues"
+    )
   }
 
   switch (tExit._tag) {
@@ -305,7 +307,7 @@ const tryCommitSync = <R, E, A>(
     Journal.commitJournal(journal)
   } else if (analysis === Journal.JournalAnalysisInvalid) {
     throw new Error(
-      "BUG: STM.TryCommit.tryCommitSync - please report an issue at https://github.com/Effect-TS/io/issues"
+      "BUG: STM.TryCommit.tryCommitSync - please report an issue at https://github.com/Effect-TS/effect/issues"
     )
   }
 

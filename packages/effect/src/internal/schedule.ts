@@ -1458,7 +1458,7 @@ export const unionWith = dual<
           ]
         }
         throw new Error(
-          "BUG: Schedule.unionWith - please report an issue at https://github.com/Effect-TS/io/issues"
+          "BUG: Schedule.unionWith - please report an issue at https://github.com/Effect-TS/effect/issues"
         )
       }
     )))

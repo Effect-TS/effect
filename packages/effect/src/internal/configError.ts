@@ -280,7 +280,7 @@ export const reduceWithContext = dual<
   }
   if (accumulator.length === 0) {
     throw new Error(
-      "BUG: ConfigError.reduceWithContext - please report an issue at https://github.com/Effect-TS/io/issues"
+      "BUG: ConfigError.reduceWithContext - please report an issue at https://github.com/Effect-TS/effect/issues"
     )
   }
   return accumulator.pop()!
