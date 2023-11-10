@@ -10,13 +10,18 @@ import * as Grep from "@effect/cli/test/utils/grep"
 import * as Tail from "@effect/cli/test/utils/tail"
 import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
+import * as FileSystem from "@effect/platform-node/FileSystem"
 import * as Doc from "@effect/printer/Doc"
 import * as Render from "@effect/printer/Render"
 import { Effect, Option, ReadonlyArray, String } from "effect"
+import * as Layer from "effect/Layer"
 import { describe, expect, it } from "vitest"
 
-const runEffect = <E, A>(self: Effect.Effect<Terminal.Terminal, E, A>): Promise<A> =>
-  Effect.provide(self, Terminal.layer).pipe(Effect.runPromise)
+const MainLive = Layer.merge(FileSystem.layer, Terminal.LiveTerminal)
+
+const runEffect = <E, A>(
+  self: Effect.Effect<FileSystem.FileSystem | Terminal.Terminal, E, A>
+): Promise<A> => Effect.provide(self, MainLive).pipe(Effect.runPromise)
 
 describe("Command", () => {
   describe("Standard Commands", () => {

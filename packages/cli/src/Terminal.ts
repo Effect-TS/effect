@@ -73,4 +73,4 @@ export const Terminal: Context.Tag<Terminal, Terminal> = internal.Tag
  * @since 1.0.0
  * @category context
  */
-export const layer: Layer.Layer<never, never, Terminal> = internal.layer
+export const LiveTerminal: Layer.Layer<never, never, Terminal> = internal.LiveTerminal

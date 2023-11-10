@@ -1,3 +1,4 @@
+import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -12,6 +13,7 @@ import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
 import type * as Parameter from "../Parameter.js"
 import type * as Primitive from "../Primitive.js"
+import type * as RegularLanguage from "../RegularLanguage.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalAutoCorrect from "./autoCorrect.js"
@@ -19,6 +21,7 @@ import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
+import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
 
@@ -203,7 +206,7 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
   validate(
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, A> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, A> {
     const names = ReadonlyArray.filterMap(this.names, (name) => HashMap.get(args, name))
     if (ReadonlyArray.isNonEmptyReadonlyArray(names)) {
       const head = ReadonlyArray.headNonEmpty(names)
@@ -289,7 +292,7 @@ export class Map<A, B> implements Options.Options<B> {
   validate(
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, B> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, B> {
     return this.options.validate(args, config).pipe(Effect.flatMap((a) => this.f(a)))
   }
 
@@ -339,7 +342,7 @@ export class OrElse<A, B> implements Options.Options<Either.Either<A, B>> {
   validate(
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, Either.Either<A, B>> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, Either.Either<A, B>> {
     return this.left.validate(args, config).pipe(
       Effect.matchEffect({
         onFailure: (err1) =>
@@ -424,7 +427,7 @@ export class Both<A, B> implements Options.Options<readonly [A, B]> {
   validate(
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [A, B]> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, readonly [A, B]> {
     return this.left.validate(args, config).pipe(
       Effect.catchAll((err1) =>
         this.right.validate(args, config).pipe(Effect.matchEffect({
@@ -521,7 +524,7 @@ export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
   validate(
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, A> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, A> {
     return this.options.validate(args, config).pipe(
       Effect.catchTag("MissingValue", () => Effect.succeed(this.fallback))
     )
@@ -570,7 +573,7 @@ export class KeyValueMap
   isValid(
     input: string,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, ReadonlyArray<string>> {
     const identifier = Option.getOrElse(this.identifier, () => "")
     const args = input.split(" ")
     return this.validate(HashMap.make([identifier, args]), config).pipe(
@@ -637,7 +640,11 @@ export class KeyValueMap
   validate(
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, HashMap.HashMap<string, string>> {
+  ): Effect.Effect<
+    FileSystem.FileSystem,
+    ValidationError.ValidationError,
+    HashMap.HashMap<string, string>
+  > {
     const extractKeyValue = (
       keyValue: string
     ): Effect.Effect<never, ValidationError.ValidationError, readonly [string, string]> => {
@@ -742,7 +749,7 @@ const defaultBooleanOptions = {
 /** @internal */
 export const boolean = (
   name: string,
-  options: Options.Options.BooleanOptionConfig = {}
+  options: Options.Options.BooleanOptionsConfig = {}
 ): Options.Options<boolean> => {
   const { aliases, ifPresent, negationNames } = { ...defaultBooleanOptions, ...options }
   const option = new Single(
@@ -784,6 +791,28 @@ export const choiceWithValue = <C extends ReadonlyArray.NonEmptyReadonlyArray<[s
 /** @internal */
 export const date = (name: string): Options.Options<Date> =>
   new Single(name, ReadonlyArray.empty(), InternalPrimitive.date)
+
+/** @internal */
+export const directory = (
+  name: string,
+  config: Options.Options.PathOptionsConfig
+): Options.Options<string> =>
+  new Single(
+    name,
+    ReadonlyArray.empty(),
+    InternalPrimitive.path("directory", config.exists || "either")
+  )
+
+/** @internal */
+export const file = (
+  name: string,
+  config: Options.Options.PathOptionsConfig
+): Options.Options<string> =>
+  new Single(
+    name,
+    ReadonlyArray.empty(),
+    InternalPrimitive.path("file", config.exists || "either")
+  )
 
 /** @internal */
 export const filterMap = dual<
@@ -910,6 +939,73 @@ export const orElseEither = dual<
 >(2, (self, that) => new OrElse(self, that))
 
 /** @internal */
+export const toRegularLanguage = <A>(
+  self: Options.Options<A>
+): RegularLanguage.RegularLanguage => {
+  if (isEmpty(self)) {
+    return InternalRegularLanguage.epsilon
+  }
+  if (isSingle(self)) {
+    const names = ReadonlyArray.reduce(
+      self.names,
+      InternalRegularLanguage.empty,
+      (lang, name) => InternalRegularLanguage.orElse(lang, InternalRegularLanguage.string(name))
+    )
+    if (InternalPrimitive.isBoolType(self.primitiveType)) {
+      return names
+    }
+    return InternalRegularLanguage.concat(
+      names,
+      InternalRegularLanguage.primitive(self.primitiveType)
+    )
+  }
+  if (isMap(self)) {
+    return toRegularLanguage(self.options)
+  }
+  if (isBoth(self)) {
+    const leftLanguage = toRegularLanguage(self.left)
+    const rightLanguage = toRegularLanguage(self.right)
+    // Deforestation
+    if (
+      InternalRegularLanguage.isPermutation(leftLanguage) &&
+      InternalRegularLanguage.isPermutation(rightLanguage)
+    ) {
+      return InternalRegularLanguage.permutation(
+        ReadonlyArray.appendAll(leftLanguage.values, rightLanguage.values)
+      )
+    }
+    if (InternalRegularLanguage.isPermutation(leftLanguage)) {
+      return InternalRegularLanguage.permutation(
+        ReadonlyArray.append(leftLanguage.values, rightLanguage)
+      )
+    }
+    if (InternalRegularLanguage.isPermutation(rightLanguage)) {
+      return InternalRegularLanguage.permutation(
+        ReadonlyArray.append(rightLanguage.values, leftLanguage)
+      )
+    }
+    return InternalRegularLanguage.permutation([leftLanguage, rightLanguage])
+  }
+  if (isOrElse(self)) {
+    return InternalRegularLanguage.orElse(
+      toRegularLanguage(self.left),
+      toRegularLanguage(self.right)
+    )
+  }
+  if (isKeyValueMap(self)) {
+    const optionGrammar = toRegularLanguage(self.argumentOption)
+    return InternalRegularLanguage.permutation([optionGrammar])
+  }
+  if (isWithDefault(self)) {
+    return InternalRegularLanguage.optional(toRegularLanguage(self.options))
+  }
+  throw new Error(
+    "[BUG]: Options.toRegularLanguage - received unrecognized " +
+      `options type ${JSON.stringify(self)}`
+  )
+}
+
+/** @internal */
 export const validate = dual<
   (
     args: ReadonlyArray<string>,
@@ -917,7 +1013,7 @@ export const validate = dual<
   ) => <A>(
     self: Options.Options<A>
   ) => Effect.Effect<
-    never,
+    FileSystem.FileSystem,
     ValidationError.ValidationError,
     readonly [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
   >,
@@ -926,7 +1022,7 @@ export const validate = dual<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<
-    never,
+    FileSystem.FileSystem,
     ValidationError.ValidationError,
     readonly [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
   >

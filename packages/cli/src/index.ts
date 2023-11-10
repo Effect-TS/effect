@@ -36,7 +36,12 @@ export * as CommandDirective from "./CommandDirective.js"
 /**
  * @since 1.0.0
  */
-export * as Exists from "./Exists.js"
+export * as Compgen from "./Compgen.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Completion from "./Completion.js"
 
 /**
  * @since 1.0.0
@@ -62,6 +67,11 @@ export * as Primitive from "./Primitive.js"
  * @since 1.0.0
  */
 export * as Prompt from "./Prompt.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as RegularLanguage from "./RegularLanguage.js"
 
 /**
  * @since 1.0.0

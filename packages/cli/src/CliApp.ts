@@ -1,6 +1,9 @@
 /**
  * @since 1.0.0
  */
+import type { CommandExecutor } from "@effect/platform/CommandExecutor"
+import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Path } from "@effect/platform/Path"
 import type { Effect } from "effect/Effect"
 import type { Command } from "./Command.js"
 import type { HelpDoc } from "./HelpDoc.js"
@@ -24,6 +27,17 @@ export interface CliApp<A> {
 
 /**
  * @since 1.0.0
+ */
+export declare namespace CliApp {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Environment = CommandExecutor | FileSystem | Path
+}
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const make: <A>(
@@ -43,11 +57,11 @@ export const make: <A>(
 export const run: {
   <R, E, A>(
     args: ReadonlyArray<string>,
-    f: (a: A) => Effect<R, E, void>
-  ): (self: CliApp<A>) => Effect<R, E | ValidationError, void>
+    execute: (a: A) => Effect<R, E, void>
+  ): (self: CliApp<A>) => Effect<CliApp.Environment | R, ValidationError | E, void>
   <R, E, A>(
     self: CliApp<A>,
     args: ReadonlyArray<string>,
-    f: (a: A) => Effect<R, E, void>
-  ): Effect<R, ValidationError | E, void>
+    execute: (a: A) => Effect<R, E, void>
+  ): Effect<CliApp.Environment | R, ValidationError | E, void>
 } = InternalCliApp.run

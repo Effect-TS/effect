@@ -1,8 +1,12 @@
 import * as CliConfig from "@effect/cli/CliConfig"
 import * as Primitive from "@effect/cli/Primitive"
+import * as FileSystem from "@effect/platform-node/FileSystem"
 import { Effect, Equal, Function, Option, ReadonlyArray } from "effect"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
+
+const runEffect = <E, A>(self: Effect.Effect<FileSystem.FileSystem, E, A>): Promise<A> =>
+  Effect.provide(self, FileSystem.layer).pipe(Effect.runPromise)
 
 describe("Primitive", () => {
   describe("Bool", () => {
@@ -12,7 +16,7 @@ describe("Primitive", () => {
           const bool = Primitive.boolean(Option.none())
           const result = yield* _(bool.validate(Option.some(str), CliConfig.defaultConfig))
           expect(result).toBe(true)
-        }).pipe(Effect.runPromise))))
+        }).pipe(runEffect))))
 
     it("validates that falsy text representations of a boolean return false", () =>
       fc.assert(fc.asyncProperty(falseValuesArb, (str) =>
@@ -20,7 +24,7 @@ describe("Primitive", () => {
           const bool = Primitive.boolean(Option.none())
           const result = yield* _(bool.validate(Option.some(str), CliConfig.defaultConfig))
           expect(result).toBe(false)
-        }).pipe(Effect.runPromise))))
+        }).pipe(runEffect))))
 
     it("validates that invalid boolean representations are rejected", () =>
       Effect.gen(function*(_) {
@@ -29,7 +33,7 @@ describe("Primitive", () => {
           Effect.flip(bool.validate(Option.some("bad"), CliConfig.defaultConfig))
         )
         expect(result).toBe("Unable to recognize 'bad' as a valid boolean")
-      }).pipe(Effect.runPromise))
+      }).pipe(runEffect))
 
     it("validates that the default value will be used if a value is not provided", () =>
       fc.assert(fc.asyncProperty(fc.boolean(), (value) =>
@@ -37,7 +41,7 @@ describe("Primitive", () => {
           const bool = Primitive.boolean(Option.some(value))
           const result = yield* _(bool.validate(Option.none(), CliConfig.defaultConfig))
           expect(result).toBe(value)
-        }).pipe(Effect.runPromise))))
+        }).pipe(runEffect))))
   })
 
   describe("Choice", () => {
@@ -54,7 +58,7 @@ describe("Primitive", () => {
               choice.validate(Option.some(selectedName), CliConfig.defaultConfig)
             )
             expect(result).toEqual(selectedValue)
-          }).pipe(Effect.runPromise))
+          }).pipe(runEffect))
       ))
 
     it("does not validate a choice that is not one of the alternatives", () =>
@@ -70,7 +74,7 @@ describe("Primitive", () => {
             Effect.flip(choice.validate(Option.some(selectedName), CliConfig.defaultConfig))
           )
           expect(result).toMatch(/^Expected one of the following cases:\s.*/)
-        }).pipe(Effect.runPromise))))
+        }).pipe(runEffect))))
   })
 
   simplePrimitiveTestSuite(Primitive.date, fc.date(), "Date")
@@ -91,7 +95,7 @@ describe("Primitive", () => {
             Primitive.text.validate(Option.some(str), CliConfig.defaultConfig)
           )
           expect(result).toEqual(str)
-        }).pipe(Effect.runPromise))))
+        }).pipe(runEffect))))
   })
 })
 
@@ -107,7 +111,7 @@ const simplePrimitiveTestSuite = <A>(
           const str = value instanceof Date ? value.toISOString() : `${value}`
           const result = yield* _(primitive.validate(Option.some(str), CliConfig.defaultConfig))
           expect(result).toEqual(value)
-        }).pipe(Effect.runPromise))))
+        }).pipe(runEffect))))
 
     it(`validates that invalid values are rejected`, () =>
       Effect.gen(function*(_) {
@@ -115,7 +119,7 @@ const simplePrimitiveTestSuite = <A>(
           Effect.flip(primitive.validate(Option.some("bad"), CliConfig.defaultConfig))
         )
         expect(result).toBe(`'bad' is not a ${primitive.typeName}`)
-      }).pipe(Effect.runPromise))
+      }).pipe(runEffect))
   })
 }
 

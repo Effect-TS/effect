@@ -1,3 +1,4 @@
+import * as FileSystem from "@effect/platform/FileSystem"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -56,7 +57,7 @@ export class Bool implements Primitive.Primitive<boolean> {
   validate(
     value: Option.Option<string>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, string, boolean> {
+  ): Effect.Effect<FileSystem.FileSystem, string, boolean> {
     return Option.map(value, (str) => InternalCliConfig.normalizeCase(config, str)).pipe(
       Option.match({
         onNone: () =>
@@ -68,45 +69,6 @@ export class Bool implements Primitive.Primitive<boolean> {
             ? Effect.succeed(false)
             : Effect.fail(`Unable to recognize '${value}' as a valid boolean`)
       })
-    )
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * Represents a date in ISO-8601 format, such as `2007-12-03T10:15:30`.
- *
- * @internal
- */
-export class Date implements Primitive.Primitive<globalThis.Date> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Date"
-
-  get typeName(): string {
-    return "date"
-  }
-
-  get help(): Span.Span {
-    return InternalSpan.text(
-      "A date without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30."
-    )
-  }
-
-  get choices(): Option.Option<string> {
-    return Option.some("date")
-  }
-
-  validate(
-    value: Option.Option<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<never, string, globalThis.Date> {
-    return attempt(
-      value,
-      this.typeName,
-      Schema.parse(Schema.dateFromString(Schema.string))
     )
   }
 
@@ -146,7 +108,7 @@ export class Choice<A> implements Primitive.Primitive<A> {
   validate(
     value: Option.Option<string>,
     _config: CliConfig.CliConfig
-  ): Effect.Effect<never, string, A> {
+  ): Effect.Effect<FileSystem.FileSystem, string, A> {
     return Effect.orElseFail(
       value,
       () => `Choice options to not have a default value`
@@ -167,6 +129,45 @@ export class Choice<A> implements Primitive.Primitive<A> {
         },
         onSuccess: ([, value]) => value
       })
+    )
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/**
+ * Represents a date in ISO-8601 format, such as `2007-12-03T10:15:30`.
+ *
+ * @internal
+ */
+export class Date implements Primitive.Primitive<globalThis.Date> {
+  readonly [PrimitiveTypeId] = proto
+  readonly _tag = "Date"
+
+  get typeName(): string {
+    return "date"
+  }
+
+  get help(): Span.Span {
+    return InternalSpan.text(
+      "A date without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30."
+    )
+  }
+
+  get choices(): Option.Option<string> {
+    return Option.some("date")
+  }
+
+  validate(
+    value: Option.Option<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<FileSystem.FileSystem, string, globalThis.Date> {
+    return attempt(
+      value,
+      this.typeName,
+      Schema.parse(Schema.dateFromString(Schema.string))
     )
   }
 
@@ -199,7 +200,7 @@ export class Float implements Primitive.Primitive<number> {
   validate(
     value: Option.Option<string>,
     _config: CliConfig.CliConfig
-  ): Effect.Effect<never, string, number> {
+  ): Effect.Effect<FileSystem.FileSystem, string, number> {
     const numberFromString = Schema.string.pipe(Schema.numberFromString)
     return attempt(value, this.typeName, Schema.parse(numberFromString))
   }
@@ -233,9 +234,93 @@ export class Integer implements Primitive.Primitive<number> {
   validate(
     value: Option.Option<string>,
     _config: CliConfig.CliConfig
-  ): Effect.Effect<never, string, number> {
+  ): Effect.Effect<FileSystem.FileSystem, string, number> {
     const intFromString = Schema.string.pipe(Schema.numberFromString, Schema.int())
     return attempt(value, this.typeName, Schema.parse(intFromString))
+  }
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/** @internal */
+export class Path implements Primitive.Primitive<string> {
+  readonly [PrimitiveTypeId] = proto
+  readonly _tag = "Path"
+
+  constructor(
+    readonly pathType: Primitive.Primitive.PathType,
+    readonly pathExists: Primitive.Primitive.PathExists
+  ) {}
+
+  get typeName(): string {
+    if (this.pathType === "either") {
+      return "path"
+    }
+    return this.pathType
+  }
+
+  get help(): Span.Span {
+    if (this.pathType === "either" && this.pathExists === "yes") {
+      return InternalSpan.text("An existing file or directory.")
+    }
+    if (this.pathType === "file" && this.pathExists === "yes") {
+      return InternalSpan.text("An existing file.")
+    }
+    if (this.pathType === "directory" && this.pathExists === "yes") {
+      return InternalSpan.text("An existing directory.")
+    }
+    if (this.pathType === "either" && this.pathExists === "no") {
+      return InternalSpan.text("A file or directory that must not exist.")
+    }
+    if (this.pathType === "file" && this.pathExists === "no") {
+      return InternalSpan.text("A file that must not exist.")
+    }
+    if (this.pathType === "directory" && this.pathExists === "no") {
+      return InternalSpan.text("A directory that must not exist.")
+    }
+    if (this.pathType === "either" && this.pathExists === "either") {
+      return InternalSpan.text("A file or directory.")
+    }
+    if (this.pathType === "file" && this.pathExists === "either") {
+      return InternalSpan.text("A file.")
+    }
+    if (this.pathType === "directory" && this.pathExists === "either") {
+      return InternalSpan.text("A directory.")
+    }
+    throw new Error(
+      "[BUG]: Path.help - encountered invalid combination of path type " +
+        `('${this.pathType}') and path existence ('${this.pathExists}')`
+    )
+  }
+
+  get choices(): Option.Option<string> {
+    return Option.none()
+  }
+
+  validate(
+    value: Option.Option<string>,
+    _config: CliConfig.CliConfig
+  ): Effect.Effect<FileSystem.FileSystem, string, string> {
+    return Effect.flatMap(FileSystem.FileSystem, (fileSystem) => {
+      const errorMsg = "Path options do not have a default value"
+      return Effect.orElseFail(value, () => errorMsg).pipe(
+        Effect.tap((path) =>
+          Effect.orDie(fileSystem.exists(path)).pipe(
+            Effect.tap((pathExists) =>
+              validatePathExistence(path, this.pathExists, pathExists).pipe(
+                Effect.zipRight(
+                  validatePathType(path, this.pathType, fileSystem).pipe(
+                    Effect.when(() => this.pathExists !== "no" && pathExists)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    })
   }
 
   pipe() {
@@ -267,7 +352,7 @@ export class Text implements Primitive.Primitive<string> {
   validate(
     value: Option.Option<string>,
     _config: CliConfig.CliConfig
-  ): Effect.Effect<never, string, string> {
+  ): Effect.Effect<FileSystem.FileSystem, string, string> {
     return attempt(value, this.typeName, Schema.parse(Schema.string))
   }
 
@@ -299,6 +384,12 @@ export const float: Primitive.Primitive<number> = new Float()
 export const integer: Primitive.Primitive<number> = new Integer()
 
 /** @internal */
+export const path = (
+  pathType: Primitive.Primitive.PathType,
+  pathExists: Primitive.Primitive.PathExists
+): Primitive.Primitive<string> => new Path(pathType, pathExists)
+
+/** @internal */
 export const text: Primitive.Primitive<string> = new Text()
 
 // =============================================================================
@@ -312,6 +403,34 @@ export const isPrimitive = (u: unknown): u is Primitive.Primitive<unknown> =>
 /** @internal */
 export const isBool = <A>(self: Primitive.Primitive<A>): boolean =>
   isPrimitive(self) && "_tag" in self && self._tag === "Bool"
+
+/** @internal */
+export const isBoolType = (u: unknown): u is Bool =>
+  isPrimitive(u) && "_tag" in u && u._tag === "Bool"
+
+/** @internal */
+export const isChoiceType = (u: unknown): u is Choice<unknown> =>
+  isPrimitive(u) && "_tag" in u && u._tag === "Choice"
+
+/** @internal */
+export const isDateType = (u: unknown): u is Date =>
+  isPrimitive(u) && "_tag" in u && u._tag === "Date"
+
+/** @internal */
+export const isFloatType = (u: unknown): u is Float =>
+  isPrimitive(u) && "_tag" in u && u._tag === "Float"
+
+/** @internal */
+export const isIntegerType = (u: unknown): u is Integer =>
+  isPrimitive(u) && "_tag" in u && u._tag === "Integer"
+
+/** @internal */
+export const isPathType = (u: unknown): u is Path =>
+  isPrimitive(u) && "_tag" in u && u._tag === "Path"
+
+/** @internal */
+export const isTextType = (u: unknown): u is Text =>
+  isPrimitive(u) && "_tag" in u && u._tag === "Text"
 
 // =============================================================================
 // Internals
@@ -333,3 +452,50 @@ const attempt = <E, A>(
       )
     )
   )
+
+const validatePathExistence = (
+  path: string,
+  shouldPathExist: Primitive.Primitive.PathExists,
+  pathExists: boolean
+): Effect.Effect<never, string, void> => {
+  if (shouldPathExist === "no" && pathExists) {
+    return Effect.fail(`Path '${path}' must not exist`)
+  }
+  if (shouldPathExist === "yes" && !pathExists) {
+    return Effect.fail(`Path '${path}' must exist`)
+  }
+  return Effect.unit
+}
+
+const validatePathType = (
+  path: string,
+  pathType: Primitive.Primitive.PathType,
+  fileSystem: FileSystem.FileSystem
+): Effect.Effect<never, string, void> => {
+  switch (pathType) {
+    case "file": {
+      const checkIsFile = fileSystem.stat(path).pipe(
+        Effect.map((info) => info.type === "File"),
+        Effect.orDie
+      )
+      return Effect.fail(`Expected path '${path}' to be a regular file`).pipe(
+        Effect.unlessEffect(checkIsFile),
+        Effect.asUnit
+      )
+    }
+    case "directory": {
+      const checkIsDirectory = fileSystem.stat(path).pipe(
+        Effect.map((info) => info.type === "Directory"),
+        Effect.orDie
+      )
+      return Effect.fail(`Expected path '${path}' to be a directory`).pipe(
+        Effect.unlessEffect(checkIsDirectory),
+        Effect.asUnit
+      )
+      //         ZIO.fail(s"Expected path '$value' to be a directory.").unlessZIO(self.fileSystem.isDirectory(path)).unit
+    }
+    case "either": {
+      return Effect.unit
+    }
+  }
+}

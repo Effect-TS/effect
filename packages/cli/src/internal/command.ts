@@ -1,3 +1,4 @@
+import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
@@ -14,6 +15,7 @@ import * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
 import type * as Options from "../Options.js"
 import type * as Prompt from "../Prompt.js"
+import type * as RegularLanguage from "../RegularLanguage.js"
 import type * as Terminal from "../Terminal.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
@@ -25,6 +27,7 @@ import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalOptions from "./options.js"
 import * as InternalPrompt from "./prompt.js"
+import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
 
@@ -91,7 +94,7 @@ export class Standard<Name extends string, OptionsType, ArgsType>
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ): Effect.Effect<
-    never,
+    FileSystem.FileSystem,
     ValidationError.ValidationError,
     CommandDirective.CommandDirective<
       Command.Command.ParsedStandardCommand<Name, OptionsType, ArgsType>
@@ -120,7 +123,7 @@ export class Standard<Name extends string, OptionsType, ArgsType>
     const parseBuiltInArgs = (
       args: ReadonlyArray<string>
     ): Effect.Effect<
-      never,
+      FileSystem.FileSystem,
       ValidationError.ValidationError,
       CommandDirective.CommandDirective<never>
     > => {
@@ -143,7 +146,7 @@ export class Standard<Name extends string, OptionsType, ArgsType>
     const parseUserDefinedArgs = (
       args: ReadonlyArray<string>
     ): Effect.Effect<
-      never,
+      FileSystem.FileSystem,
       ValidationError.ValidationError,
       CommandDirective.CommandDirective<
         Command.Command.ParsedStandardCommand<Name, OptionsType, ArgsType>
@@ -175,7 +178,7 @@ export class Standard<Name extends string, OptionsType, ArgsType>
     const exhaustiveSearch = (
       args: ReadonlyArray<string>
     ): Effect.Effect<
-      never,
+      FileSystem.FileSystem,
       ValidationError.ValidationError,
       CommandDirective.CommandDirective<never>
     > => {
@@ -305,7 +308,7 @@ export class Map<A, B> implements Command.Command<B> {
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ): Effect.Effect<
-    Terminal.Terminal,
+    FileSystem.FileSystem | Terminal.Terminal,
     ValidationError.ValidationError,
     CommandDirective.CommandDirective<B>
   > {
@@ -353,7 +356,7 @@ export class OrElse<A, B> implements Command.Command<A | B> {
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ): Effect.Effect<
-    Terminal.Terminal,
+    FileSystem.FileSystem | Terminal.Terminal,
     ValidationError.ValidationError,
     CommandDirective.CommandDirective<A | B>
   > {
@@ -476,7 +479,7 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ): Effect.Effect<
-    Terminal.Terminal,
+    FileSystem.FileSystem | Terminal.Terminal,
     ValidationError.ValidationError,
     CommandDirective.CommandDirective<Command.Command.Subcommands<[A, B]>>
   > {
@@ -695,6 +698,47 @@ export const orElseEither = dual<
   ) => <A>(self: Command.Command<A>) => Command.Command<Either.Either<A, B>>,
   <A, B>(self: Command.Command<A>, that: Command.Command<B>) => Command.Command<Either.Either<A, B>>
 >(2, (self, that) => orElse(map(self, Either.left), map(that, Either.right)))
+
+/** @internal */
+export const toRegularLanguage = dual<
+  (allowAlias: boolean) => <A>(self: Command.Command<A>) => RegularLanguage.RegularLanguage,
+  <A>(self: Command.Command<A>, allowAlias: boolean) => RegularLanguage.RegularLanguage
+>(2, <A>(self: Command.Command<A>, allowAlias: boolean): RegularLanguage.RegularLanguage => {
+  if (isStandard(self)) {
+    const commandNameToken = allowAlias
+      ? InternalRegularLanguage.anyString :
+      InternalRegularLanguage.string(self.name)
+    return InternalRegularLanguage.concat(
+      commandNameToken,
+      InternalRegularLanguage.concat(
+        InternalOptions.toRegularLanguage(self.options),
+        InternalArgs.toRegularLanguage(self.args)
+      )
+    )
+  }
+  if (isGetUserInput(self)) {
+    throw Error()
+  }
+  if (isMap(self)) {
+    return toRegularLanguage(self.command, allowAlias)
+  }
+  if (isOrElse(self)) {
+    return InternalRegularLanguage.orElse(
+      toRegularLanguage(self.left, allowAlias),
+      toRegularLanguage(self.right, allowAlias)
+    )
+  }
+  if (isSubcommands(self)) {
+    return InternalRegularLanguage.concat(
+      toRegularLanguage(self.parent, allowAlias),
+      toRegularLanguage(self.child, false)
+    )
+  }
+  throw new Error(
+    "[BUG]: Command.toRegularLanguage - received unrecognized " +
+      `command ${JSON.stringify(self)}`
+  )
+})
 
 /** @internal */
 export const withHelp = dual<

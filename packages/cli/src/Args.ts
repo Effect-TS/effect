@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
@@ -10,6 +11,8 @@ import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalArgs from "./internal/args.js"
 import type { Parameter } from "./Parameter.js"
+import type { Primitive } from "./Primitive.js"
+import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
 
@@ -39,7 +42,7 @@ export interface Args<A> extends Args.Variance<A>, Parameter, Pipeable {
   validate(
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<never, ValidationError, readonly [ReadonlyArray<string>, A]>
+  ): Effect<FileSystem, ValidationError, readonly [ReadonlyArray<string>, A]>
   addDescription(description: string): Args<A>
 }
 
@@ -61,8 +64,16 @@ export declare namespace Args {
    * @since 1.0.0
    * @category models
    */
-  export interface ArgsConfig {
+  export interface BaseArgsConfig {
     readonly name?: string
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface PathArgsConfig extends BaseArgsConfig {
+    readonly exists?: Primitive.PathExists
   }
 }
 
@@ -166,7 +177,7 @@ export const between: {
  * @since 1.0.0
  * @category constructors
  */
-export const boolean: (options?: Args.ArgsConfig) => Args<boolean> = InternalArgs.boolean
+export const boolean: (options?: Args.BaseArgsConfig) => Args<boolean> = InternalArgs.boolean
 
 /**
  * Creates a choice argument.
@@ -178,7 +189,7 @@ export const boolean: (options?: Args.ArgsConfig) => Args<boolean> = InternalArg
  */
 export const choice: <A>(
   choices: NonEmptyReadonlyArray<[string, A]>,
-  config?: Args.ArgsConfig
+  config?: Args.BaseArgsConfig
 ) => Args<A> = InternalArgs.choice
 
 /**
@@ -189,7 +200,27 @@ export const choice: <A>(
  * @since 1.0.0
  * @category constructors
  */
-export const date: (config?: Args.ArgsConfig) => Args<globalThis.Date> = InternalArgs.date
+export const date: (config?: Args.BaseArgsConfig) => Args<globalThis.Date> = InternalArgs.date
+
+/**
+ * Creates a directory argument.
+ *
+ * Can optionally provide a custom argument name (defaults to `"directory"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const directory: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs.directory
+
+/**
+ * Creates a file argument.
+ *
+ * Can optionally provide a custom argument name (defaults to `"file"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const file: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs.file
 
 /**
  * Creates a floating point number argument.
@@ -199,7 +230,7 @@ export const date: (config?: Args.ArgsConfig) => Args<globalThis.Date> = Interna
  * @since 1.0.0
  * @category constructors
  */
-export const float: (config?: Args.ArgsConfig) => Args<number> = InternalArgs.float
+export const float: (config?: Args.BaseArgsConfig) => Args<number> = InternalArgs.float
 
 /**
  * Creates an integer argument.
@@ -209,7 +240,7 @@ export const float: (config?: Args.ArgsConfig) => Args<number> = InternalArgs.fl
  * @since 1.0.0
  * @category constructors
  */
-export const integer: (config?: Args.ArgsConfig) => Args<number> = InternalArgs.integer
+export const integer: (config?: Args.BaseArgsConfig) => Args<number> = InternalArgs.integer
 
 /**
  * @since 1.0.0
@@ -247,6 +278,16 @@ export const mapTryCatch: {
 export const none: Args<void> = InternalArgs.none
 
 /**
+ * Creates a path argument.
+ *
+ * Can optionally provide a custom argument name (defaults to `"path"`).
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const path: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs.path
+
+/**
  * @since 1.0.0
  * @category combinators
  */
@@ -267,4 +308,13 @@ export const repeatedAtLeastOnce: <A>(self: Args<A>) => Args<NonEmptyReadonlyArr
  * @since 1.0.0
  * @category constructors
  */
-export const text: (config?: Args.ArgsConfig) => Args<string> = InternalArgs.text
+export const text: (config?: Args.BaseArgsConfig) => Args<string> = InternalArgs.text
+
+/**
+ * Returns a `RegularLanguage` whose accepted language is equivalent to the language accepted by the provided `Args`.
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toRegularLanguage: <A>(self: Args<A>) => RegularLanguage =
+  InternalArgs.toRegularLanguage

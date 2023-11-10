@@ -8,8 +8,13 @@ export const bash: ShellType.ShellType = {
 }
 
 /** @internal */
-export const zShell: ShellType.ShellType = {
-  _tag: "ZShell"
+export const fish: ShellType.ShellType = {
+  _tag: "Fish"
+}
+
+/** @internal */
+export const zsh: ShellType.ShellType = {
+  _tag: "Zsh"
 }
 
 /** @internal */
@@ -18,6 +23,7 @@ export const shellOption: Options.Options<ShellType.ShellType> = InternalOptions
   [
     ["sh", bash],
     ["bash", bash],
-    ["zsh", zShell]
+    ["fish", fish],
+    ["zsh", zsh]
   ]
 )

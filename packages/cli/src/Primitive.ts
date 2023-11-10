@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Effect } from "effect/Effect"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
@@ -33,7 +34,7 @@ export interface Primitive<A> extends Primitive.Variance<A> {
   get typeName(): string
   get help(): Span
   get choices(): Option<string>
-  validate(value: Option<string>, config: CliConfig): Effect<never, string, A>
+  validate(value: Option<string>, config: CliConfig): Effect<FileSystem, string, A>
 }
 
 /**
@@ -49,6 +50,18 @@ export declare namespace Primitive {
       readonly _A: (_: never) => A
     }
   }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type PathExists = "yes" | "no" | "either"
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type PathType = "file" | "directory" | "either"
 
   /**
    * @since 1.0.0

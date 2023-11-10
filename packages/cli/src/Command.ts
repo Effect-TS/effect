@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
@@ -15,6 +16,7 @@ import * as InternalCommand from "./internal/command.js"
 import type { Options } from "./Options.js"
 import type { Named } from "./Parameter.js"
 import type { Prompt } from "./Prompt.js"
+import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Terminal } from "./Terminal.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
@@ -47,7 +49,7 @@ export interface Command<A> extends Command.Variance<A>, Named, Pipeable {
   parse(
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<Terminal, ValidationError, CommandDirective<A>>
+  ): Effect<FileSystem | Terminal, ValidationError, CommandDirective<A>>
 }
 
 /**
@@ -189,6 +191,18 @@ export const subcommands: {
     >
   >
 } = InternalCommand.subcommands
+
+/**
+ * Returns a `RegularLanguage` whose accepted language is equivalent to the
+ * language accepted by the provided `Command`.
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toRegularLanguage: {
+  (allowAlias: boolean): <A>(self: Command<A>) => RegularLanguage
+  <A>(self: Command<A>, allowAlias: boolean): RegularLanguage
+} = InternalCommand.toRegularLanguage
 
 /**
  * @since 1.0.0

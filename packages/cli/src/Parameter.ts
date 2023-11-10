@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Effect } from "effect/Effect"
 import type { HashSet } from "effect/HashSet"
 import type { CliConfig } from "./CliConfig.js"
@@ -26,7 +27,10 @@ export interface Parameter {
  * @since 1.0.0
  */
 export interface Input extends Parameter {
-  isValid(input: string, config: CliConfig): Effect<never, ValidationError, ReadonlyArray<string>>
+  isValid(
+    input: string,
+    config: CliConfig
+  ): Effect<FileSystem, ValidationError, ReadonlyArray<string>>
   parse(
     args: ReadonlyArray<string>,
     config: CliConfig

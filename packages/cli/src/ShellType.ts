@@ -8,7 +8,7 @@ import type { Options } from "./Options.js"
  * @since 1.0.0
  * @category models
  */
-export type ShellType = Bash | ZShell
+export type ShellType = Bash | Fish | Zsh
 
 /**
  * @since 1.0.0
@@ -22,8 +22,16 @@ export interface Bash {
  * @since 1.0.0
  * @category models
  */
-export interface ZShell {
-  readonly _tag: "ZShell"
+export interface Fish {
+  readonly _tag: "Fish"
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Zsh {
+  readonly _tag: "Zsh"
 }
 
 /**
@@ -36,7 +44,13 @@ export const bash: ShellType = InternalShellType.bash
  * @since 1.0.0
  * @category constructors
  */
-export const zShell: ShellType = InternalShellType.zShell
+export const fish: ShellType = InternalShellType.fish
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const zsh: ShellType = InternalShellType.zsh
 
 /**
  * @since 1.0.0

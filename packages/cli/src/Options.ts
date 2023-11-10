@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
@@ -11,6 +12,8 @@ import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalOptions from "./internal/options.js"
 import type { Input, Parameter } from "./Parameter.js"
+import type { Primitive } from "./Primitive.js"
+import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
 
@@ -37,7 +40,7 @@ export interface Options<A> extends Options.Variance<A>, Parameter, Pipeable {
   validate(
     args: HashMap<string, ReadonlyArray<string>>,
     config: CliConfig
-  ): Effect<never, ValidationError, A>
+  ): Effect<FileSystem, ValidationError, A>
   /** @internal */
   modifySingle(f: <_>(single: InternalOptions.Single<_>) => InternalOptions.Single<_>): Options<A>
 }
@@ -60,10 +63,18 @@ export declare namespace Options {
    * @since 1.0.0
    * @category models
    */
-  export interface BooleanOptionConfig {
+  export interface BooleanOptionsConfig {
     readonly ifPresent?: boolean
     readonly negationNames?: NonEmptyReadonlyArray<string>
     readonly aliases?: NonEmptyReadonlyArray<string>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface PathOptionsConfig {
+    readonly exists?: Primitive.PathExists
   }
 }
 
@@ -140,7 +151,7 @@ export const all: <
  * @since 1.0.0
  * @category constructors
  */
-export const boolean: (name: string, options?: Options.BooleanOptionConfig) => Options<boolean> =
+export const boolean: (name: string, options?: Options.BooleanOptionsConfig) => Options<boolean> =
   InternalOptions.boolean
 
 /**
@@ -203,6 +214,24 @@ export const choiceWithValue: <C extends NonEmptyReadonlyArray<[string, any]>>(
  * @category constructors
  */
 export const date: (name: string) => Options<globalThis.Date> = InternalOptions.date
+
+/**
+ * Creates a parameter expecting path to a directory.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const directory: (name: string, config: Options.PathOptionsConfig) => Options<string> =
+  InternalOptions.directory
+
+/**
+ * Creates a parameter expecting path to a file.
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const file: (name: string, config: Options.PathOptionsConfig) => Options<string> =
+  InternalOptions.file
 
 /**
  * @since 1.0.0
@@ -309,6 +338,16 @@ export const orElseEither: {
 } = InternalOptions.orElseEither
 
 /**
+ * Returns a `RegularLanguage` whose accepted language is equivalent to the language accepted by the provided
+ * `Options`.
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toRegularLanguage: <A>(self: Options<A>) => RegularLanguage =
+  InternalOptions.toRegularLanguage
+
+/**
  * @since 1.0.0
  * @category combinators
  */
@@ -318,12 +357,20 @@ export const validate: {
     config: CliConfig
   ): <A>(
     self: Options<A>
-  ) => Effect<never, ValidationError, readonly [Option<ValidationError>, ReadonlyArray<string>, A]>
+  ) => Effect<
+    FileSystem,
+    ValidationError,
+    readonly [Option<ValidationError>, ReadonlyArray<string>, A]
+  >
   <A>(
     self: Options<A>,
     args: ReadonlyArray<string>,
     config: CliConfig
-  ): Effect<never, ValidationError, readonly [Option<ValidationError>, ReadonlyArray<string>, A]>
+  ): Effect<
+    FileSystem,
+    ValidationError,
+    readonly [Option<ValidationError>, ReadonlyArray<string>, A]
+  >
 } = InternalOptions.validate
 
 /**

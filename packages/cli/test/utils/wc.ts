@@ -13,7 +13,7 @@ export const options: Options.Options<readonly [boolean, boolean, boolean, boole
   charFlag
 ])
 
-export const args: Args.Args<ReadonlyArray<string>> = Args.repeated(Args.text({ name: "files" }))
+export const args: Args.Args<ReadonlyArray<string>> = Args.repeated(Args.file({ name: "files" }))
 
 export const command: Command.Command<{
   readonly name: "wc"

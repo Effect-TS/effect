@@ -65,7 +65,7 @@ const parseAction = (key: readline.Key): Effect.Effect<never, never, Terminal.Te
 }
 
 /** @internal */
-export const layer: Layer.Layer<never, never, Terminal.Terminal> = Layer.scoped(
+export const LiveTerminal: Layer.Layer<never, never, Terminal.Terminal> = Layer.scoped(
   Tag,
   Effect.gen(function*($) {
     const { input, output } = yield* $(

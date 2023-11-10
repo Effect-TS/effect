@@ -1,3 +1,4 @@
+import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual } from "effect/Function"
@@ -9,11 +10,13 @@ import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Parameter from "../Parameter.js"
 import type * as Primitive from "../Primitive.js"
+import type * as RegularLanguage from "../RegularLanguage.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
+import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
 
@@ -117,7 +120,7 @@ export class Single<A> implements Args.Args<A>, Parameter.Input {
   isValid(
     input: string,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, ReadonlyArray<string>> {
     const args = ReadonlyArray.of(input)
     return this.validate(args, config).pipe(Effect.as(args))
   }
@@ -125,7 +128,11 @@ export class Single<A> implements Args.Args<A>, Parameter.Input {
   validate(
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]> {
+  ): Effect.Effect<
+    FileSystem.FileSystem,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, A]
+  > {
     return Effect.suspend(() => {
       if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
         const head = ReadonlyArray.headNonEmpty(args)
@@ -226,7 +233,7 @@ export class Both<A, B> implements Args.Args<readonly [A, B]> {
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ): Effect.Effect<
-    never,
+    FileSystem.FileSystem,
     ValidationError.ValidationError,
     readonly [ReadonlyArray<string>, readonly [A, B]]
   > {
@@ -306,7 +313,7 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ): Effect.Effect<
-    never,
+    FileSystem.FileSystem,
     ValidationError.ValidationError,
     readonly [ReadonlyArray<string>, ReadonlyArray<A>]
   > {
@@ -316,7 +323,7 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
       args: ReadonlyArray<string>,
       acc: ReadonlyArray<A>
     ): Effect.Effect<
-      never,
+      FileSystem.FileSystem,
       ValidationError.ValidationError,
       readonly [ReadonlyArray<string>, ReadonlyArray<A>]
     > => {
@@ -350,7 +357,7 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
   isValid(
     input: string,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
+  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, ReadonlyArray<string>> {
     const args = input.split(" ")
     return this.validate(args, config).pipe(Effect.as(args))
   }
@@ -401,7 +408,11 @@ export class Map<A, B> implements Args.Args<B> {
   validate(
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, B]> {
+  ): Effect.Effect<
+    FileSystem.FileSystem,
+    ValidationError.ValidationError,
+    readonly [ReadonlyArray<string>, B]
+  > {
     return this.args.validate(args, config).pipe(
       Effect.flatMap(([leftover, a]) =>
         Either.match(this.f(a), {
@@ -481,32 +492,53 @@ export const all: <
 }
 
 /** @internal */
-export const boolean = (config: Args.Args.ArgsConfig = {}): Args.Args<boolean> =>
+export const boolean = (config: Args.Args.BaseArgsConfig = {}): Args.Args<boolean> =>
   new Single(Option.fromNullable(config.name), InternalPrimitive.boolean(Option.none()))
 
 /** @internal */
 export const choice = <A>(
   choices: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>,
-  config: Args.Args.ArgsConfig = {}
+  config: Args.Args.BaseArgsConfig = {}
 ): Args.Args<A> => new Single(Option.fromNullable(config.name), InternalPrimitive.choice(choices))
 
 /** @internal */
-export const date = (config: Args.Args.ArgsConfig = {}): Args.Args<globalThis.Date> =>
+export const date = (config: Args.Args.BaseArgsConfig = {}): Args.Args<globalThis.Date> =>
   new Single(Option.fromNullable(config.name), InternalPrimitive.date)
 
 /** @internal */
-export const float = (config: Args.Args.ArgsConfig = {}): Args.Args<number> =>
+export const directory = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
+  new Single(
+    Option.fromNullable(config.name),
+    InternalPrimitive.path("directory", config.exists || "either")
+  )
+
+/** @internal */
+export const file = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
+  new Single(
+    Option.fromNullable(config.name),
+    InternalPrimitive.path("file", config.exists || "either")
+  )
+
+/** @internal */
+export const float = (config: Args.Args.BaseArgsConfig = {}): Args.Args<number> =>
   new Single(Option.fromNullable(config.name), InternalPrimitive.float)
 
 /** @internal */
-export const integer = (config: Args.Args.ArgsConfig = {}): Args.Args<number> =>
+export const integer = (config: Args.Args.BaseArgsConfig = {}): Args.Args<number> =>
   new Single(Option.fromNullable(config.name), InternalPrimitive.integer)
 
 /** @internal */
 export const none: Args.Args<void> = new Empty()
 
 /** @internal */
-export const text = (config: Args.Args.ArgsConfig = {}): Args.Args<string> =>
+export const path = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
+  new Single(
+    Option.fromNullable(config.name),
+    InternalPrimitive.path("either", config.exists || "either")
+  )
+
+/** @internal */
+export const text = (config: Args.Args.BaseArgsConfig = {}): Args.Args<string> =>
   new Single(Option.fromNullable(config.name), InternalPrimitive.text)
 
 // =============================================================================
@@ -600,6 +632,37 @@ export const repeatedAtLeastOnce = <A>(
     })
     throw new Error(`${message} is not respecting the required minimum of 1`)
   })
+
+/** @internal */
+export const toRegularLanguage = <A>(
+  self: Args.Args<A>
+): RegularLanguage.RegularLanguage => {
+  if (isEmpty(self)) {
+    return InternalRegularLanguage.epsilon
+  }
+  if (isSingle(self)) {
+    return InternalRegularLanguage.primitive(self.primitiveType)
+  }
+  if (isBoth(self)) {
+    return InternalRegularLanguage.concat(
+      toRegularLanguage(self.left),
+      toRegularLanguage(self.right)
+    )
+  }
+  if (isVariadic(self)) {
+    return InternalRegularLanguage.repeated(toRegularLanguage(self.value), {
+      min: Option.getOrUndefined(self.min),
+      max: Option.getOrUndefined(self.max)
+    })
+  }
+  if (isMap(self)) {
+    return toRegularLanguage(self.args)
+  }
+  throw new Error(
+    "[BUG]: Args.toRegularLanguage - received unrecognized " +
+      `args type ${JSON.stringify(self)}`
+  )
+}
 
 // =============================================================================
 // Internals
