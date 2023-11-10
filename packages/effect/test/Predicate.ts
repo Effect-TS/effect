@@ -284,6 +284,7 @@ describe.concurrent("Predicate", () => {
     assert.deepStrictEqual(_.isRecord([1, 2, 3]), false)
     assert.deepStrictEqual(_.isRecord(null), false)
     assert.deepStrictEqual(_.isRecord(undefined), false)
+    assert.deepStrictEqual(_.isRecord(() => null), false)
   })
 
   it("isReadonlyRecord", () => {
