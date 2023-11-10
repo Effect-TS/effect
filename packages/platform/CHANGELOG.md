@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.28.0
+
+### Minor Changes
+
+- [#251](https://github.com/Effect-TS/platform/pull/251) [`05fef78`](https://github.com/Effect-TS/platform/commit/05fef784ac975059fb6335576feadc7f34644314) Thanks [@fubhy](https://github.com/fubhy)! - Re-added exports for http module
+
 ## 0.27.4
 
 ### Patch Changes

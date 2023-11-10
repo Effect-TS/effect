@@ -1,5 +1,17 @@
 # @effect/platform-bun
 
+## 0.17.0
+
+### Minor Changes
+
+- [#251](https://github.com/Effect-TS/platform/pull/251) [`05fef78`](https://github.com/Effect-TS/platform/commit/05fef784ac975059fb6335576feadc7f34644314) Thanks [@fubhy](https://github.com/fubhy)! - Re-added exports for http module
+
+### Patch Changes
+
+- Updated dependencies [[`05fef78`](https://github.com/Effect-TS/platform/commit/05fef784ac975059fb6335576feadc7f34644314)]:
+  - @effect/platform-node@0.29.0
+  - @effect/platform@0.28.0
+
 ## 0.16.4
 
 ### Patch Changes
