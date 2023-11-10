@@ -392,8 +392,8 @@ Checks if a `Duration` is between a `minimum` and `maximum` value.
 
 ```ts
 export declare const between: {
-  (minimum: DurationInput, maximum: DurationInput): (self: DurationInput) => boolean
-  (self: DurationInput, minimum: DurationInput, maximum: DurationInput): boolean
+  (options: { minimum: DurationInput; maximum: DurationInput }): (self: DurationInput) => boolean
+  (self: DurationInput, options: { minimum: DurationInput; maximum: DurationInput }): boolean
 }
 ```
 
@@ -484,8 +484,8 @@ Added in v2.0.0
 
 ```ts
 export declare const clamp: {
-  (minimum: DurationInput, maximum: DurationInput): (self: DurationInput) => Duration
-  (self: DurationInput, minimum: DurationInput, maximum: DurationInput): Duration
+  (options: { minimum: DurationInput; maximum: DurationInput }): (self: DurationInput) => Duration
+  (self: DurationInput, options: { minimum: DurationInput; maximum: DurationInput }): Duration
 }
 ```
 

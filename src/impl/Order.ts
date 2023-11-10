@@ -295,15 +295,34 @@ export const max = <A>(O: Order<A>): {
 /**
  * Clamp a value between a minimum and a maximum.
  *
+ * @example
+ * import * as Order from "effect/Order"
+ * import * as Number from "effect/Number"
+ *
+ * const clamp = Order.clamp(Number.Order)({ minimum: 1, maximum: 5 })
+ *
+ * assert.equal(clamp(3), 3)
+ * assert.equal(clamp(0), 1)
+ * assert.equal(clamp(6), 5)
+ *
  * @since 2.0.0
  */
 export const clamp = <A>(O: Order<A>): {
-  (minimum: A, maximum: A): (self: A) => A
-  (self: A, minimum: A, maximum: A): A
+  (options: {
+    minimum: A
+    maximum: A
+  }): (self: A) => A
+  (self: A, options: {
+    minimum: A
+    maximum: A
+  }): A
 } =>
   dual(
-    3,
-    (self: A, minimum: A, maximum: A): A => min(O)(maximum, max(O)(minimum, self))
+    2,
+    (self: A, options: {
+      minimum: A
+      maximum: A
+    }): A => min(O)(options.maximum, max(O)(options.minimum, self))
   )
 
 /**
@@ -312,10 +331,19 @@ export const clamp = <A>(O: Order<A>): {
  * @since 2.0.0
  */
 export const between = <A>(O: Order<A>): {
-  (minimum: A, maximum: A): (self: A) => boolean
-  (self: A, minimum: A, maximum: A): boolean
+  (options: {
+    minimum: A
+    maximum: A
+  }): (self: A) => boolean
+  (self: A, options: {
+    minimum: A
+    maximum: A
+  }): boolean
 } =>
   dual(
-    3,
-    (self: A, minimum: A, maximum: A): boolean => !lessThan(O)(self, minimum) && !greaterThan(O)(self, maximum)
+    2,
+    (self: A, options: {
+      minimum: A
+      maximum: A
+    }): boolean => !lessThan(O)(self, options.minimum) && !greaterThan(O)(self, options.maximum)
   )

@@ -587,9 +587,13 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
   }
 
 /**
+ * Returns an `Either` that swaps the error/success cases. This allows you to
+ * use all methods on the error channel, possibly before flipping back.
+ *
  * @since 2.0.0
+ * @category mapping
  */
-export const reverse = <E, A>(self: Either<E, A>): Either<A, E> => isLeft(self) ? right(self.left) : left(self.right)
+export const flip = <E, A>(self: Either<E, A>): Either<A, E> => isLeft(self) ? right(self.left) : left(self.right)
 
 const adapter = Gen.adapter<EitherTypeLambda>()
 

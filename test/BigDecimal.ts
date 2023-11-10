@@ -1,7 +1,8 @@
 import { assertFalse, assertTrue, deepStrictEqual } from "effect-test/util"
 import * as BD from "effect/BigDecimal"
 import * as Option from "effect/Option"
-import { assert, describe, it } from "vitest"
+import { inspect } from "node:util"
+import { assert, describe, expect, it } from "vitest"
 
 const _ = BD.unsafeFromString
 const assertEquals = (a: BD.BigDecimal, b: BD.BigDecimal) => assertTrue(BD.equals(a, b))
@@ -158,18 +159,22 @@ describe.concurrent("BigDecimal", () => {
   })
 
   it("between", () => {
-    deepStrictEqual(BD.between(_("0"), _("5"))(_("3")), true)
-    deepStrictEqual(BD.between(_("0"), _("5"))(_("-1")), false)
-    deepStrictEqual(BD.between(_("0"), _("5"))(_("6")), false)
-    deepStrictEqual(BD.between(_("0.02"), _("5"))(_("0.0123")), false)
-    deepStrictEqual(BD.between(_("0.02"), _("5"))(_("0.05")), true)
+    deepStrictEqual(BD.between({ minimum: _("0"), maximum: _("5") })(_("3")), true)
+    deepStrictEqual(BD.between({ minimum: _("0"), maximum: _("5") })(_("-1")), false)
+    deepStrictEqual(BD.between({ minimum: _("0"), maximum: _("5") })(_("6")), false)
+    deepStrictEqual(BD.between({ minimum: _("0.02"), maximum: _("5") })(_("0.0123")), false)
+    deepStrictEqual(BD.between({ minimum: _("0.02"), maximum: _("5") })(_("0.05")), true)
+
+    deepStrictEqual(BD.between(_("3"), { minimum: _("0"), maximum: _("5") }), true)
   })
 
   it("clamp", () => {
-    assertEquals(BD.clamp(_("0"), _("5"))(_("3")), _("3"))
-    assertEquals(BD.clamp(_("0"), _("5"))(_("-1")), _("0"))
-    assertEquals(BD.clamp(_("0"), _("5"))(_("6")), _("5"))
-    assertEquals(BD.clamp(_("0.02"), _("5"))(_("0.0123")), _("0.02"))
+    assertEquals(BD.clamp({ minimum: _("0"), maximum: _("5") })(_("3")), _("3"))
+    assertEquals(BD.clamp({ minimum: _("0"), maximum: _("5") })(_("-1")), _("0"))
+    assertEquals(BD.clamp({ minimum: _("0"), maximum: _("5") })(_("6")), _("5"))
+    assertEquals(BD.clamp({ minimum: _("0.02"), maximum: _("5") })(_("0.0123")), _("0.02"))
+
+    assertEquals(BD.clamp(_("3"), { minimum: _("0"), maximum: _("5") }), _("3"))
   })
 
   it("min", () => {
@@ -246,5 +251,15 @@ describe.concurrent("BigDecimal", () => {
     deepStrictEqual(BD.toString(_("0.200")), "0.200")
     deepStrictEqual(BD.toString(_("0.123000")), "0.123000")
     deepStrictEqual(BD.toString(_("-456.123")), "-456.123")
+  })
+
+  it("toJSON()", () => {
+    deepStrictEqual(JSON.stringify(_("2")), JSON.stringify({ _id: "BigDecimal", value: "2", scale: 0 }))
+  })
+
+  it("inspect", () => {
+    if (typeof window === "undefined") {
+      expect(inspect(_("2"))).toEqual(inspect({ _id: "BigDecimal", value: "2", scale: 0 }))
+    }
   })
 })

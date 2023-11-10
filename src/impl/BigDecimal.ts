@@ -56,10 +56,14 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
     return toString(this)
   },
   toJSON(this: BigDecimal) {
-    return toString(this)
+    return {
+      _id: "BigDecimal",
+      value: String(this.value),
+      scale: this.scale
+    }
   },
   [NodeInspectSymbol](this: BigDecimal) {
-    return toString(this)
+    return this.toJSON()
   },
   pipe() {
     return pipeArguments(this, arguments)
@@ -532,18 +536,29 @@ export const greaterThanOrEqualTo: {
  * @param maximum - The `maximum` value to check.
  *
  * @example
- * import { between, unsafeFromString } from "effect/BigDecimal"
+ * import * as BigDecimal from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("3")), true)
- * assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("-1")), false)
- * assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("6")), false)
+ * const between = BigDecimal.between({
+ *   minimum: BigDecimal.unsafeFromString("1"),
+ *   maximum: BigDecimal.unsafeFromString("5") }
+ * )
+ *
+ * assert.deepStrictEqual(between(BigDecimal.unsafeFromString("3")), true)
+ * assert.deepStrictEqual(between(BigDecimal.unsafeFromString("0")), false)
+ * assert.deepStrictEqual(between(BigDecimal.unsafeFromString("6")), false)
  *
  * @since 2.0.0
  * @category predicates
  */
 export const between: {
-  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => boolean
-  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): boolean
+  (options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): (self: BigDecimal) => boolean
+  (self: BigDecimal, options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): boolean
 } = order.between(Order)
 
 /**
@@ -558,18 +573,29 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
- * import { clamp, unsafeFromString } from "effect/BigDecimal"
+ * import * as BigDecimal from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("3")), unsafeFromString("3"))
- * assert.deepStrictEqual(clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("-1")), unsafeFromString("0"))
- * assert.deepStrictEqual(clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("6")), unsafeFromString("5"))
+ * const clamp = BigDecimal.clamp({
+ *   minimum: BigDecimal.unsafeFromString("1"),
+ *   maximum: BigDecimal.unsafeFromString("5") }
+ * )
+ *
+ * assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("3")), BigDecimal.unsafeFromString("3"))
+ * assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("0")), BigDecimal.unsafeFromString("1"))
+ * assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("6")), BigDecimal.unsafeFromString("5"))
  *
  * @since 2.0.0
  * @category math
  */
 export const clamp: {
-  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => BigDecimal
-  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): BigDecimal
+  (options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): BigDecimal
 } = order.clamp(Order)
 
 /**

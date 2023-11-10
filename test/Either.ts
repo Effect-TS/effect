@@ -151,9 +151,9 @@ describe.concurrent("Either", () => {
     Util.deepStrictEqual(Either.isRight(Either.left(1)), false)
   })
 
-  it("swap", () => {
-    Util.deepStrictEqual(Either.reverse(Either.right("a")), Either.left("a"))
-    Util.deepStrictEqual(Either.reverse(Either.left("b")), Either.right("b"))
+  it("flip", () => {
+    Util.deepStrictEqual(Either.flip(Either.right("a")), Either.left("a"))
+    Util.deepStrictEqual(Either.flip(Either.left("b")), Either.right("b"))
   })
 
   it("merge", () => {

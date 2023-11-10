@@ -83,15 +83,19 @@ describe.concurrent("BigInt", () => {
   })
 
   it("between", () => {
-    assert.deepStrictEqual(BigInt.between(0n, 5n)(3n), true)
-    assert.deepStrictEqual(BigInt.between(0n, 5n)(-1n), false)
-    assert.deepStrictEqual(BigInt.between(0n, 5n)(6n), false)
+    assert.deepStrictEqual(BigInt.between({ minimum: 0n, maximum: 5n })(3n), true)
+    assert.deepStrictEqual(BigInt.between({ minimum: 0n, maximum: 5n })(-1n), false)
+    assert.deepStrictEqual(BigInt.between({ minimum: 0n, maximum: 5n })(6n), false)
+
+    assert.deepStrictEqual(BigInt.between(3n, { minimum: 0n, maximum: 5n }), true)
   })
 
   it("clamp", () => {
-    assert.deepStrictEqual(BigInt.clamp(0n, 5n)(3n), 3n)
-    assert.deepStrictEqual(BigInt.clamp(0n, 5n)(-1n), 0n)
-    assert.deepStrictEqual(BigInt.clamp(0n, 5n)(6n), 5n)
+    assert.deepStrictEqual(BigInt.clamp({ minimum: 0n, maximum: 5n })(3n), 3n)
+    assert.deepStrictEqual(BigInt.clamp({ minimum: 0n, maximum: 5n })(-1n), 0n)
+    assert.deepStrictEqual(BigInt.clamp({ minimum: 0n, maximum: 5n })(6n), 5n)
+
+    assert.deepStrictEqual(BigInt.clamp(3n, { minimum: 0n, maximum: 5n }), 3n)
   })
 
   it("min", () => {

@@ -288,28 +288,24 @@ Restricts the given `BigDecimal` to be within the range specified by the `minimu
 
 ```ts
 export declare const clamp: {
-  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => BigDecimal
-  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): BigDecimal
+  (options: { minimum: BigDecimal; maximum: BigDecimal }): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, options: { minimum: BigDecimal; maximum: BigDecimal }): BigDecimal
 }
 ```
 
 **Example**
 
 ```ts
-import { clamp, unsafeFromString } from "effect/BigDecimal"
+import * as BigDecimal from "effect/BigDecimal"
 
-assert.deepStrictEqual(
-  clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("3")),
-  unsafeFromString("3")
-)
-assert.deepStrictEqual(
-  clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("-1")),
-  unsafeFromString("0")
-)
-assert.deepStrictEqual(
-  clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("6")),
-  unsafeFromString("5")
-)
+const clamp = BigDecimal.clamp({
+  minimum: BigDecimal.unsafeFromString("1"),
+  maximum: BigDecimal.unsafeFromString("5")
+})
+
+assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("3")), BigDecimal.unsafeFromString("3"))
+assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("0")), BigDecimal.unsafeFromString("1"))
+assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("6")), BigDecimal.unsafeFromString("5"))
 ```
 
 Added in v2.0.0
@@ -615,19 +611,24 @@ Checks if a `BigDecimal` is between a `minimum` and `maximum` value (inclusive).
 
 ```ts
 export declare const between: {
-  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => boolean
-  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): boolean
+  (options: { minimum: BigDecimal; maximum: BigDecimal }): (self: BigDecimal) => boolean
+  (self: BigDecimal, options: { minimum: BigDecimal; maximum: BigDecimal }): boolean
 }
 ```
 
 **Example**
 
 ```ts
-import { between, unsafeFromString } from "effect/BigDecimal"
+import * as BigDecimal from "effect/BigDecimal"
 
-assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("3")), true)
-assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("-1")), false)
-assert.deepStrictEqual(between(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("6")), false)
+const between = BigDecimal.between({
+  minimum: BigDecimal.unsafeFromString("1"),
+  maximum: BigDecimal.unsafeFromString("5")
+})
+
+assert.deepStrictEqual(between(BigDecimal.unsafeFromString("3")), true)
+assert.deepStrictEqual(between(BigDecimal.unsafeFromString("0")), false)
+assert.deepStrictEqual(between(BigDecimal.unsafeFromString("6")), false)
 ```
 
 Added in v2.0.0
