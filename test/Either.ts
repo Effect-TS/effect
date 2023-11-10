@@ -171,7 +171,7 @@ describe.concurrent("Either", () => {
     Util.deepStrictEqual(isEquivalent(Either.left("foo"), Either.right(1)), false)
   })
 
-  it("pipe", () => {
+  it("pipe()", () => {
     expect(Either.right(1).pipe(Either.map((n) => n + 1))).toEqual(Either.right(2))
   })
 

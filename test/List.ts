@@ -205,7 +205,7 @@ describe.concurrent("List", () => {
     expect(List.unsafeTail(List.make(1, 2, 3, 4))).toEqual(List.make(2, 3, 4))
   })
 
-  it("pipe", () => {
+  it("pipe()", () => {
     expect(List.empty<string>().pipe(List.prepend("a"))).toEqual(List.make("a"))
   })
 

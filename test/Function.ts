@@ -82,7 +82,7 @@ describe.concurrent("Function", () => {
     deepStrictEqual(u2(1, 2), 3)
   })
 
-  it("pipe", () => {
+  it("pipe()", () => {
     const pipe = Function.pipe // this alias is required in order to exclude the `@effect/babel-plugin` compiler and get 100% coverage
     deepStrictEqual(pipe(2), 2)
     deepStrictEqual(pipe(2, f), 3)

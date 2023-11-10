@@ -31,7 +31,7 @@ describe.concurrent("MutableList", () => {
     )
   })
 
-  it("pipe", () => {
+  it("pipe()", () => {
     expect(MutableList.empty<string>().pipe(MutableList.prepend("a"))).toEqual(MutableList.make("a"))
   })
 

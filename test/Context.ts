@@ -220,7 +220,7 @@ describe.concurrent("Context", () => {
     }
   })
 
-  it("pipe", () => {
+  it("pipe()", () => {
     const result = Context.empty().pipe(Context.add(A, { a: 0 }))
     expect(result.pipe(Context.get(A))).toEqual({ a: 0 })
   })
