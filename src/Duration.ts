@@ -453,12 +453,24 @@ const _clamp = order.clamp(Order)
  * @since 2.0.0
  */
 export const clamp: {
-  (minimum: DurationInput, maximum: DurationInput): (self: DurationInput) => Duration
-  (self: DurationInput, minimum: DurationInput, maximum: DurationInput): Duration
+  (options: {
+    minimum: DurationInput
+    maximum: DurationInput
+  }): (self: DurationInput) => Duration
+  (self: DurationInput, options: {
+    minimum: DurationInput
+    maximum: DurationInput
+  }): Duration
 } = dual(
-  3,
-  (self: DurationInput, minimum: DurationInput, maximum: DurationInput): Duration =>
-    _clamp(decode(self), decode(minimum), decode(maximum))
+  2,
+  (self: DurationInput, options: {
+    minimum: DurationInput
+    maximum: DurationInput
+  }): Duration =>
+    _clamp(decode(self), {
+      minimum: decode(options.minimum),
+      maximum: decode(options.maximum)
+    })
 )
 
 /**

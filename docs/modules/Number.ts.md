@@ -461,19 +461,21 @@ Restricts the given `number` to be within the range specified by the `minimum` a
 
 ```ts
 export declare const clamp: {
-  (minimum: number, maximum: number): (self: number) => number
-  (self: number, minimum: number, maximum: number): number
+  (options: { minimum: number; maximum: number }): (self: number) => number
+  (self: number, options: { minimum: number; maximum: number }): number
 }
 ```
 
 **Example**
 
 ```ts
-import { clamp } from "effect/Number"
+import * as Number from "effect/Number"
 
-assert.deepStrictEqual(clamp(0, 5)(3), 3)
-assert.deepStrictEqual(clamp(0, 5)(-1), 0)
-assert.deepStrictEqual(clamp(0, 5)(6), 5)
+const clamp = Number.clamp({ minimum: 1, maximum: 5 })
+
+assert.equal(clamp(3), 3)
+assert.equal(clamp(0), 1)
+assert.equal(clamp(6), 5)
 ```
 
 Added in v2.0.0

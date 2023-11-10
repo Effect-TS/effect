@@ -569,18 +569,29 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
- * import { clamp, unsafeFromString } from "effect/BigDecimal"
+ * import * as BigDecimal from "effect/BigDecimal"
  *
- * assert.deepStrictEqual(clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("3")), unsafeFromString("3"))
- * assert.deepStrictEqual(clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("-1")), unsafeFromString("0"))
- * assert.deepStrictEqual(clamp(unsafeFromString("0"), unsafeFromString("5"))(unsafeFromString("6")), unsafeFromString("5"))
+ * const clamp = BigDecimal.clamp({
+ *   minimum: BigDecimal.unsafeFromString("1"),
+ *   maximum: BigDecimal.unsafeFromString("5") }
+ * )
+ *
+ * assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("3")), BigDecimal.unsafeFromString("3"))
+ * assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("0")), BigDecimal.unsafeFromString("1"))
+ * assert.deepStrictEqual(clamp(BigDecimal.unsafeFromString("6")), BigDecimal.unsafeFromString("5"))
  *
  * @since 2.0.0
  * @category math
  */
 export const clamp: {
-  (minimum: BigDecimal, maximum: BigDecimal): (self: BigDecimal) => BigDecimal
-  (self: BigDecimal, minimum: BigDecimal, maximum: BigDecimal): BigDecimal
+  (options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): (self: BigDecimal) => BigDecimal
+  (self: BigDecimal, options: {
+    minimum: BigDecimal
+    maximum: BigDecimal
+  }): BigDecimal
 } = order.clamp(Order)
 
 /**

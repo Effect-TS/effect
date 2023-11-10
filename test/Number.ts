@@ -104,9 +104,9 @@ describe.concurrent("Number", () => {
   })
 
   it("clamp", () => {
-    assert.deepStrictEqual(Number.clamp(0, 5)(3), 3)
-    assert.deepStrictEqual(Number.clamp(0, 5)(-1), 0)
-    assert.deepStrictEqual(Number.clamp(0, 5)(6), 5)
+    assert.deepStrictEqual(Number.clamp({ minimum: 0, maximum: 5 })(3), 3)
+    assert.deepStrictEqual(Number.clamp({ minimum: 0, maximum: 5 })(-1), 0)
+    assert.deepStrictEqual(Number.clamp({ minimum: 0, maximum: 5 })(6), 5)
   })
 
   it("min", () => {

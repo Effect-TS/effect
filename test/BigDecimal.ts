@@ -166,10 +166,12 @@ describe.concurrent("BigDecimal", () => {
   })
 
   it("clamp", () => {
-    assertEquals(BD.clamp(_("0"), _("5"))(_("3")), _("3"))
-    assertEquals(BD.clamp(_("0"), _("5"))(_("-1")), _("0"))
-    assertEquals(BD.clamp(_("0"), _("5"))(_("6")), _("5"))
-    assertEquals(BD.clamp(_("0.02"), _("5"))(_("0.0123")), _("0.02"))
+    assertEquals(BD.clamp({ minimum: _("0"), maximum: _("5") })(_("3")), _("3"))
+    assertEquals(BD.clamp({ minimum: _("0"), maximum: _("5") })(_("-1")), _("0"))
+    assertEquals(BD.clamp({ minimum: _("0"), maximum: _("5") })(_("6")), _("5"))
+    assertEquals(BD.clamp({ minimum: _("0.02"), maximum: _("5") })(_("0.0123")), _("0.02"))
+
+    assertEquals(BD.clamp(_("3"), { minimum: _("0"), maximum: _("5") }), _("3"))
   })
 
   it("min", () => {

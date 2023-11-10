@@ -47,11 +47,13 @@ describe.concurrent("Order", () => {
 
   it("clamp", () => {
     const clamp = _.clamp(_.number)
-    U.deepStrictEqual(clamp(2, 1, 10), 2)
-    U.deepStrictEqual(clamp(10, 1, 10), 10)
-    U.deepStrictEqual(clamp(20, 1, 10), 10)
-    U.deepStrictEqual(clamp(1, 1, 10), 1)
-    U.deepStrictEqual(clamp(-10, 1, 10), 1)
+    U.deepStrictEqual(clamp(2, { minimum: 1, maximum: 10 }), 2)
+    U.deepStrictEqual(clamp(10, { minimum: 1, maximum: 10 }), 10)
+    U.deepStrictEqual(clamp(20, { minimum: 1, maximum: 10 }), 10)
+    U.deepStrictEqual(clamp(1, { minimum: 1, maximum: 10 }), 1)
+    U.deepStrictEqual(clamp(-10, { minimum: 1, maximum: 10 }), 1)
+
+    U.deepStrictEqual(pipe(2, clamp({ minimum: 1, maximum: 10 })), 2)
   })
 
   it("between", () => {

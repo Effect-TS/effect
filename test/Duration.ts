@@ -69,13 +69,25 @@ describe.concurrent("Duration", () => {
   })
 
   it("clamp", () => {
-    deepStrictEqual(Duration.clamp(Duration.millis(1), Duration.millis(2), Duration.millis(3)), Duration.millis(2))
     deepStrictEqual(
-      Duration.clamp(Duration.minutes(1.5), Duration.minutes(1), Duration.minutes(2)),
+      Duration.clamp(Duration.millis(1), {
+        minimum: Duration.millis(2),
+        maximum: Duration.millis(3)
+      }),
+      Duration.millis(2)
+    )
+    deepStrictEqual(
+      Duration.clamp(Duration.minutes(1.5), {
+        minimum: Duration.minutes(1),
+        maximum: Duration.minutes(2)
+      }),
       Duration.minutes(1.5)
     )
 
-    expect(Duration.clamp("1 millis", "2 millis", "3 millis")).toStrictEqual(Duration.millis(2))
+    expect(Duration.clamp("1 millis", {
+      minimum: "2 millis",
+      maximum: "3 millis"
+    })).toStrictEqual(Duration.millis(2))
   })
 
   it("equals", () => {

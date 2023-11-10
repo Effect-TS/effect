@@ -484,8 +484,8 @@ Added in v2.0.0
 
 ```ts
 export declare const clamp: {
-  (minimum: DurationInput, maximum: DurationInput): (self: DurationInput) => Duration
-  (self: DurationInput, minimum: DurationInput, maximum: DurationInput): Duration
+  (options: { minimum: DurationInput; maximum: DurationInput }): (self: DurationInput) => Duration
+  (self: DurationInput, options: { minimum: DurationInput; maximum: DurationInput }): Duration
 }
 ```
 

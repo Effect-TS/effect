@@ -89,9 +89,11 @@ describe.concurrent("BigInt", () => {
   })
 
   it("clamp", () => {
-    assert.deepStrictEqual(BigInt.clamp(0n, 5n)(3n), 3n)
-    assert.deepStrictEqual(BigInt.clamp(0n, 5n)(-1n), 0n)
-    assert.deepStrictEqual(BigInt.clamp(0n, 5n)(6n), 5n)
+    assert.deepStrictEqual(BigInt.clamp({ minimum: 0n, maximum: 5n })(3n), 3n)
+    assert.deepStrictEqual(BigInt.clamp({ minimum: 0n, maximum: 5n })(-1n), 0n)
+    assert.deepStrictEqual(BigInt.clamp({ minimum: 0n, maximum: 5n })(6n), 5n)
+
+    assert.deepStrictEqual(BigInt.clamp(3n, { minimum: 0n, maximum: 5n }), 3n)
   })
 
   it("min", () => {

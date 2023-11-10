@@ -291,17 +291,25 @@ export const between: {
  * @param maximum - The upper end of the range.
  *
  * @example
- * import { clamp } from 'effect/Number'
+ * import * as Number from 'effect/Number'
  *
- * assert.deepStrictEqual(clamp(0, 5)(3), 3)
- * assert.deepStrictEqual(clamp(0, 5)(-1), 0)
- * assert.deepStrictEqual(clamp(0, 5)(6), 5)
+ * const clamp = Number.clamp({ minimum: 1, maximum: 5 })
+ *
+ * assert.equal(clamp(3), 3)
+ * assert.equal(clamp(0), 1)
+ * assert.equal(clamp(6), 5)
  *
  * @since 2.0.0
  */
 export const clamp: {
-  (minimum: number, maximum: number): (self: number) => number
-  (self: number, minimum: number, maximum: number): number
+  (options: {
+    minimum: number
+    maximum: number
+  }): (self: number) => number
+  (self: number, options: {
+    minimum: number
+    maximum: number
+  }): number
 } = order.clamp(Order)
 
 /**

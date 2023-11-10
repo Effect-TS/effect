@@ -562,19 +562,21 @@ Restricts the given `bigint` to be within the range specified by the `minimum` a
 
 ```ts
 export declare const clamp: {
-  (minimum: bigint, maximum: bigint): (self: bigint) => bigint
-  (self: bigint, minimum: bigint, maximum: bigint): bigint
+  (options: { minimum: bigint; maximum: bigint }): (self: bigint) => bigint
+  (self: bigint, options: { minimum: bigint; maximum: bigint }): bigint
 }
 ```
 
 **Example**
 
 ```ts
-import { clamp } from "effect/BigInt"
+import * as BigInt from "effect/BigInt"
 
-assert.deepStrictEqual(clamp(0n, 5n)(3n), 3n)
-assert.deepStrictEqual(clamp(0n, 5n)(-1n), 0n)
-assert.deepStrictEqual(clamp(0n, 5n)(6n), 5n)
+const clamp = BigInt.clamp({ minimum: 1n, maximum: 5n })
+
+assert.equal(clamp(3n), 3n)
+assert.equal(clamp(0n), 1n)
+assert.equal(clamp(6n), 5n)
 ```
 
 Added in v2.0.0
