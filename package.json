@@ -38,7 +38,7 @@
     "clean": "rimraf build dist coverage .tsbuildinfo",
     "test": "vitest",
     "check": "tsc -b tsconfig.json",
-    "coverage": "vitest run --coverage",
+    "coverage": "vitest --run --coverage related",
     "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
     "update-version": "changeset version && pnpm install --no-frozen-lockfile && node scripts/version.mjs",
     "lint": "eslint src test",
