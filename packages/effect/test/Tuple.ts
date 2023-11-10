@@ -8,30 +8,30 @@ describe.concurrent("Tuple", () => {
     expect(T.getEquivalence).exist
   })
 
-  it("tuple", () => {
-    expect(T.tuple("a", 1, true)).toEqual(["a", 1, true])
+  it("make", () => {
+    expect(T.make("a", 1, true)).toEqual(["a", 1, true])
   })
 
   it("appendElement", () => {
-    expect(pipe(T.tuple("a", 1), T.appendElement(true))).toEqual(["a", 1, true])
+    expect(pipe(T.make("a", 1), T.appendElement(true))).toEqual(["a", 1, true])
   })
 
   it("getFirst", () => {
-    expect(T.getFirst(T.tuple("a", 1))).toEqual("a")
+    expect(T.getFirst(T.make("a", 1))).toEqual("a")
   })
 
   it("getSecond", () => {
-    expect(T.getSecond(T.tuple("a", 1))).toEqual(1)
+    expect(T.getSecond(T.make("a", 1))).toEqual(1)
   })
 
   it("mapBoth", () => {
-    expect(T.mapBoth(T.tuple("a", 1), {
+    expect(T.mapBoth(T.make("a", 1), {
       onFirst: (s) => s + "!",
       onSecond: (n) => n * 2
     })).toEqual(["a!", 2])
   })
 
   it("swap", () => {
-    expect(T.swap(T.tuple("a", 1))).toEqual([1, "a"])
+    expect(T.swap(T.make("a", 1))).toEqual([1, "a"])
   })
 })
