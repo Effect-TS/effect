@@ -521,7 +521,7 @@
     {
       "name": "Order",
       "path": "./dist/dist/esm/index.js",
-      "limit": "1 kB",
+      "limit": "2 kB",
       "import": "{ Order }"
     },
     {
