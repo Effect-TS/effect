@@ -1,4 +1,4 @@
-import { Chunk } from "effect/Chunk"
+import { Chunk } from "effect"
 import { NonEmptyIterable as NonEmpty } from "effect/NonEmptyIterable"
 import { describe, expect, it } from "vitest"
 

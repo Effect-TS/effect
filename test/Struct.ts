@@ -1,7 +1,5 @@
+import { Number, String, Struct } from "effect"
 import { pipe } from "effect/Function"
-import { Number } from "effect/Number"
-import { String } from "effect/String"
-import { Struct } from "effect/Struct"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Struct", () => {

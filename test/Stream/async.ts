@@ -1,16 +1,6 @@
+import { Cause, Chunk, Deferred, Effect, Either, Exit, Fiber, Option, Ref, Sink, Stream } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Ref } from "effect/Ref"
-import { Sink } from "effect/Sink"
-import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

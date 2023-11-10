@@ -1,17 +1,19 @@
+import {
+  Chunk,
+  Duration,
+  Effect,
+  Either,
+  Exit,
+  Fiber,
+  Option,
+  Ref,
+  Schedule,
+  Stream,
+  TestClock,
+  TestContext
+} from "effect"
 import * as it from "effect-test/utils/extend"
-import { Chunk } from "effect/Chunk"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { constVoid, identity, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Ref } from "effect/Ref"
-import { Schedule } from "effect/Schedule"
-import { Stream } from "effect/Stream"
-import { TestClock } from "effect/TestClock"
-import { TestContext } from "effect/TestContext"
 import fc from "fast-check"
 import { assert, describe } from "vitest"
 

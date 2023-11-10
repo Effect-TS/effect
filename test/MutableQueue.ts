@@ -1,5 +1,5 @@
+import { MutableQueue } from "effect"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "effect-test/util"
-import { MutableQueue } from "effect/MutableQueue"
 import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 

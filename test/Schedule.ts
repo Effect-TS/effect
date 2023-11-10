@@ -1,20 +1,22 @@
+import {
+  Cause,
+  Chunk,
+  Clock,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Option,
+  ReadonlyArray,
+  Ref,
+  Schedule,
+  ScheduleDecision,
+  ScheduleIntervals,
+  TestClock
+} from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Clock } from "effect/Clock"
-import { Deferred } from "effect/Deferred"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { constVoid } from "effect/Function"
-import { Option } from "effect/Option"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
-import { Schedule } from "effect/Schedule"
-import { ScheduleDecision } from "effect/ScheduleDecision"
-import { ScheduleIntervals } from "effect/ScheduleIntervals"
-import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Schedule", () => {

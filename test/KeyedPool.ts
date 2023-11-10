@@ -1,13 +1,6 @@
+import { Duration, Effect, Fiber, KeyedPool, Random, ReadonlyArray, Ref, TestClock } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import { KeyedPool } from "effect/KeyedPool"
-import { Random } from "effect/Random"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
-import { TestClock } from "effect/TestClock"
 import { describe, expect } from "vitest"
 
 describe("KeyedPool", () => {

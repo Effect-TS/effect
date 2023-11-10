@@ -1,11 +1,5 @@
+import { Context, Effect, Exit, FiberRef, Layer, RuntimeFlags, Scope } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Context } from "effect/Context"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
-import { FiberRef } from "effect/FiberRef"
-import { Layer } from "effect/Layer"
-import { RuntimeFlags } from "effect/RuntimeFlags"
-import { Scope } from "effect/Scope"
 import { assert, describe } from "vitest"
 
 interface A {

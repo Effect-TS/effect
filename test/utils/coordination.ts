@@ -1,10 +1,5 @@
-import { Chunk } from "effect/Chunk"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
+import { Chunk, Effect, Exit, Option, Queue, Ref } from "effect"
 import { pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Queue } from "effect/Queue"
-import { Ref } from "effect/Ref"
 
 export interface ChunkCoordination<A> {
   readonly queue: Queue<Exit<Option<never>, Chunk<A>>>

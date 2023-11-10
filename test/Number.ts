@@ -1,7 +1,6 @@
+import { Number, Option } from "effect"
 import { deepStrictEqual } from "effect-test/util"
 import { pipe } from "effect/Function"
-import { Number } from "effect/Number"
-import { Option } from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Number", () => {

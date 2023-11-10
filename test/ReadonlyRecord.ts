@@ -1,7 +1,6 @@
-import { Either } from "effect/Either"
+import { Either, Option } from "effect"
 import { pipe } from "effect/Function"
 import * as N from "effect/Number"
-import { Option } from "effect/Option"
 import { ReadonlyRecord as RR } from "effect/ReadonlyRecord"
 import { assert, describe, expect, it } from "vitest"
 

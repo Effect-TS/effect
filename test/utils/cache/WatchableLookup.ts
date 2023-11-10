@@ -1,14 +1,7 @@
+import { Chunk, Duration, Effect, HashMap, Option, Ref, Schedule, TestServices } from "effect"
 import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
-import { Chunk } from "effect/Chunk"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
 import { identity, pipe } from "effect/Function"
-import { HashMap } from "effect/HashMap"
-import { Option } from "effect/Option"
-import { Ref } from "effect/Ref"
-import { Schedule } from "effect/Schedule"
 import type { Scope } from "effect/Scope"
-import { TestServices } from "effect/TestServices"
 import { expect } from "vitest"
 
 export interface WatchableLookup<Key, Error, Value> {

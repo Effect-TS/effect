@@ -1,10 +1,5 @@
+import { Deferred, Effect, Exit, Fiber, Option, SynchronizedRef } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
-import { Option } from "effect/Option"
-import { SynchronizedRef } from "effect/SynchronizedRef"
 import { assert, describe } from "vitest"
 
 const current = "value"

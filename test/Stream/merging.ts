@@ -1,16 +1,6 @@
+import { Chunk, Duration, Effect, Either, Exit, Fiber, HashSet, Queue, Stream, TestClock, TestServices } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Chunk } from "effect/Chunk"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { constVoid, pipe } from "effect/Function"
-import { HashSet } from "effect/HashSet"
-import { Queue } from "effect/Queue"
-import { Stream } from "effect/Stream"
-import { TestClock } from "effect/TestClock"
-import { TestServices } from "effect/TestServices"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

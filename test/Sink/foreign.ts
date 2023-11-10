@@ -1,12 +1,6 @@
+import { Context, Effect, Either, Exit, Option, Random, Stream } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Context } from "effect/Context"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Option } from "effect/Option"
-import { Random } from "effect/Random"
 import type { Sink } from "effect/Sink"
-import { Stream } from "effect/Stream"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 

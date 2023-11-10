@@ -1,18 +1,20 @@
+import {
+  Chunk,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  FiberId,
+  FiberRef,
+  FiberStatus,
+  HashSet,
+  Queue,
+  ReadonlyArray,
+  Ref
+} from "effect"
 import * as it from "effect-test/utils/extend"
 import { withLatch } from "effect-test/utils/latch"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
-import { FiberId } from "effect/FiberId"
-import { FiberRef } from "effect/FiberRef"
-import { FiberStatus } from "effect/FiberStatus"
 import { constVoid, identity, pipe } from "effect/Function"
-import { HashSet } from "effect/HashSet"
-import { Queue } from "effect/Queue"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const initial = "initial"

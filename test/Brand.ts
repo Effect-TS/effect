@@ -1,6 +1,4 @@
-import { Brand } from "effect/Brand"
-import { Either } from "effect/Either"
-import { Option } from "effect/Option"
+import { Brand, Either, Option } from "effect"
 import { assert, describe, it } from "vitest"
 
 declare const IntTypeId: unique symbol

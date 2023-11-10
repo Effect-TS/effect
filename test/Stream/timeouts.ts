@@ -1,16 +1,6 @@
+import { Cause, Chunk, Duration, Effect, Either, Exit, Fiber, Option, Queue, Stream, TestClock } from "effect"
 import { chunkCoordination } from "effect-test/utils/coordination"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
-import { Option } from "effect/Option"
-import { Queue } from "effect/Queue"
-import { Stream } from "effect/Stream"
-import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

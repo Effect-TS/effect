@@ -1,9 +1,6 @@
+import { Deferred, Effect, Ref, Scope } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
 import { identity, pipe } from "effect/Function"
-import { Ref } from "effect/Ref"
-import { Scope } from "effect/Scope"
 import { assert, describe, expect } from "vitest"
 
 type Action = Acquire | Use | Release

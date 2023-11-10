@@ -1,5 +1,4 @@
-import { Chunk } from "effect/Chunk"
-import { MutableRef } from "effect/MutableRef"
+import { Chunk, MutableRef } from "effect"
 import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 

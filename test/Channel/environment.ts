@@ -1,10 +1,6 @@
+import { Channel, Context, Effect, Equal, Hash } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Channel } from "effect/Channel"
-import { Context } from "effect/Context"
-import { Effect } from "effect/Effect"
-import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import { Hash } from "effect/Hash"
 import { assert, describe } from "vitest"
 
 const NumberServiceSymbolKey = "effect/test/NumberService"

@@ -1,8 +1,6 @@
+import { Equal, Hash, HashSet } from "effect"
 import { deepStrictEqual } from "effect-test/util"
-import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import { Hash } from "effect/Hash"
-import { HashSet } from "effect/HashSet"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 

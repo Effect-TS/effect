@@ -1,8 +1,5 @@
-import { Effect } from "effect/Effect"
-import { ExecutionStrategy } from "effect/ExecutionStrategy"
+import { Effect, ExecutionStrategy, Ref, Scope } from "effect"
 import { pipe } from "effect/Function"
-import { Ref } from "effect/Ref"
-import { Scope } from "effect/Scope"
 import { expect } from "vitest"
 
 export interface ObservableResource<E, V> {

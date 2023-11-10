@@ -1,5 +1,4 @@
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
+import { Effect, Either } from "effect"
 import * as timeout from "effect/internal/timeout"
 import { describe, expect, it } from "vitest"
 

@@ -1,9 +1,5 @@
-import { Chunk } from "effect/Chunk"
-import { Differ } from "effect/Differ"
-import { Equal } from "effect/Equal"
+import { Chunk, Differ, Equal, HashMap, HashSet } from "effect"
 import { pipe } from "effect/Function"
-import { HashMap } from "effect/HashMap"
-import { HashSet } from "effect/HashSet"
 import { ReadonlyArray as RA } from "effect/ReadonlyArray"
 import { assert, describe, it as it_ } from "vitest"
 

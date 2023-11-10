@@ -1,15 +1,6 @@
+import { Chunk, Deferred, Effect, Equal, Exit, Fiber, Number, Random, Stream, SubscriptionRef } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Equal } from "effect/Equal"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import { Number } from "effect/Number"
-import { Random } from "effect/Random"
-import { Stream } from "effect/Stream"
-import { SubscriptionRef } from "effect/SubscriptionRef"
 import { assert, describe } from "vitest"
 
 describe.concurrent("SubscriptionRef", () => {

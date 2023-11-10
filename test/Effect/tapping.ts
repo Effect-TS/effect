@@ -1,4 +1,4 @@
-import { Effect } from "effect/Effect"
+import { Effect } from "effect"
 import { pipe } from "effect/Function"
 import { describe, expect, it } from "vitest"
 

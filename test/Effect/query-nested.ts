@@ -1,10 +1,6 @@
+import { Context, Effect, Layer, ReadonlyArray, Request } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Context } from "effect/Context"
 import { seconds } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Layer } from "effect/Layer"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Request } from "effect/Request"
 import { RequestResolver as Resolver } from "effect/RequestResolver"
 import { describe, expect } from "vitest"
 

@@ -1,8 +1,6 @@
+import { Chunk, Effect, Stream } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Chunk } from "effect/Chunk"
-import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import { Stream } from "effect/Stream"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 

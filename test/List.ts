@@ -1,10 +1,5 @@
-import { Chunk } from "effect/Chunk"
-import { Duration } from "effect/Duration"
-import { Either } from "effect/Either"
+import { Chunk, Duration, Either, List, Option, ReadonlyArray } from "effect"
 import { equals, symbol } from "effect/Equal"
-import { List } from "effect/List"
-import { Option } from "effect/Option"
-import { ReadonlyArray } from "effect/ReadonlyArray"
 import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 

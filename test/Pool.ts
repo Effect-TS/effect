@@ -1,15 +1,5 @@
+import { Deferred, Duration, Effect, Exit, Fiber, Option, Pool, Ref, Scope, TestClock, TestServices } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Deferred } from "effect/Deferred"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
-import { Option } from "effect/Option"
-import { Pool } from "effect/Pool"
-import { Ref } from "effect/Ref"
-import { Scope } from "effect/Scope"
-import { TestClock } from "effect/TestClock"
-import { TestServices } from "effect/TestServices"
 import { describe, expect } from "vitest"
 
 describe("Pool", () => {

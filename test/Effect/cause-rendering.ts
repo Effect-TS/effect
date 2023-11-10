@@ -1,7 +1,5 @@
+import { Cause, Effect, Option } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Effect } from "effect/Effect"
-import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

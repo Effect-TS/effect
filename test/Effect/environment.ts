@@ -1,6 +1,5 @@
+import { Context, Effect } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Context } from "effect/Context"
-import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import { assert, describe, expect } from "vitest"
 

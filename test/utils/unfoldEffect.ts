@@ -1,6 +1,4 @@
-import { Effect } from "effect/Effect"
-import { List } from "effect/List"
-import { Option } from "effect/Option"
+import { Effect, List, Option } from "effect"
 
 export const unfoldEffect = <A, R, E, S>(
   s: S,

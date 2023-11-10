@@ -1,16 +1,6 @@
+import { Cause, Chunk, Deferred, Effect, Either, Exit, Fiber, Option, Queue, ReadonlyArray, Ref } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Queue } from "effect/Queue"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
 import { assert, describe, expect } from "vitest"
 
 export const waitForValue = <A>(ref: Effect<never, never, A>, value: A): Effect<never, never, A> => {

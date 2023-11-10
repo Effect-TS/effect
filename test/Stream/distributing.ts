@@ -1,10 +1,6 @@
+import { Deferred, Effect, Exit, Option, Stream } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
 import { constTrue, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Stream", () => {

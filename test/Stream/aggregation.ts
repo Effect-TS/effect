@@ -1,23 +1,25 @@
+import {
+  Cause,
+  Chunk,
+  Deferred,
+  Duration,
+  Effect,
+  Either,
+  Exit,
+  Fiber,
+  Option,
+  Queue,
+  Ref,
+  Schedule,
+  Sink,
+  Stream,
+  Take,
+  TestClock,
+  TestServices
+} from "effect"
 import { chunkCoordination } from "effect-test/utils/coordination"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { constTrue, constVoid, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Queue } from "effect/Queue"
-import { Ref } from "effect/Ref"
-import { Schedule } from "effect/Schedule"
-import { Sink } from "effect/Sink"
-import { Stream } from "effect/Stream"
-import { Take } from "effect/Take"
-import { TestClock } from "effect/TestClock"
-import { TestServices } from "effect/TestServices"
 import { assert, describe } from "vitest"
 
 Stream.onError

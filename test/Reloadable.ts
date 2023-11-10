@@ -1,10 +1,7 @@
+import { Context, Effect, Layer, Reloadable } from "effect"
 import * as Counter from "effect-test/utils/counter"
 import * as it from "effect-test/utils/extend"
-import { Context } from "effect/Context"
-import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
-import { Layer } from "effect/Layer"
-import { Reloadable } from "effect/Reloadable"
 import { assert, describe } from "vitest"
 
 const DummyServiceTypeId = Symbol.for("effect-test/Reloadable/DummyService")

@@ -1,11 +1,7 @@
+import { Equal, Hash, Option, Order, RedBlackTree } from "effect"
 import { deepStrictEqual } from "effect-test/util"
-import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import { Hash } from "effect/Hash"
 import * as number from "effect/Number"
-import { Option } from "effect/Option"
-import { Order } from "effect/Order"
-import { RedBlackTree } from "effect/RedBlackTree"
 import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 

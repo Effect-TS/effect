@@ -1,13 +1,7 @@
+import { Chunk, Effect, Either, Option, Random, Sink, Stream } from "effect"
 import * as it from "effect-test/utils/extend"
 import { unfoldEffect } from "effect-test/utils/unfoldEffect"
-import { Chunk } from "effect/Chunk"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
 import { constVoid, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Random } from "effect/Random"
-import { Sink } from "effect/Sink"
-import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 const findSink = <A>(a: A): Sink<never, void, A, A, A> =>

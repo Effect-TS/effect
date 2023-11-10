@@ -1,5 +1,5 @@
+import { Effect } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Effect } from "effect/Effect"
 import { RuntimeFlags as Flags } from "effect/RuntimeFlags"
 import { RuntimeFlagsPatch as Patch } from "effect/RuntimeFlagsPatch"
 import { assert, describe } from "vitest"

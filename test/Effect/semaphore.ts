@@ -1,7 +1,6 @@
+import { Effect, TestClock } from "effect"
 import * as it from "effect-test/utils/extend"
 import * as D from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

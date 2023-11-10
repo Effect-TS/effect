@@ -1,8 +1,6 @@
+import { Effect, Either, Option } from "effect"
 import * as it from "effect-test/utils/extend"
 import { assertType, satisfies } from "effect-test/utils/types"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

@@ -1,13 +1,5 @@
+import { Cause, Effect, Fiber, FiberId, FiberRef, FiberRefs, HashMap, Option, Queue } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Effect } from "effect/Effect"
-import { Fiber } from "effect/Fiber"
-import { FiberId } from "effect/FiberId"
-import { FiberRef } from "effect/FiberRef"
-import { FiberRefs } from "effect/FiberRefs"
-import { HashMap } from "effect/HashMap"
-import { Option } from "effect/Option"
-import { Queue } from "effect/Queue"
 import { assert, describe, expect } from "vitest"
 
 describe.concurrent("FiberRefs", () => {

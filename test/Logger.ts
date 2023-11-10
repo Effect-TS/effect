@@ -1,13 +1,6 @@
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { FiberId } from "effect/FiberId"
-import { FiberRefs } from "effect/FiberRefs"
+import { Cause, Chunk, FiberId, FiberRefs, HashMap, List, Logger, LogSpan } from "effect"
 import { identity } from "effect/Function"
-import { HashMap } from "effect/HashMap"
 import { logLevelInfo } from "effect/internal/core"
-import { List } from "effect/List"
-import { Logger } from "effect/Logger"
-import { LogSpan } from "effect/LogSpan"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 describe("stringLogger", () => {

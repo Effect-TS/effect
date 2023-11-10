@@ -1,8 +1,5 @@
+import { Effect, Either, Sink, Stream } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Sink } from "effect/Sink"
-import { Stream } from "effect/Stream"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Sink", () => {

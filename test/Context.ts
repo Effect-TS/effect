@@ -1,5 +1,4 @@
-import { Context } from "effect/Context"
-import { Differ } from "effect/Differ"
+import { Context, Differ } from "effect"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
 import { assert, describe, expect, it } from "vitest"

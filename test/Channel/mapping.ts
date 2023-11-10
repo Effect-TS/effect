@@ -1,15 +1,17 @@
+import {
+  Channel,
+  ChildExecutorDecision,
+  Chunk,
+  Effect,
+  Exit,
+  Option,
+  ReadonlyArray,
+  Ref,
+  UpstreamPullRequest,
+  UpstreamPullStrategy
+} from "effect"
 import * as it from "effect-test/utils/extend"
-import { Channel } from "effect/Channel"
-import { ChildExecutorDecision } from "effect/ChildExecutorDecision"
-import { Chunk } from "effect/Chunk"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
 import { constVoid, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
-import { UpstreamPullRequest } from "effect/UpstreamPullRequest"
-import { UpstreamPullStrategy } from "effect/UpstreamPullStrategy"
 import { assert, describe } from "vitest"
 
 interface First {

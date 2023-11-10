@@ -1,15 +1,6 @@
+import { Cause, Chunk, Deferred, Duration, Effect, Exit, Fiber, Option, ReadonlyArray, Ref } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 const ExampleError = new Error("Oh noes!")

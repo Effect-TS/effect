@@ -1,4 +1,4 @@
-import { Effect } from "effect/Effect"
+import { Effect } from "effect"
 import * as timeout from "effect/internal/timeout"
 import { describe, expect, it } from "vitest"
 

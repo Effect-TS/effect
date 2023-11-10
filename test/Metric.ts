@@ -1,22 +1,24 @@
+import {
+  Chunk,
+  Clock,
+  Duration,
+  Effect,
+  Equal,
+  Fiber,
+  HashMap,
+  HashSet,
+  Metric,
+  MetricBoundaries,
+  MetricKey,
+  MetricLabel,
+  MetricPolling,
+  MetricState,
+  Option,
+  ReadonlyArray,
+  Schedule
+} from "effect"
 import * as it from "effect-test/utils/extend"
-import { Chunk } from "effect/Chunk"
-import { Clock } from "effect/Clock"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Equal } from "effect/Equal"
-import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import { HashMap } from "effect/HashMap"
-import { HashSet } from "effect/HashSet"
-import { Metric } from "effect/Metric"
-import { MetricBoundaries } from "effect/MetricBoundaries"
-import { MetricKey } from "effect/MetricKey"
-import { MetricLabel } from "effect/MetricLabel"
-import { MetricPolling } from "effect/MetricPolling"
-import { MetricState } from "effect/MetricState"
-import { Option } from "effect/Option"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Schedule } from "effect/Schedule"
 import { assert, describe, expect } from "vitest"
 
 const labels = Chunk.make(MetricLabel.make("x", "a"), MetricLabel.make("y", "b"))

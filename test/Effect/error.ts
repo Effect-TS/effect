@@ -1,7 +1,5 @@
+import { Cause, Data, Effect } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Data } from "effect/Data"
-import { Effect } from "effect/Effect"
 import { describe, expect } from "vitest"
 
 class TestError extends Data.TaggedError("TestError")<{}> {}

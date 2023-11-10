@@ -1,11 +1,6 @@
+import { Context, Effect, Exit, Layer, ReadonlyArray, Stream } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Context } from "effect/Context"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
-import { Layer } from "effect/Layer"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Stream } from "effect/Stream"
 import type { Tracer } from "effect/Tracer"
 import { assert, describe, expect } from "vitest"
 

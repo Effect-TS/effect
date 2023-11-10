@@ -1,12 +1,6 @@
+import { Cause, Deferred, Effect, Exit, Fiber, Option, Ref } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

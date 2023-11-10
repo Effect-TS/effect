@@ -1,6 +1,5 @@
+import { Hash, HashSet } from "effect"
 import { absurd, identity } from "effect/Function"
-import { Hash } from "effect/Hash"
-import { HashSet } from "effect/HashSet"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("Hash", () => {

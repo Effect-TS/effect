@@ -1,11 +1,7 @@
+import { Cause, Chunk, Effect, Exit, Ref } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Effect } from "effect/Effect"
 import { equals } from "effect/Equal"
-import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
-import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

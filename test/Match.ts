@@ -1,9 +1,9 @@
+import { Predicate } from "effect"
 import { assertType } from "effect-test/utils/types"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import * as M from "effect/Match"
 import * as O from "effect/Option"
-import { Predicate } from "effect/Predicate"
 import { describe, expect, it } from "vitest"
 
 describe("Match", () => {

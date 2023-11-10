@@ -1,6 +1,5 @@
-import { Effect } from "effect/Effect"
+import { Effect, Ref } from "effect"
 import { pipe } from "effect/Function"
-import { Ref } from "effect/Ref"
 import type { Scope } from "effect/Scope"
 
 interface Counter {

@@ -1,11 +1,6 @@
+import { Cause, Equal, FiberId, Hash, Option, Predicate } from "effect"
 import { causes, equalCauses, errorCauseFunctions, errors } from "effect-test/utils/cause"
-import { Cause } from "effect/Cause"
-import { Equal } from "effect/Equal"
-import { FiberId } from "effect/FiberId"
-import { Hash } from "effect/Hash"
 import * as internal from "effect/internal/cause"
-import { Option } from "effect/Option"
-import { Predicate } from "effect/Predicate"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 

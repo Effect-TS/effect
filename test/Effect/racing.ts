@@ -1,6 +1,5 @@
+import { Duration, Effect } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
 import { pipe } from "effect/Function"
 import { assert, describe } from "vitest"
 

@@ -1,17 +1,6 @@
+import { Cause, Chunk, Deferred, Effect, Either, Equal, Exit, Fiber, Ref, Scope, Stream, Take } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Equal } from "effect/Equal"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { identity, pipe } from "effect/Function"
-import { Ref } from "effect/Ref"
-import { Scope } from "effect/Scope"
-import { Stream } from "effect/Stream"
-import { Take } from "effect/Take"
 import { assert, describe } from "vitest"
 
 const withPermitsScoped = (permits: number) => (semaphore: Effect.Semaphore) =>

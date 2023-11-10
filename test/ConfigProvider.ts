@@ -1,18 +1,20 @@
+import {
+  Cause,
+  Chunk,
+  Config,
+  ConfigError,
+  ConfigProvider,
+  ConfigSecret,
+  Effect,
+  Either,
+  Equal,
+  Exit,
+  HashMap,
+  HashSet,
+  LogLevel,
+  Option
+} from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Config } from "effect/Config"
-import { ConfigError } from "effect/ConfigError"
-import { ConfigProvider } from "effect/ConfigProvider"
-import { ConfigSecret } from "effect/ConfigSecret"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Equal } from "effect/Equal"
-import { Exit } from "effect/Exit"
-import { HashMap } from "effect/HashMap"
-import { HashSet } from "effect/HashSet"
-import { LogLevel } from "effect/LogLevel"
-import { Option } from "effect/Option"
 import { assert, describe, expect } from "vitest"
 
 interface HostPort {

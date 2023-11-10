@@ -1,15 +1,6 @@
+import { Channel, Effect, Equal, Hash, HashSet, MergeDecision, Option, Random, ReadonlyArray, Ref } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Channel } from "effect/Channel"
-import { Effect } from "effect/Effect"
-import { Equal } from "effect/Equal"
 import { pipe } from "effect/Function"
-import { Hash } from "effect/Hash"
-import { HashSet } from "effect/HashSet"
-import { MergeDecision } from "effect/MergeDecision"
-import { Option } from "effect/Option"
-import { Random } from "effect/Random"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 export const mapper = <A, B>(

@@ -1,12 +1,10 @@
+import { Number, Order, String } from "effect"
 import { deepStrictEqual, double, strictEqual } from "effect-test/util"
 import * as E from "effect/Either"
 import { identity, pipe } from "effect/Function"
-import { Number } from "effect/Number"
 import * as O from "effect/Option"
-import { Order } from "effect/Order"
 import type { Predicate } from "effect/Predicate"
 import { ReadonlyArray as RA } from "effect/ReadonlyArray"
-import { String } from "effect/String"
 import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 

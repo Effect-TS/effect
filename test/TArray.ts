@@ -1,16 +1,6 @@
+import { Cause, Chunk, Effect, Either, Exit, Fiber, Number, Option, STM, TArray, TRef } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
-import { Number } from "effect/Number"
-import { Option } from "effect/Option"
-import { STM } from "effect/STM"
-import { TArray } from "effect/TArray"
-import { TRef } from "effect/TRef"
 import { assert, describe } from "vitest"
 
 const largePrime = 223

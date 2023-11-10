@@ -1,18 +1,20 @@
+import {
+  Cause,
+  Chunk,
+  Context,
+  Deferred,
+  Effect,
+  Either,
+  Exit,
+  Fiber,
+  Option,
+  STM,
+  TDeferred,
+  TQueue,
+  TRef
+} from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Context } from "effect/Context"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { constFalse, constTrue, constVoid, pipe } from "effect/Function"
-import { Option } from "effect/Option"
-import { STM } from "effect/STM"
-import { TDeferred } from "effect/TDeferred"
-import { TQueue } from "effect/TQueue"
-import { TRef } from "effect/TRef"
 import * as fc from "fast-check"
 import { assert, describe } from "vitest"
 

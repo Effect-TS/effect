@@ -1,24 +1,26 @@
+import {
+  Cause,
+  Chunk,
+  Context,
+  Duration,
+  Effect,
+  Either,
+  Exit,
+  Fiber,
+  Hash,
+  HashMap,
+  ReadonlyArray,
+  Ref,
+  Schedule,
+  Scope,
+  ScopedCache,
+  TestClock,
+  TestServices
+} from "effect"
 import * as ObservableResource from "effect-test/utils/cache/ObservableResource"
 import * as WatchableLookup from "effect-test/utils/cache/WatchableLookup"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Context } from "effect/Context"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
 import { dual, identity, pipe } from "effect/Function"
-import { Hash } from "effect/Hash"
-import { HashMap } from "effect/HashMap"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
-import { Schedule } from "effect/Schedule"
-import { Scope } from "effect/Scope"
-import { ScopedCache } from "effect/ScopedCache"
-import { TestClock } from "effect/TestClock"
-import { TestServices } from "effect/TestServices"
 import * as fc from "fast-check"
 import { describe, expect } from "vitest"
 

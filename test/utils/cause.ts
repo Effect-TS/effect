@@ -1,5 +1,4 @@
-import { Cause } from "effect/Cause"
-import { FiberId } from "effect/FiberId"
+import { Cause, FiberId } from "effect"
 import * as fc from "fast-check"
 
 export const causesArb = <E>(

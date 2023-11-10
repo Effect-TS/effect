@@ -2,7 +2,7 @@ import * as it from "effect-test/utils/extend"
 // import * as Effect from "effect/Effect"
 import { Effect, Schedule } from "effect"
 
-import { Option } from "effect/Option"
+import { Option } from "effect"
 
 export type TestType = Effect<never, never, number>
 

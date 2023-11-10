@@ -1,4 +1,4 @@
-import { Equal } from "effect/Equal"
+import { Equal } from "effect"
 import type { Equivalence } from "effect/Equivalence"
 
 export const equivalentElements = <A>(): Equivalence<A> => (x, y) => {

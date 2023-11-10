@@ -1,15 +1,6 @@
+import { Cause, Chunk, Config, ConfigError, ConfigProvider, ConfigSecret, Effect, Equal, Exit, Option } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Config } from "effect/Config"
-import { ConfigError } from "effect/ConfigError"
-import { ConfigProvider } from "effect/ConfigProvider"
-import { ConfigSecret } from "effect/ConfigSecret"
-import { Effect } from "effect/Effect"
-import { Equal } from "effect/Equal"
-import { Exit } from "effect/Exit"
 import { pipe } from "effect/Function"
-import { Option } from "effect/Option"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Config", () => {

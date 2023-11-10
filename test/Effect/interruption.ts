@@ -1,21 +1,23 @@
+import {
+  Cause,
+  Chunk,
+  Deferred,
+  Duration,
+  Effect,
+  Either,
+  Exit,
+  Fiber,
+  FiberId,
+  HashSet,
+  MutableRef,
+  Option,
+  ReadonlyArray,
+  Ref,
+  TestClock
+} from "effect"
 import * as it from "effect-test/utils/extend"
 import { withLatch, withLatchAwait } from "effect-test/utils/latch"
-import { Cause } from "effect/Cause"
-import { Chunk } from "effect/Chunk"
-import { Deferred } from "effect/Deferred"
-import { Duration } from "effect/Duration"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Fiber } from "effect/Fiber"
-import { FiberId } from "effect/FiberId"
 import { constVoid, pipe } from "effect/Function"
-import { HashSet } from "effect/HashSet"
-import { MutableRef } from "effect/MutableRef"
-import { Option } from "effect/Option"
-import { ReadonlyArray } from "effect/ReadonlyArray"
-import { Ref } from "effect/Ref"
-import { TestClock } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

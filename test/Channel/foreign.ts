@@ -1,11 +1,5 @@
+import { Channel, Context, Effect, Either, Exit, Option, Random } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Channel } from "effect/Channel"
-import { Context } from "effect/Context"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Exit } from "effect/Exit"
-import { Option } from "effect/Option"
-import { Random } from "effect/Random"
 import { unify } from "effect/Unify"
 import { assert, describe } from "vitest"
 

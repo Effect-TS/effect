@@ -1,13 +1,6 @@
+import { Cause, Channel, Deferred, Effect, Either, Fiber, FiberId, Ref } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Cause } from "effect/Cause"
-import { Channel } from "effect/Channel"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Either } from "effect/Either"
-import { Fiber } from "effect/Fiber"
-import { FiberId } from "effect/FiberId"
 import { pipe } from "effect/Function"
-import { Ref } from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Channel", () => {

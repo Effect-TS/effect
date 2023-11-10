@@ -1,11 +1,6 @@
+import { Deferred, Effect, Fiber, PubSub, Queue, ReadonlyArray } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Deferred } from "effect/Deferred"
-import { Effect } from "effect/Effect"
-import { Fiber } from "effect/Fiber"
 import { pipe } from "effect/Function"
-import { PubSub } from "effect/PubSub"
-import { Queue } from "effect/Queue"
-import { ReadonlyArray } from "effect/ReadonlyArray"
 import { assert, describe } from "vitest"
 
 describe.concurrent("PubSub", () => {

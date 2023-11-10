@@ -1,6 +1,5 @@
-import { Equal } from "effect/Equal"
+import { Equal, Hash } from "effect"
 import { pipe } from "effect/Function"
-import { Hash } from "effect/Hash"
 import { MutableHashMap as HM } from "effect/MutableHashMap"
 import * as O from "effect/Option"
 import { inspect } from "node:util"

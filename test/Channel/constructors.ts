@@ -1,8 +1,5 @@
+import { Channel, Chunk, Effect, Exit } from "effect"
 import * as it from "effect-test/utils/extend"
-import { Channel } from "effect/Channel"
-import { Chunk } from "effect/Chunk"
-import { Effect } from "effect/Effect"
-import { Exit } from "effect/Exit"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Channel", () => {

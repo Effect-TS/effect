@@ -1,6 +1,6 @@
+import { Hash } from "effect"
 import { Equal as Eq } from "effect/Equal"
 import { pipe } from "effect/Function"
-import { Hash } from "effect/Hash"
 import * as N from "effect/Number"
 import * as O from "effect/Option"
 import { SortedMap as SM } from "effect/SortedMap"

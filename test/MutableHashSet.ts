@@ -1,6 +1,4 @@
-import { Equal } from "effect/Equal"
-import { Hash } from "effect/Hash"
-import { MutableHashSet } from "effect/MutableHashSet"
+import { Equal, Hash, MutableHashSet } from "effect"
 import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
