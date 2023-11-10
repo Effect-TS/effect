@@ -234,33 +234,23 @@ export const greaterThanEqual: {
  * @since 2.0.0
  * @category conversions
  */
-export const fromLiteral = (
-  _: Literal
-): LogLevel => {
-  switch (_) {
-    case "All": {
+export const fromLiteral = (literal: Literal): LogLevel => {
+  switch (literal) {
+    case "All":
       return All
-    }
-    case "Debug": {
+    case "Debug":
       return Debug
-    }
-    case "Error": {
+    case "Error":
       return Error
-    }
-    case "Fatal": {
+    case "Fatal":
       return Fatal
-    }
-    case "Info": {
+    case "Info":
       return Info
-    }
-    case "Trace": {
+    case "Trace":
       return Trace
-    }
-    case "None": {
+    case "None":
       return None
-    }
-    case "Warning": {
+    case "Warning":
       return Warning
-    }
   }
 }

@@ -146,7 +146,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const fromLiteral: (_: Literal) => LogLevel
+export declare const fromLiteral: (literal: Literal) => LogLevel
 ```
 
 Added in v2.0.0
