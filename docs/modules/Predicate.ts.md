@@ -692,6 +692,10 @@ assert.deepStrictEqual(isRecord([]), false)
 assert.deepStrictEqual(isRecord([1, 2, 3]), false)
 assert.deepStrictEqual(isRecord(null), false)
 assert.deepStrictEqual(isRecord(undefined), false)
+assert.deepStrictEqual(
+  isRecord(() => null),
+  false
+)
 ```
 
 Added in v2.0.0

@@ -460,6 +460,12 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
  * @category predicates
  * @since 1.0.0
  */
+export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
+
+/**
+ * @category predicates
+ * @since 1.0.0
+ */
 export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
 
 /**
