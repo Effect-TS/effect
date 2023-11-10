@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { Failure, Success } from "./impl/Exit.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Exit.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Exit.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Exit {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

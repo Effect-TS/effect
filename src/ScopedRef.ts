@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { ScopedRefTypeId } from "./impl/ScopedRef.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 import type { SynchronizedRef } from "./SynchronizedRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ScopedRef.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ScopedRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace ScopedRef {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

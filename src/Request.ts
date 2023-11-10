@@ -1,9 +1,18 @@
+/**
+ * @since 2.0.0
+ */
 import type { Data } from "./Data.js"
 import type { Exit } from "./Exit.js"
 import type { RequestTypeId } from "./impl/Request.js"
 import type { Option } from "./Option.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Request.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Request.js"
 
 /**

@@ -1,12 +1,24 @@
+/**
+ * @since 2.0.0
+ */
 import type { Data } from "./Data.js"
 import type { Effect } from "./Effect.js"
 import type { PoolTypeId } from "./impl/Pool.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Pool.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Pool.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Pool {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import { symbol } from "./impl/Hash.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Hash.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Hash.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Hash {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

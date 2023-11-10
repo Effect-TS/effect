@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { TRandomTypeId } from "./impl/TRandom.js"
 import type { STM } from "./STM.js"
 import type { TRef } from "./TRef.js"
 import type { Utils } from "./Utils.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TRandom.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TRandom.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace TRandom {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

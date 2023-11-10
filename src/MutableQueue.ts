@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { EmptyMutableQueue, TypeId } from "./impl/MutableQueue.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { MutableList } from "./MutableList.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MutableQueue.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MutableQueue.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MutableQueue {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

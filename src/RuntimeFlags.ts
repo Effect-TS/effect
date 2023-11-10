@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/RuntimeFlags.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/RuntimeFlags.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace RuntimeFlags {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

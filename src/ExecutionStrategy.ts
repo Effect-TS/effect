@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { Parallel, ParallelN, Sequential } from "./impl/ExecutionStrategy.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ExecutionStrategy.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ExecutionStrategy.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace ExecutionStrategy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

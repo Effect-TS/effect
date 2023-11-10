@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { SubscriptionRefTypeId } from "./impl/SubscriptionRef.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -6,7 +9,13 @@ import type { Ref } from "./Ref.js"
 import type { Stream } from "./Stream.js"
 import type { SynchronizedRef } from "./SynchronizedRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/SubscriptionRef.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/SubscriptionRef.js"
 
 /**

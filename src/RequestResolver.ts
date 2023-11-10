@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { Equal } from "./Equal.js"
 import type { RequestResolverTypeId } from "./impl/RequestResolver.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Request } from "./Request.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/RequestResolver.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/RequestResolver.js"
+/**
+ * @since 2.0.0
+ */
 export declare namespace RequestResolver {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

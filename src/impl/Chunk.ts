@@ -19,6 +19,10 @@ import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
 import * as RA from "../ReadonlyArray.js"
 import type { NonEmptyReadonlyArray } from "../ReadonlyArray.js"
 
+/**
+ * @category symbol
+ * @since 2.0.0
+ */
 export const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
 
 /**
@@ -41,6 +45,10 @@ export interface ChunkTypeLambda extends TypeLambda {
   readonly type: Chunk<this["Target"]>
 }
 
+/**
+ * @category model
+ * @since 2.0.0
+ */
 export type Backing<A> =
   | IArray<A>
   | IConcat<A>

@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Equal } from "./Equal.js"
 import type { HashSet } from "./HashSet.js"
 import type { MetricKeyTypeId } from "./impl/MetricKey.js"
@@ -6,9 +9,18 @@ import type { MetricLabel } from "./MetricLabel.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MetricKey.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MetricKey.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MetricKey {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

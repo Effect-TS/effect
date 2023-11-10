@@ -1,7 +1,16 @@
+/**
+ * @since 2.0.0
+ */
 import type { SinkTypeId } from "./impl/Sink.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Sink.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Sink.js"
 
 /**

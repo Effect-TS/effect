@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import * as Equivalence from "../Equivalence.js"
 import { dual } from "../Function.js"
 import type { TypeLambda } from "../HKT.js"

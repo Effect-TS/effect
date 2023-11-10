@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { HashSet } from "./HashSet.js"
 import type { MetricTypeId } from "./impl/Metric.js"
@@ -6,9 +9,18 @@ import type { MetricLabel } from "./MetricLabel.js"
 import type { MetricState } from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Metric.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Metric.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Metric {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

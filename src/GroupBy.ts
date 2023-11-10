@@ -1,12 +1,24 @@
+/**
+ * @since 2.0.0
+ */
 import type { GroupByTypeId } from "./impl/GroupBy.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Queue } from "./Queue.js"
 import type { Stream } from "./Stream.js"
 import type { Take } from "./Take.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/GroupBy.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/GroupBy.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace GroupBy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

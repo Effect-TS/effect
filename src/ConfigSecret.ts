@@ -1,7 +1,16 @@
+/**
+ * @since 2.0.0
+ */
 import type { Equal } from "./Equal.js"
 import type { ConfigSecretTypeId } from "./impl/ConfigSecret.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ConfigSecret.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ConfigSecret.js"
 
 /**

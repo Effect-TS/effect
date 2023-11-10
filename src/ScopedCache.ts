@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Cache } from "./Cache.js"
 import type { Effect } from "./Effect.js"
 import type { ScopedCacheTypeId } from "./impl/ScopedCache.js"
@@ -5,9 +8,18 @@ import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ScopedCache.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ScopedCache.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace ScopedCache {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

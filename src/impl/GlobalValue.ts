@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import { moduleVersion } from "../internal/version.js"
 
 const globalStoreId = Symbol.for(`effect/GlobalValue/globalStoreId/${moduleVersion}`)

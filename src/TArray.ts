@@ -1,7 +1,16 @@
+/**
+ * @since 2.0.0
+ */
 import type { TArrayTypeId } from "./impl/TArray.js"
 import type { TRef } from "./TRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TArray.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TArray.js"
 
 /**

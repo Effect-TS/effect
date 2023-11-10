@@ -1,10 +1,22 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { ReloadableTypeId } from "./impl/Reloadable.js"
 import type { ScopedRef } from "./ScopedRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Reloadable.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Reloadable.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Reloadable {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

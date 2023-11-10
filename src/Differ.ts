@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Equal } from "./Equal.js"
 import type {
   ChunkPatchTypeId,
@@ -8,9 +11,18 @@ import type {
   TypeId
 } from "./impl/Differ.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Differ.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Differ.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Differ {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

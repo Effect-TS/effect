@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Equal } from "./Equal.js"
 import type { TypeId } from "./impl/RedBlackTree.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/RedBlackTree.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/RedBlackTree.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace RedBlackTree {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

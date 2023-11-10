@@ -13,6 +13,10 @@ import { hasProperty } from "../Predicate.js"
 import * as RBT from "../RedBlackTree.js"
 import type { SortedSet } from "../SortedSet.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = Symbol.for("effect/SortedSet")
 
 /**

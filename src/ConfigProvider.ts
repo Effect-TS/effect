@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Config } from "./Config.js"
 import type { ConfigError } from "./ConfigError.js"
 import type { ConfigProviderPathPatch } from "./ConfigProviderPathPatch.js"
@@ -6,7 +9,13 @@ import type { HashSet } from "./HashSet.js"
 import type { ConfigProviderTypeId, FlatConfigProviderTypeId } from "./impl/ConfigProvider.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ConfigProvider.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ConfigProvider.js"
 
 /**

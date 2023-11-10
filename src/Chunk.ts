@@ -1,9 +1,18 @@
+/**
+ * @since 2.0.0
+ */
 import type { Equal } from "./Equal.js"
 import type { Backing, NonEmptyChunk, TypeId } from "./impl/Chunk.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Chunk.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Chunk.js"
 
 /**

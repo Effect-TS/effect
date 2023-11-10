@@ -1,10 +1,22 @@
+/**
+ * @since 2.0.0
+ */
 import type { Equal } from "./Equal.js"
 import type { MetricLabelTypeId } from "./impl/MetricLabel.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MetricLabel.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MetricLabel.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MetricLabel {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

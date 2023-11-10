@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import * as Either from "../Either.js"
 import * as Base64 from "../internal/encoding/base64.js"
 import * as Base64Url from "../internal/encoding/base64Url.js"

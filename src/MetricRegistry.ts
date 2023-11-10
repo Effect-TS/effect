@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { HashSet } from "./HashSet.js"
 import type { MetricRegistryTypeId } from "./impl/MetricRegistry.js"
 import type { MetricHook } from "./MetricHook.js"
@@ -5,9 +8,18 @@ import type { MetricKey } from "./MetricKey.js"
 import type { MetricKeyType } from "./MetricKeyType.js"
 import type { MetricPair } from "./MetricPair.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MetricRegistry.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MetricRegistry.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MetricRegistry {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

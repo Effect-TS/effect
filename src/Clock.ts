@@ -1,10 +1,22 @@
+/**
+ * @since 2.0.0
+ */
 import type { Duration } from "./Duration.js"
 import type { Effect } from "./Effect.js"
 import type { ClockTypeId } from "./impl/Clock.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Clock.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Clock.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Clock {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

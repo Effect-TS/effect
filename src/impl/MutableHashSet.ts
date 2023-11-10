@@ -7,6 +7,10 @@ import * as MutableHashMap from "../MutableHashMap.js"
 import type { MutableHashSet } from "../MutableHashSet.js"
 import { pipeArguments } from "../Pipeable.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = Symbol.for("effect/MutableHashSet") as TypeId
 
 /**

@@ -1,9 +1,18 @@
+/**
+ * @since 2.0.0
+ */
 import type { Chunk } from "./Chunk.js"
 import type { TMapTypeId } from "./impl/TMap.js"
 import type { TArray } from "./TArray.js"
 import type { TRef } from "./TRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TMap.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TMap.js"
 
 /**
@@ -29,6 +38,9 @@ export interface TMap<K, V> {
  * @since 2.0.0
  */
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace TMap {
   /**
    * @since 2.0.0

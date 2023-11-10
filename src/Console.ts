@@ -1,9 +1,21 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { TypeId, UnsafeConsole } from "./impl/Console.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Console.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Console.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Console {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

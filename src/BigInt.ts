@@ -6,4 +6,7 @@
  * @since 2.0.0
  */
 export * from "./impl/BigInt.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/BigInt.js"

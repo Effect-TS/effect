@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Chunk } from "./Chunk.js"
 import type { Equal } from "./Equal.js"
 import type { HashMap } from "./HashMap.js"
@@ -13,9 +16,18 @@ import type { MetricKeyType } from "./MetricKeyType.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MetricState.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MetricState.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MetricState {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

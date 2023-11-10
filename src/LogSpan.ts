@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/LogSpan.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/LogSpan.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace LogSpan {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

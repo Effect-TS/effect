@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { Composite, None, Runtime } from "./impl/FiberId.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/FiberId.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/FiberId.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace FiberId {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

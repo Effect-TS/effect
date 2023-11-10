@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { FiberId } from "./FiberId.js"
@@ -7,7 +10,13 @@ import type { FiberTypeId, RuntimeFiber, RuntimeFiberTypeId } from "./impl/Fiber
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Fiber.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Fiber.js"
 
 /**

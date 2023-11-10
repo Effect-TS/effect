@@ -93,6 +93,10 @@ export declare namespace Tag {
 export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Tag<Identifier, Service> =
   internal.makeTag
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = internal.TypeId as TypeId
 
 /**

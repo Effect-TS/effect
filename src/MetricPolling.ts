@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { MetricPollingTypeId } from "./impl/MetricPolling.js"
 import type { Metric } from "./Metric.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MetricPolling.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MetricPolling.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MetricPolling {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

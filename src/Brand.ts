@@ -1,10 +1,19 @@
+/**
+ * @since 2.0.0
+ */
 import type { Either } from "./Either.js"
 import type { BrandTypeId, RefinedConstructorsTypeId } from "./impl/Brand.js"
 import type { Option } from "./Option.js"
 import type { Refinement } from "./Predicate.js"
 import type { Types } from "./Types.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Brand.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Brand.js"
 
 /**

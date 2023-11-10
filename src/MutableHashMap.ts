@@ -1,12 +1,24 @@
+/**
+ * @since 2.0.0
+ */
 import type { HashMap } from "./HashMap.js"
 import type { TypeId } from "./impl/MutableHashMap.js"
 import type { Inspectable } from "./Inspectable.js"
 import type { MutableRef } from "./MutableRef.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MutableHashMap.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MutableHashMap.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MutableHashMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

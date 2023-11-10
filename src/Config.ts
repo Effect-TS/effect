@@ -1,9 +1,18 @@
+/**
+ * @since 2.0.0
+ */
 import type { ConfigError } from "./ConfigError.js"
 import type { Either } from "./Either.js"
 import type { ConfigTypeId } from "./impl/Config.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Config.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Config.js"
 
 /**

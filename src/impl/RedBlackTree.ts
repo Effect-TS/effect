@@ -8,6 +8,10 @@ import type { Option } from "../Option.js"
 import type { Order } from "../Order.js"
 import type { RedBlackTree } from "../RedBlackTree.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = RBT.RedBlackTreeTypeId as TypeId
 
 /**

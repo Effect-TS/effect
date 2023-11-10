@@ -1,10 +1,19 @@
+/**
+ * @since 2.0.0
+ */
 import type { FiberId } from "./FiberId.js"
 import type { DeferredTypeId } from "./impl/Deferred.js"
 import type * as internal from "./internal/deferred.js"
 import type { MutableRef } from "./MutableRef.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Deferred.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Deferred.js"
 
 /**

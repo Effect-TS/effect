@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 import type { ignoreSymbol, typeSymbol, unifySymbol } from "./impl/Unify.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Unify.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Unify.js"
 
 type MaybeReturn<F> = F extends () => any ? ReturnType<F> : F
@@ -29,6 +38,9 @@ type FilterIn<A> = A extends any ? typeSymbol extends keyof A ? A : never : neve
 
 type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : never
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Unify {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

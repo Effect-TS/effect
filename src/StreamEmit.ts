@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Chunk } from "./Chunk.js"
 import type { Effect } from "./Effect.js"
 import type { EmitOps } from "./impl/StreamEmit.js"
 import type { Option } from "./Option.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/StreamEmit.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/StreamEmit.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace StreamEmit {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

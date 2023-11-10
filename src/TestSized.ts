@@ -1,10 +1,22 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { FiberRef } from "./FiberRef.js"
 import type { TestSizedTypeId } from "./impl/TestSized.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TestSized.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TestSized.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace TestSized {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

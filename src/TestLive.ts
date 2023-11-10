@@ -1,9 +1,21 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { TestLiveTypeId } from "./impl/TestLive.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TestLive.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TestLive.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace TestLive {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

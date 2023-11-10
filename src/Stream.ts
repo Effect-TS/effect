@@ -1,8 +1,17 @@
+/**
+ * @since 2.0.0
+ */
 import type { StreamTypeId, StreamUnify, StreamUnifyIgnore } from "./impl/Stream.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Unify } from "./Unify.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Stream.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Stream.js"
 
 /**

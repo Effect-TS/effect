@@ -1,27 +1,15 @@
-// eslint-disable-next-line import/no-cycle
-// import type { None, OptionUnify, Some, TypeId } from "./impl/Option.js"
+/**
+ * @since 2.0.0
+ */
 import type { None, Some } from "./impl/Option.js"
-// import {
-//   all,
-//   contains,
-//   filter,
-//   flatMap,
-//   fromNullable,
-//   getOrElse,
-//   getOrThrow,
-//   getOrThrowWith,
-//   getOrUndefined,
-//   getRight,
-//   isNone,
-//   isSome,
-//   map,
-//   match,
-//   none,
-//   orElse,
-//   some
-// } from "./impl/Option.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Option.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Option.js"
 
 /**
@@ -30,6 +18,9 @@ export * from "./internal/Jumpers/Option.js"
  */
 export type Option<A> = None<A> | Some<A>
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Option {
   // opt1: much more convenient of course, but while it works, the compiler gives an error
   // @ts-expect-error

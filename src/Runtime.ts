@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Context } from "./Context.js"
 import type { FiberRefs } from "./FiberRefs.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { RuntimeFlags } from "./RuntimeFlags.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Runtime.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Runtime.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Runtime {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

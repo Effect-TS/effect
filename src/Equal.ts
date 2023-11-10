@@ -1,9 +1,21 @@
+/**
+ * @since 2.0.0
+ */
 import type { Hash } from "./Hash.js"
 import { symbol } from "./impl/Equal.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Equal.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Equal.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Equal {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

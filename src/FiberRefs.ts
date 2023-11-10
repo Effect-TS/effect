@@ -1,12 +1,24 @@
+/**
+ * @since 2.0.0
+ */
 import type { FiberId } from "./FiberId.js"
 import type { FiberRef } from "./FiberRef.js"
 import type { FiberRefsSym } from "./impl/FiberRefs.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { ReadonlyArray as Arr } from "./ReadonlyArray.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/FiberRefs.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/FiberRefs.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace FiberRefs {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type {
   And,
   ConfigErrorReducer,
@@ -9,7 +12,13 @@ import type {
   Unsupported
 } from "./impl/ConfigError.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ConfigError.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ConfigError.js"
 
 /**

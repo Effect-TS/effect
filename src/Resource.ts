@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
 import type { ResourceTypeId } from "./impl/Resource.js"
 import type { Scope } from "./Scope.js"
 import type { ScopedRef } from "./ScopedRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Resource.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Resource.js"
+/**
+ * @since 2.0.0
+ */
 export declare namespace Resource {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

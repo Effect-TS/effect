@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { Exit } from "./Exit.js"
 import type { AsyncInputConsumer, AsyncInputProducer } from "./impl/SingleProducerAsyncInput.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/SingleProducerAsyncInput.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/SingleProducerAsyncInput.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace SingleProducerAsyncInput {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

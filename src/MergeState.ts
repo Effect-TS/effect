@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { BothRunning, LeftDone, MergeStateTypeId, RightDone } from "./impl/MergeState.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/MergeState.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/MergeState.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace MergeState {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

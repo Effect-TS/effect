@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "./impl/ReadonlyArray.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ReadonlyArray.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ReadonlyArray.js"
 
+/**
+ * @since 2.0.0
+ */
 export type ReadonlyArray<T> = globalThis.ReadonlyArray<T>
 
 /**

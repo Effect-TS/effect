@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { PullAfterAllEnqueued, PullAfterNext, UpstreamPullStrategyTypeId } from "./impl/UpstreamPullStrategy.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/UpstreamPullStrategy.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/UpstreamPullStrategy.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace UpstreamPullStrategy {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

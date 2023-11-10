@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Queue } from "./Queue.js"
 import type { Scope } from "./Scope.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/PubSub.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/PubSub.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace PubSub {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

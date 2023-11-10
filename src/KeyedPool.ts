@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { KeyedPoolTypeId } from "./impl/KeyedPool.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/KeyedPool.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/KeyedPool.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace KeyedPool {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

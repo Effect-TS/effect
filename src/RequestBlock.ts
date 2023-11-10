@@ -1,10 +1,22 @@
+/**
+ * @since 2.0.0
+ */
 import type { Empty, Par, Seq, Single } from "./impl/RequestBlock.js"
 import type { Request } from "./Request.js"
 import type { RequestResolver } from "./RequestResolver.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/RequestBlock.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/RequestBlock.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace RequestBlock {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
@@ -25,6 +37,8 @@ export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
 /**
  * @since 2.0.0
  * @category models
+
+ * @since 2.0.0
  */
 export declare namespace RequestBlock {
   /**

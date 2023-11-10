@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { ScheduleDriverTypeId, ScheduleTypeId } from "./impl/Schedule.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { ScheduleDecision } from "./ScheduleDecision.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Schedule.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Schedule.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Schedule {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

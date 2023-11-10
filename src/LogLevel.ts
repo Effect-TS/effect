@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { All, Debug, Error, Fatal, Info, None, Trace, Warning } from "./impl/LogLevel.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/LogLevel.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/LogLevel.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace LogLevel {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

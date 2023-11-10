@@ -7,6 +7,10 @@ import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
 import type { MutableRef } from "../MutableRef.js"
 import { pipeArguments } from "../Pipeable.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = Symbol.for("effect/MutableRef") as TypeId
 
 /**

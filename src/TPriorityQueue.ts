@@ -1,8 +1,17 @@
+/**
+ * @since 2.0.0
+ */
 import type { TPriorityQueueTypeId } from "./impl/TPriorityQueue.js"
 import type { SortedMap } from "./SortedMap.js"
 import type { TRef } from "./TRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TPriorityQueue.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TPriorityQueue.js"
 
 /**

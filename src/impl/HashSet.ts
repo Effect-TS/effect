@@ -6,6 +6,10 @@ import type { HashSet } from "../HashSet.js"
 import * as HS from "../internal/hashSet.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = HS.HashSetTypeId as TypeId
 
 /**

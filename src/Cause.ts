@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 import type { CauseTypeId, Die, Empty, Fail, Interrupt, Parallel, Sequential } from "./impl/Cause.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Cause.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Cause.js"
 
 /**

@@ -1,8 +1,17 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { SynchronizedRefTypeId } from "./impl/SynchronizedRef.js"
 import type { Ref } from "./Ref.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/SynchronizedRef.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/SynchronizedRef.js"
 
 /**

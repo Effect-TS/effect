@@ -1,8 +1,17 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { Either } from "./Either.js"
 import type { CacheTypeId, ConsumerCache } from "./impl/Cache.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Cache.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Cache.js"
 
 /**

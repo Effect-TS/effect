@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Deferred } from "./Deferred.js"
 import type {
   BackingQueue,
@@ -12,9 +15,18 @@ import type { MutableQueue } from "./MutableQueue.js"
 import type { MutableRef } from "./MutableRef.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Queue.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Queue.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Queue {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

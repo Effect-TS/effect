@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { nonEmpty } from "./impl/NonEmptyIterable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/NonEmptyIterable.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/NonEmptyIterable.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace NonEmptyIterable {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

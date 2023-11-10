@@ -1,9 +1,18 @@
+/**
+ * @since 2.0.0
+ */
 import type { ChannelTypeId } from "./Effectable.js"
 import type { ChannelUnify, ChannelUnifyIgnore } from "./impl/Channel.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Unify } from "./Unify.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Channel.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Channel.js"
 
 /**

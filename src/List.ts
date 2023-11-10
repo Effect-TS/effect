@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { Cons, Nil } from "./impl/List.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/List.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/List.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace List {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

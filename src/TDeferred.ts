@@ -1,9 +1,18 @@
+/**
+ * @since 2.0.0
+ */
 import type { Either } from "./Either.js"
 import type { TDeferredTypeId } from "./impl/TDeferred.js"
 import type { Option } from "./Option.js"
 import type { TRef } from "./TRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TDeferred.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TDeferred.js"
 
 /**

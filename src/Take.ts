@@ -1,10 +1,19 @@
+/**
+ * @since 2.0.0
+ */
 import type { Chunk } from "./Chunk.js"
 import type { Exit } from "./Exit.js"
 import type { TakeTypeId } from "./impl/Take.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Take.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Take.js"
 
 /**

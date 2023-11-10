@@ -9,6 +9,10 @@ import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = Symbol.for("effect/MutableHashMap") as TypeId
 
 /**

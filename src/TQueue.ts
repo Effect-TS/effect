@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 import type { TDequeue, TDequeueTypeId, TEnqueue, TEnqueueTypeId } from "./impl/TQueue.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TQueue.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TQueue.js"
 
 /**

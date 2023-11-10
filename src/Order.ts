@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Order.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Order.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace Order {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

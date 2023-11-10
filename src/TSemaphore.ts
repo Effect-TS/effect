@@ -1,7 +1,16 @@
+/**
+ * @since 2.0.0
+ */
 import type { TSemaphoreTypeId } from "./impl/TSemaphore.js"
 import type { TRef } from "./TRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TSemaphore.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TSemaphore.js"
 
 /**

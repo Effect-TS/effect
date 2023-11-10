@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Equal } from "./Equal.js"
 import type { TypeId } from "./impl/SortedMap.js"
 import type { Inspectable } from "./Inspectable.js"
@@ -5,9 +8,18 @@ import type { Pipeable } from "./Pipeable.js"
 
 import type { RedBlackTree as RBT } from "./RedBlackTree.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/SortedMap.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/SortedMap.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace SortedMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

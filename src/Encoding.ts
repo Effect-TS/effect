@@ -8,4 +8,7 @@
  * @since 2.0.0
  */
 export * from "./impl/Encoding.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Encoding.js"

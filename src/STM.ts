@@ -1,9 +1,18 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { STMTypeId, STMUnify, STMUnifyIgnore } from "./impl/STM.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Unify } from "./Unify.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/STM.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/STM.js"
 
 /**

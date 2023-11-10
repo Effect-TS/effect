@@ -27,10 +27,30 @@ export const TypeId: unique symbol = internal.DifferTypeId as TypeId
  */
 export type TypeId = typeof TypeId
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const ChunkPatchTypeId: unique symbol = ChunkPatch.ChunkPatchTypeId as Differ.Chunk.TypeId
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const ContextPatchTypeId: unique symbol = ContextPatch.ContextPatchTypeId as Differ.Context.TypeId
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const HashMapPatchTypeId: unique symbol = HashMapPatch.HashMapPatchTypeId as Differ.HashMap.TypeId
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const HashSetPatchTypeId: unique symbol = HashSetPatch.HashSetPatchTypeId as Differ.HashSet.TypeId
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const OrPatchTypeId: unique symbol = OrPatch.OrPatchTypeId as Differ.Or.TypeId
 
 /**

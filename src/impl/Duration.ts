@@ -12,6 +12,10 @@ import * as order from "../Order.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty, isBigInt, isNumber } from "../Predicate.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = Symbol.for("effect/Duration")
 
 const bigint1e3 = BigInt(1_000)

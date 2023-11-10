@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 import type { IntervalTypeId } from "./impl/ScheduleInterval.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ScheduleInterval.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ScheduleInterval.js"
 
 /**
@@ -16,6 +25,9 @@ export interface ScheduleInterval {
   readonly endMillis: number
 }
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace ScheduleInterval {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

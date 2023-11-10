@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { Fiber } from "./Fiber.js"
 import type { TestAnnotationsTypeId } from "./impl/TestAnnotations.js"
@@ -6,7 +9,13 @@ import type { SortedSet } from "./SortedSet.js"
 import type { TestAnnotation } from "./TestAnnotation.js"
 import type { TestAnnotationMap } from "./TestAnnotationMap.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TestAnnotations.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TestAnnotations.js"
 
 /**
@@ -42,6 +51,9 @@ export interface TestAnnotations {
   supervisedFibers(): Effect<never, never, SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
 }
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace TestAnnotations {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

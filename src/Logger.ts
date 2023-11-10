@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Cause } from "./Cause.js"
 import type { FiberId } from "./FiberId.js"
 import type { FiberRefs } from "./FiberRefs.js"
@@ -8,7 +11,13 @@ import type { LogLevel } from "./LogLevel.js"
 import type { LogSpan } from "./LogSpan.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Logger.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Logger.js"
 
 /**

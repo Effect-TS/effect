@@ -8,6 +8,10 @@ import * as HM from "../internal/hashMap.js"
 import * as _keySet from "../internal/hashMap/keySet.js"
 import type { Option } from "../Option.js"
 
+/**
+ * @since 2.0.0
+ * @category symbol
+ */
 export const TypeId: unique symbol = HM.HashMapTypeId as TypeId
 
 /**

@@ -1,8 +1,17 @@
+/**
+ * @since 2.0.0
+ */
 import type { Effect } from "./Effect.js"
 import type { RefTypeId } from "./impl/Ref.js"
 import type { Pipeable } from "./Pipeable.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Ref.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Ref.js"
 
 /**
@@ -16,6 +25,8 @@ export interface Ref<A> extends Ref.Variance<A>, Pipeable {
 /**
  * @since 2.0.0
  * @category models
+
+ * @since 2.0.0
  */
 export declare namespace Ref {
   /**

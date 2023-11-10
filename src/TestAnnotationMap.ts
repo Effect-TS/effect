@@ -1,9 +1,21 @@
+/**
+ * @since 2.0.0
+ */
 import type { TestAnnotationMapTypeId } from "./impl/TestAnnotationMap.js"
 import type { TestAnnotation } from "./TestAnnotation.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TestAnnotationMap.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TestAnnotationMap.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace TestAnnotationMap {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

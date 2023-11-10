@@ -1,3 +1,6 @@
+/**
+ * @since 2.0.0
+ */
 import type { Context } from "./Context.js"
 import type { Effect } from "./Effect.js"
 import type { Exit } from "./Exit.js"
@@ -5,7 +8,13 @@ import type { Fiber } from "./Fiber.js"
 import type { SupervisorTypeId } from "./impl/Supervisor.js"
 import type { Option } from "./Option.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/Supervisor.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/Supervisor.js"
 
 /**

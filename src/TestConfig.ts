@@ -1,6 +1,15 @@
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TestConfig.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TestConfig.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace TestConfig {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

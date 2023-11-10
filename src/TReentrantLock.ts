@@ -1,8 +1,17 @@
+/**
+ * @since 2.0.0
+ */
 import type { TReentrantLockTypeId } from "./impl/TReentrantLock.js"
 import type * as internal from "./internal/stm/tReentrantLock.js"
 import type { TRef } from "./TRef.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TReentrantLock.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TReentrantLock.js"
 
 /**

@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { Continue, Done } from "./impl/ScheduleDecision.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/ScheduleDecision.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/ScheduleDecision.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace ScheduleDecision {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

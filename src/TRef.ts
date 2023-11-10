@@ -1,11 +1,23 @@
+/**
+ * @since 2.0.0
+ */
 import type { TRefTypeId } from "./impl/TRef.js"
 import type * as Journal from "./internal/stm/stm/journal.js"
 import type { TxnId } from "./internal/stm/stm/txnId.js"
 import type { Versioned } from "./internal/stm/stm/versioned.js"
 import type { STM } from "./STM.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/TRef.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/TRef.js"
+/**
+ * @since 2.0.0
+ */
 export declare namespace TRef {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error

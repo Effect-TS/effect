@@ -1,8 +1,20 @@
+/**
+ * @since 2.0.0
+ */
 import type { Add, AndThen, Empty, Remove, Update } from "./impl/FiberRefsPatch.js"
 
+/**
+ * @since 2.0.0
+ */
 export * from "./impl/FiberRefsPatch.js"
+/**
+ * @since 2.0.0
+ */
 export * from "./internal/Jumpers/FiberRefsPatch.js"
 
+/**
+ * @since 2.0.0
+ */
 export declare namespace FiberRefsPatch {
   // eslint-disable-next-line import/no-cycle
   // @ts-expect-error
