@@ -67,10 +67,14 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
     return toString(this)
   },
   toJSON(this: BigDecimal) {
-    return toString(this)
+    return {
+      _id: "BigDecimal",
+      value: String(this.value),
+      scale: this.scale
+    }
   },
   [NodeInspectSymbol](this: BigDecimal) {
-    return toString(this)
+    return this.toJSON()
   },
   pipe() {
     return pipeArguments(this, arguments)
