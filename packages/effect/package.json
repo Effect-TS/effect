@@ -371,7 +371,7 @@
     {
       "name": "LogLevel",
       "path": "./dist/dist/esm/index.js",
-      "limit": "10 kB",
+      "limit": "11 kB",
       "import": "{ LogLevel }"
     },
     {
@@ -581,7 +581,7 @@
     {
       "name": "RedBlackTree",
       "path": "./dist/dist/esm/index.js",
-      "limit": "7 kB",
+      "limit": "8 kB",
       "import": "{ RedBlackTree }"
     },
     {

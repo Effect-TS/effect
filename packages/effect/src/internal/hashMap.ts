@@ -11,8 +11,10 @@ import { fromBitmap, hashFragment, toBitmap } from "./hashMap/bitwise.js"
 import { SIZE } from "./hashMap/config.js"
 import * as Node from "./hashMap/node.js"
 
+const HashMapSymbolKey = "effect/HashMap"
+
 /** @internal */
-export const HashMapTypeId: HM.TypeId = Symbol.for("effect/HashMap") as HM.TypeId
+export const HashMapTypeId: HM.TypeId = Symbol.for(HashMapSymbolKey) as HM.TypeId
 
 type TraversalFn<K, V, A> = (k: K, v: V) => A
 
@@ -45,9 +47,9 @@ const HashMapProto: HM.HashMap<unknown, unknown> = {
     return new HashMapIterator(this, (k, v) => [k, v])
   },
   [Hash.symbol](): number {
-    let hash = Hash.hash("HashMap")
+    let hash = Hash.hash(HashMapSymbolKey)
     for (const item of this) {
-      hash ^= Hash.combine(Hash.hash(item[0]))(Hash.hash(item[1]))
+      hash ^= pipe(Hash.hash(item[0]), Hash.combine(Hash.hash(item[1])))
     }
     return hash
   },
