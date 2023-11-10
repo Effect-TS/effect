@@ -32,11 +32,15 @@ describe.concurrent("Either", () => {
       yield* $(Either.left("err"))
       return yield* $(Either.right(2))
     })
+    const f = Either.gen(function*($) {
+      yield* $(Either.left("err"))
+    })
     expect(a).toEqual(Either.right(3))
     expect(b).toEqual(Either.right(10))
     expect(c).toEqual(Either.right(undefined))
     expect(d).toEqual(Either.right(2))
     expect(e).toEqual(Either.left("err"))
+    expect(f).toEqual(Either.left("err"))
   })
 
   it("exports", () => {
