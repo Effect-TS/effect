@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.27.4
+
+### Patch Changes
+
+- [#248](https://github.com/Effect-TS/platform/pull/248) [`8a4b1c1`](https://github.com/Effect-TS/platform/commit/8a4b1c14808d9815eb93a5b10d8a5b26c4dd027b) Thanks [@IMax153](https://github.com/IMax153)! - allow for specifying that a Command should be run in a shell
+
 ## 0.27.3
 
 ### Patch Changes

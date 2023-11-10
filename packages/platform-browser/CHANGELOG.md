@@ -1,5 +1,12 @@
 # @effect/platform-browser
 
+## 0.15.4
+
+### Patch Changes
+
+- Updated dependencies [[`8a4b1c1`](https://github.com/Effect-TS/platform/commit/8a4b1c14808d9815eb93a5b10d8a5b26c4dd027b)]:
+  - @effect/platform@0.27.4
+
 ## 0.15.3
 
 ### Patch Changes
