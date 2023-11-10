@@ -46,21 +46,25 @@ describe.concurrent("Order", () => {
   })
 
   it("clamp", () => {
-    const clamp = _.clamp(_.number)
-    U.deepStrictEqual(clamp(2, 1, 10), 2)
-    U.deepStrictEqual(clamp(10, 1, 10), 10)
-    U.deepStrictEqual(clamp(20, 1, 10), 10)
-    U.deepStrictEqual(clamp(1, 1, 10), 1)
-    U.deepStrictEqual(clamp(-10, 1, 10), 1)
+    const clamp = _.clamp(_.number)({ minimum: 1, maximum: 10 })
+    U.deepStrictEqual(clamp(2), 2)
+    U.deepStrictEqual(clamp(10), 10)
+    U.deepStrictEqual(clamp(20), 10)
+    U.deepStrictEqual(clamp(1), 1)
+    U.deepStrictEqual(clamp(-10), 1)
+
+    U.deepStrictEqual(_.clamp(_.number)({ minimum: 1, maximum: 10 })(2), 2)
   })
 
   it("between", () => {
-    const between = _.between(_.number)
-    U.deepStrictEqual(between(2, 1, 10), true)
-    U.deepStrictEqual(between(10, 1, 10), true)
-    U.deepStrictEqual(between(20, 1, 10), false)
-    U.deepStrictEqual(between(1, 1, 10), true)
-    U.deepStrictEqual(between(-10, 1, 10), false)
+    const between = _.between(_.number)({ minimum: 1, maximum: 10 })
+    U.deepStrictEqual(between(2), true)
+    U.deepStrictEqual(between(10), true)
+    U.deepStrictEqual(between(20), false)
+    U.deepStrictEqual(between(1), true)
+    U.deepStrictEqual(between(-10), false)
+
+    U.deepStrictEqual(_.between(_.number)(2, { minimum: 1, maximum: 10 }), true)
   })
 
   it("reverse", () => {
