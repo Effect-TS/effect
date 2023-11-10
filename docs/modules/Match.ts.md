@@ -693,7 +693,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const record: Predicate.Refinement<unknown, { [k: string]: any; [k: symbol]: any }>
+export declare const record: Predicate.Refinement<unknown, { [x: string]: unknown; [x: symbol]: unknown }>
 ```
 
 Added in v1.0.0
