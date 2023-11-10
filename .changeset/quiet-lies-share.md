@@ -1,5 +1,5 @@
 ---
-"effect": major
+"effect": patch
 ---
 
 Merged module names with their types. e.g: 
