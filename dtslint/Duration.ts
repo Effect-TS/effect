@@ -71,7 +71,7 @@ Duration.match("100 millis", {
 // -------------------------------------------------------------------------------------
 
 // $ExpectType boolean
-Duration.between("1 minutes", "59 seconds", "61 seconds")
+Duration.between("1 minutes", { minimum: "59 seconds", maximum: "61 seconds" })
 
 // -------------------------------------------------------------------------------------
 // min
@@ -92,7 +92,7 @@ Duration.max("1 minutes", "2 millis")
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Duration
-Duration.clamp("1 millis", "2 millis", "3 millis")
+Duration.clamp("1 millis", { minimum: "2 millis", maximum: "3 millis" })
 
 // -------------------------------------------------------------------------------------
 // times
