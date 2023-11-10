@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as request from "@effect/platform-node/Http/ServerRequest"
 import * as app from "@effect/platform/Http/App"
 import * as body from "@effect/platform/Http/Body"
 import * as headers from "@effect/platform/Http/Headers"
@@ -13,6 +12,7 @@ import * as urlParams from "@effect/platform/Http/UrlParams"
 import * as etag from "./Http/Etag.js"
 import * as formData from "./Http/FormData.js"
 import * as server from "./Http/Server.js"
+import * as request from "./Http/ServerRequest.js"
 
 export {
   /**
