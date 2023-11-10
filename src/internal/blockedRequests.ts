@@ -151,7 +151,9 @@ export const reduce = <R, Z>(
     }
   })
   if (List.isNil(result)) {
-    throw new Error("BUG: BlockedRequests.reduce - please report an issue at https://github.com/Effect-TS/query/issues")
+    throw new Error(
+      "BUG: BlockedRequests.reduce - please report an issue at https://github.com/Effect-TS/effect/issues"
+    )
   }
   return result.head
 }
@@ -187,7 +189,7 @@ export const flatten = <R>(
     current = sequential
   }
   throw new Error(
-    "BUG: BlockedRequests.flatten - please report an issue at https://github.com/Effect-TS/query/issues"
+    "BUG: BlockedRequests.flatten - please report an issue at https://github.com/Effect-TS/effect/issues"
   )
 }
 
@@ -263,7 +265,7 @@ const step = <R>(
     }
   }
   throw new Error(
-    "BUG: BlockedRequests.step - please report an issue at https://github.com/Effect-TS/query/issues"
+    "BUG: BlockedRequests.step - please report an issue at https://github.com/Effect-TS/effect/issues"
   )
 }
 

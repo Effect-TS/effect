@@ -590,7 +590,7 @@ const flattenCauseLoop = (
     causes = sequential
     flattened = updated
   }
-  throw new Error("BUG: Cause.flattenCauseLoop - please report an issue at https://github.com/Effect-TS/io/issues")
+  throw new Error("BUG: Cause.flattenCauseLoop - please report an issue at https://github.com/Effect-TS/effect/issues")
 }
 
 // -----------------------------------------------------------------------------
@@ -755,7 +755,7 @@ const evaluateCause = (
       }
     }
   }
-  throw new Error("BUG: Cause.evaluateCauseLoop - please report an issue at https://github.com/Effect-TS/io/issues")
+  throw new Error("BUG: Cause.evaluateCauseLoop - please report an issue at https://github.com/Effect-TS/effect/issues")
 }
 
 // -----------------------------------------------------------------------------
@@ -971,7 +971,9 @@ export const reduceWithContext = dual<
     }
   }
   if (accumulator.length === 0) {
-    throw new Error("BUG: Cause.reduceWithContext - please report an issue at https://github.com/Effect-TS/io/issues")
+    throw new Error(
+      "BUG: Cause.reduceWithContext - please report an issue at https://github.com/Effect-TS/effect/issues"
+    )
   }
   return accumulator.pop()!
 })
