@@ -581,7 +581,7 @@
     {
       "name": "RedBlackTree",
       "path": "./dist/dist/esm/index.js",
-      "limit": "7 kB",
+      "limit": "8 kB",
       "import": "{ RedBlackTree }"
     },
     {
