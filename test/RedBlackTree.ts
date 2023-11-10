@@ -408,4 +408,16 @@ describe.concurrent("RedBlackTree", () => {
       ]
     )
   })
+
+  it("Equal.symbol", () => {
+    expect(
+      Equal.equals(RedBlackTree.empty<number, string>(number.Order), RedBlackTree.empty<number, string>(number.Order))
+    ).toBe(true)
+    expect(
+      Equal.equals(
+        RedBlackTree.make(number.Order)([1, true], [2, true]),
+        RedBlackTree.make(number.Order)([1, true], [2, true])
+      )
+    ).toBe(true)
+  })
 })
