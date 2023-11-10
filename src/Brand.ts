@@ -9,10 +9,12 @@ import type { Types } from "./Types.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Brand.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Brand.js"
 

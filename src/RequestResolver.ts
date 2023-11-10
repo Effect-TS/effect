@@ -9,10 +9,12 @@ import type { Request } from "./Request.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/RequestResolver.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/RequestResolver.js"
 /**

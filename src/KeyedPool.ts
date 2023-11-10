@@ -8,10 +8,12 @@ import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/KeyedPool.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/KeyedPool.js"
 

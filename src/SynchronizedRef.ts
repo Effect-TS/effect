@@ -7,10 +7,12 @@ import type { Ref } from "./Ref.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/SynchronizedRef.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/SynchronizedRef.js"
 

@@ -8,10 +8,12 @@ import type { ScheduleDecision } from "./ScheduleDecision.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Schedule.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Schedule.js"
 

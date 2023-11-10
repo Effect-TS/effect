@@ -5,10 +5,12 @@ import type { ChildExecutorDecisionTypeId, Close, Continue, Yield } from "./impl
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ChildExecutorDecision.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ChildExecutorDecision.js"
 

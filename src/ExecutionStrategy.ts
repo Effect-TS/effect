@@ -5,10 +5,12 @@ import type { Parallel, ParallelN, Sequential } from "./impl/ExecutionStrategy.j
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ExecutionStrategy.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ExecutionStrategy.js"
 

@@ -5,10 +5,12 @@ import type { MergeDecisionTypeId } from "./impl/MergeDecision.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/MergeDecision.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/MergeDecision.js"
 

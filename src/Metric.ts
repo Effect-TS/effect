@@ -11,10 +11,12 @@ import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Metric.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Metric.js"
 

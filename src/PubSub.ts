@@ -8,10 +8,12 @@ import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/PubSub.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/PubSub.js"
 

@@ -10,10 +10,12 @@ import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Supervisor.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Supervisor.js"
 

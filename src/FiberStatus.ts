@@ -5,10 +5,12 @@ import type { Done, Running, Suspended } from "./impl/FiberStatus.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/FiberStatus.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/FiberStatus.js"
 

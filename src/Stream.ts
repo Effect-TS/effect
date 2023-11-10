@@ -7,10 +7,12 @@ import type { Unify } from "./Unify.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Stream.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Stream.js"
 

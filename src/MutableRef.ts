@@ -7,10 +7,12 @@ import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/MutableRef.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/MutableRef.js"
 

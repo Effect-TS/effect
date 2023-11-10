@@ -10,10 +10,12 @@ import type { TRef } from "./TRef.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TPubSub.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TPubSub.js"
 

@@ -11,10 +11,12 @@ import type { SynchronizedRef } from "./SynchronizedRef.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/SubscriptionRef.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/SubscriptionRef.js"
 

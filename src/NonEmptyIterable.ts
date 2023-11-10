@@ -5,10 +5,12 @@ import type { nonEmpty } from "./impl/NonEmptyIterable.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/NonEmptyIterable.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/NonEmptyIterable.js"
 

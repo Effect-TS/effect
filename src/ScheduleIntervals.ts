@@ -7,10 +7,12 @@ import type { ScheduleInterval } from "./ScheduleInterval.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ScheduleIntervals.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ScheduleIntervals.js"
 

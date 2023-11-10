@@ -14,10 +14,12 @@ import type {
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ConfigError.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ConfigError.js"
 

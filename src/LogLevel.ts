@@ -5,10 +5,12 @@ import type { All, Debug, Error, Fatal, Info, None, Trace, Warning } from "./imp
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/LogLevel.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/LogLevel.js"
 

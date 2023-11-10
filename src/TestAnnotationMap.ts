@@ -6,10 +6,12 @@ import type { TestAnnotation } from "./TestAnnotation.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TestAnnotationMap.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TestAnnotationMap.js"
 

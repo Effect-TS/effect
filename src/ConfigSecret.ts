@@ -6,10 +6,12 @@ import type { ConfigSecretTypeId } from "./impl/ConfigSecret.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ConfigSecret.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ConfigSecret.js"
 

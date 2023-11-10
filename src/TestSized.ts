@@ -7,10 +7,12 @@ import type { TestSizedTypeId } from "./impl/TestSized.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TestSized.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TestSized.js"
 

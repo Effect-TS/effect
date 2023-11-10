@@ -9,10 +9,12 @@ import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Pool.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Pool.js"
 

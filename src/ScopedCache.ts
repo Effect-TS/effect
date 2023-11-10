@@ -10,10 +10,12 @@ import type { Scope } from "./Scope.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ScopedCache.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ScopedCache.js"
 

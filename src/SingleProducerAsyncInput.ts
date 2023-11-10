@@ -8,10 +8,12 @@ import type { AsyncInputConsumer, AsyncInputProducer } from "./impl/SingleProduc
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/SingleProducerAsyncInput.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/SingleProducerAsyncInput.js"
 

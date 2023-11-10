@@ -8,10 +8,12 @@ import type { Utils } from "./Utils.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TRandom.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TRandom.js"
 

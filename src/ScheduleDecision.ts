@@ -5,10 +5,12 @@ import type { Continue, Done } from "./impl/ScheduleDecision.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ScheduleDecision.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ScheduleDecision.js"
 

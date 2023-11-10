@@ -9,10 +9,12 @@ import type { ReadonlyArray as Arr } from "./ReadonlyArray.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/FiberRefs.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/FiberRefs.js"
 

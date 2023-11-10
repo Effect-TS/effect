@@ -20,10 +20,12 @@ import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/BigDecimal.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/BigDecimal.js"
 

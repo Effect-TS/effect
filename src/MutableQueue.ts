@@ -8,10 +8,12 @@ import type { Pipeable } from "./Pipeable.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/MutableQueue.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/MutableQueue.js"
 

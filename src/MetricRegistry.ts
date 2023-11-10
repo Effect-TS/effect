@@ -10,10 +10,12 @@ import type { MetricPair } from "./MetricPair.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/MetricRegistry.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/MetricRegistry.js"
 

@@ -5,10 +5,12 @@ import type { Both, Either, Left, Right } from "./impl/StreamHaltStrategy.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/StreamHaltStrategy.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/StreamHaltStrategy.js"
 

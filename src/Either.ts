@@ -5,10 +5,12 @@ import type { Left, Right } from "./impl/Either.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Either.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Either.js"
 

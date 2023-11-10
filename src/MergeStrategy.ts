@@ -5,10 +5,12 @@ import type { BackPressure, BufferSliding, MergeStrategyTypeId } from "./impl/Me
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/MergeStrategy.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/MergeStrategy.js"
 

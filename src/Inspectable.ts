@@ -5,10 +5,12 @@ import type { NodeInspectSymbol } from "./impl/Inspectable.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Inspectable.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Inspectable.js"
 

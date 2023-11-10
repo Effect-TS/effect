@@ -5,10 +5,12 @@ import type { None, Some } from "./impl/Option.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Option.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Option.js"
 

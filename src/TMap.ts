@@ -8,10 +8,12 @@ import type { TRef } from "./TRef.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TMap.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TMap.js"
 

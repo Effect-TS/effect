@@ -9,10 +9,12 @@ import type { STM } from "./STM.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TRef.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TRef.js"
 /**

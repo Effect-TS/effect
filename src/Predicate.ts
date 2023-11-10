@@ -1,9 +1,11 @@
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Predicate.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Predicate.js"
 

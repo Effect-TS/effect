@@ -8,10 +8,12 @@ import type { TestSized } from "./TestSized.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TestServices.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TestServices.js"
 

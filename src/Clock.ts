@@ -7,10 +7,12 @@ import type { ClockTypeId } from "./impl/Clock.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Clock.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Clock.js"
 

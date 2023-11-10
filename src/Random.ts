@@ -7,10 +7,12 @@ import type { RandomTypeId } from "./impl/Random.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Random.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Random.js"
 

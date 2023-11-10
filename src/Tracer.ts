@@ -8,10 +8,12 @@ import type { Option } from "./Option.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Tracer.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Tracer.js"
 

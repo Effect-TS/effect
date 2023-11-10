@@ -1,9 +1,11 @@
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TestConfig.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TestConfig.js"
 

@@ -5,10 +5,12 @@ import type { Add, AndThen, Empty, Remove, Update } from "./impl/FiberRefsPatch.
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/FiberRefsPatch.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/FiberRefsPatch.js"
 

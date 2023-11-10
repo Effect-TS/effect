@@ -5,10 +5,12 @@ import { symbol } from "./impl/Hash.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Hash.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Hash.js"
 

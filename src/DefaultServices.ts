@@ -9,10 +9,12 @@ import type { Tracer } from "./Tracer.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/DefaultServices.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/DefaultServices.js"
 

@@ -5,10 +5,12 @@ import type { TDequeue, TDequeueTypeId, TEnqueue, TEnqueueTypeId } from "./impl/
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TQueue.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TQueue.js"
 

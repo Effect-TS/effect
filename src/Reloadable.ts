@@ -7,10 +7,12 @@ import type { ScopedRef } from "./ScopedRef.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Reloadable.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Reloadable.js"
 

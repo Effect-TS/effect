@@ -5,10 +5,12 @@ import type { NonEmptyArray, NonEmptyReadonlyArray } from "./impl/ReadonlyArray.
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ReadonlyArray.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ReadonlyArray.js"
 

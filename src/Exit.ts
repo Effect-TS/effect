@@ -5,10 +5,12 @@ import type { Failure, Success } from "./impl/Exit.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Exit.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Exit.js"
 

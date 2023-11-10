@@ -8,10 +8,12 @@ import type { Effect } from "./Effect.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TestClock.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TestClock.js"
 

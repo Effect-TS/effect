@@ -5,10 +5,12 @@ import type { PullAfterAllEnqueued, PullAfterNext, UpstreamPullStrategyTypeId } 
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/UpstreamPullStrategy.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/UpstreamPullStrategy.js"
 

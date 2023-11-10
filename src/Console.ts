@@ -6,10 +6,12 @@ import type { TypeId, UnsafeConsole } from "./impl/Console.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Console.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Console.js"
 

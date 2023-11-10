@@ -13,10 +13,12 @@ import type {
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Differ.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Differ.js"
 

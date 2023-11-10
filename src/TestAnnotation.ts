@@ -7,10 +7,12 @@ import type { TestAnnotationTypeId } from "./impl/TestAnnotation.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TestAnnotation.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TestAnnotation.js"
 

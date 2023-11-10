@@ -5,10 +5,12 @@ import type { NoUpstream, Pulled, UpstreamPullRequestTypeId } from "./impl/Upstr
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/UpstreamPullRequest.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/UpstreamPullRequest.js"
 /**

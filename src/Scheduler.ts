@@ -6,10 +6,12 @@ import type { Task } from "./impl/Scheduler.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Scheduler.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Scheduler.js"
 

@@ -9,10 +9,12 @@ import type { RedBlackTree as RBT } from "./RedBlackTree.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/SortedSet.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/SortedSet.js"
 

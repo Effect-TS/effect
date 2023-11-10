@@ -9,10 +9,12 @@ import type { Unify } from "./Unify.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Effect.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Effect.js"
 

@@ -5,10 +5,12 @@ import type { AndThen, Empty, MapName, Nested, Unnested } from "./impl/ConfigPro
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/ConfigProviderPathPatch.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/ConfigProviderPathPatch.js"
 

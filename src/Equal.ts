@@ -6,10 +6,12 @@ import { symbol } from "./impl/Equal.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Equal.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Equal.js"
 

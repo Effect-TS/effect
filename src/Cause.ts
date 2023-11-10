@@ -5,10 +5,12 @@ import type { CauseTypeId, Die, Empty, Fail, Interrupt, Parallel, Sequential } f
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/Cause.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/Cause.js"
 

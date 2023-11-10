@@ -6,10 +6,12 @@ import type { TMap } from "./TMap.js"
 
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./impl/TSet.js"
 /**
  * @since 2.0.0
+ * @internal
  */
 export * from "./internal/Jumpers/TSet.js"
 
