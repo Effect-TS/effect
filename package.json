@@ -38,7 +38,7 @@
     "clean": "rimraf build dist coverage .tsbuildinfo",
     "test": "vitest",
     "check": "tsc -b tsconfig.json",
-    "coverage": "vitest run --coverage",
+    "coverage": "vitest --run --coverage related",
     "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
     "update-version": "changeset version && pnpm install --no-frozen-lockfile && node scripts/version.mjs",
     "lint": "eslint src test",
@@ -372,7 +372,7 @@
     {
       "name": "LogLevel",
       "path": "./dist/dist/esm/index.js",
-      "limit": "10 kB",
+      "limit": "11 kB",
       "import": "{ LogLevel }"
     },
     {
@@ -522,7 +522,7 @@
     {
       "name": "Order",
       "path": "./dist/dist/esm/index.js",
-      "limit": "1 kB",
+      "limit": "2 kB",
       "import": "{ Order }"
     },
     {
@@ -582,7 +582,7 @@
     {
       "name": "RedBlackTree",
       "path": "./dist/dist/esm/index.js",
-      "limit": "7 kB",
+      "limit": "8 kB",
       "import": "{ RedBlackTree }"
     },
     {

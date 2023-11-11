@@ -406,4 +406,25 @@ describe.concurrent("SortedSet", () => {
     )
     expect(result2).toEqual(set1)
   })
+
+  it("values", () => {
+    const set = SortedSet.make(Str.Order)("c", "a", "b")
+    const values = SortedSet.values(set)
+    expect(Array.from(values)).toStrictEqual(["a", "b", "c"])
+  })
+
+  it("pipe()", () => {
+    expect(SortedSet.make(Str.Order)("c", "a", "b").pipe(SortedSet.size)).toStrictEqual(3)
+  })
+
+  it("Equal.symbol", () => {
+    expect(Eq.equals(SortedSet.empty(Str.Order), SortedSet.empty(Str.Order))).toBe(true)
+    const set1 = SortedSet.make(Str.Order)("c", "a", "b")
+    const set2 = SortedSet.make(Str.Order)("c", "a", "b")
+    const set3 = SortedSet.make(Str.Order)("d", "b", "a")
+    expect(Eq.equals(set1, set2)).toBe(true)
+    expect(Eq.equals(set2, set1)).toBe(true)
+    expect(Eq.equals(set1, set3)).toBe(false)
+    expect(Eq.equals(set3, set1)).toBe(false)
+  })
 })

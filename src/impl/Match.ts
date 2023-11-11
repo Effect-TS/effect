@@ -457,19 +457,19 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
  * @category predicates
  * @since 1.0.0
  */
+export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
+
+/**
+ * @category predicates
+ * @since 1.0.0
+ */
 export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
 
 /**
  * @category predicates
  * @since 1.0.0
  */
-export const record: Predicate.Refinement<
-  unknown,
-  {
-    [k: string]: any
-    [k: symbol]: any
-  }
-> = Predicate.isRecord
+export const record: Predicate.Refinement<unknown, { [x: string | symbol]: unknown }> = Predicate.isRecord
 
 /**
  * @category predicates

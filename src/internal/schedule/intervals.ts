@@ -109,7 +109,7 @@ const unionLoop = (
         that = Chunk.tailNonEmpty(that)
       }
     } else {
-      throw new Error("BUG: Intervals.unionLoop - please report an issue at https://github.com/Effect-TS/io/issues")
+      throw new Error("BUG: Intervals.unionLoop - please report an issue at https://github.com/Effect-TS/effect/issues")
     }
   }
   return make(pipe(acc, Chunk.prepend(interval), Chunk.reverse))

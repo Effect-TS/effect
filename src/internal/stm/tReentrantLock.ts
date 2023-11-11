@@ -144,7 +144,7 @@ const adjustReadLock = (readLock: ReadLock, fiberId: FiberId.FiberId, adjustment
   const newTotal = total + adjustment
   if (newTotal < 0) {
     throw new Error(
-      "BUG - TReentrantLock.ReadLock.adjust - please report an issue at https://github.com/Effect-TS/stm/issues"
+      "BUG - TReentrantLock.ReadLock.adjust - please report an issue at https://github.com/Effect-TS/effect/issues"
     )
   }
   if (newTotal === 0) {

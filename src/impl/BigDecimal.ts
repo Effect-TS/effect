@@ -260,10 +260,6 @@ const divideWithPrecision = (
   scale: number,
   precision: number
 ): BigDecimal => {
-  if (num === bigint0) {
-    return zero
-  }
-
   const numNegative = num < bigint0
   const denNegative = den < bigint0
   const negateResult = numNegative !== denNegative
@@ -315,13 +311,11 @@ const divideWithPrecision = (
  * Returns 1 if the most significant digit is >= 5, otherwise 0.
  *
  * This is used after dividing a number by a power of ten and rounding the last digit.
+ *
+ * @internal
  */
-const roundTerminal = (n: bigint): bigint => {
-  if (n === bigint0) {
-    return bigint0
-  }
-
-  const pos = n > bigint0 ? 0 : 1
+export const roundTerminal = (n: bigint): bigint => {
+  const pos = n >= bigint0 ? 0 : 1
   return Number(`${n}`[pos]) < 5 ? bigint0 : bigint1
 }
 
@@ -403,7 +397,6 @@ export const unsafeDivide: {
   if (self.value === that.value) {
     return make(bigint1, scale)
   }
-
   return divideWithPrecision(self.value, that.value, scale, DEFAULT_PRECISION)
 })
 

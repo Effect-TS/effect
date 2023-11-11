@@ -27,24 +27,18 @@ export const symbol: unique symbol = Symbol.for("effect/Hash")
  */
 export const hash: <A>(self: A) => number = <A>(self: A) => {
   switch (typeof self) {
-    case "number": {
+    case "number":
       return number(self)
-    }
-    case "bigint": {
+    case "bigint":
       return string(self.toString(10))
-    }
-    case "boolean": {
+    case "boolean":
       return string(String(self))
-    }
-    case "symbol": {
+    case "symbol":
       return string(String(self))
-    }
-    case "string": {
+    case "string":
       return string(self)
-    }
-    case "undefined": {
+    case "undefined":
       return string("undefined")
-    }
     case "function":
     case "object": {
       if (self === null) {
@@ -56,9 +50,10 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         return random(self)
       }
     }
-    default: {
-      throw new Error("Bug in Equal.hash")
-    }
+    default:
+      throw new Error(
+        `BUG: unhandled typeof ${typeof self} - please report an issue at https://github.com/Effect-TS/effect/issues`
+      )
   }
 }
 

@@ -1490,7 +1490,7 @@ const fromPushPull = <R, E, In, L, Z>(
         onSuccess: () =>
           core.fromEffect(
             Effect.dieMessage(
-              "BUG: Sink.fromPush - please report an issue at https://github.com/Effect-TS/stream/issues"
+              "BUG: Sink.fromPush - please report an issue at https://github.com/Effect-TS/effect/issues"
             )
           )
       })

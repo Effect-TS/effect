@@ -87,17 +87,8 @@ export const dual: {
 
   switch (arity) {
     case 0:
-      return body
-
     case 1:
-      return function(a) {
-        if (arguments.length >= 1) {
-          return body(a)
-        }
-        return function() {
-          return body(a)
-        }
-      }
+      throw new RangeError(`Invalid arity ${arity}`)
 
     case 2:
       return function(a, b) {

@@ -131,8 +131,13 @@ describe.concurrent("BigInt", () => {
   })
 
   it("sqrt", () => {
+    assert.deepStrictEqual(BigInt.sqrt(1n), Option.some(1n))
     assert.deepStrictEqual(BigInt.sqrt(16n), Option.some(4n))
     assert.deepStrictEqual(BigInt.sqrt(81n), Option.some(9n))
     assert.deepStrictEqual(BigInt.sqrt(-123n), Option.none())
+  })
+
+  it("sqrt", () => {
+    expect(() => BigInt.unsafeSqrt(-1n)).toThrow(new Error("Cannot take the square root of a negative number"))
   })
 })

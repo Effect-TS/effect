@@ -356,15 +356,9 @@ describe("Match", () => {
   it("deep recursive", () => {
     type A =
       | null
-      | Uint8Array
       | string
       | number
-      | B
       | { [K in string]: A }
-      | Set<Uint8Array>
-      | Set<string>
-      | Set<number>
-    type B = Array<A>
 
     const match = pipe(
       M.type<A>(),
@@ -386,12 +380,7 @@ describe("Match", () => {
       }),
       M.when(M.record, (_) => {
         assertType<
-          | Record<string, A>
-          | B
-          | Uint8Array
-          | Set<Uint8Array>
-          | Set<string>
-          | Set<number>
+          Record<string, A>
         >()(_) satisfies true
         return "record"
       }),
@@ -413,8 +402,6 @@ describe("Match", () => {
     expect(match(123)).toEqual("number")
     expect(match("hi")).toEqual("string")
     expect(match({})).toEqual("record")
-    expect(match(new Uint8Array())).toEqual("record")
-    expect(match(new Set<string>())).toEqual("record")
   })
 
   it("nested option", () => {
@@ -777,5 +764,15 @@ describe("Match", () => {
     expect(match({ type: "A.A" })).toEqual(1)
     expect(match({ type: "B" })).toEqual(2)
     expect(match({})).toEqual(3)
+  })
+
+  it("symbol", () => {
+    const match = pipe(
+      M.type<unknown>(),
+      M.when(M.symbol, (_) => "symbol"),
+      M.orElse(() => "else")
+    )
+    expect(match(Symbol.for("a"))).toEqual("symbol")
+    expect(match(123)).toEqual("else")
   })
 })

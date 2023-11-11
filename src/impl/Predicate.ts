@@ -254,6 +254,8 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
  */
 export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown => true
 
+const isRecordOrArray = (input: unknown) => typeof input === "object" && input !== null
+
 /**
  * Tests if a value is an `object`.
  *
@@ -271,8 +273,7 @@ export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown
  * @category guards
  * @since 2.0.0
  */
-export const isObject = (input: unknown): input is object =>
-  (typeof input === "object" && input !== null) || isFunction(input)
+export const isObject = (input: unknown): input is object => isRecordOrArray(input) || isFunction(input)
 
 /**
  * Checks whether a value is an `object` containing a specified property key.
@@ -445,12 +446,13 @@ export const isIterable = (input: unknown): input is Iterable<unknown> => hasPro
  * assert.deepStrictEqual(isRecord([1, 2, 3]), false)
  * assert.deepStrictEqual(isRecord(null), false)
  * assert.deepStrictEqual(isRecord(undefined), false)
+ * assert.deepStrictEqual(isRecord(() => null), false)
  *
  * @category guards
  * @since 2.0.0
  */
 export const isRecord = (input: unknown): input is { [x: string | symbol]: unknown } =>
-  isObject(input) && !Array.isArray(input)
+  isRecordOrArray(input) && !Array.isArray(input)
 
 /**
  * A guard that succeeds when the input is a readonly record.

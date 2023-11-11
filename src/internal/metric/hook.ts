@@ -455,5 +455,7 @@ const resolveQuantile = (
       }
     }
   }
-  throw new Error("BUG: MetricHook.resolveQuantiles - please report an issue at https://github.com/Effect-TS/io/issues")
+  throw new Error(
+    "BUG: MetricHook.resolveQuantiles - please report an issue at https://github.com/Effect-TS/effect/issues"
+  )
 }

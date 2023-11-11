@@ -14,7 +14,9 @@ export const unprepend = <A>(self: NonEmptyIterable<A>): [A, Iterator<A>] => {
   const iterator = self[Symbol.iterator]()
   const next = iterator.next()
   if (next.done) {
-    throw new Error("BUG: NonEmptyIterator should not be empty")
+    throw new Error(
+      "BUG: NonEmptyIterator should not be empty - please report an issue at https://github.com/Effect-TS/effect/issues"
+    )
   }
   return [next.value, iterator]
 }
