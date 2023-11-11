@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.47.4
+
+### Patch Changes
+
+- [#550](https://github.com/Effect-TS/schema/pull/550) [`5167e2d`](https://github.com/Effect-TS/schema/commit/5167e2dbf99282097d93bb0e9be0d3fa9cdcd214) Thanks [@gcanti](https://github.com/gcanti)! - attachPropertySignature: add support for symbols as values
+
 ## 0.47.3
 
 ### Patch Changes
