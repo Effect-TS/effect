@@ -29,6 +29,18 @@
     "functional-programming"
   ],
   "sideEffects": false,
+  "effect": {
+    "generateExports": {
+      "include": [
+        "**/*.ts"
+      ]
+    },
+    "generateIndex": {
+      "include": [
+        "**/*.ts"
+      ]
+    }
+  },
   "scripts": {
     "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-prepare": "build-utils prepare-v2",
@@ -58,7 +70,7 @@
     "@babel/plugin-transform-modules-commonjs": "^7.23.3",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
-    "@effect/build-utils": "^0.4.0",
+    "@effect/build-utils": "^0.4.1",
     "@effect/docgen": "^0.3.2",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",

@@ -51,6 +51,11 @@ export * as HelpDoc from "./HelpDoc.js"
 /**
  * @since 1.0.0
  */
+export * as Span from "./HelpDoc/Span.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Options from "./Options.js"
 
 /**
@@ -67,6 +72,11 @@ export * as Primitive from "./Primitive.js"
  * @since 1.0.0
  */
 export * as Prompt from "./Prompt.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Action from "./Prompt/Action.js"
 
 /**
  * @since 1.0.0
