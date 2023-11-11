@@ -1323,25 +1323,28 @@ export const transform: {
  * @since 1.0.0
  */
 export const attachPropertySignature: {
-  <K extends PropertyKey, V extends AST.LiteralValue>(
+  <K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     key: K,
     value: V
   ): <I, A extends object>(
     schema: Schema<I, A>
   ) => Schema<I, Simplify<A & { readonly [k in K]: V }>>
-  <I, A, K extends PropertyKey, V extends AST.LiteralValue>(
+  <I, A, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<I, A>,
     key: K,
     value: V
   ): Schema<I, Simplify<A & { readonly [k in K]: V }>>
-} = dual(3, <I, A, K extends PropertyKey, V extends AST.LiteralValue>(
+} = dual(3, <I, A, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
   schema: Schema<I, A>,
   key: K,
   value: V
 ): Schema<I, Simplify<A & { readonly [k in K]: V }>> =>
   make(AST.createTransform(
     schema.ast,
-    to(schema).pipe(extend(struct({ [key]: literal(value) }))).ast,
+    extend(
+      to(schema),
+      struct({ [key]: Predicate.isSymbol(value) ? uniqueSymbol(value) : literal(value) })
+    ).ast,
     AST.createTypeLiteralTransformation(
       [
         AST.createPropertySignatureTransform(

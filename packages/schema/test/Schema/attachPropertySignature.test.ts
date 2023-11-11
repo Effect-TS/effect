@@ -1,37 +1,69 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as E from "effect/Either"
-import { describe, expect, it } from "vitest"
+import { describe, it } from "vitest"
 
 describe("Schema/attachPropertySignature", () => {
-  it("baseline", () => {
+  it("string keys + literal values", async () => {
     const Circle = S.struct({ radius: S.number })
     const Square = S.struct({ sideLength: S.number })
-    const DiscriminatedShape = S.union(
+    const schema = S.union(
       Circle.pipe(S.attachPropertySignature("kind", "circle")),
       Square.pipe(S.attachPropertySignature("kind", "square"))
     )
 
-    expect(S.decodeSync(DiscriminatedShape)({ radius: 10 })).toEqual({
-      kind: "circle",
-      radius: 10
-    })
-    expect(
-      S.encodeSync(DiscriminatedShape)({
-        kind: "circle",
-        radius: 10
-      })
-    ).toEqual({ radius: 10 })
-    expect(S.decodeSync(DiscriminatedShape)({ sideLength: 10 })).toEqual({
-      kind: "square",
-      sideLength: 10
-    })
-    expect(
-      S.encodeSync(DiscriminatedShape)({
-        kind: "square",
-        sideLength: 10
-      })
-    ).toEqual({ sideLength: 10 })
+    await Util.expectParseSuccess(schema, { radius: 10 }, { kind: "circle", radius: 10 })
+    await Util.expectEncodeSuccess(schema, { kind: "circle", radius: 10 }, { radius: 10 })
+    await Util.expectParseSuccess(schema, { sideLength: 10 }, { kind: "square", sideLength: 10 })
+    await Util.expectEncodeSuccess(schema, { kind: "square", sideLength: 10 }, { sideLength: 10 })
+  })
+
+  it("symbol keys + literal values", async () => {
+    const Circle = S.struct({ radius: S.number })
+    const Square = S.struct({ sideLength: S.number })
+    const kind = Symbol.for("@effect/schema/test/kind")
+    const schema = S.union(
+      Circle.pipe(S.attachPropertySignature(kind, "circle")),
+      Square.pipe(S.attachPropertySignature(kind, "square"))
+    )
+
+    await Util.expectParseSuccess(schema, { radius: 10 }, { [kind]: "circle", radius: 10 })
+    await Util.expectEncodeSuccess(schema, { [kind]: "circle", radius: 10 }, { radius: 10 })
+    await Util.expectParseSuccess(schema, { sideLength: 10 }, { [kind]: "square", sideLength: 10 })
+    await Util.expectEncodeSuccess(schema, { [kind]: "square", sideLength: 10 }, { sideLength: 10 })
+  })
+
+  it("string keys + unique symbols", async () => {
+    const Circle = S.struct({ radius: S.number })
+    const Square = S.struct({ sideLength: S.number })
+    const kind = Symbol.for("@effect/schema/test/kind")
+    const circle = Symbol.for("@effect/schema/test/circle")
+    const square = Symbol.for("@effect/schema/test/square")
+    const schema = S.union(
+      Circle.pipe(S.attachPropertySignature(kind, circle)),
+      Square.pipe(S.attachPropertySignature(kind, square))
+    )
+
+    await Util.expectParseSuccess(schema, { radius: 10 }, { [kind]: circle, radius: 10 })
+    await Util.expectEncodeSuccess(schema, { [kind]: circle, radius: 10 }, { radius: 10 })
+    await Util.expectParseSuccess(schema, { sideLength: 10 }, { [kind]: square, sideLength: 10 })
+    await Util.expectEncodeSuccess(schema, { [kind]: square, sideLength: 10 }, { sideLength: 10 })
+  })
+
+  it("symbol keys + unique symbols", async () => {
+    const Circle = S.struct({ radius: S.number })
+    const Square = S.struct({ sideLength: S.number })
+    const circle = Symbol.for("@effect/schema/test/circle")
+    const square = Symbol.for("@effect/schema/test/square")
+    const schema = S.union(
+      Circle.pipe(S.attachPropertySignature("kind", circle)),
+      Square.pipe(S.attachPropertySignature("kind", square))
+    )
+
+    await Util.expectParseSuccess(schema, { radius: 10 }, { kind: circle, radius: 10 })
+    await Util.expectEncodeSuccess(schema, { kind: circle, radius: 10 }, { radius: 10 })
+    await Util.expectParseSuccess(schema, { sideLength: 10 }, { kind: square, sideLength: 10 })
+    await Util.expectEncodeSuccess(schema, { kind: square, sideLength: 10 }, { sideLength: 10 })
   })
 
   it("should be compatible with extend", async () => {
@@ -43,11 +75,11 @@ describe("Schema/attachPropertySignature", () => {
     await Util.expectEncodeSuccess(schema, { a: "a", c: 1, _tag: "b" as const }, { a: "a", c: 1 })
   })
 
-  it("with a transformation", () => {
+  it("with a transformation", async () => {
     const From = S.struct({ radius: S.number, _isVisible: S.optional(S.boolean) })
     const To = S.struct({ radius: S.number, _isVisible: S.boolean })
 
-    const Circle = S.transformOrFail(
+    const schema = S.transformOrFail(
       From,
       To,
       S.parseEither(To),
@@ -55,12 +87,17 @@ describe("Schema/attachPropertySignature", () => {
     ).pipe(
       S.attachPropertySignature("_tag", "Circle")
     )
-    expect(S.decodeSync(Circle)({ radius: 10, _isVisible: true })).toEqual({
-      _tag: "Circle",
+
+    await Util.expectParseSuccess(schema, { radius: 10, _isVisible: true }, {
+      _tag: "Circle" as const,
       _isVisible: true,
       radius: 10
     })
-    expect(S.encodeSync(Circle)({ _tag: "Circle", radius: 10, _isVisible: true })).toEqual({
+    await Util.expectEncodeSuccess(schema, {
+      _tag: "Circle" as const,
+      radius: 10,
+      _isVisible: true
+    }, {
       radius: 10
     })
   })
