@@ -1,7 +1,8 @@
 import * as CliApp from "@effect/cli/CliApp"
 import * as Command from "@effect/cli/Command"
 import * as Prompt from "@effect/cli/Prompt"
-import { Effect } from "effect"
+import * as NodeContext from "@effect/platform-node/NodeContext"
+import * as Effect from "effect/Effect"
 
 const colorPrompt = Prompt.select({
   message: "Pick your favorite color!",
@@ -26,5 +27,6 @@ const cli = CliApp.make({
 
 Effect.sync(() => process.argv.slice(2)).pipe(
   Effect.flatMap((args) => CliApp.run(cli, args, (input) => Effect.log(input))),
+  Effect.provide(NodeContext.layer),
   Effect.runFork
 )

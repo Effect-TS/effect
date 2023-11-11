@@ -5,8 +5,8 @@ import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
 import type * as ShellType from "../ShellType.js"
 import type * as Usage from "../Usage.js"
-import * as options from "./options.js"
-import * as _shellType from "./shellType.js"
+import * as InternalOptions from "./options.js"
+import * as InternalShellType from "./shellType.js"
 
 /** @internal */
 export const showCompletions = (
@@ -69,21 +69,23 @@ export const builtInOptions = <A>(
   usage: Usage.Usage,
   helpDoc: HelpDoc.HelpDoc
 ): Options.Options<Option.Option<BuiltInOptions.BuiltInOptions>> => {
-  const help = options.boolean("help").pipe(options.withAlias("h"))
-  // TODO: after path/file primitives added
-  // const completionScriptPath = options.optional(options.file("shell-completion-script"))
-  const shellCompletionScriptPath = options.optional(options.text("shell-completion-script"))
-  const shellType = options.optional(_shellType.shellOption)
-  const shellCompletionIndex = options.optional(options.integer("shell-completion-index"))
-  const wizardOption = options.boolean("wizard")
-  const option = options.all({
+  const help = InternalOptions.boolean("help").pipe(InternalOptions.withAlias("h"))
+  const shellCompletionScriptPath = InternalOptions.optional(
+    InternalOptions.file("shell-completion-script")
+  )
+  const shellType = InternalOptions.optional(InternalShellType.shellOption)
+  const shellCompletionIndex = InternalOptions.optional(
+    InternalOptions.integer("shell-completion-index")
+  )
+  const wizard = InternalOptions.boolean("wizard")
+  const option = InternalOptions.all({
     shellCompletionScriptPath,
     shellType,
     shellCompletionIndex,
     help,
-    wizard: wizardOption
+    wizard
   })
-  return options.map(option, (builtIn) => {
+  return InternalOptions.map(option, (builtIn) => {
     if (builtIn.help) {
       return Option.some(showHelp(usage, helpDoc))
     }

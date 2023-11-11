@@ -4,6 +4,7 @@ import * as Command from "@effect/cli/Command"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Span from "@effect/cli/HelpDoc/Span"
 import * as Options from "@effect/cli/Options"
+import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -131,8 +132,7 @@ const cli = CliApp.make({
   footer: HelpDoc.p("Copyright 2023")
 })
 
-pipe(
-  Effect.sync(() => process.argv.slice(2)),
+Effect.sync(() => process.argv.slice(2)).pipe(
   Effect.flatMap((args) =>
     CliApp.run(cli, args, (command) =>
       Option.match(command.subcommand, {
@@ -143,5 +143,6 @@ pipe(
         onSome: handleGitSubcommand
       }))
   ),
+  Effect.provide(NodeContext.layer),
   Effect.runFork
 )

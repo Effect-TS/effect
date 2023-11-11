@@ -221,7 +221,7 @@ export const date: (name: string) => Options<globalThis.Date> = InternalOptions.
  * @since 1.0.0
  * @category constructors
  */
-export const directory: (name: string, config: Options.PathOptionsConfig) => Options<string> =
+export const directory: (name: string, config?: Options.PathOptionsConfig) => Options<string> =
   InternalOptions.directory
 
 /**
@@ -230,7 +230,7 @@ export const directory: (name: string, config: Options.PathOptionsConfig) => Opt
  * @since 1.0.0
  * @category constructors
  */
-export const file: (name: string, config: Options.PathOptionsConfig) => Options<string> =
+export const file: (name: string, config?: Options.PathOptionsConfig) => Options<string> =
   InternalOptions.file
 
 /**

@@ -112,12 +112,12 @@ export class Standard<Name extends string, OptionsType, ArgsType>
           Effect.when(() => normalizedArgv0 === normalizedCommandName),
           Effect.flatten,
           Effect.catchTag("NoSuchElementException", () => {
-            const error = InternalHelpDoc.p(`Missing command name: ${this.name}`)
+            const error = InternalHelpDoc.p(`Missing command name: '${this.name}'`)
             return Effect.fail(InternalValidationError.commandMismatch(error))
           })
         )
       }
-      const error = InternalHelpDoc.p(`Missing command name: ${this.name}`)
+      const error = InternalHelpDoc.p(`Missing command name: '${this.name}'`)
       return Effect.fail(InternalValidationError.commandMismatch(error))
     }
     const parseBuiltInArgs = (
@@ -127,20 +127,23 @@ export class Standard<Name extends string, OptionsType, ArgsType>
       ValidationError.ValidationError,
       CommandDirective.CommandDirective<never>
     > => {
-      const normalizedArgv0 = InternalCliConfig.normalizeCase(config, args[0])
-      const normalizedCommandName = InternalCliConfig.normalizeCase(config, this.name)
-      if (normalizedArgv0 === normalizedCommandName) {
-        const options = InternalBuiltInOptions.builtInOptions(this, this.usage, this.help)
-        return InternalOptions.validate(options, ReadonlyArray.drop(args, 1), config).pipe(
-          Effect.flatMap((tuple) => tuple[2]),
-          Effect.catchTag("NoSuchElementException", () => {
-            const error = InternalHelpDoc.p("No built-in option was matched")
-            return Effect.fail(InternalValidationError.noBuiltInMatch(error))
-          }),
-          Effect.map(InternalCommandDirective.builtIn)
-        )
+      if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+        const argv0 = ReadonlyArray.headNonEmpty(args)
+        const normalizedArgv0 = InternalCliConfig.normalizeCase(config, argv0)
+        const normalizedCommandName = InternalCliConfig.normalizeCase(config, this.name)
+        if (normalizedArgv0 === normalizedCommandName) {
+          const options = InternalBuiltInOptions.builtInOptions(this, this.usage, this.help)
+          return InternalOptions.validate(options, ReadonlyArray.drop(args, 1), config).pipe(
+            Effect.flatMap((tuple) => tuple[2]),
+            Effect.catchTag("NoSuchElementException", () => {
+              const error = InternalHelpDoc.p("No built-in option was matched")
+              return Effect.fail(InternalValidationError.noBuiltInMatch(error))
+            }),
+            Effect.map(InternalCommandDirective.builtIn)
+          )
+        }
       }
-      const error = InternalHelpDoc.p(`Missing command name: ${this.name}`)
+      const error = InternalHelpDoc.p(`Missing command name: '${this.name}'`)
       return Effect.fail(InternalValidationError.commandMismatch(error))
     }
     const parseUserDefinedArgs = (
@@ -188,7 +191,7 @@ export class Standard<Name extends string, OptionsType, ArgsType>
       if (ReadonlyArray.contains(args, "--wizard") || ReadonlyArray.contains(args, "-w")) {
         return parseBuiltInArgs(ReadonlyArray.make(this.name, "--wizard"))
       }
-      const error = InternalHelpDoc.p(`Missing command name: ${this.name}`)
+      const error = InternalHelpDoc.p(`Missing command name: '${this.name}'`)
       return Effect.fail(InternalValidationError.commandMismatch(error))
     }
     return parseBuiltInArgs(args).pipe(
@@ -218,6 +221,7 @@ export class Standard<Name extends string, OptionsType, ArgsType>
   }
 }
 
+/** @internal */
 export class GetUserInput<Name extends string, ValueType>
   implements Command.Command<Command.Command.ParsedUserInputCommand<Name, ValueType>>
 {
@@ -361,11 +365,11 @@ export class OrElse<A, B> implements Command.Command<A | B> {
     CommandDirective.CommandDirective<A | B>
   > {
     return this.left.parse(args, config).pipe(
-      Effect.catchSome((e) =>
-        InternalValidationError.isValidationError(e)
+      Effect.catchSome((e) => {
+        return InternalValidationError.isCommandMismatch(e)
           ? Option.some(this.right.parse(args, config))
           : Option.none()
-      )
+      })
     )
   }
 

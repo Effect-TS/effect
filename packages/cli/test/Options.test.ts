@@ -84,7 +84,6 @@ describe("Options", () => {
       )
       const args = ReadonlyArray.make("-a", "a", "-b", "b")
       const result = yield* _(Effect.flip(validation(options, args, CliConfig.defaultConfig)))
-      console.log(result)
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
         "Collision between two options detected - you can only " +
           "specify one of either: ['-a', '-b']"

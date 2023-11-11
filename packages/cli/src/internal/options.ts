@@ -795,7 +795,7 @@ export const date = (name: string): Options.Options<Date> =>
 /** @internal */
 export const directory = (
   name: string,
-  config: Options.Options.PathOptionsConfig
+  config: Options.Options.PathOptionsConfig = {}
 ): Options.Options<string> =>
   new Single(
     name,
@@ -806,7 +806,7 @@ export const directory = (
 /** @internal */
 export const file = (
   name: string,
-  config: Options.Options.PathOptionsConfig
+  config: Options.Options.PathOptionsConfig = {}
 ): Options.Options<string> =>
   new Single(
     name,

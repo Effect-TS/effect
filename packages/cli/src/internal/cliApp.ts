@@ -70,21 +70,17 @@ export const run = dual<
   args: ReadonlyArray<string>,
   execute: (a: A) => Effect.Effect<R, E, void>
 ): Effect.Effect<R | CliApp.CliApp.Environment, E | ValidationError.ValidationError, void> =>
-  Effect.gen(function*(_) {
-    const context = yield* _(Effect.context<CliApp.CliApp.Environment>())
-
+  Effect.contextWithEffect((context: Context.Context<CliApp.CliApp.Environment>) => {
     // Attempt to parse the CliConfig from the environment, falling back to the
     // default CliConfig if none was provided
     const config = Option.getOrElse(
       Context.getOption(context, InternalCliConfig.Tag),
       () => InternalCliConfig.defaultConfig
     )
-
     // Prefix the command name to the command line arguments
     const prefixedArgs = ReadonlyArray.appendAll(prefixCommand(self.command), args)
-
     // Handle the command
-    return yield* _(Effect.matchEffect(self.command.parse(prefixedArgs, config), {
+    return Effect.matchEffect(self.command.parse(prefixedArgs, config), {
       onFailure: (e) => Effect.zipRight(printDocs(e.error), Effect.fail(e)),
       onSuccess: unify((directive) => {
         switch (directive._tag) {
@@ -102,7 +98,7 @@ export const run = dual<
           }
         }
       })
-    }))
+    })
   }).pipe(Effect.provide(MainLive)))
 
 // =============================================================================
