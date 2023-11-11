@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.28.1
+
+### Patch Changes
+
+- [#253](https://github.com/Effect-TS/platform/pull/253) [`43d2e29`](https://github.com/Effect-TS/platform/commit/43d2e2984fe88b39e907f45f089206ed88ad52d1) Thanks [@fubhy](https://github.com/fubhy)! - Update dependencies
+
 ## 0.28.0
 
 ### Minor Changes
