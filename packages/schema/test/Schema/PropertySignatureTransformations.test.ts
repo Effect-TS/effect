@@ -149,6 +149,32 @@ describe("Schema/PropertySignatureTransformations", () => {
     await Util.expectEncodeSuccess(transform, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
   })
 
+  it("rename transformation", async () => {
+    const a = Symbol.for("@effect/schema/test/a")
+    const rename: S.Schema<{ readonly a: string }, { readonly [a]: symbol }> = S.make(
+      AST.createTransform(
+        S.struct({ a: S.string }).ast,
+        S.struct({ [a]: S.symbol }).ast,
+        AST.createTypeLiteralTransformation(
+          [
+            AST.createPropertySignatureTransform(
+              "a",
+              a,
+              AST.createFinalPropertySignatureTransformation(
+                identity,
+                identity
+              )
+            )
+          ]
+        )
+      )
+    )
+    const schema = S.struct({ b: S.number }).pipe(S.extend(rename))
+
+    await Util.expectParseSuccess(schema, { a: "@effect/schema/test/a", b: 1 }, { [a]: a, b: 1 })
+    await Util.expectEncodeSuccess(schema, { [a]: a, b: 1 }, { a: "@effect/schema/test/a", b: 1 })
+  })
+
   it("reversed default", async () => {
     const transform: S.Schema<{ readonly a: string }, { readonly a?: number }> = S.make(
       AST.createTransform(

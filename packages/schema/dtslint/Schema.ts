@@ -452,6 +452,27 @@ const lazy2: S.Schema<LazyFrom2, LazyTo2> = S.lazy(() =>
 )
 
 // ---------------------------------------------
+// rename
+// ---------------------------------------------
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }>
+S.rename(S.struct({ a: S.string, b: S.number }), {})
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly c: string; readonly b: number; }>
+S.rename(S.struct({ a: S.string, b: S.number }), { a: 'c' })
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly c: string; readonly d: number; }>
+S.rename(S.struct({ a: S.string, b: S.number }), { a: 'c', b: 'd' })
+
+const a = Symbol.for('@effect/schema/dtslint/a')
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly [a]: string; readonly b: number; }>
+S.rename(S.struct({ a: S.string, b: S.number }), { a: a })
+
+// @ts-expect-error
+S.rename(S.struct({ a: S.string, b: S.number }), { 'c': 'd' })
+
+// ---------------------------------------------
 // optionFromSelf
 // ---------------------------------------------
 

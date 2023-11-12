@@ -1161,7 +1161,7 @@ export const compose: {
 } = dual(
   2,
   <A, B, C, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D> =>
-    make(AST.createTransform(ab.ast, cd.ast, AST.composeTransformation))
+    make(AST.compose(ab.ast, cd.ast))
 )
 
 /**
@@ -1512,6 +1512,29 @@ export const jsonSchema =
 export const equivalence =
   <A>(equivalence: Equivalence.Equivalence<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
     make(AST.setAnnotation(self.ast, Internal.EquivalenceHookId, () => equivalence))
+
+// ---------------------------------------------
+// property signature renaming
+// ---------------------------------------------
+
+type Rename<A, M> = {
+  [
+    K in keyof A as K extends keyof M ? M[K] extends PropertyKey ? M[K]
+      : never
+      : K
+  ]: A[K]
+}
+
+/**
+ * @category renaming
+ * @since 1.0.0
+ */
+export const rename = <I, A, const M extends { readonly [K in keyof A]?: PropertyKey }>(
+  schema: Schema<I, A>,
+  mapping: M
+): Schema<I, Simplify<Rename<A, M>>> => {
+  return make(AST.rename(schema.ast, mapping))
+}
 
 // ---------------------------------------------
 // string filters

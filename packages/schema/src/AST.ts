@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import { pipe } from "effect/Function"
+import { identity, pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
@@ -1705,4 +1705,51 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     default:
       throw new Error(`keyof: unsupported schema (${ast._tag})`)
   }
+}
+
+/** @internal */
+export const compose = (ab: AST, cd: AST): AST => createTransform(ab, cd, composeTransformation)
+
+/** @internal */
+export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: PropertyKey }): AST => {
+  switch (ast._tag) {
+    case "TypeLiteral": {
+      const propertySignatureTransforms: Array<PropertySignatureTransform> = []
+      for (const key of Internal.ownKeys(mapping)) {
+        const name = mapping[key]
+        if (name !== undefined) {
+          propertySignatureTransforms.push(createPropertySignatureTransform(
+            key,
+            name,
+            createFinalPropertySignatureTransformation(
+              identity,
+              identity
+            )
+          ))
+        }
+      }
+      return createTransform(
+        ast,
+        createTypeLiteral(
+          ast.propertySignatures.map((ps) => {
+            const name = mapping[ps.name]
+            return name === undefined ? ps : createPropertySignature(
+              name,
+              to(ps.type),
+              ps.isOptional,
+              ps.isReadonly,
+              ps.annotations
+            )
+          }),
+          ast.indexSignatures
+        ),
+        createTypeLiteralTransformation(propertySignatureTransforms)
+      )
+    }
+    case "Lazy":
+      return createLazy(() => rename(ast.f(), mapping))
+    case "Transform":
+      return compose(ast, rename(to(ast), mapping))
+  }
+  throw new Error(`cannot rename ${ast._tag}`)
 }

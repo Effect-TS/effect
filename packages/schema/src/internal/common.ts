@@ -48,8 +48,8 @@ export const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
 export const minSafeInteger = BigInt(Number.MIN_SAFE_INTEGER)
 
 /** @internal */
-export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
-  (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
+export const ownKeys = (o: object): Array<PropertyKey> =>
+  (Object.keys(o) as Array<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
 
 /** @internal */
 export const memoizeThunk = <A>(f: () => A): () => A => {
