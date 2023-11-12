@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.47.5
+
+### Patch Changes
+
+- [#553](https://github.com/Effect-TS/schema/pull/553) [`522161a`](https://github.com/Effect-TS/schema/commit/522161a8bf5368f7f3afc09a47bd2e0839aaf60d) Thanks [@gcanti](https://github.com/gcanti)! - Fix bug in property signature transformations when used for renaming (old key/value pair was not removed)
+
 ## 0.47.4
 
 ### Patch Changes
