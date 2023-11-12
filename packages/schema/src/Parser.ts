@@ -1123,10 +1123,9 @@ export const getFinalTransformation = (
                 Option.some(input[from]) :
                 Option.none()
             )
+            delete input[from]
             if (Option.isSome(o)) {
               input[to] = o.value
-            } else {
-              delete input[from]
             }
             return input
           }

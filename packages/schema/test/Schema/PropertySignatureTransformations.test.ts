@@ -144,9 +144,9 @@ describe("Schema/PropertySignatureTransformations", () => {
         )
       )
     )
-    await Util.expectParseSuccess(transform, { a: 1 }, { b: 1 })
+    await Util.expectParseSuccess(transform, { a: 1 }, { b: 1 }, { onExcessProperty: "error" })
 
-    await Util.expectEncodeSuccess(transform, { b: 1 }, { a: 1 })
+    await Util.expectEncodeSuccess(transform, { b: 1 }, { a: 1 }, { onExcessProperty: "error" })
   })
 
   it("reversed default", async () => {
