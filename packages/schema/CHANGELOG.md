@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.47.6
+
+### Patch Changes
+
+- [#552](https://github.com/Effect-TS/schema/pull/552) [`fc1638e`](https://github.com/Effect-TS/schema/commit/fc1638e68a23fe7865a4f63a79b0ff72093246e2) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add rename API
+
 ## 0.47.5
 
 ### Patch Changes
