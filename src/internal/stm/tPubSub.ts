@@ -90,7 +90,7 @@ class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
       }
       const currentPubSubSize = tRef.unsafeGet(this.pubsubSize, runtime.journal)
       if (currentPubSubSize < this.requestedCapacity) {
-        const updatedPublisherTail: TRef.TRef<Node<A> | undefined> = new tRef.TRefImpl(void 0)
+        const updatedPublisherTail: TRef.TRef<Node<A> | undefined> = new tRef.TRefImpl<Node<A> | undefined>(void 0)
         const updatedNode = makeNode(value, currentSubscriberCount, updatedPublisherTail)
         tRef.unsafeSet<Node<A> | undefined>(currentPublisherTail, updatedNode, runtime.journal)
         tRef.unsafeSet<TRef.TRef<Node<A> | undefined> | undefined>(
@@ -123,8 +123,12 @@ class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
               const head = node.head
               const tail = node.tail
               if (head !== undefined) {
-                const updatedNode = makeNode(void 0, node.subscribers, node.tail)
-                tRef.unsafeSet<Node<A | undefined> | undefined>(currentPublisherHead, updatedNode, runtime.journal)
+                const updatedNode = makeNode(void 0, node.subscribers, node.tail as any)
+                tRef.unsafeSet<Node<A | undefined> | undefined>(
+                  currentPublisherHead as any,
+                  updatedNode as any,
+                  runtime.journal
+                )
                 tRef.unsafeSet(this.publisherHead, tail, runtime.journal)
                 loop = false
               } else {
@@ -132,7 +136,7 @@ class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
               }
             }
           }
-          const updatedPublisherTail: TRef.TRef<Node<A> | undefined> = new tRef.TRefImpl(void 0)
+          const updatedPublisherTail: TRef.TRef<Node<A> | undefined> = new tRef.TRefImpl<Node<A> | undefined>(void 0)
           const updatedNode = makeNode(value, currentSubscriberCount, updatedPublisherTail)
           tRef.unsafeSet<Node<A> | undefined>(currentPublisherTail, updatedNode, runtime.journal)
           tRef.unsafeSet<TRef.TRef<Node<A> | undefined> | undefined>(
@@ -290,7 +294,7 @@ class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
               const size = tRef.unsafeGet(this.pubsubSize, journal)
               const updatedNode = makeNode(undefined, 0, tail)
               tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, journal)
-              tRef.unsafeSet(this.publisherHead, tail, journal)
+              tRef.unsafeSet(this.publisherHead, tail as any, journal)
               tRef.unsafeSet(this.pubsubSize, size - 1, journal)
             } else {
               const updatedNode = makeNode(head, subscribers - 1, tail)
@@ -306,7 +310,7 @@ class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
         this.subscribers,
         HashSet.remove(
           tRef.unsafeGet(this.subscribers, journal),
-          this.subscriberHead
+          this.subscriberHead as any
         ),
         journal
       )
@@ -333,7 +337,7 @@ class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
           const size = tRef.unsafeGet(this.pubsubSize, runtime.journal)
           const updatedNode = makeNode(void 0, 0, tail)
           tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
-          tRef.unsafeSet(this.publisherHead, tail, runtime.journal)
+          tRef.unsafeSet(this.publisherHead, tail as any, runtime.journal)
           tRef.unsafeSet(this.pubsubSize, size - 1, runtime.journal)
         } else {
           const updatedNode = makeNode(head, subscribers - 1, tail)
@@ -376,7 +380,7 @@ class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
               const size = tRef.unsafeGet(this.pubsubSize, runtime.journal)
               const updatedNode = makeNode(void 0, 0, tail)
               tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
-              tRef.unsafeSet(this.publisherHead, tail, runtime.journal)
+              tRef.unsafeSet(this.publisherHead, tail as any, runtime.journal)
               tRef.unsafeSet(this.pubsubSize, size - 1, runtime.journal)
             } else {
               const updatedNode = makeNode(head, subscribers - 1, tail)
@@ -420,11 +424,11 @@ const makeTPubSub = <A>(
           new TPubSubImpl(
             pubsubSize,
             publisherHead,
-            publisherTail,
+            publisherTail as any,
             requestedCapacity,
             strategy,
             subscriberCount,
-            subscribers
+            subscribers as any
           )
         )
       )
@@ -456,8 +460,8 @@ const makeSubscription = <A>(
         ),
         stm.tap(([subscriberHead, _, currentSubscribers]) =>
           pipe(
-            subscribers,
-            tRef.set(pipe(currentSubscribers, HashSet.add(subscriberHead)))
+            subscribers as any,
+            tRef.set(pipe(currentSubscribers as any, HashSet.add(subscriberHead)))
           )
         ),
         core.map(([subscriberHead]) =>
@@ -465,7 +469,7 @@ const makeSubscription = <A>(
             pubsubSize,
             publisherHead,
             requestedCapacity,
-            subscriberHead,
+            subscriberHead as any,
             subscriberCount,
             subscribers
           )

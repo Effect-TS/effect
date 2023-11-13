@@ -38,7 +38,7 @@ export declare namespace Handoff {
   /** @internal */
   export interface Variance<A> {
     readonly [HandoffTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: (_: A) => A
     }
   }
 
@@ -60,7 +60,7 @@ export declare namespace Handoff {
 }
 
 /** @internal */
-const handoffStateEmpty = (notifyConsumer: Deferred.Deferred<never, void>): Handoff.State<never> => ({
+const handoffStateEmpty = <A>(notifyConsumer: Deferred.Deferred<never, void>): Handoff.State<A> => ({
   _tag: OP_HANDOFF_STATE_EMPTY,
   notifyConsumer
 })
@@ -91,15 +91,15 @@ const handoffStateMatch = <A, Z>(
 
 /** @internal */
 const handoffVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */
 export const make = <A>(): Effect.Effect<never, never, Handoff<A>> =>
   pipe(
     Deferred.make<never, void>(),
-    Effect.flatMap((deferred) => Ref.make(handoffStateEmpty(deferred))),
-    Effect.map((ref) => ({
+    Effect.flatMap((deferred) => Ref.make(handoffStateEmpty<A>(deferred))),
+    Effect.map((ref): Handoff<A> => ({
       [HandoffTypeId]: handoffVariance,
       ref
     }))
@@ -143,19 +143,20 @@ export const take = <A>(self: Handoff<A>): Effect.Effect<never, never, A> =>
         pipe(
           state,
           handoffStateMatch(
-            (notifyConsumer) => [
-              Effect.flatMap(
-                Deferred.await(notifyConsumer),
-                () => take(self)
-              ),
-              state
-            ],
+            (notifyConsumer) =>
+              [
+                Effect.flatMap(
+                  Deferred.await(notifyConsumer),
+                  () => take(self)
+                ),
+                state
+              ] as const,
             (value, notifyProducer) => [
               Effect.as(
                 Deferred.succeed<never, void>(notifyProducer, void 0),
                 value
               ),
-              handoffStateEmpty(deferred)
+              handoffStateEmpty<A>(deferred)
             ]
           )
         ))
@@ -169,16 +170,17 @@ export const poll = <A>(self: Handoff<A>): Effect.Effect<never, never, Option.Op
         pipe(
           state,
           handoffStateMatch(
-            () => [
-              Effect.succeed(Option.none<A>()),
-              state
-            ],
+            () =>
+              [
+                Effect.succeed(Option.none<A>()),
+                state
+              ] as const,
             (value, notifyProducer) => [
               Effect.as(
                 Deferred.succeed<never, void>(notifyProducer, void 0),
                 Option.some(value)
               ),
-              handoffStateEmpty(deferred)
+              handoffStateEmpty<A>(deferred)
             ]
           )
         ))

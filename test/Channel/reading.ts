@@ -41,7 +41,7 @@ export const refWriter = <A>(
 }
 
 export const refReader = <A>(
-  ref: Ref.Ref<ReadonlyArray<A>>
+  ref: Ref.Ref<Array<A>>
 ): Channel.Channel<never, unknown, unknown, unknown, never, A, void> => {
   return pipe(
     Channel.fromEffect(

@@ -237,7 +237,7 @@ export const locked = (self: TReentrantLock.TReentrantLock): STM.STM<never, neve
 
 /** @internal */
 export const make: STM.STM<never, never, TReentrantLock.TReentrantLock> = core.map(
-  tRef.make(emptyReadLock),
+  tRef.make<LockState>(emptyReadLock),
   (readLock) => new TReentranLockImpl(readLock)
 )
 

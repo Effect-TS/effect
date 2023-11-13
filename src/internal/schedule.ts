@@ -562,7 +562,7 @@ export const driver = <Env, In, Out>(
   self: Schedule.Schedule<Env, In, Out>
 ): Effect.Effect<never, never, Schedule.ScheduleDriver<Env, In, Out>> =>
   pipe(
-    ref.make<[Option.Option<Out>, any]>([Option.none(), self.initial]),
+    ref.make<readonly [Option.Option<Out>, any]>([Option.none(), self.initial]),
     core.map((ref) => new ScheduleDriverImpl(self, ref))
   )
 
