@@ -62,7 +62,7 @@ jobs:
         run: git checkout origin/main
 
       - name: Install dependencies
-        uses: ./.github/actions/install-dependencies
+        uses: ./.github/actions/setup
 
       - name: Exit pre-release mode
         if: ${{ hashFiles('.changeset/pre.json') != '' }}
