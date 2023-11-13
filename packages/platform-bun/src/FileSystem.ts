@@ -7,6 +7,11 @@ export type {
    * @since 1.0.0
    * @category model
    */
+  File,
+  /**
+   * @since 1.0.0
+   * @category model
+   */
   MakeDirectoryOptions,
   /**
    * @since 1.0.0
