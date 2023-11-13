@@ -163,7 +163,10 @@ export const makeConfig = (
           return undefined
         }
         return (info: MP.PartInfo): boolean =>
-          Chunk.some(mimeTypes, (_) => info.contentType.includes(_)) || MP.defaultIsFile(info)
+          !Chunk.some(
+            mimeTypes,
+            (_) => info.contentType.includes(_)
+          ) && MP.defaultIsFile(info)
       })
     }),
     (_) => ({ ..._, headers })

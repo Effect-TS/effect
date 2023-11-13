@@ -70,12 +70,10 @@ class FileImpl implements FormData.File {
   readonly contentType: string
   readonly content: Stream.Stream<never, FormData.FormDataError, Uint8Array>
 
-  constructor(
-    readonly file: MP.FileStream
-  ) {
+  constructor(readonly file: MP.FileStream) {
     this[FormData.TypeId] = FormData.TypeId
     this.key = file.info.name
-    this.name = file.filename
+    this.name = file.filename ?? file.info.name
     this.contentType = file.info.contentType
     this.content = NodeStream.fromReadable(() => file, (error) => FormData.FormDataError("InternalError", error))
   }
