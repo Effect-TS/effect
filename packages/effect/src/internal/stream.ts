@@ -30,7 +30,7 @@ import type * as Emit from "../StreamEmit.js"
 import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
 import type * as Tracer from "../Tracer.js"
-import { tuple } from "../Tuple.js"
+import * as Tuple from "../Tuple.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
@@ -2038,7 +2038,7 @@ export const distributedWithDynamicCallback = dual<
                     const id = newDistributedWithDynamicId()
                     return pipe(
                       Ref.update(queuesRef, (map) => map.set(id, queue)),
-                      Effect.as(tuple(id, queue))
+                      Effect.as(Tuple.make(id, queue))
                     )
                   })
                 )
