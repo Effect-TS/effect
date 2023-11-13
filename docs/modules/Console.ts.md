@@ -279,24 +279,24 @@ Added in v2.0.0
 ```ts
 export interface Console {
   readonly [TypeId]: TypeId
-  assert(condition: boolean, ...args: ReadonlyArray<any>): Effect<never, never, void>
+  readonly assert: (condition: boolean, ...args: ReadonlyArray<any>) => Effect<never, never, void>
   readonly clear: Effect<never, never, void>
-  count(label?: string): Effect<never, never, void>
-  countReset(label?: string): Effect<never, never, void>
-  debug(...args: ReadonlyArray<any>): Effect<never, never, void>
-  dir(item: any, options?: any): Effect<never, never, void>
-  dirxml(...args: ReadonlyArray<any>): Effect<never, never, void>
-  error(...args: ReadonlyArray<any>): Effect<never, never, void>
-  group(options?: { readonly label?: string; readonly collapsed?: boolean }): Effect<never, never, void>
+  readonly count: (label?: string) => Effect<never, never, void>
+  readonly countReset: (label?: string) => Effect<never, never, void>
+  readonly debug: (...args: ReadonlyArray<any>) => Effect<never, never, void>
+  readonly dir: (item: any, options?: any) => Effect<never, never, void>
+  readonly dirxml: (...args: ReadonlyArray<any>) => Effect<never, never, void>
+  readonly error: (...args: ReadonlyArray<any>) => Effect<never, never, void>
+  readonly group: (options?: { readonly label?: string; readonly collapsed?: boolean }) => Effect<never, never, void>
   readonly groupEnd: Effect<never, never, void>
-  info(...args: ReadonlyArray<any>): Effect<never, never, void>
-  log(...args: ReadonlyArray<any>): Effect<never, never, void>
-  table(tabularData: any, properties?: ReadonlyArray<string>): Effect<never, never, void>
-  time(label?: string): Effect<never, never, void>
-  timeEnd(label?: string): Effect<never, never, void>
-  timeLog(label?: string, ...args: ReadonlyArray<any>): Effect<never, never, void>
-  trace(...args: ReadonlyArray<any>): Effect<never, never, void>
-  warn(...args: ReadonlyArray<any>): Effect<never, never, void>
+  readonly info: (...args: ReadonlyArray<any>) => Effect<never, never, void>
+  readonly log: (...args: ReadonlyArray<any>) => Effect<never, never, void>
+  readonly table: (tabularData: any, properties?: ReadonlyArray<string>) => Effect<never, never, void>
+  readonly time: (label?: string) => Effect<never, never, void>
+  readonly timeEnd: (label?: string) => Effect<never, never, void>
+  readonly timeLog: (label?: string, ...args: ReadonlyArray<any>) => Effect<never, never, void>
+  readonly trace: (...args: ReadonlyArray<any>) => Effect<never, never, void>
+  readonly warn: (...args: ReadonlyArray<any>) => Effect<never, never, void>
   readonly unsafe: UnsafeConsole
 }
 ```
