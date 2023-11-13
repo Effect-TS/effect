@@ -369,7 +369,7 @@ Added in v2.0.0
 ```ts
 export interface Primitive<A> extends Config<A> {
   readonly description: string
-  parse(text: string): Either.Either<ConfigError.ConfigError, A>
+  readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
 }
 ```
 
