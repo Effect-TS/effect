@@ -674,44 +674,44 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * Reads the current value of a fiber ref
    */
-  getFiberRef<X>(fiberRef: FiberRef<X>): X
+  readonly getFiberRef: <X>(fiberRef: FiberRef<X>) => X
 
   /**
    * The identity of the fiber.
    */
-  id(): FiberId.Runtime
+  readonly id: () => FiberId.Runtime
 
   /**
    * The status of the fiber.
    */
-  status(): Effect.Effect<never, never, FiberStatus.FiberStatus>
+  readonly status: () => Effect.Effect<never, never, FiberStatus.FiberStatus>
 
   /**
    * Returns the current `RuntimeFlags` the fiber is running with.
    */
-  runtimeFlags(): Effect.Effect<never, never, RuntimeFlags.RuntimeFlags>
+  readonly runtimeFlags: () => Effect.Effect<never, never, RuntimeFlags.RuntimeFlags>
 
   /**
    * Adds an observer to the list of observers.
    */
-  addObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  readonly addObserver: (observer: (exit: Exit.Exit<E, A>) => void) => void
 
   /**
    * Removes the specified observer from the list of observers that will be
    * notified when the fiber exits.
    */
-  removeObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  readonly removeObserver: (observer: (exit: Exit.Exit<E, A>) => void) => void
 
   /**
    * Retrieves all fiber refs of the fiber.
    */
-  getFiberRefs(): FiberRefs.FiberRefs
+  readonly getFiberRefs: () => FiberRefs.FiberRefs
 
   /**
    * Unsafely observes the fiber, but returns immediately if it is not
    * already done.
    */
-  unsafePoll(): Exit.Exit<E, A> | null
+  readonly unsafePoll: () => Exit.Exit<E, A> | null
 }
 ```
 
