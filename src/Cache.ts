@@ -47,14 +47,14 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it.
    */
-  get(key: Key): Effect.Effect<never, Error, Value>
+  readonly get: (key: Key) => Effect.Effect<never, Error, Value>
 
   /**
    * Retrieves the value associated with the specified key if it exists as a left.
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it as a right.
    */
-  getEither(key: Key): Effect.Effect<never, Error, Either<Value, Value>>
+  readonly getEither: (key: Key) => Effect.Effect<never, Error, Either<Value, Value>>
 
   /**
    * Computes the value associated with the specified key, with the lookup
@@ -65,12 +65,15 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * by the lookup function. Additionally, `refresh` always triggers the
    * lookup function, disregarding the last `Error`.
    */
-  refresh(key: Key): Effect.Effect<never, Error, void>
+  readonly refresh: (key: Key) => Effect.Effect<never, Error, void>
 
   /**
    * Associates the specified value with the specified key in the cache.
    */
-  set<Key, Error, Value>(this: Cache<Key, Error, Value>, key: Key, value: Value): Effect.Effect<never, never, void>
+  readonly set: (
+    key: Key,
+    value: Value
+  ) => Effect.Effect<never, never, void>
 }
 
 /**

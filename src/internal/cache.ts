@@ -477,11 +477,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     )
   }
 
-  set<Key, Error, Value>(
-    this: CacheImpl<Key, Error, Value>,
-    key: Key,
-    value: Value
-  ): Effect.Effect<never, never, void> {
+  set(key: Key, value: Value): Effect.Effect<never, never, void> {
     return effect.clockWith((clock) =>
       core.sync(() => {
         const now = clock.unsafeCurrentTimeMillis()
@@ -703,10 +699,10 @@ export const makeWith = <Key, Environment, Error, Value>(
 /** @internal */
 export const unsafeMakeWith = <Key, Error, Value>(
   capacity: number,
-  lookup: Cache.Lookup<never, Key, Error, Value>,
+  lookup: Cache.Lookup<Key, never, Error, Value>,
   timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
 ): Cache.Cache<Key, Error, Value> =>
-  new CacheImpl(
+  new CacheImpl<Key, Error, Value>(
     capacity,
     Context.empty() as Context.Context<any>,
     none,
