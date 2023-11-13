@@ -39,9 +39,7 @@ Added in v2.0.0
   - [remove](#remove)
   - [removeAll](#removeall)
   - [removeIf](#removeif)
-  - [removeIfDiscard](#removeifdiscard)
   - [retainIf](#retainif)
-  - [retainIfDiscard](#retainifdiscard)
   - [takeFirst](#takefirst)
   - [takeFirstSTM](#takefirststm)
   - [takeSome](#takesome)
@@ -333,29 +331,17 @@ Added in v2.0.0
 
 ## removeIf
 
-Removes bindings matching predicate and returns the removed entries.
+Removes entries from a `TSet` that satisfy the specified predicate and returns the removed entries
+(or `void` if `discard = true`).
 
 **Signature**
 
 ```ts
 export declare const removeIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, A[]>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, A[]>
-}
-```
-
-Added in v2.0.0
-
-## removeIfDiscard
-
-Removes elements matching predicate.
-
-**Signature**
-
-```ts
-export declare const removeIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet<A>) => STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>, options?: { readonly discard: false }): (self: TSet<A>) => STM.STM<never, never, A[]>
+  <A>(self: TSet<A>, predicate: Predicate<A>, options: { readonly discard: true }): STM.STM<never, never, void>
+  <A>(self: TSet<A>, predicate: Predicate<A>, options?: { readonly discard: false }): STM.STM<never, never, A[]>
 }
 ```
 
@@ -363,29 +349,17 @@ Added in v2.0.0
 
 ## retainIf
 
-Retains bindings matching predicate and returns removed bindings.
+Retains entries in a `TSet` that satisfy the specified predicate and returns the removed entries
+(or `void` if `discard = true`).
 
 **Signature**
 
 ```ts
 export declare const retainIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, A[]>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, A[]>
-}
-```
-
-Added in v2.0.0
-
-## retainIfDiscard
-
-Retains elements matching predicate.
-
-**Signature**
-
-```ts
-export declare const retainIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet<A>) => STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>, options?: { readonly discard: false }): (self: TSet<A>) => STM.STM<never, never, A[]>
+  <A>(self: TSet<A>, predicate: Predicate<A>, options: { readonly discard: true }): STM.STM<never, never, void>
+  <A>(self: TSet<A>, predicate: Predicate<A>, options?: { readonly discard: false }): STM.STM<never, never, A[]>
 }
 ```
 

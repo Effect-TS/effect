@@ -154,48 +154,53 @@ export const removeAll: {
 } = internal.removeAll
 
 /**
- * Removes bindings matching predicate and returns the removed entries.
+ * Removes entries from a `TSet` that satisfy the specified predicate and returns the removed entries
+ * (or `void` if `discard = true`).
  *
  * @since 2.0.0
  * @category mutations
  */
 export const removeIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, Array<A>>
+  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet<A>) => STM.STM<never, never, void>
+  <A>(
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): (self: TSet<A>) => STM.STM<never, never, Array<A>>
+  <A>(self: TSet<A>, predicate: Predicate<A>, options: { readonly discard: true }): STM.STM<never, never, void>
+  <A>(
+    self: TSet<A>,
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<A>>
 } = internal.removeIf
 
 /**
- * Removes elements matching predicate.
- *
- * @since 2.0.0
- * @category mutations
- */
-export const removeIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
-} = internal.removeIfDiscard
-
-/**
- * Retains bindings matching predicate and returns removed bindings.
+ * Retains entries in a `TSet` that satisfy the specified predicate and returns the removed entries
+ * (or `void` if `discard = true`).
  *
  * @since 2.0.0
  * @category mutations
  */
 export const retainIf: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, Array<A>>
+  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet<A>) => STM.STM<never, never, void>
+  <A>(
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): (self: TSet<A>) => STM.STM<never, never, Array<A>>
+  <A>(self: TSet<A>, predicate: Predicate<A>, options: {
+    /**
+     * Returns the set's cardinality.
+     *
+     * @since 2.0.0
+     * @category getters
+     */ readonly discard: true
+  }): STM.STM<never, never, void>
+  <A>(
+    self: TSet<A>,
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<A>>
 } = internal.retainIf
-
-/**
- * Retains elements matching predicate.
- *
- * @since 2.0.0
- * @category mutations
- */
-export const retainIfDiscard: {
-  <A>(predicate: Predicate<A>): (self: TSet<A>) => STM.STM<never, never, void>
-  <A>(self: TSet<A>, predicate: Predicate<A>): STM.STM<never, never, void>
-} = internal.retainIfDiscard
 
 /**
  * Returns the set's cardinality.
