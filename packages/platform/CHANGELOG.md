@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.29.1
+
+### Patch Changes
+
+- [#263](https://github.com/Effect-TS/platform/pull/263) [`2bbe692`](https://github.com/Effect-TS/platform/commit/2bbe6928aa5e6929e58877ba236547310bca7e2b) Thanks [@tim-smart](https://github.com/tim-smart)! - fix fieldMimeTypes fiber ref
+
 ## 0.29.0
 
 ### Minor Changes
