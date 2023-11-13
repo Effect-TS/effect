@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.28.3
+
+### Patch Changes
+
+- [#258](https://github.com/Effect-TS/platform/pull/258) [`9f79c1f`](https://github.com/Effect-TS/platform/commit/9f79c1f5278e60b3bcbd59f08e20189bcb25a84e) Thanks [@IMax153](https://github.com/IMax153)! - fix context identifier for Terminal service
+
 ## 0.28.2
 
 ### Patch Changes
