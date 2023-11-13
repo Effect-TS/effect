@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.28.2
+
+### Patch Changes
+
+- [#255](https://github.com/Effect-TS/platform/pull/255) [`fea76da`](https://github.com/Effect-TS/platform/commit/fea76da05190a65912911bd5b6f9cc0bef3b2edc) Thanks [@IMax153](https://github.com/IMax153)! - add basic Terminal interface for prompting user input
+
 ## 0.28.1
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.29.2
+
+### Patch Changes
+
+- [#256](https://github.com/Effect-TS/platform/pull/256) [`62cbddb`](https://github.com/Effect-TS/platform/commit/62cbddb530371291123dea220bfebcc0521b54df) Thanks [@jessekelly881](https://github.com/jessekelly881)! - fix: added missing File type export
+
+- [#255](https://github.com/Effect-TS/platform/pull/255) [`fea76da`](https://github.com/Effect-TS/platform/commit/fea76da05190a65912911bd5b6f9cc0bef3b2edc) Thanks [@IMax153](https://github.com/IMax153)! - add basic Terminal interface for prompting user input
+
+- Updated dependencies [[`fea76da`](https://github.com/Effect-TS/platform/commit/fea76da05190a65912911bd5b6f9cc0bef3b2edc)]:
+  - @effect/platform@0.28.2
+
 ## 0.29.1
 
 ### Patch Changes
