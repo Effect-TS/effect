@@ -59,7 +59,7 @@ jobs:
 
       - name: Retrieve changeset entries
         if: ${{ steps.branch.outputs.branch == 'changeset-release/main' }}
-        run: git checkout origin/main -- .changeset/*.md
+        run: git checkout origin/main
 
       - name: Install dependencies
         uses: ./.github/actions/install-dependencies
