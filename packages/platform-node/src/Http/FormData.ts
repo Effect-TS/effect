@@ -34,5 +34,14 @@ export const stream: (
 export const formData: (
   source: Readable,
   headers: IncomingHttpHeaders
-) => Effect.Effect<Path.Path | FileSystem.FileSystem | Scope.Scope, FormData.FormDataError, FormData> =
-  internal.formData
+) => Effect.Effect<
+  FileSystem.FileSystem | Path.Path | Scope.Scope,
+  FormData.FormDataError,
+  FormData.PersistedFormData
+> = internal.formData
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const fileToReadable: (file: FormData.File) => Readable = internal.fileToReadable

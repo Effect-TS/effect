@@ -38,7 +38,7 @@
     "effect": "2.0.0-next.54"
   },
   "devDependencies": {
-    "@effect/schema": "^0.47.3",
+    "@effect/schema": "^0.47.6",
     "bun-types": "^1.0.11",
     "effect": "2.0.0-next.54"
   }

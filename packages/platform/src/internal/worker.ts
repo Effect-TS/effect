@@ -1,5 +1,6 @@
-import { Cause, Chunk } from "effect"
+import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
+import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"

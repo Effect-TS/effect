@@ -1,16 +1,24 @@
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import * as Cause from "effect/Cause"
+import * as Channel from "effect/Channel"
+import type * as AsyncInput from "effect/ChannelSingleProducerAsyncInput"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
-import { dual, pipe } from "effect/Function"
+import { dual, flow, pipe } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Queue from "effect/Queue"
+import type * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
+import * as MP from "multipasta"
 import * as FileSystem from "../../FileSystem.js"
 import type * as FormData from "../../Http/FormData.js"
+import * as IncomingMessage from "../../Http/IncomingMessage.js"
+import * as Path from "../../Path.js"
 
 /** @internal */
 export const TypeId: FormData.TypeId = Symbol.for("@effect/platform/Http/FormData") as FormData.TypeId
@@ -28,6 +36,10 @@ export const FormDataError = (reason: FormData.FormDataError["reason"], error: u
     reason,
     error
   })
+
+/** @internal */
+export const isField = (u: unknown): u is FormData.Field =>
+  Predicate.hasProperty(u, TypeId) && Predicate.isTagged(u, "Field")
 
 /** @internal */
 export const maxParts: FiberRef.FiberRef<Option.Option<number>> = globalValue(
@@ -54,30 +66,6 @@ export const withMaxFieldSize = dual<
 >(2, (effect, size) => Effect.locally(effect, maxFieldSize, FileSystem.Size(size)))
 
 /** @internal */
-export const maxFields: FiberRef.FiberRef<Option.Option<number>> = globalValue(
-  "@effect/platform/Http/FormData/maxFields",
-  () => FiberRef.unsafeMake(Option.none<number>())
-)
-
-/** @internal */
-export const withMaxFields = dual<
-  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>) => Effect.Effect<R, E, A>
->(2, (effect, count) => Effect.locally(effect, maxFields, count))
-
-/** @internal */
-export const maxFiles: FiberRef.FiberRef<Option.Option<number>> = globalValue(
-  "@effect/platform/Http/FormData/maxFiles",
-  () => FiberRef.unsafeMake(Option.none<number>())
-)
-
-/** @internal */
-export const withMaxFiles = dual<
-  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>) => Effect.Effect<R, E, A>
->(2, (effect, count) => Effect.locally(effect, maxFiles, count))
-
-/** @internal */
 export const maxFileSize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = globalValue(
   "@effect/platform/Http/FormData/maxFileSize",
   () => FiberRef.unsafeMake(Option.none<FileSystem.Size>())
@@ -102,49 +90,32 @@ export const withFieldMimeTypes = dual<
 >(2, (effect, mimeTypes) => Effect.locally(effect, fieldMimeTypes, Chunk.fromIterable(mimeTypes)))
 
 /** @internal */
-export const toRecord = (formData: globalThis.FormData): Record<string, Array<globalThis.File> | string> =>
-  ReadonlyArray.reduce(
-    formData.entries(),
-    {} as Record<string, Array<globalThis.File> | string>,
-    (acc, [key, value]) => {
-      if (Predicate.isString(value)) {
-        acc[key] = value
-      } else {
-        const existing = acc[key]
-        if (Array.isArray(existing)) {
-          existing.push(value)
-        } else {
-          acc[key] = [value]
-        }
-      }
-      return acc
-    }
-  )
-/** @internal */
-export const filesSchema: Schema.Schema<ReadonlyArray<File>, ReadonlyArray<File>> = Schema.array(
-  pipe(
-    Schema.instanceOf(Blob),
-    Schema.filter(
-      (blob): blob is File => "name" in blob
+export const filesSchema: Schema.Schema<ReadonlyArray<FormData.PersistedFile>, ReadonlyArray<FormData.PersistedFile>> =
+  Schema
+    .array(
+      pipe(
+        Schema.object,
+        Schema.filter(
+          (file): file is FormData.PersistedFile => TypeId in file && "_tag" in file && file._tag === "PersistedFile"
+        )
+      ) as any as Schema.Schema<FormData.PersistedFile, FormData.PersistedFile>
     )
-  ) as any as Schema.Schema<File, File>
-)
 
 /** @internal */
-export const schemaRecord = <I extends Readonly<Record<string, string | ReadonlyArray<globalThis.File>>>, A>(
+export const schemaPersisted = <I extends FormData.PersistedFormData, A>(
   schema: Schema.Schema<I, A>
 ) => {
   const parse = Schema.parse(schema)
-  return (formData: globalThis.FormData) => parse(toRecord(formData))
+  return (formData: FormData.PersistedFormData) => parse(formData)
 }
 
 /** @internal */
 export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
   (
     field: string
-  ): (formData: globalThis.FormData) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>
+  ): (formData: FormData.PersistedFormData) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>
   (
-    formData: globalThis.FormData,
+    formData: FormData.PersistedFormData,
     field: string
   ): Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>
 } => {
@@ -152,22 +123,309 @@ export const schemaJson = <I, A>(schema: Schema.Schema<I, A>): {
   return dual<
     (
       field: string
-    ) => (formData: globalThis.FormData) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>,
+    ) => (
+      formData: FormData.PersistedFormData
+    ) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>,
     (
-      formData: globalThis.FormData,
+      formData: FormData.PersistedFormData,
       field: string
     ) => Effect.Effect<never, FormData.FormDataError | ParseResult.ParseError, A>
   >(2, (formData, field) =>
     pipe(
-      Effect.succeed(formData.get(field)),
+      Effect.succeed(formData[field]),
       Effect.filterOrFail(
-        (field) => Predicate.isString(field),
-        () => FormDataError("Parse", `schemaJson: field was not a string`)
+        isField,
+        () => FormDataError("Parse", `schemaJson: was not a field`)
       ),
       Effect.tryMap({
-        try: (field) => JSON.parse(field as string),
+        try: (field) => JSON.parse(field.value),
         catch: (error) => FormDataError("Parse", `schemaJson: field was not valid json: ${error}`)
       }),
       Effect.flatMap(parse)
     ))
+}
+
+/** @internal */
+export const makeConfig = (
+  headers: Record<string, string>
+): Effect.Effect<never, never, MP.BaseConfig> =>
+  Effect.map(
+    Effect.all({
+      maxParts: Effect.map(FiberRef.get(maxParts), Option.getOrUndefined),
+      maxFieldSize: Effect.map(FiberRef.get(maxFieldSize), Number),
+      maxPartSize: Effect.map(FiberRef.get(maxFileSize), flow(Option.map(Number), Option.getOrUndefined)),
+      maxTotalSize: Effect.map(
+        FiberRef.get(IncomingMessage.maxBodySize),
+        flow(Option.map(Number), Option.getOrUndefined)
+      ),
+      isFile: Effect.map(FiberRef.get(fieldMimeTypes), (mimeTypes) => {
+        if (mimeTypes.length === 0) {
+          return undefined
+        }
+        return (info: MP.PartInfo): boolean =>
+          Chunk.some(mimeTypes, (_) => info.contentType.includes(_)) || MP.defaultIsFile(info)
+      })
+    }),
+    (_) => ({ ..._, headers })
+  )
+
+/** @internal */
+export const makeChannel = <IE>(
+  headers: Record<string, string>,
+  bufferSize = 16
+): Channel.Channel<
+  never,
+  IE,
+  Chunk.Chunk<Uint8Array>,
+  unknown,
+  FormData.FormDataError | IE,
+  Chunk.Chunk<FormData.Part>,
+  unknown
+> =>
+  Channel.acquireUseRelease(
+    Effect.all([
+      makeConfig(headers),
+      Queue.bounded<Chunk.Chunk<Uint8Array> | null>(bufferSize)
+    ]),
+    ([config, queue]) => makeFromQueue(config, queue),
+    ([, queue]) => Queue.shutdown(queue)
+  )
+
+const makeFromQueue = <IE>(
+  config: MP.BaseConfig,
+  queue: Queue.Queue<Chunk.Chunk<Uint8Array> | null>
+): Channel.Channel<
+  never,
+  IE,
+  Chunk.Chunk<Uint8Array>,
+  unknown,
+  IE | FormData.FormDataError,
+  Chunk.Chunk<FormData.Part>,
+  unknown
+> =>
+  Channel.suspend(() => {
+    let error = Option.none<Cause.Cause<IE | FormData.FormDataError>>()
+    let partsBuffer: Array<FormData.Part> = []
+    let partsFinished = false
+
+    const input: AsyncInput.AsyncInputProducer<IE, Chunk.Chunk<Uint8Array>, unknown> = {
+      awaitRead: () => Effect.unit,
+      emit(element) {
+        return Queue.offer(queue, element)
+      },
+      error(cause) {
+        error = Option.some(cause)
+        return Queue.offer(queue, null)
+      },
+      done(_value) {
+        return Queue.offer(queue, null)
+      }
+    }
+
+    const parser = MP.make({
+      ...config,
+      onField(info, value) {
+        partsBuffer.push(new FieldImpl(info.name, info.contentType, MP.decodeField(info, value)))
+      },
+      onFile(info) {
+        let chunks: Array<Uint8Array> = []
+        let finished = false
+        const take: Channel.Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<Uint8Array>, void> = Channel
+          .suspend(() => {
+            if (finished) {
+              return Channel.unit
+            } else if (chunks.length === 0) {
+              return Channel.zipRight(pump, take)
+            }
+            const chunk = Chunk.unsafeFromArray(chunks)
+            chunks = []
+            return Channel.zipRight(
+              Channel.write(chunk),
+              Channel.zipRight(pump, take)
+            )
+          })
+        partsBuffer.push(new FileImpl(info, take))
+        return function(chunk) {
+          if (chunk === null) {
+            finished = true
+          } else {
+            chunks.push(chunk)
+          }
+        }
+      },
+      onError(error_) {
+        error = Option.some(Cause.fail(convertError(error_)))
+      },
+      onDone() {
+        partsFinished = true
+      }
+    })
+
+    const pump = Channel.flatMap(
+      Queue.take(queue),
+      (chunk) =>
+        Channel.sync(() => {
+          if (chunk === null) {
+            parser.end()
+          } else {
+            Chunk.forEach(chunk, function(buf) {
+              parser.write(buf)
+            })
+          }
+        })
+    )
+
+    const takeParts = Channel.zipRight(
+      pump,
+      Channel.suspend(() => {
+        if (partsBuffer.length === 0) {
+          return Channel.unit
+        }
+        const parts = Chunk.unsafeFromArray(partsBuffer)
+        partsBuffer = []
+        return Channel.write(parts)
+      })
+    )
+
+    const partsChannel: Channel.Channel<
+      never,
+      unknown,
+      unknown,
+      unknown,
+      IE | FormData.FormDataError,
+      Chunk.Chunk<FormData.Part>,
+      void
+    > = Channel.suspend(() => {
+      if (error._tag === "Some") {
+        return Channel.failCause(error.value)
+      } else if (partsFinished) {
+        return Channel.unit
+      }
+      return Channel.zipRight(takeParts, partsChannel)
+    })
+
+    return Channel.embedInput(partsChannel, input)
+  })
+
+function convertError(error: MP.MultipartError): FormData.FormDataError {
+  switch (error._tag) {
+    case "ReachedLimit": {
+      switch (error.limit) {
+        case "MaxParts": {
+          return FormDataError("TooManyParts", error)
+        }
+        case "MaxFieldSize": {
+          return FormDataError("FieldTooLarge", error)
+        }
+        case "MaxPartSize": {
+          return FormDataError("FileTooLarge", error)
+        }
+        case "MaxTotalSize": {
+          return FormDataError("BodyTooLarge", error)
+        }
+      }
+    }
+    default: {
+      return FormDataError("Parse", error)
+    }
+  }
+}
+
+class FieldImpl implements FormData.Field {
+  readonly [TypeId]: FormData.TypeId
+  readonly _tag = "Field"
+
+  constructor(
+    readonly key: string,
+    readonly contentType: string,
+    readonly value: string
+  ) {
+    this[TypeId] = TypeId
+  }
+}
+
+class FileImpl implements FormData.File {
+  readonly _tag = "File"
+  readonly [TypeId]: FormData.TypeId
+  readonly key: string
+  readonly name: string
+  readonly contentType: string
+  readonly content: Stream.Stream<never, FormData.FormDataError, Uint8Array>
+
+  constructor(
+    info: MP.PartInfo,
+    channel: Channel.Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<Uint8Array>, void>
+  ) {
+    this[TypeId] = TypeId
+    this.key = info.name
+    this.name = info.filename ?? info.name
+    this.contentType = info.contentType
+    this.content = Stream.fromChannel(channel)
+  }
+}
+
+const defaultWriteFile = (path: string, file: FormData.File) =>
+  Effect.flatMap(
+    FileSystem.FileSystem,
+    (fs) =>
+      Effect.mapError(
+        Stream.run(file.content, fs.sink(path)),
+        (error) => FormDataError("InternalError", error)
+      )
+  )
+
+/** @internal */
+export const formData = (
+  stream: Stream.Stream<never, FormData.FormDataError, FormData.Part>,
+  writeFile = defaultWriteFile
+): Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, FormData.FormDataError, FormData.PersistedFormData> =>
+  pipe(
+    Effect.Do,
+    Effect.bind("fs", () => FileSystem.FileSystem),
+    Effect.bind("path", () => Path.Path),
+    Effect.bind("dir", ({ fs }) => fs.makeTempDirectoryScoped()),
+    Effect.flatMap(({ dir, path: path_ }) =>
+      Stream.runFoldEffect(
+        stream,
+        Object.create(null) as Record<string, Array<FormData.PersistedFile> | string>,
+        (formData, part) => {
+          if (part._tag === "Field") {
+            formData[part.key] = part.value
+            return Effect.succeed(formData)
+          }
+          const file = part
+          const path = path_.join(dir, path_.basename(file.name).slice(-128))
+          if (!Array.isArray(formData[part.key])) {
+            formData[part.key] = []
+          }
+          ;(formData[part.key] as Array<FormData.PersistedFile>).push(
+            new PersistedFileImpl(
+              file.key,
+              file.name,
+              file.contentType,
+              path
+            )
+          )
+          return Effect.as(writeFile(path, file), formData)
+        }
+      )
+    ),
+    Effect.catchTags({
+      SystemError: (err) => Effect.fail(FormDataError("InternalError", err)),
+      BadArgument: (err) => Effect.fail(FormDataError("InternalError", err))
+    })
+  )
+
+class PersistedFileImpl implements FormData.PersistedFile {
+  readonly [TypeId]: FormData.TypeId
+  readonly _tag = "PersistedFile"
+
+  constructor(
+    readonly key: string,
+    readonly name: string,
+    readonly contentType: string,
+    readonly path: string
+  ) {
+    this[TypeId] = TypeId
+  }
 }

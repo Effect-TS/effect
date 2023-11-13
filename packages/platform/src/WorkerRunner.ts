@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type { Effect } from "effect"
 import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import type * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"

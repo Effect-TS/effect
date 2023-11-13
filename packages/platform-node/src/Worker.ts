@@ -4,8 +4,8 @@
  * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
  */
 import type * as Worker from "@effect/platform/Worker"
-import type { Effect } from "effect"
 import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as WorkerThreads from "node:worker_threads"

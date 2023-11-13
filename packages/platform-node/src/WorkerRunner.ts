@@ -5,7 +5,7 @@
  */
 import type { WorkerError } from "@effect/platform/WorkerError"
 import type * as Runner from "@effect/platform/WorkerRunner"
-import type { Effect } from "effect"
+import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"

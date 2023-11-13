@@ -274,13 +274,13 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     | Effect.Effect<
       Scope.Scope | FileSystem.FileSystem | Path.Path,
       FormData.FormDataError,
-      globalThis.FormData
+      FormData.PersistedFormData
     >
     | undefined
   get formData(): Effect.Effect<
     Scope.Scope | FileSystem.FileSystem | Path.Path,
     FormData.FormDataError,
-    globalThis.FormData
+    FormData.PersistedFormData
   > {
     if (this.formDataEffect) {
       return this.formDataEffect

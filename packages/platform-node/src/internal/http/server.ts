@@ -211,13 +211,13 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
     | Effect.Effect<
       Scope.Scope | FileSystem.FileSystem | Path.Path,
       FormData.FormDataError,
-      globalThis.FormData
+      FormData.PersistedFormData
     >
     | undefined
   get formData(): Effect.Effect<
     Scope.Scope | FileSystem.FileSystem | Path.Path,
     FormData.FormDataError,
-    globalThis.FormData
+    FormData.PersistedFormData
   > {
     if (this.formDataEffect) {
       return this.formDataEffect

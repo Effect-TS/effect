@@ -9,7 +9,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { createServer } from "http"
 import * as Buffer from "node:buffer"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 const ServerLive = Http.server.layer(createServer, { port: 0 })
 const EnvLive = Layer.mergeAll(
@@ -80,10 +80,12 @@ describe("HttpServer", () => {
           Effect.gen(function*(_) {
             const request = yield* _(Http.request.ServerRequest)
             const formData = yield* _(request.formData)
-            const file = formData.get("file") as globalThis.File
-            expect(file.name.endsWith("/test.txt")).toEqual(true)
-            expect(file.type).toEqual("text/plain")
-            return yield* _(Http.response.json({ ok: formData.has("file") }))
+            const part = formData.file
+            assert(typeof part !== "string")
+            const file = part[0]
+            expect(file.path.endsWith("/test.txt")).toEqual(true)
+            expect(file.contentType).toEqual("text/plain")
+            return yield* _(Http.response.json({ ok: "file" in formData }))
           }).pipe(Effect.scoped)
         ),
         Http.server.serve(),

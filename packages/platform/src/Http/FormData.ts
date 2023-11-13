@@ -3,14 +3,18 @@
  */
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
+import type * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import type * as Data from "effect/Data"
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
 import type * as Option from "effect/Option"
+import type * as Scope from "effect/Scope"
 import type * as Stream from "effect/Stream"
+import type * as Multipasta from "multipasta"
 import type * as FileSystem from "../FileSystem.js"
 import * as internal from "../internal/http/formData.js"
+import type * as Path from "../Path.js"
 
 /**
  * @since 1.0.0
@@ -69,6 +73,26 @@ export interface File extends Part.Proto {
 
 /**
  * @since 1.0.0
+ * @category models
+ */
+export interface PersistedFile extends Part.Proto {
+  readonly _tag: "PersistedFile"
+  readonly key: string
+  readonly name: string
+  readonly contentType: string
+  readonly path: string
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface PersistedFormData {
+  readonly [key: string]: ReadonlyArray<PersistedFile> | string
+}
+
+/**
+ * @since 1.0.0
  * @category type ids
  */
 export const ErrorTypeId: unique symbol = internal.ErrorTypeId
@@ -86,7 +110,7 @@ export type ErrorTypeId = typeof ErrorTypeId
 export interface FormDataError extends Data.Case {
   readonly [ErrorTypeId]: ErrorTypeId
   readonly _tag: "FormDataError"
-  readonly reason: "FileTooLarge" | "FieldTooLarge" | "InternalError" | "Parse"
+  readonly reason: "FileTooLarge" | "FieldTooLarge" | "BodyTooLarge" | "TooManyParts" | "InternalError" | "Parse"
   readonly error: unknown
 }
 
@@ -98,6 +122,12 @@ export const FormDataError: (
   reason: FormDataError["reason"],
   error: unknown
 ) => FormDataError = internal.FormDataError
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isField: (u: unknown) => u is Field = internal.isField
 
 /**
  * @since 1.0.0
@@ -118,21 +148,6 @@ export const withMaxParts: {
  * @since 1.0.0
  * @category fiber refs
  */
-export const maxFields: FiberRef.FiberRef<Option.Option<number>> = internal.maxFields
-
-/**
- * @since 1.0.0
- * @category fiber refs
- */
-export const withMaxFields: {
-  (count: Option.Option<number>): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>): Effect.Effect<R, E, A>
-} = internal.withMaxFields
-
-/**
- * @since 1.0.0
- * @category fiber refs
- */
 export const maxFieldSize: FiberRef.FiberRef<FileSystem.Size> = internal.maxFieldSize
 
 /**
@@ -143,21 +158,6 @@ export const withMaxFieldSize: {
   (size: FileSystem.SizeInput): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A>(effect: Effect.Effect<R, E, A>, size: FileSystem.SizeInput): Effect.Effect<R, E, A>
 } = internal.withMaxFieldSize
-
-/**
- * @since 1.0.0
- * @category fiber refs
- */
-export const maxFiles: FiberRef.FiberRef<Option.Option<number>> = internal.maxFiles
-
-/**
- * @since 1.0.0
- * @category fiber refs
- */
-export const withMaxFiles: {
-  (count: Option.Option<number>): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>): Effect.Effect<R, E, A>
-} = internal.withMaxFiles
 
 /**
  * @since 1.0.0
@@ -191,15 +191,9 @@ export const withFieldMimeTypes: {
 
 /**
  * @since 1.0.0
- * @category conversions
- */
-export const toRecord: (formData: FormData) => Record<string, string | Array<globalThis.File>> = internal.toRecord
-
-/**
- * @since 1.0.0
  * @category schema
  */
-export const filesSchema: Schema.Schema<ReadonlyArray<globalThis.File>, ReadonlyArray<globalThis.File>> =
+export const filesSchema: Schema.Schema<ReadonlyArray<PersistedFile>, ReadonlyArray<PersistedFile>> =
   internal.filesSchema
 
 /**
@@ -209,14 +203,41 @@ export const filesSchema: Schema.Schema<ReadonlyArray<globalThis.File>, Readonly
 export const schemaJson: <I, A>(
   schema: Schema.Schema<I, A>
 ) => {
-  (field: string): (formData: FormData) => Effect.Effect<never, FormDataError | ParseResult.ParseError, A>
-  (formData: FormData, field: string): Effect.Effect<never, FormDataError | ParseResult.ParseError, A>
+  (field: string): (formData: PersistedFormData) => Effect.Effect<never, FormDataError | ParseResult.ParseError, A>
+  (formData: PersistedFormData, field: string): Effect.Effect<never, FormDataError | ParseResult.ParseError, A>
 } = internal.schemaJson
 
 /**
  * @since 1.0.0
  * @category schema
  */
-export const schemaRecord: <I extends Readonly<Record<string, string | ReadonlyArray<globalThis.File>>>, A>(
+export const schemaPersisted: <I extends PersistedFormData, A>(
   schema: Schema.Schema<I, A>
-) => (formData: FormData) => Effect.Effect<never, ParseResult.ParseError, A> = internal.schemaRecord
+) => (formData: PersistedFormData) => Effect.Effect<never, ParseResult.ParseError, A> = internal.schemaPersisted
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeChannel: <IE>(
+  headers: Record<string, string>,
+  bufferSize?: number
+) => Channel.Channel<never, IE, Chunk.Chunk<Uint8Array>, unknown, FormDataError | IE, Chunk.Chunk<Part>, unknown> =
+  internal.makeChannel
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeConfig: (headers: Record<string, string>) => Effect.Effect<never, never, Multipasta.BaseConfig> =
+  internal.makeConfig
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const formData: (
+  stream: Stream.Stream<never, FormDataError, Part>,
+  writeFile?: (path: string, file: File) => Effect.Effect<FileSystem.FileSystem, FormDataError, void>
+) => Effect.Effect<FileSystem.FileSystem | Path.Path | Scope.Scope, FormDataError, PersistedFormData> =
+  internal.formData

@@ -46,7 +46,11 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
   readonly originalUrl: string
   readonly method: Method
 
-  readonly formData: Effect.Effect<Scope.Scope | FileSystem.FileSystem | Path.Path, FormData.FormDataError, FormData>
+  readonly formData: Effect.Effect<
+    Scope.Scope | FileSystem.FileSystem | Path.Path,
+    FormData.FormDataError,
+    FormData.PersistedFormData
+  >
   readonly formDataStream: Stream.Stream<never, FormData.FormDataError, FormData.Part>
 
   readonly modify: (
@@ -68,11 +72,11 @@ export const ServerRequest: Context.Tag<ServerRequest, ServerRequest> = internal
  * @since 1.0.0
  * @category accessors
  */
-export const formDataRecord: Effect.Effect<
+export const persistedFormData: Effect.Effect<
   Scope.Scope | FileSystem.FileSystem | Path.Path | ServerRequest,
   FormData.FormDataError,
-  Record<string, string | Array<File>>
-> = internal.formDataRecord
+  unknown
+> = internal.persistedFormData
 
 /**
  * @since 1.0.0
@@ -102,7 +106,7 @@ export const schemaBodyUrlParams: <I extends Readonly<Record<string, string>>, A
  * @since 1.0.0
  * @category schema
  */
-export const schemaFormData: <I extends Readonly<Record<string, string | ReadonlyArray<File>>>, A>(
+export const schemaFormData: <I extends FormData.PersistedFormData, A>(
   schema: Schema.Schema<I, A>
 ) => Effect.Effect<
   ServerRequest | Scope.Scope | FileSystem.FileSystem | Path.Path,

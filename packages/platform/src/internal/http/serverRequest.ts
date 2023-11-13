@@ -13,10 +13,7 @@ export const TypeId: ServerRequest.TypeId = Symbol.for("@effect/platform/Http/Se
 export const serverRequestTag = Context.Tag<ServerRequest.ServerRequest>(TypeId)
 
 /** @internal */
-export const formDataRecord = Effect.map(
-  Effect.flatMap(serverRequestTag, (request) => request.formData),
-  FormData.toRecord
-)
+export const persistedFormData = Effect.flatMap(serverRequestTag, (request) => request.formData)
 
 /** @internal */
 export const schemaHeaders = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
@@ -37,14 +34,11 @@ export const schemaBodyUrlParams = <I extends Readonly<Record<string, string>>, 
 }
 
 /** @internal */
-export const schemaFormData = <I extends Readonly<Record<string, string | ReadonlyArray<globalThis.File>>>, A>(
+export const schemaFormData = <I extends FormData.PersistedFormData, A>(
   schema: Schema.Schema<I, A>
 ) => {
-  const parse = FormData.schemaRecord(schema)
-  return Effect.flatMap(
-    Effect.flatMap(serverRequestTag, (request) => request.formData),
-    parse
-  )
+  const parse = FormData.schemaPersisted(schema)
+  return Effect.flatMap(persistedFormData, parse)
 }
 
 /** @internal */

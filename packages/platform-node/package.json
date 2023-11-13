@@ -35,18 +35,17 @@
   },
   "dependencies": {
     "@effect/platform": "workspace:*",
-    "busboy": "^1.6.0",
-    "mime": "^3.0.0"
+    "mime": "^3.0.0",
+    "multipasta": "^0.1.11"
   },
   "peerDependencies": {
     "effect": "2.0.0-next.54"
   },
   "devDependencies": {
-    "@effect/schema": "^0.47.3",
-    "@types/busboy": "^1.5.3",
+    "@effect/schema": "^0.47.6",
     "@types/mime": "^3.0.4",
     "@types/node": "^20.9.0",
-    "@types/tar": "^6.1.8",
+    "@types/tar": "^6.1.9",
     "effect": "2.0.0-next.54",
     "tar": "^6.2.0"
   }
