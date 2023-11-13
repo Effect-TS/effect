@@ -45,9 +45,7 @@ Added in v2.0.0
   - [remove](#remove)
   - [removeAll](#removeall)
   - [removeIf](#removeif)
-  - [removeIfDiscard](#removeifdiscard)
   - [retainIf](#retainif)
-  - [retainIfDiscard](#retainifdiscard)
   - [set](#set)
   - [setIfAbsent](#setifabsent)
   - [takeFirst](#takefirst)
@@ -436,29 +434,31 @@ Added in v2.0.0
 
 ## removeIf
 
-Removes bindings matching predicate and returns the removed entries.
+Removes entries from a `TMap` that satisfy the specified predicate and returns the removed entries
+(or `void` if `discard = true`).
 
 **Signature**
 
 ```ts
 export declare const removeIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, [K, V][]>
-}
-```
-
-Added in v2.0.0
-
-## removeIfDiscard
-
-Removes bindings matching predicate.
-
-**Signature**
-
-```ts
-export declare const removeIfDiscard: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, void>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): (self: TMap<K, V>) => STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): (self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): STM.STM<never, never, void>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, [K, V][]>
 }
 ```
 
@@ -466,29 +466,31 @@ Added in v2.0.0
 
 ## retainIf
 
-Retains bindings matching predicate and returns removed bindings.
+Retains entries in a `TMap` that satisfy the specified predicate and returns the removed entries
+(or `void` if `discard = true`).
 
 **Signature**
 
 ```ts
 export declare const retainIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, [K, V][]>
-}
-```
-
-Added in v2.0.0
-
-## retainIfDiscard
-
-Retains bindings matching predicate.
-
-**Signature**
-
-```ts
-export declare const retainIfDiscard: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, void>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): (self: TMap<K, V>) => STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): (self: TMap<K, V>) => STM.STM<never, never, [K, V][]>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): STM.STM<never, never, void>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, [K, V][]>
 }
 ```
 
