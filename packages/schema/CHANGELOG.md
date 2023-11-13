@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.47.7
+
+### Patch Changes
+
+- [#557](https://github.com/Effect-TS/schema/pull/557) [`e399df1`](https://github.com/Effect-TS/schema/commit/e399df1d7685bacd8061a2eeda5ff1cffb094ee4) Thanks [@gcanti](https://github.com/gcanti)! - Equivalence: ignore excess properties, closes #556
+
 ## 0.47.6
 
 ### Patch Changes
