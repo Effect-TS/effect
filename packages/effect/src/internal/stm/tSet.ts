@@ -2,7 +2,7 @@ import * as Chunk from "../../Chunk.js"
 import { dual, pipe } from "../../Function.js"
 import * as HashSet from "../../HashSet.js"
 import type * as Option from "../../Option.js"
-import type { Predicate } from "../../Predicate.js"
+import { hasProperty, type Predicate } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
 import * as STM from "../../STM.js"
 import type * as TMap from "../../TMap.js"
@@ -29,6 +29,8 @@ class TSetImpl<A> implements TSet.TSet<A> {
   constructor(readonly tMap: TMap.TMap<A, void>) {}
 }
 
+const isTSet = (u: unknown) => hasProperty(u, TSetTypeId)
+
 /** @internal */
 export const add = dual<
   <A>(value: A) => (self: TSet.TSet<A>) => STM.STM<never, never, void>,
@@ -42,7 +44,7 @@ export const difference = dual<
 >(2, (self, other) =>
   core.flatMap(
     toHashSet(other),
-    (values) => removeIfDiscard(self, (value) => HashSet.has(values, value))
+    (values) => removeIf(self, (value) => HashSet.has(values, value), { discard: true })
   ))
 
 /** @internal */
@@ -74,7 +76,7 @@ export const intersection = dual<
 >(2, (self, other) =>
   core.flatMap(
     toHashSet(other),
-    (values) => pipe(self, retainIfDiscard((value) => pipe(values, HashSet.has(value))))
+    (values) => pipe(self, retainIf((value) => pipe(values, HashSet.has(value)), { discard: true }))
   ))
 
 /** @internal */
@@ -120,44 +122,47 @@ export const removeAll = dual<
 >(2, (self, iterable) => tMap.removeAll(self.tMap, iterable))
 
 /** @internal */
-export const removeIf = dual<
-  <A>(predicate: Predicate<A>) => (self: TSet.TSet<A>) => STM.STM<never, never, Array<A>>,
-  <A>(self: TSet.TSet<A>, predicate: Predicate<A>) => STM.STM<never, never, Array<A>>
->(2, (self, predicate) =>
-  pipe(
-    tMap.removeIf(self.tMap, (key) => predicate(key)),
-    core.map(RA.map((entry) => entry[0]))
-  ))
+export const removeIf: {
+  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet.TSet<A>) => STM.STM<never, never, void>
+  <A>(
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): (self: TSet.TSet<A>) => STM.STM<never, never, Array<A>>
+  <A>(self: TSet.TSet<A>, predicate: Predicate<A>, options: { readonly discard: true }): STM.STM<never, never, void>
+  <A>(
+    self: TSet.TSet<A>,
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<A>>
+} = dual(
+  (args) => isTSet(args[0]),
+  (self, predicate, options) =>
+    options?.discard === true ? tMap.removeIf(self.tMap, (key) => predicate(key), { discard: true }) : pipe(
+      tMap.removeIf(self.tMap, (key) => predicate(key)),
+      core.map(RA.map((entry) => entry[0]))
+    )
+)
 
 /** @internal */
-export const removeIfDiscard = dual<
-  <A>(predicate: Predicate<A>) => (self: TSet.TSet<A>) => STM.STM<never, never, void>,
-  <A>(self: TSet.TSet<A>, predicate: Predicate<A>) => STM.STM<never, never, void>
->(2, (self, predicate) =>
-  tMap.removeIfDiscard(
-    self.tMap,
-    (key) => predicate(key)
-  ))
-
-/** @internal */
-export const retainIf = dual<
-  <A>(predicate: Predicate<A>) => (self: TSet.TSet<A>) => STM.STM<never, never, Array<A>>,
-  <A>(self: TSet.TSet<A>, predicate: Predicate<A>) => STM.STM<never, never, Array<A>>
->(2, (self, predicate) =>
-  pipe(
-    tMap.retainIf(self.tMap, (key) => predicate(key)),
-    core.map(RA.map((entry) => entry[0]))
-  ))
-
-/** @internal */
-export const retainIfDiscard = dual<
-  <A>(predicate: Predicate<A>) => (self: TSet.TSet<A>) => STM.STM<never, never, void>,
-  <A>(self: TSet.TSet<A>, predicate: Predicate<A>) => STM.STM<never, never, void>
->(2, (self, predicate) =>
-  tMap.retainIfDiscard(
-    self.tMap,
-    (key) => predicate(key)
-  ))
+export const retainIf: {
+  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet.TSet<A>) => STM.STM<never, never, void>
+  <A>(
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): (self: TSet.TSet<A>) => STM.STM<never, never, Array<A>>
+  <A>(self: TSet.TSet<A>, predicate: Predicate<A>, options: { readonly discard: true }): STM.STM<never, never, void>
+  <A>(
+    self: TSet.TSet<A>,
+    predicate: Predicate<A>,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<A>>
+} = dual((args) => isTSet(args[0]), (self, predicate, options) =>
+  options?.discard === true ?
+    tMap.retainIf(self.tMap, (key) => predicate(key), { discard: true }) :
+    pipe(
+      tMap.retainIf(self.tMap, (key) => predicate(key)),
+      core.map(RA.map((entry) => entry[0]))
+    ))
 
 /** @internal */
 export const size = <A>(self: TSet.TSet<A>): STM.STM<never, never, number> =>

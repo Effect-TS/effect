@@ -214,11 +214,11 @@ describe.concurrent("TMap", () => {
       assert.deepStrictEqual(result, [[["aaa", 3], ["aa", 2]], true, false, false])
     }))
 
-  it.effect("removeIfDiscard", () =>
+  it.effect("removeIf > { discard: true }", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
         const map = yield* $(TMap.make(["a", 1], ["aa", 2], ["aaa", 3]))
-        yield* $(pipe(map, TMap.removeIfDiscard((key) => key === "aa")))
+        yield* $(pipe(map, TMap.removeIf((key) => key === "aa", { discard: true })))
         const a = yield* $(pipe(map, TMap.has("a")))
         const aa = yield* $(pipe(map, TMap.has("aa")))
         const aaa = yield* $(pipe(map, TMap.has("aaa")))
@@ -242,11 +242,11 @@ describe.concurrent("TMap", () => {
       assert.deepStrictEqual(result, [[["aaa", 3], ["a", 1]], false, true, false])
     }))
 
-  it.effect("retainIfDiscard", () =>
+  it.effect("retainIf > { discard: true }", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
         const map = yield* $(TMap.make(["a", 1], ["aa", 2], ["aaa", 3]))
-        yield* $(pipe(map, TMap.retainIfDiscard((key) => key === "aa")))
+        yield* $(pipe(map, TMap.retainIf((key) => key === "aa", { discard: true })))
         const a = yield* $(pipe(map, TMap.has("a")))
         const aa = yield* $(pipe(map, TMap.has("aa")))
         const aaa = yield* $(pipe(map, TMap.has("aaa")))

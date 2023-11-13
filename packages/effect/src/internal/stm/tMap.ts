@@ -5,6 +5,7 @@ import { dual, pipe } from "../../Function.js"
 import * as Hash from "../../Hash.js"
 import * as HashMap from "../../HashMap.js"
 import * as Option from "../../Option.js"
+import { hasProperty } from "../../Predicate.js"
 import * as RA from "../../ReadonlyArray.js"
 import * as STM from "../../STM.js"
 import type * as TArray from "../../TArray.js"
@@ -38,6 +39,8 @@ class TMapImpl<K, V> implements TMap.TMap<K, V> {
     readonly tSize: TRef.TRef<number>
   ) {}
 }
+
+const isTMap = (u: unknown) => hasProperty(u, TMapTypeId)
 
 /** @internal */
 const InitialCapacity = 16
@@ -332,14 +335,32 @@ export const removeAll = dual<
   }))
 
 /** @internal */
-export const removeIf = dual<
-  <K, V>(predicate: (key: K, value: V) => boolean) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>,
-  <K, V>(self: TMap.TMap<K, V>, predicate: (key: K, value: V) => boolean) => STM.STM<never, never, Array<[K, V]>>
->(2, <K, V>(
+export const removeIf: {
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options: { discard: true }
+  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  <K, V>(
+    self: TMap.TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options: { discard: true }
+  ): STM.STM<never, never, void>
+  <K, V>(
+    self: TMap.TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<[K, V]>>
+} = dual((args) => isTMap(args[0]), <K, V>(
   self: TMap.TMap<K, V>,
-  predicate: (key: K, value: V) => boolean
+  predicate: (key: K, value: V) => boolean,
+  options?: { readonly discard: true }
 ) =>
-  core.effect<never, Array<[K, V]>>((journal) => {
+  core.effect((journal) => {
+    const discard = options?.discard === true
     const buckets = tRef.unsafeGet(self.tBuckets, journal)
     const capacity = buckets.chunk.length
     const removed: Array<[K, V]> = []
@@ -356,64 +377,44 @@ export const removeIf = dual<
           newBucket = Chunk.prepend(newBucket, next.value)
           newSize = newSize + 1
         } else {
-          removed.push([k, v])
+          if (!discard) {
+            removed.push([k, v])
+          }
         }
       }
       tRef.unsafeSet(buckets.chunk[index], newBucket, journal)
       index = index + 1
     }
     tRef.unsafeSet(self.tSize, newSize, journal)
-    return removed
+    if (!discard) {
+      return removed
+    }
   }))
 
 /** @internal */
-export const removeIfDiscard = dual<
-  <K, V>(predicate: (key: K, value: V) => boolean) => (self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, predicate: (key: K, value: V) => boolean) => STM.STM<never, never, void>
->(
-  2,
-  <K, V>(self: TMap.TMap<K, V>, predicate: (key: K, value: V) => boolean) =>
-    core.effect<never, void>((journal) => {
-      const buckets = tRef.unsafeGet(self.tBuckets, journal)
-      const capacity = buckets.chunk.length
-      let index = 0
-      let newSize = 0
-      while (index < capacity) {
-        const bucket = tRef.unsafeGet(buckets.chunk[index], journal)
-        const iterator = bucket[Symbol.iterator]()
-        let next: IteratorResult<readonly [K, V], any>
-        let newBucket = Chunk.empty<readonly [K, V]>()
-        while ((next = iterator.next()) && !next.done) {
-          if (!predicate(next.value[0], next.value[1])) {
-            newBucket = Chunk.prepend(newBucket, next.value)
-            newSize = newSize + 1
-          }
-        }
-        tRef.unsafeSet(buckets.chunk[index], newBucket, journal)
-        index = index + 1
-      }
-      tRef.unsafeSet(self.tSize, newSize, journal)
-    })
+export const retainIf: {
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options: { discard: true }
+  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  <K, V>(
+    self: TMap.TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options: { discard: true }
+  ): STM.STM<never, never, void>
+  <K, V>(
+    self: TMap.TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<[K, V]>>
+} = dual(
+  (args) => isTMap(args[0]),
+  (self, predicate, options) => removeIf(self, (key, value) => !predicate(key, value), options)
 )
-
-/** @internal */
-export const retainIf = dual<
-  <K, V>(predicate: (key: K, value: V) => boolean) => (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>,
-  <K, V>(self: TMap.TMap<K, V>, predicate: (key: K, value: V) => boolean) => STM.STM<never, never, Array<[K, V]>>
->(
-  2,
-  (self, predicate) => removeIf(self, (key, value) => !predicate(key, value))
-)
-
-/** @internal */
-export const retainIfDiscard = dual<
-  <K, V>(predicate: (key: K, value: V) => boolean) => (self: TMap.TMap<K, V>) => STM.STM<never, never, void>,
-  <K, V>(self: TMap.TMap<K, V>, predicate: (key: K, value: V) => boolean) => STM.STM<never, never, void>
->(2, (self, predicate) =>
-  removeIfDiscard(
-    self,
-    (key, value) => !predicate(key, value)
-  ))
 
 /** @internal */
 export const set = dual<
