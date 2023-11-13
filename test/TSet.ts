@@ -179,11 +179,11 @@ describe.concurrent("TSet", () => {
       assert.deepStrictEqual(result, [["aaa", "a"], false, true, false])
     }))
 
-  it.effect("retainIfDiscard", () =>
+  it.effect("retainIf > { discard: true }", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
         const set = yield* $(TSet.make("a", "aa", "aaa"))
-        yield* $(pipe(set, TSet.retainIfDiscard((s) => s === "aa")))
+        yield* $(pipe(set, TSet.retainIf((s) => s === "aa", { discard: true })))
         const a = yield* $(pipe(set, TSet.has("a")))
         const aa = yield* $(pipe(set, TSet.has("aa")))
         const aaa = yield* $(pipe(set, TSet.has("aaa")))
@@ -207,11 +207,11 @@ describe.concurrent("TSet", () => {
       assert.deepStrictEqual(result, [["aa"], true, false, true])
     }))
 
-  it.effect("removeIfDiscard", () =>
+  it.effect("removeIf > { discard: true }", () =>
     Effect.gen(function*($) {
       const transaction = STM.gen(function*($) {
         const set = yield* $(TSet.make("a", "aa", "aaa"))
-        yield* $(pipe(set, TSet.removeIfDiscard((s) => s === "aa")))
+        yield* $(pipe(set, TSet.removeIf((s) => s === "aa", { discard: true })))
         const a = yield* $(pipe(set, TSet.has("a")))
         const aa = yield* $(pipe(set, TSet.has("aa")))
         const aaa = yield* $(pipe(set, TSet.has("aaa")))
