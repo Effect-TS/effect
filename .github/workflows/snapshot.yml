@@ -10,7 +10,7 @@ concurrency:
 jobs:
   snapshot:
     name: Snapshot
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/snapshot ') }}
+    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/snapshot') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -21,13 +21,13 @@ jobs:
         with:
           permission: write
 
-      - name: Extract snapshot comment
+      - name: Extract snapshot command
         id: command
         env:
           COMMENT: ${{ github.event.comment.body }}
         run: |
-          snapshot=$(echo "$COMMENT" | grep -oP '^/snapshot\s([a-z-]{4,16})\s*$' | cut -d' ' -f2)
-          if [[ -n $snapshot ]]; then
+          if [[ $COMMENT =~ ^/snapshot([[:space:]]([a-z]{3,12}))?$ ]]; then
+            snapshot="${BASH_REMATCH[2]:-snapshot}"
             echo "snapshot=$snapshot" >> $GITHUB_OUTPUT
           else
             exit 1
