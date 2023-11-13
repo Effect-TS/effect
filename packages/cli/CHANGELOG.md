@@ -1,5 +1,17 @@
 # @effect/cli
 
+## 0.21.0
+
+### Minor Changes
+
+- [#365](https://github.com/Effect-TS/cli/pull/365) [`cb01813`](https://github.com/Effect-TS/cli/commit/cb01813803a1458248cfda1c3f23844bedf9ff40) Thanks [@fubhy](https://github.com/fubhy)! - Fixed exports of public module at subpaths
+
+- [#353](https://github.com/Effect-TS/cli/pull/353) [`a09fa9f`](https://github.com/Effect-TS/cli/commit/a09fa9feaf9dfdd19b4a3b3a15ad2854e190391e) Thanks [@IMax153](https://github.com/IMax153)! - refactor library internals to fix a number of different bugs
+
+### Patch Changes
+
+- [#358](https://github.com/Effect-TS/cli/pull/358) [`07eaa9d`](https://github.com/Effect-TS/cli/commit/07eaa9db5b828f1515fba9aa01265d05f507b748) Thanks [@IMax153](https://github.com/IMax153)! - add support for auto-generating completions for a cli program
+
 ## 0.20.1
 
 ### Patch Changes
