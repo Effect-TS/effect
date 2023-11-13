@@ -257,48 +257,60 @@ export const removeAll: {
 } = internal.removeAll
 
 /**
- * Removes bindings matching predicate and returns the removed entries.
+ * Removes entries from a `TMap` that satisfy the specified predicate and returns the removed entries
+ * (or `void` if `discard = true`).
  *
  * @since 2.0.0
  * @category mutations
  */
 export const removeIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<[K, V]>>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): (self: TMap<K, V>) => STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): STM.STM<never, never, void>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<[K, V]>>
 } = internal.removeIf
 
 /**
- * Removes bindings matching predicate.
- *
- * @since 2.0.0
- * @category mutations
- */
-export const removeIfDiscard: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, void>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, void>
-} = internal.removeIfDiscard
-
-/**
- * Retains bindings matching predicate and returns removed bindings.
+ * Retains entries in a `TMap` that satisfy the specified predicate and returns the removed entries
+ * (or `void` if `discard = true`).
  *
  * @since 2.0.0
  * @category mutations
  */
 export const retainIf: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, Array<[K, V]>>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): (self: TMap<K, V>) => STM.STM<never, never, void>
+  <K, V>(
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options: { readonly discard: true }
+  ): STM.STM<never, never, void>
+  <K, V>(
+    self: TMap<K, V>,
+    predicate: (key: K, value: V) => boolean,
+    options?: { readonly discard: false }
+  ): STM.STM<never, never, Array<[K, V]>>
 } = internal.retainIf
-
-/**
- * Retains bindings matching predicate.
- *
- * @since 2.0.0
- * @category mutations
- */
-export const retainIfDiscard: {
-  <K, V>(predicate: (key: K, value: V) => boolean): (self: TMap<K, V>) => STM.STM<never, never, void>
-  <K, V>(self: TMap<K, V>, predicate: (key: K, value: V) => boolean): STM.STM<never, never, void>
-} = internal.retainIfDiscard
 
 /**
  * Stores new binding into the map.
