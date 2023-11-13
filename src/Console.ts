@@ -54,27 +54,27 @@ export interface Console {
  * @category model
  */
 export interface UnsafeConsole {
-  assert(condition: boolean, ...args: ReadonlyArray<any>): void
-  clear(): void
-  count(label?: string): void
-  countReset(label?: string): void
-  debug(...args: ReadonlyArray<any>): void
-  dir(item: any, options?: any): void
-  dirxml(...args: ReadonlyArray<any>): void
-  error(...args: ReadonlyArray<any>): void
-  group(options?: {
+  readonly assert: (condition: boolean, ...args: ReadonlyArray<any>) => void
+  readonly clear: () => void
+  readonly count: (label?: string) => void
+  readonly countReset: (label?: string) => void
+  readonly debug: (...args: ReadonlyArray<any>) => void
+  readonly dir: (item: any, options?: any) => void
+  readonly dirxml: (...args: ReadonlyArray<any>) => void
+  readonly error: (...args: ReadonlyArray<any>) => void
+  readonly group: (options?: {
     readonly label?: string
     readonly collapsed?: boolean
-  }): void
-  groupEnd(): void
-  info(...args: ReadonlyArray<any>): void
-  log(...args: ReadonlyArray<any>): void
-  table(tabularData: any, properties?: ReadonlyArray<string>): void
-  time(label?: string): void
-  timeEnd(label?: string): void
-  timeLog(label?: string, ...args: ReadonlyArray<any>): void
-  trace(...args: ReadonlyArray<any>): void
-  warn(...args: ReadonlyArray<any>): void
+  }) => void
+  readonly groupEnd: () => void
+  readonly info: (...args: ReadonlyArray<any>) => void
+  readonly log: (...args: ReadonlyArray<any>) => void
+  readonly table: (tabularData: any, properties?: ReadonlyArray<string>) => void
+  readonly time: (label?: string) => void
+  readonly timeEnd: (label?: string) => void
+  readonly timeLog: (label?: string, ...args: ReadonlyArray<any>) => void
+  readonly trace: (...args: ReadonlyArray<any>) => void
+  readonly warn: (...args: ReadonlyArray<any>) => void
 }
 
 /**
