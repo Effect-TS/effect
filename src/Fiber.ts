@@ -60,37 +60,37 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
   /**
    * The identity of the fiber.
    */
-  id(): FiberId.FiberId
+  readonly id: () => FiberId.FiberId
 
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  await(): Effect.Effect<never, never, Exit.Exit<E, A>>
+  readonly await: () => Effect.Effect<never, never, Exit.Exit<E, A>>
 
   /**
    * Retrieves the immediate children of the fiber.
    */
-  children(): Effect.Effect<never, never, Array<Fiber.Runtime<any, any>>>
+  readonly children: () => Effect.Effect<never, never, Array<Fiber.Runtime<any, any>>>
 
   /**
    * Inherits values from all `FiberRef` instances into current fiber. This
    * will resume immediately.
    */
-  inheritAll(): Effect.Effect<never, never, void>
+  readonly inheritAll: () => Effect.Effect<never, never, void>
 
   /**
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>>
+  readonly poll: () => Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
    * specified fiber. If the fiber has already exited, the returned effect will
    * resume immediately. Otherwise, the effect will resume when the fiber exits.
    */
-  interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<never, never, void>
+  readonly interruptAsFork: (fiberId: FiberId.FiberId) => Effect.Effect<never, never, void>
 }
 
 /**
