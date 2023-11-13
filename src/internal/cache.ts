@@ -516,7 +516,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  entries<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect.Effect<never, never, Array<[Key, Value]>> {
+  entries(): Effect.Effect<never, never, Array<[Key, Value]>> {
     return core.sync(() => {
       const values: Array<[Key, Value]> = []
       for (const entry of this.cacheState.map) {
@@ -528,7 +528,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  keys<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect.Effect<never, never, Array<Key>> {
+  keys(): Effect.Effect<never, never, Array<Key>> {
     return core.sync(() => {
       const keys: Array<Key> = []
       for (const entry of this.cacheState.map) {
