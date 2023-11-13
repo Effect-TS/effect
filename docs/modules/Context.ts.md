@@ -267,8 +267,8 @@ export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
     readonly _S: (_: Service) => Service
     readonly _I: (_: Identifier) => Identifier
   }
-  of(self: Service): Service
-  context(self: Service): Context<Identifier>
+  readonly of: (self: Service) => Service
+  readonly context: (self: Service) => Context<Identifier>
   readonly stack?: string | undefined
   readonly identifier?: unknown | undefined
   [Unify.typeSymbol]?: unknown
