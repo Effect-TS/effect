@@ -14,7 +14,7 @@ export const make = (
 ) =>
   Effect.gen(function*(_) {
     const input = yield* _(Effect.sync(() => globalThis.process.stdin))
-    const output = yield* _(Effect.sync(() => globalThis.process.stdin))
+    const output = yield* _(Effect.sync(() => globalThis.process.stdout))
 
     // Create a readline interface and force it to emit keypress events
     yield* _(Effect.acquireRelease(
@@ -74,6 +74,7 @@ export const make = (
       )
 
     return Terminal.Terminal.of({
+      columns: output.columns,
       readInput,
       display
     })

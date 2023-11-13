@@ -17,6 +17,10 @@ import * as InternalTerminal from "./internal/terminal.js"
  */
 export interface Terminal {
   /**
+   * The number of columns available on the platform's terminal interface.
+   */
+  readonly columns: number
+  /**
    * Reads a single input event from the default standard input.
    */
   readonly readInput: Effect<never, QuitException, UserInput>
