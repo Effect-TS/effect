@@ -414,11 +414,18 @@ describe("Equivalence", () => {
       const equivalence = E.to(schema)
 
       expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 1 })).toBe(true)
+      // should ignore excess properties
+      const d = Symbol.for("@effect/schema/test/d")
+      const excess = {
+        a: "a",
+        b: 1,
+        c: true,
+        [d]: "d"
+      }
+      expect(equivalence({ a: "a", b: 1 }, excess)).toBe(true)
 
       expect(equivalence({ a: "a", b: 1 }, { a: "c", b: 1 })).toBe(false)
       expect(equivalence({ a: "a", b: 1 }, { a: "a", b: 2 })).toBe(false)
-      const c: { a: string; b: number; c: boolean } = { a: "a", b: 1, c: true }
-      expect(equivalence({ a: "a", b: 1 }, c)).toBe(false)
 
       // propertyTo(schema)
     })
@@ -430,6 +437,15 @@ describe("Equivalence", () => {
       const equivalence = E.to(schema)
 
       expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "a", [b]: 1 })).toBe(true)
+      // should ignore excess properties
+      const d = Symbol.for("@effect/schema/test/d")
+      const excess = {
+        [a]: "a",
+        [b]: 1,
+        c: true,
+        [d]: "d"
+      }
+      expect(equivalence({ [a]: "a", [b]: 1 }, excess)).toBe(true)
 
       expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "c", [b]: 1 })).toBe(false)
       expect(equivalence({ [a]: "a", [b]: 1 }, { [a]: "a", [b]: 2 })).toBe(false)
@@ -459,11 +475,15 @@ describe("Equivalence", () => {
 
       // propertyTo(schema)
     })
+  })
 
+  describe("record", () => {
     it("record(never, number)", () => {
       const schema = S.record(S.never, number)
       const equivalence = E.to(schema)
 
+      const input = {}
+      expect(equivalence(input, input)).toBe(true)
       expect(equivalence({}, {})).toBe(false)
     })
 
@@ -474,6 +494,9 @@ describe("Equivalence", () => {
       expect(equivalence({}, {})).toBe(true)
       expect(equivalence({ a: 1 }, { a: 1 })).toBe(true)
       expect(equivalence({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true)
+      // should ignore symbol excess properties
+      const d = Symbol.for("@effect/schema/test/d")
+      expect(equivalence({ a: 1, b: 2 }, { a: 1, b: 2, [d]: "d" })).toBe(true)
 
       expect(equivalence({ a: 1 }, { a: 2 })).toBe(false)
       expect(equivalence({ a: 1, b: 2 }, { a: 1 })).toBe(false)
@@ -492,6 +515,9 @@ describe("Equivalence", () => {
       expect(equivalence({}, {})).toBe(true)
       expect(equivalence({ [a]: 1 }, { [a]: 1 })).toBe(true)
       expect(equivalence({ [a]: 1, [b]: 2 }, { [a]: 1, [b]: 2 })).toBe(true)
+      // should ignore string excess properties
+      const excess = { [a]: 1, [b]: 2, c: "c" }
+      expect(equivalence({ [a]: 1, [b]: 2 }, excess)).toBe(true)
 
       expect(equivalence({ [a]: 1 }, { [a]: 2 })).toBe(false)
       expect(equivalence({ [a]: 1, [b]: 2 }, { [a]: 1 })).toBe(false)

@@ -123,14 +123,7 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
       const indexSignatures = ast.indexSignatures.map((is) => go(is.type))
       return Equivalence.make((a, b) => {
         const aStringKeys = Object.keys(a)
-        const bStringKeys = Object.keys(b)
         const aSymbolKeys = Object.getOwnPropertySymbols(a)
-        const bSymbolKeys = Object.getOwnPropertySymbols(b)
-        if (
-          (aStringKeys.length !== bStringKeys.length) || (aSymbolKeys.length !== bSymbolKeys.length)
-        ) {
-          return false
-        }
         // ---------------------------------------------
         // handle property signatures
         // ---------------------------------------------
@@ -151,12 +144,26 @@ const go = (ast: AST.AST): Equivalence.Equivalence<any> => {
         // ---------------------------------------------
         // handle index signatures
         // ---------------------------------------------
+        let bSymbolKeys: Array<symbol> | undefined
+        let bStringKeys: Array<string> | undefined
         for (let i = 0; i < indexSignatures.length; i++) {
           const is = ast.indexSignatures[i]
-          const aKeys = AST.isSymbolKeyword(AST.getParameterBase(is.parameter))
-            ? aSymbolKeys
-            : aStringKeys
-          for (const key of aKeys) {
+          const base = AST.getParameterBase(is.parameter)
+          const isSymbol = AST.isSymbolKeyword(base)
+          if (isSymbol) {
+            bSymbolKeys = bSymbolKeys || Object.getOwnPropertySymbols(b)
+            if (aSymbolKeys.length !== bSymbolKeys.length) {
+              return false
+            }
+          } else {
+            bStringKeys = bStringKeys || Object.keys(b)
+            if (aStringKeys.length !== bStringKeys.length) {
+              return false
+            }
+          }
+          const aKeys = isSymbol ? aSymbolKeys : aStringKeys
+          for (let j = 0; j < aKeys.length; j++) {
+            const key = aKeys[j]
             if (
               !Object.prototype.hasOwnProperty.call(b, key) || !indexSignatures[i](a[key], b[key])
             ) {
