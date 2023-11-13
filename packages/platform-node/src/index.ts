@@ -67,6 +67,11 @@ export * as Stream from "./Stream.js"
 
 /**
  * @since 1.0.0
+ */
+export * as Terminal from "./Terminal.js"
+
+/**
+ * @since 1.0.0
  *
  * Also includes exports from [`@effect/platform/Worker`](https://effect-ts.github.io/platform/platform/Worker.ts.html).
  */
