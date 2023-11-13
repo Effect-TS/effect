@@ -11,7 +11,7 @@ export const RefTypeId: Ref.RefTypeId = Symbol.for("effect/Ref") as Ref.RefTypeI
 
 /** @internal */
 export const refVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 class RefImpl<A> implements Ref.Ref<A> {

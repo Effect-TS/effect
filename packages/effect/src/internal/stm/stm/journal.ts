@@ -3,7 +3,7 @@ import * as Entry from "./entry.js"
 import type * as TxnId from "./txnId.js"
 
 /** @internal */
-export type Journal = Map<TRef.TRef<unknown>, Entry.Entry>
+export type Journal = Map<TRef.TRef<any>, Entry.Entry>
 
 /** @internal */
 export type Todo = () => unknown

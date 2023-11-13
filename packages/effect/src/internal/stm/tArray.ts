@@ -101,7 +101,7 @@ export const countSTM = dual<
   ))
 
 /** @internal */
-export const empty = <A>(): STM.STM<never, never, TArray.TArray<A>> => fromIterable([])
+export const empty = <A>(): STM.STM<never, never, TArray.TArray<A>> => fromIterable<A>([])
 
 /** @internal */
 export const every = dual<

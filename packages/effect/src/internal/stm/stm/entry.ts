@@ -3,15 +3,15 @@ import * as Versioned from "./versioned.js"
 
 /** @internal */
 export interface Entry {
-  readonly ref: TRef.TRef<unknown>
-  readonly expected: Versioned.Versioned<unknown>
+  readonly ref: TRef.TRef<any>
+  readonly expected: Versioned.Versioned<any>
   isChanged: boolean
   readonly isNew: boolean
-  newValue: unknown
+  newValue: any
 }
 
 /** @internal */
-export const make = (ref: TRef.TRef<unknown>, isNew: boolean): Entry => ({
+export const make = <A>(ref: TRef.TRef<A>, isNew: boolean): Entry => ({
   ref,
   isNew,
   isChanged: false,

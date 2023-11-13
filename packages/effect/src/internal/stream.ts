@@ -30,6 +30,7 @@ import type * as Emit from "../StreamEmit.js"
 import * as HaltStrategy from "../StreamHaltStrategy.js"
 import type * as Take from "../Take.js"
 import type * as Tracer from "../Tracer.js"
+import { tuple } from "../Tuple.js"
 import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
@@ -1639,12 +1640,12 @@ export const debounce = dual<
     Effect.flatMap((input) =>
       Effect.transplant<never, never, Stream.Stream<R, E, A>>((grafter) =>
         pipe(
-          Handoff.make<HandoffSignal.HandoffSignal<never, A>>(),
+          Handoff.make<HandoffSignal.HandoffSignal<E, A>>(),
           Effect.map((handoff) => {
             const enqueue = (last: Chunk.Chunk<A>): Effect.Effect<
               never,
               never,
-              Channel.Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<A>, unknown>
+              Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown>
             > =>
               pipe(
                 Clock.sleep(duration),
@@ -1682,8 +1683,8 @@ export const debounce = dual<
                   )
               })
             const consumer = (
-              state: DebounceState.DebounceState<never, A>
-            ): Channel.Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<A>, unknown> => {
+              state: DebounceState.DebounceState<E, A>
+            ): Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown> => {
               switch (state._tag) {
                 case DebounceState.OP_NOT_STARTED: {
                   return pipe(
@@ -2037,7 +2038,7 @@ export const distributedWithDynamicCallback = dual<
                     const id = newDistributedWithDynamicId()
                     return pipe(
                       Ref.update(queuesRef, (map) => map.set(id, queue)),
-                      Effect.as([id, queue] as const)
+                      Effect.as(tuple(id, queue))
                     )
                   })
                 )
@@ -3415,7 +3416,7 @@ export const interleaveWith = dual<
       channel.unwrapScoped(
         pipe(
           Handoff.make<Take.Take<E | E2 | E3, A | A2>>(),
-          Effect.zip(Handoff.make<Take.Take<E | E2, A | A2>>()),
+          Effect.zip(Handoff.make<Take.Take<E | E2 | E3, A | A2>>()),
           Effect.tap(([left]) =>
             pipe(
               toChannel(self),

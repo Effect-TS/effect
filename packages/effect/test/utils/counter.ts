@@ -48,7 +48,7 @@ class CounterImpl implements Counter {
 
 export const make = (): Effect.Effect<never, never, Counter> => {
   return pipe(
-    Ref.make([0, 0] as const),
-    Effect.map((ref) => new CounterImpl(ref))
+    Ref.make([0, 0]),
+    Effect.map((ref) => new CounterImpl(ref as any))
   )
 }
