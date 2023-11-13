@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.29.4
+
+### Patch Changes
+
+- [#260](https://github.com/Effect-TS/platform/pull/260) [`8f5e6a2`](https://github.com/Effect-TS/platform/commit/8f5e6a2f2ced4408b0b311b0456828855e1cb958) Thanks [@IMax153](https://github.com/IMax153)! - expose available terminal columns from the Terminal service
+
+- Updated dependencies [[`8f5e6a2`](https://github.com/Effect-TS/platform/commit/8f5e6a2f2ced4408b0b311b0456828855e1cb958)]:
+  - @effect/platform@0.28.4
+
 ## 0.29.3
 
 ### Patch Changes
