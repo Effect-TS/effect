@@ -319,13 +319,15 @@ special support for implementing them.
 ```ts
 export interface Flat {
   readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
-  patch: PathPatch.PathPatch
-  load<A>(
+  readonly patch: PathPatch.PathPatch
+  readonly load: <A>(
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
     split?: boolean
-  ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
-  enumerateChildren(path: ReadonlyArray<string>): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  ) => Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+  readonly enumerateChildren: (
+    path: ReadonlyArray<string>
+  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
 }
 ```
 
