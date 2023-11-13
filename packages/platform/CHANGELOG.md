@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.29.0
+
+### Minor Changes
+
+- [#250](https://github.com/Effect-TS/platform/pull/250) [`6e18090`](https://github.com/Effect-TS/platform/commit/6e18090db4686cd5564ab9dc3d8771d7b3ad97fa) Thanks [@tim-smart](https://github.com/tim-smart)! - updated FormData model and apis
+
 ## 0.28.4
 
 ### Patch Changes
