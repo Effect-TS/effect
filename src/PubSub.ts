@@ -20,20 +20,20 @@ export interface PubSub<A> extends Queue.Enqueue<A>, Pipeable {
    * Publishes a message to the `PubSub`, returning whether the message was published
    * to the `PubSub`.
    */
-  publish(value: A): Effect.Effect<never, never, boolean>
+  readonly publish: (value: A) => Effect.Effect<never, never, boolean>
 
   /**
    * Publishes all of the specified messages to the `PubSub`, returning whether they
    * were published to the `PubSub`.
    */
-  publishAll(elements: Iterable<A>): Effect.Effect<never, never, boolean>
+  readonly publishAll: (elements: Iterable<A>) => Effect.Effect<never, never, boolean>
 
   /**
    * Subscribes to receive messages from the `PubSub`. The resulting subscription can
    * be evaluated multiple times within the scope to take a message from the `PubSub`
    * each time.
    */
-  subscribe(): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
+  readonly subscribe: () => Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
 }
 
 /**
