@@ -810,7 +810,7 @@ export const buffer = dual<
       readonly capacity: "unbounded"
     } | {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>,
   <R, E, A>(
@@ -819,7 +819,7 @@ export const buffer = dual<
       readonly capacity: "unbounded"
     } | {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ) => Stream.Stream<R, E, A>
 >(2, <R, E, A>(
@@ -828,7 +828,7 @@ export const buffer = dual<
     readonly capacity: "unbounded"
   } | {
     readonly capacity: number
-    readonly strategy?: "dropping" | "sliding" | "suspend"
+    readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   }
 ): Stream.Stream<R, E, A> => {
   if (options.capacity === "unbounded") {
@@ -863,15 +863,15 @@ export const buffer = dual<
 export const bufferChunks = dual<
   (options: {
     readonly capacity: number
-    readonly strategy?: "dropping" | "sliding" | "suspend"
+    readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   }) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>,
   <R, E, A>(self: Stream.Stream<R, E, A>, options: {
     readonly capacity: number
-    readonly strategy?: "dropping" | "sliding" | "suspend"
+    readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   }) => Stream.Stream<R, E, A>
 >(2, <R, E, A>(self: Stream.Stream<R, E, A>, options: {
   readonly capacity: number
-  readonly strategy?: "dropping" | "sliding" | "suspend"
+  readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
 }): Stream.Stream<R, E, A> => {
   if (options.strategy === "dropping") {
     return bufferChunksDropping(self, options.capacity)
@@ -3924,11 +3924,11 @@ export const merge = dual<
 export const mergeAll = dual<
   (options: {
     readonly concurrency: number | "unbounded"
-    readonly bufferSize?: number
+    readonly bufferSize?: number | undefined
   }) => <R, E, A>(streams: Iterable<Stream.Stream<R, E, A>>) => Stream.Stream<R, E, A>,
   <R, E, A>(streams: Iterable<Stream.Stream<R, E, A>>, options: {
     readonly concurrency: number | "unbounded"
-    readonly bufferSize?: number
+    readonly bufferSize?: number | undefined
   }) => Stream.Stream<R, E, A>
 >((args) => Symbol.iterator in args[0], (streams, options) => flatten(fromIterable(streams), options))
 

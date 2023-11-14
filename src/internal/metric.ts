@@ -213,7 +213,7 @@ export const summary = (
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk.Chunk<number>
-    readonly description?: string
+    readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<number> => withNow(summaryTimestamp(options))
 
@@ -225,7 +225,7 @@ export const summaryTimestamp = (
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk.Chunk<number>
-    readonly description?: string
+    readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<readonly [value: number, timestamp: number]> => fromMetricKey(metricKey.summary(options))
 

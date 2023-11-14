@@ -170,10 +170,7 @@ export type Branded<A, K extends string | symbol> = A & Brand<K>
  * @since 2.0.0
  * @category constructors
  */
-export const error: (message: string, meta?: unknown) => Brand.BrandErrors = (
-  message: string,
-  meta?: unknown
-): Brand.BrandErrors => [{
+export const error = (message: string, meta?: unknown): Brand.BrandErrors => [{
   message,
   meta
 }]

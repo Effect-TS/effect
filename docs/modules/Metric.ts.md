@@ -502,7 +502,7 @@ export declare const summary: (options: {
   readonly maxSize: number
   readonly error: number
   readonly quantiles: Chunk.Chunk<number>
-  readonly description?: string
+  readonly description?: string | undefined
 }) => Metric.Summary<number>
 ```
 
@@ -535,7 +535,7 @@ export declare const summaryTimestamp: (options: {
   readonly maxSize: number
   readonly error: number
   readonly quantiles: Chunk.Chunk<number>
-  readonly description?: string
+  readonly description?: string | undefined
 }) => Metric.Summary<readonly [value: number, timestamp: number]>
 ```
 

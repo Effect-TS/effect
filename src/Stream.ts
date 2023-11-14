@@ -439,14 +439,14 @@ export const buffer: {
   (
     options: { readonly capacity: "unbounded" } | {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
     self: Stream<R, E, A>,
     options: { readonly capacity: "unbounded" } | {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): Stream<R, E, A>
 } = internal.buffer
@@ -463,14 +463,14 @@ export const bufferChunks: {
   (
     options: {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
     self: Stream<R, E, A>,
     options: {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): Stream<R, E, A>
 } = internal.bufferChunks
@@ -2175,14 +2175,14 @@ export const mergeAll: {
   (
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
+      readonly bufferSize?: number | undefined
     }
   ): <R, E, A>(streams: Iterable<Stream<R, E, A>>) => Stream<R, E, A>
   <R, E, A>(
     streams: Iterable<Stream<R, E, A>>,
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
+      readonly bufferSize?: number | undefined
     }
   ): Stream<R, E, A>
 } = internal.mergeAll
@@ -2203,7 +2203,7 @@ export const mergeWith: {
     options: {
       readonly onSelf: (a: A) => A3
       readonly onOther: (a2: A2) => A4
-      readonly haltStrategy?: HaltStrategy.HaltStrategyInput
+      readonly haltStrategy?: HaltStrategy.HaltStrategyInput | undefined
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A3 | A4>
   <R, E, R2, E2, A2, A, A3, A4>(
@@ -2212,7 +2212,7 @@ export const mergeWith: {
     options: {
       readonly onSelf: (a: A) => A3
       readonly onOther: (a2: A2) => A4
-      readonly haltStrategy?: HaltStrategy.HaltStrategyInput
+      readonly haltStrategy?: HaltStrategy.HaltStrategyInput | undefined
     }
   ): Stream<R | R2, E | E2, A3 | A4>
 } = internal.mergeWith
@@ -3742,8 +3742,8 @@ export const throttleEffect: {
       readonly cost: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, number>
       readonly units: number
       readonly duration: Duration.DurationInput
-      readonly burst?: number
-      readonly strategy?: "enforce" | "shape"
+      readonly burst?: number | undefined
+      readonly strategy?: "enforce" | "shape" | undefined
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, R2, E2>(
@@ -3752,8 +3752,8 @@ export const throttleEffect: {
       readonly cost: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, number>
       readonly units: number
       readonly duration: Duration.DurationInput
-      readonly burst?: number
-      readonly strategy?: "enforce" | "shape"
+      readonly burst?: number | undefined
+      readonly strategy?: "enforce" | "shape" | undefined
     }
   ): Stream<R | R2, E | E2, A>
 } = internal.throttleEffect

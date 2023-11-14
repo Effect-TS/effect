@@ -122,8 +122,8 @@ export const externalSpan: (
   options: {
     readonly spanId: string
     readonly traceId: string
-    readonly sampled?: boolean
-    readonly context?: Context.Context<never>
+    readonly sampled?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
   }
 ) => ExternalSpan = internal.externalSpan
 

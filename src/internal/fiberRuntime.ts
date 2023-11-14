@@ -3288,8 +3288,8 @@ export const raceFibersWith = dual<
         winner: Fiber.RuntimeFiber<E1, A1>,
         loser: Fiber.RuntimeFiber<E, A>
       ) => Effect.Effect<R3, E3, A3>
-      readonly selfScope?: fiberScope.FiberScope
-      readonly otherScope?: fiberScope.FiberScope
+      readonly selfScope?: fiberScope.FiberScope | undefined
+      readonly otherScope?: fiberScope.FiberScope | undefined
     }
   ) => <R>(self: Effect.Effect<R, E, A>) => Effect.Effect<
     R | R1 | R2 | R3,
@@ -3308,8 +3308,8 @@ export const raceFibersWith = dual<
         winner: Fiber.RuntimeFiber<E1, A1>,
         loser: Fiber.RuntimeFiber<E, A>
       ) => Effect.Effect<R3, E3, A3>
-      readonly selfScope?: fiberScope.FiberScope
-      readonly otherScope?: fiberScope.FiberScope
+      readonly selfScope?: fiberScope.FiberScope | undefined
+      readonly otherScope?: fiberScope.FiberScope | undefined
     }
   ) => Effect.Effect<
     R | R1 | R2 | R3,
@@ -3328,8 +3328,8 @@ export const raceFibersWith = dual<
       winner: Fiber.RuntimeFiber<E1, A1>,
       loser: Fiber.RuntimeFiber<E, A>
     ) => Effect.Effect<R3, E3, A3>
-    readonly selfScope?: fiberScope.FiberScope
-    readonly otherScope?: fiberScope.FiberScope
+    readonly selfScope?: fiberScope.FiberScope | undefined
+    readonly otherScope?: fiberScope.FiberScope | undefined
   }
 ) =>
   core.withFiberRuntime<R | R1 | R2 | R3, E2 | E3, A2 | A3>((parentFiber, parentStatus) => {

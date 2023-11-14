@@ -144,7 +144,7 @@ export const unsafeMakePatch: <Value, Patch>(
   options: {
     readonly differ: Differ.Differ<Value, Patch>
     readonly fork: Patch
-    readonly join?: (oldV: Value, newV: Value) => Value
+    readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
   }
 ) => FiberRef<Value> = core.fiberRefUnsafeMakePatch
 

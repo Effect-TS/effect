@@ -132,7 +132,7 @@ export declare const summary: (options: {
   readonly maxSize: number
   readonly error: number
   readonly quantiles: Chunk.Chunk<number>
-  readonly description?: string
+  readonly description?: string | undefined
 }) => MetricKey.Summary
 ```
 

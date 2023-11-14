@@ -1239,7 +1239,7 @@ export const loop: {
       readonly while: (z: Z) => boolean
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => STM<R, E, A>
-      readonly discard?: false
+      readonly discard?: false | undefined
     }
   ): STM<R, E, Array<A>>
   <Z, R, E, A>(

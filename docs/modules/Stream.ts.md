@@ -3533,13 +3533,13 @@ export declare const buffer: {
   (
     options:
       | { readonly capacity: "unbounded" }
-      | { readonly capacity: number; readonly strategy?: "dropping" | "sliding" | "suspend" }
+      | { readonly capacity: number; readonly strategy?: "dropping" | "sliding" | "suspend" | undefined }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
     self: Stream<R, E, A>,
     options:
       | { readonly capacity: "unbounded" }
-      | { readonly capacity: number; readonly strategy?: "dropping" | "sliding" | "suspend" }
+      | { readonly capacity: number; readonly strategy?: "dropping" | "sliding" | "suspend" | undefined }
   ): Stream<R, E, A>
 }
 ```
@@ -3557,11 +3557,11 @@ buffering up to `capacity` chunks in a queue.
 export declare const bufferChunks: {
   (options: {
     readonly capacity: number
-    readonly strategy?: "dropping" | "sliding" | "suspend"
+    readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
   }): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
     self: Stream<R, E, A>,
-    options: { readonly capacity: number; readonly strategy?: "dropping" | "sliding" | "suspend" }
+    options: { readonly capacity: number; readonly strategy?: "dropping" | "sliding" | "suspend" | undefined }
   ): Stream<R, E, A>
 }
 ```
@@ -4533,11 +4533,11 @@ buffered by this operator.
 export declare const mergeAll: {
   (options: {
     readonly concurrency: number | "unbounded"
-    readonly bufferSize?: number
+    readonly bufferSize?: number | undefined
   }): <R, E, A>(streams: Iterable<Stream<R, E, A>>) => Stream<R, E, A>
   <R, E, A>(
     streams: Iterable<Stream<R, E, A>>,
-    options: { readonly concurrency: number | "unbounded"; readonly bufferSize?: number }
+    options: { readonly concurrency: number | "unbounded"; readonly bufferSize?: number | undefined }
   ): Stream<R, E, A>
 }
 ```
