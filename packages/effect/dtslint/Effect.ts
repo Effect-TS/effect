@@ -9,6 +9,48 @@ declare const stringArray: Array<Effect.Effect<"dep-3", "err-3", string>>
 declare const numberRecord: Record<string, Effect.Effect<"dep-4", "err-4", number>>
 
 // -------------------------------------------------------------------------------------
+// forEach
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<"dep-1", "err-1", string[]>
+Effect.forEach(["a", "b"], (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string)
+
+// $ExpectType Effect<"dep-1", "err-1", void>
+Effect.forEach(["a", "b"], (
+  // $ExpectType string
+  _a,
+  // $ExpectType number
+  _i
+) => string, { discard: true })
+
+// $ExpectType Effect<"dep-1", "err-1", string[]>
+pipe(
+  ["a", "b"],
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string)
+)
+
+// $ExpectType Effect<"dep-1", "err-1", void>
+pipe(
+  ["a", "b"],
+  Effect.forEach((
+    // $ExpectType string
+    _a,
+    // $ExpectType number
+    _i
+  ) => string, { discard: true })
+)
+
+// -------------------------------------------------------------------------------------
 // all - tuple
 // -------------------------------------------------------------------------------------
 

@@ -266,21 +266,29 @@ export const removeAll: {
 export const removeIf: {
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options: { readonly discard: true }
+    options: {
+      readonly discard: true
+    }
   ): (self: TMap<K, V>) => STM.STM<never, never, void>
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
   <K, V>(
     self: TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options: { readonly discard: true }
+    options: {
+      readonly discard: true
+    }
   ): STM.STM<never, never, void>
   <K, V>(
     self: TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): STM.STM<never, never, Array<[K, V]>>
 } = internal.removeIf
 
@@ -294,21 +302,29 @@ export const removeIf: {
 export const retainIf: {
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options: { readonly discard: true }
+    options: {
+      readonly discard: true
+    }
   ): (self: TMap<K, V>) => STM.STM<never, never, void>
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): (self: TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
   <K, V>(
     self: TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options: { readonly discard: true }
+    options: {
+      readonly discard: true
+    }
   ): STM.STM<never, never, void>
   <K, V>(
     self: TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): STM.STM<never, never, Array<[K, V]>>
 } = internal.retainIf
 

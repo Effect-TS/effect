@@ -330,7 +330,7 @@ describe("Match", () => {
 
   it("optional props", () => {
     const match = pipe(
-      M.type<{ readonly user?: { readonly name: string } }>(),
+      M.type<{ readonly user?: { readonly name: string } | undefined }>(),
       M.when({ user: M.any }, (_) => _.user?.name),
       M.orElse(() => "no user")
     )
@@ -342,7 +342,7 @@ describe("Match", () => {
 
   it("optional props defined", () => {
     const match = pipe(
-      M.type<{ readonly user?: { readonly name: string } | null }>(),
+      M.type<{ readonly user?: { readonly name: string } | null | undefined }>(),
       M.when({ user: M.defined }, (_) => _.user.name),
       M.orElse(() => "no user")
     )

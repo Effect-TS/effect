@@ -226,7 +226,9 @@ export declare namespace All {
    * @since 2.0.0
    * @category utils
    */
-  export type Options = { readonly discard?: boolean }
+  export type Options = {
+    readonly discard?: boolean | undefined
+  }
   type IsDiscard<A> = [Extract<A, { readonly discard: true }>] extends [never] ? false : true
   type Narrow<A> = (A extends [] ? [] : never) | A
 
@@ -788,18 +790,26 @@ export const matchSTM: {
 export const forEach: {
   <A, R, E, A2>(
     f: (a: A) => STM<R, E, A2>,
-    options?: { readonly discard?: false }
+    options?: {
+      readonly discard?: false | undefined
+    }
   ): (elements: Iterable<A>) => STM<R, E, Array<A2>>
   <A, R, E, A2>(
     f: (a: A) => STM<R, E, A2>,
-    options: { readonly discard: true }
+    options: {
+      readonly discard: true
+    }
   ): (elements: Iterable<A>) => STM<R, E, void>
   <A, R, E, A2>(
     elements: Iterable<A>,
     f: (a: A) => STM<R, E, A2>,
-    options?: { readonly discard?: false }
+    options?: {
+      readonly discard?: false | undefined
+    }
   ): STM<R, E, Array<A2>>
-  <A, R, E, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>, options: { readonly discard: true }): STM<R, E, void>
+  <A, R, E, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>, options: {
+    readonly discard: true
+  }): STM<R, E, void>
 } = stm.forEach
 
 /**
@@ -1229,7 +1239,7 @@ export const loop: {
       readonly while: (z: Z) => boolean
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => STM<R, E, A>
-      readonly discard?: false
+      readonly discard?: false | undefined
     }
   ): STM<R, E, Array<A>>
   <Z, R, E, A>(

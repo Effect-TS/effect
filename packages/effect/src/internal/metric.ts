@@ -85,14 +85,14 @@ export const mapInput = dual<
 /** @internal */
 export const counter: {
   (name: string, options?: {
-    readonly description?: string
-    readonly bigint?: false
-    readonly incremental?: boolean
+    readonly description?: string | undefined
+    readonly bigint?: false | undefined
+    readonly incremental?: boolean | undefined
   }): Metric.Metric.Counter<number>
   (name: string, options: {
-    readonly description?: string
+    readonly description?: string | undefined
     readonly bigint: true
-    readonly incremental?: boolean
+    readonly incremental?: boolean | undefined
   }): Metric.Metric.Counter<bigint>
 } = (name, options) => fromMetricKey(metricKey.counter(name, options as any)) as any
 
@@ -131,11 +131,11 @@ export const fromMetricKey = <Type extends MetricKeyType.MetricKeyType<any, any>
 /** @internal */
 export const gauge: {
   (name: string, options?: {
-    readonly description?: string
-    readonly bigint?: false
+    readonly description?: string | undefined
+    readonly bigint?: false | undefined
   }): Metric.Metric.Gauge<number>
   (name: string, options: {
-    readonly description?: string
+    readonly description?: string | undefined
     readonly bigint: true
   }): Metric.Metric.Gauge<bigint>
 } = (name, options) => fromMetricKey(metricKey.gauge(name, options as any)) as any
@@ -213,7 +213,7 @@ export const summary = (
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk.Chunk<number>
-    readonly description?: string
+    readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<number> => withNow(summaryTimestamp(options))
 
@@ -225,7 +225,7 @@ export const summaryTimestamp = (
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk.Chunk<number>
-    readonly description?: string
+    readonly description?: string | undefined
   }
 ): Metric.Metric.Summary<readonly [value: number, timestamp: number]> => fromMetricKey(metricKey.summary(options))
 

@@ -1,5 +1,6 @@
 import type * as Encoding from "../../Encoding.js"
-import { hasProperty } from "../../Predicate.js"
+import { hasProperty, isString } from "../../Predicate.js"
+import type { Mutable } from "../../Types.js"
 
 /** @internal */
 export const DecodeExceptionTypeId: Encoding.DecodeExceptionTypeId = Symbol.for(
@@ -7,12 +8,17 @@ export const DecodeExceptionTypeId: Encoding.DecodeExceptionTypeId = Symbol.for(
 ) as Encoding.DecodeExceptionTypeId
 
 /** @internal */
-export const DecodeException = (input: string, message?: string): Encoding.DecodeException => ({
-  _tag: "DecodeException",
-  [DecodeExceptionTypeId]: DecodeExceptionTypeId,
-  input,
-  message
-})
+export const DecodeException = (input: string, message?: string): Encoding.DecodeException => {
+  const out: Mutable<Encoding.DecodeException> = {
+    _tag: "DecodeException",
+    [DecodeExceptionTypeId]: DecodeExceptionTypeId,
+    input
+  }
+  if (isString(message)) {
+    out.message = message
+  }
+  return out
+}
 
 /** @internal */
 export const isDecodeException = (u: unknown): u is Encoding.DecodeException => hasProperty(u, DecodeExceptionTypeId)

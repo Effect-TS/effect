@@ -34,8 +34,8 @@ export interface Console {
   readonly dirxml: (...args: ReadonlyArray<any>) => Effect<never, never, void>
   readonly error: (...args: ReadonlyArray<any>) => Effect<never, never, void>
   readonly group: (options?: {
-    readonly label?: string
-    readonly collapsed?: boolean
+    readonly label?: string | undefined
+    readonly collapsed?: boolean | undefined
   }) => Effect<never, never, void>
   readonly groupEnd: Effect<never, never, void>
   readonly info: (...args: ReadonlyArray<any>) => Effect<never, never, void>
@@ -63,8 +63,8 @@ export interface UnsafeConsole {
   readonly dirxml: (...args: ReadonlyArray<any>) => void
   readonly error: (...args: ReadonlyArray<any>) => void
   readonly group: (options?: {
-    readonly label?: string
-    readonly collapsed?: boolean
+    readonly label?: string | undefined
+    readonly collapsed?: boolean | undefined
   }) => void
   readonly groupEnd: () => void
   readonly info: (...args: ReadonlyArray<any>) => void
@@ -151,7 +151,10 @@ export const error: (...args: ReadonlyArray<any>) => Effect<never, never, void> 
  * @category accessor
  */
 export const group: (
-  options?: { label?: string; collapsed?: boolean }
+  options?: {
+    label?: string | undefined
+    collapsed?: boolean | undefined
+  }
 ) => Effect<Scope, never, void> = internal.group
 
 /**
@@ -203,12 +206,12 @@ export const warn: (...args: ReadonlyArray<any>) => Effect<never, never, void> =
  */
 export const withGroup: {
   (options?: {
-    readonly label?: string
-    readonly collapsed?: boolean
+    readonly label?: string | undefined
+    readonly collapsed?: boolean | undefined
   }): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
   <R, E, A>(self: Effect<R, E, A>, options?: {
-    readonly label?: string
-    readonly collapsed?: boolean
+    readonly label?: string | undefined
+    readonly collapsed?: boolean | undefined
   }): Effect<R, E, A>
 } = internal.withGroup
 

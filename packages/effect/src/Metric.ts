@@ -184,17 +184,17 @@ export const counter: {
   (
     name: string,
     options?: {
-      readonly description?: string
-      readonly bigint?: false
-      readonly incremental?: boolean
+      readonly description?: string | undefined
+      readonly bigint?: false | undefined
+      readonly incremental?: boolean | undefined
     }
   ): Metric.Counter<number>
   (
     name: string,
     options: {
-      readonly description?: string
+      readonly description?: string | undefined
       readonly bigint: true
-      readonly incremental?: boolean
+      readonly incremental?: boolean | undefined
     }
   ): Metric.Counter<bigint>
 } = internal.counter
@@ -263,8 +263,14 @@ export const fromMetricKey: <Type extends MetricKeyType.MetricKeyType<any, any>>
  * @category constructors
  */
 export const gauge: {
-  (name: string, options?: { readonly description?: string; readonly bigint?: false }): Metric.Gauge<number>
-  (name: string, options: { readonly description?: string; readonly bigint: true }): Metric.Gauge<bigint>
+  (name: string, options?: {
+    readonly description?: string | undefined
+    readonly bigint?: false | undefined
+  }): Metric.Gauge<number>
+  (name: string, options: {
+    readonly description?: string | undefined
+    readonly bigint: true
+  }): Metric.Gauge<bigint>
 } = internal.gauge
 
 /**
@@ -403,7 +409,7 @@ export const summary: (
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk.Chunk<number>
-    readonly description?: string
+    readonly description?: string | undefined
   }
 ) => Metric.Summary<number> = internal.summary
 
@@ -418,7 +424,7 @@ export const summaryTimestamp: (
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk.Chunk<number>
-    readonly description?: string
+    readonly description?: string | undefined
   }
 ) => Metric.Summary<readonly [value: number, timestamp: number]> // readonly because contravariant
  = internal.summaryTimestamp

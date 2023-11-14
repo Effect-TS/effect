@@ -439,14 +439,14 @@ export const buffer: {
   (
     options: { readonly capacity: "unbounded" } | {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
     self: Stream<R, E, A>,
     options: { readonly capacity: "unbounded" } | {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): Stream<R, E, A>
 } = internal.buffer
@@ -463,14 +463,14 @@ export const bufferChunks: {
   (
     options: {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
     self: Stream<R, E, A>,
     options: {
       readonly capacity: number
-      readonly strategy?: "dropping" | "sliding" | "suspend"
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
     }
   ): Stream<R, E, A>
 } = internal.bufferChunks
@@ -1302,12 +1302,20 @@ export const findEffect: {
 export const flatMap: {
   <A, R2, E2, A2>(
     f: (a: A) => Stream<R2, E2, A2>,
-    options?: { readonly concurrency?: number | "unbounded"; readonly bufferSize?: number; readonly switch?: boolean }
+    options?: {
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
+      readonly switch?: boolean | undefined
+    }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     f: (a: A) => Stream<R2, E2, A2>,
-    options?: { readonly concurrency?: number | "unbounded"; readonly bufferSize?: number; readonly switch?: boolean }
+    options?: {
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
+      readonly switch?: boolean | undefined
+    }
   ): Stream<R | R2, E | E2, A2>
 } = internal.flatMap
 
@@ -1321,15 +1329,15 @@ export const flatMap: {
 export const flatten: {
   (
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly bufferSize?: number
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
     }
   ): <R, E, R2, E2, A>(self: Stream<R, E, Stream<R2, E2, A>>) => Stream<R | R2, E | E2, A>
   <R, E, R2, E2, A>(
     self: Stream<R, E, Stream<R2, E2, A>>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly bufferSize?: number
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
     }
   ): Stream<R | R2, E | E2, A>
 } = internal.flatten
@@ -1353,15 +1361,15 @@ export const flattenChunks: <R, E, A>(self: Stream<R, E, Chunk.Chunk<A>>) => Str
 export const flattenEffect: {
   (
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly unordered?: boolean
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly unordered?: boolean | undefined
     }
   ): <R, E, R2, E2, A>(self: Stream<R, E, Effect.Effect<R2, E2, A>>) => Stream<R | R2, E | E2, A>
   <R, E, R2, E2, A>(
     self: Stream<R, E, Effect.Effect<R2, E2, A>>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly unordered?: boolean
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly unordered?: boolean | undefined
     }
   ): Stream<R | R2, E | E2, A>
 } = internal.flattenEffect
@@ -1459,11 +1467,17 @@ export const fromChunk: <A>(chunk: Chunk.Chunk<A>) => Stream<never, never, A> = 
 export const fromChunkPubSub: {
   <A>(
     pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
-    options: { readonly scoped: true; readonly shutdown?: boolean }
+    options: {
+      readonly scoped: true
+      readonly shutdown?: boolean | undefined
+    }
   ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
   <A>(
     pubsub: PubSub.PubSub<Chunk.Chunk<A>>,
-    options?: { readonly scoped?: false; readonly shutdown?: boolean }
+    options?: {
+      readonly scoped?: false | undefined
+      readonly shutdown?: boolean | undefined
+    }
   ): Stream<never, never, A>
 } = internal.fromChunkPubSub
 
@@ -1476,7 +1490,9 @@ export const fromChunkPubSub: {
  */
 export const fromChunkQueue: <A>(
   queue: Queue.Dequeue<Chunk.Chunk<A>>,
-  options?: { readonly shutdown?: boolean }
+  options?: {
+    readonly shutdown?: boolean | undefined
+  }
 ) => Stream<never, never, A> = internal.fromChunkQueue
 
 /**
@@ -1516,11 +1532,19 @@ export const fromEffectOption: <R, E, A>(effect: Effect.Effect<R, Option.Option<
 export const fromPubSub: {
   <A>(
     pubsub: PubSub.PubSub<A>,
-    options: { readonly scoped: true; readonly maxChunkSize?: number; readonly shutdown?: boolean }
+    options: {
+      readonly scoped: true
+      readonly maxChunkSize?: number | undefined
+      readonly shutdown?: boolean | undefined
+    }
   ): Effect.Effect<Scope.Scope, never, Stream<never, never, A>>
   <A>(
     pubsub: PubSub.PubSub<A>,
-    options?: { readonly scoped?: false; readonly maxChunkSize?: number; readonly shutdown?: boolean }
+    options?: {
+      readonly scoped?: false | undefined
+      readonly maxChunkSize?: number | undefined
+      readonly shutdown?: boolean | undefined
+    }
   ): Stream<never, never, A>
 } = internal.fromPubSub
 
@@ -1572,7 +1596,10 @@ export const fromPull: <R, R2, E, A>(
  */
 export const fromQueue: <A>(
   queue: Queue.Dequeue<A>,
-  options?: { readonly maxChunkSize?: number; readonly shutdown?: boolean }
+  options?: {
+    readonly maxChunkSize?: number | undefined
+    readonly shutdown?: boolean | undefined
+  }
 ) => Stream<never, never, A> = internal.fromQueue
 
 /**
@@ -1635,12 +1662,16 @@ export const groupAdjacentBy: {
 export const groupBy: {
   <A, R2, E2, K, V>(
     f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
-    options?: { readonly bufferSize?: number }
+    options?: {
+      readonly bufferSize?: number | undefined
+    }
   ): <R, E>(self: Stream<R, E, A>) => GroupBy.GroupBy<R2 | R, E2 | E, K, V>
   <R, E, A, R2, E2, K, V>(
     self: Stream<R, E, A>,
     f: (a: A) => Effect.Effect<R2, E2, readonly [K, V]>,
-    options?: { readonly bufferSize?: number }
+    options?: {
+      readonly bufferSize?: number | undefined
+    }
   ): GroupBy.GroupBy<R | R2, E | E2, K, V>
 } = _groupBy.groupBy
 
@@ -1684,12 +1715,16 @@ export const groupBy: {
 export const groupByKey: {
   <A, K>(
     f: (a: A) => K,
-    options?: { readonly bufferSize?: number }
+    options?: {
+      readonly bufferSize?: number | undefined
+    }
   ): <R, E>(self: Stream<R, E, A>) => GroupBy.GroupBy<R, E, K, A>
   <R, E, A, K>(
     self: Stream<R, E, A>,
     f: (a: A) => K,
-    options?: { readonly bufferSize?: number }
+    options?: {
+      readonly bufferSize?: number | undefined
+    }
   ): GroupBy.GroupBy<R, E, K, A>
 } = _groupBy.groupByKey
 
@@ -2052,23 +2087,23 @@ export const mapEffect: {
   <A, R2, E2, A2>(
     f: (a: A) => Effect.Effect<R2, E2, A2>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly unordered?: boolean
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly unordered?: boolean | undefined
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <A, R2, E2, A2, K>(
     f: (a: A) => Effect.Effect<R2, E2, A2>,
     options: {
       readonly key: (a: A) => K
-      readonly bufferSize?: number
+      readonly bufferSize?: number | undefined
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     f: (a: A) => Effect.Effect<R2, E2, A2>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly unordered?: boolean
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly unordered?: boolean | undefined
     }
   ): Stream<R | R2, E | E2, A2>
   <R, E, A, R2, E2, A2, K>(
@@ -2076,7 +2111,7 @@ export const mapEffect: {
     f: (a: A) => Effect.Effect<R2, E2, A2>,
     options: {
       readonly key: (a: A) => K
-      readonly bufferSize?: number
+      readonly bufferSize?: number | undefined
     }
   ): Stream<R | R2, E | E2, A2>
 } = _groupBy.mapEffectOptions
@@ -2115,12 +2150,16 @@ export const mapErrorCause: {
 export const merge: {
   <R2, E2, A2>(
     that: Stream<R2, E2, A2>,
-    options?: { readonly haltStrategy?: HaltStrategy.HaltStrategyInput }
+    options?: {
+      readonly haltStrategy?: HaltStrategy.HaltStrategyInput | undefined
+    }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A2 | A>
   <R, E, A, R2, E2, A2>(
     self: Stream<R, E, A>,
     that: Stream<R2, E2, A2>,
-    options?: { readonly haltStrategy?: HaltStrategy.HaltStrategyInput }
+    options?: {
+      readonly haltStrategy?: HaltStrategy.HaltStrategyInput | undefined
+    }
   ): Stream<R | R2, E | E2, A | A2>
 } = internal.merge
 
@@ -2136,14 +2175,14 @@ export const mergeAll: {
   (
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
+      readonly bufferSize?: number | undefined
     }
   ): <R, E, A>(streams: Iterable<Stream<R, E, A>>) => Stream<R, E, A>
   <R, E, A>(
     streams: Iterable<Stream<R, E, A>>,
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
+      readonly bufferSize?: number | undefined
     }
   ): Stream<R, E, A>
 } = internal.mergeAll
@@ -2164,7 +2203,7 @@ export const mergeWith: {
     options: {
       readonly onSelf: (a: A) => A3
       readonly onOther: (a2: A2) => A4
-      readonly haltStrategy?: HaltStrategy.HaltStrategyInput
+      readonly haltStrategy?: HaltStrategy.HaltStrategyInput | undefined
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A3 | A4>
   <R, E, R2, E2, A2, A, A3, A4>(
@@ -2173,7 +2212,7 @@ export const mergeWith: {
     options: {
       readonly onSelf: (a: A) => A3
       readonly onOther: (a2: A2) => A4
-      readonly haltStrategy?: HaltStrategy.HaltStrategyInput
+      readonly haltStrategy?: HaltStrategy.HaltStrategyInput | undefined
     }
   ): Stream<R | R2, E | E2, A3 | A4>
 } = internal.mergeWith
@@ -2435,14 +2474,18 @@ export const paginateEffect: <S, R, E, A>(
 export const partition: {
   <A>(
     predicate: Predicate<A>,
-    options?: { bufferSize?: number }
+    options?: {
+      bufferSize?: number | undefined
+    }
   ): <R, E>(
     self: Stream<R, E, A>
   ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
-    options?: { bufferSize?: number }
+    options?: {
+      bufferSize?: number | undefined
+    }
   ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
 } = internal.partition
 
@@ -2456,14 +2499,18 @@ export const partition: {
 export const partitionEither: {
   <A, R2, E2, A2, A3>(
     predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
-    options?: { readonly bufferSize?: number }
+    options?: {
+      readonly bufferSize?: number | undefined
+    }
   ): <R, E>(
     self: Stream<R, E, A>
   ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
     predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
-    options?: { readonly bufferSize?: number }
+    options?: {
+      readonly bufferSize?: number | undefined
+    }
   ): Effect.Effect<Scope.Scope | R | R2, E | E2, [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
 } = internal.partitionEither
 
@@ -3657,8 +3704,8 @@ export const throttle: {
       readonly cost: (chunk: Chunk.Chunk<A>) => number
       readonly units: number
       readonly duration: Duration.DurationInput
-      readonly burst?: number
-      readonly strategy?: "enforce" | "shape"
+      readonly burst?: number | undefined
+      readonly strategy?: "enforce" | "shape" | undefined
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
@@ -3667,8 +3714,8 @@ export const throttle: {
       readonly cost: (chunk: Chunk.Chunk<A>) => number
       readonly units: number
       readonly duration: Duration.DurationInput
-      readonly burst?: number
-      readonly strategy?: "enforce" | "shape"
+      readonly burst?: number | undefined
+      readonly strategy?: "enforce" | "shape" | undefined
     }
   ): Stream<R, E, A>
 } = internal.throttle
@@ -3695,8 +3742,8 @@ export const throttleEffect: {
       readonly cost: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, number>
       readonly units: number
       readonly duration: Duration.DurationInput
-      readonly burst?: number
-      readonly strategy?: "enforce" | "shape"
+      readonly burst?: number | undefined
+      readonly strategy?: "enforce" | "shape" | undefined
     }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E2 | E, A>
   <R, E, A, R2, E2>(
@@ -3705,8 +3752,8 @@ export const throttleEffect: {
       readonly cost: (chunk: Chunk.Chunk<A>) => Effect.Effect<R2, E2, number>
       readonly units: number
       readonly duration: Duration.DurationInput
-      readonly burst?: number
-      readonly strategy?: "enforce" | "shape"
+      readonly burst?: number | undefined
+      readonly strategy?: "enforce" | "shape" | undefined
     }
   ): Stream<R | R2, E | E2, A>
 } = internal.throttleEffect
@@ -3821,13 +3868,19 @@ export const toPull: <R, E, A>(
  */
 export const toQueue: {
   (
-    options?: { readonly strategy?: "dropping" | "sliding" | "suspend"; readonly capacity?: number } | {
+    options?: {
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
+      readonly capacity?: number | undefined
+    } | {
       readonly strategy: "unbounded"
     }
   ): <R, E, A>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
-    options?: { readonly strategy?: "dropping" | "sliding" | "suspend"; readonly capacity?: number } | {
+    options?: {
+      readonly strategy?: "dropping" | "sliding" | "suspend" | undefined
+      readonly capacity?: number | undefined
+    } | {
       readonly strategy: "unbounded"
     }
   ): Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Take.Take<E, A>>>
@@ -3844,13 +3897,17 @@ export const toQueue: {
  */
 export const toQueueOfElements: {
   (
-    options?: { readonly capacity?: number }
+    options?: {
+      readonly capacity?: number | undefined
+    }
   ): <R, E, A>(
     self: Stream<R, E, A>
   ) => Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
   <R, E, A>(
     self: Stream<R, E, A>,
-    options?: { readonly capacity?: number }
+    options?: {
+      readonly capacity?: number | undefined
+    }
   ): Effect.Effect<Scope.Scope | R, never, Queue.Dequeue<Exit.Exit<Option.Option<E>, A>>>
 } = internal.toQueueOfElements
 
@@ -4017,22 +4074,22 @@ export const withSpan: {
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
     }
   ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A>(
     self: Stream<R, E, A>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
     }
   ): Stream<R, E, A>
 } = internal.withSpan
@@ -4467,8 +4524,8 @@ export const bind: {
     tag: Exclude<N, keyof K>,
     f: (_: K) => Stream<R2, E2, A>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly bufferSize?: number
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
     }
   ): <R, E>(self: Stream<R, E, K>) => Stream<R2 | R, E2 | E, Effect.MergeRecord<K, { [k in N]: A }>>
   <R, E, N extends string, K, R2, E2, A>(
@@ -4476,8 +4533,8 @@ export const bind: {
     tag: Exclude<N, keyof K>,
     f: (_: K) => Stream<R2, E2, A>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly bufferSize?: number
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
     }
   ): Stream<R | R2, E | E2, Effect.MergeRecord<K, { [k in N]: A }>>
 } = internal.bind
@@ -4493,8 +4550,8 @@ export const bindEffect: {
     tag: Exclude<N, keyof K>,
     f: (_: K) => Effect.Effect<R2, E2, A>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly bufferSize?: number
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
     }
   ): <R, E>(self: Stream<R, E, K>) => Stream<R2 | R, E2 | E, Effect.MergeRecord<K, { [k in N]: A }>>
   <R, E, N extends string, K, R2, E2, A>(
@@ -4502,8 +4559,8 @@ export const bindEffect: {
     tag: Exclude<N, keyof K>,
     f: (_: K) => Effect.Effect<R2, E2, A>,
     options?: {
-      readonly concurrency?: number | "unbounded"
-      readonly bufferSize?: number
+      readonly concurrency?: number | "unbounded" | undefined
+      readonly bufferSize?: number | undefined
     }
   ): Stream<R | R2, E | E2, Effect.MergeRecord<K, { [k in N]: A }>>
 } = _groupBy.bindEffect
