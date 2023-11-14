@@ -728,8 +728,7 @@ export const reduceWithContext: {
  * @since 2.0.0
  * @category errors
  */
-export const InterruptedException: (message?: string | undefined) => InterruptedException =
-  internal.InterruptedException
+export const InterruptedException: (message?: string) => InterruptedException = internal.InterruptedException
 
 /**
  * Returns `true` if the specified value is an `InterruptedException`, `false`
@@ -747,7 +746,7 @@ export const isInterruptedException: (u: unknown) => u is InterruptedException =
  * @since 2.0.0
  * @category errors
  */
-export const IllegalArgumentException: (message?: string | undefined) => IllegalArgumentException =
+export const IllegalArgumentException: (message?: string) => IllegalArgumentException =
   internal.IllegalArgumentException
 
 /**
@@ -767,8 +766,7 @@ export const isIllegalArgumentException: (u: unknown) => u is IllegalArgumentExc
  * @since 2.0.0
  * @category errors
  */
-export const NoSuchElementException: (message?: string | undefined) => NoSuchElementException =
-  internal.NoSuchElementException
+export const NoSuchElementException: (message?: string) => NoSuchElementException = internal.NoSuchElementException
 
 /**
  * Returns `true` if the specified value is an `NoSuchElementException`, `false`
@@ -785,7 +783,7 @@ export const isNoSuchElementException: (u: unknown) => u is NoSuchElementExcepti
  * @since 2.0.0
  * @category errors
  */
-export const RuntimeException: (message?: string | undefined) => RuntimeException = internal.RuntimeException
+export const RuntimeException: (message?: string) => RuntimeException = internal.RuntimeException
 
 /**
  * Returns `true` if the specified value is an `RuntimeException`, `false`
