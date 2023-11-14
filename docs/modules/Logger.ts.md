@@ -45,6 +45,8 @@ Added in v2.0.0
 - [symbols](#symbols)
   - [LoggerTypeId](#loggertypeid)
   - [LoggerTypeId (type alias)](#loggertypeid-type-alias)
+- [tracing](#tracing)
+  - [withSpanAnnotations](#withspanannotations)
 - [utils](#utils)
   - [Logger (namespace)](#logger-namespace)
     - [Options (interface)](#options-interface)
@@ -394,6 +396,18 @@ Added in v2.0.0
 
 ```ts
 export type LoggerTypeId = typeof LoggerTypeId
+```
+
+Added in v2.0.0
+
+# tracing
+
+## withSpanAnnotations
+
+**Signature**
+
+```ts
+export declare const withSpanAnnotations: <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Output>
 ```
 
 Added in v2.0.0
