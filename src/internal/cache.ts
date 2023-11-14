@@ -109,9 +109,9 @@ export type MapKeyTypeId = typeof MapKeyTypeId
  */
 export interface MapKey<K> extends Equal.Equal {
   readonly [MapKeyTypeId]: MapKeyTypeId
-  current: K // TODO: mutable by design?
-  previous: MapKey<K> | undefined
-  next: MapKey<K> | undefined
+  readonly current: K
+  previous: MapKey<K> | undefined // mutable by design
+  next: MapKey<K> | undefined // mutable by design
 }
 
 class MapKeyImpl<K> implements MapKey<K> {
@@ -151,16 +151,16 @@ export const isMapKey = (u: unknown): u is MapKey<unknown> => hasProperty(u, Map
  * @internal
  */
 export interface KeySet<K> {
-  head: MapKey<K> | undefined
-  tail: MapKey<K> | undefined
+  head: MapKey<K> | undefined // mutable by design
+  tail: MapKey<K> | undefined // mutable by design
   /**
    * Adds the specified key to the set.
    */
-  add(key: MapKey<K>): void
+  readonly add: (key: MapKey<K>) => void
   /**
    * Removes the lowest priority key from the set.
    */
-  remove(): MapKey<K> | undefined
+  readonly remove: () => MapKey<K> | undefined
 }
 
 class KeySetImpl<K> implements KeySet<K> {
@@ -216,12 +216,12 @@ export const makeKeySet = <K>(): KeySet<K> => new KeySetImpl<K>()
  * @internal
  */
 export interface CacheState<Key, Error, Value> {
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>>
-  keys: KeySet<Key>
-  accesses: MutableQueue.MutableQueue<MapKey<Key>>
-  updating: MutableRef.MutableRef<boolean>
-  hits: number
-  misses: number
+  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>> // mutable by design
+  keys: KeySet<Key> // mutable by design
+  accesses: MutableQueue.MutableQueue<MapKey<Key>> // mutable by design
+  updating: MutableRef.MutableRef<boolean> // mutable by design
+  hits: number // mutable by design
+  misses: number // mutable by design
 }
 
 /**
