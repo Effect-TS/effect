@@ -42,8 +42,8 @@ Added in v2.0.0
 export interface TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId
   readonly fiberRef: FiberRef.FiberRef<number>
-  size(): Effect.Effect<never, never, number>
-  withSize(size: number): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  readonly size: () => Effect.Effect<never, never, number>
+  readonly withSize: (size: number) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 }
 ```
 
