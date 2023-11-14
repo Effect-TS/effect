@@ -30,7 +30,7 @@ export const layer = Layer.succeed(
   tag,
   make({
     read: Effect.tryPromise({
-      try: navigator.clipboard.read,
+      try: () => navigator.clipboard.read(),
       catch: () =>
         clipboardError({
           "message": "Unable to read from clipboard",
@@ -49,7 +49,7 @@ export const layer = Layer.succeed(
           })
       }),
     readString: Effect.tryPromise({
-      try: navigator.clipboard.readText,
+      try: () => navigator.clipboard.readText(),
       catch: () =>
         clipboardError({
           "message": "Unable to read a string from clipboard",
