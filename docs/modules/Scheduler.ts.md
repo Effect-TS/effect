@@ -312,8 +312,8 @@ Added in v2.0.0
 
 ```ts
 export interface Scheduler {
-  shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
-  scheduleTask(task: Task, priority: number): void
+  readonly shouldYield: (fiber: RuntimeFiber<unknown, unknown>) => number | false
+  readonly scheduleTask: (task: Task, priority: number) => void
 }
 ```
 
