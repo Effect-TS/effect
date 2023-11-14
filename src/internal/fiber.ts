@@ -66,27 +66,27 @@ export const isRuntimeFiber = <E, A>(self: Fiber.Fiber<E, A>): self is Fiber.Run
   RuntimeFiberTypeId in self
 
 /** @internal */
-export const _await = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, Exit.Exit<E, A>> => self.await()
+export const _await = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, Exit.Exit<E, A>> => self.await
 
 /** @internal */
 export const children = <E, A>(
   self: Fiber.Fiber<E, A>
-): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> => self.children()
+): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> => self.children
 
 /** @internal */
 export const done = <E, A>(exit: Exit.Exit<E, A>): Fiber.Fiber<E, A> => ({
   ...fiberProto,
   id: () => FiberId.none,
-  await: () => core.succeed(exit),
-  children: () => core.succeed([]),
-  inheritAll: () => core.unit,
-  poll: () => core.succeed(Option.some(exit)),
+  await: core.succeed(exit),
+  children: core.succeed([]),
+  inheritAll: core.unit,
+  poll: core.succeed(Option.some(exit)),
   interruptAsFork: () => core.unit
 })
 
 /** @internal */
 export const dump = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<never, never, Fiber.Fiber.Dump> =>
-  core.map(self.status(), (status) => ({ id: self.id(), status }))
+  core.map(self.status, (status) => ({ id: self.id(), status }))
 
 /** @internal */
 export const dumpAll = (
@@ -107,7 +107,7 @@ export const fromEffect = <E, A>(effect: Effect.Effect<never, E, A>): Effect.Eff
 export const id = <E, A>(self: Fiber.Fiber<E, A>): FiberId.FiberId => self.id()
 
 /** @internal */
-export const inheritAll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, void> => self.inheritAll()
+export const inheritAll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, void> => self.inheritAll
 
 /** @internal */
 export const interrupted = (fiberId: FiberId.FiberId): Fiber.Fiber<never, never> => done(Exit.interrupt(fiberId))
@@ -134,7 +134,7 @@ export const interruptAsFork = dual<
 
 /** @internal */
 export const join = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, E, A> =>
-  core.zipLeft(core.flatten(self.await()), self.inheritAll())
+  core.zipLeft(core.flatten(self.await), self.inheritAll)
 
 /** @internal */
 export const map = dual<
@@ -149,23 +149,22 @@ export const mapEffect = dual<
 >(2, (self, f) => ({
   ...fiberProto,
   id: () => self.id(),
-  await: () => core.flatMap(self.await(), Exit.forEachEffect(f)),
-  children: () => self.children(),
-  inheritAll: () => self.inheritAll(),
-  poll: () =>
-    core.flatMap(self.poll(), (result) => {
-      switch (result._tag) {
-        case "None": {
-          return core.succeed(Option.none())
-        }
-        case "Some": {
-          return pipe(
-            Exit.forEachEffect(result.value, f),
-            core.map(Option.some)
-          )
-        }
+  await: core.flatMap(self.await, Exit.forEachEffect(f)),
+  children: self.children,
+  inheritAll: self.inheritAll,
+  poll: core.flatMap(self.poll, (result) => {
+    switch (result._tag) {
+      case "None": {
+        return core.succeed(Option.none())
       }
-    }),
+      case "Some": {
+        return pipe(
+          Exit.forEachEffect(result.value, f),
+          core.map(Option.some)
+        )
+      }
+    }
+  }),
   interruptAsFork: (id) => self.interruptAsFork(id)
 }))
 
@@ -183,7 +182,7 @@ export const mapFiber = dual<
   f: (a: A) => Fiber.Fiber<E2, B>
 ) =>
   core.map(
-    self.await(),
+    self.await,
     Exit.match({
       onFailure: (cause): Fiber.Fiber<E | E2, B> => failCause(cause),
       onSuccess: (a) => f(a)
@@ -216,10 +215,10 @@ export const match = dual<
 export const never: Fiber.Fiber<never, never> = {
   ...fiberProto,
   id: () => FiberId.none,
-  await: () => core.never,
-  children: () => core.succeed([]),
-  inheritAll: () => core.never,
-  poll: () => core.succeed(Option.none()),
+  await: core.never,
+  children: core.succeed([]),
+  inheritAll: core.never,
+  poll: core.succeed(Option.none()),
   interruptAsFork: () => core.never
 }
 
@@ -230,29 +229,27 @@ export const orElse = dual<
 >(2, (self, that) => ({
   ...fiberProto,
   id: () => FiberId.getOrElse(self.id(), that.id()),
-  await: () =>
-    core.zipWith(
-      self.await(),
-      that.await(),
-      (exit1, exit2) => (Exit.isSuccess(exit1) ? exit1 : exit2)
-    ),
-  children: () => self.children(),
-  inheritAll: () => core.zipRight(that.inheritAll(), self.inheritAll()),
-  poll: () =>
-    core.zipWith(
-      self.poll(),
-      that.poll(),
-      (option1, option2) => {
-        switch (option1._tag) {
-          case "None": {
-            return Option.none()
-          }
-          case "Some": {
-            return Exit.isSuccess(option1.value) ? option1 : option2
-          }
+  await: core.zipWith(
+    self.await,
+    that.await,
+    (exit1, exit2) => (Exit.isSuccess(exit1) ? exit1 : exit2)
+  ),
+  children: self.children,
+  inheritAll: core.zipRight(that.inheritAll, self.inheritAll),
+  poll: core.zipWith(
+    self.poll,
+    that.poll,
+    (option1, option2) => {
+      switch (option1._tag) {
+        case "None": {
+          return Option.none()
+        }
+        case "Some": {
+          return Exit.isSuccess(option1.value) ? option1 : option2
         }
       }
-    ),
+    }
+  ),
   interruptAsFork: (id) =>
     pipe(
       core.interruptAsFiber(self, id),
@@ -269,7 +266,7 @@ export const orElseEither = dual<
 
 /** @internal */
 export const poll = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>> =>
-  self.poll()
+  self.poll
 
 // forked from https://github.com/sindresorhus/parse-ms/blob/4da2ffbdba02c6e288c08236695bdece0adca173/index.js
 // MIT License
@@ -334,7 +331,7 @@ export const roots: Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, an
 
 /** @internal */
 export const status = <E, A>(self: Fiber.RuntimeFiber<E, A>): Effect.Effect<never, never, FiberStatus.FiberStatus> =>
-  self.status()
+  self.status
 
 /** @internal */
 export const succeed = <A>(value: A): Fiber.Fiber<never, A> => done(Exit.succeed(value))

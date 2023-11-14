@@ -265,7 +265,7 @@ export class TestClockImpl implements TestClock {
         fibers,
         effect.reduce(HashMap.empty<FiberId.FiberId, FiberStatus.FiberStatus>(), (map, fiber) =>
           pipe(
-            fiber.status(),
+            fiber.status,
             core.flatMap((status) => {
               if (FiberStatus.isDone(status)) {
                 return core.succeed(HashMap.set(map, fiber.id() as FiberId.FiberId, status as FiberStatus.FiberStatus))
