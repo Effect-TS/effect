@@ -54,12 +54,12 @@ export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
    * of requests that must be performed sequentially. The inner `Chunk`
    * represents a batch of requests that can be performed in parallel.
    */
-  runAll(requests: Array<Array<Request.Entry<A>>>): Effect.Effect<R, never, void>
+  readonly runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<R, never, void>
 
   /**
    * Identify the data source using the specific identifier
    */
-  identified(...identifiers: Array<unknown>): RequestResolver<A, R>
+  readonly identified: (...identifiers: Array<unknown>) => RequestResolver<A, R>
 }
 
 /**

@@ -1677,7 +1677,7 @@ const LocallyReducer = <R, A>(
   singleCase: (dataSource, blockedRequest) =>
     _blockedRequests.single(
       resolverLocally(dataSource, ref, value),
-      blockedRequest
+      blockedRequest as any
     )
 })
 
