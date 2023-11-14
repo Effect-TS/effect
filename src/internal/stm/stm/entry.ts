@@ -5,9 +5,9 @@ import * as Versioned from "./versioned.js"
 export interface Entry {
   readonly ref: TRef.TRef<any>
   readonly expected: Versioned.Versioned<any>
-  isChanged: boolean
+  isChanged: boolean // mutable by design
   readonly isNew: boolean
-  newValue: any
+  newValue: any // mutable by design
 }
 
 /** @internal */
