@@ -23,7 +23,7 @@ export type TypeId = typeof TypeId
  * @category models
  */
 export interface HashMap<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
-  [TypeId]: TypeId
+  readonly [TypeId]: TypeId
 }
 
 /**

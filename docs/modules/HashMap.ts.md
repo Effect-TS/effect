@@ -369,7 +369,7 @@ Added in v2.0.0
 
 ```ts
 export interface HashMap<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
-  [TypeId]: TypeId
+  readonly [TypeId]: TypeId
 }
 ```
 
