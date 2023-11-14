@@ -101,7 +101,7 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
   /**
    * Returns statistics for this cache.
    */
-  readonly cacheStats: () => Effect.Effect<never, never, Cache.CacheStats>
+  readonly cacheStats: Effect.Effect<never, never, Cache.CacheStats>
 
   /**
    * Return whether a resource associated with the specified key exists in the
@@ -130,7 +130,7 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
   /**
    * Invalidates all values in the cache.
    */
-  readonly invalidateAll: () => Effect.Effect<never, never, void>
+  readonly invalidateAll: Effect.Effect<never, never, void>
 
   /**
    * Force the reuse of the lookup function to compute the returned scoped
@@ -145,7 +145,7 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
   /**
    * Returns the approximate number of values in the cache.
    */
-  readonly size: () => Effect.Effect<never, never, number>
+  readonly size: Effect.Effect<never, never, number>
 }
 ```
 

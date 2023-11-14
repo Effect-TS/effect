@@ -199,7 +199,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
     return pipeArguments(this, arguments)
   }
 
-  cacheStats(): Effect.Effect<never, never, Cache.CacheStats> {
+  get cacheStats(): Effect.Effect<never, never, Cache.CacheStats> {
     return core.sync(() =>
       _cache.makeCacheStats({
         hits: this.cacheState.hits,
@@ -321,7 +321,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
     })
   }
 
-  invalidateAll(): Effect.Effect<never, never, void> {
+  get invalidateAll(): Effect.Effect<never, never, void> {
     return fiberRuntime.forEachParUnboundedDiscard(
       HashSet.fromIterable(Array.from(this.cacheState.map).map(([key]) => key)),
       (key) => this.invalidate(key),
@@ -382,7 +382,7 @@ class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.Sco
     )
   }
 
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return core.sync(() => MutableHashMap.size(this.cacheState.map))
   }
 
@@ -630,5 +630,5 @@ const buildWith = <Key, Environment, Error, Value>(
           )
         )
     ),
-    (cache) => cache.invalidateAll()
+    (cache) => cache.invalidateAll
   )

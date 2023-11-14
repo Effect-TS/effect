@@ -52,7 +52,7 @@ describe.concurrent("ScopedCache", () => {
                   (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.unit)),
                   { concurrency: "unbounded", discard: true }
                 ),
-                Effect.flatMap(() => cache.cacheStats())
+                Effect.flatMap(() => cache.cacheStats)
               )
             )
           )
@@ -87,7 +87,7 @@ describe.concurrent("ScopedCache", () => {
         ))
         yield* $(cache.invalidate(42))
         const cacheContainsKey42 = yield* $(cache.contains(42))
-        const { hits, misses, size } = yield* $(cache.cacheStats())
+        const { hits, misses, size } = yield* $(cache.cacheStats)
         yield* $(observablesResources[42].assertAcquiredOnceAndCleaned())
         yield* $(Effect.forEach(
           pipe(
@@ -147,7 +147,7 @@ describe.concurrent("ScopedCache", () => {
           (n) => Effect.scoped(Effect.zipRight(cache.get(n), Effect.unit)),
           { concurrency: "unbounded", discard: true }
         ))
-        yield* $(cache.invalidateAll())
+        yield* $(cache.invalidateAll)
         const contains = yield* $(
           Effect.forEach(
             ReadonlyArray.range(0, capacity - 1),
@@ -156,7 +156,7 @@ describe.concurrent("ScopedCache", () => {
           ),
           Effect.map((_) => _.every(identity))
         )
-        const { hits, misses, size } = yield* $(cache.cacheStats())
+        const { hits, misses, size } = yield* $(cache.cacheStats)
         yield* $(Effect.forEach(
           observablesResources,
           (observableResource) => observableResource.assertAcquiredOnceAndCleaned()
@@ -251,7 +251,7 @@ describe.concurrent("ScopedCache", () => {
             )
           )
           const expected = ReadonlyArray.map(ReadonlyArray.range(1, 10), hash(salt))
-          const cacheStats = yield* $(cache.cacheStats())
+          const cacheStats = yield* $(cache.cacheStats)
           expect(Array.from(actual)).toEqual(Array.from(expected))
           expect(cacheStats.size).toBe(5)
         })))
@@ -700,9 +700,9 @@ describe.concurrent("ScopedCache", () => {
       })
       yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
-        const count0 = yield* $(cache.size())
+        const count0 = yield* $(cache.size)
         yield* $(Effect.forEach(ReadonlyArray.range(1, capacity), (key) => cache.refresh(key), { discard: true }))
-        const count1 = yield* $(cache.size())
+        const count1 = yield* $(cache.size)
         expect(count0).toBe(0)
         expect(count1).toBe(capacity)
       })))
