@@ -286,7 +286,7 @@ export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.TestSi
 /**
  * @since 2.0.0
  */
-export const size: Effect.Effect<never, never, number> = sizedWith((sized) => sized.size())
+export const size: Effect.Effect<never, never, number> = sizedWith((sized) => sized.size)
 
 /**
  * @since 2.0.0

@@ -22,7 +22,7 @@ export type TestSizedTypeId = typeof TestSizedTypeId
 export interface TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId
   readonly fiberRef: FiberRef.FiberRef<number>
-  readonly size: () => Effect.Effect<never, never, number>
+  readonly size: Effect.Effect<never, never, number>
   readonly withSize: (size: number) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 }
 
@@ -35,7 +35,7 @@ export const TestSized: Context.Tag<TestSized, TestSized> = Context.Tag(TestSize
 class SizedImpl implements TestSized {
   readonly [TestSizedTypeId]: TestSizedTypeId = TestSizedTypeId
   constructor(readonly fiberRef: FiberRef.FiberRef<number>) {}
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return core.fiberRefGet(this.fiberRef)
   }
   withSize(size: number) {
