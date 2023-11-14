@@ -33,7 +33,7 @@ export interface PubSub<A> extends Queue.Enqueue<A>, Pipeable {
    * be evaluated multiple times within the scope to take a message from the `PubSub`
    * each time.
    */
-  readonly subscribe: () => Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
+  readonly subscribe: Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
 }
 
 /**

@@ -132,7 +132,7 @@ export const publishAll = dual<
 
 /** @internal */
 export const subscribe = <A>(self: PubSub.PubSub<A>): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> =>
-  self.subscribe()
+  self.subscribe
 
 /** @internal */
 const makeBoundedPubSub = <A>(requestedCapacity: number): AtomicPubSub<A> => {
@@ -1109,7 +1109,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     })
   }
 
-  subscribe(): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> {
+  get subscribe(): Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> {
     const acquire = core.tap(
       fiberRuntime.all([
         this.scope.fork(executionStrategy.sequential),
