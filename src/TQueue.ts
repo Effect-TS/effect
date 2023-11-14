@@ -109,7 +109,7 @@ export interface BaseTQueue {
   /**
    * Returns the number of elements the queue can hold.
    */
-  capacity(): number
+  readonly capacity: () => number
 
   /**
    * Retrieves the size of the queue, which is equal to the number of elements
