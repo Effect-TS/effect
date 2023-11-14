@@ -422,37 +422,40 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
    * Returns the number of surplus values that were unable to be added to the
    * `Queue`
    */
-  surplusSize(): number
+  readonly surplusSize: () => number
 
   /**
    * Determines how the `Queue.Strategy` should shut down when the `Queue` is
    * shut down.
    */
-  shutdown(): Effect.Effect<never, never, void>
+  readonly shutdown: () => Effect.Effect<never, never, void>
 
   /**
    * Determines the behavior of the `Queue.Strategy` when there are surplus
    * values that could not be added to the `Queue` following an `offer`
    * operation.
    */
-  handleSurplus(
+  readonly handleSurplus: (
     iterable: Iterable<A>,
     queue: BackingQueue<A>,
     takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
     isShutdown: MutableRef.MutableRef<boolean>
-  ): Effect.Effect<never, never, boolean>
+  ) => Effect.Effect<never, never, boolean>
 
   /**
    * It is called when the backing queue is empty but there are some
    * takers that can be completed
    */
-  onCompleteTakersWithEmptyQueue(takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void
+  readonly onCompleteTakersWithEmptyQueue: (takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>) => void
 
   /**
    * Determines the behavior of the `Queue.Strategy` when the `Queue` has empty
    * slots following a `take` operation.
    */
-  unsafeOnQueueEmptySpace(queue: BackingQueue<A>, takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>): void
+  readonly unsafeOnQueueEmptySpace: (
+    queue: BackingQueue<A>,
+    takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
+  ) => void
 }
 ```
 
