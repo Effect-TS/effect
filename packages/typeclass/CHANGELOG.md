@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.15.0
+
+### Minor Changes
+
+- [#48](https://github.com/Effect-TS/typeclass/pull/48) [`fade4e6`](https://github.com/Effect-TS/typeclass/commit/fade4e611162c881b8db692cba3f8b414276c5bd) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.14.1
 
 ### Patch Changes
