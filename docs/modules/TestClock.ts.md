@@ -102,9 +102,9 @@ export interface TestClock extends Clock.Clock {
   readonly adjustWith: (
     duration: Duration.DurationInput
   ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  readonly save: () => Effect.Effect<never, never, Effect.Effect<never, never, void>>
+  readonly save: Effect.Effect<never, never, Effect.Effect<never, never, void>>
   readonly setTime: (time: number) => Effect.Effect<never, never, void>
-  readonly sleeps: () => Effect.Effect<never, never, Chunk.Chunk<number>>
+  readonly sleeps: Effect.Effect<never, never, Chunk.Chunk<number>>
 }
 ```
 
