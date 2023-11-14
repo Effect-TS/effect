@@ -219,7 +219,7 @@ export const ensuringChildren = dual<
   core.flatMap(supervisor.track, (supervisor) =>
     pipe(
       supervised(self, supervisor),
-      fiberRuntime.ensuring(core.flatMap(supervisor.value(), children))
+      fiberRuntime.ensuring(core.flatMap(supervisor.value, children))
     )))
 
 /** @internal */

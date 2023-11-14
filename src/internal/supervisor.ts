@@ -34,7 +34,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
   ) {
   }
 
-  value(): Effect.Effect<never, never, T> {
+  get value(): Effect.Effect<never, never, T> {
     return this.value0()
   }
 
@@ -64,7 +64,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
   }
 
   map<B>(f: (a: T) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<B>(right: Supervisor.Supervisor<B>): Supervisor.Supervisor<[T, B]> {
@@ -83,8 +83,8 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   ) {
   }
 
-  value(): Effect.Effect<never, never, [T0, T1]> {
-    return core.zip(this.left.value(), this.right.value())
+  get value(): Effect.Effect<never, never, [T0, T1]> {
+    return core.zip(this.left.value, this.right.value)
   }
 
   onStart<R, E, A>(
@@ -118,7 +118,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   }
 
   map<B>(f: (a: [T0, T1]) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<[[T0, T1], A]> {
@@ -136,7 +136,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
 
   readonly fibers: Set<Fiber.RuntimeFiber<any, any>> = new Set()
 
-  value(): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> {
+  get value(): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> {
     return core.sync(() => Array.from(this.fibers))
   }
 
@@ -166,7 +166,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
   }
 
   map<B>(f: (a: Array<Fiber.RuntimeFiber<any, any>>) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(
@@ -187,7 +187,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
   constructor(readonly effect: Effect.Effect<never, never, T>) {
   }
 
-  value(): Effect.Effect<never, never, T> {
+  get value(): Effect.Effect<never, never, T> {
     return this.effect
   }
 
@@ -217,7 +217,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
   }
 
   map<B>(f: (a: T) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<[T, A]> {
@@ -235,7 +235,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
   constructor(readonly ref: MutableRef.MutableRef<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>) {
   }
 
-  value(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>> {
+  get value(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>> {
     return core.sync(() => MutableRef.get(this.ref))
   }
 
@@ -265,7 +265,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
   }
 
   map<B>(f: (a: SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, () => pipe(this.value(), core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(

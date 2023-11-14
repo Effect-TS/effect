@@ -17,7 +17,6 @@ Added in v2.0.0
 
 - [constructors](#constructors)
   - [AbstractSupervisor (class)](#abstractsupervisor-class)
-    - [value (method)](#value-method)
     - [onStart (method)](#onstart-method)
     - [onEnd (method)](#onend-method)
     - [onEffect (method)](#oneffect-method)
@@ -26,6 +25,7 @@ Added in v2.0.0
     - [map (method)](#map-method)
     - [zip (method)](#zip-method)
     - [onRun (method)](#onrun-method)
+    - [value (property)](#value-property)
     - [[SupervisorTypeId] (property)](#supervisortypeid-property)
   - [fibersIn](#fibersin)
   - [fromEffect](#fromeffect)
@@ -54,16 +54,6 @@ Added in v2.0.0
 
 ```ts
 export declare class AbstractSupervisor<T>
-```
-
-Added in v2.0.0
-
-### value (method)
-
-**Signature**
-
-```ts
-abstract value(): Effect.Effect<never, never, T>
 ```
 
 Added in v2.0.0
@@ -165,6 +155,16 @@ onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<E, A>): X
 
 Added in v2.0.0
 
+### value (property)
+
+**Signature**
+
+```ts
+value: Effect.Effect<never, never, T>
+```
+
+Added in v2.0.0
+
 ### [SupervisorTypeId] (property)
 
 **Signature**
@@ -250,7 +250,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * supervisor. This value may change over time, reflecting what the supervisor
    * produces as it supervises fibers.
    */
-  readonly value: () => Effect.Effect<never, never, T>
+  readonly value: Effect.Effect<never, never, T>
 
   /**
    * Supervises the start of a `Fiber`.
