@@ -91,7 +91,7 @@ export const counter: {
   }): Metric.Metric.Counter<number>
   (name: string, options: {
     readonly description?: string | undefined
-    readonly bigint: true | undefined
+    readonly bigint: true
     readonly incremental?: boolean | undefined
   }): Metric.Metric.Counter<bigint>
 } = (name, options) => fromMetricKey(metricKey.counter(name, options as any)) as any

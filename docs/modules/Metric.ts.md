@@ -345,7 +345,7 @@ export declare const counter: {
     name: string,
     options: {
       readonly description?: string | undefined
-      readonly bigint: true | undefined
+      readonly bigint: true
       readonly incremental?: boolean | undefined
     }
   ): Metric.Counter<bigint>
