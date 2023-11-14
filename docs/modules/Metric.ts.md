@@ -335,11 +335,19 @@ Counters can be incremented and decremented and provide a running total of chang
 export declare const counter: {
   (
     name: string,
-    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean }
+    options?: {
+      readonly description?: string | undefined
+      readonly bigint?: false | undefined
+      readonly incremental?: boolean | undefined
+    }
   ): Metric.Counter<number>
   (
     name: string,
-    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean }
+    options: {
+      readonly description?: string | undefined
+      readonly bigint: true | undefined
+      readonly incremental?: boolean | undefined
+    }
   ): Metric.Counter<bigint>
 }
 ```
@@ -403,8 +411,11 @@ Gauges are suitable for metrics that represent instantaneous values, such as mem
 
 ```ts
 export declare const gauge: {
-  (name: string, options?: { readonly description?: string; readonly bigint?: false }): Metric.Gauge<number>
-  (name: string, options: { readonly description?: string; readonly bigint: true }): Metric.Gauge<bigint>
+  (
+    name: string,
+    options?: { readonly description?: string | undefined; readonly bigint?: false | undefined }
+  ): Metric.Gauge<number>
+  (name: string, options: { readonly description?: string | undefined; readonly bigint: true }): Metric.Gauge<bigint>
 }
 ```
 

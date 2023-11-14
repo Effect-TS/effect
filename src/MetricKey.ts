@@ -111,17 +111,17 @@ export const counter: {
   (
     name: string,
     options?: {
-      readonly description?: string
-      readonly bigint?: false
-      readonly incremental?: boolean
+      readonly description?: string | undefined
+      readonly bigint?: false | undefined
+      readonly incremental?: boolean | undefined
     }
   ): MetricKey.Counter<number>
   (
     name: string,
     options: {
-      readonly description?: string
+      readonly description?: string | undefined
       readonly bigint: true
-      readonly incremental?: boolean
+      readonly incremental?: boolean | undefined
     }
   ): MetricKey.Counter<bigint>
 } = internal.counter
@@ -142,8 +142,14 @@ export const frequency: (name: string, description?: string) => MetricKey.Freque
  * @category constructors
  */
 export const gauge: {
-  (name: string, options?: { readonly description?: string; readonly bigint?: false }): MetricKey.Gauge<number>
-  (name: string, options: { readonly description?: string; readonly bigint: true }): MetricKey.Gauge<bigint>
+  (name: string, options?: {
+    readonly description?: string | undefined
+    readonly bigint?: false | undefined
+  }): MetricKey.Gauge<number>
+  (name: string, options: {
+    readonly description?: string | undefined
+    readonly bigint: true
+  }): MetricKey.Gauge<bigint>
 } = internal.gauge
 
 /**

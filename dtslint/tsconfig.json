@@ -2,6 +2,7 @@
   "compilerOptions": {
     "noEmit": true,
     "strict": true,
+    "exactOptionalPropertyTypes": true,
     "noImplicitReturns": false,
     "noUnusedLocals": false,
     "noErrorTruncation": true,

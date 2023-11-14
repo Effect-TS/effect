@@ -1122,20 +1122,24 @@ export const unwrapScoped = <R, E, R1, E1, A>(
 /** @internal */
 export const withSpan = dual<
   (name: string, options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
-    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
+    readonly onEnd?:
+      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+      | undefined
   }) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Layer.Layer<R, E, A>, name: string, options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
-    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
+    readonly onEnd?:
+      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+      | undefined
   }) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 >((args) => isLayer(args[0]), (self, name, options) =>
   unwrapScoped(

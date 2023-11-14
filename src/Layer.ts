@@ -940,12 +940,14 @@ export const setScheduler: (scheduler: Scheduler.Scheduler) => Layer<never, neve
 export const span: (
   name: string,
   options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
-    readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
+    readonly onEnd?:
+      | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+      | undefined
   }
 ) => Layer<never, never, Tracer.ParentSpan> = circularLayer.span
 
@@ -985,24 +987,28 @@ export const withSpan: {
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
-      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
+      readonly onEnd?:
+        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+        | undefined
     }
   ): <R, E, A>(self: Layer<R, E, A>) => Layer<Exclude<R, Tracer.ParentSpan>, E, A>
   <R, E, A>(
     self: Layer<R, E, A>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
-      readonly onEnd?: (span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
+      readonly onEnd?:
+        | ((span: Tracer.Span, exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>)
+        | undefined
     }
   ): Layer<Exclude<R, Tracer.ParentSpan>, E, A>
 } = internal.withSpan

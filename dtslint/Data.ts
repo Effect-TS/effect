@@ -110,7 +110,7 @@ interface TaggedPerson extends Data.Case {
 
 const taggedPerson = Data.tagged<TaggedPerson>("Person")
 
-// $ExpectType { readonly name: string; readonly optional?: string | undefined; }
+// $ExpectType { readonly name: string; readonly optional?: string; }
 export type TaggedPersonInput = Parameters<typeof taggedPerson>[0]
 
 // @ts-expect-error

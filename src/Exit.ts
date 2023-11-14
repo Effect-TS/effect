@@ -147,7 +147,9 @@ export const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<
  */
 export const all: <E, A>(
   exits: Iterable<Exit<E, A>>,
-  options?: { readonly parallel?: boolean } | undefined
+  options?: {
+    readonly parallel?: boolean | undefined
+  }
 ) => Option.Option<Exit<E, Array<A>>> = core.exitCollectAll
 
 /**

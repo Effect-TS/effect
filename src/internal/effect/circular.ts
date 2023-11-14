@@ -226,21 +226,29 @@ export const ensuringChildren = dual<
 // @ts-expect-error
 export const forkAll = dual<
   {
-    (options?: { readonly discard?: false }): <R, E, A>(
+    (options?: {
+      readonly discard?: false | undefined
+    }): <R, E, A>(
       effects: Iterable<Effect.Effect<R, E, A>>
     ) => Effect.Effect<R, never, Fiber.Fiber<E, Array<A>>>
-    (options: { readonly discard: true }): <R, E, A>(
+    (options: {
+      readonly discard: true
+    }): <R, E, A>(
       effects: Iterable<Effect.Effect<R, E, A>>
     ) => Effect.Effect<R, never, void>
   },
   {
     <R, E, A>(
       effects: Iterable<Effect.Effect<R, E, A>>,
-      options?: { readonly discard?: false }
+      options?: {
+        readonly discard?: false | undefined
+      }
     ): Effect.Effect<R, never, Fiber.Fiber<E, Array<A>>>
     <R, E, A>(
       effects: Iterable<Effect.Effect<R, E, A>>,
-      options: { readonly discard: true }
+      options: {
+        readonly discard: true
+      }
     ): Effect.Effect<R, never, void>
   }
 >((args) => Predicate.isIterable(args[0]), (

@@ -123,16 +123,24 @@ export const removeAll = dual<
 
 /** @internal */
 export const removeIf: {
-  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet.TSet<A>) => STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>, options: {
+    readonly discard: true
+  }): (self: TSet.TSet<A>) => STM.STM<never, never, void>
   <A>(
     predicate: Predicate<A>,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): (self: TSet.TSet<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TSet.TSet<A>, predicate: Predicate<A>, options: { readonly discard: true }): STM.STM<never, never, void>
+  <A>(self: TSet.TSet<A>, predicate: Predicate<A>, options: {
+    readonly discard: true
+  }): STM.STM<never, never, void>
   <A>(
     self: TSet.TSet<A>,
     predicate: Predicate<A>,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): STM.STM<never, never, Array<A>>
 } = dual(
   (args) => isTSet(args[0]),
@@ -145,16 +153,24 @@ export const removeIf: {
 
 /** @internal */
 export const retainIf: {
-  <A>(predicate: Predicate<A>, options: { readonly discard: true }): (self: TSet.TSet<A>) => STM.STM<never, never, void>
+  <A>(predicate: Predicate<A>, options: {
+    readonly discard: true
+  }): (self: TSet.TSet<A>) => STM.STM<never, never, void>
   <A>(
     predicate: Predicate<A>,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): (self: TSet.TSet<A>) => STM.STM<never, never, Array<A>>
-  <A>(self: TSet.TSet<A>, predicate: Predicate<A>, options: { readonly discard: true }): STM.STM<never, never, void>
+  <A>(self: TSet.TSet<A>, predicate: Predicate<A>, options: {
+    readonly discard: true
+  }): STM.STM<never, never, void>
   <A>(
     self: TSet.TSet<A>,
     predicate: Predicate<A>,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): STM.STM<never, never, Array<A>>
 } = dual((args) => isTSet(args[0]), (self, predicate, options) =>
   options?.discard === true ?

@@ -2,6 +2,7 @@
   "include": [],
   "compilerOptions": {
     "strict": true,
+    "exactOptionalPropertyTypes": true,
     "moduleDetection": "force",
     "composite": true,
     "downlevelIteration": true,
@@ -12,10 +13,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "moduleResolution": "NodeNext",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
+    "lib": ["ES2022", "DOM"],
     "isolatedModules": true,
     "sourceMap": true,
     "declarationMap": true,
@@ -38,19 +36,11 @@
     "incremental": true,
     "removeComments": false,
     "paths": {
-      "effect": [
-        "./src/index.js"
-      ],
-      "effect/*": [
-        "./src/*.js"
-      ],
-      "effect-test/*": [
-        "./test/*.js"
-      ]
+      "effect": ["./src/index.js"],
+      "effect/*": ["./src/*.js"],
+      "effect-test/*": ["./test/*.js"]
     },
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "plugins": [
       {
         "name": "@effect/language-service"

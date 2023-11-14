@@ -981,7 +981,7 @@ export declare const span: (
   options?:
     | {
         readonly attributes?: Record<string, unknown> | undefined
-        readonly links?: readonly Tracer.SpanLink[] | undefined
+        readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
         readonly parent?: Tracer.ParentSpan | undefined
         readonly root?: boolean | undefined
         readonly context?: Context.Context<never> | undefined
@@ -1019,7 +1019,7 @@ export declare const withSpan: {
     options?:
       | {
           readonly attributes?: Record<string, unknown> | undefined
-          readonly links?: readonly Tracer.SpanLink[] | undefined
+          readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
           readonly parent?: Tracer.ParentSpan | undefined
           readonly root?: boolean | undefined
           readonly context?: Context.Context<never> | undefined
@@ -1035,7 +1035,7 @@ export declare const withSpan: {
     options?:
       | {
           readonly attributes?: Record<string, unknown> | undefined
-          readonly links?: readonly Tracer.SpanLink[] | undefined
+          readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
           readonly parent?: Tracer.ParentSpan | undefined
           readonly root?: boolean | undefined
           readonly context?: Context.Context<never> | undefined

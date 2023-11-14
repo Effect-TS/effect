@@ -68,7 +68,10 @@ export const dirxml = (...args: ReadonlyArray<any>) => consoleWith((_) => _.dirx
 export const error = (...args: ReadonlyArray<any>) => consoleWith((_) => _.error(...args))
 
 /** @internal */
-export const group = (options?: { label?: string; collapsed?: boolean }) =>
+export const group = (options?: {
+  label?: string | undefined
+  collapsed?: boolean | undefined
+}) =>
   consoleWith((_) =>
     fiberRuntime.acquireRelease(
       _.group(options),
@@ -107,11 +110,17 @@ export const warn = (...args: ReadonlyArray<any>) => consoleWith((_) => _.warn(.
 /** @internal */
 export const withGroup = dual<
   (
-    options?: { readonly label?: string; readonly collapsed?: boolean }
+    options?: {
+      readonly label?: string | undefined
+      readonly collapsed?: boolean | undefined
+    }
   ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(
     self: Effect.Effect<R, E, A>,
-    options?: { readonly label?: string; readonly collapsed?: boolean }
+    options?: {
+      readonly label?: string | undefined
+      readonly collapsed?: boolean | undefined
+    }
   ) => Effect.Effect<R, E, A>
 >((args) => core.isEffect(args[0]), (self, options) =>
   consoleWith((_) =>

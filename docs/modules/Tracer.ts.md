@@ -42,8 +42,8 @@ Added in v2.0.0
 export declare const externalSpan: (options: {
   readonly spanId: string
   readonly traceId: string
-  readonly sampled?: boolean | undefined
-  readonly context?: Context.Context<never> | undefined
+  readonly sampled?: boolean
+  readonly context?: Context.Context<never>
 }) => ExternalSpan
 ```
 

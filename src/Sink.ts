@@ -997,7 +997,9 @@ export const fromEffect: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => Sink<R, E,
  */
 export const fromPubSub: <In>(
   pubsub: PubSub.PubSub<In>,
-  options?: { readonly shutdown?: boolean }
+  options?: {
+    readonly shutdown?: boolean | undefined
+  }
 ) => Sink<never, never, In, never, void> = internal.fromPubSub
 
 /**
@@ -1023,7 +1025,9 @@ export const fromPush: <R, E, In, L, Z>(
  */
 export const fromQueue: <In>(
   queue: Queue.Enqueue<In>,
-  options?: { readonly shutdown?: boolean }
+  options?: {
+    readonly shutdown?: boolean | undefined
+  }
 ) => Sink<never, never, In, never, void> = internal.fromQueue
 
 /**
@@ -1180,12 +1184,16 @@ export const race: {
 export const raceBoth: {
   <R1, E1, In1, L1, Z1>(
     that: Sink<R1, E1, In1, L1, Z1>,
-    options?: { readonly capacity?: number }
+    options?: {
+      readonly capacity?: number | undefined
+    }
   ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R1, E1, In1, L1, Z1>,
-    options?: { readonly capacity?: number }
+    options?: {
+      readonly capacity?: number | undefined
+    }
   ): Sink<R | R1, E | E1, In & In1, L | L1, Either.Either<Z, Z1>>
 } = internal.raceBoth
 
@@ -1363,12 +1371,16 @@ export const withDuration: <R, E, In, L, Z>(
 export const zip: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, [Z, Z2]>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): Sink<R | R2, E | E2, In & In2, L | L2, [Z, Z2]>
 } = internal.zip
 
@@ -1381,12 +1393,16 @@ export const zip: {
 export const zipLeft: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z>
 } = internal.zipLeft
 
@@ -1399,12 +1415,16 @@ export const zipLeft: {
 export const zipRight: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z2>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z2>
 } = internal.zipRight
 
@@ -1420,12 +1440,16 @@ export const zipWith: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
     that: Sink<R2, E2, In2, L2, Z2>,
     f: (z: Z, z1: Z2) => Z3,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z3>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
     f: (z: Z, z1: Z2) => Z3,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z3>
 } = internal.zipWith

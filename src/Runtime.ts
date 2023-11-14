@@ -55,8 +55,8 @@ export interface Runtime<R> extends Pipeable {
  * @category models
  */
 export interface RunForkOptions {
-  readonly scheduler?: Scheduler
-  readonly updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  readonly scheduler?: Scheduler | undefined
+  readonly updateRefs?: ((refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs) | undefined
 }
 
 /**
@@ -68,8 +68,7 @@ export interface RunForkOptions {
  */
 export const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A> =
-  internal.unsafeFork
+) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions) => Fiber.RuntimeFiber<E, A> = internal.unsafeFork
 
 /**
  * Executes the effect synchronously returning the exit.
