@@ -60,7 +60,7 @@ export type Op<Tag extends string, Body = {}> = Config.Config<never> & Body & {
 export interface Constant extends
   Op<OpCodes.OP_CONSTANT, {
     readonly value: unknown
-    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
+    readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -85,7 +85,7 @@ export interface Fallback extends
 export interface Fail extends
   Op<OpCodes.OP_FAIL, {
     readonly message: string
-    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
+    readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -116,7 +116,7 @@ export interface Nested extends
 export interface Primitive extends
   Op<OpCodes.OP_PRIMITIVE, {
     readonly description: string
-    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
+    readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, unknown>
   }>
 {}
 

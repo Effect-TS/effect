@@ -38,50 +38,50 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * supervisor. This value may change over time, reflecting what the supervisor
    * produces as it supervises fibers.
    */
-  value(): Effect.Effect<never, never, T>
+  readonly value: () => Effect.Effect<never, never, T>
 
   /**
    * Supervises the start of a `Fiber`.
    */
-  onStart<R, E, A>(
+  readonly onStart: <R, E, A>(
     context: Context.Context<R>,
     effect: Effect.Effect<R, E, A>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
-  ): void
+  ) => void
 
   /**
    * Supervises the end of a `Fiber`.
    */
-  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void
+  readonly onEnd: <E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>) => void
 
   /**
    * Supervises the execution of an `Effect` by a `Fiber`.
    */
-  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void
+  readonly onEffect: <E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>) => void
 
   /**
    * Supervises the suspension of a computation running within a `Fiber`.
    */
-  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void
+  readonly onSuspend: <E, A>(fiber: Fiber.RuntimeFiber<E, A>) => void
 
   /**
    * Supervises the resumption of a computation running within a `Fiber`.
    */
-  onResume<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void
+  readonly onResume: <E, A>(fiber: Fiber.RuntimeFiber<E, A>) => void
 
   /**
    * Maps this supervisor to another one, which has the same effect, but whose
    * value has been transformed by the specified function.
    */
-  map<B>(f: (a: T) => B): Supervisor<B>
+  readonly map: <B>(f: (a: T) => B) => Supervisor<B>
 
   /**
    * Returns a new supervisor that performs the function of this supervisor, and
    * the function of the specified supervisor, producing a tuple of the outputs
    * produced by both supervisors.
    */
-  zip<A>(right: Supervisor<A>): Supervisor<[T, A]>
+  readonly zip: <A>(right: Supervisor<A>) => Supervisor<[T, A]>
 }
 
 /**

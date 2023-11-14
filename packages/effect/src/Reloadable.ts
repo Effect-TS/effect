@@ -35,7 +35,7 @@ export interface Reloadable<A> extends Reloadable.Variance<A> {
   /**
    * @internal
    */
-  reload(): Effect.Effect<never, unknown, void>
+  readonly reload: () => Effect.Effect<never, unknown, void>
 }
 
 /**

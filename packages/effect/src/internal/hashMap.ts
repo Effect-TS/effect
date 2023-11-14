@@ -35,10 +35,10 @@ interface VisitResult<K, V, A> {
 
 /** @internal */
 export interface HashMapImpl<K, V> extends HM.HashMap<K, V> {
-  _editable: boolean
-  _edit: number
-  _root: Node.Node<K, V>
-  _size: number
+  _editable: boolean // mutable by design
+  _edit: number // mutable by design
+  _root: Node.Node<K, V> // mutable by design
+  _size: number // mutable by design
 }
 
 const HashMapProto: HM.HashMap<unknown, unknown> = {

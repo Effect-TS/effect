@@ -18,22 +18,22 @@ import * as queue from "./queue.js"
 /** @internal */
 export interface AtomicPubSub<A> {
   readonly capacity: number
-  isEmpty(): boolean
-  isFull(): boolean
-  size(): number
-  publish(value: A): boolean
-  publishAll(elements: Iterable<A>): Chunk.Chunk<A>
-  slide(): void
-  subscribe(): Subscription<A>
+  readonly isEmpty: () => boolean
+  readonly isFull: () => boolean
+  readonly size: () => number
+  readonly publish: (value: A) => boolean
+  readonly publishAll: (elements: Iterable<A>) => Chunk.Chunk<A>
+  readonly slide: () => void
+  readonly subscribe: () => Subscription<A>
 }
 
 /** @internal */
 interface Subscription<A> {
-  isEmpty(): boolean
-  size(): number
-  poll<D>(default_: D): A | D
-  pollUpTo(n: number): Chunk.Chunk<A>
-  unsubscribe(): void
+  readonly isEmpty: () => boolean
+  readonly size: () => number
+  readonly poll: <D>(default_: D) => A | D
+  readonly pollUpTo: (n: number) => Chunk.Chunk<A>
+  readonly unsubscribe: () => void
 }
 
 /** @internal */
@@ -1232,48 +1232,48 @@ export interface PubSubStrategy<A> {
   /**
    * Describes any finalization logic associated with this strategy.
    */
-  shutdown(): Effect.Effect<never, never, void>
+  readonly shutdown: () => Effect.Effect<never, never, void>
 
   /**
    * Describes how publishers should signal to subscribers that they are
    * waiting for space to become available in the `PubSub`.
    */
-  handleSurplus(
+  readonly handleSurplus: (
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>
-  ): Effect.Effect<never, never, boolean>
+  ) => Effect.Effect<never, never, boolean>
 
   /**
    * Describes how subscribers should signal to publishers waiting for space
    * to become available in the `PubSub` that space may be available.
    */
-  unsafeOnPubSubEmptySpace(
+  readonly unsafeOnPubSubEmptySpace: (
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>
-  ): void
+  ) => void
 
   /**
    * Describes how subscribers waiting for additional values from the `PubSub`
    * should take those values and signal to publishers that they are no
    * longer waiting for additional values.
    */
-  unsafeCompletePollers(
+  readonly unsafeCompletePollers: (
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
     pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
-  ): void
+  ) => void
 
   /**
    * Describes how publishers should signal to subscribers waiting for
    * additional values from the `PubSub` that new values are available.
    */
-  unsafeCompleteSubscribers(
+  readonly unsafeCompleteSubscribers: (
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>
-  ): void
+  ) => void
 }
 
 /**

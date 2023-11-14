@@ -294,7 +294,7 @@ export interface OpTag extends Op<OpCodes.OP_TAG, {}> {}
 
 export interface Commit extends
   Op<OpCodes.OP_COMMIT, {
-    commit(): Effect.Effect<unknown, unknown, unknown>
+    readonly commit: () => Effect.Effect<unknown, unknown, unknown>
   }>
 {}
 
@@ -1952,7 +1952,7 @@ export type ReleaseMapState = {
 
 /** @internal */
 export interface ReleaseMap {
-  state: ReleaseMapState
+  state: ReleaseMapState // mutable by design
 }
 
 /* @internal */

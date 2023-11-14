@@ -133,7 +133,7 @@ export interface Unsupported extends ConfigError.Proto {
  * @category models
  */
 export interface Options {
-  pathDelim: string
+  readonly pathDelim: string
 }
 
 /**
