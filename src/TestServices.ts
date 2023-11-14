@@ -142,7 +142,7 @@ export const supervisedFibers = (): Effect.Effect<
   never,
   never,
   SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
-> => annotationsWith((annotations) => annotations.supervisedFibers())
+> => annotationsWith((annotations) => annotations.supervisedFibers)
 
 /**
  * Retrieves the `Live` service for this test and uses it to run the specified

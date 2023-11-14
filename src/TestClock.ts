@@ -250,7 +250,7 @@ export class TestClockImpl implements TestClock {
    * Returns a set of all fibers in this test.
    */
   supervisedFibers(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
-    return this.annotations.supervisedFibers()
+    return this.annotations.supervisedFibers
   }
   /**
    * Captures a "snapshot" of the identifier and status of all fibers in this
