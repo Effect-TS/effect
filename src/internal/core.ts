@@ -1952,7 +1952,7 @@ export type ReleaseMapState = {
 
 /** @internal */
 export interface ReleaseMap {
-  state: ReleaseMapState
+  state: ReleaseMapState // mutable by design
 }
 
 /* @internal */
