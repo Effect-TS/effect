@@ -104,7 +104,7 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     )
   }
 
-  close(): Effect.Effect<never, never, unknown> {
+  get close(): Effect.Effect<never, never, unknown> {
     return Effect.fiberIdWith((fiberId) => this.error(Cause.interrupt(fiberId)))
   }
 
@@ -198,7 +198,7 @@ class SingleProducerAsyncInputImpl<Err, Elem, Done>
     )
   }
 
-  take(): Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>> {
+  get take(): Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>> {
     return this.takeWith(
       (cause) => Exit.failCause(Cause.map(cause, Either.left)),
       (elem) => Exit.succeed(elem) as Exit.Exit<Either.Either<Err, Done>, Elem>,

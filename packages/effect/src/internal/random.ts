@@ -26,20 +26,20 @@ class RandomImpl implements Random.Random {
     this.PRNG = new PCGRandom.PCGRandom(seed)
   }
 
-  next(): Effect.Effect<never, never, number> {
+  get next(): Effect.Effect<never, never, number> {
     return core.sync(() => this.PRNG.number())
   }
 
-  nextBoolean(): Effect.Effect<never, never, boolean> {
-    return core.map(this.next(), (n) => n > 0.5)
+  get nextBoolean(): Effect.Effect<never, never, boolean> {
+    return core.map(this.next, (n) => n > 0.5)
   }
 
-  nextInt(): Effect.Effect<never, never, number> {
+  get nextInt(): Effect.Effect<never, never, number> {
     return core.sync(() => this.PRNG.integer(Number.MAX_SAFE_INTEGER))
   }
 
   nextRange(min: number, max: number): Effect.Effect<never, never, number> {
-    return core.map(this.next(), (n) => (max - min) * n + min)
+    return core.map(this.next, (n) => (max - min) * n + min)
   }
 
   nextIntBetween(min: number, max: number): Effect.Effect<never, never, number> {

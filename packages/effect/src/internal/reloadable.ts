@@ -45,7 +45,7 @@ export const auto = <Out extends Context.Tag<any, any>, In, E, R>(
       core.tap((reloadable) =>
         fiberRuntime.acquireRelease(
           pipe(
-            reloadable.reload(),
+            reloadable.reload,
             effect.ignoreLogged,
             _schedule.schedule_Effect(options.schedule),
             fiberRuntime.forkDaemon
@@ -110,11 +110,10 @@ export const manual = <Out extends Context.Tag<any, any>, In, E>(
           core.map((ref) => ({
             [ReloadableTypeId]: reloadableVariance,
             scopedRef: ref,
-            reload: () =>
-              pipe(
-                scopedRef.set(ref, pipe(_layer.build(options.layer), core.map(Context.unsafeGet(tag)))),
-                core.provideContext(env)
-              )
+            reload: pipe(
+              scopedRef.set(ref, pipe(_layer.build(options.layer), core.map(Context.unsafeGet(tag)))),
+              core.provideContext(env)
+            )
           }))
         )
       )
@@ -148,7 +147,7 @@ export const reload = <T extends Context.Tag<any, any>>(
 ): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
   core.flatMap(
     reloadableTag(tag),
-    (reloadable) => reloadable.reload()
+    (reloadable) => reloadable.reload
   )
 
 /** @internal */
@@ -157,7 +156,7 @@ export const reloadFork = <T extends Context.Tag<any, any>>(
 ): Effect.Effect<Reloadable.Reloadable<Context.Tag.Identifier<T>>, unknown, void> =>
   core.flatMap(reloadableTag(tag), (reloadable) =>
     pipe(
-      reloadable.reload(),
+      reloadable.reload,
       effect.ignoreLogged,
       fiberRuntime.forkDaemon,
       core.asUnit

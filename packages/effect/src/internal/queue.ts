@@ -74,7 +74,7 @@ class QueueImpl<A> implements Queue.Queue<A> {
     return this.queue.capacity()
   }
 
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return core.suspend(() => core.catchAll(this.unsafeSize(), () => core.interrupt))
   }
 
@@ -89,15 +89,15 @@ class QueueImpl<A> implements Queue.Queue<A> {
     )
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
-    return core.map(this.size(), (size) => size <= 0)
+  get isEmpty(): Effect.Effect<never, never, boolean> {
+    return core.map(this.size, (size) => size <= 0)
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
-    return core.map(this.size(), (size) => size >= this.capacity())
+  get isFull(): Effect.Effect<never, never, boolean> {
+    return core.map(this.size, (size) => size >= this.capacity())
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.uninterruptible(
       core.withFiberRuntime<never, never, void>((state) => {
         pipe(this.shutdownFlag, MutableRef.set(true))
@@ -107,7 +107,7 @@ class QueueImpl<A> implements Queue.Queue<A> {
             (d) => core.deferredInterruptWith(d, state.id()),
             false
           ),
-          core.zipRight(this.strategy.shutdown()),
+          core.zipRight(this.strategy.shutdown),
           core.whenEffect(core.deferredSucceed(this.shutdownHook, void 0)),
           core.asUnit
         )
@@ -115,11 +115,11 @@ class QueueImpl<A> implements Queue.Queue<A> {
     )
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  get isShutdown(): Effect.Effect<never, never, boolean> {
     return core.sync(() => MutableRef.get(this.shutdownFlag))
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  get awaitShutdown(): Effect.Effect<never, never, void> {
     return core.deferredAwait(this.shutdownHook)
   }
 
@@ -214,7 +214,7 @@ class QueueImpl<A> implements Queue.Queue<A> {
     })
   }
 
-  take(): Effect.Effect<never, never, A> {
+  get take(): Effect.Effect<never, never, A> {
     return core.withFiberRuntime<never, never, A>((state) => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -245,7 +245,7 @@ class QueueImpl<A> implements Queue.Queue<A> {
     })
   }
 
-  takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  get takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
     return core.suspend(() => {
       return MutableRef.get(this.shutdownFlag)
         ? core.interrupt
@@ -416,27 +416,27 @@ export const backingQueueFromMutableQueue = <A>(mutable: MutableQueue.MutableQue
 export const capacity = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): number => self.capacity()
 
 /** @internal */
-export const size = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): Effect.Effect<never, never, number> => self.size()
+export const size = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): Effect.Effect<never, never, number> => self.size
 
 /** @internal */
 export const isFull = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): Effect.Effect<never, never, boolean> =>
-  self.isFull()
+  self.isFull
 
 /** @internal */
 export const isEmpty = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): Effect.Effect<never, never, boolean> =>
-  self.isEmpty()
+  self.isEmpty
 
 /** @internal */
 export const isShutdown = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): Effect.Effect<never, never, boolean> =>
-  self.isShutdown()
+  self.isShutdown
 
 /** @internal */
 export const awaitShutdown = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): Effect.Effect<never, never, void> =>
-  self.awaitShutdown()
+  self.awaitShutdown
 
 /** @internal */
 export const shutdown = <A>(self: Queue.Dequeue<A> | Queue.Enqueue<A>): Effect.Effect<never, never, void> =>
-  self.shutdown()
+  self.shutdown
 
 /** @internal */
 export const offer = dual<
@@ -466,10 +466,10 @@ export const poll = <A>(self: Queue.Dequeue<A>): Effect.Effect<never, never, Opt
   core.map(self.takeUpTo(1), Chunk.head)
 
 /** @internal */
-export const take = <A>(self: Queue.Dequeue<A>): Effect.Effect<never, never, A> => self.take()
+export const take = <A>(self: Queue.Dequeue<A>): Effect.Effect<never, never, A> => self.take
 
 /** @internal */
-export const takeAll = <A>(self: Queue.Dequeue<A>): Effect.Effect<never, never, Chunk.Chunk<A>> => self.takeAll()
+export const takeAll = <A>(self: Queue.Dequeue<A>): Effect.Effect<never, never, Chunk.Chunk<A>> => self.takeAll
 
 /** @internal */
 export const takeUpTo = dual<
@@ -523,7 +523,7 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
     }
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return pipe(
       core.fiberId,
       core.flatMap((fiberId) =>
@@ -612,7 +612,7 @@ class DroppingStrategy<A> implements Queue.Strategy<A> {
     return 0
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }
 
@@ -644,7 +644,7 @@ class SlidingStrategy<A> implements Queue.Strategy<A> {
     return 0
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }
 

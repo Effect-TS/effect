@@ -219,7 +219,7 @@ export const ensuringChildren = dual<
   core.flatMap(supervisor.track, (supervisor) =>
     pipe(
       supervised(self, supervisor),
-      fiberRuntime.ensuring(core.flatMap(supervisor.value(), children))
+      fiberRuntime.ensuring(core.flatMap(supervisor.value, children))
     )))
 
 /** @internal */
@@ -477,11 +477,11 @@ export const timeoutTo = dual<
       {
         onSelfWin: (winner, loser) =>
           core.flatMap(
-            winner.await(),
+            winner.await,
             (exit) => {
               if (exit._tag === "Success") {
                 return core.flatMap(
-                  winner.inheritAll(),
+                  winner.inheritAll,
                   () =>
                     core.as(
                       core.interruptAsFiber(loser, parentFiberId),
@@ -498,11 +498,11 @@ export const timeoutTo = dual<
           ),
         onOtherWin: (winner, loser) =>
           core.flatMap(
-            winner.await(),
+            winner.await,
             (exit) => {
               if (exit._tag === "Success") {
                 return core.flatMap(
-                  winner.inheritAll(),
+                  winner.inheritAll,
                   () =>
                     core.as(
                       core.interruptAsFiber(loser, parentFiberId),
@@ -628,39 +628,36 @@ export const zipWithFiber = dual<
 >(3, (self, that, f) => ({
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => pipe(self.id(), FiberId.getOrElse(that.id())),
-  await: () =>
-    pipe(
-      self.await(),
-      core.flatten,
-      fiberRuntime.zipWithOptions(core.flatten(that.await()), f, { concurrent: true }),
-      core.exit
-    ),
-  children: () => self.children(),
-  inheritAll: () =>
-    core.zipRight(
-      that.inheritAll(),
-      self.inheritAll()
-    ),
-  poll: () =>
-    core.zipWith(
-      self.poll(),
-      that.poll(),
-      (optionA, optionB) =>
-        pipe(
-          optionA,
-          Option.flatMap((exitA) =>
-            pipe(
-              optionB,
-              Option.map((exitB) =>
-                Exit.zipWith(exitA, exitB, {
-                  onSuccess: f,
-                  onFailure: internalCause.parallel
-                })
-              )
+  await: pipe(
+    self.await,
+    core.flatten,
+    fiberRuntime.zipWithOptions(core.flatten(that.await), f, { concurrent: true }),
+    core.exit
+  ),
+  children: self.children,
+  inheritAll: core.zipRight(
+    that.inheritAll,
+    self.inheritAll
+  ),
+  poll: core.zipWith(
+    self.poll,
+    that.poll,
+    (optionA, optionB) =>
+      pipe(
+        optionA,
+        Option.flatMap((exitA) =>
+          pipe(
+            optionB,
+            Option.map((exitB) =>
+              Exit.zipWith(exitA, exitB, {
+                onSuccess: f,
+                onFailure: internalCause.parallel
+              })
             )
           )
         )
-    ),
+      )
+  ),
   interruptAsFork: (id) =>
     core.zipRight(
       self.interruptAsFork(id),
