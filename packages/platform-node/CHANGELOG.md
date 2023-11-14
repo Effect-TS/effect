@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.31.0
+
+### Minor Changes
+
+- [#267](https://github.com/Effect-TS/platform/pull/267) [`3d38b40`](https://github.com/Effect-TS/platform/commit/3d38b40a939e32c6c0e8b62dd53a844a6f389182) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- Updated dependencies [[`3d38b40`](https://github.com/Effect-TS/platform/commit/3d38b40a939e32c6c0e8b62dd53a844a6f389182)]:
+  - @effect/platform@0.30.0
+
 ## 0.30.1
 
 ### Patch Changes

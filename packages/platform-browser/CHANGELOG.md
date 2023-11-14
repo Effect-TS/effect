@@ -1,5 +1,18 @@
 # @effect/platform-browser
 
+## 0.18.0
+
+### Minor Changes
+
+- [#267](https://github.com/Effect-TS/platform/pull/267) [`3d38b40`](https://github.com/Effect-TS/platform/commit/3d38b40a939e32c6c0e8b62dd53a844a6f389182) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#265](https://github.com/Effect-TS/platform/pull/265) [`6341f23`](https://github.com/Effect-TS/platform/commit/6341f23a6354c348dc8559a058f63d926164eeab) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure clipboard is accessed lazily
+
+- Updated dependencies [[`3d38b40`](https://github.com/Effect-TS/platform/commit/3d38b40a939e32c6c0e8b62dd53a844a6f389182)]:
+  - @effect/platform@0.30.0
+
 ## 0.17.1
 
 ### Patch Changes
