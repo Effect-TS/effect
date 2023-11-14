@@ -100,7 +100,7 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
   /**
    * Returns statistics for this cache.
    */
-  readonly cacheStats: () => Effect.Effect<never, never, CacheStats>
+  readonly cacheStats: Effect.Effect<never, never, CacheStats>
 
   /**
    * Returns whether a value associated with the specified key exists in the
@@ -126,27 +126,27 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
   /**
    * Invalidates all values in the cache.
    */
-  readonly invalidateAll: () => Effect.Effect<never, never, void>
+  readonly invalidateAll: Effect.Effect<never, never, void>
 
   /**
    * Returns the approximate number of values in the cache.
    */
-  readonly size: () => Effect.Effect<never, never, number>
+  readonly size: Effect.Effect<never, never, number>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  readonly keys: () => Effect.Effect<never, never, Array<Key>>
+  readonly keys: Effect.Effect<never, never, Array<Key>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  readonly values: () => Effect.Effect<never, never, Array<Value>>
+  readonly values: Effect.Effect<never, never, Array<Value>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  readonly entries: () => Effect.Effect<never, never, Array<[Key, Value]>>
+  readonly entries: Effect.Effect<never, never, Array<[Key, Value]>>
 }
 
 /**
