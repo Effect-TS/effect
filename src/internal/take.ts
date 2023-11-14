@@ -140,7 +140,7 @@ export const match = dual<
 export const matchEffect = dual<
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
+      readonly onEnd: Effect.Effect<R, E2, Z>
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
     }
@@ -148,7 +148,7 @@ export const matchEffect = dual<
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     self: Take.Take<E, A>,
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
+      readonly onEnd: Effect.Effect<R, E2, Z>
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
     }
@@ -156,7 +156,7 @@ export const matchEffect = dual<
 >(2, <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
   self: Take.Take<E, A>,
   { onEnd, onFailure, onSuccess }: {
-    readonly onEnd: () => Effect.Effect<R, E2, Z>
+    readonly onEnd: Effect.Effect<R, E2, Z>
     readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
     readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
   }
@@ -164,7 +164,7 @@ export const matchEffect = dual<
   Exit.matchEffect<Option.Option<E>, Chunk.Chunk<A>, R | R2, E | E2, Z | Z2, R3, E3, Z3>(self.exit, {
     onFailure: (cause) =>
       Option.match(Cause.flipCauseOption(cause), {
-        onNone: onEnd,
+        onNone: () => onEnd,
         onSome: onFailure
       }),
     onSuccess
