@@ -77,11 +77,11 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
     readonly ref: Ref.Ref<readonly [Option.Option<Out>, any]>
   ) {}
 
-  state(): Effect.Effect<never, never, unknown> {
+  get state(): Effect.Effect<never, never, unknown> {
     return core.map(ref.get(this.ref), (tuple) => tuple[1])
   }
 
-  last(): Effect.Effect<never, Cause.NoSuchElementException, Out> {
+  get last(): Effect.Effect<never, Cause.NoSuchElementException, Out> {
     return core.flatMap(ref.get(this.ref), ([element, _]) => {
       switch (element._tag) {
         case "None": {
@@ -94,7 +94,7 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
     })
   }
 
-  reset(): Effect.Effect<never, never, void> {
+  get reset(): Effect.Effect<never, never, void> {
     return ref.set(this.ref, [Option.none(), this.schedule.initial])
   }
 
@@ -1822,7 +1822,7 @@ const repeatOrElseEffectLoop = <R, E, A extends A0, A0, R1, B, R2, E2, C>(
   value: A
 ): Effect.Effect<R | R1 | R2, E2, B | C> => {
   return core.matchEffect(driver.next(value), {
-    onFailure: () => core.orDie(driver.last()),
+    onFailure: () => core.orDie(driver.last),
     onSuccess: (b) =>
       core.matchEffect(self, {
         onFailure: (error) => orElse(error, Option.some(b)),
@@ -1948,7 +1948,7 @@ const retryOrElse_EffectLoop = <R, E, A, R1, A1, R2, E2, A2>(
       core.matchEffect(driver.next(e), {
         onFailure: () =>
           pipe(
-            driver.last(),
+            driver.last,
             core.orDie,
             core.flatMap((out) => orElse(e, out))
           ),
@@ -2055,7 +2055,7 @@ const scheduleFrom_EffectLoop = <R, E, In, R2, Out>(
   driver: Schedule.ScheduleDriver<R2, In, Out>
 ): Effect.Effect<R | R2, E, Out> =>
   core.matchEffect(driver.next(initial), {
-    onFailure: () => core.orDie(driver.last()),
+    onFailure: () => core.orDie(driver.last),
     onSuccess: () => core.flatMap(self, (a) => scheduleFrom_EffectLoop(self, a, driver))
   })
 

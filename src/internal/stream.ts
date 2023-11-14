@@ -4968,11 +4968,11 @@ export const repeatElementsWith = dual<
             never,
             Channel.Channel<R2, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<C>, void>
           > = pipe(
-            driver.last(),
+            driver.last,
             Effect.orDie,
             Effect.flatMap((b) =>
               pipe(
-                driver.reset(),
+                driver.reset,
                 Effect.map(() =>
                   pipe(
                     core.write(Chunk.of(options.onSchedule(b))),
@@ -5033,7 +5033,7 @@ export const repeatWith = dual<
     return pipe(
       Schedule.driver(schedule),
       Effect.map((driver) => {
-        const scheduleOutput = pipe(driver.last(), Effect.orDie, Effect.map(options.onSchedule))
+        const scheduleOutput = pipe(driver.last, Effect.orDie, Effect.map(options.onSchedule))
         const process = pipe(self, map(options.onElement), toChannel)
         const loop: Channel.Channel<R | R2, unknown, unknown, unknown, E, Chunk.Chunk<C>, void> = channel.unwrap(
           Effect.match(driver.next(void 0), {
@@ -5103,7 +5103,7 @@ export const retry = dual<
           unwrap(
             Effect.matchEffect(driver.next(error as E0), {
               onFailure: () => Effect.fail(error),
-              onSuccess: () => Effect.succeed(pipe(loop, tap(() => driver.reset())))
+              onSuccess: () => Effect.succeed(pipe(loop, tap(() => driver.reset)))
             })
           ))
         return loop
@@ -5593,7 +5593,7 @@ export const scheduleWith = dual<
         Effect.matchEffect(driver.next(next.value as A0), {
           onFailure: () =>
             pipe(
-              driver.last(),
+              driver.last,
               Effect.orDie,
               Effect.map((b) =>
                 pipe(
@@ -5601,7 +5601,7 @@ export const scheduleWith = dual<
                   core.flatMap(() => loop(driver, iterator))
                 )
               ),
-              Effect.zipLeft(driver.reset())
+              Effect.zipLeft(driver.reset)
             ),
           onSuccess: () =>
             Effect.succeed(pipe(

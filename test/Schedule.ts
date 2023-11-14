@@ -828,7 +828,7 @@ const runCollectLoop = <Env, In, Out>(
   return driver.next(head).pipe(
     Effect.matchEffect({
       onFailure: () =>
-        driver.last().pipe(
+        driver.last.pipe(
           Effect.match({
             onFailure: () => acc,
             onSuccess: (b) => Chunk.append(acc, b)
