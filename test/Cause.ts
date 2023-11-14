@@ -10,6 +10,37 @@ import * as fc from "fast-check"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Cause", () => {
+  it("exception constructors should respect `exactOptionalPropertyTypes: true` when creating `message` prop", () => {
+    expect(Cause.IllegalArgumentException()).toStrictEqual({
+      "_tag": "IllegalArgumentException"
+    })
+    expect(Cause.IllegalArgumentException("mymessage")).toStrictEqual({
+      "_tag": "IllegalArgumentException",
+      "message": "mymessage"
+    })
+    expect(Cause.InterruptedException()).toStrictEqual({
+      "_tag": "InterruptedException"
+    })
+    expect(Cause.InterruptedException("mymessage")).toStrictEqual({
+      "_tag": "InterruptedException",
+      "message": "mymessage"
+    })
+    expect(Cause.NoSuchElementException()).toStrictEqual({
+      "_tag": "NoSuchElementException"
+    })
+    expect(Cause.NoSuchElementException("mymessage")).toStrictEqual({
+      "_tag": "NoSuchElementException",
+      "message": "mymessage"
+    })
+    expect(Cause.RuntimeException()).toStrictEqual({
+      "_tag": "RuntimeException"
+    })
+    expect(Cause.RuntimeException("mymessage")).toStrictEqual({
+      "_tag": "RuntimeException",
+      "message": "mymessage"
+    })
+  })
+
   it("[internal] prettyErrorMessage", () => {
     class Error1 {
       readonly _tag = "WithTag"
