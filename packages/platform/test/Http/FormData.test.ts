@@ -14,8 +14,8 @@ describe("FormData", () => {
       const parts = yield* _(
         Stream.fromReadableStream(() => response.body!, identity),
         Stream.pipeThroughChannel(FormData.makeChannel(Object.fromEntries(response.headers))),
-        Stream.mapEffect((part) =>
-          Effect.unified(
+        Stream.mapEffect((part) => {
+          return Effect.unified(
             part._tag === "File" ?
               Effect.zip(
                 Effect.succeed(part.name),
@@ -23,10 +23,11 @@ describe("FormData", () => {
               ) :
               Effect.succeed([part.key, part.value] as const)
           )
-        ),
+        }),
         Stream.runCollect
       )
 
+      console.log(parts)
       assert.deepStrictEqual(Chunk.toReadonlyArray(parts), [
         ["foo", "bar"],
         ["test", "ing"],

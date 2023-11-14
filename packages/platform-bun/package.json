@@ -35,11 +35,11 @@
     "@effect/platform-node": "workspace:*"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.54"
+    "effect": "2.0.0-next.55"
   },
   "devDependencies": {
-    "@effect/schema": "^0.47.6",
+    "@effect/schema": "^0.48.0",
     "bun-types": "^1.0.11",
-    "effect": "2.0.0-next.54"
+    "effect": "2.0.0-next.55"
   }
 }

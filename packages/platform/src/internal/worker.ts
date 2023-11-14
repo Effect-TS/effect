@@ -254,13 +254,13 @@ export const makePool = <W>() =>
       execute: (message: I) =>
         Stream.unwrap(
           Effect.map(
-            Effect.scoped(backing.get()),
+            Effect.scoped(backing.get),
             (worker) => worker.execute(message)
           )
         ),
       executeEffect: (message: I) =>
         Effect.flatMap(
-          Effect.scoped(backing.get()),
+          Effect.scoped(backing.get),
           (worker) => worker.executeEffect(message)
         )
     }
