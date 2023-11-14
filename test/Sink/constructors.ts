@@ -125,7 +125,7 @@ class QueueSpy<A> implements Queue.Queue<A> {
     return Queue.capacity(this.backingQueue)
   }
 
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return Queue.size(this.backingQueue)
   }
 
@@ -133,7 +133,7 @@ class QueueSpy<A> implements Queue.Queue<A> {
     return this.backingQueue.unsafeSize()
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  get awaitShutdown(): Effect.Effect<never, never, void> {
     return Queue.awaitShutdown(this.backingQueue)
   }
 
@@ -141,29 +141,29 @@ class QueueSpy<A> implements Queue.Queue<A> {
     return !this.isShutdownInternal
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  get isShutdown(): Effect.Effect<never, never, boolean> {
     return Effect.sync(() => this.isShutdownInternal)
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return Effect.sync(() => {
       this.isShutdownInternal = true
     })
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
+  get isFull(): Effect.Effect<never, never, boolean> {
     return Queue.isFull(this.backingQueue)
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
+  get isEmpty(): Effect.Effect<never, never, boolean> {
     return Queue.isEmpty(this.backingQueue)
   }
 
-  take(): Effect.Effect<never, never, A> {
+  get take(): Effect.Effect<never, never, A> {
     return Queue.take(this.backingQueue)
   }
 
-  takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  get takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
     return Queue.takeAll(this.backingQueue)
   }
 

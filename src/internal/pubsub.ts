@@ -101,22 +101,22 @@ export const unbounded = <A>(): Effect.Effect<never, never, PubSub.PubSub<A>> =>
 export const capacity = <A>(self: PubSub.PubSub<A>): number => self.capacity()
 
 /** @internal */
-export const size = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, number> => self.size()
+export const size = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, number> => self.size
 
 /** @internal */
-export const isFull = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isFull()
+export const isFull = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isFull
 
 /** @internal */
-export const isEmpty = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isEmpty()
+export const isEmpty = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isEmpty
 
 /** @internal */
-export const shutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.shutdown()
+export const shutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.shutdown
 
 /** @internal */
-export const isShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isShutdown()
+export const isShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, boolean> => self.isShutdown
 
 /** @internal */
-export const awaitShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.awaitShutdown()
+export const awaitShutdown = <A>(self: PubSub.PubSub<A>): Effect.Effect<never, never, void> => self.awaitShutdown
 
 /** @internal */
 export const publish = dual<
@@ -842,7 +842,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     return !MutableRef.get(this.shutdownFlag)
   }
 
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag)
         ? core.interrupt
@@ -857,15 +857,15 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     return Option.some(this.subscription.size())
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
-    return core.map(this.size(), (size) => size === this.capacity())
+  get isFull(): Effect.Effect<never, never, boolean> {
+    return core.map(this.size, (size) => size === this.capacity())
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
-    return core.map(this.size(), (size) => size === 0)
+  get isEmpty(): Effect.Effect<never, never, boolean> {
+    return core.map(this.size, (size) => size === 0)
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.uninterruptible(
       core.withFiberRuntime<never, never, void>((state) => {
         MutableRef.set(this.shutdownFlag, true)
@@ -887,15 +887,15 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     )
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  get isShutdown(): Effect.Effect<never, never, boolean> {
     return core.sync(() => MutableRef.get(this.shutdownFlag))
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  get awaitShutdown(): Effect.Effect<never, never, void> {
     return core.deferredAwait(this.shutdownHook)
   }
 
-  take(): Effect.Effect<never, never, A> {
+  get take(): Effect.Effect<never, never, A> {
     return core.withFiberRuntime<never, never, A>((state) => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -926,7 +926,7 @@ class SubscriptionImpl<A> implements Queue.Dequeue<A> {
     })
   }
 
-  takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
+  get takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>> {
     return core.suspend(() => {
       if (MutableRef.get(this.shutdownFlag)) {
         return core.interrupt
@@ -972,11 +972,11 @@ const takeRemainderLoop = <A>(
     core.flatMap((bs) => {
       const remaining = min - bs.length
       if (remaining === 1) {
-        return pipe(self.take(), core.map((b) => pipe(acc, Chunk.appendAll(bs), Chunk.append(b))))
+        return pipe(self.take, core.map((b) => pipe(acc, Chunk.appendAll(bs), Chunk.append(b))))
       }
       if (remaining > 1) {
         return pipe(
-          self.take(),
+          self.take,
           core.flatMap((b) =>
             takeRemainderLoop(
               self,
@@ -1010,7 +1010,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     return this.pubsub.capacity
   }
 
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return core.suspend(() =>
       MutableRef.get(this.shutdownFlag) ?
         core.interrupt :
@@ -1025,23 +1025,23 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
     return Option.some(this.pubsub.size())
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
-    return core.map(this.size(), (size) => size === this.capacity())
+  get isFull(): Effect.Effect<never, never, boolean> {
+    return core.map(this.size, (size) => size === this.capacity())
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
-    return core.map(this.size(), (size) => size === 0)
+  get isEmpty(): Effect.Effect<never, never, boolean> {
+    return core.map(this.size, (size) => size === 0)
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  get awaitShutdown(): Effect.Effect<never, never, void> {
     return core.deferredAwait(this.shutdownHook)
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  get isShutdown(): Effect.Effect<never, never, boolean> {
     return core.sync(() => MutableRef.get(this.shutdownFlag))
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.uninterruptible(core.withFiberRuntime<never, never, void>((state) => {
       pipe(this.shutdownFlag, MutableRef.set(true))
       return pipe(
@@ -1115,7 +1115,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
         this.scope.fork(executionStrategy.sequential),
         makeSubscription(this.pubsub, this.subscribers, this.strategy)
       ]),
-      (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown())
+      (tuple) => tuple[0].addFinalizer(() => tuple[1].shutdown)
     )
     return core.map(
       fiberRuntime.acquireRelease(acquire, (tuple, exit) => tuple[0].close(exit)),
