@@ -240,6 +240,13 @@ export const withMinimumLogLevel: {
 } = circular.withMinimumLogLevel
 
 /**
+ * @since 2.0.0
+ * @category tracing
+ */
+export const withSpanAnnotations: <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Output> =
+  fiberRuntime.loggerWithSpanAnnotations
+
+/**
  * Combines this logger with the specified logger to produce a new logger that
  * logs to both this logger and that logger.
  *
