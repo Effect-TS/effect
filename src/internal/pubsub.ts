@@ -1046,7 +1046,7 @@ class PubSubImpl<A> implements PubSub.PubSub<A> {
       pipe(this.shutdownFlag, MutableRef.set(true))
       return pipe(
         this.scope.close(core.exitInterrupt(state.id())),
-        core.zipRight(this.strategy.shutdown()),
+        core.zipRight(this.strategy.shutdown),
         core.whenEffect(core.deferredSucceed(this.shutdownHook, void 0)),
         core.asUnit
       )
@@ -1232,7 +1232,7 @@ export interface PubSubStrategy<A> {
   /**
    * Describes any finalization logic associated with this strategy.
    */
-  readonly shutdown: () => Effect.Effect<never, never, void>
+  readonly shutdown: Effect.Effect<never, never, void>
 
   /**
    * Describes how publishers should signal to subscribers that they are
@@ -1294,7 +1294,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
     ]
   > = MutableQueue.unbounded()
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.flatMap(core.fiberId, (fiberId) =>
       core.flatMap(
         core.sync(() => unsafePollAllQueue(this.publishers)),
@@ -1411,7 +1411,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
  * @internal
  */
 export class DroppingStrategy<A> implements PubSubStrategy<A> {
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }
 
@@ -1455,7 +1455,7 @@ export class DroppingStrategy<A> implements PubSubStrategy<A> {
  * @internal
  */
 export class SlidingStrategy<A> implements PubSubStrategy<A> {
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }
 

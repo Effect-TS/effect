@@ -292,6 +292,7 @@ export interface Failure extends
 /** @internal */
 export interface OpTag extends Op<OpCodes.OP_TAG, {}> {}
 
+/** @internal */
 export interface Commit extends
   Op<OpCodes.OP_COMMIT, {
     readonly commit: () => Effect.Effect<unknown, unknown, unknown>
