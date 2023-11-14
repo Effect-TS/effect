@@ -187,12 +187,12 @@ export const succeed: {
  * @since 2.0.0
  */
 export interface Listeners {
-  count: number
-  observers: Set<(count: number) => void>
-  addObserver(f: (count: number) => void): void
-  removeObserver(f: (count: number) => void): void
-  increment(): void
-  decrement(): void
+  readonly count: number
+  readonly observers: Set<(count: number) => void>
+  readonly addObserver: (f: (count: number) => void) => void
+  readonly removeObserver: (f: (count: number) => void) => void
+  readonly increment: () => void
+  readonly decrement: () => void
 }
 
 /**
