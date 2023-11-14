@@ -3,8 +3,8 @@
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
-import type { Covariant } from "./Covariant"
-import type { FlatMap } from "./FlatMap"
+import type { Covariant } from "./Covariant.js"
+import type { FlatMap } from "./FlatMap.js"
 
 /**
  * @category type class

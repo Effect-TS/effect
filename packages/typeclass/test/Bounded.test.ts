@@ -1,6 +1,7 @@
 import * as _ from "@effect/typeclass/Bounded"
 import * as Number from "effect/Number"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Bounded", () => {
   it("clamp", () => {

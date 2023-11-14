@@ -4,7 +4,8 @@ import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as Foldable from "@effect/typeclass/Foldable"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Foldable", () => {
   it("reduceComposition", () => {

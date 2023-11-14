@@ -8,7 +8,8 @@ import * as Boolean from "effect/Boolean"
 import * as Number from "effect/Number"
 import * as O from "effect/Option"
 import * as String from "effect/String"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Product", () => {
   describe.concurrent("tuple", () => {

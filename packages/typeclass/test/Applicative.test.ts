@@ -2,7 +2,8 @@ import * as applicative from "@effect/typeclass/Applicative"
 import * as NumberInstances from "@effect/typeclass/data/Number"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as Option from "effect/Option"
-import * as Util from "./util"
+import { describe, it } from "vitest"
+import * as Util from "./util.js"
 
 describe.concurrent("Applicative", () => {
   it("liftMonoid", () => {

@@ -2,7 +2,8 @@ import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/FlatMap"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("FlatMap", () => {
   it("flatten", () => {

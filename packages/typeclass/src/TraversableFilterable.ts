@@ -9,11 +9,11 @@ import { dual } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
 import type { Option } from "effect/Option"
 import * as O from "effect/Option"
-import type { Applicative } from "./Applicative"
-import type { Covariant } from "./Covariant"
-import * as filterable from "./Filterable"
-import type { Filterable } from "./Filterable"
-import type { Traversable } from "./Traversable"
+import type { Applicative } from "./Applicative.js"
+import type { Covariant } from "./Covariant.js"
+import * as filterable from "./Filterable.js"
+import type { Filterable } from "./Filterable.js"
+import type { Traversable } from "./Traversable.js"
 
 /**
  * @category models

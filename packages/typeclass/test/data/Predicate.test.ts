@@ -1,7 +1,8 @@
 import * as PredicatenIstances from "@effect/typeclass/data/Predicate"
 import { constFalse, constTrue } from "effect/Function"
 import type * as Predicate from "effect/Predicate"
-import * as Util from "../util"
+import { describe, expect, it } from "vitest"
+import * as Util from "../util.js"
 
 describe.concurrent("Option", () => {
   const isPositive: Predicate.Predicate<number> = (n) => n > 0

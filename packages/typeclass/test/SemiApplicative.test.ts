@@ -3,7 +3,8 @@ import * as StringInstances from "@effect/typeclass/data/String"
 import * as _ from "@effect/typeclass/SemiApplicative"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("SemiApplicative", () => {
   it("ap", () => {

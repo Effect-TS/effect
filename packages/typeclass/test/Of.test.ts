@@ -2,7 +2,8 @@ import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/Of"
 import * as O from "effect/Option"
 import * as RA from "effect/ReadonlyArray"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Of", () => {
   it("ofComposition", () => {

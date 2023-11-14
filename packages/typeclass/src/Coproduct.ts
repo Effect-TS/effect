@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 import type { Kind, TypeLambda } from "effect/HKT"
-import type { Monoid } from "./Monoid"
-import type { SemiCoproduct } from "./SemiCoproduct"
-import * as semiCoproduct from "./SemiCoproduct"
+import type { Monoid } from "./Monoid.js"
+import type { SemiCoproduct } from "./SemiCoproduct.js"
+import * as semiCoproduct from "./SemiCoproduct.js"
 
 /**
  * @category type class

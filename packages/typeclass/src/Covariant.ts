@@ -3,7 +3,7 @@
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
-import type { Invariant } from "./Invariant"
+import type { Invariant } from "./Invariant.js"
 
 /**
  * @category type class

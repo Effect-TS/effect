@@ -3,7 +3,7 @@
  */
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
-import type { Applicative } from "./Applicative"
+import type { Applicative } from "./Applicative.js"
 
 /**
  * @category type class

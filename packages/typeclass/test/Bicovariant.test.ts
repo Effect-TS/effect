@@ -3,7 +3,8 @@ import * as EitherInstances from "@effect/typeclass/data/Either"
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Bicovariant", () => {
   it("mapLeft", () => {

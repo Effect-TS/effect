@@ -1,5 +1,6 @@
 import * as NumberInstances from "@effect/typeclass/data/Number"
-import * as U from "../util"
+import { describe, it } from "vitest"
+import * as U from "../util.js"
 
 describe.concurrent("Number", () => {
   it("SemigroupMultiply", () => {

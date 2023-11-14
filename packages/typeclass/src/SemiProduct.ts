@@ -3,9 +3,9 @@
  */
 import { dual } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
-import type { Covariant } from "./Covariant"
-import type { Invariant } from "./Invariant"
-import type { SemiApplicative } from "./SemiApplicative"
+import type { Covariant } from "./Covariant.js"
+import type { Invariant } from "./Invariant.js"
+import type { SemiApplicative } from "./SemiApplicative.js"
 
 /**
  * @category type class

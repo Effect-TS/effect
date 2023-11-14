@@ -2,8 +2,10 @@
   "name": "@effect/typeclass",
   "version": "0.14.1",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "dist"
   },
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/effect-ts/typeclass.git"
@@ -24,331 +26,73 @@
     "typeclass"
   ],
   "scripts": {
-    "version": "changeset version",
-    "clean": "node scripts/clean.mjs",
-    "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
-    "gen": "build-utils prepare-v1",
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
+    "clean": "rimraf build dist coverage .tsbuildinfo",
     "dtslint": "dtslint dtslint",
     "dtslint-clean": "dtslint --installAll",
     "lint": "eslint . --ext .ts,.tsx",
-    "autofix": "pnpm lint --fix",
-    "tc": "tsc --noEmit",
-    "docs": "docgen",
+    "lint-fix": "pnpm lint --fix",
+    "check": "tsc -b tsconfig.json",
+    "docgen": "docgen",
     "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
     "test": "vitest",
-    "test-all": "npm run circular && npm run lint && npm run dtslint && vitest run",
     "coverage": "vitest run --coverage"
   },
-  "preconstruct": {
-    "distFilenameStrategy": "full",
-    "exports": {
-      "importConditionDefaultExport": "default"
-    },
-    "entrypoints": [
-      "*.ts",
-      "data/*.ts"
-    ]
-  },
   "effect": {
-    "generateIndex": false
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "data/*.ts"
+      ]
+    }
   },
+  "sideEffects": false,
   "peerDependencies": {
-    "effect": "2.0.0-next.54"
+    "effect": "2.0.0-next.55"
   },
   "devDependencies": {
-    "@babel/core": "^7.23.2",
-    "@babel/preset-typescript": "^7.23.2",
+    "@babel/cli": "^7.23.0",
+    "@babel/core": "^7.23.3",
+    "@babel/plugin-transform-export-namespace-from": "^7.23.3",
+    "@babel/plugin-transform-modules-commonjs": "^7.23.3",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
-    "@effect/build-utils": "^0.1.9",
-    "@effect/docgen": "^0.2.1",
+    "@effect/build-utils": "^0.4.1",
+    "@effect/docgen": "^0.3.2",
     "@effect/dtslint": "^0.0.3",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
-    "@preconstruct/cli": "^2.8.1",
-    "@types/chai": "^4.3.9",
-    "@types/node": "^20.8.10",
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "@typescript-eslint/parser": "^6.9.1",
+    "@types/chai": "^4.3.10",
+    "@types/node": "^20.9.0",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
+    "@typescript-eslint/parser": "^6.11.0",
     "@vitejs/plugin-react": "^4.1.1",
     "@vitest/coverage-v8": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.2",
-    "effect": "2.0.0-next.54",
+    "effect": "2.0.0-next.55",
     "error-stack-parser": "^2.1.4",
-    "eslint": "^8.52.0",
+    "eslint": "^8.53.0",
     "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-codegen": "0.17.0",
+    "eslint-plugin-codegen": "0.18.1",
     "eslint-plugin-deprecation": "^2.0.0",
     "eslint-plugin-import": "^2.29.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
     "fast-check": "^3.13.2",
     "madge": "^6.1.0",
-    "stackframe": "^1.3.4",
-    "ts-node": "^10.9.1",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.1.2",
     "typescript": "^5.2.2",
-    "vite": "^4.5.0",
     "vitest": "0.34.6"
   },
-  "files": [
-    "src",
-    "dist",
-    "Alternative",
-    "Applicative",
-    "Bicovariant",
-    "Bounded",
-    "Chainable",
-    "Contravariant",
-    "Coproduct",
-    "Covariant",
-    "Filterable",
-    "FlatMap",
-    "Foldable",
-    "Invariant",
-    "Monad",
-    "Monoid",
-    "Of",
-    "Pointed",
-    "Product",
-    "SemiAlternative",
-    "SemiApplicative",
-    "SemiCoproduct",
-    "SemiProduct",
-    "Semigroup",
-    "Traversable",
-    "TraversableFilterable",
-    "data"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-typeclass.esm.js",
-      "import": "./dist/effect-typeclass.cjs.mjs",
-      "default": "./dist/effect-typeclass.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./Alternative": {
-      "types": "./dist/declarations/src/Alternative.d.ts",
-      "module": "./Alternative/dist/effect-typeclass-Alternative.esm.js",
-      "import": "./Alternative/dist/effect-typeclass-Alternative.cjs.mjs",
-      "default": "./Alternative/dist/effect-typeclass-Alternative.cjs.js"
-    },
-    "./Applicative": {
-      "types": "./dist/declarations/src/Applicative.d.ts",
-      "module": "./Applicative/dist/effect-typeclass-Applicative.esm.js",
-      "import": "./Applicative/dist/effect-typeclass-Applicative.cjs.mjs",
-      "default": "./Applicative/dist/effect-typeclass-Applicative.cjs.js"
-    },
-    "./Bicovariant": {
-      "types": "./dist/declarations/src/Bicovariant.d.ts",
-      "module": "./Bicovariant/dist/effect-typeclass-Bicovariant.esm.js",
-      "import": "./Bicovariant/dist/effect-typeclass-Bicovariant.cjs.mjs",
-      "default": "./Bicovariant/dist/effect-typeclass-Bicovariant.cjs.js"
-    },
-    "./Bounded": {
-      "types": "./dist/declarations/src/Bounded.d.ts",
-      "module": "./Bounded/dist/effect-typeclass-Bounded.esm.js",
-      "import": "./Bounded/dist/effect-typeclass-Bounded.cjs.mjs",
-      "default": "./Bounded/dist/effect-typeclass-Bounded.cjs.js"
-    },
-    "./Chainable": {
-      "types": "./dist/declarations/src/Chainable.d.ts",
-      "module": "./Chainable/dist/effect-typeclass-Chainable.esm.js",
-      "import": "./Chainable/dist/effect-typeclass-Chainable.cjs.mjs",
-      "default": "./Chainable/dist/effect-typeclass-Chainable.cjs.js"
-    },
-    "./Contravariant": {
-      "types": "./dist/declarations/src/Contravariant.d.ts",
-      "module": "./Contravariant/dist/effect-typeclass-Contravariant.esm.js",
-      "import": "./Contravariant/dist/effect-typeclass-Contravariant.cjs.mjs",
-      "default": "./Contravariant/dist/effect-typeclass-Contravariant.cjs.js"
-    },
-    "./Coproduct": {
-      "types": "./dist/declarations/src/Coproduct.d.ts",
-      "module": "./Coproduct/dist/effect-typeclass-Coproduct.esm.js",
-      "import": "./Coproduct/dist/effect-typeclass-Coproduct.cjs.mjs",
-      "default": "./Coproduct/dist/effect-typeclass-Coproduct.cjs.js"
-    },
-    "./Covariant": {
-      "types": "./dist/declarations/src/Covariant.d.ts",
-      "module": "./Covariant/dist/effect-typeclass-Covariant.esm.js",
-      "import": "./Covariant/dist/effect-typeclass-Covariant.cjs.mjs",
-      "default": "./Covariant/dist/effect-typeclass-Covariant.cjs.js"
-    },
-    "./Filterable": {
-      "types": "./dist/declarations/src/Filterable.d.ts",
-      "module": "./Filterable/dist/effect-typeclass-Filterable.esm.js",
-      "import": "./Filterable/dist/effect-typeclass-Filterable.cjs.mjs",
-      "default": "./Filterable/dist/effect-typeclass-Filterable.cjs.js"
-    },
-    "./FlatMap": {
-      "types": "./dist/declarations/src/FlatMap.d.ts",
-      "module": "./FlatMap/dist/effect-typeclass-FlatMap.esm.js",
-      "import": "./FlatMap/dist/effect-typeclass-FlatMap.cjs.mjs",
-      "default": "./FlatMap/dist/effect-typeclass-FlatMap.cjs.js"
-    },
-    "./Foldable": {
-      "types": "./dist/declarations/src/Foldable.d.ts",
-      "module": "./Foldable/dist/effect-typeclass-Foldable.esm.js",
-      "import": "./Foldable/dist/effect-typeclass-Foldable.cjs.mjs",
-      "default": "./Foldable/dist/effect-typeclass-Foldable.cjs.js"
-    },
-    "./Invariant": {
-      "types": "./dist/declarations/src/Invariant.d.ts",
-      "module": "./Invariant/dist/effect-typeclass-Invariant.esm.js",
-      "import": "./Invariant/dist/effect-typeclass-Invariant.cjs.mjs",
-      "default": "./Invariant/dist/effect-typeclass-Invariant.cjs.js"
-    },
-    "./Monad": {
-      "types": "./dist/declarations/src/Monad.d.ts",
-      "module": "./Monad/dist/effect-typeclass-Monad.esm.js",
-      "import": "./Monad/dist/effect-typeclass-Monad.cjs.mjs",
-      "default": "./Monad/dist/effect-typeclass-Monad.cjs.js"
-    },
-    "./Monoid": {
-      "types": "./dist/declarations/src/Monoid.d.ts",
-      "module": "./Monoid/dist/effect-typeclass-Monoid.esm.js",
-      "import": "./Monoid/dist/effect-typeclass-Monoid.cjs.mjs",
-      "default": "./Monoid/dist/effect-typeclass-Monoid.cjs.js"
-    },
-    "./Of": {
-      "types": "./dist/declarations/src/Of.d.ts",
-      "module": "./Of/dist/effect-typeclass-Of.esm.js",
-      "import": "./Of/dist/effect-typeclass-Of.cjs.mjs",
-      "default": "./Of/dist/effect-typeclass-Of.cjs.js"
-    },
-    "./Pointed": {
-      "types": "./dist/declarations/src/Pointed.d.ts",
-      "module": "./Pointed/dist/effect-typeclass-Pointed.esm.js",
-      "import": "./Pointed/dist/effect-typeclass-Pointed.cjs.mjs",
-      "default": "./Pointed/dist/effect-typeclass-Pointed.cjs.js"
-    },
-    "./Product": {
-      "types": "./dist/declarations/src/Product.d.ts",
-      "module": "./Product/dist/effect-typeclass-Product.esm.js",
-      "import": "./Product/dist/effect-typeclass-Product.cjs.mjs",
-      "default": "./Product/dist/effect-typeclass-Product.cjs.js"
-    },
-    "./SemiAlternative": {
-      "types": "./dist/declarations/src/SemiAlternative.d.ts",
-      "module": "./SemiAlternative/dist/effect-typeclass-SemiAlternative.esm.js",
-      "import": "./SemiAlternative/dist/effect-typeclass-SemiAlternative.cjs.mjs",
-      "default": "./SemiAlternative/dist/effect-typeclass-SemiAlternative.cjs.js"
-    },
-    "./SemiApplicative": {
-      "types": "./dist/declarations/src/SemiApplicative.d.ts",
-      "module": "./SemiApplicative/dist/effect-typeclass-SemiApplicative.esm.js",
-      "import": "./SemiApplicative/dist/effect-typeclass-SemiApplicative.cjs.mjs",
-      "default": "./SemiApplicative/dist/effect-typeclass-SemiApplicative.cjs.js"
-    },
-    "./SemiCoproduct": {
-      "types": "./dist/declarations/src/SemiCoproduct.d.ts",
-      "module": "./SemiCoproduct/dist/effect-typeclass-SemiCoproduct.esm.js",
-      "import": "./SemiCoproduct/dist/effect-typeclass-SemiCoproduct.cjs.mjs",
-      "default": "./SemiCoproduct/dist/effect-typeclass-SemiCoproduct.cjs.js"
-    },
-    "./SemiProduct": {
-      "types": "./dist/declarations/src/SemiProduct.d.ts",
-      "module": "./SemiProduct/dist/effect-typeclass-SemiProduct.esm.js",
-      "import": "./SemiProduct/dist/effect-typeclass-SemiProduct.cjs.mjs",
-      "default": "./SemiProduct/dist/effect-typeclass-SemiProduct.cjs.js"
-    },
-    "./Semigroup": {
-      "types": "./dist/declarations/src/Semigroup.d.ts",
-      "module": "./Semigroup/dist/effect-typeclass-Semigroup.esm.js",
-      "import": "./Semigroup/dist/effect-typeclass-Semigroup.cjs.mjs",
-      "default": "./Semigroup/dist/effect-typeclass-Semigroup.cjs.js"
-    },
-    "./Traversable": {
-      "types": "./dist/declarations/src/Traversable.d.ts",
-      "module": "./Traversable/dist/effect-typeclass-Traversable.esm.js",
-      "import": "./Traversable/dist/effect-typeclass-Traversable.cjs.mjs",
-      "default": "./Traversable/dist/effect-typeclass-Traversable.cjs.js"
-    },
-    "./TraversableFilterable": {
-      "types": "./dist/declarations/src/TraversableFilterable.d.ts",
-      "module": "./TraversableFilterable/dist/effect-typeclass-TraversableFilterable.esm.js",
-      "import": "./TraversableFilterable/dist/effect-typeclass-TraversableFilterable.cjs.mjs",
-      "default": "./TraversableFilterable/dist/effect-typeclass-TraversableFilterable.cjs.js"
-    },
-    "./data/BigInt": {
-      "types": "./dist/declarations/src/data/BigInt.d.ts",
-      "module": "./data/BigInt/dist/effect-typeclass-data-BigInt.esm.js",
-      "import": "./data/BigInt/dist/effect-typeclass-data-BigInt.cjs.mjs",
-      "default": "./data/BigInt/dist/effect-typeclass-data-BigInt.cjs.js"
-    },
-    "./data/Boolean": {
-      "types": "./dist/declarations/src/data/Boolean.d.ts",
-      "module": "./data/Boolean/dist/effect-typeclass-data-Boolean.esm.js",
-      "import": "./data/Boolean/dist/effect-typeclass-data-Boolean.cjs.mjs",
-      "default": "./data/Boolean/dist/effect-typeclass-data-Boolean.cjs.js"
-    },
-    "./data/Duration": {
-      "types": "./dist/declarations/src/data/Duration.d.ts",
-      "module": "./data/Duration/dist/effect-typeclass-data-Duration.esm.js",
-      "import": "./data/Duration/dist/effect-typeclass-data-Duration.cjs.mjs",
-      "default": "./data/Duration/dist/effect-typeclass-data-Duration.cjs.js"
-    },
-    "./data/Either": {
-      "types": "./dist/declarations/src/data/Either.d.ts",
-      "module": "./data/Either/dist/effect-typeclass-data-Either.esm.js",
-      "import": "./data/Either/dist/effect-typeclass-data-Either.cjs.mjs",
-      "default": "./data/Either/dist/effect-typeclass-data-Either.cjs.js"
-    },
-    "./data/Identity": {
-      "types": "./dist/declarations/src/data/Identity.d.ts",
-      "module": "./data/Identity/dist/effect-typeclass-data-Identity.esm.js",
-      "import": "./data/Identity/dist/effect-typeclass-data-Identity.cjs.mjs",
-      "default": "./data/Identity/dist/effect-typeclass-data-Identity.cjs.js"
-    },
-    "./data/Number": {
-      "types": "./dist/declarations/src/data/Number.d.ts",
-      "module": "./data/Number/dist/effect-typeclass-data-Number.esm.js",
-      "import": "./data/Number/dist/effect-typeclass-data-Number.cjs.mjs",
-      "default": "./data/Number/dist/effect-typeclass-data-Number.cjs.js"
-    },
-    "./data/Option": {
-      "types": "./dist/declarations/src/data/Option.d.ts",
-      "module": "./data/Option/dist/effect-typeclass-data-Option.esm.js",
-      "import": "./data/Option/dist/effect-typeclass-data-Option.cjs.mjs",
-      "default": "./data/Option/dist/effect-typeclass-data-Option.cjs.js"
-    },
-    "./data/Ordering": {
-      "types": "./dist/declarations/src/data/Ordering.d.ts",
-      "module": "./data/Ordering/dist/effect-typeclass-data-Ordering.esm.js",
-      "import": "./data/Ordering/dist/effect-typeclass-data-Ordering.cjs.mjs",
-      "default": "./data/Ordering/dist/effect-typeclass-data-Ordering.cjs.js"
-    },
-    "./data/Predicate": {
-      "types": "./dist/declarations/src/data/Predicate.d.ts",
-      "module": "./data/Predicate/dist/effect-typeclass-data-Predicate.esm.js",
-      "import": "./data/Predicate/dist/effect-typeclass-data-Predicate.cjs.mjs",
-      "default": "./data/Predicate/dist/effect-typeclass-data-Predicate.cjs.js"
-    },
-    "./data/ReadonlyArray": {
-      "types": "./dist/declarations/src/data/ReadonlyArray.d.ts",
-      "module": "./data/ReadonlyArray/dist/effect-typeclass-data-ReadonlyArray.esm.js",
-      "import": "./data/ReadonlyArray/dist/effect-typeclass-data-ReadonlyArray.cjs.mjs",
-      "default": "./data/ReadonlyArray/dist/effect-typeclass-data-ReadonlyArray.cjs.js"
-    },
-    "./data/ReadonlyRecord": {
-      "types": "./dist/declarations/src/data/ReadonlyRecord.d.ts",
-      "module": "./data/ReadonlyRecord/dist/effect-typeclass-data-ReadonlyRecord.esm.js",
-      "import": "./data/ReadonlyRecord/dist/effect-typeclass-data-ReadonlyRecord.cjs.mjs",
-      "default": "./data/ReadonlyRecord/dist/effect-typeclass-data-ReadonlyRecord.cjs.js"
-    },
-    "./data/String": {
-      "types": "./dist/declarations/src/data/String.d.ts",
-      "module": "./data/String/dist/effect-typeclass-data-String.esm.js",
-      "import": "./data/String/dist/effect-typeclass-data-String.cjs.mjs",
-      "default": "./data/String/dist/effect-typeclass-data-String.cjs.js"
-    },
-    "./data/Tuple": {
-      "types": "./dist/declarations/src/data/Tuple.d.ts",
-      "module": "./data/Tuple/dist/effect-typeclass-data-Tuple.esm.js",
-      "import": "./data/Tuple/dist/effect-typeclass-data-Tuple.cjs.mjs",
-      "default": "./data/Tuple/dist/effect-typeclass-data-Tuple.cjs.js"
+  "pnpm": {
+    "overrides": {
+      "effect": "2.0.0-next.55"
     }
   }
 }

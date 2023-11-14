@@ -4,7 +4,8 @@ import * as _ from "@effect/typeclass/Filterable"
 import * as E from "effect/Either"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { assert, describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Filterable", () => {
   it("filterMapComposition", () => {

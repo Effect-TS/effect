@@ -3,8 +3,9 @@ import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
+import { describe, it } from "vitest"
 
-import * as U from "./util"
+import * as U from "./util.js"
 
 describe.concurrent("Covariant", () => {
   it("mapComposition", () => {

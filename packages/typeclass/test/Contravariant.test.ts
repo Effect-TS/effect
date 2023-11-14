@@ -3,7 +3,8 @@ import * as PredicateInstances from "@effect/typeclass/data/Predicate"
 import * as order from "effect/Order"
 import type * as P from "effect/Predicate"
 import * as S from "effect/String"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Contravariant", () => {
   it("mapComposition", () => {

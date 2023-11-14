@@ -3,7 +3,8 @@ import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as Util from "../util"
+import { describe, expect, it } from "vitest"
+import * as Util from "../util.js"
 
 describe.concurrent("Either", () => {
   it("Foldable.reduce", () => {

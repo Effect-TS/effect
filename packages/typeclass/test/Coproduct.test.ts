@@ -1,7 +1,8 @@
 import * as _ from "@effect/typeclass/Coproduct"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Coproduct", () => {
   it("getMonoid", () => {

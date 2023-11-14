@@ -3,7 +3,7 @@
  */
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
-import type { Covariant } from "./Covariant"
+import type { Covariant } from "./Covariant.js"
 
 /**
  * @category type class

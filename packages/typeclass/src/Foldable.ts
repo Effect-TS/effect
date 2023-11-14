@@ -4,9 +4,9 @@
 
 import { dual, identity } from "effect/Function"
 import type { Kind, TypeClass, TypeLambda } from "effect/HKT"
-import type { Coproduct } from "./Coproduct"
-import type { Monad } from "./Monad"
-import type { Monoid } from "./Monoid"
+import type { Coproduct } from "./Coproduct.js"
+import type { Monad } from "./Monad.js"
+import type { Monoid } from "./Monoid.js"
 
 /**
  * @category type class

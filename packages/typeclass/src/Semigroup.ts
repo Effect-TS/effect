@@ -4,10 +4,10 @@
 import { dual } from "effect/Function"
 import type { TypeLambda } from "effect/HKT"
 import type { Order } from "effect/Order"
-import { map, reduce } from "./internal/Iterable"
-import type * as invariant from "./Invariant"
-import * as product_ from "./Product"
-import type * as semiProduct from "./SemiProduct"
+import { map, reduce } from "./internal/Iterable.js"
+import type * as invariant from "./Invariant.js"
+import * as product_ from "./Product.js"
+import type * as semiProduct from "./SemiProduct.js"
 
 /**
  * @category type class

@@ -6,7 +6,8 @@ import * as Semigroup from "@effect/typeclass/Semigroup"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
 import * as String from "effect/String"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Invariant", () => {
   it("imapComposition", () => {

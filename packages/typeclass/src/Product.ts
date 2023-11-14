@@ -3,8 +3,8 @@
  */
 
 import type { Kind, TypeLambda } from "effect/HKT"
-import type { Of } from "./Of"
-import type { SemiProduct } from "./SemiProduct"
+import type { Of } from "./Of.js"
+import type { SemiProduct } from "./SemiProduct.js"
 
 /**
  * @category type class

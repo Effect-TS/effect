@@ -15,7 +15,8 @@ import * as O from "effect/Option"
 import * as P from "effect/Predicate"
 import type * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
-import * as U from "./util"
+import { describe, expect, it } from "vitest"
+import * as U from "./util.js"
 
 /**
  * @category do notation

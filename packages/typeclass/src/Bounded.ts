@@ -4,9 +4,9 @@
 import type { TypeLambda } from "effect/HKT"
 import * as order from "effect/Order"
 import type { Order } from "effect/Order"
-import type { Monoid } from "./Monoid"
-import * as monoid from "./Monoid"
-import * as semigroup from "./Semigroup"
+import type { Monoid } from "./Monoid.js"
+import * as monoid from "./Monoid.js"
+import * as semigroup from "./Semigroup.js"
 
 /**
  * @category type class
@@ -51,7 +51,7 @@ export const max = <A>(B: Bounded<A>): Monoid<A> =>
  * @since 1.0.0
  */
 export const between = <A>(B: Bounded<A>): (a: A) => boolean =>
-  order.between(B.compare)(B.minBound, B.maxBound)
+  order.between(B.compare)({ minimum: B.minBound, maximum: B.maxBound })
 
 /**
  * Clamp a value between `minBound` and `maxBound` values.
@@ -60,7 +60,7 @@ export const between = <A>(B: Bounded<A>): (a: A) => boolean =>
  * @since 1.0.0
  */
 export const clamp = <A>(B: Bounded<A>): (a: A) => A =>
-  order.clamp(B.compare)(B.minBound, B.maxBound)
+  order.clamp(B.compare)({ minimum: B.minBound, maximum: B.maxBound })
 
 /**
  * Reverses the `Order` of a `Bounded` and flips `maxBound` and `minBound` values.

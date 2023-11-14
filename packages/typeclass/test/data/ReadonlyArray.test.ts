@@ -1,4 +1,5 @@
 import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("ReadonlyArray", () => {
   it("Product.productAll", () => {

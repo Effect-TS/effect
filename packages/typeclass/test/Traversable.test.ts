@@ -3,7 +3,8 @@ import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as Traversable from "@effect/typeclass/Traversable"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Traversable", () => {
   it("traverseComposition", () => {

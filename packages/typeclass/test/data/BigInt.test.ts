@@ -1,5 +1,6 @@
 import * as BigintInstances from "@effect/typeclass/data/BigInt"
-import * as U from "../util"
+import { describe, it } from "vitest"
+import * as U from "../util.js"
 
 describe.concurrent("Bigint", () => {
   it("SemigroupMultiply", () => {

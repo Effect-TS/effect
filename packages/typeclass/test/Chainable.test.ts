@@ -2,7 +2,8 @@ import * as _ from "@effect/typeclass/Chainable"
 import * as OptionInstances from "@effect/typeclass/data/Option"
 import { pipe } from "effect/Function"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { describe, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Chainable", () => {
   it("andThenDiscard", () => {

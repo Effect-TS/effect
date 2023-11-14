@@ -4,7 +4,8 @@ import * as Semigroup from "@effect/typeclass/Semigroup"
 import { pipe } from "effect/Function"
 import * as Number from "effect/Number"
 import * as order from "effect/Order"
-import * as U from "./util"
+import { describe, expect, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("Semigroup", () => {
   it("exports", () => {

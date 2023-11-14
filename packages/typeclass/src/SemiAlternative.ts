@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import type { TypeLambda } from "effect/HKT"
-import type { Covariant } from "./Covariant"
-import type { SemiCoproduct } from "./SemiCoproduct"
+import type { Covariant } from "./Covariant.js"
+import type { SemiCoproduct } from "./SemiCoproduct.js"
 
 /**
  * @category type class

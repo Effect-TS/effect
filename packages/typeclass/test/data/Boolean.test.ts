@@ -1,5 +1,6 @@
 import * as BooleanInstances from "@effect/typeclass/data/Boolean"
-import * as U from "../util"
+import { describe, it } from "vitest"
+import * as U from "../util.js"
 
 describe.concurrent("Boolean", () => {
   it("SemigroupEvery", () => {

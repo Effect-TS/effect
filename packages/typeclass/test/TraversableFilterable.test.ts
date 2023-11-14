@@ -3,7 +3,8 @@ import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as _ from "@effect/typeclass/TraversableFilterable"
 import * as E from "effect/Either"
 import * as O from "effect/Option"
-import * as U from "./util"
+import { assert, describe, expect, it } from "vitest"
+import * as U from "./util.js"
 
 describe.concurrent("TraversableFilterable", () => {
   it("traversePartitionMap", () => {

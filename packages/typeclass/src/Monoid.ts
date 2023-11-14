@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Bounded } from "./Bounded"
-import type { Semigroup } from "./Semigroup"
-import * as semigroup from "./Semigroup"
+import type { Bounded } from "./Bounded.js"
+import type { Semigroup } from "./Semigroup.js"
+import * as semigroup from "./Semigroup.js"
 
 /**
  * @category type class

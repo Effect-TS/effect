@@ -3,8 +3,8 @@
  */
 
 import type { Kind, TypeLambda } from "effect/HKT"
-import type { Invariant } from "./Invariant"
-import type { Semigroup } from "./Semigroup"
+import type { Invariant } from "./Invariant.js"
+import type { Semigroup } from "./Semigroup.js"
 
 /**
  * @category type class

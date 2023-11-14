@@ -3,10 +3,10 @@
  */
 import { dual, identity, SK } from "effect/Function"
 import type { Kind, TypeLambda } from "effect/HKT"
-import type { Covariant } from "./Covariant"
-import type { Semigroup } from "./Semigroup"
-import * as semigroup from "./Semigroup"
-import type { SemiProduct } from "./SemiProduct"
+import type { Covariant } from "./Covariant.js"
+import type { Semigroup } from "./Semigroup.js"
+import * as semigroup from "./Semigroup.js"
+import type { SemiProduct } from "./SemiProduct.js"
 
 /**
  * @category type class
