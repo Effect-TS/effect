@@ -1768,7 +1768,7 @@ export const debounce = dual<
                 Effect.forkScoped,
                 Effect.as(pipe(
                   consumer(DebounceState.notStarted),
-                  core.embedInput<E, Chunk.Chunk<A>, unknown>(input)
+                  core.embedInput<E, Chunk.Chunk<A>, unknown>(input as any)
                 )),
                 channel.unwrapScoped
               )

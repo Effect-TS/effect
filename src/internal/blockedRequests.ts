@@ -56,7 +56,7 @@ export const single = <R, A>(
   blockedRequest: Request.Entry<A>
 ): RequestBlock.RequestBlock<R> => ({
   _tag: "Single",
-  dataSource,
+  dataSource: dataSource as any,
   blockedRequest
 })
 
@@ -67,7 +67,7 @@ export const MapRequestResolversReducer = <R, A, R2>(
   emptyCase: () => empty,
   parCase: (left, right) => par(left, right),
   seqCase: (left, right) => seq(left, right),
-  singleCase: (dataSource, blockedRequest) => single(f(dataSource), blockedRequest)
+  singleCase: (dataSource, blockedRequest) => single(f(dataSource), blockedRequest as any)
 })
 
 type BlockedRequestsCase = ParCase | SeqCase
@@ -371,7 +371,7 @@ export const parallelCollectionEmpty = <R>(): ParallelCollection<R> => new Paral
 export const parallelCollectionMake = <R, A>(
   dataSource: RequestResolver.RequestResolver<A, R>,
   blockedRequest: Request.Entry<A>
-): ParallelCollection<R> => new ParallelImpl(HashMap.make([dataSource, Array.of(blockedRequest)]))
+): ParallelCollection<R> => new ParallelImpl(HashMap.make([dataSource, Array.of(blockedRequest)]) as any)
 
 /** @internal */
 export const parallelCollectionCombine = <R, R2>(
@@ -433,7 +433,7 @@ export const sequentialCollectionMake = <R, A>(
     RequestResolver.RequestResolver<A, R>,
     Array<Array<Request.Entry<A>>>
   >
-): SequentialCollection<R> => new SequentialImpl(map)
+): SequentialCollection<R> => new SequentialImpl(map as any)
 
 /** @internal */
 export const sequentialCollectionCombine = <R, R2>(
