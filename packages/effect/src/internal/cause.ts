@@ -9,7 +9,7 @@ import * as HashSet from "../HashSet.js"
 import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isFunction, type Predicate } from "../Predicate.js"
+import { hasProperty, isFunction, isString, type Predicate } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import * as OpCodes from "./opCodes/cause.js"
 
@@ -996,14 +996,16 @@ const makeException = <T extends { _tag: string; message?: string }>(
       return `${this._tag}: ${this.message}`
     }
   }
-  return (message?: string): T =>
-    Object.create(protoWithToString, {
-      _tag,
-      message: {
+  return (message?: string): T => {
+    const properties: PropertyDescriptorMap = { _tag }
+    if (isString(message)) {
+      properties["message"] = {
         value: message,
         enumerable: true
       }
-    })
+    }
+    return Object.create(protoWithToString, properties)
+  }
 }
 
 /** @internal */
