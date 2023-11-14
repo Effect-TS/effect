@@ -136,55 +136,55 @@ export interface BaseQueue {
   /**
    * Returns the number of elements the queue can hold.
    */
-  capacity(): number
+  readonly capacity: () => number
 
   /**
    * Returns false if shutdown has been called.
    */
-  isActive(): boolean
+  readonly isActive: () => boolean
 
   /**
    * Retrieves the size of the queue, which is equal to the number of elements
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue.
    */
-  size(): Effect.Effect<never, never, number>
+  readonly size: () => Effect.Effect<never, never, number>
 
   /**
    * Retrieves the size of the queue, which is equal to the number of elements
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue. Returns None if shutdown has been called
    */
-  unsafeSize(): Option.Option<number>
+  readonly unsafeSize: () => Option.Option<number>
 
   /**
    * Returns `true` if the `Queue` contains at least one element, `false`
    * otherwise.
    */
-  isFull(): Effect.Effect<never, never, boolean>
+  readonly isFull: () => Effect.Effect<never, never, boolean>
 
   /**
    * Returns `true` if the `Queue` contains zero elements, `false` otherwise.
    */
-  isEmpty(): Effect.Effect<never, never, boolean>
+  readonly isEmpty: () => Effect.Effect<never, never, boolean>
 
   /**
    * Interrupts any fibers that are suspended on `offer` or `take`. Future calls
    * to `offer*` and `take*` will be interrupted immediately.
    */
-  shutdown(): Effect.Effect<never, never, void>
+  readonly shutdown: () => Effect.Effect<never, never, void>
 
   /**
    * Returns `true` if `shutdown` has been called, otherwise returns `false`.
    */
-  isShutdown(): Effect.Effect<never, never, boolean>
+  readonly isShutdown: () => Effect.Effect<never, never, boolean>
 
   /**
    * Waits until the queue is shutdown. The `Effect` returned by this method will
    * not resume until the queue has been shutdown. If the queue is already
    * shutdown, the `Effect` will resume right away.
    */
-  awaitShutdown(): Effect.Effect<never, never, void>
+  readonly awaitShutdown: () => Effect.Effect<never, never, void>
 }
 
 /**
