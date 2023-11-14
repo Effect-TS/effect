@@ -38,7 +38,7 @@ export type GenKindTypeId = typeof GenKindTypeId
 export interface GenKind<F extends TypeLambda, R, O, E, A> extends Variance<F, R, O, E> {
   readonly value: Kind<F, R, O, E, A>
 
-  [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A>
+  readonly [Symbol.iterator]: () => Generator<GenKind<F, R, O, E, A>, A>
 }
 
 /**
