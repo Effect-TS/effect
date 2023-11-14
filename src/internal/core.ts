@@ -294,7 +294,7 @@ export interface OpTag extends Op<OpCodes.OP_TAG, {}> {}
 
 export interface Commit extends
   Op<OpCodes.OP_COMMIT, {
-    readonly commit: () => Effect.Effect<unknown, unknown, unknown>
+    readonly commit: Effect.Effect<unknown, unknown, unknown>
   }>
 {}
 

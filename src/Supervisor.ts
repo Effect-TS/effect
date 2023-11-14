@@ -211,7 +211,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   map<B>(f: (a: T) => B): Supervisor<B> {
-    return new internal.ProxySupervisor(this, () => core.map(this.value, f))
+    return new internal.ProxySupervisor(this, core.map(this.value, f))
   }
 
   /**
