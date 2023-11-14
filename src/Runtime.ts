@@ -55,8 +55,8 @@ export interface Runtime<R> extends Pipeable {
  * @category models
  */
 export interface RunForkOptions {
-  scheduler?: Scheduler
-  updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  readonly scheduler?: Scheduler
+  readonly updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
 }
 
 /**

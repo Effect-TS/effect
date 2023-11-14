@@ -271,8 +271,8 @@ Added in v2.0.0
 
 ```ts
 export interface RunForkOptions {
-  scheduler?: Scheduler
-  updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  readonly scheduler?: Scheduler
+  readonly updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
 }
 ```
 

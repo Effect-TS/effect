@@ -17,7 +17,7 @@ export type Node<K, V> =
 
 /** @internal */
 export interface SizeRef {
-  value: number
+  value: number // mutable by design
 }
 
 /** @internal */

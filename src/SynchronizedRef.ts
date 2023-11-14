@@ -25,7 +25,7 @@ export type SynchronizedRefTypeId = typeof SynchronizedRefTypeId
  * @category models
  */
 export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref.Ref<A> {
-  modifyEffect: <R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>) => Effect.Effect<R, E, B>
+  readonly modifyEffect: <R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>) => Effect.Effect<R, E, B>
 }
 
 /**

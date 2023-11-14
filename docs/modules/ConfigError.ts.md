@@ -212,7 +212,7 @@ Added in v2.0.0
 
 ```ts
 export interface Options {
-  pathDelim: string
+  readonly pathDelim: string
 }
 ```
 

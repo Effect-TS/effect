@@ -16,7 +16,7 @@ export const symbol: unique symbol = Symbol.for("effect/Equal")
  * @category models
  */
 export interface Equal extends Hash.Hash {
-  [symbol](that: Equal): boolean
+  readonly [symbol]: (that: Equal) => boolean
 }
 
 /**

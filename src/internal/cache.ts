@@ -109,9 +109,9 @@ export type MapKeyTypeId = typeof MapKeyTypeId
  */
 export interface MapKey<K> extends Equal.Equal {
   readonly [MapKeyTypeId]: MapKeyTypeId
-  current: K
-  previous: MapKey<K> | undefined
-  next: MapKey<K> | undefined
+  readonly current: K
+  previous: MapKey<K> | undefined // mutable by design
+  next: MapKey<K> | undefined // mutable by design
 }
 
 class MapKeyImpl<K> implements MapKey<K> {
@@ -151,16 +151,16 @@ export const isMapKey = (u: unknown): u is MapKey<unknown> => hasProperty(u, Map
  * @internal
  */
 export interface KeySet<K> {
-  head: MapKey<K> | undefined
-  tail: MapKey<K> | undefined
+  head: MapKey<K> | undefined // mutable by design
+  tail: MapKey<K> | undefined // mutable by design
   /**
    * Adds the specified key to the set.
    */
-  add(key: MapKey<K>): void
+  readonly add: (key: MapKey<K>) => void
   /**
    * Removes the lowest priority key from the set.
    */
-  remove(): MapKey<K> | undefined
+  readonly remove: () => MapKey<K> | undefined
 }
 
 class KeySetImpl<K> implements KeySet<K> {
@@ -216,12 +216,12 @@ export const makeKeySet = <K>(): KeySet<K> => new KeySetImpl<K>()
  * @internal
  */
 export interface CacheState<Key, Error, Value> {
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>>
-  keys: KeySet<Key>
-  accesses: MutableQueue.MutableQueue<MapKey<Key>>
-  updating: MutableRef.MutableRef<boolean>
-  hits: number
-  misses: number
+  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>> // mutable by design
+  keys: KeySet<Key> // mutable by design
+  accesses: MutableQueue.MutableQueue<MapKey<Key>> // mutable by design
+  updating: MutableRef.MutableRef<boolean> // mutable by design
+  hits: number // mutable by design
+  misses: number // mutable by design
 }
 
 /**
@@ -477,11 +477,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     )
   }
 
-  set<Key, Error, Value>(
-    this: CacheImpl<Key, Error, Value>,
-    key: Key,
-    value: Value
-  ): Effect.Effect<never, never, void> {
+  set(key: Key, value: Value): Effect.Effect<never, never, void> {
     return effect.clockWith((clock) =>
       core.sync(() => {
         const now = clock.unsafeCurrentTimeMillis()
@@ -520,7 +516,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  entries<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect.Effect<never, never, Array<[Key, Value]>> {
+  entries(): Effect.Effect<never, never, Array<[Key, Value]>> {
     return core.sync(() => {
       const values: Array<[Key, Value]> = []
       for (const entry of this.cacheState.map) {
@@ -532,7 +528,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  keys<Key, Error, Value>(this: CacheImpl<Key, Error, Value>): Effect.Effect<never, never, Array<Key>> {
+  keys(): Effect.Effect<never, never, Array<Key>> {
     return core.sync(() => {
       const keys: Array<Key> = []
       for (const entry of this.cacheState.map) {
@@ -703,10 +699,10 @@ export const makeWith = <Key, Environment, Error, Value>(
 /** @internal */
 export const unsafeMakeWith = <Key, Error, Value>(
   capacity: number,
-  lookup: Cache.Lookup<never, Key, Error, Value>,
+  lookup: Cache.Lookup<Key, never, Error, Value>,
   timeToLive: (exit: Exit.Exit<Error, Value>) => Duration.DurationInput
 ): Cache.Cache<Key, Error, Value> =>
-  new CacheImpl(
+  new CacheImpl<Key, Error, Value>(
     capacity,
     Context.empty() as Context.Context<any>,
     none,

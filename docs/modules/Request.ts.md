@@ -146,7 +146,7 @@ export interface Entry<R> extends Entry.Variance<R> {
   readonly listeners: Listeners
   readonly ownerId: FiberId
   readonly state: {
-    completed: boolean
+    completed: boolean // TODO: mutable by design?
   }
 }
 ```
@@ -177,12 +177,12 @@ Added in v2.0.0
 
 ```ts
 export interface Listeners {
-  count: number
-  observers: Set<(count: number) => void>
-  addObserver(f: (count: number) => void): void
-  removeObserver(f: (count: number) => void): void
-  increment(): void
-  decrement(): void
+  readonly count: number
+  readonly observers: Set<(count: number) => void>
+  readonly addObserver: (f: (count: number) => void) => void
+  readonly removeObserver: (f: (count: number) => void) => void
+  readonly increment: () => void
+  readonly decrement: () => void
 }
 ```
 

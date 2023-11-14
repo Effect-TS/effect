@@ -70,7 +70,7 @@ Added in v2.0.0
 
 ```ts
 export interface Equal extends Hash.Hash {
-  [symbol](that: Equal): boolean
+  readonly [symbol]: (that: Equal) => boolean
 }
 ```
 

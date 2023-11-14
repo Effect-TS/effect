@@ -143,7 +143,7 @@ Added in v2.0.0
 
 ```ts
 export interface Hash {
-  [symbol](): number
+  readonly [symbol]: () => number
 }
 ```
 

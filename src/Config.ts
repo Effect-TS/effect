@@ -54,7 +54,7 @@ export declare namespace Config {
    */
   export interface Primitive<A> extends Config<A> {
     readonly description: string
-    parse(text: string): Either.Either<ConfigError.ConfigError, A>
+    readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, A>
   }
 
   /**

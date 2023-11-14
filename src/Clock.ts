@@ -31,7 +31,7 @@ export interface Clock {
   /**
    * Unsafely returns the current time in milliseconds.
    */
-  unsafeCurrentTimeMillis(): number
+  readonly unsafeCurrentTimeMillis: () => number
   /**
    * Returns the current time in milliseconds.
    */
@@ -39,7 +39,7 @@ export interface Clock {
   /**
    * Unsafely returns the current time in nanoseconds.
    */
-  unsafeCurrentTimeNanos(): bigint
+  readonly unsafeCurrentTimeNanos: () => bigint
   /**
    * Returns the current time in nanoseconds.
    */
@@ -47,7 +47,7 @@ export interface Clock {
   /**
    * Asynchronously sleeps for the specified duration.
    */
-  sleep(duration: Duration.Duration): Effect.Effect<never, never, void>
+  readonly sleep: (duration: Duration.Duration) => Effect.Effect<never, never, void>
 }
 
 /**

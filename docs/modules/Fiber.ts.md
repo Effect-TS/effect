@@ -621,37 +621,37 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
   /**
    * The identity of the fiber.
    */
-  id(): FiberId.FiberId
+  readonly id: () => FiberId.FiberId
 
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  await(): Effect.Effect<never, never, Exit.Exit<E, A>>
+  readonly await: () => Effect.Effect<never, never, Exit.Exit<E, A>>
 
   /**
    * Retrieves the immediate children of the fiber.
    */
-  children(): Effect.Effect<never, never, Array<Fiber.Runtime<any, any>>>
+  readonly children: () => Effect.Effect<never, never, Array<Fiber.Runtime<any, any>>>
 
   /**
    * Inherits values from all `FiberRef` instances into current fiber. This
    * will resume immediately.
    */
-  inheritAll(): Effect.Effect<never, never, void>
+  readonly inheritAll: () => Effect.Effect<never, never, void>
 
   /**
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>>
+  readonly poll: () => Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
    * specified fiber. If the fiber has already exited, the returned effect will
    * resume immediately. Otherwise, the effect will resume when the fiber exits.
    */
-  interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<never, never, void>
+  readonly interruptAsFork: (fiberId: FiberId.FiberId) => Effect.Effect<never, never, void>
 }
 ```
 
@@ -674,44 +674,44 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * Reads the current value of a fiber ref
    */
-  getFiberRef<X>(fiberRef: FiberRef<X>): X
+  readonly getFiberRef: <X>(fiberRef: FiberRef<X>) => X
 
   /**
    * The identity of the fiber.
    */
-  id(): FiberId.Runtime
+  readonly id: () => FiberId.Runtime
 
   /**
    * The status of the fiber.
    */
-  status(): Effect.Effect<never, never, FiberStatus.FiberStatus>
+  readonly status: () => Effect.Effect<never, never, FiberStatus.FiberStatus>
 
   /**
    * Returns the current `RuntimeFlags` the fiber is running with.
    */
-  runtimeFlags(): Effect.Effect<never, never, RuntimeFlags.RuntimeFlags>
+  readonly runtimeFlags: () => Effect.Effect<never, never, RuntimeFlags.RuntimeFlags>
 
   /**
    * Adds an observer to the list of observers.
    */
-  addObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  readonly addObserver: (observer: (exit: Exit.Exit<E, A>) => void) => void
 
   /**
    * Removes the specified observer from the list of observers that will be
    * notified when the fiber exits.
    */
-  removeObserver(observer: (exit: Exit.Exit<E, A>) => void): void
+  readonly removeObserver: (observer: (exit: Exit.Exit<E, A>) => void) => void
 
   /**
    * Retrieves all fiber refs of the fiber.
    */
-  getFiberRefs(): FiberRefs.FiberRefs
+  readonly getFiberRefs: () => FiberRefs.FiberRefs
 
   /**
    * Unsafely observes the fiber, but returns immediately if it is not
    * already done.
    */
-  unsafePoll(): Exit.Exit<E, A> | null
+  readonly unsafePoll: () => Exit.Exit<E, A> | null
 }
 ```
 

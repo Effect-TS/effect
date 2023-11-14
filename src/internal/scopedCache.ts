@@ -26,12 +26,12 @@ import * as fiberRuntime from "./fiberRuntime.js"
  * @internal
  */
 export interface CacheState<Key, Error, Value> {
-  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>>
-  keys: _cache.KeySet<Key>
-  accesses: MutableQueue.MutableQueue<_cache.MapKey<Key>>
-  updating: MutableRef.MutableRef<boolean>
-  hits: number
-  misses: number
+  map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>> // mutable by design
+  keys: _cache.KeySet<Key> // mutable by design
+  accesses: MutableQueue.MutableQueue<_cache.MapKey<Key>> // mutable by design
+  updating: MutableRef.MutableRef<boolean> // mutable by design
+  hits: number // mutable by design
+  misses: number // mutable by design
 }
 
 /** @internal */

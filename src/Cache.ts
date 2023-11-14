@@ -47,14 +47,14 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it.
    */
-  get(key: Key): Effect.Effect<never, Error, Value>
+  readonly get: (key: Key) => Effect.Effect<never, Error, Value>
 
   /**
    * Retrieves the value associated with the specified key if it exists as a left.
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it as a right.
    */
-  getEither(key: Key): Effect.Effect<never, Error, Either<Value, Value>>
+  readonly getEither: (key: Key) => Effect.Effect<never, Error, Either<Value, Value>>
 
   /**
    * Computes the value associated with the specified key, with the lookup
@@ -65,12 +65,15 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * by the lookup function. Additionally, `refresh` always triggers the
    * lookup function, disregarding the last `Error`.
    */
-  refresh(key: Key): Effect.Effect<never, Error, void>
+  readonly refresh: (key: Key) => Effect.Effect<never, Error, void>
 
   /**
    * Associates the specified value with the specified key in the cache.
    */
-  set<Key, Error, Value>(this: Cache<Key, Error, Value>, key: Key, value: Value): Effect.Effect<never, never, void>
+  readonly set: (
+    key: Key,
+    value: Value
+  ) => Effect.Effect<never, never, void>
 }
 
 /**
@@ -86,64 +89,64 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  getOption(key: Key): Effect.Effect<never, Error, Option.Option<Value>>
+  readonly getOption: (key: Key) => Effect.Effect<never, Error, Option.Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  getOptionComplete(key: Key): Effect.Effect<never, never, Option.Option<Value>>
+  readonly getOptionComplete: (key: Key) => Effect.Effect<never, never, Option.Option<Value>>
 
   /**
    * Returns statistics for this cache.
    */
-  cacheStats(): Effect.Effect<never, never, CacheStats>
+  readonly cacheStats: () => Effect.Effect<never, never, CacheStats>
 
   /**
    * Returns whether a value associated with the specified key exists in the
    * cache.
    */
-  contains(key: Key): Effect.Effect<never, never, boolean>
+  readonly contains: (key: Key) => Effect.Effect<never, never, boolean>
 
   /**
    * Returns statistics for the specified entry.
    */
-  entryStats(key: Key): Effect.Effect<never, never, Option.Option<EntryStats>>
+  readonly entryStats: (key: Key) => Effect.Effect<never, never, Option.Option<EntryStats>>
 
   /**
    * Invalidates the value associated with the specified key.
    */
-  invalidate(key: Key): Effect.Effect<never, never, void>
+  readonly invalidate: (key: Key) => Effect.Effect<never, never, void>
 
   /**
    * Invalidates the value associated with the specified key if the predicate holds.
    */
-  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect.Effect<never, never, void>
+  readonly invalidateWhen: (key: Key, when: (value: Value) => boolean) => Effect.Effect<never, never, void>
 
   /**
    * Invalidates all values in the cache.
    */
-  invalidateAll(): Effect.Effect<never, never, void>
+  readonly invalidateAll: () => Effect.Effect<never, never, void>
 
   /**
    * Returns the approximate number of values in the cache.
    */
-  size(): Effect.Effect<never, never, number>
+  readonly size: () => Effect.Effect<never, never, number>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  keys<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect.Effect<never, never, Array<Key>>
+  readonly keys: () => Effect.Effect<never, never, Array<Key>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  values(): Effect.Effect<never, never, Array<Value>>
+  readonly values: () => Effect.Effect<never, never, Array<Value>>
 
   /**
    * Returns an approximation of the values in the cache.
    */
-  entries<Key, Error, Value>(this: ConsumerCache<Key, Error, Value>): Effect.Effect<never, never, Array<[Key, Value]>>
+  readonly entries: () => Effect.Effect<never, never, Array<[Key, Value]>>
 }
 
 /**
