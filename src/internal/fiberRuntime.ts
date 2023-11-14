@@ -1412,6 +1412,24 @@ export const tracerLogger = globalValue(
 )
 
 /** @internal */
+export const loggerWithSpanAnnotations = <Message, Output>(self: Logger<Message, Output>): Logger<Message, Output> =>
+  internalLogger.mapInputOptions(self, (options: Logger.Options<Message>) => {
+    const span = Option.flatMap(fiberRefs.get(options.context, core.currentContext), Context.getOption(tracer.spanTag))
+    if (span._tag === "None") {
+      return options
+    }
+    return {
+      ...options,
+      annotations: pipe(
+        options.annotations,
+        HashMap.set("effect.traceId", span.value.traceId as unknown),
+        HashMap.set("effect.spanId", span.value.spanId as unknown),
+        span.value._tag === "Span" ? HashMap.set("effect.spanName", span.value.name as unknown) : identity
+      )
+    }
+  })
+
+/** @internal */
 export const currentLoggers: FiberRef.FiberRef<
   HashSet.HashSet<Logger<unknown, any>>
 > = globalValue(

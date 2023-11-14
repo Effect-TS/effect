@@ -383,7 +383,7 @@
     {
       "name": "Logger",
       "path": "./dist/dist/esm/index.js",
-      "limit": "34 kB",
+      "limit": "40 kB",
       "import": "{ Logger }"
     },
     {
