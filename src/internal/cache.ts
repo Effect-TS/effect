@@ -109,7 +109,7 @@ export type MapKeyTypeId = typeof MapKeyTypeId
  */
 export interface MapKey<K> extends Equal.Equal {
   readonly [MapKeyTypeId]: MapKeyTypeId
-  current: K
+  current: K // TODO: mutable by design?
   previous: MapKey<K> | undefined
   next: MapKey<K> | undefined
 }
