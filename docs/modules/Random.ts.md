@@ -129,29 +129,29 @@ export interface Random {
   /**
    * Returns the next numeric value from the pseudo-random number generator.
    */
-  next(): Effect.Effect<never, never, number>
+  readonly next: () => Effect.Effect<never, never, number>
   /**
    * Returns the next boolean value from the pseudo-random number generator.
    */
-  nextBoolean(): Effect.Effect<never, never, boolean>
+  readonly nextBoolean: () => Effect.Effect<never, never, boolean>
   /**
    * Returns the next integer value from the pseudo-random number generator.
    */
-  nextInt(): Effect.Effect<never, never, number>
+  readonly nextInt: () => Effect.Effect<never, never, number>
   /**
    * Returns the next numeric value in the specified range from the
    * pseudo-random number generator.
    */
-  nextRange(min: number, max: number): Effect.Effect<never, never, number>
+  readonly nextRange: (min: number, max: number) => Effect.Effect<never, never, number>
   /**
    * Returns the next integer value in the specified range from the
    * pseudo-random number generator.
    */
-  nextIntBetween(min: number, max: number): Effect.Effect<never, never, number>
+  readonly nextIntBetween: (min: number, max: number) => Effect.Effect<never, never, number>
   /**
    * Uses the pseudo-random number generator to shuffle the specified iterable.
    */
-  shuffle<A>(elements: Iterable<A>): Effect.Effect<never, never, Chunk.Chunk<A>>
+  readonly shuffle: <A>(elements: Iterable<A>) => Effect.Effect<never, never, Chunk.Chunk<A>>
 }
 ```
 
