@@ -973,7 +973,7 @@ export const loop: {
     readonly while: (z: Z) => boolean
     readonly step: (z: Z) => Z
     readonly body: (z: Z) => Effect.Effect<R, E, A>
-    readonly discard?: boolean
+    readonly discard?: boolean | undefined
   }
 ): Effect.Effect<R, E, Array<A>> | Effect.Effect<R, E, void> =>
   options.discard
@@ -2006,11 +2006,11 @@ export const linkSpans = dual<
 export const makeSpan = (
   name: string,
   options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
   }
 ) =>
   tracerWith((tracer) =>
@@ -2063,11 +2063,11 @@ export const spanLinks: Effect.Effect<never, never, Chunk.Chunk<Tracer.SpanLink>
 export const useSpan: {
   <R, E, A>(name: string, evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
   <R, E, A>(name: string, options: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
   }, evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 } = <R, E, A>(
   name: string,
@@ -2077,11 +2077,11 @@ export const useSpan: {
   ]
 ) => {
   const options: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
   } | undefined = args.length === 1 ? undefined : args[0]
   const evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A> = args[args.length - 1]
 
@@ -2107,18 +2107,18 @@ export const withParentSpan = dual<
 /** @internal */
 export const withSpan = dual<
   (name: string, options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
   }) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: {
-    readonly attributes?: Record<string, unknown>
-    readonly links?: ReadonlyArray<Tracer.SpanLink>
-    readonly parent?: Tracer.ParentSpan
-    readonly root?: boolean
-    readonly context?: Context.Context<never>
+    readonly attributes?: Record<string, unknown> | undefined
+    readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+    readonly parent?: Tracer.ParentSpan | undefined
+    readonly root?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
   }) => Effect.Effect<Exclude<R, Tracer.ParentSpan>, E, A>
 >(
   (args) => typeof args[0] !== "string",

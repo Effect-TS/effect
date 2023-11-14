@@ -63,14 +63,14 @@ export const isMetricKey = (u: unknown): u is MetricKey.MetricKey<MetricKeyType.
 /** @internal */
 export const counter: {
   (name: string, options?: {
-    readonly description?: string
-    readonly bigint?: false
-    readonly incremental?: boolean
+    readonly description?: string | undefined
+    readonly bigint?: false | undefined
+    readonly incremental?: boolean | undefined
   }): MetricKey.MetricKey.Counter<number>
   (name: string, options: {
-    readonly description?: string
+    readonly description?: string | undefined
     readonly bigint: true
-    readonly incremental?: boolean
+    readonly incremental?: boolean | undefined
   }): MetricKey.MetricKey.Counter<bigint>
 } = (name: string, options) =>
   new MetricKeyImpl(
@@ -86,11 +86,11 @@ export const frequency = (name: string, description?: string): MetricKey.MetricK
 /** @internal */
 export const gauge: {
   (name: string, options?: {
-    readonly description?: string
-    readonly bigint?: false
+    readonly description?: string | undefined
+    readonly bigint?: false | undefined
   }): MetricKey.MetricKey.Gauge<number>
   (name: string, options: {
-    readonly description?: string
+    readonly description?: string | undefined
     readonly bigint: true
   }): MetricKey.MetricKey.Gauge<bigint>
 } = (name, options) =>
@@ -120,7 +120,7 @@ export const summary = (
     readonly maxSize: number
     readonly error: number
     readonly quantiles: Chunk.Chunk<number>
-    readonly description?: string
+    readonly description?: string | undefined
   }
 ): MetricKey.MetricKey.Summary =>
   new MetricKeyImpl(

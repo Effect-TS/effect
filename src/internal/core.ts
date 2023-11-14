@@ -1263,11 +1263,11 @@ export const withTracerTiming = dual<
 
 /* @internal */
 export const yieldNow = (options?: {
-  readonly priority?: number
+  readonly priority?: number | undefined
 }): Effect.Effect<never, never, void> => {
   const effect = new EffectPrimitive(OpCodes.OP_YIELD) as any
   return typeof options?.priority !== "undefined" ?
-    withSchedulingPriority(options.priority)(effect) :
+    withSchedulingPriority(effect, options.priority) :
     effect
 }
 
@@ -1712,8 +1712,8 @@ export const fiberRefLocallyWith = dual<
 export const fiberRefUnsafeMake = <Value>(
   initial: Value,
   options?: {
-    readonly fork?: (a: Value) => Value
-    readonly join?: (left: Value, right: Value) => Value
+    readonly fork?: ((a: Value) => Value) | undefined
+    readonly join?: ((left: Value, right: Value) => Value) | undefined
   }
 ): FiberRef.FiberRef<Value> =>
   fiberRefUnsafeMakePatch(initial, {
@@ -1750,7 +1750,7 @@ export const fiberRefUnsafeMakePatch = <Value, Patch>(
   options: {
     readonly differ: Differ.Differ<Value, Patch>
     readonly fork: Patch
-    readonly join?: (oldV: Value, newV: Value) => Value
+    readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
   }
 ): FiberRef.FiberRef<Value> => ({
   [FiberRefTypeId]: fiberRefVariance,
@@ -2130,7 +2130,9 @@ export const exitCauseOption = <E, A>(self: Exit.Exit<E, A>): Option.Option<Caus
 /** @internal */
 export const exitCollectAll = <E, A>(
   exits: Iterable<Exit.Exit<E, A>>,
-  options?: { readonly parallel?: boolean }
+  options?: {
+    readonly parallel?: boolean | undefined
+  }
 ): Option.Option<Exit.Exit<E, Array<A>>> =>
   exitCollectAllInternal(exits, options?.parallel ? internalCause.parallel : internalCause.sequential)
 

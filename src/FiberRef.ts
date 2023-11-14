@@ -74,8 +74,8 @@ export interface Variance<A> {
 export const make: <A>(
   initial: A,
   options?: {
-    readonly fork?: (a: A) => A
-    readonly join?: (left: A, right: A) => A
+    readonly fork?: ((a: A) => A) | undefined
+    readonly join?: ((left: A, right: A) => A) | undefined
   }
 ) => Effect.Effect<Scope.Scope, never, FiberRef<A>> = fiberRuntime.fiberRefMake
 
@@ -109,8 +109,8 @@ export const makeRuntimeFlags: (
 export const unsafeMake: <Value>(
   initial: Value,
   options?: {
-    readonly fork?: (a: Value) => Value
-    readonly join?: (left: Value, right: Value) => Value
+    readonly fork?: ((a: Value) => Value) | undefined
+    readonly join?: ((left: Value, right: Value) => Value) | undefined
   }
 ) => FiberRef<Value> = core.fiberRefUnsafeMake
 
@@ -144,7 +144,7 @@ export const unsafeMakePatch: <Value, Patch>(
   options: {
     readonly differ: Differ.Differ<Value, Patch>
     readonly fork: Patch
-    readonly join?: (oldV: Value, newV: Value) => Value
+    readonly join?: ((oldV: Value, newV: Value) => Value) | undefined
   }
 ) => FiberRef<Value> = core.fiberRefUnsafeMakePatch
 

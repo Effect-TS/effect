@@ -121,7 +121,7 @@ Scheduler if not provided
 ```ts
 export declare const runFork: <R>(
   runtime: Runtime<R>
-) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
+) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions) => Fiber.RuntimeFiber<E, A>
 ```
 
 Added in v2.0.0
@@ -271,8 +271,8 @@ Added in v2.0.0
 
 ```ts
 export interface RunForkOptions {
-  readonly scheduler?: Scheduler
-  readonly updateRefs?: (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs
+  readonly scheduler?: Scheduler | undefined
+  readonly updateRefs?: ((refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs) | undefined
 }
 ```
 

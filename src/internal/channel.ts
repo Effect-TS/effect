@@ -1026,8 +1026,8 @@ export const mapOutEffectPar = dual<
 export const mergeAll = (
   options: {
     readonly concurrency: number | "unbounded"
-    readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly bufferSize?: number | undefined
+    readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
   }
 ) => {
   return <
@@ -1139,8 +1139,8 @@ export const mergeAllWith = (
     mergeStrategy = _mergeStrategy.BackPressure()
   }: {
     readonly concurrency: number | "unbounded"
-    readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly bufferSize?: number | undefined
+    readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
   }
 ) =>
 <
@@ -1362,8 +1362,8 @@ export const mergeMap = dual<
     f: (outElem: OutElem) => Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly bufferSize?: number | undefined
+      readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
     }
   ) => <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -1381,8 +1381,8 @@ export const mergeMap = dual<
     f: (outElem: OutElem) => Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly bufferSize?: number | undefined
+      readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
     }
   ) => Channel.Channel<
     Env1 | Env,
@@ -1398,8 +1398,8 @@ export const mergeMap = dual<
   f: (outElem: OutElem) => Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
   options: {
     readonly concurrency: number | "unbounded"
-    readonly bufferSize?: number
-    readonly mergeStrategy?: MergeStrategy.MergeStrategy
+    readonly bufferSize?: number | undefined
+    readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
   }
 ): Channel.Channel<
   Env | Env1,
@@ -2297,11 +2297,11 @@ export const withSpan = dual<
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
     }
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -2310,11 +2310,11 @@ export const withSpan = dual<
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
     }
   ) => Channel.Channel<Exclude<Env, Tracer.ParentSpan>, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 >(3, (self, name, options) =>
@@ -2357,7 +2357,9 @@ const writeChunkWriter = <OutElem>(
 export const zip = dual<
   <Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<
@@ -2372,7 +2374,9 @@ export const zip = dual<
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ) => Channel.Channel<
     Env1 | Env,
     InErr & InErr1,
@@ -2387,7 +2391,9 @@ export const zip = dual<
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): Channel.Channel<
     Env | Env1,
     InErr & InErr1,
@@ -2410,7 +2416,9 @@ export const zip = dual<
 export const zipLeft = dual<
   <Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<
@@ -2425,7 +2433,9 @@ export const zipLeft = dual<
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ) => Channel.Channel<
     Env1 | Env,
     InErr & InErr1,
@@ -2440,7 +2450,9 @@ export const zipLeft = dual<
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): Channel.Channel<
     Env | Env1,
     InErr & InErr1,
@@ -2459,7 +2471,9 @@ export const zipLeft = dual<
 export const zipRight = dual<
   <Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ) => <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel.Channel<
@@ -2474,7 +2488,9 @@ export const zipRight = dual<
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ) => Channel.Channel<
     Env1 | Env,
     InErr & InErr1,
@@ -2489,7 +2505,9 @@ export const zipRight = dual<
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel.Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: {
+      readonly concurrent?: boolean | undefined
+    }
   ): Channel.Channel<
     Env | Env1,
     InErr & InErr1,

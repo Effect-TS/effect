@@ -1376,8 +1376,8 @@ export declare const mergeMap: {
     f: (outElem: OutElem) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly bufferSize?: number | undefined
+      readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
     }
   ): <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -1387,8 +1387,8 @@ export declare const mergeMap: {
     f: (outElem: OutElem) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
     options: {
       readonly concurrency: number | "unbounded"
-      readonly bufferSize?: number
-      readonly mergeStrategy?: MergeStrategy.MergeStrategy
+      readonly bufferSize?: number | undefined
+      readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
     }
   ): Channel<Env | Env1, InErr & InErr1, InElem & InElem1, InDone & InDone1, OutErr | OutErr1, OutElem1, unknown>
 }
@@ -1641,11 +1641,11 @@ export declare const withSpan: {
   (
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
     }
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -1654,11 +1654,11 @@ export declare const withSpan: {
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     name: string,
     options?: {
-      readonly attributes?: Record<string, unknown>
-      readonly links?: ReadonlyArray<Tracer.SpanLink>
-      readonly parent?: Tracer.ParentSpan
-      readonly root?: boolean
-      readonly context?: Context.Context<never>
+      readonly attributes?: Record<string, unknown> | undefined
+      readonly links?: ReadonlyArray<Tracer.SpanLink> | undefined
+      readonly parent?: Tracer.ParentSpan | undefined
+      readonly root?: boolean | undefined
+      readonly context?: Context.Context<never> | undefined
     }
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 }
@@ -2361,8 +2361,8 @@ Added in v2.0.0
 ```ts
 export declare const mergeAll: (options: {
   readonly concurrency: number | "unbounded"
-  readonly bufferSize?: number
-  readonly mergeStrategy?: MergeStrategy.MergeStrategy
+  readonly bufferSize?: number | undefined
+  readonly mergeStrategy?: MergeStrategy.MergeStrategy | undefined
 }) => <Env, Env1, InErr, InErr1, InElem, InElem1, InDone, InDone1, OutErr, OutErr1, OutElem>(
   channels: Channel<
     Env,
@@ -2720,7 +2720,7 @@ the terminal values of both channels.
 export declare const zip: {
   <Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<
@@ -2735,7 +2735,7 @@ export declare const zip: {
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): Channel<
     Env | Env1,
     InErr & InErr1,
@@ -2762,7 +2762,7 @@ terminal value of this channel.
 export declare const zipLeft: {
   <Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<
@@ -2777,7 +2777,7 @@ export declare const zipLeft: {
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): Channel<
     Env | Env1,
     InErr & InErr1,
@@ -2804,7 +2804,7 @@ terminal value of that channel.
 export declare const zipRight: {
   <Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) => Channel<
@@ -2819,7 +2819,7 @@ export declare const zipRight: {
   <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): Channel<
     Env | Env1,
     InErr & InErr1,

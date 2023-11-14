@@ -52,11 +52,19 @@ Creates a metric key for a counter, with the specified name.
 export declare const counter: {
   (
     name: string,
-    options?: { readonly description?: string; readonly bigint?: false; readonly incremental?: boolean }
+    options?: {
+      readonly description?: string | undefined
+      readonly bigint?: false | undefined
+      readonly incremental?: boolean | undefined
+    }
   ): MetricKey.Counter<number>
   (
     name: string,
-    options: { readonly description?: string; readonly bigint: true; readonly incremental?: boolean }
+    options: {
+      readonly description?: string | undefined
+      readonly bigint: true
+      readonly incremental?: boolean | undefined
+    }
   ): MetricKey.Counter<bigint>
 }
 ```
@@ -84,8 +92,11 @@ Creates a metric key for a gauge, with the specified name.
 
 ```ts
 export declare const gauge: {
-  (name: string, options?: { readonly description?: string; readonly bigint?: false }): MetricKey.Gauge<number>
-  (name: string, options: { readonly description?: string; readonly bigint: true }): MetricKey.Gauge<bigint>
+  (
+    name: string,
+    options?: { readonly description?: string | undefined; readonly bigint?: false | undefined }
+  ): MetricKey.Gauge<number>
+  (name: string, options: { readonly description?: string | undefined; readonly bigint: true }): MetricKey.Gauge<bigint>
 }
 ```
 
@@ -121,7 +132,7 @@ export declare const summary: (options: {
   readonly maxSize: number
   readonly error: number
   readonly quantiles: Chunk.Chunk<number>
-  readonly description?: string
+  readonly description?: string | undefined
 }) => MetricKey.Summary
 ```
 

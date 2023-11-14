@@ -118,12 +118,14 @@ export const make: (options: Omit<Tracer, typeof TracerTypeId>) => Tracer = inte
  * @since 2.0.0
  * @category constructors
  */
-export const externalSpan: (options: {
-  readonly spanId: string
-  readonly traceId: string
-  readonly sampled?: boolean | undefined
-  readonly context?: Context.Context<never> | undefined
-}) => ExternalSpan = internal.externalSpan
+export const externalSpan: (
+  options: {
+    readonly spanId: string
+    readonly traceId: string
+    readonly sampled?: boolean | undefined
+    readonly context?: Context.Context<never> | undefined
+  }
+) => ExternalSpan = internal.externalSpan
 
 /**
  * @since 2.0.0

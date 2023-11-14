@@ -338,26 +338,36 @@ export const removeAll = dual<
 export const removeIf: {
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options: { discard: true }
+    options: {
+      readonly discard: true
+    }
   ): (self: TMap.TMap<K, V>) => STM.STM<never, never, void>
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options: { discard: true }
+    options: {
+      readonly discard: true
+    }
   ): STM.STM<never, never, void>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): STM.STM<never, never, Array<[K, V]>>
 } = dual((args) => isTMap(args[0]), <K, V>(
   self: TMap.TMap<K, V>,
   predicate: (key: K, value: V) => boolean,
-  options?: { readonly discard: true }
+  options?: {
+    readonly discard: boolean
+  }
 ) =>
   core.effect((journal) => {
     const discard = options?.discard === true
@@ -395,21 +405,29 @@ export const removeIf: {
 export const retainIf: {
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options: { discard: true }
+    options: {
+      readonly discard: true
+    }
   ): (self: TMap.TMap<K, V>) => STM.STM<never, never, void>
   <K, V>(
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): (self: TMap.TMap<K, V>) => STM.STM<never, never, Array<[K, V]>>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options: { discard: true }
+    options: {
+      readonly discard: true
+    }
   ): STM.STM<never, never, void>
   <K, V>(
     self: TMap.TMap<K, V>,
     predicate: (key: K, value: V) => boolean,
-    options?: { readonly discard: false }
+    options?: {
+      readonly discard: false
+    }
   ): STM.STM<never, never, Array<[K, V]>>
 } = dual(
   (args) => isTMap(args[0]),

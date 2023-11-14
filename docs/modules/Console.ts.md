@@ -141,7 +141,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const group: (options?: { label?: string; collapsed?: boolean }) => Effect<Scope, never, void>
+export declare const group: (options?: {
+  label?: string | undefined
+  collapsed?: boolean | undefined
+}) => Effect<Scope, never, void>
 ```
 
 Added in v2.0.0
@@ -223,10 +226,13 @@ Added in v2.0.0
 ```ts
 export declare const withGroup: {
   (options?: {
-    readonly label?: string
-    readonly collapsed?: boolean
+    readonly label?: string | undefined
+    readonly collapsed?: boolean | undefined
   }): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  <R, E, A>(self: Effect<R, E, A>, options?: { readonly label?: string; readonly collapsed?: boolean }): Effect<R, E, A>
+  <R, E, A>(
+    self: Effect<R, E, A>,
+    options?: { readonly label?: string | undefined; readonly collapsed?: boolean | undefined }
+  ): Effect<R, E, A>
 }
 ```
 
@@ -287,7 +293,10 @@ export interface Console {
   readonly dir: (item: any, options?: any) => Effect<never, never, void>
   readonly dirxml: (...args: ReadonlyArray<any>) => Effect<never, never, void>
   readonly error: (...args: ReadonlyArray<any>) => Effect<never, never, void>
-  readonly group: (options?: { readonly label?: string; readonly collapsed?: boolean }) => Effect<never, never, void>
+  readonly group: (options?: {
+    readonly label?: string | undefined
+    readonly collapsed?: boolean | undefined
+  }) => Effect<never, never, void>
   readonly groupEnd: Effect<never, never, void>
   readonly info: (...args: ReadonlyArray<any>) => Effect<never, never, void>
   readonly log: (...args: ReadonlyArray<any>) => Effect<never, never, void>
@@ -317,7 +326,7 @@ export interface UnsafeConsole {
   readonly dir: (item: any, options?: any) => void
   readonly dirxml: (...args: ReadonlyArray<any>) => void
   readonly error: (...args: ReadonlyArray<any>) => void
-  readonly group: (options?: { readonly label?: string; readonly collapsed?: boolean }) => void
+  readonly group: (options?: { readonly label?: string | undefined; readonly collapsed?: boolean | undefined }) => void
   readonly groupEnd: () => void
   readonly info: (...args: ReadonlyArray<any>) => void
   readonly log: (...args: ReadonlyArray<any>) => void

@@ -877,7 +877,7 @@ Create a sink which publishes each element to the specified `PubSub`.
 ```ts
 export declare const fromPubSub: <In>(
   pubsub: PubSub.PubSub<In>,
-  options?: { readonly shutdown?: boolean }
+  options?: { readonly shutdown?: boolean | undefined }
 ) => Sink<never, never, In, never, void>
 ```
 
@@ -910,7 +910,7 @@ Create a sink which enqueues each element into the specified queue.
 ```ts
 export declare const fromQueue: <In>(
   queue: Queue.Enqueue<In>,
-  options?: { readonly shutdown?: boolean }
+  options?: { readonly shutdown?: boolean | undefined }
 ) => Sink<never, never, In, never, void>
 ```
 
@@ -1787,12 +1787,12 @@ from the one that finishes first.
 export declare const raceBoth: {
   <R1, E1, In1, L1, Z1>(
     that: Sink<R1, E1, In1, L1, Z1>,
-    options?: { readonly capacity?: number }
+    options?: { readonly capacity?: number | undefined }
   ): <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R1 | R, E1 | E, In & In1, L1 | L, Either.Either<Z, Z1>>
   <R, E, In, L, Z, R1, E1, In1, L1, Z1>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R1, E1, In1, L1, Z1>,
-    options?: { readonly capacity?: number }
+    options?: { readonly capacity?: number | undefined }
   ): Sink<R | R1, E | E1, In & In1, L | L1, Either.Either<Z, Z1>>
 }
 ```
@@ -1896,12 +1896,12 @@ results into a tuple.
 export declare const zip: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, [Z, Z2]>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): Sink<R | R2, E | E2, In & In2, L | L2, [Z, Z2]>
 }
 ```
@@ -1918,12 +1918,12 @@ Like `Sink.zip` but keeps only the result from this sink.
 export declare const zipLeft: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z>
 }
 ```
@@ -1940,12 +1940,12 @@ Like `Sink.zip` but keeps only the result from `that` sink.
 export declare const zipRight: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z2>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z2>
 }
 ```
@@ -1965,13 +1965,13 @@ export declare const zipWith: {
   <R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
     that: Sink<R2, E2, In2, L2, Z2>,
     f: (z: Z, z1: Z2) => Z3,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): <R, E>(self: Sink<R, E, In, L, Z>) => Sink<R2 | R, E2 | E, In & In2, L | L2, Z3>
   <R, E, R2, E2, In, In2 extends In, L, L2, Z, Z2, Z3>(
     self: Sink<R, E, In, L, Z>,
     that: Sink<R2, E2, In2, L2, Z2>,
     f: (z: Z, z1: Z2) => Z3,
-    options?: { readonly concurrent?: boolean }
+    options?: { readonly concurrent?: boolean | undefined }
   ): Sink<R | R2, E | E2, In & In2, L | L2, Z3>
 }
 ```

@@ -576,7 +576,7 @@ export const match = dual<
 export const forEach = dual<
   {
     <A, R, E, A2>(f: (a: A) => STM.STM<R, E, A2>, options?: {
-      readonly discard?: false
+      readonly discard?: false | undefined
     }): (elements: Iterable<A>) => STM.STM<R, E, Array<A2>>
     <A, R, E, A2>(f: (a: A) => STM.STM<R, E, A2>, options: {
       readonly discard: true
@@ -584,7 +584,7 @@ export const forEach = dual<
   },
   {
     <A, R, E, A2>(elements: Iterable<A>, f: (a: A) => STM.STM<R, E, A2>, options?: {
-      readonly discard?: false
+      readonly discard?: false | undefined
     }): STM.STM<R, E, Array<A2>>
     <A, R, E, A2>(elements: Iterable<A>, f: (a: A) => STM.STM<R, E, A2>, options: {
       readonly discard: true
@@ -593,7 +593,7 @@ export const forEach = dual<
 >(
   (args) => predicate.isIterable(args[0]),
   <A, R, E, A2>(iterable: Iterable<A>, f: (a: A) => STM.STM<R, E, A2>, options?: {
-    readonly discard?: boolean
+    readonly discard?: boolean | undefined
   }): STM.STM<R, E, any> => {
     if (options?.discard) {
       return pipe(
@@ -783,7 +783,7 @@ export const loop: {
       readonly while: (z: Z) => boolean
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => STM.STM<R, E, A>
-      readonly discard?: false
+      readonly discard?: false | undefined
     }
   ): STM.STM<R, E, Array<A>>
   <Z, R, E, A>(
@@ -801,7 +801,7 @@ export const loop: {
     readonly while: (z: Z) => boolean
     readonly step: (z: Z) => Z
     readonly body: (z: Z) => STM.STM<R, E, A>
-    readonly discard?: boolean
+    readonly discard?: boolean | undefined
   }
 ): STM.STM<R, E, any> =>
   options.discard ?

@@ -2488,7 +2488,7 @@ a transactional effect that produces a new `Chunk<A2>`.
 export declare const forEach: {
   <A, R, E, A2>(
     f: (a: A) => STM<R, E, A2>,
-    options?: { readonly discard?: false }
+    options?: { readonly discard?: false | undefined }
   ): (elements: Iterable<A>) => STM<R, E, A2[]>
   <A, R, E, A2>(
     f: (a: A) => STM<R, E, A2>,
@@ -2497,7 +2497,7 @@ export declare const forEach: {
   <A, R, E, A2>(
     elements: Iterable<A>,
     f: (a: A) => STM<R, E, A2>,
-    options?: { readonly discard?: false }
+    options?: { readonly discard?: false | undefined }
   ): STM<R, E, A2[]>
   <A, R, E, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>, options: { readonly discard: true }): STM<R, E, void>
 }
@@ -2567,7 +2567,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Options = { readonly discard?: boolean }
+export type Options = {
+  readonly discard?: boolean | undefined
+}
 ```
 
 Added in v2.0.0

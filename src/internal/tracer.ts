@@ -90,8 +90,8 @@ export const nativeTracer: Tracer.Tracer = make({
 export const externalSpan = (options: {
   readonly spanId: string
   readonly traceId: string
-  readonly sampled?: boolean
-  readonly context?: Context.Context<never>
+  readonly sampled?: boolean | undefined
+  readonly context?: Context.Context<never> | undefined
 }): Tracer.ExternalSpan => ({
   _tag: "ExternalSpan",
   spanId: options.spanId,
