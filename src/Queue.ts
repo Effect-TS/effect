@@ -243,34 +243,34 @@ export interface BackingQueue<A> {
    * Dequeues an element from the queue.
    * Returns either an element from the queue, or the `def` param.
    */
-  poll<Def>(def: Def): A | Def
+  readonly poll: <Def>(def: Def) => A | Def
   /**
    * Dequeues up to `limit` elements from the queue.
    */
-  pollUpTo(limit: number): Chunk.Chunk<A>
+  readonly pollUpTo: (limit: number) => Chunk.Chunk<A>
   /**
    * Enqueues a collection of values into the queue.
    *
    * Returns a `Chunk` of the values that were **not** able to be enqueued.
    */
-  offerAll(elements: Iterable<A>): Chunk.Chunk<A>
+  readonly offerAll: (elements: Iterable<A>) => Chunk.Chunk<A>
   /**
    * Offers an element to the queue.
    *
    * Returns whether the enqueue was successful or not.
    */
-  offer(element: A): boolean
+  readonly offer: (element: A) => boolean
   /**
    * The **maximum** number of elements that a queue can hold.
    *
    * **Note**: unbounded queues can still implement this interface with
    * `capacity = Infinity`.
    */
-  capacity(): number
+  readonly capacity: () => number
   /**
    * Returns the number of elements currently in the queue
    */
-  length(): number
+  readonly length: () => number
 }
 
 /**
