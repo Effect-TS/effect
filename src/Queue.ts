@@ -105,25 +105,25 @@ export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeabl
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.
    */
-  take(): Effect.Effect<never, never, A>
+  readonly take: () => Effect.Effect<never, never, A>
 
   /**
    * Takes all the values in the queue and returns the values. If the queue is
    * empty returns an empty collection.
    */
-  takeAll(): Effect.Effect<never, never, Chunk.Chunk<A>>
+  readonly takeAll: () => Effect.Effect<never, never, Chunk.Chunk<A>>
 
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(max: number): Effect.Effect<never, never, Chunk.Chunk<A>>
+  readonly takeUpTo: (max: number) => Effect.Effect<never, never, Chunk.Chunk<A>>
 
   /**
    * Takes a number of elements from the queue between the specified minimum and
    * maximum. If there are fewer than the minimum number of elements available,
    * suspends until at least the minimum number of elements have been collected.
    */
-  takeBetween(min: number, max: number): Effect.Effect<never, never, Chunk.Chunk<A>>
+  readonly takeBetween: (min: number, max: number) => Effect.Effect<never, never, Chunk.Chunk<A>>
 }
 
 /**
