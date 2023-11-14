@@ -177,7 +177,7 @@ export const handleSingle: {
   }
 
   return Effect.map(
-    Effect.zip(Ref.make(Option.none()), Effect.scope),
+    Effect.zip(Ref.make(Option.none<Runtime.Runtime<unknown>>()), Effect.scope),
     ([runtimeRef, scope]) => handler(runtimeRef, scope)
   )
 }

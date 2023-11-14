@@ -18,8 +18,8 @@ const requestProto: Request.Request<any, any> = {
   [Hash.symbol](this: resolver.RpcRequest) {
     return this.hash
   },
-  [Equal.symbol](this: resolver.RpcRequest, that: resolver.RpcRequest) {
-    return this.hash === that.hash
+  [Equal.symbol](this: resolver.RpcRequest, that: Equal.Equal) {
+    return this.hash === (that as resolver.RpcRequest).hash
   }
 }
 
