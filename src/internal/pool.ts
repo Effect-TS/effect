@@ -173,7 +173,7 @@ class PoolImpl<E, A> implements Pool.Pool<E, A> {
     return pipeArguments(this, arguments)
   }
 
-  get(): Effect.Effect<Scope.Scope, E, A> {
+  get get(): Effect.Effect<Scope.Scope, E, A> {
     const acquire = (
       restore: <RX, EX, AX>(effect: Effect.Effect<RX, EX, AX>) => Effect.Effect<RX, EX, AX>
     ): Effect.Effect<never, never, Attempted<E, A>> =>
@@ -485,7 +485,7 @@ export const makeWithTTL = <R, E, A>(
   })
 
 /** @internal */
-export const get = <E, A>(self: Pool.Pool<E, A>): Effect.Effect<Scope.Scope, E, A> => self.get()
+export const get = <E, A>(self: Pool.Pool<E, A>): Effect.Effect<Scope.Scope, E, A> => self.get
 
 /** @internal */
 export const invalidate = dual<
