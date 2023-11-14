@@ -143,7 +143,7 @@ const MapInputContextReducer = <R0, R>(
   singleCase: (dataSource, blockedRequest) =>
     single(
       _dataSource.mapInputContext(dataSource, f),
-      blockedRequest
+      blockedRequest as any
     )
 })
 
