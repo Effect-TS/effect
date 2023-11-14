@@ -129,15 +129,15 @@ export interface Random {
   /**
    * Returns the next numeric value from the pseudo-random number generator.
    */
-  readonly next: () => Effect.Effect<never, never, number>
+  readonly next: Effect.Effect<never, never, number>
   /**
    * Returns the next boolean value from the pseudo-random number generator.
    */
-  readonly nextBoolean: () => Effect.Effect<never, never, boolean>
+  readonly nextBoolean: Effect.Effect<never, never, boolean>
   /**
    * Returns the next integer value from the pseudo-random number generator.
    */
-  readonly nextInt: () => Effect.Effect<never, never, number>
+  readonly nextInt: Effect.Effect<never, never, number>
   /**
    * Returns the next numeric value in the specified range from the
    * pseudo-random number generator.

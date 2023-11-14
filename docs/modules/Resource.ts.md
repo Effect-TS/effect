@@ -96,7 +96,7 @@ export interface Resource<E, A> extends Resource.Variance<E, A> {
   /** @internal */
   readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
   /** @internal */
-  readonly acquire: () => Effect.Effect<Scope.Scope, E, A>
+  readonly acquire: Effect.Effect<Scope.Scope, E, A>
 }
 ```
 

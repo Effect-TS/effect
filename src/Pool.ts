@@ -34,7 +34,7 @@ export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
    * acquisition fails, then the returned effect will fail for that same reason.
    * Retrying a failed acquisition attempt will repeat the acquisition attempt.
    */
-  readonly get: () => Effect.Effect<Scope.Scope, E, A>
+  readonly get: Effect.Effect<Scope.Scope, E, A>
 
   /**
    * Invalidates the specified item. This will cause the pool to eventually

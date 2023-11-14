@@ -94,8 +94,8 @@ Features the following semantics:
 export interface SingleProducerAsyncInput<Err, Elem, Done>
   extends AsyncInputProducer<Err, Elem, Done>,
     AsyncInputConsumer<Err, Elem, Done> {
-  readonly close: () => Effect.Effect<never, never, unknown>
-  readonly take: () => Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
+  readonly close: Effect.Effect<never, never, unknown>
+  readonly take: Effect.Effect<never, never, Exit.Exit<Either.Either<Err, Done>, Elem>>
 }
 ```
 

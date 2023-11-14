@@ -176,7 +176,7 @@ describe.concurrent("Effect", () => {
     provideEnv(
       Effect.gen(function*($) {
         const cache = yield* $(FiberRef.get(FiberRef.currentRequestCache))
-        yield* $(cache.invalidateAll())
+        yield* $(cache.invalidateAll)
         const names = yield* $(Effect.zip(getAllUserNames, getAllUserNames, {
           concurrent: true,
           batching: true

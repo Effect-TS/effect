@@ -57,7 +57,7 @@ export interface TestAnnotations {
   /**
    * Returns the set of all fibers in this test.
    */
-  readonly supervisedFibers: () => Effect.Effect<
+  readonly supervisedFibers: Effect.Effect<
     never,
     never,
     SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
@@ -75,7 +75,7 @@ class AnnotationsImpl implements TestAnnotations {
   annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect.Effect<never, never, void> {
     return Ref.update(this.ref, TestAnnotationMap.annotate(key, value))
   }
-  supervisedFibers(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
+  get supervisedFibers(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
     return effect.descriptorWith((descriptor) =>
       core.flatMap(this.get(TestAnnotation.fibers), (either) => {
         switch (either._tag) {

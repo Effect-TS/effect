@@ -48,7 +48,7 @@ export const manual = <R, E, A>(
       core.map((ref) => ({
         [ResourceTypeId]: cachedVariance,
         scopedRef: ref,
-        acquire: () => core.provideContext(acquire, env)
+        acquire: core.provideContext(acquire, env)
       }))
     ))
 
@@ -60,5 +60,5 @@ export const get = <E, A>(self: Resource.Resource<E, A>): Effect.Effect<never, E
 export const refresh = <E, A>(self: Resource.Resource<E, A>): Effect.Effect<never, E, void> =>
   scopedRef.set(
     self.scopedRef,
-    core.map(self.acquire(), core.exitSucceed)
+    core.map(self.acquire, core.exitSucceed)
   )

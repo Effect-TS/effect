@@ -292,6 +292,7 @@ export interface Failure extends
 /** @internal */
 export interface OpTag extends Op<OpCodes.OP_TAG, {}> {}
 
+/** @internal */
 export interface Commit extends
   Op<OpCodes.OP_COMMIT, {
     readonly commit: () => Effect.Effect<unknown, unknown, unknown>
@@ -1358,7 +1359,7 @@ export const interruptFiber = <E, A>(self: Fiber.Fiber<E, A>): Effect.Effect<nev
 export const interruptAsFiber = dual<
   (fiberId: FiberId.FiberId) => <E, A>(self: Fiber.Fiber<E, A>) => Effect.Effect<never, never, Exit.Exit<E, A>>,
   <E, A>(self: Fiber.Fiber<E, A>, fiberId: FiberId.FiberId) => Effect.Effect<never, never, Exit.Exit<E, A>>
->(2, (self, fiberId) => flatMap(self.interruptAsFork(fiberId), () => self.await()))
+>(2, (self, fiberId) => flatMap(self.interruptAsFork(fiberId), () => self.await))
 
 // -----------------------------------------------------------------------------
 // LogLevel

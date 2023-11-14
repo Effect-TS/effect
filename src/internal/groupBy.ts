@@ -330,7 +330,7 @@ class MapDequeue<A, B> implements Queue.Dequeue<B> {
     return Queue.capacity(this.dequeue)
   }
 
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return Queue.size(this.dequeue)
   }
 
@@ -338,7 +338,7 @@ class MapDequeue<A, B> implements Queue.Dequeue<B> {
     return this.dequeue.unsafeSize()
   }
 
-  awaitShutdown(): Effect.Effect<never, never, void> {
+  get awaitShutdown(): Effect.Effect<never, never, void> {
     return Queue.awaitShutdown(this.dequeue)
   }
 
@@ -346,27 +346,27 @@ class MapDequeue<A, B> implements Queue.Dequeue<B> {
     return this.dequeue.isActive()
   }
 
-  isShutdown(): Effect.Effect<never, never, boolean> {
+  get isShutdown(): Effect.Effect<never, never, boolean> {
     return Queue.isShutdown(this.dequeue)
   }
 
-  shutdown(): Effect.Effect<never, never, void> {
+  get shutdown(): Effect.Effect<never, never, void> {
     return Queue.shutdown(this.dequeue)
   }
 
-  isFull(): Effect.Effect<never, never, boolean> {
+  get isFull(): Effect.Effect<never, never, boolean> {
     return Queue.isFull(this.dequeue)
   }
 
-  isEmpty(): Effect.Effect<never, never, boolean> {
+  get isEmpty(): Effect.Effect<never, never, boolean> {
     return Queue.isEmpty(this.dequeue)
   }
 
-  take(): Effect.Effect<never, never, B> {
+  get take(): Effect.Effect<never, never, B> {
     return pipe(Queue.take(this.dequeue), Effect.map((a) => this.f(a)))
   }
 
-  takeAll(): Effect.Effect<never, never, Chunk.Chunk<B>> {
+  get takeAll(): Effect.Effect<never, never, Chunk.Chunk<B>> {
     return pipe(Queue.takeAll(this.dequeue), Effect.map(Chunk.map((a) => this.f(a))))
   }
 

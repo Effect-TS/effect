@@ -627,24 +627,24 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  readonly await: () => Effect.Effect<never, never, Exit.Exit<E, A>>
+  readonly await: Effect.Effect<never, never, Exit.Exit<E, A>>
 
   /**
    * Retrieves the immediate children of the fiber.
    */
-  readonly children: () => Effect.Effect<never, never, Array<Fiber.Runtime<any, any>>>
+  readonly children: Effect.Effect<never, never, Array<Fiber.Runtime<any, any>>>
 
   /**
    * Inherits values from all `FiberRef` instances into current fiber. This
    * will resume immediately.
    */
-  readonly inheritAll: () => Effect.Effect<never, never, void>
+  readonly inheritAll: Effect.Effect<never, never, void>
 
   /**
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly poll: () => Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>>
+  readonly poll: Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -684,12 +684,12 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * The status of the fiber.
    */
-  readonly status: () => Effect.Effect<never, never, FiberStatus.FiberStatus>
+  readonly status: Effect.Effect<never, never, FiberStatus.FiberStatus>
 
   /**
    * Returns the current `RuntimeFlags` the fiber is running with.
    */
-  readonly runtimeFlags: () => Effect.Effect<never, never, RuntimeFlags.RuntimeFlags>
+  readonly runtimeFlags: Effect.Effect<never, never, RuntimeFlags.RuntimeFlags>
 
   /**
    * Adds an observer to the list of observers.

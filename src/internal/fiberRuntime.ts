@@ -302,14 +302,14 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   /**
    * The status of the fiber.
    */
-  status(): Effect.Effect<never, never, FiberStatus.FiberStatus> {
+  get status(): Effect.Effect<never, never, FiberStatus.FiberStatus> {
     return this.ask((_, status) => status)
   }
 
   /**
    * Gets the fiber runtime flags.
    */
-  runtimeFlags(): Effect.Effect<never, never, RuntimeFlags.RuntimeFlags> {
+  get runtimeFlags(): Effect.Effect<never, never, RuntimeFlags.RuntimeFlags> {
     return this.ask((state, status) => {
       if (FiberStatus.isDone(status)) {
         return state._runtimeFlags
@@ -328,7 +328,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   /**
    * Retrieves the immediate children of the fiber.
    */
-  children(): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> {
+  get children(): Effect.Effect<never, never, Array<Fiber.RuntimeFiber<any, any>>> {
     return this.ask((fiber) => Array.from(fiber.getChildren()))
   }
 
@@ -393,7 +393,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     }
   }
 
-  await(): Effect.Effect<never, never, Exit.Exit<E, A>> {
+  get await(): Effect.Effect<never, never, Exit.Exit<E, A>> {
     return core.async<never, never, Exit.Exit<E, A>>((resume) => {
       const cb = (exit: Exit.Exit<E, A>) => resume(core.succeed(exit))
       this.tell(
@@ -415,7 +415,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     }, this.id())
   }
 
-  inheritAll(): Effect.Effect<never, never, void> {
+  get inheritAll(): Effect.Effect<never, never, void> {
     return core.withFiberRuntime<never, never, void>((parentFiber, parentStatus) => {
       const parentFiberId = parentFiber.id()
       const parentFiberRefs = parentFiber.getFiberRefs()
@@ -442,7 +442,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  poll(): Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>> {
+  get poll(): Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>> {
     return core.sync(() => Option.fromNullable(this._exitValue))
   }
 
@@ -708,7 +708,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
       const body = () => {
         const next = it.next()
         if (!next.done) {
-          return core.asUnit(next.value.await())
+          return core.asUnit(next.value.await)
         } else {
           return core.sync(() => {
             isDone = true
@@ -2067,8 +2067,7 @@ export const forEachParUnboundedDiscard = <R, E, A, _>(
                   }
                 }
               ),
-            onSuccess: (rest) =>
-              core.flatMap(rest, () => core.forEachSequentialDiscard(joinOrder, (f) => f.inheritAll()))
+            onSuccess: (rest) => core.flatMap(rest, () => core.forEachSequentialDiscard(joinOrder, (f) => f.inheritAll))
           }
         ))
     })
@@ -3105,38 +3104,37 @@ export const fiberAwaitAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.E
 export const fiberAll = <E, A>(fibers: Iterable<Fiber.Fiber<E, A>>): Fiber.Fiber<E, Array<A>> => ({
   [internalFiber.FiberTypeId]: internalFiber.fiberVariance,
   id: () => RA.fromIterable(fibers).reduce((id, fiber) => FiberId.combine(id, fiber.id()), FiberId.none),
-  await: () => core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await()), false)),
-  children: () => core.map(forEachParUnbounded(fibers, (fiber) => fiber.children(), false), RA.flatten),
-  inheritAll: () => core.forEachSequentialDiscard(fibers, (fiber) => fiber.inheritAll()),
-  poll: () =>
-    core.map(
-      core.forEachSequential(fibers, (fiber) => fiber.poll()),
-      RA.reduceRight(
-        Option.some<Exit.Exit<E, Array<A>>>(core.exitSucceed(new Array())),
-        (optionB, optionA) => {
-          switch (optionA._tag) {
-            case "None": {
-              return Option.none()
-            }
-            case "Some": {
-              switch (optionB._tag) {
-                case "None": {
-                  return Option.none()
-                }
-                case "Some": {
-                  return Option.some(
-                    core.exitZipWith(optionA.value, optionB.value, {
-                      onSuccess: (a, chunk) => [a, ...chunk],
-                      onFailure: internalCause.parallel
-                    })
-                  )
-                }
+  await: core.exit(forEachParUnbounded(fibers, (fiber) => core.flatten(fiber.await), false)),
+  children: core.map(forEachParUnbounded(fibers, (fiber) => fiber.children, false), RA.flatten),
+  inheritAll: core.forEachSequentialDiscard(fibers, (fiber) => fiber.inheritAll),
+  poll: core.map(
+    core.forEachSequential(fibers, (fiber) => fiber.poll),
+    RA.reduceRight(
+      Option.some<Exit.Exit<E, Array<A>>>(core.exitSucceed(new Array())),
+      (optionB, optionA) => {
+        switch (optionA._tag) {
+          case "None": {
+            return Option.none()
+          }
+          case "Some": {
+            switch (optionB._tag) {
+              case "None": {
+                return Option.none()
+              }
+              case "Some": {
+                return Option.some(
+                  core.exitZipWith(optionA.value, optionB.value, {
+                    onSuccess: (a, chunk) => [a, ...chunk],
+                    onFailure: internalCause.parallel
+                  })
+                )
               }
             }
           }
         }
-      )
-    ),
+      }
+    )
+  ),
   interruptAsFork: (fiberId) => core.forEachSequentialDiscard(fibers, (fiber) => fiber.interruptAsFork(fiberId)),
   pipe() {
     return pipeArguments(this, arguments)
@@ -3186,11 +3184,11 @@ export const raceWith = dual<
 ) =>
   raceFibersWith(self, other, {
     onSelfWin: (winner, loser) =>
-      core.flatMap(winner.await(), (exit) => {
+      core.flatMap(winner.await, (exit) => {
         switch (exit._tag) {
           case OpCodes.OP_SUCCESS: {
             return core.flatMap(
-              winner.inheritAll(),
+              winner.inheritAll,
               () => options.onSelfDone(exit, loser)
             )
           }
@@ -3200,11 +3198,11 @@ export const raceWith = dual<
         }
       }),
     onOtherWin: (winner, loser) =>
-      core.flatMap(winner.await(), (exit) => {
+      core.flatMap(winner.await, (exit) => {
         switch (exit._tag) {
           case OpCodes.OP_SUCCESS: {
             return core.flatMap(
-              winner.inheritAll(),
+              winner.inheritAll,
               () => options.onOtherDone(exit, loser)
             )
           }

@@ -305,7 +305,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     return core.map(this.getEither(key), Either.merge)
   }
 
-  cacheStats(): Effect.Effect<never, never, Cache.CacheStats> {
+  get cacheStats(): Effect.Effect<never, never, Cache.CacheStats> {
     return core.sync(() =>
       makeCacheStats({
         hits: this.cacheState.hits,
@@ -419,7 +419,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  invalidateAll(): Effect.Effect<never, never, void> {
+  get invalidateAll(): Effect.Effect<never, never, void> {
     return core.sync(() => {
       this.cacheState.map = MutableHashMap.empty()
     })
@@ -498,13 +498,13 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     )
   }
 
-  size(): Effect.Effect<never, never, number> {
+  get size(): Effect.Effect<never, never, number> {
     return core.sync(() => {
       return MutableHashMap.size(this.cacheState.map)
     })
   }
 
-  values(): Effect.Effect<never, never, Array<Value>> {
+  get values(): Effect.Effect<never, never, Array<Value>> {
     return core.sync(() => {
       const values: Array<Value> = []
       for (const entry of this.cacheState.map) {
@@ -516,7 +516,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  entries(): Effect.Effect<never, never, Array<[Key, Value]>> {
+  get entries(): Effect.Effect<never, never, Array<[Key, Value]>> {
     return core.sync(() => {
       const values: Array<[Key, Value]> = []
       for (const entry of this.cacheState.map) {
@@ -528,7 +528,7 @@ class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
     })
   }
 
-  keys(): Effect.Effect<never, never, Array<Key>> {
+  get keys(): Effect.Effect<never, never, Array<Key>> {
     return core.sync(() => {
       const keys: Array<Key> = []
       for (const entry of this.cacheState.map) {

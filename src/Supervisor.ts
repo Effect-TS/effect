@@ -38,7 +38,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
    * supervisor. This value may change over time, reflecting what the supervisor
    * produces as it supervises fibers.
    */
-  readonly value: () => Effect.Effect<never, never, T>
+  readonly value: Effect.Effect<never, never, T>
 
   /**
    * Supervises the start of a `Fiber`.
@@ -155,7 +155,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
   /**
    * @since 2.0.0
    */
-  abstract value(): Effect.Effect<never, never, T>
+  abstract value: Effect.Effect<never, never, T>
 
   /**
    * @since 2.0.0
@@ -211,7 +211,7 @@ export abstract class AbstractSupervisor<T> implements Supervisor<T> {
    * @since 2.0.0
    */
   map<B>(f: (a: T) => B): Supervisor<B> {
-    return new internal.ProxySupervisor(this, () => core.map(this.value(), f))
+    return new internal.ProxySupervisor(this, core.map(this.value, f))
   }
 
   /**

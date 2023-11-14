@@ -142,7 +142,7 @@ export const supervisedFibers = (): Effect.Effect<
   never,
   never,
   SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
-> => annotationsWith((annotations) => annotations.supervisedFibers())
+> => annotationsWith((annotations) => annotations.supervisedFibers)
 
 /**
  * Retrieves the `Live` service for this test and uses it to run the specified
@@ -286,7 +286,7 @@ export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.TestSi
 /**
  * @since 2.0.0
  */
-export const size: Effect.Effect<never, never, number> = sizedWith((sized) => sized.size())
+export const size: Effect.Effect<never, never, number> = sizedWith((sized) => sized.size)
 
 /**
  * @since 2.0.0

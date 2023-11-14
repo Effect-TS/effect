@@ -80,9 +80,9 @@ export interface TestClock extends Clock.Clock {
   readonly adjustWith: (
     duration: Duration.DurationInput
   ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  readonly save: () => Effect.Effect<never, never, Effect.Effect<never, never, void>>
+  readonly save: Effect.Effect<never, never, Effect.Effect<never, never, void>>
   readonly setTime: (time: number) => Effect.Effect<never, never, void>
-  readonly sleeps: () => Effect.Effect<never, never, Chunk.Chunk<number>>
+  readonly sleeps: Effect.Effect<never, never, Chunk.Chunk<number>>
 }
 
 /**
@@ -181,7 +181,7 @@ export class TestClockImpl implements TestClock {
    * Saves the `TestClock`'s current state in an effect which, when run, will
    * restore the `TestClock` state to the saved state.
    */
-  save(): Effect.Effect<never, never, Effect.Effect<never, never, void>> {
+  get save(): Effect.Effect<never, never, Effect.Effect<never, never, void>> {
     return core.map(ref.get(this.clockState), (data) => ref.set(this.clockState, data))
   }
   /**
@@ -221,7 +221,7 @@ export class TestClockImpl implements TestClock {
    * Returns a list of the times at which all queued effects are scheduled to
    * resume.
    */
-  sleeps(): Effect.Effect<never, never, Chunk.Chunk<number>> {
+  get sleeps(): Effect.Effect<never, never, Chunk.Chunk<number>> {
     return core.map(
       ref.get(this.clockState),
       (data) => Chunk.map(data.sleeps, (_) => _[0])
@@ -250,7 +250,7 @@ export class TestClockImpl implements TestClock {
    * Returns a set of all fibers in this test.
    */
   supervisedFibers(): Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>> {
-    return this.annotations.supervisedFibers()
+    return this.annotations.supervisedFibers
   }
   /**
    * Captures a "snapshot" of the identifier and status of all fibers in this
@@ -265,7 +265,7 @@ export class TestClockImpl implements TestClock {
         fibers,
         effect.reduce(HashMap.empty<FiberId.FiberId, FiberStatus.FiberStatus>(), (map, fiber) =>
           pipe(
-            fiber.status(),
+            fiber.status,
             core.flatMap((status) => {
               if (FiberStatus.isDone(status)) {
                 return core.succeed(HashMap.set(map, fiber.id() as FiberId.FiberId, status as FiberStatus.FiberStatus))
@@ -489,7 +489,7 @@ export const adjustWith = dual<
  * @since 2.0.0
  */
 export const save = (): Effect.Effect<never, never, Effect.Effect<never, never, void>> =>
-  testClockWith((testClock) => testClock.save())
+  testClockWith((testClock) => testClock.save)
 
 /**
  * Accesses a `TestClock` instance in the context and sets the clock time
@@ -520,9 +520,7 @@ export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<neve
  * @since 2.0.0
  */
 export const sleeps = (): Effect.Effect<never, never, Chunk.Chunk<number>> =>
-  testClockWith(
-    (testClock) => testClock.sleeps()
-  )
+  testClockWith((testClock) => testClock.sleeps)
 
 /**
  * Retrieves the `TestClock` service for this test.

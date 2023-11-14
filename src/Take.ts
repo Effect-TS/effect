@@ -217,7 +217,7 @@ export const match: {
 export const matchEffect: {
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
+      readonly onEnd: Effect.Effect<R, E2, Z>
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
     }
@@ -225,7 +225,7 @@ export const matchEffect: {
   <R, E2, Z, R2, E, Z2, A, R3, E3, Z3>(
     self: Take<E, A>,
     options: {
-      readonly onEnd: () => Effect.Effect<R, E2, Z>
+      readonly onEnd: Effect.Effect<R, E2, Z>
       readonly onFailure: (cause: Cause.Cause<E>) => Effect.Effect<R2, E2, Z2>
       readonly onSuccess: (chunk: Chunk.Chunk<A>) => Effect.Effect<R3, E3, Z3>
     }

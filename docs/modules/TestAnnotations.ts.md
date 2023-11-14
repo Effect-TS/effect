@@ -66,11 +66,7 @@ export interface TestAnnotations {
   /**
    * Returns the set of all fibers in this test.
    */
-  readonly supervisedFibers: () => Effect.Effect<
-    never,
-    never,
-    SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>
-  >
+  readonly supervisedFibers: Effect.Effect<never, never, SortedSet.SortedSet<Fiber.RuntimeFiber<unknown, unknown>>>
 }
 ```
 

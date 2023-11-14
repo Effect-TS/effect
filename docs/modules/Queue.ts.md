@@ -278,7 +278,7 @@ export interface BaseQueue {
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue.
    */
-  readonly size: () => Effect.Effect<never, never, number>
+  readonly size: Effect.Effect<never, never, number>
 
   /**
    * Retrieves the size of the queue, which is equal to the number of elements
@@ -291,30 +291,30 @@ export interface BaseQueue {
    * Returns `true` if the `Queue` contains at least one element, `false`
    * otherwise.
    */
-  readonly isFull: () => Effect.Effect<never, never, boolean>
+  readonly isFull: Effect.Effect<never, never, boolean>
 
   /**
    * Returns `true` if the `Queue` contains zero elements, `false` otherwise.
    */
-  readonly isEmpty: () => Effect.Effect<never, never, boolean>
+  readonly isEmpty: Effect.Effect<never, never, boolean>
 
   /**
    * Interrupts any fibers that are suspended on `offer` or `take`. Future calls
    * to `offer*` and `take*` will be interrupted immediately.
    */
-  readonly shutdown: () => Effect.Effect<never, never, void>
+  readonly shutdown: Effect.Effect<never, never, void>
 
   /**
    * Returns `true` if `shutdown` has been called, otherwise returns `false`.
    */
-  readonly isShutdown: () => Effect.Effect<never, never, boolean>
+  readonly isShutdown: Effect.Effect<never, never, boolean>
 
   /**
    * Waits until the queue is shutdown. The `Effect` returned by this method will
    * not resume until the queue has been shutdown. If the queue is already
    * shutdown, the `Effect` will resume right away.
    */
-  readonly awaitShutdown: () => Effect.Effect<never, never, void>
+  readonly awaitShutdown: Effect.Effect<never, never, void>
 }
 ```
 
@@ -330,13 +330,13 @@ export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeabl
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.
    */
-  readonly take: () => Effect.Effect<never, never, A>
+  readonly take: Effect.Effect<never, never, A>
 
   /**
    * Takes all the values in the queue and returns the values. If the queue is
    * empty returns an empty collection.
    */
-  readonly takeAll: () => Effect.Effect<never, never, Chunk.Chunk<A>>
+  readonly takeAll: Effect.Effect<never, never, Chunk.Chunk<A>>
 
   /**
    * Takes up to max number of values from the queue.
@@ -428,7 +428,7 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
    * Determines how the `Queue.Strategy` should shut down when the `Queue` is
    * shut down.
    */
-  readonly shutdown: () => Effect.Effect<never, never, void>
+  readonly shutdown: Effect.Effect<never, never, void>
 
   /**
    * Determines the behavior of the `Queue.Strategy` when there are surplus
