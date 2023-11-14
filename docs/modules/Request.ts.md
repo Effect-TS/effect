@@ -146,7 +146,7 @@ export interface Entry<R> extends Entry.Variance<R> {
   readonly listeners: Listeners
   readonly ownerId: FiberId
   readonly state: {
-    completed: boolean
+    completed: boolean // TODO: mutable by design?
   }
 }
 ```
