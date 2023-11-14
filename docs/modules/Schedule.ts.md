@@ -1040,10 +1040,10 @@ Added in v2.0.0
 
 ```ts
 export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<Env, In, Out> {
-  state(): Effect.Effect<never, never, unknown>
-  last(): Effect.Effect<never, Cause.NoSuchElementException, Out>
-  reset(): Effect.Effect<never, never, void>
-  next(input: In): Effect.Effect<Env, Option.Option<never>, Out>
+  readonly state: () => Effect.Effect<never, never, unknown>
+  readonly last: () => Effect.Effect<never, Cause.NoSuchElementException, Out>
+  readonly reset: () => Effect.Effect<never, never, void>
+  readonly next: (input: In) => Effect.Effect<Env, Option.Option<never>, Out>
 }
 ```
 
