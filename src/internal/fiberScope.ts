@@ -24,7 +24,7 @@ export type FiberScopeTypeId = typeof FiberScopeTypeId
 export interface FiberScope {
   readonly [FiberScopeTypeId]: FiberScopeTypeId
   get fiberId(): FiberId.FiberId
-  add(runtimeFlags: RuntimeFlags.RuntimeFlags, child: FiberRuntime.FiberRuntime<any, any>): void
+  readonly add: (runtimeFlags: RuntimeFlags.RuntimeFlags, child: FiberRuntime.FiberRuntime<any, any>) => void
 }
 
 /** @internal */
