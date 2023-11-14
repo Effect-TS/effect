@@ -103,13 +103,13 @@ export const randomWith = <R, E, A>(f: (random: Random.Random) => Effect.Effect<
   )
 
 /** @internal */
-export const next: Effect.Effect<never, never, number> = randomWith((random) => random.next())
+export const next: Effect.Effect<never, never, number> = randomWith((random) => random.next)
 
 /** @internal */
-export const nextInt: Effect.Effect<never, never, number> = randomWith((random) => random.nextInt())
+export const nextInt: Effect.Effect<never, never, number> = randomWith((random) => random.nextInt)
 
 /** @internal */
-export const nextBoolean: Effect.Effect<never, never, boolean> = randomWith((random) => random.nextBoolean())
+export const nextBoolean: Effect.Effect<never, never, boolean> = randomWith((random) => random.nextBoolean)
 
 /** @internal */
 export const nextRange = (min: number, max: number): Effect.Effect<never, never, number> =>
