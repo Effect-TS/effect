@@ -71,12 +71,12 @@ export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeabl
   /**
    * Places one value in the queue.
    */
-  offer(value: A): Effect.Effect<never, never, boolean>
+  readonly offer: (value: A) => Effect.Effect<never, never, boolean>
 
   /**
    * Places one value in the queue when possible without needing the fiber runtime.
    */
-  unsafeOffer(value: A): boolean
+  readonly unsafeOffer: (value: A) => boolean
 
   /**
    * For Bounded Queue: uses the `BackPressure` Strategy, places the values in
@@ -93,7 +93,7 @@ export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeabl
    * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  offerAll(iterable: Iterable<A>): Effect.Effect<never, never, boolean>
+  readonly offerAll: (iterable: Iterable<A>) => Effect.Effect<never, never, boolean>
 }
 
 /**
