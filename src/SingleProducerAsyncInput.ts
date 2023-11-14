@@ -40,10 +40,10 @@ export interface SingleProducerAsyncInput<Err, Elem, Done>
  * @category models
  */
 export interface AsyncInputProducer<Err, Elem, Done> {
-  awaitRead(): Effect.Effect<never, never, unknown>
-  done(value: Done): Effect.Effect<never, never, unknown>
-  emit(element: Elem): Effect.Effect<never, never, unknown>
-  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown>
+  awaitRead(): Effect.Effect<never, never, unknown> // TODO: remove bivariance
+  done(value: Done): Effect.Effect<never, never, unknown> // TODO: remove bivariance
+  emit(element: Elem): Effect.Effect<never, never, unknown> // TODO: remove bivariance
+  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown> // TODO: remove bivariance
 }
 
 /**
