@@ -310,7 +310,7 @@ export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(max: number): STM.STM<never, never, Array<A>>
+  readonly takeUpTo: (max: number) => STM.STM<never, never, Array<A>>
 }
 ```
 
