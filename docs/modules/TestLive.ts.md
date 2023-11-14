@@ -45,7 +45,7 @@ these services.
 ```ts
 export interface TestLive {
   readonly [TestLiveTypeId]: TestLiveTypeId
-  provide<R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
+  readonly provide: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 }
 ```
 
