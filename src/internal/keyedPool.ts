@@ -37,13 +37,13 @@ class KeyedPoolImpl<K, E, A> implements KeyedPool.KeyedPool<K, E, A> {
   readonly [KeyedPoolTypeId] = keyedPoolVariance
   constructor(
     readonly getOrCreatePool: (key: K) => Effect.Effect<never, never, Pool.Pool<E, A>>,
-    readonly activePools: Effect.Effect<never, never, Array<Pool.Pool<E, A>>>
+    readonly activePools: () => Effect.Effect<never, never, Array<Pool.Pool<E, A>>>
   ) {}
   get(key: K): Effect.Effect<Scope.Scope, E, A> {
     return core.flatMap(this.getOrCreatePool(key), pool.get)
   }
   invalidate(item: A): Effect.Effect<never, never, void> {
-    return core.flatMap(this.activePools, core.forEachSequentialDiscard((pool) => pool.invalidate(item)))
+    return core.flatMap(this.activePools(), core.forEachSequentialDiscard((pool) => pool.invalidate(item)))
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -168,18 +168,19 @@ const makeImpl = <K, R, E, A>(
             }
           }
         })
-      const activePools: Effect.Effect<never, never, Array<Pool.Pool<E, A>>> = core.suspend(() =>
-        core.forEachSequential(Array.from(HashMap.values(MutableRef.get(map))), (value) => {
-          switch (value._tag) {
-            case "Complete": {
-              return core.succeed(value.pool)
+      const activePools = (): Effect.Effect<never, never, Array<Pool.Pool<E, A>>> =>
+        core.suspend(() =>
+          core.forEachSequential(Array.from(HashMap.values(MutableRef.get(map))), (value) => {
+            switch (value._tag) {
+              case "Complete": {
+                return core.succeed(value.pool)
+              }
+              case "Pending": {
+                return core.deferredAwait(value.deferred)
+              }
             }
-            case "Pending": {
-              return core.deferredAwait(value.deferred)
-            }
-          }
-        })
-      )
+          })
+        )
       return new KeyedPoolImpl(getOrCreatePool, activePools)
     })
   )

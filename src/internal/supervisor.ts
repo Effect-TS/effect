@@ -30,12 +30,12 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
 
   constructor(
     readonly underlying: Supervisor.Supervisor<any>,
-    readonly value0: Effect.Effect<never, never, T>
+    readonly value0: () => Effect.Effect<never, never, T>
   ) {
   }
 
   get value(): Effect.Effect<never, never, T> {
-    return this.value0
+    return this.value0()
   }
 
   onStart<R, E, A>(
@@ -64,7 +64,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
   }
 
   map<B>(f: (a: T) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, pipe(this.value, core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<B>(right: Supervisor.Supervisor<B>): Supervisor.Supervisor<[T, B]> {
@@ -118,7 +118,7 @@ export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   }
 
   map<B>(f: (a: [T0, T1]) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, pipe(this.value, core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<[[T0, T1], A]> {
@@ -166,7 +166,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
   }
 
   map<B>(f: (a: Array<Fiber.RuntimeFiber<any, any>>) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, pipe(this.value, core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(
@@ -217,7 +217,7 @@ export class Const<T> implements Supervisor.Supervisor<T> {
   }
 
   map<B>(f: (a: T) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, pipe(this.value, core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(right: Supervisor.Supervisor<A>): Supervisor.Supervisor<[T, A]> {
@@ -265,7 +265,7 @@ class FibersIn implements Supervisor.Supervisor<SortedSet.SortedSet<Fiber.Runtim
   }
 
   map<B>(f: (a: SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>) => B): Supervisor.Supervisor<B> {
-    return new ProxySupervisor(this, pipe(this.value, core.map(f)))
+    return new ProxySupervisor(this, () => pipe(this.value, core.map(f)))
   }
 
   zip<A>(
