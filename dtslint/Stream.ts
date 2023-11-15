@@ -62,16 +62,16 @@ Stream.partition(stream, predicate)
 // $ExpectType Effect<Scope, never, [Stream<never, never, string | number>, Stream<never, never, string | number>]>
 pipe(stream, Stream.partition(predicate))
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string | number>, Stream<never, never, number>]>
+// $ExpectType Effect<Scope, never, [Stream<never, never, string>, Stream<never, never, number>]>
 Stream.partition(stream, isNumber)
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string | number>, Stream<never, never, number>]>
+// $ExpectType Effect<Scope, never, [Stream<never, never, string>, Stream<never, never, number>]>
 pipe(stream, Stream.partition(isNumber))
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string | number>, Stream<never, never, string>]>
+// $ExpectType Effect<Scope, never, [Stream<never, never, number>, Stream<never, never, string>]>
 Stream.partition(stream, isString)
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string | number>, Stream<never, never, string>]>
+// $ExpectType Effect<Scope, never, [Stream<never, never, number>, Stream<never, never, string>]>
 pipe(stream, Stream.partition(isString))
 
 // -------------------------------------------------------------------------------------
