@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "find-my-way": "^7.7.0",
-    "multipasta": "^0.1.14",
+    "multipasta": "^0.1.15",
     "path-browserify": "^1.0.1"
   },
   "peerDependencies": {
