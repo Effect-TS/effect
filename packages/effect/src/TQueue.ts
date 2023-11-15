@@ -44,7 +44,7 @@ export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
   /**
    * Places one value in the queue.
    */
-  readonly offer: (value: A) => STM.STM<never, never, boolean>
+  offer(value: A): STM.STM<never, never, boolean>
 
   /**
    * For Bounded TQueue: uses the `BackPressure` Strategy, places the values in
@@ -61,7 +61,7 @@ export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
    * For Dropping TQueue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  readonly offerAll: (iterable: Iterable<A>) => STM.STM<never, never, boolean>
+  offerAll(iterable: Iterable<A>): STM.STM<never, never, boolean>
 }
 
 /**
@@ -96,7 +96,7 @@ export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
   /**
    * Takes up to max number of values from the queue.
    */
-  readonly takeUpTo: (max: number) => STM.STM<never, never, Array<A>>
+  takeUpTo(max: number): STM.STM<never, never, Array<A>>
 }
 
 /**
@@ -109,7 +109,7 @@ export interface BaseTQueue {
   /**
    * Returns the number of elements the queue can hold.
    */
-  readonly capacity: () => number
+  capacity(): number
 
   /**
    * Retrieves the size of the queue, which is equal to the number of elements

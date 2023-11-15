@@ -3698,17 +3698,26 @@ export const mapAccumEffect = dual<
 /** @internal */
 export const mapBoth = dual<
   <E, E2, A, A2>(
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: {
+      readonly onFailure: (e: E) => E2
+      readonly onSuccess: (a: A) => A2
+    }
   ) => <R>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E2, A2>,
   <R, E, E2, A, A2>(
     self: Stream.Stream<R, E, A>,
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: {
+      readonly onFailure: (e: E) => E2
+      readonly onSuccess: (a: A) => A2
+    }
   ) => Stream.Stream<R, E2, A2>
 >(
   2,
   <R, E, E2, A, A2>(
     self: Stream.Stream<R, E, A>,
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: {
+      readonly onFailure: (e: E) => E2
+      readonly onSuccess: (a: A) => A2
+    }
   ): Stream.Stream<R, E2, A2> => pipe(self, mapError(options.onFailure), map(options.onSuccess))
 )
 

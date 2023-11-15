@@ -95,9 +95,17 @@ export const asyncOption = <R, E, A>(
 
 /* @internal */
 export const try_: {
-  <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E }): Effect.Effect<never, E, A>
+  <A, E>(options: {
+    readonly try: LazyArg<A>
+    readonly catch: (error: unknown) => E
+  }): Effect.Effect<never, E, A>
   <A>(evaluate: LazyArg<A>): Effect.Effect<never, unknown, A>
-} = <A, E>(arg: LazyArg<A> | { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E }) => {
+} = <A, E>(
+  arg: LazyArg<A> | {
+    readonly try: LazyArg<A>
+    readonly catch: (error: unknown) => E
+  }
+) => {
   let evaluate: LazyArg<A>
   let onFailure: ((error: unknown) => E) | undefined = undefined
   if (typeof arg === "function") {

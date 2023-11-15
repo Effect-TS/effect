@@ -262,7 +262,7 @@ export type Op<Tag extends string, Body = {}> = Effect.Effect<never, never, neve
 /** @internal */
 export interface Async extends
   Op<OpCodes.OP_ASYNC, {
-    readonly i0: (resume: (effect: Primitive) => void) => void
+    i0(resume: (effect: Primitive) => void): void
     readonly i1: FiberId.FiberId
   }>
 {}
@@ -295,7 +295,7 @@ export interface OpTag extends Op<OpCodes.OP_TAG, {}> {}
 /** @internal */
 export interface Commit extends
   Op<OpCodes.OP_COMMIT, {
-    readonly commit: () => Effect.Effect<unknown, unknown, unknown>
+    commit(): Effect.Effect<unknown, unknown, unknown>
   }>
 {}
 
@@ -303,7 +303,7 @@ export interface Commit extends
 export interface OnFailure extends
   Op<OpCodes.OP_ON_FAILURE, {
     readonly i0: Primitive
-    readonly i1: (a: Cause.Cause<unknown>) => Primitive
+    i1(a: Cause.Cause<unknown>): Primitive
   }>
 {}
 
@@ -311,7 +311,7 @@ export interface OnFailure extends
 export interface OnSuccess extends
   Op<OpCodes.OP_ON_SUCCESS, {
     readonly i0: Primitive
-    readonly i1: (a: unknown) => Primitive
+    i1(a: unknown): Primitive
   }>
 {}
 
@@ -319,7 +319,7 @@ export interface OnSuccess extends
 export interface OnStep extends
   Op<"OnStep", {
     readonly i0: Primitive
-    readonly i1: (result: Exit.Exit<any, any> | Blocked) => Primitive
+    i1(result: Exit.Exit<any, any> | Blocked): Primitive
   }>
 {}
 
@@ -327,8 +327,8 @@ export interface OnStep extends
 export interface OnSuccessAndFailure extends
   Op<OpCodes.OP_ON_SUCCESS_AND_FAILURE, {
     readonly i0: Primitive
-    readonly i1: (a: Cause.Cause<unknown>) => Primitive
-    readonly i2: (a: unknown) => Primitive
+    i1(a: Cause.Cause<unknown>): Primitive
+    i2(a: unknown): Primitive
   }>
 {}
 
@@ -342,7 +342,7 @@ export interface Success extends
 /** @internal */
 export interface Sync extends
   Op<OpCodes.OP_SYNC, {
-    readonly i0: LazyArg<unknown>
+    i0(): unknown
   }>
 {}
 
@@ -357,16 +357,16 @@ export interface UpdateRuntimeFlags extends
 /** @internal */
 export interface While extends
   Op<OpCodes.OP_WHILE, {
-    readonly i0: () => boolean
-    readonly i1: () => Primitive
-    readonly i2: (a: unknown) => void
+    i0(): boolean
+    i1(): Primitive
+    i2(a: unknown): void
   }>
 {}
 
 /** @internal */
 export interface WithRuntime extends
   Op<OpCodes.OP_WITH_RUNTIME, {
-    readonly i0: (fiber: FiberRuntime.FiberRuntime<unknown, unknown>, status: FiberStatus.Running) => Primitive
+    i0(fiber: FiberRuntime.FiberRuntime<unknown, unknown>, status: FiberStatus.Running): Primitive
   }>
 {}
 

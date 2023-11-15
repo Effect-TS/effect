@@ -147,11 +147,17 @@ export const fromOption: {
 
 const try_: {
   <A, E>(
-    options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E }
+    options: {
+      readonly try: LazyArg<A>
+      readonly catch: (error: unknown) => E
+    }
   ): Either<E, A>
   <A>(evaluate: LazyArg<A>): Either<unknown, A>
 } = (<A, E>(
-  evaluate: LazyArg<A> | { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E }
+  evaluate: LazyArg<A> | {
+    readonly try: LazyArg<A>
+    readonly catch: (error: unknown) => E
+  }
 ) => {
   if (isFunction(evaluate)) {
     try {

@@ -82,8 +82,8 @@ export interface ExtendScope extends
 export interface Fold extends
   Op<OpCodes.OP_FOLD, {
     readonly layer: Layer.Layer<never, never, unknown>
-    readonly failureK: (cause: Cause.Cause<unknown>) => Layer.Layer<never, never, unknown>
-    readonly successK: (context: Context.Context<unknown>) => Layer.Layer<never, never, unknown>
+    failureK(cause: Cause.Cause<unknown>): Layer.Layer<never, never, unknown>
+    successK(context: Context.Context<unknown>): Layer.Layer<never, never, unknown>
   }>
 {}
 
@@ -111,7 +111,7 @@ export interface Scoped extends
 /** @internal */
 export interface Suspend extends
   Op<OpCodes.OP_SUSPEND, {
-    readonly evaluate: LazyArg<Layer.Layer<never, never, unknown>>
+    evaluate(): Layer.Layer<never, never, unknown>
   }>
 {}
 
@@ -119,7 +119,7 @@ export interface Suspend extends
 export interface Locally extends
   Op<"Locally", {
     readonly self: Layer.Layer<never, never, unknown>
-    readonly f: (_: Effect.Effect<any, any, any>) => Effect.Effect<any, any, any>
+    f(_: Effect.Effect<any, any, any>): Effect.Effect<any, any, any>
   }>
 {}
 
@@ -136,10 +136,7 @@ export interface ZipWith extends
   Op<OpCodes.OP_ZIP_WITH, {
     readonly first: Layer.Layer<never, never, unknown>
     readonly second: Layer.Layer<never, never, unknown>
-    readonly zipK: (
-      left: Context.Context<unknown>,
-      right: Context.Context<unknown>
-    ) => Context.Context<unknown>
+    zipK(left: Context.Context<unknown>, right: Context.Context<unknown>): Context.Context<unknown>
   }>
 {}
 
@@ -148,10 +145,7 @@ export interface ZipWithPar extends
   Op<OpCodes.OP_ZIP_WITH_PAR, {
     readonly first: Layer.Layer<never, never, unknown>
     readonly second: Layer.Layer<never, never, unknown>
-    readonly zipK: (
-      left: Context.Context<unknown>,
-      right: Context.Context<unknown>
-    ) => Context.Context<unknown>
+    zipK(left: Context.Context<unknown>, right: Context.Context<unknown>): Context.Context<unknown>
   }>
 {}
 

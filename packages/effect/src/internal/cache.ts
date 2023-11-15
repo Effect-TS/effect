@@ -156,11 +156,11 @@ export interface KeySet<K> {
   /**
    * Adds the specified key to the set.
    */
-  readonly add: (key: MapKey<K>) => void
+  add(key: MapKey<K>): void
   /**
    * Removes the lowest priority key from the set.
    */
-  readonly remove: () => MapKey<K> | undefined
+  remove(): MapKey<K> | undefined
 }
 
 class KeySetImpl<K> implements KeySet<K> {

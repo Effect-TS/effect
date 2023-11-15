@@ -77,15 +77,15 @@ export interface ContinuationK<
   >
 {
   readonly _tag: OpCodes.OP_CONTINUATION_K
-  readonly onSuccess: (
+  onSuccess(
     o: OutDone
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
-  readonly onHalt: (
+  ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  onHalt(
     c: Cause.Cause<OutErr>
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
-  readonly onExit: (
+  ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  onExit(
     exit: Exit.Exit<OutErr, OutDone>
-  ) => Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
+  ): Channel.Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
 }
 
 /** @internal */
@@ -103,7 +103,7 @@ export interface ContinuationFinalizer<Env, OutErr, OutDone> extends
   >
 {
   readonly _tag: OpCodes.OP_CONTINUATION_FINALIZER
-  readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>
+  finalizer(exit: Exit.Exit<OutErr, OutDone>): Effect.Effect<Env, never, unknown>
 }
 
 /** @internal */

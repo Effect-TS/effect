@@ -286,11 +286,17 @@ export const map: {
  */
 export const mapBoth: {
   <E, A, E2, A2>(
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: {
+      readonly onFailure: (e: E) => E2
+      readonly onSuccess: (a: A) => A2
+    }
   ): (self: Exit<E, A>) => Exit<E2, A2>
   <E, A, E2, A2>(
     self: Exit<E, A>,
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: {
+      readonly onFailure: (e: E) => E2
+      readonly onSuccess: (a: A) => A2
+    }
   ): Exit<E2, A2>
 } = core.exitMapBoth
 
@@ -324,11 +330,17 @@ export const mapErrorCause: {
  */
 export const match: {
   <E, A, Z1, Z2>(
-    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
+    options: {
+      readonly onFailure: (cause: Cause.Cause<E>) => Z1
+      readonly onSuccess: (a: A) => Z2
+    }
   ): (self: Exit<E, A>) => Z1 | Z2
   <E, A, Z1, Z2>(
     self: Exit<E, A>,
-    options: { readonly onFailure: (cause: Cause.Cause<E>) => Z1; readonly onSuccess: (a: A) => Z2 }
+    options: {
+      readonly onFailure: (cause: Cause.Cause<E>) => Z1
+      readonly onSuccess: (a: A) => Z2
+    }
   ): Z1 | Z2
 } = core.exitMatch
 

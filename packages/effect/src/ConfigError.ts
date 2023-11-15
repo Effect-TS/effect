@@ -54,17 +54,17 @@ export declare namespace ConfigError {
  * @category models
  */
 export interface ConfigErrorReducer<C, Z> {
-  readonly andCase: (context: C, left: Z, right: Z) => Z
-  readonly orCase: (context: C, left: Z, right: Z) => Z
-  readonly invalidDataCase: (context: C, path: Array<string>, message: string) => Z
-  readonly missingDataCase: (context: C, path: Array<string>, message: string) => Z
-  readonly sourceUnavailableCase: (
+  andCase(context: C, left: Z, right: Z): Z
+  orCase(context: C, left: Z, right: Z): Z
+  invalidDataCase(context: C, path: Array<string>, message: string): Z
+  missingDataCase(context: C, path: Array<string>, message: string): Z
+  sourceUnavailableCase(
     context: C,
     path: Array<string>,
     message: string,
     cause: Cause.Cause<unknown>
-  ) => Z
-  readonly unsupportedCase: (context: C, path: Array<string>, message: string) => Z
+  ): Z
+  unsupportedCase(context: C, path: Array<string>, message: string): Z
 }
 
 /**

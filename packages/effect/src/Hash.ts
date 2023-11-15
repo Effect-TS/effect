@@ -28,7 +28,7 @@ export const symbol: unique symbol = Symbol.for("effect/Hash")
  * @category models
  */
 export interface Hash {
-  readonly [symbol]: () => number
+  [symbol](): number
 }
 
 /**

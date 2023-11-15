@@ -31,13 +31,13 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  readonly getOption: (key: Key) => Effect.Effect<Scope.Scope, Error, Option.Option<Value>>
+  getOption(key: Key): Effect.Effect<Scope.Scope, Error, Option.Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  readonly getOptionComplete: (key: Key) => Effect.Effect<Scope.Scope, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect.Effect<Scope.Scope, never, Option.Option<Value>>
 
   /**
    * Returns statistics for this cache.
@@ -49,24 +49,24 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
    * cache. Sometime `contains` can return true if the resource is currently
    * being created but not yet totally created.
    */
-  readonly contains: (key: Key) => Effect.Effect<never, never, boolean>
+  contains(key: Key): Effect.Effect<never, never, boolean>
 
   /**
    * Return statistics for the specified entry.
    */
-  readonly entryStats: (key: Key) => Effect.Effect<never, never, Option.Option<Cache.EntryStats>>
+  entryStats(key: Key): Effect.Effect<never, never, Option.Option<Cache.EntryStats>>
 
   /**
    * Gets the value from the cache if it exists or otherwise computes it, the
    * release action signals to the cache that the value is no longer being used
    * and can potentially be finalized subject to the policies of the cache.
    */
-  readonly get: (key: Key) => Effect.Effect<Scope.Scope, Error, Value>
+  get(key: Key): Effect.Effect<Scope.Scope, Error, Value>
 
   /**
    * Invalidates the resource associated with the specified key.
    */
-  readonly invalidate: (key: Key) => Effect.Effect<never, never, void>
+  invalidate(key: Key): Effect.Effect<never, never, void>
 
   /**
    * Invalidates all values in the cache.
@@ -81,7 +81,7 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
    * computed, concurrent call the .get will use the old resource if this one is
    * not expired.
    */
-  readonly refresh: (key: Key) => Effect.Effect<never, Error, void>
+  refresh(key: Key): Effect.Effect<never, Error, void>
 
   /**
    * Returns the approximate number of values in the cache.

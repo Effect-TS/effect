@@ -24,14 +24,14 @@ export type TracerTypeId = typeof TracerTypeId
  */
 export interface Tracer {
   readonly [TracerTypeId]: TracerTypeId
-  readonly span: (
+  span(
     name: string,
     parent: Option.Option<ParentSpan>,
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint
-  ) => Span
-  readonly context: <X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>) => X
+  ): Span
+  context<X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>): X
 }
 
 /**
@@ -87,9 +87,9 @@ export interface Span {
   readonly attributes: ReadonlyMap<string, unknown>
   readonly links: ReadonlyArray<SpanLink>
   readonly sampled: boolean
-  readonly end: (endTime: bigint, exit: Exit.Exit<unknown, unknown>) => void
-  readonly attribute: (key: string, value: unknown) => void
-  readonly event: (name: string, startTime: bigint, attributes?: Record<string, unknown>) => void
+  end(endTime: bigint, exit: Exit.Exit<unknown, unknown>): void
+  attribute(key: string, value: unknown): void
+  event(name: string, startTime: bigint, attributes?: Record<string, unknown>): void
 }
 
 /**

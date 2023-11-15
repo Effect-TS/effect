@@ -75,11 +75,8 @@ export type Primitive =
 /** @internal */
 export interface BracketOut extends
   Op<OpCodes.OP_BRACKET_OUT, {
-    readonly acquire: LazyArg<Effect.Effect<unknown, unknown, unknown>>
-    readonly finalizer: (
-      resource: unknown,
-      exit: Exit.Exit<unknown, unknown>
-    ) => Effect.Effect<unknown, unknown, unknown>
+    acquire(): Effect.Effect<unknown, unknown, unknown>
+    finalizer(resource: unknown, exit: Exit.Exit<unknown, unknown>): Effect.Effect<unknown, unknown, unknown>
   }>
 {}
 
@@ -94,14 +91,14 @@ export interface Bridge extends
 /** @internal */
 export interface ConcatAll extends
   Op<OpCodes.OP_CONCAT_ALL, {
-    readonly combineInners: (outDone: unknown, outDone2: unknown) => unknown
-    readonly combineAll: (outDone: unknown, outDone2: unknown) => unknown
-    readonly onPull: (
+    combineInners(outDone: unknown, outDone2: unknown): unknown
+    combineAll(outDone: unknown, outDone2: unknown): unknown
+    onPull(
       request: UpstreamPullRequest.UpstreamPullRequest<unknown>
-    ) => UpstreamPullStrategy.UpstreamPullStrategy<unknown>
-    readonly onEmit: (outElem: unknown) => ChildExecutorDecision.ChildExecutorDecision
-    readonly value: LazyArg<ErasedChannel>
-    readonly k: (outElem: unknown) => ErasedChannel
+    ): UpstreamPullStrategy.UpstreamPullStrategy<unknown>
+    onEmit(outElem: unknown): ChildExecutorDecision.ChildExecutorDecision
+    value(): ErasedChannel
+    k(outElem: unknown): ErasedChannel
   }>
 {}
 
@@ -116,14 +113,14 @@ export interface Emit extends
 export interface Ensuring extends
   Op<OpCodes.OP_ENSURING, {
     readonly channel: ErasedChannel
-    readonly finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown, unknown, unknown>
+    finalizer(exit: Exit.Exit<unknown, unknown>): Effect.Effect<unknown, unknown, unknown>
   }>
 {}
 
 /** @internal */
 export interface Fail extends
   Op<OpCodes.OP_FAIL, {
-    readonly error: LazyArg<Cause.Cause<unknown>>
+    error(): Cause.Cause<unknown>
   }>
 {}
 
@@ -138,22 +135,22 @@ export interface Fold extends
 /** @internal */
 export interface FromEffect extends
   Op<OpCodes.OP_FROM_EFFECT, {
-    readonly effect: LazyArg<Effect.Effect<unknown, unknown, unknown>>
+    effect(): Effect.Effect<unknown, unknown, unknown>
   }>
 {}
 
 /** @internal */
 export interface PipeTo extends
   Op<OpCodes.OP_PIPE_TO, {
-    readonly left: LazyArg<ErasedChannel>
-    readonly right: LazyArg<ErasedChannel>
+    left(): ErasedChannel
+    right(): ErasedChannel
   }>
 {}
 
 /** @internal */
 export interface Provide extends
   Op<OpCodes.OP_PROVIDE, {
-    readonly context: LazyArg<Context.Context<unknown>>
+    context(): Context.Context<unknown>
     readonly inner: ErasedChannel
   }>
 {}
@@ -161,7 +158,7 @@ export interface Provide extends
 /** @internal */
 export interface Read extends
   Op<OpCodes.OP_READ, {
-    readonly more: (input: unknown) => ErasedChannel
+    more(input: unknown): ErasedChannel
     readonly done: ErasedContinuationK
   }>
 {}
@@ -169,7 +166,7 @@ export interface Read extends
 /** @internal */
 export interface Succeed extends
   Op<OpCodes.OP_SUCCEED, {
-    readonly evaluate: LazyArg<unknown>
+    evaluate(): unknown
   }>
 {}
 
@@ -183,7 +180,7 @@ export interface SucceedNow extends
 /** @internal */
 export interface Suspend extends
   Op<OpCodes.OP_SUSPEND, {
-    readonly channel: LazyArg<ErasedChannel>
+    channel(): ErasedChannel
   }>
 {}
 

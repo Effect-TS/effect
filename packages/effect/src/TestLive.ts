@@ -27,7 +27,7 @@ export type TestLiveTypeId = typeof TestLiveTypeId
  */
 export interface TestLive {
   readonly [TestLiveTypeId]: TestLiveTypeId
-  readonly provide: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  provide<R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 }
 
 /**

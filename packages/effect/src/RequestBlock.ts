@@ -31,13 +31,13 @@ export declare namespace RequestBlock {
    * @category models
    */
   export interface Reducer<R, Z> {
-    readonly emptyCase: () => Z
-    readonly parCase: (left: Z, right: Z) => Z
-    readonly singleCase: (
+    emptyCase(): Z
+    parCase(left: Z, right: Z): Z
+    singleCase(
       dataSource: RequestResolver.RequestResolver<unknown, R>,
       blockedRequest: Request.Entry<unknown>
-    ) => Z
-    readonly seqCase: (left: Z, right: Z) => Z
+    ): Z
+    seqCase(left: Z, right: Z): Z
   }
 }
 

@@ -42,16 +42,16 @@ export interface TRandom {
    * Returns the next numeric value in the specified range from the
    * pseudo-random number generator.
    */
-  readonly nextRange: (min: number, max: number) => STM.STM<never, never, number>
+  nextRange(min: number, max: number): STM.STM<never, never, number>
   /**
    * Returns the next integer value in the specified range from the
    * pseudo-random number generator.
    */
-  readonly nextIntBetween: (min: number, max: number) => STM.STM<never, never, number>
+  nextIntBetween(min: number, max: number): STM.STM<never, never, number>
   /**
    * Uses the pseudo-random number generator to shuffle the specified iterable.
    */
-  readonly shuffle: <A>(elements: Iterable<A>) => STM.STM<never, never, Array<A>>
+  shuffle<A>(elements: Iterable<A>): STM.STM<never, never, Array<A>>
 }
 /**
  * @internal

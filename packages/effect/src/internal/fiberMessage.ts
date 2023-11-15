@@ -39,10 +39,7 @@ export interface InterruptSignal {
 /** @internal */
 export interface Stateful {
   readonly _tag: OP_STATEFUL
-  readonly onFiber: (
-    fiber: FiberRuntime.FiberRuntime<any, any>,
-    status: FiberStatus.FiberStatus
-  ) => void
+  onFiber(fiber: FiberRuntime.FiberRuntime<any, any>, status: FiberStatus.FiberStatus): void
 }
 
 /** @internal */
