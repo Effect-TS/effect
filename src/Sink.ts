@@ -215,8 +215,10 @@ export const collectAllUntilEffect: <In, R, E>(
  * @since 2.0.0
  * @category constructors
  */
-export const collectAllWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, Chunk.Chunk<In>> =
-  internal.collectAllWhile
+export const collectAllWhile: {
+  <In, Out extends In>(refinement: Refinement<In, Out>): Sink<never, never, In, In, Chunk.Chunk<Out>>
+  <In>(predicate: Predicate<In>): Sink<never, never, In, In, Chunk.Chunk<In>>
+} = internal.collectAllWhile
 
 /**
  * Accumulates incoming elements into a chunk as long as they verify effectful
