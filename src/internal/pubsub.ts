@@ -29,11 +29,11 @@ export interface AtomicPubSub<A> {
 
 /** @internal */
 interface Subscription<A> {
-  readonly isEmpty: () => boolean
-  readonly size: () => number
-  readonly poll: <D>(default_: D) => A | D
-  readonly pollUpTo: (n: number) => Chunk.Chunk<A>
-  readonly unsubscribe: () => void
+  isEmpty(): boolean
+  size(): number
+  poll<D>(default_: D): A | D
+  pollUpTo(n: number): Chunk.Chunk<A>
+  unsubscribe(): void
 }
 
 /** @internal */

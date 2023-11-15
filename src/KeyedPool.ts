@@ -70,7 +70,10 @@ export declare namespace KeyedPool {
  * @category constructors
  */
 export const make: <K, R, E, A>(
-  options: { readonly acquire: (key: K) => Effect.Effect<R, E, A>; readonly size: number }
+  options: {
+    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly size: number
+  }
 ) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>> = internal.make
 
 /**
@@ -85,7 +88,10 @@ export const make: <K, R, E, A>(
  * @category constructors
  */
 export const makeWith: <K, R, E, A>(
-  options: { readonly acquire: (key: K) => Effect.Effect<R, E, A>; readonly size: (key: K) => number }
+  options: {
+    readonly acquire: (key: K) => Effect.Effect<R, E, A>
+    readonly size: (key: K) => number
+  }
 ) => Effect.Effect<Scope.Scope | R, never, KeyedPool<K, E, A>> = internal.makeWith
 
 /**

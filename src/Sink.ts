@@ -356,11 +356,17 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Sink<never, never, unknown
  */
 export const dimap: {
   <In0, In, Z, Z2>(
-    options: { readonly onInput: (input: In0) => In; readonly onDone: (z: Z) => Z2 }
+    options: {
+      readonly onInput: (input: In0) => In
+      readonly onDone: (z: Z) => Z2
+    }
   ): <R, E, L>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z2>
   <R, E, L, In0, In, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
-    options: { readonly onInput: (input: In0) => In; readonly onDone: (z: Z) => Z2 }
+    options: {
+      readonly onInput: (input: In0) => In
+      readonly onDone: (z: Z) => Z2
+    }
   ): Sink<R, E, In0, L, Z2>
 } = internal.dimap
 
@@ -396,11 +402,17 @@ export const dimapEffect: {
  */
 export const dimapChunks: {
   <In0, In, Z, Z2>(
-    options: { readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>; readonly onDone: (z: Z) => Z2 }
+    options: {
+      readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
+      readonly onDone: (z: Z) => Z2
+    }
   ): <R, E, L>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In0, L, Z2>
   <R, E, L, In0, In, Z, Z2>(
     self: Sink<R, E, In, L, Z>,
-    options: { readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>; readonly onDone: (z: Z) => Z2 }
+    options: {
+      readonly onInput: (chunk: Chunk.Chunk<In0>) => Chunk.Chunk<In>
+      readonly onDone: (z: Z) => Z2
+    }
   ): Sink<R, E, In0, L, Z2>
 } = internal.dimapChunks
 

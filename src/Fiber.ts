@@ -491,11 +491,17 @@ export const mapFiber: {
  */
 export const match: {
   <E, A, Z>(
-    options: { readonly onFiber: (fiber: Fiber<E, A>) => Z; readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z }
+    options: {
+      readonly onFiber: (fiber: Fiber<E, A>) => Z
+      readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z
+    }
   ): (self: Fiber<E, A>) => Z
   <E, A, Z>(
     self: Fiber<E, A>,
-    options: { readonly onFiber: (fiber: Fiber<E, A>) => Z; readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z }
+    options: {
+      readonly onFiber: (fiber: Fiber<E, A>) => Z
+      readonly onRuntimeFiber: (fiber: RuntimeFiber<E, A>) => Z
+    }
   ): Z
 } = internal.match
 

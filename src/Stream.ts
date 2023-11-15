@@ -1984,11 +1984,17 @@ export const mapAccumEffect: {
  */
 export const mapBoth: {
   <E, E2, A, A2>(
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: {
+      readonly onFailure: (e: E) => E2
+      readonly onSuccess: (a: A) => A2
+    }
   ): <R>(self: Stream<R, E, A>) => Stream<R, E2, A2>
   <R, E, E2, A, A2>(
     self: Stream<R, E, A>,
-    options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
+    options: {
+      readonly onFailure: (e: E) => E2
+      readonly onSuccess: (a: A) => A2
+    }
   ): Stream<R, E2, A2>
 } = internal.mapBoth
 
@@ -2860,12 +2866,18 @@ export const repeatElements: {
 export const repeatElementsWith: {
   <R2, B, A, C>(
     schedule: Schedule.Schedule<R2, unknown, B>,
-    options: { readonly onElement: (a: A) => C; readonly onSchedule: (b: B) => C }
+    options: {
+      readonly onElement: (a: A) => C
+      readonly onSchedule: (b: B) => C
+    }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E, C>
   <R, E, R2, B, A, C>(
     self: Stream<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, B>,
-    options: { readonly onElement: (a: A) => C; readonly onSchedule: (b: B) => C }
+    options: {
+      readonly onElement: (a: A) => C
+      readonly onSchedule: (b: B) => C
+    }
   ): Stream<R | R2, E, C>
 } = internal.repeatElementsWith
 
@@ -2889,12 +2901,18 @@ export const repeatValue: <A>(value: A) => Stream<never, never, A> = internal.re
 export const repeatWith: {
   <R2, B, A, C>(
     schedule: Schedule.Schedule<R2, unknown, B>,
-    options: { readonly onElement: (a: A) => C; readonly onSchedule: (b: B) => C }
+    options: {
+      readonly onElement: (a: A) => C
+      readonly onSchedule: (b: B) => C
+    }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E, C>
   <R, E, R2, B, A, C>(
     self: Stream<R, E, A>,
     schedule: Schedule.Schedule<R2, unknown, B>,
-    options: { readonly onElement: (a: A) => C; readonly onSchedule: (b: B) => C }
+    options: {
+      readonly onElement: (a: A) => C
+      readonly onSchedule: (b: B) => C
+    }
   ): Stream<R | R2, E, C>
 } = internal.repeatWith
 
@@ -3386,12 +3404,18 @@ export const schedule: {
 export const scheduleWith: {
   <R2, A, A0 extends A, B, C>(
     schedule: Schedule.Schedule<R2, A0, B>,
-    options: { readonly onElement: (a: A) => C; readonly onSchedule: (b: B) => C }
+    options: {
+      readonly onElement: (a: A) => C
+      readonly onSchedule: (b: B) => C
+    }
   ): <R, E>(self: Stream<R, E, A>) => Stream<R2 | R, E, C>
   <R, E, R2, A, A0 extends A, B, C>(
     self: Stream<R, E, A>,
     schedule: Schedule.Schedule<R2, A0, B>,
-    options: { readonly onElement: (a: A) => C; readonly onSchedule: (b: B) => C }
+    options: {
+      readonly onElement: (a: A) => C
+      readonly onSchedule: (b: B) => C
+    }
   ): Stream<R | R2, E, C>
 } = internal.scheduleWith
 
