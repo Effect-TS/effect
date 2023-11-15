@@ -59,7 +59,7 @@
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
     "@effect/build-utils": "^0.4.1",
-    "@effect/docgen": "^0.3.2",
+    "@effect/docgen": "^0.3.3",
     "@effect/dtslint": "^0.0.3",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
@@ -88,10 +88,5 @@
     "vite": "^4.5.0",
     "vitest": "^0.34.6",
     "zod": "^3.22.4"
-  },
-  "pnpm": {
-    "overrides": {
-      "effect": "2.0.0-next.55"
-    }
   }
 }
