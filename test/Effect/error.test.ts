@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
       const log = Cause.pretty(cause)
       expect(log).includes("TestError: ")
       if (typeof window === "undefined") {
-        expect(log).includes("test/Effect/error.ts:12:78")
+        expect(log).includes("test/Effect/error.test.ts:12:78")
       }
       expect(log).includes("at A")
     }))
@@ -31,7 +31,7 @@ describe.concurrent("Effect", () => {
       )
       const log = Cause.pretty(cause)
       if (typeof window === "undefined") {
-        expect(log).includes("test/Effect/error.ts:26")
+        expect(log).includes("test/Effect/error.test.ts:26")
       }
       expect(log).includes("at A")
     }))
@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
       const log = Cause.pretty(cause)
       expect(log).includes("Failure: some message")
       if (typeof window === "undefined") {
-        expect(log).includes("test/Effect/error.ts:48")
+        expect(log).includes("test/Effect/error.test.ts:48")
       }
       expect(log).includes("at A")
     }))
