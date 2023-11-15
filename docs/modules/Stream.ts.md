@@ -4691,19 +4691,21 @@ further than the slower one.
 
 ```ts
 export declare const partition: {
-  <C extends A, B extends A, A>(
+  <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>,
     options?: { bufferSize?: number | undefined }
-  ): <R, E>(self: Stream<R, E, C>) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, C>, Stream<never, E, B>]>
+  ): <R, E>(
+    self: Stream<R, E, C>
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<C, B>>, Stream<never, E, B>]>
   <A>(
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined }
   ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
-  <R, E, A, B extends A>(
-    self: Stream<R, E, A>,
+  <R, E, C extends A, B extends A, A = C>(
+    self: Stream<R, E, C>,
     refinement: Refinement<A, B>,
     options?: { bufferSize?: number | undefined }
-  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, B>]>
+  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<C, B>>, Stream<never, E, B>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,

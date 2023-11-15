@@ -2502,7 +2502,7 @@ export const partition: {
       bufferSize?: number | undefined
     }
   ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
-} = internal.partition as any
+} = internal.partition
 
 /**
  * Split a stream by an effectful predicate. The faster stream may advance by

@@ -4370,23 +4370,38 @@ export const peel = dual<
 })
 
 /** @internal */
-export const partition = dual<
+export const partition: {
+  <C extends A, B extends A, A = C>(
+    refinement: Refinement<A, B>,
+    options?: {
+      bufferSize?: number | undefined
+    }
+  ): <R, E>(
+    self: Stream.Stream<R, E, C>
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, Exclude<C, B>>, Stream.Stream<never, E, B>]>
   <A>(
     predicate: Predicate<A>,
     options?: {
       bufferSize?: number | undefined
     }
-  ) => <R, E>(
+  ): <R, E>(
     self: Stream.Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>,
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>
+  <R, E, C extends A, B extends A, A = C>(
+    self: Stream.Stream<R, E, C>,
+    refinement: Refinement<A, B>,
+    options?: {
+      bufferSize?: number | undefined
+    }
+  ): Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, Exclude<C, B>>, Stream.Stream<never, E, B>]>
   <R, E, A>(
     self: Stream.Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: {
       bufferSize?: number | undefined
     }
-  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>
->(
+  ): Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>
+} = dual(
   (args) => typeof args[1] === "function",
   <R, E, A>(
     self: Stream.Stream<R, E, A>,
