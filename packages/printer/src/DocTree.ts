@@ -7,8 +7,8 @@ import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
 import type { Equal } from "effect/Equal"
 import type { TypeLambda } from "effect/HKT"
-import type * as DocStream from "./DocStream"
-import * as internal from "./internal/docTree"
+import type * as DocStream from "./DocStream.js"
+import * as internal from "./internal/docTree.js"
 
 // -----------------------------------------------------------------------------
 // Models

@@ -1,7 +1,7 @@
-import type * as Color from "../Color"
-import type * as RenderLayer from "../RenderLayer"
-import type * as SGR from "../SGR"
-import * as color from "./color"
+import type * as Color from "../Color.js"
+import type * as RenderLayer from "../RenderLayer.js"
+import type * as SGR from "../SGR.js"
+import * as color from "./color.js"
 
 // -----------------------------------------------------------------------------
 // Destructors

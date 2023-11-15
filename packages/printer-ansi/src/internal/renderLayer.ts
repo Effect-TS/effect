@@ -1,4 +1,4 @@
-import type * as RenderLayer from "../RenderLayer"
+import type * as RenderLayer from "../RenderLayer.js"
 
 /** @internal */
 export const foreground: RenderLayer.RenderLayer = {

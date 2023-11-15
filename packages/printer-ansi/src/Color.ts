@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as internal from "./internal/color"
+import * as internal from "./internal/color.js"
 
 // -----------------------------------------------------------------------------
 // Models

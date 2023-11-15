@@ -2,11 +2,11 @@ import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as AnsiStyle from "../AnsiStyle"
-import type * as Color from "../Color"
-import type * as SGR from "../SGR"
-import * as renderLayer from "./renderLayer"
-import * as sgr from "./sgr"
+import type * as AnsiStyle from "../AnsiStyle.js"
+import type * as Color from "../Color.js"
+import type * as SGR from "../SGR.js"
+import * as renderLayer from "./renderLayer.js"
+import * as sgr from "./sgr.js"
 
 // -----------------------------------------------------------------------------
 // Instances

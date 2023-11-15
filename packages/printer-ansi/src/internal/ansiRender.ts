@@ -4,9 +4,9 @@ import * as PageWidth from "@effect/printer/PageWidth"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
 import * as List from "effect/List"
-import type * as AnsiDoc from "../AnsiDoc"
-import type * as AnsiStyle from "../AnsiStyle"
-import * as ansiStyle from "./ansiStyle"
+import type * as AnsiDoc from "../AnsiDoc.js"
+import type * as AnsiStyle from "../AnsiStyle.js"
+import * as ansiStyle from "./ansiStyle.js"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

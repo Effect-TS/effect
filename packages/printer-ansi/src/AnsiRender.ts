@@ -5,9 +5,9 @@
 import type { Doc } from "@effect/printer/Doc"
 import type { DocStream } from "@effect/printer/DocStream"
 import type { AvailablePerLine } from "@effect/printer/PageWidth"
-import type { AnsiDoc } from "./AnsiDoc"
-import type { AnsiStyle } from "./AnsiStyle"
-import * as internal from "./internal/ansiRender"
+import type { AnsiDoc } from "./AnsiDoc.js"
+import type { AnsiStyle } from "./AnsiStyle.js"
+import * as internal from "./internal/ansiRender.js"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

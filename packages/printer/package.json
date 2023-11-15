@@ -24,106 +24,25 @@
     "algebraic-data-types",
     "functional-programming"
   ],
-  "preconstruct": {
-    "entrypoints": [
-      "*.ts"
-    ],
-    "distFilenameStrategy": "full",
-    "exports": {
-      "importConditionDefaultExport": "default"
-    }
-  },
-  "effect": {
-    "generateIndex": true,
-    "includeInternal": true
-  },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "dist"
   },
+  "type": "module",
   "sideEffects": false,
   "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
-    "lint": "eslint src/**/*.ts test/**/*.ts",
-    "tc": "tsc --noEmit",
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps"
   },
   "devDependencies": {
-    "@effect/typeclass": "^0.14.1",
-    "effect": "2.0.0-next.54"
+    "@effect/typeclass": "^0.15.0",
+    "effect": "2.0.0-next.55"
   },
   "peerDependencies": {
     "@effect/typeclass": "^0.14.1",
     "effect": "2.0.0-next.54"
-  },
-  "files": [
-    "src",
-    "dist",
-    "internal",
-    "Doc",
-    "DocStream",
-    "DocTree",
-    "Flatten",
-    "Layout",
-    "Optimize",
-    "PageWidth",
-    "Render"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-printer.esm.js",
-      "import": "./dist/effect-printer.cjs.mjs",
-      "default": "./dist/effect-printer.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./Doc": {
-      "types": "./dist/declarations/src/Doc.d.ts",
-      "module": "./Doc/dist/effect-printer-Doc.esm.js",
-      "import": "./Doc/dist/effect-printer-Doc.cjs.mjs",
-      "default": "./Doc/dist/effect-printer-Doc.cjs.js"
-    },
-    "./DocStream": {
-      "types": "./dist/declarations/src/DocStream.d.ts",
-      "module": "./DocStream/dist/effect-printer-DocStream.esm.js",
-      "import": "./DocStream/dist/effect-printer-DocStream.cjs.mjs",
-      "default": "./DocStream/dist/effect-printer-DocStream.cjs.js"
-    },
-    "./DocTree": {
-      "types": "./dist/declarations/src/DocTree.d.ts",
-      "module": "./DocTree/dist/effect-printer-DocTree.esm.js",
-      "import": "./DocTree/dist/effect-printer-DocTree.cjs.mjs",
-      "default": "./DocTree/dist/effect-printer-DocTree.cjs.js"
-    },
-    "./Flatten": {
-      "types": "./dist/declarations/src/Flatten.d.ts",
-      "module": "./Flatten/dist/effect-printer-Flatten.esm.js",
-      "import": "./Flatten/dist/effect-printer-Flatten.cjs.mjs",
-      "default": "./Flatten/dist/effect-printer-Flatten.cjs.js"
-    },
-    "./Layout": {
-      "types": "./dist/declarations/src/Layout.d.ts",
-      "module": "./Layout/dist/effect-printer-Layout.esm.js",
-      "import": "./Layout/dist/effect-printer-Layout.cjs.mjs",
-      "default": "./Layout/dist/effect-printer-Layout.cjs.js"
-    },
-    "./Optimize": {
-      "types": "./dist/declarations/src/Optimize.d.ts",
-      "module": "./Optimize/dist/effect-printer-Optimize.esm.js",
-      "import": "./Optimize/dist/effect-printer-Optimize.cjs.mjs",
-      "default": "./Optimize/dist/effect-printer-Optimize.cjs.js"
-    },
-    "./PageWidth": {
-      "types": "./dist/declarations/src/PageWidth.d.ts",
-      "module": "./PageWidth/dist/effect-printer-PageWidth.esm.js",
-      "import": "./PageWidth/dist/effect-printer-PageWidth.cjs.mjs",
-      "default": "./PageWidth/dist/effect-printer-PageWidth.cjs.js"
-    },
-    "./Render": {
-      "types": "./dist/declarations/src/Render.d.ts",
-      "module": "./Render/dist/effect-printer-Render.esm.js",
-      "import": "./Render/dist/effect-printer-Render.cjs.mjs",
-      "default": "./Render/dist/effect-printer-Render.cjs.js"
-    }
   }
 }

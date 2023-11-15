@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type * as Doc from "../Doc"
-import type * as Optimize from "../Optimize"
-import * as _doc from "./doc"
+import type * as Doc from "../Doc.js"
+import type * as Optimize from "../Optimize.js"
+import * as _doc from "./doc.js"
 
 /** @internal */
 export const optimize = dual<

@@ -8,7 +8,7 @@ import type * as monoid from "@effect/typeclass/Monoid"
 import type { Equal } from "effect/Equal"
 import type { TypeLambda } from "effect/HKT"
 import type { Option } from "effect/Option"
-import * as internal from "./internal/docStream"
+import * as internal from "./internal/docStream.js"
 
 // -----------------------------------------------------------------------------
 // Models

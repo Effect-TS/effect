@@ -4,11 +4,11 @@
 
 import type { Option } from "effect/Option"
 import type { Predicate } from "effect/Predicate"
-import type { Doc } from "./Doc"
-import type { DocStream } from "./DocStream"
-import * as internal from "./internal/layout"
-import { defaultPageWidth } from "./PageWidth"
-import type { PageWidth } from "./PageWidth"
+import type { Doc } from "./Doc.js"
+import type { DocStream } from "./DocStream.js"
+import * as internal from "./internal/layout.js"
+import { defaultPageWidth } from "./PageWidth.js"
+import type { PageWidth } from "./PageWidth.js"
 
 // -----------------------------------------------------------------------------
 // Models

@@ -8,10 +8,10 @@ import { dual, pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import type * as DocStream from "../DocStream"
-import type * as DocTree from "../DocTree"
-import * as doc from "./doc"
-import * as docTreeToken from "./docTreeToken"
+import type * as DocStream from "../DocStream.js"
+import type * as DocTree from "../DocTree.js"
+import * as doc from "./doc.js"
+import * as docTreeToken from "./docTreeToken.js"
 
 // -----------------------------------------------------------------------------
 // Models

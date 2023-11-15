@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as String from "effect/String"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("DocTree", () => {
   describe.concurrent("constructors", () => {

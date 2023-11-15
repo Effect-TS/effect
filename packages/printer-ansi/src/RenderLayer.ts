@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "./internal/renderLayer"
+import * as internal from "./internal/renderLayer.js"
 
 // -----------------------------------------------------------------------------
 // Models

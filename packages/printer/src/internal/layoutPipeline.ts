@@ -1,4 +1,4 @@
-import type * as Doc from "../Doc"
+import type * as Doc from "../Doc.js"
 
 /**
  * Represents a list of nesting level/document pairs that are yet to be laid

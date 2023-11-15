@@ -1,7 +1,7 @@
 import * as Doc from "@effect/printer/Doc"
 import * as Render from "@effect/printer/Render"
 import * as String from "effect/String"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Doc", () => {
   describe.concurrent("constructors", () => {

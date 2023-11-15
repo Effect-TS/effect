@@ -1,29 +1,29 @@
 /**
  * @since 1.0.0
  */
-export * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
+export * as AnsiDoc from "./AnsiDoc.js"
 
 /**
  * @since 1.0.0
  */
-export * as AnsiRender from "@effect/printer-ansi/AnsiRender"
+export * as AnsiRender from "./AnsiRender.js"
 
 /**
  * @since 1.0.0
  */
-export * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
+export * as AnsiStyle from "./AnsiStyle.js"
 
 /**
  * @since 1.0.0
  */
-export * as Color from "@effect/printer-ansi/Color"
+export * as Color from "./Color.js"
 
 /**
  * @since 1.0.0
  */
-export * as RenderLayer from "@effect/printer-ansi/RenderLayer"
+export * as RenderLayer from "./RenderLayer.js"
 
 /**
  * @since 1.0.0
  */
-export * as SGR from "@effect/printer-ansi/SGR"
+export * as SGR from "./SGR.js"

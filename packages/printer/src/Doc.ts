@@ -23,9 +23,9 @@ import type { Monoid } from "@effect/typeclass/Monoid"
 import type { Semigroup } from "@effect/typeclass/Semigroup"
 import type { Equal } from "effect/Equal"
 import type { TypeLambda } from "effect/HKT"
-import type { Flatten } from "./Flatten"
-import * as internal from "./internal/doc"
-import type { PageWidth } from "./PageWidth"
+import type { Flatten } from "./Flatten.js"
+import * as internal from "./internal/doc.js"
+import type { PageWidth } from "./PageWidth.js"
 
 // -----------------------------------------------------------------------------
 // Models

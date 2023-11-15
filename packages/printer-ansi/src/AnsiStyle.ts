@@ -5,9 +5,9 @@
 import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
 import type { Option } from "effect/Option"
-import type { Color } from "./Color"
-import * as internal from "./internal/ansiStyle"
-import type { SGR } from "./SGR"
+import type { Color } from "./Color.js"
+import * as internal from "./internal/ansiStyle.js"
+import type { SGR } from "./SGR.js"
 
 // -----------------------------------------------------------------------------
 // Models

@@ -1,4 +1,4 @@
-import type * as Color from "../Color"
+import type * as Color from "../Color.js"
 
 // -----------------------------------------------------------------------------
 // Destructors

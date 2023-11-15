@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import type { Doc } from "./Doc"
-import * as internal from "./internal/optimize"
+import type { Doc } from "./Doc.js"
+import * as internal from "./internal/optimize.js"
 
 // -----------------------------------------------------------------------------
 // Models

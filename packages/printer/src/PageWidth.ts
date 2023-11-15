@@ -3,7 +3,7 @@
  */
 
 import type { Equal } from "effect/Equal"
-import * as internal from "./internal/pageWidth"
+import * as internal from "./internal/pageWidth.js"
 
 // -----------------------------------------------------------------------------
 // Models

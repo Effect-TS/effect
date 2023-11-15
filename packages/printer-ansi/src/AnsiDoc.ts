@@ -3,7 +3,7 @@
  */
 
 import type { Doc } from "@effect/printer/Doc"
-import type { AnsiStyle } from "./AnsiStyle"
+import type { AnsiStyle } from "./AnsiStyle.js"
 
 // -----------------------------------------------------------------------------
 // Models

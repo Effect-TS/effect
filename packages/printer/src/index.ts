@@ -16,39 +16,39 @@
  *
  * @since 1.0.0
  */
-export * as Doc from "@effect/printer/Doc"
+export * as Doc from "./Doc.js"
 
 /**
  * @since 1.0.0
  */
-export * as DocStream from "@effect/printer/DocStream"
+export * as DocStream from "./DocStream.js"
 
 /**
  * @since 1.0.0
  */
-export * as DocTree from "@effect/printer/DocTree"
+export * as DocTree from "./DocTree.js"
 
 /**
  * @since 1.0.0
  */
-export * as Flatten from "@effect/printer/Flatten"
+export * as Flatten from "./Flatten.js"
 
 /**
  * @since 1.0.0
  */
-export * as Layout from "@effect/printer/Layout"
+export * as Layout from "./Layout.js"
 
 /**
  * @since 1.0.0
  */
-export * as Optimize from "@effect/printer/Optimize"
+export * as Optimize from "./Optimize.js"
 
 /**
  * @since 1.0.0
  */
-export * as PageWidth from "@effect/printer/PageWidth"
+export * as PageWidth from "./PageWidth.js"
 
 /**
  * @since 1.0.0
  */
-export * as Render from "@effect/printer/Render"
+export * as Render from "./Render.js"

@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import type { Color } from "./Color"
-import * as internal from "./internal/sgr"
-import type { RenderLayer } from "./RenderLayer"
+import type { Color } from "./Color.js"
+import * as internal from "./internal/sgr.js"
+import type { RenderLayer } from "./RenderLayer.js"
 
 // -----------------------------------------------------------------------------
 // Models

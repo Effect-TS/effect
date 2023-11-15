@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type * as Doc from "../Doc"
-import type * as DocStream from "../DocStream"
-import type * as PageWidth from "../PageWidth"
-import * as layout from "./layout"
-import * as pageWidth from "./pageWidth"
+import type * as Doc from "../Doc.js"
+import type * as DocStream from "../DocStream.js"
+import type * as PageWidth from "../PageWidth.js"
+import * as layout from "./layout.js"
+import * as pageWidth from "./pageWidth.js"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

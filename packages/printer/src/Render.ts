@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
-import type { Doc } from "./Doc"
-import type { DocStream } from "./DocStream"
-import * as internal from "./internal/render"
-import type { AvailablePerLine } from "./PageWidth"
+import type { Doc } from "./Doc.js"
+import type { DocStream } from "./DocStream.js"
+import * as internal from "./internal/render.js"
+import type { AvailablePerLine } from "./PageWidth.js"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

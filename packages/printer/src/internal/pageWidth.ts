@@ -1,7 +1,7 @@
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Hash from "effect/Hash"
-import type * as PageWidth from "../PageWidth"
+import type * as PageWidth from "../PageWidth.js"
 
 // -----------------------------------------------------------------------------
 // Models
