@@ -621,7 +621,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
   /**
    * The identity of the fiber.
    */
-  readonly id: () => FiberId.FiberId
+  id(): FiberId.FiberId
 
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
@@ -651,7 +651,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
    * specified fiber. If the fiber has already exited, the returned effect will
    * resume immediately. Otherwise, the effect will resume when the fiber exits.
    */
-  readonly interruptAsFork: (fiberId: FiberId.FiberId) => Effect.Effect<never, never, void>
+  interruptAsFork(fiberId: FiberId.FiberId): Effect.Effect<never, never, void>
 }
 ```
 
@@ -674,12 +674,12 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * Reads the current value of a fiber ref
    */
-  readonly getFiberRef: <X>(fiberRef: FiberRef<X>) => X
+  getFiberRef<X>(fiberRef: FiberRef<X>): X
 
   /**
    * The identity of the fiber.
    */
-  readonly id: () => FiberId.Runtime
+  id(): FiberId.Runtime
 
   /**
    * The status of the fiber.
@@ -694,24 +694,24 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
   /**
    * Adds an observer to the list of observers.
    */
-  readonly addObserver: (observer: (exit: Exit.Exit<E, A>) => void) => void
+  addObserver(observer: (exit: Exit.Exit<E, A>) => void): void
 
   /**
    * Removes the specified observer from the list of observers that will be
    * notified when the fiber exits.
    */
-  readonly removeObserver: (observer: (exit: Exit.Exit<E, A>) => void) => void
+  removeObserver(observer: (exit: Exit.Exit<E, A>) => void): void
 
   /**
    * Retrieves all fiber refs of the fiber.
    */
-  readonly getFiberRefs: () => FiberRefs.FiberRefs
+  getFiberRefs(): FiberRefs.FiberRefs
 
   /**
    * Unsafely observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly unsafePoll: () => Exit.Exit<E, A> | null
+  unsafePoll(): Exit.Exit<E, A> | null
 }
 ```
 

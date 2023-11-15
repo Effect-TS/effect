@@ -43,45 +43,45 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
   /**
    * Supervises the start of a `Fiber`.
    */
-  readonly onStart: <R, E, A>(
+  onStart<R, E, A>(
     context: Context.Context<R>,
     effect: Effect.Effect<R, E, A>,
     parent: Option.Option<Fiber.RuntimeFiber<any, any>>,
     fiber: Fiber.RuntimeFiber<E, A>
-  ) => void
+  ): void
 
   /**
    * Supervises the end of a `Fiber`.
    */
-  readonly onEnd: <E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>) => void
+  onEnd<E, A>(value: Exit.Exit<E, A>, fiber: Fiber.RuntimeFiber<E, A>): void
 
   /**
    * Supervises the execution of an `Effect` by a `Fiber`.
    */
-  readonly onEffect: <E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>) => void
+  onEffect<E, A>(fiber: Fiber.RuntimeFiber<E, A>, effect: Effect.Effect<any, any, any>): void
 
   /**
    * Supervises the suspension of a computation running within a `Fiber`.
    */
-  readonly onSuspend: <E, A>(fiber: Fiber.RuntimeFiber<E, A>) => void
+  onSuspend<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void
 
   /**
    * Supervises the resumption of a computation running within a `Fiber`.
    */
-  readonly onResume: <E, A>(fiber: Fiber.RuntimeFiber<E, A>) => void
+  onResume<E, A>(fiber: Fiber.RuntimeFiber<E, A>): void
 
   /**
    * Maps this supervisor to another one, which has the same effect, but whose
    * value has been transformed by the specified function.
    */
-  readonly map: <B>(f: (a: T) => B) => Supervisor<B>
+  map<B>(f: (a: T) => B): Supervisor<B>
 
   /**
    * Returns a new supervisor that performs the function of this supervisor, and
    * the function of the specified supervisor, producing a tuple of the outputs
    * produced by both supervisors.
    */
-  readonly zip: <A>(right: Supervisor<A>) => Supervisor<[T, A]>
+  zip<A>(right: Supervisor<A>): Supervisor<[T, A]>
 }
 
 /**

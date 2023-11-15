@@ -155,7 +155,7 @@ export interface STMGen<R, E, A> {
   readonly _E: () => E
   readonly _A: () => A
   readonly value: STM<R, E, A>
-  readonly [Symbol.iterator]: () => Generator<STMGen<R, E, A>, A>
+  [Symbol.iterator](): Generator<STMGen<R, E, A>, A>
 }
 
 /**
@@ -1823,11 +1823,17 @@ export const tap: {
  */
 export const tapBoth: {
   <E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
-    options: { readonly onFailure: (error: XE) => STM<R2, E2, A2>; readonly onSuccess: (value: XA) => STM<R3, E3, A3> }
+    options: {
+      readonly onFailure: (error: XE) => STM<R2, E2, A2>
+      readonly onSuccess: (value: XA) => STM<R3, E3, A3>
+    }
   ): <R>(self: STM<R, E, A>) => STM<R2 | R3 | R, E | E2 | E3, A>
   <R, E, XE extends E, R2, E2, A2, A, XA extends A, R3, E3, A3>(
     self: STM<R, E, A>,
-    options: { readonly onFailure: (error: XE) => STM<R2, E2, A2>; readonly onSuccess: (value: XA) => STM<R3, E3, A3> }
+    options: {
+      readonly onFailure: (error: XE) => STM<R2, E2, A2>
+      readonly onSuccess: (value: XA) => STM<R3, E3, A3>
+    }
   ): STM<R | R2 | R3, E | E2 | E3, A>
 } = stm.tapBoth
 

@@ -41,7 +41,7 @@ export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
    * reallocate the item, although this reallocation may occur lazily rather
    * than eagerly.
    */
-  readonly invalidate: (item: A) => Effect.Effect<never, never, void>
+  invalidate(item: A): Effect.Effect<never, never, void>
 }
 
 /**

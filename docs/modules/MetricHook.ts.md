@@ -114,8 +114,8 @@ Added in v2.0.0
 
 ```ts
 export interface MetricHook<In, Out> extends MetricHook.Variance<In, Out>, Pipeable {
-  readonly get: () => Out
-  readonly update: (input: In) => void
+  get(): Out
+  update(input: In): void
 }
 ```
 

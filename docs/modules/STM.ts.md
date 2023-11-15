@@ -1902,7 +1902,7 @@ export interface STMGen<R, E, A> {
   readonly _E: () => E
   readonly _A: () => A
   readonly value: STM<R, E, A>
-  readonly [Symbol.iterator]: () => Generator<STMGen<R, E, A>, A>
+  [Symbol.iterator](): Generator<STMGen<R, E, A>, A>
 }
 ```
 

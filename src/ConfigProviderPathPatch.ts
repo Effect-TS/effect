@@ -36,7 +36,7 @@ export interface AndThen {
  */
 export interface MapName {
   readonly _tag: "MapName"
-  readonly f: (string: string) => string
+  f(string: string): string
 }
 
 /**

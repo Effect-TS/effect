@@ -8,8 +8,8 @@ import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */
 export interface Subexecutor<R> {
-  readonly close: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R, never, unknown> | undefined
-  readonly enqueuePullFromChild: (child: PullFromChild<R>) => Subexecutor<R>
+  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined
+  enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R>
 }
 
 /** @internal */

@@ -39,7 +39,7 @@ export interface TestAnnotation<A> extends Equal.Equal {
   readonly identifier: string
   readonly tag: Context.Tag<A, A>
   readonly initial: A
-  readonly combine: (a: A, b: A) => A
+  combine(a: A, b: A): A
 }
 ```
 

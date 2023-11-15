@@ -249,7 +249,7 @@ export interface ConfigProvider extends ConfigProvider.Proto, Pipeable {
   /**
    * Loads the specified configuration, or fails with a config error.
    */
-  readonly load: <A>(config: Config.Config<A>) => Effect.Effect<never, ConfigError.ConfigError, A>
+  load<A>(config: Config.Config<A>): Effect.Effect<never, ConfigError.ConfigError, A>
   /**
    * Flattens this config provider into a simplified config provider that knows
    * only how to deal with flat (key/value) properties.
@@ -320,14 +320,12 @@ special support for implementing them.
 export interface Flat {
   readonly [FlatConfigProviderTypeId]: FlatConfigProviderTypeId
   readonly patch: PathPatch.PathPatch
-  readonly load: <A>(
+  load<A>(
     path: ReadonlyArray<string>,
     config: Config.Config.Primitive<A>,
     split?: boolean
-  ) => Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
-  readonly enumerateChildren: (
-    path: ReadonlyArray<string>
-  ) => Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
+  ): Effect.Effect<never, ConfigError.ConfigError, ReadonlyArray<A>>
+  enumerateChildren(path: ReadonlyArray<string>): Effect.Effect<never, ConfigError.ConfigError, HashSet.HashSet<string>>
 }
 ```
 

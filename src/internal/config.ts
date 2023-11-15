@@ -60,7 +60,7 @@ export type Op<Tag extends string, Body = {}> = Config.Config<never> & Body & {
 export interface Constant extends
   Op<OpCodes.OP_CONSTANT, {
     readonly value: unknown
-    readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -85,14 +85,14 @@ export interface Fallback extends
 export interface Fail extends
   Op<OpCodes.OP_FAIL, {
     readonly message: string
-    readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
 /** @internal */
 export interface Lazy extends
   Op<OpCodes.OP_LAZY, {
-    readonly config: LazyArg<Config.Config<unknown>>
+    config(): Config.Config<unknown>
   }>
 {}
 
@@ -100,7 +100,7 @@ export interface Lazy extends
 export interface MapOrFail extends
   Op<OpCodes.OP_MAP_OR_FAIL, {
     readonly original: Config.Config<unknown>
-    readonly mapOrFail: (value: unknown) => Either.Either<ConfigError.ConfigError, unknown>
+    mapOrFail(value: unknown): Either.Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -116,7 +116,7 @@ export interface Nested extends
 export interface Primitive extends
   Op<OpCodes.OP_PRIMITIVE, {
     readonly description: string
-    readonly parse: (text: string) => Either.Either<ConfigError.ConfigError, unknown>
+    parse(text: string): Either.Either<ConfigError.ConfigError, unknown>
   }>
 {}
 
@@ -141,7 +141,7 @@ export interface Zipped extends
     readonly op: OpCodes.OP_ZIP_WITH
     readonly left: Config.Config<unknown>
     readonly right: Config.Config<unknown>
-    readonly zip: (a: unknown, b: unknown) => unknown
+    zip(a: unknown, b: unknown): unknown
   }>
 {}
 

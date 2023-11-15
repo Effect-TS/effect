@@ -120,7 +120,7 @@ export interface Clock {
   /**
    * Unsafely returns the current time in milliseconds.
    */
-  readonly unsafeCurrentTimeMillis: () => number
+  unsafeCurrentTimeMillis(): number
   /**
    * Returns the current time in milliseconds.
    */
@@ -128,7 +128,7 @@ export interface Clock {
   /**
    * Unsafely returns the current time in nanoseconds.
    */
-  readonly unsafeCurrentTimeNanos: () => bigint
+  unsafeCurrentTimeNanos(): bigint
   /**
    * Returns the current time in nanoseconds.
    */
@@ -136,7 +136,7 @@ export interface Clock {
   /**
    * Asynchronously sleeps for the specified duration.
    */
-  readonly sleep: (duration: Duration.Duration) => Effect.Effect<never, never, void>
+  sleep(duration: Duration.Duration): Effect.Effect<never, never, void>
 }
 ```
 
@@ -151,7 +151,7 @@ export interface ClockScheduler {
   /**
    * Unsafely schedules the specified task for the specified duration.
    */
-  readonly unsafeSchedule: (task: Task, duration: Duration.Duration) => CancelToken
+  unsafeSchedule(task: Task, duration: Duration.Duration): CancelToken
 }
 ```
 

@@ -372,7 +372,7 @@ Added in v2.0.0
 
 ```ts
 export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
-  readonly log: (options: Logger.Options<Message>) => Output
+  log(options: Logger.Options<Message>): Output
 }
 ```
 

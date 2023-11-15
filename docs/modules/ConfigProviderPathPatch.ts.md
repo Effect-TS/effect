@@ -127,7 +127,7 @@ Added in v2.0.0
 ```ts
 export interface MapName {
   readonly _tag: "MapName"
-  readonly f: (string: string) => string
+  f(string: string): string
 }
 ```
 

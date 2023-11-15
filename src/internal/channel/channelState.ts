@@ -63,9 +63,9 @@ export interface FromEffect extends
 export interface Read extends
   Op<OpCodes.OP_READ, {
     readonly upstream: ErasedExecutor<unknown>
-    readonly onEffect: (effect: Effect.Effect<unknown, never, void>) => Effect.Effect<unknown, never, void>
-    readonly onEmit: (value: unknown) => Effect.Effect<unknown, never, void>
-    readonly onDone: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown, never, void>
+    onEffect(effect: Effect.Effect<unknown, never, void>): Effect.Effect<unknown, never, void>
+    onEmit(value: unknown): Effect.Effect<unknown, never, void>
+    onDone(exit: Exit.Exit<unknown, unknown>): Effect.Effect<unknown, never, void>
   }>
 {}
 

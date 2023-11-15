@@ -5115,9 +5115,9 @@ Added in v2.0.0
 
 ```ts
 export interface Semaphore {
-  readonly withPermits: (permits: number) => <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
-  readonly take: (permits: number) => Effect<never, never, number>
-  readonly release: (permits: number) => Effect<never, never, void>
+  withPermits(permits: number): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  take(permits: number): Effect<never, never, number>
+  release(permits: number): Effect<never, never, void>
 }
 ```
 

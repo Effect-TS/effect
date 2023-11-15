@@ -21,8 +21,8 @@ export type Task = () => void
  * @category models
  */
 export interface Scheduler {
-  readonly shouldYield: (fiber: RuntimeFiber<unknown, unknown>) => number | false
-  readonly scheduleTask: (task: Task, priority: number) => void
+  shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
+  scheduleTask(task: Task, priority: number): void
 }
 
 /**

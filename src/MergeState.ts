@@ -57,7 +57,7 @@ export interface BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> 
  */
 export interface LeftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2> extends MergeState.Proto {
   readonly _tag: "LeftDone"
-  readonly f: (exit: Exit.Exit<Err1, Done1>) => Effect.Effect<Env, Err2, Done2>
+  f(exit: Exit.Exit<Err1, Done1>): Effect.Effect<Env, Err2, Done2>
 }
 
 /**
@@ -66,7 +66,7 @@ export interface LeftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2> ext
  */
 export interface RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> extends MergeState.Proto {
   readonly _tag: "RightDone"
-  readonly f: (exit: Exit.Exit<Err, Done>) => Effect.Effect<Env, Err2, Done2>
+  f(exit: Exit.Exit<Err, Done>): Effect.Effect<Env, Err2, Done2>
 }
 
 /**
