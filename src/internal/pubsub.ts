@@ -18,13 +18,13 @@ import * as queue from "./queue.js"
 /** @internal */
 export interface AtomicPubSub<A> {
   readonly capacity: number
-  readonly isEmpty: () => boolean
-  readonly isFull: () => boolean
-  readonly size: () => number
-  readonly publish: (value: A) => boolean
-  readonly publishAll: (elements: Iterable<A>) => Chunk.Chunk<A>
-  readonly slide: () => void
-  readonly subscribe: () => Subscription<A>
+  isEmpty(): boolean
+  isFull(): boolean
+  size(): number
+  publish(value: A): boolean
+  publishAll(elements: Iterable<A>): Chunk.Chunk<A>
+  slide(): void
+  subscribe(): Subscription<A>
 }
 
 /** @internal */
@@ -1238,42 +1238,42 @@ export interface PubSubStrategy<A> {
    * Describes how publishers should signal to subscribers that they are
    * waiting for space to become available in the `PubSub`.
    */
-  readonly handleSurplus: (
+  handleSurplus(
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     elements: Iterable<A>,
     isShutdown: MutableRef.MutableRef<boolean>
-  ) => Effect.Effect<never, never, boolean>
+  ): Effect.Effect<never, never, boolean>
 
   /**
    * Describes how subscribers should signal to publishers waiting for space
    * to become available in the `PubSub` that space may be available.
    */
-  readonly unsafeOnPubSubEmptySpace: (
+  unsafeOnPubSubEmptySpace(
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>
-  ) => void
+  ): void
 
   /**
    * Describes how subscribers waiting for additional values from the `PubSub`
    * should take those values and signal to publishers that they are no
    * longer waiting for additional values.
    */
-  readonly unsafeCompletePollers: (
+  unsafeCompletePollers(
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>,
     subscription: Subscription<A>,
     pollers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
-  ) => void
+  ): void
 
   /**
    * Describes how publishers should signal to subscribers waiting for
    * additional values from the `PubSub` that new values are available.
    */
-  readonly unsafeCompleteSubscribers: (
+  unsafeCompleteSubscribers(
     pubsub: AtomicPubSub<A>,
     subscribers: Subscribers<A>
-  ) => void
+  ): void
 }
 
 /**

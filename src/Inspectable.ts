@@ -21,9 +21,9 @@ export type NodeInspectSymbol = typeof NodeInspectSymbol
  * @category models
  */
 export interface Inspectable {
-  readonly toString: () => string
-  readonly toJSON: () => unknown
-  readonly [NodeInspectSymbol]: () => unknown
+  toString(): string
+  toJSON(): unknown
+  [NodeInspectSymbol](): unknown
 }
 
 /**

@@ -61,10 +61,10 @@ Producer-side view of `SingleProducerAsyncInput` for variance purposes.
 
 ```ts
 export interface AsyncInputProducer<Err, Elem, Done> {
-  readonly awaitRead: () => Effect.Effect<never, never, unknown>
-  readonly done: (value: Done) => Effect.Effect<never, never, unknown>
-  readonly emit: (element: Elem) => Effect.Effect<never, never, unknown>
-  readonly error: (cause: Cause.Cause<Err>) => Effect.Effect<never, never, unknown>
+  awaitRead(): Effect.Effect<never, never, unknown>
+  done(value: Done): Effect.Effect<never, never, unknown>
+  emit(element: Elem): Effect.Effect<never, never, unknown>
+  error(cause: Cause.Cause<Err>): Effect.Effect<never, never, unknown>
 }
 ```
 

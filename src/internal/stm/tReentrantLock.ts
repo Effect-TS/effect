@@ -44,11 +44,11 @@ export interface LockState {
   /**
    * Computes the number of read locks held by the specified fiber id.
    */
-  readonly readLocksHeld: (fiberId: FiberId.FiberId) => number
+  readLocksHeld(fiberId: FiberId.FiberId): number
   /**
    * Computes the number of write locks held by the specified fiber id.
    */
-  readonly writeLocksHeld: (fiberId: FiberId.FiberId) => number
+  writeLocksHeld(fiberId: FiberId.FiberId): number
 }
 
 /**

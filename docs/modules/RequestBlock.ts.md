@@ -155,13 +155,10 @@ Added in v2.0.0
 
 ```ts
 export interface Reducer<R, Z> {
-  readonly emptyCase: () => Z
-  readonly parCase: (left: Z, right: Z) => Z
-  readonly singleCase: (
-    dataSource: RequestResolver.RequestResolver<unknown, R>,
-    blockedRequest: Request.Entry<unknown>
-  ) => Z
-  readonly seqCase: (left: Z, right: Z) => Z
+  emptyCase(): Z
+  parCase(left: Z, right: Z): Z
+  singleCase(dataSource: RequestResolver.RequestResolver<unknown, R>, blockedRequest: Request.Entry<unknown>): Z
+  seqCase(left: Z, right: Z): Z
 }
 ```
 

@@ -497,8 +497,8 @@ Added in v1.0.0
 ```ts
 export interface Not {
   readonly _tag: "Not"
-  readonly guard: (u: unknown) => boolean
-  readonly evaluate: (input: unknown) => any
+  guard(u: unknown): boolean
+  evaluate(input: unknown): any
 }
 ```
 
@@ -530,7 +530,7 @@ export interface TypeMatcher<Input, Filters, Remaining, Result> extends Pipeable
     readonly _result: (_: never) => Result
   }
   readonly cases: ReadonlyArray<Case>
-  readonly add: <I, R, RA, A>(_case: Case) => TypeMatcher<I, R, RA, A>
+  add<I, R, RA, A>(_case: Case): TypeMatcher<I, R, RA, A>
 }
 ```
 
@@ -550,7 +550,7 @@ export interface ValueMatcher<Input, Filters, Remaining, Result, Provided> exten
   }
   readonly provided: Provided
   readonly value: Either.Either<Remaining, Provided>
-  readonly add: <I, R, RA, A, Pr>(_case: Case) => ValueMatcher<I, R, RA, A, Pr>
+  add<I, R, RA, A, Pr>(_case: Case): ValueMatcher<I, R, RA, A, Pr>
 }
 ```
 
@@ -563,8 +563,8 @@ Added in v1.0.0
 ```ts
 export interface When {
   readonly _tag: "When"
-  readonly guard: (u: unknown) => boolean
-  readonly evaluate: (input: unknown) => any
+  guard(u: unknown): boolean
+  evaluate(input: unknown): any
 }
 ```
 

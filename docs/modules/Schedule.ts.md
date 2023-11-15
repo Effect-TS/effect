@@ -1022,11 +1022,11 @@ export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>,
   /**
    * Schedule Step
    */
-  readonly step: (
+  step(
     now: number,
     input: In,
     state: any
-  ) => Effect.Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]>
+  ): Effect.Effect<Env, never, readonly [any, Out, ScheduleDecision.ScheduleDecision]>
 }
 ```
 
@@ -1043,7 +1043,7 @@ export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<En
   readonly state: Effect.Effect<never, never, unknown>
   readonly last: Effect.Effect<never, Cause.NoSuchElementException, Out>
   readonly reset: Effect.Effect<never, never, void>
-  readonly next: (input: In) => Effect.Effect<Env, Option.Option<never>, Out>
+  next(input: In): Effect.Effect<Env, Option.Option<never>, Out>
 }
 ```
 

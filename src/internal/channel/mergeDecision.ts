@@ -47,7 +47,7 @@ export interface Done extends
 /** @internal */
 export interface Await extends
   Op<OpCodes.OP_AWAIT, {
-    readonly f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, never>
+    f(exit: Exit.Exit<unknown, unknown>): Effect.Effect<never, never, never>
   }>
 {}
 

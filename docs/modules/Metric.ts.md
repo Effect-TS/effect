@@ -776,9 +776,8 @@ export interface Metric<Type, In, Out> extends Metric.Variance<Type, In, Out>, P
    * `MetricKeyType.Counter` or `MetricKeyType.Gauge`.
    */
   readonly keyType: Type
-  readonly unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => void
-  readonly unsafeValue: (extraTags: HashSet.HashSet<MetricLabel.MetricLabel>) => Out
-  /** */
+  unsafeUpdate(input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): void
+  unsafeValue(extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): Out
   <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 }
 ```

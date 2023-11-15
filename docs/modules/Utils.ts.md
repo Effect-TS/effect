@@ -547,7 +547,7 @@ Added in v2.0.0
 export interface GenKind<F extends TypeLambda, R, O, E, A> extends Variance<F, R, O, E> {
   readonly value: Kind<F, R, O, E, A>
 
-  readonly [Symbol.iterator]: () => Generator<GenKind<F, R, O, E, A>, A>
+  [Symbol.iterator](): Generator<GenKind<F, R, O, E, A>, A>
 }
 ```
 

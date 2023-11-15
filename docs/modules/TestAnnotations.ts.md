@@ -55,13 +55,13 @@ export interface TestAnnotations {
    * Accesses an `Annotations` instance in the context and retrieves the
    * annotation of the specified type, or its default value if there is none.
    */
-  readonly get: <A>(key: TestAnnotation.TestAnnotation<A>) => Effect.Effect<never, never, A>
+  get<A>(key: TestAnnotation.TestAnnotation<A>): Effect.Effect<never, never, A>
 
   /**
    * Accesses an `Annotations` instance in the context and appends the
    * specified annotation to the annotation map.
    */
-  readonly annotate: <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => Effect.Effect<never, never, void>
+  annotate<A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect.Effect<never, never, void>
 
   /**
    * Returns the set of all fibers in this test.

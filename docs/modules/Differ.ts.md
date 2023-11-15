@@ -154,9 +154,9 @@ export interface Differ<Value, Patch> {
     readonly _P: (_: Patch) => Patch
   }
   readonly empty: Patch
-  readonly diff: (oldValue: Value, newValue: Value) => Patch
-  readonly combine: (first: Patch, second: Patch) => Patch
-  readonly patch: (patch: Patch, oldValue: Value) => Value
+  diff(oldValue: Value, newValue: Value): Patch
+  combine(first: Patch, second: Patch): Patch
+  patch(patch: Patch, oldValue: Value): Value
 }
 ```
 

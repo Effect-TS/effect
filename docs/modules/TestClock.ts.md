@@ -98,12 +98,10 @@ expected effects have been performed.
 
 ```ts
 export interface TestClock extends Clock.Clock {
-  readonly adjust: (duration: Duration.DurationInput) => Effect.Effect<never, never, void>
-  readonly adjustWith: (
-    duration: Duration.DurationInput
-  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  adjust(duration: Duration.DurationInput): Effect.Effect<never, never, void>
+  adjustWith(duration: Duration.DurationInput): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   readonly save: Effect.Effect<never, never, Effect.Effect<never, never, void>>
-  readonly setTime: (time: number) => Effect.Effect<never, never, void>
+  setTime(time: number): Effect.Effect<never, never, void>
   readonly sleeps: Effect.Effect<never, never, Chunk.Chunk<number>>
 }
 ```

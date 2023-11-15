@@ -293,17 +293,17 @@ export interface Constructor<in out A extends Brand<any>> {
    * Constructs a branded type from a value of type `A`, returning `Some<A>`
    * if the provided `A` is valid, `None` otherwise.
    */
-  readonly option: (args: Brand.Unbranded<A>) => Option.Option<A>
+  option(args: Brand.Unbranded<A>): Option.Option<A>
   /**
    * Constructs a branded type from a value of type `A`, returning `Right<A>`
    * if the provided `A` is valid, `Left<BrandError>` otherwise.
    */
-  readonly either: (args: Brand.Unbranded<A>) => Either.Either<Brand.BrandErrors, A>
+  either(args: Brand.Unbranded<A>): Either.Either<Brand.BrandErrors, A>
   /**
    * Attempts to refine the provided value of type `A`, returning `true` if
    * the provided `A` is valid, `false` otherwise.
    */
-  readonly is: Refinement<Brand.Unbranded<A>, Brand.Unbranded<A> & A>
+  is(a: Brand.Unbranded<A>): a is Brand.Unbranded<A> & A
 }
 ```
 

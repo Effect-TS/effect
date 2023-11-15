@@ -142,16 +142,16 @@ export interface Random {
    * Returns the next numeric value in the specified range from the
    * pseudo-random number generator.
    */
-  readonly nextRange: (min: number, max: number) => Effect.Effect<never, never, number>
+  nextRange(min: number, max: number): Effect.Effect<never, never, number>
   /**
    * Returns the next integer value in the specified range from the
    * pseudo-random number generator.
    */
-  readonly nextIntBetween: (min: number, max: number) => Effect.Effect<never, never, number>
+  nextIntBetween(min: number, max: number): Effect.Effect<never, never, number>
   /**
    * Uses the pseudo-random number generator to shuffle the specified iterable.
    */
-  readonly shuffle: <A>(elements: Iterable<A>) => Effect.Effect<never, never, Chunk.Chunk<A>>
+  shuffle<A>(elements: Iterable<A>): Effect.Effect<never, never, Chunk.Chunk<A>>
 }
 ```
 

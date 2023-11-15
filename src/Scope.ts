@@ -44,11 +44,11 @@ export interface Scope extends Pipeable {
   /**
    * @internal
    */
-  readonly fork: (strategy: ExecutionStrategy.ExecutionStrategy) => Effect.Effect<never, never, Scope.Closeable>
+  fork(strategy: ExecutionStrategy.ExecutionStrategy): Effect.Effect<never, never, Scope.Closeable>
   /**
    * @internal
    */
-  readonly addFinalizer: (finalizer: Scope.Finalizer) => Effect.Effect<never, never, void>
+  addFinalizer(finalizer: Scope.Finalizer): Effect.Effect<never, never, void>
 }
 
 /**
@@ -61,7 +61,7 @@ export interface CloseableScope extends Scope, Pipeable {
   /**
    * @internal
    */
-  readonly close: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<never, never, void>
+  close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<never, never, void>
 }
 
 /**

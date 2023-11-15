@@ -712,12 +712,12 @@ specified value of type `Z` with access to a context of type `C`.
 
 ```ts
 export interface CauseReducer<C, E, Z> {
-  readonly emptyCase: (context: C) => Z
-  readonly failCase: (context: C, error: E) => Z
-  readonly dieCase: (context: C, defect: unknown) => Z
-  readonly interruptCase: (context: C, fiberId: FiberId.FiberId) => Z
-  readonly sequentialCase: (context: C, left: Z, right: Z) => Z
-  readonly parallelCase: (context: C, left: Z, right: Z) => Z
+  emptyCase(context: C): Z
+  failCase(context: C, error: E): Z
+  dieCase(context: C, defect: unknown): Z
+  interruptCase(context: C, fiberId: FiberId.FiberId): Z
+  sequentialCase(context: C, left: Z, right: Z): Z
+  parallelCase(context: C, left: Z, right: Z): Z
 }
 ```
 

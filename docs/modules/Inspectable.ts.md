@@ -31,9 +31,9 @@ Added in v2.0.0
 
 ```ts
 export interface Inspectable {
-  readonly toString: () => string
-  readonly toJSON: () => unknown
-  readonly [NodeInspectSymbol]: () => unknown
+  toString(): string
+  toJSON(): unknown
+  [NodeInspectSymbol](): unknown
 }
 ```
 

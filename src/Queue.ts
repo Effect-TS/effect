@@ -71,12 +71,12 @@ export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeabl
   /**
    * Places one value in the queue.
    */
-  readonly offer: (value: A) => Effect.Effect<never, never, boolean>
+  offer(value: A): Effect.Effect<never, never, boolean>
 
   /**
    * Places one value in the queue when possible without needing the fiber runtime.
    */
-  readonly unsafeOffer: (value: A) => boolean
+  unsafeOffer(value: A): boolean
 
   /**
    * For Bounded Queue: uses the `BackPressure` Strategy, places the values in
@@ -93,7 +93,7 @@ export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeabl
    * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  readonly offerAll: (iterable: Iterable<A>) => Effect.Effect<never, never, boolean>
+  offerAll(iterable: Iterable<A>): Effect.Effect<never, never, boolean>
 }
 
 /**
@@ -116,14 +116,14 @@ export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeabl
   /**
    * Takes up to max number of values from the queue.
    */
-  readonly takeUpTo: (max: number) => Effect.Effect<never, never, Chunk.Chunk<A>>
+  takeUpTo(max: number): Effect.Effect<never, never, Chunk.Chunk<A>>
 
   /**
    * Takes a number of elements from the queue between the specified minimum and
    * maximum. If there are fewer than the minimum number of elements available,
    * suspends until at least the minimum number of elements have been collected.
    */
-  readonly takeBetween: (min: number, max: number) => Effect.Effect<never, never, Chunk.Chunk<A>>
+  takeBetween(min: number, max: number): Effect.Effect<never, never, Chunk.Chunk<A>>
 }
 
 /**
@@ -136,12 +136,12 @@ export interface BaseQueue {
   /**
    * Returns the number of elements the queue can hold.
    */
-  readonly capacity: () => number
+  capacity(): number
 
   /**
    * Returns false if shutdown has been called.
    */
-  readonly isActive: () => boolean
+  isActive(): boolean
 
   /**
    * Retrieves the size of the queue, which is equal to the number of elements
@@ -155,7 +155,7 @@ export interface BaseQueue {
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue. Returns None if shutdown has been called
    */
-  readonly unsafeSize: () => Option.Option<number>
+  unsafeSize(): Option.Option<number>
 
   /**
    * Returns `true` if the `Queue` contains at least one element, `false`
@@ -196,7 +196,7 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
    * Returns the number of surplus values that were unable to be added to the
    * `Queue`
    */
-  readonly surplusSize: () => number
+  surplusSize(): number
 
   /**
    * Determines how the `Queue.Strategy` should shut down when the `Queue` is
@@ -209,29 +209,29 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
    * values that could not be added to the `Queue` following an `offer`
    * operation.
    */
-  readonly handleSurplus: (
+  handleSurplus(
     iterable: Iterable<A>,
     queue: BackingQueue<A>,
     takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>,
     isShutdown: MutableRef.MutableRef<boolean>
-  ) => Effect.Effect<never, never, boolean>
+  ): Effect.Effect<never, never, boolean>
 
   /**
    * It is called when the backing queue is empty but there are some
    * takers that can be completed
    */
-  readonly onCompleteTakersWithEmptyQueue: (
+  onCompleteTakersWithEmptyQueue(
     takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
-  ) => void
+  ): void
 
   /**
    * Determines the behavior of the `Queue.Strategy` when the `Queue` has empty
    * slots following a `take` operation.
    */
-  readonly unsafeOnQueueEmptySpace: (
+  unsafeOnQueueEmptySpace(
     queue: BackingQueue<A>,
     takers: MutableQueue.MutableQueue<Deferred.Deferred<never, A>>
-  ) => void
+  ): void
 }
 
 /**
@@ -243,34 +243,34 @@ export interface BackingQueue<A> {
    * Dequeues an element from the queue.
    * Returns either an element from the queue, or the `def` param.
    */
-  readonly poll: <Def>(def: Def) => A | Def
+  poll<Def>(def: Def): A | Def
   /**
    * Dequeues up to `limit` elements from the queue.
    */
-  readonly pollUpTo: (limit: number) => Chunk.Chunk<A>
+  pollUpTo(limit: number): Chunk.Chunk<A>
   /**
    * Enqueues a collection of values into the queue.
    *
    * Returns a `Chunk` of the values that were **not** able to be enqueued.
    */
-  readonly offerAll: (elements: Iterable<A>) => Chunk.Chunk<A>
+  offerAll(elements: Iterable<A>): Chunk.Chunk<A>
   /**
    * Offers an element to the queue.
    *
    * Returns whether the enqueue was successful or not.
    */
-  readonly offer: (element: A) => boolean
+  offer(element: A): boolean
   /**
    * The **maximum** number of elements that a queue can hold.
    *
    * **Note**: unbounded queues can still implement this interface with
    * `capacity = Infinity`.
    */
-  readonly capacity: () => number
+  capacity(): number
   /**
    * Returns the number of elements currently in the queue
    */
-  readonly length: () => number
+  length(): number
 }
 
 /**

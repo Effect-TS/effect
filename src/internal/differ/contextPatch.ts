@@ -103,7 +103,7 @@ const makeRemoveService = <Env, I, T>(
 export interface UpdateService<Env, T, I> extends Differ.Context.Patch<Env | I, Env | I> {
   readonly _tag: "UpdateService"
   readonly tag: Tag<T, I>
-  readonly update: (service: T) => T
+  update(service: T): T
 }
 
 const UpdateServiceProto = Object.assign(Object.create(PatchProto), {

@@ -412,15 +412,15 @@ export interface FiberRef<A> extends Variance<A>, Pipeable {
   /** @internal */
   readonly initial: A
   /** @internal */
-  readonly diff: (oldValue: A, newValue: A) => unknown
+  diff(oldValue: A, newValue: A): unknown
   /** @internal */
-  readonly combine: (first: unknown, second: unknown) => unknown
+  combine(first: unknown, second: unknown): unknown
   /** @internal */
-  readonly patch: (patch: unknown) => (oldValue: A) => A
+  patch(patch: unknown): (oldValue: A) => A
   /** @internal */
   readonly fork: unknown
   /** @internal */
-  readonly join: (oldValue: A, newValue: A) => A
+  join(oldValue: A, newValue: A): A
 }
 ```
 

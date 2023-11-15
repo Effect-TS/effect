@@ -127,14 +127,14 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it.
    */
-  readonly get: (key: Key) => Effect.Effect<never, Error, Value>
+  get(key: Key): Effect.Effect<never, Error, Value>
 
   /**
    * Retrieves the value associated with the specified key if it exists as a left.
    * Otherwise computes the value with the lookup function, puts it in the
    * cache, and returns it as a right.
    */
-  readonly getEither: (key: Key) => Effect.Effect<never, Error, Either<Value, Value>>
+  getEither(key: Key): Effect.Effect<never, Error, Either<Value, Value>>
 
   /**
    * Computes the value associated with the specified key, with the lookup
@@ -145,12 +145,12 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
    * by the lookup function. Additionally, `refresh` always triggers the
    * lookup function, disregarding the last `Error`.
    */
-  readonly refresh: (key: Key) => Effect.Effect<never, Error, void>
+  refresh(key: Key): Effect.Effect<never, Error, void>
 
   /**
    * Associates the specified value with the specified key in the cache.
    */
-  readonly set: (key: Key, value: Value) => Effect.Effect<never, never, void>
+  set(key: Key, value: Value): Effect.Effect<never, never, void>
 }
 ```
 
@@ -187,13 +187,13 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
    */
-  readonly getOption: (key: Key) => Effect.Effect<never, Error, Option.Option<Value>>
+  getOption(key: Key): Effect.Effect<never, Error, Option.Option<Value>>
 
   /**
    * Retrieves the value associated with the specified key if it exists and the
    * lookup function has completed. Otherwise returns `Option.none`.
    */
-  readonly getOptionComplete: (key: Key) => Effect.Effect<never, never, Option.Option<Value>>
+  getOptionComplete(key: Key): Effect.Effect<never, never, Option.Option<Value>>
 
   /**
    * Returns statistics for this cache.
@@ -204,22 +204,22 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
    * Returns whether a value associated with the specified key exists in the
    * cache.
    */
-  readonly contains: (key: Key) => Effect.Effect<never, never, boolean>
+  contains(key: Key): Effect.Effect<never, never, boolean>
 
   /**
    * Returns statistics for the specified entry.
    */
-  readonly entryStats: (key: Key) => Effect.Effect<never, never, Option.Option<EntryStats>>
+  entryStats(key: Key): Effect.Effect<never, never, Option.Option<EntryStats>>
 
   /**
    * Invalidates the value associated with the specified key.
    */
-  readonly invalidate: (key: Key) => Effect.Effect<never, never, void>
+  invalidate(key: Key): Effect.Effect<never, never, void>
 
   /**
    * Invalidates the value associated with the specified key if the predicate holds.
    */
-  readonly invalidateWhen: (key: Key, when: (value: Value) => boolean) => Effect.Effect<never, never, void>
+  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect.Effect<never, never, void>
 
   /**
    * Invalidates all values in the cache.

@@ -43,20 +43,18 @@ Added in v2.0.0
 ```ts
 export interface MetricRegistry {
   readonly [MetricRegistryTypeId]: MetricRegistryTypeId
-  readonly snapshot: () => HashSet.HashSet<MetricPair.MetricPair.Untyped>
-  readonly get: <Type extends MetricKeyType.MetricKeyType<any, any>>(
+  snapshot(): HashSet.HashSet<MetricPair.MetricPair.Untyped>
+  get<Type extends MetricKeyType.MetricKeyType<any, any>>(
     key: MetricKey.MetricKey<Type>
-  ) => MetricHook.MetricHook<
+  ): MetricHook.MetricHook<
     MetricKeyType.MetricKeyType.InType<(typeof key)["keyType"]>,
     MetricKeyType.MetricKeyType.OutType<(typeof key)["keyType"]>
   >
-  readonly getCounter: <A extends number | bigint>(
-    key: MetricKey.MetricKey.Counter<A>
-  ) => MetricHook.MetricHook.Counter<A>
-  readonly getFrequency: (key: MetricKey.MetricKey.Frequency) => MetricHook.MetricHook.Frequency
-  readonly getGauge: <A extends number | bigint>(key: MetricKey.MetricKey.Gauge<A>) => MetricHook.MetricHook.Gauge<A>
-  readonly getHistogram: (key: MetricKey.MetricKey.Histogram) => MetricHook.MetricHook.Histogram
-  readonly getSummary: (key: MetricKey.MetricKey.Summary) => MetricHook.MetricHook.Summary
+  getCounter<A extends number | bigint>(key: MetricKey.MetricKey.Counter<A>): MetricHook.MetricHook.Counter<A>
+  getFrequency(key: MetricKey.MetricKey.Frequency): MetricHook.MetricHook.Frequency
+  getGauge<A extends number | bigint>(key: MetricKey.MetricKey.Gauge<A>): MetricHook.MetricHook.Gauge<A>
+  getHistogram(key: MetricKey.MetricKey.Histogram): MetricHook.MetricHook.Histogram
+  getSummary(key: MetricKey.MetricKey.Summary): MetricHook.MetricHook.Summary
 }
 ```
 
