@@ -42,7 +42,7 @@
     "effect": "2.0.0-next.55"
   },
   "peerDependencies": {
-    "@effect/typeclass": "^0.14.1",
-    "effect": "2.0.0-next.54"
+    "@effect/typeclass": "^0.15.0",
+    "effect": "2.0.0-next.55"
   }
 }
