@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "moduleDetection": "force",
+    "downlevelIteration": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "preserveSymlinks": true,
+    "moduleResolution": "NodeNext",
+    "lib": [
+      "ES2021",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "sourceMap": true,
+    "strict": true,
+    "noImplicitReturns": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "noEmitOnError": false,
+    "allowJs": false,
+    "checkJs": false,
+    "forceConsistentCasingInFileNames": true,
+    "stripInternal": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": false,
+    "strictNullChecks": true,
+    "target": "ES2021",
+    "module": "NodeNext",
+    "incremental": true,
+    "removeComments": false,
+    "paths": {
+      "@effect/opentelemetry": [
+        "./index.ts"
+      ],
+      "@effect/opentelemetry/*": [
+        "./*.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*"
+  ]
+}

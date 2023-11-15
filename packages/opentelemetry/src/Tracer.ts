@@ -7,8 +7,8 @@ import type { Effect } from "effect/Effect"
 import type { Layer } from "effect/Layer"
 import type * as Option from "effect/Option"
 import type { ExternalSpan, Tracer as EffectTracer } from "effect/Tracer"
-import * as internal from "./internal/tracer"
-import type { Resource } from "./Resource"
+import * as internal from "./internal/tracer.js"
+import type { Resource } from "./Resource.js"
 
 /**
  * @since 1.0.0

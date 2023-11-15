@@ -9,9 +9,9 @@ import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Metrics from "./Metrics"
-import * as Resource from "./Resource"
-import * as Tracer from "./Tracer"
+import * as Metrics from "./Metrics.js"
+import * as Resource from "./Resource.js"
+import * as Tracer from "./Tracer.js"
 
 /**
  * @since 1.0.0

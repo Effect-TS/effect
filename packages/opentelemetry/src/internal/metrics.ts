@@ -4,12 +4,13 @@ import type * as Resources from "@opentelemetry/resources"
 import type {
   CollectionResult,
   DataPoint,
-  InstrumentDescriptor,
+  MetricCollectOptions,
   MetricData,
+  MetricDescriptor,
+  MetricProducer,
   MetricReader
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
-import type { MetricCollectOptions, MetricProducer } from "@opentelemetry/sdk-metrics/build/src/export/MetricProducer"
 import * as Effect from "effect/Effect"
 import type { LazyArg } from "effect/Function"
 import * as HashSet from "effect/HashSet"
@@ -19,7 +20,7 @@ import type * as MetricKey from "effect/MetricKey"
 import * as MetricKeyType from "effect/MetricKeyType"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
-import * as Resource from "../Resource"
+import * as Resource from "../Resource.js"
 
 const sdkName = "@effect/opentelemetry/Metrics"
 
@@ -210,7 +211,7 @@ const descriptorFromKey = (
   metricKey: MetricKey.MetricKey.Untyped,
   tags: Record<string, string>,
   suffix?: string
-): InstrumentDescriptor => ({
+): MetricDescriptor => ({
   ...descriptorMeta(metricKey, suffix),
   unit: tags.unit ?? tags.time_unit ?? "1",
   type: instrumentTypeFromKey(metricKey),

@@ -2,8 +2,10 @@
   "name": "@effect/opentelemetry",
   "version": "0.22.1",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "dist"
   },
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/opentelemetry.git"
@@ -28,31 +30,21 @@
     "functional-programming"
   ],
   "scripts": {
-    "example": "node -r ts-node/register",
-    "version": "changeset version",
-    "clean": "node scripts/clean.mjs",
-    "build": "pnpm gen && preconstruct fix && preconstruct build && pnpm gen",
-    "gen": "build-utils prepare-v1",
-    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
-    "autofix": "pnpm lint --fix",
-    "tc": "tsc --noEmit",
-    "docs": "docgen",
-    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning dist",
+    "build": "pnpm build-prepare && pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
+    "build-prepare": "build-utils prepare-v2",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build --plugins annotate-pure-calls --out-dir build --source-maps",
+    "clean": "rimraf build dist coverage .tsbuildinfo",
+    "dtslint": "dtslint dtslint",
+    "dtslint-clean": "dtslint --installAll",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint-fix": "pnpm lint --fix",
+    "check": "tsc -b tsconfig.json",
+    "docgen": "docgen",
+    "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
     "test": "vitest",
     "coverage": "vitest run --coverage"
-  },
-  "preconstruct": {
-    "distFilenameStrategy": "full",
-    "exports": {
-      "importConditionDefaultExport": "default"
-    },
-    "entrypoints": [
-      "*.ts"
-    ]
-  },
-  "effect": {
-    "generateIndex": true,
-    "includeInternal": true
   },
   "packageManager": "pnpm@8.6.10",
   "peerDependencies": {
@@ -63,7 +55,7 @@
     "@opentelemetry/sdk-trace-node": "^1.17",
     "@opentelemetry/sdk-trace-web": "^1.17",
     "@opentelemetry/semantic-conventions": "^1.17",
-    "effect": "2.0.0-next.54"
+    "effect": "2.0.0-next.55"
   },
   "peerDependenciesMeta": {
     "@opentelemetry/sdk-metrics": {
@@ -80,103 +72,57 @@
     }
   },
   "devDependencies": {
-    "@babel/core": "^7.23.2",
-    "@babel/preset-typescript": "^7.23.2",
+    "@babel/cli": "^7.23.0",
+    "@babel/core": "^7.23.3",
+    "@babel/plugin-transform-export-namespace-from": "^7.23.3",
+    "@babel/plugin-transform-modules-commonjs": "^7.23.3",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.2",
-    "@effect/babel-plugin": "^0.2.0",
-    "@effect/build-utils": "^0.1.9",
-    "@effect/docgen": "^0.2.1",
+    "@effect/build-utils": "^0.4.1",
+    "@effect/docgen": "^0.3.2",
+    "@effect/dtslint": "^0.0.3",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
-    "@opentelemetry/api": "^1.6.0",
-    "@opentelemetry/context-async-hooks": "^1.17.1",
-    "@opentelemetry/exporter-metrics-otlp-http": "0.43.0",
-    "@opentelemetry/exporter-prometheus": "0.43.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.43.0",
-    "@opentelemetry/otlp-exporter-base": "0.43.0",
-    "@opentelemetry/resources": "^1.17.1",
-    "@opentelemetry/sdk-metrics": "^1.17.1",
-    "@opentelemetry/sdk-trace-base": "^1.17.1",
-    "@opentelemetry/sdk-trace-node": "^1.17.1",
-    "@opentelemetry/sdk-trace-web": "^1.17.1",
-    "@opentelemetry/semantic-conventions": "^1.17.1",
-    "@preconstruct/cli": "^2.8.1",
-    "@types/chai": "^4.3.9",
-    "@types/node": "^20.8.10",
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "@typescript-eslint/parser": "^6.9.1",
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/context-async-hooks": "^1.18.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.45.1",
+    "@opentelemetry/exporter-prometheus": "0.45.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.45.1",
+    "@opentelemetry/otlp-exporter-base": "0.45.1",
+    "@opentelemetry/resources": "^1.18.1",
+    "@opentelemetry/sdk-metrics": "^1.18.1",
+    "@opentelemetry/sdk-trace-base": "^1.18.1",
+    "@opentelemetry/sdk-trace-node": "^1.18.1",
+    "@opentelemetry/sdk-trace-web": "^1.18.1",
+    "@opentelemetry/semantic-conventions": "^1.18.1",
+    "@types/chai": "^4.3.10",
+    "@types/node": "^20.9.0",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
+    "@typescript-eslint/parser": "^6.11.0",
     "@vitejs/plugin-react": "^4.1.1",
     "@vitest/coverage-v8": "^0.34.6",
-    "@vitest/expect": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.2",
-    "effect": "2.0.0-next.54",
-    "eslint": "^8.52.0",
+    "effect": "2.0.0-next.55",
+    "error-stack-parser": "^2.1.4",
+    "eslint": "^8.53.0",
     "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-codegen": "0.17.0",
+    "eslint-plugin-codegen": "0.18.1",
     "eslint-plugin-deprecation": "^2.0.0",
     "eslint-plugin-import": "^2.29.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
+    "fast-check": "^3.13.2",
     "madge": "^6.1.0",
-    "ts-node": "^10.9.1",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.1.2",
     "typescript": "^5.2.2",
-    "vite": "^4.5.0",
     "vitest": "0.34.6"
   },
   "pnpm": {
-    "patchedDependencies": {
-      "@preconstruct/cli@2.8.1": "patches/@preconstruct__cli@2.8.1.patch"
+    "overrides": {
+      "effect": "2.0.0-next.55"
     }
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/declarations/src/index.d.ts",
-      "module": "./dist/effect-opentelemetry.esm.js",
-      "import": "./dist/effect-opentelemetry.cjs.mjs",
-      "default": "./dist/effect-opentelemetry.cjs.js"
-    },
-    "./package.json": "./package.json",
-    "./Metrics": {
-      "types": "./dist/declarations/src/Metrics.d.ts",
-      "module": "./Metrics/dist/effect-opentelemetry-Metrics.esm.js",
-      "import": "./Metrics/dist/effect-opentelemetry-Metrics.cjs.mjs",
-      "default": "./Metrics/dist/effect-opentelemetry-Metrics.cjs.js"
-    },
-    "./NodeSdk": {
-      "types": "./dist/declarations/src/NodeSdk.d.ts",
-      "module": "./NodeSdk/dist/effect-opentelemetry-NodeSdk.esm.js",
-      "import": "./NodeSdk/dist/effect-opentelemetry-NodeSdk.cjs.mjs",
-      "default": "./NodeSdk/dist/effect-opentelemetry-NodeSdk.cjs.js"
-    },
-    "./Resource": {
-      "types": "./dist/declarations/src/Resource.d.ts",
-      "module": "./Resource/dist/effect-opentelemetry-Resource.esm.js",
-      "import": "./Resource/dist/effect-opentelemetry-Resource.cjs.mjs",
-      "default": "./Resource/dist/effect-opentelemetry-Resource.cjs.js"
-    },
-    "./Tracer": {
-      "types": "./dist/declarations/src/Tracer.d.ts",
-      "module": "./Tracer/dist/effect-opentelemetry-Tracer.esm.js",
-      "import": "./Tracer/dist/effect-opentelemetry-Tracer.cjs.mjs",
-      "default": "./Tracer/dist/effect-opentelemetry-Tracer.cjs.js"
-    },
-    "./WebSdk": {
-      "types": "./dist/declarations/src/WebSdk.d.ts",
-      "module": "./WebSdk/dist/effect-opentelemetry-WebSdk.esm.js",
-      "import": "./WebSdk/dist/effect-opentelemetry-WebSdk.cjs.mjs",
-      "default": "./WebSdk/dist/effect-opentelemetry-WebSdk.cjs.js"
-    }
-  },
-  "files": [
-    "src",
-    "dist",
-    "internal",
-    "Metrics",
-    "NodeSdk",
-    "Resource",
-    "Tracer",
-    "WebSdk"
-  ]
+  }
 }

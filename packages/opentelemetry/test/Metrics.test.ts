@@ -4,6 +4,7 @@ import { ValueType } from "@opentelemetry/api"
 import { Resource } from "@opentelemetry/resources"
 import * as Effect from "effect/Effect"
 import * as Metric from "effect/Metric"
+import { assert, describe } from "vitest"
 
 const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)

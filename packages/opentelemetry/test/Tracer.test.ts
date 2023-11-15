@@ -6,6 +6,7 @@ import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
+import { assert, describe, expect } from "vitest"
 
 const TracingLive = NodeSdk.layer(() => ({
   resource: {

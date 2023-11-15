@@ -7,7 +7,7 @@ import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
-import { Resource } from "../Resource"
+import { Resource } from "../Resource.js"
 
 /** @internal */
 export class OtelSpan implements EffectTracer.Span {
@@ -39,7 +39,7 @@ export class OtelSpan implements EffectTracer.Span {
             context: makeSpanContext(link.span),
             attributes: recordToAttributes(link.attributes)
           }))
-          : undefined
+          : undefined as any
       },
       parent._tag === "Some"
         ? populateContext(active, parent.value, context)
@@ -145,8 +145,8 @@ export const traceStateTag = Context.Tag<OtelApi.TraceState>("@effect/openteleme
 export const makeExternalSpan = (options: {
   readonly traceId: string
   readonly spanId: string
-  readonly traceFlags?: number
-  readonly traceState?: string | OtelApi.TraceState
+  readonly traceFlags?: number | undefined
+  readonly traceState?: string | OtelApi.TraceState | undefined
 }): EffectTracer.ExternalSpan => {
   let context = Context.empty()
 
@@ -254,7 +254,7 @@ const makeSpanContext = (span: EffectTracer.ParentSpan, context?: Context.Contex
     context ?
       extractTraceTag(span, context, traceStateTag) :
       Context.getOption(span.context, traceStateTag)
-  )
+  ) as OtelApi.TraceState
 })
 
 const extractTraceTag = <I, S>(
