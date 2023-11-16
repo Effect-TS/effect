@@ -1,5 +1,15 @@
 # @effect/schema
 
+## 0.48.1
+
+### Patch Changes
+
+- [#566](https://github.com/Effect-TS/schema/pull/566) [`1c1d5a5`](https://github.com/Effect-TS/schema/commit/1c1d5a523b37118507fd234170aad693e3b416ce) Thanks [@matheuspuel](https://github.com/matheuspuel)! - add dual api to Schema.rename
+
+- [#566](https://github.com/Effect-TS/schema/pull/566) [`1c1d5a5`](https://github.com/Effect-TS/schema/commit/1c1d5a523b37118507fd234170aad693e3b416ce) Thanks [@matheuspuel](https://github.com/matheuspuel)! - forbid excess properties on Schema.rename
+
+- [#564](https://github.com/Effect-TS/schema/pull/564) [`8440e1e`](https://github.com/Effect-TS/schema/commit/8440e1eb9b973b2820be9e36a62ebcc85efe190e) Thanks [@fubhy](https://github.com/fubhy)! - Use `sideEffects: []` to circumvent bundler issues
+
 ## 0.48.0
 
 ### Minor Changes
