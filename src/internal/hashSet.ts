@@ -271,16 +271,12 @@ export const reduce = dual<
   ))
 
 /** @internal */
-export const filter = dual<
-  {
-    <A, B extends A>(f: Refinement<A, B>): (self: HS.HashSet<A>) => HS.HashSet<B>
-    <A>(f: Predicate<A>): (self: HS.HashSet<A>) => HS.HashSet<A>
-  },
-  {
-    <A, B extends A>(self: HS.HashSet<A>, f: Refinement<A, B>): HS.HashSet<B>
-    <A>(self: HS.HashSet<A>, f: Predicate<A>): HS.HashSet<A>
-  }
->(2, <A>(self: HS.HashSet<A>, f: Predicate<A>) => {
+export const filter: {
+  <A, B extends A>(refinement: Refinement<A, B>): (self: HS.HashSet<A>) => HS.HashSet<B>
+  <A, B extends A>(predicate: Predicate<B>): (self: HS.HashSet<A>) => HS.HashSet<A>
+  <A, B extends A>(self: HS.HashSet<A>, refinement: Refinement<A, B>): HS.HashSet<B>
+  <A>(self: HS.HashSet<A>, predicate: Predicate<A>): HS.HashSet<A>
+} = dual(2, <A>(self: HS.HashSet<A>, f: Predicate<A>) => {
   return mutate(empty(), (set) => {
     const iterator = values(self)
     let next: IteratorResult<A, any>

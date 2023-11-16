@@ -1658,15 +1658,10 @@ export const compact: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(ide
  * @since 2.0.0
  */
 export const filter: {
-  <C extends A, B extends A, A = C>(
-    refinement: (a: A, i: number) => a is B
-  ): (self: Iterable<C>) => Array<B>
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => Array<B>
-  <C extends A, B extends A, A = C>(
-    self: Iterable<C>,
-    refinement: (a: A, i: number) => a is B
-  ): Array<B>
-  <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): Array<B>
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Array<B>
+  <A, B extends A>(predicate: (b: B, i: number) => boolean): (self: Iterable<A>) => Array<A>
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Array<B>
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Array<A>
 } = dual(
   2,
   <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): Array<B> => {

@@ -127,3 +127,36 @@ Chunk.map(nonEmptyNumbers, (n) => n + 1)
 
 // $ExpectType NonEmptyChunk<number>
 pipe(nonEmptyNumbers, Chunk.map((n) => n + 1))
+
+// -------------------------------------------------------------------------------------
+// filter
+// -------------------------------------------------------------------------------------
+
+Chunk.filter(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Chunk.filter((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Chunk<string | number>
+Chunk.filter(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Chunk<number>
+Chunk.filter(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Chunk<string | number>
+pipe(numbersOrStrings, Chunk.filter(predicateNumbersOrStrings))
+
+// $ExpectType Chunk<number>
+pipe(numbers, Chunk.filter(predicateNumbersOrStrings))
+
+// $ExpectType Chunk<number>
+Chunk.filter(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Chunk<number>
+pipe(numbersOrStrings, Chunk.filter(Predicate.isNumber))

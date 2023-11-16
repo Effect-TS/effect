@@ -191,7 +191,7 @@ Added in v2.0.0
 ```ts
 export declare const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: SortedSet<A>) => SortedSet<B>
-  <A>(predicate: Predicate<A>): (self: SortedSet<A>) => SortedSet<A>
+  <A, B extends A>(predicate: Predicate<B>): (self: SortedSet<A>) => SortedSet<A>
   <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): SortedSet<B>
   <A>(self: SortedSet<A>, predicate: Predicate<A>): SortedSet<A>
 }

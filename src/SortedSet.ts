@@ -164,19 +164,10 @@ export const every: {
  */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: SortedSet<A>) => SortedSet<B>
-  <A>(predicate: Predicate<A>): (self: SortedSet<A>) => SortedSet<A>
+  <A, B extends A>(predicate: Predicate<B>): (self: SortedSet<A>) => SortedSet<A>
   <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): SortedSet<B>
   <A>(self: SortedSet<A>, predicate: Predicate<A>): SortedSet<A>
-} = Dual.dual<
-  {
-    <A, B extends A>(refinement: Refinement<A, B>): (self: SortedSet<A>) => SortedSet<B>
-    <A>(predicate: Predicate<A>): (self: SortedSet<A>) => SortedSet<A>
-  },
-  {
-    <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): SortedSet<B>
-    <A>(self: SortedSet<A>, predicate: Predicate<A>): SortedSet<A>
-  }
->(2, <A>(self: SortedSet<A>, predicate: Predicate<A>) => {
+} = Dual.dual(2, <A>(self: SortedSet<A>, predicate: Predicate<A>): SortedSet<A> => {
   const ord = RBT.getOrder(self.keyTree)
   let out = empty<A>(ord)
   for (const value of self) {

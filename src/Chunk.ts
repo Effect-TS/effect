@@ -647,13 +647,13 @@ export const filterMap: {
  * @category filtering
  */
 export const filter: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: Chunk<C>) => Chunk<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
-  <C extends A, B extends A, A = C>(self: Chunk<C>, refinement: Refinement<A, B>): Chunk<B>
-  <B extends A, A = B>(self: Chunk<B>, predicate: Predicate<A>): Chunk<B>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
+  <A, B extends A>(predicate: Predicate<B>): (self: Chunk<A>) => Chunk<A>
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(
   2,
-  <B extends A, A = B>(self: Chunk<B>, predicate: Predicate<A>) =>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> =>
     unsafeFromArray(RA.filterMap(self, O.liftPredicate(predicate)))
 )
 

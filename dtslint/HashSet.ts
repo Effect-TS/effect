@@ -2,6 +2,7 @@ import { pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Predicate from "effect/Predicate"
 
+declare const numbers: HashSet.HashSet<number>
 declare const numbersOrStrings: HashSet.HashSet<number | string>
 
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
@@ -44,3 +45,36 @@ HashSet.partition(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType [HashSet<string>, HashSet<number>]
 pipe(numbersOrStrings, HashSet.partition(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// filter
+// -------------------------------------------------------------------------------------
+
+HashSet.filter(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  HashSet.filter((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType HashSet<string | number>
+HashSet.filter(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType HashSet<number>
+HashSet.filter(numbers, predicateNumbersOrStrings)
+
+// $ExpectType HashSet<string | number>
+pipe(numbersOrStrings, HashSet.filter(predicateNumbersOrStrings))
+
+// $ExpectType HashSet<number>
+pipe(numbers, HashSet.filter(predicateNumbersOrStrings))
+
+// $ExpectType HashSet<number>
+HashSet.filter(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType HashSet<number>
+pipe(numbersOrStrings, HashSet.filter(Predicate.isNumber))

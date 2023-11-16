@@ -2352,16 +2352,15 @@ export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Stream.Stre
   fromEffect(Effect.failCauseSync(evaluate))
 
 /** @internal */
-export const filter = dual<
-  {
-    <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, B>
-    <A, X extends A>(predicate: Predicate<X>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>
-  },
-  {
-    <R, E, A, B extends A>(self: Stream.Stream<R, E, A>, refinement: Refinement<A, B>): Stream.Stream<R, E, B>
-    <R, E, A, X extends A>(self: Stream.Stream<R, E, A>, predicate: Predicate<X>): Stream.Stream<R, E, A>
-  }
->(2, <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>) => mapChunks(self, Chunk.filter(predicate)))
+export const filter: {
+  <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, B>
+  <A, B extends A>(predicate: Predicate<B>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>
+  <R, E, A, B extends A>(self: Stream.Stream<R, E, A>, refinement: Refinement<A, B>): Stream.Stream<R, E, B>
+  <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>): Stream.Stream<R, E, A>
+} = dual(
+  2,
+  <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>) => mapChunks(self, Chunk.filter(predicate))
+)
 
 /** @internal */
 export const filterEffect = dual<

@@ -226,3 +226,36 @@ ReadonlyArray.partition(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType [string[], number[]]
 pipe(numbersOrStrings, ReadonlyArray.partition(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// filter
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.filter(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.filter((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType (string | number)[]
+ReadonlyArray.filter(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType number[]
+ReadonlyArray.filter(numbers, predicateNumbersOrStrings)
+
+// $ExpectType (string | number)[]
+pipe(numbersOrStrings, ReadonlyArray.filter(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(numbers, ReadonlyArray.filter(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+ReadonlyArray.filter(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType number[]
+pipe(numbersOrStrings, ReadonlyArray.filter(Predicate.isNumber))

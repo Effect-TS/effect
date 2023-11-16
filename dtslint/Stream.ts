@@ -2,6 +2,7 @@ import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 
+declare const numbers: Stream.Stream<never, never, number>
 declare const numbersOrStrings: Stream.Stream<never, never, number | string>
 
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
@@ -10,11 +11,28 @@ declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 // filter
 // -------------------------------------------------------------------------------------
 
+Stream.filter(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Stream.filter((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // $ExpectType Stream<never, never, string | number>
 Stream.filter(numbersOrStrings, predicateNumbersOrStrings)
 
+// $ExpectType Stream<never, never, number>
+Stream.filter(numbers, predicateNumbersOrStrings)
+
 // $ExpectType Stream<never, never, string | number>
 pipe(numbersOrStrings, Stream.filter(predicateNumbersOrStrings))
+
+// $ExpectType Stream<never, never, number>
+pipe(numbers, Stream.filter(predicateNumbersOrStrings))
 
 // $ExpectType Stream<never, never, number>
 Stream.filter(numbersOrStrings, Predicate.isNumber)

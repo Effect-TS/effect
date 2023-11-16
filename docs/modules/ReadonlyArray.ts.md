@@ -661,10 +661,10 @@ Added in v2.0.0
 
 ```ts
 export declare const filter: {
-  <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (self: Iterable<C>) => B[]
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => B[]
-  <C extends A, B extends A, A = C>(self: Iterable<C>, refinement: (a: A, i: number) => a is B): B[]
-  <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): B[]
+  <A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => B[]
+  <A, B extends A>(predicate: (b: B, i: number) => boolean): (self: Iterable<A>) => A[]
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): B[]
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): A[]
 }
 ```
 

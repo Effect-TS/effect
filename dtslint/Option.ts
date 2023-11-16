@@ -76,8 +76,8 @@ pipe(
   on,
   Option.filter(
     (
-      x // $ExpectType number
-    ): x is number => true
+      _x // $ExpectType number
+    ): _x is number => true
   )
 )
 

@@ -481,11 +481,11 @@ export const some: {
  * @category combinators
  */
 export const filter: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: List<C>) => List<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => List<B>
-  <C extends A, B extends A, A = C>(self: List<C>, refinement: Refinement<A, B>): List<B>
-  <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): List<B>
-} = dual(2, <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): List<B> => noneIn(self, predicate, false))
+  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => List<B>
+  <A, B extends A>(predicate: Predicate<B>): (self: List<A>) => List<A>
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): List<B>
+  <A>(self: List<A>, predicate: Predicate<A>): List<A>
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): List<A> => noneIn(self, predicate, false))
 
 // everything seen so far is not included
 const noneIn = <A>(

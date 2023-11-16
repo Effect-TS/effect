@@ -190,6 +190,7 @@ ReadonlyRecord.filterMap(structNumbers, (
 
 // $ExpectType Record<string, number>
 ReadonlyRecord.filter(numbers, (
+  // $ExpectType number
   value,
   // $ExpectType string
   _key
@@ -197,6 +198,7 @@ ReadonlyRecord.filter(numbers, (
 
 // $ExpectType Record<string, number>
 ReadonlyRecord.filter(readonlyNumbers, (
+  // $ExpectType number
   value,
   // $ExpectType string
   _key
@@ -206,6 +208,7 @@ ReadonlyRecord.filter(readonlyNumbers, (
 pipe(
   structNumbers,
   ReadonlyRecord.filter((
+    // $ExpectType number
     _value,
     // $ExpectType "a" | "b"
     key
@@ -214,10 +217,29 @@ pipe(
 
 // $ExpectType Record<string, number>
 ReadonlyRecord.filter(structNumbers, (
+  // $ExpectType number
   _value,
   // $ExpectType "a" | "b"
   key
 ) => key === "a")
+
+// $ExpectType Record<string, string | number>
+ReadonlyRecord.filter(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Record<string, number>
+ReadonlyRecord.filter(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Record<string, string | number>
+pipe(numbersOrStrings, ReadonlyRecord.filter(predicateNumbersOrStrings))
+
+// $ExpectType Record<string, number>
+pipe(numbers, ReadonlyRecord.filter(predicateNumbersOrStrings))
+
+// $ExpectType Record<string, number>
+ReadonlyRecord.filter(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Record<string, number>
+pipe(numbersOrStrings, ReadonlyRecord.filter(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // partitionMap

@@ -127,3 +127,36 @@ List.map(nonEmptyNumbers, (n) => n + 1)
 
 // $ExpectType Cons<number>
 pipe(nonEmptyNumbers, List.map((n) => n + 1))
+
+// -------------------------------------------------------------------------------------
+// filter
+// -------------------------------------------------------------------------------------
+
+List.filter(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  List.filter((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType List<string | number>
+List.filter(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType List<number>
+List.filter(numbers, predicateNumbersOrStrings)
+
+// $ExpectType List<string | number>
+pipe(numbersOrStrings, List.filter(predicateNumbersOrStrings))
+
+// $ExpectType List<number>
+pipe(numbers, List.filter(predicateNumbersOrStrings))
+
+// $ExpectType List<number>
+List.filter(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType List<number>
+pipe(numbersOrStrings, List.filter(Predicate.isNumber))

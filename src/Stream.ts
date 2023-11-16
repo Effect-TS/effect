@@ -1175,9 +1175,9 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<nev
  */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <A, X extends A>(predicate: Predicate<X>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <A, B extends A>(predicate: Predicate<B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
   <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
-  <R, E, A, X extends A>(self: Stream<R, E, A>, predicate: Predicate<X>): Stream<R, E, A>
+  <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.filter
 
 /**
