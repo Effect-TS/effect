@@ -319,3 +319,30 @@ ReadonlyArray.findFirst(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Option<number>
 pipe(numbersOrStrings, ReadonlyArray.findFirst(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findLast
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.findLast(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findLast((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+ReadonlyArray.findLast(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, ReadonlyArray.findLast(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+ReadonlyArray.findLast(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, ReadonlyArray.findLast(Predicate.isNumber))

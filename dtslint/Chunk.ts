@@ -220,3 +220,30 @@ Chunk.findFirst(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Option<number>
 pipe(numbersOrStrings, Chunk.findFirst(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findLast
+// -------------------------------------------------------------------------------------
+
+Chunk.findLast(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Chunk.findLast((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+Chunk.findLast(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, Chunk.findLast(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+Chunk.findLast(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, Chunk.findLast(Predicate.isNumber))
