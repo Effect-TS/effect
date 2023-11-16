@@ -1,5 +1,13 @@
 # @effect/rpc-nextjs
 
+## 0.18.1
+
+### Patch Changes
+
+- Updated dependencies [[`4ba5cae`](https://github.com/Effect-TS/rpc/commit/4ba5cae0ea95895fe686eb6036cda0546476515c)]:
+  - @effect/rpc-http@0.18.1
+  - @effect/rpc@0.18.1
+
 ## 0.18.0
 
 ### Minor Changes
