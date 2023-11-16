@@ -6860,12 +6860,12 @@ export const updateService = dual<
 
 /** @internal */
 export const when = dual<
-  (predicate: LazyArg<boolean>) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>,
-  <R, E, A>(self: Stream.Stream<R, E, A>, predicate: LazyArg<boolean>) => Stream.Stream<R, E, A>
+  (test: LazyArg<boolean>) => <R, E, A>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>,
+  <R, E, A>(self: Stream.Stream<R, E, A>, test: LazyArg<boolean>) => Stream.Stream<R, E, A>
 >(
   2,
-  <R, E, A>(self: Stream.Stream<R, E, A>, predicate: LazyArg<boolean>): Stream.Stream<R, E, A> =>
-    pipe(self, whenEffect(Effect.sync(predicate)))
+  <R, E, A>(self: Stream.Stream<R, E, A>, test: LazyArg<boolean>): Stream.Stream<R, E, A> =>
+    pipe(self, whenEffect(Effect.sync(test)))
 )
 
 /** @internal */
