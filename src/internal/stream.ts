@@ -6106,10 +6106,12 @@ export const takeUntilEffect = dual<
 )
 
 /** @internal */
-export const takeWhile = dual<
-  <A, X extends A>(predicate: Predicate<X>) => <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>,
-  <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>) => Stream.Stream<R, E, A>
->(2, <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>): Stream.Stream<R, E, A> => {
+export const takeWhile: {
+  <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, B>
+  <A>(predicate: Predicate<A>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, A>
+  <R, E, A, B extends A>(self: Stream.Stream<R, E, A>, refinement: Refinement<A, B>): Stream.Stream<R, E, B>
+  <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>): Stream.Stream<R, E, A>
+} = dual(2, <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>): Stream.Stream<R, E, A> => {
   const loop: Channel.Channel<never, never, Chunk.Chunk<A>, unknown, never, Chunk.Chunk<A>, unknown> = core.readWith({
     onInput: (input: Chunk.Chunk<A>) => {
       const taken = pipe(input, Chunk.takeWhile(predicate))
