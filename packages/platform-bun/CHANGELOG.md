@@ -1,5 +1,15 @@
 # @effect/platform-bun
 
+## 0.19.4
+
+### Patch Changes
+
+- [#275](https://github.com/Effect-TS/platform/pull/275) [`e28989e`](https://github.com/Effect-TS/platform/commit/e28989ebd1813cec7ce68f7dd8718f2254e05cad) Thanks [@tim-smart](https://github.com/tim-smart)! - add stack to WorkerError
+
+- Updated dependencies [[`e28989e`](https://github.com/Effect-TS/platform/commit/e28989ebd1813cec7ce68f7dd8718f2254e05cad)]:
+  - @effect/platform-node@0.31.4
+  - @effect/platform@0.30.4
+
 ## 0.19.3
 
 ### Patch Changes
