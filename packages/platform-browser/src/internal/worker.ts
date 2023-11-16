@@ -22,13 +22,19 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const queue = yield* _(Queue.unbounded<Worker.BackingWorker.Message<O>>())
 
       const fiber = yield* _(
-        Effect.async<never, WorkerError, never>((resume, signal) => {
-          port.addEventListener("message", function(event) {
+        Effect.async<never, WorkerError, never>((resume) => {
+          function onMessage(event: MessageEvent) {
             queue.unsafeOffer((event as MessageEvent).data)
-          }, { signal })
-          port.addEventListener("error", function(event) {
+          }
+          function onError(event: ErrorEvent) {
             resume(Effect.fail(WorkerError("unknown", (event as ErrorEvent).message)))
-          }, { signal })
+          }
+          port.addEventListener("message", onMessage as any)
+          port.addEventListener("error", onError as any)
+          return Effect.sync(() => {
+            port.removeEventListener("message", onMessage as any)
+            port.removeEventListener("error", onError as any)
+          })
         }),
         Effect.interruptible,
         Effect.forkScoped

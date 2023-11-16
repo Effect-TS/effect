@@ -18,18 +18,24 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const port = self
       const queue = yield* _(Queue.unbounded<I>())
       const fiber = yield* _(
-        Effect.async<never, WorkerError, never>((resume, signal) => {
-          port.addEventListener("message", function(event) {
+        Effect.async<never, WorkerError, never>((resume) => {
+          function onMessage(event: MessageEvent) {
             const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
               Effect.runFork(Queue.shutdown(queue))
             }
-          }, { signal })
-          port.addEventListener("error", function(error) {
+          }
+          function onError(error: ErrorEvent) {
             resume(Effect.fail(WorkerError("unknown", error.message)))
-          }, { signal })
+          }
+          port.addEventListener("message", onMessage)
+          port.addEventListener("error", onError)
+          return Effect.sync(() => {
+            port.removeEventListener("message", onMessage)
+            port.removeEventListener("error", onError)
+          })
         }),
         Effect.forkScoped
       )

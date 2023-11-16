@@ -22,21 +22,29 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const queue = yield* _(Queue.unbounded<I>())
       const fiberId = yield* _(Effect.fiberId)
       const fiber = yield* _(
-        Effect.async<never, WorkerError, never>((resume, signal) => {
-          port.addEventListener("message", function(event) {
+        Effect.async<never, WorkerError, never>((resume) => {
+          function onMessage(event: MessageEvent) {
             const message = (event as MessageEvent).data as Runner.BackingRunner.Message<I>
             if (message[0] === 0) {
               queue.unsafeOffer(message[1])
             } else {
               Effect.runFork(Queue.shutdown(queue))
             }
-          }, { signal })
-          port.addEventListener("messageerror", function(error) {
+          }
+          function onMessageError(error: ErrorEvent) {
             resume(Effect.fail(WorkerError("decode", (error as ErrorEvent).message)))
-          }, { signal })
-          port.addEventListener("error", function(error) {
+          }
+          function onError(error: ErrorEvent) {
             resume(Effect.fail(WorkerError("unknown", (error as ErrorEvent).message)))
-          }, { signal })
+          }
+          port.addEventListener("message", onMessage as any)
+          port.addEventListener("messageerror", onMessageError as any)
+          port.addEventListener("error", onError as any)
+          return Effect.sync(() => {
+            port.removeEventListener("message", onMessage as any)
+            port.removeEventListener("messageerror", onMessageError as any)
+            port.removeEventListener("error", onError as any)
+          })
         }),
         Effect.forkDaemon
       )
