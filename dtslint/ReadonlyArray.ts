@@ -10,7 +10,8 @@ declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const numbersOrStrings: Array<number | string>
 declare const nonEmptyReadonlyNumbersOrStrings: ReadonlyArray.NonEmptyReadonlyArray<number | string>
-declare const numbersOrStringsOrDates: Array<number | string | Date>
+
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 // -------------------------------------------------------------------------------------
 // isEmptyReadonlyArray
@@ -203,17 +204,25 @@ ReadonlyArray.sort(ordera)(abs)
 // partition
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [number[], string[]]
-ReadonlyArray.partition(numbersOrStrings, Predicate.isString)
+ReadonlyArray.partition(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.partition((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [(string | number)[], (string | number)[]]
+ReadonlyArray.partition(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [(string | number)[], (string | number)[]]
+pipe(numbersOrStrings, ReadonlyArray.partition(predicateNumbersOrStrings))
 
 // $ExpectType [string[], number[]]
 ReadonlyArray.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [(number | Date)[], string[]]
-ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isString)
-
-// $ExpectType [(string | Date)[], number[]]
-ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isNumber)
-
-// $ExpectType [(string | number)[], Date[]]
-ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isDate)
+// $ExpectType [string[], number[]]
+pipe(numbersOrStrings, ReadonlyArray.partition(Predicate.isNumber))

@@ -1688,18 +1688,13 @@ export const filter: {
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (
     self: Iterable<C>
-  ) => [Array<Exclude<B, C>>, Array<B>]
-  <B extends A, A = B>(
-    predicate: (a: A, i: number) => boolean
-  ): (self: Iterable<B>) => [Array<B>, Array<B>]
+  ) => [Array<Exclude<C, B>>, Array<B>]
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [Array<B>, Array<B>]
   <C extends A, B extends A, A = C>(
     self: Iterable<C>,
     refinement: (a: A, i: number) => a is B
   ): [Array<Exclude<C, B>>, Array<B>]
-  <B extends A, A = B>(
-    self: Iterable<B>,
-    predicate: (a: A, i: number) => boolean
-  ): [Array<B>, Array<B>]
+  <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): [Array<B>, Array<B>]
 } = dual(
   2,
   <B extends A, A = B>(

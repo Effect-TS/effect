@@ -7,6 +7,8 @@ declare const nonEmptyNumbers: Chunk.NonEmptyChunk<number>
 declare const numbersOrStrings: Chunk.Chunk<number | string>
 declare const nonEmptyNumbersOrStrings: Chunk.NonEmptyChunk<number | string>
 
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
+
 // -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
@@ -35,11 +37,28 @@ if (Chunk.some(Predicate.isString)(numbersOrStrings)) {
 // partition
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [Chunk<number>, Chunk<string>]
-Chunk.partition(numbersOrStrings, Predicate.isString)
+Chunk.partition(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
 
-// $ExpectType [Chunk<number>, Chunk<string>]
-numbersOrStrings.pipe(Chunk.partition(Predicate.isString))
+pipe(
+  numbersOrStrings,
+  Chunk.partition((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+Chunk.partition(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+pipe(numbersOrStrings, Chunk.partition(predicateNumbersOrStrings))
+
+// $ExpectType [Chunk<string>, Chunk<number>]
+Chunk.partition(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [Chunk<string>, Chunk<number>]
+pipe(numbersOrStrings, Chunk.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // append
