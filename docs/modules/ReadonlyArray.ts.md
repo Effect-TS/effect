@@ -704,9 +704,11 @@ Added in v2.0.0
 
 ```ts
 export declare const partition: {
-  <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (self: Iterable<C>) => [C[], B[]]
+  <C extends A, B extends A, A = C>(
+    refinement: (a: A, i: number) => a is B
+  ): (self: Iterable<C>) => [Exclude<B, C>[], B[]]
   <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [B[], B[]]
-  <C extends A, B extends A, A = C>(self: Iterable<C>, refinement: (a: A, i: number) => a is B): [C[], B[]]
+  <C extends A, B extends A, A = C>(self: Iterable<C>, refinement: (a: A, i: number) => a is B): [Exclude<C, B>[], B[]]
   <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): [B[], B[]]
 }
 ```

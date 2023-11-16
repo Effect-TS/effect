@@ -10,6 +10,7 @@ declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const numbersOrStrings: Array<number | string>
 declare const nonEmptyReadonlyNumbersOrStrings: ReadonlyArray.NonEmptyReadonlyArray<number | string>
+declare const numbersOrStringsOrDates: Array<number | string | Date>
 
 // -------------------------------------------------------------------------------------
 // isEmptyReadonlyArray
@@ -197,3 +198,22 @@ ReadonlyArray.sort(ordera)(abs)
 
 // // $ExpectType AB[]
 // pipe(abs, ReadonlyArray.sort(Order.mapInput(Order.reverse(Order.string), ({ a }) => a)))
+
+// -------------------------------------------------------------------------------------
+// partition
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [number[], string[]]
+ReadonlyArray.partition(numbersOrStrings, Predicate.isString)
+
+// $ExpectType [string[], number[]]
+ReadonlyArray.partition(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [(number | Date)[], string[]]
+ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isString)
+
+// $ExpectType [(string | Date)[], number[]]
+ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isNumber)
+
+// $ExpectType [(string | number)[], Date[]]
+ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isDate)
