@@ -3604,7 +3604,7 @@ export const takeRight: {
  * @category utils
  */
 export const takeUntil: {
-  <A>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.takeUntil
 

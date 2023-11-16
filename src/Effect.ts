@@ -856,7 +856,9 @@ export const replicateEffect: {
  * @category collecting & elements
  */
 export const takeUntil: {
-  <R, E, A>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Array<A>>
+  <R, E, A>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): <B extends A>(elements: Iterable<B>) => Effect<R, E, Array<B>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeUntil
 

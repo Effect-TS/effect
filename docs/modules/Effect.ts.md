@@ -1075,7 +1075,9 @@ Takes elements until the effectual predicate returns true.
 
 ```ts
 export declare const takeUntil: {
-  <R, E, A>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, A[]>
+  <R, E, A>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): <B extends A>(elements: Iterable<B>) => Effect<R, E, B[]>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
 }
 ```

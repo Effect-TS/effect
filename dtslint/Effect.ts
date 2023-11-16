@@ -553,3 +553,13 @@ Effect.dropUntil(numbersArray, predicateNumbersOrStringsEffect)
 
 // $ExpectType Effect<never, never, number[]>
 pipe(numbersArray, Effect.dropUntil(predicateNumbersOrStringsEffect))
+
+// -------------------------------------------------------------------------------------
+// takeUntil
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<never, never, number[]>
+Effect.takeUntil(numbersArray, predicateNumbersOrStringsEffect)
+
+// $ExpectType Effect<never, never, number[]>
+pipe(numbersArray, Effect.takeUntil(predicateNumbersOrStringsEffect))
