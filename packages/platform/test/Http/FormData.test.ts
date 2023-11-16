@@ -27,7 +27,6 @@ describe("FormData", () => {
         Stream.runCollect
       )
 
-      console.log(parts)
       assert.deepStrictEqual(Chunk.toReadonlyArray(parts), [
         ["foo", "bar"],
         ["test", "ing"],

@@ -235,14 +235,12 @@ const makeFromQueue = <IE>(
         let finished = false
         const take: Channel.Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<Uint8Array>, void> = Channel
           .suspend(() => {
-            if (finished) {
-              return Channel.unit
-            } else if (chunks.length === 0) {
-              return Channel.zipRight(pump, take)
+            if (chunks.length === 0) {
+              return finished ? Channel.unit : Channel.zipRight(pump, take)
             }
             const chunk = Chunk.unsafeFromArray(chunks)
             chunks = []
-            return Channel.zipRight(
+            return finished ? Channel.write(chunk) : Channel.zipRight(
               Channel.write(chunk),
               Channel.zipRight(pump, take)
             )

@@ -36,7 +36,7 @@
   "dependencies": {
     "@effect/platform": "workspace:*",
     "mime": "^3.0.0",
-    "multipasta": "^0.1.15"
+    "multipasta": "^0.1.17"
   },
   "peerDependencies": {
     "effect": "2.0.0-next.55"
