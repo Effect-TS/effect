@@ -174,3 +174,19 @@ Stream.dropUntil(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Stream<never, never, string | number>
 pipe(numbersOrStrings, Stream.dropUntil(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// splitWhere
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Stream<never, never, Chunk<number>>
+Stream.split(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Stream<never, never, Chunk<number>>
+pipe(numbers, Stream.split(predicateNumbersOrStrings))
+
+// $ExpectType Stream<never, never, Chunk<string | number>>
+const x = Stream.split(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Stream<never, never, Chunk<string | number>>
+pipe(numbersOrStrings, Stream.split(Predicate.isNumber))
