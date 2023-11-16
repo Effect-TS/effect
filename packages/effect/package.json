@@ -55,7 +55,7 @@
     "@changesets/cli": "^2.26.2",
     "@edge-runtime/vm": "^3.1.6",
     "@effect/build-utils": "^0.3.1",
-    "@effect/docgen": "^0.3.1",
+    "@effect/docgen": "^0.3.4",
     "@effect/dtslint": "^0.0.3",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
@@ -79,7 +79,7 @@
     "prettier": "^3.0.3",
     "rimraf": "^5.0.5",
     "size-limit": "^10.0.2",
-    "tsx": "^3.14.0",
+    "tsx": "^4.1.2",
     "typescript": "^5.2.2",
     "vite": "^4.4.11",
     "vitest": "^0.34.6"
