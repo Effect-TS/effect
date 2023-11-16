@@ -470,7 +470,22 @@ const a = Symbol.for('@effect/schema/dtslint/a')
 S.rename(S.struct({ a: S.string, b: S.number }), { a: a })
 
 // @ts-expect-error
-S.rename(S.struct({ a: S.string, b: S.number }), { 'c': 'd' })
+S.rename(S.struct({ a: S.string, b: S.number }), { c: 'd' })
+
+// @ts-expect-error
+S.rename(S.struct({ a: S.string, b: S.number }), { a: 'c', d: 'e' })
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly a: string; readonly b: number; }>
+S.struct({ a: S.string, b: S.number }).pipe(S.rename({}))
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; }, { readonly c: string; readonly b: number; }>
+S.struct({ a: S.string, b: S.number }).pipe(S.rename({ a: 'c' }))
+
+// @ts-expect-error
+S.struct({ a: S.string, b: S.number }).pipe(S.rename({ c: 'd' }))
+
+// @ts-expect-error
+S.struct({ a: S.string, b: S.number }).pipe(S.rename({ a: 'c', d: 'e' }))
 
 // ---------------------------------------------
 // optionFromSelf

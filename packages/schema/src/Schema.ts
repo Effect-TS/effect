@@ -1529,12 +1529,40 @@ type Rename<A, M> = {
  * @category renaming
  * @since 1.0.0
  */
-export const rename = <I, A, const M extends { readonly [K in keyof A]?: PropertyKey }>(
-  schema: Schema<I, A>,
-  mapping: M
-): Schema<I, Simplify<Rename<A, M>>> => {
-  return make(AST.rename(schema.ast, mapping))
-}
+export const rename: {
+  <
+    A,
+    const M extends
+      & { readonly [K in keyof A]?: PropertyKey }
+      & { readonly [K in Exclude<keyof M, keyof A>]: never }
+  >(
+    mapping: M
+  ): <I>(self: Schema<I, A>) => Schema<I, Simplify<Rename<A, M>>>
+  <
+    I,
+    A,
+    const M extends
+      & { readonly [K in keyof A]?: PropertyKey }
+      & { readonly [K in Exclude<keyof M, keyof A>]: never }
+  >(
+    self: Schema<I, A>,
+    mapping: M
+  ): Schema<I, Simplify<Rename<A, M>>>
+} = dual(
+  2,
+  <
+    I,
+    A,
+    const M extends
+      & { readonly [K in keyof A]?: PropertyKey }
+      & { readonly [K in Exclude<keyof M, keyof A>]: never }
+  >(
+    self: Schema<I, A>,
+    mapping: M
+  ): Schema<I, Simplify<Rename<A, M>>> => {
+    return make(AST.rename(self.ast, mapping))
+  }
+)
 
 // ---------------------------------------------
 // string filters

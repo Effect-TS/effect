@@ -72,4 +72,11 @@ describe("Schema > rename", () => {
       as: [{ a: "a2", as: [] }]
     }, { a: "a1", as: [{ a: "a2", as: [] }] })
   })
+
+  it("pipe", async () => {
+    const renamed = S.struct({ a: S.string, b: S.number }).pipe(S.rename({ a: "c" }))
+
+    await Util.expectParseSuccess(renamed, { a: "a", b: 1 }, { c: "a", b: 1 })
+    await Util.expectEncodeSuccess(renamed, { c: "a", b: 1 }, { a: "a", b: 1 })
+  })
 })
