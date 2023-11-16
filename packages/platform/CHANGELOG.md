@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.30.2
+
+### Patch Changes
+
+- [#270](https://github.com/Effect-TS/platform/pull/270) [`3257fd5`](https://github.com/Effect-TS/platform/commit/3257fd52016af5a38c135de5f0aa33aac7de2538) Thanks [@tim-smart](https://github.com/tim-smart)! - update multipasta
+
 ## 0.30.1
 
 ### Patch Changes
