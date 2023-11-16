@@ -1032,18 +1032,20 @@ export const takeRight: {
  * @category elements
  */
 export const takeWhile: {
-  <A>(predicate: Predicate<A>): (self: Chunk<A>) => Chunk<A>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
+  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Chunk<B>
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>) => {
-  const res: Array<A> = []
+} = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => {
+  const out: Array<A> = []
   for (const a of toReadonlyArray(self)) {
     if (predicate(a)) {
-      res.push(a)
+      out.push(a)
     } else {
       break
     }
   }
-  return unsafeFromArray(res)
+  return unsafeFromArray(out)
 })
 
 /**

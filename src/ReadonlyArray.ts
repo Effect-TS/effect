@@ -564,9 +564,9 @@ export const takeWhile: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Array<B>
   <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Array<B>
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Array<B>
-  <B extends A, A>(self: Iterable<B>, predicate: Predicate<A>): Array<B>
-} = dual(2, <B extends A, A>(self: Iterable<B>, predicate: Predicate<A>): Array<B> => {
-  const out: Array<B> = []
+  <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A>
+} = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A> => {
+  const out: Array<A> = []
   for (const a of self) {
     if (!predicate(a)) {
       break

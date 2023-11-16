@@ -160,3 +160,36 @@ Chunk.filter(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Chunk<number>
 pipe(numbersOrStrings, Chunk.filter(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// takeWhile
+// -------------------------------------------------------------------------------------
+
+Chunk.takeWhile(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Chunk.takeWhile((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Chunk<string | number>
+Chunk.takeWhile(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Chunk<number>
+Chunk.takeWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Chunk<string | number>
+pipe(numbersOrStrings, Chunk.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType Chunk<number>
+pipe(numbers, Chunk.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType Chunk<number>
+Chunk.takeWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Chunk<number>
+pipe(numbersOrStrings, Chunk.takeWhile(Predicate.isNumber))

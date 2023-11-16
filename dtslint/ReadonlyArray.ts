@@ -259,3 +259,36 @@ ReadonlyArray.filter(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType number[]
 pipe(numbersOrStrings, ReadonlyArray.filter(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// takeWhile
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.takeWhile(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.takeWhile((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType (string | number)[]
+ReadonlyArray.takeWhile(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType number[]
+ReadonlyArray.takeWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType (string | number)[]
+pipe(numbersOrStrings, ReadonlyArray.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(numbers, ReadonlyArray.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+ReadonlyArray.takeWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType number[]
+pipe(numbersOrStrings, ReadonlyArray.takeWhile(Predicate.isNumber))

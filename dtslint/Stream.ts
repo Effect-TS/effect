@@ -98,3 +98,36 @@ Stream.takeWhile(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Stream<never, never, number>
 pipe(numbersOrStrings, Stream.takeWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// takeWhile
+// -------------------------------------------------------------------------------------
+
+Stream.takeWhile(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Stream.takeWhile((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Stream<never, never, string | number>
+Stream.takeWhile(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Stream<never, never, number>
+Stream.takeWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Stream<never, never, string | number>
+pipe(numbersOrStrings, Stream.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType Stream<never, never, number>
+pipe(numbers, Stream.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType Stream<never, never, number>
+Stream.takeWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Stream<never, never, number>
+pipe(numbersOrStrings, Stream.takeWhile(Predicate.isNumber))
