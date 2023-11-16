@@ -84,11 +84,11 @@ export declare const all: <const I extends Iterable<Either<any, any>> | Record<s
       { -readonly [K in keyof I]: [I[K]] extends [Either<any, infer A>] ? A : never }
     >
   : [I] extends [Iterable<Either<infer E, infer A>>]
-  ? Either<E, A[]>
-  : Either<
-      I[keyof I] extends never ? never : [I[keyof I]] extends [Either<infer E, any>] ? E : never,
-      { -readonly [K in keyof I]: [I[K]] extends [Either<any, infer A>] ? A : never }
-    >
+    ? Either<E, A[]>
+    : Either<
+        I[keyof I] extends never ? never : [I[keyof I]] extends [Either<infer E, any>] ? E : never,
+        { -readonly [K in keyof I]: [I[K]] extends [Either<any, infer A>] ? A : never }
+      >
 ```
 
 **Example**

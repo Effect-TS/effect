@@ -2553,10 +2553,10 @@ export interface Signature {
   ): [Arg] extends [ReadonlyArray<STMAny>]
     ? ReturnTuple<Arg, IsDiscard<O>>
     : [Arg] extends [Iterable<STMAny>]
-    ? ReturnIterable<Arg, IsDiscard<O>>
-    : [Arg] extends [Record<string, STMAny>]
-    ? ReturnObject<Arg, IsDiscard<O>>
-    : never
+      ? ReturnIterable<Arg, IsDiscard<O>>
+      : [Arg] extends [Record<string, STMAny>]
+        ? ReturnObject<Arg, IsDiscard<O>>
+        : never
 }
 ```
 

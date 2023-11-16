@@ -147,12 +147,12 @@ Added in v2.0.0
 export type TrimEnd<A extends string> = A extends `${infer B} `
   ? TrimEnd<B>
   : A extends `${infer B}\n`
-  ? TrimEnd<B>
-  : A extends `${infer B}\t`
-  ? TrimEnd<B>
-  : A extends `${infer B}\r`
-  ? TrimEnd<B>
-  : A
+    ? TrimEnd<B>
+    : A extends `${infer B}\t`
+      ? TrimEnd<B>
+      : A extends `${infer B}\r`
+        ? TrimEnd<B>
+        : A
 ```
 
 Added in v2.0.0
@@ -165,12 +165,12 @@ Added in v2.0.0
 export type TrimStart<A extends string> = A extends ` ${infer B}`
   ? TrimStart<B>
   : A extends `\n${infer B}`
-  ? TrimStart<B>
-  : A extends `\t${infer B}`
-  ? TrimStart<B>
-  : A extends `\r${infer B}`
-  ? TrimStart<B>
-  : A
+    ? TrimStart<B>
+    : A extends `\t${infer B}`
+      ? TrimStart<B>
+      : A extends `\r${infer B}`
+        ? TrimStart<B>
+        : A
 ```
 
 Added in v2.0.0

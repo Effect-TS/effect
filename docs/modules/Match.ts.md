@@ -812,10 +812,10 @@ export type AddOnly<A, X> = [A] extends [Without<infer WX>]
     ? never
     : Only<X>
   : [A] extends [Only<infer OX>]
-  ? [X] extends [OX]
-    ? Only<X>
+    ? [X] extends [OX]
+      ? Only<X>
+      : never
     : never
-  : never
 ```
 
 Added in v1.0.0
@@ -828,8 +828,8 @@ Added in v1.0.0
 export type AddWithout<A, X> = [A] extends [Without<infer WX>]
   ? Without<X | WX>
   : [A] extends [Only<infer OX>]
-  ? Only<Exclude<OX, X>>
-  : never
+    ? Only<Exclude<OX, X>>
+    : never
 ```
 
 Added in v1.0.0
@@ -902,8 +902,8 @@ Added in v1.0.0
 export type PatternBase<A> = A extends ReadonlyArray<infer _T>
   ? ReadonlyArray<any> | PatternPrimitive<A>
   : A extends Record<string, any>
-  ? Partial<DrainOuterGeneric<{ [K in keyof A]: PatternPrimitive<A[K] & {}> | PatternBase<A[K] & {}> }>>
-  : never
+    ? Partial<DrainOuterGeneric<{ [K in keyof A]: PatternPrimitive<A[K] & {}> | PatternBase<A[K] & {}> }>>
+    : never
 ```
 
 Added in v1.0.0
@@ -938,18 +938,18 @@ export type WhenMatch<R, P> =
   [0] extends [1 & R]
     ? PForMatch<P>
     : P extends SafeRefinement<infer SP, never>
-    ? SP
-    : P extends Predicate.Refinement<infer _R, infer RP>
-    ? // try to narrow refinement
-      [Extract<R, RP>] extends [infer X]
-      ? [X] extends [never]
-        ? // fallback to original refinement
-          RP
-        : X
-      : never
-    : P extends PredicateA<infer PP>
-    ? PP
-    : ExtractMatch<R, PForMatch<P>>
+      ? SP
+      : P extends Predicate.Refinement<infer _R, infer RP>
+        ? // try to narrow refinement
+          [Extract<R, RP>] extends [infer X]
+          ? [X] extends [never]
+            ? // fallback to original refinement
+              RP
+            : X
+          : never
+        : P extends PredicateA<infer PP>
+          ? PP
+          : ExtractMatch<R, PForMatch<P>>
 ```
 
 Added in v1.0.0
