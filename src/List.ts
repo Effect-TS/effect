@@ -462,8 +462,8 @@ export const every: {
  */
 export const some: {
   <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => self is Cons<B>
-  <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): self is Cons<B>
-} = dual(2, <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): self is Cons<B> => {
+  <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A>
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A> => {
   let these = self
   while (!isNil(these)) {
     if (predicate(these.head)) {

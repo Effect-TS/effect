@@ -601,7 +601,7 @@ Check if a predicate holds true for some `Chunk` element.
 ```ts
 export declare const some: {
   <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => self is NonEmptyChunk<B>
-  <B extends A, A = B>(self: Chunk<B>, predicate: Predicate<A>): self is NonEmptyChunk<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A>
 }
 ```
 

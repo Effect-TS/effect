@@ -1821,7 +1821,7 @@ export const every: {
  */
 export const some: {
   <A>(predicate: Predicate<A>): <B extends A>(self: ReadonlyArray<B>) => self is NonEmptyReadonlyArray<B>
-  <B extends A, A = B>(self: ReadonlyArray<B>, predicate: Predicate<A>): self is NonEmptyReadonlyArray<B>
+  <A>(self: ReadonlyArray<A>, predicate: Predicate<A>): self is NonEmptyReadonlyArray<A>
 } = dual(
   2,
   <A>(self: ReadonlyArray<A>, predicate: Predicate<A>): self is NonEmptyReadonlyArray<A> => self.some(predicate)
