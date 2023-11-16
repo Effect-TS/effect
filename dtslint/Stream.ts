@@ -44,6 +44,17 @@ pipe(numbersOrStrings, Stream.filter(Predicate.isNumber))
 // find
 // -------------------------------------------------------------------------------------
 
+Stream.find(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Stream.find((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // $ExpectType Stream<never, never, string | number>
 Stream.find(numbersOrStrings, predicateNumbersOrStrings)
 
