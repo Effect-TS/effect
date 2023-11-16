@@ -1393,7 +1393,9 @@ Check if a value in an `Option` type meets a certain predicate.
 
 ```ts
 export declare const exists: {
-  <A>(predicate: Predicate<A>): (self: Option<A>) => boolean
+  <A, B extends A>(refinement: Refinement<A, B>): (self: Option<A>) => self is Option<B>
+  <A>(predicate: Predicate<A>): <B extends A>(self: Option<B>) => boolean
+  <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): self is Option<B>
   <A>(self: Option<A>, predicate: Predicate<A>): boolean
 }
 ```
