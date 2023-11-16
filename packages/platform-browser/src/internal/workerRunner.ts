@@ -32,10 +32,10 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             }
           }
           function onMessageError(error: ErrorEvent) {
-            resume(Effect.fail(WorkerError("decode", (error as ErrorEvent).message)))
+            resume(Effect.fail(WorkerError("decode", error.message, error.error?.stack)))
           }
           function onError(error: ErrorEvent) {
-            resume(Effect.fail(WorkerError("unknown", (error as ErrorEvent).message)))
+            resume(Effect.fail(WorkerError("unknown", error.message, error.error?.stack)))
           }
           port.addEventListener("message", onMessage as any)
           port.addEventListener("messageerror", onMessageError as any)

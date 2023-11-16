@@ -28,7 +28,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             }
           }
           function onError(error: ErrorEvent) {
-            resume(Effect.fail(WorkerError("unknown", error.message)))
+            resume(Effect.fail(WorkerError("unknown", error.message, error.error?.stack)))
           }
           port.addEventListener("message", onMessage)
           port.addEventListener("error", onError)

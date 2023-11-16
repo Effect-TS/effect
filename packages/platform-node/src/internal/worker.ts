@@ -35,10 +35,10 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             queue.unsafeOffer(message)
           })
           worker.on("messageerror", (error) => {
-            resume(Effect.fail(WorkerError("decode", error)))
+            resume(Effect.fail(WorkerError("decode", error.message, error.stack)))
           })
           worker.on("error", (error) => {
-            resume(Effect.fail(WorkerError("unknown", error)))
+            resume(Effect.fail(WorkerError("unknown", error.message, error.stack)))
           })
           worker.on("exit", (code) => {
             resume(Effect.fail(WorkerError("unknown", new Error(`exited with code ${code}`))))
@@ -50,7 +50,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
         Effect.try({
           try: () => worker.postMessage([0, message], transfers as any),
-          catch: (error) => WorkerError("send", (error as any).message)
+          catch: (error) => WorkerError("send", (error as any).message, (error as any).stack)
         })
       return { fiber, queue, send }
     })

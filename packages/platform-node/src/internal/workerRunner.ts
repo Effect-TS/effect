@@ -26,10 +26,10 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             }
           })
           port.on("messageerror", (error) => {
-            resume(Effect.fail(WorkerError("decode", error)))
+            resume(Effect.fail(WorkerError("decode", error.message, error.stack)))
           })
           port.on("error", (error) => {
-            resume(Effect.fail(WorkerError("unknown", error)))
+            resume(Effect.fail(WorkerError("unknown", error.message, error.stack)))
           })
         }),
         Effect.forkScoped

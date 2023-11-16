@@ -25,11 +25,15 @@ export interface WorkerError extends Data.Case {
   readonly _tag: "WorkerError"
   readonly reason: "spawn" | "decode" | "send" | "unknown"
   readonly error: unknown
+  readonly stack?: string
 }
 
 /**
  * @since 1.0.0
  * @category errors
  */
-export const WorkerError: (reason: "spawn" | "decode" | "send" | "unknown", error: unknown) => WorkerError =
-  internal.WorkerError
+export const WorkerError: (
+  reason: "spawn" | "decode" | "send" | "unknown",
+  error: unknown,
+  stack?: string
+) => WorkerError = internal.WorkerError

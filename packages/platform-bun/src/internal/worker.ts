@@ -36,7 +36,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             queue.unsafeOffer((event as MessageEvent).data)
           }
           function onError(event: ErrorEvent) {
-            resume(Effect.fail(WorkerError("unknown", event.message)))
+            resume(Effect.fail(WorkerError("unknown", event.message, event.error?.stack)))
           }
           port.addEventListener("message", onMessage)
           port.addEventListener("error", onError)
@@ -52,7 +52,7 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
         Effect.try({
           try: () => port.postMessage([0, message], transfers as any),
-          catch: (error) => WorkerError("send", (error as any).message)
+          catch: (error) => WorkerError("send", (error as any).message, (error as any).stack)
         })
 
       return { fiber, queue, send }
