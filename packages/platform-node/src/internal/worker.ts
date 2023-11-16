@@ -48,7 +48,10 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
         Effect.forkScoped
       )
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
-        Effect.sync(() => worker.postMessage([0, message], transfers as any))
+        Effect.try({
+          try: () => worker.postMessage([0, message], transfers as any),
+          catch: (error) => WorkerError("send", (error as any).message)
+        })
       return { fiber, queue, send }
     })
   }

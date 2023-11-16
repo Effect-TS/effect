@@ -23,7 +23,7 @@ export type WorkerErrorTypeId = typeof WorkerErrorTypeId
 export interface WorkerError extends Data.Case {
   readonly [WorkerErrorTypeId]: WorkerErrorTypeId
   readonly _tag: "WorkerError"
-  readonly reason: "spawn" | "decode" | "unknown"
+  readonly reason: "spawn" | "decode" | "send" | "unknown"
   readonly error: unknown
 }
 
@@ -31,4 +31,5 @@ export interface WorkerError extends Data.Case {
  * @since 1.0.0
  * @category errors
  */
-export const WorkerError: (reason: "spawn" | "decode" | "unknown", error: unknown) => WorkerError = internal.WorkerError
+export const WorkerError: (reason: "spawn" | "decode" | "send" | "unknown", error: unknown) => WorkerError =
+  internal.WorkerError

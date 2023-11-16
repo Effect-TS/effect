@@ -57,7 +57,10 @@ export const makeManager = Effect.gen(function*(_) {
         let requestIdCounter = 0
         const readyLatch = yield* _(Deferred.make<never, void>())
         const semaphore = yield* _(Effect.makeSemaphore(permits))
-        const requestMap = new Map<number, readonly [Queue.Queue<Exit.Exit<E, O>>, Deferred.Deferred<never, void>]>()
+        const requestMap = new Map<
+          number,
+          readonly [Queue.Queue<Exit.Exit<E | WorkerError, O>>, Deferred.Deferred<never, void>]
+        >()
 
         const outbound = queue ?? (yield* _(defaultQueue<I>()))
         yield* _(Effect.addFinalizer(() => outbound.shutdown))
@@ -119,7 +122,7 @@ export const makeManager = Effect.gen(function*(_) {
           Effect.tap(
             Effect.all([
               Effect.sync(() => requestIdCounter++),
-              Queue.unbounded<Exit.Exit<E, O>>(),
+              Queue.unbounded<Exit.Exit<E | WorkerError, O>>(),
               Deferred.make<never, void>()
             ]),
             ([id, queue, deferred]) =>
@@ -130,7 +133,7 @@ export const makeManager = Effect.gen(function*(_) {
           )
 
         const executeRelease = (
-          [id, , deferred]: [number, Queue.Queue<Exit.Exit<E, O>>, Deferred.Deferred<never, void>],
+          [id, , deferred]: [number, Queue.Queue<Exit.Exit<E | WorkerError, O>>, Deferred.Deferred<never, void>],
           exit: Exit.Exit<unknown, unknown>
         ) => {
           const release = Effect.zipRight(
@@ -139,7 +142,7 @@ export const makeManager = Effect.gen(function*(_) {
           )
           return Exit.isInterrupted(exit) ?
             Effect.zipRight(
-              backing.send([id, 1]),
+              Effect.ignore(backing.send([id, 1])),
               release
             ) :
             release
@@ -152,13 +155,14 @@ export const makeManager = Effect.gen(function*(_) {
               executeRelease
             ),
             ([, queue]) => {
-              const loop: Channel.Channel<never, unknown, unknown, unknown, E, Chunk.Chunk<O>, void> = Channel.flatMap(
-                Queue.take(queue),
-                Exit.match({
-                  onFailure: (cause) => Cause.isEmpty(cause) ? Channel.unit : Channel.failCause(cause),
-                  onSuccess: (value) => Channel.flatMap(Channel.write(Chunk.of(value)), () => loop)
-                })
-              )
+              const loop: Channel.Channel<never, unknown, unknown, unknown, E | WorkerError, Chunk.Chunk<O>, void> =
+                Channel.flatMap(
+                  Queue.take(queue),
+                  Exit.match({
+                    onFailure: (cause) => Cause.isEmpty(cause) ? Channel.unit : Channel.failCause(cause),
+                    onSuccess: (value) => Channel.flatMap(Channel.write(Chunk.of(value)), () => loop)
+                  })
+                )
               return Stream.fromChannel(loop)
             }
           )
@@ -174,7 +178,6 @@ export const makeManager = Effect.gen(function*(_) {
           Queue.take(backing.queue),
           Effect.flatMap(handleMessage),
           Effect.forever,
-          Effect.interruptible,
           Effect.forkScoped
         )
 
@@ -189,7 +192,10 @@ export const makeManager = Effect.gen(function*(_) {
                 const transferables = transfers(request)
                 const payload = encode ? encode(request) : request
                 return Effect.zipRight(
-                  backing.send([id, 0, payload], transferables),
+                  Effect.catchAllCause(
+                    backing.send([id, 0, payload], transferables),
+                    (cause) => Queue.offer(result[0], Exit.failCause(cause))
+                  ),
                   Deferred.await(result[1])
                 )
               }),
@@ -198,7 +204,6 @@ export const makeManager = Effect.gen(function*(_) {
             )
           ),
           Effect.forever,
-          Effect.interruptible,
           Effect.forkScoped
         )
 

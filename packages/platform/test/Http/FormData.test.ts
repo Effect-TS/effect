@@ -8,7 +8,7 @@ describe("FormData", () => {
       const data = new globalThis.FormData()
       data.append("foo", "bar")
       data.append("test", "ing")
-      data.append("file", new globalThis.File(["foo"], "foo.txt", { type: "text/plain" }))
+      data.append("file", new globalThis.File(["A".repeat(1024 * 1024)], "foo.txt", { type: "text/plain" }))
       const response = new Response(data)
 
       const parts = yield* _(
@@ -30,7 +30,7 @@ describe("FormData", () => {
       assert.deepStrictEqual(Chunk.toReadonlyArray(parts), [
         ["foo", "bar"],
         ["test", "ing"],
-        ["foo.txt", "foo"]
+        ["foo.txt", "A".repeat(1024 * 1024)]
       ])
     }).pipe(Effect.runPromise))
 })

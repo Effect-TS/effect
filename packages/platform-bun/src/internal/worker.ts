@@ -44,7 +44,10 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
       )
 
       const send = (message: I, transfers?: ReadonlyArray<unknown>) =>
-        Effect.sync(() => port.postMessage([0, message], transfers as any))
+        Effect.try({
+          try: () => port.postMessage([0, message], transfers as any),
+          catch: (error) => WorkerError("send", (error as any).message)
+        })
 
       return { fiber, queue, send }
     })
