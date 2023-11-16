@@ -77,10 +77,10 @@ export const make = (workingDirectory: Option.Option<string>): Effect.Effect<
 export const Tag = Context.Tag<Compgen.Compgen>()
 
 /** @internal */
-export const LiveCompgen: Layer.Layer<CommandExecutor.CommandExecutor, never, Compgen.Compgen> =
-  Layer.effect(Tag, make(Option.none()))
+export const layer: Layer.Layer<CommandExecutor.CommandExecutor, never, Compgen.Compgen> = Layer
+  .effect(Tag, make(Option.none()))
 
-export const TestCompgen = (
+export const testLayer = (
   workingDirectory: string
 ): Layer.Layer<CommandExecutor.CommandExecutor, never, Compgen.Compgen> =>
   Layer.effect(Tag, make(Option.some(workingDirectory)))

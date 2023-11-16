@@ -1,14 +1,16 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Terminal from "@effect/platform/Terminal"
+import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import { dual } from "effect/Function"
+import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Ref from "effect/Ref"
 import type * as Args from "../Args.js"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
-import type * as Parameter from "../Parameter.js"
 import type * as Primitive from "../Primitive.js"
 import type * as RegularLanguage from "../RegularLanguage.js"
 import type * as Usage from "../Usage.js"
@@ -16,6 +18,7 @@ import type * as ValidationError from "../ValidationError.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
+import * as InternalNumberPrompt from "./prompt/number.js"
 import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
@@ -31,33 +34,39 @@ const proto = {
   _A: (_: never) => _
 }
 
+const wizardHeader = InternalHelpDoc.p("ARGS WIZARD")
+
 /** @internal */
 export class Empty implements Args.Args<void> {
   readonly [ArgsTypeId] = proto
   readonly _tag = "Empty"
 
-  get minSize(): number {
+  minSize(): number {
     return 0
   }
 
-  get maxSize(): number {
+  maxSize(): number {
     return 0
   }
 
-  get identifier(): Option.Option<string> {
+  identifier(): Option.Option<string> {
     return Option.none()
   }
 
-  get help(): HelpDoc.HelpDoc {
+  help(): HelpDoc.HelpDoc {
     return InternalHelpDoc.empty
   }
 
-  get usage(): Usage.Usage {
+  usage(): Usage.Usage {
     return InternalUsage.empty
   }
 
-  get shortDescription(): string {
-    return ""
+  wizard(_config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return Effect.succeed(ReadonlyArray.empty())
   }
 
   validate(
@@ -77,7 +86,7 @@ export class Empty implements Args.Args<void> {
 }
 
 /** @internal */
-export class Single<A> implements Args.Args<A>, Parameter.Input {
+export class Single<A> implements Args.Args<A> {
   readonly [ArgsTypeId] = proto
   readonly _tag = "Single"
 
@@ -87,42 +96,46 @@ export class Single<A> implements Args.Args<A>, Parameter.Input {
     readonly description: HelpDoc.HelpDoc = InternalHelpDoc.empty
   ) {}
 
-  get minSize(): number {
+  minSize(): number {
     return 1
   }
 
-  get maxSize(): number {
+  maxSize(): number {
     return 1
   }
 
-  get identifier(): Option.Option<string> {
-    return Option.some(this.name)
+  identifier(): Option.Option<string> {
+    return Option.some(this.name())
   }
 
-  get help(): HelpDoc.HelpDoc {
+  help(): HelpDoc.HelpDoc {
     return InternalHelpDoc.descriptionList([[
-      InternalSpan.weak(this.name),
+      InternalSpan.weak(this.name()),
       InternalHelpDoc.sequence(
-        InternalHelpDoc.p(this.primitiveType.help),
+        InternalHelpDoc.p(this.primitiveType.help()),
         this.description
       )
     ]])
   }
 
-  get usage(): Usage.Usage {
-    return InternalUsage.named(ReadonlyArray.of(this.name), this.primitiveType.choices)
+  usage(): Usage.Usage {
+    return InternalUsage.named(ReadonlyArray.of(this.name()), this.primitiveType.choices())
   }
 
-  get shortDescription(): string {
-    return `Argument $name: ${InternalSpan.getText(InternalHelpDoc.getSpan(this.description))}`
-  }
-
-  isValid(
-    input: string,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, ReadonlyArray<string>> {
-    const args = ReadonlyArray.of(input)
-    return this.validate(args, config).pipe(Effect.as(args))
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const help = InternalHelpDoc.sequence(wizardHeader, this.help())
+    return Console.log().pipe(
+      Effect.zipRight(
+        this.primitiveType.wizard(help).pipe(Effect.flatMap((input) => {
+          const args = ReadonlyArray.of(input)
+          return this.validate(args, config).pipe(Effect.as(args))
+        }))
+      )
+    )
   }
 
   validate(
@@ -144,7 +157,7 @@ export class Single<A> implements Args.Args<A>, Parameter.Input {
           })
         )
       }
-      const choices = this.primitiveType.choices
+      const choices = this.primitiveType.choices()
       if (Option.isSome(this.pseudoName) && Option.isSome(choices)) {
         return Effect.fail(InternalHelpDoc.p(
           `Missing argument <${this.pseudoName.value}> with choices ${choices.value}`
@@ -157,24 +170,13 @@ export class Single<A> implements Args.Args<A>, Parameter.Input {
       }
       if (Option.isSome(choices)) {
         return Effect.fail(InternalHelpDoc.p(
-          `Missing argument ${this.primitiveType.typeName} with choices ${choices.value}`
+          `Missing argument ${this.primitiveType.typeName()} with choices ${choices.value}`
         ))
       }
       return Effect.fail(InternalHelpDoc.p(
-        `Missing argument ${this.primitiveType.typeName}`
+        `Missing argument ${this.primitiveType.typeName()}`
       ))
     }).pipe(Effect.mapError((help) => InternalValidationError.invalidArgument(help)))
-  }
-
-  parse(
-    _args: ReadonlyArray<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<
-    never,
-    ValidationError.ValidationError,
-    readonly [ReadonlyArray<string>, ReadonlyArray<string>]
-  > {
-    return Effect.succeed([ReadonlyArray.empty(), ReadonlyArray.empty()])
   }
 
   addDescription(description: string): Args.Args<A> {
@@ -186,8 +188,8 @@ export class Single<A> implements Args.Args<A>, Parameter.Input {
     return pipeArguments(this, arguments)
   }
 
-  private get name(): string {
-    const name = Option.getOrElse(this.pseudoName, () => this.primitiveType.typeName)
+  private name(): string {
+    const name = Option.getOrElse(this.pseudoName, () => this.primitiveType.typeName())
     return `<${name}>`
   }
 }
@@ -201,32 +203,40 @@ export class Both<A, B> implements Args.Args<readonly [A, B]> {
     readonly right: Args.Args<B>
   ) {}
 
-  get minSize(): number {
-    return this.left.minSize + this.right.minSize
+  minSize(): number {
+    return this.left.minSize() + this.right.minSize()
   }
 
-  get maxSize(): number {
-    return this.left.maxSize + this.right.maxSize
+  maxSize(): number {
+    return this.left.maxSize() + this.right.maxSize()
   }
 
-  get identifier(): Option.Option<string> {
-    const ids = ReadonlyArray.compact([this.left.identifier, this.right.identifier])
+  identifier(): Option.Option<string> {
+    const ids = ReadonlyArray.compact([this.left.identifier(), this.right.identifier()])
     return ReadonlyArray.match(ids, {
       onEmpty: () => Option.none(),
       onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
     })
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.sequence(this.left.help, this.right.help)
+  help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.sequence(this.left.help(), this.right.help())
   }
 
-  get usage(): Usage.Usage {
-    return InternalUsage.concat(this.left.usage, this.right.usage)
+  usage(): Usage.Usage {
+    return InternalUsage.concat(this.left.usage(), this.right.usage())
   }
 
-  get shortDescription(): string {
-    return ""
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return Effect.zipWith(
+      this.left.wizard(config),
+      this.right.wizard(config),
+      (left, right) => ReadonlyArray.appendAll(left, right)
+    ).pipe(Effect.tap((args) => this.validate(args, config)))
   }
 
   validate(
@@ -259,34 +269,34 @@ export class Both<A, B> implements Args.Args<readonly [A, B]> {
 }
 
 /** @internal */
-export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input {
+export class Variadic<A> implements Args.Args<ReadonlyArray<A>> {
   readonly [ArgsTypeId] = proto
   readonly _tag = "Variadic"
 
   constructor(
-    readonly value: Args.Args<A>,
+    readonly args: Args.Args<A>,
     readonly min: Option.Option<number>,
     readonly max: Option.Option<number>
   ) {}
 
-  get minSize(): number {
-    return Math.floor(Option.getOrElse(this.min, () => 0) * this.value.minSize)
+  minSize(): number {
+    return Math.floor(Option.getOrElse(this.min, () => 0) * this.args.minSize())
   }
 
-  get maxSize(): number {
+  maxSize(): number {
     return Math.floor(
-      Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER / 2) * this.value.maxSize
+      Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER / 2) * this.args.maxSize()
     )
   }
 
-  get identifier(): Option.Option<string> {
-    return this.value.identifier
+  identifier(): Option.Option<string> {
+    return this.args.identifier()
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.mapDescriptionList(this.value.help, (oldSpan, oldBlock) => {
-      const min = this.minSize
-      const max = this.maxSize
+  help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.mapDescriptionList(this.args.help(), (oldSpan, oldBlock) => {
+      const min = this.minSize()
+      const max = this.maxSize()
       const newSpan = InternalSpan.text(
         Option.isSome(this.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`
       )
@@ -301,12 +311,40 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
     })
   }
 
-  get usage(): Usage.Usage {
-    return InternalUsage.repeated(this.value.usage)
+  usage(): Usage.Usage {
+    return InternalUsage.repeated(this.args.usage())
   }
 
-  get shortDescription(): string {
-    return InternalHelpDoc.toAnsiText(this.help)
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const repeatHelp = InternalHelpDoc.p("How many times should this argument should be repeated?")
+    const message = pipe(
+      wizardHeader,
+      InternalHelpDoc.sequence(this.help()),
+      InternalHelpDoc.sequence(repeatHelp)
+    )
+    return Console.log().pipe(
+      Effect.zipRight(InternalNumberPrompt.integer({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        min: this.minSize(),
+        max: this.maxSize()
+      })),
+      Effect.flatMap((n) =>
+        Ref.make(ReadonlyArray.empty<string>()).pipe(
+          Effect.flatMap((ref) =>
+            this.args.wizard(config).pipe(
+              Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
+              Effect.repeatN(n - 1),
+              Effect.zipRight(Ref.get(ref)),
+              Effect.tap((args) => this.validate(args, config))
+            )
+          )
+        )
+      )
+    )
   }
 
   validate(
@@ -330,7 +368,7 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
       if (acc.length >= max1) {
         return Effect.succeed([args, acc])
       }
-      return this.value.validate(args, config).pipe(Effect.matchEffect({
+      return this.args.validate(args, config).pipe(Effect.matchEffect({
         onFailure: (failure) =>
           acc.length >= min1 && ReadonlyArray.isEmptyReadonlyArray(args)
             ? Effect.succeed([args, acc])
@@ -343,27 +381,8 @@ export class Variadic<A> implements Args.Args<ReadonlyArray<A>>, Parameter.Input
     )
   }
 
-  parse(
-    _args: ReadonlyArray<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<
-    never,
-    ValidationError.ValidationError,
-    readonly [ReadonlyArray<string>, ReadonlyArray<string>]
-  > {
-    return Effect.succeed([ReadonlyArray.empty(), ReadonlyArray.empty()])
-  }
-
-  isValid(
-    input: string,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, ReadonlyArray<string>> {
-    const args = input.split(" ")
-    return this.validate(args, config).pipe(Effect.as(args))
-  }
-
   addDescription(description: string): Args.Args<ReadonlyArray<A>> {
-    return new Variadic(this.value.addDescription(description), this.min, this.max)
+    return new Variadic(this.args.addDescription(description), this.min, this.max)
   }
 
   pipe() {
@@ -381,28 +400,32 @@ export class Map<A, B> implements Args.Args<B> {
     readonly f: (value: A) => Either.Either<HelpDoc.HelpDoc, B>
   ) {}
 
-  get minSize(): number {
-    return this.args.minSize
+  minSize(): number {
+    return this.args.minSize()
   }
 
-  get maxSize(): number {
-    return this.args.maxSize
+  maxSize(): number {
+    return this.args.maxSize()
   }
 
-  get identifier(): Option.Option<string> {
-    return this.args.identifier
+  identifier(): Option.Option<string> {
+    return this.args.identifier()
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return this.args.help
+  help(): HelpDoc.HelpDoc {
+    return this.args.help()
   }
 
-  get usage(): Usage.Usage {
-    return this.args.usage
+  usage(): Usage.Usage {
+    return this.args.usage()
   }
 
-  get shortDescription(): string {
-    return this.args.shortDescription
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return this.args.wizard(config).pipe(Effect.tap((args) => this.validate(args, config)))
   }
 
   validate(
@@ -626,7 +649,7 @@ export const repeatedAtLeastOnce = <A>(
     if (ReadonlyArray.isNonEmptyReadonlyArray(values)) {
       return values
     }
-    const message = Option.match(self.identifier, {
+    const message = Option.match(self.identifier(), {
       onNone: () => "An anonymous variadic argument",
       onSome: (identifier) => `The variadic option '${identifier}' `
     })
@@ -650,7 +673,7 @@ export const toRegularLanguage = <A>(
     )
   }
   if (isVariadic(self)) {
-    return InternalRegularLanguage.repeated(toRegularLanguage(self.value), {
+    return InternalRegularLanguage.repeated(toRegularLanguage(self.args), {
       min: Option.getOrUndefined(self.min),
       max: Option.getOrUndefined(self.max)
     })

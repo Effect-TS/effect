@@ -1,19 +1,25 @@
 /**
  * @since 1.0.0
  */
-import type { Effect, Pipeable } from "effect"
-import * as internal from "./internal/prompt.js"
-import * as numberPrompt from "./internal/prompt/number.js"
-import * as selectPrompt from "./internal/prompt/select.js"
-import * as textPrompt from "./internal/prompt/text.js"
+import type { Terminal, UserInput } from "@effect/platform/Terminal"
+import type { Effect } from "effect/Effect"
+import type { Option } from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import * as InternalPrompt from "./internal/prompt.js"
+import * as InternalConfirmPrompt from "./internal/prompt/confirm.js"
+import * as InternalDatePrompt from "./internal/prompt/date.js"
+import * as InternalListPrompt from "./internal/prompt/list.js"
+import * as InternalNumberPrompt from "./internal/prompt/number.js"
+import * as InternalSelectPrompt from "./internal/prompt/select.js"
+import * as InternalTextPrompt from "./internal/prompt/text.js"
+import * as InternalTogglePrompt from "./internal/prompt/toggle.js"
 import type { PromptAction } from "./Prompt/Action.js"
-import type { Terminal } from "./Terminal.js"
 
 /**
  * @since 1.0.0
  * @category symbols
  */
-export const PromptTypeId: unique symbol = internal.PromptTypeId
+export const PromptTypeId: unique symbol = InternalPrompt.PromptTypeId
 
 /**
  * @since 1.0.0
@@ -26,7 +32,7 @@ export type PromptTypeId = typeof PromptTypeId
  * @category models
  */
 export interface Prompt<Output>
-  extends Prompt.Variance<Output>, Pipeable.Pipeable, Effect.Effect<Terminal, never, Output>
+  extends Prompt.Variance<Output>, Pipeable, Effect<Terminal, never, Output>
 {}
 
 /**
@@ -59,13 +65,149 @@ export declare namespace Prompt {
    * @since 1.0.0
    * @category models
    */
-  export interface IntegerOptions {
+  export interface ConfirmOptions {
+    /**
+     * The message to display in the prompt.
+     */
     readonly message: string
+    /**
+     * The intitial value of the confirm prompt (defaults to `false`).
+     */
+    readonly initial?: boolean
+    /**
+     * The label to display after a user has responded to the prompt.
+     */
+    readonly label?: {
+      /**
+       * The label used if the prompt is confirmed (defaults to `"yes"`).
+       */
+      readonly confirm: string
+      /**
+       * The label used if the prompt is not confirmed (defaults to `"no"`).
+       */
+      readonly deny: string
+    }
+    /**
+     * The placeholder to display when a user is responding to the prompt.
+     */
+    readonly placeholder?: {
+      /**
+       * The placeholder to use if the `initial` value of the prompt is `true`
+       * (defaults to `"(Y/n)"`).
+       */
+      readonly defaultConfirm?: string
+      /**
+       * The placeholder to use if the `initial` value of the prompt is `false`
+       * (defaults to `"(y/N)"`).
+       */
+      readonly defaultDeny?: string
+    }
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface DateOptions {
+    /**
+     * The message to display in the prompt.
+     */
+    readonly message: string
+    /**
+     * The initial date value to display in the prompt (defaults to the current
+     * date).
+     */
+    readonly initial?: globalThis.Date
+    /**
+     * The format mask of the date (defaults to `YYYY-MM-DD HH:mm:ss`).
+     */
+    readonly dateMask?: string
+    /**
+     * An effectful function that can be used to validate the value entered into
+     * the prompt before final submission.
+     */
+    readonly validate?: (value: globalThis.Date) => Effect<never, string, globalThis.Date>
+    /**
+     * Custom locales that can be used in place of the defaults.
+     */
+    readonly locales?: {
+      /**
+       * The full names of each month of the year.
+       */
+      readonly months: [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+      /**
+       * The short names of each month of the year.
+       */
+      readonly monthsShort: [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+      /**
+       * The full names of each day of the week.
+       */
+      readonly weekdays: [string, string, string, string, string, string, string]
+      /**
+       * The short names of each day of the week.
+       */
+      readonly weekdaysShort: [string, string, string, string, string, string, string]
+    }
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface IntegerOptions {
+    /**
+     * The message to display in the prompt.
+     */
+    readonly message: string
+    /**
+     * The minimum value that can be entered by the user (defaults to `-Infinity`).
+     */
     readonly min?: number
+    /**
+     * The maximum value that can be entered by the user (defaults to `Infinity`).
+     */
     readonly max?: number
+    /**
+     * The value that will be used to increment the prompt value when using the
+     * up arrow key (defaults to `1`).
+     */
     readonly incrementBy?: number
+    /**
+     * The value that will be used to decrement the prompt value when using the
+     * down arrow key (defaults to `1`).
+     */
     readonly decrementBy?: number
-    readonly validate?: (value: number) => Effect.Effect<never, string, number>
+    /**
+     * An effectful function that can be used to validate the value entered into
+     * the prompt before final submission.
+     */
+    readonly validate?: (value: number) => Effect<never, string, number>
   }
 
   /**
@@ -73,6 +215,9 @@ export declare namespace Prompt {
    * @category models
    */
   export interface FloatOptions extends IntegerOptions {
+    /**
+     * The precision to use for the floating point value (defaults to `2`).
+     */
     readonly precision?: number
   }
 
@@ -80,13 +225,54 @@ export declare namespace Prompt {
    * @since 1.0.0
    * @category models
    */
-  export interface SelectOptions {
+  export interface ListOptions extends TextOptions {
+    /**
+     * The delimiter that separates list entries.
+     */
+    readonly delimiter?: string
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface SelectOptions<A> {
+    /**
+     * The message to display in the prompt.
+     */
     readonly message: string
-    readonly choices: ReadonlyArray<{
-      readonly title: string
-      readonly description?: string
-      readonly value: string
-    }>
+    /**
+     * The choices to display to the user.
+     */
+    readonly choices: ReadonlyArray<SelectChoice<A>>
+    /**
+     * The number of choices to display at one time (defaults to `10`).
+     */
+    readonly maxPerPage?: number
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface SelectChoice<A> {
+    /**
+     * The name of the select option that is displayed to the user.
+     */
+    readonly title: string
+    /**
+     * The underlying value of the select option.
+     */
+    readonly value: A
+    /**
+     * An optional description for the select option which will be displayed
+     * to the user.
+     */
+    readonly description?: string
+    /**
+     * Whether or not this select option is disabled.
+     */
+    readonly disabled?: boolean
   }
 
   /**
@@ -94,10 +280,48 @@ export declare namespace Prompt {
    * @category models
    */
   export interface TextOptions {
+    /**
+     * The message to display in the prompt.
+     */
     readonly message: string
+    /**
+     * The type of the text option.
+     */
     readonly type?: "hidden" | "password" | "text"
+    /**
+     * The default value of the text option.
+     */
     readonly default?: string
-    readonly validate?: (value: string) => Effect.Effect<never, string, string>
+    /**
+     * An effectful function that can be used to validate the value entered into
+     * the prompt before final submission.
+     */
+    readonly validate?: (value: string) => Effect<never, string, string>
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ToggleOptions {
+    /**
+     * The message to display in the prompt.
+     */
+    readonly message: string
+    /**
+     * The intitial value of the toggle prompt (defaults to `false`).
+     */
+    readonly initial?: boolean
+    /**
+     * The text to display when the toggle is in the active state (defaults to
+     * `on`).
+     */
+    readonly active?: string
+    /**
+     * The text to display when the toggle is in the inactive state (defaults to
+     * `off`).
+     */
+    readonly inactive?: string
   }
 }
 
@@ -146,7 +370,14 @@ export declare namespace All {
  */
 export const all: <
   const Arg extends Iterable<Prompt<any>>
->(arg: Arg) => All.Return<Arg> = internal.all
+>(arg: Arg) => All.Return<Arg> = InternalPrompt.all
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const confirm: (options: Prompt.ConfirmOptions) => Prompt<boolean> =
+  InternalConfirmPrompt.confirm
 
 /**
  * Creates a custom `Prompt` from the provided `render` and `process` functions
@@ -162,14 +393,21 @@ export const all: <
 export const custom: <State, Output>(
   initialState: State,
   render: (
-    state: State,
+    prevState: Option<State>,
+    nextState: State,
     action: Prompt.Action<State, Output>
-  ) => Effect.Effect<never, never, string>,
+  ) => Effect<Terminal, never, string>,
   process: (
-    input: Terminal.UserInput,
+    input: UserInput,
     state: State
-  ) => Effect.Effect<never, never, Prompt.Action<State, Output>>
-) => Prompt<Output> = internal.custom
+  ) => Effect<Terminal, never, Prompt.Action<State, Output>>
+) => Prompt<Output> = InternalPrompt.custom
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const date: (options: Prompt.DateOptions) => Prompt<Date> = InternalDatePrompt.date
 
 /**
  * @since 1.0.0
@@ -180,19 +418,27 @@ export const flatMap: {
     f: (output: Output) => Prompt<Output2>
   ): (self: Prompt<Output>) => Prompt<Output2>
   <Output, Output2>(self: Prompt<Output>, f: (output: Output) => Prompt<Output2>): Prompt<Output2>
-} = internal.flatMap
+} = InternalPrompt.flatMap
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const float: (options: Prompt.FloatOptions) => Prompt<number> = numberPrompt.float
+export const float: (options: Prompt.FloatOptions) => Prompt<number> = InternalNumberPrompt.float
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const integer: (options: Prompt.IntegerOptions) => Prompt<number> = numberPrompt.integer
+export const integer: (options: Prompt.IntegerOptions) => Prompt<number> =
+  InternalNumberPrompt.integer
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const list: (options: Prompt.ListOptions) => Prompt<ReadonlyArray<string>> =
+  InternalListPrompt.list
 
 /**
  * @since 1.0.0
@@ -201,7 +447,7 @@ export const integer: (options: Prompt.IntegerOptions) => Prompt<number> = numbe
 export const map: {
   <Output, Output2>(f: (output: Output) => Output2): (self: Prompt<Output>) => Prompt<Output2>
   <Output, Output2>(self: Prompt<Output>, f: (output: Output) => Output2): Prompt<Output2>
-} = internal.map
+} = InternalPrompt.map
 
 /**
  * Executes the specified `Prompt`.
@@ -209,14 +455,15 @@ export const map: {
  * @since 1.0.0
  * @category execution
  */
-export const run: <Output>(self: Prompt<Output>) => Effect.Effect<Terminal, never, Output> =
-  internal.run
+export const run: <Output>(self: Prompt<Output>) => Effect<Terminal, never, Output> =
+  InternalPrompt.run
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const select: (options: Prompt.SelectOptions) => Prompt<string> = selectPrompt.select
+export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> =
+  InternalSelectPrompt.select
 
 /**
  * Creates a `Prompt` which immediately succeeds with the specified value.
@@ -227,10 +474,17 @@ export const select: (options: Prompt.SelectOptions) => Prompt<string> = selectP
  * @since 1.0.0
  * @category constructors
  */
-export const succeed: <A>(value: A) => Prompt<A> = internal.succeed
+export const succeed: <A>(value: A) => Prompt<A> = InternalPrompt.succeed
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const text: (options: Prompt.TextOptions) => Prompt<string> = textPrompt.text
+export const text: (options: Prompt.TextOptions) => Prompt<string> = InternalTextPrompt.text
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const toggle: (options: Prompt.ToggleOptions) => Prompt<boolean> =
+  InternalTogglePrompt.toggle

@@ -61,11 +61,6 @@ export * as Options from "./Options.js"
 /**
  * @since 1.0.0
  */
-export * as Parameter from "./Parameter.js"
-
-/**
- * @since 1.0.0
- */
 export * as Primitive from "./Primitive.js"
 
 /**
@@ -87,11 +82,6 @@ export * as RegularLanguage from "./RegularLanguage.js"
  * @since 1.0.0
  */
 export * as ShellType from "./ShellType.js"
-
-/**
- * @since 1.0.0
- */
-export * as Terminal from "./Terminal.js"
 
 /**
  * @since 1.0.0

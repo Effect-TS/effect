@@ -1,19 +1,25 @@
+import * as Terminal from "@effect/platform/Terminal"
 import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
 import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
 import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
-import { Effect, pipe } from "effect"
+import * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as Prompt from "../../Prompt.js"
 import type * as PromptAction from "../../Prompt/Action.js"
-import * as prompt from "../prompt.js"
-import * as promptAction from "./action.js"
-import * as ansiUtils from "./ansi-utils.js"
+import * as InternalPrompt from "../prompt.js"
+import * as InternalPromptAction from "./action.js"
+import * as InternalAnsiUtils from "./ansi-utils.js"
 
 interface State {
   readonly cursor: number
   readonly value: string
+  readonly error: Option.Option<string>
 }
 
 const round = (number: number, precision: number) => {
@@ -21,92 +27,153 @@ const round = (number: number, precision: number) => {
   return Math.round(number * factor) / factor
 }
 
-const parseInt = (value: string): Effect.Effect<never, void, number> =>
-  Effect.suspend(() => {
-    const parsed = Number.parseInt(value)
-    if (Number.isNaN(parsed)) {
-      return Effect.fail(void 0)
-    }
-    return Effect.succeed(parsed)
-  })
+const parseInt = Schema.NumberFromString.pipe(
+  Schema.int(),
+  Schema.parse
+)
 
-const parseFloat = (value: string): Effect.Effect<never, void, number> =>
-  Effect.suspend(() => {
-    const parsed = Number.parseFloat(value)
-    if (Number.isNaN(parsed)) {
-      return Effect.fail(void 0)
-    }
-    return Effect.succeed(parsed)
-  })
+const parseFloat = Schema.parse(Schema.NumberFromString)
 
-const renderBeep = AnsiRender.prettyDefault(ansiUtils.beep)
+const renderBeep = AnsiRender.prettyDefault(InternalAnsiUtils.beep)
 
-const renderError = (promptMsg: string, errorMsg: string, input: AnsiDoc.AnsiDoc) =>
-  Effect.map(ansiUtils.figures, ({ pointerSmall }) => {
-    const doc = pipe(
-      ansiUtils.resetLine,
-      Doc.cat(Doc.annotate(Doc.text("?"), AnsiStyle.color(Color.cyan))),
-      Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(Doc.text(promptMsg), AnsiStyle.bold)),
-      Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(pointerSmall, AnsiStyle.color(Color.black))),
-      Doc.cat(Doc.space),
-      Doc.cat(
-        Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.red)))
-      ),
-      Doc.cat(ansiUtils.cursorSave),
-      Doc.cat(Doc.hardLine),
-      Doc.cat(Doc.annotate(pointerSmall, AnsiStyle.color(Color.red))),
-      Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(
-        Doc.text(errorMsg),
-        AnsiStyle.combine(AnsiStyle.italicized, AnsiStyle.color(Color.red))
-      )),
-      Doc.cat(ansiUtils.cursorRestore)
-    )
-    return AnsiRender.prettyDefault(Optimize.optimize(doc, Optimize.Deep))
-  })
-
-const renderNextFrame = (promptMsg: string, input: AnsiDoc.AnsiDoc) =>
-  Effect.map(ansiUtils.figures, ({ pointerSmall }) => {
-    const doc = pipe(
-      ansiUtils.resetDown,
-      Doc.cat(Doc.annotate(Doc.text("?"), AnsiStyle.color(Color.cyan))),
-      Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(Doc.text(promptMsg), AnsiStyle.bold)),
-      Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(pointerSmall, AnsiStyle.color(Color.black))),
-      Doc.cat(Doc.space),
-      Doc.cat(
-        Doc.annotate(input, AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green)))
+const renderClearScreen = (
+  prevState: Option.Option<State>,
+  options: Required<Prompt.Prompt.IntegerOptions>,
+  columns: number
+): AnsiDoc.AnsiDoc => {
+  // Erase the main prompt line and place the cursor in column one
+  const clearPrompt = Doc.cat(InternalAnsiUtils.eraseLine, InternalAnsiUtils.cursorLeft)
+  // If there is no previous state, then this is the first render, so there is
+  // no need to clear the error output or any previous prompt output - we can
+  // just clear the current line for the prompt
+  if (Option.isNone(prevState)) {
+    return clearPrompt
+  }
+  // If there was a previous state, check for any error output
+  const clearError = Option.match(prevState.value.error, {
+    onNone: () => Doc.empty,
+    onSome: (error) =>
+      // If there was an error, move the cursor down to the final error line and
+      // then clear all lines of error output
+      pipe(
+        InternalAnsiUtils.cursorDown(InternalAnsiUtils.lines(error, columns)),
+        Doc.cat(InternalAnsiUtils.eraseText(`\n${error}`, columns))
       )
-    )
-    return AnsiRender.prettyDefault(Optimize.optimize(doc, Optimize.Deep))
+  })
+  // Ensure that the prior prompt output is cleaned up
+  const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
+  // Concatenate and return all documents
+  return Doc.cat(clearError, Doc.cat(clearOutput, clearPrompt))
+}
+
+const renderInput = (nextState: State): AnsiDoc.AnsiDoc => {
+  const annotation = Option.match(nextState.error, {
+    onNone: () => AnsiStyle.combine(AnsiStyle.underlined, AnsiStyle.color(Color.green)),
+    onSome: () => AnsiStyle.color(Color.red)
+  })
+  const value = nextState.value === "" ? Doc.empty : Doc.text(`${nextState.value}`)
+  return Doc.annotate(value, annotation)
+}
+
+const renderError = (nextState: State, pointer: AnsiDoc.AnsiDoc): AnsiDoc.AnsiDoc =>
+  Option.match(nextState.error, {
+    onNone: () => Doc.empty,
+    onSome: (error) => {
+      const errorLines = error.split(/\r?\n/)
+      if (ReadonlyArray.isNonEmptyReadonlyArray(errorLines)) {
+        const annotateLine = (line: string): AnsiDoc.AnsiDoc =>
+          Doc.annotate(
+            Doc.text(line),
+            AnsiStyle.combine(AnsiStyle.italicized, AnsiStyle.color(Color.red))
+          )
+        const prefix = Doc.cat(Doc.annotate(pointer, AnsiStyle.color(Color.red)), Doc.space)
+        const lines = ReadonlyArray.map(errorLines, (str) => annotateLine(str))
+        return pipe(
+          InternalAnsiUtils.cursorSave,
+          Doc.cat(Doc.hardLine),
+          Doc.cat(prefix),
+          Doc.cat(Doc.align(Doc.vsep(lines))),
+          Doc.cat(InternalAnsiUtils.cursorRestore)
+        )
+      }
+      return Doc.empty
+    }
   })
 
-const renderSubmission = (promptMsg: string, input: AnsiDoc.AnsiDoc) =>
-  Effect.map(ansiUtils.figures, ({ ellipsis, tick }) => {
-    const doc = pipe(
-      ansiUtils.resetDown,
-      Doc.cat(Doc.annotate(tick, AnsiStyle.color(Color.green))),
+const renderOutput = (
+  nextState: State,
+  leadingSymbol: AnsiDoc.AnsiDoc,
+  trailingSymbol: AnsiDoc.AnsiDoc,
+  options: Required<Prompt.Prompt.IntegerOptions>
+): AnsiDoc.AnsiDoc => {
+  const annotateLine = (line: string): AnsiDoc.AnsiDoc =>
+    Doc.annotate(Doc.text(line), AnsiStyle.bold)
+  const promptLines = options.message.split(/\r?\n/)
+  const prefix = Doc.cat(leadingSymbol, Doc.space)
+  if (ReadonlyArray.isNonEmptyReadonlyArray(promptLines)) {
+    const lines = ReadonlyArray.map(promptLines, (line) => annotateLine(line))
+    return pipe(
+      prefix,
+      Doc.cat(Doc.nest(Doc.vsep(lines), 2)),
       Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(Doc.text(promptMsg), AnsiStyle.bold)),
+      Doc.cat(trailingSymbol),
       Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(ellipsis, AnsiStyle.color(Color.black))),
-      Doc.cat(Doc.space),
-      Doc.cat(Doc.annotate(input, AnsiStyle.color(Color.white))),
-      Doc.cat(Doc.hardLine)
+      Doc.cat(renderInput(nextState))
     )
-    return AnsiRender.prettyDefault(Optimize.optimize(doc, Optimize.Deep))
+  }
+  return Doc.hsep([prefix, trailingSymbol, renderInput(nextState)])
+}
+
+const renderNextFrame = (
+  prevState: Option.Option<State>,
+  nextState: State,
+  options: Required<Prompt.Prompt.IntegerOptions>
+) =>
+  Effect.gen(function*(_) {
+    const terminal = yield* _(Terminal.Terminal)
+    const figures = yield* _(InternalAnsiUtils.figures)
+    const leadingSymbol = Doc.annotate(Doc.text("?"), AnsiStyle.color(Color.cyan))
+    const trailingSymbol = Doc.annotate(figures.pointerSmall, AnsiStyle.color(Color.black))
+    const clearScreen = renderClearScreen(prevState, options, terminal.columns)
+    const errorMsg = renderError(nextState, figures.pointerSmall)
+    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, options)
+    return pipe(
+      clearScreen,
+      Doc.cat(promptMsg),
+      Doc.cat(errorMsg),
+      Optimize.optimize(Optimize.Deep),
+      AnsiRender.prettyDefault
+    )
+  })
+
+const renderSubmission = (
+  nextState: State,
+  options: Required<Prompt.Prompt.IntegerOptions>
+) =>
+  Effect.gen(function*(_) {
+    const terminal = yield* _(Terminal.Terminal)
+    const figures = yield* _(InternalAnsiUtils.figures)
+    const clearScreen = renderClearScreen(Option.some(nextState), options, terminal.columns)
+    const leadingSymbol = Doc.annotate(figures.tick, AnsiStyle.color(Color.green))
+    const trailingSymbol = Doc.annotate(figures.ellipsis, AnsiStyle.color(Color.black))
+    const promptMsg = renderOutput(nextState, leadingSymbol, trailingSymbol, options)
+    return pipe(
+      clearScreen,
+      Doc.cat(promptMsg),
+      Doc.cat(Doc.hardLine),
+      Optimize.optimize(Optimize.Deep),
+      AnsiRender.prettyDefault
+    )
   })
 
 const processBackspace = (currentState: State) => {
   if (currentState.value.length <= 0) {
-    return Effect.succeed(promptAction.beep)
+    return Effect.succeed(InternalPromptAction.beep)
   }
-  return Effect.succeed(promptAction.nextFrame({
+  return Effect.succeed(InternalPromptAction.nextFrame({
     ...currentState,
-    value: currentState.value.slice(0, currentState.value.length - 1)
+    value: currentState.value.slice(0, currentState.value.length - 1),
+    error: Option.none()
   }))
 }
 
@@ -115,11 +182,20 @@ const defaultIntProcessor = (
   input: string
 ): Effect.Effect<never, never, PromptAction.PromptAction<State, number>> => {
   if (currentState.value.length === 0 && input === "-") {
-    return Effect.succeed(promptAction.nextFrame({ ...currentState, value: "-" }))
+    return Effect.succeed(InternalPromptAction.nextFrame({
+      ...currentState,
+      value: "-",
+      error: Option.none()
+    }))
   }
   return Effect.match(parseInt(currentState.value + input), {
-    onFailure: () => promptAction.beep,
-    onSuccess: (value) => promptAction.nextFrame({ ...currentState, value: `${value}` })
+    onFailure: () => InternalPromptAction.beep,
+    onSuccess: (value) =>
+      InternalPromptAction.nextFrame({
+        ...currentState,
+        value: `${value}`,
+        error: Option.none()
+      })
   })
 }
 
@@ -128,22 +204,31 @@ const defaultFloatProcessor = (
   input: string
 ): Effect.Effect<never, never, PromptAction.PromptAction<State, number>> => {
   if (input === "." && currentState.value.includes(".")) {
-    return Effect.succeed(promptAction.beep)
+    return Effect.succeed(InternalPromptAction.beep)
   }
   if (currentState.value.length === 0 && input === "-") {
-    return Effect.succeed(promptAction.nextFrame({ ...currentState, value: "-" }))
+    return Effect.succeed(InternalPromptAction.nextFrame({
+      ...currentState,
+      value: "-",
+      error: Option.none()
+    }))
   }
   return Effect.match(parseFloat(currentState.value + input), {
-    onFailure: () => promptAction.beep,
+    onFailure: () => InternalPromptAction.beep,
     onSuccess: (value) =>
-      promptAction.nextFrame({
+      InternalPromptAction.nextFrame({
         ...currentState,
-        value: input === "." ? `${value}.` : `${value}`
+        value: input === "." ? `${value}.` : `${value}`,
+        error: Option.none()
       })
   })
 }
 
-const initialState: State = { cursor: 0, value: "" }
+const initialState: State = {
+  cursor: 0,
+  value: "",
+  error: Option.none()
+}
 
 /** @internal */
 export const integer = (options: Prompt.Prompt.IntegerOptions): Prompt.Prompt<number> => {
@@ -163,62 +248,72 @@ export const integer = (options: Prompt.Prompt.IntegerOptions): Prompt.Prompt<nu
     },
     ...options
   }
-  return prompt.custom(
+  return InternalPrompt.custom(
     initialState,
-    (state, action) => {
-      const input = state.value === "" ? Doc.empty : Doc.text(`${state.value}`)
+    (prevState, nextState, action) => {
       switch (action._tag) {
         case "Beep": {
           return Effect.succeed(renderBeep)
         }
-        case "Error": {
-          return renderError(opts.message, action.message, input)
-        }
         case "NextFrame": {
-          return renderNextFrame(opts.message, input)
+          return renderNextFrame(prevState, nextState, opts)
         }
         case "Submit": {
-          return renderSubmission(opts.message, input)
+          return renderSubmission(nextState, opts)
         }
       }
     },
     (input, state) => {
-      switch (input.action) {
-        case "Backspace": {
+      switch (input.key.name) {
+        case "backspace": {
           return processBackspace(state)
         }
-        case "CursorUp": {
+        case "k":
+        case "up": {
           return Effect.sync(() =>
-            promptAction.nextFrame({
+            InternalPromptAction.nextFrame({
               ...state,
               value: state.value === "" || state.value === "-"
                 ? `${opts.incrementBy}`
-                : `${Number.parseInt(state.value) + opts.incrementBy}`
+                : `${Number.parseInt(state.value) + opts.incrementBy}`,
+              error: Option.none()
             })
           )
         }
-        case "CursorDown": {
+        case "j":
+        case "down": {
           return Effect.sync(() =>
-            promptAction.nextFrame({
+            InternalPromptAction.nextFrame({
               ...state,
               value: state.value === "" || state.value === "-"
                 ? `-${opts.decrementBy}`
-                : `${Number.parseInt(state.value) - opts.decrementBy}`
+                : `${Number.parseInt(state.value) - opts.decrementBy}`,
+              error: Option.none()
             })
           )
         }
-        case "Submit": {
+        case "enter":
+        case "return": {
           return Effect.matchEffect(parseInt(state.value), {
-            onFailure: () => Effect.succeed(promptAction.error("Must provide an integer value")),
+            onFailure: () =>
+              Effect.succeed(InternalPromptAction.nextFrame({
+                ...state,
+                error: Option.some("Must provide an integer value")
+              })),
             onSuccess: (n) =>
               Effect.match(opts.validate(n), {
-                onFailure: promptAction.error,
-                onSuccess: promptAction.submit
+                onFailure: (error) =>
+                  InternalPromptAction.nextFrame({
+                    ...state,
+                    error: Option.some(error)
+                  }),
+                onSuccess: InternalPromptAction.submit
               })
           })
         }
         default: {
-          return defaultIntProcessor(state, input.value)
+          const value = Option.getOrElse(input.input, () => "")
+          return defaultIntProcessor(state, value)
         }
       }
     }
@@ -244,67 +339,76 @@ export const float = (options: Prompt.Prompt.FloatOptions): Prompt.Prompt<number
     },
     ...options
   }
-  return prompt.custom(
+  return InternalPrompt.custom(
     initialState,
-    (state, action) => {
-      const input = state.value === "" ? Doc.empty : Doc.text(`${state.value}`)
+    (prevState, nextState, action) => {
       switch (action._tag) {
         case "Beep": {
           return Effect.succeed(renderBeep)
         }
-        case "Error": {
-          return renderError(opts.message, action.message, input)
-        }
         case "NextFrame": {
-          return renderNextFrame(opts.message, input)
+          return renderNextFrame(prevState, nextState, opts)
         }
         case "Submit": {
-          return renderSubmission(opts.message, input)
+          return renderSubmission(nextState, opts)
         }
       }
     },
     (input, state) => {
-      switch (input.action) {
-        case "Backspace": {
+      switch (input.key.name) {
+        case "backspace": {
           return processBackspace(state)
         }
-        case "CursorUp": {
+        case "k":
+        case "up": {
           return Effect.sync(() =>
-            promptAction.nextFrame({
+            InternalPromptAction.nextFrame({
               ...state,
               value: state.value === "" || state.value === "-"
                 ? `${opts.incrementBy}`
-                : `${Number.parseFloat(state.value) + opts.incrementBy}`
+                : `${Number.parseFloat(state.value) + opts.incrementBy}`,
+              error: Option.none()
             })
           )
         }
-        case "CursorDown": {
+        case "j":
+        case "down": {
           return Effect.sync(() =>
-            promptAction.nextFrame({
+            InternalPromptAction.nextFrame({
               ...state,
               value: state.value === "" || state.value === "-"
                 ? `-${opts.decrementBy}`
-                : `${Number.parseFloat(state.value) - opts.decrementBy}`
+                : `${Number.parseFloat(state.value) - opts.decrementBy}`,
+              error: Option.none()
             })
           )
         }
-        case "Submit": {
+        case "enter":
+        case "return": {
           return Effect.matchEffect(parseFloat(state.value), {
             onFailure: () =>
-              Effect.succeed(promptAction.error("Must provide a floating point value")),
+              Effect.succeed(InternalPromptAction.nextFrame({
+                ...state,
+                error: Option.some("Must provide a floating point value")
+              })),
             onSuccess: (n) =>
               Effect.flatMap(
                 Effect.sync(() => round(n, opts.precision)),
                 (rounded) =>
                   Effect.match(opts.validate(rounded), {
-                    onFailure: promptAction.error,
-                    onSuccess: promptAction.submit
+                    onFailure: (error) =>
+                      InternalPromptAction.nextFrame({
+                        ...state,
+                        error: Option.some(error)
+                      }),
+                    onSuccess: InternalPromptAction.submit
                   })
               )
           })
         }
         default: {
-          return defaultFloatProcessor(state, input.value)
+          const value = Option.getOrElse(input.input, () => "")
+          return defaultFloatProcessor(state, value)
         }
       }
     }

@@ -39,9 +39,9 @@ export const showHelp = (
 })
 
 /** @internal */
-export const showWizard = (commmand: Command.Command<unknown>): BuiltInOptions.BuiltInOptions => ({
+export const showWizard = (command: Command.Command<unknown>): BuiltInOptions.BuiltInOptions => ({
   _tag: "ShowWizard",
-  commmand
+  command
 })
 
 /** @internal */

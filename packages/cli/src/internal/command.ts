@@ -1,4 +1,6 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Terminal from "@effect/platform/Terminal"
+import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
@@ -16,7 +18,6 @@ import type * as Span from "../HelpDoc/Span.js"
 import type * as Options from "../Options.js"
 import type * as Prompt from "../Prompt.js"
 import type * as RegularLanguage from "../RegularLanguage.js"
-import type * as Terminal from "../Terminal.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalArgs from "./args.js"
@@ -27,6 +28,7 @@ import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalOptions from "./options.js"
 import * as InternalPrompt from "./prompt.js"
+import * as InternalSelectPrompt from "./prompt/select.js"
 import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
@@ -56,38 +58,52 @@ export class Standard<Name extends string, OptionsType, ArgsType>
     readonly args: Args.Args<ArgsType>
   ) {}
 
-  get names(): HashSet.HashSet<string> {
+  names(): HashSet.HashSet<string> {
     return HashSet.make(this.name)
   }
 
-  get subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
+  subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
     return HashMap.make([this.name, this])
   }
 
-  get help(): HelpDoc.HelpDoc {
+  help(): HelpDoc.HelpDoc {
     const header = InternalHelpDoc.isEmpty(this.description)
       ? InternalHelpDoc.empty
       : InternalHelpDoc.sequence(InternalHelpDoc.h1("DESCRIPTION"), this.description)
-    const argsHelp = this.args.help
+    const argsHelp = this.args.help()
     const argsSection = InternalHelpDoc.isEmpty(argsHelp)
       ? InternalHelpDoc.empty
       : InternalHelpDoc.sequence(InternalHelpDoc.h1("ARGUMENTS"), argsHelp)
-    const optionsHelp = this.options.help
+    const optionsHelp = this.options.help()
     const optionsSection = InternalHelpDoc.isEmpty(optionsHelp)
       ? InternalHelpDoc.empty
       : InternalHelpDoc.sequence(InternalHelpDoc.h1("OPTIONS"), optionsHelp)
     return InternalHelpDoc.sequence(header, InternalHelpDoc.sequence(argsSection, optionsSection))
   }
 
-  get usage(): Usage.Usage {
+  usage(): Usage.Usage {
     return InternalUsage.concat(
       InternalUsage.named(ReadonlyArray.of(this.name), Option.none()),
-      InternalUsage.concat(this.options.usage, this.args.usage)
+      InternalUsage.concat(this.options.usage(), this.args.usage())
     )
   }
 
-  get shortDescription(): string {
-    return InternalSpan.getText(InternalHelpDoc.getSpan(this.help))
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const message = InternalHelpDoc.p(pipe(
+      InternalSpan.text("\n\n"),
+      InternalSpan.concat(InternalSpan.strong(InternalSpan.code("COMMAND:"))),
+      InternalSpan.concat(InternalSpan.space),
+      InternalSpan.concat(InternalSpan.code(this.name))
+    ))
+    return Console.log(InternalHelpDoc.toAnsiText(message)).pipe(Effect.zipRight(Effect.zipWith(
+      this.options.wizard(config),
+      this.args.wizard(config),
+      (options, args) => ReadonlyArray.prepend(ReadonlyArray.appendAll(options, args), this.name)
+    )))
   }
 
   parse(
@@ -132,7 +148,9 @@ export class Standard<Name extends string, OptionsType, ArgsType>
         const normalizedArgv0 = InternalCliConfig.normalizeCase(config, argv0)
         const normalizedCommandName = InternalCliConfig.normalizeCase(config, this.name)
         if (normalizedArgv0 === normalizedCommandName) {
-          const options = InternalBuiltInOptions.builtInOptions(this, this.usage, this.help)
+          const help = this.help()
+          const usage = this.usage()
+          const options = InternalBuiltInOptions.builtInOptions(this, usage, help)
           return InternalOptions.validate(options, ReadonlyArray.drop(args, 1), config).pipe(
             Effect.flatMap((tuple) => tuple[2]),
             Effect.catchTag("NoSuchElementException", () => {
@@ -188,7 +206,7 @@ export class Standard<Name extends string, OptionsType, ArgsType>
       if (ReadonlyArray.contains(args, "--help") || ReadonlyArray.contains(args, "-h")) {
         return parseBuiltInArgs(ReadonlyArray.make(this.name, "--help"))
       }
-      if (ReadonlyArray.contains(args, "--wizard") || ReadonlyArray.contains(args, "-w")) {
+      if (ReadonlyArray.contains(args, "--wizard")) {
         return parseBuiltInArgs(ReadonlyArray.make(this.name, "--wizard"))
       }
       const error = InternalHelpDoc.p(`Missing command name: '${this.name}'`)
@@ -233,26 +251,30 @@ export class GetUserInput<Name extends string, ValueType>
     readonly prompt: Prompt.Prompt<ValueType>
   ) {}
 
-  get names(): HashSet.HashSet<string> {
+  names(): HashSet.HashSet<string> {
     return HashSet.make(this.name)
   }
 
-  get subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
+  subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
     return HashMap.make([this.name, this])
   }
 
-  get help(): HelpDoc.HelpDoc {
+  help(): HelpDoc.HelpDoc {
     const header = InternalHelpDoc.h1("DESCRIPTION")
     const content = InternalHelpDoc.p("This command will prompt the user for information")
     return InternalHelpDoc.sequence(header, content)
   }
 
-  get usage(): Usage.Usage {
+  usage(): Usage.Usage {
     return InternalUsage.named(ReadonlyArray.of(this.name), Option.none())
   }
 
-  get shortDescription(): string {
-    return ""
+  wizard(_config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return Effect.succeed(ReadonlyArray.empty())
   }
 
   parse(
@@ -288,24 +310,28 @@ export class Map<A, B> implements Command.Command<B> {
     readonly f: (value: A) => B
   ) {}
 
-  get names(): HashSet.HashSet<string> {
-    return this.command.names
+  names(): HashSet.HashSet<string> {
+    return this.command.names()
   }
 
-  get subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
-    return this.command.subcommands
+  subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
+    return this.command.subcommands()
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return this.command.help
+  help(): HelpDoc.HelpDoc {
+    return this.command.help()
   }
 
-  get usage(): Usage.Usage {
-    return this.command.usage
+  usage(): Usage.Usage {
+    return this.command.usage()
   }
 
-  get shortDescription(): string {
-    return this.command.shortDescription
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return this.command.wizard(config)
   }
 
   parse(
@@ -336,24 +362,51 @@ export class OrElse<A, B> implements Command.Command<A | B> {
     readonly right: Command.Command<B>
   ) {}
 
-  get names(): HashSet.HashSet<string> {
-    return HashSet.union(this.left.names, this.right.names)
+  names(): HashSet.HashSet<string> {
+    return HashSet.union(this.left.names(), this.right.names())
   }
 
-  get subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
-    return HashMap.union(this.left.subcommands, this.right.subcommands)
+  subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
+    return HashMap.union(this.left.subcommands(), this.right.subcommands())
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.sequence(this.left.help, this.right.help)
+  help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.sequence(this.left.help(), this.right.help())
   }
 
-  get usage(): Usage.Usage {
+  usage(): Usage.Usage {
     return InternalUsage.mixed
   }
 
-  get shortDescription(): string {
-    return ""
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const message = InternalHelpDoc.p("Select which command you would like to execute")
+    const makeChoice = (title: string, value: Command.Command<A | B>) => ({
+      title,
+      value: [title, value] as const
+    })
+    const choices = ReadonlyArray.compact([
+      Option.map(
+        ReadonlyArray.head(Array.from(this.left.names())),
+        (title) => makeChoice(title, this.left)
+      ),
+      Option.map(
+        ReadonlyArray.head(Array.from(this.right.names())),
+        (title) => makeChoice(title, this.right)
+      )
+    ])
+    return Console.log().pipe(
+      Effect.zipRight(InternalSelectPrompt.select({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        choices
+      })),
+      Effect.flatMap(([name, command]) =>
+        command.wizard(config).pipe(Effect.map(ReadonlyArray.prepend(name)))
+      )
+    )
   }
 
   parse(
@@ -390,21 +443,21 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
     readonly child: B
   ) {}
 
-  get names(): HashSet.HashSet<string> {
-    return this.parent.names
+  names(): HashSet.HashSet<string> {
+    return this.parent.names()
   }
 
-  get subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
-    return this.child.subcommands
+  subcommands(): HashMap.HashMap<string, Command.Command<unknown>> {
+    return this.child.subcommands()
   }
 
-  get help(): HelpDoc.HelpDoc {
+  help(): HelpDoc.HelpDoc {
     const getUsage = <A>(
       command: Command.Command<A>,
       preceding: ReadonlyArray<Span.Span>
     ): ReadonlyArray<[Span.Span, Span.Span]> => {
-      if (isStandard(command)) {
-        const usage = InternalHelpDoc.getSpan(InternalUsage.getHelp(command.usage))
+      if (isStandard(command) || isGetUserInput(command)) {
+        const usage = InternalHelpDoc.getSpan(InternalUsage.getHelp(command.usage()))
         const usages = ReadonlyArray.append(preceding, usage)
         const finalUsage = ReadonlyArray.reduceRight(
           usages,
@@ -416,9 +469,11 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
               ? acc
               : InternalSpan.concat(acc, InternalSpan.concat(InternalSpan.space, next))
         )
-        return ReadonlyArray.of([finalUsage, InternalHelpDoc.getSpan(command.description)])
+        const description = isStandard(command)
+          ? InternalHelpDoc.getSpan(command.description)
+          : InternalSpan.empty
+        return ReadonlyArray.of([finalUsage, description])
       }
-      // TODO: if (isPrompt(command)) {}
       if (isMap(command)) {
         return getUsage(command.command, preceding)
       }
@@ -463,7 +518,7 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
       throw new Error("[BUG]: Subcommands.usage - received empty list of subcommands to print")
     }
     return InternalHelpDoc.sequence(
-      this.parent.help,
+      this.parent.help(),
       InternalHelpDoc.sequence(
         InternalHelpDoc.h1("COMMANDS"),
         printSubcommands(getUsage(this.child, ReadonlyArray.empty()))
@@ -471,12 +526,34 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
     )
   }
 
-  get usage(): Usage.Usage {
-    return InternalUsage.concat(this.parent.usage, this.child.usage)
+  usage(): Usage.Usage {
+    return InternalUsage.concat(this.parent.usage(), this.child.usage())
   }
 
-  get shortDescription(): string {
-    return this.parent.shortDescription
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const message = InternalHelpDoc.p("Select which command you would like to execute")
+    const makeChoice = (title: string, value: Command.Command<unknown>) => ({ title, value })
+    const parentName = Option.getOrElse(
+      ReadonlyArray.head(Array.from(this.names())),
+      () => "<anonymous>"
+    )
+    const parentChoice = makeChoice(parentName, this.parent)
+    const childChoices = ReadonlyArray.map(
+      Array.from(this.subcommands()),
+      ([name, command]) => makeChoice(name, command)
+    )
+    const choices = ReadonlyArray.prepend(childChoices, parentChoice)
+    return Console.log().pipe(
+      Effect.zipRight(InternalSelectPrompt.select({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        choices
+      })),
+      Effect.flatMap((command) => command.wizard(config))
+    )
   }
 
   parse(
@@ -487,16 +564,22 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
     ValidationError.ValidationError,
     CommandDirective.CommandDirective<Command.Command.Subcommands<[A, B]>>
   > {
-    const helpDirectiveForParent = Effect.succeed(
-      InternalCommandDirective.builtIn(InternalBuiltInOptions.showHelp(this.usage, this.help))
+    const names = Array.from(this.names())
+    const subcommands = this.subcommands()
+    const [parentArgs, childArgs] = ReadonlyArray.span(
+      args,
+      (name) => !HashMap.has(subcommands, name)
     )
-    const helpDirectiveForChild = this.child.parse(args.slice(1), config).pipe(
+    const helpDirectiveForParent = Effect.succeed(
+      InternalCommandDirective.builtIn(InternalBuiltInOptions.showHelp(this.usage(), this.help()))
+    )
+    const helpDirectiveForChild = this.child.parse(childArgs, config).pipe(
       Effect.flatMap((directive) => {
         if (
           InternalCommandDirective.isBuiltIn(directive) &&
           InternalBuiltInOptions.isShowHelp(directive.option)
         ) {
-          const parentName = Option.getOrElse(ReadonlyArray.head(Array.from(this.names)), () => "")
+          const parentName = Option.getOrElse(ReadonlyArray.head(names), () => "")
           const newDirective = InternalCommandDirective.builtIn(InternalBuiltInOptions.showHelp(
             InternalUsage.concat(
               InternalUsage.named(ReadonlyArray.of(parentName), Option.none()),
@@ -512,7 +595,7 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
     const wizardDirectiveForParent = Effect.succeed(
       InternalCommandDirective.builtIn(InternalBuiltInOptions.showWizard(this))
     )
-    const wizardDirectiveForChild = this.child.parse(args.slice(1), config).pipe(
+    const wizardDirectiveForChild = this.child.parse(childArgs, config).pipe(
       Effect.flatMap((directive) => {
         if (
           InternalCommandDirective.isBuiltIn(directive) &&
@@ -522,11 +605,6 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
         }
         return Effect.fail(InternalValidationError.invalidArgument(InternalHelpDoc.empty))
       })
-    )
-    const subcommands = this.subcommands
-    const [parentArgs, childArgs] = ReadonlyArray.span(
-      args,
-      (name) => !HashMap.has(subcommands, name)
     )
     return this.parent.parse(parentArgs, config).pipe(
       Effect.flatMap((directive) => {
@@ -546,12 +624,9 @@ export class Subcommands<A extends Command.Command<any>, B extends Command.Comma
               return this.child.parse(args, config).pipe(Effect.mapBoth({
                 onFailure: (err) => {
                   if (InternalValidationError.isCommandMismatch(err)) {
-                    const parentName = Option.getOrElse(
-                      ReadonlyArray.head(Array.from(this.names)),
-                      () => ""
-                    )
+                    const parentName = Option.getOrElse(ReadonlyArray.head(names), () => "")
                     const subcommandNames = pipe(
-                      ReadonlyArray.fromIterable(HashMap.keys(this.subcommands)),
+                      ReadonlyArray.fromIterable(HashMap.keys(this.subcommands())),
                       ReadonlyArray.map((name) => `'${name}'`)
                     )
                     const oneOf = subcommandNames.length === 1 ? "" : " one of"

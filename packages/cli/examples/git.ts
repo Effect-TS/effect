@@ -5,9 +5,10 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Span from "@effect/cli/HelpDoc/Span"
 import * as Options from "@effect/cli/Options"
 import * as NodeContext from "@effect/platform-node/NodeContext"
+import * as Terminal from "@effect/platform-node/Terminal"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 
 export interface Git extends Data.Case {
@@ -52,41 +53,42 @@ export interface RemoveRemote extends Data.Case {
 
 export const RemoveRemote = Data.tagged<RemoveRemote>("RemoveRemote")
 
-const add: Command.Command<GitSubcommand> = pipe(
-  Command.standard("add", {
-    options: Options.boolean("m"),
-    args: Args.text({ name: "directory" })
-  }),
+const add: Command.Command<GitSubcommand> = Command.standard("add", {
+  options: Options.boolean("m"),
+  args: Args.text({ name: "directory" })
+}).pipe(
   Command.withHelp(HelpDoc.p("Description of the `git add` subcommand")),
   Command.map(({ args: directory, options: modified }) => Add({ modified, directory }))
 )
 
-const addRemote: Command.Command<RemoteSubcommand> = pipe(
-  Command.standard("add", {
-    options: Options.all({
-      name: Options.text("name"),
-      url: Options.text("url")
-    })
-  }),
+const addRemote: Command.Command<RemoteSubcommand> = Command.standard("add", {
+  options: Options.all({
+    name: Options.text("name"),
+    url: Options.text("url")
+  })
+}).pipe(
   Command.withHelp(HelpDoc.p("Description of the `git remote add` subcommand")),
   Command.map(({ options: { name, url } }) => AddRemote({ name, url }))
 )
 
-const removeRemote: Command.Command<RemoteSubcommand> = pipe(
-  Command.standard("remove", { args: Args.text({ name: "name" }) }),
+const removeRemote: Command.Command<RemoteSubcommand> = Command.standard("remove", {
+  args: Args.text({ name: "name" })
+}).pipe(
   Command.withHelp(HelpDoc.p("Description of the `git remote remove` subcommand")),
   Command.map(({ args: name }) => RemoveRemote({ name }))
 )
 
-const remote: Command.Command<GitSubcommand> = pipe(
-  Command.standard("remote", { options: Options.boolean("verbose").pipe(Options.withAlias("v")) }),
+const remote: Command.Command<GitSubcommand> = Command.standard("remote", {
+  options: Options.boolean("verbose").pipe(Options.withAlias("v"))
+}).pipe(
   Command.withHelp("Description of the `git remote` subcommand"),
   Command.subcommands([addRemote, removeRemote]),
   Command.map(({ options: verbose, subcommand }) => Remote({ verbose, subcommand }))
 )
 
-const git: Command.Command<Git> = pipe(
-  Command.standard("git", { options: Options.boolean("version").pipe(Options.withAlias("v")) }),
+const git: Command.Command<Git> = Command.standard("git", {
+  options: Options.boolean("version").pipe(Options.withAlias("v"))
+}).pipe(
   Command.subcommands([add, remote]),
   Command.map(({ options: version, subcommand }) => Git({ version, subcommand }))
 )
@@ -132,6 +134,8 @@ const cli = CliApp.make({
   footer: HelpDoc.p("Copyright 2023")
 })
 
+const MainLive = Layer.merge(NodeContext.layer, Terminal.layer)
+
 Effect.sync(() => process.argv.slice(2)).pipe(
   Effect.flatMap((args) =>
     CliApp.run(cli, args, (command) =>
@@ -143,6 +147,6 @@ Effect.sync(() => process.argv.slice(2)).pipe(
         onSome: handleGitSubcommand
       }))
   ),
-  Effect.provide(NodeContext.layer),
+  Effect.provide(MainLive),
   Effect.runFork
 )

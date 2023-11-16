@@ -7,8 +7,10 @@ import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type { CliConfig } from "./CliConfig.js"
+import type { HelpDoc } from "./HelpDoc.js"
 import type { Span } from "./HelpDoc/Span.js"
 import * as InternalPrimitive from "./internal/primitive.js"
+import type { Prompt } from "./Prompt.js"
 
 /**
  * @since 1.0.0
@@ -31,9 +33,10 @@ export type PrimitiveTypeId = typeof PrimitiveTypeId
  * @category models
  */
 export interface Primitive<A> extends Primitive.Variance<A> {
-  get typeName(): string
-  get help(): Span
-  get choices(): Option<string>
+  typeName(): string
+  help(): Span
+  choices(): Option<string>
+  wizard(help: HelpDoc): Prompt<string>
   validate(value: Option<string>, config: CliConfig): Effect<FileSystem, string, A>
 }
 

@@ -3,7 +3,7 @@ import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
 import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
-import { dual } from "effect/Function"
+import { dual, pipe } from "effect/Function"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
@@ -132,42 +132,54 @@ export const mapDescriptionList = dual<
     ? descriptionList(ReadonlyArray.map(self.definitions, ([span, helpDoc]) => f(span, helpDoc)))
     : self)
 
-const helpDocToAnsiDoc: {
-  [K in HelpDoc.HelpDoc["_tag"]]: (self: Extract<HelpDoc.HelpDoc, { _tag: K }>) => AnsiDoc.AnsiDoc
-} = {
-  Empty: () => Doc.empty,
-  Paragraph: (self) => Doc.cat(InternalSpan.toAnsiDoc(self.value), Doc.hardLine),
-  Header: (self) =>
-    Doc.cat(Doc.annotate(InternalSpan.toAnsiDoc(self.value), AnsiStyle.bold), Doc.hardLine),
-  Enumeration: (self) =>
-    Doc.indent(
-      Doc.vsep(self.elements.map((doc) =>
-        Doc.cat(
-          Doc.text("- "),
-          helpDocToAnsiDoc[doc._tag](doc as any)
-        )
-      )),
-      2
-    ),
-  DescriptionList: (self) =>
-    Doc.vsep(self.definitions.map(([s, d]) =>
-      Doc.cats([
-        Doc.annotate(InternalSpan.toAnsiDoc(s), AnsiStyle.bold),
-        Doc.empty,
-        Doc.indent(helpDocToAnsiDoc[d._tag](d as any), 2)
-      ])
-    )),
-  Sequence: (self) =>
-    Doc.vsep([
-      helpDocToAnsiDoc[self.left._tag](self.left as any),
-      helpDocToAnsiDoc[self.right._tag](self.right as any)
-    ])
-}
-
 /** @internal */
 export const toAnsiDoc = (self: HelpDoc.HelpDoc): AnsiDoc.AnsiDoc =>
-  Optimize.optimize(helpDocToAnsiDoc[self._tag](self as any), Optimize.Deep)
+  Optimize.optimize(toAnsiDocInternal(self), Optimize.Deep)
 
 /** @internal */
 export const toAnsiText = (self: HelpDoc.HelpDoc): string =>
   AnsiRender.prettyDefault(toAnsiDoc(self))
+
+// =============================================================================
+// Internals
+// =============================================================================
+
+const toAnsiDocInternal = (self: HelpDoc.HelpDoc): AnsiDoc.AnsiDoc => {
+  switch (self._tag) {
+    case "Empty": {
+      return Doc.empty
+    }
+    case "Header": {
+      return pipe(
+        Doc.annotate(InternalSpan.toAnsiDoc(self.value), AnsiStyle.bold),
+        Doc.cat(Doc.hardLine)
+      )
+    }
+    case "Paragraph": {
+      return pipe(
+        InternalSpan.toAnsiDoc(self.value),
+        Doc.cat(Doc.hardLine)
+      )
+    }
+    case "DescriptionList": {
+      const definitions = self.definitions.map(([span, doc]) =>
+        Doc.cats([
+          Doc.annotate(InternalSpan.toAnsiDoc(span), AnsiStyle.bold),
+          Doc.empty,
+          Doc.indent(toAnsiDocInternal(doc), 2)
+        ])
+      )
+      return Doc.vsep(definitions)
+    }
+    case "Enumeration": {
+      const elements = self.elements.map((doc) => Doc.cat(Doc.text("- "), toAnsiDocInternal(doc)))
+      return Doc.indent(Doc.vsep(elements), 2)
+    }
+    case "Sequence": {
+      return Doc.vsep([
+        toAnsiDocInternal(self.left),
+        toAnsiDocInternal(self.right)
+      ])
+    }
+  }
+}

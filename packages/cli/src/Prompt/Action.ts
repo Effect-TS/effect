@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "../internal/prompt/action.js"
+import * as InternalPromptAction from "../internal/prompt/action.js"
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type PromptAction<State, Output> = Beep | Error | NextFrame<State> | Submit<Output>
+export type PromptAction<State, Output> = Beep | NextFrame<State> | Submit<Output>
 
 /**
  * @since 1.0.0
@@ -15,15 +15,6 @@ export type PromptAction<State, Output> = Beep | Error | NextFrame<State> | Subm
  */
 export interface Beep {
   readonly _tag: "Beep"
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface Error {
-  readonly _tag: "Error"
-  readonly message: string
 }
 
 /**
@@ -48,22 +39,18 @@ export interface Submit<Output> {
  * @since 1.0.0
  * @category constructors
  */
-export const beep: PromptAction<never, never> = internal.beep
+export const beep: PromptAction<never, never> = InternalPromptAction.beep
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const error: (message: string) => PromptAction<never, never> = internal.error
+export const nextFrame: <State>(state: State) => PromptAction<State, never> =
+  InternalPromptAction.nextFrame
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const nextFrame: <State>(state: State) => PromptAction<State, never> = internal.nextFrame
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const submit: <Output>(value: Output) => PromptAction<never, Output> = internal.submit
+export const submit: <Output>(value: Output) => PromptAction<never, Output> =
+  InternalPromptAction.submit

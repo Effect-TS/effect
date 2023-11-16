@@ -1,15 +1,13 @@
-import type * as FileSystem from "@effect/platform/FileSystem"
 import * as Path from "@effect/platform/Path"
+import type * as Terminal from "@effect/platform/Terminal"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
-import { unify } from "effect/Unify"
 import type * as BuiltInOptions from "../BuiltInOptions.js"
 import type * as CliApp from "../CliApp.js"
 import type * as CliConfig from "../CliConfig.js"
@@ -24,7 +22,6 @@ import * as InternalCompgen from "./compgen.js"
 import * as InternalCompletion from "./completion.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
-import * as InternalTerminal from "./terminal.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
 
@@ -49,8 +46,6 @@ export const make = <A>(config: {
 // =============================================================================
 // Combinators
 // =============================================================================
-
-const MainLive = Layer.merge(InternalTerminal.LiveTerminal, InternalCompgen.LiveCompgen)
 
 /** @internal */
 export const run = dual<
@@ -82,7 +77,7 @@ export const run = dual<
     // Handle the command
     return Effect.matchEffect(self.command.parse(prefixedArgs, config), {
       onFailure: (e) => Effect.zipRight(printDocs(e.error), Effect.fail(e)),
-      onSuccess: unify((directive) => {
+      onSuccess: Effect.unifiedFn((directive) => {
         switch (directive._tag) {
           case "UserDefined": {
             return execute(directive.value)
@@ -99,7 +94,7 @@ export const run = dual<
         }
       })
     })
-  }).pipe(Effect.provide(MainLive)))
+  }).pipe(Effect.provideServiceEffect(InternalCompgen.Tag, InternalCompgen.make(Option.none()))))
 
 // =============================================================================
 // Internals
@@ -113,43 +108,42 @@ const handleBuiltInOption = <A>(
   builtIn: BuiltInOptions.BuiltInOptions,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  Compgen.Compgen | FileSystem.FileSystem | Path.Path,
+  CliApp.CliApp.Environment | Compgen.Compgen | Terminal.Terminal,
   ValidationError.ValidationError,
   void
-> =>
-  Effect.gen(function*(_) {
-    switch (builtIn._tag) {
-      case "ShowHelp": {
-        const banner = InternalHelpDoc.h1(InternalSpan.code(self.name))
-        const header = InternalHelpDoc.p(InternalSpan.concat(
-          InternalSpan.text(`${self.name} ${self.version} -- `),
-          self.summary
-        ))
-        const usage = InternalHelpDoc.sequence(
-          InternalHelpDoc.h1("USAGE"),
-          pipe(
-            InternalUsage.enumerate(builtIn.usage, config),
-            ReadonlyArray.map((span) =>
-              InternalHelpDoc.p(InternalSpan.concat(InternalSpan.text("$ "), span))
-            ),
-            ReadonlyArray.reduceRight(
-              InternalHelpDoc.empty,
-              (left, right) => InternalHelpDoc.sequence(left, right)
-            )
+> => {
+  switch (builtIn._tag) {
+    case "ShowHelp": {
+      const banner = InternalHelpDoc.h1(InternalSpan.code(self.name))
+      const header = InternalHelpDoc.p(InternalSpan.concat(
+        InternalSpan.text(`${self.name} ${self.version} -- `),
+        self.summary
+      ))
+      const usage = InternalHelpDoc.sequence(
+        InternalHelpDoc.h1("USAGE"),
+        pipe(
+          InternalUsage.enumerate(builtIn.usage, config),
+          ReadonlyArray.map((span) =>
+            InternalHelpDoc.p(InternalSpan.concat(InternalSpan.text("$ "), span))
+          ),
+          ReadonlyArray.reduceRight(
+            InternalHelpDoc.empty,
+            (left, right) => InternalHelpDoc.sequence(left, right)
           )
         )
-        const helpDoc = pipe(
-          banner,
-          InternalHelpDoc.sequence(header),
-          InternalHelpDoc.sequence(usage),
-          InternalHelpDoc.sequence(builtIn.helpDoc),
-          InternalHelpDoc.sequence(self.footer)
-        )
-        return yield* _(Console.log(InternalHelpDoc.toAnsiText(helpDoc)))
-      }
-      case "ShowCompletionScript": {
-        const path = yield* _(Path.Path)
-        const commandNames = ReadonlyArray.fromIterable(self.command.names)
+      )
+      const helpDoc = pipe(
+        banner,
+        InternalHelpDoc.sequence(header),
+        InternalHelpDoc.sequence(usage),
+        InternalHelpDoc.sequence(builtIn.helpDoc),
+        InternalHelpDoc.sequence(self.footer)
+      )
+      return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
+    }
+    case "ShowCompletionScript": {
+      return Effect.flatMap(Path.Path, (path) => {
+        const commandNames = ReadonlyArray.fromIterable(self.command.names())
         const programNames = ReadonlyArray.isNonEmptyReadonlyArray(commandNames)
           ? commandNames
           : ReadonlyArray.of(self.name)
@@ -159,11 +153,14 @@ const handleBuiltInOption = <A>(
           builtIn.shellType,
           path
         )
-        return yield* _(Console.log(script))
-      }
-      case "ShowCompletions": {
-        const compgen = yield* _(InternalCompgen.Tag)
-        const env = yield* _(Effect.sync(() => process.env))
+        return Console.log(script)
+      })
+    }
+    case "ShowCompletions": {
+      return Effect.all([
+        InternalCompgen.Tag,
+        Effect.sync(() => globalThis.process.env)
+      ]).pipe(Effect.flatMap(([compgen, env]) => {
         const tupleOrder = Order.mapInput(Order.number, (tuple: [number, string]) => tuple[0])
         const compWords = pipe(
           ReadonlyRecord.collect(
@@ -177,20 +174,59 @@ const handleBuiltInOption = <A>(
           ReadonlyArray.sortBy(tupleOrder),
           ReadonlyArray.map(([, value]) => value)
         )
-        const completions = yield* _(InternalCompletion.getCompletions(
+        return InternalCompletion.getCompletions(
           compWords,
           builtIn.index,
           self.command,
           config,
           compgen
-        ))
-        return Effect.forEach(completions, (word) => Console.log(word), { discard: true })
-      }
-      case "ShowWizard": {
-        return yield* _(Console.log("Showing the wizard"))
-      }
+        ).pipe(
+          Effect.flatMap((completions) =>
+            Effect.forEach(completions, (word) => Console.log(word), { discard: true })
+          )
+        )
+      }))
     }
-  })
+    case "ShowWizard": {
+      const summary = InternalSpan.isEmpty(self.summary)
+        ? InternalSpan.empty
+        : InternalSpan.spans([
+          InternalSpan.space,
+          InternalSpan.text("--"),
+          InternalSpan.space,
+          self.summary
+        ])
+      const instructions = InternalHelpDoc.sequence(
+        InternalHelpDoc.p(InternalSpan.spans([
+          InternalSpan.text("The wizard mode will assist you with constructing commands for"),
+          InternalSpan.space,
+          InternalSpan.code(`${self.name} (${self.version})`),
+          InternalSpan.text(".")
+        ])),
+        InternalHelpDoc.p("Please answer all prompts provided by the wizard.")
+      )
+      const description = InternalHelpDoc.descriptionList([[
+        InternalSpan.text("Instructions"),
+        instructions
+      ]])
+      const header = InternalHelpDoc.h1(
+        InternalSpan.spans([
+          InternalSpan.code("Wizard Mode for CLI Application:"),
+          InternalSpan.space,
+          InternalSpan.code(self.name),
+          InternalSpan.space,
+          InternalSpan.code(`(${self.version})`),
+          summary
+        ])
+      )
+      const help = InternalHelpDoc.sequence(header, description)
+      return Console.log(InternalHelpDoc.toAnsiText(help)).pipe(
+        Effect.zipRight(builtIn.command.wizard(config)),
+        Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args))))
+      )
+    }
+  }
+}
 
 const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> => {
   let command: Command.Command<unknown> | undefined = self
@@ -212,4 +248,20 @@ const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> => {
     }
   }
   return prefix
+}
+
+const renderWizardArgs = (args: ReadonlyArray<string>) => {
+  const params = pipe(
+    ReadonlyArray.filter(args, (param) => param.length > 0),
+    ReadonlyArray.join(" ")
+  )
+  const executeMsg = InternalSpan.weak(
+    "You may now execute your command directly with the following options and arguments:"
+  )
+  return InternalHelpDoc.blocks([
+    InternalHelpDoc.p(""),
+    InternalHelpDoc.p(InternalSpan.strong(InternalSpan.code("Wizard Mode Complete!"))),
+    InternalHelpDoc.p(executeMsg),
+    InternalHelpDoc.p(InternalSpan.code(`    ${params}`))
+  ])
 }

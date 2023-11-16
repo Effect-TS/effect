@@ -29,11 +29,11 @@ export const Compgen: Tag<Compgen, Compgen> = InternalCompgen.Tag
  * @since 1.0.0
  * @category context
  */
-export const LiveCompgen: Layer<CommandExecutor, never, Compgen> = InternalCompgen.LiveCompgen
+export const layer: Layer<CommandExecutor, never, Compgen> = InternalCompgen.layer
 
 /**
  * @since 1.0.0
  * @category context
  */
-export const TestCompgen: (workingDirectory: string) => Layer<CommandExecutor, never, Compgen> =
-  InternalCompgen.TestCompgen
+export const testLayer: (workingDirectory: string) => Layer<CommandExecutor, never, Compgen> =
+  InternalCompgen.testLayer

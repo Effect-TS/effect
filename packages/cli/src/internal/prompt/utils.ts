@@ -1,6 +1,6 @@
 /** @internal */
-export const displayRange = (cursor: number, total: number, maxVisible?: number) => {
-  const max = maxVisible || total
+export const entriesToDisplay = (cursor: number, total: number, maxVisible?: number) => {
+  const max = maxVisible === undefined ? total : maxVisible
   let startIndex = Math.min(total - max, cursor - Math.floor(max / 2))
   if (startIndex < 0) {
     startIndex = 0

@@ -1,5 +1,6 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
-import * as Schema from "@effect/schema/Schema"
+import type * as Terminal from "@effect/platform/Terminal"
+import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { dual, pipe } from "effect/Function"
@@ -11,7 +12,6 @@ import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
-import type * as Parameter from "../Parameter.js"
 import type * as Primitive from "../Primitive.js"
 import type * as RegularLanguage from "../RegularLanguage.js"
 import type * as Usage from "../Usage.js"
@@ -19,8 +19,9 @@ import type * as ValidationError from "../ValidationError.js"
 import * as InternalAutoCorrect from "./autoCorrect.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalHelpDoc from "./helpDoc.js"
-import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
+import * as InternalListPrompt from "./prompt/list.js"
+import * as InternalSelectPrompt from "./prompt/select.js"
 import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
@@ -36,33 +37,39 @@ const proto = {
   _A: (_: never) => _
 }
 
+const wizardHeader = InternalHelpDoc.p("OPTIONS WIZARD")
+
 /** @internal */
 export class Empty implements Options.Options<void> {
   readonly [OptionsTypeId] = proto
   readonly _tag = "Empty"
 
-  get identifier(): Option.Option<string> {
+  identifier(): Option.Option<string> {
     return Option.none()
   }
 
-  get flattened(): ReadonlyArray<Parameter.Input> {
+  flattened(): ReadonlyArray<Options.Options.ParseableOptions<unknown>> {
     return ReadonlyArray.empty()
   }
 
-  get help(): HelpDoc.HelpDoc {
+  help(): HelpDoc.HelpDoc {
     return InternalHelpDoc.empty
   }
 
-  get usage(): Usage.Usage {
+  usage(): Usage.Usage {
     return InternalUsage.empty
-  }
-
-  get shortDescription(): string {
-    return ""
   }
 
   modifySingle(_f: <_>(single: Single<_>) => Single<_>): Options.Options<void> {
     return new Empty()
+  }
+
+  wizard(_config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return Effect.succeed(ReadonlyArray.empty())
   }
 
   validate(
@@ -78,7 +85,7 @@ export class Empty implements Options.Options<void> {
 }
 
 /** @internal */
-export class Single<A> implements Options.Options<A>, Parameter.Input {
+export class Single<A> implements Options.Options.ParseableOptions<A> {
   readonly [OptionsTypeId] = proto
   readonly _tag = "Single"
 
@@ -90,54 +97,57 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
     readonly pseudoName: Option.Option<string> = Option.none()
   ) {}
 
-  get identifier(): Option.Option<string> {
-    return Option.some(this.fullName)
+  identifier(): Option.Option<string> {
+    return Option.some(this.fullName())
   }
 
-  get flattened(): ReadonlyArray<Parameter.Input> {
+  flattened(): ReadonlyArray<Options.Options.ParseableOptions<unknown>> {
     return ReadonlyArray.of(this)
   }
 
-  get help(): HelpDoc.HelpDoc {
+  help(): HelpDoc.HelpDoc {
     return InternalHelpDoc.descriptionList(ReadonlyArray.of([
-      InternalHelpDoc.getSpan(InternalUsage.getHelp(this.usage)),
-      InternalHelpDoc.sequence(InternalHelpDoc.p(this.primitiveType.help), this.description)
+      InternalHelpDoc.getSpan(InternalUsage.getHelp(this.usage())),
+      InternalHelpDoc.sequence(InternalHelpDoc.p(this.primitiveType.help()), this.description)
     ]))
   }
 
-  get usage(): Usage.Usage {
+  usage(): Usage.Usage {
     const acceptedValues = InternalPrimitive.isBool(this.primitiveType)
       ? Option.none()
-      : Option.orElse(this.primitiveType.choices, () => Option.some(this.placeholder))
-    return InternalUsage.named(this.names, acceptedValues)
+      : Option.orElse(this.primitiveType.choices(), () => Option.some(this.placeholder()))
+    return InternalUsage.named(this.names(), acceptedValues)
   }
 
-  get names(): ReadonlyArray<string> {
+  names(): ReadonlyArray.NonEmptyArray<string> {
+    const order = Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])
     return pipe(
       ReadonlyArray.prepend(this.aliases, this.name),
       ReadonlyArray.map((str) => this.makeFullName(str)),
-      ReadonlyArray.sort(
-        Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])
-      ),
+      ReadonlyArray.sortNonEmpty(order),
       ReadonlyArray.map((tuple) => tuple[1])
     )
-  }
-
-  get shortDescription(): string {
-    return `Option ${this.name}. ${InternalSpan.getText(InternalHelpDoc.getSpan(this.description))}`
   }
 
   modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<A> {
     return f(this)
   }
 
-  isValid(
-    input: string,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
-    // There will always be at least one name in names
-    const args = ReadonlyArray.make(this.names[0]!, input)
-    return this.parse(args, config).pipe(Effect.as(args))
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const help = InternalHelpDoc.sequence(wizardHeader, this.help())
+    return Console.log().pipe(
+      Effect.zipRight(
+        this.primitiveType.wizard(help).pipe(Effect.flatMap((input) => {
+          // There will always be at least one name in names
+          const args = ReadonlyArray.make(this.names()[0]!, input)
+          return this.parse(args, config).pipe(Effect.as(args))
+        }))
+      )
+    )
   }
 
   parse(
@@ -155,7 +165,7 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
           const tail = ReadonlyArray.tailNonEmpty(args)
           const normalizedArgv0 = InternalCliConfig.normalizeCase(config, head)
           const normalizedNames = ReadonlyArray.map(
-            this.names,
+            this.names(),
             (name) => InternalCliConfig.normalizeCase(config, name)
           )
           if (ReadonlyArray.contains(normalizedNames, normalizedArgv0)) {
@@ -180,10 +190,12 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
                 ReadonlyArray.drop(tail, 1)
               ])
             }
-            const error = InternalHelpDoc.p(`Expected a value following option: '${this.fullName}'`)
+            const error = InternalHelpDoc.p(
+              `Expected a value following option: '${this.fullName()}'`
+            )
             return Effect.fail(InternalValidationError.missingValue(error))
           }
-          const fullName = this.fullName
+          const fullName = this.fullName()
           if (
             this.name.length > config.autoCorrectLimit + 1 &&
             InternalAutoCorrect.levensteinDistance(head, fullName, config) <=
@@ -197,7 +209,7 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
           const error = InternalHelpDoc.p(`Expected to find option: '${fullName}'`)
           return Effect.fail(InternalValidationError.missingFlag(error))
         }
-        const error = InternalHelpDoc.p(`Expected to find option: '${this.fullName}'`)
+        const error = InternalHelpDoc.p(`Expected to find option: '${this.fullName()}'`)
         return Effect.fail(InternalValidationError.missingFlag(error))
       })
     )
@@ -207,7 +219,7 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
     args: HashMap.HashMap<string, ReadonlyArray<string>>,
     config: CliConfig.CliConfig
   ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, A> {
-    const names = ReadonlyArray.filterMap(this.names, (name) => HashMap.get(args, name))
+    const names = ReadonlyArray.filterMap(this.names(), (name) => HashMap.get(args, name))
     if (ReadonlyArray.isNonEmptyReadonlyArray(names)) {
       const head = ReadonlyArray.headNonEmpty(names)
       const tail = ReadonlyArray.tailNonEmpty(names)
@@ -229,11 +241,11 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
         return Effect.fail(InternalValidationError.keyValuesDetected(InternalHelpDoc.empty, head))
       }
       const error = InternalHelpDoc.p(
-        `More than one reference to option '${this.fullName}' detected`
+        `More than one reference to option '${this.fullName()}' detected`
       )
       return Effect.fail(InternalValidationError.invalidValue(error))
     }
-    const error = InternalHelpDoc.p(`Expected to find option: '${this.fullName}'`)
+    const error = InternalHelpDoc.p(`Expected to find option: '${this.fullName()}'`)
     return Effect.fail(InternalValidationError.missingValue(error))
   }
 
@@ -241,12 +253,12 @@ export class Single<A> implements Options.Options<A>, Parameter.Input {
     return pipeArguments(this, arguments)
   }
 
-  private get placeholder(): string {
-    const pseudoName = Option.getOrElse(this.pseudoName, () => this.primitiveType.typeName)
+  private placeholder(): string {
+    const pseudoName = Option.getOrElse(this.pseudoName, () => this.primitiveType.typeName())
     return `<${pseudoName}>`
   }
 
-  private get fullName(): string {
+  private fullName(): string {
     return this.makeFullName(this.name)[1]
   }
 
@@ -265,28 +277,32 @@ export class Map<A, B> implements Options.Options<B> {
     readonly f: (a: A) => Either.Either<ValidationError.ValidationError, B>
   ) {}
 
-  get identifier(): Option.Option<string> {
-    return this.options.identifier
+  identifier(): Option.Option<string> {
+    return this.options.identifier()
   }
 
-  get flattened(): ReadonlyArray<Parameter.Input> {
-    return this.options.flattened
+  flattened(): ReadonlyArray<Options.Options.ParseableOptions<unknown>> {
+    return this.options.flattened()
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return this.options.help
+  help(): HelpDoc.HelpDoc {
+    return this.options.help()
   }
 
-  get usage(): Usage.Usage {
-    return this.options.usage
-  }
-
-  get shortDescription(): string {
-    return this.options.shortDescription
+  usage(): Usage.Usage {
+    return this.options.usage()
   }
 
   modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<B> {
     return new Map(this.options.modifySingle(f), this.f)
+  }
+
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return this.options.wizard(config)
   }
 
   validate(
@@ -311,32 +327,52 @@ export class OrElse<A, B> implements Options.Options<Either.Either<A, B>> {
     readonly right: Options.Options<B>
   ) {}
 
-  get identifier(): Option.Option<string> {
-    const ids = ReadonlyArray.compact([this.left.identifier, this.right.identifier])
+  identifier(): Option.Option<string> {
+    const ids = ReadonlyArray.compact([this.left.identifier(), this.right.identifier()])
     return ReadonlyArray.match(ids, {
       onEmpty: () => Option.none(),
       onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
     })
   }
 
-  get flattened(): ReadonlyArray<Parameter.Input> {
-    return ReadonlyArray.appendAll(this.left.flattened, this.right.flattened)
+  flattened(): ReadonlyArray<Options.Options.ParseableOptions<unknown>> {
+    return ReadonlyArray.appendAll(this.left.flattened(), this.right.flattened())
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.sequence(this.left.help, this.right.help)
+  help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.sequence(this.left.help(), this.right.help())
   }
 
-  get usage(): Usage.Usage {
-    return InternalUsage.alternation(this.left.usage, this.right.usage)
-  }
-
-  get shortDescription(): string {
-    return ""
+  usage(): Usage.Usage {
+    return InternalUsage.alternation(this.left.usage(), this.right.usage())
   }
 
   modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<Either.Either<A, B>> {
     return new OrElse(this.left.modifySingle(f), this.right.modifySingle(f))
+  }
+
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const alternativeHelp = InternalHelpDoc.p("Select which option you would like to use")
+    const message = pipe(
+      wizardHeader,
+      InternalHelpDoc.sequence(this.help()),
+      InternalHelpDoc.sequence(alternativeHelp)
+    )
+    const makeChoice = (title: string, value: Options.Options<A | B>) => ({ title, value })
+    const choices = ReadonlyArray.compact([
+      Option.map(this.left.identifier(), (title) => makeChoice(title, this.left)),
+      Option.map(this.right.identifier(), (title) => makeChoice(title, this.right))
+    ])
+    return Console.log().pipe(Effect.zipRight(
+      InternalSelectPrompt.select({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        choices
+      }).pipe(Effect.flatMap((option) => option.wizard(config)))
+    ))
   }
 
   validate(
@@ -368,8 +404,8 @@ export class OrElse<A, B> implements Options.Options<Either.Either<A, B>> {
               // The `identifier` will only be `None` for `Options.Empty`, which
               // means the user would have had to purposefully compose
               // `Options.Empty | otherArgument`
-              const leftUid = Option.getOrElse(this.left.identifier, () => "???")
-              const rightUid = Option.getOrElse(this.right.identifier, () => "???")
+              const leftUid = Option.getOrElse(this.left.identifier(), () => "???")
+              const rightUid = Option.getOrElse(this.right.identifier(), () => "???")
               const error = InternalHelpDoc.p(
                 "Collision between two options detected - you can only specify " +
                   `one of either: ['${leftUid}', '${rightUid}']`
@@ -396,32 +432,40 @@ export class Both<A, B> implements Options.Options<readonly [A, B]> {
     readonly right: Options.Options<B>
   ) {}
 
-  get identifier(): Option.Option<string> {
-    const ids = ReadonlyArray.compact([this.left.identifier, this.right.identifier])
+  identifier(): Option.Option<string> {
+    const ids = ReadonlyArray.compact([this.left.identifier(), this.right.identifier()])
     return ReadonlyArray.match(ids, {
       onEmpty: () => Option.none(),
       onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
     })
   }
 
-  get flattened(): ReadonlyArray<Parameter.Input> {
-    return ReadonlyArray.appendAll(this.left.flattened, this.right.flattened)
+  flattened(): ReadonlyArray<Options.Options.ParseableOptions<unknown>> {
+    return ReadonlyArray.appendAll(this.left.flattened(), this.right.flattened())
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.sequence(this.left.help, this.right.help)
+  help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.sequence(this.left.help(), this.right.help())
   }
 
-  get usage(): Usage.Usage {
-    return InternalUsage.concat(this.left.usage, this.right.usage)
-  }
-
-  get shortDescription(): string {
-    return ""
+  usage(): Usage.Usage {
+    return InternalUsage.concat(this.left.usage(), this.right.usage())
   }
 
   modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<readonly [A, B]> {
     return new Both(this.left.modifySingle(f), this.right.modifySingle(f))
+  }
+
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    return Effect.zipWith(
+      this.left.wizard(config),
+      this.right.wizard(config),
+      (left, right) => ReadonlyArray.appendAll(left, right)
+    )
   }
 
   validate(
@@ -448,7 +492,7 @@ export class Both<A, B> implements Options.Options<readonly [A, B]> {
 }
 
 /** @internal */
-export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
+export class WithDefault<A> implements Options.Options.ParseableOptions<A> {
   readonly [OptionsTypeId] = proto
   readonly _tag = "WithDefault"
 
@@ -457,16 +501,16 @@ export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
     readonly fallback: A
   ) {}
 
-  get identifier(): Option.Option<string> {
-    return this.options.identifier
+  identifier(): Option.Option<string> {
+    return this.options.identifier()
   }
 
-  get flattened(): ReadonlyArray<Parameter.Input> {
-    return this.options.flattened
+  flattened(): ReadonlyArray<Options.Options.ParseableOptions<unknown>> {
+    return this.options.flattened()
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.mapDescriptionList(this.options.help, (span, block) => {
+  help(): HelpDoc.HelpDoc {
+    return InternalHelpDoc.mapDescriptionList(this.options.help(), (span, block) => {
       const optionalDescription = Option.isOption(this.fallback)
         ? Option.match(this.fallback, {
           onNone: () => InternalHelpDoc.p("This setting is optional."),
@@ -477,36 +521,44 @@ export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
     })
   }
 
-  get usage(): Usage.Usage {
-    return InternalUsage.optional(this.options.usage)
-  }
-
-  get shortDescription(): string {
-    return this.options.shortDescription
+  usage(): Usage.Usage {
+    return InternalUsage.optional(this.options.usage())
   }
 
   modifySingle(f: <_>(single: Single<_>) => Single<_>): Options.Options<A> {
     return new WithDefault(this.options.modifySingle(f), this.fallback)
   }
 
-  isValid(
-    input: string,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, ReadonlyArray<string>> {
-    return Effect.sync(() => {
-      if (isBool(this.options)) {
-        if (Schema.is(InternalPrimitive.trueValues)(input)) {
-          const identifier = Option.getOrElse(this.options.identifier, () => "")
-          return ReadonlyArray.of(identifier)
-        }
-        return ReadonlyArray.empty()
-      }
-      if (input.length === 0) {
-        return ReadonlyArray.empty()
-      }
-      const identifier = Option.getOrElse(this.options.identifier, () => "")
-      return ReadonlyArray.make(identifier, input)
-    })
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    if (isBool(this.options)) {
+      return this.options.wizard(config)
+    }
+    const defaultHelp = InternalHelpDoc.p(`This option is optional - use the default?`)
+    const message = pipe(
+      wizardHeader,
+      InternalHelpDoc.sequence(this.options.help()),
+      InternalHelpDoc.sequence(defaultHelp)
+    )
+    return Console.log().pipe(
+      Effect.zipRight(
+        InternalSelectPrompt.select({
+          message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+          choices: [
+            { title: `Default ['${this.fallback}']`, value: true },
+            { title: "Custom", value: false }
+          ]
+        })
+      ),
+      Effect.flatMap((useFallback) =>
+        useFallback
+          ? Effect.succeed(ReadonlyArray.empty())
+          : this.options.wizard(config)
+      )
+    )
   }
 
   parse(
@@ -537,31 +589,43 @@ export class WithDefault<A> implements Options.Options<A>, Parameter.Input {
 
 /** @internal */
 export class KeyValueMap
-  implements Options.Options<HashMap.HashMap<string, string>>, Parameter.Input
+  implements Options.Options.ParseableOptions<HashMap.HashMap<string, string>>
 {
   readonly [OptionsTypeId] = proto
   readonly _tag = "KeyValueMap"
 
   constructor(readonly argumentOption: Single<string>) {}
 
-  get identifier(): Option.Option<string> {
-    return this.argumentOption.identifier
+  identifier(): Option.Option<string> {
+    return this.argumentOption.identifier()
   }
 
-  get flattened(): ReadonlyArray<Parameter.Input> {
+  flattened(): ReadonlyArray<Options.Options.ParseableOptions<unknown>> {
     return ReadonlyArray.of(this)
   }
 
-  get help(): HelpDoc.HelpDoc {
-    return this.argumentOption.help
+  help(): HelpDoc.HelpDoc {
+    // Single options always have an identifier, so we can safely `getOrThrow`
+    const identifier = Option.getOrThrow(this.argumentOption.identifier())
+    return InternalHelpDoc.mapDescriptionList(this.argumentOption.help(), (span, oldBlock) => {
+      const header = InternalHelpDoc.p("This setting is a property argument which:")
+      const single = `${identifier} key1=value key2=value2'`
+      const multiple = `${identifier} key1=value ${identifier} key2=value2'`
+      const description = InternalHelpDoc.enumeration([
+        InternalHelpDoc.p(`May be specified a single time:  '${single}'`),
+        InternalHelpDoc.p(`May be specified multiple times: '${multiple}'`)
+      ])
+      const newBlock = pipe(
+        oldBlock,
+        InternalHelpDoc.sequence(header),
+        InternalHelpDoc.sequence(description)
+      )
+      return [span, newBlock] as const
+    })
   }
 
-  get usage(): Usage.Usage {
-    return this.argumentOption.usage
-  }
-
-  get shortDescription(): string {
-    return this.argumentOption.shortDescription
+  usage(): Usage.Usage {
+    return this.argumentOption.usage()
   }
 
   modifySingle(
@@ -570,14 +634,24 @@ export class KeyValueMap
     return new KeyValueMap(f(this.argumentOption))
   }
 
-  isValid(
-    input: string,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, ReadonlyArray<string>> {
-    const identifier = Option.getOrElse(this.identifier, () => "")
-    const args = input.split(" ")
-    return this.validate(HashMap.make([identifier, args]), config).pipe(
-      Effect.as(ReadonlyArray.prepend(args, identifier))
+  wizard(config: CliConfig.CliConfig): Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  > {
+    const optionHelp = InternalHelpDoc.p("Enter `key=value` pairs separated by spaces")
+    const message = InternalHelpDoc.sequence(wizardHeader, optionHelp)
+    return Console.log().pipe(
+      Effect.zipRight(InternalListPrompt.list({
+        message: InternalHelpDoc.toAnsiText(message).trim(),
+        delimiter: " "
+      })),
+      Effect.flatMap((args) => {
+        const identifier = Option.getOrElse(this.identifier(), () => "")
+        return this.validate(HashMap.make([identifier, args]), config).pipe(
+          Effect.as(ReadonlyArray.prepend(args, identifier))
+        )
+      })
     )
   }
 
@@ -590,7 +664,7 @@ export class KeyValueMap
     readonly [ReadonlyArray<string>, ReadonlyArray<string>]
   > {
     const names = ReadonlyArray.map(
-      this.argumentOption.names,
+      this.argumentOption.names(),
       (name) => InternalCliConfig.normalizeCase(config, name)
     )
     if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
@@ -947,7 +1021,7 @@ export const toRegularLanguage = <A>(
   }
   if (isSingle(self)) {
     const names = ReadonlyArray.reduce(
-      self.names,
+      self.names(),
       InternalRegularLanguage.empty,
       (lang, name) => InternalRegularLanguage.orElse(lang, InternalRegularLanguage.string(name))
     )
@@ -1027,7 +1101,7 @@ export const validate = dual<
     readonly [Option.Option<ValidationError.ValidationError>, ReadonlyArray<string>, A]
   >
 >(3, (self, args, config) =>
-  matchOptions(args, self.flattened, config).pipe(
+  matchOptions(args, self.flattened(), config).pipe(
     Effect.flatMap(([error, commandArgs, matchedOptions]) =>
       self.validate(matchedOptions, config).pipe(
         Effect.catchAll((e) =>
@@ -1149,7 +1223,7 @@ const processArgs = (
  */
 const matchOptions = (
   input: ReadonlyArray<string>,
-  options: ReadonlyArray<Parameter.Input>,
+  options: ReadonlyArray<Options.Options.ParseableOptions<unknown>>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
   never,
@@ -1188,14 +1262,14 @@ const matchOptions = (
  */
 const findOptions = (
   input: ReadonlyArray<string>,
-  options: ReadonlyArray<Parameter.Input>,
+  options: ReadonlyArray<Options.Options.ParseableOptions<unknown>>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
   never,
   ValidationError.ValidationError,
   readonly [
     ReadonlyArray<string>,
-    ReadonlyArray<Parameter.Input>,
+    ReadonlyArray<Options.Options.ParseableOptions<unknown>>,
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
 > => {
@@ -1245,14 +1319,14 @@ const findOptions = (
 const matchUnclustered = (
   input: ReadonlyArray<string>,
   tail: ReadonlyArray<string>,
-  options: ReadonlyArray<Parameter.Input>,
+  options: ReadonlyArray<Options.Options.ParseableOptions<unknown>>,
   config: CliConfig.CliConfig
 ): Effect.Effect<
   never,
   ValidationError.ValidationError,
   readonly [
     ReadonlyArray<string>,
-    ReadonlyArray<Parameter.Input>,
+    ReadonlyArray<Options.Options.ParseableOptions<unknown>>,
     HashMap.HashMap<string, ReadonlyArray<string>>
   ]
 > => {

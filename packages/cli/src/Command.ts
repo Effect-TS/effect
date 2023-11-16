@@ -2,9 +2,11 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
+import type { HashSet } from "effect/HashSet"
 import type { Option } from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
@@ -14,10 +16,8 @@ import type { CommandDirective } from "./CommandDirective.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalCommand from "./internal/command.js"
 import type { Options } from "./Options.js"
-import type { Named } from "./Parameter.js"
 import type { Prompt } from "./Prompt.js"
 import type { RegularLanguage } from "./RegularLanguage.js"
-import type { Terminal } from "./Terminal.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
 
@@ -43,9 +43,12 @@ export type CommandTypeId = typeof CommandTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Command<A> extends Command.Variance<A>, Named, Pipeable {
-  get usage(): Usage
-  get subcommands(): HashMap<string, Command<unknown>>
+export interface Command<A> extends Command.Variance<A>, Pipeable {
+  help(): HelpDoc
+  usage(): Usage
+  names(): HashSet<string>
+  subcommands(): HashMap<string, Command<unknown>>
+  wizard(config: CliConfig): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
   parse(
     args: ReadonlyArray<string>,
     config: CliConfig

@@ -15,7 +15,7 @@ import * as Order from "effect/Order"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import { describe, expect, it } from "vitest"
 
-const MainLive = Layer.provideMerge(NodeContext.layer, Compgen.LiveCompgen)
+const MainLive = Layer.provideMerge(NodeContext.layer, Compgen.layer)
 
 const runEffect = <E, A>(
   self: Effect.Effect<Compgen.Compgen | NodeContext.NodeContext, E, A>
@@ -254,7 +254,7 @@ describe("Completion", () => {
                 "fooDir/"
               ]
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
 
@@ -284,7 +284,7 @@ describe("Completion", () => {
               )
               const expected = ["foo.txt ", "fooDir/"]
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
 
@@ -314,7 +314,7 @@ describe("Completion", () => {
               )
               const expected = ["foo.txt "]
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
 
@@ -344,7 +344,7 @@ describe("Completion", () => {
               )
               const expected = ReadonlyArray.empty()
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
 
@@ -374,7 +374,7 @@ describe("Completion", () => {
               )
               const expected = ReadonlyArray.make("barDir/", "bippyDir/", "fooDir/")
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
 
@@ -404,7 +404,7 @@ describe("Completion", () => {
               )
               const expected = ReadonlyArray.make("fooDir/")
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
 
@@ -434,7 +434,7 @@ describe("Completion", () => {
               )
               const expected = ReadonlyArray.make("fooDir/")
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
     })
@@ -842,7 +842,7 @@ describe("Completion", () => {
               )
               const expected = ReadonlyArray.make("foo.txt ", "fooDir/")
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
     })
@@ -888,7 +888,7 @@ describe("Completion", () => {
               )
               const expected = ReadonlyArray.make("foo.txt ", "fooDir/")
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
 
@@ -918,7 +918,7 @@ describe("Completion", () => {
               )
               const expected = ReadonlyArray.make("foo.txt ", "fooDir/")
               expect(result).toEqual(expected)
-            }).pipe(Effect.provide(Compgen.TestCompgen(tempDir)))
+            }).pipe(Effect.provide(Compgen.testLayer(tempDir)))
           )
         }).pipe(Effect.scoped, runEffect))
     })

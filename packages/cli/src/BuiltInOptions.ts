@@ -52,7 +52,7 @@ export interface ShowCompletions {
  */
 export interface ShowWizard {
   readonly _tag: "ShowWizard"
-  readonly commmand: Command<unknown>
+  readonly command: Command<unknown>
 }
 
 /**
@@ -120,5 +120,5 @@ export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOptions =
  * @since 1.0.0
  * @category constructors
  */
-export const showWizard: (commmand: Command<unknown>) => BuiltInOptions =
+export const showWizard: (command: Command<unknown>) => BuiltInOptions =
   InternalBuiltInOptions.showWizard

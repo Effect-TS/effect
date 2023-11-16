@@ -5,19 +5,19 @@ import * as Command from "@effect/cli/Command"
 import * as CommandDirective from "@effect/cli/CommandDirective"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Options from "@effect/cli/Options"
-import * as Terminal from "@effect/cli/Terminal"
 import * as Grep from "@effect/cli/test/utils/grep"
 import * as Tail from "@effect/cli/test/utils/tail"
 import * as WordCount from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as FileSystem from "@effect/platform-node/FileSystem"
+import * as Terminal from "@effect/platform-node/Terminal"
 import * as Doc from "@effect/printer/Doc"
 import * as Render from "@effect/printer/Render"
 import { Effect, Option, ReadonlyArray, String } from "effect"
 import * as Layer from "effect/Layer"
 import { describe, expect, it } from "vitest"
 
-const MainLive = Layer.merge(FileSystem.layer, Terminal.LiveTerminal)
+const MainLive = Layer.merge(FileSystem.layer, Terminal.layer)
 
 const runEffect = <E, A>(
   self: Effect.Effect<FileSystem.FileSystem | Terminal.Terminal, E, A>
@@ -269,7 +269,7 @@ describe("Command", () => {
           HelpDoc.p("this is some help")
         )
         expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expectedValue))
-        expect(cmd.help).toEqual(expectedDoc)
+        expect(cmd.help()).toEqual(expectedDoc)
       }).pipe(runEffect))
 
     it("should allow adding help documentation to subcommands", () => {
@@ -277,7 +277,7 @@ describe("Command", () => {
         Command.standard("sub").pipe(Command.withHelp("this is some help"))
       ]))
       const expected = HelpDoc.sequence(HelpDoc.h1("DESCRIPTION"), HelpDoc.p("this is some help"))
-      expect(cmd.help).not.toEqual(expected)
+      expect(cmd.help()).not.toEqual(expected)
     })
 
     it("should correctly display help documentation for a command", () => {
@@ -291,7 +291,7 @@ describe("Command", () => {
         Command.withHelp("help 1")
       )
       const parent = Command.standard("parent").pipe(Command.subcommands([child1]))
-      const result = Render.prettyDefault(Doc.unAnnotate(HelpDoc.toAnsiDoc(parent.help)))
+      const result = Render.prettyDefault(Doc.unAnnotate(HelpDoc.toAnsiDoc(parent.help())))
       expect(result).toBe(String.stripMargin(
         `|COMMANDS
          |

@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { Option } from "effect/Option"
@@ -10,7 +11,6 @@ import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalArgs from "./internal/args.js"
-import type { Parameter } from "./Parameter.js"
 import type { Primitive } from "./Primitive.js"
 import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Usage } from "./Usage.js"
@@ -34,11 +34,13 @@ export type ArgsTypeId = typeof ArgsTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Args<A> extends Args.Variance<A>, Parameter, Pipeable {
-  get maxSize(): number
-  get minSize(): number
-  get identifier(): Option<string>
-  get usage(): Usage
+export interface Args<A> extends Args.Variance<A>, Pipeable {
+  help(): HelpDoc
+  usage(): Usage
+  maxSize(): number
+  minSize(): number
+  identifier(): Option<string>
+  wizard(config: CliConfig): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
   validate(
     args: ReadonlyArray<string>,
     config: CliConfig

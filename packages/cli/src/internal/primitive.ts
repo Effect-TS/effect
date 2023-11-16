@@ -1,4 +1,8 @@
 import * as FileSystem from "@effect/platform/FileSystem"
+// import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
+// import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
+// import * as Color from "@effect/printer-ansi/Color"
+// import * as Doc from "@effect/printer/Doc"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
@@ -6,10 +10,19 @@ import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as CliConfig from "../CliConfig.js"
+import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
 import type * as Primitive from "../Primitive.js"
+import type * as Prompt from "../Prompt.js"
 import * as InternalCliConfig from "./cliConfig.js"
+import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
+import * as InternalPrompt from "./prompt.js"
+import * as InternalDatePrompt from "./prompt/date.js"
+import * as InternalNumberPrompt from "./prompt/number.js"
+import * as InternalSelectPrompt from "./prompt/select.js"
+import * as InternalTextPrompt from "./prompt/text.js"
+import * as InternalTogglePrompt from "./prompt/toggle.js"
 
 const PrimitiveSymbolKey = "@effect/cli/Primitive"
 
@@ -42,16 +55,27 @@ export class Bool implements Primitive.Primitive<boolean> {
 
   constructor(readonly defaultValue: Option.Option<boolean>) {}
 
-  get typeName(): string {
+  typeName(): string {
     return "boolean"
   }
 
-  get help(): Span.Span {
+  help(): Span.Span {
     return InternalSpan.text("A true or false value.")
   }
 
-  get choices(): Option.Option<string> {
+  choices(): Option.Option<string> {
     return Option.some("true | false")
+  }
+
+  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
+    const primitiveHelp = InternalHelpDoc.p("Select true or false")
+    const message = InternalHelpDoc.sequence(help, primitiveHelp)
+    return InternalTogglePrompt.toggle({
+      message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+      initial: Option.getOrElse(this.defaultValue, () => false),
+      active: "true",
+      inactive: "false"
+    }).pipe(InternalPrompt.map((bool) => `${bool}`))
   }
 
   validate(
@@ -81,15 +105,13 @@ export class Choice<A> implements Primitive.Primitive<A> {
   readonly [PrimitiveTypeId] = proto
   readonly _tag = "Choice"
 
-  constructor(
-    readonly alternatives: ReadonlyArray.NonEmptyReadonlyArray<readonly [string, A]>
-  ) {}
+  constructor(readonly alternatives: ReadonlyArray.NonEmptyReadonlyArray<readonly [string, A]>) {}
 
-  get typeName(): string {
+  typeName(): string {
     return "choice"
   }
 
-  get help(): Span.Span {
+  help(): Span.Span {
     const choices = pipe(
       ReadonlyArray.map(this.alternatives, ([choice]) => choice),
       ReadonlyArray.join(", ")
@@ -97,12 +119,21 @@ export class Choice<A> implements Primitive.Primitive<A> {
     return InternalSpan.text(`One of the following: ${choices}`)
   }
 
-  get choices(): Option.Option<string> {
+  choices(): Option.Option<string> {
     const choices = pipe(
       ReadonlyArray.map(this.alternatives, ([choice]) => choice),
       ReadonlyArray.join(" | ")
     )
     return Option.some(choices)
+  }
+
+  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
+    const primitiveHelp = InternalHelpDoc.p("Select one of the following choices")
+    const message = InternalHelpDoc.sequence(help, primitiveHelp)
+    return InternalSelectPrompt.select({
+      message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+      choices: this.alternatives.map(([title]) => ({ title, value: title }))
+    })
   }
 
   validate(
@@ -114,10 +145,7 @@ export class Choice<A> implements Primitive.Primitive<A> {
       () => `Choice options to not have a default value`
     ).pipe(
       Effect.flatMap((value) =>
-        ReadonlyArray.findFirst(
-          this.alternatives,
-          ([choice]) => choice === value
-        )
+        ReadonlyArray.findFirst(this.alternatives, ([choice]) => choice === value)
       ),
       Effect.mapBoth({
         onFailure: () => {
@@ -146,18 +174,26 @@ export class Date implements Primitive.Primitive<globalThis.Date> {
   readonly [PrimitiveTypeId] = proto
   readonly _tag = "Date"
 
-  get typeName(): string {
+  typeName(): string {
     return "date"
   }
 
-  get help(): Span.Span {
+  help(): Span.Span {
     return InternalSpan.text(
       "A date without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30."
     )
   }
 
-  get choices(): Option.Option<string> {
+  choices(): Option.Option<string> {
     return Option.some("date")
+  }
+
+  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
+    const primitiveHelp = InternalHelpDoc.p("Enter a date")
+    const message = InternalHelpDoc.sequence(help, primitiveHelp)
+    return InternalDatePrompt.date({
+      message: InternalHelpDoc.toAnsiText(message).trimEnd()
+    }).pipe(InternalPrompt.map((date) => date.toISOString()))
   }
 
   validate(
@@ -166,7 +202,7 @@ export class Date implements Primitive.Primitive<globalThis.Date> {
   ): Effect.Effect<FileSystem.FileSystem, string, globalThis.Date> {
     return attempt(
       value,
-      this.typeName,
+      this.typeName(),
       Schema.parse(Schema.dateFromString(Schema.string))
     )
   }
@@ -185,16 +221,24 @@ export class Float implements Primitive.Primitive<number> {
   readonly [PrimitiveTypeId] = proto
   readonly _tag = "Float"
 
-  get typeName(): string {
+  typeName(): string {
     return "float"
   }
 
-  get help(): Span.Span {
+  help(): Span.Span {
     return InternalSpan.text("A floating point number.")
   }
 
-  get choices(): Option.Option<string> {
+  choices(): Option.Option<string> {
     return Option.none()
+  }
+
+  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
+    const primitiveHelp = InternalHelpDoc.p("Enter a floating point value")
+    const message = InternalHelpDoc.sequence(help, primitiveHelp)
+    return InternalNumberPrompt.float({
+      message: InternalHelpDoc.toAnsiText(message).trimEnd()
+    }).pipe(InternalPrompt.map((value) => `${value}`))
   }
 
   validate(
@@ -202,7 +246,7 @@ export class Float implements Primitive.Primitive<number> {
     _config: CliConfig.CliConfig
   ): Effect.Effect<FileSystem.FileSystem, string, number> {
     const numberFromString = Schema.string.pipe(Schema.numberFromString)
-    return attempt(value, this.typeName, Schema.parse(numberFromString))
+    return attempt(value, this.typeName(), Schema.parse(numberFromString))
   }
 
   pipe() {
@@ -219,16 +263,24 @@ export class Integer implements Primitive.Primitive<number> {
   readonly [PrimitiveTypeId] = proto
   readonly _tag = "Integer"
 
-  get typeName(): string {
+  typeName(): string {
     return "integer"
   }
 
-  get help(): Span.Span {
+  help(): Span.Span {
     return InternalSpan.text("An integer.")
   }
 
-  get choices(): Option.Option<string> {
+  choices(): Option.Option<string> {
     return Option.none()
+  }
+
+  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
+    const primitiveHelp = InternalHelpDoc.p("Enter an integer")
+    const message = InternalHelpDoc.sequence(help, primitiveHelp)
+    return InternalNumberPrompt.float({
+      message: InternalHelpDoc.toAnsiText(message).trimEnd()
+    }).pipe(InternalPrompt.map((value) => `${value}`))
   }
 
   validate(
@@ -236,7 +288,7 @@ export class Integer implements Primitive.Primitive<number> {
     _config: CliConfig.CliConfig
   ): Effect.Effect<FileSystem.FileSystem, string, number> {
     const intFromString = Schema.string.pipe(Schema.numberFromString, Schema.int())
-    return attempt(value, this.typeName, Schema.parse(intFromString))
+    return attempt(value, this.typeName(), Schema.parse(intFromString))
   }
 
   pipe() {
@@ -254,14 +306,14 @@ export class Path implements Primitive.Primitive<string> {
     readonly pathExists: Primitive.Primitive.PathExists
   ) {}
 
-  get typeName(): string {
+  typeName(): string {
     if (this.pathType === "either") {
       return "path"
     }
     return this.pathType
   }
 
-  get help(): Span.Span {
+  help(): Span.Span {
     if (this.pathType === "either" && this.pathExists === "yes") {
       return InternalSpan.text("An existing file or directory.")
     }
@@ -295,8 +347,16 @@ export class Path implements Primitive.Primitive<string> {
     )
   }
 
-  get choices(): Option.Option<string> {
+  choices(): Option.Option<string> {
     return Option.none()
+  }
+
+  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
+    const primitiveHelp = InternalHelpDoc.p("Enter a file system path")
+    const message = InternalHelpDoc.sequence(help, primitiveHelp)
+    return InternalTextPrompt.text({
+      message: InternalHelpDoc.toAnsiText(message).trimEnd()
+    })
   }
 
   validate(
@@ -337,23 +397,29 @@ export class Text implements Primitive.Primitive<string> {
   readonly [PrimitiveTypeId] = proto
   readonly _tag = "Text"
 
-  get typeName(): string {
+  typeName(): string {
     return "text"
   }
 
-  get help(): Span.Span {
+  help(): Span.Span {
     return InternalSpan.text("A user-defined piece of text.")
   }
 
-  get choices(): Option.Option<string> {
+  choices(): Option.Option<string> {
     return Option.none()
+  }
+
+  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
+    const primitiveHelp = InternalHelpDoc.p("Enter some text")
+    const message = InternalHelpDoc.sequence(help, primitiveHelp)
+    return InternalTextPrompt.text({ message: InternalHelpDoc.toAnsiText(message).trimEnd() })
   }
 
   validate(
     value: Option.Option<string>,
     _config: CliConfig.CliConfig
   ): Effect.Effect<FileSystem.FileSystem, string, string> {
-    return attempt(value, this.typeName, Schema.parse(Schema.string))
+    return attempt(value, this.typeName(), Schema.parse(Schema.string))
   }
 
   pipe() {

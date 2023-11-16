@@ -1,6 +1,8 @@
 import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
 import * as Doc from "@effect/printer/Doc"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
 const defaultFigures = {
   arrowUp: Doc.text("↑"),
@@ -50,116 +52,144 @@ const CSI = `${ESC}[`
 export const beep: AnsiDoc.AnsiDoc = Doc.char(BEEP)
 
 /**
- * Clear from cursor to beginning of the screen.
+ * Moves the cursor to the specified `row` and `column`.
+ *
+ * Though the ANSI Control Sequence for Cursor Position is `1`-based, this
+ * method takes row and column values starting from `0` and adjusts them to `1`-
+ * based values.
  *
  * @internal
  */
-export const clearUp: AnsiDoc.AnsiDoc = Doc.text(`${CSI}1J`)
-
-/**
- * Clear from cursor to end of screen.
- *
- * @internal
- */
-export const clearDown: AnsiDoc.AnsiDoc = Doc.text(`${CSI}J`)
-
-/**
- * Clear from cursor to the start of the line. Cursor position does not change.
- *
- * @internal
- */
-export const clearLeft: AnsiDoc.AnsiDoc = Doc.text(`${CSI}$1K`)
-
-/**
- * Clear from cursor to the end of the line. Cursor position does not change.
- *
- * @internal
- */
-export const clearRight: AnsiDoc.AnsiDoc = Doc.text(`${CSI}K`)
-
-/**
- * Clear entire screen. And moves cursor to upper left on DOS.
- *
- * @internal
- */
-export const clearScreen: AnsiDoc.AnsiDoc = Doc.text(`${CSI}2J`)
-
-/**
- * Clear the current line. Cursor position does not change.
- *
- * @internal
- */
-export const clearLine: AnsiDoc.AnsiDoc = Doc.text(`${CSI}2K`)
-
-/**
- * Sets the cursor position to the absolute coordinates `x` and `y`.
- *
- * @internal
- */
-export const setCursorPosition = (x: number, y?: number): AnsiDoc.AnsiDoc => {
-  if (y === undefined) {
-    return Doc.text(`${CSI}${x + 1}G`)
+export const cursorTo = (row: number, column: number = 0): AnsiDoc.AnsiDoc => {
+  if (column === 0) {
+    return Doc.text(`${CSI}${row + 1}G`)
   }
-  return Doc.text(`${CSI}${y + 1};${x + 1}H`)
+  return Doc.text(`${CSI}${column + 1};${row + 1}H`)
 }
 
 /**
- * Clears the current line and resets the cursor position to the beginning of
- * the line.
+ * Move the cursor position the specified number of `rows` and `columns`
+ * relative to the current cursor position.
+ *
+ * If the cursor is already at the edge of the screen in either direction, then
+ * additional movement will have no effect.
  *
  * @internal
  */
-export const resetLine: AnsiDoc.AnsiDoc = Doc.cat(clearLine, setCursorPosition(0))
-
-const strip = (str: string) => {
-  const pattern = [
-    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
-    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
-  ].join("|")
-  const regex = new RegExp(pattern, "g")
-  return str.replace(regex, "")
-}
-
-const width = (str: string) => [...strip(str)].length
-
-/**
- * @internal
- */
-export const resetLines = (prompt: string, perLine?: number) => {
-  if (!perLine) {
-    return resetLine
+export const cursorMove = (rows: number, columns: number = 0): AnsiDoc.AnsiDoc => {
+  let move: AnsiDoc.AnsiDoc = Doc.empty
+  if (rows > 0) {
+    move = Doc.cat(move, cursorForward(rows))
+  } else if (rows < 0) {
+    move = Doc.cat(move, cursorBackward(-rows))
   }
-  let rows = 0
-  const lines = prompt.split(/\r?\n/)
-  for (const line of lines) {
-    rows += 1 + Math.floor(Math.max(width(line) - 1, 0) / perLine)
+  if (columns > 0) {
+    move = Doc.cat(move, cursorDown(columns))
+  } else if (columns < 0) {
+    move = Doc.cat(move, cursorUp(-columns))
   }
-  return clearLines(rows)
+  return move
 }
 
 /**
- * Clears from the cursor to the end of the screen and resets the cursor
- * position to the beginning of the line.
+ * Moves the cursor up by the specified number of `rows` (default `1`) relative
+ * to the current cursor position.
+ *
+ * If the cursor is already at the edge of the screen, this has no effect.
  *
  * @internal
  */
-export const resetDown: AnsiDoc.AnsiDoc = Doc.cat(clearDown, setCursorPosition(0))
+export const cursorUp = (rows: number = 1): AnsiDoc.AnsiDoc => Doc.text(`${CSI}${rows}A`)
 
 /**
- * Clear the specified number of lines.
+ * Moves the cursor down by the specified number of `rows` (default `1`)
+ * relative to the current cursor position.
+ *
+ * If the cursor is already at the edge of the screen, this has no effect.
  *
  * @internal
  */
-export const clearLines = (lines: number): AnsiDoc.AnsiDoc => {
-  let clear: AnsiDoc.AnsiDoc = Doc.empty
-  for (let i = 0; i < lines; i++) {
-    clear = Doc.cat(clear, Doc.cat(clearLine, i < lines - 1 ? moveCursorUp(1) : Doc.empty))
-  }
-  if (lines > 0) {
-    clear = Doc.cat(clear, moveCursorLeft(1))
-  }
-  return clear
-}
+export const cursorDown = (rows: number = 1): AnsiDoc.AnsiDoc => Doc.text(`${CSI}${rows}B`)
+
+/**
+ * Moves the cursor backward by the specified number of `columns` (default `1`)
+ * relative to the current cursor position.
+ *
+ * If the cursor is already at the edge of the screen, this has no effect.
+ *
+ * @internal
+ */
+export const cursorBackward = (columns: number = 1): AnsiDoc.AnsiDoc =>
+  Doc.text(`${CSI}${columns}D`)
+
+/**
+ * Moves the cursor forward by the specified number of `columns` (default `1`)
+ * relative to the current cursor position.
+ *
+ * If the cursor is already at the edge of the screen, this has no effect.
+ *
+ * @internal
+ */
+export const cursorForward = (columns: number = 1): AnsiDoc.AnsiDoc => Doc.text(`${CSI}${columns}C`)
+
+/**
+ * Moves the cursor to the first column.
+ *
+ * @internal
+ */
+export const cursorLeft: AnsiDoc.AnsiDoc = Doc.text(`${CSI}G`)
+
+/**
+ * Saves the cursor position, encoding shift state and formatting attributes.
+ *
+ * @internal
+ */
+export const cursorSave: AnsiDoc.AnsiDoc = Doc.text(`${ESC}7`)
+
+/**
+ * Restores the cursor position, encoding shift state and formatting attributes
+ * from the previous save, if any, otherwise resets these all to their defaults.
+ *
+ * @internal
+ */
+export const cursorRestore: AnsiDoc.AnsiDoc = Doc.text(`${ESC}8`)
+
+/**
+ * Saves the current cursor position.
+ *
+ * @internal
+ */
+export const cursorSavePosition: AnsiDoc.AnsiDoc = Doc.text(`${ESC}s`)
+
+/**
+ * Restores the cursor position from the previous save.
+ *
+ * @internal
+ */
+export const cursorRestorePosition: AnsiDoc.AnsiDoc = Doc.text(`${ESC}u`)
+
+/**
+ * Reports the cursor position (CPR) by transmitting `ESC[n;mR`, where `n` is
+ * the row and `m` is the column.
+ *
+ * @internal
+ */
+export const cursorGetPosition: AnsiDoc.AnsiDoc = Doc.text(`${ESC}6n`)
+
+/**
+ * Moves cursor to beginning of the line the specified number of rows down
+ * (default `1`).
+ *
+ * @internal
+ */
+export const cursorNextLine = (rows: number = 1): AnsiDoc.AnsiDoc => Doc.text(`${ESC}${rows}E`)
+
+/**
+ * Moves cursor to beginning of the line the specified number of rows up
+ * (default `1`).
+ * @internal
+ */
+export const cursorPreviousLine = (rows: number = 1): AnsiDoc.AnsiDoc => Doc.text(`${ESC}${rows}F`)
 
 /**
  * Hides the cursor.
@@ -176,62 +206,65 @@ export const cursorHide: AnsiDoc.AnsiDoc = Doc.text(`${CSI}?25l`)
 export const cursorShow: AnsiDoc.AnsiDoc = Doc.text(`${CSI}?25h`)
 
 /**
- * Saves the position of the cursor.
+ * Erases the entire current line. The cursor position does not change.
  *
  * @internal
  */
-export const cursorSave: AnsiDoc.AnsiDoc = Doc.text(`${ESC}7`)
+export const eraseLine: AnsiDoc.AnsiDoc = Doc.text(`${CSI}2K`)
 
 /**
- * Saves the position of the cursor.
+ * Erase from the current cursor position up the specified amount of rows.
  *
  * @internal
  */
-export const cursorRestore: AnsiDoc.AnsiDoc = Doc.text(`${ESC}8`)
-
-/**
- * Move the cursor up by the specified number of `lines`.
- *
- * @internal
- */
-export const moveCursorUp = (lines: number): AnsiDoc.AnsiDoc => Doc.text(`${CSI}${lines}A`)
-
-/**
- * Move the cursor down by the specified number of `lines`.
- *
- * @internal
- */
-export const moveCursorDown = (lines: number): AnsiDoc.AnsiDoc => Doc.text(`${CSI}${lines}B`)
-
-/**
- * Move the cursor left by the specified number of `columns`.
- *
- * @internal
- */
-export const moveCursorLeft = (columns: number): AnsiDoc.AnsiDoc => Doc.text(`${CSI}${columns}D`)
-/**
- * Move the cursor right by the specified number of `columns`.
- *
- * @internal
- */
-export const moveCursorRight = (columns: number): AnsiDoc.AnsiDoc => Doc.text(`${CSI}${columns}C`)
-
-/**
- * Move the cursor position by the relative coordinates `x` and `y`.
- *
- * @internal
- */
-export const moveCursor = (x: number, y = 0): AnsiDoc.AnsiDoc => {
-  let move: AnsiDoc.AnsiDoc = Doc.empty
-  if (x > 0) {
-    move = Doc.cat(move, moveCursorRight(x))
-  } else if (x < 0) {
-    move = Doc.cat(move, moveCursorLeft(-x))
+export const eraseLines = (rows: number): AnsiDoc.AnsiDoc => {
+  let clear: AnsiDoc.AnsiDoc = Doc.empty
+  for (let i = 0; i < rows; i++) {
+    clear = Doc.cat(clear, Doc.cat(eraseLine, i < rows - 1 ? cursorUp(1) : Doc.empty))
   }
-  if (y > 0) {
-    move = Doc.cat(move, moveCursorDown(y))
-  } else if (y < 0) {
-    move = Doc.cat(move, moveCursorUp(-y))
+  if (rows > 0) {
+    clear = Doc.cat(clear, cursorLeft)
   }
-  return move
+  return clear
+}
+
+/**
+ * Clears all lines taken up by the specified `text`.
+ *
+ * @internal
+ */
+export const eraseText = (text: string, columns: number): AnsiDoc.AnsiDoc => {
+  if (columns === 0) {
+    return Doc.cat(eraseLine, cursorTo(0))
+  }
+  let rows = 0
+  const lines = text.split(/\r?\n/)
+  for (const line of lines) {
+    rows += 1 + Math.floor(Math.max(width(line) - 1, 0) / columns)
+  }
+  return eraseLines(rows)
+}
+
+/** @internal */
+export const strip = (str: string) => {
+  const pattern = [
+    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
+    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
+  ].join("|")
+  const regex = new RegExp(pattern, "g")
+  return str.replace(regex, "")
+}
+
+/** @internal */
+export const width = (str: string) => [...strip(str)].length
+
+/** @internal */
+export const lines = (prompt: string, columns: number): number => {
+  const lines = strip(prompt).split(/\r?\n/)
+  return columns === 0
+    ? lines.length
+    : pipe(
+      ReadonlyArray.map(lines, (line) => Math.ceil(line.length / columns)),
+      ReadonlyArray.reduce(0, (left, right) => left + right)
+    )
 }

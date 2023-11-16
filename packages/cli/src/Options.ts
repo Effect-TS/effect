@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
 import type { Either } from "effect/Either"
 import type { HashMap } from "effect/HashMap"
@@ -11,7 +12,6 @@ import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalOptions from "./internal/options.js"
-import type { Input, Parameter } from "./Parameter.js"
 import type { Primitive } from "./Primitive.js"
 import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Usage } from "./Usage.js"
@@ -33,16 +33,17 @@ export type OptionsTypeId = typeof OptionsTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Options<A> extends Options.Variance<A>, Parameter, Pipeable {
-  get identifier(): Option<string>
-  get usage(): Usage
-  get flattened(): ReadonlyArray<Input>
+export interface Options<A> extends Options.Variance<A>, Pipeable {
+  help(): HelpDoc
+  usage(): Usage
+  identifier(): Option<string>
+  flattened(): ReadonlyArray<Options.ParseableOptions<unknown>>
+  wizard(config: CliConfig): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  modifySingle(f: <_>(single: InternalOptions.Single<_>) => InternalOptions.Single<_>): Options<A>
   validate(
     args: HashMap<string, ReadonlyArray<string>>,
     config: CliConfig
   ): Effect<FileSystem, ValidationError, A>
-  /** @internal */
-  modifySingle(f: <_>(single: InternalOptions.Single<_>) => InternalOptions.Single<_>): Options<A>
 }
 
 /**
@@ -57,6 +58,17 @@ export declare namespace Options {
     readonly [OptionsTypeId]: {
       _A: (_: never) => A
     }
+  }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface ParseableOptions<A> extends Options<A> {
+    parse(
+      args: ReadonlyArray<string>,
+      config: CliConfig
+    ): Effect<never, ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]>
   }
 
   /**

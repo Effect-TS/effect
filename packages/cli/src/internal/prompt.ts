@@ -1,9 +1,14 @@
+import * as Terminal from "@effect/platform/Terminal"
 import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
-import { Effect, Effectable, Function, pipe, Pipeable, Ref } from "effect"
+import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
+import { dual } from "effect/Function"
+import * as Option from "effect/Option"
+import * as Pipeable from "effect/Pipeable"
+import * as Ref from "effect/Ref"
 import type * as Prompt from "../Prompt.js"
-import type * as Terminal from "../Terminal.js"
-import * as ansiUtils from "./prompt/ansi-utils.js"
-import * as terminal from "./terminal.js"
+import type * as PromptAction from "../Prompt/Action.js"
+import * as InternalAnsiUtils from "./prompt/ansi-utils.js"
 
 /** @internal */
 const PromptSymbolKey = "@effect/cli/Prompt"
@@ -40,11 +45,12 @@ export interface Loop extends
   Op<"Loop", {
     readonly initialState: unknown
     readonly render: (
-      state: unknown,
+      prevState: Option.Option<unknown>,
+      nextState: unknown,
       action: Prompt.Prompt.Action<unknown, unknown>
     ) => Effect.Effect<never, never, string>
     readonly process: (
-      input: Terminal.Terminal.UserInput,
+      input: Terminal.UserInput,
       state: unknown
     ) => Effect.Effect<never, never, Prompt.Prompt.Action<unknown, unknown>>
   }>
@@ -106,11 +112,12 @@ export const all: <
 export const custom = <State, Output>(
   initialState: State,
   render: (
-    state: State,
+    prevState: Option.Option<State>,
+    nextState: State,
     action: Prompt.Prompt.Action<State, Output>
   ) => Effect.Effect<Terminal.Terminal, never, string>,
   process: (
-    input: Terminal.Terminal.UserInput,
+    input: Terminal.UserInput,
     state: State
   ) => Effect.Effect<Terminal.Terminal, never, Prompt.Prompt.Action<State, Output>>
 ): Prompt.Prompt<Output> => {
@@ -123,7 +130,7 @@ export const custom = <State, Output>(
 }
 
 /** @internal */
-export const map = Function.dual<
+export const map = dual<
   <Output, Output2>(
     f: (output: Output) => Output2
   ) => (
@@ -136,7 +143,7 @@ export const map = Function.dual<
 >(2, (self, f) => flatMap(self, (a) => succeed(f(a))))
 
 /** @internal */
-export const flatMap = Function.dual<
+export const flatMap = dual<
   <Output, Output2>(
     f: (output: Output) => Prompt.Prompt<Output2>
   ) => (
@@ -158,44 +165,53 @@ export const flatMap = Function.dual<
 export const run = <Output>(
   self: Prompt.Prompt<Output>
 ): Effect.Effect<Terminal.Terminal, never, Output> =>
-  Effect.flatMap(terminal.Tag, (terminal) => {
+  Effect.flatMap(Terminal.Terminal, (terminal) => {
     const op = self as Primitive
     switch (op._tag) {
       case "Loop": {
-        return pipe(
-          Ref.make(op.initialState),
-          Effect.flatMap((ref) => {
+        return Effect.all([
+          Ref.make(Option.none<unknown>()),
+          Ref.make(op.initialState)
+        ]).pipe(
+          Effect.flatMap(([prevStateRef, nextStateRef]) => {
             const loop = (
-              action: Exclude<Prompt.Prompt.Action<unknown, unknown>, { _tag: "Submit" }>
+              action: Exclude<PromptAction.PromptAction<unknown, unknown>, { _tag: "Submit" }>
             ): Effect.Effect<never, never, any> =>
-              Effect.flatMap(Ref.get(ref), (state) =>
-                pipe(
-                  op.render(state, action),
-                  Effect.flatMap(terminal.display),
-                  Effect.zipRight(terminal.getUserInput),
-                  Effect.flatMap((input) => op.process(input, state)),
-                  Effect.flatMap((action) => {
-                    switch (action._tag) {
-                      case "NextFrame": {
-                        return Effect.zipRight(Ref.set(ref, action.state), loop(action))
+              Effect.all([Ref.get(prevStateRef), Ref.get(nextStateRef)]).pipe(
+                Effect.flatMap(([prevState, nextState]) =>
+                  op.render(prevState, nextState, action).pipe(
+                    Effect.flatMap((msg) => Effect.orDie(terminal.display(msg))),
+                    Effect.zipRight(terminal.readInput),
+                    Effect.catchTag("QuitException", (e) => Effect.die(e)),
+                    Effect.flatMap((input) => op.process(input, nextState)),
+                    Effect.flatMap((action) => {
+                      switch (action._tag) {
+                        case "Beep": {
+                          return loop(action)
+                        }
+                        case "NextFrame": {
+                          return Ref.set(prevStateRef, Option.some(nextState)).pipe(
+                            Effect.zipRight(Ref.set(nextStateRef, action.state)),
+                            Effect.zipRight(loop(action))
+                          )
+                        }
+                        case "Submit": {
+                          return op.render(prevState, nextState, action).pipe(
+                            Effect.flatMap((msg) => Effect.orDie(terminal.display(msg))),
+                            Effect.zipRight(Effect.succeed(action.value))
+                          )
+                        }
                       }
-                      case "Submit": {
-                        return pipe(
-                          op.render(state, action),
-                          Effect.flatMap(terminal.display),
-                          Effect.zipRight(Effect.succeed(action.value))
-                        )
-                      }
-                      default: {
-                        return loop(action)
-                      }
-                    }
-                  })
-                ))
+                    })
+                  )
+                )
+              )
             return loop({ _tag: "NextFrame", state: op.initialState })
           }),
           // Always make sure to restore the display of the cursor
-          Effect.ensuring(terminal.display(AnsiRender.prettyDefault(ansiUtils.cursorShow)))
+          Effect.ensuring(Effect.orDie(
+            terminal.display(AnsiRender.prettyDefault(InternalAnsiUtils.cursorShow))
+          ))
         )
       }
       case "OnSuccess": {

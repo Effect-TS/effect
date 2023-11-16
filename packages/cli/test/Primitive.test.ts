@@ -118,7 +118,7 @@ const simplePrimitiveTestSuite = <A>(
         const result = yield* _(
           Effect.flip(primitive.validate(Option.some("bad"), CliConfig.defaultConfig))
         )
-        expect(result).toBe(`'bad' is not a ${primitive.typeName}`)
+        expect(result).toBe(`'bad' is not a ${primitive.typeName()}`)
       }).pipe(runEffect))
   })
 }

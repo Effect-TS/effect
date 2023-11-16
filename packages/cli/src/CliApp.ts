@@ -4,6 +4,7 @@
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import type { FileSystem } from "@effect/platform/FileSystem"
 import type { Path } from "@effect/platform/Path"
+import type { Terminal } from "@effect/platform/Terminal"
 import type { Effect } from "effect/Effect"
 import type { Command } from "./Command.js"
 import type { HelpDoc } from "./HelpDoc.js"
@@ -33,7 +34,7 @@ export declare namespace CliApp {
    * @since 1.0.0
    * @category models
    */
-  export type Environment = CommandExecutor | FileSystem | Path
+  export type Environment = CommandExecutor | FileSystem | Path | Terminal
 }
 
 /**
