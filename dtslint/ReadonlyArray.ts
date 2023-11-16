@@ -413,3 +413,19 @@ ReadonlyArray.span(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType [init: number[], rest: string[]]
 pipe(numbersOrStrings, ReadonlyArray.span(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// dropWhile
+// -------------------------------------------------------------------------------------
+
+// $ExpectType number[]
+ReadonlyArray.dropWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType number[]
+pipe(numbers, ReadonlyArray.dropWhile(predicateNumbersOrStrings))
+
+// $ExpectType (string | number)[]
+ReadonlyArray.dropWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType (string | number)[]
+pipe(numbersOrStrings, ReadonlyArray.dropWhile(Predicate.isNumber))

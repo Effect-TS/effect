@@ -487,32 +487,35 @@ export const dropUntil = dual<
 /* @internal */
 export const dropWhile = dual<
   <R, E, A>(
-    f: (a: A, i: number) => Effect.Effect<R, E, boolean>
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
   ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
   <R, E, A>(
     elements: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<R, E, boolean>
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
   ) => Effect.Effect<R, E, Array<A>>
->(2, <R, E, A>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
-  core.suspend(() => {
-    const iterator = elements[Symbol.iterator]()
-    const builder: Array<A> = []
-    let next
-    let dropping: Effect.Effect<R, E, boolean> = core.succeed(true)
-    let i = 0
-    while ((next = iterator.next()) && !next.done) {
-      const a = next.value
-      const index = i++
-      dropping = core.flatMap(dropping, (d) =>
-        core.map(d ? f(a, index) : core.succeed(false), (b) => {
-          if (!b) {
-            builder.push(a)
-          }
-          return b
-        }))
-    }
-    return core.map(dropping, () => builder)
-  }))
+>(
+  2,
+  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
+    core.suspend(() => {
+      const iterator = elements[Symbol.iterator]()
+      const builder: Array<A> = []
+      let next
+      let dropping: Effect.Effect<R, E, boolean> = core.succeed(true)
+      let i = 0
+      while ((next = iterator.next()) && !next.done) {
+        const a = next.value
+        const index = i++
+        dropping = core.flatMap(dropping, (d) =>
+          core.map(d ? predicate(a, index) : core.succeed(false), (b) => {
+            if (!b) {
+              builder.push(a)
+            }
+            return b
+          }))
+      }
+      return core.map(dropping, () => builder)
+    })
+)
 
 /* @internal */
 export const contextWith = <R, A>(f: (context: Context.Context<R>) => A): Effect.Effect<R, never, A> =>

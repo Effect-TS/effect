@@ -247,3 +247,19 @@ Chunk.findLast(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Option<number>
 pipe(numbersOrStrings, Chunk.findLast(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// dropWhile
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Chunk<number>
+Chunk.dropWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Chunk<number>
+pipe(numbers, Chunk.dropWhile(predicateNumbersOrStrings))
+
+// $ExpectType Chunk<string | number>
+Chunk.dropWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Chunk<string | number>
+pipe(numbersOrStrings, Chunk.dropWhile(Predicate.isNumber))

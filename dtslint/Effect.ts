@@ -530,3 +530,16 @@ Effect.loop(0 as null | number, {
   ) => Effect.succeed(n * 2),
   discard: true
 })
+
+// -------------------------------------------------------------------------------------
+// dropWhile
+// -------------------------------------------------------------------------------------
+
+declare const numbersArray: Array<number>
+declare const predicateNumbersOrStringsEffect: (input: number | string) => Effect.Effect<never, never, boolean>
+
+// $ExpectType Effect<never, never, number[]>
+Effect.dropWhile(numbersArray, predicateNumbersOrStringsEffect)
+
+// $ExpectType Effect<never, never, number[]>
+pipe(numbersArray, Effect.dropWhile(predicateNumbersOrStringsEffect))

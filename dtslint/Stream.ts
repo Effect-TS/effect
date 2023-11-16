@@ -131,3 +131,19 @@ Stream.takeWhile(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Stream<never, never, number>
 pipe(numbersOrStrings, Stream.takeWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// dropWhile
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Stream<never, never, number>
+Stream.dropWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Stream<never, never, number>
+pipe(numbers, Stream.dropWhile(predicateNumbersOrStrings))
+
+// $ExpectType Stream<never, never, string | number>
+Stream.dropWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Stream<never, never, string | number>
+pipe(numbersOrStrings, Stream.dropWhile(Predicate.isNumber))

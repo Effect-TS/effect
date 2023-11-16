@@ -648,14 +648,11 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Array<B>
   <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Array<B>
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Array<B>
-  <B extends A, A>(self: Iterable<B>, predicate: Predicate<A>): Array<B>
+  <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A>
 } = dual(
   2,
-  <B extends A, A>(self: Iterable<B>, predicate: Predicate<A>): Array<B> =>
-    fromIterable(self).slice(spanIndex(self, predicate))
+  <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A> => fromIterable(self).slice(spanIndex(self, predicate))
 )
 
 /**

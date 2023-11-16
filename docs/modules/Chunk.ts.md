@@ -1239,8 +1239,8 @@ Drops all elements so long as the predicate returns true.
 
 ```ts
 export declare const dropWhile: {
-  <A>(f: Predicate<A>): (self: Chunk<A>) => Chunk<A>
-  <A>(self: Chunk<A>, f: Predicate<A>): Chunk<A>
+  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Chunk<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 }
 ```
 

@@ -533,13 +533,13 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <A>(f: Predicate<A>): (self: Chunk<A>) => Chunk<A>
-  <A>(self: Chunk<A>, f: Predicate<A>): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, f: Predicate<A>): Chunk<A> => {
+  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Chunk<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
+} = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => {
   const arr = toReadonlyArray(self)
   const len = arr.length
   let i = 0
-  while (i < len && f(arr[i]!)) {
+  while (i < len && predicate(arr[i]!)) {
     i++
   }
   return drop(self, i)
