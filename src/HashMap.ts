@@ -414,6 +414,8 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const findFirst: {
-  <K, A>(predicate: (k: K, a: A) => boolean): (self: HashMap<K, A>) => Option<[K, A]>
-  <K, A>(self: HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option<[K, A]>
+  <K, A, B extends A>(predicate: (a: A, k: K) => a is B): (self: HashMap<K, A>) => Option<[K, B]>
+  <K, A>(predicate: (a: A, k: K) => boolean): <B extends A>(self: HashMap<K, B>) => Option<[K, B]>
+  <K, A, B extends A>(self: HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option<[K, B]>
+  <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option<[K, A]>
 } = HM.findFirst

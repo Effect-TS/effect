@@ -292,3 +292,30 @@ ReadonlyArray.takeWhile(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType number[]
 pipe(numbersOrStrings, ReadonlyArray.takeWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findFirst
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.findFirst(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findFirst((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+ReadonlyArray.findFirst(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, ReadonlyArray.findFirst(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+ReadonlyArray.findFirst(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, ReadonlyArray.findFirst(Predicate.isNumber))

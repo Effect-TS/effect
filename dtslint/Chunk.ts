@@ -193,3 +193,30 @@ Chunk.takeWhile(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Chunk<number>
 pipe(numbersOrStrings, Chunk.takeWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findFirst
+// -------------------------------------------------------------------------------------
+
+Chunk.findFirst(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Chunk.findFirst((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+Chunk.findFirst(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, Chunk.findFirst(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+Chunk.findFirst(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, Chunk.findFirst(Predicate.isNumber))

@@ -71,3 +71,32 @@ HashMap.filter(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType HashMap<string, number>
 pipe(numbersOrStrings, HashMap.filter(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findFirst
+// -------------------------------------------------------------------------------------
+
+HashMap.findFirst(numbersOrStrings, (
+  _item, // $ExpectType string | number
+  _key // $ExpectType string
+) => true)
+
+pipe(
+  numbersOrStrings,
+  HashMap.findFirst((
+    _item, // $ExpectType string | number
+    _key // $ExpectType string
+  ) => true)
+)
+
+// $ExpectType Option<[string, string | number]>
+HashMap.findFirst(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<[string, string | number]>
+pipe(numbersOrStrings, HashMap.findFirst(predicateNumbersOrStrings))
+
+// $ExpectType Option<[string, number]>
+HashMap.findFirst(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<[string, number]>
+pipe(numbersOrStrings, HashMap.findFirst(Predicate.isNumber))

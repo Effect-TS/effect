@@ -160,3 +160,30 @@ List.filter(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType List<number>
 pipe(numbersOrStrings, List.filter(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findFirst
+// -------------------------------------------------------------------------------------
+
+List.findFirst(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  List.findFirst((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+List.findFirst(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, List.findFirst(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+List.findFirst(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, List.findFirst(Predicate.isNumber))

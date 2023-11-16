@@ -524,13 +524,15 @@ export const filterMap = Dual.dual<
 
 /** @internal */
 export const findFirst: {
-  <K, A>(predicate: (k: K, a: A) => boolean): (self: HM.HashMap<K, A>) => Option.Option<[K, A]>
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]>
+  <K, A, B extends A>(predicate: (a: A, k: K) => a is B): (self: HM.HashMap<K, A>) => Option.Option<[K, B]>
+  <K, A>(predicate: (a: A, k: K) => boolean): <B extends A>(self: HM.HashMap<K, B>) => Option.Option<[K, B]>
+  <K, A, B extends A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option.Option<[K, B]>
+  <K, A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option.Option<[K, A]>
 } = Dual.dual(
   2,
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]> => {
+  <K, A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option.Option<[K, A]> => {
     for (const ka of self) {
-      if (predicate(ka[0], ka[1])) {
+      if (predicate(ka[1], ka[0])) {
         return Option.some(ka)
       }
     }
