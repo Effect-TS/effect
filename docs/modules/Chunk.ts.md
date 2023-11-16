@@ -842,7 +842,7 @@ Returns a filtered and mapped subset of the elements.
 ```ts
 export declare const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
-  <A, B extends A>(predicate: Predicate<B>): (self: Chunk<A>) => Chunk<A>
+  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Chunk<B>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 }

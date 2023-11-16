@@ -482,7 +482,7 @@ export const some: {
  */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => List<B>
-  <A, B extends A>(predicate: Predicate<B>): (self: List<A>) => List<A>
+  <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => List<B>
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): List<B>
   <A>(self: List<A>, predicate: Predicate<A>): List<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): List<A> => noneIn(self, predicate, false))
