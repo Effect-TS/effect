@@ -869,7 +869,9 @@ export const takeUntil: {
  * @category collecting & elements
  */
 export const takeWhile: {
-  <R, E, A>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Array<A>>
+  <R, E, B extends A, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeWhile
 
