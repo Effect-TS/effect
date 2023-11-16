@@ -147,3 +147,19 @@ Stream.dropWhile(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Stream<never, never, string | number>
 pipe(numbersOrStrings, Stream.dropWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// dropUntil
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Stream<never, never, number>
+Stream.dropUntil(numbers, predicateNumbersOrStrings)
+
+// $ExpectType Stream<never, never, number>
+pipe(numbers, Stream.dropUntil(predicateNumbersOrStrings))
+
+// $ExpectType Stream<never, never, string | number>
+Stream.dropUntil(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Stream<never, never, string | number>
+pipe(numbersOrStrings, Stream.dropUntil(Predicate.isNumber))

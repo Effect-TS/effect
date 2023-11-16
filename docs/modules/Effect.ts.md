@@ -691,7 +691,9 @@ Drops all elements until the effectful predicate returns true.
 
 ```ts
 export declare const dropUntil: {
-  <A, R, E>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, A[]>
+  <A, R, E>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): <B extends A>(elements: Iterable<B>) => Effect<R, E, B[]>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
 }
 ```
@@ -706,10 +708,10 @@ Drops all elements so long as the predicate returns true.
 
 ```ts
 export declare const dropWhile: {
-  <R, E, A>(
+  <A, R, E>(
     predicate: (a: A, i: number) => Effect<R, E, boolean>
   ): <B extends A>(elements: Iterable<B>) => Effect<R, E, B[]>
-  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
+  <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
 }
 ```
 

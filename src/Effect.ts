@@ -508,7 +508,9 @@ export const allSuccesses: <R, E, A>(
  * @category collecting & elements
  */
 export const dropUntil: {
-  <A, R, E>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Array<A>>
+  <A, R, E>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): <B extends A>(elements: Iterable<B>) => Effect<R, E, Array<B>>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropUntil
 
@@ -519,10 +521,10 @@ export const dropUntil: {
  * @category collecting & elements
  */
 export const dropWhile: {
-  <R, E, A>(
+  <A, R, E>(
     predicate: (a: A, i: number) => Effect<R, E, boolean>
   ): <B extends A>(elements: Iterable<B>) => Effect<R, E, Array<B>>
-  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
+  <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropWhile
 
 /**
