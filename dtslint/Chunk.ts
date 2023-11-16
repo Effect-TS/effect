@@ -252,6 +252,17 @@ pipe(numbersOrStrings, Chunk.findLast(Predicate.isNumber))
 // dropWhile
 // -------------------------------------------------------------------------------------
 
+Chunk.dropWhile(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Chunk.dropWhile((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // $ExpectType Chunk<number>
 Chunk.dropWhile(numbers, predicateNumbersOrStrings)
 
@@ -267,6 +278,17 @@ pipe(numbersOrStrings, Chunk.dropWhile(Predicate.isNumber))
 // -------------------------------------------------------------------------------------
 // splitWhere
 // -------------------------------------------------------------------------------------
+
+Chunk.splitWhere(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  Chunk.splitWhere((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // $ExpectType [Chunk<number>, Chunk<number>]
 Chunk.splitWhere(numbers, predicateNumbersOrStrings)

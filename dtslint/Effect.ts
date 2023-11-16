@@ -538,6 +538,17 @@ Effect.loop(0 as null | number, {
 declare const numbersArray: Array<number>
 declare const predicateNumbersOrStringsEffect: (input: number | string) => Effect.Effect<never, never, boolean>
 
+Effect.dropWhile(numbersArray, (
+  _item // $ExpectType number
+) => Effect.succeed(true))
+
+pipe(
+  numbersArray,
+  Effect.dropWhile((
+    _item // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
 // $ExpectType Effect<never, never, number[]>
 Effect.dropWhile(numbersArray, predicateNumbersOrStringsEffect)
 
@@ -548,6 +559,17 @@ pipe(numbersArray, Effect.dropWhile(predicateNumbersOrStringsEffect))
 // dropUntil
 // -------------------------------------------------------------------------------------
 
+Effect.dropUntil(numbersArray, (
+  _item // $ExpectType number
+) => Effect.succeed(true))
+
+pipe(
+  numbersArray,
+  Effect.dropUntil((
+    _item // $ExpectType number
+  ) => Effect.succeed(true))
+)
+
 // $ExpectType Effect<never, never, number[]>
 Effect.dropUntil(numbersArray, predicateNumbersOrStringsEffect)
 
@@ -557,6 +579,17 @@ pipe(numbersArray, Effect.dropUntil(predicateNumbersOrStringsEffect))
 // -------------------------------------------------------------------------------------
 // takeUntil
 // -------------------------------------------------------------------------------------
+
+Effect.takeUntil(numbersArray, (
+  _item // $ExpectType number
+) => Effect.succeed(true))
+
+pipe(
+  numbersArray,
+  Effect.takeUntil((
+    _item // $ExpectType number
+  ) => Effect.succeed(true))
+)
 
 // $ExpectType Effect<never, never, number[]>
 Effect.takeUntil(numbersArray, predicateNumbersOrStringsEffect)
