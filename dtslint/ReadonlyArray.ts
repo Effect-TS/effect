@@ -22,7 +22,7 @@ if (ReadonlyArray.isEmptyReadonlyArray(readonlyNumbers)) {
   readonlyNumbers
 }
 
-// $ExpectType <A>(c: readonly A[]) => Option<readonly []>
+// $ExpectType <A>(a: readonly A[]) => Option<readonly []>
 Option.liftPredicate(ReadonlyArray.isEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ if (ReadonlyArray.isEmptyArray(numbers)) {
   numbers
 }
 
-// $ExpectType <A>(c: A[]) => Option<[]>
+// $ExpectType <A>(a: A[]) => Option<[]>
 Option.liftPredicate(ReadonlyArray.isEmptyArray)
 
 // -------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ if (ReadonlyArray.isNonEmptyReadonlyArray(readonlyNumbers)) {
   readonlyNumbers
 }
 
-// $ExpectType <A>(c: readonly A[]) => Option<readonly [A, ...A[]]>
+// $ExpectType <A>(a: readonly A[]) => Option<readonly [A, ...A[]]>
 Option.liftPredicate(ReadonlyArray.isNonEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ if (ReadonlyArray.isNonEmptyArray(numbers)) {
   numbers
 }
 
-// $ExpectType <A>(c: A[]) => Option<[A, ...A[]]>
+// $ExpectType <A>(a: A[]) => Option<[A, ...A[]]>
 Option.liftPredicate(ReadonlyArray.isNonEmptyArray)
 
 // -------------------------------------------------------------------------------------

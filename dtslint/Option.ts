@@ -14,6 +14,7 @@ declare const numberOrString: Option.Option<string | number>
 
 // $ExpectType Option<string>
 pipe(pimitiveNumerOrString, Option.liftPredicate(Predicate.isString))
+
 pipe(
   pimitiveNumerOrString,
   Option.liftPredicate(
@@ -25,8 +26,10 @@ pipe(
 
 // $ExpectType Option<string | number>
 pipe(pimitiveNumerOrString, Option.liftPredicate(predicate))
+
 // $ExpectType Option<number>
 pipe(pimitiveNumber, Option.liftPredicate(predicate))
+
 // $ExpectType Option<number>
 pipe(
   pimitiveNumber,
