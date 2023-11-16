@@ -4691,10 +4691,21 @@ further than the slower one.
 
 ```ts
 export declare const partition: {
+  <C extends A, B extends A, A = C>(
+    refinement: Refinement<A, B>,
+    options?: { bufferSize?: number | undefined }
+  ): <R, E>(
+    self: Stream<R, E, C>
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<C, B>>, Stream<never, E, B>]>
   <A>(
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined }
   ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
+  <R, E, C extends A, B extends A, A = C>(
+    self: Stream<R, E, C>,
+    refinement: Refinement<A, B>,
+    options?: { bufferSize?: number | undefined }
+  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<C, B>>, Stream<never, E, B>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
@@ -5291,7 +5302,9 @@ evaluates to `true`.
 
 ```ts
 export declare const takeWhile: {
+  <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
   <A>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 }
 ```
