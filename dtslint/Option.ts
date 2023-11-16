@@ -2,11 +2,12 @@ import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 
-declare const pimitiveNumber: number
-declare const pimitiveNumerOrString: string | number
-declare const predicate: (sn: string | number) => boolean
 declare const number: Option.Option<number>
 declare const numberOrString: Option.Option<string | number>
+
+declare const pimitiveNumber: number
+declare const pimitiveNumerOrString: string | number
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 // -------------------------------------------------------------------------------------
 // liftPredicate
@@ -25,10 +26,10 @@ pipe(
 )
 
 // $ExpectType Option<string | number>
-pipe(pimitiveNumerOrString, Option.liftPredicate(predicate))
+pipe(pimitiveNumerOrString, Option.liftPredicate(predicateNumbersOrStrings))
 
 // $ExpectType Option<number>
-pipe(pimitiveNumber, Option.liftPredicate(predicate))
+pipe(pimitiveNumber, Option.liftPredicate(predicateNumbersOrStrings))
 
 // $ExpectType Option<number>
 pipe(
@@ -63,10 +64,10 @@ pipe(
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<number>
-pipe(number, Option.filter(predicate))
+pipe(number, Option.filter(predicateNumbersOrStrings))
 
 // $ExpectType Option<number>
-Option.filter(number, predicate)
+Option.filter(number, predicateNumbersOrStrings)
 
 // $ExpectType Option<string>
 pipe(numberOrString, Option.filter(Predicate.isString))

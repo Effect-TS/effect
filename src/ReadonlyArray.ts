@@ -1743,9 +1743,9 @@ export const reduceRight: {
  * @since 2.0.0
  */
 export const liftPredicate: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (c: C) => Array<B>
-  <B extends A, A = B>(predicate: Predicate<A>): (b: B) => Array<B>
-} = <B extends A, A = B>(predicate: Predicate<A>) => (b: B) => predicate(b) ? [b] : []
+  <A, B extends A>(refinement: Refinement<A, B>): (a: A) => Array<B>
+  <A>(predicate: Predicate<A>): <B extends A>(b: B) => Array<B>
+} = <A>(predicate: Predicate<A>) => <B extends A>(b: B): Array<B> => predicate(b) ? [b] : []
 
 /**
  * @category lifting

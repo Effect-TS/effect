@@ -11,6 +11,8 @@ declare const numbers: Array<number>
 declare const numbersOrStrings: Array<number | string>
 declare const nonEmptyReadonlyNumbersOrStrings: ReadonlyArray.NonEmptyReadonlyArray<number | string>
 
+declare const pimitiveNumber: number
+declare const pimitiveNumerOrString: string | number
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 // -------------------------------------------------------------------------------------
@@ -346,3 +348,35 @@ ReadonlyArray.findLast(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Option<number>
 pipe(numbersOrStrings, ReadonlyArray.findLast(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// liftPredicate
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+pipe(pimitiveNumerOrString, ReadonlyArray.liftPredicate(Predicate.isString))
+
+pipe(
+  pimitiveNumerOrString,
+  ReadonlyArray.liftPredicate(
+    (
+      n // $ExpectType string | number
+    ): n is number => typeof n === "number"
+  )
+)
+
+// $ExpectType (string | number)[]
+pipe(pimitiveNumerOrString, ReadonlyArray.liftPredicate(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(pimitiveNumber, ReadonlyArray.liftPredicate(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(
+  pimitiveNumber,
+  ReadonlyArray.liftPredicate(
+    (
+      _n // $ExpectType number
+    ) => true
+  )
+)

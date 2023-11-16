@@ -1352,8 +1352,8 @@ Added in v2.0.0
 
 ```ts
 export declare const liftPredicate: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (c: C) => B[]
-  <B extends A, A = B>(predicate: Predicate<A>): (b: B) => B[]
+  <A, B extends A>(refinement: Refinement<A, B>): (a: A) => B[]
+  <A>(predicate: Predicate<A>): <B extends A>(b: B) => B[]
 }
 ```
 
