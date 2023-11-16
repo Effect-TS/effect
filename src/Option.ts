@@ -1050,8 +1050,8 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  */
 export const liftPredicate: {
   <A, B extends A>(refinement: Refinement<A, B>): (a: A) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(b: B) => Option<B>
-} = <A>(predicate: Predicate<A>) => <B extends A>(b: B): Option<B> => predicate(b) ? some(b) : none()
+  <B extends A, A = B>(predicate: Predicate<A>): (b: B) => Option<B>
+} = <B extends A, A = B>(predicate: Predicate<A>) => (b: B): Option<B> => predicate(b) ? some(b) : none()
 
 /**
  * Returns a function that checks if a `Option` contains a given value using a provided `isEquivalent` function.

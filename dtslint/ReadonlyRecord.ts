@@ -376,6 +376,13 @@ ReadonlyRecord.some(structNumbers, (
   _key
 ) => false)
 
+pipe(
+  numbersOrStrings,
+  ReadonlyRecord.some((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // -------------------------------------------------------------------------------------
 // union
 // -------------------------------------------------------------------------------------

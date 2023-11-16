@@ -996,7 +996,7 @@ if the predicate returns `false`.
 ```ts
 export declare const liftPredicate: {
   <A, B extends A>(refinement: Refinement<A, B>): (a: A) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(b: B) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (b: B) => Option<B>
 }
 ```
 

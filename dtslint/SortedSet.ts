@@ -22,6 +22,13 @@ if (SortedSet.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType SortedSet<string>
 }
 
+pipe(
+  numbersOrStrings,
+  SortedSet.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // -------------------------------------------------------------------------------------
 // partition
 // -------------------------------------------------------------------------------------
