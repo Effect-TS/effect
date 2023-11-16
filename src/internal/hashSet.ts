@@ -273,7 +273,7 @@ export const reduce = dual<
 /** @internal */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: HS.HashSet<A>) => HS.HashSet<B>
-  <A, B extends A>(predicate: Predicate<B>): (self: HS.HashSet<A>) => HS.HashSet<A>
+  <B extends A, A = B>(predicate: Predicate<B>): (self: HS.HashSet<A>) => HS.HashSet<A>
   <A, B extends A>(self: HS.HashSet<A>, refinement: Refinement<A, B>): HS.HashSet<B>
   <A>(self: HS.HashSet<A>, predicate: Predicate<A>): HS.HashSet<A>
 } = dual(2, <A>(self: HS.HashSet<A>, f: Predicate<A>) => {

@@ -283,7 +283,7 @@ export const partition: {
   <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
   ): (self: SortedSet<C>) => [SortedSet<Exclude<C, B>>, SortedSet<B>]
-  <A>(predicate: (a: A) => boolean): <B extends A>(self: SortedSet<B>) => [SortedSet<B>, SortedSet<B>]
+  <B extends A, A = B>(predicate: (a: A) => boolean): (self: SortedSet<B>) => [SortedSet<B>, SortedSet<B>]
   <A, B extends A>(
     self: SortedSet<A>,
     refinement: Refinement<A, B>

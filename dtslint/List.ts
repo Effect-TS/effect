@@ -21,6 +21,13 @@ if (List.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType List<string>
 }
 
+pipe(
+  numbersOrStrings,
+  List.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // -------------------------------------------------------------------------------------
 // some
 // -------------------------------------------------------------------------------------
@@ -32,6 +39,13 @@ if (List.some(numbersOrStrings, Predicate.isString)) {
 if (List.some(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType Cons<string | number>
 }
+
+pipe(
+  numbersOrStrings,
+  List.some((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // partition

@@ -966,7 +966,7 @@ export const filterMap: {
  */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Option<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Option<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Option<B>) => Option<B>
   <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Option<A>, predicate: Predicate<A>): Option<A>
 } = dual(
@@ -1110,7 +1110,7 @@ export const contains: {
  */
 export const exists: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Option<A>) => self is Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Option<B>) => boolean
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Option<B>) => boolean
   <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): self is Option<B>
   <A>(self: Option<A>, predicate: Predicate<A>): boolean
 } = dual(

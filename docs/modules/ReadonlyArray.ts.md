@@ -538,7 +538,7 @@ predicate, or `None` if no such element exists.
 ```ts
 export declare const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
 }
@@ -570,7 +570,7 @@ Find the last element for which a predicate holds.
 ```ts
 export declare const findLast: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
 }
@@ -623,7 +623,7 @@ Check if a predicate holds true for some `ReadonlyArray` element.
 
 ```ts
 export declare const some: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: readonly B[]) => self is readonly [B, ...B[]]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: readonly B[]) => self is readonly [B, ...B[]]
   <A>(self: readonly A[], predicate: Predicate<A>): self is readonly [A, ...A[]]
 }
 ```
@@ -707,7 +707,7 @@ export declare const partition: {
   <C extends A, B extends A, A = C>(
     refinement: (a: A, i: number) => a is B
   ): (self: Iterable<C>) => [Exclude<C, B>[], B[]]
-  <A>(predicate: (a: A, i: number) => boolean): <B extends A>(self: Iterable<B>) => [B[], B[]]
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [B[], B[]]
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): [Exclude<A, B>[], B[]]
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [A[], A[]]
 }
@@ -752,7 +752,7 @@ export declare const span: {
   <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
   ): (self: Iterable<C>) => [init: B[], rest: Exclude<C, B>[]]
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => [init: B[], rest: B[]]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [init: B[], rest: B[]]
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: B[], rest: Exclude<A, B>[]]
   <A>(self: Iterable<A>, predicate: Predicate<A>): [init: A[], rest: A[]]
 }
@@ -925,7 +925,7 @@ Remove the longest initial subarray for which all element satisfy the specified 
 
 ```ts
 export declare const dropWhile: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => B[]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => B[]
   <A>(self: Iterable<A>, predicate: Predicate<A>): A[]
 }
 ```
@@ -1116,7 +1116,7 @@ Calculate the longest initial subarray for which all element satisfy the specifi
 ```ts
 export declare const takeWhile: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => B[]
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => B[]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => B[]
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): B[]
   <A>(self: Iterable<A>, predicate: Predicate<A>): A[]
 }

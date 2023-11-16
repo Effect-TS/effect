@@ -562,7 +562,7 @@ export const takeRight: {
  */
 export const takeWhile: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Array<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Array<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Array<B>
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Array<B>
   <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A> => {
@@ -600,7 +600,7 @@ export const span: {
   <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
   ): (self: Iterable<C>) => [init: Array<B>, rest: Array<Exclude<C, B>>]
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => [init: Array<B>, rest: Array<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => [init: Array<B>, rest: Array<B>]
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: Array<B>, rest: Array<Exclude<A, B>>]
   <A>(self: Iterable<A>, predicate: Predicate<A>): [init: Array<A>, rest: Array<A>]
 } = dual(
@@ -648,7 +648,7 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Array<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Array<B>
   <A>(self: Iterable<A>, predicate: Predicate<A>): Array<A>
 } = dual(
   2,
@@ -703,7 +703,7 @@ export const findLastIndex: {
  */
 export const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A> => {
@@ -724,7 +724,7 @@ export const findFirst: {
  */
 export const findLast: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Iterable<B>) => Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: Predicate<A>): Option<A> => {
@@ -1678,7 +1678,7 @@ export const partition: {
   <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (
     self: Iterable<C>
   ) => [Array<Exclude<C, B>>, Array<B>]
-  <A>(predicate: (a: A, i: number) => boolean): <B extends A>(self: Iterable<B>) => [Array<B>, Array<B>]
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [Array<B>, Array<B>]
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): [Array<Exclude<A, B>>, Array<B>]
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [Array<A>, Array<A>]
 } = dual(
@@ -1814,7 +1814,7 @@ export const every: {
  * @since 2.0.0
  */
 export const some: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: ReadonlyArray<B>) => self is NonEmptyReadonlyArray<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: ReadonlyArray<B>) => self is NonEmptyReadonlyArray<B>
   <A>(self: ReadonlyArray<A>, predicate: Predicate<A>): self is NonEmptyReadonlyArray<A>
 } = dual(
   2,

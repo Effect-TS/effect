@@ -111,9 +111,12 @@ if (ReadonlyArray.some(numbersOrStrings, Predicate.isString)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
 }
 
-if (ReadonlyArray.some(Predicate.isString)(numbersOrStrings)) {
-  numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
-}
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.some((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // every
@@ -126,6 +129,13 @@ if (ReadonlyArray.every(numbersOrStrings, Predicate.isString)) {
 if (ReadonlyArray.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // append

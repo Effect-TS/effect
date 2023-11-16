@@ -994,7 +994,7 @@ export const dropRight: {
  * @category utils
  */
 export const dropUntil: {
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.dropUntil
 
@@ -1023,7 +1023,7 @@ export const dropUntilEffect: {
  * @category utils
  */
 export const dropWhile: {
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.dropWhile
 
@@ -1175,7 +1175,7 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Stream<nev
  */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.filter
@@ -1270,7 +1270,7 @@ export const finalizer: <R, _>(finalizer: Effect.Effect<R, never, _>) => Stream<
  */
 export const find: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.find
@@ -3526,7 +3526,7 @@ export const someOrFail: {
  * @category utils
  */
 export const split: {
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, Chunk.Chunk<B>>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, Chunk.Chunk<B>>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, Chunk.Chunk<A>>
 } = internal.split
 
@@ -3604,7 +3604,7 @@ export const takeRight: {
  * @category utils
  */
 export const takeUntil: {
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.takeUntil
 
@@ -3634,7 +3634,7 @@ export const takeUntilEffect: {
  */
 export const takeWhile: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 } = internal.takeWhile

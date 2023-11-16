@@ -124,7 +124,7 @@ predicate, or `None` if no such element exists.
 ```ts
 export declare const findFirst: {
   <K, A, B extends A>(predicate: (a: A, k: K) => a is B): (self: HashMap<K, A>) => Option<[K, B]>
-  <K, A>(predicate: (a: A, k: K) => boolean): <B extends A>(self: HashMap<K, B>) => Option<[K, B]>
+  <K, B extends A, A = B>(predicate: (a: A, k: K) => boolean): (self: HashMap<K, B>) => Option<[K, B]>
   <K, A, B extends A>(self: HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option<[K, B]>
   <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option<[K, A]>
 }
@@ -229,7 +229,7 @@ Filters entries out of a `HashMap` using the specified predicate.
 ```ts
 export declare const filter: {
   <K, A, B extends A>(f: (a: A, k: K) => a is B): (self: HashMap<K, A>) => HashMap<K, B>
-  <K, A>(f: (a: A, k: K) => boolean): <B extends A>(self: HashMap<K, B>) => HashMap<K, B>
+  <K, B extends A, A = B>(f: (a: A, k: K) => boolean): (self: HashMap<K, B>) => HashMap<K, B>
   <K, A, B extends A>(self: HashMap<K, A>, f: (a: A, k: K) => a is B): HashMap<K, B>
   <K, A>(self: HashMap<K, A>, f: (a: A, k: K) => boolean): HashMap<K, A>
 }

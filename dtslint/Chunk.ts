@@ -21,6 +21,13 @@ if (Chunk.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType Chunk<string>
 }
 
+pipe(
+  numbersOrStrings,
+  Chunk.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // -------------------------------------------------------------------------------------
 // some
 // -------------------------------------------------------------------------------------
@@ -29,9 +36,12 @@ if (Chunk.some(numbersOrStrings, Predicate.isString)) {
   numbersOrStrings // $ExpectType NonEmptyChunk<string | number>
 }
 
-if (Chunk.some(Predicate.isString)(numbersOrStrings)) {
-  numbersOrStrings // $ExpectType NonEmptyChunk<string | number>
-}
+pipe(
+  numbersOrStrings,
+  Chunk.some((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // partition

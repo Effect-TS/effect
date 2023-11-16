@@ -19,6 +19,13 @@ if (HashSet.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType HashSet<string>
 }
 
+pipe(
+  numbersOrStrings,
+  HashSet.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // -------------------------------------------------------------------------------------
 // partition
 // -------------------------------------------------------------------------------------

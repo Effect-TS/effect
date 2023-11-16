@@ -367,16 +367,6 @@ ReadonlyRecord.reduce(structNumbers, "", (
 ) => key)
 
 // -------------------------------------------------------------------------------------
-// every
-// -------------------------------------------------------------------------------------
-
-ReadonlyRecord.every(structNumbers, (
-  _value,
-  // $ExpectType "a" | "b"
-  _key
-) => false)
-
-// -------------------------------------------------------------------------------------
 // some
 // -------------------------------------------------------------------------------------
 
@@ -409,6 +399,20 @@ ReadonlyRecord.singleton("a", 1)
 // -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
+
+pipe(
+  numbersOrStrings,
+  ReadonlyRecord.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+ReadonlyRecord.every(structNumbers, (
+  // $ExpectType number
+  _value,
+  // $ExpectType "a" | "b"
+  _key
+) => false)
 
 if (ReadonlyRecord.every(numbersOrStrings, Predicate.isString)) {
   numbersOrStrings // $ExpectType Readonly<Record<string, string>>

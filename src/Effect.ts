@@ -508,9 +508,9 @@ export const allSuccesses: <R, E, A>(
  * @category collecting & elements
  */
 export const dropUntil: {
-  <A, R, E>(
+  <B extends A, R, E, A = B>(
     predicate: (a: A, i: number) => Effect<R, E, boolean>
-  ): <B extends A>(elements: Iterable<B>) => Effect<R, E, Array<B>>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropUntil
 
@@ -521,9 +521,9 @@ export const dropUntil: {
  * @category collecting & elements
  */
 export const dropWhile: {
-  <A, R, E>(
+  <B extends A, R, E, A = B>(
     predicate: (a: A, i: number) => Effect<R, E, boolean>
-  ): <B extends A>(elements: Iterable<B>) => Effect<R, E, Array<B>>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropWhile
 
@@ -856,9 +856,9 @@ export const replicateEffect: {
  * @category collecting & elements
  */
 export const takeUntil: {
-  <R, E, A>(
+  <B extends A, R, E, A = B>(
     predicate: (a: A, i: number) => Effect<R, E, boolean>
-  ): <B extends A>(elements: Iterable<B>) => Effect<R, E, Array<B>>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeUntil
 

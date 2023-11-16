@@ -461,7 +461,7 @@ export const every: {
  * @category elements
  */
 export const some: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => self is Cons<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => self is Cons<B>
   <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A> => {
   let these = self
@@ -482,7 +482,7 @@ export const some: {
  */
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => List<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => List<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => List<B>
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): List<B>
   <A>(self: List<A>, predicate: Predicate<A>): List<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): List<A> => noneIn(self, predicate, false))
@@ -618,7 +618,7 @@ export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(s
  */
 export const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option.Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => Option.Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => Option.Option<B>
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option.Option<B>
   <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A> => {
@@ -761,7 +761,7 @@ export const map: {
  */
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: List<C>) => [List<Exclude<C, B>>, List<B>]
-  <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => [List<B>, List<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => [List<B>, List<B>]
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [List<Exclude<A, B>>, List<B>]
   <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>]
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>] => {

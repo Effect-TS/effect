@@ -6107,7 +6107,7 @@ export const takeUntilEffect = dual<
 /** @internal */
 export const takeWhile: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream.Stream<R, E, A>) => Stream.Stream<R, E, B>
-  <A>(predicate: Predicate<A>): <R, E, B extends A>(self: Stream.Stream<R, E, B>) => Stream.Stream<R, E, B>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream.Stream<R, E, B>) => Stream.Stream<R, E, B>
   <R, E, A, B extends A>(self: Stream.Stream<R, E, A>, refinement: Refinement<A, B>): Stream.Stream<R, E, B>
   <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>): Stream.Stream<R, E, A>
 } = dual(2, <R, E, A>(self: Stream.Stream<R, E, A>, predicate: Predicate<A>): Stream.Stream<R, E, A> => {

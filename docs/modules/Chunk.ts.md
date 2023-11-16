@@ -423,7 +423,7 @@ predicate, or `None` if no such element exists.
 ```ts
 export declare const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Option<B>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A>
 }
@@ -455,7 +455,7 @@ Find the last element for which a predicate holds.
 ```ts
 export declare const findLast: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Option<B>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Option<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A>
 }
@@ -600,7 +600,7 @@ Check if a predicate holds true for some `Chunk` element.
 
 ```ts
 export declare const some: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => self is NonEmptyChunk<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => self is NonEmptyChunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A>
 }
 ```
@@ -673,7 +673,7 @@ Splits this chunk on the first element that matches this predicate.
 
 ```ts
 export declare const splitWhere: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => [Chunk<B>, Chunk<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
   <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
 }
 ```
@@ -728,7 +728,7 @@ Takes all elements so long as the predicate returns true.
 ```ts
 export declare const takeWhile: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Chunk<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 }
@@ -844,7 +844,7 @@ Returns a filtered and mapped subset of the elements.
 ```ts
 export declare const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Chunk<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 }
@@ -891,7 +891,7 @@ Separate elements based on a predicate that also exposes the index of the elemen
 ```ts
 export declare const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: Chunk<C>) => [Chunk<Exclude<C, B>>, Chunk<B>]
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => [Chunk<B>, Chunk<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): [Chunk<Exclude<A, B>>, Chunk<B>]
   <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
 }
@@ -1239,7 +1239,7 @@ Drops all elements so long as the predicate returns true.
 
 ```ts
 export declare const dropWhile: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Chunk<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 }
 ```
