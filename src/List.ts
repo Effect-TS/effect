@@ -761,12 +761,12 @@ export const map: {
  */
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: List<C>) => [List<Exclude<C, B>>, List<B>]
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: List<B>) => [List<B>, List<B>]
-  <C extends A, B extends A, A = C>(self: List<C>, refinement: Refinement<A, B>): [List<Exclude<C, B>>, List<B>]
-  <B extends A, A = B>(self: List<B>, predicate: (a: A) => boolean): [List<B>, List<B>]
-} = dual(2, <B extends A, A = B>(self: List<B>, predicate: (a: A) => boolean): [List<B>, List<B>] => {
-  const left: Array<B> = []
-  const right: Array<B> = []
+  <A, B extends A>(predicate: Predicate<A>): (self: List<B>) => [List<B>, List<B>]
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [List<Exclude<A, B>>, List<B>]
+  <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>]
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>] => {
+  const left: Array<A> = []
+  const right: Array<A> = []
   for (const a of self) {
     if (predicate(a)) {
       right.push(a)

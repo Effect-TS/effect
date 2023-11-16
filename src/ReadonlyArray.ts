@@ -1684,20 +1684,14 @@ export const partition: {
   <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (
     self: Iterable<C>
   ) => [Array<Exclude<C, B>>, Array<B>]
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [Array<B>, Array<B>]
-  <C extends A, B extends A, A = C>(
-    self: Iterable<C>,
-    refinement: (a: A, i: number) => a is B
-  ): [Array<Exclude<C, B>>, Array<B>]
-  <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): [Array<B>, Array<B>]
+  <A, B extends A>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [Array<B>, Array<B>]
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): [Array<Exclude<A, B>>, Array<B>]
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [Array<A>, Array<A>]
 } = dual(
   2,
-  <B extends A, A = B>(
-    self: Iterable<B>,
-    predicate: (a: A, i: number) => boolean
-  ): [Array<B>, Array<B>] => {
-    const left: Array<B> = []
-    const right: Array<B> = []
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [Array<A>, Array<A>] => {
+    const left: Array<A> = []
+    const right: Array<A> = []
     const as = fromIterable(self)
     for (let i = 0; i < as.length; i++) {
       if (predicate(as[i], i)) {

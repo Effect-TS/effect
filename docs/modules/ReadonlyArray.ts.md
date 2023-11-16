@@ -707,9 +707,9 @@ export declare const partition: {
   <C extends A, B extends A, A = C>(
     refinement: (a: A, i: number) => a is B
   ): (self: Iterable<C>) => [Exclude<C, B>[], B[]]
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [B[], B[]]
-  <C extends A, B extends A, A = C>(self: Iterable<C>, refinement: (a: A, i: number) => a is B): [Exclude<C, B>[], B[]]
-  <B extends A, A = B>(self: Iterable<B>, predicate: (a: A, i: number) => boolean): [B[], B[]]
+  <A, B extends A>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [B[], B[]]
+  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): [Exclude<A, B>[], B[]]
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [A[], A[]]
 }
 ```
 

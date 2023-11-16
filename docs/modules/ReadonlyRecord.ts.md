@@ -268,17 +268,17 @@ export declare const partition: {
   <K extends string, C extends A, B extends A, A = C>(
     refinement: (a: A, key: K) => a is B
   ): (self: Record<K, C>) => [Record<string, Exclude<C, B>>, Record<string, B>]
-  <K extends string, B extends A, A = B>(
+  <K extends string, A, B extends A>(
     predicate: (a: A, key: K) => boolean
   ): (self: Record<K, B>) => [Record<string, B>, Record<string, B>]
-  <K extends string, C extends A, B extends A, A = C>(
-    self: Record<K, C>,
+  <K extends string, A, B extends A>(
+    self: Record<K, A>,
     refinement: (a: A, key: K) => a is B
-  ): [Record<string, Exclude<C, B>>, Record<string, B>]
-  <K extends string, B extends A, A = B>(
-    self: Record<K, B>,
+  ): [Record<string, Exclude<A, B>>, Record<string, B>]
+  <K extends string, A>(
+    self: Record<K, A>,
     predicate: (a: A, key: K) => boolean
-  ): [Record<string, B>, Record<string, B>]
+  ): [Record<string, A>, Record<string, A>]
 }
 ```
 

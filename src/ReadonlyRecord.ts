@@ -565,25 +565,22 @@ export const partition: {
   <K extends string, C extends A, B extends A, A = C>(refinement: (a: A, key: K) => a is B): (
     self: Record<K, C>
   ) => [Record<string, Exclude<C, B>>, Record<string, B>]
-  <K extends string, B extends A, A = B>(
+  <K extends string, A, B extends A>(
     predicate: (a: A, key: K) => boolean
   ): (self: Record<K, B>) => [Record<string, B>, Record<string, B>]
-  <K extends string, C extends A, B extends A, A = C>(
-    self: Record<K, C>,
+  <K extends string, A, B extends A>(
+    self: Record<K, A>,
     refinement: (a: A, key: K) => a is B
-  ): [Record<string, Exclude<C, B>>, Record<string, B>]
-  <K extends string, B extends A, A = B>(
-    self: Record<K, B>,
+  ): [Record<string, Exclude<A, B>>, Record<string, B>]
+  <K extends string, A>(
+    self: Record<K, A>,
     predicate: (a: A, key: K) => boolean
-  ): [Record<string, B>, Record<string, B>]
+  ): [Record<string, A>, Record<string, A>]
 } = dual(
   2,
-  <B extends A, A = B>(
-    self: Record<string, B>,
-    predicate: (a: A, key: string) => boolean
-  ): [Record<string, B>, Record<string, B>] => {
-    const left: Record<string, B> = {}
-    const right: Record<string, B> = {}
+  <A>(self: Record<string, A>, predicate: (a: A, key: string) => boolean): [Record<string, A>, Record<string, A>] => {
+    const left: Record<string, A> = {}
+    const right: Record<string, A> = {}
     for (const key of Object.keys(self)) {
       if (predicate(self[key], key)) {
         right[key] = self[key]

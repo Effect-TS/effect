@@ -291,10 +291,7 @@ export const partition: {
   <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
   ): (self: HashSet<C>) => [HashSet<Exclude<C, B>>, HashSet<B>]
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: HashSet<B>) => [HashSet<B>, HashSet<B>]
-  <C extends A, B extends A, A = C>(
-    self: HashSet<C>,
-    refinement: Refinement<A, B>
-  ): [HashSet<Exclude<C, B>>, HashSet<B>]
-  <B extends A, A = B>(self: HashSet<B>, predicate: (a: A) => boolean): [HashSet<B>, HashSet<B>]
+  <A, B extends A>(predicate: Predicate<A>): (self: HashSet<B>) => [HashSet<B>, HashSet<B>]
+  <A, B extends A>(self: HashSet<A>, refinement: Refinement<A, B>): [HashSet<Exclude<A, B>>, HashSet<B>]
+  <A>(self: HashSet<A>, predicate: Predicate<A>): [HashSet<A>, HashSet<A>]
 } = HS.partition

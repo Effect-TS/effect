@@ -533,9 +533,9 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <A>(f: (a: A) => boolean): (self: Chunk<A>) => Chunk<A>
-  <A>(self: Chunk<A>, f: (a: A) => boolean): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, f: (a: A) => boolean): Chunk<A> => {
+  <A>(f: Predicate<A>): (self: Chunk<A>) => Chunk<A>
+  <A>(self: Chunk<A>, f: Predicate<A>): Chunk<A>
+} = dual(2, <A>(self: Chunk<A>, f: Predicate<A>): Chunk<A> => {
   const arr = toReadonlyArray(self)
   const len = arr.length
   let i = 0
@@ -882,12 +882,12 @@ export const mapAccum: {
  */
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: Chunk<C>) => [Chunk<Exclude<C, B>>, Chunk<B>]
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
-  <C extends A, B extends A, A = C>(self: Chunk<C>, refinement: Refinement<A, B>): [Chunk<Exclude<C, B>>, Chunk<B>]
-  <B extends A, A = B>(self: Chunk<B>, predicate: (a: A) => boolean): [Chunk<B>, Chunk<B>]
+  <A, B extends A>(predicate: Predicate<A>): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): [Chunk<Exclude<A, B>>, Chunk<B>]
+  <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
 } = dual(
   2,
-  <B extends A, A = B>(self: Chunk<B>, predicate: (a: A) => boolean): [Chunk<B>, Chunk<B>] =>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>] =>
     pipe(
       RA.partition(toReadonlyArray(self), predicate),
       ([l, r]) => [unsafeFromArray(l), unsafeFromArray(r)]
