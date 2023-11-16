@@ -6143,10 +6143,10 @@ export type Return<
 > = [Arg] extends [ReadonlyArray<EffectAny>]
   ? ReturnTuple<Arg, IsDiscard<O>, ExtractMode<O>>
   : [Arg] extends [Iterable<EffectAny>]
-  ? ReturnIterable<Arg, IsDiscard<O>, ExtractMode<O>>
-  : [Arg] extends [Record<string, EffectAny>]
-  ? ReturnObject<Arg, IsDiscard<O>, ExtractMode<O>>
-  : never
+    ? ReturnIterable<Arg, IsDiscard<O>, ExtractMode<O>>
+    : [Arg] extends [Record<string, EffectAny>]
+      ? ReturnObject<Arg, IsDiscard<O>, ExtractMode<O>>
+      : never
 ```
 
 Added in v2.0.0
@@ -6179,30 +6179,30 @@ export type ReturnObject<T, Discard extends boolean, Mode> = [T] extends [{ [K: 
       keyof T extends never
         ? never
         : [T[keyof T]] extends [{ [EffectTypeId]: { _R: (_: never) => infer R } }]
-        ? R
-        : never,
+          ? R
+          : never,
       Mode extends "either"
         ? never
         : keyof T extends never
-        ? never
-        : Mode extends "validate"
-        ? {
-            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
-              ? Option.Option<_E>
-              : never
-          }
-        : [T[keyof T]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }]
-        ? E
-        : never,
+          ? never
+          : Mode extends "validate"
+            ? {
+                -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
+                  ? Option.Option<_E>
+                  : never
+              }
+            : [T[keyof T]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }]
+              ? E
+              : never,
       Discard extends true
         ? void
         : Mode extends "either"
-        ? {
-            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
-              ? Either.Either<_E, _A>
-              : never
-          }
-        : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
+          ? {
+              -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
+                ? Either.Either<_E, _A>
+                : never
+            }
+          : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
     >
   : never
 ```
@@ -6219,27 +6219,27 @@ export type ReturnTuple<T extends ReadonlyArray<unknown>, Discard extends boolea
   Mode extends "either"
     ? never
     : T[number] extends never
-    ? never
-    : Mode extends "validate"
-    ? {
-        -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
-          ? Option.Option<_E>
-          : never
-      }
-    : [T[number]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }]
-    ? E
-    : never,
+      ? never
+      : Mode extends "validate"
+        ? {
+            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
+              ? Option.Option<_E>
+              : never
+          }
+        : [T[number]] extends [{ [EffectTypeId]: { _E: (_: never) => infer E } }]
+          ? E
+          : never,
   Discard extends true
     ? void
     : T[number] extends never
-    ? []
-    : Mode extends "either"
-    ? {
-        -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
-          ? Either.Either<_E, _A>
-          : never
-      }
-    : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
+      ? []
+      : Mode extends "either"
+        ? {
+            -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>]
+              ? Either.Either<_E, _A>
+              : never
+          }
+        : { -readonly [K in keyof T]: [T[K]] extends [Effect.Variance<infer _R, infer _E, infer _A>] ? _A : never }
 > extends infer X
   ? X
   : never

@@ -115,8 +115,8 @@ export declare const all: <const I extends Iterable<Option<any>> | Record<string
 ) => [I] extends [readonly Option<any>[]]
   ? Option<{ -readonly [K in keyof I]: [I[K]] extends [Option<infer A>] ? A : never }>
   : [I] extends [Iterable<Option<infer A>>]
-  ? Option<A[]>
-  : Option<{ -readonly [K in keyof I]: [I[K]] extends [Option<infer A>] ? A : never }>
+    ? Option<A[]>
+    : Option<{ -readonly [K in keyof I]: [I[K]] extends [Option<infer A>] ? A : never }>
 ```
 
 **Example**
