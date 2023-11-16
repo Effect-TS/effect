@@ -7,6 +7,8 @@ declare const nonEmptyNumbers: List.Cons<number>
 declare const numbersOrStrings: List.List<number | string>
 declare const nonEmptyNumbersOrStrings: List.Cons<number | string>
 
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
+
 // -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
@@ -35,11 +37,28 @@ if (List.some(Predicate.isString)(numbersOrStrings)) {
 // partition
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [List<number>, List<string>]
-List.partition(numbersOrStrings, Predicate.isString)
+List.partition(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
 
-// $ExpectType [List<number>, List<string>]
-numbersOrStrings.pipe(List.partition(Predicate.isString))
+pipe(
+  numbersOrStrings,
+  List.partition((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [List<string | number>, List<string | number>]
+List.partition(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [List<string | number>, List<string | number>]
+pipe(numbersOrStrings, List.partition(predicateNumbersOrStrings))
+
+// $ExpectType [List<string>, List<number>]
+List.partition(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [List<string>, List<number>]
+pipe(numbersOrStrings, List.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // append

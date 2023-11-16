@@ -274,14 +274,14 @@ Partitions a record into two separate records based on the result of a predicate
 export declare const partition: {
   <K extends string, C extends A, B extends A, A = C>(
     refinement: (a: A, key: K) => a is B
-  ): (self: Record<K, C>) => [Record<string, C>, Record<string, B>]
+  ): (self: Record<K, C>) => [Record<string, Exclude<C, B>>, Record<string, B>]
   <K extends string, B extends A, A = B>(
     predicate: (a: A, key: K) => boolean
   ): (self: Record<K, B>) => [Record<string, B>, Record<string, B>]
   <K extends string, C extends A, B extends A, A = C>(
     self: Record<K, C>,
     refinement: (a: A, key: K) => a is B
-  ): [Record<string, C>, Record<string, B>]
+  ): [Record<string, Exclude<C, B>>, Record<string, B>]
   <K extends string, B extends A, A = B>(
     self: Record<K, B>,
     predicate: (a: A, key: K) => boolean

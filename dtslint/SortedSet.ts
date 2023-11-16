@@ -3,31 +3,50 @@ import type { Order } from "effect/Order"
 import * as Predicate from "effect/Predicate"
 import * as SortedSet from "effect/SortedSet"
 
-declare const numberOrString: SortedSet.SortedSet<number | string>
+declare const numbersOrStrings: SortedSet.SortedSet<number | string>
 declare const stringIterable: Iterable<string>
 declare const stringOrUndefinedOrder: Order<string | undefined>
+
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 // -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
 
-if (SortedSet.every(numberOrString, Predicate.isString)) {
-  numberOrString // $ExpectType SortedSet<string>
+if (SortedSet.every(numbersOrStrings, Predicate.isString)) {
+  numbersOrStrings // $ExpectType SortedSet<string>
 }
 
-if (SortedSet.every(Predicate.isString)(numberOrString)) {
-  numberOrString // $ExpectType SortedSet<string>
+if (SortedSet.every(Predicate.isString)(numbersOrStrings)) {
+  numbersOrStrings // $ExpectType SortedSet<string>
 }
 
 // -------------------------------------------------------------------------------------
 // partition
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [SortedSet<number>, SortedSet<string>]
-SortedSet.partition(numberOrString, Predicate.isString)
+SortedSet.partition(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
 
-// $ExpectType [SortedSet<number>, SortedSet<string>]
-numberOrString.pipe(SortedSet.partition(Predicate.isString))
+pipe(
+  numbersOrStrings,
+  SortedSet.partition((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [SortedSet<string | number>, SortedSet<string | number>]
+SortedSet.partition(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [SortedSet<string | number>, SortedSet<string | number>]
+pipe(numbersOrStrings, SortedSet.partition(predicateNumbersOrStrings))
+
+// $ExpectType [SortedSet<string>, SortedSet<number>]
+SortedSet.partition(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [SortedSet<string>, SortedSet<number>]
+pipe(numbersOrStrings, SortedSet.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // fromIterable
