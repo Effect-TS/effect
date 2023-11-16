@@ -263,3 +263,19 @@ Chunk.dropWhile(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType Chunk<string | number>
 pipe(numbersOrStrings, Chunk.dropWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// splitWhere
+// -------------------------------------------------------------------------------------
+
+// $ExpectType [Chunk<number>, Chunk<number>]
+Chunk.splitWhere(numbers, predicateNumbersOrStrings)
+
+// $ExpectType [Chunk<number>, Chunk<number>]
+pipe(numbers, Chunk.splitWhere(predicateNumbersOrStrings))
+
+// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+Chunk.splitWhere(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+pipe(numbersOrStrings, Chunk.splitWhere(Predicate.isNumber))

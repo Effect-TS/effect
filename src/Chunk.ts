@@ -984,7 +984,7 @@ export const split: {
  * @since 2.0.0
  */
 export const splitWhere: {
-  <A>(predicate: Predicate<A>): (self: Chunk<A>) => [Chunk<A>, Chunk<A>]
+  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => [Chunk<B>, Chunk<B>]
   <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
 } = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>] => {
   let i = 0

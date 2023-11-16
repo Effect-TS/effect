@@ -673,7 +673,7 @@ Splits this chunk on the first element that matches this predicate.
 
 ```ts
 export declare const splitWhere: {
-  <A>(predicate: Predicate<A>): (self: Chunk<A>) => [Chunk<A>, Chunk<A>]
+  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => [Chunk<B>, Chunk<B>]
   <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
 }
 ```
