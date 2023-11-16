@@ -1684,7 +1684,7 @@ export const partition: {
   <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (
     self: Iterable<C>
   ) => [Array<Exclude<C, B>>, Array<B>]
-  <A, B extends A>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [Array<B>, Array<B>]
+  <A>(predicate: (a: A, i: number) => boolean): <B extends A>(self: Iterable<B>) => [Array<B>, Array<B>]
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): [Array<Exclude<A, B>>, Array<B>]
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [Array<A>, Array<A>]
 } = dual(

@@ -761,7 +761,7 @@ export const map: {
  */
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: List<C>) => [List<Exclude<C, B>>, List<B>]
-  <A, B extends A>(predicate: Predicate<A>): (self: List<B>) => [List<B>, List<B>]
+  <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => [List<B>, List<B>]
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [List<Exclude<A, B>>, List<B>]
   <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>]
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>] => {

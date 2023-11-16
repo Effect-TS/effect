@@ -2486,12 +2486,12 @@ export const partition: {
   ): <R, E>(
     self: Stream<R, E, C>
   ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<C, B>>, Stream<never, E, B>]>
-  <A, B extends A>(
+  <A>(
     predicate: Predicate<A>,
     options?: {
       bufferSize?: number | undefined
     }
-  ): <R, E>(
+  ): <R, E, B extends A>(
     self: Stream<R, E, B>
   ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, B>, Stream<never, E, B>]>
   <R, E, A, B extends A>(
