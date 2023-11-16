@@ -749,10 +749,12 @@ Split an `Iterable` into two parts:
 
 ```ts
 export declare const span: {
-  <A, B extends A>(refinement: Refinement<A, B>): (self: Iterable<A>) => [init: B[], rest: A[]]
+  <C extends A, B extends A, A = C>(
+    refinement: Refinement<A, B>
+  ): (self: Iterable<C>) => [init: B[], rest: Exclude<C, B>[]]
   <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => [init: B[], rest: B[]]
-  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: B[], rest: A[]]
-  <B extends A, A>(self: Iterable<B>, predicate: Predicate<A>): [init: B[], rest: B[]]
+  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: B[], rest: Exclude<A, B>[]]
+  <A>(self: Iterable<A>, predicate: Predicate<A>): [init: A[], rest: A[]]
 }
 ```
 

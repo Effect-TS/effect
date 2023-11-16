@@ -380,3 +380,36 @@ pipe(
     ) => true
   )
 )
+
+// -------------------------------------------------------------------------------------
+// span
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.span(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.span((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [init: (string | number)[], rest: (string | number)[]]
+ReadonlyArray.span(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [init: number[], rest: number[]]
+ReadonlyArray.span(numbers, predicateNumbersOrStrings)
+
+// $ExpectType [init: (string | number)[], rest: (string | number)[]]
+pipe(numbersOrStrings, ReadonlyArray.span(predicateNumbersOrStrings))
+
+// $ExpectType [init: number[], rest: number[]]
+pipe(numbers, ReadonlyArray.span(predicateNumbersOrStrings))
+
+// $ExpectType [init: number[], rest: string[]]
+ReadonlyArray.span(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [init: number[], rest: string[]]
+pipe(numbersOrStrings, ReadonlyArray.span(Predicate.isNumber))

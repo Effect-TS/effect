@@ -597,18 +597,15 @@ const spanIndex = <A>(self: Iterable<A>, predicate: Predicate<A>): number => {
  * @since 2.0.0
  */
 export const span: {
-  <A, B extends A>(
+  <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
-  ): (self: Iterable<A>) => [init: Array<B>, rest: Array<A>]
+  ): (self: Iterable<C>) => [init: Array<B>, rest: Array<Exclude<C, B>>]
   <A>(predicate: Predicate<A>): <B extends A>(self: Iterable<B>) => [init: Array<B>, rest: Array<B>]
-  <A, B extends A>(
-    self: Iterable<A>,
-    refinement: Refinement<A, B>
-  ): [init: Array<B>, rest: Array<A>]
-  <B extends A, A>(self: Iterable<B>, predicate: Predicate<A>): [init: Array<B>, rest: Array<B>]
+  <A, B extends A>(self: Iterable<A>, refinement: Refinement<A, B>): [init: Array<B>, rest: Array<Exclude<A, B>>]
+  <A>(self: Iterable<A>, predicate: Predicate<A>): [init: Array<A>, rest: Array<A>]
 } = dual(
   2,
-  <B extends A, A>(self: Iterable<B>, predicate: Predicate<A>): [init: Array<B>, rest: Array<B>] =>
+  <A>(self: Iterable<A>, predicate: Predicate<A>): [init: Array<A>, rest: Array<A>] =>
     splitAt(self, spanIndex(self, predicate))
 )
 
