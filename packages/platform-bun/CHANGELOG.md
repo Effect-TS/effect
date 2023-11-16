@@ -1,5 +1,17 @@
 # @effect/platform-bun
 
+## 0.19.3
+
+### Patch Changes
+
+- [#273](https://github.com/Effect-TS/platform/pull/273) [`589cd44`](https://github.com/Effect-TS/platform/commit/589cd4440d48f42d8bf19b72d1c2996f68ba56bf) Thanks [@tim-smart](https://github.com/tim-smart)! - use removeEventListener over signal
+
+- [#272](https://github.com/Effect-TS/platform/pull/272) [`1a055ac`](https://github.com/Effect-TS/platform/commit/1a055ac959faf12e9c57768b20babea12b1f7d2d) Thanks [@tim-smart](https://github.com/tim-smart)! - add WorkerError to send api
+
+- Updated dependencies [[`1a055ac`](https://github.com/Effect-TS/platform/commit/1a055ac959faf12e9c57768b20babea12b1f7d2d)]:
+  - @effect/platform-node@0.31.3
+  - @effect/platform@0.30.3
+
 ## 0.19.2
 
 ### Patch Changes

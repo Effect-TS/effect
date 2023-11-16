@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.30.3
+
+### Patch Changes
+
+- [#272](https://github.com/Effect-TS/platform/pull/272) [`1a055ac`](https://github.com/Effect-TS/platform/commit/1a055ac959faf12e9c57768b20babea12b1f7d2d) Thanks [@tim-smart](https://github.com/tim-smart)! - add WorkerError to send api
+
 ## 0.30.2
 
 ### Patch Changes
