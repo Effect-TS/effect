@@ -405,3 +405,15 @@ ReadonlyRecord.union(readonlyStructNumbers, readonlyStructStrings, (_, b) => b)
 
 // $ExpectType Record<"a", number>
 ReadonlyRecord.singleton("a", 1)
+
+// -------------------------------------------------------------------------------------
+// every
+// -------------------------------------------------------------------------------------
+
+if (ReadonlyRecord.every(numbersOrStrings, Predicate.isString)) {
+  numbersOrStrings // $ExpectType Readonly<Record<string, string>>
+}
+
+if (ReadonlyRecord.every(Predicate.isString)(numbersOrStrings)) {
+  numbersOrStrings // $ExpectType Readonly<Record<string, string>>
+}

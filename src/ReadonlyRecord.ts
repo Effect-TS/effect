@@ -727,11 +727,21 @@ export const reduce: {
  * @since 2.0.0
  */
 export const every: {
+  <A, K extends string, B extends A>(
+    refinement: (value: A, key: K) => value is B
+  ): (self: Record<K, A>) => self is Readonly<Record<K, B>>
   <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <A, K extends string, B extends A>(
+    self: Record<K, A>,
+    refinement: (value: A, key: K) => value is B
+  ): self is Readonly<Record<K, B>>
   <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
-} = dual(2, <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean => {
+} = dual(2, <A, K extends string, B extends A>(
+  self: Record<K, A>,
+  refinement: (value: A, key: K) => value is B
+): self is Readonly<Record<K, A>> => {
   for (const key in self) {
-    if (!predicate(self[key], key)) {
+    if (!refinement(self[key], key)) {
       return false
     }
   }
