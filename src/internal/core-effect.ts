@@ -862,7 +862,7 @@ export const isSuccess = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<
 export const iterate = <Z, R, E>(
   initial: Z,
   options: {
-    readonly while: (z: Z) => boolean
+    readonly while: Predicate.Predicate<Z>
     readonly body: (z: Z) => Effect.Effect<R, E, Z>
   }
 ): Effect.Effect<R, E, Z> =>
@@ -960,7 +960,7 @@ export const loop: {
   <Z, R, E, A>(
     initial: Z,
     options: {
-      readonly while: (z: Z) => boolean
+      readonly while: Predicate.Predicate<Z>
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => Effect.Effect<R, E, A>
       readonly discard?: false | undefined
@@ -969,7 +969,7 @@ export const loop: {
   <Z, R, E, A>(
     initial: Z,
     options: {
-      readonly while: (z: Z) => boolean
+      readonly while: Predicate.Predicate<Z>
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => Effect.Effect<R, E, A>
       readonly discard: true
@@ -978,7 +978,7 @@ export const loop: {
 } = <Z, R, E, A>(
   initial: Z,
   options: {
-    readonly while: (z: Z) => boolean
+    readonly while: Predicate.Predicate<Z>
     readonly step: (z: Z) => Z
     readonly body: (z: Z) => Effect.Effect<R, E, A>
     readonly discard?: boolean | undefined
@@ -990,7 +990,7 @@ export const loop: {
 
 const loopInternal = <Z, R, E, A>(
   initial: Z,
-  cont: (z: Z) => boolean,
+  cont: Predicate.Predicate<Z>,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, List.List<A>> =>
@@ -1006,7 +1006,7 @@ const loopInternal = <Z, R, E, A>(
 
 const loopDiscard = <Z, R, E, X>(
   initial: Z,
-  cont: (z: Z) => boolean,
+  cont: Predicate.Predicate<Z>,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect.Effect<R, E, X>
 ): Effect.Effect<R, E, void> =>
