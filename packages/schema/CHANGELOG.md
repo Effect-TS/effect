@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.48.2
+
+### Patch Changes
+
+- [#568](https://github.com/Effect-TS/schema/pull/568) [`573419e`](https://github.com/Effect-TS/schema/commit/573419e5b1bda634ee0c27ed785bbce4557e6094) Thanks [@tim-smart](https://github.com/tim-smart)! - add Schema.TaggedError
+
+- [#568](https://github.com/Effect-TS/schema/pull/568) [`573419e`](https://github.com/Effect-TS/schema/commit/573419e5b1bda634ee0c27ed785bbce4557e6094) Thanks [@tim-smart](https://github.com/tim-smart)! - add Schema.TaggedClass
+
 ## 0.48.1
 
 ### Patch Changes
