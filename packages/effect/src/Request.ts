@@ -14,6 +14,7 @@ import * as core from "./internal/core.js"
 import * as fiberRuntime from "./internal/fiberRuntime.js"
 import * as internal from "./internal/request.js"
 import type * as Option from "./Option.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -119,6 +120,29 @@ export const of: <R extends Request<any, any>>() => Request.Constructor<R> = int
 export const tagged: <R extends Request<any, any> & { _tag: string }>(
   tag: R["_tag"]
 ) => Request.Constructor<R, "_tag"> = internal.tagged
+
+/**
+ * Provides a Tagged constructor for a Request Class.
+ *
+ * @example
+ * import * as Request from "effect/Request"
+ *
+ * type Error = never
+ * type Success = string
+ *
+ * class MyRequest extends Request.TaggedClass("MyRequest")<Error, Success, {
+ *   readonly name: string
+ * }> {}
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const TaggedClass: <Tag extends string>(
+  tag: Tag
+) => new<Error, Success, A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Request<unknown, unknown>>, {}> extends true ? void
+    : { readonly [P in keyof A as P extends "_tag" | keyof Request<unknown, unknown> ? never : P]: A[P] }
+) => Request<Error, Success> & Readonly<A> & { readonly _tag: Tag } = internal.TaggedClass as any
 
 /**
  * Complete a `Request` with the specified result.
