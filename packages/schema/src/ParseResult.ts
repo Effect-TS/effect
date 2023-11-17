@@ -4,9 +4,11 @@
 
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
 import type * as AST from "./AST.js"
+import * as TreeFormatter from "./TreeFormatter.js"
 
 /**
  * @since 1.0.0
@@ -17,8 +19,23 @@ export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
  * @since 1.0.0
  */
 export interface ParseError {
-  readonly _tag: "ParseError"
   readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
+}
+
+class ParseErrorImpl implements Inspectable.Inspectable {
+  constructor(readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>) {}
+  toString() {
+    return TreeFormatter.formatErrors(this.errors)
+  }
+  toJSON() {
+    return {
+      _id: "ParseError",
+      message: this.toString()
+    }
+  }
+  [Inspectable.NodeInspectSymbol]() {
+    return this.toJSON()
+  }
 }
 
 /**
@@ -26,10 +43,7 @@ export interface ParseError {
  */
 export const parseError = (
   errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
-): ParseError => ({
-  _tag: "ParseError",
-  errors
-})
+): ParseError => new ParseErrorImpl(errors)
 
 /**
  * `ParseErrors` is a type that represents the different types of errors that can occur when decoding a value.

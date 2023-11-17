@@ -1,10 +1,47 @@
 import * as ParseResult from "@effect/schema/ParseResult"
+import * as S from "@effect/schema/Schema"
 import { Effect, Either, Exit } from "effect"
+import { inspect } from "node:util"
 import { describe, expect, it } from "vitest"
 
 describe("ParseResult", () => {
   const forbiddenParseError = ParseResult.parseError([ParseResult.forbidden])
   const missingParseError = ParseResult.parseError([ParseResult.missing])
+
+  it("toString()", () => {
+    const schema = S.struct({ a: S.string })
+    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => e.toString()))).toStrictEqual(
+      Either.left(`error(s) found
+└─ ["a"]
+   └─ is missing`)
+    )
+  })
+
+  it("toJSON()", () => {
+    const schema = S.struct({ a: S.string })
+    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => (e as any).toJSON())))
+      .toStrictEqual(
+        Either.left({
+          _id: "ParseError",
+          message: `error(s) found
+└─ ["a"]
+   └─ is missing`
+        })
+      )
+  })
+
+  it("[NodeInspectSymbol]", () => {
+    const schema = S.struct({ a: S.string })
+    expect(S.parseEither(schema)({}).pipe(Either.mapLeft((e) => inspect(e))))
+      .toStrictEqual(
+        Either.left(inspect({
+          _id: "ParseError",
+          message: `error(s) found
+└─ ["a"]
+   └─ is missing`
+        }))
+      )
+  })
 
   it("map (Either)", () => {
     expect(ParseResult.map(Either.right(1), (n) => n + 1)).toStrictEqual(Either.right(2))
