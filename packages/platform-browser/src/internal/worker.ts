@@ -36,7 +36,6 @@ const platformWorkerImpl = Worker.PlatformWorker.of({
             port.removeEventListener("error", onError as any)
           })
         }),
-        Effect.interruptible,
         Effect.forkScoped
       )
 
