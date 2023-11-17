@@ -30,7 +30,7 @@ export declare namespace RequestBlock {
    * @since 2.0.0
    * @category models
    */
-  export interface Reducer<R, Z> {
+  export interface Reducer<in R, in out Z> {
     emptyCase(): Z
     parCase(left: Z, right: Z): Z
     singleCase(

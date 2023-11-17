@@ -1594,14 +1594,14 @@ export const RequestResolverTypeId: RequestResolver.RequestResolverTypeId = Symb
   RequestResolverSymbolKey
 ) as RequestResolver.RequestResolverTypeId
 
-const dataSourceVariance = {
-  _R: (_: never) => _,
-  _A: (_: never) => _
+const requestResolverVariance = {
+  _A: (_: unknown) => _,
+  _R: (_: never) => _
 }
 
 /** @internal */
 export class RequestResolverImpl<R, A> implements RequestResolver.RequestResolver<A, R> {
-  readonly [RequestResolverTypeId] = dataSourceVariance
+  readonly [RequestResolverTypeId] = requestResolverVariance
   constructor(
     readonly runAll: (
       requests: Array<Array<Request.Entry<A>>>

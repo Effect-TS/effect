@@ -154,7 +154,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Reducer<R, Z> {
+export interface Reducer<in R, in out Z> {
   emptyCase(): Z
   parCase(left: Z, right: Z): Z
   singleCase(dataSource: RequestResolver.RequestResolver<unknown, R>, blockedRequest: Request.Entry<unknown>): Z
