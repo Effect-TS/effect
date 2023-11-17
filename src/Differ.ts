@@ -46,7 +46,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Differ<Value, Patch> {
+export interface Differ<in out Value, in out Patch> {
   readonly [TypeId]: {
     readonly _V: (_: Value) => Value
     readonly _P: (_: Patch) => Patch
@@ -84,7 +84,7 @@ export declare namespace Differ {
      * @since 2.0.0
      * @category models
      */
-    export interface Patch<Input, Output> extends Equal {
+    export interface Patch<in Input, out Output> extends Equal {
       readonly [ContextPatchTypeId]: {
         readonly _Input: (_: Input) => void
         readonly _Output: (_: never) => Output
@@ -107,7 +107,7 @@ export declare namespace Differ {
      * @since 2.0.0
      * @category models
      */
-    export interface Patch<Value, Patch> extends Equal {
+    export interface Patch<in out Value, in out Patch> extends Equal {
       readonly [ChunkPatchTypeId]: {
         readonly _Value: (_: Value) => Value
         readonly _Patch: (_: Patch) => Patch
@@ -130,7 +130,7 @@ export declare namespace Differ {
      * @since 2.0.0
      * @category models
      */
-    export interface Patch<Key, Value, Patch> extends Equal {
+    export interface Patch<in out Key, in out Value, in out Patch> extends Equal {
       readonly [HashMapPatchTypeId]: {
         readonly _Key: (_: Key) => Key
         readonly _Value: (_: Value) => Value
@@ -154,7 +154,7 @@ export declare namespace Differ {
      * @since 2.0.0
      * @category models
      */
-    export interface Patch<Value> extends Equal {
+    export interface Patch<in out Value> extends Equal {
       readonly [HashSetPatchTypeId]: {
         readonly _Value: (_: Value) => Value
       }
@@ -176,7 +176,7 @@ export declare namespace Differ {
      * @since 2.0.0
      * @category models
      */
-    export interface Patch<Value, Value2, Patch, Patch2> extends Equal {
+    export interface Patch<in out Value, in out Value2, in out Patch, in out Patch2> extends Equal {
       readonly [OrPatchTypeId]: {
         readonly _Value: (_: Value) => Value
         readonly _Value2: (_: Value2) => Value2
