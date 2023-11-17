@@ -58,16 +58,16 @@ pipe(
   ) => true)
 )
 
-// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+// $ExpectType [excluded: Chunk<string | number>, satisfying: Chunk<string | number>]
 Chunk.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+// $ExpectType [excluded: Chunk<string | number>, satisfying: Chunk<string | number>]
 pipe(numbersOrStrings, Chunk.partition(predicateNumbersOrStrings))
 
-// $ExpectType [Chunk<string>, Chunk<number>]
+// $ExpectType [excluded: Chunk<string>, satisfying: Chunk<number>]
 Chunk.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [Chunk<string>, Chunk<number>]
+// $ExpectType [excluded: Chunk<string>, satisfying: Chunk<number>]
 pipe(numbersOrStrings, Chunk.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
@@ -300,14 +300,14 @@ pipe(
   ) => true)
 )
 
-// $ExpectType [Chunk<number>, Chunk<number>]
+// $ExpectType [beforeMatch: Chunk<number>, fromMatch: Chunk<number>]
 Chunk.splitWhere(numbers, predicateNumbersOrStrings)
 
-// $ExpectType [Chunk<number>, Chunk<number>]
+// $ExpectType [beforeMatch: Chunk<number>, fromMatch: Chunk<number>]
 pipe(numbers, Chunk.splitWhere(predicateNumbersOrStrings))
 
-// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+// $ExpectType [beforeMatch: Chunk<string | number>, fromMatch: Chunk<string | number>]
 Chunk.splitWhere(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [Chunk<string | number>, Chunk<string | number>]
+// $ExpectType [beforeMatch: Chunk<string | number>, fromMatch: Chunk<string | number>]
 pipe(numbersOrStrings, Chunk.splitWhere(Predicate.isNumber))

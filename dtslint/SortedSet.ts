@@ -47,10 +47,10 @@ pipe(
   ) => true)
 )
 
-// $ExpectType [SortedSet<string | number>, SortedSet<string | number>]
+// $ExpectType [excluded: SortedSet<string | number>, satisfying: SortedSet<string | number>]
 SortedSet.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType [SortedSet<string | number>, SortedSet<string | number>]
+// $ExpectType [excluded: SortedSet<string | number>, satisfying: SortedSet<string | number>]
 pipe(numbersOrStrings, SortedSet.partition(predicateNumbersOrStrings))
 
 // -------------------------------------------------------------------------------------

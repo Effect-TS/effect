@@ -41,16 +41,16 @@ pipe(
   ) => true)
 )
 
-// $ExpectType [HashSet<string | number>, HashSet<string | number>]
+// $ExpectType [excluded: HashSet<string | number>, satisfying: HashSet<string | number>]
 HashSet.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType [HashSet<string | number>, HashSet<string | number>]
+// $ExpectType [excluded: HashSet<string | number>, satisfying: HashSet<string | number>]
 pipe(numbersOrStrings, HashSet.partition(predicateNumbersOrStrings))
 
-// $ExpectType [HashSet<string>, HashSet<number>]
+// $ExpectType [excluded: HashSet<string>, satisfying: HashSet<number>]
 HashSet.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [HashSet<string>, HashSet<number>]
+// $ExpectType [excluded: HashSet<string>, satisfying: HashSet<number>]
 pipe(numbersOrStrings, HashSet.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
