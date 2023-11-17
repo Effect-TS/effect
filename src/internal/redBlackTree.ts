@@ -19,13 +19,18 @@ const RedBlackTreeSymbolKey = "effect/RedBlackTree"
 export const RedBlackTreeTypeId: RBT.TypeId = Symbol.for(RedBlackTreeSymbolKey) as RBT.TypeId
 
 /** @internal */
-export interface RedBlackTreeImpl<K, V> extends RBT.RedBlackTree<K, V> {
+export interface RedBlackTreeImpl<in out K, out V> extends RBT.RedBlackTree<K, V> {
   readonly _ord: Order.Order<K>
   readonly _root: Node.Node<K, V> | undefined
 }
 
+const redBlackTreeVariance = {
+  _Key: (_: any) => _,
+  _Value: (_: never) => _
+}
+
 const RedBlackTreeProto: RBT.RedBlackTree<unknown, unknown> = {
-  [RedBlackTreeTypeId]: RedBlackTreeTypeId,
+  [RedBlackTreeTypeId]: redBlackTreeVariance,
   [Hash.symbol](): number {
     let hash = Hash.hash(RedBlackTreeSymbolKey)
     for (const item of this) {

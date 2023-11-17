@@ -173,7 +173,7 @@ results will be of the type requested.
 **Signature**
 
 ```ts
-export interface Entry<R> extends Entry.Variance<R> {
+export interface Entry<out R> extends Entry.Variance<R> {
   readonly request: R
   readonly result: Deferred<
     [R] extends [Request<infer _E, infer _A>] ? _E : never,
@@ -198,7 +198,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<R> {
+export interface Variance<out R> {
   readonly [EntryTypeId]: {
     readonly _R: (_: never) => R
   }
@@ -232,7 +232,7 @@ that may fail with an `E`.
 **Signature**
 
 ```ts
-export interface Request<E, A> extends Request.Variance<E, A>, Data.Case {}
+export interface Request<out E, out A> extends Request.Variance<E, A>, Data.Case {}
 ```
 
 Added in v2.0.0
@@ -413,7 +413,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<E, A> {
+export interface Variance<out E, out A> {
   readonly [RequestTypeId]: {
     readonly _E: (_: never) => E
     readonly _A: (_: never) => A

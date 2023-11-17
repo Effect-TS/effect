@@ -28,7 +28,7 @@ export type PoolTypeId = typeof PoolTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
+export interface Pool<out E, in out A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
   /**
    * Retrieves an item from the pool in a scoped effect. Note that if
    * acquisition fails, then the returned effect will fail for that same reason.
@@ -52,10 +52,10 @@ export declare namespace Pool {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
+  export interface Variance<out E, in out A> {
     readonly [PoolTypeId]: {
       readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _A: (_: A) => A
     }
   }
 }

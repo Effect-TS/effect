@@ -263,7 +263,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Order<A> {
+export interface Order<in A> {
   (self: A, that: A): -1 | 0 | 1
 }
 ```

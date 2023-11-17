@@ -509,7 +509,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export interface SafeRefinement<A, R = A> {
+export interface SafeRefinement<in A, out R = A> {
   readonly [SafeRefinementId]: (a: A) => R
 }
 ```
@@ -521,7 +521,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export interface TypeMatcher<Input, Filters, Remaining, Result> extends Pipeable {
+export interface TypeMatcher<in Input, out Filters, out Remaining, out Result> extends Pipeable {
   readonly _tag: "TypeMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: (_: Input) => unknown
@@ -541,7 +541,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export interface ValueMatcher<Input, Filters, Remaining, Result, Provided> extends Pipeable {
+export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Provided> extends Pipeable {
   readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
     readonly _input: (_: Input) => unknown
@@ -781,7 +781,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export interface Only<X> {
+export interface Only<out X> {
   readonly _tag: "Only"
   readonly _X: X
 }
@@ -794,7 +794,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export interface Without<X> {
+export interface Without<out X> {
   readonly _tag: "Without"
   readonly _X: X
 }

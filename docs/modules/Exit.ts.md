@@ -443,7 +443,7 @@ of type `E`.
 **Signature**
 
 ```ts
-export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Failure<out E, out A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Failure"
   readonly _op: "Failure"
   readonly cause: Cause.Cause<E>
@@ -465,7 +465,7 @@ of type `A`.
 **Signature**
 
 ```ts
-export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Success<out E, out A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Success"
   readonly _op: "Success"
   readonly value: A

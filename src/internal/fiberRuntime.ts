@@ -238,7 +238,7 @@ const runBlockedRequests = <R>(self: RequestBlock.RequestBlock<R>) =>
   )
 
 /** @internal */
-export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
+export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A> {
   readonly [internalFiber.FiberTypeId] = internalFiber.fiberVariance
   readonly [internalFiber.RuntimeFiberTypeId] = runtimeFiberVariance
 

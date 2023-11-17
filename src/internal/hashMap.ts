@@ -34,7 +34,7 @@ interface VisitResult<K, V, A> {
 }
 
 /** @internal */
-export interface HashMapImpl<K, V> extends HM.HashMap<K, V> {
+export interface HashMapImpl<out K, out V> extends HM.HashMap<K, V> {
   _editable: boolean // mutable by design
   _edit: number // mutable by design
   _root: Node.Node<K, V> // mutable by design
@@ -106,7 +106,7 @@ const makeImpl = <K, V>(
   return map
 }
 
-class HashMapIterator<K, V, T> implements IterableIterator<T> {
+class HashMapIterator<in out K, in out V, out T> implements IterableIterator<T> {
   v: Option.Option<VisitResult<K, V, T>>
 
   constructor(readonly map: HashMapImpl<K, V>, readonly f: TraversalFn<K, V, T>) {

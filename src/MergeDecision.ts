@@ -21,7 +21,7 @@ export type MergeDecisionTypeId = typeof MergeDecisionTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MergeDecision<R, E0, Z0, E, Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
+export interface MergeDecision<out R, in E0, in Z0, out E, out Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
 
 /**
  * @since 2.0.0
@@ -31,7 +31,7 @@ export declare namespace MergeDecision {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, E0, Z0, E, Z> {
+  export interface Variance<out R, in E0, in Z0, out E, out Z> {
     readonly [MergeDecisionTypeId]: {
       _R: (_: never) => R
       _E0: (_: E0) => void

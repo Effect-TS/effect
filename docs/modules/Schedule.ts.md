@@ -1014,7 +1014,7 @@ schedules, both for performing retrying, as well as performing repetition.
 **Signature**
 
 ```ts
-export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>, Pipeable {
+export interface Schedule<out Env, in In, out Out> extends Schedule.Variance<Env, In, Out>, Pipeable {
   /**
    * Initial State
    */
@@ -1039,7 +1039,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<Env, In, Out> {
+export interface ScheduleDriver<out Env, in In, out Out> extends Schedule.DriverVariance<Env, In, Out> {
   readonly state: Effect.Effect<never, never, unknown>
   readonly last: Effect.Effect<never, Cause.NoSuchElementException, Out>
   readonly reset: Effect.Effect<never, never, void>
@@ -1187,7 +1187,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface DriverVariance<Env, In, Out> {
+export interface DriverVariance<out Env, in In, out Out> {
   readonly [ScheduleDriverTypeId]: {
     readonly _Env: (_: never) => Env
     readonly _In: (_: In) => void
@@ -1203,7 +1203,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Env, In, Out> {
+export interface Variance<out Env, in In, out Out> {
   readonly [ScheduleTypeId]: {
     readonly _Env: (_: never) => Env
     readonly _In: (_: In) => void

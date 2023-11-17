@@ -218,7 +218,7 @@ be taken from the queue is not guaranteed.
 **Signature**
 
 ```ts
-export interface TPriorityQueue<A> extends TPriorityQueue.Variance<A> {}
+export interface TPriorityQueue<in out A> extends TPriorityQueue.Variance<A> {}
 ```
 
 Added in v2.0.0
@@ -340,9 +340,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [TPriorityQueueTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

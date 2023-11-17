@@ -65,7 +65,7 @@ const streamVariance = {
 }
 
 /** @internal */
-export class StreamImpl<R, E, A> implements Stream.Stream<R, E, A> {
+export class StreamImpl<out R, out E, out A> implements Stream.Stream<R, E, A> {
   readonly [StreamTypeId] = streamVariance
   constructor(
     readonly channel: Channel.Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown>
@@ -4775,7 +4775,7 @@ const rechunkProcess = <E, A>(
   })
 
 /** @internal */
-class StreamRechunker<E, A> {
+class StreamRechunker<in out E, out A> {
   private builder: Array<A> = []
   private pos = 0
 

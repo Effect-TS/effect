@@ -26,7 +26,7 @@ export type ScopedCacheTypeId = typeof ScopedCacheTypeId
  * @since 2.0.0
  * @category models
  */
-export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key, Error, Value>, Pipeable {
+export interface ScopedCache<in Key, out Error, out Value> extends ScopedCache.Variance<Key, Error, Value>, Pipeable {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
@@ -97,7 +97,7 @@ export declare namespace ScopedCache {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Key, Error, Value> {
+  export interface Variance<in Key, out Error, out Value> {
     readonly [ScopedCacheTypeId]: {
       _Key: (_: Key) => void
       _Error: (_: never) => Error

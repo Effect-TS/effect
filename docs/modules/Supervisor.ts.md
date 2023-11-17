@@ -244,7 +244,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Supervisor<T> extends Supervisor.Variance<T> {
+export interface Supervisor<out T> extends Supervisor.Variance<T> {
   /**
    * Returns an `Effect` that succeeds with the value produced by this
    * supervisor. This value may change over time, reflecting what the supervisor
@@ -346,7 +346,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<T> {
+export interface Variance<out T> {
   readonly [SupervisorTypeId]: {
     readonly _T: (_: never) => T
   }

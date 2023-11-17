@@ -40,7 +40,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface None<A> extends Data.Case, Pipeable, Inspectable {
+export interface None<out A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "None"
   readonly _op: "None"
   readonly [TypeId]: {
@@ -55,7 +55,7 @@ export interface None<A> extends Data.Case, Pipeable, Inspectable {
  * @category models
  * @since 2.0.0
  */
-export interface Some<A> extends Data.Case, Pipeable, Inspectable {
+export interface Some<out A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Some"
   readonly _op: "Some"
   readonly value: A

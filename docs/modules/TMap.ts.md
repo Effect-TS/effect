@@ -378,7 +378,7 @@ conflicts via chaining.
 **Signature**
 
 ```ts
-export interface TMap<K, V> extends TMap.Variance<K, V> {}
+export interface TMap<in out K, in out V> extends TMap.Variance<K, V> {}
 ```
 
 Added in v2.0.0
@@ -710,10 +710,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<K, V> {
+export interface Variance<in out K, in out V> {
   readonly [TMapTypeId]: {
-    readonly _K: (_: never) => K
-    readonly _V: (_: never) => V
+    readonly _K: (_: K) => K
+    readonly _V: (_: V) => V
   }
 }
 ```

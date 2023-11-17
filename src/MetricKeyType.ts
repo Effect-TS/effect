@@ -85,7 +85,7 @@ export type SummaryKeyTypeTypeId = typeof SummaryKeyTypeTypeId
  * @since 2.0.0
  * @category modelz
  */
-export interface MetricKeyType<In, Out> extends MetricKeyType.Variance<In, Out>, Equal.Equal, Pipeable {}
+export interface MetricKeyType<in In, out Out> extends MetricKeyType.Variance<In, Out>, Equal.Equal, Pipeable {}
 
 /**
  * @since 2.0.0
@@ -149,7 +149,7 @@ export declare namespace MetricKeyType {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<In, Out> {
+  export interface Variance<in In, out Out> {
     readonly [MetricKeyTypeTypeId]: {
       readonly _In: (_: In) => void
       readonly _Out: (_: never) => Out

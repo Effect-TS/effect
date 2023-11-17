@@ -19,7 +19,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
+export interface MutableHashSet<out V> extends Iterable<V>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */

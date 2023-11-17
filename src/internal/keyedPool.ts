@@ -30,10 +30,10 @@ type KeyedPoolMapValueSymbol = typeof KeyedPoolMapValueSymbol
 const keyedPoolVariance = {
   _K: (_: unknown) => _,
   _E: (_: never) => _,
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
-class KeyedPoolImpl<K, E, A> implements KeyedPool.KeyedPool<K, E, A> {
+class KeyedPoolImpl<in K, out E, in out A> implements KeyedPool.KeyedPool<K, E, A> {
   readonly [KeyedPoolTypeId] = keyedPoolVariance
   constructor(
     readonly getOrCreatePool: (key: K) => Effect.Effect<never, never, Pool.Pool<E, A>>,
@@ -52,7 +52,7 @@ class KeyedPoolImpl<K, E, A> implements KeyedPool.KeyedPool<K, E, A> {
 
 type MapValue<E, A> = Complete<E, A> | Pending<E, A>
 
-class Complete<E, A> implements Equal.Equal {
+class Complete<out E, in out A> implements Equal.Equal {
   readonly _tag = "Complete"
   readonly [KeyedPoolMapValueSymbol]: KeyedPoolMapValueSymbol = KeyedPoolMapValueSymbol
   constructor(readonly pool: Pool.Pool<E, A>) {}
@@ -70,7 +70,7 @@ class Complete<E, A> implements Equal.Equal {
 const isComplete = (u: unknown): u is Complete<unknown, unknown> =>
   Predicate.isTagged(u, "Complete") && KeyedPoolMapValueSymbol in u
 
-class Pending<E, A> implements Equal.Equal {
+class Pending<in out E, in out A> implements Equal.Equal {
   readonly _tag = "Pending"
   readonly [KeyedPoolMapValueSymbol]: KeyedPoolMapValueSymbol = KeyedPoolMapValueSymbol
   constructor(readonly deferred: Deferred.Deferred<never, Pool.Pool<E, A>>) {}

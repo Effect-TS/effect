@@ -73,7 +73,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TDeferred<E, A> extends TDeferred.Variance<E, A> {}
+export interface TDeferred<in out E, in out A> extends TDeferred.Variance<E, A> {}
 ```
 
 Added in v2.0.0
@@ -152,10 +152,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<E, A> {
+export interface Variance<in out E, in out A> {
   readonly [TDeferredTypeId]: {
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _E: (_: E) => E
+    readonly _A: (_: A) => A
   }
 }
 ```

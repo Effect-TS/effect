@@ -92,7 +92,7 @@ which can be refreshed either manually or automatically.
 **Signature**
 
 ```ts
-export interface Resource<E, A> extends Resource.Variance<E, A> {
+export interface Resource<in out E, in out A> extends Resource.Variance<E, A> {
   /** @internal */
   readonly scopedRef: ScopedRef.ScopedRef<Exit.Exit<E, A>>
   /** @internal */
@@ -135,10 +135,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<E, A> {
+export interface Variance<in out E, in out A> {
   readonly [ResourceTypeId]: {
-    _E: (_: never) => E
-    _A: (_: never) => A
+    _E: (_: E) => E
+    _A: (_: A) => A
   }
 }
 ```

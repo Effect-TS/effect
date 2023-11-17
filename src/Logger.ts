@@ -35,7 +35,7 @@ export type LoggerTypeId = typeof LoggerTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
+export interface Logger<in Message, out Output> extends Logger.Variance<Message, Output>, Pipeable {
   log(options: Logger.Options<Message>): Output
 }
 
@@ -47,7 +47,7 @@ export declare namespace Logger {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Message, Output> {
+  export interface Variance<in Message, out Output> {
     readonly [LoggerTypeId]: {
       readonly _Message: (_: Message) => void
       readonly _Output: (_: never) => Output
@@ -58,7 +58,7 @@ export declare namespace Logger {
    * @since 2.0.0
    * @category models
    */
-  export interface Options<Message> {
+  export interface Options<out Message> {
     readonly fiberId: FiberId.FiberId
     readonly logLevel: LogLevel.LogLevel
     readonly message: Message

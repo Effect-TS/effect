@@ -99,7 +99,7 @@ export type EffectTypeId = typeof EffectTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
+export interface Effect<out R, out E, out A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
@@ -137,7 +137,7 @@ export interface EffectTypeLambda extends TypeLambda {
  * @since 2.0.0
  * @category models
  */
-export interface Blocked<R, E, A> extends Effect<R, E, A> {
+export interface Blocked<out R, out E, out A> extends Effect<R, E, A> {
   readonly _op: "Blocked"
   readonly i0: RequestBlock<R>
   readonly i1: Effect<R, E, A>
@@ -200,14 +200,14 @@ export declare namespace Effect {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, E, A> {
+  export interface Variance<out R, out E, out A> {
     readonly [EffectTypeId]: VarianceStruct<R, E, A>
   }
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface VarianceStruct<R, E, A> {
+  export interface VarianceStruct<out R, out E, out A> {
     readonly _V: string
     readonly _R: (_: never) => R
     readonly _E: (_: never) => E
@@ -1113,7 +1113,7 @@ export const gen: {
  * @category models
  * @since 2.0.0
  */
-export interface EffectGen<R, E, A> {
+export interface EffectGen<out R, out E, out A> {
   readonly _R: () => R
   readonly _E: () => E
   readonly _A: () => A

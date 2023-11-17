@@ -35,7 +35,7 @@ export type RequestTypeId = typeof RequestTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Request<E, A> extends Request.Variance<E, A>, Data.Case {}
+export interface Request<out E, out A> extends Request.Variance<E, A>, Data.Case {}
 
 /**
  * @since 2.0.0
@@ -45,7 +45,7 @@ export declare namespace Request {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
+  export interface Variance<out E, out A> {
     readonly [RequestTypeId]: {
       readonly _E: (_: never) => E
       readonly _A: (_: never) => A
@@ -267,7 +267,7 @@ export type EntryTypeId = typeof EntryTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Entry<R> extends Entry.Variance<R> {
+export interface Entry<out R> extends Entry.Variance<R> {
   readonly request: R
   readonly result: Deferred<
     [R] extends [Request<infer _E, infer _A>] ? _E : never,
@@ -289,7 +289,7 @@ export declare namespace Entry {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R> {
+  export interface Variance<out R> {
     readonly [EntryTypeId]: {
       readonly _R: (_: never) => R
     }

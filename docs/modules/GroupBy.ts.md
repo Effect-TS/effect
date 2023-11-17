@@ -81,7 +81,7 @@ and the results will be merged in arbitrary order.
 **Signature**
 
 ```ts
-export interface GroupBy<R, E, K, V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
+export interface GroupBy<out R, out E, out K, out V> extends GroupBy.Variance<R, E, K, V>, Pipeable {
   readonly grouped: Stream.Stream<R, E, readonly [K, Queue.Dequeue<Take.Take<E, V>>]>
 }
 ```
@@ -121,7 +121,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<R, E, K, V> {
+export interface Variance<out R, out E, out K, out V> {
   readonly [GroupByTypeId]: {
     readonly _R: (_: never) => R
     readonly _E: (_: never) => E

@@ -684,7 +684,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TArray<A> extends TArray.Variance<A> {}
+export interface TArray<in out A> extends TArray.Variance<A> {}
 ```
 
 Added in v2.0.0
@@ -722,9 +722,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [TArrayTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

@@ -133,7 +133,7 @@ export declare namespace Cause {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E> {
+  export interface Variance<out E> {
     readonly [CauseTypeId]: {
       readonly _E: (_: never) => E
     }
@@ -147,7 +147,7 @@ export declare namespace Cause {
  * @since 2.0.0
  * @category models
  */
-export interface CauseReducer<C, E, Z> {
+export interface CauseReducer<in C, in E, in out Z> {
   emptyCase(context: C): Z
   failCase(context: C, error: E): Z
   dieCase(context: C, defect: unknown): Z
@@ -236,7 +236,7 @@ export interface Empty extends Cause.Variance<never>, Equal.Equal, Pipeable, Ins
  * @since 2.0.0
  * @category models
  */
-export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Fail<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Fail"
   readonly error: E
 }
@@ -279,7 +279,7 @@ export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable,
  * @since 2.0.0
  * @category models
  */
-export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Parallel<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Parallel"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -297,7 +297,7 @@ export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, I
  * @since 2.0.0
  * @category models
  */
-export interface Sequential<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Sequential<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Sequential"
   readonly left: Cause<E>
   readonly right: Cause<E>

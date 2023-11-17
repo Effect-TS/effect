@@ -115,7 +115,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> extends MergeState.Proto {
+export interface BothRunning<_Env, out Err, out Err1, _Err2, out Elem, out Done, out Done1, _Done2>
+  extends MergeState.Proto {
   readonly _tag: "BothRunning"
   readonly left: Fiber.Fiber<Err, Either.Either<Done, Elem>>
   readonly right: Fiber.Fiber<Err1, Either.Either<Done1, Elem>>
@@ -129,7 +130,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface LeftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2> extends MergeState.Proto {
+export interface LeftDone<out Env, _Err, in Err1, out Err2, _Elem, _Done, in Done1, out Done2>
+  extends MergeState.Proto {
   readonly _tag: "LeftDone"
   f(exit: Exit.Exit<Err1, Done1>): Effect.Effect<Env, Err2, Done2>
 }
@@ -155,7 +157,8 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> extends MergeState.Proto {
+export interface RightDone<out Env, in Err, _Err1, out Err2, _Elem, in Done, _Done1, out Done2>
+  extends MergeState.Proto {
   readonly _tag: "RightDone"
   f(exit: Exit.Exit<Err, Done>): Effect.Effect<Env, Err2, Done2>
 }

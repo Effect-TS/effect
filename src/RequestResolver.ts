@@ -48,7 +48,7 @@ export type RequestResolverTypeId = typeof RequestResolverTypeId
  * @since 2.0.0
  * @category models
  */
-export interface RequestResolver<A, R = never> extends Equal.Equal, Pipeable {
+export interface RequestResolver<in A, out R = never> extends RequestResolver.Variance<A, R>, Equal.Equal, Pipeable {
   /**
    * Execute a collection of requests. The outer `Chunk` represents batches
    * of requests that must be performed sequentially. The inner `Chunk`
@@ -70,10 +70,10 @@ export declare namespace RequestResolver {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, A> {
+  export interface Variance<in A, out R> {
     readonly [RequestResolverTypeId]: {
+      readonly _A: (_: A) => void
       readonly _R: (_: never) => R
-      readonly _A: (_: never) => A
     }
   }
 }

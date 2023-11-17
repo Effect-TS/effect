@@ -245,7 +245,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Context<Services> extends Equal, Pipeable, Inspectable {
+export interface Context<in Services> extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _S: (_: Services) => unknown
   }
@@ -260,7 +260,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
+export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspectable {
   readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly [TagTypeId]: {

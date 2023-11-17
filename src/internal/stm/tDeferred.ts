@@ -18,12 +18,12 @@ export const TDeferredTypeId: TDeferred.TDeferredTypeId = Symbol.for(
 
 /** @internal */
 const tDeferredVariance = {
-  _E: (_: never) => _,
-  _A: (_: never) => _
+  _E: (_: any) => _,
+  _A: (_: any) => _
 }
 
 /** @internal */
-class TDeferredImpl<E, A> implements TDeferred.TDeferred<E, A> {
+class TDeferredImpl<in out E, in out A> implements TDeferred.TDeferred<E, A> {
   readonly [TDeferredTypeId] = tDeferredVariance
   constructor(readonly ref: TRef.TRef<Option.Option<Either.Either<E, A>>>) {}
 }

@@ -50,7 +50,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MetricPair<Type extends MetricKeyType.MetricKeyType<any, any>>
+export interface MetricPair<out Type extends MetricKeyType.MetricKeyType<any, any>>
   extends MetricPair.Variance<Type>,
     Pipeable {
   readonly metricKey: MetricKey.MetricKey<Type>
@@ -118,7 +118,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Type extends MetricKeyType.MetricKeyType<any, any>> {
+export interface Variance<out Type extends MetricKeyType.MetricKeyType<any, any>> {
   readonly [MetricPairTypeId]: {
     readonly _Type: (_: never) => Type
   }

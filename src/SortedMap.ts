@@ -25,14 +25,20 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface SortedMap<K, V> extends Iterable<[K, V]>, Equal.Equal, Pipeable, Inspectable {
-  readonly [TypeId]: TypeId
+export interface SortedMap<in out K, out V> extends Iterable<[K, V]>, Equal.Equal, Pipeable, Inspectable {
+  readonly [TypeId]: {
+    readonly _K: (_: K) => K
+    readonly _V: (_: never) => V
+  }
   /** @internal */
   readonly tree: RBT.RedBlackTree<K, V>
 }
 
 const SortedMapProto: Omit<SortedMap<unknown, unknown>, "tree"> = {
-  [TypeId]: TypeId,
+  [TypeId]: {
+    _K: (_: any) => _,
+    _V: (_: never) => _
+  },
   [Hash.symbol]<K, V>(this: SortedMap<K, V>): number {
     return pipe(Hash.hash(this.tree), Hash.combine(Hash.hash("effect/SortedMap")))
   },

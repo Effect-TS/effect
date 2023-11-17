@@ -30,7 +30,7 @@ export declare namespace RequestBlock {
    * @since 2.0.0
    * @category models
    */
-  export interface Reducer<R, Z> {
+  export interface Reducer<in R, in out Z> {
     emptyCase(): Z
     parCase(left: Z, right: Z): Z
     singleCase(
@@ -53,7 +53,7 @@ export interface Empty {
  * @since 2.0.0
  * @category models
  */
-export interface Par<R> {
+export interface Par<out R> {
   readonly _tag: "Par"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
@@ -63,7 +63,7 @@ export interface Par<R> {
  * @since 2.0.0
  * @category models
  */
-export interface Seq<R> {
+export interface Seq<out R> {
   readonly _tag: "Seq"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
@@ -73,7 +73,7 @@ export interface Seq<R> {
  * @since 2.0.0
  * @category models
  */
-export interface Single<R> {
+export interface Single<out R> {
   readonly _tag: "Single"
   readonly dataSource: RequestResolver.RequestResolver<unknown, R>
   readonly blockedRequest: Request.Entry<unknown>

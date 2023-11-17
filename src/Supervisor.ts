@@ -32,7 +32,7 @@ export type SupervisorTypeId = typeof SupervisorTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Supervisor<T> extends Supervisor.Variance<T> {
+export interface Supervisor<out T> extends Supervisor.Variance<T> {
   /**
    * Returns an `Effect` that succeeds with the value produced by this
    * supervisor. This value may change over time, reflecting what the supervisor
@@ -92,7 +92,7 @@ export declare namespace Supervisor {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<T> {
+  export interface Variance<out T> {
     readonly [SupervisorTypeId]: {
       readonly _T: (_: never) => T
     }

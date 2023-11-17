@@ -164,7 +164,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MutableList<A> extends Iterable<A>, Pipeable, Inspectable {
+export interface MutableList<out A> extends Iterable<A>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */

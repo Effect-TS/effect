@@ -21,7 +21,7 @@ export interface SizeRef {
 }
 
 /** @internal */
-export class EmptyNode<K, V> {
+export class EmptyNode<out K, out V> {
   readonly _tag = "EmptyNode"
 
   modify(
@@ -57,7 +57,7 @@ export function canEditNode<K, V>(node: Node<K, V>, edit: number): boolean {
 }
 
 /** @internal */
-export class LeafNode<K, V> {
+export class LeafNode<out K, out V> {
   readonly _tag = "LeafNode"
 
   constructor(
@@ -103,7 +103,7 @@ export class LeafNode<K, V> {
 }
 
 /** @internal */
-export class CollisionNode<K, V> {
+export class CollisionNode<out K, out V> {
   readonly _tag = "CollisionNode"
 
   constructor(
@@ -180,7 +180,7 @@ export class CollisionNode<K, V> {
 }
 
 /** @internal */
-export class IndexedNode<K, V> {
+export class IndexedNode<out K, out V> {
   readonly _tag = "IndexedNode"
 
   constructor(
@@ -244,7 +244,7 @@ export class IndexedNode<K, V> {
 }
 
 /** @internal */
-export class ArrayNode<K, V> {
+export class ArrayNode<out K, out V> {
   readonly _tag = "ArrayNode"
 
   constructor(

@@ -17,9 +17,9 @@ export const ResourceTypeId: Resource.ResourceTypeId = Symbol.for(
 ) as Resource.ResourceTypeId
 
 /** @internal */
-const cachedVariance = {
-  _E: (_: never) => _,
-  _A: (_: never) => _
+const resourceVariance = {
+  _E: (_: any) => _,
+  _A: (_: any) => _
 }
 
 /** @internal */
@@ -46,7 +46,7 @@ export const manual = <R, E, A>(
     pipe(
       scopedRef.fromAcquire(core.exit(acquire)),
       core.map((ref) => ({
-        [ResourceTypeId]: cachedVariance,
+        [ResourceTypeId]: resourceVariance,
         scopedRef: ref,
         acquire: core.provideContext(acquire, env)
       }))

@@ -20,7 +20,7 @@ export type STMStateTypeId = typeof STMStateTypeId
 export type STMState<E, A> = Done<E, A> | Interrupted | Running
 
 /** @internal */
-export interface Done<E, A> extends Equal.Equal {
+export interface Done<out E, out A> extends Equal.Equal {
   readonly [STMStateTypeId]: STMStateTypeId
   readonly _tag: OpCodes.OP_DONE
   readonly exit: Exit.Exit<E, A>

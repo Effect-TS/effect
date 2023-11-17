@@ -82,7 +82,10 @@ receive the current value as well as all changes to the value.
 **Signature**
 
 ```ts
-export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable {
+export interface SubscriptionRef<in out A>
+  extends SubscriptionRef.Variance<A>,
+    Synchronized.SynchronizedRef<A>,
+    Pipeable {
   /** @internal */
   readonly ref: Ref.Ref<A>
   /** @internal */
@@ -132,9 +135,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [SubscriptionRefTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

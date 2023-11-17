@@ -118,7 +118,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MutableHashSet<V> extends Iterable<V>, Pipeable, Inspectable {
+export interface MutableHashSet<out V> extends Iterable<V>, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */

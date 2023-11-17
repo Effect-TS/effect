@@ -26,7 +26,7 @@ import * as internal from "./internal/channel/singleProducerAsyncInput.js"
  * @since 2.0.0
  * @category models
  */
-export interface SingleProducerAsyncInput<Err, Elem, Done>
+export interface SingleProducerAsyncInput<in out Err, in out Elem, in out Done>
   extends AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
 {
   readonly close: Effect.Effect<never, never, unknown>
@@ -39,7 +39,7 @@ export interface SingleProducerAsyncInput<Err, Elem, Done>
  * @since 2.0.0
  * @category models
  */
-export interface AsyncInputProducer<Err, Elem, Done> {
+export interface AsyncInputProducer<in Err, in Elem, in Done> {
   awaitRead(): Effect.Effect<never, never, unknown>
   done(value: Done): Effect.Effect<never, never, unknown>
   emit(element: Elem): Effect.Effect<never, never, unknown>
@@ -52,7 +52,7 @@ export interface AsyncInputProducer<Err, Elem, Done> {
  * @since 2.0.0
  * @category models
  */
-export interface AsyncInputConsumer<Err, Elem, Done> {
+export interface AsyncInputConsumer<out Err, out Elem, out Done> {
   takeWith<A>(
     onError: (cause: Cause.Cause<Err>) => A,
     onElement: (element: Elem) => A,

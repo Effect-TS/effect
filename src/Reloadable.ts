@@ -27,7 +27,7 @@ export type ReloadableTypeId = typeof ReloadableTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Reloadable<A> extends Reloadable.Variance<A> {
+export interface Reloadable<in out A> extends Reloadable.Variance<A> {
   /**
    * @internal
    */
@@ -46,9 +46,9 @@ export declare namespace Reloadable {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
+  export interface Variance<in out A> {
     readonly [ReloadableTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: (_: A) => A
     }
   }
 }

@@ -22,7 +22,7 @@ export type RefTypeId = typeof RefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Ref<A> extends Ref.Variance<A>, Pipeable {
+export interface Ref<in out A> extends Ref.Variance<A>, Pipeable {
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
 }
 
@@ -34,7 +34,7 @@ export declare namespace Ref {
   /**
    * @since 2.0.0
    */
-  export interface Variance<A> {
+  export interface Variance<in out A> {
     readonly [RefTypeId]: {
       readonly _A: (_: A) => A
     }

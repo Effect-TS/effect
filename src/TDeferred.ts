@@ -23,12 +23,12 @@ export type TDeferredTypeId = typeof TDeferredTypeId
  * @since 2.0.0
  * @category models
  */
-export interface TDeferred<E, A> extends TDeferred.Variance<E, A> {}
+export interface TDeferred<in out E, in out A> extends TDeferred.Variance<E, A> {}
 /**
  * @internal
  * @since 2.0.0
  */
-export interface TDeferred<E, A> {
+export interface TDeferred<in out E, in out A> {
   /** @internal */
   readonly ref: TRef.TRef<Option.Option<Either.Either<E, A>>>
 }
@@ -41,10 +41,10 @@ export declare namespace TDeferred {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
+  export interface Variance<in out E, in out A> {
     readonly [TDeferredTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _E: (_: E) => E
+      readonly _A: (_: A) => A
     }
   }
 }

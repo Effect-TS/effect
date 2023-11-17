@@ -7,7 +7,7 @@ import type * as Take from "../../Take.js"
 import * as take from "../take.js"
 
 /** @internal */
-export interface Pull<R, E, A> extends Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>> {}
+export interface Pull<out R, out E, out A> extends Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>> {}
 
 /** @internal */
 export const emit = <A>(value: A): Effect.Effect<never, never, Chunk.Chunk<A>> => Effect.succeed(Chunk.of(value))

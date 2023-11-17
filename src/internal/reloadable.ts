@@ -22,7 +22,7 @@ export const ReloadableTypeId: Reloadable.ReloadableTypeId = Symbol.for(
 
 /** @internal */
 const reloadableVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */

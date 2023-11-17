@@ -96,7 +96,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MergeDecision<R, E0, Z0, E, Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
+export interface MergeDecision<out R, in E0, in Z0, out E, out Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
 ```
 
 Added in v2.0.0
@@ -149,7 +149,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<R, E0, Z0, E, Z> {
+export interface Variance<out R, in E0, in Z0, out E, out Z> {
   readonly [MergeDecisionTypeId]: {
     _R: (_: never) => R
     _E0: (_: E0) => void

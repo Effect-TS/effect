@@ -25,7 +25,7 @@ export const supervisorVariance = {
 }
 
 /** @internal */
-export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
+export class ProxySupervisor<out T> implements Supervisor.Supervisor<T> {
   readonly [SupervisorTypeId] = supervisorVariance
 
   constructor(
@@ -73,7 +73,7 @@ export class ProxySupervisor<T> implements Supervisor.Supervisor<T> {
 }
 
 /** @internal */
-export class Zip<T0, T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
+export class Zip<out T0, out T1> implements Supervisor.Supervisor<readonly [T0, T1]> {
   readonly _tag = "Zip"
   readonly [SupervisorTypeId] = supervisorVariance
 
@@ -181,7 +181,7 @@ export class Track implements Supervisor.Supervisor<Array<Fiber.RuntimeFiber<any
 }
 
 /** @internal */
-export class Const<T> implements Supervisor.Supervisor<T> {
+export class Const<out T> implements Supervisor.Supervisor<T> {
   readonly [SupervisorTypeId] = supervisorVariance
 
   constructor(readonly effect: Effect.Effect<never, never, T>) {

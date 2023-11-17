@@ -42,7 +42,7 @@ export type FiberRefTypeId = typeof FiberRefTypeId
  * @since 2.0.0
  * @category model
  */
-export interface FiberRef<A> extends Variance<A>, Pipeable {
+export interface FiberRef<in out A> extends Variance<A>, Pipeable {
   /** @internal */
   readonly initial: A
   /** @internal */
@@ -61,9 +61,9 @@ export interface FiberRef<A> extends Variance<A>, Pipeable {
  * @since 2.0.0
  * @category models
  */
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [FiberRefTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 

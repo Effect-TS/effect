@@ -11,14 +11,32 @@ export const ContinuationTypeId = Symbol.for("effect/ChannelContinuation")
 export type ContinuationTypeId = typeof ContinuationTypeId
 
 /** @internal */
-export interface Continuation<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2>
-  extends Continuation.Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2>
-{}
+export interface Continuation<
+  out Env,
+  in InErr,
+  in InElem,
+  in InDone,
+  out OutErr,
+  out OutErr2,
+  out OutElem,
+  out OutDone,
+  out OutDone2
+> extends Continuation.Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2> {}
 
 /** @internal */
 export declare namespace Continuation {
   /** @internal */
-  export interface Variance<Env, InErr, InElem, InDone, OutErr, OutErr2, OutElem, OutDone, OutDone2> {
+  export interface Variance<
+    out Env,
+    in InErr,
+    in InElem,
+    in InDone,
+    out OutErr,
+    out OutErr2,
+    out OutElem,
+    out OutDone,
+    out OutDone2
+  > {
     readonly [ContinuationTypeId]: {
       readonly _Env: (_: never) => Env
       readonly _InErr: (_: InErr) => void
@@ -54,15 +72,15 @@ export type ErasedContinuationFinalizer = ContinuationFinalizer<unknown, unknown
 
 /** @internal */
 export interface ContinuationK<
-  Env,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutErr2,
-  OutElem,
-  OutDone,
-  OutDone2
+  out Env,
+  in InErr,
+  in InElem,
+  in InDone,
+  out OutErr,
+  out OutErr2,
+  out OutElem,
+  out OutDone,
+  out OutDone2
 > extends
   Continuation<
     Env,
@@ -89,7 +107,7 @@ export interface ContinuationK<
 }
 
 /** @internal */
-export interface ContinuationFinalizer<Env, OutErr, OutDone> extends
+export interface ContinuationFinalizer<out Env, out OutErr, out OutDone> extends
   Continuation<
     Env,
     unknown,
@@ -121,16 +139,16 @@ const continuationVariance = {
 
 /** @internal */
 export class ContinuationKImpl<
-  Env,
-  Env2,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutErr2,
-  OutElem,
-  OutDone,
-  OutDone2
+  out Env,
+  out Env2,
+  in InErr,
+  in InElem,
+  in InDone,
+  in out OutErr,
+  out OutErr2,
+  out OutElem,
+  in out OutDone,
+  out OutDone2
 > implements
   ContinuationK<
     Env | Env2,
@@ -163,7 +181,9 @@ export class ContinuationKImpl<
 }
 
 /** @internal */
-export class ContinuationFinalizerImpl<Env, OutErr, OutDone> implements ContinuationFinalizer<Env, OutErr, OutDone> {
+export class ContinuationFinalizerImpl<out Env, in out OutErr, in out OutDone>
+  implements ContinuationFinalizer<Env, OutErr, OutDone>
+{
   readonly _tag = OpCodes.OP_CONTINUATION_FINALIZER
   readonly [ContinuationTypeId] = continuationVariance
   constructor(readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>) {

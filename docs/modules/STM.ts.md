@@ -1883,7 +1883,7 @@ synchronization of Fibers and transactional data-types can be quite useful.
 **Signature**
 
 ```ts
-export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
+export interface STM<out R, out E, out A> extends Effect.Effect<R, E, A>, STM.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: STMUnify<this>
   [Unify.ignoreSymbol]?: STMUnifyIgnore
@@ -1897,7 +1897,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface STMGen<R, E, A> {
+export interface STMGen<out R, out E, out A> {
   readonly _R: () => R
   readonly _E: () => E
   readonly _A: () => A
@@ -2583,7 +2583,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<R, E, A> {
+export interface Variance<out R, out E, out A> {
   readonly [STMTypeId]: {
     readonly _R: (_: never) => R
     readonly _E: (_: never) => E

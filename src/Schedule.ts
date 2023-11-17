@@ -67,7 +67,7 @@ export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
  * @category model
  * @since 2.0.0
  */
-export interface Schedule<Env, In, Out> extends Schedule.Variance<Env, In, Out>, Pipeable {
+export interface Schedule<out Env, in In, out Out> extends Schedule.Variance<Env, In, Out>, Pipeable {
   /**
    * Initial State
    */
@@ -90,7 +90,7 @@ export declare namespace Schedule {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Env, In, Out> {
+  export interface Variance<out Env, in In, out Out> {
     readonly [ScheduleTypeId]: {
       readonly _Env: (_: never) => Env
       readonly _In: (_: In) => void
@@ -101,7 +101,7 @@ export declare namespace Schedule {
   /**
    * @since 2.0.0
    */
-  export interface DriverVariance<Env, In, Out> {
+  export interface DriverVariance<out Env, in In, out Out> {
     readonly [ScheduleDriverTypeId]: {
       readonly _Env: (_: never) => Env
       readonly _In: (_: In) => void
@@ -114,7 +114,7 @@ export declare namespace Schedule {
  * @since 2.0.0
  * @category models
  */
-export interface ScheduleDriver<Env, In, Out> extends Schedule.DriverVariance<Env, In, Out> {
+export interface ScheduleDriver<out Env, in In, out Out> extends Schedule.DriverVariance<Env, In, Out> {
   readonly state: Effect.Effect<never, never, unknown>
   readonly last: Effect.Effect<never, Cause.NoSuchElementException, Out>
   readonly reset: Effect.Effect<never, never, void>

@@ -27,12 +27,12 @@ export const TMapTypeId: TMap.TMapTypeId = Symbol.for(
 
 /** @internal */
 const tMapVariance = {
-  _K: (_: never) => _,
-  _V: (_: never) => _
+  _K: (_: any) => _,
+  _V: (_: any) => _
 }
 
 /** @internal */
-class TMapImpl<K, V> implements TMap.TMap<K, V> {
+class TMapImpl<in out K, in out V> implements TMap.TMap<K, V> {
   readonly [TMapTypeId] = tMapVariance
   constructor(
     readonly tBuckets: TRef.TRef<TArray.TArray<Chunk.Chunk<readonly [K, V]>>>,

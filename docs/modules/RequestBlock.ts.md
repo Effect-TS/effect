@@ -120,7 +120,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Par<R> {
+export interface Par<out R> {
   readonly _tag: "Par"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
@@ -154,7 +154,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Reducer<R, Z> {
+export interface Reducer<in R, in out Z> {
   emptyCase(): Z
   parCase(left: Z, right: Z): Z
   singleCase(dataSource: RequestResolver.RequestResolver<unknown, R>, blockedRequest: Request.Entry<unknown>): Z
@@ -169,7 +169,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Seq<R> {
+export interface Seq<out R> {
   readonly _tag: "Seq"
   readonly left: RequestBlock<R>
   readonly right: RequestBlock<R>
@@ -183,7 +183,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Single<R> {
+export interface Single<out R> {
   readonly _tag: "Single"
   readonly dataSource: RequestResolver.RequestResolver<unknown, R>
   readonly blockedRequest: Request.Entry<unknown>

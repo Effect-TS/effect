@@ -34,7 +34,7 @@ export type MetricKeyTypeId = typeof MetricKeyTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
+export interface MetricKey<out Type extends MetricKeyType.MetricKeyType<any, any>>
   extends MetricKey.Variance<Type>, Equal.Equal, Pipeable
 {
   readonly name: string
@@ -87,7 +87,7 @@ export declare namespace MetricKey {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Type> {
+  export interface Variance<out Type> {
     readonly [MetricKeyTypeId]: {
       _Type: (_: never) => Type
     }

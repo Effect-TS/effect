@@ -1425,7 +1425,7 @@ Channels compose in a variety of ways:
 **Signature**
 
 ```ts
-export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+export interface Channel<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone>
   extends Channel.Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     Pipeable {
   [Unify.typeSymbol]?: unknown
@@ -1444,7 +1444,7 @@ executed.
 **Signature**
 
 ```ts
-export interface ChannelException<E> {
+export interface ChannelException<out E> {
   readonly _tag: "ChannelException"
   readonly [ChannelExceptionTypeId]: ChannelExceptionTypeId
   readonly error: E
@@ -1677,7 +1677,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+export interface Variance<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone> {
   readonly [ChannelTypeId]: VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 }
 ```
@@ -1689,7 +1689,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+export interface VarianceStruct<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone> {
   _Env: (_: never) => Env
   _InErr: (_: InErr) => void
   _InElem: (_: InElem) => void

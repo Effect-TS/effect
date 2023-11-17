@@ -85,7 +85,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key, Error, Value>, Pipeable {
+export interface ScopedCache<in Key, out Error, out Value> extends ScopedCache.Variance<Key, Error, Value>, Pipeable {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
@@ -184,7 +184,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Key, Error, Value> {
+export interface Variance<in Key, out Error, out Value> {
   readonly [ScopedCacheTypeId]: {
     _Key: (_: Key) => void
     _Error: (_: never) => Error

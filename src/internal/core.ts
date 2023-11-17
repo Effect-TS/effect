@@ -61,7 +61,7 @@ export const EffectErrorTypeId = Symbol.for(EffectErrorSymbolKey)
 export type EffectErrorTypeId = typeof EffectErrorTypeId
 
 /** @internal */
-export interface EffectError<E> {
+export interface EffectError<out E> {
   readonly [EffectErrorTypeId]: EffectErrorTypeId
   readonly _tag: "EffectError"
   readonly cause: Cause.Cause<E>
@@ -268,7 +268,7 @@ export interface Async extends
 {}
 
 /** @internal */
-export interface Blocked<R = any, E = any, A = any> extends
+export interface Blocked<out R = any, out E = any, out A = any> extends
   Op<"Blocked", {
     readonly i0: BlockedRequests.RequestBlock<R>
     readonly i1: Effect.Effect<R, E, A>
@@ -276,7 +276,7 @@ export interface Blocked<R = any, E = any, A = any> extends
 {}
 
 /** @internal */
-export interface RunBlocked<R = any> extends
+export interface RunBlocked<out R = any> extends
   Op<"RunBlocked", {
     readonly i0: BlockedRequests.RequestBlock<R>
   }>
@@ -1479,7 +1479,7 @@ export const FiberRefTypeId: FiberRef.FiberRefTypeId = Symbol.for(
 
 /** @internal */
 const fiberRefVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /* @internal */
@@ -1594,14 +1594,14 @@ export const RequestResolverTypeId: RequestResolver.RequestResolverTypeId = Symb
   RequestResolverSymbolKey
 ) as RequestResolver.RequestResolverTypeId
 
-const dataSourceVariance = {
-  _R: (_: never) => _,
-  _A: (_: never) => _
+const requestResolverVariance = {
+  _A: (_: unknown) => _,
+  _R: (_: never) => _
 }
 
 /** @internal */
-export class RequestResolverImpl<R, A> implements RequestResolver.RequestResolver<A, R> {
-  readonly [RequestResolverTypeId] = dataSourceVariance
+export class RequestResolverImpl<out R, in A> implements RequestResolver.RequestResolver<A, R> {
+  readonly [RequestResolverTypeId] = requestResolverVariance
   constructor(
     readonly runAll: (
       requests: Array<Array<Request.Entry<A>>>

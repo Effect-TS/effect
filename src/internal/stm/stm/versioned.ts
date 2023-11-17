@@ -1,4 +1,4 @@
 /** @internal */
-export class Versioned<A> {
+export class Versioned<out A> {
   constructor(readonly value: A) {}
 }

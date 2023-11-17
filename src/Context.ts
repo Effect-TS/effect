@@ -26,7 +26,7 @@ export type TagTypeId = typeof TagTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
+export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspectable {
   readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly [TagTypeId]: {
@@ -111,7 +111,7 @@ export type ValidTagsById<R> = R extends infer S ? Tag<S, any> : never
  * @since 2.0.0
  * @category models
  */
-export interface Context<Services> extends Equal, Pipeable, Inspectable {
+export interface Context<in Services> extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _S: (_: Services) => unknown
   }

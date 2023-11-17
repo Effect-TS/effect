@@ -243,7 +243,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface HashSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
+export interface HashSet<out A> extends Iterable<A>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 }
 ```
