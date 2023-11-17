@@ -29,7 +29,7 @@ export const PoolTypeId: Pool.PoolTypeId = Symbol.for(
 
 const poolVariance = {
   _E: (_: never) => _,
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 interface PoolState {
