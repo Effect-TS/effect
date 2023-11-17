@@ -165,7 +165,11 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TPubSub<A> extends TQueue.TEnqueue<A> {}
+export interface TPubSub<in out A> extends TQueue.TEnqueue<A> {
+  readonly [TPubSubTypeId]: {
+    readonly _A: (_: A) => A
+  }
+}
 ```
 
 Added in v2.0.0

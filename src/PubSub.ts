@@ -15,7 +15,7 @@ import type * as Scope from "./Scope.js"
  * @since 2.0.0
  * @category models
  */
-export interface PubSub<in out A> extends Queue.Enqueue<A>, Queue.Queue.DequeueVariance<A>, Pipeable {
+export interface PubSub<in out A> extends Queue.Enqueue<A>, Pipeable {
   /**
    * Publishes a message to the `PubSub`, returning whether the message was published
    * to the `PubSub`.

@@ -40,7 +40,9 @@ export const makeNode = <A>(
 
 /** @internal */
 class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
-  readonly [TPubSubTypeId]: TPubSub.TPubSubTypeId = TPubSubTypeId
+  readonly [TPubSubTypeId] = {
+    _A: (_: any) => _
+  }
   readonly [tQueue.TEnqueueTypeId] = tQueue.tEnqueueVariance
   constructor(
     readonly pubsubSize: TRef.TRef<number>,

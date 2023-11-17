@@ -282,7 +282,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
+export interface TDequeue<out A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
   /**
    * Views the next element in the queue without removing it, retrying if the
    * queue is empty.
@@ -321,7 +321,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
+export interface TEnqueue<in A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
   /**
    * Places one value in the queue.
    */
@@ -612,7 +612,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TDequeueVariance<A> {
+export interface TDequeueVariance<out A> {
   readonly [TDequeueTypeId]: {
     readonly _Out: (_: never) => A
   }
@@ -626,7 +626,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TEnqueueVariance<A> {
+export interface TEnqueueVariance<in A> {
   readonly [TEnqueueTypeId]: {
     readonly _In: (_: A) => void
   }

@@ -40,7 +40,7 @@ export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
  * @since 2.0.0
  * @category models
  */
-export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
+export interface TEnqueue<in A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
   /**
    * Places one value in the queue.
    */
@@ -68,7 +68,7 @@ export interface TEnqueue<A> extends TQueue.TEnqueueVariance<A>, BaseTQueue {
  * @since 2.0.0
  * @category models
  */
-export interface TDequeue<A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
+export interface TDequeue<out A> extends TQueue.TDequeueVariance<A>, BaseTQueue {
   /**
    * Views the next element in the queue without removing it, retrying if the
    * queue is empty.
@@ -156,7 +156,7 @@ export declare namespace TQueue {
    * @since 2.0.0
    * @category models
    */
-  export interface TEnqueueVariance<A> {
+  export interface TEnqueueVariance<in A> {
     readonly [TEnqueueTypeId]: {
       readonly _In: (_: A) => void
     }
@@ -166,7 +166,7 @@ export declare namespace TQueue {
    * @since 2.0.0
    * @category models
    */
-  export interface TDequeueVariance<A> {
+  export interface TDequeueVariance<out A> {
     readonly [TDequeueTypeId]: {
       readonly _Out: (_: never) => A
     }
