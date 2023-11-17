@@ -30,430 +30,65 @@ export const ArgsTypeId: Args.ArgsTypeId = Symbol.for(
   ArgsSymbolKey
 ) as Args.ArgsTypeId
 
+/** @internal */
+export type Op<Tag extends string, Body = {}> = Args.Args<never> & Body & {
+  readonly _tag: Tag
+}
+
 const proto = {
-  _A: (_: never) => _
-}
-
-const wizardHeader = InternalHelpDoc.p("ARGS WIZARD")
-
-/** @internal */
-export class Empty implements Args.Args<void> {
-  readonly [ArgsTypeId] = proto
-  readonly _tag = "Empty"
-
-  minSize(): number {
-    return 0
-  }
-
-  maxSize(): number {
-    return 0
-  }
-
-  identifier(): Option.Option<string> {
-    return Option.none()
-  }
-
-  help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.empty
-  }
-
-  usage(): Usage.Usage {
-    return InternalUsage.empty
-  }
-
-  wizard(_config: CliConfig.CliConfig): Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
-    ValidationError.ValidationError,
-    ReadonlyArray<string>
-  > {
-    return Effect.succeed(ReadonlyArray.empty())
-  }
-
-  validate(
-    args: ReadonlyArray<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, void]> {
-    return Effect.succeed([args, undefined])
-  }
-
-  addDescription(_description: string): Args.Args<void> {
-    return new Empty()
-  }
-
+  [ArgsTypeId]: {
+    _A: (_: never) => _
+  },
   pipe() {
     return pipeArguments(this, arguments)
   }
 }
 
 /** @internal */
-export class Single<A> implements Args.Args<A> {
-  readonly [ArgsTypeId] = proto
-  readonly _tag = "Single"
-
-  constructor(
-    readonly pseudoName: Option.Option<string>,
-    readonly primitiveType: Primitive.Primitive<A>,
-    readonly description: HelpDoc.HelpDoc = InternalHelpDoc.empty
-  ) {}
-
-  minSize(): number {
-    return 1
-  }
-
-  maxSize(): number {
-    return 1
-  }
-
-  identifier(): Option.Option<string> {
-    return Option.some(this.name())
-  }
-
-  help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.descriptionList([[
-      InternalSpan.weak(this.name()),
-      InternalHelpDoc.sequence(
-        InternalHelpDoc.p(this.primitiveType.help()),
-        this.description
-      )
-    ]])
-  }
-
-  usage(): Usage.Usage {
-    return InternalUsage.named(ReadonlyArray.of(this.name()), this.primitiveType.choices())
-  }
-
-  wizard(config: CliConfig.CliConfig): Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
-    ValidationError.ValidationError,
-    ReadonlyArray<string>
-  > {
-    const help = InternalHelpDoc.sequence(wizardHeader, this.help())
-    return Console.log().pipe(
-      Effect.zipRight(
-        this.primitiveType.wizard(help).pipe(Effect.flatMap((input) => {
-          const args = ReadonlyArray.of(input)
-          return this.validate(args, config).pipe(Effect.as(args))
-        }))
-      )
-    )
-  }
-
-  validate(
-    args: ReadonlyArray<string>,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<
-    FileSystem.FileSystem,
-    ValidationError.ValidationError,
-    readonly [ReadonlyArray<string>, A]
-  > {
-    return Effect.suspend(() => {
-      if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-        const head = ReadonlyArray.headNonEmpty(args)
-        const tail = ReadonlyArray.tailNonEmpty(args)
-        return this.primitiveType.validate(Option.some(head), config).pipe(
-          Effect.mapBoth({
-            onFailure: (text) => InternalHelpDoc.p(text),
-            onSuccess: (a) => [tail, a] as const
-          })
-        )
-      }
-      const choices = this.primitiveType.choices()
-      if (Option.isSome(this.pseudoName) && Option.isSome(choices)) {
-        return Effect.fail(InternalHelpDoc.p(
-          `Missing argument <${this.pseudoName.value}> with choices ${choices.value}`
-        ))
-      }
-      if (Option.isSome(this.pseudoName)) {
-        return Effect.fail(InternalHelpDoc.p(
-          `Missing argument <${this.pseudoName.value}>`
-        ))
-      }
-      if (Option.isSome(choices)) {
-        return Effect.fail(InternalHelpDoc.p(
-          `Missing argument ${this.primitiveType.typeName()} with choices ${choices.value}`
-        ))
-      }
-      return Effect.fail(InternalHelpDoc.p(
-        `Missing argument ${this.primitiveType.typeName()}`
-      ))
-    }).pipe(Effect.mapError((help) => InternalValidationError.invalidArgument(help)))
-  }
-
-  addDescription(description: string): Args.Args<A> {
-    const desc = InternalHelpDoc.sequence(this.description, InternalHelpDoc.p(description))
-    return new Single(this.pseudoName, this.primitiveType, desc)
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-
-  private name(): string {
-    const name = Option.getOrElse(this.pseudoName, () => this.primitiveType.typeName())
-    return `<${name}>`
-  }
-}
-
-export class Both<A, B> implements Args.Args<readonly [A, B]> {
-  readonly [ArgsTypeId] = proto
-  readonly _tag = "Both"
-
-  constructor(
-    readonly left: Args.Args<A>,
-    readonly right: Args.Args<B>
-  ) {}
-
-  minSize(): number {
-    return this.left.minSize() + this.right.minSize()
-  }
-
-  maxSize(): number {
-    return this.left.maxSize() + this.right.maxSize()
-  }
-
-  identifier(): Option.Option<string> {
-    const ids = ReadonlyArray.compact([this.left.identifier(), this.right.identifier()])
-    return ReadonlyArray.match(ids, {
-      onEmpty: () => Option.none(),
-      onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
-    })
-  }
-
-  help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.sequence(this.left.help(), this.right.help())
-  }
-
-  usage(): Usage.Usage {
-    return InternalUsage.concat(this.left.usage(), this.right.usage())
-  }
-
-  wizard(config: CliConfig.CliConfig): Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
-    ValidationError.ValidationError,
-    ReadonlyArray<string>
-  > {
-    return Effect.zipWith(
-      this.left.wizard(config),
-      this.right.wizard(config),
-      (left, right) => ReadonlyArray.appendAll(left, right)
-    ).pipe(Effect.tap((args) => this.validate(args, config)))
-  }
-
-  validate(
-    args: ReadonlyArray<string>,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<
-    FileSystem.FileSystem,
-    ValidationError.ValidationError,
-    readonly [ReadonlyArray<string>, readonly [A, B]]
-  > {
-    return this.left.validate(args, config).pipe(
-      Effect.flatMap(([args, a]) =>
-        this.right.validate(args, config).pipe(
-          Effect.map(([args, b]) => [args, [a, b]] as const)
-        )
-      )
-    )
-  }
-
-  addDescription(description: string): Args.Args<readonly [A, B]> {
-    return new Both(
-      this.left.addDescription(description),
-      this.right.addDescription(description)
-    )
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
+export type Instruction =
+  | Empty
+  | Single
+  | Map
+  | Both
+  | Variadic
 
 /** @internal */
-export class Variadic<A> implements Args.Args<ReadonlyArray<A>> {
-  readonly [ArgsTypeId] = proto
-  readonly _tag = "Variadic"
+export interface Empty extends Op<"Empty", {}> {}
 
-  constructor(
-    readonly args: Args.Args<A>,
-    readonly min: Option.Option<number>,
+/** @internal */
+export interface Single extends
+  Op<"Single", {
+    readonly name: string
+    readonly pseudoName: Option.Option<string>
+    readonly primitiveType: Primitive.Primitive<unknown>
+    readonly description: HelpDoc.HelpDoc
+  }>
+{}
+
+/** @internal */
+export interface Map extends
+  Op<"Map", {
+    readonly args: Args.Args<unknown>
+    readonly f: (value: unknown) => Either.Either<HelpDoc.HelpDoc, unknown>
+  }>
+{}
+
+/** @internal */
+export interface Both extends
+  Op<"Both", {
+    readonly left: Args.Args<unknown>
+    readonly right: Args.Args<unknown>
+  }>
+{}
+
+/** @internal */
+export interface Variadic extends
+  Op<"Variadic", {
+    readonly args: Args.Args<unknown>
+    readonly min: Option.Option<number>
     readonly max: Option.Option<number>
-  ) {}
-
-  minSize(): number {
-    return Math.floor(Option.getOrElse(this.min, () => 0) * this.args.minSize())
-  }
-
-  maxSize(): number {
-    return Math.floor(
-      Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER / 2) * this.args.maxSize()
-    )
-  }
-
-  identifier(): Option.Option<string> {
-    return this.args.identifier()
-  }
-
-  help(): HelpDoc.HelpDoc {
-    return InternalHelpDoc.mapDescriptionList(this.args.help(), (oldSpan, oldBlock) => {
-      const min = this.minSize()
-      const max = this.maxSize()
-      const newSpan = InternalSpan.text(
-        Option.isSome(this.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`
-      )
-      const newBlock = InternalHelpDoc.p(
-        Option.isSome(this.max)
-          ? `This argument must be repeated at least ${min} times and may be repeated up to ${max} times.`
-          : min === 0
-          ? "This argument may be repeated zero or more times."
-          : `This argument must be repeated at least ${min} times.`
-      )
-      return [InternalSpan.concat(oldSpan, newSpan), InternalHelpDoc.sequence(oldBlock, newBlock)]
-    })
-  }
-
-  usage(): Usage.Usage {
-    return InternalUsage.repeated(this.args.usage())
-  }
-
-  wizard(config: CliConfig.CliConfig): Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
-    ValidationError.ValidationError,
-    ReadonlyArray<string>
-  > {
-    const repeatHelp = InternalHelpDoc.p("How many times should this argument should be repeated?")
-    const message = pipe(
-      wizardHeader,
-      InternalHelpDoc.sequence(this.help()),
-      InternalHelpDoc.sequence(repeatHelp)
-    )
-    return Console.log().pipe(
-      Effect.zipRight(InternalNumberPrompt.integer({
-        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-        min: this.minSize(),
-        max: this.maxSize()
-      })),
-      Effect.flatMap((n) =>
-        Ref.make(ReadonlyArray.empty<string>()).pipe(
-          Effect.flatMap((ref) =>
-            this.args.wizard(config).pipe(
-              Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
-              Effect.repeatN(n - 1),
-              Effect.zipRight(Ref.get(ref)),
-              Effect.tap((args) => this.validate(args, config))
-            )
-          )
-        )
-      )
-    )
-  }
-
-  validate(
-    args: ReadonlyArray<string>,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<
-    FileSystem.FileSystem,
-    ValidationError.ValidationError,
-    readonly [ReadonlyArray<string>, ReadonlyArray<A>]
-  > {
-    const min1 = Option.getOrElse(this.min, () => 0)
-    const max1 = Option.getOrElse(this.max, () => Number.MAX_SAFE_INTEGER)
-    const loop = (
-      args: ReadonlyArray<string>,
-      acc: ReadonlyArray<A>
-    ): Effect.Effect<
-      FileSystem.FileSystem,
-      ValidationError.ValidationError,
-      readonly [ReadonlyArray<string>, ReadonlyArray<A>]
-    > => {
-      if (acc.length >= max1) {
-        return Effect.succeed([args, acc])
-      }
-      return this.args.validate(args, config).pipe(Effect.matchEffect({
-        onFailure: (failure) =>
-          acc.length >= min1 && ReadonlyArray.isEmptyReadonlyArray(args)
-            ? Effect.succeed([args, acc])
-            : Effect.fail(failure),
-        onSuccess: ([args, a]) => loop(args, ReadonlyArray.prepend(acc, a))
-      }))
-    }
-    return loop(args, ReadonlyArray.empty()).pipe(
-      Effect.map(([args, acc]) => [args, ReadonlyArray.reverse(acc)])
-    )
-  }
-
-  addDescription(description: string): Args.Args<ReadonlyArray<A>> {
-    return new Variadic(this.args.addDescription(description), this.min, this.max)
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/** @internal */
-export class Map<A, B> implements Args.Args<B> {
-  readonly [ArgsTypeId] = proto
-  readonly _tag = "Map"
-
-  constructor(
-    readonly args: Args.Args<A>,
-    readonly f: (value: A) => Either.Either<HelpDoc.HelpDoc, B>
-  ) {}
-
-  minSize(): number {
-    return this.args.minSize()
-  }
-
-  maxSize(): number {
-    return this.args.maxSize()
-  }
-
-  identifier(): Option.Option<string> {
-    return this.args.identifier()
-  }
-
-  help(): HelpDoc.HelpDoc {
-    return this.args.help()
-  }
-
-  usage(): Usage.Usage {
-    return this.args.usage()
-  }
-
-  wizard(config: CliConfig.CliConfig): Effect.Effect<
-    FileSystem.FileSystem | Terminal.Terminal,
-    ValidationError.ValidationError,
-    ReadonlyArray<string>
-  > {
-    return this.args.wizard(config).pipe(Effect.tap((args) => this.validate(args, config)))
-  }
-
-  validate(
-    args: ReadonlyArray<string>,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<
-    FileSystem.FileSystem,
-    ValidationError.ValidationError,
-    readonly [ReadonlyArray<string>, B]
-  > {
-    return this.args.validate(args, config).pipe(
-      Effect.flatMap(([leftover, a]) =>
-        Either.match(this.f(a), {
-          onLeft: (doc) => Effect.fail(InternalValidationError.invalidArgument(doc)),
-          onRight: (b) => Effect.succeed([leftover, b] as const)
-        })
-      )
-    )
-  }
-
-  addDescription(description: string): Args.Args<B> {
-    return new Map(this.args.addDescription(description), this.f)
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
+  }>
+{}
 
 // =============================================================================
 // Refinements
@@ -464,23 +99,19 @@ export const isArgs = (u: unknown): u is Args.Args<unknown> =>
   typeof u === "object" && u != null && ArgsTypeId in u
 
 /** @internal */
-export const isEmpty = (u: unknown): u is Empty => isArgs(u) && "_tag" in u && u._tag === "Empty"
+export const isEmpty = (self: Instruction): self is Empty => self._tag === "Empty"
 
 /** @internal */
-export const isSingle = (u: unknown): u is Single<unknown> =>
-  isArgs(u) && "_tag" in u && u._tag === "Single"
+export const isSingle = (self: Instruction): self is Single => self._tag === "Single"
 
 /** @internal */
-export const isBoth = (u: unknown): u is Both<unknown, unknown> =>
-  isArgs(u) && "_tag" in u && u._tag === "Both"
+export const isBoth = (self: Instruction): self is Both => self._tag === "Both"
 
 /** @internal */
-export const isVariadic = (u: unknown): u is Variadic<unknown> =>
-  isArgs(u) && "_tag" in u && u._tag === "Variadic"
+export const isMap = (self: Instruction): self is Map => self._tag === "Map"
 
 /** @internal */
-export const isMap = (u: unknown): u is Map<unknown, unknown> =>
-  isArgs(u) && "_tag" in u && u._tag === "Map"
+export const isVariadic = (self: Instruction): self is Variadic => self._tag === "Variadic"
 
 // =============================================================================
 // Constructors
@@ -503,7 +134,7 @@ export const all: <
       }
       const rest = entries.slice(1)
       for (const [key, options] of rest) {
-        result = map(new Both(result, options), ([record, value]) => ({
+        result = map(makeBoth(result, options), ([record, value]) => ({
           ...record,
           [key]: value
         }))
@@ -516,53 +147,57 @@ export const all: <
 
 /** @internal */
 export const boolean = (config: Args.Args.BaseArgsConfig = {}): Args.Args<boolean> =>
-  new Single(Option.fromNullable(config.name), InternalPrimitive.boolean(Option.none()))
+  makeSingle(Option.fromNullable(config.name), InternalPrimitive.boolean(Option.none()))
 
 /** @internal */
 export const choice = <A>(
   choices: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>,
   config: Args.Args.BaseArgsConfig = {}
-): Args.Args<A> => new Single(Option.fromNullable(config.name), InternalPrimitive.choice(choices))
+): Args.Args<A> => makeSingle(Option.fromNullable(config.name), InternalPrimitive.choice(choices))
 
 /** @internal */
 export const date = (config: Args.Args.BaseArgsConfig = {}): Args.Args<globalThis.Date> =>
-  new Single(Option.fromNullable(config.name), InternalPrimitive.date)
+  makeSingle(Option.fromNullable(config.name), InternalPrimitive.date)
 
 /** @internal */
 export const directory = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
-  new Single(
+  makeSingle(
     Option.fromNullable(config.name),
     InternalPrimitive.path("directory", config.exists || "either")
   )
 
 /** @internal */
 export const file = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
-  new Single(
+  makeSingle(
     Option.fromNullable(config.name),
     InternalPrimitive.path("file", config.exists || "either")
   )
 
 /** @internal */
 export const float = (config: Args.Args.BaseArgsConfig = {}): Args.Args<number> =>
-  new Single(Option.fromNullable(config.name), InternalPrimitive.float)
+  makeSingle(Option.fromNullable(config.name), InternalPrimitive.float)
 
 /** @internal */
 export const integer = (config: Args.Args.BaseArgsConfig = {}): Args.Args<number> =>
-  new Single(Option.fromNullable(config.name), InternalPrimitive.integer)
+  makeSingle(Option.fromNullable(config.name), InternalPrimitive.integer)
 
 /** @internal */
-export const none: Args.Args<void> = new Empty()
+export const none: Args.Args<void> = (() => {
+  const op = Object.create(proto)
+  op._tag = "Empty"
+  return op
+})()
 
 /** @internal */
 export const path = (config: Args.Args.PathArgsConfig = {}): Args.Args<string> =>
-  new Single(
+  makeSingle(
     Option.fromNullable(config.name),
     InternalPrimitive.path("either", config.exists || "either")
   )
 
 /** @internal */
 export const text = (config: Args.Args.BaseArgsConfig = {}): Args.Args<string> =>
-  new Single(Option.fromNullable(config.name), InternalPrimitive.text)
+  makeSingle(Option.fromNullable(config.name), InternalPrimitive.text)
 
 // =============================================================================
 // Combinators
@@ -578,13 +213,13 @@ export const atLeast = dual<
     <A>(self: Args.Args<A>, times: 0): Args.Args<ReadonlyArray<A>>
     <A>(self: Args.Args<A>, times: number): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   }
->(2, (self, times) => new Variadic(self, Option.some(times), Option.none()) as any)
+>(2, (self, times) => makeVariadic(self, Option.some(times), Option.none()) as any)
 
 /** @internal */
 export const atMost = dual<
   (times: number) => <A>(self: Args.Args<A>) => Args.Args<ReadonlyArray<A>>,
   <A>(self: Args.Args<A>, times: number) => Args.Args<ReadonlyArray<A>>
->(2, (self, times) => new Variadic(self, Option.none(), Option.some(times)))
+>(2, (self, times) => makeVariadic(self, Option.none(), Option.some(times)))
 
 /** @internal */
 export const between = dual<
@@ -603,7 +238,25 @@ export const between = dual<
       max: number
     ): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>>
   }
->(3, (self, min, max) => new Variadic(self, Option.some(min), Option.some(max)) as any)
+>(3, (self, min, max) => makeVariadic(self, Option.some(min), Option.some(max)) as any)
+
+/** @internal */
+export const getHelp = <A>(self: Args.Args<A>): HelpDoc.HelpDoc =>
+  getHelpInternal(self as Instruction)
+
+/** @internal */
+export const getIdentifier = <A>(self: Args.Args<A>): Option.Option<string> =>
+  getIdentifierInternal(self as Instruction)
+
+/** @internal */
+export const getMinSize = <A>(self: Args.Args<A>): number => getMinSizeInternal(self as Instruction)
+
+/** @internal */
+export const getMaxSize = <A>(self: Args.Args<A>): number => getMaxSizeInternal(self as Instruction)
+
+/** @internal */
+export const getUsage = <A>(self: Args.Args<A>): Usage.Usage =>
+  getUsageInternal(self as Instruction)
 
 /** @internal */
 export const map = dual<
@@ -615,7 +268,7 @@ export const map = dual<
 export const mapOrFail = dual<
   <A, B>(f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>) => (self: Args.Args<A>) => Args.Args<B>,
   <A, B>(self: Args.Args<A>, f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>) => Args.Args<B>
->(2, (self, f) => new Map(self, f))
+>(2, (self, f) => makeMap(self, f))
 
 /** @internal */
 export const mapTryCatch = dual<
@@ -639,17 +292,17 @@ export const mapTryCatch = dual<
 
 /** @internal */
 export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
-  new Variadic(self, Option.none(), Option.none())
+  makeVariadic(self, Option.none(), Option.none())
 
 /** @internal */
 export const repeatedAtLeastOnce = <A>(
   self: Args.Args<A>
 ): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>> =>
-  map(new Variadic(self, Option.some(1), Option.none()), (values) => {
+  map(makeVariadic(self, Option.some(1), Option.none()), (values) => {
     if (ReadonlyArray.isNonEmptyReadonlyArray(values)) {
       return values
     }
-    const message = Option.match(self.identifier(), {
+    const message = Option.match(getIdentifierInternal(self as Instruction), {
       onNone: () => "An anonymous variadic argument",
       onSome: (identifier) => `The variadic option '${identifier}' `
     })
@@ -659,33 +312,48 @@ export const repeatedAtLeastOnce = <A>(
 /** @internal */
 export const toRegularLanguage = <A>(
   self: Args.Args<A>
-): RegularLanguage.RegularLanguage => {
-  if (isEmpty(self)) {
-    return InternalRegularLanguage.epsilon
-  }
-  if (isSingle(self)) {
-    return InternalRegularLanguage.primitive(self.primitiveType)
-  }
-  if (isBoth(self)) {
-    return InternalRegularLanguage.concat(
-      toRegularLanguage(self.left),
-      toRegularLanguage(self.right)
-    )
-  }
-  if (isVariadic(self)) {
-    return InternalRegularLanguage.repeated(toRegularLanguage(self.args), {
-      min: Option.getOrUndefined(self.min),
-      max: Option.getOrUndefined(self.max)
-    })
-  }
-  if (isMap(self)) {
-    return toRegularLanguage(self.args)
-  }
-  throw new Error(
-    "[BUG]: Args.toRegularLanguage - received unrecognized " +
-      `args type ${JSON.stringify(self)}`
-  )
-}
+): RegularLanguage.RegularLanguage => toRegularLanguageInternal(self as Instruction)
+
+/** @internal */
+export const validate = dual<
+  (
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ) => <A>(self: Args.Args<A>) => Effect.Effect<
+    FileSystem.FileSystem,
+    ValidationError.ValidationError,
+    [ReadonlyArray<string>, A]
+  >,
+  <A>(
+    self: Args.Args<A>,
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ) => Effect.Effect<
+    FileSystem.FileSystem,
+    ValidationError.ValidationError,
+    [ReadonlyArray<string>, A]
+  >
+>(3, (self, args, config) => validateInternal(self as Instruction, args, config))
+
+/** @internal */
+export const withDescription = dual<
+  (description: string) => <A>(self: Args.Args<A>) => Args.Args<A>,
+  <A>(self: Args.Args<A>, description: string) => Args.Args<A>
+>(2, (self, description) => withDescriptionInternal(self as Instruction, description))
+
+/** @internal */
+export const wizard = dual<
+  (config: CliConfig.CliConfig) => <A>(self: Args.Args<A>) => Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  >,
+  <A>(self: Args.Args<A>, config: CliConfig.CliConfig) => Effect.Effect<
+    FileSystem.FileSystem | Terminal.Terminal,
+    ValidationError.ValidationError,
+    ReadonlyArray<string>
+  >
+>(2, (self, config) => wizardInternal(self as Instruction, config))
 
 // =============================================================================
 // Internals
@@ -705,7 +373,410 @@ const allTupled = <const T extends ArrayLike<Args.Args<any>>>(arg: T): Args.Args
   let result = map(arg[0], (x) => [x])
   for (let i = 1; i < arg.length; i++) {
     const curr = arg[i]
-    result = map(new Both(result, curr), ([a, b]) => [...a, b])
+    result = map(makeBoth(result, curr), ([a, b]) => [...a, b])
   }
   return result as any
+}
+
+const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
+  switch (self._tag) {
+    case "Empty": {
+      return InternalHelpDoc.empty
+    }
+    case "Single": {
+      return InternalHelpDoc.descriptionList([[
+        InternalSpan.weak(self.name),
+        InternalHelpDoc.sequence(
+          InternalHelpDoc.p(InternalPrimitive.getHelp(self.primitiveType)),
+          self.description
+        )
+      ]])
+    }
+    case "Map": {
+      return getHelpInternal(self.args as Instruction)
+    }
+    case "Both": {
+      return InternalHelpDoc.sequence(
+        getHelpInternal(self.left as Instruction),
+        getHelpInternal(self.right as Instruction)
+      )
+    }
+    case "Variadic": {
+      const help = getHelpInternal(self.args as Instruction)
+      return InternalHelpDoc.mapDescriptionList(help, (oldSpan, oldBlock) => {
+        const min = getMinSizeInternal(self as Instruction)
+        const max = getMaxSizeInternal(self as Instruction)
+        const newSpan = InternalSpan.text(
+          Option.isSome(self.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`
+        )
+        const newBlock = InternalHelpDoc.p(
+          Option.isSome(self.max)
+            ? `This argument must be repeated at least ${min} times and may be repeated up to ${max} times.`
+            : min === 0
+            ? "This argument may be repeated zero or more times."
+            : `This argument must be repeated at least ${min} times.`
+        )
+        return [InternalSpan.concat(oldSpan, newSpan), InternalHelpDoc.sequence(oldBlock, newBlock)]
+      })
+    }
+  }
+}
+
+const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
+  switch (self._tag) {
+    case "Empty": {
+      return Option.none()
+    }
+    case "Single": {
+      return Option.some(self.name)
+    }
+    case "Map":
+    case "Variadic": {
+      return getIdentifierInternal(self.args as Instruction)
+    }
+    case "Both": {
+      const ids = ReadonlyArray.compact([
+        getIdentifierInternal(self.left as Instruction),
+        getIdentifierInternal(self.right as Instruction)
+      ])
+      return ReadonlyArray.match(ids, {
+        onEmpty: () => Option.none(),
+        onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
+      })
+    }
+  }
+}
+
+const getMinSizeInternal = (self: Instruction): number => {
+  switch (self._tag) {
+    case "Empty": {
+      return 0
+    }
+    case "Single": {
+      return 1
+    }
+    case "Map": {
+      return getMinSizeInternal(self.args as Instruction)
+    }
+    case "Both": {
+      const leftMinSize = getMinSizeInternal(self.left as Instruction)
+      const rightMinSize = getMinSizeInternal(self.right as Instruction)
+      return leftMinSize + rightMinSize
+    }
+    case "Variadic": {
+      const argsMinSize = getMinSizeInternal(self.args as Instruction)
+      return Math.floor(Option.getOrElse(self.min, () => 0) * argsMinSize)
+    }
+  }
+}
+
+const getMaxSizeInternal = (self: Instruction): number => {
+  switch (self._tag) {
+    case "Empty": {
+      return 0
+    }
+    case "Single": {
+      return 1
+    }
+    case "Map": {
+      return getMaxSizeInternal(self.args as Instruction)
+    }
+    case "Both": {
+      const leftMinSize = getMaxSizeInternal(self.left as Instruction)
+      const rightMinSize = getMaxSizeInternal(self.right as Instruction)
+      return leftMinSize + rightMinSize
+    }
+    case "Variadic": {
+      const argsMaxSize = getMaxSizeInternal(self.args as Instruction)
+      return Math.floor(Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER / 2) * argsMaxSize)
+    }
+  }
+}
+
+const getUsageInternal = (self: Instruction): Usage.Usage => {
+  switch (self._tag) {
+    case "Empty": {
+      return InternalUsage.empty
+    }
+    case "Single": {
+      return InternalUsage.named(
+        ReadonlyArray.of(self.name),
+        InternalPrimitive.getChoices(self.primitiveType)
+      )
+    }
+    case "Map": {
+      return getUsageInternal(self.args as Instruction)
+    }
+    case "Both": {
+      return InternalUsage.concat(
+        getUsageInternal(self.left as Instruction),
+        getUsageInternal(self.right as Instruction)
+      )
+    }
+    case "Variadic": {
+      return InternalUsage.repeated(getUsageInternal(self.args as Instruction))
+    }
+  }
+}
+
+const makeSingle = <A>(
+  pseudoName: Option.Option<string>,
+  primitiveType: Primitive.Primitive<A>,
+  description: HelpDoc.HelpDoc = InternalHelpDoc.empty
+): Args.Args<A> => {
+  const op = Object.create(proto)
+  op._tag = "Single"
+  op.name = `<${Option.getOrElse(pseudoName, () => InternalPrimitive.getTypeName(primitiveType))}>`
+  op.pseudoName = pseudoName
+  op.primitiveType = primitiveType
+  op.description = description
+  return op
+}
+
+const makeMap = <A, B>(
+  self: Args.Args<A>,
+  f: (a: A) => Either.Either<HelpDoc.HelpDoc, B>
+): Args.Args<B> => {
+  const op = Object.create(proto)
+  op._tag = "Map"
+  op.args = self
+  op.f = f
+  return op
+}
+
+const makeBoth = <A, B>(left: Args.Args<A>, right: Args.Args<B>): Args.Args<[A, B]> => {
+  const op = Object.create(proto)
+  op._tag = "Both"
+  op.left = left
+  op.right = right
+  return op
+}
+
+const makeVariadic = <A>(
+  args: Args.Args<A>,
+  min: Option.Option<number>,
+  max: Option.Option<number>
+): Args.Args<ReadonlyArray<A>> => {
+  const op = Object.create(proto)
+  op._tag = "Variadic"
+  op.args = args
+  op.min = min
+  op.max = max
+  return op
+}
+
+const toRegularLanguageInternal = (self: Instruction): RegularLanguage.RegularLanguage => {
+  switch (self._tag) {
+    case "Empty": {
+      return InternalRegularLanguage.epsilon
+    }
+    case "Single": {
+      return InternalRegularLanguage.primitive(self.primitiveType)
+    }
+    case "Map": {
+      return toRegularLanguageInternal(self.args as Instruction)
+    }
+    case "Both": {
+      return InternalRegularLanguage.concat(
+        toRegularLanguageInternal(self.left as Instruction),
+        toRegularLanguageInternal(self.right as Instruction)
+      )
+    }
+    case "Variadic": {
+      return InternalRegularLanguage.repeated(toRegularLanguageInternal(self.args as Instruction), {
+        min: Option.getOrUndefined(self.min),
+        max: Option.getOrUndefined(self.max)
+      })
+    }
+  }
+}
+
+const validateInternal = (
+  self: Instruction,
+  args: ReadonlyArray<string>,
+  config: CliConfig.CliConfig
+): Effect.Effect<
+  FileSystem.FileSystem,
+  ValidationError.ValidationError,
+  [ReadonlyArray<string>, any]
+> => {
+  switch (self._tag) {
+    case "Empty": {
+      return Effect.succeed([args, undefined])
+    }
+    case "Single": {
+      return Effect.suspend(() => {
+        if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+          const head = ReadonlyArray.headNonEmpty(args)
+          const tail = ReadonlyArray.tailNonEmpty(args)
+          return InternalPrimitive.validate(self.primitiveType, Option.some(head), config).pipe(
+            Effect.mapBoth({
+              onFailure: (text) => InternalHelpDoc.p(text),
+              onSuccess: (a) => [tail, a] as [ReadonlyArray<string>, any]
+            })
+          )
+        }
+        const choices = InternalPrimitive.getChoices(self.primitiveType)
+        if (Option.isSome(self.pseudoName) && Option.isSome(choices)) {
+          return Effect.fail(InternalHelpDoc.p(
+            `Missing argument <${self.pseudoName.value}> with choices ${choices.value}`
+          ))
+        }
+        if (Option.isSome(self.pseudoName)) {
+          return Effect.fail(InternalHelpDoc.p(
+            `Missing argument <${self.pseudoName.value}>`
+          ))
+        }
+        if (Option.isSome(choices)) {
+          return Effect.fail(InternalHelpDoc.p(
+            `Missing argument ${
+              InternalPrimitive.getTypeName(self.primitiveType)
+            } with choices ${choices.value}`
+          ))
+        }
+        return Effect.fail(InternalHelpDoc.p(
+          `Missing argument ${InternalPrimitive.getTypeName(self.primitiveType)}`
+        ))
+      }).pipe(Effect.mapError((help) => InternalValidationError.invalidArgument(help)))
+    }
+    case "Map": {
+      return validateInternal(self.args as Instruction, args, config).pipe(
+        Effect.flatMap(([leftover, a]) =>
+          Either.match(self.f(a), {
+            onLeft: (doc) => Effect.fail(InternalValidationError.invalidArgument(doc)),
+            onRight: (b) => Effect.succeed([leftover, b])
+          })
+        )
+      )
+    }
+    case "Both": {
+      return validateInternal(self.left as Instruction, args, config).pipe(
+        Effect.flatMap(([args, a]) =>
+          validateInternal(self.right as Instruction, args, config).pipe(
+            Effect.map(([args, b]) => [args, [a, b]])
+          )
+        )
+      )
+    }
+    case "Variadic": {
+      const min1 = Option.getOrElse(self.min, () => 0)
+      const max1 = Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER)
+      const loop = (
+        args: ReadonlyArray<string>,
+        acc: ReadonlyArray<any>
+      ): Effect.Effect<
+        FileSystem.FileSystem,
+        ValidationError.ValidationError,
+        [ReadonlyArray<string>, ReadonlyArray<any>]
+      > => {
+        if (acc.length >= max1) {
+          return Effect.succeed([args, acc])
+        }
+        return validateInternal(self.args as Instruction, args, config).pipe(Effect.matchEffect({
+          onFailure: (failure) =>
+            acc.length >= min1 && ReadonlyArray.isEmptyReadonlyArray(args)
+              ? Effect.succeed([args, acc])
+              : Effect.fail(failure),
+          onSuccess: ([args, a]) => loop(args, ReadonlyArray.prepend(acc, a))
+        }))
+      }
+      return loop(args, ReadonlyArray.empty()).pipe(
+        Effect.map(([args, acc]) => [args, ReadonlyArray.reverse(acc)])
+      )
+    }
+  }
+}
+
+const withDescriptionInternal = (self: Instruction, description: string): Args.Args<any> => {
+  switch (self._tag) {
+    case "Empty": {
+      return none
+    }
+    case "Single": {
+      const desc = InternalHelpDoc.sequence(self.description, InternalHelpDoc.p(description))
+      return makeSingle(self.pseudoName, self.primitiveType, desc)
+    }
+    case "Map": {
+      return makeMap(withDescriptionInternal(self.args as Instruction, description), self.f)
+    }
+    case "Both": {
+      return makeBoth(
+        withDescriptionInternal(self.left as Instruction, description),
+        withDescriptionInternal(self.right as Instruction, description)
+      )
+    }
+    case "Variadic": {
+      return makeVariadic(
+        withDescriptionInternal(self.args as Instruction, description),
+        self.min,
+        self.max
+      )
+    }
+  }
+}
+
+const wizardHeader = InternalHelpDoc.p("ARGS WIZARD")
+
+const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.Effect<
+  FileSystem.FileSystem | Terminal.Terminal,
+  ValidationError.ValidationError,
+  ReadonlyArray<string>
+> => {
+  switch (self._tag) {
+    case "Empty": {
+      return Effect.succeed(ReadonlyArray.empty())
+    }
+    case "Single": {
+      const help = InternalHelpDoc.sequence(wizardHeader, getHelpInternal(self))
+      return Console.log().pipe(
+        Effect.zipRight(
+          InternalPrimitive.wizard(self.primitiveType, help).pipe(Effect.flatMap((input) => {
+            const args = ReadonlyArray.of(input as string)
+            return validateInternal(self, args, config).pipe(Effect.as(args))
+          }))
+        )
+      )
+    }
+    case "Map": {
+      return wizardInternal(self.args as Instruction, config).pipe(
+        Effect.tap((args) => validateInternal(self.args as Instruction, args, config))
+      )
+    }
+    case "Both": {
+      return Effect.zipWith(
+        wizardInternal(self.left as Instruction, config),
+        wizardInternal(self.right as Instruction, config),
+        (left, right) => ReadonlyArray.appendAll(left, right)
+      ).pipe(Effect.tap((args) => validateInternal(self, args, config)))
+    }
+    case "Variadic": {
+      const repeatHelp = InternalHelpDoc.p(
+        "How many times should this argument should be repeated?"
+      )
+      const message = pipe(
+        wizardHeader,
+        InternalHelpDoc.sequence(getHelpInternal(self)),
+        InternalHelpDoc.sequence(repeatHelp)
+      )
+      return Console.log().pipe(
+        Effect.zipRight(InternalNumberPrompt.integer({
+          message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+          min: getMinSizeInternal(self),
+          max: getMaxSizeInternal(self)
+        })),
+        Effect.flatMap((n) =>
+          Ref.make(ReadonlyArray.empty<string>()).pipe(
+            Effect.flatMap((ref) =>
+              wizardInternal(self.args as Instruction, config).pipe(
+                Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
+                Effect.repeatN(n - 1),
+                Effect.zipRight(Ref.get(ref)),
+                Effect.tap((args) => validateInternal(self, args, config))
+              )
+            )
+          )
+        )
+      )
+    }
+  }
 }

@@ -195,8 +195,8 @@ export const orElse: {
  * @category mapping
  */
 export const mapDescriptionList: {
-  (f: (span: Span, helpDoc: HelpDoc) => readonly [Span, HelpDoc]): (self: HelpDoc) => HelpDoc
-  (self: HelpDoc, f: (span: Span, helpDoc: HelpDoc) => readonly [Span, HelpDoc]): HelpDoc
+  (f: (span: Span, helpDoc: HelpDoc) => [Span, HelpDoc]): (self: HelpDoc) => HelpDoc
+  (self: HelpDoc, f: (span: Span, helpDoc: HelpDoc) => [Span, HelpDoc]): HelpDoc
 } = InternalHelpDoc.mapDescriptionList
 
 /**

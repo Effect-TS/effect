@@ -6,7 +6,7 @@ const bytesFlag = Options.boolean("c")
 const linesFlag = Options.boolean("l")
 const wordsFlag = Options.boolean("w")
 const charFlag = Options.boolean("m", { ifPresent: false })
-export const options: Options.Options<readonly [boolean, boolean, boolean, boolean]> = Options.all([
+export const options: Options.Options<[boolean, boolean, boolean, boolean]> = Options.all([
   bytesFlag,
   linesFlag,
   wordsFlag,
@@ -17,6 +17,6 @@ export const args: Args.Args<ReadonlyArray<string>> = Args.repeated(Args.file({ 
 
 export const command: Command.Command<{
   readonly name: "wc"
-  readonly options: readonly [boolean, boolean, boolean, boolean]
+  readonly options: [boolean, boolean, boolean, boolean]
   readonly args: ReadonlyArray<string>
 }> = Command.standard("wc", { options, args })

@@ -18,7 +18,9 @@ describe("Args", () => {
       const path = yield* _(Path.Path)
       const filePath = path.join(__dirname, "Args.test.ts")
       const args = Args.file({ name: "files", exists: "yes" }).pipe(Args.repeated)
-      const result = yield* _(args.validate(ReadonlyArray.of(filePath), CliConfig.defaultConfig))
+      const result = yield* _(
+        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+      )
       expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(filePath)])
     }).pipe(runEffect))
 
@@ -28,7 +30,7 @@ describe("Args", () => {
       const filePath = path.join(__dirname, "NotExist.test.ts")
       const args = Args.file({ name: "files", exists: "yes" }).pipe(Args.repeated)
       const result = yield* _(
-        Effect.flip(args.validate(ReadonlyArray.of(filePath), CliConfig.defaultConfig))
+        Effect.flip(Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig))
       )
       expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
         `Path '${filePath}' must exist`
@@ -40,7 +42,9 @@ describe("Args", () => {
       const path = yield* _(Path.Path)
       const filePath = path.join(__dirname, "NotExist.test.ts")
       const args = Args.file({ name: "files", exists: "no" }).pipe(Args.repeated)
-      const result = yield* _(args.validate(ReadonlyArray.of(filePath), CliConfig.defaultConfig))
+      const result = yield* _(
+        Args.validate(args, ReadonlyArray.of(filePath), CliConfig.defaultConfig)
+      )
       expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.of(filePath)])
     }).pipe(runEffect))
 
@@ -50,7 +54,7 @@ describe("Args", () => {
       const filePath = path.join(__dirname, "NotExist.test.ts")
       const args = Args.file({ name: "files", exists: "no" }).pipe(Args.repeated)
       const result = yield* _(
-        args.validate(ReadonlyArray.make(filePath, filePath), CliConfig.defaultConfig)
+        Args.validate(args, ReadonlyArray.make(filePath, filePath), CliConfig.defaultConfig)
       )
       expect(result).toEqual([ReadonlyArray.empty(), ReadonlyArray.make(filePath, filePath)])
     }).pipe(runEffect))

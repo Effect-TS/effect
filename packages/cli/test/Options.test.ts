@@ -32,7 +32,7 @@ const validation = <A>(
 ): Effect.Effect<
   FileSystem.FileSystem,
   ValidationError.ValidationError,
-  readonly [ReadonlyArray<string>, A]
+  [ReadonlyArray<string>, A]
 > =>
   Options.validate(options, args, config).pipe(
     Effect.flatMap(([err, rest, a]) =>

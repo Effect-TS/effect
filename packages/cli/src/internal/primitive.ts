@@ -5,7 +5,7 @@ import * as FileSystem from "@effect/platform/FileSystem"
 // import * as Doc from "@effect/printer/Doc"
 import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -31,432 +31,63 @@ export const PrimitiveTypeId: Primitive.PrimitiveTypeId = Symbol.for(
   PrimitiveSymbolKey
 ) as Primitive.PrimitiveTypeId
 
+/** @internal */
+export type Op<Tag extends string, Body = {}> = Primitive.Primitive<never> & Body & {
+  readonly _tag: Tag
+}
+
 const proto = {
-  _A: (_: never) => _
-}
-
-/** @internal */
-export const trueValues = Schema.literal("true", "1", "y", "yes", "on")
-
-/** @internal */
-export const falseValues = Schema.literal("false", "0", "n", "no", "off")
-
-/**
- * Represents a boolean value.
- *
- * True values can be passed as one of: `["true", "1", "y", "yes" or "on"]`.
- * False value can be passed as one of: `["false", "o", "n", "no" or "off"]`.
- *
- * @internal
- */
-export class Bool implements Primitive.Primitive<boolean> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Bool"
-
-  constructor(readonly defaultValue: Option.Option<boolean>) {}
-
-  typeName(): string {
-    return "boolean"
-  }
-
-  help(): Span.Span {
-    return InternalSpan.text("A true or false value.")
-  }
-
-  choices(): Option.Option<string> {
-    return Option.some("true | false")
-  }
-
-  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
-    const primitiveHelp = InternalHelpDoc.p("Select true or false")
-    const message = InternalHelpDoc.sequence(help, primitiveHelp)
-    return InternalTogglePrompt.toggle({
-      message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-      initial: Option.getOrElse(this.defaultValue, () => false),
-      active: "true",
-      inactive: "false"
-    }).pipe(InternalPrompt.map((bool) => `${bool}`))
-  }
-
-  validate(
-    value: Option.Option<string>,
-    config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, string, boolean> {
-    return Option.map(value, (str) => InternalCliConfig.normalizeCase(config, str)).pipe(
-      Option.match({
-        onNone: () =>
-          Effect.orElseFail(this.defaultValue, () => `Missing default value for boolean parameter`),
-        onSome: (value) =>
-          Schema.is(trueValues)(value)
-            ? Effect.succeed(true)
-            : Schema.is(falseValues)(value)
-            ? Effect.succeed(false)
-            : Effect.fail(`Unable to recognize '${value}' as a valid boolean`)
-      })
-    )
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-export class Choice<A> implements Primitive.Primitive<A> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Choice"
-
-  constructor(readonly alternatives: ReadonlyArray.NonEmptyReadonlyArray<readonly [string, A]>) {}
-
-  typeName(): string {
-    return "choice"
-  }
-
-  help(): Span.Span {
-    const choices = pipe(
-      ReadonlyArray.map(this.alternatives, ([choice]) => choice),
-      ReadonlyArray.join(", ")
-    )
-    return InternalSpan.text(`One of the following: ${choices}`)
-  }
-
-  choices(): Option.Option<string> {
-    const choices = pipe(
-      ReadonlyArray.map(this.alternatives, ([choice]) => choice),
-      ReadonlyArray.join(" | ")
-    )
-    return Option.some(choices)
-  }
-
-  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
-    const primitiveHelp = InternalHelpDoc.p("Select one of the following choices")
-    const message = InternalHelpDoc.sequence(help, primitiveHelp)
-    return InternalSelectPrompt.select({
-      message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-      choices: this.alternatives.map(([title]) => ({ title, value: title }))
-    })
-  }
-
-  validate(
-    value: Option.Option<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, string, A> {
-    return Effect.orElseFail(
-      value,
-      () => `Choice options to not have a default value`
-    ).pipe(
-      Effect.flatMap((value) =>
-        ReadonlyArray.findFirst(this.alternatives, ([choice]) => choice === value)
-      ),
-      Effect.mapBoth({
-        onFailure: () => {
-          const choices = pipe(
-            ReadonlyArray.map(this.alternatives, ([choice]) => choice),
-            ReadonlyArray.join(", ")
-          )
-          return `Expected one of the following cases: ${choices}`
-        },
-        onSuccess: ([, value]) => value
-      })
-    )
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * Represents a date in ISO-8601 format, such as `2007-12-03T10:15:30`.
- *
- * @internal
- */
-export class Date implements Primitive.Primitive<globalThis.Date> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Date"
-
-  typeName(): string {
-    return "date"
-  }
-
-  help(): Span.Span {
-    return InternalSpan.text(
-      "A date without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30."
-    )
-  }
-
-  choices(): Option.Option<string> {
-    return Option.some("date")
-  }
-
-  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
-    const primitiveHelp = InternalHelpDoc.p("Enter a date")
-    const message = InternalHelpDoc.sequence(help, primitiveHelp)
-    return InternalDatePrompt.date({
-      message: InternalHelpDoc.toAnsiText(message).trimEnd()
-    }).pipe(InternalPrompt.map((date) => date.toISOString()))
-  }
-
-  validate(
-    value: Option.Option<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, string, globalThis.Date> {
-    return attempt(
-      value,
-      this.typeName(),
-      Schema.parse(Schema.dateFromString(Schema.string))
-    )
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * Represents a floating point number.
- *
- * @internal
- */
-export class Float implements Primitive.Primitive<number> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Float"
-
-  typeName(): string {
-    return "float"
-  }
-
-  help(): Span.Span {
-    return InternalSpan.text("A floating point number.")
-  }
-
-  choices(): Option.Option<string> {
-    return Option.none()
-  }
-
-  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
-    const primitiveHelp = InternalHelpDoc.p("Enter a floating point value")
-    const message = InternalHelpDoc.sequence(help, primitiveHelp)
-    return InternalNumberPrompt.float({
-      message: InternalHelpDoc.toAnsiText(message).trimEnd()
-    }).pipe(InternalPrompt.map((value) => `${value}`))
-  }
-
-  validate(
-    value: Option.Option<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, string, number> {
-    const numberFromString = Schema.string.pipe(Schema.numberFromString)
-    return attempt(value, this.typeName(), Schema.parse(numberFromString))
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * Represents an integer.
- *
- * @internal
- */
-export class Integer implements Primitive.Primitive<number> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Integer"
-
-  typeName(): string {
-    return "integer"
-  }
-
-  help(): Span.Span {
-    return InternalSpan.text("An integer.")
-  }
-
-  choices(): Option.Option<string> {
-    return Option.none()
-  }
-
-  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
-    const primitiveHelp = InternalHelpDoc.p("Enter an integer")
-    const message = InternalHelpDoc.sequence(help, primitiveHelp)
-    return InternalNumberPrompt.float({
-      message: InternalHelpDoc.toAnsiText(message).trimEnd()
-    }).pipe(InternalPrompt.map((value) => `${value}`))
-  }
-
-  validate(
-    value: Option.Option<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, string, number> {
-    const intFromString = Schema.string.pipe(Schema.numberFromString, Schema.int())
-    return attempt(value, this.typeName(), Schema.parse(intFromString))
-  }
-
+  [PrimitiveTypeId]: {
+    _A: (_: never) => _
+  },
   pipe() {
     return pipeArguments(this, arguments)
   }
 }
 
 /** @internal */
-export class Path implements Primitive.Primitive<string> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Path"
+export type Instruction =
+  | Bool
+  | Choice
+  | DateTime
+  | Float
+  | Integer
+  | Path
+  | Text
 
-  constructor(
-    readonly pathType: Primitive.Primitive.PathType,
+/** @internal */
+export interface Bool extends
+  Op<"Bool", {
+    readonly defaultValue: Option.Option<boolean>
+  }>
+{}
+
+/** @internal */
+export interface Choice extends
+  Op<"Choice", {
+    readonly alternatives: ReadonlyArray.NonEmptyReadonlyArray<[string, unknown]>
+  }>
+{}
+
+/** @internal */
+export interface DateTime extends Op<"DateTime", {}> {}
+
+/** @internal */
+export interface Float extends Op<"Float", {}> {}
+
+/** @internal */
+export interface Integer extends Op<"Integer", {}> {}
+
+/** @internal */
+export interface Path extends
+  Op<"Path", {
+    readonly pathType: Primitive.Primitive.PathType
     readonly pathExists: Primitive.Primitive.PathExists
-  ) {}
-
-  typeName(): string {
-    if (this.pathType === "either") {
-      return "path"
-    }
-    return this.pathType
-  }
-
-  help(): Span.Span {
-    if (this.pathType === "either" && this.pathExists === "yes") {
-      return InternalSpan.text("An existing file or directory.")
-    }
-    if (this.pathType === "file" && this.pathExists === "yes") {
-      return InternalSpan.text("An existing file.")
-    }
-    if (this.pathType === "directory" && this.pathExists === "yes") {
-      return InternalSpan.text("An existing directory.")
-    }
-    if (this.pathType === "either" && this.pathExists === "no") {
-      return InternalSpan.text("A file or directory that must not exist.")
-    }
-    if (this.pathType === "file" && this.pathExists === "no") {
-      return InternalSpan.text("A file that must not exist.")
-    }
-    if (this.pathType === "directory" && this.pathExists === "no") {
-      return InternalSpan.text("A directory that must not exist.")
-    }
-    if (this.pathType === "either" && this.pathExists === "either") {
-      return InternalSpan.text("A file or directory.")
-    }
-    if (this.pathType === "file" && this.pathExists === "either") {
-      return InternalSpan.text("A file.")
-    }
-    if (this.pathType === "directory" && this.pathExists === "either") {
-      return InternalSpan.text("A directory.")
-    }
-    throw new Error(
-      "[BUG]: Path.help - encountered invalid combination of path type " +
-        `('${this.pathType}') and path existence ('${this.pathExists}')`
-    )
-  }
-
-  choices(): Option.Option<string> {
-    return Option.none()
-  }
-
-  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
-    const primitiveHelp = InternalHelpDoc.p("Enter a file system path")
-    const message = InternalHelpDoc.sequence(help, primitiveHelp)
-    return InternalTextPrompt.text({
-      message: InternalHelpDoc.toAnsiText(message).trimEnd()
-    })
-  }
-
-  validate(
-    value: Option.Option<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, string, string> {
-    return Effect.flatMap(FileSystem.FileSystem, (fileSystem) => {
-      const errorMsg = "Path options do not have a default value"
-      return Effect.orElseFail(value, () => errorMsg).pipe(
-        Effect.tap((path) =>
-          Effect.orDie(fileSystem.exists(path)).pipe(
-            Effect.tap((pathExists) =>
-              validatePathExistence(path, this.pathExists, pathExists).pipe(
-                Effect.zipRight(
-                  validatePathType(path, this.pathType, fileSystem).pipe(
-                    Effect.when(() => this.pathExists !== "no" && pathExists)
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    })
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-/**
- * Represents a user-defined piece of text.
- *
- * @internal
- */
-export class Text implements Primitive.Primitive<string> {
-  readonly [PrimitiveTypeId] = proto
-  readonly _tag = "Text"
-
-  typeName(): string {
-    return "text"
-  }
-
-  help(): Span.Span {
-    return InternalSpan.text("A user-defined piece of text.")
-  }
-
-  choices(): Option.Option<string> {
-    return Option.none()
-  }
-
-  wizard(help: HelpDoc.HelpDoc): Prompt.Prompt<string> {
-    const primitiveHelp = InternalHelpDoc.p("Enter some text")
-    const message = InternalHelpDoc.sequence(help, primitiveHelp)
-    return InternalTextPrompt.text({ message: InternalHelpDoc.toAnsiText(message).trimEnd() })
-  }
-
-  validate(
-    value: Option.Option<string>,
-    _config: CliConfig.CliConfig
-  ): Effect.Effect<FileSystem.FileSystem, string, string> {
-    return attempt(value, this.typeName(), Schema.parse(Schema.string))
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-}
-
-// =============================================================================
-// Constructors
-// =============================================================================
+  }>
+{}
 
 /** @internal */
-export const boolean = (defaultValue: Option.Option<boolean>): Primitive.Primitive<boolean> =>
-  new Bool(defaultValue)
-
-/** @internal */
-export const choice = <A>(
-  alternatives: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>
-): Primitive.Primitive<A> => new Choice(alternatives)
-
-/** @internal */
-export const date: Primitive.Primitive<globalThis.Date> = new Date()
-
-/** @internal */
-export const float: Primitive.Primitive<number> = new Float()
-
-/** @internal */
-export const integer: Primitive.Primitive<number> = new Integer()
-
-/** @internal */
-export const path = (
-  pathType: Primitive.Primitive.PathType,
-  pathExists: Primitive.Primitive.PathExists
-): Primitive.Primitive<string> => new Path(pathType, pathExists)
-
-/** @internal */
-export const text: Primitive.Primitive<string> = new Text()
+export interface Text extends Op<"Text", {}> {}
 
 // =============================================================================
 // Refinements
@@ -468,39 +99,342 @@ export const isPrimitive = (u: unknown): u is Primitive.Primitive<unknown> =>
 
 /** @internal */
 export const isBool = <A>(self: Primitive.Primitive<A>): boolean =>
-  isPrimitive(self) && "_tag" in self && self._tag === "Bool"
+  isPrimitive(self) && isBoolType(self as Instruction)
 
 /** @internal */
-export const isBoolType = (u: unknown): u is Bool =>
-  isPrimitive(u) && "_tag" in u && u._tag === "Bool"
+export const isBoolType = (self: Instruction): self is Bool => self._tag === "Bool"
 
 /** @internal */
-export const isChoiceType = (u: unknown): u is Choice<unknown> =>
-  isPrimitive(u) && "_tag" in u && u._tag === "Choice"
+export const isChoiceType = (self: Instruction): self is Choice => self._tag === "Choice"
 
 /** @internal */
-export const isDateType = (u: unknown): u is Date =>
-  isPrimitive(u) && "_tag" in u && u._tag === "Date"
+export const isDateTimeType = (self: Instruction): self is DateTime => self._tag === "DateTime"
 
 /** @internal */
-export const isFloatType = (u: unknown): u is Float =>
-  isPrimitive(u) && "_tag" in u && u._tag === "Float"
+export const isFloatType = (self: Instruction): self is Float => self._tag === "Float"
 
 /** @internal */
-export const isIntegerType = (u: unknown): u is Integer =>
-  isPrimitive(u) && "_tag" in u && u._tag === "Integer"
+export const isIntegerType = (self: Instruction): self is Integer => self._tag === "Integer"
 
 /** @internal */
-export const isPathType = (u: unknown): u is Path =>
-  isPrimitive(u) && "_tag" in u && u._tag === "Path"
+export const isPathType = (self: Instruction): self is Path => self._tag === "Path"
 
 /** @internal */
-export const isTextType = (u: unknown): u is Text =>
-  isPrimitive(u) && "_tag" in u && u._tag === "Text"
+export const isTextType = (self: Instruction): self is Text => self._tag === "Text"
+
+// =============================================================================
+// Constructors
+// =============================================================================
+
+/** @internal */
+export const trueValues = Schema.literal("true", "1", "y", "yes", "on")
+
+/** @internal */
+export const falseValues = Schema.literal("false", "0", "n", "no", "off")
+
+/** @internal */
+export const boolean = (defaultValue: Option.Option<boolean>): Primitive.Primitive<boolean> => {
+  const op = Object.create(proto)
+  op._tag = "Bool"
+  op.defaultValue = defaultValue
+  return op
+}
+
+/** @internal */
+export const choice = <A>(
+  alternatives: ReadonlyArray.NonEmptyReadonlyArray<[string, A]>
+): Primitive.Primitive<A> => {
+  const op = Object.create(proto)
+  op._tag = "Choice"
+  op.alternatives = alternatives
+  return op
+}
+
+/** @internal */
+export const date: Primitive.Primitive<globalThis.Date> = (() => {
+  const op = Object.create(proto)
+  op._tag = "DateTime"
+  return op
+})()
+
+/** @internal */
+export const float: Primitive.Primitive<number> = (() => {
+  const op = Object.create(proto)
+  op._tag = "Float"
+  return op
+})()
+
+/** @internal */
+export const integer: Primitive.Primitive<number> = (() => {
+  const op = Object.create(proto)
+  op._tag = "Integer"
+  return op
+})()
+
+/** @internal */
+export const path = (
+  pathType: Primitive.Primitive.PathType,
+  pathExists: Primitive.Primitive.PathExists
+): Primitive.Primitive<string> => {
+  const op = Object.create(proto)
+  op._tag = "Path"
+  op.pathType = pathType
+  op.pathExists = pathExists
+  return op
+}
+
+/** @internal */
+export const text: Primitive.Primitive<string> = (() => {
+  const op = Object.create(proto)
+  op._tag = "Text"
+  return op
+})()
+
+// =============================================================================
+// Combinators
+// =============================================================================
+
+/** @internal */
+export const getChoices = <A>(self: Primitive.Primitive<A>): Option.Option<string> =>
+  getChoicesInternal(self as Instruction)
+
+/** @internal */
+export const getHelp = <A>(self: Primitive.Primitive<A>): Span.Span =>
+  getHelpInternal(self as Instruction)
+
+/** @internal */
+export const getTypeName = <A>(self: Primitive.Primitive<A>): string =>
+  getTypeNameInternal(self as Instruction)
+
+/** @internal */
+export const validate = dual<
+  (
+    value: Option.Option<string>,
+    config: CliConfig.CliConfig
+  ) => <A>(self: Primitive.Primitive<A>) => Effect.Effect<
+    FileSystem.FileSystem,
+    string,
+    A
+  >,
+  <A>(
+    self: Primitive.Primitive<A>,
+    value: Option.Option<string>,
+    config: CliConfig.CliConfig
+  ) => Effect.Effect<
+    FileSystem.FileSystem,
+    string,
+    A
+  >
+>(3, (self, value, config) => validateInternal(self as Instruction, value, config))
+
+/** @internal */
+export const wizard = dual<
+  (help: HelpDoc.HelpDoc) => <A>(self: Primitive.Primitive<A>) => Prompt.Prompt<A>,
+  <A>(self: Primitive.Primitive<A>, help: HelpDoc.HelpDoc) => Prompt.Prompt<A>
+>(2, (self, help) => wizardInternal(self as Instruction, help))
 
 // =============================================================================
 // Internals
 // =============================================================================
+
+const getChoicesInternal = (self: Instruction): Option.Option<string> => {
+  switch (self._tag) {
+    case "Bool": {
+      return Option.some("true | false")
+    }
+    case "Choice": {
+      const choices = pipe(
+        ReadonlyArray.map(self.alternatives, ([choice]) => choice),
+        ReadonlyArray.join(" | ")
+      )
+      return Option.some(choices)
+    }
+    case "DateTime": {
+      return Option.some("date")
+    }
+    case "Float":
+    case "Integer":
+    case "Path":
+    case "Text": {
+      return Option.none()
+    }
+  }
+}
+
+const getHelpInternal = (self: Instruction): Span.Span => {
+  switch (self._tag) {
+    case "Bool": {
+      return InternalSpan.text("A true or false value.")
+    }
+    case "Choice": {
+      const choices = pipe(
+        ReadonlyArray.map(self.alternatives, ([choice]) => choice),
+        ReadonlyArray.join(", ")
+      )
+      return InternalSpan.text(`One of the following: ${choices}`)
+    }
+    case "DateTime": {
+      return InternalSpan.text(
+        "A date without a time-zone in the ISO-8601 format, such as 2007-12-03T10:15:30."
+      )
+    }
+    case "Float": {
+      return InternalSpan.text("A floating point number.")
+    }
+    case "Integer": {
+      return InternalSpan.text("An integer.")
+    }
+    case "Path": {
+      if (self.pathType === "either" && self.pathExists === "yes") {
+        return InternalSpan.text("An existing file or directory.")
+      }
+      if (self.pathType === "file" && self.pathExists === "yes") {
+        return InternalSpan.text("An existing file.")
+      }
+      if (self.pathType === "directory" && self.pathExists === "yes") {
+        return InternalSpan.text("An existing directory.")
+      }
+      if (self.pathType === "either" && self.pathExists === "no") {
+        return InternalSpan.text("A file or directory that must not exist.")
+      }
+      if (self.pathType === "file" && self.pathExists === "no") {
+        return InternalSpan.text("A file that must not exist.")
+      }
+      if (self.pathType === "directory" && self.pathExists === "no") {
+        return InternalSpan.text("A directory that must not exist.")
+      }
+      if (self.pathType === "either" && self.pathExists === "either") {
+        return InternalSpan.text("A file or directory.")
+      }
+      if (self.pathType === "file" && self.pathExists === "either") {
+        return InternalSpan.text("A file.")
+      }
+      if (self.pathType === "directory" && self.pathExists === "either") {
+        return InternalSpan.text("A directory.")
+      }
+      throw new Error(
+        "[BUG]: Path.help - encountered invalid combination of path type " +
+          `('${self.pathType}') and path existence ('${self.pathExists}')`
+      )
+    }
+    case "Text": {
+      return InternalSpan.text("A user-defined piece of text.")
+    }
+  }
+}
+
+const getTypeNameInternal = (self: Instruction): string => {
+  switch (self._tag) {
+    case "Bool": {
+      return "boolean"
+    }
+    case "Choice": {
+      return "choice"
+    }
+    case "DateTime": {
+      return "date"
+    }
+    case "Float": {
+      return "float"
+    }
+    case "Integer": {
+      return "integer"
+    }
+    case "Path": {
+      if (self.pathType === "either") {
+        return "path"
+      }
+      return self.pathType
+    }
+    case "Text": {
+      return "text"
+    }
+  }
+}
+
+const validateInternal = (
+  self: Instruction,
+  value: Option.Option<string>,
+  config: CliConfig.CliConfig
+): Effect.Effect<FileSystem.FileSystem, string, any> => {
+  switch (self._tag) {
+    case "Bool": {
+      return Option.map(value, (str) => InternalCliConfig.normalizeCase(config, str)).pipe(
+        Option.match({
+          onNone: () =>
+            Effect.orElseFail(
+              self.defaultValue,
+              () => `Missing default value for boolean parameter`
+            ),
+          onSome: (value) =>
+            Schema.is(trueValues)(value)
+              ? Effect.succeed(true)
+              : Schema.is(falseValues)(value)
+              ? Effect.succeed(false)
+              : Effect.fail(`Unable to recognize '${value}' as a valid boolean`)
+        })
+      )
+    }
+    case "Choice": {
+      return Effect.orElseFail(
+        value,
+        () => `Choice options to not have a default value`
+      ).pipe(
+        Effect.flatMap((value) =>
+          ReadonlyArray.findFirst(self.alternatives, ([choice]) => choice === value)
+        ),
+        Effect.mapBoth({
+          onFailure: () => {
+            const choices = pipe(
+              ReadonlyArray.map(self.alternatives, ([choice]) => choice),
+              ReadonlyArray.join(", ")
+            )
+            return `Expected one of the following cases: ${choices}`
+          },
+          onSuccess: ([, value]) => value
+        })
+      )
+    }
+    case "DateTime": {
+      return attempt(
+        value,
+        getTypeNameInternal(self),
+        Schema.parse(Schema.dateFromString(Schema.string))
+      )
+    }
+    case "Float": {
+      const numberFromString = Schema.string.pipe(Schema.numberFromString)
+      return attempt(value, getTypeNameInternal(self), Schema.parse(numberFromString))
+    }
+    case "Integer": {
+      const intFromString = Schema.string.pipe(Schema.numberFromString, Schema.int())
+      return attempt(value, getTypeNameInternal(self), Schema.parse(intFromString))
+    }
+    case "Path": {
+      return Effect.flatMap(FileSystem.FileSystem, (fileSystem) => {
+        const errorMsg = "Path options do not have a default value"
+        return Effect.orElseFail(value, () => errorMsg).pipe(
+          Effect.tap((path) =>
+            Effect.orDie(fileSystem.exists(path)).pipe(
+              Effect.tap((pathExists) =>
+                validatePathExistence(path, self.pathExists, pathExists).pipe(
+                  Effect.zipRight(
+                    validatePathType(path, self.pathType, fileSystem).pipe(
+                      Effect.when(() => self.pathExists !== "no" && pathExists)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      })
+    }
+    case "Text": {
+      return attempt(value, getTypeNameInternal(self), Schema.parse(Schema.string))
+    }
+  }
+}
 
 const attempt = <E, A>(
   option: Option.Option<string>,
@@ -558,10 +492,68 @@ const validatePathType = (
         Effect.unlessEffect(checkIsDirectory),
         Effect.asUnit
       )
-      //         ZIO.fail(s"Expected path '$value' to be a directory.").unlessZIO(self.fileSystem.isDirectory(path)).unit
     }
     case "either": {
       return Effect.unit
+    }
+  }
+}
+
+const wizardInternal = (self: Instruction, help: HelpDoc.HelpDoc): Prompt.Prompt<any> => {
+  switch (self._tag) {
+    case "Bool": {
+      const primitiveHelp = InternalHelpDoc.p("Select true or false")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalTogglePrompt.toggle({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        initial: Option.getOrElse(self.defaultValue, () => false),
+        active: "true",
+        inactive: "false"
+      }).pipe(InternalPrompt.map((bool) => `${bool}`))
+    }
+    case "Choice": {
+      const primitiveHelp = InternalHelpDoc.p("Select one of the following choices")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalSelectPrompt.select({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+        choices: ReadonlyArray.map(
+          self.alternatives,
+          ([title]) => ({ title, value: title })
+        )
+      })
+    }
+    case "DateTime": {
+      const primitiveHelp = InternalHelpDoc.p("Enter a date")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalDatePrompt.date({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd()
+      }).pipe(InternalPrompt.map((date) => date.toISOString()))
+    }
+    case "Float": {
+      const primitiveHelp = InternalHelpDoc.p("Enter a floating point value")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalNumberPrompt.float({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd()
+      }).pipe(InternalPrompt.map((value) => `${value}`))
+    }
+    case "Integer": {
+      const primitiveHelp = InternalHelpDoc.p("Enter an integer")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalNumberPrompt.float({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd()
+      }).pipe(InternalPrompt.map((value) => `${value}`))
+    }
+    case "Path": {
+      const primitiveHelp = InternalHelpDoc.p("Enter a file system path")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalTextPrompt.text({
+        message: InternalHelpDoc.toAnsiText(message).trimEnd()
+      })
+    }
+    case "Text": {
+      const primitiveHelp = InternalHelpDoc.p("Enter some text")
+      const message = InternalHelpDoc.sequence(help, primitiveHelp)
+      return InternalTextPrompt.text({ message: InternalHelpDoc.toAnsiText(message).trimEnd() })
     }
   }
 }

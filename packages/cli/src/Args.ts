@@ -34,19 +34,7 @@ export type ArgsTypeId = typeof ArgsTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Args<A> extends Args.Variance<A>, Pipeable {
-  help(): HelpDoc
-  usage(): Usage
-  maxSize(): number
-  minSize(): number
-  identifier(): Option<string>
-  wizard(config: CliConfig): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
-  validate(
-    args: ReadonlyArray<string>,
-    config: CliConfig
-  ): Effect<FileSystem, ValidationError, readonly [ReadonlyArray<string>, A]>
-  addDescription(description: string): Args<A>
-}
+export interface Args<A> extends Args.Variance<A>, Pipeable {}
 
 /**
  * @since 1.0.0
@@ -235,6 +223,36 @@ export const file: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs
 export const float: (config?: Args.BaseArgsConfig) => Args<number> = InternalArgs.float
 
 /**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getHelp: <A>(self: Args<A>) => HelpDoc = InternalArgs.getHelp
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getIdentifier: <A>(self: Args<A>) => Option<string> = InternalArgs.getIdentifier
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getMinSize: <A>(self: Args<A>) => number = InternalArgs.getMinSize
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getMaxSize: <A>(self: Args<A>) => number = InternalArgs.getMaxSize
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getUsage: <A>(self: Args<A>) => Usage = InternalArgs.getUsage
+
+/**
  * Creates an integer argument.
  *
  * Can optionally provide a custom argument name (defaults to `"integer"`).
@@ -320,3 +338,42 @@ export const text: (config?: Args.BaseArgsConfig) => Args<string> = InternalArgs
  */
 export const toRegularLanguage: <A>(self: Args<A>) => RegularLanguage =
   InternalArgs.toRegularLanguage
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const validate: {
+  (
+    args: ReadonlyArray<string>,
+    config: CliConfig
+  ): <A>(self: Args<A>) => Effect<FileSystem, ValidationError, [ReadonlyArray<string>, A]>
+  <A>(
+    self: Args<A>,
+    args: ReadonlyArray<string>,
+    config: CliConfig
+  ): Effect<FileSystem, ValidationError, [ReadonlyArray<string>, A]>
+} = InternalArgs.validate
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withDescription: {
+  (description: string): <A>(self: Args<A>) => Args<A>
+  <A>(self: Args<A>, description: string): Args<A>
+} = InternalArgs.withDescription
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const wizard: {
+  (
+    config: CliConfig
+  ): <A>(self: Args<A>) => Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  <A>(
+    self: Args<A>,
+    config: CliConfig
+  ): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+} = InternalArgs.wizard

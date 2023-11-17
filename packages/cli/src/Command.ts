@@ -43,17 +43,7 @@ export type CommandTypeId = typeof CommandTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Command<A> extends Command.Variance<A>, Pipeable {
-  help(): HelpDoc
-  usage(): Usage
-  names(): HashSet<string>
-  subcommands(): HashMap<string, Command<unknown>>
-  wizard(config: CliConfig): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
-  parse(
-    args: ReadonlyArray<string>,
-    config: CliConfig
-  ): Effect<FileSystem | Terminal, ValidationError, CommandDirective<A>>
-}
+export interface Command<A> extends Command.Variance<A>, Pipeable {}
 
 /**
  * @since 1.0.0
@@ -127,22 +117,46 @@ export declare namespace Command {
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category combinators
  */
-export const standard: <Name extends string, OptionsType = void, ArgsType = void>(
-  name: Name,
-  config?: Command.ConstructorConfig<OptionsType, ArgsType>
-) => Command<{ readonly name: Name; readonly options: OptionsType; readonly args: ArgsType }> =
-  InternalCommand.standard
+export const getHelp: <A>(self: Command<A>) => HelpDoc = InternalCommand.getHelp
 
 /**
  * @since 1.0.0
- * @category mapping
+ * @category combinators
+ */
+export const getNames: <A>(self: Command<A>) => HashSet<string> = InternalCommand.getNames
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getSubcommands: <A>(self: Command<A>) => HashMap<string, Command<unknown>> =
+  InternalCommand.getSubcommands
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getUsage: <A>(self: Command<A>) => Usage = InternalCommand.getUsage
+
+/**
+ * @since 1.0.0
+ * @category combinators
  */
 export const map: {
   <A, B>(f: (a: A) => B): (self: Command<A>) => Command<B>
   <A, B>(self: Command<A>, f: (a: A) => B): Command<B>
 } = InternalCommand.map
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const mapOrFail: {
+  <A, B>(f: (a: A) => Either<ValidationError, B>): (self: Command<A>) => Command<B>
+  <A, B>(self: Command<A>, f: (a: A) => Either<ValidationError, B>): Command<B>
+} = InternalCommand.mapOrFail
 
 /**
  * @since 1.0.0
@@ -164,6 +178,24 @@ export const orElseEither: {
 
 /**
  * @since 1.0.0
+ * @category combinators
+ */
+export const parse: {
+  (
+    args: ReadonlyArray<string>,
+    config: CliConfig
+  ): <A>(
+    self: Command<A>
+  ) => Effect<FileSystem | Terminal, ValidationError, CommandDirective<A>>
+  <A>(
+    self: Command<A>,
+    args: ReadonlyArray<string>,
+    config: CliConfig
+  ): Effect<FileSystem | Terminal, ValidationError, CommandDirective<A>>
+} = InternalCommand.parse
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const prompt: <Name extends string, A>(
@@ -173,27 +205,13 @@ export const prompt: <Name extends string, A>(
 
 /**
  * @since 1.0.0
- * @category combinators
+ * @category constructors
  */
-export const subcommands: {
-  <Subcommands extends NonEmptyReadonlyArray<Command<any>>>(
-    subcommands: [...Subcommands]
-  ): <A>(
-    self: Command<A>
-  ) => Command<
-    Command.ComputeParsedType<
-      A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>
-    >
-  >
-  <A, Subcommands extends NonEmptyReadonlyArray<Command<any>>>(
-    self: Command<A>,
-    subcommands: [...Subcommands]
-  ): Command<
-    Command.ComputeParsedType<
-      A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>
-    >
-  >
-} = InternalCommand.subcommands
+export const standard: <Name extends string, OptionsType = void, ArgsType = void>(
+  name: Name,
+  config?: Command.ConstructorConfig<OptionsType, ArgsType>
+) => Command<{ readonly name: Name; readonly options: OptionsType; readonly args: ArgsType }> =
+  InternalCommand.standard
 
 /**
  * Returns a `RegularLanguage` whose accepted language is equivalent to the
@@ -211,7 +229,47 @@ export const toRegularLanguage: {
  * @since 1.0.0
  * @category combinators
  */
-export const withHelp: {
-  (help: string | HelpDoc): <A>(self: Command<A>) => Command<A>
-  <A>(self: Command<A>, help: string | HelpDoc): Command<A>
-} = InternalCommand.withHelp
+export const withDescription: {
+  (description: string | HelpDoc): <A>(self: Command<A>) => Command<A>
+  <A>(self: Command<A>, description: string | HelpDoc): Command<A>
+} = InternalCommand.withDescription
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withSubcommands: {
+  <Subcommands extends NonEmptyReadonlyArray<Command<any>>>(
+    subcommands: [...Subcommands]
+  ): <A>(
+    self: Command<A>
+  ) => Command<
+    Command.ComputeParsedType<
+      A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>
+    >
+  >
+  <A, Subcommands extends NonEmptyReadonlyArray<Command<any>>>(
+    self: Command<A>,
+    subcommands: [...Subcommands]
+  ): Command<
+    Command.ComputeParsedType<
+      A & Readonly<{ subcommand: Option<Command.GetParsedType<Subcommands[number]>> }>
+    >
+  >
+} = InternalCommand.withSubcommands
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const wizard: {
+  (
+    config: CliConfig
+  ): <A>(
+    self: Command<A>
+  ) => Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  <A>(
+    self: Command<A>,
+    config: CliConfig
+  ): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+} = InternalCommand.wizard

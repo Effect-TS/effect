@@ -33,18 +33,7 @@ export type OptionsTypeId = typeof OptionsTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Options<A> extends Options.Variance<A>, Pipeable {
-  help(): HelpDoc
-  usage(): Usage
-  identifier(): Option<string>
-  flattened(): ReadonlyArray<Options.ParseableOptions<unknown>>
-  wizard(config: CliConfig): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
-  modifySingle(f: <_>(single: InternalOptions.Single<_>) => InternalOptions.Single<_>): Options<A>
-  validate(
-    args: HashMap<string, ReadonlyArray<string>>,
-    config: CliConfig
-  ): Effect<FileSystem, ValidationError, A>
-}
+export interface Options<A> extends Options.Variance<A>, Pipeable {}
 
 /**
  * @since 1.0.0
@@ -58,17 +47,6 @@ export declare namespace Options {
     readonly [OptionsTypeId]: {
       _A: (_: never) => A
     }
-  }
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface ParseableOptions<A> extends Options<A> {
-    parse(
-      args: ReadonlyArray<string>,
-      config: CliConfig
-    ): Effect<never, ValidationError, readonly [ReadonlyArray<string>, ReadonlyArray<string>]>
   }
 
   /**
@@ -253,6 +231,24 @@ export const float: (name: string) => Options<number> = InternalOptions.float
 
 /**
  * @since 1.0.0
+ * @category combinators
+ */
+export const getHelp: <A>(self: Options<A>) => HelpDoc = InternalOptions.getHelp
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getIdentifier: <A>(self: Options<A>) => Option<string> = InternalOptions.getIdentifier
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getUsage: <A>(self: Options<A>) => Usage = InternalOptions.getUsage
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const integer: (name: string) => Options<number> = InternalOptions.integer
@@ -350,8 +346,24 @@ export const orElseEither: {
 } = InternalOptions.orElseEither
 
 /**
- * Returns a `RegularLanguage` whose accepted language is equivalent to the language accepted by the provided
- * `Options`.
+ * @since 1.0.0
+ * @category combinators
+ */
+export const parse: {
+  (
+    args: HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig
+  ): <A>(self: Options<A>) => Effect<FileSystem, ValidationError, A>
+  <A>(
+    self: Options<A>,
+    args: HashMap<string, ReadonlyArray<string>>,
+    config: CliConfig
+  ): Effect<FileSystem, ValidationError, A>
+} = InternalOptions.parse
+
+/**
+ * Returns a `RegularLanguage` whose accepted language is equivalent to the
+ * language accepted by the provided `Options`.
  *
  * @since 1.0.0
  * @category combinators
@@ -360,6 +372,14 @@ export const toRegularLanguage: <A>(self: Options<A>) => RegularLanguage =
   InternalOptions.toRegularLanguage
 
 /**
+ * Parses the provided command-line arguments looking for the specified options,
+ * and returns an `Option<ValidationError>`, any leftover arguments, and the
+ * constructed value of type `A`. The possible error inside
+ * `Option<ValidationError>` would only be triggered if there is an error when
+ * parsing the command-line arguments. This is because `ValidationError`s are
+ * also used internally to control the end of the command-line arguments (i.e.
+ * the command-line symbol `-`) corresponding to options.
+ *
  * @since 1.0.0
  * @category combinators
  */
@@ -372,7 +392,7 @@ export const validate: {
   ) => Effect<
     FileSystem,
     ValidationError,
-    readonly [Option<ValidationError>, ReadonlyArray<string>, A]
+    [Option<ValidationError>, ReadonlyArray<string>, A]
   >
   <A>(
     self: Options<A>,
@@ -381,7 +401,7 @@ export const validate: {
   ): Effect<
     FileSystem,
     ValidationError,
-    readonly [Option<ValidationError>, ReadonlyArray<string>, A]
+    [Option<ValidationError>, ReadonlyArray<string>, A]
   >
 } = InternalOptions.validate
 
@@ -420,3 +440,17 @@ export const withPseudoName: {
   (pseudoName: string): <A>(self: Options<A>) => Options<A>
   <A>(self: Options<A>, pseudoName: string): Options<A>
 } = InternalOptions.withPseudoName
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const wizard: {
+  (
+    config: CliConfig
+  ): <A>(self: Options<A>) => Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+  <A>(
+    self: Options<A>,
+    config: CliConfig
+  ): Effect<FileSystem | Terminal, ValidationError, ReadonlyArray<string>>
+} = InternalOptions.wizard

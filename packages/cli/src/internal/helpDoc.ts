@@ -77,7 +77,7 @@ export const getSpan = (self: HelpDoc.HelpDoc): Span.Span =>
 
 /** @internal */
 export const descriptionList = (
-  definitions: ReadonlyArray.NonEmptyReadonlyArray<readonly [Span.Span, HelpDoc.HelpDoc]>
+  definitions: ReadonlyArray.NonEmptyReadonlyArray<[Span.Span, HelpDoc.HelpDoc]>
 ): HelpDoc.HelpDoc => ({
   _tag: "DescriptionList",
   definitions
@@ -121,11 +121,11 @@ export const p = (value: string | Span.Span): HelpDoc.HelpDoc => ({
 /** @internal */
 export const mapDescriptionList = dual<
   (
-    f: (span: Span.Span, helpDoc: HelpDoc.HelpDoc) => readonly [Span.Span, HelpDoc.HelpDoc]
+    f: (span: Span.Span, helpDoc: HelpDoc.HelpDoc) => [Span.Span, HelpDoc.HelpDoc]
   ) => (self: HelpDoc.HelpDoc) => HelpDoc.HelpDoc,
   (
     self: HelpDoc.HelpDoc,
-    f: (span: Span.Span, helpDoc: HelpDoc.HelpDoc) => readonly [Span.Span, HelpDoc.HelpDoc]
+    f: (span: Span.Span, helpDoc: HelpDoc.HelpDoc) => [Span.Span, HelpDoc.HelpDoc]
   ) => HelpDoc.HelpDoc
 >(2, (self, f) =>
   isDescriptionList(self)

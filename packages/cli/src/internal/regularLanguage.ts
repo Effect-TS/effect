@@ -261,10 +261,12 @@ export const derive = dual<
       return Effect.succeed(epsilon)
     }
     case "PrimitiveToken": {
-      return self.primitive.validate(Option.some(token), config).pipe(Effect.match({
-        onFailure: () => empty,
-        onSuccess: () => epsilon
-      }))
+      return InternalPrimitive.validate(self.primitive, Option.some(token), config).pipe(
+        Effect.match({
+          onFailure: () => empty,
+          onSuccess: () => epsilon
+        })
+      )
     }
     case "Cat": {
       if (isNullable(self.left)) {
@@ -339,7 +341,7 @@ export const firstTokens = dual<
       return Effect.succeed(HashSet.empty())
     }
     case "PrimitiveToken": {
-      return primitiveFirstTokens(self.primitive, prefix, compgen)
+      return primitiveFirstTokens(self.primitive as InternalPrimitive.Instruction, prefix, compgen)
     }
     case "Cat": {
       if (isNullable(self.left)) {
@@ -453,48 +455,45 @@ const desugared = (self: RegularLanguage.Permutation): RegularLanguage.RegularLa
   )
 
 const primitiveFirstTokens = (
-  primitive: Primitive.Primitive<unknown>,
+  primitive: InternalPrimitive.Instruction,
   prefix: string,
   compgen: Compgen.Compgen
 ): Effect.Effect<never, never, HashSet.HashSet<string>> => {
-  if (InternalPrimitive.isPathType(primitive)) {
-    if (primitive.pathType === "either" || primitive.pathType === "file") {
-      return compgen.completeFileNames(prefix).pipe(
+  switch (primitive._tag) {
+    case "Bool": {
+      const set = HashSet.make("true", "false").pipe(
+        HashSet.filter((str) => str.startsWith(prefix)),
+        HashSet.map(appendSpace)
+      )
+      return Effect.succeed(set)
+    }
+    case "Choice": {
+      const choices = pipe(
+        ReadonlyArray.filterMap(primitive.alternatives, ([name]) =>
+          name.startsWith(prefix)
+            ? Option.some(name) :
+            Option.none()),
+        ReadonlyArray.map(appendSpace)
+      )
+      return Effect.succeed(HashSet.fromIterable(choices))
+    }
+    case "DateTime":
+    case "Float":
+    case "Integer":
+    case "Text": {
+      return Effect.succeed(HashSet.empty())
+    }
+    case "Path": {
+      if (primitive.pathType === "either" || primitive.pathType === "file") {
+        return compgen.completeFileNames(prefix).pipe(
+          Effect.map(HashSet.fromIterable),
+          Effect.orDie
+        )
+      }
+      return compgen.completeDirectoryNames(prefix).pipe(
         Effect.map(HashSet.fromIterable),
         Effect.orDie
       )
     }
-    return compgen.completeDirectoryNames(prefix).pipe(
-      Effect.map(HashSet.fromIterable),
-      Effect.orDie
-    )
   }
-  if (InternalPrimitive.isBoolType(primitive)) {
-    const set = HashSet.make("true", "false").pipe(
-      HashSet.filter((str) => str.startsWith(prefix)),
-      HashSet.map(appendSpace)
-    )
-    return Effect.succeed(set)
-  }
-  if (InternalPrimitive.isChoiceType(primitive)) {
-    const choices = pipe(
-      ReadonlyArray.filterMap(primitive.alternatives, ([name]) =>
-        name.startsWith(prefix)
-          ? Option.some(name) :
-          Option.none()),
-      ReadonlyArray.map(appendSpace)
-    )
-    return Effect.succeed(HashSet.fromIterable(choices))
-  }
-  if (
-    InternalPrimitive.isFloatType(primitive) ||
-    InternalPrimitive.isIntegerType(primitive) ||
-    InternalPrimitive.isTextType(primitive)
-  ) {
-    return Effect.succeed(HashSet.empty())
-  }
-  throw new Error(
-    "[BUG]: RegularLanguage.firstTokens - received unrecognized " +
-      `primitive ${JSON.stringify(primitive)}`
-  )
 }

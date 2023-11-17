@@ -75,7 +75,7 @@ export const run = dual<
     // Prefix the command name to the command line arguments
     const prefixedArgs = ReadonlyArray.appendAll(prefixCommand(self.command), args)
     // Handle the command
-    return Effect.matchEffect(self.command.parse(prefixedArgs, config), {
+    return Effect.matchEffect(InternalCommand.parse(self.command, prefixedArgs, config), {
       onFailure: (e) => Effect.zipRight(printDocs(e.error), Effect.fail(e)),
       onSuccess: Effect.unifiedFn((directive) => {
         switch (directive._tag) {
@@ -143,7 +143,7 @@ const handleBuiltInOption = <A>(
     }
     case "ShowCompletionScript": {
       return Effect.flatMap(Path.Path, (path) => {
-        const commandNames = ReadonlyArray.fromIterable(self.command.names())
+        const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
         const programNames = ReadonlyArray.isNonEmptyReadonlyArray(commandNames)
           ? commandNames
           : ReadonlyArray.of(self.name)
@@ -221,7 +221,7 @@ const handleBuiltInOption = <A>(
       )
       const help = InternalHelpDoc.sequence(header, description)
       return Console.log(InternalHelpDoc.toAnsiText(help)).pipe(
-        Effect.zipRight(builtIn.command.wizard(config)),
+        Effect.zipRight(InternalCommand.wizard(builtIn.command, config)),
         Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args))))
       )
     }
@@ -229,22 +229,33 @@ const handleBuiltInOption = <A>(
 }
 
 const prefixCommand = <A>(self: Command.Command<A>): ReadonlyArray<string> => {
-  let command: Command.Command<unknown> | undefined = self
+  let command: InternalCommand.Instruction | undefined = self as InternalCommand.Instruction
   let prefix: ReadonlyArray<string> = ReadonlyArray.empty()
   while (command !== undefined) {
-    if (InternalCommand.isStandard(command) || InternalCommand.isGetUserInput(command)) {
-      prefix = ReadonlyArray.of(command.name)
-      command = undefined
-    }
-    if (InternalCommand.isMap(command)) {
-      command = command.command
-    }
-    if (InternalCommand.isOrElse(command)) {
-      prefix = ReadonlyArray.empty()
-      command = undefined
-    }
-    if (InternalCommand.isSubcommands(command)) {
-      command = command.parent
+    switch (command._tag) {
+      case "Standard": {
+        prefix = ReadonlyArray.of(command.name)
+        command = undefined
+        break
+      }
+      case "GetUserInput": {
+        prefix = ReadonlyArray.of(command.name)
+        command = undefined
+        break
+      }
+      case "Map": {
+        command = command.command as InternalCommand.Instruction
+        break
+      }
+      case "OrElse": {
+        prefix = ReadonlyArray.empty()
+        command = undefined
+        break
+      }
+      case "Subcommands": {
+        command = command.parent as InternalCommand.Instruction
+        break
+      }
     }
   }
   return prefix

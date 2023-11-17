@@ -57,7 +57,7 @@ const add: Command.Command<GitSubcommand> = Command.standard("add", {
   options: Options.boolean("m"),
   args: Args.text({ name: "directory" })
 }).pipe(
-  Command.withHelp(HelpDoc.p("Description of the `git add` subcommand")),
+  Command.withDescription(HelpDoc.p("Description of the `git add` subcommand")),
   Command.map(({ args: directory, options: modified }) => Add({ modified, directory }))
 )
 
@@ -67,29 +67,29 @@ const addRemote: Command.Command<RemoteSubcommand> = Command.standard("add", {
     url: Options.text("url")
   })
 }).pipe(
-  Command.withHelp(HelpDoc.p("Description of the `git remote add` subcommand")),
+  Command.withDescription(HelpDoc.p("Description of the `git remote add` subcommand")),
   Command.map(({ options: { name, url } }) => AddRemote({ name, url }))
 )
 
 const removeRemote: Command.Command<RemoteSubcommand> = Command.standard("remove", {
   args: Args.text({ name: "name" })
 }).pipe(
-  Command.withHelp(HelpDoc.p("Description of the `git remote remove` subcommand")),
+  Command.withDescription(HelpDoc.p("Description of the `git remote remove` subcommand")),
   Command.map(({ args: name }) => RemoveRemote({ name }))
 )
 
 const remote: Command.Command<GitSubcommand> = Command.standard("remote", {
   options: Options.boolean("verbose").pipe(Options.withAlias("v"))
 }).pipe(
-  Command.withHelp("Description of the `git remote` subcommand"),
-  Command.subcommands([addRemote, removeRemote]),
+  Command.withDescription("Description of the `git remote` subcommand"),
+  Command.withSubcommands([addRemote, removeRemote]),
   Command.map(({ options: verbose, subcommand }) => Remote({ verbose, subcommand }))
 )
 
 const git: Command.Command<Git> = Command.standard("git", {
   options: Options.boolean("version").pipe(Options.withAlias("v"))
 }).pipe(
-  Command.subcommands([add, remote]),
+  Command.withSubcommands([add, remote]),
   Command.map(({ options: version, subcommand }) => Git({ version, subcommand }))
 )
 
