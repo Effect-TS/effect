@@ -29,8 +29,10 @@ export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 /**
  * @since 2.0.0
  */
-export interface TestAnnotation<A> extends Equal.Equal {
-  readonly [TestAnnotationTypeId]: TestAnnotationTypeId
+export interface TestAnnotation<in out A> extends Equal.Equal {
+  readonly [TestAnnotationTypeId]: {
+    readonly _A: (_: A) => A
+  }
   readonly identifier: string
   readonly tag: Context.Tag<A, A>
   readonly initial: A
@@ -39,7 +41,9 @@ export interface TestAnnotation<A> extends Equal.Equal {
 
 /** @internal */
 class TestAnnotationImpl<A> implements Equal.Equal {
-  readonly [TestAnnotationTypeId]: TestAnnotationTypeId = TestAnnotationTypeId
+  readonly [TestAnnotationTypeId] = {
+    _A: (_: any) => _
+  }
   constructor(
     readonly identifier: string,
     readonly tag: Context.Tag<A, A>,

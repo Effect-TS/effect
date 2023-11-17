@@ -34,8 +34,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TestAnnotation<A> extends Equal.Equal {
-  readonly [TestAnnotationTypeId]: TestAnnotationTypeId
+export interface TestAnnotation<in out A> extends Equal.Equal {
+  readonly [TestAnnotationTypeId]: {
+    readonly _A: (_: A) => A
+  }
   readonly identifier: string
   readonly tag: Context.Tag<A, A>
   readonly initial: A
