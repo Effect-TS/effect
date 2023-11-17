@@ -1479,7 +1479,7 @@ export const FiberRefTypeId: FiberRef.FiberRefTypeId = Symbol.for(
 
 /** @internal */
 const fiberRefVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /* @internal */
