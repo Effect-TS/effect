@@ -681,6 +681,9 @@ describe.concurrent("Chunk", () => {
   it("partition", () => {
     expect(Chunk.partition(Chunk.empty(), (n) => n > 2)).toEqual([Chunk.empty(), Chunk.empty()])
     expect(Chunk.partition(Chunk.make(1, 3), (n) => n > 2)).toEqual([Chunk.make(1), Chunk.make(3)])
+
+    expect(Chunk.partition(Chunk.empty(), (n, i) => n + i > 2)).toEqual([Chunk.empty(), Chunk.empty()])
+    expect(Chunk.partition(Chunk.make(1, 2), (n, i) => n + i > 2)).toEqual([Chunk.make(1), Chunk.make(2)])
   })
 
   it("partitionMap", () => {
