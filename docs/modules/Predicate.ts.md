@@ -849,7 +849,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Predicate<A> {
+export interface Predicate<in A> {
   (a: A): boolean
 }
 ```
@@ -861,7 +861,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Refinement<A, B extends A> {
+export interface Refinement<in A, out B extends A> {
   (a: A): a is B
 }
 ```

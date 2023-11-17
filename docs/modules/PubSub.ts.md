@@ -170,7 +170,7 @@ messages of type `A` and subscribers can subscribe to take messages of type
 **Signature**
 
 ```ts
-export interface PubSub<A> extends Queue.Enqueue<A>, Pipeable {
+export interface PubSub<in out A> extends Queue.Enqueue<A>, Queue.Queue.DequeueVariance<A>, Pipeable {
   /**
    * Publishes a message to the `PubSub`, returning whether the message was published
    * to the `PubSub`.

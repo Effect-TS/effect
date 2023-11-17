@@ -67,7 +67,7 @@ export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
  * @since 2.0.0
  * @category models
  */
-export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeable {
+export interface Enqueue<in A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeable {
   /**
    * Places one value in the queue.
    */
@@ -100,7 +100,7 @@ export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeabl
  * @since 2.0.0
  * @category models
  */
-export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeable {
+export interface Dequeue<out A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeable {
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.
@@ -281,7 +281,7 @@ export declare namespace Queue {
    * @since 2.0.0
    * @category models
    */
-  export interface EnqueueVariance<A> {
+  export interface EnqueueVariance<in A> {
     readonly [EnqueueTypeId]: {
       readonly _In: (_: A) => void
     }
@@ -291,7 +291,7 @@ export declare namespace Queue {
    * @since 2.0.0
    * @category models
    */
-  export interface DequeueVariance<A> {
+  export interface DequeueVariance<out A> {
     readonly [DequeueTypeId]: {
       readonly _Out: (_: never) => A
     }

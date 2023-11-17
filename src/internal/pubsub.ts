@@ -995,6 +995,7 @@ const takeRemainderLoop = <A>(
 /** @internal */
 class PubSubImpl<A> implements PubSub.PubSub<A> {
   readonly [queue.EnqueueTypeId] = queue.enqueueVariance
+  readonly [queue.DequeueTypeId] = queue.dequeueVariance
 
   constructor(
     readonly pubsub: AtomicPubSub<A>,
