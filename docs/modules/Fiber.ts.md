@@ -617,7 +617,7 @@ which terminates the fiber, safely releasing all resources.
 **Signature**
 
 ```ts
-export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
+export interface Fiber<out E, out A> extends Fiber.Variance<E, A>, Pipeable {
   /**
    * The identity of the fiber.
    */
@@ -870,7 +870,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<E, A> {
+export interface Variance<out E, out A> {
   readonly [FiberTypeId]: {
     readonly _E: (_: never) => E
     readonly _A: (_: never) => A
