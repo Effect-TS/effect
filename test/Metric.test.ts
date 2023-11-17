@@ -12,7 +12,7 @@ import * as Metric from "effect/Metric"
 import * as MetricBoundaries from "effect/MetricBoundaries"
 import * as MetricKey from "effect/MetricKey"
 import * as MetricLabel from "effect/MetricLabel"
-import * as PollingMetric from "effect/MetricPolling"
+import * as MetricPolling from "effect/MetricPolling"
 import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
@@ -23,7 +23,7 @@ const labels = Chunk.make(MetricLabel.make("x", "a"), MetricLabel.make("y", "b")
 
 const makePollingGauge = (name: string, increment: number) => {
   const gauge = Metric.gauge(name)
-  const metric = PollingMetric.make(gauge, Metric.value(gauge).pipe(Effect.map((gauge) => gauge.value + increment)))
+  const metric = MetricPolling.make(gauge, Metric.value(gauge).pipe(Effect.map((gauge) => gauge.value + increment)))
   return [gauge, metric] as const
 }
 
@@ -607,7 +607,7 @@ describe.concurrent("Metric", () => {
         const name = yield* $(Clock.currentTimeMillis, Effect.map((now) => `gauge-${now}`))
         const [gauge, metric] = makePollingGauge(name, 1)
         const schedule = pipe(Schedule.forever, Schedule.delayed(() => Duration.millis(250)))
-        const fiber = yield* $(metric, PollingMetric.launch(schedule))
+        const fiber = yield* $(metric, MetricPolling.launch(schedule))
         yield* $(Fiber.interrupt(fiber))
         const result = yield* $(Metric.value(gauge))
         assert.strictEqual(result.value, 0)
@@ -616,7 +616,7 @@ describe.concurrent("Metric", () => {
       Effect.gen(function*($) {
         const name = yield* $(Clock.currentTimeMillis, Effect.map((now) => `gauge-${now}`))
         const [gauge, metric] = makePollingGauge(name, 1)
-        const fiber = yield* $(metric, PollingMetric.launch(Schedule.once))
+        const fiber = yield* $(metric, MetricPolling.launch(Schedule.once))
         yield* $(Fiber.join(fiber))
         const result = yield* $(Metric.value(gauge))
         assert.strictEqual(result.value, 1)
@@ -630,8 +630,8 @@ describe.concurrent("Metric", () => {
         const name2 = yield* $(Clock.currentTimeMillis, Effect.map((now) => `gauge2-${now}`))
         const [gauge1, metric1] = makePollingGauge(name1, gaugeIncrement1)
         const [gauge2, metric2] = makePollingGauge(name2, gaugeIncrement2)
-        const metric = PollingMetric.collectAll([metric1, metric2])
-        const fiber = yield* $(metric, PollingMetric.launch(Schedule.recurs(pollingCount)))
+        const metric = MetricPolling.collectAll([metric1, metric2])
+        const fiber = yield* $(metric, MetricPolling.launch(Schedule.recurs(pollingCount)))
         yield* $(Fiber.join(fiber))
         const result1 = yield* $(Metric.value(gauge1))
         const result2 = yield* $(Metric.value(gauge2))

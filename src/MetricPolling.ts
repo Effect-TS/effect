@@ -13,25 +13,25 @@ import type * as Scope from "./Scope.js"
  * @since 2.0.0
  * @category symbols
  */
-export const PollingMetricTypeId: unique symbol = internal.PollingMetricTypeId
+export const MetricPollingTypeId: unique symbol = internal.MetricPollingTypeId
 
 /**
  * @since 2.0.0
  * @category symbols
  */
-export type PollingMetricTypeId = typeof PollingMetricTypeId
+export type MetricPollingTypeId = typeof MetricPollingTypeId
 
 /**
- * A `PollingMetric` is a combination of a metric and an effect that polls for
+ * A `MetricPolling` is a combination of a metric and an effect that polls for
  * updates to the metric.
  *
  * @since 2.0.0
  * @category models
  */
-export interface PollingMetric<in out Type, in out In, out R, out E, out Out> extends Pipeable {
-  readonly [PollingMetricTypeId]: PollingMetricTypeId
+export interface MetricPolling<in out Type, in out In, out R, out E, out Out> extends Pipeable {
+  readonly [MetricPollingTypeId]: MetricPollingTypeId
   /**
-   * The metric that this `PollingMetric` polls to update.
+   * The metric that this `MetricPolling` polls to update.
    */
   readonly metric: Metric.Metric<Type, In, Out>
   /**
@@ -49,7 +49,7 @@ export interface PollingMetric<in out Type, in out In, out R, out E, out Out> ex
 export const make: <Type, In, Out, R, E>(
   metric: Metric.Metric<Type, In, Out>,
   poll: Effect.Effect<R, E, In>
-) => PollingMetric<Type, In, R, E, Out> = internal.make
+) => MetricPolling<Type, In, R, E, Out> = internal.make
 
 /**
  * Collects all of the polling metrics into a single polling metric, which
@@ -59,8 +59,8 @@ export const make: <Type, In, Out, R, E>(
  * @category constructors
  */
 export const collectAll: <R, E, Out>(
-  iterable: Iterable<PollingMetric<any, any, R, E, Out>>
-) => PollingMetric<Array<any>, Array<any>, R, E, Array<Out>> = internal.collectAll
+  iterable: Iterable<MetricPolling<any, any, R, E, Out>>
+) => MetricPolling<Array<any>, Array<any>, R, E, Array<Out>> = internal.collectAll
 
 /**
  * Returns an effect that will launch the polling metric in a background
@@ -73,10 +73,10 @@ export const launch: {
   <R2, A2>(
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
-    self: PollingMetric<Type, In, R, E, Out>
+    self: MetricPolling<Type, In, R, E, Out>
   ) => Effect.Effect<R2 | R | Scope.Scope, never, Fiber.Fiber<E, A2>>
   <Type, In, R, E, Out, R2, A2>(
-    self: PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): Effect.Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
 } = internal.launch
@@ -87,7 +87,7 @@ export const launch: {
  * @since 2.0.0
  * @category utils
  */
-export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect.Effect<R, E, In> =
+export const poll: <Type, In, R, E, Out>(self: MetricPolling<Type, In, R, E, Out>) => Effect.Effect<R, E, In> =
   internal.poll
 
 /**
@@ -97,7 +97,7 @@ export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out
  * @category utils
  */
 export const pollAndUpdate: <Type, In, R, E, Out>(
-  self: PollingMetric<Type, In, R, E, Out>
+  self: MetricPolling<Type, In, R, E, Out>
 ) => Effect.Effect<R, E, void> = internal.pollAndUpdate
 
 /**
@@ -110,11 +110,11 @@ export const pollAndUpdate: <Type, In, R, E, Out>(
 export const retry: {
   <R2, E, _>(
     policy: Schedule.Schedule<R2, E, _>
-  ): <Type, In, R, Out>(self: PollingMetric<Type, In, R, E, Out>) => PollingMetric<Type, In, R2 | R, E, Out>
+  ): <Type, In, R, Out>(self: MetricPolling<Type, In, R, E, Out>) => MetricPolling<Type, In, R2 | R, E, Out>
   <Type, In, R, Out, R2, E, _>(
-    self: PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling<Type, In, R, E, Out>,
     policy: Schedule.Schedule<R2, E, _>
-  ): PollingMetric<Type, In, R | R2, E, Out>
+  ): MetricPolling<Type, In, R | R2, E, Out>
 } = internal.retry
 
 /**
@@ -125,10 +125,10 @@ export const retry: {
  */
 export const zip: {
   <Type2, In2, R2, E2, Out2>(
-    that: PollingMetric<Type2, In2, R2, E2, Out2>
+    that: MetricPolling<Type2, In2, R2, E2, Out2>
   ): <Type, In, R, E, Out>(
-    self: PollingMetric<Type, In, R, E, Out>
-  ) => PollingMetric<
+    self: MetricPolling<Type, In, R, E, Out>
+  ) => MetricPolling<
     readonly [Type, Type2], // readonly because invariant
     readonly [In, In2], // readonly because contravariant
     R2 | R,
@@ -136,9 +136,9 @@ export const zip: {
     [Out, Out2]
   >
   <Type, In, R, E, Out, Type2, In2, R2, E2, Out2>(
-    self: PollingMetric<Type, In, R, E, Out>,
-    that: PollingMetric<Type2, In2, R2, E2, Out2>
-  ): PollingMetric<
+    self: MetricPolling<Type, In, R, E, Out>,
+    that: MetricPolling<Type2, In2, R2, E2, Out2>
+  ): MetricPolling<
     readonly [Type, Type2], // readonly because invariant
     readonly [In, In2], // readonly because contravariant
     R | R2,
