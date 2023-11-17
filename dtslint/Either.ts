@@ -11,7 +11,7 @@ declare const errorOrBoolean: Either.Either<Error, boolean>
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Either<number, string>
-Either.flip(esn)
+Either.flip(stringOrNumber)
 
 // -------------------------------------------------------------------------------------
 // try
