@@ -113,7 +113,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface MetricHook<In, Out> extends MetricHook.Variance<In, Out>, Pipeable {
+export interface MetricHook<in In, out Out> extends MetricHook.Variance<In, Out>, Pipeable {
   get(): Out
   update(input: In): void
 }
@@ -154,7 +154,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<In, Out> {
+export interface Variance<in In, out Out> {
   readonly [MetricHookTypeId]: {
     readonly _In: (_: In) => void
     readonly _Out: (_: never) => Out
