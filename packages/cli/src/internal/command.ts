@@ -936,29 +936,3 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
     }
   }
 }
-
-// /** @internal */
-// export const withHelp = dual<
-//   (help: string | HelpDoc.HelpDoc) => <A>(self: Command.Command<A>) => Command.Command<A>,
-//   <A>(self: Command.Command<A>, help: string | HelpDoc.HelpDoc) => Command.Command<A>
-// >(2, <A>(self: Command.Command<A>, help: string | HelpDoc.HelpDoc): Command.Command<A> => {
-//   if (isStandard(self)) {
-//     const helpDoc = typeof help === "string" ? HelpDoc.p(help) : help
-//     return new Standard(self.name, helpDoc, self.options, self.args) as Command.Command<A>
-//   }
-//   // TODO: if (isPrompt(self)) {}
-//   if (isMap(self)) {
-//     return new Map(withHelp(self.command, help), self.f) as Command.Command<A>
-//   }
-//   if (isOrElse(self)) {
-//     // TODO: if both the left and right commands also have help defined, that
-//     // help will be overwritten by this method which may be undesirable
-//     return new OrElse(withHelp(self.left, help), withHelp(self.right, help)) as Command.Command<A>
-//   }
-//   if (isSubcommands(self)) {
-//     return new Subcommands(withHelp(self.parent, help), self.child) as Command.Command<A>
-//   }
-//   throw new Error(
-//     `[BUG]: Command.withHelp - received unknown command type: ${JSON.stringify(self)}`
-//   )
-// })

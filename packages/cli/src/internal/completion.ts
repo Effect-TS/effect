@@ -1,5 +1,4 @@
 import type * as FileSystem from "@effect/platform/FileSystem"
-import type * as Path from "@effect/platform/Path"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Order from "effect/Order"
@@ -59,12 +58,11 @@ export const getCompletions = <A>(
 export const getCompletionScript = (
   pathToExecutable: string,
   programNames: ReadonlyArray.NonEmptyReadonlyArray<string>,
-  shellType: ShellType.ShellType,
-  path: Path.Path
+  shellType: ShellType.ShellType
 ): string => {
   switch (shellType._tag) {
     case "Bash": {
-      return createBashCompletionScript(pathToExecutable, programNames, path)
+      return createBashCompletionScript(pathToExecutable, programNames)
     }
     case "Fish":
     case "Zsh": {
@@ -79,15 +77,20 @@ export const getCompletionScript = (
 
 const createBashCompletionScript = (
   pathToExecutable: string,
-  programNames: ReadonlyArray.NonEmptyReadonlyArray<string>,
-  path: Path.Path
+  programNames: ReadonlyArray.NonEmptyReadonlyArray<string>
 ): string => {
-  const script = String.stripMargin(
+  const completions = pipe(
+    programNames,
+    ReadonlyArray.map((programName) =>
+      `complete -F _${ReadonlyArray.headNonEmpty(programNames)} ${programName}`
+    ),
+    ReadonlyArray.join("\n")
+  )
+  return String.stripMargin(
     `|#!/usr/bin/env bash
-     |_${ReadonlyArray.headNonEmpty(programNames)}()
-     |{
+     |_${ReadonlyArray.headNonEmpty(programNames)}() {
      |  local CMDLINE
-     |  local IFS=$'\n'
+     |  local IFS=$'\\n'
      |  CMDLINE=(--shell-type bash --shell-completion-index $COMP_CWORD)
      |
      |  INDEX=0
@@ -101,13 +104,6 @@ const createBashCompletionScript = (
      |  # Unset the environment variables.
      |  unset $(compgen -v | grep "^COMP_WORD_")
      |}
-     |`
-  )
-  return pipe(
-    ReadonlyArray.prepend(programNames, script),
-    ReadonlyArray.map((programName) =>
-      `complete -F _${ReadonlyArray.headNonEmpty(programNames)} ${programName}`
-    ),
-    ReadonlyArray.join(path.sep)
+     |${completions}`
   )
 }

@@ -5,10 +5,9 @@ import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Span from "@effect/cli/HelpDoc/Span"
 import * as Options from "@effect/cli/Options"
 import * as NodeContext from "@effect/platform-node/NodeContext"
-import * as Terminal from "@effect/platform-node/Terminal"
+import * as Runtime from "@effect/platform-node/Runtime"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 
 export interface Git extends Data.Case {
@@ -134,8 +133,6 @@ const cli = CliApp.make({
   footer: HelpDoc.p("Copyright 2023")
 })
 
-const MainLive = Layer.merge(NodeContext.layer, Terminal.layer)
-
 Effect.sync(() => process.argv.slice(2)).pipe(
   Effect.flatMap((args) =>
     CliApp.run(cli, args, (command) =>
@@ -147,6 +144,6 @@ Effect.sync(() => process.argv.slice(2)).pipe(
         onSome: handleGitSubcommand
       }))
   ),
-  Effect.provide(MainLive),
-  Effect.runFork
+  Effect.provide(NodeContext.layer),
+  Runtime.runMain
 )

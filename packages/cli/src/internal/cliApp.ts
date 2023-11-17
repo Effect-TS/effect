@@ -1,4 +1,3 @@
-import * as Path from "@effect/platform/Path"
 import type * as Terminal from "@effect/platform/Terminal"
 import * as Console from "effect/Console"
 import * as Context from "effect/Context"
@@ -100,6 +99,11 @@ export const run = dual<
 // Internals
 // =============================================================================
 
+const getEnv = () =>
+  typeof process !== "undefined" && "env" in process && typeof process.env === "object"
+    ? process.env
+    : {}
+
 const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<never, never, void> =>
   Console.log(InternalHelpDoc.toAnsiText(error))
 
@@ -142,33 +146,29 @@ const handleBuiltInOption = <A>(
       return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
     }
     case "ShowCompletionScript": {
-      return Effect.flatMap(Path.Path, (path) => {
-        const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
-        const programNames = ReadonlyArray.isNonEmptyReadonlyArray(commandNames)
-          ? commandNames
-          : ReadonlyArray.of(self.name)
-        const script = InternalCompletion.getCompletionScript(
-          builtIn.pathToExecutable,
-          programNames,
-          builtIn.shellType,
-          path
-        )
-        return Console.log(script)
-      })
+      const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
+      const programNames = ReadonlyArray.isNonEmptyReadonlyArray(commandNames)
+        ? commandNames
+        : ReadonlyArray.of(self.name)
+      const script = InternalCompletion.getCompletionScript(
+        builtIn.pathToExecutable,
+        programNames,
+        builtIn.shellType
+      )
+      return Console.log(script)
     }
     case "ShowCompletions": {
       return Effect.all([
         InternalCompgen.Tag,
-        Effect.sync(() => globalThis.process.env)
+        Effect.sync(getEnv)
       ]).pipe(Effect.flatMap(([compgen, env]) => {
         const tupleOrder = Order.mapInput(Order.number, (tuple: [number, string]) => tuple[0])
         const compWords = pipe(
-          ReadonlyRecord.collect(
-            env,
-            (key, value) =>
-              key.startsWith("COMP_WORD_") && value !== undefined
-                ? Option.some<[number, string]>([key.replace("COMP_WORD_", "").length, value])
-                : Option.none()
+          env,
+          ReadonlyRecord.collect((key, value) =>
+            key.startsWith("COMP_WORD_") && value !== undefined
+              ? Option.some<[number, string]>([key.replace("COMP_WORD_", "").length, value])
+              : Option.none()
           ),
           ReadonlyArray.compact,
           ReadonlyArray.sortBy(tupleOrder),

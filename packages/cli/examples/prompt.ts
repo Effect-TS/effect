@@ -2,9 +2,8 @@ import * as CliApp from "@effect/cli/CliApp"
 import * as Command from "@effect/cli/Command"
 import * as Prompt from "@effect/cli/Prompt"
 import * as NodeContext from "@effect/platform-node/NodeContext"
-import * as Terminal from "@effect/platform-node/Terminal"
+import * as Runtime from "@effect/platform-node/Runtime"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 
 const colorPrompt = Prompt.select({
   message: "Pick your favorite color",
@@ -64,10 +63,8 @@ const cli = CliApp.make({
   command: Command.prompt("favorites", prompt)
 })
 
-const MainLive = Layer.merge(NodeContext.layer, Terminal.layer)
-
 Effect.sync(() => process.argv.slice(2)).pipe(
   Effect.flatMap((args) => CliApp.run(cli, args, (input) => Effect.log(input))),
-  Effect.provide(MainLive),
-  Effect.runFork
+  Effect.provide(NodeContext.layer),
+  Runtime.runMain
 )
