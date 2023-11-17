@@ -420,8 +420,8 @@ describe.concurrent("HashMap", () => {
 
   it("findFirst", () => {
     const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    expect(HM.findFirst(map1, (k, _v) => k.n === 0)).toStrictEqual(Option.some([key(0), value("a")]))
-    expect(HM.findFirst(map1, (_k, v) => v.s === "bb")).toStrictEqual(Option.some([key(1), value("bb")]))
-    expect(HM.findFirst(map1, (k, v) => k.n === 0 && v.s === "bb")).toStrictEqual(Option.none())
+    expect(HM.findFirst(map1, (_v, k) => k.n === 0)).toStrictEqual(Option.some([key(0), value("a")]))
+    expect(HM.findFirst(map1, (v, _k) => v.s === "bb")).toStrictEqual(Option.some([key(1), value("bb")]))
+    expect(HM.findFirst(map1, (v, k) => k.n === 0 && v.s === "bb")).toStrictEqual(Option.none())
   })
 })

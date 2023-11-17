@@ -7,6 +7,7 @@ import type { Either } from "./Either.js"
 import type * as Exit from "./Exit.js"
 import * as internal from "./internal/cache.js"
 import type * as Option from "./Option.js"
+import type * as Predicate from "./Predicate.js"
 
 /**
  * @since 2.0.0
@@ -118,7 +119,7 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
   /**
    * Invalidates the value associated with the specified key if the predicate holds.
    */
-  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect.Effect<never, never, void>
+  invalidateWhen(key: Key, predicate: Predicate.Predicate<Value>): Effect.Effect<never, never, void>
 
   /**
    * Invalidates all values in the cache.

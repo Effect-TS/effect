@@ -485,23 +485,22 @@ export const reduce = Dual.dual<
 })
 
 /** @internal */
-export const filter = Dual.dual<
-  {
-    <K, A, B extends A>(f: (a: A, k: K) => a is B): (self: HM.HashMap<K, A>) => HM.HashMap<K, B>
-    <K, A>(f: (a: A, k: K) => boolean): (self: HM.HashMap<K, A>) => HM.HashMap<K, A>
-  },
-  {
-    <K, A, B extends A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => a is B): HM.HashMap<K, B>
-    <K, A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => boolean): HM.HashMap<K, A>
-  }
->(2, <K, A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => boolean) =>
-  mutate(empty(), (map) => {
-    for (const [k, a] of self) {
-      if (f(a, k)) {
-        set(map, k, a)
+export const filter: {
+  <K, A, B extends A>(f: (a: A, k: K) => a is B): (self: HM.HashMap<K, A>) => HM.HashMap<K, B>
+  <K, B extends A, A = B>(f: (a: A, k: K) => boolean): (self: HM.HashMap<K, B>) => HM.HashMap<K, B>
+  <K, A, B extends A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => a is B): HM.HashMap<K, B>
+  <K, A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => boolean): HM.HashMap<K, A>
+} = Dual.dual(
+  2,
+  <K, A>(self: HM.HashMap<K, A>, f: (a: A, k: K) => boolean): HM.HashMap<K, A> =>
+    mutate(empty(), (map) => {
+      for (const [k, a] of self) {
+        if (f(a, k)) {
+          set(map, k, a)
+        }
       }
-    }
-  }))
+    })
+)
 
 /** @internal */
 export const compact = <K, A>(self: HM.HashMap<K, Option.Option<A>>) => filterMap(self, identity)
@@ -524,13 +523,15 @@ export const filterMap = Dual.dual<
 
 /** @internal */
 export const findFirst: {
-  <K, A>(predicate: (k: K, a: A) => boolean): (self: HM.HashMap<K, A>) => Option.Option<[K, A]>
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]>
+  <K, A, B extends A>(predicate: (a: A, k: K) => a is B): (self: HM.HashMap<K, A>) => Option.Option<[K, B]>
+  <K, B extends A, A = B>(predicate: (a: A, k: K) => boolean): (self: HM.HashMap<K, B>) => Option.Option<[K, B]>
+  <K, A, B extends A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option.Option<[K, B]>
+  <K, A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option.Option<[K, A]>
 } = Dual.dual(
   2,
-  <K, A>(self: HM.HashMap<K, A>, predicate: (k: K, a: A) => boolean): Option.Option<[K, A]> => {
+  <K, A>(self: HM.HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option.Option<[K, A]> => {
     for (const ka of self) {
-      if (predicate(ka[0], ka[1])) {
+      if (predicate(ka[1], ka[0])) {
         return Option.some(ka)
       }
     }

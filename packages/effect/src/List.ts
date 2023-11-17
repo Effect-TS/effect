@@ -461,9 +461,9 @@ export const every: {
  * @category elements
  */
 export const some: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: List<B>) => self is Cons<B>
-  <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): self is Cons<B>
-} = dual(2, <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): self is Cons<B> => {
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => self is Cons<B>
+  <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A>
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A> => {
   let these = self
   while (!isNil(these)) {
     if (predicate(these.head)) {
@@ -481,11 +481,11 @@ export const some: {
  * @category combinators
  */
 export const filter: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: List<C>) => List<B>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => List<B>
   <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => List<B>
-  <C extends A, B extends A, A = C>(self: List<C>, refinement: Refinement<A, B>): List<B>
-  <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): List<B>
-} = dual(2, <B extends A, A = B>(self: List<B>, predicate: Predicate<A>): List<B> => noneIn(self, predicate, false))
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): List<B>
+  <A>(self: List<A>, predicate: Predicate<A>): List<A>
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): List<A> => noneIn(self, predicate, false))
 
 // everything seen so far is not included
 const noneIn = <A>(
@@ -618,7 +618,7 @@ export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(s
  */
 export const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: List<A>) => Option.Option<B>
-  <A>(predicate: Predicate<A>): (self: List<A>) => Option.Option<A>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => Option.Option<B>
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option.Option<B>
   <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A> => {
@@ -761,12 +761,12 @@ export const map: {
  */
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: List<C>) => [List<Exclude<C, B>>, List<B>]
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: List<B>) => [List<B>, List<B>]
-  <C extends A, B extends A, A = C>(self: List<C>, refinement: Refinement<A, B>): [List<Exclude<C, B>>, List<B>]
-  <B extends A, A = B>(self: List<B>, predicate: (a: A) => boolean): [List<B>, List<B>]
-} = dual(2, <B extends A, A = B>(self: List<B>, predicate: (a: A) => boolean): [List<B>, List<B>] => {
-  const left: Array<B> = []
-  const right: Array<B> = []
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => [List<B>, List<B>]
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [List<Exclude<A, B>>, List<B>]
+  <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>]
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>] => {
+  const left: Array<A> = []
+  const right: Array<A> = []
   for (const a of self) {
     if (predicate(a)) {
       right.push(a)

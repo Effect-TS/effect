@@ -533,13 +533,13 @@ export const dropRight: {
  * @since 2.0.0
  */
 export const dropWhile: {
-  <A>(f: (a: A) => boolean): (self: Chunk<A>) => Chunk<A>
-  <A>(self: Chunk<A>, f: (a: A) => boolean): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, f: (a: A) => boolean): Chunk<A> => {
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
+} = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => {
   const arr = toReadonlyArray(self)
   const len = arr.length
   let i = 0
-  while (i < len && f(arr[i]!)) {
+  while (i < len && predicate(arr[i]!)) {
     i++
   }
   return drop(self, i)
@@ -647,13 +647,13 @@ export const filterMap: {
  * @category filtering
  */
 export const filter: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: Chunk<C>) => Chunk<B>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
   <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
-  <C extends A, B extends A, A = C>(self: Chunk<C>, refinement: Refinement<A, B>): Chunk<B>
-  <B extends A, A = B>(self: Chunk<B>, predicate: Predicate<A>): Chunk<B>
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
 } = dual(
   2,
-  <B extends A, A = B>(self: Chunk<B>, predicate: Predicate<A>) =>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> =>
     unsafeFromArray(RA.filterMap(self, O.liftPredicate(predicate)))
 )
 
@@ -882,12 +882,12 @@ export const mapAccum: {
  */
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: Chunk<C>) => [Chunk<Exclude<C, B>>, Chunk<B>]
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
-  <C extends A, B extends A, A = C>(self: Chunk<C>, refinement: Refinement<A, B>): [Chunk<Exclude<C, B>>, Chunk<B>]
-  <B extends A, A = B>(self: Chunk<B>, predicate: (a: A) => boolean): [Chunk<B>, Chunk<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): [Chunk<Exclude<A, B>>, Chunk<B>]
+  <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
 } = dual(
   2,
-  <B extends A, A = B>(self: Chunk<B>, predicate: (a: A) => boolean): [Chunk<B>, Chunk<B>] =>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>] =>
     pipe(
       RA.partition(toReadonlyArray(self), predicate),
       ([l, r]) => [unsafeFromArray(l), unsafeFromArray(r)]
@@ -984,7 +984,7 @@ export const split: {
  * @since 2.0.0
  */
 export const splitWhere: {
-  <A>(predicate: Predicate<A>): (self: Chunk<A>) => [Chunk<A>, Chunk<A>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
   <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
 } = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>] => {
   let i = 0
@@ -1032,18 +1032,20 @@ export const takeRight: {
  * @category elements
  */
 export const takeWhile: {
-  <A>(predicate: Predicate<A>): (self: Chunk<A>) => Chunk<A>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Chunk<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Chunk<B>
+  <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Chunk<B>
   <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>) => {
-  const res: Array<A> = []
+} = dual(2, <A>(self: Chunk<A>, predicate: Predicate<A>): Chunk<A> => {
+  const out: Array<A> = []
   for (const a of toReadonlyArray(self)) {
     if (predicate(a)) {
-      res.push(a)
+      out.push(a)
     } else {
       break
     }
   }
-  return unsafeFromArray(res)
+  return unsafeFromArray(out)
 })
 
 /**
@@ -1236,9 +1238,9 @@ export const containsWith: <A>(
  */
 export const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Option<B>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Option<B>
-  <B extends A, A>(self: Chunk<B>, predicate: Predicate<A>): Option<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A>
 } = RA.findFirst
 
 /**
@@ -1260,9 +1262,9 @@ export const findFirstIndex: {
  */
 export const findLast: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => Option<B>
   <A, B extends A>(self: Chunk<A>, refinement: Refinement<A, B>): Option<B>
-  <B extends A, A>(self: Chunk<B>, predicate: Predicate<A>): Option<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): Option<A>
 } = RA.findLast
 
 /**
@@ -1300,12 +1302,11 @@ export const every: {
  * @since 2.0.0
  */
 export const some: {
-  <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => self is NonEmptyChunk<B>
-  <B extends A, A = B>(self: Chunk<B>, predicate: Predicate<A>): self is NonEmptyChunk<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => self is NonEmptyChunk<B>
+  <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A>
 } = dual(
   2,
-  <B extends A, A = B>(self: Chunk<B>, predicate: Predicate<A>): self is NonEmptyChunk<B> =>
-    RA.fromIterable(self).some(predicate)
+  <A>(self: Chunk<A>, predicate: Predicate<A>): self is NonEmptyChunk<A> => RA.fromIterable(self).some(predicate)
 )
 
 /**

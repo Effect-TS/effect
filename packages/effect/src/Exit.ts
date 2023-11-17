@@ -9,7 +9,7 @@ import type { Inspectable } from "./Inspectable.js"
 import * as core from "./internal/core.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
-import type { Predicate } from "./Predicate.js"
+import type { Predicate, Refinement } from "./Predicate.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -168,7 +168,9 @@ export const die: (defect: unknown) => Exit<never, never> = core.exitDie
  * @category elements
  */
 export const exists: {
+  <A, B extends A>(refinement: Refinement<A, B>): <E>(self: Exit<E, A>) => self is Exit<never, B>
   <A>(predicate: Predicate<A>): <E>(self: Exit<E, A>) => boolean
+  <E, A, B extends A>(self: Exit<E, A>, refinement: Refinement<A, B>): self is Exit<never, B>
   <E, A>(self: Exit<E, A>, predicate: Predicate<A>): boolean
 } = core.exitExists
 

@@ -1,21 +1,23 @@
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 
-declare const n: number
-declare const sn: string | number
-declare const isString: (u: unknown) => u is string
-declare const predicate: (sn: string | number) => boolean
-declare const on: Option.Option<number>
-declare const osn: Option.Option<string | number>
+declare const number: Option.Option<number>
+declare const numberOrString: Option.Option<string | number>
+
+declare const pimitiveNumber: number
+declare const pimitiveNumerOrString: string | number
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 // -------------------------------------------------------------------------------------
 // liftPredicate
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<string>
-pipe(sn, Option.liftPredicate(isString))
+pipe(pimitiveNumerOrString, Option.liftPredicate(Predicate.isString))
+
 pipe(
-  sn,
+  pimitiveNumerOrString,
   Option.liftPredicate(
     (
       n // $ExpectType string | number
@@ -24,12 +26,14 @@ pipe(
 )
 
 // $ExpectType Option<string | number>
-pipe(sn, Option.liftPredicate(predicate))
+pipe(pimitiveNumerOrString, Option.liftPredicate(predicateNumbersOrStrings))
+
 // $ExpectType Option<number>
-pipe(n, Option.liftPredicate(predicate))
+pipe(pimitiveNumber, Option.liftPredicate(predicateNumbersOrStrings))
+
 // $ExpectType Option<number>
 pipe(
-  n,
+  pimitiveNumber,
   Option.liftPredicate(
     (
       _n // $ExpectType number
@@ -60,30 +64,30 @@ pipe(
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Option<number>
-pipe(on, Option.filter(predicate))
+pipe(number, Option.filter(predicateNumbersOrStrings))
 
 // $ExpectType Option<number>
-Option.filter(on, predicate)
+Option.filter(number, predicateNumbersOrStrings)
 
 // $ExpectType Option<string>
-pipe(osn, Option.filter(isString))
+pipe(numberOrString, Option.filter(Predicate.isString))
 
 // $ExpectType Option<string>
-Option.filter(osn, isString)
+Option.filter(numberOrString, Predicate.isString)
 
 // $ExpectType Option<number>
 pipe(
-  on,
+  number,
   Option.filter(
     (
-      x // $ExpectType number
-    ): x is number => true
+      _x // $ExpectType number
+    ): _x is number => true
   )
 )
 
 // $ExpectType Option<number>
 pipe(
-  on,
+  number,
   Option.filter(
     (
       _x // $ExpectType number
@@ -143,3 +147,35 @@ declare const optionRecord: Record<string, Option.Option<string>>
 
 // $ExpectType Option<{ [x: string]: string; }>
 Option.all(optionRecord)
+
+// -------------------------------------------------------------------------------------
+// exists
+// -------------------------------------------------------------------------------------
+
+if (Option.exists(Predicate.isString)(numberOrString)) {
+  numberOrString // $ExpectType Option<string>
+}
+
+if (Option.exists(numberOrString, Predicate.isString)) {
+  numberOrString // $ExpectType Option<string>
+}
+
+// $ExpectType boolean
+pipe(
+  number,
+  Option.exists(
+    (
+      _x // $ExpectType number
+    ): _x is number => true
+  )
+)
+
+// $ExpectType boolean
+pipe(
+  number,
+  Option.exists(
+    (
+      _x // $ExpectType number
+    ) => true
+  )
+)
