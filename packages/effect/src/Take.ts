@@ -29,7 +29,7 @@ export type TakeTypeId = typeof TakeTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
+export interface Take<out E, out A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
   readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
 }
@@ -42,7 +42,7 @@ export declare namespace Take {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
+  export interface Variance<out E, out A> {
     readonly [TakeTypeId]: {
       readonly _E: (_: never) => E
       readonly _A: (_: never) => A

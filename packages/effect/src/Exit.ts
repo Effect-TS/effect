@@ -31,7 +31,7 @@ export type Exit<E, A> = Failure<E, A> | Success<E, A>
  * @since 2.0.0
  * @category models
  */
-export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Failure<out E, out A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Failure"
   readonly _op: "Failure"
   readonly cause: Cause.Cause<E>
@@ -65,7 +65,7 @@ export interface ExitUnifyIgnore extends Effect.EffectUnifyIgnore {
  * @since 2.0.0
  * @category models
  */
-export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
+export interface Success<out E, out A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: "Success"
   readonly _op: "Success"
   readonly value: A

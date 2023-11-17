@@ -48,9 +48,21 @@ export type QueueStrategyTypeId = typeof QueueStrategyTypeId
 
 /**
  * @since 2.0.0
+ * @category symbols
+ */
+export const BackingQueueTypeId: unique symbol = internal.BackingQueueTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type BackingQueueTypeId = typeof BackingQueueTypeId
+
+/**
+ * @since 2.0.0
  * @category models
  */
-export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
+export interface Queue<in out A> extends Enqueue<A>, Dequeue<A>, Pipeable {
   /** @internal */
   readonly queue: BackingQueue<A>
   /** @internal */
@@ -67,7 +79,7 @@ export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
  * @since 2.0.0
  * @category models
  */
-export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeable {
+export interface Enqueue<in A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeable {
   /**
    * Places one value in the queue.
    */
@@ -100,7 +112,7 @@ export interface Enqueue<A> extends Queue.EnqueueVariance<A>, BaseQueue, Pipeabl
  * @since 2.0.0
  * @category models
  */
-export interface Dequeue<A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeable {
+export interface Dequeue<out A> extends Queue.DequeueVariance<A>, BaseQueue, Pipeable {
   /**
    * Takes the oldest value in the queue. If the queue is empty, this will return
    * a computation that resumes when an item has been added to the queue.
@@ -191,7 +203,7 @@ export interface BaseQueue {
  * @since 2.0.0
  * @category models
  */
-export interface Strategy<A> extends Queue.StrategyVariance<A> {
+export interface Strategy<in out A> extends Queue.StrategyVariance<A> {
   /**
    * Returns the number of surplus values that were unable to be added to the
    * `Queue`
@@ -238,7 +250,7 @@ export interface Strategy<A> extends Queue.StrategyVariance<A> {
  * @since 2.0.0
  * @category models
  */
-export interface BackingQueue<A> {
+export interface BackingQueue<in out A> extends Queue.BackingQueueVariance<A> {
   /**
    * Dequeues an element from the queue.
    * Returns either an element from the queue, or the `def` param.
@@ -281,7 +293,7 @@ export declare namespace Queue {
    * @since 2.0.0
    * @category models
    */
-  export interface EnqueueVariance<A> {
+  export interface EnqueueVariance<in A> {
     readonly [EnqueueTypeId]: {
       readonly _In: (_: A) => void
     }
@@ -291,7 +303,7 @@ export declare namespace Queue {
    * @since 2.0.0
    * @category models
    */
-  export interface DequeueVariance<A> {
+  export interface DequeueVariance<out A> {
     readonly [DequeueTypeId]: {
       readonly _Out: (_: never) => A
     }
@@ -301,9 +313,19 @@ export declare namespace Queue {
    * @since 2.0.0
    * @category models
    */
-  export interface StrategyVariance<A> {
+  export interface StrategyVariance<in out A> {
     readonly [QueueStrategyTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: (_: A) => A
+    }
+  }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export interface BackingQueueVariance<in out A> {
+    readonly [BackingQueueTypeId]: {
+      readonly _A: (_: A) => A
     }
   }
 }

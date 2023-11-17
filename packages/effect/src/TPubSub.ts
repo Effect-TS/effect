@@ -26,13 +26,16 @@ export type TPubSubTypeId = typeof TPubSubTypeId
  * @since 2.0.0
  * @category models
  */
-export interface TPubSub<A> extends TQueue.TEnqueue<A> {}
+export interface TPubSub<in out A> extends TQueue.TEnqueue<A> {
+  readonly [TPubSubTypeId]: {
+    readonly _A: (_: A) => A
+  }
+}
 /**
  * @internal
  * @since 2.0.0
  */
-export interface TPubSub<A> {
-  readonly [TPubSubTypeId]: TPubSubTypeId
+export interface TPubSub<in out A> {
   /** @internal */
   readonly pubsubSize: TRef.TRef<number>
   /** @internal */

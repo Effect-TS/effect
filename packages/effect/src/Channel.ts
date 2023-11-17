@@ -70,7 +70,7 @@ export type ChannelTypeId = typeof ChannelTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+export interface Channel<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone>
   extends Channel.Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>, Pipeable
 {
   [Unify.typeSymbol]?: unknown
@@ -124,14 +124,14 @@ export declare namespace Channel {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  export interface Variance<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone> {
     readonly [ChannelTypeId]: VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   }
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  export interface VarianceStruct<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone> {
     _Env: (_: never) => Env
     _InErr: (_: InErr) => void
     _InElem: (_: InElem) => void
@@ -161,7 +161,7 @@ export type ChannelExceptionTypeId = typeof ChannelExceptionTypeId
  * @since 2.0.0
  * @category models
  */
-export interface ChannelException<E> {
+export interface ChannelException<out E> {
   readonly _tag: "ChannelException"
   readonly [ChannelExceptionTypeId]: ChannelExceptionTypeId
   readonly error: E

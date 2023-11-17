@@ -29,7 +29,7 @@ export interface Scheduler {
  * @since 2.0.0
  * @category utils
  */
-export class PriorityBuckets<T = Task> {
+export class PriorityBuckets<in out T = Task> {
   /**
    * @since 2.0.0
    */

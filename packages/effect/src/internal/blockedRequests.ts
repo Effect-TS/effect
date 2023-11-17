@@ -354,7 +354,7 @@ const parallelVariance = {
   _R: (_: never) => _
 }
 
-class ParallelImpl<R> implements ParallelCollection<R> {
+class ParallelImpl<out R> implements ParallelCollection<R> {
   readonly [RequestBlockParallelTypeId] = parallelVariance
   constructor(
     readonly map: HashMap.HashMap<
@@ -417,7 +417,7 @@ const sequentialVariance = {
   _R: (_: never) => _
 }
 
-class SequentialImpl<R> implements SequentialCollection<R> {
+class SequentialImpl<out R> implements SequentialCollection<R> {
   readonly [SequentialCollectionTypeId] = sequentialVariance
   constructor(
     readonly map: HashMap.HashMap<
@@ -468,7 +468,7 @@ export const sequentialCollectionToChunk = <R>(
 export type RequestBlockParallelTypeId = typeof RequestBlockParallelTypeId
 
 /** @internal */
-export interface ParallelCollection<R> extends ParallelCollection.Variance<R> {
+export interface ParallelCollection<out R> extends ParallelCollection.Variance<R> {
   readonly map: HashMap.HashMap<
     RequestResolver.RequestResolver<unknown, unknown>,
     Array<Request.Entry<unknown>>
@@ -478,7 +478,7 @@ export interface ParallelCollection<R> extends ParallelCollection.Variance<R> {
 /** @internal */
 export declare namespace ParallelCollection {
   /** @internal */
-  export interface Variance<R> {
+  export interface Variance<out R> {
     readonly [RequestBlockParallelTypeId]: {
       readonly _R: (_: never) => R
     }
@@ -489,7 +489,7 @@ export declare namespace ParallelCollection {
 export type SequentialCollectionTypeId = typeof SequentialCollectionTypeId
 
 /** @internal */
-export interface SequentialCollection<R> extends SequentialCollection.Variance<R> {
+export interface SequentialCollection<out R> extends SequentialCollection.Variance<R> {
   readonly map: HashMap.HashMap<
     RequestResolver.RequestResolver<unknown, unknown>,
     Array<Array<Request.Entry<unknown>>>
@@ -499,7 +499,7 @@ export interface SequentialCollection<R> extends SequentialCollection.Variance<R
 /** @internal */
 export declare namespace SequentialCollection {
   /** @internal */
-  export interface Variance<R> {
+  export interface Variance<out R> {
     readonly [SequentialCollectionTypeId]: {
       readonly _R: (_: never) => R
     }

@@ -28,7 +28,7 @@ const metricKeyVariance = {
 }
 
 /** @internal */
-class MetricKeyImpl<Type extends MetricKeyType.MetricKeyType<any, any>> implements MetricKey.MetricKey<Type> {
+class MetricKeyImpl<out Type extends MetricKeyType.MetricKeyType<any, any>> implements MetricKey.MetricKey<Type> {
   readonly [MetricKeyTypeId] = metricKeyVariance
   constructor(
     readonly name: string,

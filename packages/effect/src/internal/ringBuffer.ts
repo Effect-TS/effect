@@ -3,7 +3,7 @@ import { constUndefined } from "../Function.js"
 import * as Option from "../Option.js"
 
 /** @internal */
-export class RingBuffer<A> {
+export class RingBuffer<out A> {
   private array: Array<A | undefined>
   private size = 0
   private current = 0

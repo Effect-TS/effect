@@ -8,7 +8,7 @@ import type { TypeLambda } from "./HKT.js"
  * @category type class
  * @since 2.0.0
  */
-export interface Order<A> {
+export interface Order<in A> {
   (self: A, that: A): -1 | 0 | 1
 }
 

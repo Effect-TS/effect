@@ -17,7 +17,7 @@ export type HandoffTypeId = typeof HandoffTypeId
  *
  * @internal
  */
-export interface Handoff<A> extends Handoff.Variance<A> {
+export interface Handoff<in out A> extends Handoff.Variance<A> {
   readonly ref: Ref.Ref<Handoff.State<A>>
 }
 
@@ -36,7 +36,7 @@ export type OP_HANDOFF_STATE_FULL = typeof OP_HANDOFF_STATE_FULL
 /** @internal */
 export declare namespace Handoff {
   /** @internal */
-  export interface Variance<A> {
+  export interface Variance<in out A> {
     readonly [HandoffTypeId]: {
       readonly _A: (_: A) => A
     }
@@ -52,7 +52,7 @@ export declare namespace Handoff {
   }
 
   /** @internal */
-  export interface Full<A> {
+  export interface Full<out A> {
     readonly _tag: OP_HANDOFF_STATE_FULL
     readonly value: A
     readonly notifyProducer: Deferred.Deferred<never, void>

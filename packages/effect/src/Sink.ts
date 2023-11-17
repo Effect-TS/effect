@@ -44,7 +44,7 @@ export type SinkTypeId = typeof SinkTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Sink<R, E, In, L, Z> extends Sink.Variance<R, E, In, L, Z>, Pipeable {}
+export interface Sink<out R, out E, in In, out L, out Z> extends Sink.Variance<R, E, In, L, Z>, Pipeable {}
 
 /**
  * @since 2.0.0
@@ -90,14 +90,14 @@ export declare namespace Sink {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, E, In, L, Z> {
+  export interface Variance<out R, out E, in In, out L, out Z> {
     readonly [SinkTypeId]: VarianceStruct<R, E, In, L, Z>
   }
   /**
    * @since 2.0.0
    * @category models
    */
-  export interface VarianceStruct<R, E, In, L, Z> {
+  export interface VarianceStruct<out R, out E, in In, out L, out Z> {
     _R: (_: never) => R
     _E: (_: never) => E
     _In: (_: In) => void

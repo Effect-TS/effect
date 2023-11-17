@@ -12,7 +12,7 @@ export declare const nonEmpty: unique symbol
  * @category model
  * @since 2.0.0
  */
-export interface NonEmptyIterable<A> extends Iterable<A> {
+export interface NonEmptyIterable<out A> extends Iterable<A> {
   readonly [nonEmpty]: A
 }
 

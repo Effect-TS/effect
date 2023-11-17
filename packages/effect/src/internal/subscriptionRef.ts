@@ -20,11 +20,11 @@ export const SubscriptionRefTypeId: SubscriptionRef.SubscriptionRefTypeId = Symb
 
 /** @internal */
 const subscriptionRefVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */
-class SubscriptionRefImpl<A> implements SubscriptionRef.SubscriptionRef<A> {
+class SubscriptionRefImpl<in out A> implements SubscriptionRef.SubscriptionRef<A> {
   readonly [Ref.RefTypeId] = _ref.refVariance
   readonly [Synchronized.SynchronizedRefTypeId] = _circular.synchronizedVariance
   readonly [SubscriptionRefTypeId] = subscriptionRefVariance

@@ -7,7 +7,7 @@ import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
 import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */
-export interface Subexecutor<R> {
+export interface Subexecutor<in out R> {
   close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R>
 }
@@ -45,7 +45,7 @@ export type OP_EMIT = typeof OP_EMIT
  *
  * @internal
  */
-export class PullFromChild<R> implements Subexecutor<R> {
+export class PullFromChild<in out R> implements Subexecutor<R> {
   readonly _tag: OP_PULL_FROM_CHILD = OP_PULL_FROM_CHILD
 
   constructor(
@@ -84,7 +84,7 @@ export class PullFromChild<R> implements Subexecutor<R> {
  *
  * @internal
  */
-export class PullFromUpstream<R> implements Subexecutor<R> {
+export class PullFromUpstream<in out R> implements Subexecutor<R> {
   readonly _tag: OP_PULL_FROM_UPSTREAM = OP_PULL_FROM_UPSTREAM
 
   constructor(
@@ -152,7 +152,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
  *
  * @internal
  */
-export class DrainChildExecutors<R> implements Subexecutor<R> {
+export class DrainChildExecutors<in out R> implements Subexecutor<R> {
   readonly _tag: OP_DRAIN_CHILD_EXECUTORS = OP_DRAIN_CHILD_EXECUTORS
 
   constructor(
@@ -212,7 +212,7 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
 }
 
 /** @internal */
-export class Emit<R> implements Subexecutor<R> {
+export class Emit<in out R> implements Subexecutor<R> {
   readonly _tag: OP_EMIT = OP_EMIT
 
   constructor(readonly value: unknown, readonly next: Subexecutor<R>) {

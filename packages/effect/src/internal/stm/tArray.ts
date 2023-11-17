@@ -18,11 +18,11 @@ export const TArrayTypeId: TArray.TArrayTypeId = Symbol.for(TArraySymbolKey) as 
 
 /** @internal */
 const tArrayVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */
-export class TArrayImpl<A> implements TArray.TArray<A> {
+export class TArrayImpl<in out A> implements TArray.TArray<A> {
   readonly [TArrayTypeId] = tArrayVariance
   constructor(readonly chunk: Array<TRef.TRef<A>>) {}
 }

@@ -12,21 +12,21 @@ export const DeferredTypeId: Deferred.DeferredTypeId = Symbol.for(
 
 /** @internal */
 export const deferredVariance = {
-  _E: (_: never) => _,
-  _A: (_: never) => _
+  _E: (_: any) => _,
+  _A: (_: any) => _
 }
 
 /** @internal */
-export type State<E, A> = Pending<E, A> | Done<E, A>
+export type State</* in out */ E, /* in out */ A> = Pending<E, A> | Done<E, A>
 
 /** @internal */
-export interface Pending<E, A> {
+export interface Pending<in E, in A> {
   readonly _tag: "Pending"
   readonly joiners: Array<(effect: Effect.Effect<never, E, A>) => void>
 }
 
 /** @internal */
-export interface Done<E, A> {
+export interface Done<out E, out A> {
   readonly _tag: "Done"
   readonly effect: Effect.Effect<never, E, A>
 }

@@ -29,7 +29,9 @@ export type SubscriptionRefTypeId = typeof SubscriptionRefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface SubscriptionRef<A> extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable {
+export interface SubscriptionRef<in out A>
+  extends SubscriptionRef.Variance<A>, Synchronized.SynchronizedRef<A>, Pipeable
+{
   /** @internal */
   readonly ref: Ref.Ref<A>
   /** @internal */
@@ -51,9 +53,9 @@ export declare namespace SubscriptionRef {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
+  export interface Variance<in out A> {
     readonly [SubscriptionRefTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: (_: A) => A
     }
   }
 }

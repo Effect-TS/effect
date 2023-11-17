@@ -42,7 +42,7 @@ export type CacheTypeId = typeof CacheTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Value> {
+export interface Cache<in out Key, out Error, out Value> extends ConsumerCache<Key, Error, Value> {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise computes the value with the lookup function, puts it in the
@@ -82,7 +82,7 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
  * @since 2.0.0
  * @category models
  */
-export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Error, Value> {
+export interface ConsumerCache<in out Key, out Error, out Value> extends Cache.Variance<Key, Error, Value> {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
@@ -155,9 +155,9 @@ export declare namespace Cache {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<Key, Error, Value> {
+  export interface Variance<in out Key, out Error, out Value> {
     readonly [CacheTypeId]: {
-      readonly _Key: (_: Key) => void
+      readonly _Key: (_: Key) => Key
       readonly _Error: (_: never) => Error
       readonly _Value: (_: never) => Value
     }

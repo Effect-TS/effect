@@ -21,7 +21,7 @@ const TPubSubSymbolKey = "effect/TPubSub"
 export const TPubSubTypeId: TPubSub.TPubSubTypeId = Symbol.for(TPubSubSymbolKey) as TPubSub.TPubSubTypeId
 
 /** @internal */
-export interface Node<A> {
+export interface Node<in out A> {
   readonly head: A
   readonly subscribers: number
   readonly tail: TRef.TRef<Node<A> | undefined>
@@ -39,8 +39,10 @@ export const makeNode = <A>(
 })
 
 /** @internal */
-class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
-  readonly [TPubSubTypeId]: TPubSub.TPubSubTypeId = TPubSubTypeId
+class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
+  readonly [TPubSubTypeId] = {
+    _A: (_: any) => _
+  }
   readonly [tQueue.TEnqueueTypeId] = tQueue.tEnqueueVariance
   constructor(
     readonly pubsubSize: TRef.TRef<number>,
@@ -171,7 +173,7 @@ class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
 }
 
 /** @internal */
-class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
+class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
   readonly [TPubSubTypeId]: TPubSub.TPubSubTypeId = TPubSubTypeId
   readonly [tQueue.TDequeueTypeId] = tQueue.tDequeueVariance
   constructor(

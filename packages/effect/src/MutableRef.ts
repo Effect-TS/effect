@@ -19,7 +19,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface MutableRef<T> extends Pipeable, Inspectable {
+export interface MutableRef<out T> extends Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 
   /** @internal */

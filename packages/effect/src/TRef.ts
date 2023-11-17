@@ -33,7 +33,7 @@ export type TRefTypeId = typeof TRefTypeId
  * @since 2.0.0
  * @category models
  */
-export interface TRef<A> extends TRef.Variance<A> {
+export interface TRef<in out A> extends TRef.Variance<A> {
   /**
    * Note: the method is unbound, exposed only for potential extensions.
    */
@@ -43,7 +43,7 @@ export interface TRef<A> extends TRef.Variance<A> {
  * @internal
  * @since 2.0.0
  */
-export interface TRef<A> {
+export interface TRef<in out A> {
   /** @internal */
   todos: Map<TxnId.TxnId, Journal.Todo>
   /** @internal */
@@ -57,7 +57,7 @@ export declare namespace TRef {
   /**
    * @since 2.0.0
    */
-  export interface Variance<A> {
+  export interface Variance<in out A> {
     readonly [TRefTypeId]: {
       readonly _A: (_: A) => A
     }

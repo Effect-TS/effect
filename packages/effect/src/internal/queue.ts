@@ -33,8 +33,21 @@ export const QueueStrategyTypeId: Queue.QueueStrategyTypeId = Symbol.for(
 ) as Queue.QueueStrategyTypeId
 
 /** @internal */
+const BackingQueueSymbolKey = "effect/BackingQueue"
+
+/** @internal */
+export const BackingQueueTypeId: Queue.BackingQueueTypeId = Symbol.for(
+  BackingQueueSymbolKey
+) as Queue.BackingQueueTypeId
+
+/** @internal */
 const queueStrategyVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
+}
+
+/** @internal */
+const backingQueueVariance = {
+  _A: (_: any) => _
 }
 
 /** @internal */
@@ -48,7 +61,7 @@ export const dequeueVariance = {
 }
 
 /** @internal */
-class QueueImpl<A> implements Queue.Queue<A> {
+class QueueImpl<in out A> implements Queue.Queue<A> {
   readonly [EnqueueTypeId] = enqueueVariance
   readonly [DequeueTypeId] = dequeueVariance
 
@@ -386,7 +399,8 @@ export const make = <A>(
   )
 
 /** @internal */
-export class BackingQueueFromMutableQueue<A> implements Queue.BackingQueue<A> {
+export class BackingQueueFromMutableQueue<in out A> implements Queue.BackingQueue<A> {
+  readonly [BackingQueueTypeId] = backingQueueVariance
   constructor(readonly mutable: MutableQueue.MutableQueue<A>) {}
   poll<Def>(def: Def): A | Def {
     return MutableQueue.poll(this.mutable, def)
@@ -503,7 +517,7 @@ export const droppingStrategy = <A>(): Queue.Strategy<A> => new DroppingStrategy
 export const slidingStrategy = <A>(): Queue.Strategy<A> => new SlidingStrategy()
 
 /** @internal */
-class BackPressureStrategy<A> implements Queue.Strategy<A> {
+class BackPressureStrategy<in out A> implements Queue.Strategy<A> {
   readonly [QueueStrategyTypeId] = queueStrategyVariance
 
   readonly putters = MutableQueue.unbounded<readonly [A, Deferred.Deferred<never, boolean>, boolean]>()
@@ -605,7 +619,7 @@ class BackPressureStrategy<A> implements Queue.Strategy<A> {
 }
 
 /** @internal */
-class DroppingStrategy<A> implements Queue.Strategy<A> {
+class DroppingStrategy<in out A> implements Queue.Strategy<A> {
   readonly [QueueStrategyTypeId] = queueStrategyVariance
 
   surplusSize(): number {
@@ -637,7 +651,7 @@ class DroppingStrategy<A> implements Queue.Strategy<A> {
 }
 
 /** @internal */
-class SlidingStrategy<A> implements Queue.Strategy<A> {
+class SlidingStrategy<in out A> implements Queue.Strategy<A> {
   readonly [QueueStrategyTypeId] = queueStrategyVariance
 
   surplusSize(): number {

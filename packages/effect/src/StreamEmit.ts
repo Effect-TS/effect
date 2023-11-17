@@ -18,7 +18,7 @@ import type * as Option from "./Option.js"
  * @since 2.0.0
  * @category models
  */
-export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
+export interface Emit<in R, in E, in A, out B> extends EmitOps<R, E, A, B> {
   (f: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
 }
 
@@ -26,7 +26,7 @@ export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
  * @since 2.0.0
  * @category models
  */
-export interface EmitOps<R, E, A, B> {
+export interface EmitOps<in R, in E, in A, out B> {
   /**
    * Emits a chunk containing the specified values.
    */

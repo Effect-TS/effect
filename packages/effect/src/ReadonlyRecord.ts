@@ -16,7 +16,7 @@ import * as Option from "./Option.js"
  * @category models
  * @since 2.0.0
  */
-export interface ReadonlyRecord<A> {
+export interface ReadonlyRecord<out A> {
   readonly [x: string]: A
 }
 

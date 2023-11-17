@@ -11,7 +11,7 @@ export declare namespace Node {
 }
 
 /** @internal */
-export class Node<K, V> {
+export class Node<out K, out V> {
   constructor(
     public color: Node.Color,
     public key: K,

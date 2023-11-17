@@ -37,7 +37,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
+export interface Left<out E, out A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Left"
   readonly _op: "Left"
   readonly left: E
@@ -54,7 +54,7 @@ export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
  * @category models
  * @since 2.0.0
  */
-export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
+export interface Right<out E, out A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Right"
   readonly _op: "Right"
   readonly right: A

@@ -62,7 +62,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Nil<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Nil"
 }
@@ -71,7 +71,7 @@ export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable 
  * @since 2.0.0
  * @category models
  */
-export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Cons<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Cons"
   readonly head: A

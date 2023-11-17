@@ -40,7 +40,7 @@ const _empty = Object.create(EmptyProto)
 export const empty = <Input, Output>(): Differ.Context.Patch<Input, Output> => _empty
 
 /** @internal */
-export interface AndThen<Input, Output, Output2> extends Differ.Context.Patch<Input, Output2> {
+export interface AndThen<in out Input, in out Output, in out Output2> extends Differ.Context.Patch<Input, Output2> {
   readonly _tag: "AndThen"
   readonly first: Differ.Context.Patch<Input, Output>
   readonly second: Differ.Context.Patch<Output, Output2>
@@ -61,7 +61,7 @@ const makeAndThen = <Input, Output, Output2>(
 }
 
 /** @internal */
-export interface AddService<Env, T, I> extends Differ.Context.Patch<Env, Env | I> {
+export interface AddService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env, Env | I> {
   readonly _tag: "AddService"
   readonly tag: Tag<T, I>
   readonly service: T
@@ -82,7 +82,7 @@ const makeAddService = <Env, I, T>(
 }
 
 /** @internal */
-export interface RemoveService<Env, T, I> extends Differ.Context.Patch<Env, Exclude<Env, I>> {
+export interface RemoveService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env, Exclude<Env, I>> {
   readonly _tag: "RemoveService"
   readonly tag: Tag<T, I>
 }
@@ -100,7 +100,7 @@ const makeRemoveService = <Env, I, T>(
 }
 
 /** @internal */
-export interface UpdateService<Env, T, I> extends Differ.Context.Patch<Env | I, Env | I> {
+export interface UpdateService<in out Env, in out T, in out I> extends Differ.Context.Patch<Env | I, Env | I> {
   readonly _tag: "UpdateService"
   readonly tag: Tag<T, I>
   update(service: T): T

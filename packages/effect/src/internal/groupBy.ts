@@ -315,7 +315,7 @@ export const bindEffect = dual<
 
 const mapDequeue = <A, B>(dequeue: Queue.Dequeue<A>, f: (a: A) => B): Queue.Dequeue<B> => new MapDequeue(dequeue, f)
 
-class MapDequeue<A, B> implements Queue.Dequeue<B> {
+class MapDequeue<in out A, out B> implements Queue.Dequeue<B> {
   readonly [Queue.DequeueTypeId] = {
     _Out: (_: never) => _
   }

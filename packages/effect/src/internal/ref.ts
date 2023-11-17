@@ -14,7 +14,7 @@ export const refVariance = {
   _A: (_: any) => _
 }
 
-class RefImpl<A> implements Ref.Ref<A> {
+class RefImpl<in out A> implements Ref.Ref<A> {
   readonly [RefTypeId] = refVariance
   constructor(readonly ref: MutableRef.MutableRef<A>) {}
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B> {

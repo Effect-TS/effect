@@ -30,7 +30,7 @@ export declare namespace UpstreamPullStrategy {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
+  export interface Variance<out A> {
     readonly [UpstreamPullStrategyTypeId]: {
       readonly _A: (_: never) => A
     }
@@ -41,7 +41,7 @@ export declare namespace UpstreamPullStrategy {
  * @since 2.0.0
  * @category models
  */
-export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
+export interface PullAfterNext<out A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterNext"
   readonly emitSeparator: Option.Option<A>
 }
@@ -50,7 +50,7 @@ export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
  * @since 2.0.0
  * @category models
  */
-export interface PullAfterAllEnqueued<A> extends UpstreamPullStrategy.Variance<A> {
+export interface PullAfterAllEnqueued<out A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterAllEnqueued"
   readonly emitSeparator: Option.Option<A>
 }

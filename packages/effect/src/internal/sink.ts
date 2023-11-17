@@ -38,7 +38,7 @@ const sinkVariance = {
 }
 
 /** @internal */
-export class SinkImpl<R, E, In, L, Z> implements Sink.Sink<R, E, In, L, Z> {
+export class SinkImpl<out R, out E, in In, out L, out Z> implements Sink.Sink<R, E, In, L, Z> {
   readonly [SinkTypeId] = sinkVariance
   constructor(
     readonly channel: Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>

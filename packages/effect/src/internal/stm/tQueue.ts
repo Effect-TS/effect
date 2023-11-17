@@ -81,7 +81,7 @@ export const tEnqueueVariance = {
   _In: (_: unknown) => _
 }
 
-class TQueueImpl<A> implements TQueue.TQueue<A> {
+class TQueueImpl<in out A> implements TQueue.TQueue<A> {
   readonly [TDequeueTypeId] = tDequeueVariance
   readonly [TEnqueueTypeId] = tEnqueueVariance
   constructor(

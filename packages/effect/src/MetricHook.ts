@@ -23,7 +23,7 @@ export type MetricHookTypeId = typeof MetricHookTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MetricHook<In, Out> extends MetricHook.Variance<In, Out>, Pipeable {
+export interface MetricHook<in In, out Out> extends MetricHook.Variance<In, Out>, Pipeable {
   get(): Out
   update(input: In): void
 }
@@ -78,7 +78,7 @@ export declare namespace MetricHook {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<In, Out> {
+  export interface Variance<in In, out Out> {
     readonly [MetricHookTypeId]: {
       readonly _In: (_: In) => void
       readonly _Out: (_: never) => Out

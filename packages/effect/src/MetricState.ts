@@ -89,7 +89,7 @@ export type SummaryStateTypeId = typeof SummaryStateTypeId
  * @since 2.0.0
  * @category models
  */
-export interface MetricState<A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
+export interface MetricState<in A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
 
 /**
  * @since 2.0.0
@@ -105,7 +105,9 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Counter<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
+  export interface Counter<in out A extends (number | bigint)>
+    extends MetricState<MetricKeyType.MetricKeyType.Counter<A>>
+  {
     readonly [CounterStateTypeId]: CounterStateTypeId
     readonly count: A
   }
@@ -123,7 +125,7 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Gauge<A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
+  export interface Gauge<in out A extends (number | bigint)> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
     readonly [GaugeStateTypeId]: GaugeStateTypeId
     readonly value: A
   }
@@ -159,7 +161,7 @@ export declare namespace MetricState {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
+  export interface Variance<in A> {
     readonly [MetricStateTypeId]: {
       readonly _A: (_: A) => void
     }

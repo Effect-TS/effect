@@ -8,7 +8,7 @@ import type { TypeLambda } from "./HKT.js"
  * @category models
  * @since 2.0.0
  */
-export interface Predicate<A> {
+export interface Predicate<in A> {
   (a: A): boolean
 }
 
@@ -24,7 +24,7 @@ export interface PredicateTypeLambda extends TypeLambda {
  * @category models
  * @since 2.0.0
  */
-export interface Refinement<A, B extends A> {
+export interface Refinement<in A, out B extends A> {
   (a: A): a is B
 }
 

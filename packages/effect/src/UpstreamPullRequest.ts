@@ -29,7 +29,7 @@ export declare namespace UpstreamPullRequest {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
+  export interface Variance<out A> {
     readonly [UpstreamPullRequestTypeId]: {
       readonly _A: (_: never) => A
     }
@@ -40,7 +40,7 @@ export declare namespace UpstreamPullRequest {
  * @since 2.0.0
  * @category models
  */
-export interface Pulled<A> extends UpstreamPullRequest.Variance<A> {
+export interface Pulled<out A> extends UpstreamPullRequest.Variance<A> {
   readonly _tag: "Pulled"
   readonly value: A
 }

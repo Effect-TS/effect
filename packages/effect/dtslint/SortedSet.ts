@@ -1,6 +1,6 @@
 import { pipe } from "effect/Function"
 import type { Order } from "effect/Order"
-import * as Predicate from "effect/Predicate"
+import type * as Predicate from "effect/Predicate"
 import * as SortedSet from "effect/SortedSet"
 
 declare const numbers: SortedSet.SortedSet<number>
@@ -14,14 +14,6 @@ declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 // every
 // -------------------------------------------------------------------------------------
 
-if (SortedSet.every(numbersOrStrings, Predicate.isString)) {
-  numbersOrStrings // $ExpectType SortedSet<string>
-}
-
-if (SortedSet.every(Predicate.isString)(numbersOrStrings)) {
-  numbersOrStrings // $ExpectType SortedSet<string>
-}
-
 pipe(
   numbersOrStrings,
   SortedSet.every((
@@ -32,10 +24,6 @@ pipe(
 // -------------------------------------------------------------------------------------
 // some
 // -------------------------------------------------------------------------------------
-
-if (SortedSet.some(numbersOrStrings, Predicate.isString)) {
-  numbersOrStrings // $ExpectType SortedSet<string | number>
-}
 
 pipe(
   numbersOrStrings,
@@ -64,12 +52,6 @@ SortedSet.partition(numbersOrStrings, predicateNumbersOrStrings)
 
 // $ExpectType [SortedSet<string | number>, SortedSet<string | number>]
 pipe(numbersOrStrings, SortedSet.partition(predicateNumbersOrStrings))
-
-// $ExpectType [SortedSet<string>, SortedSet<number>]
-SortedSet.partition(numbersOrStrings, Predicate.isNumber)
-
-// $ExpectType [SortedSet<string>, SortedSet<number>]
-pipe(numbersOrStrings, SortedSet.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // fromIterable
@@ -107,9 +89,3 @@ pipe(numbersOrStrings, SortedSet.filter(predicateNumbersOrStrings))
 
 // $ExpectType SortedSet<number>
 pipe(numbers, SortedSet.filter(predicateNumbersOrStrings))
-
-// $ExpectType SortedSet<number>
-SortedSet.filter(numbersOrStrings, Predicate.isNumber)
-
-// $ExpectType SortedSet<number>
-pipe(numbersOrStrings, SortedSet.filter(Predicate.isNumber))

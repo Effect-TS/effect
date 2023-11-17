@@ -56,7 +56,7 @@ export type RuntimeFiberTypeId = typeof RuntimeFiberTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
+export interface Fiber<out E, out A> extends Fiber.Variance<E, A>, Pipeable {
   /**
    * The identity of the fiber.
    */
@@ -100,7 +100,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
  * @since 2.0.0
  * @category models
  */
-export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E, A> {
+export interface RuntimeFiber<out E, out A> extends Fiber<E, A>, Fiber.RuntimeVariance<E, A> {
   /**
    * Reads the current number of ops that have occurred since the last yield
    */
@@ -163,7 +163,7 @@ export declare namespace Fiber {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<E, A> {
+  export interface Variance<out E, out A> {
     readonly [FiberTypeId]: {
       readonly _E: (_: never) => E
       readonly _A: (_: never) => A
@@ -173,7 +173,7 @@ export declare namespace Fiber {
   /**
    * @since 2.0.0
    */
-  export interface RuntimeVariance<E, A> {
+  export interface RuntimeVariance<out E, out A> {
     readonly [RuntimeFiberTypeId]: {
       readonly _E: (_: never) => E
       readonly _A: (_: never) => A

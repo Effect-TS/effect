@@ -11,7 +11,7 @@ export const Direction = {
 } as const
 
 /** @internal */
-export class RedBlackTreeIterator<K, V> implements Iterator<[K, V]> {
+export class RedBlackTreeIterator<in out K, out V> implements Iterator<[K, V]> {
   private count = 0
 
   constructor(
