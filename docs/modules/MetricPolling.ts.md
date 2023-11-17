@@ -17,10 +17,10 @@ Added in v2.0.0
   - [make](#make)
   - [retry](#retry)
 - [models](#models)
-  - [PollingMetric (interface)](#pollingmetric-interface)
+  - [MetricPolling (interface)](#metricpolling-interface)
 - [symbols](#symbols)
-  - [PollingMetricTypeId](#pollingmetrictypeid)
-  - [PollingMetricTypeId (type alias)](#pollingmetrictypeid-type-alias)
+  - [MetricPollingTypeId](#metricpollingtypeid)
+  - [MetricPollingTypeId (type alias)](#metricpollingtypeid-type-alias)
 - [utils](#utils)
   - [launch](#launch)
   - [poll](#poll)
@@ -40,8 +40,8 @@ polls for, updates, and produces the outputs of all individual metrics.
 
 ```ts
 export declare const collectAll: <R, E, Out>(
-  iterable: Iterable<PollingMetric<any, any, R, E, Out>>
-) => PollingMetric<any[], any[], R, E, Out[]>
+  iterable: Iterable<MetricPolling<any, any, R, E, Out>>
+) => MetricPolling<any[], any[], R, E, Out[]>
 ```
 
 Added in v2.0.0
@@ -56,7 +56,7 @@ Constructs a new polling metric from a metric and poll effect.
 export declare const make: <Type, In, Out, R, E>(
   metric: Metric.Metric<Type, In, Out>,
   poll: Effect.Effect<R, E, In>
-) => PollingMetric<Type, In, R, E, Out>
+) => MetricPolling<Type, In, R, E, Out>
 ```
 
 Added in v2.0.0
@@ -72,11 +72,11 @@ specified retry policy.
 export declare const retry: {
   <R2, E, _>(
     policy: Schedule.Schedule<R2, E, _>
-  ): <Type, In, R, Out>(self: PollingMetric<Type, In, R, E, Out>) => PollingMetric<Type, In, R2 | R, E, Out>
+  ): <Type, In, R, Out>(self: MetricPolling<Type, In, R, E, Out>) => MetricPolling<Type, In, R2 | R, E, Out>
   <Type, In, R, Out, R2, E, _>(
-    self: PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling<Type, In, R, E, Out>,
     policy: Schedule.Schedule<R2, E, _>
-  ): PollingMetric<Type, In, R | R2, E, Out>
+  ): MetricPolling<Type, In, R | R2, E, Out>
 }
 ```
 
@@ -84,18 +84,18 @@ Added in v2.0.0
 
 # models
 
-## PollingMetric (interface)
+## MetricPolling (interface)
 
-A `PollingMetric` is a combination of a metric and an effect that polls for
+A `MetricPolling` is a combination of a metric and an effect that polls for
 updates to the metric.
 
 **Signature**
 
 ```ts
-export interface PollingMetric<in out Type, in out In, out R, out E, out Out> extends Pipeable {
-  readonly [PollingMetricTypeId]: PollingMetricTypeId
+export interface MetricPolling<in out Type, in out In, out R, out E, out Out> extends Pipeable {
+  readonly [MetricPollingTypeId]: MetricPollingTypeId
   /**
-   * The metric that this `PollingMetric` polls to update.
+   * The metric that this `MetricPolling` polls to update.
    */
   readonly metric: Metric.Metric<Type, In, Out>
   /**
@@ -109,22 +109,22 @@ Added in v2.0.0
 
 # symbols
 
-## PollingMetricTypeId
+## MetricPollingTypeId
 
 **Signature**
 
 ```ts
-export declare const PollingMetricTypeId: typeof PollingMetricTypeId
+export declare const MetricPollingTypeId: typeof MetricPollingTypeId
 ```
 
 Added in v2.0.0
 
-## PollingMetricTypeId (type alias)
+## MetricPollingTypeId (type alias)
 
 **Signature**
 
 ```ts
-export type PollingMetricTypeId = typeof PollingMetricTypeId
+export type MetricPollingTypeId = typeof MetricPollingTypeId
 ```
 
 Added in v2.0.0
@@ -143,10 +143,10 @@ export declare const launch: {
   <R2, A2>(
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): <Type, In, R, E, Out>(
-    self: PollingMetric<Type, In, R, E, Out>
+    self: MetricPolling<Type, In, R, E, Out>
   ) => Effect.Effect<Scope.Scope | R2 | R, never, Fiber.Fiber<E, A2>>
   <Type, In, R, E, Out, R2, A2>(
-    self: PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
   ): Effect.Effect<Scope.Scope | R | R2, never, Fiber.Fiber<E, A2>>
 }
@@ -161,7 +161,7 @@ An effect that polls a value that may be fed to the metric.
 **Signature**
 
 ```ts
-export declare const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect.Effect<R, E, In>
+export declare const poll: <Type, In, R, E, Out>(self: MetricPolling<Type, In, R, E, Out>) => Effect.Effect<R, E, In>
 ```
 
 Added in v2.0.0
@@ -174,7 +174,7 @@ An effect that polls for a value and uses the value to update the metric.
 
 ```ts
 export declare const pollAndUpdate: <Type, In, R, E, Out>(
-  self: PollingMetric<Type, In, R, E, Out>
+  self: MetricPolling<Type, In, R, E, Out>
 ) => Effect.Effect<R, E, void>
 ```
 
@@ -189,14 +189,14 @@ Zips this polling metric with the specified polling metric.
 ```ts
 export declare const zip: {
   <Type2, In2, R2, E2, Out2>(
-    that: PollingMetric<Type2, In2, R2, E2, Out2>
+    that: MetricPolling<Type2, In2, R2, E2, Out2>
   ): <Type, In, R, E, Out>(
-    self: PollingMetric<Type, In, R, E, Out>
-  ) => PollingMetric<readonly [Type, Type2], readonly [In, In2], R2 | R, E2 | E, [Out, Out2]>
+    self: MetricPolling<Type, In, R, E, Out>
+  ) => MetricPolling<readonly [Type, Type2], readonly [In, In2], R2 | R, E2 | E, [Out, Out2]>
   <Type, In, R, E, Out, Type2, In2, R2, E2, Out2>(
-    self: PollingMetric<Type, In, R, E, Out>,
-    that: PollingMetric<Type2, In2, R2, E2, Out2>
-  ): PollingMetric<readonly [Type, Type2], readonly [In, In2], R | R2, E | E2, [Out, Out2]>
+    self: MetricPolling<Type, In, R, E, Out>,
+    that: MetricPolling<Type2, In2, R2, E2, Out2>
+  ): MetricPolling<readonly [Type, Type2], readonly [In, In2], R | R2, E | E2, [Out, Out2]>
 }
 ```
 

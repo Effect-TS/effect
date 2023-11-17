@@ -2,7 +2,7 @@ import type * as Effect from "../../Effect.js"
 import type * as Fiber from "../../Fiber.js"
 import { dual, pipe } from "../../Function.js"
 import type * as Metric from "../../Metric.js"
-import type * as PollingMetric from "../../MetricPolling.js"
+import type * as MetricPolling from "../../MetricPolling.js"
 import { pipeArguments } from "../../Pipeable.js"
 import type * as Schedule from "../../Schedule.js"
 import type * as Scope from "../../Scope.js"
@@ -12,20 +12,20 @@ import * as metric from "../metric.js"
 import * as schedule from "../schedule.js"
 
 /** @internal */
-const PollingMetricSymbolKey = "effect/MetricPolling"
+const MetricPollingSymbolKey = "effect/MetricPolling"
 
 /** @internal */
-export const PollingMetricTypeId: PollingMetric.PollingMetricTypeId = Symbol.for(
-  PollingMetricSymbolKey
-) as PollingMetric.PollingMetricTypeId
+export const MetricPollingTypeId: MetricPolling.MetricPollingTypeId = Symbol.for(
+  MetricPollingSymbolKey
+) as MetricPolling.MetricPollingTypeId
 
 /** @internal */
 export const make = <Type, In, Out, R, E>(
   metric: Metric.Metric<Type, In, Out>,
   poll: Effect.Effect<R, E, In>
-): PollingMetric.PollingMetric<Type, In, R, E, Out> => {
+): MetricPolling.MetricPolling<Type, In, R, E, Out> => {
   return {
-    [PollingMetricTypeId]: PollingMetricTypeId,
+    [MetricPollingTypeId]: MetricPollingTypeId,
     pipe() {
       return pipeArguments(this, arguments)
     },
@@ -36,11 +36,11 @@ export const make = <Type, In, Out, R, E>(
 
 /** @internal */
 export const collectAll = <R, E, Out>(
-  iterable: Iterable<PollingMetric.PollingMetric<any, any, R, E, Out>>
-): PollingMetric.PollingMetric<Array<any>, Array<any>, R, E, Array<Out>> => {
+  iterable: Iterable<MetricPolling.MetricPolling<any, any, R, E, Out>>
+): MetricPolling.MetricPolling<Array<any>, Array<any>, R, E, Array<Out>> => {
   const metrics = Array.from(iterable)
   return {
-    [PollingMetricTypeId]: PollingMetricTypeId,
+    [MetricPollingTypeId]: MetricPollingTypeId,
     pipe() {
       return pipeArguments(this, arguments)
     },
@@ -67,10 +67,10 @@ export const launch = dual<
   <R2, A2>(
     schedule: Schedule.Schedule<R2, unknown, A2>
   ) => <Type, In, R, E, Out>(
-    self: PollingMetric.PollingMetric<Type, In, R, E, Out>
+    self: MetricPolling.MetricPolling<Type, In, R, E, Out>
   ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>,
   <Type, In, R, E, Out, R2, A2>(
-    self: PollingMetric.PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling.MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<R2, unknown, A2>
   ) => Effect.Effect<R | R2 | Scope.Scope, never, Fiber.Fiber<E, A2>>
 >(2, (self, schedule) =>
@@ -82,12 +82,12 @@ export const launch = dual<
 
 /** @internal */
 export const poll = <Type, In, R, E, Out>(
-  self: PollingMetric.PollingMetric<Type, In, R, E, Out>
+  self: MetricPolling.MetricPolling<Type, In, R, E, Out>
 ): Effect.Effect<R, E, In> => self.poll
 
 /** @internal */
 export const pollAndUpdate = <Type, In, R, E, Out>(
-  self: PollingMetric.PollingMetric<Type, In, R, E, Out>
+  self: MetricPolling.MetricPolling<Type, In, R, E, Out>
 ): Effect.Effect<R, E, void> => core.flatMap(self.poll, (value) => metric.update(self.metric, value))
 
 /** @internal */
@@ -95,14 +95,14 @@ export const retry = dual<
   <R2, E, _>(
     policy: Schedule.Schedule<R2, E, _>
   ) => <Type, In, R, Out>(
-    self: PollingMetric.PollingMetric<Type, In, R, E, Out>
-  ) => PollingMetric.PollingMetric<Type, In, R | R2, E, Out>,
+    self: MetricPolling.MetricPolling<Type, In, R, E, Out>
+  ) => MetricPolling.MetricPolling<Type, In, R | R2, E, Out>,
   <Type, In, R, Out, R2, E, _>(
-    self: PollingMetric.PollingMetric<Type, In, R, E, Out>,
+    self: MetricPolling.MetricPolling<Type, In, R, E, Out>,
     policy: Schedule.Schedule<R2, E, _>
-  ) => PollingMetric.PollingMetric<Type, In, R | R2, E, Out>
+  ) => MetricPolling.MetricPolling<Type, In, R | R2, E, Out>
 >(2, (self, policy) => ({
-  [PollingMetricTypeId]: PollingMetricTypeId,
+  [MetricPollingTypeId]: MetricPollingTypeId,
   pipe() {
     return pipeArguments(this, arguments)
   },
@@ -113,10 +113,10 @@ export const retry = dual<
 /** @internal */
 export const zip = dual<
   <Type2, In2, R2, E2, Out2>(
-    that: PollingMetric.PollingMetric<Type2, In2, R2, E2, Out2>
+    that: MetricPolling.MetricPolling<Type2, In2, R2, E2, Out2>
   ) => <Type, In, R, E, Out>(
-    self: PollingMetric.PollingMetric<Type, In, R, E, Out>
-  ) => PollingMetric.PollingMetric<
+    self: MetricPolling.MetricPolling<Type, In, R, E, Out>
+  ) => MetricPolling.MetricPolling<
     readonly [Type, Type2],
     readonly [In, In2],
     R | R2,
@@ -124,9 +124,9 @@ export const zip = dual<
     [Out, Out2]
   >,
   <Type, In, R, E, Out, Type2, In2, R2, E2, Out2>(
-    self: PollingMetric.PollingMetric<Type, In, R, E, Out>,
-    that: PollingMetric.PollingMetric<Type2, In2, R2, E2, Out2>
-  ) => PollingMetric.PollingMetric<
+    self: MetricPolling.MetricPolling<Type, In, R, E, Out>,
+    that: MetricPolling.MetricPolling<Type2, In2, R2, E2, Out2>
+  ) => MetricPolling.MetricPolling<
     readonly [Type, Type2],
     readonly [In, In2],
     R | R2,
@@ -134,7 +134,7 @@ export const zip = dual<
     [Out, Out2]
   >
 >(2, (self, that) => ({
-  [PollingMetricTypeId]: PollingMetricTypeId,
+  [MetricPollingTypeId]: MetricPollingTypeId,
   pipe() {
     return pipeArguments(this, arguments)
   },
