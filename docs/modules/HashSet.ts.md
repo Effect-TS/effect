@@ -167,10 +167,10 @@ Filters values out of a `HashSet` using the specified predicate.
 
 ```ts
 export declare const filter: {
-  <A, B extends A>(f: Refinement<A, B>): (self: HashSet<A>) => HashSet<B>
-  <A>(f: Predicate<A>): (self: HashSet<A>) => HashSet<A>
-  <A, B extends A>(self: HashSet<A>, f: Refinement<A, B>): HashSet<B>
-  <A>(self: HashSet<A>, f: Predicate<A>): HashSet<A>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: HashSet<A>) => HashSet<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: HashSet<B>) => HashSet<B>
+  <A, B extends A>(self: HashSet<A>, refinement: Refinement<A, B>): HashSet<B>
+  <A>(self: HashSet<A>, predicate: Predicate<A>): HashSet<A>
 }
 ```
 
@@ -267,12 +267,9 @@ export declare const partition: {
   <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
   ): (self: HashSet<C>) => [HashSet<Exclude<C, B>>, HashSet<B>]
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: HashSet<B>) => [HashSet<B>, HashSet<B>]
-  <C extends A, B extends A, A = C>(
-    self: HashSet<C>,
-    refinement: Refinement<A, B>
-  ): [HashSet<Exclude<C, B>>, HashSet<B>]
-  <B extends A, A = B>(self: HashSet<B>, predicate: (a: A) => boolean): [HashSet<B>, HashSet<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: HashSet<B>) => [HashSet<B>, HashSet<B>]
+  <A, B extends A>(self: HashSet<A>, refinement: Refinement<A, B>): [HashSet<Exclude<A, B>>, HashSet<B>]
+  <A>(self: HashSet<A>, predicate: Predicate<A>): [HashSet<A>, HashSet<A>]
 }
 ```
 

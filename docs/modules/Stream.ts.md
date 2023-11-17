@@ -2173,9 +2173,9 @@ predicate.
 ```ts
 export declare const find: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <A, X extends A>(predicate: Predicate<X>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
-  <R, E, A, X extends A>(self: Stream<R, E, A>, predicate: Predicate<X>): Stream<R, E, A>
+  <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 }
 ```
 
@@ -2596,9 +2596,9 @@ Filters the elements emitted by this stream using the provided function.
 ```ts
 export declare const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <A, X extends A>(predicate: Predicate<X>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
-  <R, E, A, X extends A>(self: Stream<R, E, A>, predicate: Predicate<X>): Stream<R, E, A>
+  <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 }
 ```
 
@@ -3980,8 +3980,8 @@ Drops all elements of the stream until the specified predicate evaluates to
 
 ```ts
 export declare const dropUntil: {
-  <A, X extends A>(predicate: Predicate<X>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
-  <R, E, A, X extends A>(self: Stream<R, E, A>, predicate: Predicate<X>): Stream<R, E, A>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 }
 ```
 
@@ -4017,8 +4017,8 @@ evaluates to `true`.
 
 ```ts
 export declare const dropWhile: {
-  <A, X extends A>(predicate: Predicate<X>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
-  <R, E, A, X extends A>(self: Stream<R, E, A>, predicate: Predicate<X>): Stream<R, E, A>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
+  <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 }
 ```
 
@@ -4700,12 +4700,14 @@ export declare const partition: {
   <A>(
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined }
-  ): <R, E>(self: Stream<R, E, A>) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
-  <R, E, C extends A, B extends A, A = C>(
-    self: Stream<R, E, C>,
+  ): <R, E, B extends A>(
+    self: Stream<R, E, B>
+  ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, B>, Stream<never, E, B>]>
+  <R, E, A, B extends A>(
+    self: Stream<R, E, A>,
     refinement: Refinement<A, B>,
     options?: { bufferSize?: number | undefined }
-  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<C, B>>, Stream<never, E, B>]>
+  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<A, B>>, Stream<never, E, B>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
@@ -5204,7 +5206,7 @@ pipe(
 
 ```ts
 export declare const split: {
-  <A>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, Chunk.Chunk<A>>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, Chunk.Chunk<B>>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, Chunk.Chunk<A>>
 }
 ```
@@ -5265,7 +5267,7 @@ Takes all elements of the stream until the specified predicate evaluates to
 
 ```ts
 export declare const takeUntil: {
-  <A>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 }
 ```
@@ -5303,7 +5305,7 @@ evaluates to `true`.
 ```ts
 export declare const takeWhile: {
   <A, B extends A>(refinement: Refinement<A, B>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
-  <A>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <B extends A, A = B>(predicate: Predicate<A>): <R, E>(self: Stream<R, E, B>) => Stream<R, E, B>
   <R, E, A, B extends A>(self: Stream<R, E, A>, refinement: Refinement<A, B>): Stream<R, E, B>
   <R, E, A>(self: Stream<R, E, A>, predicate: Predicate<A>): Stream<R, E, A>
 }
@@ -5513,8 +5515,8 @@ returns an empty stream.
 
 ```ts
 export declare const when: {
-  (predicate: LazyArg<boolean>): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
-  <R, E, A>(self: Stream<R, E, A>, predicate: LazyArg<boolean>): Stream<R, E, A>
+  (test: LazyArg<boolean>): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A>
+  <R, E, A>(self: Stream<R, E, A>, test: LazyArg<boolean>): Stream<R, E, A>
 }
 ```
 

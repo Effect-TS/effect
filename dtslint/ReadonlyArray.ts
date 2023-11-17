@@ -10,7 +10,10 @@ declare const readonlyNumbers: ReadonlyArray<number>
 declare const numbers: Array<number>
 declare const numbersOrStrings: Array<number | string>
 declare const nonEmptyReadonlyNumbersOrStrings: ReadonlyArray.NonEmptyReadonlyArray<number | string>
-declare const numbersOrStringsOrDates: Array<number | string | Date>
+
+declare const pimitiveNumber: number
+declare const pimitiveNumerOrString: string | number
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
 // -------------------------------------------------------------------------------------
 // isEmptyReadonlyArray
@@ -21,7 +24,7 @@ if (ReadonlyArray.isEmptyReadonlyArray(readonlyNumbers)) {
   readonlyNumbers
 }
 
-// $ExpectType <A>(c: readonly A[]) => Option<readonly []>
+// $ExpectType <A>(a: readonly A[]) => Option<readonly []>
 Option.liftPredicate(ReadonlyArray.isEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
@@ -33,7 +36,7 @@ if (ReadonlyArray.isEmptyArray(numbers)) {
   numbers
 }
 
-// $ExpectType <A>(c: A[]) => Option<[]>
+// $ExpectType <A>(a: A[]) => Option<[]>
 Option.liftPredicate(ReadonlyArray.isEmptyArray)
 
 // -------------------------------------------------------------------------------------
@@ -45,7 +48,7 @@ if (ReadonlyArray.isNonEmptyReadonlyArray(readonlyNumbers)) {
   readonlyNumbers
 }
 
-// $ExpectType <A>(c: readonly A[]) => Option<readonly [A, ...A[]]>
+// $ExpectType <A>(a: readonly A[]) => Option<readonly [A, ...A[]]>
 Option.liftPredicate(ReadonlyArray.isNonEmptyReadonlyArray)
 
 // -------------------------------------------------------------------------------------
@@ -57,7 +60,7 @@ if (ReadonlyArray.isNonEmptyArray(numbers)) {
   numbers
 }
 
-// $ExpectType <A>(c: A[]) => Option<[A, ...A[]]>
+// $ExpectType <A>(a: A[]) => Option<[A, ...A[]]>
 Option.liftPredicate(ReadonlyArray.isNonEmptyArray)
 
 // -------------------------------------------------------------------------------------
@@ -108,9 +111,12 @@ if (ReadonlyArray.some(numbersOrStrings, Predicate.isString)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
 }
 
-if (ReadonlyArray.some(Predicate.isString)(numbersOrStrings)) {
-  numbersOrStrings // $ExpectType (string | number)[] & readonly [string | number, ...(string | number)[]]
-}
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.some((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // every
@@ -123,6 +129,13 @@ if (ReadonlyArray.every(numbersOrStrings, Predicate.isString)) {
 if (ReadonlyArray.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType (string | number)[] & readonly string[]
 }
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // append
@@ -203,17 +216,226 @@ ReadonlyArray.sort(ordera)(abs)
 // partition
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [number[], string[]]
-ReadonlyArray.partition(numbersOrStrings, Predicate.isString)
+ReadonlyArray.partition(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.partition((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [(string | number)[], (string | number)[]]
+ReadonlyArray.partition(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [(string | number)[], (string | number)[]]
+pipe(numbersOrStrings, ReadonlyArray.partition(predicateNumbersOrStrings))
 
 // $ExpectType [string[], number[]]
 ReadonlyArray.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [(number | Date)[], string[]]
-ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isString)
+// $ExpectType [string[], number[]]
+pipe(numbersOrStrings, ReadonlyArray.partition(Predicate.isNumber))
 
-// $ExpectType [(string | Date)[], number[]]
-ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isNumber)
+// -------------------------------------------------------------------------------------
+// filter
+// -------------------------------------------------------------------------------------
 
-// $ExpectType [(string | number)[], Date[]]
-ReadonlyArray.partition(numbersOrStringsOrDates, Predicate.isDate)
+ReadonlyArray.filter(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.filter((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType (string | number)[]
+ReadonlyArray.filter(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType number[]
+ReadonlyArray.filter(numbers, predicateNumbersOrStrings)
+
+// $ExpectType (string | number)[]
+pipe(numbersOrStrings, ReadonlyArray.filter(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(numbers, ReadonlyArray.filter(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+ReadonlyArray.filter(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType number[]
+pipe(numbersOrStrings, ReadonlyArray.filter(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// takeWhile
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.takeWhile(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.takeWhile((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType (string | number)[]
+ReadonlyArray.takeWhile(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType number[]
+ReadonlyArray.takeWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType (string | number)[]
+pipe(numbersOrStrings, ReadonlyArray.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(numbers, ReadonlyArray.takeWhile(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+ReadonlyArray.takeWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType number[]
+pipe(numbersOrStrings, ReadonlyArray.takeWhile(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findFirst
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.findFirst(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findFirst((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+ReadonlyArray.findFirst(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, ReadonlyArray.findFirst(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+ReadonlyArray.findFirst(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, ReadonlyArray.findFirst(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findLast
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.findLast(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.findLast((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+ReadonlyArray.findLast(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, ReadonlyArray.findLast(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+ReadonlyArray.findLast(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, ReadonlyArray.findLast(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// liftPredicate
+// -------------------------------------------------------------------------------------
+
+// $ExpectType string[]
+pipe(pimitiveNumerOrString, ReadonlyArray.liftPredicate(Predicate.isString))
+
+pipe(
+  pimitiveNumerOrString,
+  ReadonlyArray.liftPredicate(
+    (
+      n // $ExpectType string | number
+    ): n is number => typeof n === "number"
+  )
+)
+
+// $ExpectType (string | number)[]
+pipe(pimitiveNumerOrString, ReadonlyArray.liftPredicate(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(pimitiveNumber, ReadonlyArray.liftPredicate(predicateNumbersOrStrings))
+
+// $ExpectType number[]
+pipe(
+  pimitiveNumber,
+  ReadonlyArray.liftPredicate(
+    (
+      _n // $ExpectType number
+    ) => true
+  )
+)
+
+// -------------------------------------------------------------------------------------
+// span
+// -------------------------------------------------------------------------------------
+
+ReadonlyArray.span(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  ReadonlyArray.span((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [init: (string | number)[], rest: (string | number)[]]
+ReadonlyArray.span(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [init: number[], rest: number[]]
+ReadonlyArray.span(numbers, predicateNumbersOrStrings)
+
+// $ExpectType [init: (string | number)[], rest: (string | number)[]]
+pipe(numbersOrStrings, ReadonlyArray.span(predicateNumbersOrStrings))
+
+// $ExpectType [init: number[], rest: number[]]
+pipe(numbers, ReadonlyArray.span(predicateNumbersOrStrings))
+
+// $ExpectType [init: number[], rest: string[]]
+ReadonlyArray.span(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [init: number[], rest: string[]]
+pipe(numbersOrStrings, ReadonlyArray.span(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// dropWhile
+// -------------------------------------------------------------------------------------
+
+// $ExpectType number[]
+ReadonlyArray.dropWhile(numbers, predicateNumbersOrStrings)
+
+// $ExpectType number[]
+pipe(numbers, ReadonlyArray.dropWhile(predicateNumbersOrStrings))
+
+// $ExpectType (string | number)[]
+ReadonlyArray.dropWhile(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType (string | number)[]
+pipe(numbersOrStrings, ReadonlyArray.dropWhile(Predicate.isNumber))

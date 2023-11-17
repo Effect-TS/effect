@@ -219,7 +219,7 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
   /**
    * Invalidates the value associated with the specified key if the predicate holds.
    */
-  invalidateWhen(key: Key, when: (value: Value) => boolean): Effect.Effect<never, never, void>
+  invalidateWhen(key: Key, predicate: Predicate.Predicate<Value>): Effect.Effect<never, never, void>
 
   /**
    * Invalidates all values in the cache.

@@ -191,7 +191,7 @@ Added in v2.0.0
 ```ts
 export declare const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: SortedSet<A>) => SortedSet<B>
-  <A>(predicate: Predicate<A>): (self: SortedSet<A>) => SortedSet<A>
+  <A, B extends A>(predicate: Predicate<B>): (self: SortedSet<A>) => SortedSet<A>
   <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): SortedSet<B>
   <A>(self: SortedSet<A>, predicate: Predicate<A>): SortedSet<A>
 }
@@ -209,11 +209,8 @@ export declare const partition: {
     refinement: Refinement<A, B>
   ): (self: SortedSet<C>) => [SortedSet<Exclude<C, B>>, SortedSet<B>]
   <B extends A, A = B>(predicate: (a: A) => boolean): (self: SortedSet<B>) => [SortedSet<B>, SortedSet<B>]
-  <C extends A, B extends A, A = C>(
-    self: SortedSet<C>,
-    refinement: Refinement<A, B>
-  ): [SortedSet<Exclude<C, B>>, SortedSet<B>]
-  <B extends A, A = B>(self: SortedSet<B>, predicate: (a: A) => boolean): [SortedSet<B>, SortedSet<B>]
+  <A, B extends A>(self: SortedSet<A>, refinement: Refinement<A, B>): [SortedSet<Exclude<A, B>>, SortedSet<B>]
+  <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [SortedSet<A>, SortedSet<A>]
 }
 ```
 

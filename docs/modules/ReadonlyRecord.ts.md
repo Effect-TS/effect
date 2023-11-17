@@ -236,17 +236,12 @@ Selects properties from a record whose values match the given predicate.
 
 ```ts
 export declare const filter: {
-  <K extends string, C extends A, B extends A, A = C>(
-    refinement: (a: A, key: K) => a is B
-  ): (self: Record<K, C>) => Record<string, B>
+  <K extends string, A, B extends A>(refinement: (a: A, key: K) => a is B): (self: Record<K, A>) => Record<string, B>
   <K extends string, B extends A, A = B>(
-    predicate: (a: A, key: K) => boolean
+    predicate: (A: A, key: K) => boolean
   ): (self: Record<K, B>) => Record<string, B>
-  <K extends string, C extends A, B extends A, A = C>(
-    self: Record<K, C>,
-    refinement: (a: A, key: K) => a is B
-  ): Record<string, B>
-  <K extends string, B extends A, A = B>(self: Record<K, B>, predicate: (a: A, key: K) => boolean): Record<string, B>
+  <K extends string, A, B extends A>(self: Record<K, A>, refinement: (a: A, key: K) => a is B): Record<string, B>
+  <K extends string, A>(self: Record<K, A>, predicate: (a: A, key: K) => boolean): Record<string, A>
 }
 ```
 
@@ -274,18 +269,18 @@ Partitions a record into two separate records based on the result of a predicate
 export declare const partition: {
   <K extends string, C extends A, B extends A, A = C>(
     refinement: (a: A, key: K) => a is B
-  ): (self: Record<K, C>) => [Record<string, C>, Record<string, B>]
+  ): (self: Record<K, C>) => [Record<string, Exclude<C, B>>, Record<string, B>]
   <K extends string, B extends A, A = B>(
     predicate: (a: A, key: K) => boolean
   ): (self: Record<K, B>) => [Record<string, B>, Record<string, B>]
-  <K extends string, C extends A, B extends A, A = C>(
-    self: Record<K, C>,
+  <K extends string, A, B extends A>(
+    self: Record<K, A>,
     refinement: (a: A, key: K) => a is B
-  ): [Record<string, C>, Record<string, B>]
-  <K extends string, B extends A, A = B>(
-    self: Record<K, B>,
+  ): [Record<string, Exclude<A, B>>, Record<string, B>]
+  <K extends string, A>(
+    self: Record<K, A>,
     predicate: (a: A, key: K) => boolean
-  ): [Record<string, B>, Record<string, B>]
+  ): [Record<string, A>, Record<string, A>]
 }
 ```
 
@@ -512,7 +507,14 @@ Check if all entries in a record meet a specific condition.
 
 ```ts
 export declare const every: {
+  <A, K extends string, B extends A>(
+    refinement: (value: A, key: K) => value is B
+  ): (self: Record<K, A>) => self is Readonly<Record<K, B>>
   <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <A, K extends string, B extends A>(
+    self: Record<K, A>,
+    refinement: (value: A, key: K) => value is B
+  ): self is Readonly<Record<K, B>>
   <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
 }
 ```

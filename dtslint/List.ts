@@ -7,6 +7,8 @@ declare const nonEmptyNumbers: List.Cons<number>
 declare const numbersOrStrings: List.List<number | string>
 declare const nonEmptyNumbersOrStrings: List.Cons<number | string>
 
+declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
+
 // -------------------------------------------------------------------------------------
 // every
 // -------------------------------------------------------------------------------------
@@ -18,6 +20,13 @@ if (List.every(numbersOrStrings, Predicate.isString)) {
 if (List.every(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType List<string>
 }
+
+pipe(
+  numbersOrStrings,
+  List.every((
+    _item // $ExpectType string | number
+  ) => true)
+)
 
 // -------------------------------------------------------------------------------------
 // some
@@ -31,15 +40,39 @@ if (List.some(Predicate.isString)(numbersOrStrings)) {
   numbersOrStrings // $ExpectType Cons<string | number>
 }
 
+pipe(
+  numbersOrStrings,
+  List.some((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
 // -------------------------------------------------------------------------------------
 // partition
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [List<number>, List<string>]
-List.partition(numbersOrStrings, Predicate.isString)
+List.partition(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
 
-// $ExpectType [List<number>, List<string>]
-numbersOrStrings.pipe(List.partition(Predicate.isString))
+pipe(
+  numbersOrStrings,
+  List.partition((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType [List<string | number>, List<string | number>]
+List.partition(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType [List<string | number>, List<string | number>]
+pipe(numbersOrStrings, List.partition(predicateNumbersOrStrings))
+
+// $ExpectType [List<string>, List<number>]
+List.partition(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType [List<string>, List<number>]
+pipe(numbersOrStrings, List.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
 // append
@@ -108,3 +141,63 @@ List.map(nonEmptyNumbers, (n) => n + 1)
 
 // $ExpectType Cons<number>
 pipe(nonEmptyNumbers, List.map((n) => n + 1))
+
+// -------------------------------------------------------------------------------------
+// filter
+// -------------------------------------------------------------------------------------
+
+List.filter(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  List.filter((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType List<string | number>
+List.filter(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType List<number>
+List.filter(numbers, predicateNumbersOrStrings)
+
+// $ExpectType List<string | number>
+pipe(numbersOrStrings, List.filter(predicateNumbersOrStrings))
+
+// $ExpectType List<number>
+pipe(numbers, List.filter(predicateNumbersOrStrings))
+
+// $ExpectType List<number>
+List.filter(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType List<number>
+pipe(numbersOrStrings, List.filter(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// findFirst
+// -------------------------------------------------------------------------------------
+
+List.findFirst(numbersOrStrings, (
+  _item // $ExpectType string | number
+) => true)
+
+pipe(
+  numbersOrStrings,
+  List.findFirst((
+    _item // $ExpectType string | number
+  ) => true)
+)
+
+// $ExpectType Option<string | number>
+List.findFirst(numbersOrStrings, predicateNumbersOrStrings)
+
+// $ExpectType Option<string | number>
+pipe(numbersOrStrings, List.findFirst(predicateNumbersOrStrings))
+
+// $ExpectType Option<number>
+List.findFirst(numbersOrStrings, Predicate.isNumber)
+
+// $ExpectType Option<number>
+pipe(numbersOrStrings, List.findFirst(Predicate.isNumber))

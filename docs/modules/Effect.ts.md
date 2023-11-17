@@ -691,7 +691,9 @@ Drops all elements until the effectful predicate returns true.
 
 ```ts
 export declare const dropUntil: {
-  <A, R, E>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, A[]>
+  <B extends A, R, E, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, B[]>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
 }
 ```
@@ -706,8 +708,10 @@ Drops all elements so long as the predicate returns true.
 
 ```ts
 export declare const dropWhile: {
-  <R, E, A>(f: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, A[]>
-  <R, E, A>(elements: Iterable<A>, f: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
+  <B extends A, R, E, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, B[]>
+  <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
 }
 ```
 
@@ -1071,7 +1075,9 @@ Takes elements until the effectual predicate returns true.
 
 ```ts
 export declare const takeUntil: {
-  <R, E, A>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, A[]>
+  <B extends A, R, E, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, B[]>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
 }
 ```
@@ -1086,7 +1092,9 @@ Takes all elements so long as the effectual predicate returns true.
 
 ```ts
 export declare const takeWhile: {
-  <R, E, A>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, A[]>
+  <R, E, B extends A, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, B[]>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, A[]>
 }
 ```

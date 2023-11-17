@@ -487,32 +487,35 @@ export const dropUntil = dual<
 /* @internal */
 export const dropWhile = dual<
   <R, E, A>(
-    f: (a: A, i: number) => Effect.Effect<R, E, boolean>
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
   ) => (elements: Iterable<A>) => Effect.Effect<R, E, Array<A>>,
   <R, E, A>(
     elements: Iterable<A>,
-    f: (a: A, i: number) => Effect.Effect<R, E, boolean>
+    predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>
   ) => Effect.Effect<R, E, Array<A>>
->(2, <R, E, A>(elements: Iterable<A>, f: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
-  core.suspend(() => {
-    const iterator = elements[Symbol.iterator]()
-    const builder: Array<A> = []
-    let next
-    let dropping: Effect.Effect<R, E, boolean> = core.succeed(true)
-    let i = 0
-    while ((next = iterator.next()) && !next.done) {
-      const a = next.value
-      const index = i++
-      dropping = core.flatMap(dropping, (d) =>
-        core.map(d ? f(a, index) : core.succeed(false), (b) => {
-          if (!b) {
-            builder.push(a)
-          }
-          return b
-        }))
-    }
-    return core.map(dropping, () => builder)
-  }))
+>(
+  2,
+  <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect.Effect<R, E, boolean>) =>
+    core.suspend(() => {
+      const iterator = elements[Symbol.iterator]()
+      const builder: Array<A> = []
+      let next
+      let dropping: Effect.Effect<R, E, boolean> = core.succeed(true)
+      let i = 0
+      while ((next = iterator.next()) && !next.done) {
+        const a = next.value
+        const index = i++
+        dropping = core.flatMap(dropping, (d) =>
+          core.map(d ? predicate(a, index) : core.succeed(false), (b) => {
+            if (!b) {
+              builder.push(a)
+            }
+            return b
+          }))
+      }
+      return core.map(dropping, () => builder)
+    })
+)
 
 /* @internal */
 export const contextWith = <R, A>(f: (context: Context.Context<R>) => A): Effect.Effect<R, never, A> =>
@@ -862,7 +865,7 @@ export const isSuccess = <R, E, A>(self: Effect.Effect<R, E, A>): Effect.Effect<
 export const iterate = <Z, R, E>(
   initial: Z,
   options: {
-    readonly while: (z: Z) => boolean
+    readonly while: Predicate.Predicate<Z>
     readonly body: (z: Z) => Effect.Effect<R, E, Z>
   }
 ): Effect.Effect<R, E, Z> =>
@@ -960,7 +963,7 @@ export const loop: {
   <Z, R, E, A>(
     initial: Z,
     options: {
-      readonly while: (z: Z) => boolean
+      readonly while: Predicate.Predicate<Z>
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => Effect.Effect<R, E, A>
       readonly discard?: false | undefined
@@ -969,7 +972,7 @@ export const loop: {
   <Z, R, E, A>(
     initial: Z,
     options: {
-      readonly while: (z: Z) => boolean
+      readonly while: Predicate.Predicate<Z>
       readonly step: (z: Z) => Z
       readonly body: (z: Z) => Effect.Effect<R, E, A>
       readonly discard: true
@@ -978,7 +981,7 @@ export const loop: {
 } = <Z, R, E, A>(
   initial: Z,
   options: {
-    readonly while: (z: Z) => boolean
+    readonly while: Predicate.Predicate<Z>
     readonly step: (z: Z) => Z
     readonly body: (z: Z) => Effect.Effect<R, E, A>
     readonly discard?: boolean | undefined
@@ -990,7 +993,7 @@ export const loop: {
 
 const loopInternal = <Z, R, E, A>(
   initial: Z,
-  cont: (z: Z) => boolean,
+  cont: Predicate.Predicate<Z>,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, List.List<A>> =>
@@ -1006,7 +1009,7 @@ const loopInternal = <Z, R, E, A>(
 
 const loopDiscard = <Z, R, E, X>(
   initial: Z,
-  cont: (z: Z) => boolean,
+  cont: Predicate.Predicate<Z>,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect.Effect<R, E, X>
 ): Effect.Effect<R, E, void> =>

@@ -508,7 +508,9 @@ export const allSuccesses: <R, E, A>(
  * @category collecting & elements
  */
 export const dropUntil: {
-  <A, R, E>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Array<A>>
+  <B extends A, R, E, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
   <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropUntil
 
@@ -519,8 +521,10 @@ export const dropUntil: {
  * @category collecting & elements
  */
 export const dropWhile: {
-  <R, E, A>(f: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Array<A>>
-  <R, E, A>(elements: Iterable<A>, f: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
+  <B extends A, R, E, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
+  <A, R, E>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.dropWhile
 
 /**
@@ -852,7 +856,9 @@ export const replicateEffect: {
  * @category collecting & elements
  */
 export const takeUntil: {
-  <R, E, A>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Array<A>>
+  <B extends A, R, E, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeUntil
 
@@ -863,7 +869,9 @@ export const takeUntil: {
  * @category collecting & elements
  */
 export const takeWhile: {
-  <R, E, A>(predicate: (a: A, i: number) => Effect<R, E, boolean>): (elements: Iterable<A>) => Effect<R, E, Array<A>>
+  <R, E, B extends A, A = B>(
+    predicate: (a: A, i: number) => Effect<R, E, boolean>
+  ): (elements: Iterable<B>) => Effect<R, E, Array<B>>
   <R, E, A>(elements: Iterable<A>, predicate: (a: A, i: number) => Effect<R, E, boolean>): Effect<R, E, Array<A>>
 } = effect.takeWhile
 

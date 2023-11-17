@@ -195,7 +195,10 @@ export const collectAllUntilEffect = <In, R, E>(p: (input: In) => Effect.Effect<
 }
 
 /** @internal */
-export const collectAllWhile = <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, Chunk.Chunk<In>> =>
+export const collectAllWhile: {
+  <In, Out extends In>(refinement: Refinement<In, Out>): Sink.Sink<never, never, In, In, Chunk.Chunk<Out>>
+  <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, Chunk.Chunk<In>>
+} = <In>(predicate: Predicate<In>): Sink.Sink<never, never, In, In, Chunk.Chunk<In>> =>
   fromChannel(collectAllWhileReader(predicate, Chunk.empty()))
 
 /** @internal */

@@ -965,13 +965,13 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const filter: {
-  <C extends A, B extends A, A = C>(refinement: (a: A) => a is B): (self: Option<C>) => Option<B>
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: Option<B>) => Option<B>
-  <C extends A, B extends A, A = C>(self: Option<C>, refinement: (a: A) => a is B): Option<B>
-  <B extends A, A = B>(self: Option<B>, predicate: (a: A) => boolean): Option<B>
+  <A, B extends A>(refinement: Refinement<A, B>): (self: Option<A>) => Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Option<B>) => Option<B>
+  <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): Option<B>
+  <A>(self: Option<A>, predicate: Predicate<A>): Option<A>
 } = dual(
   2,
-  <B extends A, A = B>(self: Option<B>, predicate: (a: A) => boolean): Option<B> =>
+  <A>(self: Option<A>, predicate: Predicate<A>): Option<A> =>
     filterMap(self, (b) => (predicate(b) ? option.some(b) : option.none))
 )
 
@@ -1049,9 +1049,9 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  * @since 2.0.0
  */
 export const liftPredicate: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (c: C) => Option<B>
+  <A, B extends A>(refinement: Refinement<A, B>): (a: A) => Option<B>
   <B extends A, A = B>(predicate: Predicate<A>): (b: B) => Option<B>
-} = <B extends A, A = B>(predicate: Predicate<A>) => (b: B) => predicate(b) ? some(b) : none()
+} = <B extends A, A = B>(predicate: Predicate<A>) => (b: B): Option<B> => predicate(b) ? some(b) : none()
 
 /**
  * Returns a function that checks if a `Option` contains a given value using a provided `isEquivalent` function.
@@ -1109,11 +1109,14 @@ export const contains: {
  * @since 2.0.0
  */
 export const exists: {
-  <A>(predicate: Predicate<A>): (self: Option<A>) => boolean
+  <A, B extends A>(refinement: Refinement<A, B>): (self: Option<A>) => self is Option<B>
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Option<B>) => boolean
+  <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): self is Option<B>
   <A>(self: Option<A>, predicate: Predicate<A>): boolean
 } = dual(
   2,
-  <A>(self: Option<A>, predicate: Predicate<A>): boolean => isNone(self) ? false : predicate(self.value)
+  <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): self is Option<B> =>
+    isNone(self) ? false : refinement(self.value)
 )
 
 // -------------------------------------------------------------------------------------

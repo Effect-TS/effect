@@ -2142,16 +2142,18 @@ export const exitDie = (defect: unknown): Exit.Exit<never, never> =>
   exitFailCause(internalCause.die(defect)) as Exit.Exit<never, never>
 
 /** @internal */
-export const exitExists = dual<
-  <A>(predicate: Predicate<A>) => <E>(self: Exit.Exit<E, A>) => boolean,
-  <E, A>(self: Exit.Exit<E, A>, predicate: Predicate<A>) => boolean
->(2, (self, predicate) => {
+export const exitExists: {
+  <A, B extends A>(refinement: Refinement<A, B>): <E>(self: Exit.Exit<E, A>) => self is Exit.Exit<never, B>
+  <A>(predicate: Predicate<A>): <E>(self: Exit.Exit<E, A>) => boolean
+  <E, A, B extends A>(self: Exit.Exit<E, A>, refinement: Refinement<A, B>): self is Exit.Exit<never, B>
+  <E, A>(self: Exit.Exit<E, A>, predicate: Predicate<A>): boolean
+} = dual(2, <E, A, B extends A>(self: Exit.Exit<E, A>, refinement: Refinement<A, B>): self is Exit.Exit<never, B> => {
   switch (self._tag) {
     case OpCodes.OP_FAILURE: {
       return false
     }
     case OpCodes.OP_SUCCESS: {
-      return predicate(self.i0)
+      return refinement(self.i0)
     }
   }
 })

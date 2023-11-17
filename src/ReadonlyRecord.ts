@@ -436,27 +436,19 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const filter: {
-  <K extends string, C extends A, B extends A, A = C>(
-    refinement: (a: A, key: K) => a is B
-  ): (self: Record<K, C>) => Record<string, B>
+  <K extends string, A, B extends A>(refinement: (a: A, key: K) => a is B): (self: Record<K, A>) => Record<string, B>
   <K extends string, B extends A, A = B>(
-    predicate: (a: A, key: K) => boolean
+    predicate: (A: A, key: K) => boolean
   ): (self: Record<K, B>) => Record<string, B>
-  <K extends string, C extends A, B extends A, A = C>(
-    self: Record<K, C>,
-    refinement: (a: A, key: K) => a is B
-  ): Record<string, B>
-  <K extends string, B extends A, A = B>(
-    self: Record<K, B>,
-    predicate: (a: A, key: K) => boolean
-  ): Record<string, B>
+  <K extends string, A, B extends A>(self: Record<K, A>, refinement: (a: A, key: K) => a is B): Record<string, B>
+  <K extends string, A>(self: Record<K, A>, predicate: (a: A, key: K) => boolean): Record<string, A>
 } = dual(
   2,
-  <B extends A, A = B>(
-    self: Record<string, B>,
+  <A>(
+    self: Record<string, A>,
     predicate: (a: A, key: string) => boolean
-  ): Record<string, B> => {
-    const out: Record<string, B> = {}
+  ): Record<string, A> => {
+    const out: Record<string, A> = {}
     for (const key of Object.keys(self)) {
       if (predicate(self[key], key)) {
         out[key] = self[key]
@@ -574,26 +566,23 @@ export const separate: <A, B>(
 export const partition: {
   <K extends string, C extends A, B extends A, A = C>(refinement: (a: A, key: K) => a is B): (
     self: Record<K, C>
-  ) => [Record<string, C>, Record<string, B>]
+  ) => [Record<string, Exclude<C, B>>, Record<string, B>]
   <K extends string, B extends A, A = B>(
     predicate: (a: A, key: K) => boolean
   ): (self: Record<K, B>) => [Record<string, B>, Record<string, B>]
-  <K extends string, C extends A, B extends A, A = C>(
-    self: Record<K, C>,
+  <K extends string, A, B extends A>(
+    self: Record<K, A>,
     refinement: (a: A, key: K) => a is B
-  ): [Record<string, C>, Record<string, B>]
-  <K extends string, B extends A, A = B>(
-    self: Record<K, B>,
+  ): [Record<string, Exclude<A, B>>, Record<string, B>]
+  <K extends string, A>(
+    self: Record<K, A>,
     predicate: (a: A, key: K) => boolean
-  ): [Record<string, B>, Record<string, B>]
+  ): [Record<string, A>, Record<string, A>]
 } = dual(
   2,
-  <B extends A, A = B>(
-    self: Record<string, B>,
-    predicate: (a: A, key: string) => boolean
-  ): [Record<string, B>, Record<string, B>] => {
-    const left: Record<string, B> = {}
-    const right: Record<string, B> = {}
+  <A>(self: Record<string, A>, predicate: (a: A, key: string) => boolean): [Record<string, A>, Record<string, A>] => {
+    const left: Record<string, A> = {}
+    const right: Record<string, A> = {}
     for (const key of Object.keys(self)) {
       if (predicate(self[key], key)) {
         right[key] = self[key]
@@ -740,11 +729,21 @@ export const reduce: {
  * @since 2.0.0
  */
 export const every: {
+  <A, K extends string, B extends A>(
+    refinement: (value: A, key: K) => value is B
+  ): (self: Record<K, A>) => self is Readonly<Record<K, B>>
   <A, K extends string>(predicate: (value: A, key: K) => boolean): (self: Record<K, A>) => boolean
+  <A, K extends string, B extends A>(
+    self: Record<K, A>,
+    refinement: (value: A, key: K) => value is B
+  ): self is Readonly<Record<K, B>>
   <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean
-} = dual(2, <K extends string, A>(self: Record<K, A>, predicate: (value: A, key: K) => boolean): boolean => {
+} = dual(2, <A, K extends string, B extends A>(
+  self: Record<K, A>,
+  refinement: (value: A, key: K) => value is B
+): self is Readonly<Record<K, A>> => {
   for (const key in self) {
-    if (!predicate(self[key], key)) {
+    if (!refinement(self[key], key)) {
       return false
     }
   }
