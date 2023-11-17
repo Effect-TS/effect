@@ -18,8 +18,8 @@ export const TDeferredTypeId: TDeferred.TDeferredTypeId = Symbol.for(
 
 /** @internal */
 const tDeferredVariance = {
-  _E: (_: never) => _,
-  _A: (_: never) => _
+  _E: (_: any) => _,
+  _A: (_: any) => _
 }
 
 /** @internal */
