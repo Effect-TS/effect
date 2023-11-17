@@ -181,7 +181,7 @@ export const makeManager = Effect.gen(function*(_) {
           Effect.forkScoped
         )
 
-        const postMessages = yield* _(
+        const postMessages = pipe(
           semaphore.take(1),
           Effect.zipRight(outbound.take),
           Effect.flatMap(([id, request]) =>
@@ -203,11 +203,16 @@ export const makeManager = Effect.gen(function*(_) {
               Effect.fork
             )
           ),
-          Effect.forever,
+          Effect.forever
+        )
+
+        const postMessagesFiber = yield* _(
+          Deferred.await(readyLatch),
+          Effect.zipRight(postMessages),
           Effect.forkScoped
         )
 
-        const join = Fiber.joinAll([backing.fiber, handleMessages, postMessages]) as Effect.Effect<
+        const join = Fiber.joinAll([backing.fiber, handleMessages, postMessagesFiber]) as Effect.Effect<
           never,
           WorkerError,
           never
