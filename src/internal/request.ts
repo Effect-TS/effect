@@ -2,6 +2,7 @@ import type * as Effect from "../Effect.js"
 import { dual } from "../Function.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Request from "../Request.js"
+import type * as Types from "../Types.js"
 import * as completedRequestMap from "./completedRequestMap.js"
 import * as core from "./core.js"
 import * as Data from "./data.js"
@@ -42,6 +43,26 @@ export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
     _tag: tag,
     ...args
   })
+
+/** @internal */
+export const TaggedClass = <Tag extends string>(
+  tag: Tag
+): new<Error, Success, A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
+    : { readonly [P in keyof A as P extends "_tag" | keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
+) => Request.Request<Error, Success> & Readonly<A> & { readonly _tag: Tag } => {
+  function Base(this: any, args: any) {
+    if (args) {
+      Object.assign(this, args)
+    }
+    this._tag = tag
+  }
+  Base.prototype = {
+    ...Data.StructProto,
+    [RequestTypeId]: requestVariance
+  }
+  return Base as any
+}
 
 /** @internal */
 export const complete = dual<

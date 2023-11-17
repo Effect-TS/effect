@@ -42,12 +42,9 @@ export interface GetAllIds extends Request.Request<never, ReadonlyArray<number>>
 
 export const GetAllIds = Request.tagged<GetAllIds>("GetAllIds")
 
-export interface GetNameById extends Request.Request<string, string> {
-  readonly _tag: "GetNameById"
+export class GetNameById extends Request.TaggedClass("GetNameById")<string, string, {
   readonly id: number
-}
-
-export const GetNameById = Request.tagged<GetNameById>("GetNameById")
+}> {}
 
 const delay = <R, E, A>(self: Effect.Effect<R, E, A>) =>
   Effect.zipRight(
@@ -71,7 +68,7 @@ export const getAllUserIds = Effect.request(GetAllIds({}), UserResolver)
 
 export const interrupts = FiberRef.unsafeMake({ interrupts: 0 })
 
-export const getUserNameById = (id: number) => Effect.request(GetNameById({ id }), UserResolver)
+export const getUserNameById = (id: number) => Effect.request(new GetNameById({ id }), UserResolver)
 
 export const getAllUserNamesN = (concurrency: Concurrency) =>
   getAllUserIds.pipe(
@@ -129,7 +126,7 @@ const UserResolverTagged = Resolver.fromEffectTagged<UserRequest>()({
   Resolver.contextFromServices(Counter, Requests)
 )
 export const getAllUserIdsTagged = Effect.request(GetAllIds({}), UserResolverTagged)
-export const getUserNameByIdTagged = (id: number) => Effect.request(GetNameById({ id }), UserResolverTagged)
+export const getUserNameByIdTagged = (id: number) => Effect.request(new GetNameById({ id }), UserResolverTagged)
 export const getAllUserNamesTagged = getAllUserIdsTagged.pipe(
   Effect.flatMap(Effect.forEach(getUserNameByIdTagged, { batching: true }))
 )
