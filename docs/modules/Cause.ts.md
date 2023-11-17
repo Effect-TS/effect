@@ -711,7 +711,7 @@ specified value of type `Z` with access to a context of type `C`.
 **Signature**
 
 ```ts
-export interface CauseReducer<C, E, Z> {
+export interface CauseReducer<in C, in E, in out Z> {
   emptyCase(context: C): Z
   failCase(context: C, error: E): Z
   dieCase(context: C, defect: unknown): Z
@@ -763,7 +763,7 @@ type `E`.
 **Signature**
 
 ```ts
-export interface Fail<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Fail<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Fail"
   readonly error: E
 }
@@ -868,7 +868,7 @@ occurred in parallel. In these cases, the errors can be represented by the
 **Signature**
 
 ```ts
-export interface Parallel<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Parallel<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Parallel"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -906,7 +906,7 @@ represented by the `Sequential` cause.
 **Signature**
 
 ```ts
-export interface Sequential<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
+export interface Sequential<out E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
   readonly _tag: "Sequential"
   readonly left: Cause<E>
   readonly right: Cause<E>
@@ -1231,7 +1231,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<E> {
+export interface Variance<out E> {
   readonly [CauseTypeId]: {
     readonly _E: (_: never) => E
   }
