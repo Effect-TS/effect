@@ -432,7 +432,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface ReadonlyRecord<A> {
+export interface ReadonlyRecord<out A> {
   readonly [x: string]: A
 }
 ```
