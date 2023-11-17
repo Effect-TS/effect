@@ -2291,7 +2291,7 @@ export const partition = dual<
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => (elements: Iterable<A>) => Effect.Effect<R, never, [Array<E>, Array<B>]>,
+  ) => (elements: Iterable<A>) => Effect.Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>,
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A, i: number) => Effect.Effect<R, E, B>,
@@ -2299,7 +2299,7 @@ export const partition = dual<
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ) => Effect.Effect<R, never, [Array<E>, Array<B>]>
+  ) => Effect.Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>
 >((args) => Predicate.isIterable(args[0]), (elements, f, options) =>
   pipe(
     forEach(elements, (a, i) => core.either(f(a, i)), options),

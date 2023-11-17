@@ -62,16 +62,16 @@ pipe(
   ) => true)
 )
 
-// $ExpectType [List<string | number>, List<string | number>]
+// $ExpectType [excluded: List<string | number>, satisfying: List<string | number>]
 List.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType [List<string | number>, List<string | number>]
+// $ExpectType [excluded: List<string | number>, satisfying: List<string | number>]
 pipe(numbersOrStrings, List.partition(predicateNumbersOrStrings))
 
-// $ExpectType [List<string>, List<number>]
+// $ExpectType [excluded: List<string>, satisfying: List<number>]
 List.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [List<string>, List<number>]
+// $ExpectType [excluded: List<string>, satisfying: List<number>]
 pipe(numbersOrStrings, List.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------

@@ -293,11 +293,16 @@ export const filter: {
 export const partition: {
   <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
-  ): (self: HS.HashSet<C>) => [HS.HashSet<Exclude<C, B>>, HS.HashSet<B>]
-  <A, B extends A>(predicate: Predicate<A>): (self: HS.HashSet<B>) => [HS.HashSet<B>, HS.HashSet<B>]
-  <A, B extends A>(self: HS.HashSet<A>, refinement: Refinement<A, B>): [HS.HashSet<Exclude<A, B>>, HS.HashSet<B>]
-  <A>(self: HS.HashSet<A>, predicate: Predicate<A>): [HS.HashSet<A>, HS.HashSet<A>]
-} = dual(2, <A>(self: HS.HashSet<A>, predicate: Predicate<A>): [HS.HashSet<A>, HS.HashSet<A>] => {
+  ): (self: HS.HashSet<C>) => [excluded: HS.HashSet<Exclude<C, B>>, satisfying: HS.HashSet<B>]
+  <A, B extends A>(
+    predicate: Predicate<A>
+  ): (self: HS.HashSet<B>) => [excluded: HS.HashSet<B>, satisfying: HS.HashSet<B>]
+  <A, B extends A>(
+    self: HS.HashSet<A>,
+    refinement: Refinement<A, B>
+  ): [excluded: HS.HashSet<Exclude<A, B>>, satisfying: HS.HashSet<B>]
+  <A>(self: HS.HashSet<A>, predicate: Predicate<A>): [excluded: HS.HashSet<A>, satisfying: HS.HashSet<A>]
+} = dual(2, <A>(self: HS.HashSet<A>, predicate: Predicate<A>): [excluded: HS.HashSet<A>, satisfying: HS.HashSet<A>] => {
   const iterator = values(self)
   let next: IteratorResult<A, any>
   const right = beginMutation(empty<A>())

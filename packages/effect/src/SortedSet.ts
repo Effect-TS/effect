@@ -276,21 +276,26 @@ export const map: {
  * @category filtering
  */
 export const partition: {
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: SortedSet<B>) => [SortedSet<B>, SortedSet<B>]
-  <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [SortedSet<A>, SortedSet<A>]
-} = Dual.dual(2, <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [SortedSet<A>, SortedSet<A>] => {
-  const ord = RBT.getOrder(self.keyTree)
-  let right = empty(ord)
-  let left = empty(ord)
-  for (const value of self) {
-    if (predicate(value)) {
-      right = add(right, value)
-    } else {
-      left = add(left, value)
+  <B extends A, A = B>(
+    predicate: (a: A) => boolean
+  ): (self: SortedSet<B>) => [excluded: SortedSet<B>, satisfying: SortedSet<B>]
+  <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [excluded: SortedSet<A>, satisfying: SortedSet<A>]
+} = Dual.dual(
+  2,
+  <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [excluded: SortedSet<A>, satisfying: SortedSet<A>] => {
+    const ord = RBT.getOrder(self.keyTree)
+    let right = empty(ord)
+    let left = empty(ord)
+    for (const value of self) {
+      if (predicate(value)) {
+        right = add(right, value)
+      } else {
+        left = add(left, value)
+      }
     }
+    return [left, right]
   }
-  return [left, right]
-})
+)
 
 /**
  * @since 2.0.0

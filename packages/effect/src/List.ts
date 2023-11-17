@@ -760,11 +760,13 @@ export const map: {
  * @category combinators
  */
 export const partition: {
-  <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: List<C>) => [List<Exclude<C, B>>, List<B>]
-  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => [List<B>, List<B>]
-  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [List<Exclude<A, B>>, List<B>]
-  <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>]
-} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [List<A>, List<A>] => {
+  <C extends A, B extends A, A = C>(
+    refinement: Refinement<A, B>
+  ): (self: List<C>) => [excluded: List<Exclude<C, B>>, satisfying: List<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: List<B>) => [excluded: List<B>, satisfying: List<B>]
+  <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [excluded: List<Exclude<A, B>>, satisfying: List<B>]
+  <A>(self: List<A>, predicate: Predicate<A>): [excluded: List<A>, satisfying: List<A>]
+} = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [excluded: List<A>, satisfying: List<A>] => {
   const left: Array<A> = []
   const right: Array<A> = []
   for (const a of self) {
@@ -786,9 +788,9 @@ export const partition: {
  * @category combinators
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => [List<B>, List<C>]
-  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [List<B>, List<C>]
-} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [List<B>, List<C>] => {
+  <A, B, C>(f: (a: A) => Either.Either<B, C>): (self: List<A>) => [left: List<B>, right: List<C>]
+  <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [left: List<B>, right: List<C>]
+} = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either.Either<B, C>): [left: List<B>, right: List<C>] => {
   const left: Array<B> = []
   const right: Array<C> = []
   for (const a of self) {
@@ -865,8 +867,8 @@ export const reverse = <A>(self: List<A>): List<A> => {
  * @category combinators
  */
 export const splitAt: {
-  (n: number): <A>(self: List<A>) => [List<A>, List<A>]
-  <A>(self: List<A>, n: number): [List<A>, List<A>]
+  (n: number): <A>(self: List<A>) => [beforeIndex: List<A>, fromIndex: List<A>]
+  <A>(self: List<A>, n: number): [beforeIndex: List<A>, fromIndex: List<A>]
 } = dual(2, <A>(self: List<A>, n: number): [List<A>, List<A>] => [take(self, n), drop(self, n)])
 
 /**

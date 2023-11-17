@@ -1465,8 +1465,13 @@ export const orTry: {
  * @category traversing
  */
 export const partition: {
-  <R, E, A, A2>(f: (a: A) => STM<R, E, A2>): (elements: Iterable<A>) => STM<R, never, [Array<E>, Array<A2>]>
-  <R, E, A, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>): STM<R, never, [Array<E>, Array<A2>]>
+  <R, E, A, A2>(
+    f: (a: A) => STM<R, E, A2>
+  ): (elements: Iterable<A>) => STM<R, never, [excluded: Array<E>, satisfying: Array<A2>]>
+  <R, E, A, A2>(
+    elements: Iterable<A>,
+    f: (a: A) => STM<R, E, A2>
+  ): STM<R, never, [excluded: Array<E>, satisfying: Array<A2>]>
 } = stm.partition
 
 /**

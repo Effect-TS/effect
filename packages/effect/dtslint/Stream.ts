@@ -82,16 +82,16 @@ pipe(
   ) => true)
 )
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string | number>, Stream<never, never, string | number>]>
+// $ExpectType Effect<Scope, never, [excluded: Stream<never, never, string | number>, satisfying: Stream<never, never, string | number>]>
 Stream.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string | number>, Stream<never, never, string | number>]>
+// $ExpectType Effect<Scope, never, [excluded: Stream<never, never, string | number>, satisfying: Stream<never, never, string | number>]>
 pipe(numbersOrStrings, Stream.partition(predicateNumbersOrStrings))
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string>, Stream<never, never, number>]>
+// $ExpectType Effect<Scope, never, [excluded: Stream<never, never, string>, satisfying: Stream<never, never, number>]>
 Stream.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType Effect<Scope, never, [Stream<never, never, string>, Stream<never, never, number>]>
+// $ExpectType Effect<Scope, never, [excluded: Stream<never, never, string>, satisfying: Stream<never, never, number>]>
 pipe(numbersOrStrings, Stream.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------

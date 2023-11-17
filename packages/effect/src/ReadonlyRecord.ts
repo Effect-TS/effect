@@ -499,17 +499,17 @@ export const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<stri
 export const partitionMap: {
   <K extends string, A, B, C>(
     f: (a: A, key: K) => Either<B, C>
-  ): (self: Record<K, A>) => [Record<string, B>, Record<string, C>]
+  ): (self: Record<K, A>) => [left: Record<string, B>, right: Record<string, C>]
   <K extends string, A, B, C>(
     self: Record<K, A>,
     f: (a: A, key: K) => Either<B, C>
-  ): [Record<string, B>, Record<string, C>]
+  ): [left: Record<string, B>, right: Record<string, C>]
 } = dual(
   2,
   <A, B, C>(
     self: Record<string, A>,
     f: (a: A, key: string) => Either<B, C>
-  ): [Record<string, B>, Record<string, C>] => {
+  ): [left: Record<string, B>, right: Record<string, C>] => {
     const left: Record<string, B> = {}
     const right: Record<string, C> = {}
     for (const key of Object.keys(self)) {
@@ -566,21 +566,24 @@ export const separate: <A, B>(
 export const partition: {
   <K extends string, C extends A, B extends A, A = C>(refinement: (a: A, key: K) => a is B): (
     self: Record<K, C>
-  ) => [Record<string, Exclude<C, B>>, Record<string, B>]
+  ) => [excluded: Record<string, Exclude<C, B>>, satisfying: Record<string, B>]
   <K extends string, B extends A, A = B>(
     predicate: (a: A, key: K) => boolean
-  ): (self: Record<K, B>) => [Record<string, B>, Record<string, B>]
+  ): (self: Record<K, B>) => [excluded: Record<string, B>, satisfying: Record<string, B>]
   <K extends string, A, B extends A>(
     self: Record<K, A>,
     refinement: (a: A, key: K) => a is B
-  ): [Record<string, Exclude<A, B>>, Record<string, B>]
+  ): [excluded: Record<string, Exclude<A, B>>, satisfying: Record<string, B>]
   <K extends string, A>(
     self: Record<K, A>,
     predicate: (a: A, key: K) => boolean
-  ): [Record<string, A>, Record<string, A>]
+  ): [excluded: Record<string, A>, satisfying: Record<string, A>]
 } = dual(
   2,
-  <A>(self: Record<string, A>, predicate: (a: A, key: string) => boolean): [Record<string, A>, Record<string, A>] => {
+  <A>(
+    self: Record<string, A>,
+    predicate: (a: A, key: string) => boolean
+  ): [excluded: Record<string, A>, satisfying: Record<string, A>] => {
     const left: Record<string, A> = {}
     const right: Record<string, A> = {}
     for (const key of Object.keys(self)) {
