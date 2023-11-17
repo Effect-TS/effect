@@ -699,3 +699,43 @@ S.string.pipe(
 // should support subtypes of `string`
 // $ExpectType Schema<`a${string}`, readonly string[]>
 S.templateLiteral(S.literal("a"), S.string).pipe(S.split(":"))
+
+// ---------------------------------------------
+// Class
+// ---------------------------------------------
+
+class MyClass extends S.Class<MyClass>()({
+  a: S.string
+}) {}
+
+// $ExpectType { readonly a: string; }
+export type MyClassFrom = S.Schema.From<typeof MyClass>
+
+// $ExpectType MyClass
+export type MyClassTo = S.Schema.To<typeof MyClass>
+
+// $ExpectType Schema<{ readonly a: string; }, { readonly a: string; }>
+MyClass.struct
+
+
+class MyTaggedClass extends S.TaggedClass<MyTaggedClass>()("MyTaggedClass", {
+  a: S.string
+}) {}
+
+// $ExpectType [props: { readonly a: string; }, disableValidation?: boolean | undefined]
+export type MyTaggedClassParams = ConstructorParameters<typeof MyTaggedClass>
+
+// $ExpectType { readonly _tag: "MyTaggedClass"; readonly a: string; }
+export type MyTaggedClassFrom = S.Schema.From<typeof MyTaggedClass>
+
+// $ExpectType MyTaggedClass
+export type MyTaggedClassTo = S.Schema.To<typeof MyTaggedClass>
+
+// $ExpectType Schema<{ readonly _tag: "MyTaggedClass"; readonly a: string; }, { readonly _tag: "MyTaggedClass"; readonly a: string; }>
+MyTaggedClass.struct
+
+
+class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass", {}) {}
+
+// $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
+export type VoidTaggedClassParams = ConstructorParameters<typeof VoidTaggedClass>

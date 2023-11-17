@@ -6,6 +6,7 @@ import * as BigInt_ from "effect/BigInt"
 import * as Brand from "effect/Brand"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
+import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import * as Equal from "effect/Equal"
@@ -19,7 +20,7 @@ import { pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as S from "effect/String"
-import type { Simplify } from "effect/Types"
+import type { Equals, Simplify } from "effect/Types"
 import type { Arbitrary } from "./Arbitrary.js"
 import * as ArrayFormatter from "./ArrayFormatter.js"
 import type { ParseOptions } from "./AST.js"
@@ -3564,15 +3565,18 @@ export const data = <
 // classes
 // ---------------------------------------------
 
-type MissingSelfGeneric<Usage extends string> =
-  `Missing \`Self\` generic - use \`class Self extends ${Usage}<Self>()({ ... })\``
+type MissingSelfGeneric<Usage extends string, Params extends string = ""> =
+  `Missing \`Self\` generic - use \`class Self extends ${Usage}<Self>()(${Params}{ ... })\``
 
 /**
  * @category classes
  * @since 1.0.0
  */
-export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self> {
-  new(props: A): A & Omit<Inherited, keyof A>
+export interface Class<I, A, C, Self, Inherited = Data.Case> extends Schema<I, Self> {
+  new(
+    props: Equals<C, {}> extends true ? void | {} : C,
+    disableValidation?: boolean
+  ): A & Omit<Inherited, keyof A>
 
   readonly struct: Schema<I, A>
 
@@ -3582,6 +3586,7 @@ export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self
     : Class<
       Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Extended,
       Self
     >
@@ -3600,6 +3605,7 @@ export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self
     : Class<
       I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
       Self
     >
@@ -3618,6 +3624,7 @@ export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self
     : Class<
       I,
       Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Simplify<Omit<C, keyof FieldsB> & ToStruct<FieldsB>>,
       Transformed,
       Self
     >
@@ -3631,27 +3638,84 @@ export const Class = <Self>() =>
 <Fields extends StructFields>(
   fields: Fields
 ): [unknown] extends [Self] ? MissingSelfGeneric<"Class">
-  : Class<Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>, Self> =>
-  makeClass(struct(fields), fields, Data.Class.prototype)
+  : Class<
+    Simplify<FromStruct<Fields>>,
+    Simplify<ToStruct<Fields>>,
+    Simplify<ToStruct<Fields>>,
+    Self
+  > => makeClass(struct(fields), fields, Data.Class)
 
-const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, base: any) => {
+/**
+ * @category classes
+ * @since 1.0.0
+ */
+export const TaggedClass = <Self>() =>
+<Tag extends string, Fields extends StructFields>(
+  tag: Tag,
+  fields: Fields
+): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedClass", `"Tag", `>
+  : Class<
+    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+    Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
+    Simplify<ToStruct<Fields>>,
+    Self
+  > =>
+{
+  const fieldsWithTag = { ...fields, _tag: literal(tag) }
+  return makeClass(struct(fieldsWithTag), fieldsWithTag, Data.Class, { _tag: tag })
+}
+
+/**
+ * @category classes
+ * @since 1.0.0
+ */
+export const TaggedError = <Self>() =>
+<Tag extends string, Fields extends StructFields>(
+  tag: Tag,
+  fields: Fields
+): [unknown] extends [Self] ? MissingSelfGeneric<"TaggedError", `"Tag", `>
+  : Class<
+    Simplify<{ readonly _tag: Tag } & FromStruct<Fields>>,
+    Simplify<{ readonly _tag: Tag } & ToStruct<Fields>>,
+    Simplify<ToStruct<Fields>>,
+    Self,
+    Effect.Effect<never, Self, never> & globalThis.Error
+  > =>
+{
+  const fieldsWithTag = { ...fields, _tag: literal(tag) }
+  return makeClass(
+    struct(fieldsWithTag),
+    fieldsWithTag,
+    Data.Error,
+    { _tag: tag }
+  )
+}
+
+const makeClass = <I, A>(
+  selfSchema: Schema<I, A>,
+  selfFields: StructFields,
+  Base: any,
+  additionalProps?: any
+): any => {
   const validator = Parser.validateSync(selfSchema)
 
-  const fn = function(this: any, props: unknown) {
-    Object.assign(this, validator(props))
-  } as any
-  fn.prototype = Object.create(base)
-  fn[TypeId] = variance
-  fn.pipe = function pipe() {
-    return pipeArguments(this, arguments)
-  }
-  Object.defineProperty(fn, "ast", {
-    get() {
-      if (this._ast) {
-        return this._ast
+  return class extends Base {
+    constructor(props: any = {}, disableValidation = false) {
+      if (disableValidation !== true) {
+        props = validator(additionalProps ? { ...props, ...additionalProps } : props)
       }
+      super(props, true)
+    }
+
+    static [TypeId] = variance
+
+    static pipe() {
+      return pipeArguments(this, arguments)
+    }
+
+    static get ast() {
       const toSchema = to(selfSchema)
-      this._ast = transform(
+      return transform(
         selfSchema,
         declare([toSchema], toSchema, () => (input, _, ast) =>
           input instanceof this
@@ -3661,53 +3725,55 @@ const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, bas
           [Internal.ArbitraryHookId]: (struct: any) => (fc: any) =>
             struct(fc).map((props: any) => new this(props))
         }),
-        (input) => Object.assign(Object.create(this.prototype), input),
+        (input) => new this(input, true),
         (input) => ({ ...input })
       ).ast
-      return this._ast
     }
-  })
-  fn.struct = selfSchema
-  fn.extend = function() {
-    return (fields: any) => {
-      const newFields = { ...selfFields, ...fields }
-      return makeClass(
-        struct(newFields),
-        newFields,
-        this.prototype
-      )
-    }
-  }
-  fn.transform = function() {
-    return (fields: any, decode: any, encode: any) => {
-      const newFields = { ...selfFields, ...fields }
-      return makeClass(
-        transformOrFail(
-          selfSchema,
-          to(struct(newFields)),
-          decode,
-          encode
-        ),
-        newFields,
-        this.prototype
-      )
-    }
-  }
-  fn.transformFrom = function() {
-    return (fields: any, decode: any, encode: any) => {
-      const newFields = { ...selfFields, ...fields }
-      return makeClass(
-        transformOrFail(
-          from(selfSchema),
-          struct(newFields),
-          decode,
-          encode
-        ),
-        newFields,
-        this.prototype
-      )
-    }
-  }
 
-  return fn
+    static extend() {
+      return (fields: any) => {
+        const newFields = { ...selfFields, ...fields }
+        return makeClass(
+          struct(newFields),
+          newFields,
+          this,
+          additionalProps
+        )
+      }
+    }
+
+    static transform() {
+      return (fields: any, decode: any, encode: any) => {
+        const newFields = { ...selfFields, ...fields }
+        return makeClass(
+          transformOrFail(
+            selfSchema,
+            to(struct(newFields)),
+            decode,
+            encode
+          ),
+          newFields,
+          this,
+          additionalProps
+        )
+      }
+    }
+
+    static transformFrom() {
+      return (fields: any, decode: any, encode: any) => {
+        const newFields = { ...selfFields, ...fields }
+        return makeClass(
+          transformOrFail(
+            from(selfSchema),
+            struct(newFields),
+            decode,
+            encode
+          ),
+          newFields,
+          this,
+          additionalProps
+        )
+      }
+    }
+  }
 }

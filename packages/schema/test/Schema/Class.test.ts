@@ -2,6 +2,7 @@ import * as AST from "@effect/schema/AST"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { Effect } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
@@ -13,6 +14,23 @@ class Person extends S.Class<Person>()({
 }) {
   get upperName() {
     return this.name.toUpperCase()
+  }
+}
+
+class TaggedPerson extends S.TaggedClass<TaggedPerson>()("TaggedPerson", {
+  id: S.number,
+  name: S.string.pipe(S.nonEmpty())
+}) {
+  get upperName() {
+    return this.name.toUpperCase()
+  }
+}
+
+class TaggedPersonWithAge extends TaggedPerson.extend<TaggedPersonWithAge>()({
+  age: S.number
+}) {
+  get isAdult() {
+    return this.age >= 18
   }
 }
 
@@ -179,5 +197,44 @@ describe("Schema/Class", () => {
     expect(O.isSome(person.thing) && person.thing.value.id === 123).toEqual(true)
     expect(person.upperName).toEqual("JOHN")
     expect(typeof person.upperName).toEqual("string")
+  })
+
+  it("TaggedClass", () => {
+    let person = new TaggedPersonWithAge({ id: 1, name: "John", age: 30 })
+    expect(person._tag).toEqual("TaggedPerson")
+    expect(person.upperName).toEqual("JOHN")
+
+    expect(() => S.parseSync(TaggedPersonWithAge)({ id: 1, name: "John", age: 30 })).toThrow(
+      new Error(`error(s) found
+└─ ["_tag"]
+   └─ is missing`)
+    )
+    person = S.parseSync(TaggedPersonWithAge)({
+      _tag: "TaggedPerson",
+      id: 1,
+      name: "John",
+      age: 30
+    })
+    expect(person._tag).toEqual("TaggedPerson")
+    expect(person.upperName).toEqual("JOHN")
+  })
+
+  it("TaggedError", () => {
+    class MyError extends S.TaggedError<MyError>()("MyError", {
+      id: S.number
+    }) {}
+
+    let err = new MyError({ id: 1 })
+    expect(err.stack).toContain("Class.test.ts:")
+    expect(err._tag).toEqual("MyError")
+    expect(err.id).toEqual(1)
+
+    err = Effect.runSync(Effect.flip(err))
+    expect(err._tag).toEqual("MyError")
+    expect(err.id).toEqual(1)
+
+    err = S.parseSync(MyError)({ _tag: "MyError", id: 1 })
+    expect(err._tag).toEqual("MyError")
+    expect(err.id).toEqual(1)
   })
 })
