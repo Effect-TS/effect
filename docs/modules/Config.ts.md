@@ -309,7 +309,7 @@ A `Config` describes the structure of some configuration data.
 **Signature**
 
 ```ts
-export interface Config<A> extends Config.Variance<A>, Pipeable {}
+export interface Config<out A> extends Config.Variance<A>, Pipeable {}
 ```
 
 Added in v2.0.0
@@ -367,7 +367,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Primitive<A> extends Config<A> {
+export interface Primitive<out A> extends Config<A> {
   readonly description: string
   parse(text: string): Either.Either<ConfigError.ConfigError, A>
 }
@@ -380,7 +380,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<out A> {
   readonly [ConfigTypeId]: {
     readonly _A: (_: never) => A
   }

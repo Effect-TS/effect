@@ -32,7 +32,7 @@ export type ConfigTypeId = typeof ConfigTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Config<A> extends Config.Variance<A>, Pipeable {}
+export interface Config<out A> extends Config.Variance<A>, Pipeable {}
 
 /**
  * @since 2.0.0
@@ -42,7 +42,7 @@ export declare namespace Config {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
+  export interface Variance<out A> {
     readonly [ConfigTypeId]: {
       readonly _A: (_: never) => A
     }
@@ -52,7 +52,7 @@ export declare namespace Config {
    * @since 2.0.0
    * @category models
    */
-  export interface Primitive<A> extends Config<A> {
+  export interface Primitive<out A> extends Config<A> {
     readonly description: string
     parse(text: string): Either.Either<ConfigError.ConfigError, A>
   }
