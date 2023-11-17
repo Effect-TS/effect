@@ -15,7 +15,7 @@ const HashSetSymbolKey = "effect/HashSet"
 export const HashSetTypeId: HS.TypeId = Symbol.for(HashSetSymbolKey) as HS.TypeId
 
 /** @internal */
-export interface HashSetImpl<A> extends HS.HashSet<A> {
+export interface HashSetImpl<out A> extends HS.HashSet<A> {
   readonly _keyMap: HashMap<A, unknown>
 }
 
