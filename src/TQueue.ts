@@ -34,7 +34,7 @@ export type TEnqueueTypeId = typeof TEnqueueTypeId
  * @since 2.0.0
  * @category models
  */
-export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
+export interface TQueue<in out A> extends TEnqueue<A>, TDequeue<A> {}
 
 /**
  * @since 2.0.0

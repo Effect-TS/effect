@@ -27,12 +27,12 @@ export type TSetTypeId = typeof TSetTypeId
  * @since 2.0.0
  * @category models
  */
-export interface TSet<A> extends TSet.Variance<A> {}
+export interface TSet<in out A> extends TSet.Variance<A> {}
 /**
  * @internal
  * @since 2.0.0
  */
-export interface TSet<A> {
+export interface TSet<in out A> {
   /** @internal */
   readonly tMap: TMap.TMap<A, void>
 }
@@ -45,9 +45,9 @@ export declare namespace TSet {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<A> {
+  export interface Variance<in out A> {
     readonly [TSetTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: (_: A) => A
     }
   }
 }

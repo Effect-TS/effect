@@ -245,7 +245,7 @@ Transactional set implemented on top of `TMap`.
 **Signature**
 
 ```ts
-export interface TSet<A> extends TSet.Variance<A> {}
+export interface TSet<in out A> extends TSet.Variance<A> {}
 ```
 
 Added in v2.0.0
@@ -504,9 +504,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [TSetTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

@@ -20,7 +20,7 @@ export const TSetTypeId: TSet.TSetTypeId = Symbol.for(
 
 /** @internal */
 const tSetVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */

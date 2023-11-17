@@ -353,7 +353,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface TQueue<A> extends TEnqueue<A>, TDequeue<A> {}
+export interface TQueue<in out A> extends TEnqueue<A>, TDequeue<A> {}
 ```
 
 Added in v2.0.0
