@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.48.3
+
+### Patch Changes
+
+- [#570](https://github.com/Effect-TS/schema/pull/570) [`20c1a67`](https://github.com/Effect-TS/schema/commit/20c1a679c840381ef86531f31f2b344fab4016e4) Thanks [@gcanti](https://github.com/gcanti)! - make ParseError Inspectable
+
 ## 0.48.2
 
 ### Patch Changes
