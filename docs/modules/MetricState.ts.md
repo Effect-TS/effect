@@ -131,7 +131,7 @@ This phantom type parameter is used to tie keys to their expected states.
 **Signature**
 
 ```ts
-export interface MetricState<A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
+export interface MetricState<in A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
 ```
 
 Added in v2.0.0
@@ -331,7 +331,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Counter<A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
+export interface Counter<in out A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Counter<A>> {
   readonly [CounterStateTypeId]: CounterStateTypeId
   readonly count: A
 }
@@ -357,7 +357,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Gauge<A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
+export interface Gauge<in out A extends number | bigint> extends MetricState<MetricKeyType.MetricKeyType.Gauge<A>> {
   readonly [GaugeStateTypeId]: GaugeStateTypeId
   readonly value: A
 }
@@ -415,7 +415,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in A> {
   readonly [MetricStateTypeId]: {
     readonly _A: (_: A) => void
   }
