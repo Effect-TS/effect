@@ -35,6 +35,7 @@ import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import type * as Scope from "../Scope.js"
 import type * as Tracer from "../Tracer.js"
+import type { NoInfer } from "../Types.js"
 import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
@@ -708,6 +709,43 @@ export const flatMap = dual<
 })
 
 /* @internal */
+export const andThen = dual<
+  {
+    <A, X>(
+      f: (a: NoInfer<A>) => X
+    ): <R, E>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
+    <X>(
+      f: X
+    ): <R, E, A>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
+  },
+  {
+    <A, R, E, X>(
+      self: Effect.Effect<R, E, A>,
+      f: (a: NoInfer<A>) => X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
+    <A, R, E, X>(
+      self: Effect.Effect<R, E, A>,
+      f: X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : Effect.Effect<R, E, X>
+  }
+>(2, (self, f) =>
+  flatMap(self, (a) => {
+    const b = typeof f === "function" ? (f as any)(a) : f
+    if (isEffect(b)) {
+      return b
+    }
+    return succeed(b)
+  }))
+
+/* @internal */
 export const step = <R, E, A>(
   self: Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, Exit.Exit<E, A> | Effect.Blocked<R, E, A>> => {
@@ -1105,14 +1143,40 @@ export const sync = <A>(evaluate: LazyArg<A>): Effect.Effect<never, never, A> =>
 
 /* @internal */
 export const tap = dual<
-  <A, X extends A, R2, E2, _>(
-    f: (a: X) => Effect.Effect<R2, E2, _>
-  ) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R | R2, E | E2, A>,
-  <R, E, A, X extends A, R2, E2, _>(
-    self: Effect.Effect<R, E, A>,
-    f: (a: X) => Effect.Effect<R2, E2, _>
-  ) => Effect.Effect<R | R2, E | E2, A>
->(2, (self, f) => flatMap(self, (a) => as(f(a as any), a)))
+  {
+    <A, X>(
+      f: (a: NoInfer<A>) => X
+    ): <R, E>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+    <X>(
+      f: X
+    ): <R, E, A>(
+      self: Effect.Effect<R, E, A>
+    ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+  },
+  {
+    <A, R, E, X>(
+      self: Effect.Effect<R, E, A>,
+      f: (a: NoInfer<A>) => X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+    <A, R, E, X>(
+      self: Effect.Effect<R, E, A>,
+      f: X
+    ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : Effect.Effect<R, E, A>
+  }
+>(2, (self, f) =>
+  flatMap(self, (a) => {
+    const b = typeof f === "function" ? (f as any)(a) : f
+    if (isEffect(b)) {
+      return as(b, a)
+    }
+    return succeed(a)
+  }))
 
 /* @internal */
 export const transplant = <R, E, A>(

@@ -54,7 +54,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency } from "./Types.js"
+import type { Concurrency, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 // -------------------------------------------------------------------------------------
@@ -3546,6 +3546,33 @@ export const flatMap: {
 } = core.flatMap
 
 /**
+ * Executes a sequence of two `Effect`s. The second `Effect` can be dependent on the result of the first `Effect`.
+ *
+ * @since 2.0.0
+ * @category sequencing
+ */
+export const andThen: {
+  <A, X>(
+    f: (a: NoInfer<A>) => X
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <X>(
+    f: X
+  ): <R, E, A>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: (a: NoInfer<A>) => X
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: X
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+} = core.andThen
+
+/**
  * @since 2.0.0
  * @category sequencing
  */
@@ -3646,10 +3673,24 @@ export const summarized: {
  * @category sequencing
  */
 export const tap: {
-  <A, X extends A, R2, E2, _>(
-    f: (a: X) => Effect<R2, E2, _>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
-  <R, E, A, X extends A, R2, E2, _>(self: Effect<R, E, A>, f: (a: X) => Effect<R2, E2, _>): Effect<R | R2, E | E2, A>
+  <A, X>(
+    f: (a: NoInfer<A>) => X
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <X>(
+    f: X
+  ): <R, E, A>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: (a: NoInfer<A>) => X
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: X
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
 } = core.tap
 
 /**
