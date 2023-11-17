@@ -40,6 +40,8 @@ Added in v2.0.0
   - [droppingStrategy](#droppingstrategy)
   - [slidingStrategy](#slidingstrategy)
 - [symbols](#symbols)
+  - [BackingQueueTypeId](#backingqueuetypeid)
+  - [BackingQueueTypeId (type alias)](#backingqueuetypeid-type-alias)
   - [DequeueTypeId](#dequeuetypeid)
   - [DequeueTypeId (type alias)](#dequeuetypeid-type-alias)
   - [EnqueueTypeId](#enqueuetypeid)
@@ -48,6 +50,7 @@ Added in v2.0.0
   - [QueueStrategyTypeId (type alias)](#queuestrategytypeid-type-alias)
 - [utils](#utils)
   - [Queue (namespace)](#queue-namespace)
+    - [BackingQueueVariance (interface)](#backingqueuevariance-interface)
     - [DequeueVariance (interface)](#dequeuevariance-interface)
     - [EnqueueVariance (interface)](#enqueuevariance-interface)
     - [StrategyVariance (interface)](#strategyvariance-interface)
@@ -217,7 +220,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface BackingQueue<A> {
+export interface BackingQueue<in out A> extends Queue.BackingQueueVariance<A> {
   /**
    * Dequeues an element from the queue.
    * Returns either an element from the queue, or the `def` param.
@@ -396,7 +399,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Queue<A> extends Enqueue<A>, Dequeue<A>, Pipeable {
+export interface Queue<in out A> extends Enqueue<A>, Dequeue<A>, Pipeable {
   /** @internal */
   readonly queue: BackingQueue<A>
   /** @internal */
@@ -417,7 +420,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Strategy<A> extends Queue.StrategyVariance<A> {
+export interface Strategy<in out A> extends Queue.StrategyVariance<A> {
   /**
    * Returns the number of surplus values that were unable to be added to the
    * `Queue`
@@ -530,6 +533,26 @@ Added in v2.0.0
 
 # symbols
 
+## BackingQueueTypeId
+
+**Signature**
+
+```ts
+export declare const BackingQueueTypeId: typeof BackingQueueTypeId
+```
+
+Added in v2.0.0
+
+## BackingQueueTypeId (type alias)
+
+**Signature**
+
+```ts
+export type BackingQueueTypeId = typeof BackingQueueTypeId
+```
+
+Added in v2.0.0
+
 ## DequeueTypeId
 
 **Signature**
@@ -596,6 +619,20 @@ Added in v2.0.0
 
 Added in v2.0.0
 
+### BackingQueueVariance (interface)
+
+**Signature**
+
+```ts
+export interface BackingQueueVariance<in out A> {
+  readonly [BackingQueueTypeId]: {
+    readonly _A: (_: A) => A
+  }
+}
+```
+
+Added in v2.0.0
+
 ### DequeueVariance (interface)
 
 **Signature**
@@ -629,9 +666,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface StrategyVariance<A> {
+export interface StrategyVariance<in out A> {
   readonly [QueueStrategyTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

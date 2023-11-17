@@ -33,8 +33,21 @@ export const QueueStrategyTypeId: Queue.QueueStrategyTypeId = Symbol.for(
 ) as Queue.QueueStrategyTypeId
 
 /** @internal */
+const BackingQueueSymbolKey = "effect/BackingQueue"
+
+/** @internal */
+export const BackingQueueTypeId: Queue.BackingQueueTypeId = Symbol.for(
+  BackingQueueSymbolKey
+) as Queue.BackingQueueTypeId
+
+/** @internal */
 const queueStrategyVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
+}
+
+/** @internal */
+const backingQueueVariance = {
+  _A: (_: any) => _
 }
 
 /** @internal */
@@ -387,6 +400,7 @@ export const make = <A>(
 
 /** @internal */
 export class BackingQueueFromMutableQueue<A> implements Queue.BackingQueue<A> {
+  readonly [BackingQueueTypeId] = backingQueueVariance
   constructor(readonly mutable: MutableQueue.MutableQueue<A>) {}
   poll<Def>(def: Def): A | Def {
     return MutableQueue.poll(this.mutable, def)
