@@ -166,7 +166,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface ConfigErrorReducer<C, Z> {
+export interface ConfigErrorReducer<in C, in out Z> {
   andCase(context: C, left: Z, right: Z): Z
   orCase(context: C, left: Z, right: Z): Z
   invalidDataCase(context: C, path: Array<string>, message: string): Z
