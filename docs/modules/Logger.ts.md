@@ -371,7 +371,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Logger<Message, Output> extends Logger.Variance<Message, Output>, Pipeable {
+export interface Logger<in Message, out Output> extends Logger.Variance<Message, Output>, Pipeable {
   log(options: Logger.Options<Message>): Output
 }
 ```
@@ -423,7 +423,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Options<Message> {
+export interface Options<out Message> {
   readonly fiberId: FiberId.FiberId
   readonly logLevel: LogLevel.LogLevel
   readonly message: Message
@@ -442,7 +442,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Message, Output> {
+export interface Variance<in Message, out Output> {
   readonly [LoggerTypeId]: {
     readonly _Message: (_: Message) => void
     readonly _Output: (_: never) => Output
