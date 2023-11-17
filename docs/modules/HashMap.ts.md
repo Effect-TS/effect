@@ -370,7 +370,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface HashMap<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
+export interface HashMap<out Key, out Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
 }
 ```
