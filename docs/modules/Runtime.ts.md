@@ -232,7 +232,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface AsyncFiberException<E, A> {
+export interface AsyncFiberException<out E, out A> {
   readonly _tag: "AsyncFiberException"
   readonly fiber: Fiber.RuntimeFiber<E, A>
 }
@@ -245,7 +245,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Cancel<E, A> {
+export interface Cancel<out E, out A> {
   (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void): void
 }
 ```
@@ -283,7 +283,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Runtime<R> extends Pipeable {
+export interface Runtime<in R> extends Pipeable {
   /**
    * The context used as initial for forks
    */

@@ -18,7 +18,7 @@ import type { Scheduler } from "./Scheduler.js"
  * @since 2.0.0
  * @category models
  */
-export interface AsyncFiberException<E, A> {
+export interface AsyncFiberException<out E, out A> {
   readonly _tag: "AsyncFiberException"
   readonly fiber: Fiber.RuntimeFiber<E, A>
 }
@@ -27,7 +27,7 @@ export interface AsyncFiberException<E, A> {
  * @since 2.0.0
  * @category models
  */
-export interface Cancel<E, A> {
+export interface Cancel<out E, out A> {
   (fiberId?: FiberId.FiberId, onExit?: (exit: Exit.Exit<E, A>) => void): void
 }
 
@@ -35,7 +35,7 @@ export interface Cancel<E, A> {
  * @since 2.0.0
  * @category models
  */
-export interface Runtime<R> extends Pipeable {
+export interface Runtime<in R> extends Pipeable {
   /**
    * The context used as initial for forks
    */
