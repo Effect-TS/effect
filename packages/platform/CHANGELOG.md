@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.30.5
+
+### Patch Changes
+
+- [#277](https://github.com/Effect-TS/platform/pull/277) [`36e449c`](https://github.com/Effect-TS/platform/commit/36e449c95fab80dc54505cef2071dcbecce35b4f) Thanks [@tim-smart](https://github.com/tim-smart)! - wait for ready latch in worker
+
 ## 0.30.4
 
 ### Patch Changes
