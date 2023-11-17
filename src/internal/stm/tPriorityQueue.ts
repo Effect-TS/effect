@@ -21,7 +21,7 @@ export const TPriorityQueueTypeId: TPriorityQueue.TPriorityQueueTypeId = Symbol.
 
 /** @internal */
 const tPriorityQueueVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */
