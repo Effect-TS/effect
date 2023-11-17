@@ -1008,7 +1008,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface NonEmptyChunk<A> extends Chunk<A>, NonEmptyIterable<A> {}
+export interface NonEmptyChunk<out A> extends Chunk<A>, NonEmptyIterable<A> {}
 ```
 
 Added in v2.0.0
@@ -1020,7 +1020,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Chunk<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Chunk<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _A: (_: never) => A
   }

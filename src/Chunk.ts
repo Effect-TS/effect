@@ -30,7 +30,7 @@ export type TypeId = typeof TypeId
  * @category models
  * @since 2.0.0
  */
-export interface Chunk<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Chunk<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _A: (_: never) => A
   }
@@ -49,7 +49,7 @@ export interface Chunk<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectabl
  * @category model
  * @since 2.0.0
  */
-export interface NonEmptyChunk<A> extends Chunk<A>, NonEmptyIterable<A> {}
+export interface NonEmptyChunk<out A> extends Chunk<A>, NonEmptyIterable<A> {}
 
 /**
  * @category type lambdas
