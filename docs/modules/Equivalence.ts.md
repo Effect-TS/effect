@@ -275,7 +275,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Equivalence<A> {
+export interface Equivalence<in A> {
   (self: A, that: A): boolean
 }
 ```
