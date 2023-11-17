@@ -18,7 +18,7 @@ export const TArrayTypeId: TArray.TArrayTypeId = Symbol.for(TArraySymbolKey) as 
 
 /** @internal */
 const tArrayVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */

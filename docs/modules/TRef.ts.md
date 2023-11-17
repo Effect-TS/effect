@@ -65,7 +65,7 @@ reference, the value inside the `TRef` should be immutable.
 **Signature**
 
 ```ts
-export interface TRef<A> extends TRef.Variance<A> {
+export interface TRef<in out A> extends TRef.Variance<A> {
   /**
    * Note: the method is unbound, exposed only for potential extensions.
    */
@@ -263,7 +263,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [TRefTypeId]: {
     readonly _A: (_: A) => A
   }

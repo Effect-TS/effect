@@ -323,7 +323,7 @@ or an end-of-stream marker.
 **Signature**
 
 ```ts
-export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
+export interface Take<out E, out A> extends Take.Variance<E, A>, Pipeable {
   /** @internal */
   readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>
 }
@@ -386,7 +386,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<E, A> {
+export interface Variance<out E, out A> {
   readonly [TakeTypeId]: {
     readonly _E: (_: never) => E
     readonly _A: (_: never) => A
