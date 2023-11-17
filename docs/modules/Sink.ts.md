@@ -1581,7 +1581,7 @@ type `L` (i.e. any leftovers).
 **Signature**
 
 ```ts
-export interface Sink<R, E, In, L, Z> extends Sink.Variance<R, E, In, L, Z>, Pipeable {}
+export interface Sink<out R, out E, in In, out L, out Z> extends Sink.Variance<R, E, In, L, Z>, Pipeable {}
 ```
 
 Added in v2.0.0
@@ -1671,7 +1671,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<R, E, In, L, Z> {
+export interface Variance<out R, out E, in In, out L, out Z> {
   readonly [SinkTypeId]: VarianceStruct<R, E, In, L, Z>
 }
 ```
@@ -1683,7 +1683,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface VarianceStruct<R, E, In, L, Z> {
+export interface VarianceStruct<out R, out E, in In, out L, out Z> {
   _R: (_: never) => R
   _E: (_: never) => E
   _In: (_: In) => void
