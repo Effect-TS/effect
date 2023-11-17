@@ -48,8 +48,9 @@ export const make = (
         }
         if (shouldQuit(userInput)) {
           resume(Effect.fail(new Terminal.QuitException()))
+        } else {
+          resume(Effect.succeed(userInput))
         }
-        resume(Effect.succeed(userInput))
       }
       input.once("keypress", handleKeypress)
       return Effect.sync(() => {
@@ -74,7 +75,8 @@ export const make = (
       )
 
     return Terminal.Terminal.of({
-      columns: output.columns,
+      // The columns property can be undefined if stdout was redirected
+      columns: output.columns || 0,
       readInput,
       display
     })

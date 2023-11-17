@@ -6,12 +6,17 @@ import * as Layer from "effect/Layer"
 import * as CommandExecutor from "./CommandExecutor.js"
 import * as FileSystem from "./FileSystem.js"
 import * as Path from "./Path.js"
+import * as Terminal from "./Terminal.js"
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type BunContext = CommandExecutor.CommandExecutor | FileSystem.FileSystem | Path.Path
+export type BunContext =
+  | CommandExecutor.CommandExecutor
+  | FileSystem.FileSystem
+  | Path.Path
+  | Terminal.Terminal
 
 /**
  * @since 1.0.0
@@ -20,5 +25,6 @@ export type BunContext = CommandExecutor.CommandExecutor | FileSystem.FileSystem
 export const layer: Layer.Layer<never, never, BunContext> = pipe(
   FileSystem.layer,
   Layer.merge(Path.layer),
+  Layer.merge(Terminal.layer),
   Layer.merge(Layer.provideMerge(FileSystem.layer, CommandExecutor.layer))
 )
