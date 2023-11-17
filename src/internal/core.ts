@@ -737,15 +737,13 @@ export const andThen = dual<
       : Effect.Effect<R, E, X>
   }
 >(2, (self, f) =>
-  typeof f === "function" ?
-    flatMap(self, (a) => {
-      const b = (f as any)(a)
-      if (isEffect(b)) {
-        return b
-      }
-      return succeed(b)
-    }) :
-    zipRight(self, isEffect(f) ? f : succeed(f)))
+  flatMap(self, (a) => {
+    const b = typeof f === "function" ? (f as any)(a) : f
+    if (isEffect(b)) {
+      return b
+    }
+    return succeed(b)
+  }))
 
 /* @internal */
 export const step = <R, E, A>(
@@ -1172,15 +1170,13 @@ export const tap = dual<
       : Effect.Effect<R, E, A>
   }
 >(2, (self, f) =>
-  typeof f === "function" ?
-    flatMap(self, (a) => {
-      const b = (f as any)(a)
-      if (isEffect(b)) {
-        return as(b, a)
-      }
-      return succeed(a)
-    }) :
-    flatMap(self, (a) => as(isEffect(f) ? f : succeed(f), a)))
+  flatMap(self, (a) => {
+    const b = typeof f === "function" ? (f as any)(a) : f
+    if (isEffect(b)) {
+      return as(b, a)
+    }
+    return succeed(a)
+  }))
 
 /* @internal */
 export const transplant = <R, E, A>(
