@@ -30,7 +30,7 @@ type KeyedPoolMapValueSymbol = typeof KeyedPoolMapValueSymbol
 const keyedPoolVariance = {
   _K: (_: unknown) => _,
   _E: (_: never) => _,
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 class KeyedPoolImpl<K, E, A> implements KeyedPool.KeyedPool<K, E, A> {
