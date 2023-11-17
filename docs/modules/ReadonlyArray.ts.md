@@ -700,6 +700,8 @@ Added in v2.0.0
 
 ## partition
 
+Separate elements based on a predicate that also exposes the index of the element.
+
 **Signature**
 
 ```ts

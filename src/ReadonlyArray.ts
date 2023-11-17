@@ -1671,6 +1671,8 @@ export const filter: {
 )
 
 /**
+ * Separate elements based on a predicate that also exposes the index of the element.
+ *
  * @category filtering
  * @since 2.0.0
  */
