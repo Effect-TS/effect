@@ -24,7 +24,9 @@ const PatchProto = {
 }
 
 /** @internal */
-export interface Empty<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<Value, Value2, Patch, Patch2> {
+export interface Empty<in out Value, in out Value2, in out Patch, in out Patch2>
+  extends Differ.Or.Patch<Value, Value2, Patch, Patch2>
+{
   readonly _tag: "Empty"
 }
 
@@ -43,7 +45,9 @@ export const empty = <Value, Value2, Patch, Patch2>(): Differ.Or.Patch<
 > => _empty
 
 /** @internal */
-export interface AndThen<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<Value, Value2, Patch, Patch2> {
+export interface AndThen<in out Value, in out Value2, in out Patch, Patch2>
+  extends Differ.Or.Patch<Value, Value2, Patch, Patch2>
+{
   readonly _tag: "AndThen"
   readonly first: Differ.Or.Patch<Value, Value2, Patch, Patch2>
   readonly second: Differ.Or.Patch<Value, Value2, Patch, Patch2>
@@ -70,7 +74,9 @@ export const makeAndThen = <Value, Value2, Patch, Patch2>(
 }
 
 /** @internal */
-export interface SetLeft<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<Value, Value2, Patch, Patch2> {
+export interface SetLeft<in out Value, in out Value2, in out Patch, Patch2>
+  extends Differ.Or.Patch<Value, Value2, Patch, Patch2>
+{
   readonly _tag: "SetLeft"
   readonly value: Value
 }
@@ -94,7 +100,9 @@ export const makeSetLeft = <Value, Value2, Patch, Patch2>(
 }
 
 /** @internal */
-export interface SetRight<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<Value, Value2, Patch, Patch2> {
+export interface SetRight<in out Value, in out Value2, in out Patch, in out Patch2>
+  extends Differ.Or.Patch<Value, Value2, Patch, Patch2>
+{
   readonly _tag: "SetRight"
   readonly value: Value2
 }
@@ -118,7 +126,9 @@ export const makeSetRight = <Value, Value2, Patch, Patch2>(
 }
 
 /** @internal */
-export interface UpdateLeft<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<Value, Value2, Patch, Patch2> {
+export interface UpdateLeft<in out Value, in out Value2, in out Patch, in out Patch2>
+  extends Differ.Or.Patch<Value, Value2, Patch, Patch2>
+{
   readonly _tag: "UpdateLeft"
   readonly patch: Patch
 }
@@ -142,7 +152,9 @@ export const makeUpdateLeft = <Value, Value2, Patch, Patch2>(
 }
 
 /** @internal */
-export interface UpdateRight<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<Value, Value2, Patch, Patch2> {
+export interface UpdateRight<in out Value, in out Value2, in out Patch, in out Patch2>
+  extends Differ.Or.Patch<Value, Value2, Patch, Patch2>
+{
   readonly _tag: "UpdateRight"
   readonly patch: Patch2
 }

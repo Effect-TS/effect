@@ -6,7 +6,7 @@ import type * as Journal from "./journal.js"
 export type TryCommit<E, A> = Done<E, A> | Suspend
 
 /** @internal */
-export interface Done<E, A> {
+export interface Done<out E, out A> {
   readonly _tag: OpCodes.OP_DONE
   readonly exit: Exit.Exit<E, A>
 }

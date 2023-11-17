@@ -21,7 +21,7 @@ const TPubSubSymbolKey = "effect/TPubSub"
 export const TPubSubTypeId: TPubSub.TPubSubTypeId = Symbol.for(TPubSubSymbolKey) as TPubSub.TPubSubTypeId
 
 /** @internal */
-export interface Node<A> {
+export interface Node<in out A> {
   readonly head: A
   readonly subscribers: number
   readonly tail: TRef.TRef<Node<A> | undefined>

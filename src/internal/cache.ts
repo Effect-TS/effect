@@ -35,7 +35,7 @@ export type MapValue<Key, Error, Value> =
   | Refreshing<Key, Error, Value>
 
 /** @internal */
-export interface Complete<Key, Error, Value> {
+export interface Complete<out Key, out Error, out Value> {
   readonly _tag: "Complete"
   readonly key: MapKey<Key>
   readonly exit: Exit.Exit<Error, Value>
@@ -44,14 +44,14 @@ export interface Complete<Key, Error, Value> {
 }
 
 /** @internal */
-export interface Pending<Key, Error, Value> {
+export interface Pending<out Key, in out Error, in out Value> {
   readonly _tag: "Pending"
   readonly key: MapKey<Key>
   readonly deferred: Deferred.Deferred<Error, Value>
 }
 
 /** @internal */
-export interface Refreshing<Key, Error, Value> {
+export interface Refreshing<out Key, in out Error, in out Value> {
   readonly _tag: "Refreshing"
   readonly deferred: Deferred.Deferred<Error, Value>
   readonly complete: Complete<Key, Error, Value>
@@ -107,7 +107,7 @@ export type MapKeyTypeId = typeof MapKeyTypeId
  *
  * @internal
  */
-export interface MapKey<K> extends Equal.Equal {
+export interface MapKey<out K> extends Equal.Equal {
   readonly [MapKeyTypeId]: MapKeyTypeId
   readonly current: K
   previous: MapKey<K> | undefined // mutable by design
@@ -150,7 +150,7 @@ export const isMapKey = (u: unknown): u is MapKey<unknown> => hasProperty(u, Map
  *
  * @internal
  */
-export interface KeySet<K> {
+export interface KeySet<in out K> {
   head: MapKey<K> | undefined // mutable by design
   tail: MapKey<K> | undefined // mutable by design
   /**
@@ -163,7 +163,7 @@ export interface KeySet<K> {
   remove(): MapKey<K> | undefined
 }
 
-class KeySetImpl<K> implements KeySet<K> {
+class KeySetImpl<in out K> implements KeySet<K> {
   head: MapKey<K> | undefined = undefined
   tail: MapKey<K> | undefined = undefined
   add(key: MapKey<K>): void {
@@ -215,7 +215,7 @@ export const makeKeySet = <K>(): KeySet<K> => new KeySetImpl<K>()
  *
  * @internal
  */
-export interface CacheState<Key, Error, Value> {
+export interface CacheState<in out Key, in out Error, in out Value> {
   map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>> // mutable by design
   keys: KeySet<Key> // mutable by design
   accesses: MutableQueue.MutableQueue<MapKey<Key>> // mutable by design

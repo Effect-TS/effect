@@ -16,7 +16,7 @@ import * as fiberRuntime from "./fiberRuntime.js"
 import * as queue from "./queue.js"
 
 /** @internal */
-export interface AtomicPubSub<A> {
+export interface AtomicPubSub<in out A> {
   readonly capacity: number
   isEmpty(): boolean
   isFull(): boolean
@@ -28,7 +28,7 @@ export interface AtomicPubSub<A> {
 }
 
 /** @internal */
-interface Subscription<A> {
+interface Subscription<out A> {
   isEmpty(): boolean
   size(): number
   poll<D>(default_: D): A | D
@@ -1229,7 +1229,7 @@ const unsafeRemove = <A>(queue: MutableQueue.MutableQueue<A>, value: A): void =>
  *
  * @internal
  */
-export interface PubSubStrategy<A> {
+export interface PubSubStrategy<in out A> {
   /**
    * Describes any finalization logic associated with this strategy.
    */

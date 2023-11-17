@@ -28,13 +28,13 @@ export interface NotStarted {
 }
 
 /** @internal */
-export interface Previous<A> {
+export interface Previous<out A> {
   readonly _tag: OP_PREVIOUS
   readonly fiber: Fiber.Fiber<never, Chunk.Chunk<A>>
 }
 
 /** @internal */
-export interface Current<E, A> {
+export interface Current<out E, out A> {
   readonly _tag: OP_CURRENT
   readonly fiber: Fiber.Fiber<E, HandoffSignal.HandoffSignal<E, A>>
 }

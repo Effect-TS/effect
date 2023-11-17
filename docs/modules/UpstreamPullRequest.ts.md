@@ -99,7 +99,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Pulled<A> extends UpstreamPullRequest.Variance<A> {
+export interface Pulled<out A> extends UpstreamPullRequest.Variance<A> {
   readonly _tag: "Pulled"
   readonly value: A
 }
@@ -191,7 +191,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<out A> {
   readonly [UpstreamPullRequestTypeId]: {
     readonly _A: (_: never) => A
   }

@@ -20,7 +20,7 @@ export type TExit<E, A> = Fail<E> | Die | Interrupt | Succeed<A> | Retry
 /** @internal */
 export declare namespace TExit {
   /** @internal */
-  export interface Variance<E, A> {
+  export interface Variance<out E, out A> {
     readonly [TExitTypeId]: {
       readonly _E: (_: never) => E
       readonly _A: (_: never) => A
@@ -35,7 +35,7 @@ const variance = {
 }
 
 /** @internal */
-export interface Fail<E> extends TExit.Variance<E, never>, Equal.Equal {
+export interface Fail<out E> extends TExit.Variance<E, never>, Equal.Equal {
   readonly _tag: OpCodes.OP_FAIL
   readonly error: E
 }
@@ -53,7 +53,7 @@ export interface Interrupt extends TExit.Variance<never, never>, Equal.Equal {
 }
 
 /** @internal */
-export interface Succeed<A> extends TExit.Variance<never, A>, Equal.Equal {
+export interface Succeed<out A> extends TExit.Variance<never, A>, Equal.Equal {
   readonly _tag: OpCodes.OP_SUCCEED
   readonly value: A
 }

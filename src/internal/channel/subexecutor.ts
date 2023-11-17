@@ -7,7 +7,7 @@ import type * as UpstreamPullStrategy from "../../UpstreamPullStrategy.js"
 import type { ErasedChannel, ErasedExecutor } from "./channelExecutor.js"
 
 /** @internal */
-export interface Subexecutor<R> {
+export interface Subexecutor<in out R> {
   close(exit: Exit.Exit<unknown, unknown>): Effect.Effect<R, never, unknown> | undefined
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R>
 }

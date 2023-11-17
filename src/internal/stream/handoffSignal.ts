@@ -23,13 +23,13 @@ export const OP_END = "End" as const
 /** @internal */
 export type OP_END = typeof OP_END
 
-export interface Emit<A> {
+export interface Emit<out A> {
   readonly _tag: OP_EMIT
   readonly elements: Chunk.Chunk<A>
 }
 
 /** @internal */
-export interface Halt<E> {
+export interface Halt<out E> {
   readonly _tag: OP_HALT
   readonly cause: Cause.Cause<E>
 }

@@ -89,7 +89,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface PullAfterAllEnqueued<A> extends UpstreamPullStrategy.Variance<A> {
+export interface PullAfterAllEnqueued<out A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterAllEnqueued"
   readonly emitSeparator: Option.Option<A>
 }
@@ -102,7 +102,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface PullAfterNext<A> extends UpstreamPullStrategy.Variance<A> {
+export interface PullAfterNext<out A> extends UpstreamPullStrategy.Variance<A> {
   readonly _tag: "PullAfterNext"
   readonly emitSeparator: Option.Option<A>
 }
@@ -194,7 +194,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<out A> {
   readonly [UpstreamPullStrategyTypeId]: {
     readonly _A: (_: never) => A
   }

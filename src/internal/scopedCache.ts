@@ -25,7 +25,7 @@ import * as fiberRuntime from "./fiberRuntime.js"
  *
  * @internal
  */
-export interface CacheState<Key, Error, Value> {
+export interface CacheState<in out Key, out Error, out Value> {
   map: MutableHashMap.MutableHashMap<Key, MapValue<Key, Error, Value>> // mutable by design
   keys: _cache.KeySet<Key> // mutable by design
   accesses: MutableQueue.MutableQueue<_cache.MapKey<Key>> // mutable by design
@@ -80,7 +80,7 @@ export type MapValue<Key, Error, Value> =
   | Refreshing<Key, Error, Value>
 
 /** @internal */
-export interface Complete<Key, Error, Value> {
+export interface Complete<out Key, out Error, out Value> {
   readonly _tag: "Complete"
   readonly key: _cache.MapKey<Key>
   readonly exit: Exit.Exit<Error, readonly [Value, Scope.Scope.Finalizer]>
@@ -90,14 +90,14 @@ export interface Complete<Key, Error, Value> {
 }
 
 /** @internal */
-export interface Pending<Key, Error, Value> {
+export interface Pending<out Key, out Error, out Value> {
   readonly _tag: "Pending"
   readonly key: _cache.MapKey<Key>
   readonly scoped: Effect.Effect<never, never, Effect.Effect<Scope.Scope, Error, Value>>
 }
 
 /** @internal */
-export interface Refreshing<Key, Error, Value> {
+export interface Refreshing<out Key, out Error, out Value> {
   readonly _tag: "Refreshing"
   readonly scoped: Effect.Effect<never, never, Effect.Effect<Scope.Scope, Error, Value>>
   readonly complete: Complete<Key, Error, Value>
