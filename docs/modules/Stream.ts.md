@@ -2927,7 +2927,7 @@ allow for rich and expressive composition of streams.
 **Signature**
 
 ```ts
-export interface Stream<R, E, A> extends Stream.Variance<R, E, A>, Pipeable {
+export interface Stream<out R, out E, out A> extends Stream.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: StreamUnify<this>
   [Unify.ignoreSymbol]?: StreamUnifyIgnore
@@ -3284,7 +3284,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<R, E, A> {
+export interface Variance<out R, out E, out A> {
   readonly [StreamTypeId]: {
     _R: (_: never) => R
     _E: (_: never) => E

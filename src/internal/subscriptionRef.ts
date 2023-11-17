@@ -20,7 +20,7 @@ export const SubscriptionRefTypeId: SubscriptionRef.SubscriptionRefTypeId = Symb
 
 /** @internal */
 const subscriptionRefVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */

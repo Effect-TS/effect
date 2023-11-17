@@ -63,7 +63,7 @@ export type StreamTypeId = typeof StreamTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Stream<R, E, A> extends Stream.Variance<R, E, A>, Pipeable {
+export interface Stream<out R, out E, out A> extends Stream.Variance<R, E, A>, Pipeable {
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: StreamUnify<this>
   [Unify.ignoreSymbol]?: StreamUnifyIgnore
@@ -112,7 +112,7 @@ export declare namespace Stream {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<R, E, A> {
+  export interface Variance<out R, out E, out A> {
     readonly [StreamTypeId]: {
       _R: (_: never) => R
       _E: (_: never) => E

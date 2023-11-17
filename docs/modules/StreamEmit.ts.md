@@ -32,7 +32,7 @@ with an end of stream signal.
 **Signature**
 
 ```ts
-export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
+export interface Emit<in R, in E, in A, out B> extends EmitOps<R, E, A, B> {
   (f: Effect.Effect<R, Option.Option<E>, Chunk.Chunk<A>>): Promise<B>
 }
 ```
@@ -44,7 +44,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface EmitOps<R, E, A, B> {
+export interface EmitOps<in R, in E, in A, out B> {
   /**
    * Emits a chunk containing the specified values.
    */
