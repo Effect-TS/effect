@@ -623,7 +623,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Cons<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Cons"
   readonly head: A
@@ -654,7 +654,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
+export interface Nil<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: TypeId
   readonly _tag: "Nil"
 }
