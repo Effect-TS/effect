@@ -1,5 +1,15 @@
 # @effect/platform-node
 
+## 0.31.6
+
+### Patch Changes
+
+- [#282](https://github.com/Effect-TS/platform/pull/282) [`534cb34`](https://github.com/Effect-TS/platform/commit/534cb3486b55e08f9c9cb3f0d955b04da128986c) Thanks [@IMax153](https://github.com/IMax153)! - add Terminal to NodeContext and BunContext
+
+- [#282](https://github.com/Effect-TS/platform/pull/282) [`534cb34`](https://github.com/Effect-TS/platform/commit/534cb3486b55e08f9c9cb3f0d955b04da128986c) Thanks [@IMax153](https://github.com/IMax153)! - fix bug where keypress could still be emit after terminal was quit
+
+- [#280](https://github.com/Effect-TS/platform/pull/280) [`d8e2234`](https://github.com/Effect-TS/platform/commit/d8e2234bc2fa0794e2a4b6a693ae1e7c1836bfb8) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Recursive interrupt all fibers on kill
+
 ## 0.31.5
 
 ### Patch Changes
