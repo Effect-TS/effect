@@ -300,7 +300,7 @@ export const fromFiberEffect = <R, E, A>(fiber: Effect.Effect<R, E, Fiber.Fiber<
 
 const memoKeySymbol = Symbol.for("effect/Effect/memoizeFunction.key")
 
-class Key<A> implements Equal.Equal {
+class Key<in out A> implements Equal.Equal {
   [memoKeySymbol] = memoKeySymbol
   constructor(readonly a: A, readonly eq?: Equivalence<A>) {}
   [Equal.symbol](that: Equal.Equal) {
@@ -538,7 +538,7 @@ export const synchronizedVariance = {
 }
 
 /** @internal */
-class SynchronizedImpl<A> implements Synchronized.SynchronizedRef<A> {
+class SynchronizedImpl<in out A> implements Synchronized.SynchronizedRef<A> {
   readonly [SynchronizedTypeId] = synchronizedVariance
   readonly [internalRef.RefTypeId] = internalRef.refVariance
   constructor(

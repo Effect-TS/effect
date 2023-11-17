@@ -25,7 +25,7 @@ const tPriorityQueueVariance = {
 }
 
 /** @internal */
-export class TPriorityQueueImpl<A> implements TPriorityQueue.TPriorityQueue<A> {
+export class TPriorityQueueImpl<in out A> implements TPriorityQueue.TPriorityQueue<A> {
   readonly [TPriorityQueueTypeId] = tPriorityQueueVariance
   constructor(readonly ref: TRef.TRef<SortedMap.SortedMap<A, [A, ...Array<A>]>>) {}
 }

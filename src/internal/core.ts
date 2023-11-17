@@ -1600,7 +1600,7 @@ const requestResolverVariance = {
 }
 
 /** @internal */
-export class RequestResolverImpl<R, A> implements RequestResolver.RequestResolver<A, R> {
+export class RequestResolverImpl<out R, in A> implements RequestResolver.RequestResolver<A, R> {
   readonly [RequestResolverTypeId] = requestResolverVariance
   constructor(
     readonly runAll: (

@@ -89,7 +89,7 @@ const stateDone = <Done>(done: Done): State<never, never, Done> => ({
 })
 
 /** @internal */
-class SingleProducerAsyncInputImpl<Err, Elem, Done>
+class SingleProducerAsyncInputImpl<in out Err, in out Elem, in out Done>
   implements SingleProducerAsyncInput.SingleProducerAsyncInput<Err, Elem, Done>
 {
   constructor(readonly ref: Ref.Ref<State<Err, Elem, Done>>) {

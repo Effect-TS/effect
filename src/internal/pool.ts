@@ -131,7 +131,7 @@ class TimeToLiveStrategy implements Strategy<readonly [Clock.Clock, Ref.Ref<numb
   }
 }
 
-class PoolImpl<E, A> implements Pool.Pool<E, A> {
+class PoolImpl<in out E, in out A> implements Pool.Pool<E, A> {
   readonly [PoolTypeId] = poolVariance
   constructor(
     readonly creator: Effect.Effect<Scope.Scope, E, A>,

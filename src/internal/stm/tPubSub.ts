@@ -39,7 +39,7 @@ export const makeNode = <A>(
 })
 
 /** @internal */
-class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
+class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
   readonly [TPubSubTypeId] = {
     _A: (_: any) => _
   }
@@ -173,7 +173,7 @@ class TPubSubImpl<A> implements TPubSub.TPubSub<A> {
 }
 
 /** @internal */
-class TPubSubSubscriptionImpl<A> implements TQueue.TDequeue<A> {
+class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
   readonly [TPubSubTypeId]: TPubSub.TPubSubTypeId = TPubSubTypeId
   readonly [tQueue.TDequeueTypeId] = tQueue.tDequeueVariance
   constructor(

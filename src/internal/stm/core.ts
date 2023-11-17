@@ -417,7 +417,7 @@ export const contextWithSTM = <R0, R, E, A>(
 ): STM.STM<R0 | R, E, A> => flatMap(context<R0>(), f)
 
 /** @internal */
-export class STMDriver<R, E, A> {
+export class STMDriver<in out R, out E, out A> {
   private contStack: Array<Continuation> = []
   private env: Context.Context<unknown>
 

@@ -354,7 +354,7 @@ const parallelVariance = {
   _R: (_: never) => _
 }
 
-class ParallelImpl<R> implements ParallelCollection<R> {
+class ParallelImpl<out R> implements ParallelCollection<R> {
   readonly [RequestBlockParallelTypeId] = parallelVariance
   constructor(
     readonly map: HashMap.HashMap<
@@ -417,7 +417,7 @@ const sequentialVariance = {
   _R: (_: never) => _
 }
 
-class SequentialImpl<R> implements SequentialCollection<R> {
+class SequentialImpl<out R> implements SequentialCollection<R> {
   readonly [SequentialCollectionTypeId] = sequentialVariance
   constructor(
     readonly map: HashMap.HashMap<

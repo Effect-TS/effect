@@ -22,7 +22,7 @@ const tRefVariance = {
 }
 
 /** @internal */
-export class TRefImpl<A> implements TRef.TRef<A> {
+export class TRefImpl<in out A> implements TRef.TRef<A> {
   readonly [TRefTypeId] = tRefVariance
   /** @internal */
   todos: Map<TxnId.TxnId, Journal.Todo>

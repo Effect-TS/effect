@@ -24,7 +24,7 @@ const tSetVariance = {
 }
 
 /** @internal */
-class TSetImpl<A> implements TSet.TSet<A> {
+class TSetImpl<in out A> implements TSet.TSet<A> {
   readonly [TSetTypeId] = tSetVariance
   constructor(readonly tMap: TMap.TMap<A, void>) {}
 }

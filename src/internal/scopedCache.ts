@@ -182,7 +182,9 @@ const scopedCacheVariance = {
   _Value: (_: never) => _
 }
 
-class ScopedCacheImpl<Key, Environment, Error, Value> implements ScopedCache.ScopedCache<Key, Error, Value> {
+class ScopedCacheImpl<in out Key, in out Environment, in out Error, in out Value>
+  implements ScopedCache.ScopedCache<Key, Error, Value>
+{
   readonly [ScopedCacheTypeId] = scopedCacheVariance
   readonly cacheState: CacheState<Key, Error, Value>
   constructor(

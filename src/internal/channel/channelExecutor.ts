@@ -60,7 +60,7 @@ export type ErasedContinuation<R> = Continuation.Continuation<
 export type ErasedFinalizer<R> = (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<R, never, unknown>
 
 /** @internal */
-export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+export class ChannelExecutor<in out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone> {
   private _activeSubexecutor: Subexecutor.Subexecutor<Env> | undefined = undefined
 
   private _cancelled: Exit.Exit<OutErr, OutDone> | undefined = undefined

@@ -22,7 +22,7 @@ const takeVariance = {
 }
 
 /** @internal */
-export class TakeImpl<E, A> implements Take.Take<E, A> {
+export class TakeImpl<out E, out A> implements Take.Take<E, A> {
   readonly [TakeTypeId] = takeVariance
   constructor(readonly exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) {
   }

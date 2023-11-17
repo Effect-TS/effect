@@ -139,16 +139,16 @@ const continuationVariance = {
 
 /** @internal */
 export class ContinuationKImpl<
-  Env,
-  Env2,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutErr2,
-  OutElem,
-  OutDone,
-  OutDone2
+  out Env,
+  out Env2,
+  in InErr,
+  in InElem,
+  in InDone,
+  in out OutErr,
+  out OutErr2,
+  out OutElem,
+  in out OutDone,
+  out OutDone2
 > implements
   ContinuationK<
     Env | Env2,
@@ -181,7 +181,9 @@ export class ContinuationKImpl<
 }
 
 /** @internal */
-export class ContinuationFinalizerImpl<Env, OutErr, OutDone> implements ContinuationFinalizer<Env, OutErr, OutDone> {
+export class ContinuationFinalizerImpl<out Env, in out OutErr, in out OutDone>
+  implements ContinuationFinalizer<Env, OutErr, OutDone>
+{
   readonly _tag = OpCodes.OP_CONTINUATION_FINALIZER
   readonly [ContinuationTypeId] = continuationVariance
   constructor(readonly finalizer: (exit: Exit.Exit<OutErr, OutDone>) => Effect.Effect<Env, never, unknown>) {

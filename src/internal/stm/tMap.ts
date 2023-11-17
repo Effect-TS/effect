@@ -32,7 +32,7 @@ const tMapVariance = {
 }
 
 /** @internal */
-class TMapImpl<K, V> implements TMap.TMap<K, V> {
+class TMapImpl<in out K, in out V> implements TMap.TMap<K, V> {
   readonly [TMapTypeId] = tMapVariance
   constructor(
     readonly tBuckets: TRef.TRef<TArray.TArray<Chunk.Chunk<readonly [K, V]>>>,

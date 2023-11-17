@@ -258,7 +258,7 @@ export const unsafeRunPromiseExit =
     })
 
 /** @internal */
-export class RuntimeImpl<R> implements Runtime.Runtime<R> {
+export class RuntimeImpl<in R> implements Runtime.Runtime<R> {
   constructor(
     readonly context: Context.Context<R>,
     readonly runtimeFlags: RuntimeFlags.RuntimeFlags,

@@ -23,7 +23,7 @@ const tDeferredVariance = {
 }
 
 /** @internal */
-class TDeferredImpl<E, A> implements TDeferred.TDeferred<E, A> {
+class TDeferredImpl<in out E, in out A> implements TDeferred.TDeferred<E, A> {
   readonly [TDeferredTypeId] = tDeferredVariance
   constructor(readonly ref: TRef.TRef<Option.Option<Either.Either<E, A>>>) {}
 }

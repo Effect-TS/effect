@@ -190,7 +190,7 @@ export const unsafeMakeSubscription = <A>(
 }
 
 /** @internal */
-class BoundedPubSubArb<A> implements AtomicPubSub<A> {
+class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
   array: Array<A>
   publisherIndex = 0
   subscribers: Array<number>
@@ -266,7 +266,7 @@ class BoundedPubSubArb<A> implements AtomicPubSub<A> {
   }
 }
 
-class BoundedPubSubArbSubscription<A> implements Subscription<A> {
+class BoundedPubSubArbSubscription<in out A> implements Subscription<A> {
   constructor(
     private self: BoundedPubSubArb<A>,
     private subscriberIndex: number,
@@ -354,7 +354,7 @@ class BoundedPubSubArbSubscription<A> implements Subscription<A> {
 }
 
 /** @internal */
-class BoundedPubSubPow2<A> implements AtomicPubSub<A> {
+class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
   array: Array<A>
   mask: number
   publisherIndex = 0
@@ -433,7 +433,7 @@ class BoundedPubSubPow2<A> implements AtomicPubSub<A> {
 }
 
 /** @internal */
-class BoundedPubSubPow2Subscription<A> implements Subscription<A> {
+class BoundedPubSubPow2Subscription<in out A> implements Subscription<A> {
   constructor(
     private self: BoundedPubSubPow2<A>,
     private subscriberIndex: number,
@@ -520,7 +520,7 @@ class BoundedPubSubPow2Subscription<A> implements Subscription<A> {
 }
 
 /** @internal */
-class BoundedPubSubSingle<A> implements AtomicPubSub<A> {
+class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
   publisherIndex = 0
   subscriberCount = 0
   subscribers = 0
@@ -582,7 +582,7 @@ class BoundedPubSubSingle<A> implements AtomicPubSub<A> {
 }
 
 /** @internal */
-class BoundedPubSubSingleSubscription<A> implements Subscription<A> {
+class BoundedPubSubSingleSubscription<in out A> implements Subscription<A> {
   constructor(
     private self: BoundedPubSubSingle<A>,
     private subscriberIndex: number,
@@ -643,7 +643,7 @@ class BoundedPubSubSingleSubscription<A> implements Subscription<A> {
 }
 
 /** @internal */
-class Node<A> {
+class Node<out A> {
   constructor(
     public value: A | null,
     public subscribers: number,
@@ -653,7 +653,7 @@ class Node<A> {
 }
 
 /** @internal */
-class UnboundedPubSub<A> implements AtomicPubSub<A> {
+class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   publisherHead = new Node<A>(null, 0, null)
   publisherIndex = 0
   publisherTail: Node<A>
@@ -714,7 +714,7 @@ class UnboundedPubSub<A> implements AtomicPubSub<A> {
 }
 
 /** @internal */
-class UnboundedPubSubSubscription<A> implements Subscription<A> {
+class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
   constructor(
     private self: UnboundedPubSub<A>,
     private subscriberHead: Node<A>,
@@ -816,7 +816,7 @@ class UnboundedPubSubSubscription<A> implements Subscription<A> {
 }
 
 /** @internal */
-class SubscriptionImpl<A> implements Queue.Dequeue<A> {
+class SubscriptionImpl<in out A> implements Queue.Dequeue<A> {
   [queue.DequeueTypeId] = queue.dequeueVariance
 
   constructor(
@@ -993,7 +993,7 @@ const takeRemainderLoop = <A>(
 }
 
 /** @internal */
-class PubSubImpl<A> implements PubSub.PubSub<A> {
+class PubSubImpl<in out A> implements PubSub.PubSub<A> {
   readonly [queue.EnqueueTypeId] = queue.enqueueVariance
   readonly [queue.DequeueTypeId] = queue.dequeueVariance
 
@@ -1286,7 +1286,7 @@ export interface PubSubStrategy<in out A> {
  *
  * @internal
  */
-class BackPressureStrategy<A> implements PubSubStrategy<A> {
+class BackPressureStrategy<in out A> implements PubSubStrategy<A> {
   publishers: MutableQueue.MutableQueue<
     readonly [
       A,
@@ -1411,7 +1411,7 @@ class BackPressureStrategy<A> implements PubSubStrategy<A> {
  *
  * @internal
  */
-export class DroppingStrategy<A> implements PubSubStrategy<A> {
+export class DroppingStrategy<in out A> implements PubSubStrategy<A> {
   get shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }
@@ -1455,7 +1455,7 @@ export class DroppingStrategy<A> implements PubSubStrategy<A> {
  *
  * @internal
  */
-export class SlidingStrategy<A> implements PubSubStrategy<A> {
+export class SlidingStrategy<in out A> implements PubSubStrategy<A> {
   get shutdown(): Effect.Effect<never, never, void> {
     return core.unit
   }

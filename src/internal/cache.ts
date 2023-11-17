@@ -114,7 +114,7 @@ export interface MapKey<out K> extends Equal.Equal {
   next: MapKey<K> | undefined // mutable by design
 }
 
-class MapKeyImpl<K> implements MapKey<K> {
+class MapKeyImpl<out K> implements MapKey<K> {
   readonly [MapKeyTypeId]: MapKeyTypeId = MapKeyTypeId
   previous: MapKey<K> | undefined = undefined
   next: MapKey<K> | undefined = undefined
@@ -288,7 +288,7 @@ export const makeEntryStats = (loadedMillis: number): Cache.EntryStats => ({
   loadedMillis
 })
 
-class CacheImpl<Key, Error, Value> implements Cache.Cache<Key, Error, Value> {
+class CacheImpl<in out Key, in out Error, in out Value> implements Cache.Cache<Key, Error, Value> {
   readonly [CacheTypeId] = cacheVariance
   readonly cacheState: CacheState<Key, Error, Value>
   constructor(
