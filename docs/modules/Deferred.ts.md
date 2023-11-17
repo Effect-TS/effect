@@ -130,7 +130,7 @@ higher-level concurrent or asynchronous structures.
 **Signature**
 
 ```ts
-export interface Deferred<E, A> extends Deferred.Variance<E, A>, Pipeable {
+export interface Deferred<in out E, in out A> extends Deferred.Variance<E, A>, Pipeable {
   /** @internal */
   readonly state: MutableRef.MutableRef<internal.State<E, A>>
   /** @internal */
@@ -200,10 +200,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<E, A> {
+export interface Variance<in out E, in out A> {
   readonly [DeferredTypeId]: {
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _E: (_: E) => E
+    readonly _A: (_: A) => A
   }
 }
 ```
