@@ -58,7 +58,7 @@ export type LayerTypeId = typeof LayerTypeId
  * @since 2.0.0
  * @category models
  */
-export interface Layer<RIn, E, ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
+export interface Layer<out RIn, out E, in ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
 
 /**
  * @since 2.0.0
@@ -68,7 +68,7 @@ export declare namespace Layer {
    * @since 2.0.0
    * @category models
    */
-  export interface Variance<RIn, E, ROut> {
+  export interface Variance<out RIn, out E, in ROut> {
     readonly [LayerTypeId]: {
       readonly _RIn: (_: never) => RIn
       readonly _E: (_: never) => E
