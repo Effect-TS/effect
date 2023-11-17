@@ -4116,7 +4116,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Blocked<R, E, A> extends Effect<R, E, A> {
+export interface Blocked<out R, out E, out A> extends Effect<R, E, A> {
   readonly _op: "Blocked"
   readonly i0: RequestBlock<R>
   readonly i1: Effect<R, E, A>
@@ -4142,7 +4142,7 @@ of executing `Effect` values.
 **Signature**
 
 ```ts
-export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
+export interface Effect<out R, out E, out A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.ignoreSymbol]?: EffectUnifyIgnore
@@ -4156,7 +4156,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface EffectGen<R, E, A> {
+export interface EffectGen<out R, out E, out A> {
   readonly _R: () => R
   readonly _E: () => E
   readonly _A: () => A
@@ -6264,7 +6264,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<R, E, A> {
+export interface Variance<out R, out E, out A> {
   readonly [EffectTypeId]: VarianceStruct<R, E, A>
 }
 ```
@@ -6276,7 +6276,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface VarianceStruct<R, E, A> {
+export interface VarianceStruct<out R, out E, out A> {
   readonly _V: string
   readonly _R: (_: never) => R
   readonly _E: (_: never) => E
