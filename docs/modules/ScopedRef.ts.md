@@ -106,7 +106,7 @@ for the old value whenever a new value is obtained.
 **Signature**
 
 ```ts
-export interface ScopedRef<A> extends ScopedRef.Variance<A>, Pipeable {
+export interface ScopedRef<in out A> extends ScopedRef.Variance<A>, Pipeable {
   /** @internal */
   readonly ref: Synchronized.SynchronizedRef<readonly [Scope.Scope.Closeable, A]>
 }
@@ -147,9 +147,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [ScopedRefTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

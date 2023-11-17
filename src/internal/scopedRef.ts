@@ -22,7 +22,7 @@ export const ScopedRefTypeId: ScopedRef.ScopedRefTypeId = Symbol.for(
 
 /** @internal */
 const scopedRefVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal  */

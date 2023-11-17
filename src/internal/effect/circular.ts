@@ -534,7 +534,7 @@ export const SynchronizedTypeId: Synchronized.SynchronizedRefTypeId = Symbol.for
 
 /** @internal */
 export const synchronizedVariance = {
-  _A: (_: never) => _
+  _A: (_: any) => _
 }
 
 /** @internal */

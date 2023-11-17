@@ -79,7 +79,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface SynchronizedRef<A> extends SynchronizedRef.Variance<A>, Ref.Ref<A> {
+export interface SynchronizedRef<in out A> extends SynchronizedRef.Variance<A>, Ref.Ref<A> {
   modifyEffect<R, E, B>(f: (a: A) => Effect.Effect<R, E, readonly [B, A]>): Effect.Effect<R, E, B>
 }
 ```
@@ -131,9 +131,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [SynchronizedRefTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: (_: A) => A
   }
 }
 ```

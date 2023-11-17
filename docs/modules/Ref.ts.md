@@ -71,7 +71,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Ref<A> extends Ref.Variance<A>, Pipeable {
+export interface Ref<in out A> extends Ref.Variance<A>, Pipeable {
   modify<B>(f: (a: A) => readonly [B, A]): Effect.Effect<never, never, B>
 }
 ```
@@ -87,7 +87,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<A> {
+export interface Variance<in out A> {
   readonly [RefTypeId]: {
     readonly _A: (_: A) => A
   }
