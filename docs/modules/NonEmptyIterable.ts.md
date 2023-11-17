@@ -38,7 +38,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface NonEmptyIterable<A> extends Iterable<A> {
+export interface NonEmptyIterable<out A> extends Iterable<A> {
   readonly [nonEmpty]: A
 }
 ```
