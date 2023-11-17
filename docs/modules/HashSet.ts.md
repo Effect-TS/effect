@@ -266,10 +266,13 @@ the left side.
 export declare const partition: {
   <C extends A, B extends A, A = C>(
     refinement: Refinement<A, B>
-  ): (self: HashSet<C>) => [HashSet<Exclude<C, B>>, HashSet<B>]
-  <B extends A, A = B>(predicate: Predicate<A>): (self: HashSet<B>) => [HashSet<B>, HashSet<B>]
-  <A, B extends A>(self: HashSet<A>, refinement: Refinement<A, B>): [HashSet<Exclude<A, B>>, HashSet<B>]
-  <A>(self: HashSet<A>, predicate: Predicate<A>): [HashSet<A>, HashSet<A>]
+  ): (self: HashSet<C>) => [excluded: HashSet<Exclude<C, B>>, satisfying: HashSet<B>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: HashSet<B>) => [excluded: HashSet<B>, satisfying: HashSet<B>]
+  <A, B extends A>(
+    self: HashSet<A>,
+    refinement: Refinement<A, B>
+  ): [excluded: HashSet<Exclude<A, B>>, satisfying: HashSet<B>]
+  <A>(self: HashSet<A>, predicate: Predicate<A>): [excluded: HashSet<A>, satisfying: HashSet<A>]
 }
 ```
 

@@ -713,11 +713,11 @@ export const partition: {
       readonly concurrency?: Concurrency | undefined
       readonly batching?: boolean | "inherit" | undefined
     }
-  ): (elements: Iterable<A>) => Effect<R, never, [Array<E>, Array<B>]>
+  ): (elements: Iterable<A>) => Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>
   <R, E, A, B>(elements: Iterable<A>, f: (a: A) => Effect<R, E, B>, options?: {
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | "inherit" | undefined
-  }): Effect<R, never, [Array<E>, Array<B>]>
+  }): Effect<R, never, [excluded: Array<E>, satisfying: Array<B>]>
 } = fiberRuntime.partition
 
 /**

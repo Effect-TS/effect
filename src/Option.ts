@@ -807,7 +807,7 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
  * @example
  * import * as O from "effect/Option"
  *
- * type Complex = [number, number]
+ * type Complex = [real: number, imaginary: number]
  *
  * const complex = (real: number, imaginary: number): Complex => [real, imaginary]
  *
@@ -895,12 +895,12 @@ export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [se
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A) => Either<B, C>): (self: Option<A>) => [Option<B>, Option<C>]
-  <A, B, C>(self: Option<A>, f: (a: A) => Either<B, C>): [Option<B>, Option<C>]
+  <A, B, C>(f: (a: A) => Either<B, C>): (self: Option<A>) => [left: Option<B>, right: Option<C>]
+  <A, B, C>(self: Option<A>, f: (a: A) => Either<B, C>): [left: Option<B>, right: Option<C>]
 } = dual(2, <A, B, C>(
   self: Option<A>,
   f: (a: A) => Either<B, C>
-): [Option<B>, Option<C>] => {
+): [excluded: Option<B>, satisfying: Option<C>] => {
   if (isNone(self)) {
     return [none(), none()]
   }

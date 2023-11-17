@@ -658,8 +658,8 @@ Returns two splits of this chunk at the specified index.
 
 ```ts
 export declare const splitAt: {
-  (n: number): <A>(self: Chunk<A>) => [Chunk<A>, Chunk<A>]
-  <A>(self: Chunk<A>, n: number): [Chunk<A>, Chunk<A>]
+  (n: number): <A>(self: Chunk<A>) => [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
+  <A>(self: Chunk<A>, n: number): [beforeIndex: Chunk<A>, fromIndex: Chunk<A>]
 }
 ```
 
@@ -673,8 +673,8 @@ Splits this chunk on the first element that matches this predicate.
 
 ```ts
 export declare const splitWhere: {
-  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
-  <A>(self: Chunk<A>, predicate: Predicate<A>): [Chunk<A>, Chunk<A>]
+  <B extends A, A = B>(predicate: Predicate<A>): (self: Chunk<B>) => [beforeMatch: Chunk<B>, fromMatch: Chunk<B>]
+  <A>(self: Chunk<A>, predicate: Predicate<A>): [beforeMatch: Chunk<A>, fromMatch: Chunk<A>]
 }
 ```
 
@@ -892,10 +892,15 @@ Separate elements based on a predicate that also exposes the index of the elemen
 export declare const partition: {
   <C extends A, B extends A, A = C>(
     refinement: (a: A, i: number) => a is B
-  ): (self: Chunk<C>) => [Chunk<Exclude<C, B>>, Chunk<B>]
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Chunk<B>) => [Chunk<B>, Chunk<B>]
-  <A, B extends A>(self: Chunk<A>, refinement: (a: A, i: number) => a is B): [Chunk<Exclude<A, B>>, Chunk<B>]
-  <A>(self: Chunk<A>, predicate: (a: A, i: number) => boolean): [Chunk<A>, Chunk<A>]
+  ): (self: Chunk<C>) => [excluded: Chunk<Exclude<C, B>>, satisfying: Chunk<B>]
+  <B extends A, A = B>(
+    predicate: (a: A, i: number) => boolean
+  ): (self: Chunk<B>) => [excluded: Chunk<B>, satisfying: Chunk<B>]
+  <A, B extends A>(
+    self: Chunk<A>,
+    refinement: (a: A, i: number) => a is B
+  ): [excluded: Chunk<Exclude<A, B>>, satisfying: Chunk<B>]
+  <A>(self: Chunk<A>, predicate: (a: A, i: number) => boolean): [excluded: Chunk<A>, satisfying: Chunk<A>]
 }
 ```
 
@@ -909,8 +914,8 @@ Partitions the elements of this chunk into two chunks using f.
 
 ```ts
 export declare const partitionMap: {
-  <A, B, C>(f: (a: A) => Either<B, C>): (self: Chunk<A>) => [Chunk<B>, Chunk<C>]
-  <A, B, C>(self: Chunk<A>, f: (a: A) => Either<B, C>): [Chunk<B>, Chunk<C>]
+  <A, B, C>(f: (a: A) => Either<B, C>): (self: Chunk<A>) => [left: Chunk<B>, right: Chunk<C>]
+  <A, B, C>(self: Chunk<A>, f: (a: A) => Either<B, C>): [left: Chunk<B>, right: Chunk<C>]
 }
 ```
 

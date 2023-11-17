@@ -444,7 +444,7 @@ export const unsafeGet: {
  */
 export const unprepend = <A>(
   self: NonEmptyReadonlyArray<A>
-): [A, Array<A>] => [headNonEmpty(self), tailNonEmpty(self)]
+): [firstElement: A, remainingElements: Array<A>] => [headNonEmpty(self), tailNonEmpty(self)]
 
 /**
  * Return a tuple containing a copy of the `NonEmptyReadonlyArray` without its last element, and that last element.
@@ -454,7 +454,7 @@ export const unprepend = <A>(
  */
 export const unappend = <A>(
   self: NonEmptyReadonlyArray<A>
-): [Array<A>, A] => [initNonEmpty(self), lastNonEmpty(self)]
+): [arrayWithoutLastElement: Array<A>, lastElement: A] => [initNonEmpty(self), lastNonEmpty(self)]
 
 /**
  * Get the first element of a `ReadonlyArray`, or `None` if the `ReadonlyArray` is empty.
@@ -1246,8 +1246,8 @@ export const chopNonEmpty: {
  * @since 2.0.0
  */
 export const splitAt: {
-  (n: number): <A>(self: Iterable<A>) => [Array<A>, Array<A>]
-  <A>(self: Iterable<A>, n: number): [Array<A>, Array<A>]
+  (n: number): <A>(self: Iterable<A>) => [beforeIndex: Array<A>, fromIndex: Array<A>]
+  <A>(self: Iterable<A>, n: number): [beforeIndex: Array<A>, fromIndex: Array<A>]
 } = dual(2, <A>(self: Iterable<A>, n: number): [Array<A>, Array<A>] => {
   const input = Array.from(self)
   return n >= 1 && isNonEmptyReadonlyArray(input) ?
@@ -1272,8 +1272,8 @@ export const copy: {
  * @since 2.0.0
  */
 export const splitNonEmptyAt: {
-  (n: number): <A>(self: NonEmptyReadonlyArray<A>) => [NonEmptyArray<A>, Array<A>]
-  <A>(self: NonEmptyReadonlyArray<A>, n: number): [NonEmptyArray<A>, Array<A>]
+  (n: number): <A>(self: NonEmptyReadonlyArray<A>) => [beforeIndex: NonEmptyArray<A>, fromIndex: Array<A>]
+  <A>(self: NonEmptyReadonlyArray<A>, n: number): [beforeIndex: NonEmptyArray<A>, fromIndex: Array<A>]
 } = dual(2, <A>(self: NonEmptyReadonlyArray<A>, n: number): [NonEmptyArray<A>, Array<A>] => {
   const m = Math.max(1, n)
   return m >= self.length ?
@@ -1621,11 +1621,11 @@ export const filterMapWhile: {
  * @since 2.0.0
  */
 export const partitionMap: {
-  <A, B, C>(f: (a: A, i: number) => Either<B, C>): (self: Iterable<A>) => [Array<B>, Array<C>]
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [Array<B>, Array<C>]
+  <A, B, C>(f: (a: A, i: number) => Either<B, C>): (self: Iterable<A>) => [left: Array<B>, right: Array<C>]
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [left: Array<B>, right: Array<C>]
 } = dual(
   2,
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [Array<B>, Array<C>] => {
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [left: Array<B>, right: Array<C>] => {
     const left: Array<B> = []
     const right: Array<C> = []
     const as = fromIterable(self)
@@ -1679,13 +1679,18 @@ export const filter: {
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: (a: A, i: number) => a is B): (
     self: Iterable<C>
-  ) => [Array<Exclude<C, B>>, Array<B>]
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [Array<B>, Array<B>]
-  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): [Array<Exclude<A, B>>, Array<B>]
-  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [Array<A>, Array<A>]
+  ) => [excluded: Array<Exclude<C, B>>, satisfying: Array<B>]
+  <B extends A, A = B>(
+    predicate: (a: A, i: number) => boolean
+  ): (self: Iterable<B>) => [excluded: Array<B>, satisfying: Array<B>]
+  <A, B extends A>(
+    self: Iterable<A>,
+    refinement: (a: A, i: number) => a is B
+  ): [excluded: Array<Exclude<A, B>>, satisfying: Array<B>]
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [excluded: Array<A>, satisfying: Array<A>]
 } = dual(
   2,
-  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [Array<A>, Array<A>] => {
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [excluded: Array<A>, satisfying: Array<A>] => {
     const left: Array<A> = []
     const right: Array<A> = []
     const as = fromIterable(self)
@@ -1963,9 +1968,9 @@ export const join: {
  * @category folding
  */
 export const mapAccum: {
-  <S, A, B>(s: S, f: (s: S, a: A) => readonly [S, B]): (self: Iterable<A>) => [S, Array<B>]
-  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => readonly [S, B]): [S, Array<B>]
-} = dual(3, <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => [S, B]) => {
+  <S, A, B>(s: S, f: (s: S, a: A) => readonly [S, B]): (self: Iterable<A>) => [state: S, mappedArray: Array<B>]
+  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => readonly [S, B]): [state: S, mappedArray: Array<B>]
+} = dual(3, <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => [S, B]): [state: S, mappedArray: Array<B>] => {
   let s1 = s
   const out: Array<B> = []
   for (const a of self) {

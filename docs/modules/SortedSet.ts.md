@@ -201,8 +201,10 @@ Added in v2.0.0
 
 ```ts
 export declare const partition: {
-  <B extends A, A = B>(predicate: (a: A) => boolean): (self: SortedSet<B>) => [SortedSet<B>, SortedSet<B>]
-  <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [SortedSet<A>, SortedSet<A>]
+  <B extends A, A = B>(
+    predicate: (a: A) => boolean
+  ): (self: SortedSet<B>) => [excluded: SortedSet<B>, satisfying: SortedSet<B>]
+  <A>(self: SortedSet<A>, predicate: (a: A) => boolean): [excluded: SortedSet<A>, satisfying: SortedSet<A>]
 }
 ```
 

@@ -1250,11 +1250,11 @@ export const partition = dual<
     f: (a: A) => STM.STM<R, E, A2>
   ) => (
     elements: Iterable<A>
-  ) => STM.STM<R, never, [Array<E>, Array<A2>]>,
+  ) => STM.STM<R, never, [excluded: Array<E>, satisfying: Array<A2>]>,
   <R, E, A, A2>(
     elements: Iterable<A>,
     f: (a: A) => STM.STM<R, E, A2>
-  ) => STM.STM<R, never, [Array<E>, Array<A2>]>
+  ) => STM.STM<R, never, [excluded: Array<E>, satisfying: Array<A2>]>
 >(2, (elements, f) =>
   pipe(
     forEach(elements, (a) => either(f(a))),

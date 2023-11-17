@@ -2514,8 +2514,8 @@ Collects all successes and failures in a tupled fashion.
 
 ```ts
 export declare const partition: {
-  <R, E, A, A2>(f: (a: A) => STM<R, E, A2>): (elements: Iterable<A>) => STM<R, never, [E[], A2[]]>
-  <R, E, A, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>): STM<R, never, [E[], A2[]]>
+  <R, E, A, A2>(f: (a: A) => STM<R, E, A2>): (elements: Iterable<A>) => STM<R, never, [excluded: E[], satisfying: A2[]]>
+  <R, E, A, A2>(elements: Iterable<A>, f: (a: A) => STM<R, E, A2>): STM<R, never, [excluded: E[], satisfying: A2[]]>
 }
 ```
 
