@@ -28,7 +28,7 @@ export type PollingMetricTypeId = typeof PollingMetricTypeId
  * @since 2.0.0
  * @category models
  */
-export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
+export interface PollingMetric<in out Type, in out In, out R, out E, out Out> extends Pipeable {
   readonly [PollingMetricTypeId]: PollingMetricTypeId
   /**
    * The metric that this `PollingMetric` polls to update.
