@@ -213,7 +213,7 @@ impossible to ever create different metrics with conflicting keys.
 **Signature**
 
 ```ts
-export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
+export interface MetricKey<out Type extends MetricKeyType.MetricKeyType<any, any>>
   extends MetricKey.Variance<Type>,
     Equal.Equal,
     Pipeable {
@@ -271,7 +271,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Type> {
+export interface Variance<out Type> {
   readonly [MetricKeyTypeId]: {
     _Type: (_: never) => Type
   }
