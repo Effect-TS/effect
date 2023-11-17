@@ -4386,7 +4386,11 @@ export const partition: {
     }
   ): <R, E>(
     self: Stream.Stream<R, E, C>
-  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, Exclude<C, B>>, Stream.Stream<never, E, B>]>
+  ) => Effect.Effect<
+    Scope.Scope | R,
+    E,
+    [excluded: Stream.Stream<never, E, Exclude<C, B>>, satisfying: Stream.Stream<never, E, B>]
+  >
   <A>(
     predicate: Predicate<A>,
     options?: {
@@ -4394,21 +4398,25 @@ export const partition: {
     }
   ): <R, E>(
     self: Stream.Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>
+  ) => Effect.Effect<Scope.Scope | R, E, [excluded: Stream.Stream<never, E, A>, satisfying: Stream.Stream<never, E, A>]>
   <R, E, C extends A, B extends A, A = C>(
     self: Stream.Stream<R, E, C>,
     refinement: Refinement<A, B>,
     options?: {
       bufferSize?: number | undefined
     }
-  ): Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, Exclude<C, B>>, Stream.Stream<never, E, B>]>
+  ): Effect.Effect<
+    Scope.Scope | R,
+    E,
+    [excluded: Stream.Stream<never, E, Exclude<C, B>>, satisfying: Stream.Stream<never, E, B>]
+  >
   <R, E, A>(
     self: Stream.Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: {
       bufferSize?: number | undefined
     }
-  ): Effect.Effect<Scope.Scope | R, E, [Stream.Stream<never, E, A>, Stream.Stream<never, E, A>]>
+  ): Effect.Effect<Scope.Scope | R, E, [excluded: Stream.Stream<never, E, A>, satisfying: Stream.Stream<never, E, A>]>
 } = dual(
   (args) => typeof args[1] === "function",
   <R, E, A>(
@@ -4441,7 +4449,7 @@ export const partitionEither = dual<
   ) => Effect.Effect<
     Scope.Scope | R2 | R,
     E2 | E,
-    [Stream.Stream<never, E2 | E, A2>, Stream.Stream<never, E2 | E, A3>]
+    [left: Stream.Stream<never, E2 | E, A2>, right: Stream.Stream<never, E2 | E, A3>]
   >,
   <R, E, A, R2, E2, A2, A3>(
     self: Stream.Stream<R, E, A>,
@@ -4452,7 +4460,7 @@ export const partitionEither = dual<
   ) => Effect.Effect<
     Scope.Scope | R2 | R,
     E2 | E,
-    [Stream.Stream<never, E2 | E, A2>, Stream.Stream<never, E2 | E, A3>]
+    [left: Stream.Stream<never, E2 | E, A2>, right: Stream.Stream<never, E2 | E, A3>]
   >
 >(
   (args) => typeof args[1] === "function",

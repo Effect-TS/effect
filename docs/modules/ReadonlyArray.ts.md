@@ -708,10 +708,13 @@ Separate elements based on a predicate that also exposes the index of the elemen
 export declare const partition: {
   <C extends A, B extends A, A = C>(
     refinement: (a: A, i: number) => a is B
-  ): (self: Iterable<C>) => [Exclude<C, B>[], B[]]
-  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [B[], B[]]
-  <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): [Exclude<A, B>[], B[]]
-  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [A[], A[]]
+  ): (self: Iterable<C>) => [excluded: Exclude<C, B>[], satisfying: B[]]
+  <B extends A, A = B>(predicate: (a: A, i: number) => boolean): (self: Iterable<B>) => [excluded: B[], satisfying: B[]]
+  <A, B extends A>(
+    self: Iterable<A>,
+    refinement: (a: A, i: number) => a is B
+  ): [excluded: Exclude<A, B>[], satisfying: B[]]
+  <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): [excluded: A[], satisfying: A[]]
 }
 ```
 
@@ -723,8 +726,8 @@ Added in v2.0.0
 
 ```ts
 export declare const partitionMap: {
-  <A, B, C>(f: (a: A, i: number) => Either<B, C>): (self: Iterable<A>) => [B[], C[]]
-  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [B[], C[]]
+  <A, B, C>(f: (a: A, i: number) => Either<B, C>): (self: Iterable<A>) => [left: B[], right: C[]]
+  <A, B, C>(self: Iterable<A>, f: (a: A, i: number) => Either<B, C>): [left: B[], right: C[]]
 }
 ```
 
@@ -787,8 +790,8 @@ Statefully maps over the chunk, producing new elements of type `B`.
 
 ```ts
 export declare const mapAccum: {
-  <S, A, B>(s: S, f: (s: S, a: A) => readonly [S, B]): (self: Iterable<A>) => [S, B[]]
-  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => readonly [S, B]): [S, B[]]
+  <S, A, B>(s: S, f: (s: S, a: A) => readonly [S, B]): (self: Iterable<A>) => [state: S, mappedArray: B[]]
+  <S, A, B>(self: Iterable<A>, s: S, f: (s: S, a: A) => readonly [S, B]): [state: S, mappedArray: B[]]
 }
 ```
 
@@ -1037,8 +1040,8 @@ Splits an `Iterable` into two pieces, the first piece has max `n` elements.
 
 ```ts
 export declare const splitAt: {
-  (n: number): <A>(self: Iterable<A>) => [A[], A[]]
-  <A>(self: Iterable<A>, n: number): [A[], A[]]
+  (n: number): <A>(self: Iterable<A>) => [beforeIndex: A[], fromIndex: A[]]
+  <A>(self: Iterable<A>, n: number): [beforeIndex: A[], fromIndex: A[]]
 }
 ```
 
@@ -1052,8 +1055,8 @@ Splits a `NonEmptyReadonlyArray` into two pieces, the first piece has max `n` el
 
 ```ts
 export declare const splitNonEmptyAt: {
-  (n: number): <A>(self: readonly [A, ...A[]]) => [[A, ...A[]], A[]]
-  <A>(self: readonly [A, ...A[]], n: number): [[A, ...A[]], A[]]
+  (n: number): <A>(self: readonly [A, ...A[]]) => [beforeIndex: [A, ...A[]], fromIndex: A[]]
+  <A>(self: readonly [A, ...A[]], n: number): [beforeIndex: [A, ...A[]], fromIndex: A[]]
 }
 ```
 
@@ -1133,7 +1136,7 @@ Return a tuple containing a copy of the `NonEmptyReadonlyArray` without its last
 **Signature**
 
 ```ts
-export declare const unappend: <A>(self: readonly [A, ...A[]]) => [A[], A]
+export declare const unappend: <A>(self: readonly [A, ...A[]]) => [arrayWithoutLastElement: A[], lastElement: A]
 ```
 
 Added in v2.0.0
@@ -1145,7 +1148,7 @@ Return a tuple containing the first element, and a new `Array` of the remaining 
 **Signature**
 
 ```ts
-export declare const unprepend: <A>(self: readonly [A, ...A[]]) => [A, A[]]
+export declare const unprepend: <A>(self: readonly [A, ...A[]]) => [firstElement: A, remainingElements: A[]]
 ```
 
 Added in v2.0.0

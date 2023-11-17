@@ -916,12 +916,12 @@ export declare const partition: {
   <R, E, A, B>(
     f: (a: A) => Effect<R, E, B>,
     options?: { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
-  ): (elements: Iterable<A>) => Effect<R, never, [E[], B[]]>
+  ): (elements: Iterable<A>) => Effect<R, never, [excluded: E[], satisfying: B[]]>
   <R, E, A, B>(
     elements: Iterable<A>,
     f: (a: A) => Effect<R, E, B>,
     options?: { readonly concurrency?: Concurrency | undefined; readonly batching?: boolean | "inherit" | undefined }
-  ): Effect<R, never, [E[], B[]]>
+  ): Effect<R, never, [excluded: E[], satisfying: B[]]>
 }
 ```
 

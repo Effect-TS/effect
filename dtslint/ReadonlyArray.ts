@@ -227,16 +227,16 @@ pipe(
   ) => true)
 )
 
-// $ExpectType [(string | number)[], (string | number)[]]
+// $ExpectType [excluded: (string | number)[], satisfying: (string | number)[]]
 ReadonlyArray.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType [(string | number)[], (string | number)[]]
+// $ExpectType [excluded: (string | number)[], satisfying: (string | number)[]]
 pipe(numbersOrStrings, ReadonlyArray.partition(predicateNumbersOrStrings))
 
-// $ExpectType [string[], number[]]
+// $ExpectType [excluded: string[], satisfying: number[]]
 ReadonlyArray.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [string[], number[]]
+// $ExpectType [excluded: string[], satisfying: number[]]
 pipe(numbersOrStrings, ReadonlyArray.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------

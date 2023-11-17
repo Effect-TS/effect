@@ -4696,23 +4696,23 @@ export declare const partition: {
     options?: { bufferSize?: number | undefined }
   ): <R, E>(
     self: Stream<R, E, C>
-  ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<C, B>>, Stream<never, E, B>]>
+  ) => Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, Exclude<C, B>>, satisfying: Stream<never, E, B>]>
   <A>(
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined }
   ): <R, E, B extends A>(
     self: Stream<R, E, B>
-  ) => Effect.Effect<Scope.Scope | R, E, [Stream<never, E, B>, Stream<never, E, B>]>
+  ) => Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, B>, satisfying: Stream<never, E, B>]>
   <R, E, A, B extends A>(
     self: Stream<R, E, A>,
     refinement: Refinement<A, B>,
     options?: { bufferSize?: number | undefined }
-  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, Exclude<A, B>>, Stream<never, E, B>]>
+  ): Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, Exclude<A, B>>, satisfying: Stream<never, E, B>]>
   <R, E, A>(
     self: Stream<R, E, A>,
     predicate: Predicate<A>,
     options?: { bufferSize?: number | undefined }
-  ): Effect.Effect<Scope.Scope | R, E, [Stream<never, E, A>, Stream<never, E, A>]>
+  ): Effect.Effect<Scope.Scope | R, E, [excluded: Stream<never, E, A>, satisfying: Stream<never, E, A>]>
 }
 ```
 
@@ -4732,12 +4732,12 @@ export declare const partitionEither: {
     options?: { readonly bufferSize?: number | undefined }
   ): <R, E>(
     self: Stream<R, E, A>
-  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [Stream<never, E2 | E, A2>, Stream<never, E2 | E, A3>]>
+  ) => Effect.Effect<Scope.Scope | R2 | R, E2 | E, [left: Stream<never, E2 | E, A2>, right: Stream<never, E2 | E, A3>]>
   <R, E, A, R2, E2, A2, A3>(
     self: Stream<R, E, A>,
     predicate: (a: A) => Effect.Effect<R2, E2, Either.Either<A2, A3>>,
     options?: { readonly bufferSize?: number | undefined }
-  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
+  ): Effect.Effect<Scope.Scope | R | R2, E | E2, [left: Stream<never, E | E2, A2>, right: Stream<never, E | E2, A3>]>
 }
 ```
 

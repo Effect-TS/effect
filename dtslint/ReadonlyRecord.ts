@@ -245,21 +245,21 @@ pipe(numbersOrStrings, ReadonlyRecord.filter(Predicate.isNumber))
 // partitionMap
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [Record<string, boolean>, Record<string, string>]
+// $ExpectType [left: Record<string, boolean>, right: Record<string, string>]
 ReadonlyRecord.partitionMap(numbers, (
   value,
   // $ExpectType string
   _key
 ) => value > 0 ? Either.right("positive") : Either.left(false))
 
-// $ExpectType [Record<string, boolean>, Record<string, string>]
+// $ExpectType [left: Record<string, boolean>, right: Record<string, string>]
 ReadonlyRecord.partitionMap(readonlyNumbers, (
   value,
   // $ExpectType string
   _key
 ) => value > 0 ? Either.right("positive") : Either.left(false))
 
-// $ExpectType [Record<string, boolean>, Record<string, string>]
+// $ExpectType [left: Record<string, boolean>, right: Record<string, string>]
 pipe(
   structNumbers,
   ReadonlyRecord.partitionMap((
@@ -269,7 +269,7 @@ pipe(
   ) => key === "a" ? Either.right("positive") : Either.left(false))
 )
 
-// $ExpectType [Record<string, boolean>, Record<string, string>]
+// $ExpectType [left: Record<string, boolean>, right: Record<string, string>]
 ReadonlyRecord.partitionMap(structNumbers, (
   _value,
   // $ExpectType "a" | "b"
@@ -280,7 +280,7 @@ ReadonlyRecord.partitionMap(structNumbers, (
 // partition
 // -------------------------------------------------------------------------------------
 
-// $ExpectType [Record<string, number>, Record<string, number>]
+// $ExpectType [excluded: Record<string, number>, satisfying: Record<string, number>]
 ReadonlyRecord.partition(numbers, (
   // $ExpectType number
   value,
@@ -288,7 +288,7 @@ ReadonlyRecord.partition(numbers, (
   _key
 ) => value > 0)
 
-// $ExpectType [Record<string, number>, Record<string, number>]
+// $ExpectType [excluded: Record<string, number>, satisfying: Record<string, number>]
 ReadonlyRecord.partition(readonlyNumbers, (
   // $ExpectType number
   value,
@@ -296,7 +296,7 @@ ReadonlyRecord.partition(readonlyNumbers, (
   _key
 ) => value > 0)
 
-// $ExpectType [Record<string, number>, Record<string, number>]
+// $ExpectType [excluded: Record<string, number>, satisfying: Record<string, number>]
 pipe(
   structNumbers,
   ReadonlyRecord.partition((
@@ -307,7 +307,7 @@ pipe(
   ) => key === "a")
 )
 
-// $ExpectType [Record<string, number>, Record<string, number>]
+// $ExpectType [excluded: Record<string, number>, satisfying: Record<string, number>]
 ReadonlyRecord.partition(structNumbers, (
   // $ExpectType number
   _value,
@@ -315,16 +315,16 @@ ReadonlyRecord.partition(structNumbers, (
   key
 ) => key === "a")
 
-// $ExpectType [Record<string, string | number>, Record<string, string | number>]
+// $ExpectType [excluded: Record<string, string | number>, satisfying: Record<string, string | number>]
 ReadonlyRecord.partition(numbersOrStrings, predicateNumbersOrStrings)
 
-// $ExpectType [Record<string, string | number>, Record<string, string | number>]
+// $ExpectType [excluded: Record<string, string | number>, satisfying: Record<string, string | number>]
 pipe(numbersOrStrings, ReadonlyRecord.partition(predicateNumbersOrStrings))
 
-// $ExpectType [Record<string, string>, Record<string, number>]
+// $ExpectType [excluded: Record<string, string>, satisfying: Record<string, number>]
 ReadonlyRecord.partition(numbersOrStrings, Predicate.isNumber)
 
-// $ExpectType [Record<string, string>, Record<string, number>]
+// $ExpectType [excluded: Record<string, string>, satisfying: Record<string, number>]
 pipe(numbersOrStrings, ReadonlyRecord.partition(Predicate.isNumber))
 
 // -------------------------------------------------------------------------------------
