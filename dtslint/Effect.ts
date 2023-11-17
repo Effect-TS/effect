@@ -617,3 +617,17 @@ Effect.takeWhile(numbersArray, predicateNumbersOrStringsEffect)
 
 // $ExpectType Effect<never, never, number[]>
 pipe(numbersArray, Effect.takeWhile(predicateNumbersOrStringsEffect))
+// andThen
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+Effect.andThen(string, number)
+
+// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+Effect.andThen(string, () => number)
+
+// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+string.pipe(Effect.andThen(number))
+
+// $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
+string.pipe(Effect.andThen(() => number))

@@ -299,6 +299,7 @@ Added in v2.0.0
   - [makeSemaphore](#makesemaphore)
   - [unsafeMakeSemaphore](#unsafemakesemaphore)
 - [sequencing](#sequencing)
+  - [andThen](#andthen)
   - [flatMap](#flatmap)
   - [flatten](#flatten)
   - [race](#race)
@@ -5157,6 +5158,37 @@ Added in v2.0.0
 
 # sequencing
 
+## andThen
+
+Executes a sequence of two `Effect`s. The second `Effect` can be dependent on the result of the first `Effect`.
+
+**Signature**
+
+```ts
+export declare const andThen: {
+  <A, X>(
+    f: (a: NoInfer<A>) => X
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <X>(
+    f: X
+  ): <R, E, A>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: (a: NoInfer<A>) => X
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: X
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+}
+```
+
+Added in v2.0.0
+
 ## flatMap
 
 This function is a pipeable operator that maps over an `Effect` value,
@@ -5298,10 +5330,24 @@ Added in v2.0.0
 
 ```ts
 export declare const tap: {
-  <A, X extends A, R2, E2, _>(
-    f: (a: X) => Effect<R2, E2, _>
-  ): <R, E>(self: Effect<R, E, A>) => Effect<R2 | R, E2 | E, A>
-  <R, E, A, X extends A, R2, E2, _>(self: Effect<R, E, A>, f: (a: X) => Effect<R2, E2, _>): Effect<R | R2, E | E2, A>
+  <A, X>(
+    f: (a: NoInfer<A>) => X
+  ): <R, E>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <X>(
+    f: X
+  ): <R, E, A>(
+    self: Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: (a: NoInfer<A>) => X
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  <A, R, E, X>(
+    self: Effect<R, E, A>,
+    f: X
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
 }
 ```
 

@@ -108,6 +108,7 @@ Added in v2.0.0
 - [rendering](#rendering)
   - [pretty](#pretty)
 - [sequencing](#sequencing)
+  - [andThen](#andthen)
   - [flatMap](#flatmap)
   - [flatten](#flatten)
 - [symbols](#symbols)
@@ -1074,6 +1075,23 @@ export declare const pretty: <E>(cause: Cause<E>) => string
 Added in v2.0.0
 
 # sequencing
+
+## andThen
+
+Executes a sequence of two `Cause`s. The second `Cause` can be dependent on the result of the first `Cause`.
+
+**Signature**
+
+```ts
+export declare const andThen: {
+  <E, E2>(f: (e: E) => Cause<E2>): (self: Cause<E>) => Cause<E2>
+  <E2>(f: Cause<E2>): <E>(self: Cause<E>) => Cause<E2>
+  <E, E2>(self: Cause<E>, f: (e: E) => Cause<E2>): Cause<E2>
+  <E, E2>(self: Cause<E>, f: Cause<E2>): Cause<E2>
+}
+```
+
+Added in v2.0.0
 
 ## flatMap
 

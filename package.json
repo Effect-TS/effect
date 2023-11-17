@@ -280,7 +280,7 @@
     {
       "name": "FiberRef",
       "path": "./dist/dist/esm/index.js",
-      "limit": "36 kB",
+      "limit": "37 kB",
       "import": "{ FiberRef }"
     },
     {

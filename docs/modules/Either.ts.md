@@ -15,7 +15,6 @@ Added in v2.0.0
 - [combining](#combining)
   - [all](#all)
   - [ap](#ap)
-  - [flatMap](#flatmap)
   - [zipWith](#zipwith)
 - [constructors](#constructors)
   - [fromNullable](#fromnullable)
@@ -55,6 +54,9 @@ Added in v2.0.0
   - [Right (interface)](#right-interface)
 - [pattern matching](#pattern-matching)
   - [match](#match)
+- [sequencing](#sequencing)
+  - [andThen](#andthen)
+  - [flatMap](#flatmap)
 - [symbols](#symbols)
   - [TypeId](#typeid)
   - [TypeId (type alias)](#typeid-type-alias)
@@ -111,19 +113,6 @@ Added in v2.0.0
 export declare const ap: {
   <E2, A>(that: Either<E2, A>): <E, B>(self: Either<E, (a: A) => B>) => Either<E2 | E, B>
   <E, A, B, E2>(self: Either<E, (a: A) => B>, that: Either<E2, A>): Either<E | E2, B>
-}
-```
-
-Added in v2.0.0
-
-## flatMap
-
-**Signature**
-
-```ts
-export declare const flatMap: {
-  <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E2 | E1, B>
-  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
 }
 ```
 
@@ -705,6 +694,38 @@ assert.deepStrictEqual(
   pipe(E.left(["string 1", "string 2"]), E.match({ onLeft, onRight })),
   "strings: string 1, string 2"
 )
+```
+
+Added in v2.0.0
+
+# sequencing
+
+## andThen
+
+Executes a sequence of two `Either`s. The second `Either` can be dependent on the result of the first `Either`.
+
+**Signature**
+
+```ts
+export declare const andThen: {
+  <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E2 | E1, B>
+  <E2, B>(f: Either<E2, B>): <E1, A>(self: Either<E1, A>) => Either<E2 | E1, B>
+  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
+  <E1, A, E2, B>(self: Either<E1, A>, f: Either<E2, B>): Either<E1 | E2, B>
+}
+```
+
+Added in v2.0.0
+
+## flatMap
+
+**Signature**
+
+```ts
+export declare const flatMap: {
+  <A, E2, B>(f: (a: A) => Either<E2, B>): <E1>(self: Either<E1, A>) => Either<E2 | E1, B>
+  <E1, A, E2, B>(self: Either<E1, A>, f: (a: A) => Either<E2, B>): Either<E1 | E2, B>
+}
 ```
 
 Added in v2.0.0

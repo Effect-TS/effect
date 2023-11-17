@@ -485,6 +485,18 @@ export const flatMap = dual<
 /** @internal */
 export const flatten = <E>(self: Cause.Cause<Cause.Cause<E>>): Cause.Cause<E> => flatMap(self, identity)
 
+/** @internal */
+export const andThen: {
+  <E, E2>(f: (e: E) => Cause.Cause<E2>): (self: Cause.Cause<E>) => Cause.Cause<E2>
+  <E2>(f: Cause.Cause<E2>): <E>(self: Cause.Cause<E>) => Cause.Cause<E2>
+  <E, E2>(self: Cause.Cause<E>, f: (e: E) => Cause.Cause<E2>): Cause.Cause<E2>
+  <E, E2>(self: Cause.Cause<E>, f: Cause.Cause<E2>): Cause.Cause<E2>
+} = dual(
+  2,
+  <E, E2>(self: Cause.Cause<E>, f: ((e: E) => Cause.Cause<E2>) | Cause.Cause<E2>): Cause.Cause<E2> =>
+    isFunction(f) ? flatMap(self, f) : flatMap(self, () => f)
+)
+
 // -----------------------------------------------------------------------------
 // Equality
 // -----------------------------------------------------------------------------

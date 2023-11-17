@@ -246,6 +246,13 @@ describe.concurrent("Either", () => {
     Util.deepStrictEqual(pipe(Either.left("maError"), f), Either.left("maError"))
   })
 
+  it("andThen", () => {
+    expect(pipe(Either.right(1), Either.andThen(() => Either.right(2)))).toStrictEqual(Either.right(2))
+    expect(pipe(Either.right(1), Either.andThen(Either.right(2)))).toStrictEqual(Either.right(2))
+    expect(Either.andThen(Either.right(1), () => Either.right(2))).toStrictEqual(Either.right(2))
+    expect(Either.andThen(Either.right(1), Either.right(2))).toStrictEqual(Either.right(2))
+  })
+
   it("ap", () => {
     const add = (a: number) => (b: number) => a + b
     expect(Either.right(add).pipe(Either.ap(Either.right(1)), Either.ap(Either.right(2)))).toStrictEqual(

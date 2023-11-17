@@ -12,6 +12,44 @@ import * as Ref from "effect/Ref"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
+  it.effect("andThen", () =>
+    Effect.gen(function*($) {
+      const a0 = Effect.andThen(Effect.succeed(0), Effect.succeed(1))
+      const a1 = Effect.succeed(0).pipe(Effect.andThen(Effect.succeed(1)))
+      const a2 = Effect.andThen(Effect.succeed(0), (n) => Effect.succeed(n + 1))
+      const a3 = Effect.succeed(0).pipe(Effect.andThen((n) => Effect.succeed(n + 1)))
+      const a4 = Effect.succeed(0).pipe(Effect.andThen("ok"))
+      const a5 = Effect.succeed(0).pipe(Effect.andThen(() => "ok"))
+      const a6 = Effect.andThen(Effect.succeed(0), () => "ok")
+      const a7 = Effect.andThen(Effect.succeed(0), "ok")
+      assert.strictEqual(yield* $(a0), 1)
+      assert.strictEqual(yield* $(a1), 1)
+      assert.strictEqual(yield* $(a2), 1)
+      assert.strictEqual(yield* $(a3), 1)
+      assert.strictEqual(yield* $(a4), "ok")
+      assert.strictEqual(yield* $(a5), "ok")
+      assert.strictEqual(yield* $(a6), "ok")
+      assert.strictEqual(yield* $(a7), "ok")
+    }))
+  it.effect("tap", () =>
+    Effect.gen(function*($) {
+      const a0 = Effect.tap(Effect.succeed(0), Effect.succeed(1))
+      const a1 = Effect.succeed(0).pipe(Effect.tap(Effect.succeed(1)))
+      const a2 = Effect.tap(Effect.succeed(0), (n) => Effect.succeed(n + 1))
+      const a3 = Effect.succeed(0).pipe(Effect.tap((n) => Effect.succeed(n + 1)))
+      const a4 = Effect.succeed(0).pipe(Effect.tap("ok"))
+      const a5 = Effect.succeed(0).pipe(Effect.tap(() => "ok"))
+      const a6 = Effect.tap(Effect.succeed(0), () => "ok")
+      const a7 = Effect.tap(Effect.succeed(0), "ok")
+      assert.strictEqual(yield* $(a0), 0)
+      assert.strictEqual(yield* $(a1), 0)
+      assert.strictEqual(yield* $(a2), 0)
+      assert.strictEqual(yield* $(a3), 0)
+      assert.strictEqual(yield* $(a4), 0)
+      assert.strictEqual(yield* $(a5), 0)
+      assert.strictEqual(yield* $(a6), 0)
+      assert.strictEqual(yield* $(a7), 0)
+    }))
   it.effect("flattens nested effects", () =>
     Effect.gen(function*($) {
       const effect = Effect.succeed(Effect.succeed("test"))
