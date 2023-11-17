@@ -1,5 +1,6 @@
 import { defaultTeardown, type RunMain } from "@effect/platform/Runtime"
 import * as Effect from "effect/Effect"
+import { equals } from "effect/Equal"
 import * as Fiber from "effect/Fiber"
 import type * as FiberId from "effect/FiberId"
 
@@ -28,11 +29,21 @@ export const runMain: RunMain = <E, A>(
   process.once("SIGTERM", onSigint)
 }
 
-const interruptAll = (id: FiberId.FiberId) =>
-  Effect.flatMap(Fiber.roots, (roots) => {
+const rootWithoutSelf = Effect.fiberIdWith((selfId) =>
+  Effect.map(Fiber.roots, (roots) => roots.filter((fiber) => !equals(fiber.id(), selfId)))
+)
+
+const interruptAll = (id: FiberId.FiberId): Effect.Effect<never, never, void> =>
+  Effect.flatMap(rootWithoutSelf, (roots) => {
     if (roots.length === 0) {
       return Effect.unit
     }
-
-    return Fiber.interruptAllAs(roots, id)
+    return Effect.flatMap(
+      Fiber.interruptAllAs(roots, id),
+      () =>
+        Effect.flatMap(
+          rootWithoutSelf,
+          (postInterruptRoots) => postInterruptRoots.length > 0 ? interruptAll(id) : Effect.unit
+        )
+    )
   })
