@@ -269,7 +269,7 @@ export const CacheTypeId: Cache.CacheTypeId = Symbol.for(
 ) as Cache.CacheTypeId
 
 const cacheVariance = {
-  _Key: (_: unknown) => _,
+  _Key: (_: any) => _,
   _Error: (_: never) => _,
   _Value: (_: never) => _
 }

@@ -121,7 +121,7 @@ will be returned to all fibers.
 **Signature**
 
 ```ts
-export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Value> {
+export interface Cache<in out Key, out Error, out Value> extends ConsumerCache<Key, Error, Value> {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise computes the value with the lookup function, puts it in the
@@ -182,7 +182,7 @@ It can be used safely to give over control for request management without leakin
 **Signature**
 
 ```ts
-export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Error, Value> {
+export interface ConsumerCache<in out Key, out Error, out Value> extends Cache.Variance<Key, Error, Value> {
   /**
    * Retrieves the value associated with the specified key if it exists.
    * Otherwise returns `Option.none`.
@@ -311,9 +311,9 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<Key, Error, Value> {
+export interface Variance<in out Key, out Error, out Value> {
   readonly [CacheTypeId]: {
-    readonly _Key: (_: Key) => void
+    readonly _Key: (_: Key) => Key
     readonly _Error: (_: never) => Error
     readonly _Value: (_: never) => Value
   }
