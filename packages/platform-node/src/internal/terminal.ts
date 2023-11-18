@@ -16,26 +16,19 @@ export const make = (
     const input = yield* _(Effect.sync(() => globalThis.process.stdin))
     const output = yield* _(Effect.sync(() => globalThis.process.stdout))
 
-    // Create a readline interface and force it to emit keypress events
-    yield* _(Effect.acquireRelease(
-      Effect.sync(() => {
-        const rl = readline.createInterface({ input, escapeCodeTimeout: 50 })
-        readline.emitKeypressEvents(input, rl)
-        if (input.isTTY) {
-          input.setRawMode(true)
-        }
-        return rl
-      }),
-      (rl) =>
-        Effect.sync(() => {
-          if (input.isTTY) {
-            input.setRawMode(false)
-          }
-          rl.close()
-        })
-    ))
+    // Acquire a `readline` interface and use it to force `stdin` to emit
+    // keypress events
+    const acquireReadlineInterface = Effect.sync(() => {
+      const rl = readline.createInterface({ input, escapeCodeTimeout: 50 })
+      readline.emitKeypressEvents(input, rl)
+      if (input.isTTY) {
+        input.setRawMode(true)
+      }
+      return rl
+    })
 
-    const readInput = Effect.async<never, Terminal.QuitException, Terminal.UserInput>((resume) => {
+    // Handle the `"keypress"` event emitted by `stdin` forced by `readline`
+    const handleKeypressEvent = Effect.async<never, Terminal.QuitException, Terminal.UserInput>((resume) => {
       const handleKeypress = (input: string | undefined, key: readline.Key) => {
         const userInput: Terminal.UserInput = {
           input: Option.fromNullable(input),
@@ -57,6 +50,21 @@ export const make = (
         input.removeListener("keypress", handleKeypress)
       })
     })
+
+    // Close the `readline` interface
+    const releaseReadlineInterface = (rl: readline.Interface) =>
+      Effect.sync(() => {
+        if (input.isTTY) {
+          input.setRawMode(false)
+        }
+        rl.close()
+      })
+
+    const readInput = Effect.acquireUseRelease(
+      acquireReadlineInterface,
+      () => handleKeypressEvent,
+      releaseReadlineInterface
+    )
 
     const display = (prompt: string): Effect.Effect<never, Error.PlatformError, void> =>
       Effect.uninterruptible(
