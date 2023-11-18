@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.48.4
+
+### Patch Changes
+
+- [#572](https://github.com/Effect-TS/schema/pull/572) [`b135781`](https://github.com/Effect-TS/schema/commit/b135781bf0d1991048f01c92ef2cda60f3aefdf2) Thanks [@gcanti](https://github.com/gcanti)! - Effect.catchTag can be used to catch ParseError
+
 ## 0.48.3
 
 ### Patch Changes
