@@ -19,10 +19,12 @@ export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
  * @since 1.0.0
  */
 export interface ParseError {
+  readonly _tag: "ParseError"
   readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>
 }
 
 class ParseErrorImpl implements Inspectable.Inspectable {
+  readonly _tag = "ParseError"
   constructor(readonly errors: ReadonlyArray.NonEmptyReadonlyArray<ParseErrors>) {}
   toString() {
     return TreeFormatter.formatErrors(this.errors)

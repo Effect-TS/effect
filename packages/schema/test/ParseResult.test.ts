@@ -43,6 +43,13 @@ describe("ParseResult", () => {
       )
   })
 
+  it("Effect.catchTag can be used to catch ParseError", () => {
+    const program = Effect.fail(missingParseError).pipe(
+      Effect.catchTag("ParseError", () => Effect.succeed(1))
+    )
+    expect(Effect.runSync(program)).toBe(1)
+  })
+
   it("map (Either)", () => {
     expect(ParseResult.map(Either.right(1), (n) => n + 1)).toStrictEqual(Either.right(2))
     expect(ParseResult.map(Either.left(forbiddenParseError), (n) => n + 1)).toStrictEqual(
