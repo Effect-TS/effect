@@ -1,5 +1,14 @@
 # @effect/platform-bun
 
+## 0.19.8
+
+### Patch Changes
+
+- [#285](https://github.com/Effect-TS/platform/pull/285) [`a13377b`](https://github.com/Effect-TS/platform/commit/a13377b21b1369947f76d1719dd0b4acc5c64086) Thanks [@IMax153](https://github.com/IMax153)! - avoid mutating global state with Terminal service
+
+- Updated dependencies [[`a13377b`](https://github.com/Effect-TS/platform/commit/a13377b21b1369947f76d1719dd0b4acc5c64086)]:
+  - @effect/platform-node@0.31.8
+
 ## 0.19.7
 
 ### Patch Changes
