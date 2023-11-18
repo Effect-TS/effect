@@ -1,5 +1,13 @@
 # @effect/platform-node
 
+## 0.31.7
+
+### Patch Changes
+
+- [#283](https://github.com/Effect-TS/platform/pull/283) [`efd464b`](https://github.com/Effect-TS/platform/commit/efd464bd0b16bb6bf3bb7507f9da835b380fb1a2) Thanks [@tim-smart](https://github.com/tim-smart)! - add WorkerManager to Node/BunContext
+
+- [#283](https://github.com/Effect-TS/platform/pull/283) [`efd464b`](https://github.com/Effect-TS/platform/commit/efd464bd0b16bb6bf3bb7507f9da835b380fb1a2) Thanks [@tim-smart](https://github.com/tim-smart)! - remove Terminal from Node/BunContext
+
 ## 0.31.6
 
 ### Patch Changes
