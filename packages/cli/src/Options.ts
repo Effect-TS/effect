@@ -257,7 +257,7 @@ export const integer: (name: string) => Options<number> = InternalOptions.intege
  * @since 1.0.0
  * @category constructors
  */
-export const keyValueMap: (name: string) => Options<HashMap<string, string>> =
+export const keyValueMap: (option: string | Options<string>) => Options<HashMap<string, string>> =
   InternalOptions.keyValueMap
 
 /**
