@@ -45,6 +45,11 @@ export const showWizard = (command: Command.Command<unknown>): BuiltInOptions.Bu
 })
 
 /** @internal */
+export const showVersion: BuiltInOptions.BuiltInOptions = {
+  _tag: "ShowVersion"
+}
+
+/** @internal */
 export const isShowCompletionScript = (
   self: BuiltInOptions.BuiltInOptions
 ): self is BuiltInOptions.ShowCompletionScript => self._tag === "ShowCompletionScript"
@@ -64,6 +69,11 @@ export const isShowWizard = (
 ): self is BuiltInOptions.ShowWizard => self._tag === "ShowWizard"
 
 /** @internal */
+export const isShowVersion = (
+  self: BuiltInOptions.BuiltInOptions
+): self is BuiltInOptions.ShowVersion => self._tag === "ShowVersion"
+
+/** @internal */
 export const builtInOptions = <A>(
   command: Command.Command<A>,
   usage: Usage.Usage,
@@ -78,12 +88,14 @@ export const builtInOptions = <A>(
     InternalOptions.integer("shell-completion-index")
   )
   const wizard = InternalOptions.boolean("wizard")
+  const version = InternalOptions.boolean("version")
   const option = InternalOptions.all({
     shellCompletionScriptPath,
     shellType,
     shellCompletionIndex,
     help,
-    wizard
+    wizard,
+    version
   })
   return InternalOptions.map(option, (builtIn) => {
     if (builtIn.help) {
@@ -91,6 +103,9 @@ export const builtInOptions = <A>(
     }
     if (builtIn.wizard) {
       return Option.some(showWizard(command))
+    }
+    if (builtIn.version) {
+      return Option.some(showVersion)
     }
     if (Option.isSome(builtIn.shellCompletionScriptPath) && Option.isSome(builtIn.shellType)) {
       return Option.some(

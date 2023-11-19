@@ -1204,9 +1204,6 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
       ))
     }
     case "WithDefault": {
-      if (isBool(self.options)) {
-        return wizardInternal(self.options as Instruction, config)
-      }
       const defaultHelp = InternalHelpDoc.p(`This option is optional - use the default?`)
       const message = pipe(
         wizardHeader,
@@ -1218,7 +1215,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
           InternalSelectPrompt.select({
             message: InternalHelpDoc.toAnsiText(message).trimEnd(),
             choices: [
-              { title: `Default ['${self.fallback}']`, value: true },
+              { title: `Default ['${JSON.stringify(self.fallback)}']`, value: true },
               { title: "Custom", value: false }
             ]
           })

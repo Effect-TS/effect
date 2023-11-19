@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
+import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import type * as BuiltInOptions from "../BuiltInOptions.js"
@@ -24,14 +25,15 @@ import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
 
+const proto = {
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
 // =============================================================================
 // Constructors
 // =============================================================================
-
-const defaultConfig = {
-  summary: InternalSpan.empty,
-  footer: InternalHelpDoc.empty
-}
 
 /** @internal */
 export const make = <A>(config: {
@@ -40,7 +42,15 @@ export const make = <A>(config: {
   command: Command.Command<A>
   summary?: Span.Span
   footer?: HelpDoc.HelpDoc
-}): CliApp.CliApp<A> => Object.assign({}, defaultConfig, config)
+}): CliApp.CliApp<A> => {
+  const op = Object.create(proto)
+  op.name = config.name
+  op.version = config.version
+  op.command = config.command
+  op.summary = config.summary || InternalSpan.empty
+  op.footer = config.footer || InternalHelpDoc.empty
+  return op
+}
 
 // =============================================================================
 // Combinators
@@ -119,10 +129,17 @@ const handleBuiltInOption = <A>(
   switch (builtIn._tag) {
     case "ShowHelp": {
       const banner = InternalHelpDoc.h1(InternalSpan.code(self.name))
-      const header = InternalHelpDoc.p(InternalSpan.concat(
-        InternalSpan.text(`${self.name} ${self.version} -- `),
-        self.summary
-      ))
+      const header = InternalHelpDoc.p(InternalSpan.spans([
+        InternalSpan.text(`${self.name} ${self.version}`),
+        InternalSpan.isEmpty(self.summary)
+          ? InternalSpan.empty
+          : InternalSpan.spans([
+            InternalSpan.space,
+            InternalSpan.text("--"),
+            InternalSpan.space,
+            self.summary
+          ])
+      ]))
       const usage = InternalHelpDoc.sequence(
         InternalHelpDoc.h1("USAGE"),
         pipe(
@@ -224,6 +241,10 @@ const handleBuiltInOption = <A>(
         Effect.zipRight(InternalCommand.wizard(builtIn.command, config)),
         Effect.tap((args) => Console.log(InternalHelpDoc.toAnsiText(renderWizardArgs(args))))
       )
+    }
+    case "ShowVersion": {
+      const help = InternalHelpDoc.p(self.version)
+      return Console.log(InternalHelpDoc.toAnsiText(help))
     }
   }
 }

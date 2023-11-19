@@ -608,6 +608,9 @@ const parseInternal = (
         if (ReadonlyArray.contains(args, "--wizard")) {
           return parseBuiltInArgs(ReadonlyArray.make(self.name, "--wizard"))
         }
+        if (ReadonlyArray.contains(args, "--version")) {
+          return parseBuiltInArgs(ReadonlyArray.make(self.name, "--version"))
+        }
         const error = InternalHelpDoc.p(`Missing command name: '${self.name}'`)
         return Effect.fail(InternalValidationError.commandMismatch(error))
       }
@@ -874,7 +877,7 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
   switch (self._tag) {
     case "Standard": {
       const message = InternalHelpDoc.p(pipe(
-        InternalSpan.text("\n\n"),
+        InternalSpan.text("\n"),
         InternalSpan.concat(InternalSpan.strong(InternalSpan.code("COMMAND:"))),
         InternalSpan.concat(InternalSpan.space),
         InternalSpan.concat(InternalSpan.code(self.name))

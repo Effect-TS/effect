@@ -14,7 +14,12 @@ import type { Usage } from "./Usage.js"
  * @since 1.0.0
  * @category models
  */
-export type BuiltInOptions = ShowHelp | ShowCompletionScript | ShowCompletions | ShowWizard
+export type BuiltInOptions =
+  | ShowHelp
+  | ShowCompletionScript
+  | ShowCompletions
+  | ShowWizard
+  | ShowVersion
 
 /**
  * @since 1.0.0
@@ -57,6 +62,14 @@ export interface ShowWizard {
 
 /**
  * @since 1.0.0
+ * @category models
+ */
+export interface ShowVersion {
+  readonly _tag: "ShowVersion"
+}
+
+/**
+ * @since 1.0.0
  * @category options
  */
 export const builtInOptions: <A>(
@@ -95,6 +108,13 @@ export const isShowWizard: (self: BuiltInOptions) => self is ShowWizard =
 
 /**
  * @since 1.0.0
+ * @category refinements
+ */
+export const isShowVersion: (self: BuiltInOptions) => self is ShowVersion =
+  InternalBuiltInOptions.isShowVersion
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const showCompletions: (index: number, shellType: ShellType) => BuiltInOptions =
@@ -122,3 +142,9 @@ export const showHelp: (usage: Usage, helpDoc: HelpDoc) => BuiltInOptions =
  */
 export const showWizard: (command: Command<unknown>) => BuiltInOptions =
   InternalBuiltInOptions.showWizard
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const showVersion: BuiltInOptions = InternalBuiltInOptions.showVersion

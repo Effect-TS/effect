@@ -19,6 +19,7 @@ import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
 import * as InternalNumberPrompt from "./prompt/number.js"
+import * as InternalTogglePrompt from "./prompt/toggle.js"
 import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
@@ -50,6 +51,7 @@ export type Instruction =
   | Single
   | Map
   | Both
+  | Optional
   | Variadic
 
 /** @internal */
@@ -78,6 +80,13 @@ export interface Both extends
   Op<"Both", {
     readonly left: Args.Args<unknown>
     readonly right: Args.Args<unknown>
+  }>
+{}
+
+/** @internal */
+export interface Optional extends
+  Op<"Optional", {
+    readonly args: Args.Args<unknown>
   }>
 {}
 
@@ -291,6 +300,10 @@ export const mapTryCatch = dual<
   }))
 
 /** @internal */
+export const optional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> =>
+  makeOptional(self as Instruction)
+
+/** @internal */
 export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
   makeVariadic(self, Option.none(), Option.none())
 
@@ -401,6 +414,15 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         getHelpInternal(self.right as Instruction)
       )
     }
+    case "Optional": {
+      return InternalHelpDoc.mapDescriptionList(
+        getHelpInternal(self.args as Instruction),
+        (span, block) => {
+          const optionalDescription = InternalHelpDoc.p("This setting is optional.")
+          return [span, InternalHelpDoc.sequence(block, optionalDescription)]
+        }
+      )
+    }
     case "Variadic": {
       const help = getHelpInternal(self.args as Instruction)
       return InternalHelpDoc.mapDescriptionList(help, (oldSpan, oldBlock) => {
@@ -431,6 +453,7 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
       return Option.some(self.name)
     }
     case "Map":
+    case "Optional":
     case "Variadic": {
       return getIdentifierInternal(self.args as Instruction)
     }
@@ -449,7 +472,8 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
 
 const getMinSizeInternal = (self: Instruction): number => {
   switch (self._tag) {
-    case "Empty": {
+    case "Empty":
+    case "Optional": {
       return 0
     }
     case "Single": {
@@ -478,7 +502,8 @@ const getMaxSizeInternal = (self: Instruction): number => {
     case "Single": {
       return 1
     }
-    case "Map": {
+    case "Map":
+    case "Optional": {
       return getMaxSizeInternal(self.args as Instruction)
     }
     case "Both": {
@@ -512,6 +537,9 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
         getUsageInternal(self.left as Instruction),
         getUsageInternal(self.right as Instruction)
       )
+    }
+    case "Optional": {
+      return InternalUsage.optional(getUsageInternal(self.args as Instruction))
     }
     case "Variadic": {
       return InternalUsage.repeated(getUsageInternal(self.args as Instruction))
@@ -552,6 +580,13 @@ const makeBoth = <A, B>(left: Args.Args<A>, right: Args.Args<B>): Args.Args<[A, 
   return op
 }
 
+const makeOptional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> => {
+  const op = Object.create(proto)
+  op._tag = "Optional"
+  op.args = self
+  return op
+}
+
 const makeVariadic = <A>(
   args: Args.Args<A>,
   min: Option.Option<number>,
@@ -582,6 +617,9 @@ const toRegularLanguageInternal = (self: Instruction): RegularLanguage.RegularLa
         toRegularLanguageInternal(self.right as Instruction)
       )
     }
+    case "Optional": {
+      return InternalRegularLanguage.optional(toRegularLanguageInternal(self.args as Instruction))
+    }
     case "Variadic": {
       return InternalRegularLanguage.repeated(toRegularLanguageInternal(self.args as Instruction), {
         min: Option.getOrUndefined(self.min),
@@ -611,33 +649,33 @@ const validateInternal = (
           const tail = ReadonlyArray.tailNonEmpty(args)
           return InternalPrimitive.validate(self.primitiveType, Option.some(head), config).pipe(
             Effect.mapBoth({
-              onFailure: (text) => InternalHelpDoc.p(text),
+              onFailure: (text) => InternalValidationError.invalidArgument(InternalHelpDoc.p(text)),
               onSuccess: (a) => [tail, a] as [ReadonlyArray<string>, any]
             })
           )
         }
         const choices = InternalPrimitive.getChoices(self.primitiveType)
         if (Option.isSome(self.pseudoName) && Option.isSome(choices)) {
-          return Effect.fail(InternalHelpDoc.p(
+          return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
             `Missing argument <${self.pseudoName.value}> with choices ${choices.value}`
-          ))
+          )))
         }
         if (Option.isSome(self.pseudoName)) {
-          return Effect.fail(InternalHelpDoc.p(
+          return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
             `Missing argument <${self.pseudoName.value}>`
-          ))
+          )))
         }
         if (Option.isSome(choices)) {
-          return Effect.fail(InternalHelpDoc.p(
+          return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
             `Missing argument ${
               InternalPrimitive.getTypeName(self.primitiveType)
             } with choices ${choices.value}`
-          ))
+          )))
         }
-        return Effect.fail(InternalHelpDoc.p(
+        return Effect.fail(InternalValidationError.missingValue(InternalHelpDoc.p(
           `Missing argument ${InternalPrimitive.getTypeName(self.primitiveType)}`
-        ))
-      }).pipe(Effect.mapError((help) => InternalValidationError.invalidArgument(help)))
+        )))
+      })
     }
     case "Map": {
       return validateInternal(self.args as Instruction, args, config).pipe(
@@ -656,6 +694,16 @@ const validateInternal = (
             Effect.map(([args, b]) => [args, [a, b]])
           )
         )
+      )
+    }
+    case "Optional": {
+      return validateInternal(self.args as Instruction, args, config).pipe(
+        Effect.map(([args, value]) => [args, Option.some(value)] as [ReadonlyArray<string>, any]),
+        Effect.catchTag("MissingValue", () =>
+          Effect.succeed<[ReadonlyArray<string>, any]>([
+            args,
+            Option.none()
+          ]))
       )
     }
     case "Variadic": {
@@ -705,6 +753,9 @@ const withDescriptionInternal = (self: Instruction, description: string): Args.A
         withDescriptionInternal(self.right as Instruction, description)
       )
     }
+    case "Optional": {
+      return makeOptional(withDescriptionInternal(self.args as Instruction, description))
+    }
     case "Variadic": {
       return makeVariadic(
         withDescriptionInternal(self.args as Instruction, description),
@@ -748,6 +799,29 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         wizardInternal(self.right as Instruction, config),
         (left, right) => ReadonlyArray.appendAll(left, right)
       ).pipe(Effect.tap((args) => validateInternal(self, args, config)))
+    }
+    case "Optional": {
+      const defaultHelp = InternalHelpDoc.p(`This argument is optional - specify a value?`)
+      const message = pipe(
+        wizardHeader,
+        InternalHelpDoc.sequence(getHelpInternal(self.args as Instruction)),
+        InternalHelpDoc.sequence(defaultHelp)
+      )
+      return Console.log().pipe(
+        Effect.zipRight(
+          InternalTogglePrompt.toggle({
+            message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+            initial: true,
+            active: "yes",
+            inactive: "no"
+          })
+        ),
+        Effect.flatMap((specifyValue) =>
+          specifyValue
+            ? wizardInternal(self.args as Instruction, config)
+            : Effect.succeed(ReadonlyArray.empty())
+        )
+      )
     }
     case "Variadic": {
       const repeatHelp = InternalHelpDoc.p(

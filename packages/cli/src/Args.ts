@@ -290,6 +290,12 @@ export const mapTryCatch: {
 } = InternalArgs.mapTryCatch
 
 /**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const optional: <A>(self: Args<A>) => Args<Option<A>> = InternalArgs.optional
+
+/**
  *  Creates an empty argument.
  *
  * @since 1.0.0
