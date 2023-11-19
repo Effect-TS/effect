@@ -181,3 +181,12 @@ export const setBody: {
   (body: Body.Body): (self: ServerResponse) => ServerResponse
   (self: ServerResponse, body: Body.Body): ServerResponse
 } = internal.setBody
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const setStatus: {
+  (status: number, statusText?: string | undefined): (self: ServerResponse) => ServerResponse
+  (self: ServerResponse, status: number, statusText?: string | undefined): ServerResponse
+} = internal.setStatus
