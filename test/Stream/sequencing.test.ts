@@ -379,7 +379,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("flatMapPar - inner defects interrupt all fibers", () =>
     Effect.gen(function*($) {
-      const defect = Cause.RuntimeException("Ouch")
+      const defect = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
       const latch = yield* $(Deferred.make<never, void>())
       const result = yield* $(
@@ -405,7 +405,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("flatMapPar - outer defects interrupt all fibers", () =>
     Effect.gen(function*($) {
-      const defect = Cause.RuntimeException("Ouch")
+      const defect = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
       const latch = yield* $(Deferred.make<never, void>())
       const result = yield* $(
@@ -597,7 +597,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("flatMapParSwitch - inner defects interrupt all fibers", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
       const latch = yield* $(Deferred.make<never, void>())
       const result = yield* $(
@@ -627,7 +627,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("flatMapParSwitch - outer defects interrupt all fibers", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const ref = yield* $(Ref.make(false))
       const latch = yield* $(Deferred.make<never, void>())
       const result = yield* $(
@@ -714,7 +714,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("flattenExitOption - failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(0, 9),
         Stream.concat(Stream.fail(error)),

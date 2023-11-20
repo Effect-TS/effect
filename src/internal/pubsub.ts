@@ -1179,7 +1179,7 @@ const nextPow2 = (n: number): number => {
 /** @internal */
 const ensureCapacity = (capacity: number): void => {
   if (capacity <= 0) {
-    throw core.InvalidPubSubCapacityException(`Cannot construct PubSub with capacity of ${capacity}`)
+    throw new core.InvalidPubSubCapacityException(`Cannot construct PubSub with capacity of ${capacity}`)
   }
 }
 

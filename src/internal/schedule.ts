@@ -84,7 +84,7 @@ class ScheduleDriverImpl<Env, In, Out> implements Schedule.ScheduleDriver<Env, I
     return core.flatMap(ref.get(this.ref), ([element, _]) => {
       switch (element._tag) {
         case "None": {
-          return core.failSync(() => core.NoSuchElementException())
+          return core.failSync(() => new core.NoSuchElementException())
         }
         case "Some": {
           return core.succeed(element.value)
@@ -421,7 +421,7 @@ export const dayOfMonth = (day: number): Schedule.Schedule<never, unknown, numbe
     (now, _, state) => {
       if (!Number.isInteger(day) || day < 1 || 31 < day) {
         return core.dieSync(() =>
-          core.IllegalArgumentException(
+          new core.IllegalArgumentException(
             `Invalid argument in: dayOfMonth(${day}). Must be in range 1...31`
           )
         )
@@ -450,7 +450,7 @@ export const dayOfWeek = (day: number): Schedule.Schedule<never, unknown, number
     (now, _, state) => {
       if (!Number.isInteger(day) || day < 1 || 7 < day) {
         return core.dieSync(() =>
-          core.IllegalArgumentException(
+          new core.IllegalArgumentException(
             `Invalid argument in: dayOfWeek(${day}). Must be in range 1 (Monday)...7 (Sunday)`
           )
         )
@@ -744,7 +744,7 @@ export const hourOfDay = (hour: number): Schedule.Schedule<never, unknown, numbe
     (now, _, state) => {
       if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
         return core.dieSync(() =>
-          core.IllegalArgumentException(
+          new core.IllegalArgumentException(
             `Invalid argument in: hourOfDay(${hour}). Must be in range 0...23`
           )
         )
@@ -1000,7 +1000,7 @@ export const minuteOfHour = (minute: number): Schedule.Schedule<never, unknown, 
     (now, _, state) => {
       if (!Number.isInteger(minute) || minute < 0 || 59 < minute) {
         return core.dieSync(() =>
-          core.IllegalArgumentException(
+          new core.IllegalArgumentException(
             `Invalid argument in: minuteOfHour(${minute}). Must be in range 0...59`
           )
         )
@@ -1313,7 +1313,7 @@ export const secondOfMinute = (second: number): Schedule.Schedule<never, unknown
     (now, _, state) => {
       if (!Number.isInteger(second) || second < 0 || 59 < second) {
         return core.dieSync(() =>
-          core.IllegalArgumentException(
+          new core.IllegalArgumentException(
             `Invalid argument in: secondOfMinute(${second}). Must be in range 0...59`
           )
         )

@@ -147,14 +147,14 @@ describe.concurrent("Effect", () => {
     Effect.gen(function*($) {
       const message = "division by zero"
       const result = yield* $(
-        Effect.die(Cause.IllegalArgumentException(message)),
+        Effect.die(new Cause.IllegalArgumentException(message)),
         Effect.catchAllDefect((e) => Effect.succeed((e as Error).message))
       )
       assert.strictEqual(result, message)
     }))
   it.effect("catchAllDefect - leaves errors", () =>
     Effect.gen(function*($) {
-      const error = Cause.IllegalArgumentException("division by zero")
+      const error = new Cause.IllegalArgumentException("division by zero")
       const result = yield* $(
         pipe(Effect.fail(error), Effect.catchAllDefect((e) => Effect.succeed((e as Error).message)), Effect.exit)
       )
@@ -162,7 +162,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("catchAllDefect - leaves values", () =>
     Effect.gen(function*($) {
-      const error = Cause.IllegalArgumentException("division by zero")
+      const error = new Cause.IllegalArgumentException("division by zero")
       const result = yield* $(
         pipe(Effect.succeed(error), Effect.catchAllDefect((e) => Effect.succeed((e as Error).message)))
       )
@@ -172,7 +172,7 @@ describe.concurrent("Effect", () => {
     Effect.gen(function*($) {
       const message = "division by zero"
       const result = yield* $(
-        Effect.die(Cause.IllegalArgumentException(message)),
+        Effect.die(new Cause.IllegalArgumentException(message)),
         Effect.catchSomeDefect((e) =>
           Cause.isIllegalArgumentException(e)
             ? Option.some(Effect.succeed(e.message))
@@ -183,7 +183,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("catchSomeDefect - leaves the rest", () =>
     Effect.gen(function*($) {
-      const error = Cause.IllegalArgumentException("division by zero")
+      const error = new Cause.IllegalArgumentException("division by zero")
       const result = yield* $(
         Effect.die(error),
         Effect.catchSomeDefect((e) =>
@@ -197,7 +197,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("catchSomeDefect - leaves errors", () =>
     Effect.gen(function*($) {
-      const error = Cause.IllegalArgumentException("division by zero")
+      const error = new Cause.IllegalArgumentException("division by zero")
       const result = yield* $(
         Effect.fail(error),
         Effect.catchSomeDefect((e) =>
@@ -211,7 +211,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("catchSomeDefect - leaves values", () =>
     Effect.gen(function*($) {
-      const error = Cause.IllegalArgumentException("division by zero")
+      const error = new Cause.IllegalArgumentException("division by zero")
       const result = yield* $(
         Effect.succeed(error),
         Effect.catchSomeDefect((e) =>
@@ -362,8 +362,8 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("orElse - left failed and right died with kept cause", () =>
     Effect.gen(function*($) {
-      const z1 = Effect.fail(Cause.RuntimeException("1"))
-      const z2 = Effect.die(Cause.RuntimeException("2"))
+      const z1 = Effect.fail(new Cause.RuntimeException("1"))
+      const z2 = Effect.die(new Cause.RuntimeException("2"))
       const result = yield* $(
         z1,
         Effect.orElse(() => z2),
@@ -382,8 +382,8 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("orElse - left failed and right failed with kept cause", () =>
     Effect.gen(function*($) {
-      const z1 = Effect.fail(Cause.RuntimeException("1"))
-      const z2 = Effect.fail(Cause.RuntimeException("2"))
+      const z1 = Effect.fail(new Cause.RuntimeException("1"))
+      const z2 = Effect.fail(new Cause.RuntimeException("2"))
       const result = yield* $(
         z1,
         Effect.orElse(() => z2),

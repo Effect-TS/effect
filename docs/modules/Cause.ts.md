@@ -289,7 +289,7 @@ provided to a method.
 **Signature**
 
 ```ts
-export declare const IllegalArgumentException: (message?: string) => IllegalArgumentException
+export declare const IllegalArgumentException: new (message?: string | undefined) => IllegalArgumentException
 ```
 
 Added in v2.0.0
@@ -301,7 +301,7 @@ Represents a checked exception which occurs when a `Fiber` is interrupted.
 **Signature**
 
 ```ts
-export declare const InterruptedException: (message?: string) => InterruptedException
+export declare const InterruptedException: new (message?: string | undefined) => InterruptedException
 ```
 
 Added in v2.0.0
@@ -314,7 +314,7 @@ unable to be found.
 **Signature**
 
 ```ts
-export declare const NoSuchElementException: (message?: string) => NoSuchElementException
+export declare const NoSuchElementException: new (message?: string | undefined) => NoSuchElementException
 ```
 
 Added in v2.0.0
@@ -326,7 +326,7 @@ Represents a generic checked exception which occurs at runtime.
 **Signature**
 
 ```ts
-export declare const RuntimeException: (message?: string) => RuntimeException
+export declare const RuntimeException: new (message?: string | undefined) => RuntimeException
 ```
 
 Added in v2.0.0
@@ -339,7 +339,7 @@ from a rejected promise.
 **Signature**
 
 ```ts
-export declare const UnknownException: (error: unknown, message?: string | undefined) => UnknownException
+export declare const UnknownException: new (error: unknown, message?: string | undefined) => UnknownException
 ```
 
 Added in v2.0.0

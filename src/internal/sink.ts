@@ -435,7 +435,7 @@ export const die = (defect: unknown): Sink.Sink<never, never, unknown, never, ne
 
 /** @internal */
 export const dieMessage = (message: string): Sink.Sink<never, never, unknown, never, never> =>
-  failCause(Cause.die(Cause.RuntimeException(message)))
+  failCause(Cause.die(new Cause.RuntimeException(message)))
 
 /** @internal */
 export const dieSync = (evaluate: LazyArg<unknown>): Sink.Sink<never, never, unknown, never, never> =>

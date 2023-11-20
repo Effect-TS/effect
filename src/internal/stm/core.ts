@@ -483,7 +483,7 @@ export class STMDriver<in out R, out E, out A> {
               break
             }
             case "None": {
-              curr = fail(Cause.NoSuchElementException()) as Primitive
+              curr = fail(new Cause.NoSuchElementException()) as Primitive
               break
             }
             case "Right": {
@@ -616,7 +616,7 @@ export const die = (defect: unknown): STM.STM<never, never, never> => dieSync(()
 
 /** @internal */
 export const dieMessage = (message: string): STM.STM<never, never, never> =>
-  dieSync(() => Cause.RuntimeException(message))
+  dieSync(() => new Cause.RuntimeException(message))
 
 /** @internal */
 export const dieSync = (evaluate: LazyArg<unknown>): STM.STM<never, never, never> => {

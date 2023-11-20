@@ -36,7 +36,7 @@ export const acquireN = dual<
 >(2, (self, n) =>
   core.withSTMRuntime((driver) => {
     if (n < 0) {
-      throw Cause.IllegalArgumentException(`Unexpected negative value ${n} passed to Semaphore.acquireN`)
+      throw new Cause.IllegalArgumentException(`Unexpected negative value ${n} passed to Semaphore.acquireN`)
     }
     const value = tRef.unsafeGet(self.permits, driver.journal)
     if (value < n) {
@@ -59,7 +59,7 @@ export const releaseN = dual<
 >(2, (self, n) =>
   core.withSTMRuntime((driver) => {
     if (n < 0) {
-      throw Cause.IllegalArgumentException(`Unexpected negative value ${n} passed to Semaphore.releaseN`)
+      throw new Cause.IllegalArgumentException(`Unexpected negative value ${n} passed to Semaphore.releaseN`)
     }
     const current = tRef.unsafeGet(self.permits, driver.journal)
     return STM.succeed(tRef.unsafeSet(self.permits, current + n, driver.journal))

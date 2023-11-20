@@ -642,7 +642,7 @@ export const die = (defect: unknown): Effect.Effect<never, never, never> =>
 
 /* @internal */
 export const dieMessage = (message: string): Effect.Effect<never, never, never> =>
-  failCauseSync(() => internalCause.die(RuntimeException(message)))
+  failCauseSync(() => internalCause.die(new RuntimeException(message)))
 
 /* @internal */
 export const dieSync = (evaluate: LazyArg<unknown>): Effect.Effect<never, never, never> => flatMap(sync(evaluate), die)
@@ -747,7 +747,7 @@ export const andThen = dual<
       return b
     } else if (isPromise(b)) {
       return async<never, Cause.UnknownException, any>((resume) => {
-        b.then((a) => resume(succeed(a))).catch((e) => resume(fail(UnknownException(e))))
+        b.then((a) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
       })
     }
     return succeed(b)
@@ -1188,7 +1188,7 @@ export const tap = dual<
       return as(b, a)
     } else if (isPromise(b)) {
       return async<never, Cause.UnknownException, any>((resume) => {
-        b.then((_) => resume(succeed(a))).catch((e) => resume(fail(UnknownException(e))))
+        b.then((_) => resume(succeed(a))).catch((e) => resume(fail(new UnknownException(e))))
       })
     }
     return succeed(a)
@@ -2176,7 +2176,7 @@ export const causeSquashWith = dual<
             const interrupts = Array.from(internalCause.interruptors(self)).flatMap((fiberId) =>
               Array.from(FiberId.ids(fiberId)).map((id) => `#${id}`)
             )
-            return InterruptedException(interrupts ? `Interrupted by fibers: ${interrupts.join(", ")}` : void 0)
+            return new InterruptedException(interrupts ? `Interrupted by fibers: ${interrupts.join(", ")}` : void 0)
           },
           onSome: identity
         })
@@ -2215,13 +2215,13 @@ export const YieldableError: new(message?: string) => Cause.YieldableError = (fu
 const makeException = <T extends { _tag: string; message?: string }>(
   proto: Omit<T, keyof Cause.YieldableError | "_tag">,
   tag: T["_tag"]
-) => {
+): new(message?: string | undefined) => T => {
   class Base extends YieldableError {
     readonly _tag = tag
   }
   Object.assign(Base.prototype, proto)
   ;(Base.prototype as any).name = tag
-  return (message?: string): T => new Base(message) as any
+  return Base as any
 }
 
 /** @internal */
@@ -2299,19 +2299,20 @@ export const UnknownExceptionTypeId: Cause.UnknownExceptionTypeId = Symbol.for(
 ) as Cause.UnknownExceptionTypeId
 
 /** @internal */
-export const UnknownException = (function() {
-  class UnknownException extends YieldableError {
-    readonly _tag = "UnknownException"
-    constructor(readonly error: unknown, message?: string) {
-      super(message ?? (hasProperty(error, "message") && isString(error.message) ? error.message : void 0))
+export const UnknownException: new(error: unknown, message?: string | undefined) => Cause.UnknownException =
+  (function() {
+    class UnknownException extends YieldableError {
+      readonly _tag = "UnknownException"
+      constructor(readonly error: unknown, message?: string) {
+        super(message ?? (hasProperty(error, "message") && isString(error.message) ? error.message : void 0))
+      }
     }
-  }
-  Object.assign(UnknownException.prototype, {
-    [UnknownExceptionTypeId]: UnknownExceptionTypeId,
-    name: "UnknownException"
-  })
-  return (error: unknown, message?: string): Cause.UnknownException => new UnknownException(error, message) as any
-})()
+    Object.assign(UnknownException.prototype, {
+      [UnknownExceptionTypeId]: UnknownExceptionTypeId,
+      name: "UnknownException"
+    })
+    return UnknownException as any
+  })()
 
 /** @internal */
 export const isUnknownException = (u: unknown): u is Cause.UnknownException => hasProperty(u, UnknownExceptionTypeId)
