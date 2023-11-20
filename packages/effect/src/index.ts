@@ -517,6 +517,11 @@ export * as Predicate from "./Predicate.js"
 /**
  * @since 2.0.0
  */
+export * as PrimaryKey from "./PrimaryKey.js"
+
+/**
+ * @since 2.0.0
+ */
 export * as PubSub from "./PubSub.js"
 
 /**
