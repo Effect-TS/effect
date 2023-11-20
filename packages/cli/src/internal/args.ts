@@ -19,7 +19,7 @@ import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
 import * as InternalNumberPrompt from "./prompt/number.js"
-import * as InternalTogglePrompt from "./prompt/toggle.js"
+import * as InternalSelectPrompt from "./prompt/select.js"
 import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
@@ -51,8 +51,8 @@ export type Instruction =
   | Single
   | Map
   | Both
-  | Optional
   | Variadic
+  | WithDefault
 
 /** @internal */
 export interface Empty extends Op<"Empty", {}> {}
@@ -84,18 +84,19 @@ export interface Both extends
 {}
 
 /** @internal */
-export interface Optional extends
-  Op<"Optional", {
-    readonly args: Args.Args<unknown>
-  }>
-{}
-
-/** @internal */
 export interface Variadic extends
   Op<"Variadic", {
     readonly args: Args.Args<unknown>
     readonly min: Option.Option<number>
     readonly max: Option.Option<number>
+  }>
+{}
+
+/** @internal */
+export interface WithDefault extends
+  Op<"WithDefault", {
+    readonly args: Args.Args<unknown>
+    readonly fallback: unknown
   }>
 {}
 
@@ -301,7 +302,7 @@ export const mapTryCatch = dual<
 
 /** @internal */
 export const optional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> =>
-  makeOptional(self as Instruction)
+  makeWithDefault(self as Instruction, Option.none())
 
 /** @internal */
 export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
@@ -332,6 +333,12 @@ export const validate = dual<
     [ReadonlyArray<string>, A]
   >
 >(3, (self, args, config) => validateInternal(self as Instruction, args, config))
+
+/** @internal */
+export const withDefault = dual<
+  <A>(fallback: A) => (self: Args.Args<A>) => Args.Args<A>,
+  <A>(self: Args.Args<A>, fallback: A) => Args.Args<A>
+>(2, (self, fallback) => makeWithDefault(self, fallback))
 
 /** @internal */
 export const withDescription = dual<
@@ -399,15 +406,6 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         getHelpInternal(self.right as Instruction)
       )
     }
-    case "Optional": {
-      return InternalHelpDoc.mapDescriptionList(
-        getHelpInternal(self.args as Instruction),
-        (span, block) => {
-          const optionalDescription = InternalHelpDoc.p("This setting is optional.")
-          return [span, InternalHelpDoc.sequence(block, optionalDescription)]
-        }
-      )
-    }
     case "Variadic": {
       const help = getHelpInternal(self.args as Instruction)
       return InternalHelpDoc.mapDescriptionList(help, (oldSpan, oldBlock) => {
@@ -426,6 +424,21 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         return [InternalSpan.concat(oldSpan, newSpan), InternalHelpDoc.sequence(oldBlock, newBlock)]
       })
     }
+    case "WithDefault": {
+      return InternalHelpDoc.mapDescriptionList(
+        getHelpInternal(self.args as Instruction),
+        (span, block) => {
+          const optionalDescription = Option.isOption(self.fallback)
+            ? Option.match(self.fallback, {
+              onNone: () => InternalHelpDoc.p("This setting is optional."),
+              onSome: () =>
+                InternalHelpDoc.p(`This setting is optional. Defaults to: ${self.fallback}`)
+            })
+            : InternalHelpDoc.p("This setting is optional.")
+          return [span, InternalHelpDoc.sequence(block, optionalDescription)]
+        }
+      )
+    }
   }
 }
 
@@ -438,8 +451,8 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
       return Option.some(self.name)
     }
     case "Map":
-    case "Optional":
-    case "Variadic": {
+    case "Variadic":
+    case "WithDefault": {
       return getIdentifierInternal(self.args as Instruction)
     }
     case "Both": {
@@ -458,7 +471,7 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
 const getMinSizeInternal = (self: Instruction): number => {
   switch (self._tag) {
     case "Empty":
-    case "Optional": {
+    case "WithDefault": {
       return 0
     }
     case "Single": {
@@ -488,7 +501,7 @@ const getMaxSizeInternal = (self: Instruction): number => {
       return 1
     }
     case "Map":
-    case "Optional": {
+    case "WithDefault": {
       return getMaxSizeInternal(self.args as Instruction)
     }
     case "Both": {
@@ -523,11 +536,11 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
         getUsageInternal(self.right as Instruction)
       )
     }
-    case "Optional": {
-      return InternalUsage.optional(getUsageInternal(self.args as Instruction))
-    }
     case "Variadic": {
       return InternalUsage.repeated(getUsageInternal(self.args as Instruction))
+    }
+    case "WithDefault": {
+      return InternalUsage.optional(getUsageInternal(self.args as Instruction))
     }
   }
 }
@@ -565,10 +578,14 @@ const makeBoth = <A, B>(left: Args.Args<A>, right: Args.Args<B>): Args.Args<[A, 
   return op
 }
 
-const makeOptional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> => {
+const makeWithDefault = <A>(
+  self: Args.Args<A>,
+  fallback: A
+): Args.Args<A> => {
   const op = Object.create(proto)
-  op._tag = "Optional"
+  op._tag = "WithDefault"
   op.args = self
+  op.fallback = fallback
   return op
 }
 
@@ -602,14 +619,16 @@ const toRegularLanguageInternal = (self: Instruction): RegularLanguage.RegularLa
         toRegularLanguageInternal(self.right as Instruction)
       )
     }
-    case "Optional": {
-      return InternalRegularLanguage.optional(toRegularLanguageInternal(self.args as Instruction))
-    }
     case "Variadic": {
       return InternalRegularLanguage.repeated(toRegularLanguageInternal(self.args as Instruction), {
         min: Option.getOrUndefined(self.min),
         max: Option.getOrUndefined(self.max)
       })
+    }
+    case "WithDefault": {
+      return InternalRegularLanguage.optional(
+        toRegularLanguageInternal(self.args as Instruction)
+      )
     }
   }
 }
@@ -681,16 +700,6 @@ const validateInternal = (
         )
       )
     }
-    case "Optional": {
-      return validateInternal(self.args as Instruction, args, config).pipe(
-        Effect.map(([args, value]) => [args, Option.some(value)] as [ReadonlyArray<string>, any]),
-        Effect.catchTag("MissingValue", () =>
-          Effect.succeed<[ReadonlyArray<string>, any]>([
-            args,
-            Option.none()
-          ]))
-      )
-    }
     case "Variadic": {
       const min1 = Option.getOrElse(self.min, () => 0)
       const max1 = Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER)
@@ -717,6 +726,15 @@ const validateInternal = (
         Effect.map(([args, acc]) => [args, acc])
       )
     }
+    case "WithDefault": {
+      return validateInternal(self.args as Instruction, args, config).pipe(
+        Effect.catchTag("MissingValue", () =>
+          Effect.succeed<[ReadonlyArray<string>, any]>([
+            args,
+            self.fallback
+          ]))
+      )
+    }
   }
 }
 
@@ -738,14 +756,17 @@ const withDescriptionInternal = (self: Instruction, description: string): Args.A
         withDescriptionInternal(self.right as Instruction, description)
       )
     }
-    case "Optional": {
-      return makeOptional(withDescriptionInternal(self.args as Instruction, description))
-    }
     case "Variadic": {
       return makeVariadic(
         withDescriptionInternal(self.args as Instruction, description),
         self.min,
         self.max
+      )
+    }
+    case "WithDefault": {
+      return makeWithDefault(
+        withDescriptionInternal(self.args as Instruction, description),
+        self.fallback
       )
     }
   }
@@ -785,29 +806,6 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         (left, right) => ReadonlyArray.appendAll(left, right)
       ).pipe(Effect.tap((args) => validateInternal(self, args, config)))
     }
-    case "Optional": {
-      const defaultHelp = InternalHelpDoc.p(`This argument is optional - specify a value?`)
-      const message = pipe(
-        wizardHeader,
-        InternalHelpDoc.sequence(getHelpInternal(self.args as Instruction)),
-        InternalHelpDoc.sequence(defaultHelp)
-      )
-      return Console.log().pipe(
-        Effect.zipRight(
-          InternalTogglePrompt.toggle({
-            message: InternalHelpDoc.toAnsiText(message).trimEnd(),
-            initial: true,
-            active: "yes",
-            inactive: "no"
-          })
-        ),
-        Effect.flatMap((specifyValue) =>
-          specifyValue
-            ? wizardInternal(self.args as Instruction, config)
-            : Effect.succeed(ReadonlyArray.empty())
-        )
-      )
-    }
     case "Variadic": {
       const repeatHelp = InternalHelpDoc.p(
         "How many times should this argument should be repeated?"
@@ -834,6 +832,30 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
               )
             )
           )
+        )
+      )
+    }
+    case "WithDefault": {
+      const defaultHelp = InternalHelpDoc.p(`This argument is optional - use the default?`)
+      const message = pipe(
+        wizardHeader,
+        InternalHelpDoc.sequence(getHelpInternal(self.args as Instruction)),
+        InternalHelpDoc.sequence(defaultHelp)
+      )
+      return Console.log().pipe(
+        Effect.zipRight(
+          InternalSelectPrompt.select({
+            message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+            choices: [
+              { title: `Default ['${JSON.stringify(self.fallback)}']`, value: true },
+              { title: "Custom", value: false }
+            ]
+          })
+        ),
+        Effect.flatMap((useFallback) =>
+          useFallback
+            ? Effect.succeed(ReadonlyArray.empty())
+            : wizardInternal(self.args as Instruction, config)
         )
       )
     }

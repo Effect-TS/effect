@@ -358,6 +358,15 @@ export const validate: {
  * @since 1.0.0
  * @category combinators
  */
+export const withDefault: {
+  <A>(fallback: A): (self: Args<A>) => Args<A>
+  <A>(self: Args<A>, fallback: A): Args<A>
+} = InternalArgs.withDefault
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const withDescription: {
   (description: string): <A>(self: Args<A>) => Args<A>
   <A>(self: Args<A>, description: string): Args<A>
