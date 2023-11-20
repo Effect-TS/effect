@@ -617,6 +617,8 @@ Effect.takeWhile(numbersArray, predicateNumbersOrStringsEffect)
 
 // $ExpectType Effect<never, never, number[]>
 pipe(numbersArray, Effect.takeWhile(predicateNumbersOrStringsEffect))
+
+// -------------------------------------------------------------------------------------
 // andThen
 // -------------------------------------------------------------------------------------
 
@@ -625,6 +627,9 @@ Effect.andThen(string, number)
 
 // $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
 Effect.andThen(string, () => number)
+
+// $ExpectType Effect<"dep-1", "err-1" | UnknownException, number>
+Effect.andThen(string, () => Promise.resolve(123))
 
 // $ExpectType Effect<"dep-1" | "dep-2", "err-1" | "err-2", number>
 string.pipe(Effect.andThen(number))

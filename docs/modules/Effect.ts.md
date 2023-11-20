@@ -2595,7 +2595,7 @@ thrown exceptions into typed failed effects creating with `Effect.fail`.
 **Signature**
 
 ```ts
-export declare const try: { <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E; }): Effect<never, E, A>; <A>(evaluate: LazyArg<A>): Effect<never, unknown, A>; }
+export declare const try: { <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E; }): Effect<never, E, A>; <A>(evaluate: LazyArg<A>): Effect<never, Cause.UnknownException, A>; }
 ```
 
 Added in v2.0.0
@@ -2665,7 +2665,7 @@ export declare const tryPromise: {
     readonly try: (signal: AbortSignal) => Promise<A>
     readonly catch: (error: unknown) => E
   }): Effect<never, E, A>
-  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect<never, unknown, A>
+  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect<never, Cause.UnknownException, A>
 }
 ```
 
@@ -5170,20 +5170,36 @@ export declare const andThen: {
     f: (a: NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
-  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>]
+    ? Effect<R | R1, E | E1, A1>
+    : [X] extends [Promise<infer A1>]
+      ? Effect<R, Cause.UnknownException | E, A1>
+      : Effect<R, E, X>
   <X>(
     f: X
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  ) => [X] extends [Effect<infer R1, infer E1, infer A1>]
+    ? Effect<R | R1, E | E1, A1>
+    : [X] extends [Promise<infer A1>]
+      ? Effect<R, Cause.UnknownException | E, A1>
+      : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
     f: (a: NoInfer<A>) => X
-  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>]
+    ? Effect<R | R1, E | E1, A1>
+    : [X] extends [Promise<infer A1>]
+      ? Effect<R, Cause.UnknownException | E, A1>
+      : Effect<R, E, X>
   <A, R, E, X>(
     self: Effect<R, E, A>,
     f: X
-  ): [X] extends [Effect<infer R1, infer E1, infer A1>] ? Effect<R | R1, E | E1, A1> : Effect<R, E, X>
+  ): [X] extends [Effect<infer R1, infer E1, infer A1>]
+    ? Effect<R | R1, E | E1, A1>
+    : [X] extends [Promise<infer A1>]
+      ? Effect<R, Cause.UnknownException | E, A1>
+      : Effect<R, E, X>
 }
 ```
 
@@ -5334,20 +5350,36 @@ export declare const tap: {
     f: (a: NoInfer<A>) => X
   ): <R, E>(
     self: Effect<R, E, A>
-  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>]
+    ? Effect<R | R1, E | E1, A>
+    : [X] extends [Promise<infer _A1>]
+      ? Effect<R, Cause.UnknownException | E, A>
+      : Effect<R, E, A>
   <X>(
     f: X
   ): <R, E, A>(
     self: Effect<R, E, A>
-  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  ) => [X] extends [Effect<infer R1, infer E1, infer _A1>]
+    ? Effect<R | R1, E | E1, A>
+    : [X] extends [Promise<infer _A1>]
+      ? Effect<R, Cause.UnknownException | E, A>
+      : Effect<R, E, A>
   <A, R, E, X>(
     self: Effect<R, E, A>,
     f: (a: NoInfer<A>) => X
-  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>]
+    ? Effect<R | R1, E | E1, A>
+    : [X] extends [Promise<infer _A1>]
+      ? Effect<R, Cause.UnknownException | E, A>
+      : Effect<R, E, A>
   <A, R, E, X>(
     self: Effect<R, E, A>,
     f: X
-  ): [X] extends [Effect<infer R1, infer E1, infer _A1>] ? Effect<R | R1, E | E1, A> : Effect<R, E, A>
+  ): [X] extends [Effect<infer R1, infer E1, infer _A1>]
+    ? Effect<R | R1, E | E1, A>
+    : [X] extends [Promise<infer _A1>]
+      ? Effect<R, Cause.UnknownException | E, A>
+      : Effect<R, E, A>
 }
 ```
 

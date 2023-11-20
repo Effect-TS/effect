@@ -2,14 +2,14 @@ import type * as Cause from "../Cause.js"
 import * as Chunk from "../Chunk.js"
 import * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
-import * as FiberId from "../FiberId.js"
+import type * as FiberId from "../FiberId.js"
 import { constFalse, constTrue, dual, identity, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
 import * as HashSet from "../HashSet.js"
 import { NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isFunction, isString, type Predicate } from "../Predicate.js"
+import { hasProperty, isFunction, type Predicate } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import * as OpCodes from "./opCodes/cause.js"
 
@@ -606,43 +606,6 @@ const flattenCauseLoop = (
 }
 
 // -----------------------------------------------------------------------------
-// Squashing
-// -----------------------------------------------------------------------------
-
-/** @internal */
-export const squash = <E>(self: Cause.Cause<E>): unknown => {
-  return squashWith(identity)(self)
-}
-
-/** @internal */
-export const squashWith = dual<
-  <E>(f: (error: E) => unknown) => (self: Cause.Cause<E>) => unknown,
-  <E>(self: Cause.Cause<E>, f: (error: E) => unknown) => unknown
->(2, (self, f) => {
-  const option = pipe(self, failureOption, Option.map(f))
-  switch (option._tag) {
-    case "None": {
-      return pipe(
-        defects(self),
-        Chunk.head,
-        Option.match({
-          onNone: () => {
-            const interrupts = Array.from(interruptors(self)).flatMap((fiberId) =>
-              Array.from(FiberId.ids(fiberId)).map((id) => `#${id}`)
-            )
-            return InterruptedException(interrupts ? `Interrupted by fibers: ${interrupts.join(", ")}` : void 0)
-          },
-          onSome: identity
-        })
-      )
-    }
-    case "Some": {
-      return option.value
-    }
-  }
-})
-
-// -----------------------------------------------------------------------------
 // Finding
 // -----------------------------------------------------------------------------
 
@@ -989,105 +952,6 @@ export const reduceWithContext = dual<
   }
   return accumulator.pop()!
 })
-
-// -----------------------------------------------------------------------------
-// Errors
-// -----------------------------------------------------------------------------
-
-const makeException = <T extends { _tag: string; message?: string }>(
-  proto: Omit<T, "message" | "_tag">,
-  tag: T["_tag"]
-) => {
-  const _tag = {
-    value: tag,
-    enumerable: true
-  }
-  const protoWithToString = {
-    ...proto,
-    toString(this: { _tag: string; message?: string }): string {
-      return `${this._tag}: ${this.message}`
-    }
-  }
-  return (message?: string): T => {
-    const properties: PropertyDescriptorMap = { _tag }
-    if (isString(message)) {
-      properties["message"] = {
-        value: message,
-        enumerable: true
-      }
-    }
-    return Object.create(protoWithToString, properties)
-  }
-}
-
-/** @internal */
-export const RuntimeExceptionTypeId: Cause.RuntimeExceptionTypeId = Symbol.for(
-  "effect/Cause/errors/RuntimeException"
-) as Cause.RuntimeExceptionTypeId
-
-/** @internal */
-export const RuntimeException = makeException<Cause.RuntimeException>({
-  [RuntimeExceptionTypeId]: RuntimeExceptionTypeId
-}, "RuntimeException")
-
-/** @internal */
-export const isRuntimeException = (u: unknown): u is Cause.RuntimeException => hasProperty(u, RuntimeExceptionTypeId)
-
-/** @internal */
-export const InterruptedExceptionTypeId: Cause.InterruptedExceptionTypeId = Symbol.for(
-  "effect/Cause/errors/InterruptedException"
-) as Cause.InterruptedExceptionTypeId
-
-/** @internal */
-export const InterruptedException = makeException<Cause.InterruptedException>({
-  [InterruptedExceptionTypeId]: InterruptedExceptionTypeId
-}, "InterruptedException")
-
-/** @internal */
-export const isInterruptedException = (u: unknown): u is Cause.InterruptedException =>
-  hasProperty(u, InterruptedExceptionTypeId)
-
-/** @internal */
-export const IllegalArgumentExceptionTypeId: Cause.IllegalArgumentExceptionTypeId = Symbol.for(
-  "effect/Cause/errors/IllegalArgument"
-) as Cause.IllegalArgumentExceptionTypeId
-
-/** @internal */
-export const IllegalArgumentException = makeException<Cause.IllegalArgumentException>({
-  [IllegalArgumentExceptionTypeId]: IllegalArgumentExceptionTypeId
-}, "IllegalArgumentException")
-
-/** @internal */
-export const isIllegalArgumentException = (u: unknown): u is Cause.IllegalArgumentException =>
-  hasProperty(u, IllegalArgumentExceptionTypeId)
-
-/** @internal */
-export const NoSuchElementExceptionTypeId: Cause.NoSuchElementExceptionTypeId = Symbol.for(
-  "effect/Cause/errors/NoSuchElement"
-) as Cause.NoSuchElementExceptionTypeId
-
-/** @internal */
-export const NoSuchElementException = makeException<Cause.NoSuchElementException>({
-  [NoSuchElementExceptionTypeId]: NoSuchElementExceptionTypeId
-}, "NoSuchElementException")
-
-/** @internal */
-export const isNoSuchElementException = (u: unknown): u is Cause.NoSuchElementException =>
-  hasProperty(u, NoSuchElementExceptionTypeId)
-
-/** @internal */
-export const InvalidPubSubCapacityExceptionTypeId: Cause.InvalidPubSubCapacityExceptionTypeId = Symbol.for(
-  "effect/Cause/errors/InvalidPubSubCapacityException"
-) as Cause.InvalidPubSubCapacityExceptionTypeId
-
-/** @internal */
-export const InvalidPubSubCapacityException = makeException<Cause.InvalidPubSubCapacityException>({
-  [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
-}, "InvalidPubSubCapacityException")
-
-/** @internal */
-export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException =>
-  hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
 
 // -----------------------------------------------------------------------------
 // Pretty Printing

@@ -30,7 +30,6 @@ Added in v2.0.0
   - [Case (interface)](#case-interface)
   - [Data (type alias)](#data-type-alias)
   - [TaggedEnum (type alias)](#taggedenum-type-alias)
-  - [YieldableError (interface)](#yieldableerror-interface)
 - [utils](#utils)
   - [Case (namespace)](#case-namespace)
     - [Constructor (interface)](#constructor-interface)
@@ -89,7 +88,7 @@ export declare const Error: new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
     : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
-) => YieldableError & Readonly<A>
+) => Cause.YieldableError & Readonly<A>
 ```
 
 Added in v2.0.0
@@ -157,7 +156,7 @@ export declare const TaggedError: <Tag extends string>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true
     ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
-) => YieldableError & { readonly _tag: Tag } & Readonly<A>
+) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A>
 ```
 
 Added in v2.0.0
@@ -473,29 +472,6 @@ export type TaggedEnum<A extends Record<string, Record<string, any>> & UntaggedC
     ? Data<Types.Simplify<{ readonly _tag: Tag } & { readonly [K in keyof A[Tag]]: A[Tag][K] }>>
     : never
   : never
-```
-
-Added in v2.0.0
-
-## YieldableError (interface)
-
-**Signature**
-
-```ts
-export interface YieldableError extends Case, Pipeable, Readonly<Error> {
-  readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
-  readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
-  readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
-  readonly [Effectable.ChannelTypeId]: Channel.Channel.VarianceStruct<
-    never,
-    unknown,
-    unknown,
-    unknown,
-    this,
-    never,
-    never
-  >
-}
 ```
 
 Added in v2.0.0

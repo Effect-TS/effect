@@ -6,7 +6,6 @@ import * as Hash from "../Hash.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as Sink from "../Sink.js"
 import type * as Stream from "../Stream.js"
-import * as Data from "./data.js"
 import * as OpCodes from "./opCodes/effect.js"
 import { moduleVersion } from "./version.js"
 
@@ -68,16 +67,36 @@ export const EffectPrototype: Effect.Effect<never, never, never> = {
 }
 
 /** @internal */
+export const StructuralPrototype: Equal.Equal = {
+  [Hash.symbol](this: Equal.Equal) {
+    return Hash.structure(this)
+  },
+  [Equal.symbol](this: Equal.Equal, that: Equal.Equal) {
+    const selfKeys = Object.keys(this)
+    const thatKeys = Object.keys(that as object)
+    if (selfKeys.length !== thatKeys.length) {
+      return false
+    }
+    for (const key of selfKeys) {
+      if (!(key in (that as object) && Equal.equals((this as any)[key], (that as any)[key]))) {
+        return false
+      }
+    }
+    return true
+  }
+}
+
+/** @internal */
 export const CommitPrototype: Effect.Effect<never, never, never> = {
   ...EffectPrototype,
   _op: OpCodes.OP_COMMIT
 } as any
 
 /** @internal */
-export const StructuralCommitPrototype = {
+export const StructuralCommitPrototype: Effect.Effect<never, never, never> = {
   ...CommitPrototype,
-  ...Data.Structural.prototype
-}
+  ...StructuralPrototype
+} as any
 
 /** @internal */
 export const Base: Effectable.CommitPrimitive = (function() {

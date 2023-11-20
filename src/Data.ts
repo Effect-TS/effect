@@ -1,13 +1,11 @@
 /**
  * @since 2.0.0
  */
-import type * as Channel from "./Channel.js"
-import * as Effect from "./Effect.js"
-import * as Effectable from "./Effectable.js"
+import type * as Cause from "./Cause.js"
 import type * as Equal from "./Equal.js"
+import * as core from "./internal/core.js"
 import * as internal from "./internal/data.js"
-import { type Pipeable } from "./Pipeable.js"
-import type * as Sink from "./Sink.js"
+import { StructuralPrototype } from "./internal/effectable.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -69,7 +67,7 @@ export const struct: <A extends Record<string, any>>(a: A) => Data<{ readonly [P
  * @since 2.0.0
  */
 export const unsafeStruct = <A extends Record<string, any>>(as: A): Data<{ readonly [P in keyof A]: A[P] }> =>
-  Object.setPrototypeOf(as, internal.StructProto)
+  Object.setPrototypeOf(as, StructuralPrototype)
 
 /**
  * @example
@@ -126,7 +124,7 @@ export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<Readonl
   Object.setPrototypeOf(as, internal.ArrayProto)
 
 const _case = <A extends Case>(): Case.Constructor<A> => (args) =>
-  (args === undefined ? Object.create(internal.StructProto) : struct(args)) as any
+  (args === undefined ? Object.create(StructuralPrototype) : struct(args)) as any
 
 export {
   /**
@@ -183,7 +181,7 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
   tag: A["_tag"]
 ): Case.Constructor<A, "_tag"> =>
 (args) => {
-  const value = args === undefined ? Object.create(internal.StructProto) : struct(args)
+  const value = args === undefined ? Object.create(StructuralPrototype) : struct(args)
   value._tag = tag
   return value
 }
@@ -443,35 +441,6 @@ export const taggedEnum: {
   }) as any
 
 /**
- * @since 2.0.0
- * @category models
- */
-export interface YieldableError extends Case, Pipeable, Readonly<Error> {
-  readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
-  readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
-  readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
-  readonly [Effectable.ChannelTypeId]: Channel.Channel.VarianceStruct<
-    never,
-    unknown,
-    unknown,
-    unknown,
-    this,
-    never,
-    never
-  >
-}
-
-const YieldableErrorProto = {
-  ...Effectable.StructuralCommitPrototype,
-  commit() {
-    return Effect.fail(this)
-  },
-  toString(this: globalThis.Error) {
-    return `${this.name}: ${this.message}`
-  }
-}
-
-/**
  * Provides a constructor for a Case Class.
  *
  * @since 2.0.0
@@ -480,15 +449,15 @@ const YieldableErrorProto = {
 export const Error: new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
-) => YieldableError & Readonly<A> = (function() {
-  class Base extends globalThis.Error {
+) => Cause.YieldableError & Readonly<A> = (function() {
+  return class Base extends core.YieldableError {
     constructor(args: any) {
       super()
-      Object.assign(this, args)
+      if (args) {
+        Object.assign(this, args)
+      }
     }
-  }
-  Object.assign(Base.prototype, YieldableErrorProto)
-  return Base as any
+  } as any
 })()
 
 /**
@@ -498,7 +467,7 @@ export const Error: new<A extends Record<string, any>>(
 export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
-) => YieldableError & { readonly _tag: Tag } & Readonly<A> => {
+) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A> => {
   class Base extends Error<{}> {
     readonly _tag = tag
   }

@@ -99,7 +99,7 @@ export const try_: {
     readonly try: LazyArg<A>
     readonly catch: (error: unknown) => E
   }): Effect.Effect<never, E, A>
-  <A>(evaluate: LazyArg<A>): Effect.Effect<never, unknown, A>
+  <A>(evaluate: LazyArg<A>): Effect.Effect<never, Cause.UnknownException, A>
 } = <A, E>(
   arg: LazyArg<A> | {
     readonly try: LazyArg<A>
@@ -119,7 +119,7 @@ export const try_: {
       return evaluate()
     } catch (error) {
       throw core.makeEffectError(internalCause.fail(
-        onFailure ? onFailure(error) : error
+        onFailure ? onFailure(error) : core.UnknownException(error)
       ))
     }
   })
@@ -705,7 +705,7 @@ export const firstSuccessOf = <R, E, A>(effects: Iterable<Effect.Effect<R, E, A>
   core.suspend(() => {
     const list = Chunk.fromIterable(effects)
     if (!Chunk.isNonEmpty(list)) {
-      return core.dieSync(() => internalCause.IllegalArgumentException(`Received an empty collection of effects`))
+      return core.dieSync(() => core.IllegalArgumentException(`Received an empty collection of effects`))
     }
     return pipe(
       Chunk.tailNonEmpty(list),
@@ -1620,13 +1620,13 @@ export const tryPromise: {
       readonly catch: (error: unknown) => E
     }
   ): Effect.Effect<never, E, A>
-  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect.Effect<never, unknown, A>
+  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect.Effect<never, Cause.UnknownException, A>
 } = <A, E>(
   arg: ((signal: AbortSignal) => Promise<A>) | {
     readonly try: (signal: AbortSignal) => Promise<A>
     readonly catch: (error: unknown) => E
   }
-): Effect.Effect<never, E | unknown, A> => {
+): Effect.Effect<never, E | Cause.UnknownException, A> => {
   let evaluate: (signal?: AbortSignal) => Promise<A>
   let catcher: ((error: unknown) => E) | undefined = undefined
 
@@ -1646,7 +1646,7 @@ export const tryPromise: {
             .then((a) => resolve(core.exitSucceed(a)))
             .catch((e) =>
               resolve(core.fail(
-                catcher ? catcher(e) : e
+                catcher ? catcher(e) : core.UnknownException(e)
               ))
             )
           return core.sync(() => controller.abort())
@@ -2147,7 +2147,7 @@ export const withSpan = dual<
 
 /* @internal */
 export const fromNullable = <A>(value: A): Effect.Effect<never, Cause.NoSuchElementException, NonNullable<A>> =>
-  value == null ? core.fail(internalCause.NoSuchElementException()) : core.succeed(value as NonNullable<A>)
+  value == null ? core.fail(core.NoSuchElementException()) : core.succeed(value as NonNullable<A>)
 
 /* @internal */
 export const optionFromOptional = <R, E, A>(
@@ -2156,7 +2156,7 @@ export const optionFromOptional = <R, E, A>(
   core.catchAll(
     core.map(self, Option.some),
     (error) =>
-      internalCause.isNoSuchElementException(error) ?
+      core.isNoSuchElementException(error) ?
         succeedNone :
         core.fail(error as Exclude<E, Cause.NoSuchElementException>)
   )

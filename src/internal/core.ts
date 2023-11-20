@@ -26,7 +26,7 @@ import type * as MetricLabel from "../MetricLabel.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isObject, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, isObject, isPromise, isString, type Predicate, type Refinement } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import type * as Request from "../Request.js"
 import type * as BlockedRequests from "../RequestBlock.js"
@@ -40,7 +40,7 @@ import * as _blockedRequests from "./blockedRequests.js"
 import * as internalCause from "./cause.js"
 import * as deferred from "./deferred.js"
 import * as internalDiffer from "./differ.js"
-import { effectVariance } from "./effectable.js"
+import { effectVariance, StructuralCommitPrototype } from "./effectable.js"
 import type * as FiberRuntime from "./fiberRuntime.js"
 import type * as fiberScope from "./fiberScope.js"
 import * as DeferredOpCodes from "./opCodes/deferred.js"
@@ -642,7 +642,7 @@ export const die = (defect: unknown): Effect.Effect<never, never, never> =>
 
 /* @internal */
 export const dieMessage = (message: string): Effect.Effect<never, never, never> =>
-  failCauseSync(() => internalCause.die(internalCause.RuntimeException(message)))
+  failCauseSync(() => internalCause.die(RuntimeException(message)))
 
 /* @internal */
 export const dieSync = (evaluate: LazyArg<unknown>): Effect.Effect<never, never, never> => flatMap(sync(evaluate), die)
@@ -716,12 +716,14 @@ export const andThen = dual<
     ): <R, E>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
     <X>(
       f: X
     ): <R, E, A>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
   },
   {
@@ -729,11 +731,13 @@ export const andThen = dual<
       self: Effect.Effect<R, E, A>,
       f: (a: NoInfer<A>) => X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
     <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
       f: X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
   }
 >(2, (self, f) =>
@@ -741,6 +745,10 @@ export const andThen = dual<
     const b = typeof f === "function" ? (f as any)(a) : f
     if (isEffect(b)) {
       return b
+    } else if (isPromise(b)) {
+      return async<never, Cause.UnknownException, any>((resume) => {
+        b.then((a) => resume(succeed(a))).catch((e) => resume(fail(UnknownException(e))))
+      })
     }
     return succeed(b)
   }))
@@ -1149,12 +1157,14 @@ export const tap = dual<
     ): <R, E>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
     <X>(
       f: X
     ): <R, E, A>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
   },
   {
@@ -1162,11 +1172,13 @@ export const tap = dual<
       self: Effect.Effect<R, E, A>,
       f: (a: NoInfer<A>) => X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
     <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
       f: X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
   }
 >(2, (self, f) =>
@@ -1174,6 +1186,10 @@ export const tap = dual<
     const b = typeof f === "function" ? (f as any)(a) : f
     if (isEffect(b)) {
       return as(b, a)
+    } else if (isPromise(b)) {
+      return async<never, Cause.UnknownException, any>((resume) => {
+        b.then((_) => resume(succeed(a))).catch((e) => resume(fail(UnknownException(e))))
+      })
     }
     return succeed(a)
   }))
@@ -2134,6 +2150,165 @@ export const releaseMapMake: Effect.Effect<never, never, ReleaseMap> = sync((): 
     update: identity
   }
 }))
+
+// -----------------------------------------------------------------------------
+// Cause
+// -----------------------------------------------------------------------------
+
+/** @internal */
+export const causeSquash = <E>(self: Cause.Cause<E>): unknown => {
+  return causeSquashWith(identity)(self)
+}
+
+/** @internal */
+export const causeSquashWith = dual<
+  <E>(f: (error: E) => unknown) => (self: Cause.Cause<E>) => unknown,
+  <E>(self: Cause.Cause<E>, f: (error: E) => unknown) => unknown
+>(2, (self, f) => {
+  const option = pipe(self, internalCause.failureOption, Option.map(f))
+  switch (option._tag) {
+    case "None": {
+      return pipe(
+        internalCause.defects(self),
+        Chunk.head,
+        Option.match({
+          onNone: () => {
+            const interrupts = Array.from(internalCause.interruptors(self)).flatMap((fiberId) =>
+              Array.from(FiberId.ids(fiberId)).map((id) => `#${id}`)
+            )
+            return InterruptedException(interrupts ? `Interrupted by fibers: ${interrupts.join(", ")}` : void 0)
+          },
+          onSome: identity
+        })
+      )
+    }
+    case "Some": {
+      return option.value
+    }
+  }
+})
+
+// -----------------------------------------------------------------------------
+// Errors
+// -----------------------------------------------------------------------------
+
+/** @internal */
+export const YieldableError: new(message?: string) => Cause.YieldableError = (function() {
+  class YieldableError extends globalThis.Error {
+    commit() {
+      return fail(this)
+    }
+    toString() {
+      return `${this.name}: ${this.message}`
+    }
+  }
+  Object.assign(YieldableError.prototype, StructuralCommitPrototype)
+  return YieldableError as any
+})()
+
+const makeException = <T extends { _tag: string; message?: string }>(
+  proto: Omit<T, keyof Cause.YieldableError | "_tag">,
+  tag: T["_tag"]
+) => {
+  class Base extends YieldableError {
+    readonly _tag = tag
+  }
+  Object.assign(Base.prototype, proto)
+  ;(Base.prototype as any).name = tag
+  return (message?: string): T => new Base(message) as any
+}
+
+/** @internal */
+export const RuntimeExceptionTypeId: Cause.RuntimeExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/RuntimeException"
+) as Cause.RuntimeExceptionTypeId
+
+/** @internal */
+export const RuntimeException = makeException<Cause.RuntimeException>({
+  [RuntimeExceptionTypeId]: RuntimeExceptionTypeId
+}, "RuntimeException")
+
+/** @internal */
+export const isRuntimeException = (u: unknown): u is Cause.RuntimeException => hasProperty(u, RuntimeExceptionTypeId)
+
+/** @internal */
+export const InterruptedExceptionTypeId: Cause.InterruptedExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/InterruptedException"
+) as Cause.InterruptedExceptionTypeId
+
+/** @internal */
+export const InterruptedException = makeException<Cause.InterruptedException>({
+  [InterruptedExceptionTypeId]: InterruptedExceptionTypeId
+}, "InterruptedException")
+
+/** @internal */
+export const isInterruptedException = (u: unknown): u is Cause.InterruptedException =>
+  hasProperty(u, InterruptedExceptionTypeId)
+
+/** @internal */
+export const IllegalArgumentExceptionTypeId: Cause.IllegalArgumentExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/IllegalArgument"
+) as Cause.IllegalArgumentExceptionTypeId
+
+/** @internal */
+export const IllegalArgumentException = makeException<Cause.IllegalArgumentException>({
+  [IllegalArgumentExceptionTypeId]: IllegalArgumentExceptionTypeId
+}, "IllegalArgumentException")
+
+/** @internal */
+export const isIllegalArgumentException = (u: unknown): u is Cause.IllegalArgumentException =>
+  hasProperty(u, IllegalArgumentExceptionTypeId)
+
+/** @internal */
+export const NoSuchElementExceptionTypeId: Cause.NoSuchElementExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/NoSuchElement"
+) as Cause.NoSuchElementExceptionTypeId
+
+/** @internal */
+export const NoSuchElementException = makeException<Cause.NoSuchElementException>({
+  [NoSuchElementExceptionTypeId]: NoSuchElementExceptionTypeId
+}, "NoSuchElementException")
+
+/** @internal */
+export const isNoSuchElementException = (u: unknown): u is Cause.NoSuchElementException =>
+  hasProperty(u, NoSuchElementExceptionTypeId)
+
+/** @internal */
+export const InvalidPubSubCapacityExceptionTypeId: Cause.InvalidPubSubCapacityExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/InvalidPubSubCapacityException"
+) as Cause.InvalidPubSubCapacityExceptionTypeId
+
+/** @internal */
+export const InvalidPubSubCapacityException = makeException<Cause.InvalidPubSubCapacityException>({
+  [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
+}, "InvalidPubSubCapacityException")
+
+/** @internal */
+export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException =>
+  hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
+
+/** @internal */
+export const UnknownExceptionTypeId: Cause.UnknownExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/UnknownException"
+) as Cause.UnknownExceptionTypeId
+
+/** @internal */
+export const UnknownException = (function() {
+  class UnknownException extends YieldableError {
+    readonly _tag = "UnknownException"
+    constructor(readonly error: unknown, message?: string) {
+      super(message ?? (hasProperty(error, "message") && isString(error.message) ? error.message : void 0))
+    }
+  }
+  Object.assign(UnknownException.prototype, {
+    [UnknownExceptionTypeId]: UnknownExceptionTypeId,
+    name: "UnknownException"
+  })
+  return (error: unknown, message?: string): Cause.UnknownException => new UnknownException(error, message) as any
+})()
+
+/** @internal */
+export const isUnknownException = (u: unknown): u is Cause.UnknownException => hasProperty(u, UnknownExceptionTypeId)
 
 // -----------------------------------------------------------------------------
 // Exit
