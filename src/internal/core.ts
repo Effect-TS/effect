@@ -2199,7 +2199,7 @@ export const YieldableError: new(message?: string) => Cause.YieldableError = (fu
       return fail(this)
     }
     toString() {
-      return `${this.name}: ${this.message}`
+      return this.stack ?? `${this.name}: ${this.message}`
     }
     toJSON() {
       return { ...this }

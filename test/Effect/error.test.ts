@@ -12,7 +12,7 @@ describe.concurrent("Effect", () => {
     Effect.gen(function*($) {
       const cause = yield* $(Effect.flip(Effect.sandbox(Effect.withSpan("A")(new TestError()))))
       const log = Cause.pretty(cause)
-      expect(log).includes("TestError: ")
+      expect(log).includes("TestError")
       if (typeof window === "undefined") {
         expect(log).includes("test/Effect/error.test.ts:13:78")
       }
@@ -60,22 +60,31 @@ describe.concurrent("Effect", () => {
       expect(log).includes("at A")
     }))
 
-  it.it("toString", () => {
-    class MessageError extends Data.TaggedError("MessageError")<{}> {
-      toString() {
-        return "fail"
+  if (typeof window === "undefined") {
+    it.it("inspect", () => {
+      class MessageError extends Data.TaggedError("MessageError")<{}> {
+        get message() {
+          return "fail"
+        }
       }
-    }
-    expect(inspect(new MessageError())).equal("fail")
-    assert.deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
-  })
+      const err = new MessageError()
+      expect(inspect(err)).include("MessageError: fail")
+      expect(inspect(err)).include("test/Effect/error.test.ts:70")
+    })
+
+    it.it("toString", () => {
+      class MessageError extends Data.TaggedError("MessageError")<{}> {
+        toString() {
+          return "fail"
+        }
+      }
+      expect(inspect(new MessageError())).equal("fail")
+      assert.deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
+    })
+  }
 
   it.it("toJSON", () => {
-    class MessageError extends Data.TaggedError("MessageError")<{}> {
-      toString() {
-        return "fail"
-      }
-    }
+    class MessageError extends Data.TaggedError("MessageError")<{}> {}
     assert.deepStrictEqual(new MessageError().toJSON(), { _tag: "MessageError" })
   })
 })
