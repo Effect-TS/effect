@@ -187,6 +187,12 @@ export const mapType = dual<
 >(2, (self, f) => make(f(self.keyType), self.unsafeUpdate, self.unsafeValue))
 
 /* @internal */
+export const unsafeRegister = <A extends Metric.Metric<any, any, any>>(self: A): A => {
+  self.unsafeValue(HashSet.empty())
+  return self
+}
+
+/* @internal */
 export const set = dual<
   {
     (value: number): (self: Metric.Metric.Gauge<number>) => Effect.Effect<never, never, void>

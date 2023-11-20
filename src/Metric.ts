@@ -662,6 +662,14 @@ export const trackSuccessWith: {
 } = internal.trackSuccessWith
 
 /**
+ * Forces the metric to be registered with the global registry.
+ *
+ * @since 2.0.0
+ * @category utils
+ */
+export const unsafeRegister: <A extends Metric<any, any, any>>(self: A) => A = internal.unsafeRegister
+
+/**
  * Updates the metric with the specified update message. For example, if the
  * metric were a counter, the update would increment the method by the
  * provided amount.

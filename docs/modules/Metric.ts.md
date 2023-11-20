@@ -73,6 +73,7 @@ Added in v2.0.0
   - [tagged](#tagged)
   - [taggedWithLabels](#taggedwithlabels)
   - [taggedWithLabelsInput](#taggedwithlabelsinput)
+  - [unsafeRegister](#unsaferegister)
   - [update](#update)
   - [withNow](#withnow)
 - [zipping](#zipping)
@@ -963,6 +964,18 @@ export declare const taggedWithLabelsInput: {
     f: (input: In) => Iterable<MetricLabel.MetricLabel>
   ): Metric<Type, In, void>
 }
+```
+
+Added in v2.0.0
+
+## unsafeRegister
+
+Forces the metric to be registered with the global registry.
+
+**Signature**
+
+```ts
+export declare const unsafeRegister: <A extends Metric<any, any, any>>(self: A) => A
 ```
 
 Added in v2.0.0
