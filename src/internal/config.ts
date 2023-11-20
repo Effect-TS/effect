@@ -173,7 +173,7 @@ export const boolean = (name?: string): Config.Config<boolean> => {
       }
     }
   )
-  return name === undefined ? config : nested(name)(config)
+  return name === undefined ? config : nested(config, name)
 }
 
 /** @internal */
@@ -203,7 +203,7 @@ export const date = (name?: string): Config.Config<Date> => {
       return Either.right(new Date(result))
     }
   )
-  return name === undefined ? config : nested(name)(config)
+  return name === undefined ? config : nested(config, name)
 }
 
 /** @internal */
@@ -232,7 +232,7 @@ export const number = (name?: string): Config.Config<number> => {
       return Either.right(result)
     }
   )
-  return name === undefined ? config : nested(name)(config)
+  return name === undefined ? config : nested(config, name)
 }
 
 /** @internal */
@@ -252,7 +252,7 @@ export const integer = (name?: string): Config.Config<number> => {
       return Either.right(result)
     }
   )
-  return name === undefined ? config : nested(name)(config)
+  return name === undefined ? config : nested(config, name)
 }
 
 /** @internal */
@@ -394,7 +394,7 @@ export const secret = (name?: string): Config.Config<ConfigSecret.ConfigSecret> 
     "a secret property",
     (text) => Either.right(configSecret.fromString(text))
   )
-  return name === undefined ? config : nested(name)(config)
+  return name === undefined ? config : nested(config, name)
 }
 
 /** @internal */
@@ -409,7 +409,7 @@ export const string = (name?: string): Config.Config<string> => {
     "a text property",
     Either.right
   )
-  return name === undefined ? config : nested(name)(config)
+  return name === undefined ? config : nested(config, name)
 }
 
 export const all = <const Arg extends Iterable<Config.Config<any>> | Record<string, Config.Config<any>>>(
