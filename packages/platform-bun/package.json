@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@effect/schema": "^0.48.0",
-    "bun-types": "^1.0.11",
+    "bun-types": "^1.0.13",
     "effect": "2.0.0-next.55"
   }
 }

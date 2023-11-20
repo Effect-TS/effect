@@ -36,7 +36,7 @@
   "dependencies": {
     "@effect/platform": "workspace:*",
     "mime": "^3.0.0",
-    "multipasta": "^0.1.17"
+    "multipasta": "^0.1.19"
   },
   "peerDependencies": {
     "effect": "2.0.0-next.55"
@@ -44,7 +44,7 @@
   "devDependencies": {
     "@effect/schema": "^0.48.0",
     "@types/mime": "^3.0.4",
-    "@types/node": "^20.9.0",
+    "@types/node": "^20.9.2",
     "@types/tar": "^6.1.9",
     "effect": "2.0.0-next.55",
     "tar": "^6.2.0"
