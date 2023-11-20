@@ -13,6 +13,7 @@ Added in v2.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [constructors](#constructors)
+  - [Class](#class)
   - [TaggedClass](#taggedclass)
   - [makeEntry](#makeentry)
   - [of](#of)
@@ -52,6 +53,39 @@ Added in v2.0.0
 ---
 
 # constructors
+
+## Class
+
+Provides a constructor for a Request Class.
+
+**Signature**
+
+```ts
+export declare const Class: new <Error, Success, A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Request<unknown, unknown>>, {}> extends true
+    ? void
+    : { readonly [P in keyof A as P extends keyof Request<unknown, unknown> ? never : P]: A[P] }
+) => Request<Error, Success> & Readonly<A>
+```
+
+**Example**
+
+```ts
+import * as Request from "effect/Request"
+
+type Error = never
+type Success = string
+
+class MyRequest extends Request.Class<
+  Error,
+  Success,
+  {
+    readonly id: string
+  }
+> {}
+```
+
+Added in v2.0.0
 
 ## TaggedClass
 

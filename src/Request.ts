@@ -122,6 +122,27 @@ export const tagged: <R extends Request<any, any> & { _tag: string }>(
 ) => Request.Constructor<R, "_tag"> = internal.tagged
 
 /**
+ * Provides a constructor for a Request Class.
+ *
+ * @example
+ * import * as Request from "effect/Request"
+ *
+ * type Error = never
+ * type Success = string
+ *
+ * class MyRequest extends Request.Class<Error, Success, {
+ *   readonly id: string
+ * }> {}
+ *
+ * @since 2.0.0
+ * @category constructors
+ */
+export const Class: new<Error, Success, A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Request<unknown, unknown>>, {}> extends true ? void
+    : { readonly [P in keyof A as P extends keyof Request<unknown, unknown> ? never : P]: A[P] }
+) => Request<Error, Success> & Readonly<A> = internal.Class as any
+
+/**
  * Provides a Tagged constructor for a Request Class.
  *
  * @example

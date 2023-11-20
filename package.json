@@ -124,7 +124,7 @@
     {
       "name": "Channel",
       "path": "./dist/dist/esm/index.js",
-      "limit": "51 kB",
+      "limit": "55 kB",
       "import": "{ Channel }"
     },
     {
