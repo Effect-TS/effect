@@ -627,4 +627,22 @@ describe.concurrent("PubSub", () => {
         ReadonlyArray.map(values, (n) => -n)
       )
     }))
+  it.effect("null values", () => {
+    const messages = [1, null]
+    return PubSub.unbounded<number | null>().pipe(
+      Effect.flatMap((pubsub) =>
+        Effect.scoped(
+          Effect.gen(function*(_) {
+            const dequeue1 = yield* _(PubSub.subscribe(pubsub))
+            const dequeue2 = yield* _(PubSub.subscribe(pubsub))
+            yield* _(PubSub.publishAll(pubsub, messages))
+            const takes1 = yield* _(Queue.takeAll(dequeue1))
+            const takes2 = yield* _(Queue.takeAll(dequeue2))
+            assert.deepStrictEqual([...takes1], messages)
+            assert.deepStrictEqual([...takes2], messages)
+          })
+        )
+      )
+    )
+  })
 })

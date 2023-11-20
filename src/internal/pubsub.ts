@@ -15,6 +15,9 @@ import * as executionStrategy from "./executionStrategy.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as queue from "./queue.js"
 
+const AbsentValue = Symbol.for("effect/PubSub/AbsentValue")
+type AbsentValue = typeof AbsentValue
+
 /** @internal */
 export interface AtomicPubSub<in out A> {
   readonly capacity: number
@@ -254,7 +257,7 @@ class BoundedPubSubArb<in out A> implements AtomicPubSub<A> {
   slide(): void {
     if (this.subscribersIndex !== this.publisherIndex) {
       const index = this.subscribersIndex % this.capacity
-      this.array[index] = null as unknown as A
+      this.array[index] = AbsentValue as unknown as A
       this.subscribers[index] = 0
       this.subscribersIndex += 1
     }
@@ -299,7 +302,7 @@ class BoundedPubSubArbSubscription<in out A> implements Subscription<A> {
       const elem = this.self.array[index]!
       this.self.subscribers[index] -= 1
       if (this.self.subscribers[index] === 0) {
-        this.self.array[index] = null as unknown as A
+        this.self.array[index] = AbsentValue as unknown as A
         this.self.subscribersIndex += 1
       }
       this.subscriberIndex += 1
@@ -325,7 +328,7 @@ class BoundedPubSubArbSubscription<in out A> implements Subscription<A> {
       const a = this.self.array[index] as A
       this.self.subscribers[index] -= 1
       if (this.self.subscribers[index] === 0) {
-        this.self.array[index] = null as unknown as A
+        this.self.array[index] = AbsentValue as unknown as A
         this.self.subscribersIndex += 1
       }
       builder.push(a)
@@ -344,7 +347,7 @@ class BoundedPubSubArbSubscription<in out A> implements Subscription<A> {
         const index = this.subscriberIndex % this.self.capacity
         this.self.subscribers[index] -= 1
         if (this.self.subscribers[index] === 0) {
-          this.self.array[index] = null as unknown as A
+          this.self.array[index] = AbsentValue as unknown as A
           this.self.subscribersIndex += 1
         }
         this.subscriberIndex += 1
@@ -420,7 +423,7 @@ class BoundedPubSubPow2<in out A> implements AtomicPubSub<A> {
   slide(): void {
     if (this.subscribersIndex !== this.publisherIndex) {
       const index = this.subscribersIndex & this.mask
-      this.array[index] = null as unknown as A
+      this.array[index] = AbsentValue as unknown as A
       this.subscribers[index] = 0
       this.subscribersIndex += 1
     }
@@ -466,7 +469,7 @@ class BoundedPubSubPow2Subscription<in out A> implements Subscription<A> {
       const elem = this.self.array[index]!
       this.self.subscribers[index] -= 1
       if (this.self.subscribers[index] === 0) {
-        this.self.array[index] = null as unknown as A
+        this.self.array[index] = AbsentValue as unknown as A
         this.self.subscribersIndex += 1
       }
       this.subscriberIndex += 1
@@ -492,7 +495,7 @@ class BoundedPubSubPow2Subscription<in out A> implements Subscription<A> {
       const elem = this.self.array[index] as A
       this.self.subscribers[index] -= 1
       if (this.self.subscribers[index] === 0) {
-        this.self.array[index] = null as unknown as A
+        this.self.array[index] = AbsentValue as unknown as A
         this.self.subscribersIndex += 1
       }
       builder.push(elem)
@@ -510,7 +513,7 @@ class BoundedPubSubPow2Subscription<in out A> implements Subscription<A> {
         const index = this.subscriberIndex & this.self.mask
         this.self.subscribers[index] -= 1
         if (this.self.subscribers[index] === 0) {
-          this.self.array[index] = null as unknown as A
+          this.self.array[index] = AbsentValue as unknown as A
           this.self.subscribersIndex += 1
         }
         this.subscriberIndex += 1
@@ -524,7 +527,7 @@ class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
   publisherIndex = 0
   subscriberCount = 0
   subscribers = 0
-  value: A = null as unknown as A
+  value: A = AbsentValue as unknown as A
 
   readonly capacity = 1
 
@@ -571,7 +574,7 @@ class BoundedPubSubSingle<in out A> implements AtomicPubSub<A> {
   slide(): void {
     if (this.isFull()) {
       this.subscribers = 0
-      this.value = null as unknown as A
+      this.value = AbsentValue as unknown as A
     }
   }
 
@@ -609,7 +612,7 @@ class BoundedPubSubSingleSubscription<in out A> implements Subscription<A> {
     const elem = this.self.value
     this.self.subscribers -= 1
     if (this.self.subscribers === 0) {
-      this.self.value = null as unknown as A
+      this.self.value = AbsentValue as unknown as A
     }
     this.subscriberIndex += 1
     return elem
@@ -622,7 +625,7 @@ class BoundedPubSubSingleSubscription<in out A> implements Subscription<A> {
     const a = this.self.value
     this.self.subscribers -= 1
     if (this.self.subscribers === 0) {
-      this.self.value = null as unknown as A
+      this.self.value = AbsentValue as unknown as A
     }
     this.subscriberIndex += 1
     return Chunk.of(a)
@@ -635,7 +638,7 @@ class BoundedPubSubSingleSubscription<in out A> implements Subscription<A> {
       if (this.subscriberIndex !== this.self.publisherIndex) {
         this.self.subscribers -= 1
         if (this.self.subscribers === 0) {
-          this.self.value = null as unknown as A
+          this.self.value = AbsentValue as unknown as A
         }
       }
     }
@@ -645,7 +648,7 @@ class BoundedPubSubSingleSubscription<in out A> implements Subscription<A> {
 /** @internal */
 class Node<out A> {
   constructor(
-    public value: A | null,
+    public value: A | AbsentValue,
     public subscribers: number,
     public next: Node<A> | null
   ) {
@@ -654,7 +657,7 @@ class Node<out A> {
 
 /** @internal */
 class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
-  publisherHead = new Node<A>(null, 0, null)
+  publisherHead = new Node<A>(AbsentValue, 0, null)
   publisherIndex = 0
   publisherTail: Node<A>
   subscribersIndex = 0
@@ -697,7 +700,7 @@ class UnboundedPubSub<in out A> implements AtomicPubSub<A> {
   slide(): void {
     if (this.publisherHead !== this.publisherTail) {
       this.publisherHead = this.publisherHead.next!
-      this.publisherHead.value = null
+      this.publisherHead.value = AbsentValue
       this.subscribersIndex += 1
     }
   }
@@ -733,7 +736,7 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
       if (this.subscriberHead === this.self.publisherTail) {
         loop = false
       } else {
-        if (this.subscriberHead.next!.value !== null) {
+        if (this.subscriberHead.next!.value !== AbsentValue) {
           empty = false
           loop = false
         } else {
@@ -763,12 +766,12 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
         loop = false
       } else {
         const elem = this.subscriberHead.next!.value
-        if (elem !== null) {
+        if (elem !== AbsentValue) {
           polled = elem
           this.subscriberHead.subscribers -= 1
           if (this.subscriberHead.subscribers === 0) {
             this.self.publisherHead = this.self.publisherHead.next!
-            this.self.publisherHead.value = null
+            this.self.publisherHead.value = AbsentValue
             this.self.subscribersIndex += 1
           }
           loop = false
@@ -782,7 +785,7 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
 
   pollUpTo(n: number): Chunk.Chunk<A> {
     const builder: Array<A> = []
-    const default_ = null
+    const default_ = AbsentValue
     let i = 0
     while (i !== n) {
       const a = this.poll(default_ as unknown as A)
@@ -801,11 +804,11 @@ class UnboundedPubSubSubscription<in out A> implements Subscription<A> {
       this.unsubscribed = true
       this.self.publisherTail.subscribers -= 1
       while (this.subscriberHead !== this.self.publisherTail) {
-        if (this.subscriberHead.next!.value !== null) {
+        if (this.subscriberHead.next!.value !== AbsentValue) {
           this.subscriberHead.subscribers -= 1
           if (this.subscriberHead.subscribers === 0) {
             this.self.publisherHead = this.self.publisherHead.next!
-            this.self.publisherHead.value = null
+            this.self.publisherHead.value = AbsentValue
             this.self.subscribersIndex += 1
           }
         }

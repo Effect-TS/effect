@@ -792,4 +792,109 @@ describe.concurrent("TPubSub", () => {
       assert.deepStrictEqual(Array.from(result2).filter((n) => n > 0), as)
       assert.deepStrictEqual(Array.from(result2).filter((n) => n < 0), as.map((n) => -n))
     })))
+
+  it.effect("unbounded - undefined/null values", () =>
+    Effect.gen(function*($) {
+      const as = [null, undefined, null, undefined]
+      const deferred1 = yield* $(Deferred.make<never, void>())
+      const deferred2 = yield* $(Deferred.make<never, void>())
+      const pubsub = yield* $(TPubSub.unbounded<null | undefined>())
+      const subscriber1 = yield* $(pipe(
+        TPubSub.subscribeScoped(pubsub),
+        Effect.flatMap((subscription) =>
+          pipe(
+            deferred1,
+            Deferred.succeed<void>(void 0),
+            Effect.zipRight(pipe(as, Effect.forEach(() => TQueue.take(subscription))))
+          )
+        ),
+        Effect.scoped,
+        Effect.fork
+      ))
+      const subscriber2 = yield* $(pipe(
+        TPubSub.subscribeScoped(pubsub),
+        Effect.flatMap((subscription) =>
+          pipe(
+            deferred2,
+            Deferred.succeed<void>(void 0),
+            Effect.zipRight(pipe(as, Effect.forEach(() => TQueue.take(subscription))))
+          )
+        ),
+        Effect.scoped,
+        Effect.fork
+      ))
+      yield* $(Deferred.await(deferred1))
+      yield* $(Deferred.await(deferred2))
+      yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+      const result1 = yield* $(Fiber.join(subscriber1))
+      const result2 = yield* $(Fiber.join(subscriber2))
+      assert.deepStrictEqual(result1, as)
+      assert.deepStrictEqual(result2, as)
+    }))
+
+  it.effect("bounded - undefined/null values", () =>
+    Effect.gen(function*($) {
+      const as = [null, undefined]
+      const deferred1 = yield* $(Deferred.make<never, void>())
+      const deferred2 = yield* $(Deferred.make<never, void>())
+      const pubsub = yield* $(TPubSub.bounded<null | undefined>(2))
+      const subscriber1 = yield* $(pipe(
+        TPubSub.subscribeScoped(pubsub),
+        Effect.flatMap((subscription) =>
+          pipe(
+            deferred1,
+            Deferred.succeed<void>(void 0),
+            Effect.zipRight(pipe(as, Effect.forEach(() => TQueue.take(subscription))))
+          )
+        ),
+        Effect.scoped,
+        Effect.fork
+      ))
+      const subscriber2 = yield* $(pipe(
+        TPubSub.subscribeScoped(pubsub),
+        Effect.flatMap((subscription) =>
+          pipe(
+            deferred2,
+            Deferred.succeed<void>(void 0),
+            Effect.zipRight(pipe(as, Effect.forEach(() => TQueue.take(subscription))))
+          )
+        ),
+        Effect.scoped,
+        Effect.fork
+      ))
+      yield* $(Deferred.await(deferred1))
+      yield* $(Deferred.await(deferred2))
+      yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+      const result1 = yield* $(Fiber.join(subscriber1))
+      const result2 = yield* $(Fiber.join(subscriber2))
+      assert.deepStrictEqual(result1, as)
+      assert.deepStrictEqual(result2, as)
+    }))
+
+  it.effect("dropping - undefined/null values", () =>
+    Effect.gen(function*($) {
+      const as = [null, undefined, null, undefined]
+      const n = 2
+      const deferred = yield* $(Deferred.make<never, void>())
+      const pubsub = yield* $(TPubSub.dropping<null | undefined>(n))
+      const subscriber = yield* $(pipe(
+        TPubSub.subscribeScoped(pubsub),
+        Effect.flatMap((subscription) =>
+          pipe(
+            deferred,
+            Deferred.succeed<void>(void 0),
+            Effect.zipRight(pipe(
+              as.slice(0, n),
+              Effect.forEach(() => TQueue.take(subscription))
+            ))
+          )
+        ),
+        Effect.scoped,
+        Effect.fork
+      ))
+      yield* $(Deferred.await(deferred))
+      yield* $(pipe(as, Effect.forEach((n) => pipe(pubsub, TPubSub.publish(n))), Effect.fork))
+      const result = yield* $(Fiber.join(subscriber))
+      assert.deepStrictEqual(result, as.slice(0, n))
+    }))
 })

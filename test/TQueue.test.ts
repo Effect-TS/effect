@@ -38,6 +38,17 @@ describe.concurrent("TQueue", () => {
       assert.strictEqual(result3, 3)
     }))
 
+  it.effect("offer & take undefined", () =>
+    Effect.gen(function*($) {
+      const queue = yield* $(TQueue.bounded<undefined>(5))
+      yield* $(pipe(queue, TQueue.offer(undefined)))
+      yield* $(pipe(queue, TQueue.offer(undefined)))
+      const result1 = yield* $(TQueue.take(queue))
+      const result2 = yield* $(TQueue.take(queue))
+      assert.strictEqual(result1, undefined)
+      assert.strictEqual(result2, undefined)
+    }))
+
   it.effect("offerAll & takeAll", () =>
     Effect.gen(function*($) {
       const array = [1, 2, 3, 4, 5]
@@ -74,6 +85,14 @@ describe.concurrent("TQueue", () => {
       yield* $(pipe(queue, TQueue.offerAll([1, 2, 3])))
       const result = yield* $(TQueue.poll(queue))
       assert.deepStrictEqual(result, Option.some(1))
+    }))
+
+  it.effect("poll undefined", () =>
+    Effect.gen(function*($) {
+      const queue = yield* $(TQueue.bounded<undefined>(5))
+      yield* $(pipe(queue, TQueue.offerAll([undefined, undefined, undefined])))
+      const result = yield* $(TQueue.poll(queue))
+      assert.deepStrictEqual(result, Option.some(undefined))
     }))
 
   it.effect("poll - empty queue", () =>
