@@ -2201,6 +2201,12 @@ export const YieldableError: new(message?: string) => Cause.YieldableError = (fu
     toString() {
       return `${this.name}: ${this.message}`
     }
+    toJSON() {
+      return { ...this }
+    }
+    [NodeInspectSymbol](): string {
+      return this.toString()
+    }
   }
   Object.assign(YieldableError.prototype, StructuralCommitPrototype)
   return YieldableError as any

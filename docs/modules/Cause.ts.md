@@ -965,7 +965,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface YieldableError extends Data.Case, Pipeable, Readonly<Error> {
+export interface YieldableError extends Data.Case, Pipeable, Inspectable, Readonly<Error> {
   readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Stream.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
