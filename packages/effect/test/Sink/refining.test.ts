@@ -52,6 +52,6 @@ describe.concurrent("Sink", () => {
             Option.none(), (error) => error.message)
       )
       const result = yield* $(Stream.make(1, 2, 3), Stream.run(sink), Effect.exit)
-      assert.deepStrictEqual(result, Exit.die(void 0))
+      assert.deepStrictEqual(result, Exit.die(""))
     }))
 })

@@ -488,6 +488,25 @@ export const isReadonlyRecord: (
 ) => input is { readonly [x: string | symbol]: unknown } = isRecord
 
 /**
+ * A guard that succeeds when the input is a Promise.
+ *
+ * @param input - The value to test.
+ *
+ * @example
+ * import { isPromise } from "effect/Predicate"
+ *
+ * assert.deepStrictEqual(isPromise({}), false)
+ * assert.deepStrictEqual(isPromise(Promise.resolve("hello")), true)
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isPromise = (
+  input: unknown
+): input is Promise<unknown> =>
+  hasProperty(input, "then") && "catch" in input && isFunction(input.then) && isFunction(input.catch)
+
+/**
  * @since 2.0.0
  */
 export const compose: {

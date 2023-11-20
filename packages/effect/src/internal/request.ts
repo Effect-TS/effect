@@ -5,7 +5,7 @@ import type * as Request from "../Request.js"
 import type * as Types from "../Types.js"
 import * as completedRequestMap from "./completedRequestMap.js"
 import * as core from "./core.js"
-import * as Data from "./data.js"
+import { StructuralPrototype } from "./effectable.js"
 
 /** @internal */
 const RequestSymbolKey = "effect/Request"
@@ -22,7 +22,7 @@ const requestVariance = {
 }
 
 const RequestPrototype = {
-  ...Data.StructProto,
+  ...StructuralPrototype,
   [RequestTypeId]: requestVariance
 }
 

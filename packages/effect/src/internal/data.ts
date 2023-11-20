@@ -2,6 +2,7 @@ import type * as Data from "../Data.js"
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
 import type * as Types from "../Types.js"
+import { StructuralPrototype } from "./effectable.js"
 
 /** @internal */
 export const ArrayProto: Equal.Equal = Object.assign(Object.create(Array.prototype), {
@@ -18,26 +19,6 @@ export const ArrayProto: Equal.Equal = Object.assign(Object.create(Array.prototy
 })
 
 /** @internal */
-export const StructProto: Equal.Equal = {
-  [Hash.symbol](this: Equal.Equal) {
-    return Hash.structure(this)
-  },
-  [Equal.symbol](this: Equal.Equal, that: Equal.Equal) {
-    const selfKeys = Object.keys(this)
-    const thatKeys = Object.keys(that as object)
-    if (selfKeys.length !== thatKeys.length) {
-      return false
-    }
-    for (const key of selfKeys) {
-      if (!(key in (that as object) && Equal.equals((this as any)[key], (that as any)[key]))) {
-        return false
-      }
-    }
-    return true
-  }
-}
-
-/** @internal */
 export const Structural: new<A>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
@@ -47,10 +28,10 @@ export const Structural: new<A>(
       Object.assign(this, args)
     }
   }
-  Structural.prototype = StructProto
+  Structural.prototype = StructuralPrototype
   return Structural as any
 })()
 
 /** @internal */
 export const struct = <As extends Readonly<Record<string, any>>>(as: As): Data.Data<As> =>
-  Object.assign(Object.create(StructProto), as)
+  Object.assign(Object.create(StructuralPrototype), as)

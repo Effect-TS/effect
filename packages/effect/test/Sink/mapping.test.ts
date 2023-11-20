@@ -92,8 +92,8 @@ describe.concurrent("Sink", () => {
           })
         )
       )
-      const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.either)
-      assert.deepStrictEqual(result, Either.left(Cause.RuntimeException("Cannot parse \"a\" to an integer")))
+      const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.flip)
+      assert.deepStrictEqual(result.error, Cause.RuntimeException("Cannot parse \"a\" to an integer"))
     }))
 
   it.effect("mapInputChunksEffect - happy path", () =>
@@ -148,8 +148,8 @@ describe.concurrent("Sink", () => {
           )
         )
       )
-      const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.either)
-      assert.deepStrictEqual(result, Either.left(Cause.RuntimeException("Cannot parse \"a\" to an integer")))
+      const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.flip)
+      assert.deepStrictEqual(result.error, Cause.RuntimeException("Cannot parse \"a\" to an integer"))
     }))
 
   it.effect("map", () =>

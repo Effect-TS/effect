@@ -14,7 +14,6 @@ import * as Predicate from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as _scheduler from "../Scheduler.js"
-import { NoSuchElementException } from "./cause.js"
 import * as InternalCause from "./cause.js"
 import * as core from "./core.js"
 import * as FiberRuntime from "./fiberRuntime.js"
@@ -208,7 +207,7 @@ const fastPath = <R, E, A>(effect: Effect.Effect<R, E, A>): Exit.Exit<E, A> | un
     }
     case "None": {
       // @ts-expect-error
-      return core.exitFail(NoSuchElementException())
+      return core.exitFail(core.NoSuchElementException())
     }
   }
 }

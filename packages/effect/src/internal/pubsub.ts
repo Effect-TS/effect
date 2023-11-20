@@ -9,7 +9,6 @@ import { pipeArguments } from "../Pipeable.js"
 import type * as PubSub from "../PubSub.js"
 import type * as Queue from "../Queue.js"
 import type * as Scope from "../Scope.js"
-import * as cause from "./cause.js"
 import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
 import * as fiberRuntime from "./fiberRuntime.js"
@@ -1180,7 +1179,7 @@ const nextPow2 = (n: number): number => {
 /** @internal */
 const ensureCapacity = (capacity: number): void => {
   if (capacity <= 0) {
-    throw cause.InvalidPubSubCapacityException(`Cannot construct PubSub with capacity of ${capacity}`)
+    throw core.InvalidPubSubCapacityException(`Cannot construct PubSub with capacity of ${capacity}`)
   }
 }
 

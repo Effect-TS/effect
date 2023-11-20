@@ -21,17 +21,22 @@
  *
  * @since 2.0.0
  */
+import type * as Channel from "./Channel.js"
 import type * as Chunk from "./Chunk.js"
+import type * as Data from "./Data.js"
+import type * as Effect from "./Effect.js"
 import type * as Either from "./Either.js"
 import type * as Equal from "./Equal.js"
 import type * as FiberId from "./FiberId.js"
 import type * as HashSet from "./HashSet.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/cause.js"
-import { originalInstance } from "./internal/core.js"
+import * as core from "./internal/core.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
+import type * as Sink from "./Sink.js"
+import type * as Stream from "./Stream.js"
 
 /**
  * @since 2.0.0
@@ -49,7 +54,7 @@ export type CauseTypeId = typeof CauseTypeId
  * @since 2.0.0
  * @category symbols
  */
-export const RuntimeExceptionTypeId: unique symbol = internal.RuntimeExceptionTypeId
+export const RuntimeExceptionTypeId: unique symbol = core.RuntimeExceptionTypeId
 
 /**
  * @since 2.0.0
@@ -61,7 +66,7 @@ export type RuntimeExceptionTypeId = typeof RuntimeExceptionTypeId
  * @since 2.0.0
  * @category symbols
  */
-export const InterruptedExceptionTypeId: unique symbol = internal.InterruptedExceptionTypeId
+export const InterruptedExceptionTypeId: unique symbol = core.InterruptedExceptionTypeId
 
 /**
  * @since 2.0.0
@@ -73,7 +78,7 @@ export type InterruptedExceptionTypeId = typeof InterruptedExceptionTypeId
  * @since 2.0.0
  * @category symbols
  */
-export const IllegalArgumentExceptionTypeId: unique symbol = internal.IllegalArgumentExceptionTypeId
+export const IllegalArgumentExceptionTypeId: unique symbol = core.IllegalArgumentExceptionTypeId
 
 /**
  * @since 2.0.0
@@ -85,7 +90,7 @@ export type IllegalArgumentExceptionTypeId = typeof IllegalArgumentExceptionType
  * @since 2.0.0
  * @category symbols
  */
-export const NoSuchElementExceptionTypeId: unique symbol = internal.NoSuchElementExceptionTypeId
+export const NoSuchElementExceptionTypeId: unique symbol = core.NoSuchElementExceptionTypeId
 
 /**
  * @since 2.0.0
@@ -97,13 +102,25 @@ export type NoSuchElementExceptionTypeId = typeof NoSuchElementExceptionTypeId
  * @since 2.0.0
  * @category symbols
  */
-export const InvalidPubSubCapacityExceptionTypeId: unique symbol = internal.InvalidPubSubCapacityExceptionTypeId
+export const InvalidPubSubCapacityExceptionTypeId: unique symbol = core.InvalidPubSubCapacityExceptionTypeId
 
 /**
  * @since 2.0.0
  * @category symbols
  */
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const UnknownExceptionTypeId: unique symbol = core.UnknownExceptionTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type UnknownExceptionTypeId = typeof UnknownExceptionTypeId
 
 /**
  * A `Cause` represents the full history of a failure resulting from running an
@@ -157,15 +174,41 @@ export interface CauseReducer<in C, in E, in out Z> {
 }
 
 /**
+ * @since 2.0.0
+ * @category models
+ */
+export interface YieldableError extends Data.Case, Pipeable, Readonly<Error> {
+  readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Stream.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
+  readonly [Channel.ChannelTypeId]: Channel.Channel.VarianceStruct<
+    never,
+    unknown,
+    unknown,
+    unknown,
+    this,
+    never,
+    never
+  >
+}
+
+/**
+ * Represents a generic checked exception which occurs at runtime.
+ *
+ * @since 2.0.0
+ * @category errors
+ */
+export const YieldableError: new(message?: string | undefined) => YieldableError = core.YieldableError
+
+/**
  * Represents a generic checked exception which occurs at runtime.
  *
  * @since 2.0.0
  * @category models
  */
-export interface RuntimeException {
+export interface RuntimeException extends YieldableError {
   readonly _tag: "RuntimeException"
   readonly [RuntimeExceptionTypeId]: RuntimeExceptionTypeId
-  readonly message?: string
 }
 
 /**
@@ -174,10 +217,9 @@ export interface RuntimeException {
  * @since 2.0.0
  * @category models
  */
-export interface InterruptedException {
+export interface InterruptedException extends YieldableError {
   readonly _tag: "InterruptedException"
   readonly [InterruptedExceptionTypeId]: InterruptedExceptionTypeId
-  readonly message?: string
 }
 
 /**
@@ -187,10 +229,9 @@ export interface InterruptedException {
  * @since 2.0.0
  * @category models
  */
-export interface IllegalArgumentException {
+export interface IllegalArgumentException extends YieldableError {
   readonly _tag: "IllegalArgumentException"
   readonly [IllegalArgumentExceptionTypeId]: IllegalArgumentExceptionTypeId
-  readonly message?: string
 }
 
 /**
@@ -200,10 +241,9 @@ export interface IllegalArgumentException {
  * @since 2.0.0
  * @category models
  */
-export interface NoSuchElementException {
+export interface NoSuchElementException extends YieldableError {
   readonly _tag: "NoSuchElementException"
   readonly [NoSuchElementExceptionTypeId]: NoSuchElementExceptionTypeId
-  readonly message?: string
 }
 
 /**
@@ -213,10 +253,22 @@ export interface NoSuchElementException {
  * @since 2.0.0
  * @category models
  */
-export interface InvalidPubSubCapacityException {
+export interface InvalidPubSubCapacityException extends YieldableError {
   readonly _tag: "InvalidPubSubCapacityException"
   readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
-  readonly message?: string
+}
+
+/**
+ * Represents a checked exception which occurs when an unknown error is thrown, such as
+ * from a rejected promise.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export interface UnknownException extends YieldableError {
+  readonly _tag: "UnknownException"
+  readonly [UnknownExceptionTypeId]: UnknownExceptionTypeId
+  readonly error: unknown
 }
 
 /**
@@ -643,7 +695,7 @@ export const contains: {
  * @since 2.0.0
  * @category destructors
  */
-export const squash: <E>(self: Cause<E>) => unknown = internal.squash
+export const squash: <E>(self: Cause<E>) => unknown = core.causeSquash
 
 /**
  * Squashes a `Cause` down to a single defect, chosen to be the "most important"
@@ -656,7 +708,7 @@ export const squash: <E>(self: Cause<E>) => unknown = internal.squash
 export const squashWith: {
   <E>(f: (error: E) => unknown): (self: Cause<E>) => unknown
   <E>(self: Cause<E>, f: (error: E) => unknown): unknown
-} = internal.squashWith
+} = core.causeSquashWith
 
 /**
  * Uses the provided partial function to search the specified cause and attempt
@@ -741,7 +793,7 @@ export const reduceWithContext: {
  * @since 2.0.0
  * @category errors
  */
-export const InterruptedException: (message?: string) => InterruptedException = internal.InterruptedException
+export const InterruptedException: (message?: string) => InterruptedException = core.InterruptedException
 
 /**
  * Returns `true` if the specified value is an `InterruptedException`, `false`
@@ -750,7 +802,7 @@ export const InterruptedException: (message?: string) => InterruptedException = 
  * @since 2.0.0
  * @category refinements
  */
-export const isInterruptedException: (u: unknown) => u is InterruptedException = internal.isInterruptedException
+export const isInterruptedException: (u: unknown) => u is InterruptedException = core.isInterruptedException
 
 /**
  * Represents a checked exception which occurs when an invalid argument is
@@ -759,8 +811,7 @@ export const isInterruptedException: (u: unknown) => u is InterruptedException =
  * @since 2.0.0
  * @category errors
  */
-export const IllegalArgumentException: (message?: string) => IllegalArgumentException =
-  internal.IllegalArgumentException
+export const IllegalArgumentException: (message?: string) => IllegalArgumentException = core.IllegalArgumentException
 
 /**
  * Returns `true` if the specified value is an `IllegalArgumentException`, `false`
@@ -769,8 +820,7 @@ export const IllegalArgumentException: (message?: string) => IllegalArgumentExce
  * @since 2.0.0
  * @category refinements
  */
-export const isIllegalArgumentException: (u: unknown) => u is IllegalArgumentException =
-  internal.isIllegalArgumentException
+export const isIllegalArgumentException: (u: unknown) => u is IllegalArgumentException = core.isIllegalArgumentException
 
 /**
  * Represents a checked exception which occurs when an expected element was
@@ -779,7 +829,7 @@ export const isIllegalArgumentException: (u: unknown) => u is IllegalArgumentExc
  * @since 2.0.0
  * @category errors
  */
-export const NoSuchElementException: (message?: string) => NoSuchElementException = internal.NoSuchElementException
+export const NoSuchElementException: (message?: string) => NoSuchElementException = core.NoSuchElementException
 
 /**
  * Returns `true` if the specified value is an `NoSuchElementException`, `false`
@@ -788,7 +838,7 @@ export const NoSuchElementException: (message?: string) => NoSuchElementExceptio
  * @since 2.0.0
  * @category refinements
  */
-export const isNoSuchElementException: (u: unknown) => u is NoSuchElementException = internal.isNoSuchElementException
+export const isNoSuchElementException: (u: unknown) => u is NoSuchElementException = core.isNoSuchElementException
 
 /**
  * Represents a generic checked exception which occurs at runtime.
@@ -796,7 +846,7 @@ export const isNoSuchElementException: (u: unknown) => u is NoSuchElementExcepti
  * @since 2.0.0
  * @category errors
  */
-export const RuntimeException: (message?: string) => RuntimeException = internal.RuntimeException
+export const RuntimeException: (message?: string) => RuntimeException = core.RuntimeException
 
 /**
  * Returns `true` if the specified value is an `RuntimeException`, `false`
@@ -805,7 +855,26 @@ export const RuntimeException: (message?: string) => RuntimeException = internal
  * @since 2.0.0
  * @category refinements
  */
-export const isRuntimeException: (u: unknown) => u is RuntimeException = internal.isRuntimeException
+export const isRuntimeException: (u: unknown) => u is RuntimeException = core.isRuntimeException
+
+/**
+ * Represents a checked exception which occurs when an unknown error is thrown, such as
+ * from a rejected promise.
+ *
+ * @since 2.0.0
+ * @category errors
+ */
+export const UnknownException: (error: unknown, message?: string | undefined) => UnknownException =
+  core.UnknownException
+
+/**
+ * Returns `true` if the specified value is an `UnknownException`, `false`
+ * otherwise.
+ *
+ * @since 2.0.0
+ * @category refinements
+ */
+export const isUnknownException: (u: unknown) => u is UnknownException = core.isUnknownException
 
 /**
  * Returns the specified `Cause` as a pretty-printed string.
@@ -821,4 +890,4 @@ export const pretty: <E>(cause: Cause<E>) => string = internal.pretty
  * @since 2.0.0
  * @category errors
  */
-export const originalError: <E>(obj: E) => E = originalInstance
+export const originalError: <E>(obj: E) => E = core.originalInstance

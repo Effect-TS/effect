@@ -1044,7 +1044,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   }
 
   ["None"](_: core.Primitive & { _op: "None" }) {
-    return core.fail(internalCause.NoSuchElementException())
+    return core.fail(core.NoSuchElementException())
   }
 
   ["Right"](op: core.Primitive & { _op: "Right" }) {
@@ -1312,23 +1312,22 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
             (e as core.Primitive)._op === OpCodes.OP_ASYNC
           ) {
             throw e
-          }
-          if (
+          } else if (
             (e as core.Primitive)._op === OpCodes.OP_SUCCESS ||
             (e as core.Primitive)._op === OpCodes.OP_FAILURE
           ) {
             return e as Exit.Exit<E, A>
-          }
-        } else {
-          if (core.isEffectError(e)) {
-            cur = core.exitFailCause(e.cause)
-          } else if (internalCause.isInterruptedException(e)) {
-            cur = core.exitFailCause(
-              internalCause.sequential(internalCause.die(e), internalCause.interrupt(FiberId.none))
-            )
           } else {
             cur = core.exitFailCause(internalCause.die(e))
           }
+        } else if (core.isEffectError(e)) {
+          cur = core.exitFailCause(e.cause)
+        } else if (core.isInterruptedException(e)) {
+          cur = core.exitFailCause(
+            internalCause.sequential(internalCause.die(e), internalCause.interrupt(FiberId.none))
+          )
+        } else {
+          cur = core.exitFailCause(internalCause.die(e))
         }
       }
     }
@@ -2369,7 +2368,7 @@ export const validateAll = dual<
 export const raceAll = <R, E, A>(all: Iterable<Effect.Effect<R, E, A>>) => {
   const list = Chunk.fromIterable(all)
   if (!Chunk.isNonEmpty(list)) {
-    return core.dieSync(() => internalCause.IllegalArgumentException(`Received an empty collection of effects`))
+    return core.dieSync(() => core.IllegalArgumentException(`Received an empty collection of effects`))
   }
   const self = Chunk.headNonEmpty(list)
   const effects = Chunk.tailNonEmpty(list)

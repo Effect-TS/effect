@@ -19,9 +19,9 @@ export const InterruptError1 = new Error("Oh noes 1!")
 export const InterruptError2 = new Error("Oh noes 2!")
 export const InterruptError3 = new Error("Oh noes 3!")
 
-const ExampleErrorFail = Effect.fail(ExampleError)
+const ExampleErrorFail: Effect.Effect<never, Error, never> = Effect.fail(ExampleError)
 
-const deepErrorEffect = (n: number): Effect.Effect<never, unknown, void> => {
+const deepErrorEffect = (n: number): Effect.Effect<never, Cause.UnknownException, void> => {
   if (n === 0) {
     return Effect.try(() => {
       throw ExampleError
@@ -30,7 +30,7 @@ const deepErrorEffect = (n: number): Effect.Effect<never, unknown, void> => {
   return pipe(Effect.unit, Effect.zipRight(deepErrorEffect(n - 1)))
 }
 
-const deepErrorFail = (n: number): Effect.Effect<never, unknown, void> => {
+const deepErrorFail = (n: number): Effect.Effect<never, Error, never> => {
   if (n === 0) {
     return Effect.fail(ExampleError)
   }
@@ -44,12 +44,9 @@ describe.concurrent("Effect", () => {
         Effect.try(() => {
           throw ExampleError
         }),
-        Effect.match({
-          onFailure: Option.some,
-          onSuccess: () => Option.none()
-        })
+        Effect.flip
       )
-      assert.deepStrictEqual(result, Option.some(ExampleError))
+      assert.deepStrictEqual(result.error, ExampleError)
     }))
   it.effect("attempt - fail", () =>
     Effect.gen(function*($) {
@@ -61,8 +58,8 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("attempt - deep attempt sync effect error", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.either(deepErrorEffect(100)))
-      assert.deepStrictEqual(result, Either.left(ExampleError))
+      const result = yield* $(Effect.flip(deepErrorEffect(100)))
+      assert.deepStrictEqual(result.error, ExampleError)
     }))
   it.effect("attempt - deep attempt fail error", () =>
     Effect.gen(function*($) {
@@ -503,8 +500,8 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("uncaught - deep sync effect error", () =>
     Effect.gen(function*($) {
-      const result = yield* $(Effect.exit(deepErrorEffect(100)))
-      assert.deepStrictEqual(result, Exit.fail(ExampleError))
+      const result = yield* $(Effect.flip(deepErrorEffect(100)))
+      assert.deepStrictEqual(result.error, ExampleError)
     }))
   it.effect("unwraps exception", () =>
     Effect.gen(function*($) {
