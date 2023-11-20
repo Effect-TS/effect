@@ -90,6 +90,7 @@ Added in v2.0.0
   - [From "./Pipeable.js"](#from-pipeablejs)
   - [From "./Pool.js"](#from-pooljs)
   - [From "./Predicate.js"](#from-predicatejs)
+  - [From "./PrimaryKey.js"](#from-primarykeyjs)
   - [From "./PubSub.js"](#from-pubsubjs)
   - [From "./Queue.js"](#from-queuejs)
   - [From "./Random.js"](#from-randomjs)
@@ -1166,6 +1167,18 @@ Re-exports all named exports from the "./Predicate.js" module as `Predicate`.
 
 ```ts
 export * as Predicate from "./Predicate.js"
+```
+
+Added in v2.0.0
+
+## From "./PrimaryKey.js"
+
+Re-exports all named exports from the "./PrimaryKey.js" module as `PrimaryKey`.
+
+**Signature**
+
+```ts
+export * as PrimaryKey from "./PrimaryKey.js"
 ```
 
 Added in v2.0.0
