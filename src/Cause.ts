@@ -111,6 +111,18 @@ export const InvalidPubSubCapacityExceptionTypeId: unique symbol = core.InvalidP
 export type InvalidPubSubCapacityExceptionTypeId = typeof InvalidPubSubCapacityExceptionTypeId
 
 /**
+ * @since 2.0.0
+ * @category symbols
+ */
+export const UnknownExceptionTypeId: unique symbol = core.UnknownExceptionTypeId
+
+/**
+ * @since 2.0.0
+ * @category symbols
+ */
+export type UnknownExceptionTypeId = typeof UnknownExceptionTypeId
+
+/**
  * A `Cause` represents the full history of a failure resulting from running an
  * `Effect` workflow.
  *
@@ -244,6 +256,19 @@ export interface NoSuchElementException extends YieldableError {
 export interface InvalidPubSubCapacityException extends YieldableError {
   readonly _tag: "InvalidPubSubCapacityException"
   readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
+}
+
+/**
+ * Represents a checked exception which occurs when an unknown error is thrown, such as
+ * from a rejected promise.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export interface UnknownException extends YieldableError {
+  readonly _tag: "UnknownException"
+  readonly [UnknownExceptionTypeId]: UnknownExceptionTypeId
+  readonly error: unknown
 }
 
 /**
@@ -831,6 +856,25 @@ export const RuntimeException: (message?: string) => RuntimeException = core.Run
  * @category refinements
  */
 export const isRuntimeException: (u: unknown) => u is RuntimeException = core.isRuntimeException
+
+/**
+ * Represents a checked exception which occurs when an unknown error is thrown, such as
+ * from a rejected promise.
+ *
+ * @since 2.0.0
+ * @category errors
+ */
+export const UnknownException: (error: unknown, message?: string | undefined) => UnknownException =
+  core.UnknownException
+
+/**
+ * Returns `true` if the specified value is an `UnknownException`, `false`
+ * otherwise.
+ *
+ * @since 2.0.0
+ * @category refinements
+ */
+export const isUnknownException: (u: unknown) => u is UnknownException = core.isUnknownException
 
 /**
  * Returns the specified `Cause` as a pretty-printed string.

@@ -99,7 +99,7 @@ export const try_: {
     readonly try: LazyArg<A>
     readonly catch: (error: unknown) => E
   }): Effect.Effect<never, E, A>
-  <A>(evaluate: LazyArg<A>): Effect.Effect<never, unknown, A>
+  <A>(evaluate: LazyArg<A>): Effect.Effect<never, Cause.UnknownException, A>
 } = <A, E>(
   arg: LazyArg<A> | {
     readonly try: LazyArg<A>
@@ -119,7 +119,7 @@ export const try_: {
       return evaluate()
     } catch (error) {
       throw core.makeEffectError(internalCause.fail(
-        onFailure ? onFailure(error) : error
+        onFailure ? onFailure(error) : core.UnknownException(error)
       ))
     }
   })
@@ -1620,13 +1620,13 @@ export const tryPromise: {
       readonly catch: (error: unknown) => E
     }
   ): Effect.Effect<never, E, A>
-  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect.Effect<never, unknown, A>
+  <A>(try_: (signal: AbortSignal) => Promise<A>): Effect.Effect<never, Cause.UnknownException, A>
 } = <A, E>(
   arg: ((signal: AbortSignal) => Promise<A>) | {
     readonly try: (signal: AbortSignal) => Promise<A>
     readonly catch: (error: unknown) => E
   }
-): Effect.Effect<never, E | unknown, A> => {
+): Effect.Effect<never, E | Cause.UnknownException, A> => {
   let evaluate: (signal?: AbortSignal) => Promise<A>
   let catcher: ((error: unknown) => E) | undefined = undefined
 
@@ -1646,7 +1646,7 @@ export const tryPromise: {
             .then((a) => resolve(core.exitSucceed(a)))
             .catch((e) =>
               resolve(core.fail(
-                catcher ? catcher(e) : e
+                catcher ? catcher(e) : core.UnknownException(e)
               ))
             )
           return core.sync(() => controller.abort())

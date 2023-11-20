@@ -22,6 +22,8 @@ describe.concurrent("Effect", () => {
       const a5 = Effect.succeed(0).pipe(Effect.andThen(() => "ok"))
       const a6 = Effect.andThen(Effect.succeed(0), () => "ok")
       const a7 = Effect.andThen(Effect.succeed(0), "ok")
+      const a8 = Effect.andThen(Effect.succeed(0), () => Promise.resolve("ok"))
+      const a9 = Effect.andThen(Effect.succeed(0), Promise.resolve("ok"))
       assert.strictEqual(yield* $(a0), 1)
       assert.strictEqual(yield* $(a1), 1)
       assert.strictEqual(yield* $(a2), 1)
@@ -30,6 +32,8 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(yield* $(a5), "ok")
       assert.strictEqual(yield* $(a6), "ok")
       assert.strictEqual(yield* $(a7), "ok")
+      assert.strictEqual(yield* $(a8), "ok")
+      assert.strictEqual(yield* $(a9), "ok")
     }))
   it.effect("tap", () =>
     Effect.gen(function*($) {
@@ -41,6 +45,8 @@ describe.concurrent("Effect", () => {
       const a5 = Effect.succeed(0).pipe(Effect.tap(() => "ok"))
       const a6 = Effect.tap(Effect.succeed(0), () => "ok")
       const a7 = Effect.tap(Effect.succeed(0), "ok")
+      const a8 = Effect.tap(Effect.succeed(0), () => Promise.resolve("ok"))
+      const a9 = Effect.tap(Effect.succeed(0), Promise.resolve("ok"))
       assert.strictEqual(yield* $(a0), 0)
       assert.strictEqual(yield* $(a1), 0)
       assert.strictEqual(yield* $(a2), 0)
@@ -49,6 +55,8 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(yield* $(a5), 0)
       assert.strictEqual(yield* $(a6), 0)
       assert.strictEqual(yield* $(a7), 0)
+      assert.strictEqual(yield* $(a8), 0)
+      assert.strictEqual(yield* $(a9), 0)
     }))
   it.effect("flattens nested effects", () =>
     Effect.gen(function*($) {

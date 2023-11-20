@@ -26,7 +26,7 @@ import type * as MetricLabel from "../MetricLabel.js"
 import * as MutableRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
-import { hasProperty, isObject, type Predicate, type Refinement } from "../Predicate.js"
+import { hasProperty, isObject, isPromise, isString, type Predicate, type Refinement } from "../Predicate.js"
 import * as ReadonlyArray from "../ReadonlyArray.js"
 import type * as Request from "../Request.js"
 import type * as BlockedRequests from "../RequestBlock.js"
@@ -716,12 +716,14 @@ export const andThen = dual<
     ): <R, E>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
     <X>(
       f: X
     ): <R, E, A>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
   },
   {
@@ -729,11 +731,13 @@ export const andThen = dual<
       self: Effect.Effect<R, E, A>,
       f: (a: NoInfer<A>) => X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
     <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
       f: X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer A1>] ? Effect.Effect<R | R1, E | E1, A1>
+      : [X] extends [Promise<infer A1>] ? Effect.Effect<R, E | Cause.UnknownException, A1>
       : Effect.Effect<R, E, X>
   }
 >(2, (self, f) =>
@@ -741,6 +745,10 @@ export const andThen = dual<
     const b = typeof f === "function" ? (f as any)(a) : f
     if (isEffect(b)) {
       return b
+    } else if (isPromise(b)) {
+      return async<never, Cause.UnknownException, any>((resume) => {
+        b.then((a) => resume(succeed(a))).catch((e) => resume(fail(UnknownException(e))))
+      })
     }
     return succeed(b)
   }))
@@ -1149,12 +1157,14 @@ export const tap = dual<
     ): <R, E>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
     <X>(
       f: X
     ): <R, E, A>(
       self: Effect.Effect<R, E, A>
     ) => [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
   },
   {
@@ -1162,11 +1172,13 @@ export const tap = dual<
       self: Effect.Effect<R, E, A>,
       f: (a: NoInfer<A>) => X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
     <A, R, E, X>(
       self: Effect.Effect<R, E, A>,
       f: X
     ): [X] extends [Effect.Effect<infer R1, infer E1, infer _A1>] ? Effect.Effect<R | R1, E | E1, A>
+      : [X] extends [Promise<infer _A1>] ? Effect.Effect<R, E | Cause.UnknownException, A>
       : Effect.Effect<R, E, A>
   }
 >(2, (self, f) =>
@@ -1174,6 +1186,10 @@ export const tap = dual<
     const b = typeof f === "function" ? (f as any)(a) : f
     if (isEffect(b)) {
       return as(b, a)
+    } else if (isPromise(b)) {
+      return async<never, Cause.UnknownException, any>((resume) => {
+        b.then((_) => resume(succeed(a))).catch((e) => resume(fail(UnknownException(e))))
+      })
     }
     return succeed(a)
   }))
@@ -2270,6 +2286,29 @@ export const InvalidPubSubCapacityException = makeException<Cause.InvalidPubSubC
 /** @internal */
 export const isInvalidCapacityError = (u: unknown): u is Cause.InvalidPubSubCapacityException =>
   hasProperty(u, InvalidPubSubCapacityExceptionTypeId)
+
+/** @internal */
+export const UnknownExceptionTypeId: Cause.UnknownExceptionTypeId = Symbol.for(
+  "effect/Cause/errors/UnknownException"
+) as Cause.UnknownExceptionTypeId
+
+/** @internal */
+export const UnknownException = (function() {
+  class UnknownException extends YieldableError {
+    readonly _tag = "UnknownException"
+    constructor(readonly error: unknown, message?: string) {
+      super(message ?? (hasProperty(error, "message") && isString(error.message) ? error.message : void 0))
+    }
+  }
+  Object.assign(UnknownException.prototype, {
+    [UnknownExceptionTypeId]: UnknownExceptionTypeId,
+    name: "UnknownException"
+  })
+  return (error: unknown, message?: string): Cause.UnknownException => new UnknownException(error, message) as any
+})()
+
+/** @internal */
+export const isUnknownException = (u: unknown): u is Cause.UnknownException => hasProperty(u, UnknownExceptionTypeId)
 
 // -----------------------------------------------------------------------------
 // Exit
