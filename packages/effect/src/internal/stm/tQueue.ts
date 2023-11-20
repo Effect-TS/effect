@@ -140,10 +140,10 @@ class TQueueImpl<in out A> implements TQueue.TQueue<A> {
           return core.succeed(false)
         }
         case OpCodes.OP_SLIDING_STRATEGY: {
-          const dequeued = queue.shift()
-          if (dequeued === undefined) {
+          if (queue.length === 0) {
             return core.succeed(true)
           }
+          queue.shift()
           queue.push(value)
           tRef.unsafeSet(this.ref, queue, runtime.journal)
           return core.succeed(true)
@@ -188,11 +188,10 @@ class TQueueImpl<in out A> implements TQueue.TQueue<A> {
     if (queue === undefined) {
       return core.interruptAs(runtime.fiberId)
     }
-    const head = queue[0]
-    if (head === undefined) {
+    if (queue.length === 0) {
       return core.retry
     }
-    return core.succeed(head)
+    return core.succeed(queue[0])
   })
 
   peekOption: STM.STM<never, never, Option.Option<A>> = core.withSTMRuntime((runtime) => {
@@ -208,10 +207,10 @@ class TQueueImpl<in out A> implements TQueue.TQueue<A> {
     if (queue === undefined) {
       return core.interruptAs(runtime.fiberId)
     }
-    const dequeued = queue.shift()
-    if (dequeued === undefined) {
+    if (queue.length === 0) {
       return core.retry
     }
+    const dequeued = queue.shift()!
     tRef.unsafeSet(this.ref, queue, runtime.journal)
     return core.succeed(dequeued)
   })
