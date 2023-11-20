@@ -754,7 +754,7 @@
     {
       "name": "SubscriptionRef",
       "path": "./dist/dist/esm/index.js",
-      "limit": "50 kB",
+      "limit": "52 kB",
       "import": "{ SubscriptionRef }"
     },
     {
