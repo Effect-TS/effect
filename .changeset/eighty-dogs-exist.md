@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-add Metric.unsafeRegister
+add metric .register() for forcing addition to registry
