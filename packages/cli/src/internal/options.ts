@@ -1091,7 +1091,6 @@ const parseOptions = (
             inKeyValueOption = false
             currentIndex = currentIndex + 1
           }
-          console.dir({ keyValues, currentIndex, leftover })
         }
         return Effect.succeed([keyValues, leftover])
       }
