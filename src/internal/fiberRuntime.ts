@@ -1306,29 +1306,28 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
           this
         )
       } catch (e) {
-        if (core.isEffect(e) && (e as core.Primitive)._op !== OpCodes.OP_COMMIT) {
+        if (core.isEffect(e)) {
           if (
             (e as core.Primitive)._op === OpCodes.OP_YIELD ||
             (e as core.Primitive)._op === OpCodes.OP_ASYNC
           ) {
             throw e
-          }
-          if (
+          } else if (
             (e as core.Primitive)._op === OpCodes.OP_SUCCESS ||
             (e as core.Primitive)._op === OpCodes.OP_FAILURE
           ) {
             return e as Exit.Exit<E, A>
-          }
-        } else {
-          if (core.isEffectError(e)) {
-            cur = core.exitFailCause(e.cause)
-          } else if (core.isInterruptedException(e)) {
-            cur = core.exitFailCause(
-              internalCause.sequential(internalCause.die(e), internalCause.interrupt(FiberId.none))
-            )
           } else {
             cur = core.exitFailCause(internalCause.die(e))
           }
+        } else if (core.isEffectError(e)) {
+          cur = core.exitFailCause(e.cause)
+        } else if (core.isInterruptedException(e)) {
+          cur = core.exitFailCause(
+            internalCause.sequential(internalCause.die(e), internalCause.interrupt(FiberId.none))
+          )
+        } else {
+          cur = core.exitFailCause(internalCause.die(e))
         }
       }
     }
