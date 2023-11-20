@@ -9,6 +9,7 @@ import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as Ref from "effect/Ref"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Options from "../Options.js"
@@ -19,8 +20,10 @@ import type * as ValidationError from "../ValidationError.js"
 import * as InternalAutoCorrect from "./autoCorrect.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalHelpDoc from "./helpDoc.js"
+import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
 import * as InternalListPrompt from "./prompt/list.js"
+import * as InternalNumberPrompt from "./prompt/number.js"
 import * as InternalSelectPrompt from "./prompt/select.js"
 import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
@@ -55,10 +58,11 @@ export type Instruction =
   | Map
   | Both
   | OrElse
+  | Variadic
   | WithDefault
 
 /** @internal */
-export type ParseableInstruction = Single | KeyValueMap
+export type ParseableInstruction = Single | KeyValueMap | Variadic
 
 /** @internal */
 export interface Empty extends Op<"Empty", {}> {}
@@ -104,6 +108,15 @@ export interface OrElse extends
   Op<"OrElse", {
     readonly left: Options.Options<unknown>
     readonly right: Options.Options<unknown>
+  }>
+{}
+
+/** @internal */
+export interface Variadic extends
+  Op<"Variadic", {
+    readonly argumentOption: Single
+    readonly min: Option.Option<number>
+    readonly max: Option.Option<number>
   }>
 {}
 
@@ -287,7 +300,7 @@ export const keyValueMap = (
     return makeKeyValueMap(single as Single)
   }
   if (!isSingle(option as Instruction)) {
-    throw new Error("InvalidArgumentException: the provided option must be a single option")
+    throw new Error("InvalidArgumentException: only single options can be key/value maps")
   } else {
     return makeKeyValueMap(option as Single)
   }
@@ -309,6 +322,48 @@ export const text = (name: string): Options.Options<string> =>
 // =============================================================================
 
 /** @internal */
+export const atLeast = dual<
+  {
+    (times: 0): <A>(self: Options.Options<A>) => Options.Options<ReadonlyArray<A>>
+    (
+      times: number
+    ): <A>(self: Options.Options<A>) => Options.Options<ReadonlyArray.NonEmptyReadonlyArray<A>>
+  },
+  {
+    <A>(self: Options.Options<A>, times: 0): Options.Options<ReadonlyArray<A>>
+    <A>(
+      self: Options.Options<A>,
+      times: number
+    ): Options.Options<ReadonlyArray.NonEmptyReadonlyArray<A>>
+  }
+>(2, (self, times) => makeVariadic(self, Option.some(times), Option.none()) as any)
+
+/** @internal */
+export const atMost = dual<
+  (times: number) => <A>(self: Options.Options<A>) => Options.Options<ReadonlyArray<A>>,
+  <A>(self: Options.Options<A>, times: number) => Options.Options<ReadonlyArray<A>>
+>(2, (self, times) => makeVariadic(self, Option.none(), Option.some(times)) as any)
+
+/** @internal */
+export const between = dual<
+  {
+    (min: 0, max: number): <A>(self: Options.Options<A>) => Options.Options<ReadonlyArray<A>>
+    (
+      min: number,
+      max: number
+    ): <A>(self: Options.Options<A>) => Options.Options<ReadonlyArray.NonEmptyReadonlyArray<A>>
+  },
+  {
+    <A>(self: Options.Options<A>, min: 0, max: number): Options.Options<ReadonlyArray<A>>
+    <A>(
+      self: Options.Options<A>,
+      min: number,
+      max: number
+    ): Options.Options<ReadonlyArray.NonEmptyReadonlyArray<A>>
+  }
+>(3, (self, min, max) => makeVariadic(self, Option.some(min), Option.some(max)) as any)
+
+/** @internal */
 export const isBool = <A>(self: Options.Options<A>): boolean => isBoolInternal(self as Instruction)
 
 /** @internal */
@@ -318,6 +373,14 @@ export const getHelp = <A>(self: Options.Options<A>): HelpDoc.HelpDoc =>
 /** @internal */
 export const getIdentifier = <A>(self: Options.Options<A>): Option.Option<string> =>
   getIdentifierInternal(self as Instruction)
+
+/** @internal */
+export const getMinSize = <A>(self: Options.Options<A>): number =>
+  getMinSizeInternal(self as Instruction)
+
+/** @internal */
+export const getMaxSize = <A>(self: Options.Options<A>): number =>
+  getMaxSizeInternal(self as Instruction)
 
 /** @internal */
 export const getUsage = <A>(self: Options.Options<A>): Usage.Usage =>
@@ -392,6 +455,10 @@ export const parse = dual<
     config: CliConfig.CliConfig
   ) => Effect.Effect<FileSystem.FileSystem, ValidationError.ValidationError, A>
 >(3, (self, args, config) => parseInternal(self as Instruction, args, config) as any)
+
+/** @internal */
+export const repeated = <A>(self: Options.Options<A>): Options.Options<ReadonlyArray<A>> =>
+  makeVariadic(self, Option.none(), Option.none())
 
 /** @internal */
 export const toRegularLanguage = <A>(self: Options.Options<A>): RegularLanguage.RegularLanguage =>
@@ -573,6 +640,24 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
         getHelpInternal(self.right as Instruction)
       )
     }
+    case "Variadic": {
+      const help = getHelpInternal(self.argumentOption as Instruction)
+      return InternalHelpDoc.mapDescriptionList(help, (oldSpan, oldBlock) => {
+        const min = getMinSizeInternal(self as Instruction)
+        const max = getMaxSizeInternal(self as Instruction)
+        const newSpan = InternalSpan.text(
+          Option.isSome(self.max) ? ` ${min} - ${max}` : min === 0 ? "..." : ` ${min}+`
+        )
+        const newBlock = InternalHelpDoc.p(
+          Option.isSome(self.max)
+            ? `This option must be repeated at least ${min} times and may be repeated up to ${max} times.`
+            : min === 0
+            ? "This option may be repeated zero or more times."
+            : `This option must be repeated at least ${min} times.`
+        )
+        return [InternalSpan.concat(oldSpan, newSpan), InternalHelpDoc.sequence(oldBlock, newBlock)]
+      })
+    }
     case "WithDefault": {
       return InternalHelpDoc.mapDescriptionList(
         getHelpInternal(self.options as Instruction),
@@ -610,12 +695,79 @@ const getIdentifierInternal = (self: Instruction): Option.Option<string> => {
         onNonEmpty: (ids) => Option.some(ReadonlyArray.join(ids, ", "))
       })
     }
-    case "KeyValueMap": {
+    case "KeyValueMap":
+    case "Variadic": {
       return getIdentifierInternal(self.argumentOption as Instruction)
     }
     case "Map":
     case "WithDefault": {
       return getIdentifierInternal(self.options as Instruction)
+    }
+  }
+}
+
+const getMinSizeInternal = (self: Instruction): number => {
+  switch (self._tag) {
+    case "Empty":
+    case "WithDefault": {
+      return 0
+    }
+    case "Single":
+    case "KeyValueMap": {
+      return 1
+    }
+    case "Map": {
+      return getMinSizeInternal(self.options as Instruction)
+    }
+    case "Both": {
+      const leftMinSize = getMinSizeInternal(self.left as Instruction)
+      const rightMinSize = getMinSizeInternal(self.right as Instruction)
+      return leftMinSize + rightMinSize
+    }
+    case "OrElse": {
+      const leftMinSize = getMinSizeInternal(self.left as Instruction)
+      const rightMinSize = getMinSizeInternal(self.right as Instruction)
+      return Math.min(leftMinSize, rightMinSize)
+    }
+    case "Variadic": {
+      const selfMinSize = Option.getOrElse(self.min, () => 0)
+      const argumentOptionMinSize = getMinSizeInternal(self.argumentOption as Instruction)
+      return selfMinSize * argumentOptionMinSize
+    }
+  }
+}
+
+const getMaxSizeInternal = (self: Instruction): number => {
+  switch (self._tag) {
+    case "Empty": {
+      return 0
+    }
+    case "Single": {
+      return 1
+    }
+    case "KeyValueMap": {
+      return Number.MAX_SAFE_INTEGER
+    }
+    case "Map": {
+      return getMaxSizeInternal(self.options as Instruction)
+    }
+    case "Both": {
+      const leftMaxSize = getMaxSizeInternal(self.left as Instruction)
+      const rightMaxSize = getMaxSizeInternal(self.right as Instruction)
+      return leftMaxSize + rightMaxSize
+    }
+    case "OrElse": {
+      const leftMin = getMaxSizeInternal(self.left as Instruction)
+      const rightMin = getMaxSizeInternal(self.right as Instruction)
+      return Math.min(leftMin, rightMin)
+    }
+    case "Variadic": {
+      const selfMaxSize = Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER / 2)
+      const optionsMaxSize = getMaxSizeInternal(self.argumentOption as Instruction)
+      return Math.floor(selfMaxSize * optionsMaxSize)
+    }
+    case "WithDefault": {
+      return getMaxSizeInternal(self.options as Instruction)
     }
   }
 }
@@ -651,6 +803,9 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
         getUsageInternal(self.left as Instruction),
         getUsageInternal(self.right as Instruction)
       )
+    }
+    case "Variadic": {
+      return InternalUsage.repeated(getUsageInternal(self.argumentOption as Instruction))
     }
     case "WithDefault": {
       return InternalUsage.optional(getUsageInternal(self.options as Instruction))
@@ -741,6 +896,22 @@ const makeSingle = <A>(
   return op
 }
 
+const makeVariadic = <A>(
+  argumentOption: Options.Options<A>,
+  min: Option.Option<number>,
+  max: Option.Option<number>
+): Options.Options<ReadonlyArray<A>> => {
+  if (!isSingle(argumentOption as Instruction)) {
+    throw new Error("InvalidArgumentException: only single options can be variadic")
+  }
+  const op = Object.create(proto)
+  op._tag = "Variadic"
+  op.argumentOption = argumentOption
+  op.min = min
+  op.max = max
+  return op
+}
+
 const makeWithDefault = <A>(options: Options.Options<A>, fallback: A): Options.Options<A> => {
   const op = Object.create(proto)
   op._tag = "WithDefault"
@@ -774,6 +945,9 @@ const modifySingle = (self: Instruction, f: (single: Single) => Single): Options
         modifySingle(self.left as Instruction, f),
         modifySingle(self.right as Instruction, f)
       )
+    }
+    case "Variadic": {
+      return makeVariadic(f(self.argumentOption), self.min, self.max)
     }
     case "WithDefault": {
       return makeWithDefault(modifySingle(self.options as Instruction, f), self.fallback)
@@ -880,7 +1054,7 @@ const parseOptions = (
             ) {
               const keyValueString = leftover[1]!.trim()
               const split = keyValueString.split("=")
-              if (split.length < 2 || split[1] === "" || split[1] === "=") {
+              if (split.length < 2 || split[1].length === 0 || split[1] === "=") {
                 break
               } else {
                 keyValues = ReadonlyArray.prepend(keyValues, keyValueString)
@@ -889,18 +1063,54 @@ const parseOptions = (
               // Or, it can be in the form of "-d key1=value1 key2=value2"
             } else {
               const split = flagOrKeyValue.split("=")
-              if (split.length < 2 || split[1] === "" || split[1] === "=") {
+              if (split.length < 2 || split[1].length === 0 || split[1] === "=") {
                 break
               } else {
                 keyValues = ReadonlyArray.prepend(keyValues, flagOrKeyValue)
                 leftover = leftover.slice(1)
-                continue
               }
             }
           }
           return ReadonlyArray.isEmptyReadonlyArray(keyValues)
             ? Effect.succeed([ReadonlyArray.empty(), args])
             : Effect.succeed([ReadonlyArray.prepend(keyValues, head), leftover])
+        }
+      }
+      return Effect.succeed([ReadonlyArray.empty(), args])
+    }
+    case "Variadic": {
+      const singleNames = ReadonlyArray.map(
+        names(self.argumentOption),
+        (name) => InternalCliConfig.normalizeCase(config, name)
+      )
+      if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
+        const head = ReadonlyArray.headNonEmpty(args)
+        const tail = ReadonlyArray.tailNonEmpty(args)
+        if (ReadonlyArray.contains(singleNames, head)) {
+          let values: ReadonlyArray<string> = ReadonlyArray.empty()
+          let leftover: ReadonlyArray<string> = tail
+          while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
+            const value = ReadonlyArray.headNonEmpty(leftover).trim()
+            if (value.length === 0) {
+              break
+            } else if (
+              leftover.length >= 2
+              && ReadonlyArray.contains(
+                singleNames,
+                InternalCliConfig.normalizeCase(config, value)
+              )
+            ) {
+              values = ReadonlyArray.append(values, leftover[1].trim())
+              leftover = leftover.slice(2)
+            } else {
+              values = ReadonlyArray.append(values, value)
+              leftover = leftover.slice(1)
+            }
+          }
+          if (ReadonlyArray.isEmptyReadonlyArray(values)) {
+            return Effect.succeed([ReadonlyArray.empty(), args])
+          }
+          return Effect.succeed([ReadonlyArray.prepend(values, head), leftover])
         }
       }
       return Effect.succeed([ReadonlyArray.empty(), args])
@@ -917,7 +1127,8 @@ const toParseableInstruction = (self: Instruction): ReadonlyArray<ParseableInstr
       return ReadonlyArray.empty()
     }
     case "Single":
-    case "KeyValueMap": {
+    case "KeyValueMap":
+    case "Variadic": {
       return ReadonlyArray.of(self)
     }
     case "Map":
@@ -990,6 +1201,13 @@ const toRegularLanguageInternal = (self: Instruction): RegularLanguage.RegularLa
         toRegularLanguageInternal(self.right as Instruction)
       )
     }
+    case "Variadic": {
+      const language = toRegularLanguageInternal(self.argumentOption as Instruction)
+      return InternalRegularLanguage.repeated(language, {
+        min: Option.getOrUndefined(self.min),
+        max: Option.getOrUndefined(self.max)
+      })
+    }
     case "WithDefault": {
       return InternalRegularLanguage.optional(
         toRegularLanguageInternal(self.options as Instruction)
@@ -1027,7 +1245,9 @@ const parseInternal = (
               Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
             )
           }
-          return Effect.fail(InternalValidationError.keyValuesDetected(InternalHelpDoc.empty, head))
+          return Effect.fail(
+            InternalValidationError.multipleValuesDetected(InternalHelpDoc.empty, head)
+          )
         }
         const error = InternalHelpDoc.p(
           `More than one reference to option '${self.fullName}' detected`
@@ -1039,19 +1259,23 @@ const parseInternal = (
     }
     case "KeyValueMap": {
       const extractKeyValue = (
-        keyValue: string
+        value: unknown
       ): Effect.Effect<never, ValidationError.ValidationError, [string, string]> => {
-        const split = keyValue.trim().split("=")
+        if (typeof value !== "string") {
+          const error = `Expected a string but received: ${JSON.stringify(value)}`
+          return Effect.fail(InternalValidationError.invalidValue(InternalHelpDoc.p(error)))
+        }
+        const split = value.trim().split("=")
         if (ReadonlyArray.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])
         }
-        const error = InternalHelpDoc.p(`Expected a key/value pair but received '${keyValue}'`)
+        const error = InternalHelpDoc.p(`Expected a key/value pair but received '${value}'`)
         return Effect.fail(InternalValidationError.invalidArgument(error))
       }
       return parseInternal(self.argumentOption, args, config).pipe(Effect.matchEffect({
         onFailure: (e) =>
-          InternalValidationError.isKeyValuesDetected(e)
-            ? Effect.forEach(e.keyValues, (kv) => extractKeyValue(kv)).pipe(
+          InternalValidationError.isMultipleValuesDetected(e)
+            ? Effect.forEach(e.values, (kv) => extractKeyValue(kv)).pipe(
               Effect.map(HashMap.fromIterable)
             )
             : Effect.fail(e),
@@ -1120,6 +1344,35 @@ const parseInternal = (
             }))
         })
       )
+    }
+    case "Variadic": {
+      const min = Option.getOrElse(self.min, () => 0)
+      const max = Option.getOrElse(self.max, () => Number.MAX_SAFE_INTEGER)
+      const validateMinMax = (values: ReadonlyArray<string>) => {
+        if (values.length < min) {
+          const name = self.argumentOption.fullName
+          const error = `Expected at least ${min} value(s) for option: '${name}'`
+          return Effect.fail(InternalValidationError.invalidValue(InternalHelpDoc.p(error)))
+        }
+        if (values.length > max) {
+          const name = self.argumentOption.fullName
+          const error = `Expected at most ${max} value(s) for option: '${name}'`
+          return Effect.fail(InternalValidationError.invalidValue(InternalHelpDoc.p(error)))
+        }
+        const primitive = self.argumentOption.primitiveType
+        const validatePrimitive = (value: string) =>
+          InternalPrimitive.validate(primitive, Option.some(value), config).pipe(
+            Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
+          )
+        return Effect.forEach(values, (value) => validatePrimitive(value))
+      }
+      return parseInternal(self.argumentOption, args, config).pipe(Effect.matchEffect({
+        onFailure: (error) =>
+          InternalValidationError.isMultipleValuesDetected(error)
+            ? validateMinMax(error.values)
+            : Effect.fail(error),
+        onSuccess: (value) => validateMinMax(ReadonlyArray.of(value as string))
+      }))
     }
     case "WithDefault": {
       return parseInternal(self.options as Instruction, args, config).pipe(
@@ -1203,6 +1456,34 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
         }).pipe(Effect.flatMap((option) => wizardInternal(option, config)))
       ))
     }
+    case "Variadic": {
+      const repeatHelp = InternalHelpDoc.p(
+        "How many times should this argument should be repeated?"
+      )
+      const message = pipe(
+        wizardHeader,
+        InternalHelpDoc.sequence(getHelpInternal(self)),
+        InternalHelpDoc.sequence(repeatHelp)
+      )
+      return Console.log().pipe(
+        Effect.zipRight(InternalNumberPrompt.integer({
+          message: InternalHelpDoc.toAnsiText(message).trimEnd(),
+          min: getMinSizeInternal(self),
+          max: getMaxSizeInternal(self)
+        })),
+        Effect.flatMap((n) =>
+          Ref.make(ReadonlyArray.empty<string>()).pipe(
+            Effect.flatMap((ref) =>
+              wizardInternal(self.argumentOption as Instruction, config).pipe(
+                Effect.flatMap((args) => Ref.update(ref, ReadonlyArray.appendAll(args))),
+                Effect.repeatN(n - 1),
+                Effect.zipRight(Ref.get(ref))
+              )
+            )
+          )
+        )
+      )
+    }
     case "WithDefault": {
       const defaultHelp = InternalHelpDoc.p(`This option is optional - use the default?`)
       const message = pipe(
@@ -1278,7 +1559,8 @@ const matchOptions = (
   ]
 > => {
   if (
-    ReadonlyArray.isNonEmptyReadonlyArray(input) && ReadonlyArray.isNonEmptyReadonlyArray(options)
+    ReadonlyArray.isNonEmptyReadonlyArray(input)
+    && ReadonlyArray.isNonEmptyReadonlyArray(options)
   ) {
     return findOptions(input, options, config).pipe(
       Effect.flatMap(([otherArgs, otherOptions, map1]) => {
@@ -1345,7 +1627,7 @@ const findOptions = (
       Effect.flatMap(([nameValues, leftover]) => {
         if (ReadonlyArray.isNonEmptyReadonlyArray(nameValues)) {
           const name = ReadonlyArray.headNonEmpty(nameValues)
-          const values: ReadonlyArray<string> = ReadonlyArray.tailNonEmpty(nameValues)
+          const values: ReadonlyArray<unknown> = ReadonlyArray.tailNonEmpty(nameValues)
           return Effect.succeed([leftover, tail, HashMap.make([name, values])] as [
             ReadonlyArray<string>,
             ReadonlyArray<ParseableInstruction>,

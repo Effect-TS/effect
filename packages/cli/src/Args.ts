@@ -320,13 +320,6 @@ export const path: (config?: Args.PathArgsConfig) => Args<string> = InternalArgs
 export const repeated: <A>(self: Args<A>) => Args<ReadonlyArray<A>> = InternalArgs.repeated
 
 /**
- * @since 1.0.0
- * @category combinators
- */
-export const repeatedAtLeastOnce: <A>(self: Args<A>) => Args<NonEmptyReadonlyArray<A>> =
-  InternalArgs.repeatedAtLeastOnce
-
-/**
  * Creates a text argument.
  *
  * Can optionally provide a custom argument name (defaults to `"text"`).

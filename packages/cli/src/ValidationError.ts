@@ -25,9 +25,9 @@ export type ValidationError =
   | CorrectedFlag
   | InvalidArgument
   | InvalidValue
-  | KeyValuesDetected
   | MissingValue
   | MissingFlag
+  | MultipleValuesDetected
   | MissingSubcommand
   | NoBuiltInMatch
   | UnclusteredFlag
@@ -38,6 +38,7 @@ export type ValidationError =
  */
 export interface CommandMismatch extends ValidationError.Proto {
   readonly _tag: "CommandMismatch"
+  readonly error: HelpDoc
 }
 
 /**
@@ -46,6 +47,7 @@ export interface CommandMismatch extends ValidationError.Proto {
  */
 export interface CorrectedFlag extends ValidationError.Proto {
   readonly _tag: "CorrectedFlag"
+  readonly error: HelpDoc
 }
 
 /**
@@ -54,6 +56,7 @@ export interface CorrectedFlag extends ValidationError.Proto {
  */
 export interface InvalidArgument extends ValidationError.Proto {
   readonly _tag: "InvalidArgument"
+  readonly error: HelpDoc
 }
 
 /**
@@ -62,15 +65,7 @@ export interface InvalidArgument extends ValidationError.Proto {
  */
 export interface InvalidValue extends ValidationError.Proto {
   readonly _tag: "InvalidValue"
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export interface KeyValuesDetected extends ValidationError.Proto {
-  readonly _tag: "KeyValuesDetected"
-  readonly keyValues: ReadonlyArray<string>
+  readonly error: HelpDoc
 }
 
 /**
@@ -79,6 +74,7 @@ export interface KeyValuesDetected extends ValidationError.Proto {
  */
 export interface MissingFlag extends ValidationError.Proto {
   readonly _tag: "MissingFlag"
+  readonly error: HelpDoc
 }
 
 /**
@@ -87,6 +83,7 @@ export interface MissingFlag extends ValidationError.Proto {
  */
 export interface MissingValue extends ValidationError.Proto {
   readonly _tag: "MissingValue"
+  readonly error: HelpDoc
 }
 
 /**
@@ -95,6 +92,17 @@ export interface MissingValue extends ValidationError.Proto {
  */
 export interface MissingSubcommand extends ValidationError.Proto {
   readonly _tag: "MissingSubcommand"
+  readonly error: HelpDoc
+}
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface MultipleValuesDetected extends ValidationError.Proto {
+  readonly _tag: "MultipleValuesDetected"
+  readonly error: HelpDoc
+  readonly values: ReadonlyArray<string>
 }
 
 /**
@@ -103,6 +111,7 @@ export interface MissingSubcommand extends ValidationError.Proto {
  */
 export interface NoBuiltInMatch extends ValidationError.Proto {
   readonly _tag: "NoBuiltInMatch"
+  readonly error: HelpDoc
 }
 
 /**
@@ -111,6 +120,7 @@ export interface NoBuiltInMatch extends ValidationError.Proto {
  */
 export interface UnclusteredFlag extends ValidationError.Proto {
   readonly _tag: "UnclusteredFlag"
+  readonly error: HelpDoc
   readonly unclustered: ReadonlyArray<string>
   readonly rest: ReadonlyArray<string>
 }
@@ -125,7 +135,6 @@ export declare namespace ValidationError {
    */
   export interface Proto {
     readonly [ValidationErrorTypeId]: ValidationErrorTypeId
-    readonly error: HelpDoc
   }
 }
 
@@ -168,8 +177,8 @@ export const isInvalidValue: (self: ValidationError) => self is InvalidValue =
  * @since 1.0.0
  * @category refinements
  */
-export const isKeyValuesDetected: (self: ValidationError) => self is KeyValuesDetected =
-  InternalValidationError.isKeyValuesDetected
+export const isMultipleValuesDetected: (self: ValidationError) => self is MultipleValuesDetected =
+  InternalValidationError.isMultipleValuesDetected
 
 /**
  * @since 1.0.0
@@ -241,7 +250,7 @@ export const invalidValue: (error: HelpDoc) => ValidationError =
 export const keyValuesDetected: (
   error: HelpDoc,
   keyValues: ReadonlyArray<string>
-) => ValidationError = InternalValidationError.keyValuesDetected
+) => ValidationError = InternalValidationError.multipleValuesDetected
 
 /**
  * @since 1.0.0

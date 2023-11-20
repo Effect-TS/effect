@@ -280,6 +280,37 @@ export const text: (name: string) => Options<string> = InternalOptions.text
  * @since 1.0.0
  * @category combinators
  */
+export const atMost: {
+  (times: number): <A>(self: Options<A>) => Options<ReadonlyArray<A>>
+  <A>(self: Options<A>, times: number): Options<ReadonlyArray<A>>
+} = InternalOptions.atMost
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const atLeast: {
+  (times: 0): <A>(self: Options<A>) => Options<ReadonlyArray<A>>
+  (times: number): <A>(self: Options<A>) => Options<NonEmptyReadonlyArray<A>>
+  <A>(self: Options<A>, times: 0): Options<ReadonlyArray<A>>
+  <A>(self: Options<A>, times: number): Options<readonly [A, ...Array<A>]>
+} = InternalOptions.atLeast
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const between: {
+  (min: 0, max: number): <A>(self: Options<A>) => Options<ReadonlyArray<A>>
+  (min: number, max: number): <A>(self: Options<A>) => Options<NonEmptyReadonlyArray<A>>
+  <A>(self: Options<A>, min: 0, max: number): Options<ReadonlyArray<A>>
+  <A>(self: Options<A>, min: number, max: number): Options<NonEmptyReadonlyArray<A>>
+} = InternalOptions.between
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const filterMap: {
   <A, B>(f: (a: A) => Option<B>, message: string): (self: Options<A>) => Options<B>
   <A, B>(self: Options<A>, f: (a: A) => Option<B>, message: string): Options<B>
@@ -360,6 +391,12 @@ export const parse: {
     config: CliConfig
   ): Effect<FileSystem, ValidationError, A>
 } = InternalOptions.parse
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const repeated: <A>(self: Options<A>) => Options<ReadonlyArray<A>> = InternalOptions.repeated
 
 /**
  * Returns a `RegularLanguage` whose accepted language is equivalent to the

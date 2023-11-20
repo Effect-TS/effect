@@ -8,10 +8,9 @@ export const ValidationErrorTypeId: ValidationError.ValidationErrorTypeId = Symb
   ValidationErrorSymbolKey
 ) as ValidationError.ValidationErrorTypeId
 
-const proto = (error: HelpDoc.HelpDoc): ValidationError.ValidationError.Proto => ({
-  [ValidationErrorTypeId]: ValidationErrorTypeId,
-  error
-})
+const proto: ValidationError.ValidationError.Proto = {
+  [ValidationErrorTypeId]: ValidationErrorTypeId
+}
 
 /** @internal */
 export const isValidationError = (u: unknown): u is ValidationError.ValidationError =>
@@ -38,9 +37,9 @@ export const isInvalidValue = (
 ): self is ValidationError.InvalidValue => self._tag === "InvalidValue"
 
 /** @internal */
-export const isKeyValuesDetected = (
+export const isMultipleValuesDetected = (
   self: ValidationError.ValidationError
-): self is ValidationError.KeyValuesDetected => self._tag === "KeyValuesDetected"
+): self is ValidationError.MultipleValuesDetected => self._tag === "MultipleValuesDetected"
 
 /** @internal */
 export const isMissingFlag = (
@@ -69,7 +68,7 @@ export const isUnclusteredFlag = (
 
 /** @internal */
 export const commandMismatch = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "CommandMismatch"
   op.error = error
   return op
@@ -77,7 +76,7 @@ export const commandMismatch = (error: HelpDoc.HelpDoc): ValidationError.Validat
 
 /** @internal */
 export const correctedFlag = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "CorrectedFlag"
   op.error = error
   return op
@@ -85,7 +84,7 @@ export const correctedFlag = (error: HelpDoc.HelpDoc): ValidationError.Validatio
 
 /** @internal */
 export const invalidArgument = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "InvalidArgument"
   op.error = error
   return op
@@ -93,27 +92,15 @@ export const invalidArgument = (error: HelpDoc.HelpDoc): ValidationError.Validat
 
 /** @internal */
 export const invalidValue = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "InvalidValue"
   op.error = error
   return op
 }
 
 /** @internal */
-export const keyValuesDetected = (
-  error: HelpDoc.HelpDoc,
-  keyValues: ReadonlyArray<string>
-): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
-  op._tag = "KeyValuesDetected"
-  op.error = error
-  op.keyValues = keyValues
-  return op
-}
-
-/** @internal */
 export const missingFlag = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "MissingFlag"
   op.error = error
   return op
@@ -121,7 +108,7 @@ export const missingFlag = (error: HelpDoc.HelpDoc): ValidationError.ValidationE
 
 /** @internal */
 export const missingValue = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "MissingValue"
   op.error = error
   return op
@@ -129,15 +116,27 @@ export const missingValue = (error: HelpDoc.HelpDoc): ValidationError.Validation
 
 /** @internal */
 export const missingSubcommand = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "MissingSubcommand"
   op.error = error
   return op
 }
 
 /** @internal */
+export const multipleValuesDetected = (
+  error: HelpDoc.HelpDoc,
+  values: ReadonlyArray<unknown>
+): ValidationError.ValidationError => {
+  const op = Object.create(proto)
+  op._tag = "MultipleValuesDetected"
+  op.error = error
+  op.values = values
+  return op
+}
+
+/** @internal */
 export const noBuiltInMatch = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "NoBuiltInMatch"
   op.error = error
   return op
@@ -149,7 +148,7 @@ export const unclusteredFlag = (
   unclustered: ReadonlyArray<string>,
   rest: ReadonlyArray<string>
 ): ValidationError.ValidationError => {
-  const op = Object.create(proto(error))
+  const op = Object.create(proto)
   op._tag = "UnclusteredFlag"
   op.error = error
   op.unclustered = unclustered

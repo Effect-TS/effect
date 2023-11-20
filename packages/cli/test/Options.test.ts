@@ -155,6 +155,36 @@ describe("Options", () => {
       )))
     }).pipe(runEffect))
 
+  it("validates a option with choices", () =>
+    Effect.gen(function*($) {
+      const option = Options.choice("animal", ["cat", "dog"])
+      const args1 = ReadonlyArray.make("--animal", "cat")
+      const args2 = ReadonlyArray.make("--animal", "dog")
+      const result1 = yield* $(validation(option, args1, CliConfig.defaultConfig))
+      const result2 = yield* $(validation(option, args2, CliConfig.defaultConfig))
+      expect(result1).toEqual([[], "cat"])
+      expect(result2).toEqual([[], "dog"])
+    }).pipe(runEffect))
+
+  it("validates an option with choices that map to values", () =>
+    Effect.gen(function*($) {
+      type Animal = Dog | Cat
+      class Dog extends Data.TaggedClass("Dog")<{}> {}
+      class Cat extends Data.TaggedClass("Dog")<{}> {}
+      const cat = new Cat()
+      const dog = new Dog()
+      const option: Options.Options<Animal> = Options.choiceWithValue("animal", [
+        ["dog", dog],
+        ["cat", cat]
+      ])
+      const args1 = ReadonlyArray.make("--animal", "cat")
+      const args2 = ReadonlyArray.make("--animal", "dog")
+      const result1 = yield* $(validation(option, args1, CliConfig.defaultConfig))
+      const result2 = yield* $(validation(option, args2, CliConfig.defaultConfig))
+      expect(result1).toEqual([[], cat])
+      expect(result2).toEqual([[], dog])
+    }).pipe(runEffect))
+
   it("validates a text option", () =>
     Effect.gen(function*(_) {
       const result = yield* _(
@@ -439,33 +469,61 @@ describe("Options", () => {
       ])
     }).pipe(runEffect))
 
-  it("choice", () =>
-    Effect.gen(function*($) {
-      const option = Options.choice("animal", ["cat", "dog"])
-      const args1 = ReadonlyArray.make("--animal", "cat")
-      const args2 = ReadonlyArray.make("--animal", "dog")
-      const result1 = yield* $(validation(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* $(validation(option, args2, CliConfig.defaultConfig))
-      expect(result1).toEqual([[], "cat"])
-      expect(result2).toEqual([[], "dog"])
+  it("repeated", () =>
+    Effect.gen(function*(_) {
+      const option = Options.integer("foo").pipe(Options.repeated)
+      const args1 = ["--foo", "1", "--foo", "2", "--foo", "3"]
+      const args2 = ["--foo", "1", "--foo", "v2", "--foo", "3"]
+      const result1 = yield* _(validation(option, args1, CliConfig.defaultConfig))
+      const result2 = yield* _(Effect.flip(validation(option, args2, CliConfig.defaultConfig)))
+      expect(result1).toEqual([ReadonlyArray.empty(), [1, 2, 3]])
+      expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p("'v2' is not a integer")))
     }).pipe(runEffect))
 
-  it("choiceWithValue", () =>
-    Effect.gen(function*($) {
-      type Animal = Dog | Cat
-      class Dog extends Data.TaggedClass("Dog")<{}> {}
-      class Cat extends Data.TaggedClass("Dog")<{}> {}
-      const cat = new Cat()
-      const dog = new Dog()
-      const option: Options.Options<Animal> = Options.choiceWithValue("animal", [
-        ["dog", dog],
-        ["cat", cat]
-      ])
-      const args1 = ReadonlyArray.make("--animal", "cat")
-      const args2 = ReadonlyArray.make("--animal", "dog")
-      const result1 = yield* $(validation(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* $(validation(option, args2, CliConfig.defaultConfig))
-      expect(result1).toEqual([[], cat])
-      expect(result2).toEqual([[], dog])
+  it("atLeast", () =>
+    Effect.gen(function*(_) {
+      const option = Options.integer("foo").pipe(Options.atLeast(2))
+      const args1 = ["--foo", "1", "--foo", "2"]
+      const args2 = ["--foo", "1"]
+      const result1 = yield* _(validation(option, args1, CliConfig.defaultConfig))
+      const result2 = yield* _(Effect.flip(validation(option, args2, CliConfig.defaultConfig)))
+      expect(result1).toEqual([ReadonlyArray.empty(), [1, 2]])
+      expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p(
+        "Expected at least 2 value(s) for option: '--foo'"
+      )))
+    }).pipe(runEffect))
+
+  it("atMost", () =>
+    Effect.gen(function*(_) {
+      const option = Options.integer("foo").pipe(Options.atMost(2))
+      const args1 = ["--foo", "1", "--foo", "2"]
+      const args2 = ["--foo", "1", "--foo", "2", "--foo", "3"]
+      const result1 = yield* _(validation(option, args1, CliConfig.defaultConfig))
+      const result2 = yield* _(Effect.flip(validation(option, args2, CliConfig.defaultConfig)))
+      expect(result1).toEqual([ReadonlyArray.empty(), [1, 2]])
+      expect(result2).toEqual(ValidationError.invalidValue(HelpDoc.p(
+        "Expected at most 2 value(s) for option: '--foo'"
+      )))
+    }).pipe(runEffect))
+
+  it("between", () =>
+    Effect.gen(function*(_) {
+      const option = Options.integer("foo").pipe(Options.between(2, 3))
+      const args1 = ["--foo", "1"]
+      const args2 = ["--foo", "1", "--foo", "2"]
+      const args3 = ["--foo", "1", "--foo", "2", "--foo", "3"]
+      const args4 = ["--foo", "1", "--foo", "2", "--foo", "3", "--foo 4"]
+      const result1 = yield* _(Effect.flip(validation(option, args1, CliConfig.defaultConfig)))
+      const result2 = yield* _(validation(option, args2, CliConfig.defaultConfig))
+      const result3 = yield* _(validation(option, args3, CliConfig.defaultConfig))
+      const result4 = yield* _(Effect.flip(validation(option, args4, CliConfig.defaultConfig)))
+      expect(result1).toEqual(ValidationError.invalidValue(HelpDoc.p(
+        "Expected at least 2 value(s) for option: '--foo'"
+      )))
+      expect(result2).toEqual([ReadonlyArray.empty(), [1, 2]])
+      expect(result3).toEqual([ReadonlyArray.empty(), [1, 2, 3]])
+      expect(result4).toEqual(ValidationError.invalidValue(HelpDoc.p(
+        "Expected at most 3 value(s) for option: '--foo'"
+      )))
     }).pipe(runEffect))
 })

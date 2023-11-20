@@ -308,21 +308,6 @@ export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
   makeVariadic(self, Option.none(), Option.none())
 
 /** @internal */
-export const repeatedAtLeastOnce = <A>(
-  self: Args.Args<A>
-): Args.Args<ReadonlyArray.NonEmptyReadonlyArray<A>> =>
-  map(makeVariadic(self, Option.some(1), Option.none()), (values) => {
-    if (ReadonlyArray.isNonEmptyReadonlyArray(values)) {
-      return values
-    }
-    const message = Option.match(getIdentifierInternal(self as Instruction), {
-      onNone: () => "An anonymous variadic argument",
-      onSome: (identifier) => `The variadic option '${identifier}' `
-    })
-    throw new Error(`${message} is not respecting the required minimum of 1`)
-  })
-
-/** @internal */
 export const toRegularLanguage = <A>(
   self: Args.Args<A>
 ): RegularLanguage.RegularLanguage => toRegularLanguageInternal(self as Instruction)
@@ -507,9 +492,9 @@ const getMaxSizeInternal = (self: Instruction): number => {
       return getMaxSizeInternal(self.args as Instruction)
     }
     case "Both": {
-      const leftMinSize = getMaxSizeInternal(self.left as Instruction)
-      const rightMinSize = getMaxSizeInternal(self.right as Instruction)
-      return leftMinSize + rightMinSize
+      const leftMaxSize = getMaxSizeInternal(self.left as Instruction)
+      const rightMaxSize = getMaxSizeInternal(self.right as Instruction)
+      return leftMaxSize + rightMaxSize
     }
     case "Variadic": {
       const argsMaxSize = getMaxSizeInternal(self.args as Instruction)
@@ -725,11 +710,11 @@ const validateInternal = (
             acc.length >= min1 && ReadonlyArray.isEmptyReadonlyArray(args)
               ? Effect.succeed([args, acc])
               : Effect.fail(failure),
-          onSuccess: ([args, a]) => loop(args, ReadonlyArray.prepend(acc, a))
+          onSuccess: ([args, a]) => loop(args, ReadonlyArray.append(acc, a))
         }))
       }
       return loop(args, ReadonlyArray.empty()).pipe(
-        Effect.map(([args, acc]) => [args, ReadonlyArray.reverse(acc)])
+        Effect.map(([args, acc]) => [args, acc])
       )
     }
   }
