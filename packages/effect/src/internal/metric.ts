@@ -63,6 +63,10 @@ export const make: Metric.MetricApply = function<Type, In, Out>(
       keyType,
       unsafeUpdate,
       unsafeValue,
+      register() {
+        this.unsafeValue(HashSet.empty())
+        return this as any
+      },
       pipe() {
         return pipeArguments(this, arguments)
       }
