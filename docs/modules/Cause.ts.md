@@ -50,6 +50,7 @@ Added in v2.0.0
   - [InterruptedException](#interruptedexception)
   - [NoSuchElementException](#nosuchelementexception)
   - [RuntimeException](#runtimeexception)
+  - [YieldableError](#yieldableerror)
   - [originalError](#originalerror)
 - [filtering](#filtering)
   - [filter](#filter)
@@ -93,6 +94,7 @@ Added in v2.0.0
   - [Parallel (interface)](#parallel-interface)
   - [RuntimeException (interface)](#runtimeexception-interface)
   - [Sequential (interface)](#sequential-interface)
+  - [YieldableError (interface)](#yieldableerror-interface)
 - [refinements](#refinements)
   - [isCause](#iscause)
   - [isDieType](#isdietype)
@@ -320,6 +322,18 @@ Represents a generic checked exception which occurs at runtime.
 
 ```ts
 export declare const RuntimeException: (message?: string) => RuntimeException
+```
+
+Added in v2.0.0
+
+## YieldableError
+
+Represents a generic checked exception which occurs at runtime.
+
+**Signature**
+
+```ts
+export declare const YieldableError: new (message?: string | undefined) => YieldableError
 ```
 
 Added in v2.0.0
@@ -780,10 +794,9 @@ provided to a method.
 **Signature**
 
 ```ts
-export interface IllegalArgumentException {
+export interface IllegalArgumentException extends YieldableError {
   readonly _tag: "IllegalArgumentException"
   readonly [IllegalArgumentExceptionTypeId]: IllegalArgumentExceptionTypeId
-  readonly message?: string
 }
 ```
 
@@ -812,10 +825,9 @@ Represents a checked exception which occurs when a `Fiber` is interrupted.
 **Signature**
 
 ```ts
-export interface InterruptedException {
+export interface InterruptedException extends YieldableError {
   readonly _tag: "InterruptedException"
   readonly [InterruptedExceptionTypeId]: InterruptedExceptionTypeId
-  readonly message?: string
 }
 ```
 
@@ -829,10 +841,9 @@ Represents a checked exception which occurs when attempting to construct a
 **Signature**
 
 ```ts
-export interface InvalidPubSubCapacityException {
+export interface InvalidPubSubCapacityException extends YieldableError {
   readonly _tag: "InvalidPubSubCapacityException"
   readonly [InvalidPubSubCapacityExceptionTypeId]: InvalidPubSubCapacityExceptionTypeId
-  readonly message?: string
 }
 ```
 
@@ -846,10 +857,9 @@ unable to be found.
 **Signature**
 
 ```ts
-export interface NoSuchElementException {
+export interface NoSuchElementException extends YieldableError {
   readonly _tag: "NoSuchElementException"
   readonly [NoSuchElementExceptionTypeId]: NoSuchElementExceptionTypeId
-  readonly message?: string
 }
 ```
 
@@ -885,10 +895,9 @@ Represents a generic checked exception which occurs at runtime.
 **Signature**
 
 ```ts
-export interface RuntimeException {
+export interface RuntimeException extends YieldableError {
   readonly _tag: "RuntimeException"
   readonly [RuntimeExceptionTypeId]: RuntimeExceptionTypeId
-  readonly message?: string
 }
 ```
 
@@ -911,6 +920,21 @@ export interface Sequential<out E> extends Cause.Variance<E>, Equal.Equal, Pipea
   readonly _tag: "Sequential"
   readonly left: Cause<E>
   readonly right: Cause<E>
+}
+```
+
+Added in v2.0.0
+
+## YieldableError (interface)
+
+**Signature**
+
+```ts
+export interface YieldableError extends Data.Case, Pipeable, Readonly<Error> {
+  readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Stream.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
+  readonly [Channel.ChannelTypeId]: Channel.Channel.VarianceStruct<never, unknown, unknown, unknown, this, never, never>
 }
 ```
 
