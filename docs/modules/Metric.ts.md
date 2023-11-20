@@ -778,6 +778,7 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
   readonly keyType: Type
   unsafeUpdate(input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): void
   unsafeValue(extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): Out
+  register(): this
   <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 }
 ```
