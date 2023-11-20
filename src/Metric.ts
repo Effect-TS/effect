@@ -57,6 +57,7 @@ export interface Metric<in out Type, in In, out Out> extends Metric.Variance<Typ
   readonly keyType: Type
   unsafeUpdate(input: In, extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): void
   unsafeValue(extraTags: HashSet.HashSet<MetricLabel.MetricLabel>): Out
+  register(): this
   <R, E, A extends In>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A>
 }
 
@@ -660,14 +661,6 @@ export const trackSuccessWith: {
     f: (value: In2) => In
   ): Effect.Effect<R, E, A>
 } = internal.trackSuccessWith
-
-/**
- * Forces the metric to be registered with the global registry.
- *
- * @since 2.0.0
- * @category utils
- */
-export const unsafeRegister: <A extends Metric<any, any, any>>(self: A) => A = internal.unsafeRegister
 
 /**
  * Updates the metric with the specified update message. For example, if the

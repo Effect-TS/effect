@@ -700,10 +700,10 @@ describe.concurrent("Metric", () => {
       )).toBe(true)
     }))
 
-  it.effect("unsafeRegister", () =>
+  it.effect(".register()", () =>
     Effect.gen(function*(_) {
       const id = nextName()
-      Metric.counter(id).pipe(Metric.unsafeRegister)
+      Metric.counter(id).register()
       const snapshot = yield* _(Metric.snapshot)
       const value = pipe(
         ReadonlyArray.fromIterable(snapshot),

@@ -63,6 +63,10 @@ export const make: Metric.MetricApply = function<Type, In, Out>(
       keyType,
       unsafeUpdate,
       unsafeValue,
+      register() {
+        this.unsafeValue(HashSet.empty())
+        return this as any
+      },
       pipe() {
         return pipeArguments(this, arguments)
       }
@@ -185,12 +189,6 @@ export const mapType = dual<
     f: (type: Type) => Type2
   ) => Metric.Metric<Type2, In, Out>
 >(2, (self, f) => make(f(self.keyType), self.unsafeUpdate, self.unsafeValue))
-
-/* @internal */
-export const unsafeRegister = <A extends Metric.Metric<any, any, any>>(self: A): A => {
-  self.unsafeValue(HashSet.empty())
-  return self
-}
 
 /* @internal */
 export const set = dual<
