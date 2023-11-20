@@ -9,10 +9,92 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
+import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
-import { assert, describe } from "vitest"
+import { assert, describe, expect } from "vitest"
+
+const assertFailure = <A>(
+  config: Config.Config<A>,
+  map: ReadonlyArray<readonly [string, string]>,
+  error: ConfigError.ConfigError
+) => {
+  const configProvider = ConfigProvider.fromMap(new Map(map))
+  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
+  expect(result).toStrictEqual(Exit.fail(error))
+}
+
+const assertSuccess = <A>(
+  config: Config.Config<A>,
+  map: ReadonlyArray<readonly [string, string]>,
+  a: A
+) => {
+  const configProvider = ConfigProvider.fromMap(new Map(map))
+  const result = Effect.runSync(Effect.exit(configProvider.load(config)))
+  expect(result).toStrictEqual(Exit.succeed(a))
+}
 
 describe.concurrent("Config", () => {
+  describe.concurrent("logLevel", () => {
+    it.it("name = undefined", () => {
+      assertSuccess(Config.logLevel(), [["", "DEBUG"]], LogLevel.Debug)
+
+      assertFailure(Config.logLevel(), [["", "-"]], ConfigError.InvalidData([], "Expected a log level, but found: -"))
+    })
+
+    it.it("name != undefined", () => {
+      assertSuccess(Config.logLevel("LOG_LEVEL"), [["LOG_LEVEL", "DEBUG"]], LogLevel.Debug)
+
+      assertFailure(
+        Config.logLevel("LOG_LEVEL"),
+        [["LOG_LEVEL", "-"]],
+        ConfigError.InvalidData(["LOG_LEVEL"], "Expected a log level, but found: -")
+      )
+    })
+  })
+
+  describe.concurrent("validate", () => {
+    it.it("should preserve the original path", () => {
+      // flat
+      assertFailure(
+        Config.number("NUMBER").pipe(
+          Config.validate({
+            message: "a positive number",
+            validation: (n) => n >= 0
+          })
+        ),
+        [["NUMBER", "-1"]],
+        ConfigError.InvalidData(["NUMBER"], "a positive number")
+      )
+
+      // nested
+      assertFailure(
+        Config.number("NUMBER").pipe(
+          Config.validate({
+            message: "a positive number",
+            validation: (n) => n >= 0
+          }),
+          Config.nested("NESTED")
+        ),
+        [["NESTED.NUMBER", "-1"]],
+        ConfigError.InvalidData(["NESTED", "NUMBER"], "a positive number")
+      )
+
+      // double nested
+      assertFailure(
+        Config.number("NUMBER").pipe(
+          Config.validate({
+            message: "a positive number",
+            validation: (n) => n >= 0
+          }),
+          Config.nested("NESTED1"),
+          Config.nested("NESTED2")
+        ),
+        [["NESTED2.NESTED1.NUMBER", "-1"]],
+        ConfigError.InvalidData(["NESTED2", "NESTED1", "NUMBER"], "a positive number")
+      )
+    })
+  })
+
   describe.concurrent("withDefault", () => {
     it.effect("recovers from missing data error", () =>
       Effect.gen(function*($) {

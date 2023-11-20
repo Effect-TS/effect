@@ -218,6 +218,19 @@ const extend = <A, B>(
   return [leftExtension, rightExtension]
 }
 
+const appendConfigPath = (path: ReadonlyArray<string>, config: Config.Config<unknown>): ReadonlyArray<string> => {
+  let op = config as _config.ConfigPrimitive
+  if (op._tag === "Nested") {
+    const out = path.slice()
+    while (op._tag === "Nested") {
+      out.push(op.name)
+      op = op.config as _config.ConfigPrimitive
+    }
+    return out
+  }
+  return path
+}
+
 const fromFlatLoop = <A>(
   flat: ConfigProvider.ConfigProvider.Flat,
   prefix: ReadonlyArray<string>,
@@ -274,7 +287,7 @@ const fromFlatLoop = <A>(
             core.forEachSequential((a) =>
               pipe(
                 op.mapOrFail(a),
-                core.mapError(configError.prefixed(prefix))
+                core.mapError(configError.prefixed(appendConfigPath(prefix, op.original)))
               )
             )
           )
