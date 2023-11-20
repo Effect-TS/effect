@@ -45,6 +45,7 @@ Added in v2.0.0
   - [isNullable](#isnullable)
   - [isNumber](#isnumber)
   - [isObject](#isobject)
+  - [isPromise](#ispromise)
   - [isReadonlyRecord](#isreadonlyrecord)
   - [isRecord](#isrecord)
   - [isString](#isstring)
@@ -638,6 +639,27 @@ assert.deepStrictEqual(isObject([]), true)
 
 assert.deepStrictEqual(isObject(null), false)
 assert.deepStrictEqual(isObject(undefined), false)
+```
+
+Added in v2.0.0
+
+## isPromise
+
+A guard that succeeds when the input is a Promise.
+
+**Signature**
+
+```ts
+export declare const isPromise: (input: unknown) => input is Promise<unknown>
+```
+
+**Example**
+
+```ts
+import { isPromise } from "effect/Predicate"
+
+assert.deepStrictEqual(isPromise({}), false)
+assert.deepStrictEqual(isPromise(Promise.resolve("hello")), true)
 ```
 
 Added in v2.0.0

@@ -50,6 +50,7 @@ Added in v2.0.0
   - [InterruptedException](#interruptedexception)
   - [NoSuchElementException](#nosuchelementexception)
   - [RuntimeException](#runtimeexception)
+  - [UnknownException](#unknownexception)
   - [YieldableError](#yieldableerror)
   - [originalError](#originalerror)
 - [filtering](#filtering)
@@ -94,6 +95,7 @@ Added in v2.0.0
   - [Parallel (interface)](#parallel-interface)
   - [RuntimeException (interface)](#runtimeexception-interface)
   - [Sequential (interface)](#sequential-interface)
+  - [UnknownException (interface)](#unknownexception-interface)
   - [YieldableError (interface)](#yieldableerror-interface)
 - [refinements](#refinements)
   - [isCause](#iscause)
@@ -107,6 +109,7 @@ Added in v2.0.0
   - [isParallelType](#isparalleltype)
   - [isRuntimeException](#isruntimeexception)
   - [isSequentialType](#issequentialtype)
+  - [isUnknownException](#isunknownexception)
 - [rendering](#rendering)
   - [pretty](#pretty)
 - [sequencing](#sequencing)
@@ -126,6 +129,8 @@ Added in v2.0.0
   - [NoSuchElementExceptionTypeId (type alias)](#nosuchelementexceptiontypeid-type-alias)
   - [RuntimeExceptionTypeId](#runtimeexceptiontypeid)
   - [RuntimeExceptionTypeId (type alias)](#runtimeexceptiontypeid-type-alias)
+  - [UnknownExceptionTypeId](#unknownexceptiontypeid)
+  - [UnknownExceptionTypeId (type alias)](#unknownexceptiontypeid-type-alias)
 - [utils](#utils)
   - [Cause (namespace)](#cause-namespace)
     - [Variance (interface)](#variance-interface)
@@ -322,6 +327,19 @@ Represents a generic checked exception which occurs at runtime.
 
 ```ts
 export declare const RuntimeException: (message?: string) => RuntimeException
+```
+
+Added in v2.0.0
+
+## UnknownException
+
+Represents a checked exception which occurs when an unknown error is thrown, such as
+from a rejected promise.
+
+**Signature**
+
+```ts
+export declare const UnknownException: (error: unknown, message?: string | undefined) => UnknownException
 ```
 
 Added in v2.0.0
@@ -925,6 +943,23 @@ export interface Sequential<out E> extends Cause.Variance<E>, Equal.Equal, Pipea
 
 Added in v2.0.0
 
+## UnknownException (interface)
+
+Represents a checked exception which occurs when an unknown error is thrown, such as
+from a rejected promise.
+
+**Signature**
+
+```ts
+export interface UnknownException extends YieldableError {
+  readonly _tag: "UnknownException"
+  readonly [UnknownExceptionTypeId]: UnknownExceptionTypeId
+  readonly error: unknown
+}
+```
+
+Added in v2.0.0
+
 ## YieldableError (interface)
 
 **Signature**
@@ -1080,6 +1115,19 @@ otherwise.
 
 ```ts
 export declare const isSequentialType: <E>(self: Cause<E>) => self is Sequential<E>
+```
+
+Added in v2.0.0
+
+## isUnknownException
+
+Returns `true` if the specified value is an `UnknownException`, `false`
+otherwise.
+
+**Signature**
+
+```ts
+export declare const isUnknownException: (u: unknown) => u is UnknownException
 ```
 
 Added in v2.0.0
@@ -1258,6 +1306,26 @@ Added in v2.0.0
 
 ```ts
 export type RuntimeExceptionTypeId = typeof RuntimeExceptionTypeId
+```
+
+Added in v2.0.0
+
+## UnknownExceptionTypeId
+
+**Signature**
+
+```ts
+export declare const UnknownExceptionTypeId: typeof UnknownExceptionTypeId
+```
+
+Added in v2.0.0
+
+## UnknownExceptionTypeId (type alias)
+
+**Signature**
+
+```ts
+export type UnknownExceptionTypeId = typeof UnknownExceptionTypeId
 ```
 
 Added in v2.0.0
