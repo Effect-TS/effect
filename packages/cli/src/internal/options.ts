@@ -1037,44 +1037,63 @@ const parseOptions = (
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
       if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-        const head = ReadonlyArray.headNonEmpty(args)
-        const tail = ReadonlyArray.tailNonEmpty(args)
-        if (ReadonlyArray.contains(singleNames, head)) {
-          let keyValues: ReadonlyArray<string> = ReadonlyArray.empty()
-          let leftover: ReadonlyArray<string> = tail
-          while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-            // Will either be the flag or a key/value pair
-            const flagOrKeyValue = ReadonlyArray.headNonEmpty(leftover).trim()
-            // The input can be in the form of "-d key1=value1 -d key2=value2"
-            if (
-              leftover.length >= 2 && ReadonlyArray.contains(
-                singleNames,
-                InternalCliConfig.normalizeCase(config, flagOrKeyValue)
-              )
-            ) {
-              const keyValueString = leftover[1]!.trim()
-              const split = keyValueString.split("=")
-              if (split.length < 2 || split[1].length === 0 || split[1] === "=") {
-                break
-              } else {
-                keyValues = ReadonlyArray.prepend(keyValues, keyValueString)
-                leftover = leftover.slice(2)
+        let currentIndex = 0
+        let inKeyValueOption = false
+        let keyValues = ReadonlyArray.empty<string>()
+        let leftover = args as ReadonlyArray<string>
+        while (currentIndex < leftover.length) {
+          const name = leftover[currentIndex].trim()
+          const normalizedName = InternalCliConfig.normalizeCase(config, name)
+          // Can be in the form of "--flag key1=value1 --flag key2=value2"
+          if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, normalizedName)) {
+            // Attempt to parse the key/value
+            const currentValue = leftover[currentIndex + 1]
+            if (currentValue !== undefined) {
+              const keyValue = currentValue.trim()
+              const [key, value] = keyValue.split("=")
+              if (key !== undefined && value !== undefined) {
+                if (ReadonlyArray.isEmptyReadonlyArray(keyValues)) {
+                  // Add the name to the head of the array on first value found
+                  keyValues = ReadonlyArray.appendAll(keyValues, [name, keyValue])
+                } else {
+                  // Otherwise just add the value
+                  keyValues = ReadonlyArray.append(keyValues, keyValue)
+                }
+                leftover = ReadonlyArray.appendAll(
+                  // Take everything from the start of leftover to the current index
+                  ReadonlyArray.take(leftover, currentIndex),
+                  // Drop the current argument and its key/value from the leftover
+                  ReadonlyArray.takeRight(leftover, leftover.length - (currentIndex + 2))
+                )
+                inKeyValueOption = true
               }
-              // Or, it can be in the form of "-d key1=value1 key2=value2"
             } else {
-              const split = flagOrKeyValue.split("=")
-              if (split.length < 2 || split[1].length === 0 || split[1] === "=") {
-                break
-              } else {
-                keyValues = ReadonlyArray.prepend(keyValues, flagOrKeyValue)
-                leftover = leftover.slice(1)
-              }
+              currentIndex = currentIndex + 1
             }
+          } // The prior steps will parse out the name of the flag and the first
+          // key/value pair - this step is to parse out variadic repetitions of
+          // key/value pairs that may occcur after the initial flag (i.e. in the
+          // form "--flag key1=value1 key2=value2")
+          else if (inKeyValueOption && name.includes("=")) {
+            const [key, value] = name.split("=")
+            if (key !== undefined && value !== undefined) {
+              // The flag name should have already been added by this point, so
+              // no need to perform the check from the prior step
+              keyValues = ReadonlyArray.append(keyValues, name)
+              leftover = ReadonlyArray.appendAll(
+                // Take everything from the start of leftover to the current index
+                ReadonlyArray.take(leftover, currentIndex),
+                // Drop the current key/value from the leftover
+                ReadonlyArray.takeRight(leftover, leftover.length - (currentIndex + 1))
+              )
+            }
+          } else {
+            inKeyValueOption = false
+            currentIndex = currentIndex + 1
           }
-          return ReadonlyArray.isEmptyReadonlyArray(keyValues)
-            ? Effect.succeed([ReadonlyArray.empty(), args])
-            : Effect.succeed([ReadonlyArray.prepend(keyValues, head), leftover])
+          console.dir({ keyValues, currentIndex, leftover })
         }
+        return Effect.succeed([keyValues, leftover])
       }
       return Effect.succeed([ReadonlyArray.empty(), args])
     }
@@ -1084,34 +1103,37 @@ const parseOptions = (
         (name) => InternalCliConfig.normalizeCase(config, name)
       )
       if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-        const head = ReadonlyArray.headNonEmpty(args)
-        const tail = ReadonlyArray.tailNonEmpty(args)
-        if (ReadonlyArray.contains(singleNames, head)) {
-          let values: ReadonlyArray<string> = ReadonlyArray.empty()
-          let leftover: ReadonlyArray<string> = tail
-          while (ReadonlyArray.isNonEmptyReadonlyArray(leftover)) {
-            const value = ReadonlyArray.headNonEmpty(leftover).trim()
-            if (value.length === 0) {
-              break
-            } else if (
-              leftover.length >= 2
-              && ReadonlyArray.contains(
-                singleNames,
-                InternalCliConfig.normalizeCase(config, value)
+        let currentIndex = 0
+        let values = ReadonlyArray.empty<string>()
+        let leftover = args as ReadonlyArray<string>
+        while (currentIndex < leftover.length) {
+          const name = leftover[currentIndex].trim()
+          const normalizedName = InternalCliConfig.normalizeCase(config, name)
+          if (leftover.length >= 2 && ReadonlyArray.contains(singleNames, normalizedName)) {
+            const currentValue = leftover[currentIndex + 1]
+            if (currentValue !== undefined) {
+              const value = leftover[currentIndex + 1].trim()
+              if (ReadonlyArray.isEmptyReadonlyArray(values)) {
+                // Add the name to the head of the array on first value found
+                values = ReadonlyArray.appendAll(values, [name, value])
+              } else {
+                // Otherwise just add the value
+                values = ReadonlyArray.append(values, value)
+              }
+              leftover = ReadonlyArray.appendAll(
+                // Take everything from the start of leftover to the current index
+                ReadonlyArray.take(leftover, currentIndex),
+                // Drop the current argument and its value from the leftover
+                ReadonlyArray.takeRight(leftover, leftover.length - (currentIndex + 2))
               )
-            ) {
-              values = ReadonlyArray.append(values, leftover[1].trim())
-              leftover = leftover.slice(2)
             } else {
-              values = ReadonlyArray.append(values, value)
-              leftover = leftover.slice(1)
+              currentIndex = currentIndex + 1
             }
+          } else {
+            currentIndex = currentIndex + 1
           }
-          if (ReadonlyArray.isEmptyReadonlyArray(values)) {
-            return Effect.succeed([ReadonlyArray.empty(), args])
-          }
-          return Effect.succeed([ReadonlyArray.prepend(values, head), leftover])
         }
+        return Effect.succeed([values, leftover])
       }
       return Effect.succeed([ReadonlyArray.empty(), args])
     }
@@ -1259,12 +1281,8 @@ const parseInternal = (
     }
     case "KeyValueMap": {
       const extractKeyValue = (
-        value: unknown
+        value: string
       ): Effect.Effect<never, ValidationError.ValidationError, [string, string]> => {
-        if (typeof value !== "string") {
-          const error = `Expected a string but received: ${JSON.stringify(value)}`
-          return Effect.fail(InternalValidationError.invalidValue(InternalHelpDoc.p(error)))
-        }
         const split = value.trim().split("=")
         if (ReadonlyArray.isNonEmptyReadonlyArray(split) && split.length === 2 && split[1] !== "") {
           return Effect.succeed(split as unknown as [string, string])

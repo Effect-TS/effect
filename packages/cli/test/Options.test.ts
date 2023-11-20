@@ -67,6 +67,14 @@ describe("Options", () => {
       expect(result).toEqual(expected)
     }).pipe(runEffect))
 
+  it("should parse variadic options regardless of position", () =>
+    Effect.gen(function*(_) {
+      const option = Options.integer("foo").pipe(Options.repeated)
+      const args = ["--foo", "1", "arg", "--foo", "2"]
+      const result = yield* _(validation(option, args, CliConfig.defaultConfig))
+      expect(result).toEqual([ReadonlyArray.of("arg"), [1, 2]])
+    }).pipe(runEffect))
+
   it("should return a HelpDoc if an option is not an exact match and it's a short option", () =>
     Effect.gen(function*(_) {
       const args = ReadonlyArray.make("--ag", "20")
@@ -449,7 +457,7 @@ describe("Options", () => {
       ])
     }).pipe(runEffect))
 
-  it("keyValueMap - validate should keep non-key-value parameters that follow the key-value pairs (with a 'mixed' style of proceeding -- name or alias)", () =>
+  it("keyValueMap - validate should return an error for invalid key/value pairs", () =>
     Effect.gen(function*(_) {
       const args = ReadonlyArray.make(
         "-d",
@@ -462,10 +470,19 @@ describe("Options", () => {
         "arg2",
         "--verbose"
       )
+      const result = yield* _(Effect.flip(validation(defs, args, CliConfig.defaultConfig)))
+      expect(result).toEqual(ValidationError.invalidArgument(HelpDoc.p(
+        "Expected a key/value pair but received 'key4='"
+      )))
+    }).pipe(runEffect))
+
+  it("keyValueMap - validate should parse regardless of position", () =>
+    Effect.gen(function*(_) {
+      const args = ["--defs", "key1=val1", "arg", "--defs", "key2=val2"]
       const result = yield* _(validation(defs, args, CliConfig.defaultConfig))
       expect(result).toEqual([
-        ["key4=", "arg1", "arg2", "--verbose"],
-        HashMap.make(["key1", "val1"], ["key2", "val2"], ["key3", "val3"])
+        ReadonlyArray.of("arg"),
+        HashMap.make(["key1", "val1"], ["key2", "val2"])
       ])
     }).pipe(runEffect))
 
@@ -512,7 +529,7 @@ describe("Options", () => {
       const args1 = ["--foo", "1"]
       const args2 = ["--foo", "1", "--foo", "2"]
       const args3 = ["--foo", "1", "--foo", "2", "--foo", "3"]
-      const args4 = ["--foo", "1", "--foo", "2", "--foo", "3", "--foo 4"]
+      const args4 = ["--foo", "1", "--foo", "2", "--foo", "3", "--foo", "4"]
       const result1 = yield* _(Effect.flip(validation(option, args1, CliConfig.defaultConfig)))
       const result2 = yield* _(validation(option, args2, CliConfig.defaultConfig))
       const result3 = yield* _(validation(option, args3, CliConfig.defaultConfig))
