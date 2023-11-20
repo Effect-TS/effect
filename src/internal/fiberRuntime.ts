@@ -891,6 +891,8 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
               // Terminate this evaluation, async resumption will continue evaluation:
               effect = null
             }
+          } else {
+            throw e
           }
         }
       }
