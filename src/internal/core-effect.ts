@@ -705,7 +705,7 @@ export const firstSuccessOf = <R, E, A>(effects: Iterable<Effect.Effect<R, E, A>
   core.suspend(() => {
     const list = Chunk.fromIterable(effects)
     if (!Chunk.isNonEmpty(list)) {
-      return core.dieSync(() => internalCause.IllegalArgumentException(`Received an empty collection of effects`))
+      return core.dieSync(() => core.IllegalArgumentException(`Received an empty collection of effects`))
     }
     return pipe(
       Chunk.tailNonEmpty(list),
@@ -2147,7 +2147,7 @@ export const withSpan = dual<
 
 /* @internal */
 export const fromNullable = <A>(value: A): Effect.Effect<never, Cause.NoSuchElementException, NonNullable<A>> =>
-  value == null ? core.fail(internalCause.NoSuchElementException()) : core.succeed(value as NonNullable<A>)
+  value == null ? core.fail(core.NoSuchElementException()) : core.succeed(value as NonNullable<A>)
 
 /* @internal */
 export const optionFromOptional = <R, E, A>(
@@ -2156,7 +2156,7 @@ export const optionFromOptional = <R, E, A>(
   core.catchAll(
     core.map(self, Option.some),
     (error) =>
-      internalCause.isNoSuchElementException(error) ?
+      core.isNoSuchElementException(error) ?
         succeedNone :
         core.fail(error as Exclude<E, Cause.NoSuchElementException>)
   )

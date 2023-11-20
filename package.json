@@ -64,6 +64,7 @@
     "@typescript-eslint/parser": "^6.7.5",
     "@vitest/browser": "^0.34.6",
     "@vitest/coverage-v8": "^0.34.6",
+    "@vitest/ui": "^0.34.6",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "eslint": "^8.51.0",
     "eslint-import-resolver-typescript": "^3.6.1",
