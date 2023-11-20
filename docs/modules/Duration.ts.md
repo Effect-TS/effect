@@ -310,6 +310,7 @@ export type DurationInput =
   | Duration
   | number // millis
   | bigint // nanos
+  | [number, number] // [seconds, nanos]
   | `${number} ${Unit}`
 ```
 

@@ -31,6 +31,9 @@ describe.concurrent("Duration", () => {
     expect(Duration.decode("1.5 seconds")).toEqual(Duration.seconds(1.5))
     expect(Duration.decode("-1.5 seconds")).toEqual(Duration.zero)
 
+    expect(Duration.decode([500, 123456789])).toEqual(Duration.nanos(500123456789n))
+    expect(Duration.decode([-500, 123456789])).toEqual(Duration.zero)
+
     expect(() => Duration.decode("1.5 secs" as any)).toThrowError(new Error("Invalid duration input"))
   })
 
