@@ -21,28 +21,41 @@ const requestVariance = {
   _A: (_: never) => _
 }
 
+const RequestPrototype = {
+  ...Data.StructProto,
+  [RequestTypeId]: requestVariance
+}
+
 /** @internal */
 export const isRequest = (u: unknown): u is Request.Request<unknown, unknown> => hasProperty(u, RequestTypeId)
 
 /** @internal */
 export const of = <R extends Request.Request<any, any>>(): Request.Request.Constructor<R> => (args) =>
-  // @ts-expect-error
-  Data.struct({
-    [RequestTypeId]: requestVariance,
-    ...args
-  })
+  Object.assign(Object.create(RequestPrototype), args)
 
 /** @internal */
 export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
   tag: R["_tag"]
 ): Request.Request.Constructor<R, "_tag"> =>
-(args) =>
-  // @ts-expect-error
-  Data.struct({
-    [RequestTypeId]: requestVariance,
-    _tag: tag,
-    ...args
-  })
+(args) => {
+  const request = Object.assign(Object.create(RequestPrototype), args)
+  request._tag = tag
+  return request
+}
+
+/** @internal */
+export const Class: new<Error, Success, A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
+    : { readonly [P in keyof A as P extends keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
+) => Request.Request<Error, Success> & Readonly<A> = (function() {
+  function Class(this: any, args: any) {
+    if (args) {
+      Object.assign(this, args)
+    }
+  }
+  Class.prototype = RequestPrototype
+  return Class as any
+})()
 
 /** @internal */
 export const TaggedClass = <Tag extends string>(
@@ -51,17 +64,9 @@ export const TaggedClass = <Tag extends string>(
   args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
 ) => Request.Request<Error, Success> & Readonly<A> & { readonly _tag: Tag } => {
-  function Base(this: any, args: any) {
-    if (args) {
-      Object.assign(this, args)
-    }
-    this._tag = tag
-  }
-  Base.prototype = {
-    ...Data.StructProto,
-    [RequestTypeId]: requestVariance
-  }
-  return Base as any
+  return class TaggedClass extends Class<any, any, any> {
+    readonly _tag = tag
+  } as any
 }
 
 /** @internal */
