@@ -20,16 +20,19 @@ const TPubSubSymbolKey = "effect/TPubSub"
 /** @internal */
 export const TPubSubTypeId: TPubSub.TPubSubTypeId = Symbol.for(TPubSubSymbolKey) as TPubSub.TPubSubTypeId
 
+const AbsentValue = Symbol.for("effect/TPubSub/AbsentValue")
+type AbsentValue = typeof AbsentValue
+
 /** @internal */
 export interface Node<in out A> {
-  readonly head: A
+  readonly head: A | AbsentValue
   readonly subscribers: number
   readonly tail: TRef.TRef<Node<A> | undefined>
 }
 
 /** @internal */
 export const makeNode = <A>(
-  head: A,
+  head: A | AbsentValue,
   subscribers: number,
   tail: TRef.TRef<Node<A> | undefined>
 ): Node<A> => ({
@@ -124,9 +127,9 @@ class TPubSubImpl<in out A> implements TPubSub.TPubSub<A> {
               }
               const head = node.head
               const tail = node.tail
-              if (head !== undefined) {
-                const updatedNode = makeNode(void 0, node.subscribers, node.tail as any)
-                tRef.unsafeSet<Node<A | undefined> | undefined>(
+              if (head !== AbsentValue) {
+                const updatedNode = makeNode<A>(AbsentValue, node.subscribers, node.tail as any)
+                tRef.unsafeSet<Node<A> | undefined>(
                   currentPublisherHead as any,
                   updatedNode as any,
                   runtime.journal
@@ -180,7 +183,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     readonly pubsubSize: TRef.TRef<number>,
     readonly publisherHead: TRef.TRef<TRef.TRef<Node<A> | undefined>>,
     readonly requestedCapacity: number,
-    readonly subscriberHead: TRef.TRef<TRef.TRef<Node<A | undefined> | undefined> | undefined>,
+    readonly subscriberHead: TRef.TRef<TRef.TRef<Node<A> | undefined> | undefined>,
     readonly subscriberCount: TRef.TRef<number>,
     readonly subscribers: TRef.TRef<HashSet.HashSet<TRef.TRef<TRef.TRef<Node<A>> | undefined>>>
   ) {}
@@ -211,8 +214,8 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
         loop = false
       } else {
         const head = node.head
-        const tail: TRef.TRef<Node<A | undefined> | undefined> = node.tail
-        if (head !== undefined) {
+        const tail: TRef.TRef<Node<A> | undefined> = node.tail
+        if (head !== AbsentValue) {
           size = size + 1
           if (size >= Number.MAX_SAFE_INTEGER) {
             loop = false
@@ -233,7 +236,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     if (currentSubscriberHead === undefined) {
       return core.interruptAs(runtime.fiberId)
     }
-    let value: A | undefined = undefined
+    let value: A | AbsentValue = AbsentValue
     let loop = true
     while (loop) {
       const node = tRef.unsafeGet(currentSubscriberHead, runtime.journal)
@@ -241,15 +244,15 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
         return core.retry
       }
       const head = node.head
-      const tail: TRef.TRef<Node<A | undefined> | undefined> = node.tail
-      if (head !== undefined) {
+      const tail: TRef.TRef<Node<A> | undefined> = node.tail
+      if (head !== AbsentValue) {
         value = head
         loop = false
       } else {
         currentSubscriberHead = tail
       }
     }
-    return core.succeed(value!)
+    return core.succeed(value as A)
   })
 
   peekOption: STM.STM<never, never, Option.Option<A>> = core.withSTMRuntime((runtime) => {
@@ -266,8 +269,8 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
         loop = false
       } else {
         const head = node.head
-        const tail: TRef.TRef<Node<A | undefined> | undefined> = node.tail
-        if (head !== undefined) {
+        const tail: TRef.TRef<Node<A> | undefined> = node.tail
+        if (head !== AbsentValue) {
           value = Option.some(head)
           loop = false
         } else {
@@ -281,7 +284,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
   shutdown: STM.STM<never, never, void> = core.effect<never, void>((journal) => {
     let currentSubscriberHead = tRef.unsafeGet(this.subscriberHead, journal)
     if (currentSubscriberHead !== undefined) {
-      tRef.unsafeSet<TRef.TRef<Node<A | undefined> | undefined> | undefined>(this.subscriberHead, void 0, journal)
+      tRef.unsafeSet<TRef.TRef<Node<A> | undefined> | undefined>(this.subscriberHead, void 0, journal)
       let loop = true
       while (loop) {
         const node = tRef.unsafeGet(currentSubscriberHead, journal)
@@ -289,18 +292,18 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
           loop = false
         } else {
           const head = node.head
-          const tail: TRef.TRef<Node<A | undefined> | undefined> = node.tail
-          if (head !== undefined) {
+          const tail: TRef.TRef<Node<A> | undefined> = node.tail
+          if (head !== AbsentValue) {
             const subscribers = node.subscribers
             if (subscribers === 1) {
               const size = tRef.unsafeGet(this.pubsubSize, journal)
-              const updatedNode = makeNode(undefined, 0, tail)
-              tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, journal)
+              const updatedNode = makeNode<A>(AbsentValue, 0, tail)
+              tRef.unsafeSet<Node<A> | undefined>(currentSubscriberHead, updatedNode, journal)
               tRef.unsafeSet(this.publisherHead, tail as any, journal)
               tRef.unsafeSet(this.pubsubSize, size - 1, journal)
             } else {
               const updatedNode = makeNode(head, subscribers - 1, tail)
-              tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, journal)
+              tRef.unsafeSet<Node<A> | undefined>(currentSubscriberHead, updatedNode, journal)
             }
           }
           currentSubscriberHead = tail
@@ -324,7 +327,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
     if (currentSubscriberHead === undefined) {
       return core.interruptAs(runtime.fiberId)
     }
-    let value: A | undefined = undefined
+    let value: A | AbsentValue = AbsentValue
     let loop = true
     while (loop) {
       const node = tRef.unsafeGet(currentSubscriberHead, runtime.journal)
@@ -332,20 +335,20 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
         return core.retry
       }
       const head = node.head
-      const tail: TRef.TRef<Node<A | undefined> | undefined> = node.tail
-      if (head !== undefined) {
+      const tail: TRef.TRef<Node<A> | undefined> = node.tail
+      if (head !== AbsentValue) {
         const subscribers = node.subscribers
         if (subscribers === 1) {
           const size = tRef.unsafeGet(this.pubsubSize, runtime.journal)
-          const updatedNode = makeNode(void 0, 0, tail)
-          tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
+          const updatedNode = makeNode<A>(AbsentValue, 0, tail)
+          tRef.unsafeSet<Node<A> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
           tRef.unsafeSet(this.publisherHead, tail as any, runtime.journal)
           tRef.unsafeSet(this.pubsubSize, size - 1, runtime.journal)
         } else {
           const updatedNode = makeNode(head, subscribers - 1, tail)
-          tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
+          tRef.unsafeSet<Node<A> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
         }
-        tRef.unsafeSet<TRef.TRef<Node<A | undefined> | undefined> | undefined>(
+        tRef.unsafeSet<TRef.TRef<Node<A> | undefined> | undefined>(
           this.subscriberHead,
           tail,
           runtime.journal
@@ -356,7 +359,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
         currentSubscriberHead = tail
       }
     }
-    return core.succeed(value!)
+    return core.succeed(value as A)
   })
 
   takeAll: STM.STM<never, never, Array<A>> = this.takeUpTo(Number.POSITIVE_INFINITY)
@@ -375,18 +378,18 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
           n = max
         } else {
           const head = node.head
-          const tail: TRef.TRef<Node<A | undefined> | undefined> = node.tail
-          if (head !== undefined) {
+          const tail: TRef.TRef<Node<A> | undefined> = node.tail
+          if (head !== AbsentValue) {
             const subscribers = node.subscribers
             if (subscribers === 1) {
               const size = tRef.unsafeGet(this.pubsubSize, runtime.journal)
-              const updatedNode = makeNode(void 0, 0, tail)
-              tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
+              const updatedNode = makeNode<A>(AbsentValue, 0, tail)
+              tRef.unsafeSet<Node<A> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
               tRef.unsafeSet(this.publisherHead, tail as any, runtime.journal)
               tRef.unsafeSet(this.pubsubSize, size - 1, runtime.journal)
             } else {
               const updatedNode = makeNode(head, subscribers - 1, tail)
-              tRef.unsafeSet<Node<A | undefined> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
+              tRef.unsafeSet<Node<A> | undefined>(currentSubscriberHead, updatedNode, runtime.journal)
             }
             builder.push(head)
             n = n + 1
@@ -394,7 +397,7 @@ class TPubSubSubscriptionImpl<in out A> implements TQueue.TDequeue<A> {
           currentSubscriberHead = tail
         }
       }
-      tRef.unsafeSet<TRef.TRef<Node<A | undefined> | undefined> | undefined>(
+      tRef.unsafeSet<TRef.TRef<Node<A> | undefined> | undefined>(
         this.subscriberHead,
         currentSubscriberHead,
         runtime.journal
