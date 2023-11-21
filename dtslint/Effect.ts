@@ -449,9 +449,52 @@ pipe(
 pipe(
   Effect.fail<TestError1 | Error>(new Error()),
   Effect.catchTags({
-    "TestError1": (_e) => Effect.succeed(1)
+    TestError1: (_e) => Effect.succeed(1)
   })
 )
+
+pipe(
+  Effect.fail(new TestError1()),
+  Effect.catchTags({
+    TestError1: () => Effect.succeed(1),
+    // @ts-expect-error
+    Other: () => Effect.succeed(1)
+  })
+)
+
+Effect.catchTags(Effect.fail(new TestError1()), {
+  TestError1: () => Effect.succeed(1),
+  // @ts-expect-error
+  Other: () => Effect.succeed(1)
+})
+
+pipe(
+  Effect.fail(new TestError1() as TestError1 | string),
+  Effect.catchTags({
+    TestError1: () => Effect.succeed(1),
+    // @ts-expect-error
+    Other: () => Effect.succeed(1)
+  })
+)
+
+Effect.catchTags(Effect.fail(new TestError1() as TestError1 | string), {
+  TestError1: () => Effect.succeed(1),
+  // @ts-expect-error
+  Other: () => Effect.succeed(1)
+})
+
+// $ExpectType Effect<never, unknown, number>
+pipe(
+  Effect.fail(new TestError1() as unknown),
+  Effect.catchTags({
+    TestError1: () => Effect.succeed(1)
+  })
+)
+
+// $ExpectType Effect<never, unknown, number>
+Effect.catchTags(Effect.fail(new TestError1() as unknown), {
+  TestError1: () => Effect.succeed(1)
+})
 
 // -------------------------------------------------------------------------------------
 // iterate
