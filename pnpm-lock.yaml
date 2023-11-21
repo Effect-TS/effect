@@ -33,8 +33,8 @@ devDependencies:
     specifier: ^0.3.4
     version: 0.3.4(tsx@4.1.2)(typescript@5.2.2)
   '@effect/dtslint':
-    specifier: ^0.0.3
-    version: 0.0.3(typescript@5.2.2)
+    specifier: ^0.0.4
+    version: 0.0.4(typescript@5.2.2)
   '@effect/eslint-plugin':
     specifier: ^0.1.2
     version: 0.1.2
@@ -643,8 +643,8 @@ packages:
       typescript: 5.2.2
     dev: true
 
-  /@effect/dtslint@0.0.3(typescript@5.2.2):
-    resolution: {integrity: sha512-uJuNtRsug/p7cdMpVrDLv151wOLxHWBMFL2LlpOabQGVWRnA8C4MdyOwPvO86wAeWpDHfgPrFwK5FIt7Imgkwg==}
+  /@effect/dtslint@0.0.4(typescript@5.2.2):
+    resolution: {integrity: sha512-3aQbc6zNm5yClSEbmJVs3Usyua1XbfqcTR1zkExvsusC3vVCrNTkO6cPY3vp9KnCtlWzbnePyZTv+a2cNzy9Wg==}
     hasBin: true
     peerDependencies:
       typescript: ^5.x
