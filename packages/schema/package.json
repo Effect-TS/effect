@@ -1,6 +1,6 @@
 {
   "name": "@effect/schema",
-  "version": "0.48.4",
+  "version": "0.49.0",
   "type": "module",
   "packageManager": "pnpm@8.10.0",
   "publishConfig": {

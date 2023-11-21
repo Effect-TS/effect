@@ -1,5 +1,15 @@
 # @effect/schema
 
+## 0.49.0
+
+### Minor Changes
+
+- [#577](https://github.com/Effect-TS/schema/pull/577) [`9653cf4`](https://github.com/Effect-TS/schema/commit/9653cf4bc5e25a3b98ddb52c15ca72811ed89156) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
+### Patch Changes
+
+- [#574](https://github.com/Effect-TS/schema/pull/574) [`2ed5f8e`](https://github.com/Effect-TS/schema/commit/2ed5f8ef1584f23962de646a317e536309db744b) Thanks [@tim-smart](https://github.com/tim-smart)! - add TaggedRequest class
+
 ## 0.48.4
 
 ### Patch Changes
