@@ -134,7 +134,7 @@ describe.concurrent("Stream", () => {
         Stream.make(1),
         Stream.flatMap(() =>
           Stream.sync(() => {
-            throw Cause.RuntimeException("Ouch")
+            throw new Cause.RuntimeException("Ouch")
           })
         ),
         Stream.zip(Stream.make(1)),
@@ -143,7 +143,7 @@ describe.concurrent("Stream", () => {
       )
       assert.deepStrictEqual(
         result,
-        Exit.failCause(Cause.parallel(Cause.empty, Cause.die(Cause.RuntimeException("Ouch"))))
+        Exit.failCause(Cause.parallel(Cause.empty, Cause.die(new Cause.RuntimeException("Ouch"))))
       )
     }))
 

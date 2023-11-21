@@ -5747,7 +5747,7 @@ export const slidingSize = dual<
   <R, E, A>(self: Stream.Stream<R, E, A>, chunkSize: number, stepSize: number): Stream.Stream<R, E, Chunk.Chunk<A>> => {
     if (chunkSize <= 0 || stepSize <= 0) {
       return die(
-        Cause.IllegalArgumentException("Invalid bounds - `chunkSize` and `stepSize` must be greater than zero")
+        new Cause.IllegalArgumentException("Invalid bounds - `chunkSize` and `stepSize` must be greater than zero")
       )
     }
     return new StreamImpl(core.suspend(() => {
@@ -5996,7 +5996,7 @@ export const take = dual<
   <R, E, A>(self: Stream.Stream<R, E, A>, n: number) => Stream.Stream<R, E, A>
 >(2, <R, E, A>(self: Stream.Stream<R, E, A>, n: number): Stream.Stream<R, E, A> => {
   if (!Number.isInteger(n)) {
-    return die(Cause.IllegalArgumentException(`${n} must be an integer`))
+    return die(new Cause.IllegalArgumentException(`${n} must be an integer`))
   }
   const loop = (n: number): Channel.Channel<never, never, Chunk.Chunk<A>, unknown, never, Chunk.Chunk<A>, unknown> =>
     core.readWith({
@@ -6541,7 +6541,7 @@ export const timeoutTo = dual<
     duration: Duration.DurationInput,
     that: Stream.Stream<R2, E2, A2>
   ): Stream.Stream<R | R2, E | E2, A | A2> => {
-    const StreamTimeout = Cause.RuntimeException("Stream Timeout")
+    const StreamTimeout = new Cause.RuntimeException("Stream Timeout")
     return pipe(
       self,
       timeoutFailCause<E | E2>(() => Cause.die(StreamTimeout), duration),

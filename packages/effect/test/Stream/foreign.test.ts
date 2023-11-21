@@ -82,7 +82,7 @@ describe.concurrent("Stream.Foreign", () => {
         Effect.either,
         Effect.provideService(tag, 10)
       )
-      assert.deepEqual(result, Either.left(Cause.NoSuchElementException()))
+      assert.deepEqual(result, Either.left(new Cause.NoSuchElementException()))
     }))
 
   it.effect("Effect.fail", () =>

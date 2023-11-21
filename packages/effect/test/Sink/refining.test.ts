@@ -11,7 +11,7 @@ import { assert, describe } from "vitest"
 describe.concurrent("Sink", () => {
   it.effect("refineOrDie", () =>
     Effect.gen(function*($) {
-      const exception = Cause.RuntimeException()
+      const exception = new Cause.RuntimeException()
       const refinedTo = "refined"
       const sink = pipe(
         Sink.fail(exception),
@@ -27,7 +27,7 @@ describe.concurrent("Sink", () => {
 
   it.effect("refineOrDieWith - refines", () =>
     Effect.gen(function*($) {
-      const exception = Cause.RuntimeException()
+      const exception = new Cause.RuntimeException()
       const refinedTo = "refined"
       const sink = pipe(
         Sink.fail(exception),
@@ -42,7 +42,7 @@ describe.concurrent("Sink", () => {
 
   it.effect("refineOrDieWith - dies", () =>
     Effect.gen(function*($) {
-      const exception = Cause.RuntimeException()
+      const exception = new Cause.RuntimeException()
       const refinedTo = "refined"
       const sink = pipe(
         Sink.fail(exception),

@@ -54,7 +54,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncEffect - handles errors", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncEffect<never, Cause.RuntimeException, number>((emit) => {
           emit.fromEffect(Effect.fail(error))
@@ -68,7 +68,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncEffect - handles defects", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncEffect<never, Cause.RuntimeException, number>(() => {
           throw error
@@ -167,7 +167,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncInterrupt - handles errors", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncInterrupt<never, Cause.RuntimeException, number>((emit) => {
           emit.fromEffect(Effect.fail(error))
@@ -181,7 +181,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncInterrupt - handles defects", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncInterrupt<never, Cause.RuntimeException, number>(() => {
           throw error
@@ -265,7 +265,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncOption - handles errors", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncOption<never, Cause.RuntimeException, number>((emit) => {
           emit.fromEffect(Effect.fail(error))
@@ -279,7 +279,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncOption - handles defects", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncOption<never, Cause.RuntimeException, number>(() => {
           throw error
@@ -360,7 +360,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncScoped - handles errors", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncScoped<never, Cause.RuntimeException, number>((cb) => {
           cb(Effect.fail(Option.some(error)))
@@ -374,7 +374,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("asyncScoped - handles defects", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.asyncScoped<never, Cause.RuntimeException, number>(() => {
           throw error

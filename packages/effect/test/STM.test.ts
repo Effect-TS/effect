@@ -168,7 +168,7 @@ describe.concurrent("STM", () => {
   it.effect("catchSome - catches matched errors", () =>
     Effect.gen(function*($) {
       const transaction = pipe(
-        STM.fail(Cause.RuntimeException("Ouch")),
+        STM.fail(new Cause.RuntimeException("Ouch")),
         STM.tap(() => STM.succeed("everything is fine")),
         STM.catchSome((e) =>
           Cause.isRuntimeException(e) ?
@@ -182,7 +182,7 @@ describe.concurrent("STM", () => {
 
   it.effect("catchSome - lets the error pass", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(
         STM.fail(error),
         STM.tap(() => STM.succeed("everything is fine")),
@@ -298,7 +298,7 @@ describe.concurrent("STM", () => {
 
   it.effect("filterOrDie - dies when predicate fails", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(
         STM.succeed(1),
         STM.filterOrDie((n) => n !== 1, () => error)
@@ -314,7 +314,7 @@ describe.concurrent("STM", () => {
         STM.filterOrDieMessage((n) => n !== 1, "Ouch")
       )
       const result = yield* $(Effect.exit(STM.commit(transaction)))
-      assert.deepStrictEqual(result, Exit.die(Cause.RuntimeException("Ouch")))
+      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("Ouch")))
     }))
 
   it.effect("filterOrElse - returns checked failure", () =>
@@ -359,7 +359,7 @@ describe.concurrent("STM", () => {
 
   it.effect("filterOrElse - returns error", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(
         STM.fail(error),
         STM.zipRight(STM.succeed(1)),
@@ -371,7 +371,7 @@ describe.concurrent("STM", () => {
 
   it.effect("filterOrFail - returns failure when predicate fails", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(
         STM.succeed(1),
         STM.filterOrFail((n) => n !== 1, () => error)
@@ -557,7 +557,7 @@ describe.concurrent("STM", () => {
 
   it.effect("none - on error", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.none(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
       assert.deepStrictEqual(result, Exit.fail(Option.some(error)))
@@ -696,7 +696,7 @@ describe.concurrent("STM", () => {
 
   it.effect("orDie - when failure should die", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.orDie(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
       assert.deepStrictEqual(result, Exit.die(error))
@@ -711,7 +711,7 @@ describe.concurrent("STM", () => {
 
   it.effect("orDieWith - when failure should die", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(STM.fail("-1"), STM.orDieWith(() => error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
       assert.deepStrictEqual(result, Exit.die(error))
@@ -719,7 +719,7 @@ describe.concurrent("STM", () => {
 
   it.effect("orDieWith - when succeed should keep going", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = pipe(STM.succeed(1), STM.orDieWith(() => error))
       const result = yield* $(STM.commit(transaction))
       assert.strictEqual(result, 1)
@@ -947,7 +947,7 @@ describe.concurrent("STM", () => {
 
   it.effect("some - fails on error", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Ouch")
+      const error = new Cause.RuntimeException("Ouch")
       const transaction = STM.some(STM.fail(error))
       const result = yield* $(Effect.exit(STM.commit(transaction)))
       assert.deepStrictEqual(result, Exit.fail(Option.some(error)))

@@ -303,7 +303,7 @@ describe.concurrent("ScopedCache", () => {
     Effect.gen(function*($) {
       const watchableLookup = yield* $(
         WatchableLookup.makeEffect<void, Cause.RuntimeException, never>(() =>
-          Effect.fail(Cause.RuntimeException("fail"))
+          Effect.fail(new Cause.RuntimeException("fail"))
         )
       )
       const scopedCache = ScopedCache.make({
@@ -356,7 +356,7 @@ describe.concurrent("ScopedCache", () => {
     Effect.gen(function*($) {
       const watchableLookup = yield* $(
         WatchableLookup.makeEffect<void, Cause.RuntimeException, never>(() =>
-          Effect.fail(Cause.RuntimeException("fail"))
+          Effect.fail(new Cause.RuntimeException("fail"))
         )
       )
       const scopedCache = ScopedCache.make({
@@ -654,7 +654,7 @@ describe.concurrent("ScopedCache", () => {
 
   it.effect("refresh - should update the cache with a new value even if the last get or refresh failed", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Must be a multiple of 3")
+      const error = new Cause.RuntimeException("Must be a multiple of 3")
       const inc = (n: number) => n + 1
       const retrieve = (number: Ref.Ref<number>) => (key: number) =>
         pipe(

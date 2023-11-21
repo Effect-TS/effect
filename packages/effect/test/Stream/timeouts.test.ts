@@ -61,7 +61,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("timeoutFailCause", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(0, 4),
         Stream.tap(() => Effect.sleep(Duration.infinity)),

@@ -868,7 +868,7 @@ describe.concurrent("TArray", () => {
         STM.flatMap(TArray.get(-1)),
         Effect.exit
       ))
-      assert.deepStrictEqual(result, Exit.die(Cause.RuntimeException("Index out of bounds")))
+      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("Index out of bounds")))
     }))
 
   it.effect("headOption - retrieves the first item in the array", () =>
@@ -1199,7 +1199,7 @@ describe.concurrent("TArray", () => {
     Effect.gen(function*($) {
       const array = yield* $(makeTArray(1, 42))
       const result = yield* $(pipe(array, TArray.update(-1, identity), Effect.exit))
-      assert.deepStrictEqual(result, Exit.die(Cause.RuntimeException("Index out of bounds")))
+      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("Index out of bounds")))
     }))
 
   it.effect("updateSTM - happy path", () =>
@@ -1217,7 +1217,7 @@ describe.concurrent("TArray", () => {
     Effect.gen(function*($) {
       const array = yield* $(makeTArray(1, 42))
       const result = yield* $(pipe(array, TArray.updateSTM(-1, (n) => STM.succeed(n)), Effect.exit))
-      assert.deepStrictEqual(result, Exit.die(Cause.RuntimeException("Index out of bounds")))
+      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("Index out of bounds")))
     }))
 
   it.effect("updateSTM - handles failures", () =>

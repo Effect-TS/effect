@@ -12,7 +12,7 @@ const ExampleError = new Error("Oh noes!")
 const parseInt = (s: string): number => {
   const n = Number.parseInt(s)
   if (Number.isNaN(n)) {
-    throw Cause.IllegalArgumentException()
+    throw new Cause.IllegalArgumentException()
   }
   return n
 }
@@ -60,7 +60,7 @@ describe.concurrent("Effect", () => {
   it.effect("tryMap - translates any thrown exceptions into typed failed effects", () =>
     Effect.gen(function*($) {
       const result = yield* $(Effect.succeed("hello"), Effect.tryMap({ try: parseInt, catch: identity }), Effect.exit)
-      assert.deepStrictEqual(result, Exit.fail(Cause.IllegalArgumentException()))
+      assert.deepStrictEqual(result, Exit.fail(new Cause.IllegalArgumentException()))
     }))
   it.effect("negate - on true returns false", () =>
     Effect.gen(function*($) {

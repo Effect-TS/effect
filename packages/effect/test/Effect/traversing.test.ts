@@ -131,7 +131,7 @@ describe.concurrent("Effect", () => {
           Effect.sync(() => {
             const n = Number.parseInt(s)
             if (Number.isNaN(n)) {
-              throw Cause.IllegalArgumentException()
+              throw new Cause.IllegalArgumentException()
             }
             return n
           })
@@ -139,7 +139,7 @@ describe.concurrent("Effect", () => {
         Effect.exit
       )
 
-      assert.deepStrictEqual(result, Exit.die(Cause.IllegalArgumentException()))
+      assert.deepStrictEqual(result, Exit.die(new Cause.IllegalArgumentException()))
     }))
   it.effect("forEach/discard - runs effects in order", () =>
     Effect.gen(function*($) {

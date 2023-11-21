@@ -40,7 +40,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("acquireUseRelease - error handling", () =>
     Effect.gen(function*($) {
-      const releaseDied = Cause.RuntimeException("release died")
+      const releaseDied = new Cause.RuntimeException("release died")
       const exit = yield* $(
         Effect.acquireUseRelease(
           Effect.succeed(42),
@@ -58,7 +58,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("acquireUseRelease - error handling + disconnect", () =>
     Effect.gen(function*($) {
-      const releaseDied = Cause.RuntimeException("release died")
+      const releaseDied = new Cause.RuntimeException("release died")
       const exit = yield* $(
         Effect.acquireUseRelease(
           Effect.succeed(42),
@@ -80,7 +80,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("acquireUseRelease - beast mode error handling + disconnect", () =>
     Effect.gen(function*($) {
-      const useDied = Cause.RuntimeException("use died")
+      const useDied = new Cause.RuntimeException("use died")
       const release = yield* $(Ref.make(false))
       const exit = yield* $(
         pipe(

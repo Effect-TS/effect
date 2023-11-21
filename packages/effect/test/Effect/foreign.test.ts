@@ -52,7 +52,7 @@ describe.concurrent("Foreign", () => {
         )
       )
       assert.deepEqual(a, 10)
-      assert.deepEqual(b, Either.left(Cause.NoSuchElementException()))
+      assert.deepEqual(b, Either.left(new Cause.NoSuchElementException()))
       assert.deepEqual(c, 3)
     }))
 })

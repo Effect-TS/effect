@@ -87,7 +87,7 @@ export const batchN = dual<
   new core.RequestResolverImpl(
     (requests) => {
       return n < 1
-        ? core.die(Cause.IllegalArgumentException("RequestResolver.batchN: n must be at least 1"))
+        ? core.die(new Cause.IllegalArgumentException("RequestResolver.batchN: n must be at least 1"))
         : self.runAll(
           Array.from(Chunk.map(
             RA.reduce(
