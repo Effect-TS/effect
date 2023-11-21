@@ -304,13 +304,6 @@ export const mapOrFail = dual<
 })
 
 /** @internal */
-export const missingError = (name: string) => {
-  return <A>(self: Config.Config.Primitive<A>): ConfigError.ConfigError => {
-    return configError.MissingData([], `Expected ${self.description} with name ${name}`)
-  }
-}
-
-/** @internal */
 export const nested = dual<
   (name: string) => <A>(self: Config.Config<A>) => Config.Config<A>,
   <A>(self: Config.Config<A>, name: string) => Config.Config<A>
