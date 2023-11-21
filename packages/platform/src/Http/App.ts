@@ -46,7 +46,7 @@ export type PreResponseHandler = (
  */
 export const currentPreResponseHandlers: FiberRef.FiberRef<ReadonlyArray<PreResponseHandler>> = globalValue(
   Symbol.for("@effect/platform/Http/App/preResponseHandlers"),
-  () => FiberRef.unsafeMake([])
+  () => FiberRef.unsafeMake<ReadonlyArray<PreResponseHandler>>([])
 )
 
 function noopHandler(_request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse) {

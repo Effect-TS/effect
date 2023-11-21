@@ -34,10 +34,10 @@
     "@effect/platform": "workspace:*"
   },
   "peerDependencies": {
-    "effect": "2.0.0-next.55"
+    "effect": "2.0.0-next.56"
   },
   "devDependencies": {
-    "effect": "2.0.0-next.55",
+    "effect": "2.0.0-next.56",
     "happy-dom": "^12.10.3"
   }
 }

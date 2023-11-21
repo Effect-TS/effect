@@ -80,7 +80,7 @@ export const withMaxFileSize = dual<
 /** @internal */
 export const fieldMimeTypes: FiberRef.FiberRef<Chunk.Chunk<string>> = globalValue(
   "@effect/platform/Http/FormData/fieldMimeTypes",
-  () => FiberRef.unsafeMake(Chunk.make("application/json"))
+  () => FiberRef.unsafeMake<Chunk.Chunk<string>>(Chunk.make("application/json"))
 )
 
 /** @internal */
