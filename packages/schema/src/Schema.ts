@@ -3789,6 +3789,8 @@ const makeClass = <I, A>(
       ).ast
     }
 
+    static struct = selfSchema
+
     static extend() {
       return (fields: any) => {
         const newFields = { ...selfFields, ...fields }

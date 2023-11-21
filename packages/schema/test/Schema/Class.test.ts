@@ -7,7 +7,7 @@ import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
 import * as Request from "effect/Request"
-import { describe, expect, it } from "vitest"
+import { assert, describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>()({
   id: S.number,
@@ -127,6 +127,11 @@ describe("Schema/Class", () => {
       { id: 1, name: "John" },
       `Expected an instance of Person, actual {"id":1,"name":"John"}`
     )
+  })
+
+  it(".struct", async () => {
+    const person = S.parseSync(Person.struct)({ id: 1, name: "John" })
+    assert.deepStrictEqual(person, { id: 1, name: "John" })
   })
 
   it("extends", () => {
