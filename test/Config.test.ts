@@ -4,7 +4,6 @@ import * as ConfigError from "effect/ConfigError"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as ConfigSecret from "effect/ConfigSecret"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
@@ -50,9 +49,6 @@ describe.concurrent("Config", () => {
       [["BOOL", "value"]],
       ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
     )
-
-    const parse = (Config.boolean() as Config.Config.Primitive<boolean>).parse
-    expect(parse("true")).toStrictEqual(Either.right(true))
   })
 
   it("number", () => {
@@ -70,9 +66,6 @@ describe.concurrent("Config", () => {
       [["NUMBER", "value"]],
       ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
     )
-
-    const parse = (Config.number() as Config.Config.Primitive<number>).parse
-    expect(parse("1")).toStrictEqual(Either.right(1))
   })
 
   it("date", () => {
@@ -85,9 +78,6 @@ describe.concurrent("Config", () => {
       [["DATE", "value"]],
       ConfigError.InvalidData(["DATE"], "Expected a date value but received value")
     )
-
-    const parse = (Config.date() as Config.Config.Primitive<Date>).parse
-    expect(parse("0")).toStrictEqual(Either.right(new Date(Date.parse("0"))))
   })
 
   it("fail", () => {
