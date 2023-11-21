@@ -1662,12 +1662,12 @@ export const tryPromise: {
       }
     ),
     (promise) =>
-      core.async<never, E, A>((resolve) => {
+      core.async((resolve) => {
         promise
           .then((a) => resolve(core.exitSucceed(a)))
           .catch((e) =>
             resolve(core.fail(
-              catcher ? catcher(e) : e
+              catcher ? catcher(e) : new core.UnknownException(e)
             ))
           )
       })

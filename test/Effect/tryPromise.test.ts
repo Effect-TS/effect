@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as timeout from "effect/internal/timeout"
@@ -25,7 +26,7 @@ describe.concurrent("Effect", () => {
       })
     )
     const either = await Effect.runPromise(Effect.either(effect))
-    expect(either).toStrictEqual(Either.left("error"))
+    expect(either).toStrictEqual(Either.left(new Cause.UnknownException("error")))
   })
 
   it("tryPromise - failure, catch, no AbortSignal", async () => {
