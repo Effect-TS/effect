@@ -60,7 +60,7 @@
     "@changesets/cli": "^2.26.2",
     "@effect/build-utils": "^0.5.0",
     "@effect/docgen": "^0.3.5",
-    "@effect/dtslint": "^0.0.3",
+    "@effect/dtslint": "^0.0.4",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@types/benchmark": "^2.1.5",
@@ -84,7 +84,7 @@
     "prettier": "^3.1.0",
     "rimraf": "^5.0.5",
     "tsx": "^4.1.2",
-    "typescript": "^5.2.2",
+    "typescript": "^5.3.2",
     "vite": "^4.5.0",
     "vitest": "^0.34.6",
     "zod": "^3.22.4"
