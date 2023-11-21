@@ -117,7 +117,7 @@ describe.concurrent("Effect", () => {
   it.effect("forkAll - infers correctly with error type", () =>
     Effect.gen(function*($) {
       const ref = yield* $(Ref.make(0))
-      const worker = Effect.forever(Effect.fail(Cause.RuntimeException("fail")))
+      const worker = Effect.forever(Effect.fail(new Cause.RuntimeException("fail")))
       const workers = Array.from({ length: 4 }, () => worker)
       const fiber = yield* $(Effect.forkAll(workers))
       yield* $(Fiber.interrupt(fiber))

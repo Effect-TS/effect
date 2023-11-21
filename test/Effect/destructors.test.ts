@@ -56,7 +56,7 @@ describe.concurrent("Effect", () => {
     }))
   it.effect("none - fails with Some(ex) when effect fails with ex", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("failed task")
+      const error = new Cause.RuntimeException("failed task")
       const result = yield* $(Effect.exit(Effect.none(Effect.fail(error))))
       assert.deepStrictEqual(result, Exit.fail(Option.some(error)))
     }))

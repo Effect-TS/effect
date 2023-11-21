@@ -2037,7 +2037,7 @@ export const firstSuccessOf = <R, E, A>(effects: Iterable<STM<R, E, A>>): STM<R,
   suspend<R, E, A>(() => {
     const list = Chunk.fromIterable(effects)
     if (!Chunk.isNonEmpty(list)) {
-      return dieSync(() => Cause.IllegalArgumentException(`Received an empty collection of effects`))
+      return dieSync(() => new Cause.IllegalArgumentException(`Received an empty collection of effects`))
     }
     return Chunk.reduce(
       Chunk.tailNonEmpty(list),

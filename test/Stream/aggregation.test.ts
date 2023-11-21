@@ -38,7 +38,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("aggregate - error propagation #1", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Boom")
+      const error = new Cause.RuntimeException("Boom")
       const result = yield* $(
         Stream.make(1, 1, 1, 1),
         Stream.aggregate(Sink.die(error)),
@@ -50,7 +50,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("aggregate - error propagation #2", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Boom")
+      const error = new Cause.RuntimeException("Boom")
       const result = yield* $(
         Stream.make(1, 1),
         Stream.aggregate(
@@ -253,7 +253,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("aggregateWithinEither - error propagation #1", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Boom")
+      const error = new Cause.RuntimeException("Boom")
       const result = yield* $(
         Stream.make(1, 1, 1, 1),
         Stream.aggregateWithinEither(
@@ -268,7 +268,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("aggregateWithinEither - error propagation #2", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("Boom")
+      const error = new Cause.RuntimeException("Boom")
       const result = yield* $(
         Stream.make(1, 1),
         Stream.aggregateWithinEither(

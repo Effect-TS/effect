@@ -345,8 +345,11 @@ describe.concurrent("Cause", () => {
 
   describe("InterruptedException", () => {
     it("renders as string", () => {
-      const ex = Cause.InterruptedException("my message")
-      expect(ex.toString()).toEqual("InterruptedException: my message")
+      const ex = new Cause.InterruptedException("my message")
+      expect(ex.toString()).include("InterruptedException: my message")
+      if (typeof window === "undefined") {
+        expect(ex.toString()).include("Cause.test.ts:348")
+      }
     })
   })
 })

@@ -1044,7 +1044,7 @@ export class FiberRuntime<in out E, in out A> implements Fiber.RuntimeFiber<E, A
   }
 
   ["None"](_: core.Primitive & { _op: "None" }) {
-    return core.fail(core.NoSuchElementException())
+    return core.fail(new core.NoSuchElementException())
   }
 
   ["Right"](op: core.Primitive & { _op: "Right" }) {
@@ -2368,7 +2368,7 @@ export const validateAll = dual<
 export const raceAll = <R, E, A>(all: Iterable<Effect.Effect<R, E, A>>) => {
   const list = Chunk.fromIterable(all)
   if (!Chunk.isNonEmpty(list)) {
-    return core.dieSync(() => core.IllegalArgumentException(`Received an empty collection of effects`))
+    return core.dieSync(() => new core.IllegalArgumentException(`Received an empty collection of effects`))
   }
   const self = Chunk.headNonEmpty(list)
   const effects = Chunk.tailNonEmpty(list)

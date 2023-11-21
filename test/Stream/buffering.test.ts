@@ -27,7 +27,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("buffer - buffers a stream with a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(0, 9),
         Stream.concat(Stream.fail(error)),
@@ -79,7 +79,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("bufferChunks - buffers a stream with a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(0, 9),
         Stream.concat(Stream.fail(error)),
@@ -116,7 +116,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("bufferChunksDropping - buffers a stream with a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
@@ -207,7 +207,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("bufferChunksSliding - buffers a stream with a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
@@ -298,7 +298,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("bufferDropping - buffers a stream with a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
@@ -389,7 +389,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("bufferSliding - buffers a stream with a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(1, 1_000),
         Stream.concat(Stream.fail(error)),
@@ -482,7 +482,7 @@ describe.concurrent("Stream", () => {
         Stream.runDrain,
         Effect.exit
       )
-      assert.deepStrictEqual(result, Exit.die(Cause.RuntimeException("boom")))
+      assert.deepStrictEqual(result, Exit.die(new Cause.RuntimeException("boom")))
     }))
 
   it.effect("bufferUnbounded - buffers the stream", () =>
@@ -498,7 +498,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("bufferUnbounded -  buffers a stream with a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.range(0, 9),
         Stream.concat(Stream.fail(error)),

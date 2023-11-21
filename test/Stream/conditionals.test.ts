@@ -33,7 +33,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("when - dies if the condition throws an exception", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.make(1, 2, 3),
         Stream.when(() => {
@@ -77,7 +77,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("whenCase - dies if evaluating the given value throws an exception", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.whenCase(
           () => {
@@ -93,7 +93,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("whenCase - dies if the partial function throws an exception", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.whenCase(
           constVoid,
@@ -139,7 +139,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("whenCaseEffect - fails if the effectful value is a failure", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Effect.fail(error),
         Stream.whenCaseEffect(() => Option.some(Stream.empty)),
@@ -151,7 +151,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("whenCaseEffect - dies if the given partial function throws an exception", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Effect.unit,
         Stream.whenCaseEffect((): Option.Option<Stream.Stream<never, never, void>> => {
@@ -185,7 +185,7 @@ describe.concurrent("Stream", () => {
 
   it.effect("whenEffect - fails if the effectful condition fails", () =>
     Effect.gen(function*($) {
-      const error = Cause.RuntimeException("boom")
+      const error = new Cause.RuntimeException("boom")
       const result = yield* $(
         Stream.make(1, 2, 3),
         Stream.whenEffect(Effect.fail(error)),

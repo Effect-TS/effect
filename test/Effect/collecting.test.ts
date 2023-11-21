@@ -36,13 +36,13 @@ describe.concurrent("Effect", () => {
     it.effect("preserves failures", () =>
       Effect.gen(function*($) {
         const result = yield* $(
-          Effect.all(Array.from({ length: 10 }, () => Effect.fail(Cause.RuntimeException())), {
+          Effect.all(Array.from({ length: 10 }, () => Effect.fail(new Cause.RuntimeException())), {
             concurrency: 5,
             discard: true
           }),
           Effect.flip
         )
-        assert.deepStrictEqual(result, Cause.RuntimeException())
+        assert.deepStrictEqual(result, new Cause.RuntimeException())
       }))
   })
 })

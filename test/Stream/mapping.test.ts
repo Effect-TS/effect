@@ -314,14 +314,14 @@ describe.concurrent("Stream", () => {
     Effect.gen(function*($) {
       const fiber = yield* $(
         Stream.range(1, 10),
-        Stream.concat(Stream.fail(Cause.RuntimeException("boom"))),
+        Stream.concat(Stream.fail(new Cause.RuntimeException("boom"))),
         Stream.mapEffect(() => Effect.sleep(Duration.seconds(1)), { concurrency: 2 }),
         Stream.runDrain,
         Effect.fork
       )
       yield* $(TestClock.adjust(Duration.seconds(5)))
       const exit = yield* $(Fiber.await(fiber))
-      assert.deepStrictEqual(exit, Exit.fail(Cause.RuntimeException("boom")))
+      assert.deepStrictEqual(exit, Exit.fail(new Cause.RuntimeException("boom")))
     }))
 
   it.effect("mapEffectParUnordered - mapping with failure is failure", () =>

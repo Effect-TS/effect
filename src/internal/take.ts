@@ -39,7 +39,7 @@ export const die = (defect: unknown): Take.Take<never, never> => new TakeImpl(Ex
 
 /** @internal */
 export const dieMessage = (message: string): Take.Take<never, never> =>
-  new TakeImpl(Exit.die(Cause.RuntimeException(message)))
+  new TakeImpl(Exit.die(new Cause.RuntimeException(message)))
 
 /** @internal */
 export const done = <E, A>(self: Take.Take<E, A>): Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>> =>

@@ -177,7 +177,7 @@ export interface CauseReducer<in C, in E, in out Z> {
  * @since 2.0.0
  * @category models
  */
-export interface YieldableError extends Data.Case, Pipeable, Readonly<Error> {
+export interface YieldableError extends Data.Case, Pipeable, Inspectable, Readonly<Error> {
   readonly [Effect.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Stream.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
   readonly [Sink.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
@@ -793,7 +793,7 @@ export const reduceWithContext: {
  * @since 2.0.0
  * @category errors
  */
-export const InterruptedException: (message?: string) => InterruptedException = core.InterruptedException
+export const InterruptedException: new(message?: string | undefined) => InterruptedException = core.InterruptedException
 
 /**
  * Returns `true` if the specified value is an `InterruptedException`, `false`
@@ -811,7 +811,8 @@ export const isInterruptedException: (u: unknown) => u is InterruptedException =
  * @since 2.0.0
  * @category errors
  */
-export const IllegalArgumentException: (message?: string) => IllegalArgumentException = core.IllegalArgumentException
+export const IllegalArgumentException: new(message?: string | undefined) => IllegalArgumentException =
+  core.IllegalArgumentException
 
 /**
  * Returns `true` if the specified value is an `IllegalArgumentException`, `false`
@@ -829,7 +830,8 @@ export const isIllegalArgumentException: (u: unknown) => u is IllegalArgumentExc
  * @since 2.0.0
  * @category errors
  */
-export const NoSuchElementException: (message?: string) => NoSuchElementException = core.NoSuchElementException
+export const NoSuchElementException: new(message?: string | undefined) => NoSuchElementException =
+  core.NoSuchElementException
 
 /**
  * Returns `true` if the specified value is an `NoSuchElementException`, `false`
@@ -846,7 +848,7 @@ export const isNoSuchElementException: (u: unknown) => u is NoSuchElementExcepti
  * @since 2.0.0
  * @category errors
  */
-export const RuntimeException: (message?: string) => RuntimeException = core.RuntimeException
+export const RuntimeException: new(message?: string | undefined) => RuntimeException = core.RuntimeException
 
 /**
  * Returns `true` if the specified value is an `RuntimeException`, `false`
@@ -864,7 +866,7 @@ export const isRuntimeException: (u: unknown) => u is RuntimeException = core.is
  * @since 2.0.0
  * @category errors
  */
-export const UnknownException: (error: unknown, message?: string | undefined) => UnknownException =
+export const UnknownException: new(error: unknown, message?: string | undefined) => UnknownException =
   core.UnknownException
 
 /**

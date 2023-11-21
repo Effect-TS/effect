@@ -86,14 +86,14 @@ describe.concurrent("Sink", () => {
           Effect.try(() => {
             const result = Number.parseInt(s)
             if (Number.isNaN(result)) {
-              throw Cause.RuntimeException(`Cannot parse "${s}" to an integer`)
+              throw new Cause.RuntimeException(`Cannot parse "${s}" to an integer`)
             }
             return result
           })
         )
       )
       const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.flip)
-      assert.deepStrictEqual(result.error, Cause.RuntimeException("Cannot parse \"a\" to an integer"))
+      assert.deepStrictEqual(result.error, new Cause.RuntimeException("Cannot parse \"a\" to an integer"))
     }))
 
   it.effect("mapInputChunksEffect - happy path", () =>
@@ -139,7 +139,7 @@ describe.concurrent("Sink", () => {
               Effect.try(() => {
                 const result = Number.parseInt(s)
                 if (Number.isNaN(result)) {
-                  throw Cause.RuntimeException(`Cannot parse "${s}" to an integer`)
+                  throw new Cause.RuntimeException(`Cannot parse "${s}" to an integer`)
                 }
                 return result
               })
@@ -149,7 +149,7 @@ describe.concurrent("Sink", () => {
         )
       )
       const result = yield* $(Stream.make("1", "a"), Stream.run(sink), Effect.flip)
-      assert.deepStrictEqual(result.error, Cause.RuntimeException("Cannot parse \"a\" to an integer"))
+      assert.deepStrictEqual(result.error, new Cause.RuntimeException("Cannot parse \"a\" to an integer"))
     }))
 
   it.effect("map", () =>
