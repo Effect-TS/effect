@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.49.1
+
+### Patch Changes
+
+- [#580](https://github.com/Effect-TS/schema/pull/580) [`4491e75`](https://github.com/Effect-TS/schema/commit/4491e75e07db07944e8fda9fa08d3ef0ca1a56d1) Thanks [@tim-smart](https://github.com/tim-smart)! - fix missing class .struct schema
+
 ## 0.49.0
 
 ### Minor Changes
