@@ -347,7 +347,9 @@ describe.concurrent("Cause", () => {
     it("renders as string", () => {
       const ex = new Cause.InterruptedException("my message")
       expect(ex.toString()).include("InterruptedException: my message")
-      expect(ex.toString()).include("Cause.test.ts:348")
+      if (typeof window === "undefined") {
+        expect(ex.toString()).include("Cause.test.ts:348")
+      }
     })
   })
 })
