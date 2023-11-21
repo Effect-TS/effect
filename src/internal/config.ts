@@ -16,7 +16,6 @@ import * as configSecret from "./configSecret.js"
 import * as core from "./core.js"
 import * as OpCodes from "./opCodes/config.js"
 
-/** @internal */
 const ConfigSymbolKey = "effect/Config"
 
 /** @internal */
@@ -38,12 +37,11 @@ export type ConfigPrimitive =
   | Table
   | Zipped
 
-/** @internal */
 const configVariance = {
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 
-/** @internal */
 const proto = {
   [ConfigTypeId]: configVariance,
   pipe() {
@@ -183,7 +181,7 @@ export const array = <A>(config: Config.Config<A>, name?: string): Config.Config
 
 /** @internal */
 export const chunk = <A>(config: Config.Config<A>, name?: string): Config.Config<Chunk.Chunk<A>> => {
-  return map(name === undefined ? repeat(config) : nested(name)(repeat(config)), Chunk.unsafeFromArray)
+  return map(name === undefined ? repeat(config) : nested(repeat(config), name), Chunk.unsafeFromArray)
 }
 
 /** @internal */
@@ -393,7 +391,7 @@ export const secret = (name?: string): Config.Config<ConfigSecret.ConfigSecret> 
 /** @internal */
 export const hashSet = <A>(config: Config.Config<A>, name?: string): Config.Config<HashSet.HashSet<A>> => {
   const newConfig = map(chunk(config), HashSet.fromIterable)
-  return name === undefined ? newConfig : nested(name)(newConfig)
+  return name === undefined ? newConfig : nested(newConfig, name)
 }
 
 /** @internal */
@@ -405,6 +403,7 @@ export const string = (name?: string): Config.Config<string> => {
   return name === undefined ? config : nested(config, name)
 }
 
+/** @internal */
 export const all = <const Arg extends Iterable<Config.Config<any>> | Record<string, Config.Config<any>>>(
   arg: Arg
 ): Config.Config<
@@ -472,7 +471,7 @@ export const hashMap = <A>(config: Config.Config<A>, name?: string): Config.Conf
   const table = Object.create(proto)
   table._tag = OpCodes.OP_HASHMAP
   table.valueConfig = config
-  return name === undefined ? table : nested(name)(table)
+  return name === undefined ? table : nested(table, name)
 }
 
 /** @internal */

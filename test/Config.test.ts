@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
+import * as HashSet from "effect/HashSet"
 import * as LogLevel from "effect/LogLevel"
 import * as Option from "effect/Option"
 import { assert, describe, expect, it } from "vitest"
@@ -32,52 +33,88 @@ const assertSuccess = <A>(
 }
 
 describe.concurrent("Config", () => {
-  it("boolean", () => {
-    const config = Config.boolean("BOOL")
-    assertSuccess(config, [["BOOL", "true"]], true)
-    assertSuccess(config, [["BOOL", "yes"]], true)
-    assertSuccess(config, [["BOOL", "on"]], true)
-    assertSuccess(config, [["BOOL", "1"]], true)
-    assertSuccess(config, [["BOOL", "false"]], false)
-    assertSuccess(config, [["BOOL", "no"]], false)
-    assertSuccess(config, [["BOOL", "off"]], false)
-    assertSuccess(config, [["BOOL", "0"]], false)
+  describe.concurrent("boolean", () => {
+    it("name = undefined", () => {
+      const config = Config.array(Config.boolean(), "ITEMS")
+      assertSuccess(config, [["ITEMS", "true"]], [true])
+      assertFailure(
+        config,
+        [["ITEMS", "value"]],
+        ConfigError.InvalidData(["ITEMS"], "Expected a boolean value, but received value")
+      )
+    })
 
-    assertFailure(config, [], ConfigError.MissingData(["BOOL"], "Expected BOOL to exist in the provided map"))
-    assertFailure(
-      config,
-      [["BOOL", "value"]],
-      ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
-    )
+    it("name != undefined", () => {
+      const config = Config.boolean("BOOL")
+      assertSuccess(config, [["BOOL", "true"]], true)
+      assertSuccess(config, [["BOOL", "yes"]], true)
+      assertSuccess(config, [["BOOL", "on"]], true)
+      assertSuccess(config, [["BOOL", "1"]], true)
+      assertSuccess(config, [["BOOL", "false"]], false)
+      assertSuccess(config, [["BOOL", "no"]], false)
+      assertSuccess(config, [["BOOL", "off"]], false)
+      assertSuccess(config, [["BOOL", "0"]], false)
+
+      assertFailure(config, [], ConfigError.MissingData(["BOOL"], "Expected BOOL to exist in the provided map"))
+      assertFailure(
+        config,
+        [["BOOL", "value"]],
+        ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
+      )
+    })
   })
 
-  it("number", () => {
-    const config = Config.number("NUMBER")
-    assertSuccess(config, [["NUMBER", "1"]], 1)
-    assertSuccess(config, [["NUMBER", "1.2"]], 1.2)
-    assertSuccess(config, [["NUMBER", "-1"]], -1)
-    assertSuccess(config, [["NUMBER", "-1.2"]], -1.2)
-    assertSuccess(config, [["NUMBER", "0"]], 0)
-    assertSuccess(config, [["NUMBER", "-0"]], -0)
+  describe.concurrent("number", () => {
+    it("name = undefined", () => {
+      const config = Config.array(Config.number(), "ITEMS")
+      assertSuccess(config, [["ITEMS", "1"]], [1])
+      assertFailure(
+        config,
+        [["ITEMS", "value"]],
+        ConfigError.InvalidData(["ITEMS"], "Expected an number value but received value")
+      )
+    })
 
-    assertFailure(config, [], ConfigError.MissingData(["NUMBER"], "Expected NUMBER to exist in the provided map"))
-    assertFailure(
-      config,
-      [["NUMBER", "value"]],
-      ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
-    )
+    it("name != undefined", () => {
+      const config = Config.number("NUMBER")
+      assertSuccess(config, [["NUMBER", "1"]], 1)
+      assertSuccess(config, [["NUMBER", "1.2"]], 1.2)
+      assertSuccess(config, [["NUMBER", "-1"]], -1)
+      assertSuccess(config, [["NUMBER", "-1.2"]], -1.2)
+      assertSuccess(config, [["NUMBER", "0"]], 0)
+      assertSuccess(config, [["NUMBER", "-0"]], -0)
+
+      assertFailure(config, [], ConfigError.MissingData(["NUMBER"], "Expected NUMBER to exist in the provided map"))
+      assertFailure(
+        config,
+        [["NUMBER", "value"]],
+        ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
+      )
+    })
   })
 
-  it("date", () => {
-    const config = Config.date("DATE")
-    assertSuccess(config, [["DATE", "0"]], new Date(Date.parse("0")))
+  describe.concurrent("date", () => {
+    it("name = undefined", () => {
+      const config = Config.date()
+      assertSuccess(config, [["", "0"]], new Date(Date.parse("0")))
+      assertFailure(
+        config,
+        [["", "value"]],
+        ConfigError.InvalidData([], "Expected a date value but received value")
+      )
+    })
 
-    assertFailure(config, [], ConfigError.MissingData(["DATE"], "Expected DATE to exist in the provided map"))
-    assertFailure(
-      config,
-      [["DATE", "value"]],
-      ConfigError.InvalidData(["DATE"], "Expected a date value but received value")
-    )
+    it("name != undefined", () => {
+      const config = Config.date("DATE")
+      assertSuccess(config, [["DATE", "0"]], new Date(Date.parse("0")))
+
+      assertFailure(config, [], ConfigError.MissingData(["DATE"], "Expected DATE to exist in the provided map"))
+      assertFailure(
+        config,
+        [["DATE", "value"]],
+        ConfigError.InvalidData(["DATE"], "Expected a date value but received value")
+      )
+    })
   })
 
   it("fail", () => {
@@ -326,7 +363,69 @@ describe.concurrent("Config", () => {
     })
   })
 
-  describe.concurrent("Secret", () => {
+  it("sync", () => {
+    const config = Config.sync(() => 1)
+    assertSuccess(config, [], 1)
+  })
+
+  describe.concurrent("all", () => {
+    describe.concurrent("tuple", () => {
+      it("length = 0", () => {
+        const config = Config.all([])
+        assertSuccess(config, [], [])
+      })
+
+      it("length = 1", () => {
+        const config = Config.all([Config.number("NUMBER")])
+        assertSuccess(config, [["NUMBER", "1"]], [1])
+      })
+
+      it("length > 1", () => {
+        const config = Config.all([Config.number("NUMBER"), Config.boolean("BOOL")])
+        assertSuccess(config, [["NUMBER", "1"], ["BOOL", "true"]], [1, true])
+        assertFailure(
+          config,
+          [["NUMBER", "value"], ["BOOL", "true"]],
+          ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
+        )
+        assertFailure(
+          config,
+          [["NUMBER", "1"], ["BOOL", "value"]],
+          ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
+        )
+      })
+    })
+
+    it("iterable", () => {
+      const set = new Set([Config.number("NUMBER"), Config.boolean("BOOL")])
+      const config = Config.all(set)
+      assertSuccess(config, [["NUMBER", "1"], ["BOOL", "true"]], [1, true])
+      assertFailure(
+        config,
+        [["NUMBER", "value"], ["BOOL", "true"]],
+        ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
+      )
+      assertFailure(
+        config,
+        [["NUMBER", "1"], ["BOOL", "value"]],
+        ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
+      )
+    })
+  })
+
+  describe.concurrent("ConfigSecret", () => {
+    describe.concurrent("Config.secret", () => {
+      it("name = undefined", () => {
+        const config = Config.array(Config.secret(), "ITEMS")
+        assertSuccess(config, [["ITEMS", "a"]], [ConfigSecret.fromString("a")])
+      })
+
+      it("name != undefined", () => {
+        const config = Config.secret("SECRET")
+        assertSuccess(config, [["SECRET", "a"]], ConfigSecret.fromString("a"))
+      })
+    })
+
     it("chunk constructor", () => {
       const secret = ConfigSecret.fromChunk(Chunk.fromIterable("secret".split("")))
       assert.isTrue(Equal.equals(secret, ConfigSecret.fromString("secret")))
@@ -352,6 +451,23 @@ describe.concurrent("Config", () => {
           Array.from({ length: "secret".length }, () => String.fromCharCode(0)).join("")
         )
       )
+    })
+  })
+
+  it("withDescription", () => {
+    const config = Config.number("NUMBER").pipe(Config.withDescription("my description"))
+    expect("description" in config).toBe(true)
+  })
+
+  describe.concurrent("hashSet", () => {
+    it("name = undefined", () => {
+      const config = Config.array(Config.hashSet(Config.string()), "ITEMS")
+      assertSuccess(config, [["ITEMS", "a,b,c"]], [HashSet.make("a", "b", "c")])
+    })
+
+    it("name != undefined", () => {
+      const config = Config.hashSet(Config.string(), "HASH_SET")
+      assertSuccess(config, [["HASH_SET", "a,b,c"]], HashSet.make("a", "b", "c"))
     })
   })
 })
