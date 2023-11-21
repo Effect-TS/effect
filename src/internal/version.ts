@@ -1,1 +1,1 @@
-export const moduleVersion = "2.0.0-next.55"
+export const moduleVersion = "2.0.0-next.56"
