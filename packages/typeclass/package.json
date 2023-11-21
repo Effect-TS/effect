@@ -63,7 +63,7 @@
     "@changesets/cli": "^2.26.2",
     "@effect/build-utils": "^0.5.0",
     "@effect/docgen": "^0.3.5",
-    "@effect/dtslint": "^0.0.3",
+    "@effect/dtslint": "^0.0.4",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@types/chai": "^4.3.10",
