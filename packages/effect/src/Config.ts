@@ -100,7 +100,7 @@ export const all: <const Arg extends Iterable<Config<any>> | Record<string, Conf
  * @since 2.0.0
  * @category constructors
  */
-export const array: <A>(config: Config<A>, name?: string | undefined) => Config<ReadonlyArray<A>> = internal.array
+export const array: <A>(config: Config<A>, name?: string) => Config<ReadonlyArray<A>> = internal.array
 
 /**
  * Constructs a config for a boolean value.
@@ -108,7 +108,7 @@ export const array: <A>(config: Config<A>, name?: string | undefined) => Config<
  * @since 2.0.0
  * @category constructors
  */
-export const boolean: (name?: string | undefined) => Config<boolean> = internal.boolean
+export const boolean: (name?: string) => Config<boolean> = internal.boolean
 
 /**
  * Constructs a config for a sequence of values.
@@ -116,7 +116,7 @@ export const boolean: (name?: string | undefined) => Config<boolean> = internal.
  * @since 2.0.0
  * @category constructors
  */
-export const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk.Chunk<A>> = internal.chunk
+export const chunk: <A>(config: Config<A>, name?: string) => Config<Chunk.Chunk<A>> = internal.chunk
 
 /**
  * Constructs a config for a date value.
@@ -124,7 +124,7 @@ export const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<
  * @since 2.0.0
  * @category constructors
  */
-export const date: (name?: string | undefined) => Config<Date> = internal.date
+export const date: (name?: string) => Config<Date> = internal.date
 
 /**
  * Constructs a config that fails with the specified message.
@@ -140,7 +140,7 @@ export const fail: (message: string) => Config<never> = internal.fail
  * @since 2.0.0
  * @category constructors
  */
-export const number: (name?: string | undefined) => Config<number> = internal.number
+export const number: (name?: string) => Config<number> = internal.number
 
 /**
  * Constructs a config for a integer value.
@@ -148,7 +148,7 @@ export const number: (name?: string | undefined) => Config<number> = internal.nu
  * @since 2.0.0
  * @category constructors
  */
-export const integer: (name?: string | undefined) => Config<number> = internal.integer
+export const integer: (name?: string) => Config<number> = internal.integer
 
 /**
  * Constructs a config for a `LogLevel` value.
@@ -156,7 +156,7 @@ export const integer: (name?: string | undefined) => Config<number> = internal.i
  * @since 2.0.0
  * @category constructors
  */
-export const logLevel: (name?: string | undefined) => Config<LogLevel.LogLevel> = internal.logLevel
+export const logLevel: (name?: string) => Config<LogLevel.LogLevel> = internal.logLevel
 
 /**
  * This function returns `true` if the specified value is an `Config` value,
@@ -299,7 +299,7 @@ export const repeat: <A>(self: Config<A>) => Config<Array<A>> = internal.repeat
  * @since 2.0.0
  * @category constructors
  */
-export const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSecret> = internal.secret
+export const secret: (name?: string) => Config<ConfigSecret.ConfigSecret> = internal.secret
 
 /**
  * Constructs a config for a sequence of values.
@@ -307,7 +307,7 @@ export const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSe
  * @since 2.0.0
  * @category constructors
  */
-export const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet.HashSet<A>> = internal.hashSet
+export const hashSet: <A>(config: Config<A>, name?: string) => Config<HashSet.HashSet<A>> = internal.hashSet
 
 /**
  * Constructs a config for a string value.
@@ -315,7 +315,7 @@ export const hashSet: <A>(config: Config<A>, name?: string | undefined) => Confi
  * @since 2.0.0
  * @category constructors
  */
-export const string: (name?: string | undefined) => Config<string> = internal.string
+export const string: (name?: string) => Config<string> = internal.string
 
 /**
  * Constructs a config which contains the specified value.
@@ -347,8 +347,7 @@ export const sync: <A>(value: LazyArg<A>) => Config<A> = internal.sync
  * @since 2.0.0
  * @category constructors
  */
-export const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap.HashMap<string, A>> =
-  internal.hashMap
+export const hashMap: <A>(config: Config<A>, name?: string) => Config<HashMap.HashMap<string, A>> = internal.hashMap
 
 /**
  * Constructs a config from some configuration wrapped with the `Wrap<A>` utility type.

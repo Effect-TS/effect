@@ -38,6 +38,7 @@
     "test": "vitest",
     "check": "tsc -b tsconfig.json",
     "coverage": "vitest --run --coverage related",
+    "coverage-all": "vitest --run --coverage",
     "circular": "madge --extensions ts --circular --no-color --no-spinner --warning src",
     "update-version": "changeset version && pnpm install --no-frozen-lockfile && node scripts/version.mjs",
     "lint": "eslint src test",
