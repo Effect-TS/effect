@@ -13,7 +13,7 @@ import * as number from "../Number.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as RA from "../ReadonlyArray.js"
-import * as _config from "./config.js"
+import type * as _config from "./config.js"
 import * as configError from "./configError.js"
 import * as pathPatch from "./configProvider/pathPatch.js"
 import * as core from "./core.js"
@@ -313,7 +313,7 @@ const fromFlatLoop = <A>(
             core.flatMap((values) => {
               if (values.length === 0) {
                 const name = pipe(RA.last(prefix), Option.getOrElse(() => "<n/a>"))
-                return core.fail(_config.missingError(name))
+                return core.fail(configError.MissingData([], `Expected ${op.description} with name ${name}`))
               }
               return core.succeed(values)
             })

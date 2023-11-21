@@ -90,7 +90,7 @@ Constructs a config for an array of values.
 **Signature**
 
 ```ts
-export declare const array: <A>(config: Config<A>, name?: string | undefined) => Config<readonly A[]>
+export declare const array: <A>(config: Config<A>, name?: string) => Config<readonly A[]>
 ```
 
 Added in v2.0.0
@@ -102,7 +102,7 @@ Constructs a config for a boolean value.
 **Signature**
 
 ```ts
-export declare const boolean: (name?: string | undefined) => Config<boolean>
+export declare const boolean: (name?: string) => Config<boolean>
 ```
 
 Added in v2.0.0
@@ -114,7 +114,7 @@ Constructs a config for a sequence of values.
 **Signature**
 
 ```ts
-export declare const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk.Chunk<A>>
+export declare const chunk: <A>(config: Config<A>, name?: string) => Config<Chunk.Chunk<A>>
 ```
 
 Added in v2.0.0
@@ -126,7 +126,7 @@ Constructs a config for a date value.
 **Signature**
 
 ```ts
-export declare const date: (name?: string | undefined) => Config<Date>
+export declare const date: (name?: string) => Config<Date>
 ```
 
 Added in v2.0.0
@@ -150,7 +150,7 @@ Constructs a config for a sequence of values.
 **Signature**
 
 ```ts
-export declare const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap.HashMap<string, A>>
+export declare const hashMap: <A>(config: Config<A>, name?: string) => Config<HashMap.HashMap<string, A>>
 ```
 
 Added in v2.0.0
@@ -162,7 +162,7 @@ Constructs a config for a sequence of values.
 **Signature**
 
 ```ts
-export declare const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet.HashSet<A>>
+export declare const hashSet: <A>(config: Config<A>, name?: string) => Config<HashSet.HashSet<A>>
 ```
 
 Added in v2.0.0
@@ -174,7 +174,7 @@ Constructs a config for a integer value.
 **Signature**
 
 ```ts
-export declare const integer: (name?: string | undefined) => Config<number>
+export declare const integer: (name?: string) => Config<number>
 ```
 
 Added in v2.0.0
@@ -186,7 +186,7 @@ Constructs a config for a `LogLevel` value.
 **Signature**
 
 ```ts
-export declare const logLevel: (name?: string | undefined) => Config<LogLevel.LogLevel>
+export declare const logLevel: (name?: string) => Config<LogLevel.LogLevel>
 ```
 
 Added in v2.0.0
@@ -198,7 +198,7 @@ Constructs a config for a float value.
 **Signature**
 
 ```ts
-export declare const number: (name?: string | undefined) => Config<number>
+export declare const number: (name?: string) => Config<number>
 ```
 
 Added in v2.0.0
@@ -225,7 +225,7 @@ Constructs a config for a secret value.
 **Signature**
 
 ```ts
-export declare const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSecret>
+export declare const secret: (name?: string) => Config<ConfigSecret.ConfigSecret>
 ```
 
 Added in v2.0.0
@@ -237,7 +237,7 @@ Constructs a config for a string value.
 **Signature**
 
 ```ts
-export declare const string: (name?: string | undefined) => Config<string>
+export declare const string: (name?: string) => Config<string>
 ```
 
 Added in v2.0.0
