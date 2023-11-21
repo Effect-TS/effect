@@ -6,6 +6,7 @@ import { Effect } from "effect"
 import * as Data from "effect/Data"
 import * as Equal from "effect/Equal"
 import * as O from "effect/Option"
+import * as Request from "effect/Request"
 import { describe, expect, it } from "vitest"
 
 class Person extends S.Class<Person>()({
@@ -236,5 +237,36 @@ describe("Schema/Class", () => {
     err = S.parseSync(MyError)({ _tag: "MyError", id: 1 })
     expect(err._tag).toEqual("MyError")
     expect(err.id).toEqual(1)
+  })
+
+  it("TaggedRequest", () => {
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.number, {
+      id: S.number
+    }) {}
+
+    let req = new MyRequest({ id: 1 })
+    expect(req._tag).toEqual("MyRequest")
+    expect(req.id).toEqual(1)
+    expect(Request.isRequest(req)).toEqual(true)
+
+    req = S.decodeSync(MyRequest)({ _tag: "MyRequest", id: 1 })
+    expect(req._tag).toEqual("MyRequest")
+    expect(req.id).toEqual(1)
+    expect(Request.isRequest(req)).toEqual(true)
+
+    S.decodeSync(MyRequest.Success)(123)
+    S.decodeSync(MyRequest.Failure)("fail")
+  })
+
+  it("TaggedRequest assignable to TaggedRequest.Base", () => {
+    class MyRequest extends S.TaggedRequest<MyRequest>()("MyRequest", S.string, S.number, {
+      id: S.number
+    }) {}
+
+    const makeCache = <EI, EA, AI, AA, I, Req extends Request.Request<EA, AA>>(
+      schema: S.TaggedRequest.Base<EI, EA, AI, AA, I, Req>
+    ) => schema
+
+    makeCache(MyRequest)
   })
 })
