@@ -268,7 +268,14 @@ describe("Schema/Class", () => {
       id: S.number
     }) {}
 
-    const makeCache = <EI, EA, AI, AA, I, Req extends Request.Request<EA, AA>>(
+    const makeCache = <
+      EI,
+      EA,
+      AI,
+      AA,
+      I,
+      Req extends Request.Request<EA, AA> & { readonly _tag: string }
+    >(
       schema: S.TaggedRequest.Base<EI, EA, AI, AA, I, Req>
     ) => schema
 

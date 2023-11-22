@@ -3786,9 +3786,14 @@ export declare namespace TaggedRequest {
    * @category classes
    * @since 1.0.0
    */
-  export interface Base<EI, EA, AI, AA, I, Req extends Request.Request<EA, AA>>
-    extends Schema<I, Req>, TaggedRequest.ResultSchemas<EI, EA, AI, AA>
-  {}
+  export interface Base<
+    EI,
+    EA,
+    AI,
+    AA,
+    I,
+    Req extends Request.Request<EA, AA> & { readonly _tag: string }
+  > extends Schema<I, Req>, TaggedRequest.ResultSchemas<EI, EA, AI, AA> {}
 
   /**
    * @category classes
