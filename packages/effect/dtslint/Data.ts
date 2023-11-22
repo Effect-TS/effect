@@ -160,28 +160,37 @@ notFound.message = "a"
 // -------------------------------------------------------------------------------------
 
 class PersonClass extends Data.Class<{ name: string; age?: number }> {}
+class VoidClass extends Data.Class {}
 
 const mike1 = new PersonClass({ name: "Mike" })
 
 // @ts-expect-error
 mike1.name = "a"
 
+// $ExpectType [args?: void]
+export type VoidClassParams = ConstructorParameters<typeof VoidClass>
+
 // -------------------------------------------------------------------------------------
 // TaggedClass
 // -------------------------------------------------------------------------------------
 
 class PersonTaggedClass extends Data.TaggedClass("Person")<{ name: string; age?: number }> {}
+class VoidTaggedClass extends Data.TaggedClass("Void") {}
 
 const mike2 = new PersonTaggedClass({ name: "Mike" })
 
 // @ts-expect-error
 mike2.name = "a"
 
+// $ExpectType [args?: void]
+export type VoidTaggedClassParams = ConstructorParameters<typeof VoidTaggedClass>
+
 // -------------------------------------------------------------------------------------
 // Error
 // -------------------------------------------------------------------------------------
 
 class MyError extends Data.Error<{ message: string; a: number; optional?: string }> {}
+class VoidError extends Data.Error {}
 
 const myError1 = new MyError({ message: "Oh no!", a: 1 })
 
@@ -189,6 +198,9 @@ const myError1 = new MyError({ message: "Oh no!", a: 1 })
 myError1.message = "a"
 // @ts-expect-error
 myError1.a = 2
+
+// $ExpectType [args?: void]
+export type VoidErrorParams = ConstructorParameters<typeof VoidError>
 
 // -------------------------------------------------------------------------------------
 // TaggedError
@@ -198,6 +210,7 @@ class MyTaggedError extends Data.TaggedError("Foo")<{
   message?: string
   a: number
 }> {}
+class VoidTaggedError extends Data.TaggedError("Foo") {}
 
 const myTaggedError1 = new MyTaggedError({ message: "Oh no!", a: 1 })
 
@@ -208,3 +221,6 @@ new MyTaggedError({ a: 1 })
 myTaggedError1._tag = "a"
 // @ts-expect-error
 myTaggedError1.message = "a"
+
+// $ExpectType [args?: void]
+export type VoidTaggedErrorParams = ConstructorParameters<typeof VoidTaggedError>
