@@ -207,7 +207,7 @@ export const tagged = <A extends Case & { readonly _tag: string }>(
  * @since 2.0.0
  * @category constructors
  */
-export const Class: new<A extends Record<string, any>>(
+export const Class: new<A extends Record<string, any> = {}>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A>> = internal.Structural as any
@@ -237,7 +237,7 @@ export const Class: new<A extends Record<string, any>>(
  */
 export const TaggedClass = <Tag extends string>(
   tag: Tag
-): new<A extends Record<string, any>>(
+): new<A extends Record<string, any> = {}>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
 ) => Data<Readonly<A> & { readonly _tag: Tag }> => {
@@ -446,7 +446,7 @@ export const taggedEnum: {
  * @since 2.0.0
  * @category constructors
  */
-export const Error: new<A extends Record<string, any>>(
+export const Error: new<A extends Record<string, any> = {}>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Equal.Equal ? never : P]: A[P] }
 ) => Cause.YieldableError & Readonly<A> = (function() {
@@ -464,7 +464,7 @@ export const Error: new<A extends Record<string, any>>(
  * @since 2.0.0
  * @category constructors
  */
-export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(
+export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any> = {}>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void
     : { readonly [P in keyof A as P extends "_tag" | keyof Equal.Equal ? never : P]: A[P] }
 ) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A> => {
