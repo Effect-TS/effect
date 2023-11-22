@@ -25,6 +25,21 @@ describe("Schema/tuple", () => {
   })
 
   describe("decoding", () => {
+    it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
+      const schema = S.tuple().pipe(S.identifier("MyDataType"))
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `Expected MyDataType, actual null`
+      )
+      await Util.expectParseFailureTree(
+        schema,
+        null,
+        `error(s) found
+└─ Expected MyDataType, actual null`
+      )
+    })
+
     it("empty", async () => {
       const schema = S.tuple()
       await Util.expectParseSuccess(schema, [])
@@ -32,12 +47,12 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic array, actual null`
+        `Expected <anonymous tuple or array schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
         {},
-        `Expected a generic array, actual {}`
+        `Expected <anonymous tuple or array schema>, actual {}`
       )
       await Util.expectParseFailure(schema, [undefined], `/0 is unexpected`)
       await Util.expectParseFailure(schema, [1], `/0 is unexpected`)
@@ -50,7 +65,7 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic array, actual null`
+        `Expected <anonymous tuple or array schema>, actual null`
       )
       await Util.expectParseFailure(schema, [], `/0 is missing`)
       await Util.expectParseFailure(
@@ -70,7 +85,7 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic array, actual null`
+        `Expected <anonymous tuple or array schema>, actual null`
       )
       await Util.expectParseFailure(schema, [], `/0 is missing`)
       await Util.expectParseFailure(
@@ -89,7 +104,7 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic array, actual null`
+        `Expected <anonymous tuple or array schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -108,7 +123,7 @@ describe("Schema/tuple", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic array, actual null`
+        `Expected <anonymous tuple or array schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,

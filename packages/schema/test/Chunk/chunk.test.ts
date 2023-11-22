@@ -16,7 +16,7 @@ describe("Chunk/chunk", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      `Expected a generic array, actual null`
+      `Expected <anonymous tuple or array schema>, actual null`
     )
     await Util.expectParseFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
   })

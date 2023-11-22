@@ -101,7 +101,7 @@ describe("Schema/partial", () => {
     await Util.expectParseFailure(
       schema,
       { a: 1 },
-      "/a union member: Expected a generic object, actual 1, union member: Expected null, actual 1"
+      "/a union member: Expected <anonymous type literal schema>, actual 1, union member: Expected null, actual 1"
     )
   })
 

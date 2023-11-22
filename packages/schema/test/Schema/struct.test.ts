@@ -9,6 +9,21 @@ describe("Schema/struct", () => {
   })
 
   describe("decoding", () => {
+    it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
+      const schema = S.struct({}).pipe(S.identifier("MyDataType"))
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `Expected MyDataType, actual null`
+      )
+      await Util.expectParseFailureTree(
+        schema,
+        null,
+        `error(s) found
+└─ Expected MyDataType, actual null`
+      )
+    })
+
     it("empty", async () => {
       const schema = S.struct({})
       await Util.expectParseSuccess(schema, {})
@@ -29,7 +44,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic object, actual null`
+        `Expected <anonymous type literal schema>, actual null`
       )
       await Util.expectParseFailure(schema, {}, "/a is missing")
       await Util.expectParseFailure(
@@ -53,7 +68,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic object, actual null`
+        `Expected <anonymous type literal schema>, actual null`
       )
       await Util.expectParseFailure(schema, {}, "/a is missing")
       await Util.expectParseFailure(
@@ -77,7 +92,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic object, actual null`
+        `Expected <anonymous type literal schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -106,7 +121,7 @@ describe("Schema/struct", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic object, actual null`
+        `Expected <anonymous type literal schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,

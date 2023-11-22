@@ -4,6 +4,27 @@ import { describe, it } from "vitest"
 
 describe("Schema/literal", () => {
   describe("decoding", () => {
+    it("should use annotations to generate a more informative error message when an incorrect data type is provided", async () => {
+      const schema = S.union(
+        S.struct({}).pipe(S.identifier("MyDataType1")),
+        S.struct({}).pipe(S.identifier("MyDataType2"))
+      )
+      await Util.expectParseFailure(
+        schema,
+        null,
+        `union member: Expected MyDataType1, actual null, union member: Expected MyDataType2, actual null`
+      )
+      await Util.expectParseFailureTree(
+        schema,
+        null,
+        `error(s) found
+├─ union member
+│  └─ Expected MyDataType1, actual null
+└─ union member
+   └─ Expected MyDataType2, actual null`
+      )
+    })
+
     it("empty union", async () => {
       const schema = S.union()
       await Util.expectParseFailure(schema, 1, "Expected never, actual 1")
@@ -17,7 +38,7 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected a generic object, actual null"
+        "Expected <anonymous type literal schema>, actual null"
       )
       await Util.expectParseFailure(schema, {}, "/a is missing, /b is missing")
       await Util.expectParseFailure(
@@ -37,7 +58,7 @@ describe("Schema/literal", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        "Expected a generic object, actual null"
+        "Expected <anonymous type literal schema>, actual null"
       )
       await Util.expectParseFailure(schema, {}, "/category is missing, /tag is missing")
       await Util.expectParseFailure(

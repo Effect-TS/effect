@@ -97,7 +97,7 @@ export const formatExpected = (ast: AST.AST): string => {
     case "UniqueSymbol":
       return Option.getOrElse(getExpected(ast), () => formatActual(ast.symbol))
     case "Union":
-      return ast.types.map(formatExpected).join(" or ")
+      return [...new Set(ast.types.map(formatExpected))].join(" or ")
     case "TemplateLiteral":
       return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
     case "Tuple":

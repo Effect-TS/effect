@@ -359,7 +359,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       }
       return (input: unknown, options) => {
         if (!Array.isArray(input)) {
-          return ParseResult.failure(ParseResult.type(unknownArray, input))
+          return ParseResult.failure(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.ParseErrors]> = []
@@ -603,7 +603,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
 
       return (input: unknown, options) => {
         if (!Predicate.isRecord(input)) {
-          return ParseResult.failure(ParseResult.type(unknownRecord, input))
+          return ParseResult.failure(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.ParseErrors]> = []
@@ -842,7 +842,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               }
             }
           } else {
-            es.push([stepKey++, ParseResult.type(unknownRecord, input)])
+            es.push([stepKey++, ParseResult.type(ast, input)])
           }
         }
         if (searchTree.otherwise.length > 0) {
@@ -1038,17 +1038,6 @@ const handleForbidden = <A>(
     ? conditional
     : ParseResult.failure(ParseResult.forbidden)
 }
-
-const unknownArray = AST.createTuple([], Option.some([AST.unknownKeyword]), true, {
-  [AST.DescriptionAnnotationId]: "a generic array"
-})
-
-const unknownRecord = AST.createTypeLiteral([], [
-  AST.createIndexSignature(AST.stringKeyword, AST.unknownKeyword, true),
-  AST.createIndexSignature(AST.symbolKeyword, AST.unknownKeyword, true)
-], {
-  [AST.DescriptionAnnotationId]: "a generic object"
-})
 
 const mutableAppend = <A>(self: Array<A>, a: A): ReadonlyArray.NonEmptyReadonlyArray<A> => {
   self.push(a)

@@ -18,7 +18,7 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected a generic object, actual []"
+        "Expected <anonymous type literal schema>, actual []"
       )
       await Util.expectParseFailure(
         schema,
@@ -48,7 +48,7 @@ describe("Schema/record", () => {
       await Util.expectParseFailure(
         schema,
         [],
-        "Expected a generic object, actual []"
+        "Expected <anonymous type literal schema>, actual []"
       )
       await Util.expectParseFailure(
         schema,

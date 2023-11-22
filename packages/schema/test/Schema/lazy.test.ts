@@ -22,7 +22,7 @@ describe("Schema/lazy", () => {
       await Util.expectParseFailure(
         schema,
         null,
-        `Expected a generic object, actual null`
+        `Expected <anonymous type literal schema>, actual null`
       )
       await Util.expectParseFailure(
         schema,
@@ -32,7 +32,7 @@ describe("Schema/lazy", () => {
       await Util.expectParseFailure(
         schema,
         { a: "a1", as: [{ a: "a2", as: [1] }] },
-        "/as /0 /as /0 Expected a generic object, actual 1"
+        "/as /0 /as /0 Expected <anonymous type literal schema>, actual 1"
       )
     })
 

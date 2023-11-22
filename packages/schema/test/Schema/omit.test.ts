@@ -13,7 +13,7 @@ describe("Schema/omit", () => {
     await Util.expectParseFailure(
       schema,
       null,
-      "Expected a generic object, actual null"
+      "Expected <anonymous type literal schema>, actual null"
     )
     await Util.expectParseFailure(schema, { [a]: "a" }, `/b is missing`)
     await Util.expectParseFailure(
@@ -30,7 +30,11 @@ describe("Schema/omit", () => {
     await Util.expectParseSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
     await Util.expectParseSuccess(schema, { b: "1" }, { b: 1 })
 
-    await Util.expectParseFailure(schema, null, "Expected a generic object, actual null")
+    await Util.expectParseFailure(
+      schema,
+      null,
+      "Expected <anonymous type literal schema>, actual null"
+    )
     await Util.expectParseFailure(schema, { a: "a" }, `/b is missing`)
   })
 
