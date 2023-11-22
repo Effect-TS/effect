@@ -2199,12 +2199,16 @@ export const YieldableError: new(message?: string) => Cause.YieldableError = (fu
       return fail(this)
     }
     toString() {
-      return this.stack ?? `${this.name}: ${this.message}`
+      return this.message ? `${this.name}: ${this.message}` : this.name
     }
     toJSON() {
       return { ...this }
     }
     [NodeInspectSymbol](): string {
+      const stack = this.stack
+      if (stack) {
+        return `${this.toString()}\n${stack.split("\n").slice(1).join("\n")}`
+      }
       return this.toString()
     }
   }
