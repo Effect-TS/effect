@@ -37,6 +37,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type * as Sink from "./Sink.js"
 import type * as Stream from "./Stream.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -152,7 +153,7 @@ export declare namespace Cause {
    */
   export interface Variance<out E> {
     readonly [CauseTypeId]: {
-      readonly _E: (_: never) => E
+      readonly _E: Types.Covariant<E>
     }
   }
 }

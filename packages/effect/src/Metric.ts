@@ -16,6 +16,7 @@ import type * as MetricPair from "./MetricPair.js"
 import type * as MetricRegistry from "./MetricRegistry.js"
 import type * as MetricState from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -123,9 +124,9 @@ export declare namespace Metric {
    */
   export interface Variance<in out Type, in In, out Out> {
     readonly [MetricTypeId]: {
-      readonly _Type: (_: Type) => Type
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
+      readonly _Type: Types.Invariant<Type>
+      readonly _In: Types.Contravariant<In>
+      readonly _Out: Types.Covariant<Out>
     }
   }
 }

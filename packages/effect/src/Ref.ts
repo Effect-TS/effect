@@ -5,6 +5,7 @@ import type * as Effect from "./Effect.js"
 import * as internal from "./internal/ref.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -36,7 +37,7 @@ export declare namespace Ref {
    */
   export interface Variance<in out A> {
     readonly [RefTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

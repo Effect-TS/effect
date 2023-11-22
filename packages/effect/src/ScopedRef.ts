@@ -7,6 +7,7 @@ import * as internal from "./internal/scopedRef.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
 import type * as Synchronized from "./SynchronizedRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -45,7 +46,7 @@ export declare namespace ScopedRef {
    */
   export interface Variance<in out A> {
     readonly [ScopedRefTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

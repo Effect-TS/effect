@@ -29,8 +29,8 @@ export const TagProto: C.Tag<unknown, unknown> = {
   _op: "Tag",
   [STMTypeId]: effectVariance,
   [TagTypeId]: {
-    _S: (_: unknown) => _,
-    _I: (_: unknown) => _
+    _Service: (_: unknown) => _,
+    _Identifier: (_: unknown) => _
   },
   toString() {
     return toString(this.toJSON())
@@ -86,7 +86,7 @@ export const TypeId: C.TypeId = Symbol.for("effect/Context") as C.TypeId
 /** @internal */
 export const ContextProto: Omit<C.Context<unknown>, "unsafeMap"> = {
   [TypeId]: {
-    _S: (_: unknown) => _
+    _Services: (_: unknown) => _
   },
   [Equal.symbol]<A>(this: C.Context<A>, that: unknown): boolean {
     if (isContext(that)) {

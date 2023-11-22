@@ -9,6 +9,7 @@ import type * as PubSub from "./PubSub.js"
 import * as Ref from "./Ref.js"
 import type * as Stream from "./Stream.js"
 import * as Synchronized from "./SynchronizedRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -55,7 +56,7 @@ export declare namespace SubscriptionRef {
    */
   export interface Variance<in out A> {
     readonly [SubscriptionRefTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

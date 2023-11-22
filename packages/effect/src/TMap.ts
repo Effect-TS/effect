@@ -9,6 +9,7 @@ import type * as Option from "./Option.js"
 import type * as STM from "./STM.js"
 import type * as TArray from "./TArray.js"
 import type * as TRef from "./TRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -51,8 +52,8 @@ export declare namespace TMap {
    */
   export interface Variance<in out K, in out V> {
     readonly [TMapTypeId]: {
-      readonly _K: (_: K) => K
-      readonly _V: (_: V) => V
+      readonly _K: Types.Invariant<K>
+      readonly _V: Types.Invariant<V>
     }
   }
 }

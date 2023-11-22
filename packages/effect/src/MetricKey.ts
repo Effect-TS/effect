@@ -11,6 +11,7 @@ import type * as MetricKeyType from "./MetricKeyType.js"
 import type * as MetricLabel from "./MetricLabel.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -89,7 +90,7 @@ export declare namespace MetricKey {
    */
   export interface Variance<out Type> {
     readonly [MetricKeyTypeId]: {
-      _Type: (_: never) => Type
+      _Type: Types.Covariant<Type>
     }
   }
 }

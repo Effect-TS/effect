@@ -13,6 +13,7 @@ import { pipeArguments } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import { hasProperty } from "./Predicate.js"
 import * as RBT from "./RedBlackTree.js"
+import type * as Types from "./Types.js"
 
 const TypeId: unique symbol = Symbol.for("effect/SortedSet")
 
@@ -28,7 +29,7 @@ export type TypeId = typeof TypeId
  */
 export interface SortedSet<in out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
   /** @internal */
   readonly keyTree: RBT.RedBlackTree<A, boolean>

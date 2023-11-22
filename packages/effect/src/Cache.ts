@@ -8,6 +8,7 @@ import type * as Exit from "./Exit.js"
 import * as internal from "./internal/cache.js"
 import type * as Option from "./Option.js"
 import type * as Predicate from "./Predicate.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -157,9 +158,9 @@ export declare namespace Cache {
    */
   export interface Variance<in out Key, out Error, out Value> {
     readonly [CacheTypeId]: {
-      readonly _Key: (_: Key) => Key
-      readonly _Error: (_: never) => Error
-      readonly _Value: (_: never) => Value
+      readonly _Key: Types.Invariant<Key>
+      readonly _Error: Types.Covariant<Error>
+      readonly _Value: Types.Covariant<Value>
     }
   }
 }

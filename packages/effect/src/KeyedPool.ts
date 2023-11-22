@@ -6,6 +6,7 @@ import type * as Effect from "./Effect.js"
 import * as internal from "./internal/keyedPool.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -53,9 +54,9 @@ export declare namespace KeyedPool {
    */
   export interface Variance<in K, out E, in out A> {
     readonly [KeyedPoolTypeId]: {
-      readonly _K: (_: K) => void
-      readonly _E: (_: never) => E
-      readonly _A: (_: A) => A
+      readonly _K: Types.Contravariant<K>
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Invariant<A>
     }
   }
 }

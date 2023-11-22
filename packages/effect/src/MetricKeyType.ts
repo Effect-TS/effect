@@ -8,6 +8,7 @@ import * as internal from "./internal/metric/keyType.js"
 import type * as MetricBoundaries from "./MetricBoundaries.js"
 import type * as MetricState from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -151,8 +152,8 @@ export declare namespace MetricKeyType {
    */
   export interface Variance<in In, out Out> {
     readonly [MetricKeyTypeTypeId]: {
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
+      readonly _In: Types.Contravariant<In>
+      readonly _Out: Types.Covariant<Out>
     }
   }
 

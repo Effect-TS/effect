@@ -47,8 +47,8 @@ export declare namespace Request {
    */
   export interface Variance<out E, out A> {
     readonly [RequestTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Covariant<A>
     }
   }
 
@@ -312,7 +312,7 @@ export declare namespace Entry {
    */
   export interface Variance<out R> {
     readonly [EntryTypeId]: {
-      readonly _R: (_: never) => R
+      readonly _R: Types.Covariant<R>
     }
   }
 }

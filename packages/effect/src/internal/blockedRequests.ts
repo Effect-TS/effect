@@ -9,6 +9,7 @@ import { hasProperty } from "../Predicate.js"
 import type * as Request from "../Request.js"
 import type * as RequestBlock from "../RequestBlock.js"
 import type * as RequestResolver from "../RequestResolver.js"
+import type * as Types from "../Types.js"
 
 /** @internal */
 export const empty: RequestBlock.RequestBlock<never> = {
@@ -480,7 +481,7 @@ export declare namespace ParallelCollection {
   /** @internal */
   export interface Variance<out R> {
     readonly [RequestBlockParallelTypeId]: {
-      readonly _R: (_: never) => R
+      readonly _R: Types.Covariant<R>
     }
   }
 }
@@ -501,7 +502,7 @@ export declare namespace SequentialCollection {
   /** @internal */
   export interface Variance<out R> {
     readonly [SequentialCollectionTypeId]: {
-      readonly _R: (_: never) => R
+      readonly _R: Types.Covariant<R>
     }
   }
 }

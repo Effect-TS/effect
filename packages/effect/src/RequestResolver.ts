@@ -11,6 +11,7 @@ import * as core from "./internal/core.js"
 import * as internal from "./internal/dataSource.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Request from "./Request.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -72,8 +73,8 @@ export declare namespace RequestResolver {
    */
   export interface Variance<in A, out R> {
     readonly [RequestResolverTypeId]: {
-      readonly _A: (_: A) => void
-      readonly _R: (_: never) => R
+      readonly _A: Types.Contravariant<A>
+      readonly _R: Types.Covariant<R>
     }
   }
 }

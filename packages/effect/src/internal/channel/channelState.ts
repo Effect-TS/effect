@@ -1,6 +1,7 @@
 import * as Effect from "../../Effect.js"
 import type * as Exit from "../../Exit.js"
 import { hasProperty } from "../../Predicate.js"
+import type * as Types from "../../Types.js"
 import * as OpCodes from "../opCodes/channelState.js"
 import type { ErasedExecutor } from "./channelExecutor.js"
 
@@ -17,8 +18,8 @@ export interface ChannelState<out R, out E> extends ChannelState.Variance<R, E> 
 export declare namespace ChannelState {
   export interface Variance<out R, out E> {
     readonly [ChannelStateTypeId]: {
-      readonly _R: (_: never) => R
-      readonly _E: (_: never) => E
+      readonly _R: Types.Covariant<R>
+      readonly _E: Types.Covariant<E>
     }
   }
 }

@@ -9,6 +9,7 @@ import type * as Scope from "./Scope.js"
 import type * as STM from "./STM.js"
 import type * as TQueue from "./TQueue.js"
 import type * as TRef from "./TRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -28,7 +29,7 @@ export type TPubSubTypeId = typeof TPubSubTypeId
  */
 export interface TPubSub<in out A> extends TQueue.TEnqueue<A> {
   readonly [TPubSubTypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
 }
 /**

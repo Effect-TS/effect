@@ -19,6 +19,7 @@ import type * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
 import type * as Scope from "./Scope.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -165,8 +166,8 @@ export declare namespace Fiber {
    */
   export interface Variance<out E, out A> {
     readonly [FiberTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Covariant<A>
     }
   }
 
@@ -175,8 +176,8 @@ export declare namespace Fiber {
    */
   export interface RuntimeVariance<out E, out A> {
     readonly [RuntimeFiberTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Covariant<A>
     }
   }
 

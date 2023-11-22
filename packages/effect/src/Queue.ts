@@ -9,6 +9,7 @@ import type * as MutableQueue from "./MutableQueue.js"
 import type * as MutableRef from "./MutableRef.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -295,7 +296,7 @@ export declare namespace Queue {
    */
   export interface EnqueueVariance<in A> {
     readonly [EnqueueTypeId]: {
-      readonly _In: (_: A) => void
+      readonly _In: Types.Contravariant<A>
     }
   }
 
@@ -305,7 +306,7 @@ export declare namespace Queue {
    */
   export interface DequeueVariance<out A> {
     readonly [DequeueTypeId]: {
-      readonly _Out: (_: never) => A
+      readonly _Out: Types.Covariant<A>
     }
   }
 
@@ -315,7 +316,7 @@ export declare namespace Queue {
    */
   export interface StrategyVariance<in out A> {
     readonly [QueueStrategyTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 
@@ -325,7 +326,7 @@ export declare namespace Queue {
    */
   export interface BackingQueueVariance<in out A> {
     readonly [BackingQueueTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }
