@@ -1,6 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
+import * as Function from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import type * as Predicate from "effect/Predicate"
 import * as Headers from "../../Http/Headers.js"
 import * as IncomingMessage from "../../Http/IncomingMessage.js"
 import type * as Middleware from "../../Http/Middleware.js"
@@ -21,6 +23,23 @@ export const withLoggerDisabled = <R, E, A>(self: Effect.Effect<R, E, A>): Effec
     FiberRef.set(loggerDisabled, true),
     self
   )
+
+/** @internal */
+export const currentTracerDisabledWhen = globalValue(
+  Symbol.for("@effect/platform/Http/Middleware/tracerDisabledWhen"),
+  () => FiberRef.unsafeMake<Predicate.Predicate<ServerRequest.ServerRequest>>(Function.constFalse)
+)
+
+/** @internal */
+export const withTracerDisabledWhen = Function.dual<
+  (
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(
+    effect: Effect.Effect<R, E, A>,
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ) => Effect.Effect<R, E, A>
+>(2, (self, pred) => Effect.locally(self, currentTracerDisabledWhen, pred))
 
 /** @internal */
 export const logger = make((httpApp) => {
@@ -61,18 +80,20 @@ export const tracer = make((httpApp) => {
     (response) => Effect.annotateCurrentSpan("http.status", response.status)
   )
   return Effect.flatMap(
-    ServerRequest.ServerRequest,
-    (request) =>
+    Effect.zip(ServerRequest.ServerRequest, FiberRef.get(currentTracerDisabledWhen)),
+    ([request, disabledWhen]) =>
       Effect.flatMap(
         request.headers["x-b3-traceid"] || request.headers["b3"] ?
           Effect.orElseSucceed(IncomingMessage.schemaExternalSpan(request), () => undefined) :
           Effect.succeed(undefined),
         (parent) =>
-          Effect.withSpan(
-            appWithStatus,
-            `http ${request.method}`,
-            { attributes: { "http.method": request.method, "http.url": request.url }, parent }
-          )
+          disabledWhen(request) ?
+            httpApp :
+            Effect.withSpan(
+              appWithStatus,
+              `http ${request.method}`,
+              { attributes: { "http.method": request.method, "http.url": request.url }, parent }
+            )
       )
   )
 })

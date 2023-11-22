@@ -3,8 +3,10 @@
  */
 import type * as Effect from "effect/Effect"
 import type * as FiberRef from "effect/FiberRef"
+import type * as Predicate from "effect/Predicate"
 import * as internal from "../internal/http/middleware.js"
 import type * as App from "./App.js"
+import type * as ServerRequest from "./ServerRequest.js"
 
 /**
  * @since 1.0.0
@@ -50,6 +52,27 @@ export const loggerDisabled: FiberRef.FiberRef<boolean> = internal.loggerDisable
  */
 export const withLoggerDisabled: <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =
   internal.withLoggerDisabled
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<ServerRequest.ServerRequest>> =
+  internal.currentTracerDisabledWhen
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withTracerDisabledWhen: {
+  (
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <R, E, A>(
+    effect: Effect.Effect<R, E, A>,
+    predicate: Predicate.Predicate<ServerRequest.ServerRequest>
+  ): Effect.Effect<R, E, A>
+} = internal.withTracerDisabledWhen
 
 /**
  * @since 1.0.0
