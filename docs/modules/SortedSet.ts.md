@@ -256,7 +256,7 @@ Added in v2.0.0
 ```ts
 export interface SortedSet<in out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
   /** @internal */
   readonly keyTree: RBT.RedBlackTree<A, boolean>

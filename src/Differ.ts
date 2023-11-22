@@ -14,6 +14,7 @@ import * as ContextPatch from "./internal/differ/contextPatch.js"
 import * as HashMapPatch from "./internal/differ/hashMapPatch.js"
 import * as HashSetPatch from "./internal/differ/hashSetPatch.js"
 import * as OrPatch from "./internal/differ/orPatch.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -48,8 +49,8 @@ export type TypeId = typeof TypeId
  */
 export interface Differ<in out Value, in out Patch> {
   readonly [TypeId]: {
-    readonly _V: (_: Value) => Value
-    readonly _P: (_: Patch) => Patch
+    readonly _V: Types.Invariant<Value>
+    readonly _P: Types.Invariant<Patch>
   }
   readonly empty: Patch
   diff(oldValue: Value, newValue: Value): Patch
@@ -86,8 +87,8 @@ export declare namespace Differ {
      */
     export interface Patch<in Input, out Output> extends Equal {
       readonly [ContextPatchTypeId]: {
-        readonly _Input: (_: Input) => void
-        readonly _Output: (_: never) => Output
+        readonly _Input: Types.Contravariant<Input>
+        readonly _Output: Types.Covariant<Output>
       }
     }
   }
@@ -109,8 +110,8 @@ export declare namespace Differ {
      */
     export interface Patch<in out Value, in out Patch> extends Equal {
       readonly [ChunkPatchTypeId]: {
-        readonly _Value: (_: Value) => Value
-        readonly _Patch: (_: Patch) => Patch
+        readonly _Value: Types.Invariant<Value>
+        readonly _Patch: Types.Invariant<Patch>
       }
     }
   }
@@ -132,9 +133,9 @@ export declare namespace Differ {
      */
     export interface Patch<in out Key, in out Value, in out Patch> extends Equal {
       readonly [HashMapPatchTypeId]: {
-        readonly _Key: (_: Key) => Key
-        readonly _Value: (_: Value) => Value
-        readonly _Patch: (_: Patch) => Patch
+        readonly _Key: Types.Invariant<Key>
+        readonly _Value: Types.Invariant<Value>
+        readonly _Patch: Types.Invariant<Patch>
       }
     }
   }
@@ -156,7 +157,7 @@ export declare namespace Differ {
      */
     export interface Patch<in out Value> extends Equal {
       readonly [HashSetPatchTypeId]: {
-        readonly _Value: (_: Value) => Value
+        readonly _Value: Types.Invariant<Value>
       }
     }
   }
@@ -178,10 +179,10 @@ export declare namespace Differ {
      */
     export interface Patch<in out Value, in out Value2, in out Patch, in out Patch2> extends Equal {
       readonly [OrPatchTypeId]: {
-        readonly _Value: (_: Value) => Value
-        readonly _Value2: (_: Value2) => Value2
-        readonly _Patch: (_: Patch) => Patch
-        readonly _Patch2: (_: Patch2) => Patch2
+        readonly _Value: Types.Invariant<Value>
+        readonly _Value2: Types.Invariant<Value2>
+        readonly _Patch: Types.Invariant<Patch>
+        readonly _Patch2: Types.Invariant<Patch2>
       }
     }
   }

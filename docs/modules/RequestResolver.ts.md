@@ -420,8 +420,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<in A, out R> {
   readonly [RequestResolverTypeId]: {
-    readonly _A: (_: A) => void
-    readonly _R: (_: never) => R
+    readonly _A: Types.Contravariant<A>
+    readonly _R: Types.Covariant<R>
   }
 }
 ```

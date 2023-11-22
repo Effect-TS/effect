@@ -348,7 +348,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<out T> {
   readonly [SupervisorTypeId]: {
-    readonly _T: (_: never) => T
+    readonly _T: Types.Covariant<T>
   }
 }
 ```

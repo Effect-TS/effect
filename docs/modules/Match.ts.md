@@ -537,10 +537,10 @@ Added in v1.0.0
 export interface TypeMatcher<in Input, out Filters, out Remaining, out Result> extends Pipeable {
   readonly _tag: "TypeMatcher"
   readonly [MatcherTypeId]: {
-    readonly _input: (_: Input) => unknown
-    readonly _filters: (_: never) => Filters
-    readonly _remaining: (_: never) => Remaining
-    readonly _result: (_: never) => Result
+    readonly _input: Contravariant<Input>
+    readonly _filters: Covariant<Filters>
+    readonly _remaining: Covariant<Remaining>
+    readonly _result: Covariant<Result>
   }
   readonly cases: ReadonlyArray<Case>
   add<I, R, RA, A>(_case: Case): TypeMatcher<I, R, RA, A>
@@ -557,9 +557,9 @@ Added in v1.0.0
 export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Provided> extends Pipeable {
   readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
-    readonly _input: (_: Input) => unknown
-    readonly _filters: (_: never) => Filters
-    readonly _result: (_: never) => Result
+    readonly _input: Contravariant<Input>
+    readonly _filters: Covariant<Filters>
+    readonly _result: Covariant<Result>
   }
   readonly provided: Provided
   readonly value: Either.Either<Remaining, Provided>

@@ -310,8 +310,8 @@ A Red-Black Tree.
 ```ts
 export interface RedBlackTree<in out Key, out Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _Key: (_: Key) => Key
-    readonly _Value: (_: never) => Value
+    readonly _Key: Types.Invariant<Key>
+    readonly _Value: Types.Covariant<Value>
   }
 }
 ```

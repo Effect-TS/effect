@@ -3,6 +3,7 @@ import type * as FiberId from "../../../FiberId.js"
 import { pipe } from "../../../Function.js"
 import * as Hash from "../../../Hash.js"
 import { hasProperty } from "../../../Predicate.js"
+import type * as Types from "../../../Types.js"
 import * as OpCodes from "../opCodes/tExit.js"
 
 /** @internal */
@@ -22,8 +23,8 @@ export declare namespace TExit {
   /** @internal */
   export interface Variance<out E, out A> {
     readonly [TExitTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Covariant<A>
     }
   }
 }

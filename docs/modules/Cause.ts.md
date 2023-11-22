@@ -1343,7 +1343,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<out E> {
   readonly [CauseTypeId]: {
-    readonly _E: (_: never) => E
+    readonly _E: Types.Covariant<E>
   }
 }
 ```

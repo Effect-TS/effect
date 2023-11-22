@@ -444,8 +444,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<in Message, out Output> {
   readonly [LoggerTypeId]: {
-    readonly _Message: (_: Message) => void
-    readonly _Output: (_: never) => Output
+    readonly _Message: Types.Contravariant<Message>
+    readonly _Output: Types.Covariant<Output>
   }
 }
 ```

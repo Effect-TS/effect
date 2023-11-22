@@ -265,7 +265,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<in out A> {
   readonly [TRefTypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
 }
 ```

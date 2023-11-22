@@ -417,7 +417,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<in A> {
   readonly [MetricStateTypeId]: {
-    readonly _A: (_: A) => void
+    readonly _A: Types.Contravariant<A>
   }
 }
 ```

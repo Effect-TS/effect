@@ -247,7 +247,7 @@ Added in v2.0.0
 ```ts
 export interface Context<in Services> extends Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _S: (_: Services) => unknown
+    readonly _Services: Types.Contravariant<Services>
   }
   readonly unsafeMap: Map<Tag<any, any>, any>
 }
@@ -264,8 +264,8 @@ export interface Tag<in out Identifier, in out Service> extends Pipeable, Inspec
   readonly _tag: "Tag"
   readonly _op: "Tag"
   readonly [TagTypeId]: {
-    readonly _S: (_: Service) => Service
-    readonly _I: (_: Identifier) => Identifier
+    readonly _Service: Types.Invariant<Service>
+    readonly _Identifier: Types.Invariant<Identifier>
   }
   of(self: Service): Service
   context(self: Service): Context<Identifier>

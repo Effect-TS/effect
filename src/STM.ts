@@ -14,6 +14,7 @@ import * as stm from "./internal/stm/stm.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type * as Types from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -139,9 +140,9 @@ export declare namespace STM {
    */
   export interface Variance<out R, out E, out A> {
     readonly [STMTypeId]: {
-      readonly _R: (_: never) => R
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _R: Types.Covariant<R>
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Covariant<A>
     }
   }
 }

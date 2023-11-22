@@ -7,6 +7,7 @@ import * as internal from "./internal/reloadable.js"
 import type * as Layer from "./Layer.js"
 import type * as Schedule from "./Schedule.js"
 import type * as ScopedRef from "./ScopedRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -48,7 +49,7 @@ export declare namespace Reloadable {
    */
   export interface Variance<in out A> {
     readonly [ReloadableTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

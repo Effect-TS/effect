@@ -6,7 +6,7 @@ import * as internal from "./internal/matcher.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import * as Predicate from "./Predicate.js"
-import type { UnionToIntersection } from "./Types.js"
+import type { Contravariant, Covariant, UnionToIntersection } from "./Types.js"
 import type { Unify } from "./Unify.js"
 
 /**
@@ -36,10 +36,10 @@ export type Matcher<Input, Filters, RemainingApplied, Result, Provided> =
 export interface TypeMatcher<in Input, out Filters, out Remaining, out Result> extends Pipeable {
   readonly _tag: "TypeMatcher"
   readonly [MatcherTypeId]: {
-    readonly _input: (_: Input) => unknown
-    readonly _filters: (_: never) => Filters
-    readonly _remaining: (_: never) => Remaining
-    readonly _result: (_: never) => Result
+    readonly _input: Contravariant<Input>
+    readonly _filters: Covariant<Filters>
+    readonly _remaining: Covariant<Remaining>
+    readonly _result: Covariant<Result>
   }
   readonly cases: ReadonlyArray<Case>
   add<I, R, RA, A>(_case: Case): TypeMatcher<I, R, RA, A>
@@ -52,9 +52,9 @@ export interface TypeMatcher<in Input, out Filters, out Remaining, out Result> e
 export interface ValueMatcher<in Input, Filters, out Remaining, out Result, Provided> extends Pipeable {
   readonly _tag: "ValueMatcher"
   readonly [MatcherTypeId]: {
-    readonly _input: (_: Input) => unknown
-    readonly _filters: (_: never) => Filters
-    readonly _result: (_: never) => Result
+    readonly _input: Contravariant<Input>
+    readonly _filters: Covariant<Filters>
+    readonly _result: Covariant<Result>
   }
   readonly provided: Provided
   readonly value: Either.Either<Remaining, Provided>

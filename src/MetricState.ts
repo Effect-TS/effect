@@ -8,6 +8,7 @@ import * as internal from "./internal/metric/state.js"
 import type * as MetricKeyType from "./MetricKeyType.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -163,7 +164,7 @@ export declare namespace MetricState {
    */
   export interface Variance<in A> {
     readonly [MetricStateTypeId]: {
-      readonly _A: (_: A) => void
+      readonly _A: Types.Contravariant<A>
     }
   }
 }

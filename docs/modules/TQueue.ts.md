@@ -614,7 +614,7 @@ Added in v2.0.0
 ```ts
 export interface TDequeueVariance<out A> {
   readonly [TDequeueTypeId]: {
-    readonly _Out: (_: never) => A
+    readonly _Out: Types.Covariant<A>
   }
 }
 ```
@@ -628,7 +628,7 @@ Added in v2.0.0
 ```ts
 export interface TEnqueueVariance<in A> {
   readonly [TEnqueueTypeId]: {
-    readonly _In: (_: A) => void
+    readonly _In: Types.Contravariant<A>
   }
 }
 ```

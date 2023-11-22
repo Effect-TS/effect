@@ -156,8 +156,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<in In, out Out> {
   readonly [MetricHookTypeId]: {
-    readonly _In: (_: In) => void
-    readonly _Out: (_: never) => Out
+    readonly _In: Types.Contravariant<In>
+    readonly _Out: Types.Covariant<Out>
   }
 }
 ```

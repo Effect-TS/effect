@@ -8,6 +8,7 @@ import type * as Versioned from "./internal/stm/stm/versioned.js"
 import * as internal from "./internal/stm/tRef.js"
 import type * as Option from "./Option.js"
 import type * as STM from "./STM.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -59,7 +60,7 @@ export declare namespace TRef {
    */
   export interface Variance<in out A> {
     readonly [TRefTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

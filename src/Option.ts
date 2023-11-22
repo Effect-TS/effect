@@ -15,6 +15,7 @@ import type { Order } from "./Order.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type * as Types from "./Types.js"
 import type * as Unify from "./Unify.js"
 import * as Gen from "./Utils.js"
 
@@ -44,7 +45,7 @@ export interface None<out A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "None"
   readonly _op: "None"
   readonly [TypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: Types.Covariant<A>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>
@@ -60,7 +61,7 @@ export interface Some<out A> extends Data.Case, Pipeable, Inspectable {
   readonly _op: "Some"
   readonly value: A
   readonly [TypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: Types.Covariant<A>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: OptionUnify<this>

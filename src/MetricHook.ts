@@ -6,6 +6,7 @@ import * as internal from "./internal/metric/hook.js"
 import type * as MetricKey from "./MetricKey.js"
 import type * as MetricState from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -80,8 +81,8 @@ export declare namespace MetricHook {
    */
   export interface Variance<in In, out Out> {
     readonly [MetricHookTypeId]: {
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
+      readonly _In: Types.Contravariant<In>
+      readonly _Out: Types.Covariant<Out>
     }
   }
 }

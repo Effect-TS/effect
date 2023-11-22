@@ -3286,9 +3286,9 @@ Added in v2.0.0
 ```ts
 export interface Variance<out R, out E, out A> {
   readonly [StreamTypeId]: {
-    _R: (_: never) => R
-    _E: (_: never) => E
-    _A: (_: never) => A
+    _R: Types.Covariant<R>
+    _E: Types.Covariant<E>
+    _A: Types.Covariant<A>
   }
 }
 ```

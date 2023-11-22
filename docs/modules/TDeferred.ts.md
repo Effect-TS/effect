@@ -154,8 +154,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<in out E, in out A> {
   readonly [TDeferredTypeId]: {
-    readonly _E: (_: E) => E
-    readonly _A: (_: A) => A
+    readonly _E: Types.Invariant<E>
+    readonly _A: Types.Invariant<A>
   }
 }
 ```

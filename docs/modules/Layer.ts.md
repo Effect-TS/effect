@@ -1063,9 +1063,9 @@ Added in v2.0.0
 ```ts
 export interface Variance<out RIn, out E, in ROut> {
   readonly [LayerTypeId]: {
-    readonly _RIn: (_: never) => RIn
-    readonly _E: (_: never) => E
-    readonly _ROut: (_: ROut) => void
+    readonly _RIn: Types.Covariant<RIn>
+    readonly _E: Types.Covariant<E>
+    readonly _ROut: Types.Contravariant<ROut>
   }
 }
 ```

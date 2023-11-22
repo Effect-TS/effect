@@ -558,12 +558,12 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Variance<F extends TypeLambda, R, O, E> {
+export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
   readonly [GenKindTypeId]: GenKindTypeId
-  readonly _F: (_: F) => F
-  readonly _R: (_: R) => unknown
-  readonly _O: (_: never) => O
-  readonly _E: (_: never) => E
+  readonly _F: Types.Invariant<F>
+  readonly _R: Types.Contravariant<R>
+  readonly _O: Types.Covariant<O>
+  readonly _E: Types.Covariant<E>
 }
 ```
 

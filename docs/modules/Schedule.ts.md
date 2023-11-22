@@ -1189,9 +1189,9 @@ Added in v2.0.0
 ```ts
 export interface DriverVariance<out Env, in In, out Out> {
   readonly [ScheduleDriverTypeId]: {
-    readonly _Env: (_: never) => Env
-    readonly _In: (_: In) => void
-    readonly _Out: (_: never) => Out
+    readonly _Env: Types.Covariant<Env>
+    readonly _In: Types.Contravariant<In>
+    readonly _Out: Types.Covariant<Out>
   }
 }
 ```
@@ -1205,9 +1205,9 @@ Added in v2.0.0
 ```ts
 export interface Variance<out Env, in In, out Out> {
   readonly [ScheduleTypeId]: {
-    readonly _Env: (_: never) => Env
-    readonly _In: (_: In) => void
-    readonly _Out: (_: never) => Out
+    readonly _Env: Types.Covariant<Env>
+    readonly _In: Types.Contravariant<In>
+    readonly _Out: Types.Covariant<Out>
   }
 }
 ```

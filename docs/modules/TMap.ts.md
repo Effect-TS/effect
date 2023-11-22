@@ -712,8 +712,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<in out K, in out V> {
   readonly [TMapTypeId]: {
-    readonly _K: (_: K) => K
-    readonly _V: (_: V) => V
+    readonly _K: Types.Invariant<K>
+    readonly _V: Types.Invariant<V>
   }
 }
 ```

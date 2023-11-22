@@ -11,6 +11,7 @@ import * as internal from "./internal/deferred.js"
 import type * as MutableRef from "./MutableRef.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -53,8 +54,8 @@ export declare namespace Deferred {
    */
   export interface Variance<in out E, in out A> {
     readonly [DeferredTypeId]: {
-      readonly _E: (_: E) => E
-      readonly _A: (_: A) => A
+      readonly _E: Types.Invariant<E>
+      readonly _A: Types.Invariant<A>
     }
   }
 }

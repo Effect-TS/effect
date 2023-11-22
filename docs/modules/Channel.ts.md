@@ -1690,13 +1690,13 @@ Added in v2.0.0
 
 ```ts
 export interface VarianceStruct<out Env, in InErr, in InElem, in InDone, out OutErr, out OutElem, out OutDone> {
-  _Env: (_: never) => Env
-  _InErr: (_: InErr) => void
-  _InElem: (_: InElem) => void
-  _InDone: (_: InDone) => void
-  _OutErr: (_: never) => OutErr
-  _OutElem: (_: never) => OutElem
-  _OutDone: (_: never) => OutDone
+  _Env: Types.Covariant<Env>
+  _InErr: Types.Contravariant<InErr>
+  _InElem: Types.Contravariant<InElem>
+  _InDone: Types.Contravariant<InDone>
+  _OutErr: Types.Covariant<OutErr>
+  _OutElem: Types.Covariant<OutElem>
+  _OutDone: Types.Covariant<OutDone>
 }
 ```
 

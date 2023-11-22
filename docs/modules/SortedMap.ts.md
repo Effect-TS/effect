@@ -240,8 +240,8 @@ Added in v2.0.0
 ```ts
 export interface SortedMap<in out K, out V> extends Iterable<[K, V]>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _K: (_: K) => K
-    readonly _V: (_: never) => V
+    readonly _K: Types.Invariant<K>
+    readonly _V: Types.Covariant<V>
   }
   /** @internal */
   readonly tree: RBT.RedBlackTree<K, V>

@@ -120,7 +120,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<out Type extends MetricKeyType.MetricKeyType<any, any>> {
   readonly [MetricPairTypeId]: {
-    readonly _Type: (_: never) => Type
+    readonly _Type: Types.Covariant<Type>
   }
 }
 ```

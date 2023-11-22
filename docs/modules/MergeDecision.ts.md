@@ -151,11 +151,11 @@ Added in v2.0.0
 ```ts
 export interface Variance<out R, in E0, in Z0, out E, out Z> {
   readonly [MergeDecisionTypeId]: {
-    _R: (_: never) => R
-    _E0: (_: E0) => void
-    _Z0: (_: Z0) => void
-    _E: (_: never) => E
-    _Z: (_: never) => Z
+    _R: Types.Covariant<R>
+    _E0: Types.Contravariant<E0>
+    _Z0: Types.Contravariant<Z0>
+    _E: Types.Covariant<E>
+    _Z: Types.Covariant<Z>
   }
 }
 ```

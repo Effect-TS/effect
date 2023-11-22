@@ -7,6 +7,7 @@ import * as internal from "./internal/resource.js"
 import type * as Schedule from "./Schedule.js"
 import type * as Scope from "./Scope.js"
 import type * as ScopedRef from "./ScopedRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -44,8 +45,8 @@ export declare namespace Resource {
    */
   export interface Variance<in out E, in out A> {
     readonly [ResourceTypeId]: {
-      _E: (_: E) => E
-      _A: (_: A) => A
+      _E: Types.Invariant<E>
+      _A: Types.Invariant<A>
     }
   }
 }

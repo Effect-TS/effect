@@ -5,6 +5,7 @@ import * as internal from "./internal/stm/tQueue.js"
 import type * as Option from "./Option.js"
 import type { Predicate } from "./Predicate.js"
 import type * as STM from "./STM.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -158,7 +159,7 @@ export declare namespace TQueue {
    */
   export interface TEnqueueVariance<in A> {
     readonly [TEnqueueTypeId]: {
-      readonly _In: (_: A) => void
+      readonly _In: Types.Contravariant<A>
     }
   }
 
@@ -168,7 +169,7 @@ export declare namespace TQueue {
    */
   export interface TDequeueVariance<out A> {
     readonly [TDequeueTypeId]: {
-      readonly _Out: (_: never) => A
+      readonly _Out: Types.Covariant<A>
     }
   }
 }

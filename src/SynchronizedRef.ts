@@ -7,6 +7,7 @@ import * as ref from "./internal/ref.js"
 import * as internal from "./internal/synchronizedRef.js"
 import type * as Option from "./Option.js"
 import type * as Ref from "./Ref.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -38,7 +39,7 @@ export declare namespace SynchronizedRef {
    */
   export interface Variance<in out A> {
     readonly [SynchronizedRefTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

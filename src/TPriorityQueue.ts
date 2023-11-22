@@ -9,6 +9,7 @@ import type { Predicate } from "./Predicate.js"
 import type * as SortedMap from "./SortedMap.js"
 import type * as STM from "./STM.js"
 import type * as TRef from "./TRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -52,7 +53,7 @@ export declare namespace TPriorityQueue {
    */
   export interface Variance<in out A> {
     readonly [TPriorityQueueTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

@@ -13,6 +13,7 @@ import type * as LogLevel from "./LogLevel.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -44,7 +45,7 @@ export declare namespace Config {
    */
   export interface Variance<out A> {
     readonly [ConfigTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: Types.Covariant<A>
     }
   }
 
