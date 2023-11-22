@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.31.1
+
+### Patch Changes
+
+- [#292](https://github.com/Effect-TS/platform/pull/292) [`b712491`](https://github.com/Effect-TS/platform/commit/b71249168eb4623de8dbd28cd0102be688f5caa3) Thanks [@tim-smart](https://github.com/tim-smart)! - add ability to disable http tracer with predicate
+
 ## 0.31.0
 
 ### Minor Changes

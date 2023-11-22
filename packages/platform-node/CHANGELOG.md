@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.32.1
+
+### Patch Changes
+
+- [#293](https://github.com/Effect-TS/platform/pull/293) [`5a7d254`](https://github.com/Effect-TS/platform/commit/5a7d25406b0841cf6ec49218bd3324a4ddc3df5b) Thanks [@tim-smart](https://github.com/tim-smart)! - ensure http methods are uppercase
+
+- Updated dependencies [[`b712491`](https://github.com/Effect-TS/platform/commit/b71249168eb4623de8dbd28cd0102be688f5caa3)]:
+  - @effect/platform@0.31.1
+
 ## 0.32.0
 
 ### Minor Changes
