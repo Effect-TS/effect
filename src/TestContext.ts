@@ -15,9 +15,10 @@ export const live: Layer.Layer<DefaultServices.DefaultServices, never, TestServi
   layer.merge(TestServices.liveLayer()),
   layer.merge(TestServices.sizedLayer(100)),
   layer.merge(pipe(
-    TestServices.liveLayer(),
-    layer.merge(TestServices.annotationsLayer()),
-    layer.provideMerge(TestClock.defaultTestClock)
+    TestClock.defaultTestClock,
+    layer.provideMerge(
+      layer.merge(TestServices.liveLayer(), TestServices.annotationsLayer())
+    )
   )),
   layer.merge(TestServices.testConfigLayer({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
 )
@@ -32,4 +33,4 @@ export const LiveContext: Layer.Layer<never, never, DefaultServices.DefaultServi
 /**
  * @since 2.0.0
  */
-export const TestContext: Layer.Layer<never, never, TestServices.TestServices> = layer.provideMerge(LiveContext, live)
+export const TestContext: Layer.Layer<never, never, TestServices.TestServices> = layer.provideMerge(live, LiveContext)

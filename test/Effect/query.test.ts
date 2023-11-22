@@ -131,18 +131,19 @@ export const getAllUserNamesTagged = getAllUserIdsTagged.pipe(
   Effect.flatMap(Effect.forEach(getUserNameByIdTagged, { batching: true }))
 )
 
-const EnvLive = Layer.provideMerge(
-  Layer.mergeAll(
-    Layer.setRequestCache(Request.makeCache({
-      capacity: 100,
-      timeToLive: seconds(60)
-    })),
-    Layer.setRequestCaching(true),
-    Layer.setRequestBatching(true)
-  ),
-  Layer.mergeAll(
-    Layer.sync(Counter, () => ({ count: 0 })),
-    Layer.sync(Requests, () => ({ count: 0 }))
+const EnvLive = Layer.mergeAll(
+  Layer.sync(Counter, () => ({ count: 0 })),
+  Layer.sync(Requests, () => ({ count: 0 }))
+).pipe(
+  Layer.provideMerge(
+    Layer.mergeAll(
+      Layer.setRequestCache(Request.makeCache({
+        capacity: 100,
+        timeToLive: seconds(60)
+      })),
+      Layer.setRequestCaching(true),
+      Layer.setRequestBatching(true)
+    )
   )
 )
 
