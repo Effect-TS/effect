@@ -1949,19 +1949,21 @@ export const parseJson = <I, A extends string>(self: Schema<I, A>, options?: {
   replacer?: Parameters<typeof JSON.stringify>[1]
   space?: Parameters<typeof JSON.stringify>[2]
 }): Schema<I, unknown> => {
-  return transformOrFail(self, unknown, (s, _, ast) => {
-    try {
-      return ParseResult.success<unknown>(JSON.parse(s, options?.reviver))
-    } catch (e: any) {
-      return ParseResult.failure(ParseResult.type(ast, s, e.message))
-    }
-  }, (u, _, ast) => {
-    try {
-      return ParseResult.success(JSON.stringify(u, options?.replacer, options?.space))
-    } catch (e: any) {
-      return ParseResult.failure(ParseResult.type(ast, u, e.message))
-    }
-  }, { strict: false })
+  return transformOrFail(
+    self,
+    unknown,
+    (s, _, ast) =>
+      ParseResult.try({
+        try: () => JSON.parse(s, options?.reviver),
+        catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, s, e.message)])
+      }),
+    (u, _, ast) =>
+      ParseResult.try({
+        try: () => JSON.stringify(u, options?.replacer, options?.space),
+        catch: (e: any) => ParseResult.parseError([ParseResult.type(ast, u, e.message)])
+      }),
+    { strict: false }
+  )
 }
 
 // ---------------------------------------------
@@ -2689,11 +2691,10 @@ export const bigintFromString = <I, A extends string>(self: Schema<I, A>): Schem
         return ParseResult.failure(ParseResult.type(ast, s))
       }
 
-      try {
-        return ParseResult.success(BigInt(s))
-      } catch (_) {
-        return ParseResult.failure(ParseResult.type(ast, s))
-      }
+      return ParseResult.try({
+        try: () => BigInt(s),
+        catch: () => ParseResult.parseError([ParseResult.type(ast, s)])
+      })
     },
     (n) => ParseResult.success(String(n)),
     { strict: false }
@@ -2714,13 +2715,11 @@ export const bigintFromNumber = <I, A extends number>(self: Schema<I, A>): Schem
   return transformOrFail(
     self,
     bigintFromSelf,
-    (n, _, ast) => {
-      try {
-        return ParseResult.success(BigInt(n))
-      } catch (_) {
-        return ParseResult.failure(ParseResult.type(ast, n))
-      }
-    },
+    (n, _, ast) =>
+      ParseResult.try({
+        try: () => BigInt(n),
+        catch: () => ParseResult.parseError([ParseResult.type(ast, n)])
+      }),
     (b, _, ast) => {
       if (b > Internal.maxSafeInteger || b < Internal.minSafeInteger) {
         return ParseResult.failure(ParseResult.type(ast, b))

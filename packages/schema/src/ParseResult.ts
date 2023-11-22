@@ -4,6 +4,7 @@
 
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
+import type { LazyArg } from "effect/Function"
 import * as Inspectable from "effect/Inspectable"
 import * as Option from "effect/Option"
 import type * as ReadonlyArray from "effect/ReadonlyArray"
@@ -222,6 +223,19 @@ export const success: <A>(a: A) => ParseResult<A> = Either.right
  * @since 1.0.0
  */
 export const fail: (error: ParseError) => ParseResult<never> = Either.left
+
+const _try = <A>(options: {
+  try: LazyArg<A>
+  catch: (e: unknown) => ParseError
+}): ParseResult<A> => Either.try(options)
+
+export {
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  _try as try
+}
 
 /**
  * @category constructors
