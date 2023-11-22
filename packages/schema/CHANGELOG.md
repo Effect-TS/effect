@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.49.2
+
+### Patch Changes
+
+- [#587](https://github.com/Effect-TS/schema/pull/587) [`64fe91f`](https://github.com/Effect-TS/schema/commit/64fe91f54050a4aadab26df7c5a875dd8de0588a) Thanks [@gcanti](https://github.com/gcanti)! - DateFromSelf: its arbitrary should also generate "Invalid Date"s
+
 ## 0.49.1
 
 ### Patch Changes
