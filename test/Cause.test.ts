@@ -7,6 +7,7 @@ import * as internal from "effect/internal/cause"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as fc from "fast-check"
+import { inspect } from "node:util"
 import { assert, describe, expect, it } from "vitest"
 
 describe.concurrent("Cause", () => {
@@ -348,7 +349,7 @@ describe.concurrent("Cause", () => {
       const ex = new Cause.InterruptedException("my message")
       expect(ex.toString()).include("InterruptedException: my message")
       if (typeof window === "undefined") {
-        expect(ex.toString()).include("Cause.test.ts:348")
+        expect(inspect(ex)).include("Cause.test.ts:349")
       }
     })
   })
