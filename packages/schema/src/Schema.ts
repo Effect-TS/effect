@@ -2869,7 +2869,7 @@ export const durationFromHrTime = <I, A extends readonly [seconds: number, nanos
     { strict: false }
   )
 
-const hrTime: Schema<readonly [nanos: number, seconds: number]> = tuple(
+const hrTime: Schema<readonly [seconds: number, nanos: number]> = tuple(
   NonNegative.pipe(annotations({
     [AST.TitleAnnotationId]: "seconds",
     [AST.DescriptionAnnotationId]: "seconds"
