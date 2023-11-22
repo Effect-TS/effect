@@ -210,8 +210,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<out E, in out A> {
   readonly [PoolTypeId]: {
-    readonly _E: (_: never) => E
-    readonly _A: (_: A) => A
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Invariant<A>
   }
 }
 ```

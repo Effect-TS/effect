@@ -3,6 +3,7 @@
  */
 import * as internal from "./internal/channel/upstreamPullStrategy.js"
 import type * as Option from "./Option.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -32,7 +33,7 @@ export declare namespace UpstreamPullStrategy {
    */
   export interface Variance<out A> {
     readonly [UpstreamPullStrategyTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: Types.Covariant<A>
     }
   }
 }

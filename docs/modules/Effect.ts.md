@@ -6360,9 +6360,9 @@ Added in v2.0.0
 ```ts
 export interface VarianceStruct<out R, out E, out A> {
   readonly _V: string
-  readonly _R: (_: never) => R
-  readonly _E: (_: never) => E
-  readonly _A: (_: never) => A
+  readonly _R: Covariant<R>
+  readonly _E: Covariant<E>
+  readonly _A: Covariant<A>
 }
 ```
 

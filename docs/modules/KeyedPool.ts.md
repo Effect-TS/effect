@@ -221,9 +221,9 @@ Added in v2.0.0
 ```ts
 export interface Variance<in K, out E, in out A> {
   readonly [KeyedPoolTypeId]: {
-    readonly _K: (_: K) => void
-    readonly _E: (_: never) => E
-    readonly _A: (_: A) => A
+    readonly _K: Types.Contravariant<K>
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Invariant<A>
   }
 }
 ```

@@ -313,9 +313,9 @@ Added in v2.0.0
 ```ts
 export interface Variance<in out Key, out Error, out Value> {
   readonly [CacheTypeId]: {
-    readonly _Key: (_: Key) => Key
-    readonly _Error: (_: never) => Error
-    readonly _Value: (_: never) => Value
+    readonly _Key: Types.Invariant<Key>
+    readonly _Error: Types.Covariant<Error>
+    readonly _Value: Types.Covariant<Value>
   }
 }
 ```

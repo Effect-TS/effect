@@ -137,8 +137,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<in out E, in out A> {
   readonly [ResourceTypeId]: {
-    _E: (_: E) => E
-    _A: (_: A) => A
+    _E: Types.Invariant<E>
+    _A: Types.Invariant<A>
   }
 }
 ```

@@ -626,7 +626,7 @@ Added in v2.0.0
 ```ts
 export interface BackingQueueVariance<in out A> {
   readonly [BackingQueueTypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
 }
 ```
@@ -640,7 +640,7 @@ Added in v2.0.0
 ```ts
 export interface DequeueVariance<out A> {
   readonly [DequeueTypeId]: {
-    readonly _Out: (_: never) => A
+    readonly _Out: Types.Covariant<A>
   }
 }
 ```
@@ -654,7 +654,7 @@ Added in v2.0.0
 ```ts
 export interface EnqueueVariance<in A> {
   readonly [EnqueueTypeId]: {
-    readonly _In: (_: A) => void
+    readonly _In: Types.Contravariant<A>
   }
 }
 ```
@@ -668,7 +668,7 @@ Added in v2.0.0
 ```ts
 export interface StrategyVariance<in out A> {
   readonly [QueueStrategyTypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
 }
 ```

@@ -2585,9 +2585,9 @@ Added in v2.0.0
 ```ts
 export interface Variance<out R, out E, out A> {
   readonly [STMTypeId]: {
-    readonly _R: (_: never) => R
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _R: Types.Covariant<R>
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Covariant<A>
   }
 }
 ```

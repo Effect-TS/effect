@@ -12,7 +12,7 @@ import * as HashSet from "./HashSet.js"
 import type * as MutableRef from "./MutableRef.js"
 import { hasProperty } from "./Predicate.js"
 import type * as SortedSet from "./SortedSet.js"
-
+import type * as Types from "./Types.js"
 /** @internal */
 const TestAnnotationSymbolKey = "effect/TestAnnotation"
 
@@ -31,7 +31,7 @@ export type TestAnnotationTypeId = typeof TestAnnotationTypeId
  */
 export interface TestAnnotation<in out A> extends Equal.Equal {
   readonly [TestAnnotationTypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
   readonly identifier: string
   readonly tag: Context.Tag<A, A>

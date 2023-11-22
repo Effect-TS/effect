@@ -6,6 +6,7 @@ import type * as MetricKey from "./MetricKey.js"
 import type * as MetricKeyType from "./MetricKeyType.js"
 import type * as MetricState from "./MetricState.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -46,7 +47,7 @@ export declare namespace MetricPair {
    */
   export interface Variance<out Type extends MetricKeyType.MetricKeyType<any, any>> {
     readonly [MetricPairTypeId]: {
-      readonly _Type: (_: never) => Type
+      readonly _Type: Types.Covariant<Type>
     }
   }
 }

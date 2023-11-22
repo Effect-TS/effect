@@ -273,7 +273,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<out Type> {
   readonly [MetricKeyTypeId]: {
-    _Type: (_: never) => Type
+    _Type: Types.Covariant<Type>
   }
 }
 ```

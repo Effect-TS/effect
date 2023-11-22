@@ -186,9 +186,9 @@ Added in v2.0.0
 ```ts
 export interface Variance<in Key, out Error, out Value> {
   readonly [ScopedCacheTypeId]: {
-    _Key: (_: Key) => void
-    _Error: (_: never) => Error
-    _Value: (_: never) => Value
+    _Key: Types.Contravariant<Key>
+    _Error: Types.Covariant<Error>
+    _Value: Types.Covariant<Value>
   }
 }
 ```

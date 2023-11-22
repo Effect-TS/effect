@@ -150,3 +150,27 @@ export type Mutable<T> = {
  * @category models
  */
 export type NoInfer<A> = [A][A extends any ? 0 : never]
+
+/**
+ * Invariant helper.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export type Invariant<A> = (_: A) => A
+
+/**
+ * Covariant helper.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export type Covariant<A> = (_: never) => A
+
+/**
+ * Contravariant helper.
+ *
+ * @since 2.0.0
+ * @category models
+ */
+export type Contravariant<A> = (_: A) => void

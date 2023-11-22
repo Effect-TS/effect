@@ -17,6 +17,7 @@ import { pipeArguments } from "./Pipeable.js"
 import { hasProperty, type Predicate, type Refinement } from "./Predicate.js"
 import * as RA from "./ReadonlyArray.js"
 import type { NonEmptyReadonlyArray } from "./ReadonlyArray.js"
+import type * as Types from "./Types.js"
 
 const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
 
@@ -32,7 +33,7 @@ export type TypeId = typeof TypeId
  */
 export interface Chunk<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: Types.Covariant<A>
   }
   readonly length: number
   /** @internal */

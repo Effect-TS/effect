@@ -8,6 +8,7 @@ import type * as Option from "./Option.js"
 import type { Predicate } from "./Predicate.js"
 import type * as STM from "./STM.js"
 import type * as TMap from "./TMap.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -47,7 +48,7 @@ export declare namespace TSet {
    */
   export interface Variance<in out A> {
     readonly [TSetTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }

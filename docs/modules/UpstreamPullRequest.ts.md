@@ -193,7 +193,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<out A> {
   readonly [UpstreamPullRequestTypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: Types.Covariant<A>
   }
 }
 ```

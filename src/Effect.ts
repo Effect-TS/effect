@@ -54,7 +54,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
-import type { Concurrency, NoInfer } from "./Types.js"
+import type { Concurrency, Covariant, NoInfer } from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 // -------------------------------------------------------------------------------------
@@ -209,9 +209,9 @@ export declare namespace Effect {
    */
   export interface VarianceStruct<out R, out E, out A> {
     readonly _V: string
-    readonly _R: (_: never) => R
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _R: Covariant<R>
+    readonly _E: Covariant<E>
+    readonly _A: Covariant<A>
   }
   /**
    * @since 2.0.0

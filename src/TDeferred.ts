@@ -6,6 +6,7 @@ import * as internal from "./internal/stm/tDeferred.js"
 import type * as Option from "./Option.js"
 import type * as STM from "./STM.js"
 import type * as TRef from "./TRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -43,8 +44,8 @@ export declare namespace TDeferred {
    */
   export interface Variance<in out E, in out A> {
     readonly [TDeferredTypeId]: {
-      readonly _E: (_: E) => E
-      readonly _A: (_: A) => A
+      readonly _E: Types.Invariant<E>
+      readonly _A: Types.Invariant<A>
     }
   }
 }

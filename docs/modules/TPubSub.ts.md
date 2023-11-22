@@ -167,7 +167,7 @@ Added in v2.0.0
 ```ts
 export interface TPubSub<in out A> extends TQueue.TEnqueue<A> {
   readonly [TPubSubTypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
 }
 ```

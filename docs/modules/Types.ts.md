@@ -16,7 +16,10 @@ Added in v2.0.0
 
 - [models](#models)
   - [Concurrency (type alias)](#concurrency-type-alias)
+  - [Contravariant (type alias)](#contravariant-type-alias)
+  - [Covariant (type alias)](#covariant-type-alias)
   - [Equals (type alias)](#equals-type-alias)
+  - [Invariant (type alias)](#invariant-type-alias)
   - [MergeLeft (type alias)](#mergeleft-type-alias)
   - [MergeRight (type alias)](#mergeright-type-alias)
   - [NoInfer (type alias)](#noinfer-type-alias)
@@ -44,6 +47,30 @@ export type Concurrency = number | "unbounded" | "inherit"
 
 Added in v2.0.0
 
+## Contravariant (type alias)
+
+Contravariant helper.
+
+**Signature**
+
+```ts
+export type Contravariant<A> = (_: A) => void
+```
+
+Added in v2.0.0
+
+## Covariant (type alias)
+
+Covariant helper.
+
+**Signature**
+
+```ts
+export type Covariant<A> = (_: never) => A
+```
+
+Added in v2.0.0
+
 ## Equals (type alias)
 
 Determines if two types are equal.
@@ -61,6 +88,18 @@ import * as Types from "effect/Types"
 
 type Res1 = Types.Equals<{ a: number }, { a: number }> // true
 type Res2 = Types.Equals<{ a: number }, { b: number }> // false
+```
+
+Added in v2.0.0
+
+## Invariant (type alias)
+
+Invariant helper.
+
+**Signature**
+
+```ts
+export type Invariant<A> = (_: A) => A
 ```
 
 Added in v2.0.0

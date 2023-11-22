@@ -9,6 +9,7 @@ import * as internal from "./internal/scopedCache.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -99,9 +100,9 @@ export declare namespace ScopedCache {
    */
   export interface Variance<in Key, out Error, out Value> {
     readonly [ScopedCacheTypeId]: {
-      _Key: (_: Key) => void
-      _Error: (_: never) => Error
-      _Value: (_: never) => Value
+      _Key: Types.Contravariant<Key>
+      _Error: Types.Covariant<Error>
+      _Value: Types.Covariant<Value>
     }
   }
 }

@@ -1684,11 +1684,11 @@ Added in v2.0.0
 
 ```ts
 export interface VarianceStruct<out R, out E, in In, out L, out Z> {
-  _R: (_: never) => R
-  _E: (_: never) => E
-  _In: (_: In) => void
-  _L: (_: never) => L
-  _Z: (_: never) => Z
+  _R: Types.Covariant<R>
+  _E: Types.Covariant<E>
+  _In: Types.Contravariant<In>
+  _L: Types.Covariant<L>
+  _Z: Types.Covariant<Z>
 }
 ```
 

@@ -14,6 +14,7 @@ import type { Pipeable } from "./Pipeable.js"
 import type { Predicate } from "./Predicate.js"
 import type * as ScheduleDecision from "./ScheduleDecision.js"
 import type * as Intervals from "./ScheduleIntervals.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -92,9 +93,9 @@ export declare namespace Schedule {
    */
   export interface Variance<out Env, in In, out Out> {
     readonly [ScheduleTypeId]: {
-      readonly _Env: (_: never) => Env
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
+      readonly _Env: Types.Covariant<Env>
+      readonly _In: Types.Contravariant<In>
+      readonly _Out: Types.Covariant<Out>
     }
   }
 
@@ -103,9 +104,9 @@ export declare namespace Schedule {
    */
   export interface DriverVariance<out Env, in In, out Out> {
     readonly [ScheduleDriverTypeId]: {
-      readonly _Env: (_: never) => Env
-      readonly _In: (_: In) => void
-      readonly _Out: (_: never) => Out
+      readonly _Env: Types.Covariant<Env>
+      readonly _In: Types.Contravariant<In>
+      readonly _Out: Types.Covariant<Out>
     }
   }
 }

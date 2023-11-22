@@ -857,8 +857,8 @@ Added in v2.0.0
 ```ts
 export interface RuntimeVariance<out E, out A> {
   readonly [RuntimeFiberTypeId]: {
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Covariant<A>
   }
 }
 ```
@@ -872,8 +872,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<out E, out A> {
   readonly [FiberTypeId]: {
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Covariant<A>
   }
 }
 ```

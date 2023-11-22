@@ -628,8 +628,8 @@ export interface Left<out E, out A> extends Data.Case, Pipeable, Inspectable {
   readonly _op: "Left"
   readonly left: E
   readonly [TypeId]: {
-    readonly _A: (_: never) => A
-    readonly _E: (_: never) => E
+    readonly _A: Types.Covariant<A>
+    readonly _E: Types.Covariant<E>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>
@@ -649,8 +649,8 @@ export interface Right<out E, out A> extends Data.Case, Pipeable, Inspectable {
   readonly _op: "Right"
   readonly right: A
   readonly [TypeId]: {
-    readonly _A: (_: never) => A
-    readonly _E: (_: never) => E
+    readonly _A: Types.Covariant<A>
+    readonly _E: Types.Covariant<E>
   }
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: EitherUnify<this>

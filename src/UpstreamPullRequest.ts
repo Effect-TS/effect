@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 import * as internal from "./internal/channel/upstreamPullRequest.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -31,7 +32,7 @@ export declare namespace UpstreamPullRequest {
    */
   export interface Variance<out A> {
     readonly [UpstreamPullRequestTypeId]: {
-      readonly _A: (_: never) => A
+      readonly _A: Types.Covariant<A>
     }
   }
 }

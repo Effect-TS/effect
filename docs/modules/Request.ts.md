@@ -234,7 +234,7 @@ Added in v2.0.0
 ```ts
 export interface Variance<out R> {
   readonly [EntryTypeId]: {
-    readonly _R: (_: never) => R
+    readonly _R: Types.Covariant<R>
   }
 }
 ```
@@ -449,8 +449,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<out E, out A> {
   readonly [RequestTypeId]: {
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Covariant<A>
   }
 }
 ```

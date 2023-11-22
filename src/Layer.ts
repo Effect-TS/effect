@@ -41,6 +41,7 @@ import type * as Schedule from "./Schedule.js"
 import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Tracer from "./Tracer.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -70,9 +71,9 @@ export declare namespace Layer {
    */
   export interface Variance<out RIn, out E, in ROut> {
     readonly [LayerTypeId]: {
-      readonly _RIn: (_: never) => RIn
-      readonly _E: (_: never) => E
-      readonly _ROut: (_: ROut) => void
+      readonly _RIn: Types.Covariant<RIn>
+      readonly _E: Types.Covariant<E>
+      readonly _ROut: Types.Contravariant<ROut>
     }
   }
   /**

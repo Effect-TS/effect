@@ -7,6 +7,7 @@ import type * as Effect from "./Effect.js"
 import * as internal from "./internal/pool.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as Scope from "./Scope.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -54,8 +55,8 @@ export declare namespace Pool {
    */
   export interface Variance<out E, in out A> {
     readonly [PoolTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: A) => A
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Invariant<A>
     }
   }
 }

@@ -8,6 +8,7 @@ import type * as Exit from "./Exit.js"
 import * as internal from "./internal/take.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -44,8 +45,8 @@ export declare namespace Take {
    */
   export interface Variance<out E, out A> {
     readonly [TakeTypeId]: {
-      readonly _E: (_: never) => E
-      readonly _A: (_: never) => A
+      readonly _E: Types.Covariant<E>
+      readonly _A: Types.Covariant<A>
     }
   }
 }

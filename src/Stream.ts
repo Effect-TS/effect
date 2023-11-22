@@ -29,6 +29,7 @@ import type * as Emit from "./StreamEmit.js"
 import type * as HaltStrategy from "./StreamHaltStrategy.js"
 import type * as Take from "./Take.js"
 import type * as Tracer from "./Tracer.js"
+import type * as Types from "./Types.js"
 import type * as Unify from "./Unify.js"
 
 /**
@@ -114,9 +115,9 @@ export declare namespace Stream {
    */
   export interface Variance<out R, out E, out A> {
     readonly [StreamTypeId]: {
-      _R: (_: never) => R
-      _E: (_: never) => E
-      _A: (_: never) => A
+      _R: Types.Covariant<R>
+      _E: Types.Covariant<E>
+      _A: Types.Covariant<A>
     }
   }
 

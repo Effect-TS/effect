@@ -18,6 +18,7 @@ import type * as LogSpan from "./LogSpan.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -49,8 +50,8 @@ export declare namespace Logger {
    */
   export interface Variance<in Message, out Output> {
     readonly [LoggerTypeId]: {
-      readonly _Message: (_: Message) => void
-      readonly _Output: (_: never) => Output
+      readonly _Message: Types.Contravariant<Message>
+      readonly _Output: Types.Covariant<Output>
     }
   }
 

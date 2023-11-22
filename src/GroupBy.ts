@@ -7,6 +7,7 @@ import type { Predicate } from "./Predicate.js"
 import type * as Queue from "./Queue.js"
 import type * as Stream from "./Stream.js"
 import type * as Take from "./Take.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -42,10 +43,10 @@ export declare namespace GroupBy {
    */
   export interface Variance<out R, out E, out K, out V> {
     readonly [GroupByTypeId]: {
-      readonly _R: (_: never) => R
-      readonly _E: (_: never) => E
-      readonly _K: (_: never) => K
-      readonly _V: (_: never) => V
+      readonly _R: Types.Covariant<R>
+      readonly _E: Types.Covariant<E>
+      readonly _K: Types.Covariant<K>
+      readonly _V: Types.Covariant<V>
     }
   }
 }

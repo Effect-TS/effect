@@ -1029,7 +1029,7 @@ Added in v2.0.0
 ```ts
 export interface Chunk<out A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _A: (_: never) => A
+    readonly _A: Types.Covariant<A>
   }
   readonly length: number
   /** @internal */

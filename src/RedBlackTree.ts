@@ -9,6 +9,7 @@ import * as RBTI from "./internal/redBlackTree/iterator.js"
 import type { Option } from "./Option.js"
 import type { Order } from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
+import type * as Types from "./Types.js"
 
 const TypeId: unique symbol = RBT.RedBlackTreeTypeId as TypeId
 
@@ -32,8 +33,8 @@ export const Direction = RBTI.Direction
  */
 export interface RedBlackTree<in out Key, out Value> extends Iterable<[Key, Value]>, Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
-    readonly _Key: (_: Key) => Key
-    readonly _Value: (_: never) => Value
+    readonly _Key: Types.Invariant<Key>
+    readonly _Value: Types.Covariant<Value>
   }
 }
 

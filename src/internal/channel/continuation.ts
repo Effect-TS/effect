@@ -2,6 +2,7 @@ import type * as Cause from "../../Cause.js"
 import type * as Channel from "../../Channel.js"
 import type * as Effect from "../../Effect.js"
 import * as Exit from "../../Exit.js"
+import type * as Types from "../../Types.js"
 import * as OpCodes from "../opCodes/continuation.js"
 
 /** @internal */
@@ -38,15 +39,15 @@ export declare namespace Continuation {
     out OutDone2
   > {
     readonly [ContinuationTypeId]: {
-      readonly _Env: (_: never) => Env
-      readonly _InErr: (_: InErr) => void
-      readonly _InElem: (_: InElem) => void
-      readonly _InDone: (_: InDone) => void
-      readonly _OutErr: (_: never) => OutErr
-      readonly _OutDone: (_: never) => OutDone
-      readonly _OutErr2: (_: never) => OutErr2
-      readonly _OutElem: (_: never) => OutElem
-      readonly _OutDone2: (_: never) => OutDone2
+      readonly _Env: Types.Covariant<Env>
+      readonly _InErr: Types.Contravariant<InErr>
+      readonly _InElem: Types.Contravariant<InElem>
+      readonly _InDone: Types.Contravariant<InDone>
+      readonly _OutErr: Types.Covariant<OutErr>
+      readonly _OutDone: Types.Covariant<OutDone>
+      readonly _OutErr2: Types.Covariant<OutErr2>
+      readonly _OutElem: Types.Covariant<OutElem>
+      readonly _OutDone2: Types.Covariant<OutDone2>
     }
   }
 }

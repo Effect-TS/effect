@@ -25,6 +25,7 @@ import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -63,7 +64,7 @@ export interface FiberRef<in out A> extends Variance<A>, Pipeable {
  */
 export interface Variance<in out A> {
   readonly [FiberRefTypeId]: {
-    readonly _A: (_: A) => A
+    readonly _A: Types.Invariant<A>
   }
 }
 

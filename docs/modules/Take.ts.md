@@ -388,8 +388,8 @@ Added in v2.0.0
 ```ts
 export interface Variance<out E, out A> {
   readonly [TakeTypeId]: {
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
+    readonly _E: Types.Covariant<E>
+    readonly _A: Types.Covariant<A>
   }
 }
 ```

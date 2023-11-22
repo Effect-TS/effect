@@ -7,6 +7,7 @@ import type * as Order from "./Order.js"
 import type { Predicate } from "./Predicate.js"
 import type * as STM from "./STM.js"
 import type * as TRef from "./TRef.js"
+import type * as Types from "./Types.js"
 
 /**
  * @since 2.0.0
@@ -44,7 +45,7 @@ export declare namespace TArray {
    */
   export interface Variance<in out A> {
     readonly [TArrayTypeId]: {
-      readonly _A: (_: A) => A
+      readonly _A: Types.Invariant<A>
     }
   }
 }
