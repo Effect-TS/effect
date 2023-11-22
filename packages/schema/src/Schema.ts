@@ -3075,7 +3075,7 @@ export const validDate =
 // Date constructors
 // ---------------------------------------------
 
-const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date()
+const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: false })
 
 const datePretty = (): Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
 
