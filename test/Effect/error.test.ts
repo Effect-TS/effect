@@ -2,6 +2,7 @@ import * as it from "effect-test/utils/extend"
 import * as Cause from "effect/Cause"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Inspectable from "effect/Inspectable"
 import { inspect } from "node:util"
 import { assert, describe, expect } from "vitest"
 
@@ -14,7 +15,7 @@ describe.concurrent("Effect", () => {
       const log = Cause.pretty(cause)
       expect(log).includes("TestError")
       if (typeof window === "undefined") {
-        expect(log).includes("test/Effect/error.test.ts:13:78")
+        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:14:78")
       }
       expect(log).includes("at A")
     }))
@@ -32,7 +33,7 @@ describe.concurrent("Effect", () => {
       )
       const log = Cause.pretty(cause)
       if (typeof window === "undefined") {
-        expect(log).includes("test/Effect/error.test.ts:27")
+        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:28")
       }
       expect(log).includes("at A")
     }))
@@ -55,7 +56,7 @@ describe.concurrent("Effect", () => {
       const log = Cause.pretty(cause)
       expect(log).includes("Failure: some message")
       if (typeof window === "undefined") {
-        expect(log).includes("test/Effect/error.test.ts:49")
+        expect(log.replaceAll("\\", "/")).includes("test/Effect/error.test.ts:50")
       }
       expect(log).includes("at A")
     }))
@@ -69,12 +70,12 @@ describe.concurrent("Effect", () => {
       }
       const err = new MessageError()
       expect(inspect(err)).include("MessageError: fail")
-      expect(inspect(err)).include("test/Effect/error.test.ts:70")
+      expect(inspect(err).replaceAll("\\", "/")).include("test/Effect/error.test.ts:71")
     })
 
     it.it("toString", () => {
       class MessageError extends Data.TaggedError("MessageError")<{}> {
-        toString() {
+        [Inspectable.NodeInspectSymbol]() {
           return "fail"
         }
       }
