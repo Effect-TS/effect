@@ -199,7 +199,7 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
   }
 
   get method(): Method {
-    return this.source.method as Method
+    return this.source.method!.toUpperCase() as Method
   }
 
   get headers(): Headers.Headers {

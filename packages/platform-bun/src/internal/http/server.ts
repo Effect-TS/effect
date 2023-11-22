@@ -198,7 +198,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     )
   }
   get method(): Method {
-    return this.source.method as Method
+    return this.source.method.toUpperCase() as Method
   }
   get originalUrl() {
     return this.source.url
