@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.49.4
+
+### Patch Changes
+
+- [#595](https://github.com/Effect-TS/schema/pull/595) [`931b557`](https://github.com/Effect-TS/schema/commit/931b5577e3ce4cd08f35f37b084c974e3b75d2c4) Thanks [@tim-smart](https://github.com/tim-smart)! - add \_tag to TaggedRequest.Base
+
 ## 0.49.3
 
 ### Patch Changes
