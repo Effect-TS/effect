@@ -81,24 +81,22 @@ used, the individual items allocated by the pool will be released in some
 unspecified order.
 
 ```ts
-import * as Duration from "./Duration"
-import * as Effect from "effect/Effect"
-import * as Pool from "effect/Pool"
-import * as Scope from "effect/Scope"
-import { pipe } from "./Function"
+import { createConnection } from "mysql2"
+import { Duration, Effect, Pool } from "effect"
 
-Effect.scoped(
-  pipe(
-    Pool.make(acquireDbConnection, 10, 20, Duration.seconds(60)),
-    Effect.flatMap((pool) =>
-      Effect.scoped(
-        pipe(
-          pool.get(),
-          Effect.flatMap((connection) => useConnection(connection))
-        )
-      )
-    )
-  )
+const acquireDBConnection = Effect.acquireRelease(
+  Effect.sync(() => createConnection("mysql://...")),
+  (connection) => Effect.sync(() => connection.end(() => {}))
+)
+
+const connectionPool = Effect.flatMap(
+  Pool.makeWithTTL({
+    acquire: acquireDBConnection,
+    min: 10,
+    max: 20,
+    timeToLive: Duration.seconds(60)
+  }),
+  (pool) => pool.get
 )
 ```
 
