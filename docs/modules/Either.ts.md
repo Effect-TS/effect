@@ -69,11 +69,11 @@ Added in v2.0.0
 
 ## all
 
-Takes a structure of `Option`s and returns an `Option` of values with the same structure.
+Takes a structure of `Either`s and returns an `Either` of values with the same structure.
 
-- If a tuple is supplied, then the returned `Option` will contain a tuple with the same length.
-- If a struct is supplied, then the returned `Option` will contain a struct with the same keys.
-- If an iterable is supplied, then the returned `Option` will contain an array.
+- If a tuple is supplied, then the returned `Either` will contain a tuple with the same length.
+- If a struct is supplied, then the returned `Either` will contain a struct with the same keys.
+- If an iterable is supplied, then the returned `Either` will contain an array.
 
 **Signature**
 
