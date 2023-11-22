@@ -1,5 +1,15 @@
 # @effect/schema
 
+## 0.49.3
+
+### Patch Changes
+
+- [#592](https://github.com/Effect-TS/schema/pull/592) [`c2b0e6b`](https://github.com/Effect-TS/schema/commit/c2b0e6b07898bf265bb1a38aa3ab359c576ede95) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added ParseResult.try
+
+- [#582](https://github.com/Effect-TS/schema/pull/582) [`bc6595c`](https://github.com/Effect-TS/schema/commit/bc6595c1a271d9ff2e1bf3439d99565c97424e59) Thanks [@fubhy](https://github.com/fubhy)! - Added support for `Duration`
+
+- [#590](https://github.com/Effect-TS/schema/pull/590) [`0d0f0be`](https://github.com/Effect-TS/schema/commit/0d0f0be5891b78b21542fe2ab18b11bbecdd5e0b) Thanks [@gcanti](https://github.com/gcanti)! - Parser: should use the original ast to generate a more informative error message when an incorrect data type is provided
+
 ## 0.49.2
 
 ### Patch Changes
