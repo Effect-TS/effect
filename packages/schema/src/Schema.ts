@@ -6,6 +6,7 @@ import * as BigInt_ from "effect/BigInt"
 import * as Brand from "effect/Brand"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
+import * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
@@ -2810,6 +2811,91 @@ export const NonNegativeBigint: Schema<string, bigint> = bigint.pipe(
  * @since 1.0.0
  */
 export const BigintFromNumber: Schema<number, bigint> = bigintFromNumber(number)
+
+// ---------------------------------------------
+// Duration constructors
+// ---------------------------------------------
+
+/**
+ * @category Duration constructors
+ * @since 1.0.0
+ */
+export const DurationFromSelf: Schema<Duration.Duration> = declare(
+  [],
+  struct({}),
+  () => (u, _, ast) =>
+    !Duration.isDuration(u)
+      ? ParseResult.failure(ParseResult.type(ast, u))
+      : ParseResult.success(u),
+  {
+    [AST.IdentifierAnnotationId]: "Duration",
+    [Internal.PrettyHookId]: (): Pretty<Duration.Duration> =>
+      Duration.match({
+        onMillis: (_) => `Duration.millis(${_})`,
+        onNanos: (_) => `Duration.nanos(${_})`
+      }),
+    [Internal.ArbitraryHookId]: (): Arbitrary<Duration.Duration> => (fc) =>
+      fc.oneof(
+        fc.bigUint().map((_) => Duration.nanos(_)),
+        fc.bigUint().map((_) => Duration.micros(_)),
+        fc.maxSafeNat().map((_) => Duration.millis(_)),
+        fc.maxSafeNat().map((_) => Duration.seconds(_)),
+        fc.maxSafeNat().map((_) => Duration.minutes(_)),
+        fc.maxSafeNat().map((_) => Duration.hours(_)),
+        fc.maxSafeNat().map((_) => Duration.days(_)),
+        fc.maxSafeNat().map((_) => Duration.weeks(_))
+      ),
+    [Internal.EquivalenceHookId]: () => Duration.Equivalence
+  }
+)
+
+// ---------------------------------------------
+// Duration transformations
+// ---------------------------------------------
+
+/**
+ * A combinator that transforms a `[number, number]` tuple into a `Duration`.
+ *
+ * @category Duration transformations
+ * @since 1.0.0
+ */
+export const durationFromHrTime = <I, A extends readonly [seconds: number, nanos: number]>(
+  self: Schema<I, A>
+): Schema<I, Duration.Duration> =>
+  transform(
+    self,
+    DurationFromSelf,
+    ([s, n]) => Duration.nanos(BigInt(s) * BigInt(1e9) + BigInt(n)),
+    (n) => Duration.toHrTime(n),
+    { strict: false }
+  )
+
+const hrTime: Schema<readonly [nanos: number, seconds: number]> = tuple(
+  NonNegative.pipe(annotations({
+    [AST.TitleAnnotationId]: "seconds",
+    [AST.DescriptionAnnotationId]: "seconds"
+  })),
+  NonNegative.pipe(annotations({
+    [AST.TitleAnnotationId]: "nanos",
+    [AST.DescriptionAnnotationId]: "nanos"
+  }))
+).pipe(annotations({
+  [AST.TitleAnnotationId]: "a high resolution time tuple",
+  [AST.DescriptionAnnotationId]: "a high resolution time tuple"
+}))
+
+const _Duration: Schema<readonly [seconds: number, nanos: number], Duration.Duration> =
+  durationFromHrTime(hrTime)
+
+export {
+  /**
+   * A schema that transforms a `[number, number]` tuple into a `Duration`.
+   *
+   * @category Duration constructors
+   * @since 1.0.0
+   */
+  _Duration as Duration
+}
 
 // ---------------------------------------------
 // Uint8Array constructors
