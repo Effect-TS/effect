@@ -107,11 +107,13 @@ export const value: <const I>(
  */
 export const valueTags: <
   const I,
-  P extends {
-    readonly [Tag in Types.Tags<"_tag", I> & string]: (
-      _: Extract<I, { readonly _tag: Tag }>
-    ) => any
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<"_tag", I> & string]: (
+        _: Extract<I, { readonly _tag: Tag }>
+      ) => any
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
 >(fields: P) => (input: I) => Unify<ReturnType<P[keyof P]>> = internal.valueTags
 
 /**
@@ -119,11 +121,13 @@ export const valueTags: <
  * @since 1.0.0
  */
 export const typeTags: <I>() => <
-  P extends {
-    readonly [Tag in Types.Tags<"_tag", I> & string]: (
-      _: Extract<I, { readonly _tag: Tag }>
-    ) => any
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<"_tag", I> & string]: (
+        _: Extract<I, { readonly _tag: Tag }>
+      ) => any
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
 >(fields: P) => (input: I) => Unify<ReturnType<P[keyof P]>> = internal.typeTags
 
 /**
@@ -246,11 +250,13 @@ export const discriminators: <D extends string>(
   field: D
 ) => <
   R,
-  P extends {
-    readonly [Tag in Types.Tags<D, R> & string]?:
-      | ((_: Extract<R, Record<D, Tag>>) => any)
-      | undefined
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<D, R> & string]?:
+        | ((_: Extract<R, Record<D, Tag>>) => any)
+        | undefined
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -271,11 +277,13 @@ export const discriminatorsExhaustive: <D extends string>(
   field: D
 ) => <
   R,
-  P extends {
-    readonly [Tag in Types.Tags<D, R> & string]: (
-      _: Extract<R, Record<D, Tag>>
-    ) => any
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<D, R> & string]: (
+        _: Extract<R, Record<D, Tag>>
+      ) => any
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -329,11 +337,13 @@ export const tagStartsWith: <R, P extends string, B>(
  */
 export const tags: <
   R,
-  P extends {
-    readonly [Tag in Types.Tags<"_tag", R> & string]?:
-      | ((_: Extract<R, Record<"_tag", Tag>>) => any)
-      | undefined
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<"_tag", R> & string]?:
+        | ((_: Extract<R, Record<"_tag", Tag>>) => any)
+        | undefined
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -355,11 +365,13 @@ export const tags: <
  */
 export const tagsExhaustive: <
   R,
-  P extends {
-    readonly [Tag in Types.Tags<"_tag", R> & string]: (
-      _: Extract<R, Record<"_tag", Tag>>
-    ) => any
-  }
+  P extends
+    & {
+      readonly [Tag in Types.Tags<"_tag", R> & string]: (
+        _: Extract<R, Record<"_tag", Tag>>
+      ) => any
+    }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(

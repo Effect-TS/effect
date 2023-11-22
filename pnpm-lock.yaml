@@ -30,8 +30,8 @@ devDependencies:
     specifier: ^0.5.0
     version: 0.5.0
   '@effect/docgen':
-    specifier: ^0.3.4
-    version: 0.3.4(tsx@4.1.2)(typescript@5.3.2)
+    specifier: ^0.3.5
+    version: 0.3.5(tsx@4.1.2)(typescript@5.3.2)
   '@effect/dtslint':
     specifier: ^0.0.4
     version: 0.0.4(typescript@5.3.2)
@@ -627,8 +627,8 @@ packages:
     hasBin: true
     dev: true
 
-  /@effect/docgen@0.3.4(tsx@4.1.2)(typescript@5.3.2):
-    resolution: {integrity: sha512-NO0CkND5oH9/pvqpViXARGjRxGD70iBpouimaPJ3nMpRi91gBLLwyWSxYeXoYN1Sva9WPq93O4DRSOmtnFQWNA==}
+  /@effect/docgen@0.3.5(tsx@4.1.2)(typescript@5.3.2):
+    resolution: {integrity: sha512-si/ciZ8lyKOFwMeZmlTx9SeoqKqJWouespHnU0omSfSfyrVHhzY0TbZV1kmUZ6H++RPeNFk5JGZ8wkn2Ia9udw==}
     engines: {node: '>=16.17.1'}
     hasBin: true
     peerDependencies:

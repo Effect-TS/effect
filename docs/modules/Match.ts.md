@@ -140,7 +140,9 @@ export declare const discriminators: <D extends string>(
   field: D
 ) => <
   R,
-  P extends { readonly [Tag in Types.Tags<D, R> & string]?: ((_: Extract<R, Record<D, Tag>>) => any) | undefined }
+  P extends { readonly [Tag in Types.Tags<D, R> & string]?: ((_: Extract<R, Record<D, Tag>>) => any) | undefined } & {
+    readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never
+  }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -163,7 +165,12 @@ Added in v1.0.0
 ```ts
 export declare const discriminatorsExhaustive: <D extends string>(
   field: D
-) => <R, P extends { readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => any }>(
+) => <
+  R,
+  P extends { readonly [Tag in Types.Tags<D, R> & string]: (_: Extract<R, Record<D, Tag>>) => any } & {
+    readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never
+  }
+>(
   fields: P
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr>
@@ -247,7 +254,7 @@ export declare const tags: <
   R,
   P extends {
     readonly [Tag in Types.Tags<"_tag", R> & string]?: ((_: Extract<R, Record<"_tag", Tag>>) => any) | undefined
-  }
+  } & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -270,7 +277,9 @@ Added in v1.0.0
 ```ts
 export declare const tagsExhaustive: <
   R,
-  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", R> & string]: (_: Extract<R, Record<"_tag", Tag>>) => any } & {
+    readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never
+  }
 >(
   fields: P
 ) => <I, F, A, Pr>(
@@ -371,7 +380,9 @@ Added in v1.0.0
 
 ```ts
 export declare const typeTags: <I>() => <
-  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any } & {
+    readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never
+  }
 >(
   fields: P
 ) => (input: I) => Unify<ReturnType<P[keyof P]>>
@@ -396,7 +407,9 @@ Added in v1.0.0
 ```ts
 export declare const valueTags: <
   const I,
-  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
+  P extends { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any } & {
+    readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never
+  }
 >(
   fields: P
 ) => (input: I) => Unify<ReturnType<P[keyof P]>>
