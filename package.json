@@ -82,5 +82,10 @@
     "typescript": "^5.3.2",
     "vite": "^4.4.11",
     "vitest": "^0.34.6"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "vitest@0.34.6": "patches/vitest@0.34.6.patch"
+    }
   }
 }
