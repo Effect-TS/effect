@@ -18,8 +18,8 @@ export const TSetTypeId: TSet.TSetTypeId = Symbol.for(
   TSetSymbolKey
 ) as TSet.TSetTypeId
 
-/** @internal */
 const tSetVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

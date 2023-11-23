@@ -28,14 +28,20 @@ export const ChannelTypeId: Channel.ChannelTypeId = Symbol.for(
   ChannelSymbolKey
 ) as Channel.ChannelTypeId
 
-/** @internal */
 const channelVariance = {
+  /* c8 ignore next */
   _Env: (_: never) => _,
+  /* c8 ignore next */
   _InErr: (_: unknown) => _,
+  /* c8 ignore next */
   _InElem: (_: unknown) => _,
+  /* c8 ignore next */
   _InDone: (_: unknown) => _,
+  /* c8 ignore next */
   _OutErr: (_: never) => _,
+  /* c8 ignore next */
   _OutElem: (_: never) => _,
+  /* c8 ignore next */
   _OutDone: (_: never) => _
 }
 

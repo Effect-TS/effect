@@ -33,10 +33,12 @@ export const MetricTypeId: Metric.MetricTypeId = Symbol.for(
   MetricSymbolKey
 ) as Metric.MetricTypeId
 
-/** @internal */
 const metricVariance = {
+  /* c8 ignore next */
   _Type: (_: any) => _,
+  /* c8 ignore next */
   _In: (_: unknown) => _,
+  /* c8 ignore next */
   _Out: (_: never) => _
 }
 

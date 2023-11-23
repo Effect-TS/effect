@@ -73,11 +73,13 @@ export const Sliding: TQueueStrategy = {
 
 /** @internal */
 export const tDequeueVariance = {
+  /* c8 ignore next */
   _Out: (_: never) => _
 }
 
 /** @internal */
 export const tEnqueueVariance = {
+  /* c8 ignore next */
   _In: (_: unknown) => _
 }
 

@@ -25,7 +25,9 @@ export interface RedBlackTreeImpl<in out K, out V> extends RBT.RedBlackTree<K, V
 }
 
 const redBlackTreeVariance = {
+  /* c8 ignore next */
   _Key: (_: any) => _,
+  /* c8 ignore next */
   _Value: (_: never) => _
 }
 

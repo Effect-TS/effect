@@ -28,8 +28,11 @@ const KeyedPoolMapValueSymbol = Symbol.for("effect/KeyedPool/MapValue")
 type KeyedPoolMapValueSymbol = typeof KeyedPoolMapValueSymbol
 
 const keyedPoolVariance = {
+  /* c8 ignore next */
   _K: (_: unknown) => _,
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

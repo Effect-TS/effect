@@ -21,6 +21,7 @@ export const SupervisorTypeId: Supervisor.SupervisorTypeId = Symbol.for(
 
 /** @internal */
 export const supervisorVariance = {
+  /* c8 ignore next */
   _T: (_: never) => _
 }
 

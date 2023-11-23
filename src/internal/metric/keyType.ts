@@ -56,9 +56,10 @@ export const SummaryKeyTypeTypeId: MetricKeyType.SummaryKeyTypeTypeId = Symbol.f
   SummaryKeyTypeSymbolKey
 ) as MetricKeyType.SummaryKeyTypeTypeId
 
-/** @internal */
 const metricKeyTypeVariance = {
+  /* c8 ignore next */
   _In: (_: unknown) => _,
+  /* c8 ignore next */
   _Out: (_: never) => _
 }
 

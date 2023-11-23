@@ -27,8 +27,8 @@ export const CauseTypeId: Cause.CauseTypeId = Symbol.for(
   CauseSymbolKey
 ) as Cause.CauseTypeId
 
-/** @internal */
 const variance = {
+  /* c8 ignore next */
   _E: (_: never) => _
 }
 

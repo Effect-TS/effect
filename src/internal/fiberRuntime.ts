@@ -113,9 +113,10 @@ const EvaluationSignalYieldNow = "Yield" as const
 /** @internal */
 type EvaluationSignalYieldNow = typeof EvaluationSignalYieldNow
 
-/** @internal */
-export const runtimeFiberVariance = {
+const runtimeFiberVariance = {
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 

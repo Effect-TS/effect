@@ -15,9 +15,10 @@ export const TakeTypeId: Take.TakeTypeId = Symbol.for(
   TakeSymbolKey
 ) as Take.TakeTypeId
 
-/** @internal */
 const takeVariance = {
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 

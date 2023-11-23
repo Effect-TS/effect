@@ -534,6 +534,7 @@ export const SynchronizedTypeId: Synchronized.SynchronizedRefTypeId = Symbol.for
 
 /** @internal */
 export const synchronizedVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

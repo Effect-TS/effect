@@ -29,9 +29,10 @@ export declare namespace TExit {
   }
 }
 
-/** @internal */
 const variance = {
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 

@@ -16,9 +16,10 @@ export const ResourceTypeId: Resource.ResourceTypeId = Symbol.for(
   ResourceSymbolKey
 ) as Resource.ResourceTypeId
 
-/** @internal */
 const resourceVariance = {
+  /* c8 ignore next */
   _E: (_: any) => _,
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 
