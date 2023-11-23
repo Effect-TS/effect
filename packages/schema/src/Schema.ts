@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as BigDecimal from "effect/BigDecimal"
 import * as BigInt_ from "effect/BigInt"
 import * as Brand from "effect/Brand"
 import * as Chunk from "effect/Chunk"
@@ -3424,7 +3425,6 @@ const readonlyMapEquivalence = <K, V>(
 }
 
 /**
- * @category ReadonlyMap transformations
  * @since 1.0.0
  */
 export const readonlyMapFromSelf = <IK, K, IV, V>(
@@ -3528,6 +3528,347 @@ export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, 
     to(readonlySetFromSelf(item)),
     (as) => new Set(as),
     (set) => Array.from(set)
+  )
+
+// ---------------------------------------------
+// BigDecimal transformations
+// ---------------------------------------------
+
+const bigDecimalPretty = (): Pretty<BigDecimal.BigDecimal> => (val) =>
+  `BigDecimal(${BigDecimal.toString(BigDecimal.normalize(val))})`
+
+const bigDecimalArbitrary = (): Arbitrary<BigDecimal.BigDecimal> => (fc) =>
+  fc.tuple(fc.bigInt(), fc.integer()).map(([value, scale]) => BigDecimal.make(value, scale))
+
+/**
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const BigDecimalFromSelf: Schema<BigDecimal.BigDecimal> = declare(
+  [],
+  struct({}),
+  () => (u, _, ast) =>
+    !BigDecimal.isBigDecimal(u)
+      ? ParseResult.failure(ParseResult.type(ast, u))
+      : ParseResult.success(u),
+  {
+    [AST.IdentifierAnnotationId]: "BigDecimal",
+    [Internal.PrettyHookId]: bigDecimalPretty,
+    [Internal.ArbitraryHookId]: bigDecimalArbitrary,
+    [Internal.EquivalenceHookId]: () => BigDecimal.Equivalence
+  }
+)
+
+/**
+ * A schema that transforms a `number` into a `BigDecimal`.
+ * When encoding, this Schema will produce incorrect results if the BigDecimal exceeds the 64-bit range of a number.
+ *
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const bigDecimalFromNumber = <I, A extends number>(
+  self: Schema<I, A>
+): Schema<I, BigDecimal.BigDecimal> =>
+  transformOrFail(
+    self,
+    BigDecimalFromSelf,
+    (num) => ParseResult.success(BigDecimal.fromNumber(num)),
+    (val) => ParseResult.success(BigDecimal.unsafeToNumber(val)),
+    { strict: false }
+  )
+
+/**
+ * A schema that transforms a `string` into a `BigDecimal`.
+ *
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const bigDecimalFromString = <I, A extends string>(
+  self: Schema<I, A>
+): Schema<I, BigDecimal.BigDecimal> =>
+  transformOrFail(
+    self,
+    BigDecimalFromSelf,
+    (num, _, ast) =>
+      BigDecimal.fromString(num).pipe(Option.match({
+        onNone: () => ParseResult.failure(ParseResult.type(ast, num)),
+        onSome: (val) => ParseResult.success(BigDecimal.normalize(val))
+      })),
+    (val) => ParseResult.success(BigDecimal.toString(BigDecimal.normalize(val))),
+    { strict: false }
+  )
+
+const _BigDecimal: Schema<string, BigDecimal.BigDecimal> = bigDecimalFromString(string)
+
+export {
+  /**
+   * @category BigDecimal constructors
+   * @since 1.0.0
+   */
+  _BigDecimal as BigDecimal
+}
+
+/**
+ * A schema that transforms a `number` into a `BigDecimal`.
+ * When encoding, this Schema will produce incorrect results if the BigDecimal exceeds the 64-bit range of a number.
+ *
+ * @category BigDecimal constructors
+ * @since 1.0.0
+ */
+export const BigDecimalFromNumber: Schema<number, BigDecimal.BigDecimal> = bigDecimalFromNumber(
+  number
+)
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const GreaterThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/GreaterThanBigDecimal")
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const greaterThanBigDecimal = <A extends BigDecimal.BigDecimal>(
+  min: BigDecimal.BigDecimal,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => BigDecimal.greaterThan(a, min), {
+      typeId: { id: GreaterThanBigDecimalTypeId, params: { min } },
+      description: `a BigDecimal greater than ${min}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const GreaterThanOrEqualToBigDecimalTypeId = Symbol.for(
+  "@effect/schema/TypeId/GreaterThanOrEqualToBigDecimal"
+)
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
+  min: BigDecimal.BigDecimal,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => BigDecimal.greaterThanOrEqualTo(a, min), {
+      typeId: { id: GreaterThanOrEqualToBigDecimalTypeId, params: { min } },
+      description: `a BigDecimal greater than or equal to ${BigDecimal.toString(min)}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const LessThanBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/LessThanBigDecimal")
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const lessThanBigDecimal = <A extends BigDecimal.BigDecimal>(
+  max: BigDecimal.BigDecimal,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => BigDecimal.lessThan(a, max), {
+      typeId: { id: LessThanBigDecimalTypeId, params: { max } },
+      description: `a BigDecimal less than ${BigDecimal.toString(max)}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const LessThanOrEqualToBigDecimalTypeId = Symbol.for(
+  "@effect/schema/TypeId/LessThanOrEqualToBigDecimal"
+)
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const lessThanOrEqualToBigDecimal = <A extends BigDecimal.BigDecimal>(
+  max: BigDecimal.BigDecimal,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => BigDecimal.lessThanOrEqualTo(a, max), {
+      typeId: { id: LessThanOrEqualToBigDecimalTypeId, params: { max } },
+      description: `a BigDecimal less than or equal to ${BigDecimal.toString(max)}`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const PositiveBigDecimalTypeId = Symbol.for(
+  "@effect/schema/TypeId/PositiveBigDecimal"
+)
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const positiveBigDecimal = <A extends BigDecimal.BigDecimal>(
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => BigDecimal.isPositive(a), {
+      typeId: { id: PositiveBigDecimalTypeId, params: {} },
+      description: `a positive BigDecimal`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const NonNegativeBigDecimalTypeId = Symbol.for(
+  "@effect/schema/TypeId/NonNegativeBigDecimal"
+)
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const nonNegativeBigDecimal = <A extends BigDecimal.BigDecimal>(
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => a.value >= 0n, {
+      typeId: { id: NonNegativeBigDecimalTypeId, params: {} },
+      description: `a non-negative BigDecimal`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const NegativeBigDecimalTypeId = Symbol.for(
+  "@effect/schema/TypeId/NegativeBigDecimal"
+)
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const negativeBigDecimal = <A extends BigDecimal.BigDecimal>(
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => BigDecimal.isNegative(a), {
+      typeId: { id: NegativeBigDecimalTypeId, params: {} },
+      description: `a negative BigDecimal`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const NonPositiveBigDecimalTypeId = Symbol.for(
+  "@effect/schema/TypeId/NonPositiveBigDecimal"
+)
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const nonPositiveBigDecimal = <A extends BigDecimal.BigDecimal>(
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => a.value <= 0n, {
+      typeId: { id: NonPositiveBigDecimalTypeId, params: {} },
+      description: `a non-positive BigDecimal`,
+      ...options
+    })
+  )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const BetweenBigDecimalTypeId = Symbol.for("@effect/schema/TypeId/BetweenBigDecimal")
+
+/**
+ * @category BigDecimal filters
+ * @since 1.0.0
+ */
+export const betweenBigDecimal = <A extends BigDecimal.BigDecimal>(
+  minimum: BigDecimal.BigDecimal,
+  maximum: BigDecimal.BigDecimal,
+  options?: FilterAnnotations<A>
+) =>
+<I>(self: Schema<I, A>): Schema<I, A> =>
+  self.pipe(
+    filter((a): a is A => BigDecimal.between(a, { minimum, maximum }), {
+      typeId: { id: BetweenBigDecimalTypeId, params: { maximum, minimum } },
+      description: `a BigDecimal between ${BigDecimal.toString(minimum)} and ${
+        BigDecimal.toString(maximum)
+      }`,
+      ...options
+    })
+  )
+
+/**
+ * Clamps a `BigDecimal` between a minimum and a maximum value.
+ *
+ * @category BigDecimal transformations
+ * @since 1.0.0
+ */
+export const clampBigDecimal =
+  (minimum: BigDecimal.BigDecimal, maximum: BigDecimal.BigDecimal) =>
+  <I, A extends BigDecimal.BigDecimal>(self: Schema<I, A>): Schema<I, A> =>
+    transform(
+      self,
+      self.pipe(to, betweenBigDecimal(minimum, maximum)),
+      (self) => BigDecimal.clamp(self, { minimum, maximum }),
+      identity,
+      { strict: false }
+    )
+
+/**
+ * Negates a `BigDecimal`.
+ *
+ * @category BigDecimal transformations
+ * @since 1.0.0
+ */
+export const negateBigDecimal = <I, A extends BigDecimal.BigDecimal>(
+  self: Schema<I, A>
+): Schema<I, A> =>
+  transform(
+    self,
+    to(self),
+    (self) => BigDecimal.negate(self),
+    (self) => BigDecimal.negate(self),
+    { strict: false }
   )
 
 // ---------------------------------------------

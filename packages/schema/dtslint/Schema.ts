@@ -739,3 +739,22 @@ class VoidTaggedClass extends S.TaggedClass<VoidTaggedClass>()("VoidTaggedClass"
 
 // $ExpectType [props?: void | {}, disableValidation?: boolean | undefined]
 export type VoidTaggedClassParams = ConstructorParameters<typeof VoidTaggedClass>
+
+// ---------------------------------------------
+// BigDecimal
+// ---------------------------------------------
+
+// $ExpectType Schema<string, BigDecimal>
+S.BigDecimal
+
+// $ExpectType Schema<BigDecimal, BigDecimal>
+S.BigDecimalFromSelf
+
+// $ExpectType Schema<number, BigDecimal>
+S.bigDecimalFromNumber(S.number)
+
+// $ExpectType Schema<number, BigDecimal>
+S.BigDecimalFromNumber
+
+// $ExpectType Schema<string, BigDecimal>
+S.bigDecimalFromString(S.string)
