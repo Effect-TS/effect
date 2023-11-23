@@ -321,7 +321,7 @@ export const asyncOption: <R, E, A>(
  * @category constructors
  */
 export const asyncScoped: <R, E, A>(
-  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R, E, unknown>,
+  register: (emit: Emit.Emit<R, E, A, void>) => Effect.Effect<R | Scope.Scope, E, unknown>,
   outputBuffer?: number
 ) => Stream<Exclude<R, Scope.Scope>, E, A> = internal.asyncScoped
 
