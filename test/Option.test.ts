@@ -194,6 +194,13 @@ describe.concurrent("Option", () => {
     Util.deepStrictEqual(pipe(_.none(), _.flatMap(g)), _.none())
   })
 
+  it("andThen", () => {
+    expect(pipe(_.some(1), _.andThen(() => _.some(2)))).toStrictEqual(_.some(2))
+    expect(pipe(_.some(1), _.andThen(_.some(2)))).toStrictEqual(_.some(2))
+    expect(_.andThen(_.some(1), () => _.some(2))).toStrictEqual(_.some(2))
+    expect(_.andThen(_.some(1), _.some(2))).toStrictEqual(_.some(2))
+  })
+
   it("orElse", () => {
     const assertAlt = (
       a: _.Option<number>,
