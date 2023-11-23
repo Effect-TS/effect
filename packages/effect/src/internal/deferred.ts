@@ -12,7 +12,9 @@ export const DeferredTypeId: Deferred.DeferredTypeId = Symbol.for(
 
 /** @internal */
 export const deferredVariance = {
+  /* c8 ignore next */
   _E: (_: any) => _,
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

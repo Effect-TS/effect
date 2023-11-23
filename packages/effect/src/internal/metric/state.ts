@@ -56,8 +56,8 @@ export const SummaryStateTypeId: MetricState.SummaryStateTypeId = Symbol.for(
   SummaryStateSymbolKey
 ) as MetricState.SummaryStateTypeId
 
-/** @internal */
 const metricStateVariance = {
+  /* c8 ignore next */
   _A: (_: unknown) => _
 }
 

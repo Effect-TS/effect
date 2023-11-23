@@ -28,12 +28,16 @@ import * as core from "./core-stream.js"
 /** @internal */
 export const SinkTypeId: Sink.SinkTypeId = Symbol.for("effect/Sink") as Sink.SinkTypeId
 
-/** @internal */
 const sinkVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _,
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _In: (_: unknown) => _,
+  /* c8 ignore next */
   _L: (_: never) => _,
+  /* c8 ignore next */
   _Z: (_: never) => _
 }
 

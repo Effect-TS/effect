@@ -1557,8 +1557,8 @@ export const FiberRefTypeId: FiberRef.FiberRefTypeId = Symbol.for(
   FiberRefSymbolKey
 ) as FiberRef.FiberRefTypeId
 
-/** @internal */
 const fiberRefVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 
@@ -1675,7 +1675,9 @@ export const RequestResolverTypeId: RequestResolver.RequestResolverTypeId = Symb
 ) as RequestResolver.RequestResolverTypeId
 
 const requestResolverVariance = {
+  /* c8 ignore next */
   _A: (_: unknown) => _,
+  /* c8 ignore next */
   _R: (_: never) => _
 }
 

@@ -125,16 +125,24 @@ export interface ContinuationFinalizer<out Env, out OutErr, out OutDone> extends
   finalizer(exit: Exit.Exit<OutErr, OutDone>): Effect.Effect<Env, never, unknown>
 }
 
-/** @internal */
 const continuationVariance = {
+  /* c8 ignore next */
   _Env: (_: never) => _,
+  /* c8 ignore next */
   _InErr: (_: unknown) => _,
+  /* c8 ignore next */
   _InElem: (_: unknown) => _,
+  /* c8 ignore next */
   _InDone: (_: unknown) => _,
+  /* c8 ignore next */
   _OutErr: (_: never) => _,
+  /* c8 ignore next */
   _OutDone: (_: never) => _,
+  /* c8 ignore next */
   _OutErr2: (_: never) => _,
+  /* c8 ignore next */
   _OutElem: (_: never) => _,
+  /* c8 ignore next */
   _OutDone2: (_: never) => _
 }
 

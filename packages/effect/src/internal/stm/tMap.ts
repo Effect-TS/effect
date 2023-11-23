@@ -25,9 +25,10 @@ export const TMapTypeId: TMap.TMapTypeId = Symbol.for(
   TMapSymbolKey
 ) as TMap.TMapTypeId
 
-/** @internal */
 const tMapVariance = {
+  /* c8 ignore next */
   _K: (_: any) => _,
+  /* c8 ignore next */
   _V: (_: any) => _
 }
 

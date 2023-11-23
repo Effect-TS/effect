@@ -20,9 +20,10 @@ export const MetricHookTypeId: MetricHook.MetricHookTypeId = Symbol.for(
   MetricHookSymbolKey
 ) as MetricHook.MetricHookTypeId
 
-/** @internal */
 const metricHookVariance = {
+  /* c8 ignore next */
   _In: (_: unknown) => _,
+  /* c8 ignore next */
   _Out: (_: never) => _
 }
 

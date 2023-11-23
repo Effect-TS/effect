@@ -23,29 +23,43 @@ export const ChannelTypeId: Channel.ChannelTypeId = Symbol.for("effect/Channel")
 
 /** @internal */
 export const effectVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _,
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: never) => _,
+
   _V: moduleVersion
 }
 
-/** @internal */
-export const sinkVariance = {
+const sinkVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _,
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _In: (_: unknown) => _,
+  /* c8 ignore next */
   _L: (_: never) => _,
+  /* c8 ignore next */
   _Z: (_: never) => _
 }
 
-/** @internal */
-export const channelVariance = {
+const channelVariance = {
+  /* c8 ignore next */
   _Env: (_: never) => _,
+  /* c8 ignore next */
   _InErr: (_: unknown) => _,
+  /* c8 ignore next */
   _InElem: (_: unknown) => _,
+  /* c8 ignore next */
   _InDone: (_: unknown) => _,
+  /* c8 ignore next */
   _OutErr: (_: never) => _,
+  /* c8 ignore next */
   _OutElem: (_: never) => _,
+  /* c8 ignore next */
   _OutDone: (_: never) => _
 }
 

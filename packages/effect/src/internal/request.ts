@@ -15,9 +15,10 @@ export const RequestTypeId: Request.RequestTypeId = Symbol.for(
   RequestSymbolKey
 ) as Request.RequestTypeId
 
-/** @internal */
 const requestVariance = {
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 

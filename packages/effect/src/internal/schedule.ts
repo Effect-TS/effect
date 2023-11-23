@@ -37,16 +37,21 @@ export const ScheduleDriverTypeId: Schedule.ScheduleDriverTypeId = Symbol.for(
   ScheduleDriverSymbolKey
 ) as Schedule.ScheduleDriverTypeId
 
-/** @internal */
 const scheduleVariance = {
+  /* c8 ignore next */
   _Env: (_: never) => _,
+  /* c8 ignore next */
   _In: (_: unknown) => _,
+  /* c8 ignore next */
   _Out: (_: never) => _
 }
 
 const scheduleDriverVariance = {
+  /* c8 ignore next */
   _Env: (_: never) => _,
+  /* c8 ignore next */
   _In: (_: unknown) => _,
+  /* c8 ignore next */
   _Out: (_: never) => _
 }
 

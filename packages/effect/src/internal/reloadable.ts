@@ -20,8 +20,8 @@ export const ReloadableTypeId: Reloadable.ReloadableTypeId = Symbol.for(
   ReloadableSymbolKey
 ) as Reloadable.ReloadableTypeId
 
-/** @internal */
 const reloadableVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

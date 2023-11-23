@@ -11,8 +11,8 @@ export const UpstreamPullRequestTypeId: UpstreamPullRequest.UpstreamPullRequestT
   UpstreamPullRequestSymbolKey
 ) as UpstreamPullRequest.UpstreamPullRequestTypeId
 
-/** @internal */
 const upstreamPullRequestVariance = {
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 

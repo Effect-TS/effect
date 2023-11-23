@@ -177,8 +177,11 @@ export const ScopedCacheTypeId: ScopedCache.ScopedCacheTypeId = Symbol.for(
 ) as ScopedCache.ScopedCacheTypeId
 
 const scopedCacheVariance = {
+  /* c8 ignore next */
   _Key: (_: unknown) => _,
+  /* c8 ignore next */
   _Error: (_: never) => _,
+  /* c8 ignore next */
   _Value: (_: never) => _
 }
 

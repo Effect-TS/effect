@@ -40,23 +40,25 @@ export const BackingQueueTypeId: Queue.BackingQueueTypeId = Symbol.for(
   BackingQueueSymbolKey
 ) as Queue.BackingQueueTypeId
 
-/** @internal */
 const queueStrategyVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 
-/** @internal */
 const backingQueueVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 
 /** @internal */
 export const enqueueVariance = {
+  /* c8 ignore next */
   _In: (_: unknown) => _
 }
 
 /** @internal */
 export const dequeueVariance = {
+  /* c8 ignore next */
   _Out: (_: never) => _
 }
 

@@ -18,8 +18,8 @@ export const SubscriptionRefTypeId: SubscriptionRef.SubscriptionRefTypeId = Symb
   SubscriptionRefSymbolKey
 ) as SubscriptionRef.SubscriptionRefTypeId
 
-/** @internal */
 const subscriptionRefVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 
