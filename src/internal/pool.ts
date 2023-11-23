@@ -28,7 +28,9 @@ export const PoolTypeId: Pool.PoolTypeId = Symbol.for(
 ) as Pool.PoolTypeId
 
 const poolVariance = {
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

@@ -24,9 +24,10 @@ export declare namespace ChannelState {
   }
 }
 
-/** @internal */
 const channelStateVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _,
+  /* c8 ignore next */
   _E: (_: never) => _
 }
 

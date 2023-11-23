@@ -89,8 +89,8 @@ const handoffStateMatch = <A, Z>(
   }
 }
 
-/** @internal */
 const handoffVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

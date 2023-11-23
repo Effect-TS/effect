@@ -327,8 +327,8 @@ class EntryImpl<A extends Request.Request<any, any>> implements Request.Entry<A>
   ) {}
 }
 
-/** @internal */
 const blockedRequestVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _
 }
 
@@ -352,6 +352,7 @@ export const RequestBlockParallelTypeId = Symbol.for(
 )
 
 const parallelVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _
 }
 
@@ -413,8 +414,8 @@ export const SequentialCollectionTypeId = Symbol.for(
   "effect/RequestBlock/RequestBlockSequential"
 )
 
-/** @internal */
 const sequentialVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _
 }
 

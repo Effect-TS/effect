@@ -38,10 +38,12 @@ export const LayerTypeId: Layer.LayerTypeId = Symbol.for(
   LayerSymbolKey
 ) as Layer.LayerTypeId
 
-/** @internal */
 const layerVariance = {
+  /* c8 ignore next */
   _RIn: (_: never) => _,
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _ROut: (_: unknown) => _
 }
 

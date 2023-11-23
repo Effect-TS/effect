@@ -18,9 +18,10 @@ export const LoggerTypeId: Logger.LoggerTypeId = Symbol.for(
   LoggerSymbolKey
 ) as Logger.LoggerTypeId
 
-/** @internal */
 const loggerVariance = {
+  /* c8 ignore next */
   _Message: (_: unknown) => _,
+  /* c8 ignore next */
   _Output: (_: never) => _
 }
 

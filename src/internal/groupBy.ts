@@ -27,11 +27,14 @@ export const GroupByTypeId: GroupBy.GroupByTypeId = Symbol.for(
   GroupBySymbolKey
 ) as GroupBy.GroupByTypeId
 
-/** @internal */
 const groupByVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _,
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _K: (_: never) => _,
+  /* c8 ignore next */
   _V: (_: never) => _
 }
 

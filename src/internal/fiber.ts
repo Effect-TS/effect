@@ -27,7 +27,9 @@ export const FiberTypeId: Fiber.FiberTypeId = Symbol.for(
 
 /** @internal */
 export const fiberVariance = {
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 

@@ -16,8 +16,8 @@ const TArraySymbolKey = "effect/TArray"
 /** @internal */
 export const TArrayTypeId: TArray.TArrayTypeId = Symbol.for(TArraySymbolKey) as TArray.TArrayTypeId
 
-/** @internal */
 const tArrayVariance = {
+  /* c8 ignore next */
   _A: (_: any) => _
 }
 

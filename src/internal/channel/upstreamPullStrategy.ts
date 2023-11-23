@@ -12,8 +12,8 @@ export const UpstreamPullStrategyTypeId: UpstreamPullStrategy.UpstreamPullStrate
   UpstreamPullStrategySymbolKey
 ) as UpstreamPullStrategy.UpstreamPullStrategyTypeId
 
-/** @internal */
 const upstreamPullStrategyVariance = {
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 

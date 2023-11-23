@@ -12,8 +12,8 @@ export const MetricPairTypeId: MetricPair.MetricPairTypeId = Symbol.for(
   MetricPairSymbolKey
 ) as MetricPair.MetricPairTypeId
 
-/** @internal */
 const metricPairVariance = {
+  /* c8 ignore next */
   _Type: (_: never) => _
 }
 

@@ -6,8 +6,11 @@ import { pipeArguments } from "./Pipeable.js"
 import * as Stream from "./Stream.js"
 
 const streamVariance = {
+  /* c8 ignore next */
   _R: (_: never) => _,
+  /* c8 ignore next */
   _E: (_: never) => _,
+  /* c8 ignore next */
   _A: (_: never) => _
 }
 
