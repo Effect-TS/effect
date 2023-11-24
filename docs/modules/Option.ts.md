@@ -73,6 +73,8 @@ Added in v2.0.0
   - [Some (interface)](#some-interface)
 - [pattern matching](#pattern-matching)
   - [match](#match)
+- [sequencing](#sequencing)
+  - [andThen](#andthen)
 - [sorting](#sorting)
   - [getOrder](#getorder)
 - [symbols](#symbols)
@@ -1117,6 +1119,25 @@ assert.deepStrictEqual(
   pipe(none(), match({ onNone: () => "a none", onSome: (a) => `a some containing ${a}` })),
   "a none"
 )
+```
+
+Added in v2.0.0
+
+# sequencing
+
+## andThen
+
+Executes a sequence of two `Option`s. The second `Option` can be dependent on the result of the first `Option`.
+
+**Signature**
+
+```ts
+export declare const andThen: {
+  <A, B>(f: (a: A) => Option<B>): (self: Option<A>) => Option<B>
+  <B>(f: Option<B>): <A>(self: Option<A>) => Option<B>
+  <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B>
+  <A, B>(self: Option<A>, f: Option<B>): Option<B>
+}
 ```
 
 Added in v2.0.0

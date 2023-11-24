@@ -6,7 +6,7 @@ import type { Either } from "./Either.js"
 import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
-import { constNull, constUndefined, dual, identity } from "./Function.js"
+import { constNull, constUndefined, dual, identity, isFunction } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import type { Inspectable } from "./Inspectable.js"
 import * as either from "./internal/either.js"
@@ -602,6 +602,23 @@ export const flatMap: {
 } = dual(
   2,
   <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B> => isNone(self) ? none() : f(self.value)
+)
+
+/**
+ * Executes a sequence of two `Option`s. The second `Option` can be dependent on the result of the first `Option`.
+ *
+ * @category sequencing
+ * @since 2.0.0
+ */
+export const andThen: {
+  <A, B>(f: (a: A) => Option<B>): (self: Option<A>) => Option<B>
+  <B>(f: Option<B>): <A>(self: Option<A>) => Option<B>
+  <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B>
+  <A, B>(self: Option<A>, f: Option<B>): Option<B>
+} = dual(
+  2,
+  <A, B>(self: Option<A>, f: (a: A) => Option<B> | Option<B>): Option<B> =>
+    isFunction(f) ? flatMap(self, f) : flatMap(self, () => f)
 )
 
 /**

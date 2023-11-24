@@ -179,3 +179,19 @@ pipe(
     ) => true
   )
 )
+
+// -------------------------------------------------------------------------------------
+// andThen
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Option<string | number>
+Option.andThen(numberOrString, numberOrString)
+
+// $ExpectType Option<string | number>
+Option.andThen(numberOrString, () => numberOrString)
+
+// $ExpectType Option<string | number>
+numberOrString.pipe(Option.andThen(numberOrString))
+
+// $ExpectType Option<string | number>
+numberOrString.pipe(Option.andThen(() => numberOrString))
