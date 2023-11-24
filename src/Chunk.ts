@@ -1103,7 +1103,7 @@ export const unzip = <A, B>(self: Chunk<readonly [A, B]>): [Chunk<A>, Chunk<B>] 
  * Zips this chunk pointwise with the specified chunk using the specified combiner.
  *
  * @since 2.0.0
- * @category elements
+ * @category zipping
  */
 export const zipWith: {
   <A, B, C>(that: Chunk<B>, f: (a: A, b: B) => C): (self: Chunk<A>) => Chunk<C>
@@ -1118,7 +1118,7 @@ export const zipWith: {
  * Zips this chunk pointwise with the specified chunk.
  *
  * @since 2.0.0
- * @category elements
+ * @category zipping
  */
 export const zip: {
   <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<[A, B]>

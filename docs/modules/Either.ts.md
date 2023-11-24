@@ -15,7 +15,6 @@ Added in v2.0.0
 - [combining](#combining)
   - [all](#all)
   - [ap](#ap)
-  - [zipWith](#zipwith)
 - [constructors](#constructors)
   - [fromNullable](#fromnullable)
   - [fromOption](#fromoption)
@@ -62,6 +61,8 @@ Added in v2.0.0
   - [TypeId (type alias)](#typeid-type-alias)
 - [type lambdas](#type-lambdas)
   - [EitherTypeLambda (interface)](#eithertypelambda-interface)
+- [zipping](#zipping)
+  - [zipWith](#zipwith)
 
 ---
 
@@ -113,19 +114,6 @@ Added in v2.0.0
 export declare const ap: {
   <E2, A>(that: Either<E2, A>): <E, B>(self: Either<E, (a: A) => B>) => Either<E2 | E, B>
   <E, A, B, E2>(self: Either<E, (a: A) => B>, that: Either<E2, A>): Either<E | E2, B>
-}
-```
-
-Added in v2.0.0
-
-## zipWith
-
-**Signature**
-
-```ts
-export declare const zipWith: {
-  <E2, A2, A, B>(that: Either<E2, A2>, f: (a: A, b: A2) => B): <E>(self: Either<E, A>) => Either<E2 | E, B>
-  <E, A, E2, A2, B>(self: Either<E, A>, that: Either<E2, A2>, f: (a: A, b: A2) => B): Either<E | E2, B>
 }
 ```
 
@@ -761,6 +749,21 @@ Added in v2.0.0
 ```ts
 export interface EitherTypeLambda extends TypeLambda {
   readonly type: Either<this["Out1"], this["Target"]>
+}
+```
+
+Added in v2.0.0
+
+# zipping
+
+## zipWith
+
+**Signature**
+
+```ts
+export declare const zipWith: {
+  <E2, A2, A, B>(that: Either<E2, A2>, f: (a: A, b: A2) => B): <E>(self: Either<E, A>) => Either<E2 | E, B>
+  <E, A, E2, A2, B>(self: Either<E, A>, that: Either<E2, A2>, f: (a: A, b: A2) => B): Either<E | E2, B>
 }
 ```
 

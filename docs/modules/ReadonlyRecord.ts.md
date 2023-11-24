@@ -35,6 +35,8 @@ Added in v2.0.0
   - [isEmptyRecord](#isemptyrecord)
 - [instances](#instances)
   - [getEquivalence](#getequivalence)
+- [mapping](#mapping)
+  - [map](#map)
 - [models](#models)
   - [ReadonlyRecord (interface)](#readonlyrecord-interface)
 - [record](#record)
@@ -51,7 +53,6 @@ Added in v2.0.0
   - [isSubrecord](#issubrecord)
   - [isSubrecordBy](#issubrecordby)
   - [keys](#keys)
-  - [map](#map)
   - [modifyOption](#modifyoption)
   - [remove](#remove)
   - [replaceOption](#replaceoption)
@@ -425,6 +426,37 @@ export declare const getEquivalence: <A>(equivalence: Equivalence<A>) => Equival
 
 Added in v2.0.0
 
+# mapping
+
+## map
+
+Maps a record into another record by applying a transformation function to each of its values.
+
+**Signature**
+
+```ts
+export declare const map: {
+  <K extends string, A, B>(f: (a: A, key: K) => B): (self: Record<K, A>) => Record<K, B>
+  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => B): Record<K, B>
+}
+```
+
+**Example**
+
+```ts
+import { map } from "effect/ReadonlyRecord"
+
+const f = (n: number) => `-${n}`
+
+assert.deepStrictEqual(map({ a: 3, b: 5 }, f), { a: "-3", b: "-5" })
+
+const g = (n: number, key: string) => `${key.toUpperCase()}-${n}`
+
+assert.deepStrictEqual(map({ a: 3, b: 5 }, g), { a: "A-3", b: "B-5" })
+```
+
+Added in v2.0.0
+
 # models
 
 ## ReadonlyRecord (interface)
@@ -656,35 +688,6 @@ Retrieve the keys of a given record as an array.
 
 ```ts
 export declare const keys: <A>(self: ReadonlyRecord<A>) => Array<string>
-```
-
-Added in v2.0.0
-
-## map
-
-Maps a record into another record by applying a transformation function to each of its values.
-
-**Signature**
-
-```ts
-export declare const map: {
-  <K extends string, A, B>(f: (a: A, key: K) => B): (self: Record<K, A>) => Record<K, B>
-  <K extends string, A, B>(self: Record<K, A>, f: (a: A, key: K) => B): Record<K, B>
-}
-```
-
-**Example**
-
-```ts
-import { map } from "effect/ReadonlyRecord"
-
-const f = (n: number) => `-${n}`
-
-assert.deepStrictEqual(map({ a: 3, b: 5 }, f), { a: "-3", b: "-5" })
-
-const g = (n: number, key: string) => `${key.toUpperCase()}-${n}`
-
-assert.deepStrictEqual(map({ a: 3, b: 5 }, g), { a: "A-3", b: "B-5" })
 ```
 
 Added in v2.0.0

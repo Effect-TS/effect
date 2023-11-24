@@ -18,7 +18,6 @@ Added in v2.0.0
 
 - [combinators](#combinators)
   - [array](#array)
-  - [mapInput](#mapinput)
   - [struct](#struct)
   - [tuple](#tuple)
 - [combining](#combining)
@@ -38,6 +37,8 @@ Added in v2.0.0
   - [number](#number)
   - [string](#string)
   - [symbol](#symbol)
+- [mapping](#mapping)
+  - [mapInput](#mapinput)
 - [type class](#type-class)
   - [Equivalence (interface)](#equivalence-interface)
 - [type lambdas](#type-lambdas)
@@ -55,19 +56,6 @@ Creates a new `Equivalence` for an array of values based on a given `Equivalence
 
 ```ts
 export declare const array: <A>(item: Equivalence<A>) => Equivalence<readonly A[]>
-```
-
-Added in v2.0.0
-
-## mapInput
-
-**Signature**
-
-```ts
-export declare const mapInput: {
-  <B, A>(f: (b: B) => A): (self: Equivalence<A>) => Equivalence<B>
-  <A, B>(self: Equivalence<A>, f: (b: B) => A): Equivalence<B>
-}
 ```
 
 Added in v2.0.0
@@ -264,6 +252,21 @@ Added in v2.0.0
 
 ```ts
 export declare const symbol: Equivalence<symbol>
+```
+
+Added in v2.0.0
+
+# mapping
+
+## mapInput
+
+**Signature**
+
+```ts
+export declare const mapInput: {
+  <B, A>(f: (b: B) => A): (self: Equivalence<A>) => Equivalence<B>
+  <A, B>(self: Equivalence<A>, f: (b: B) => A): Equivalence<B>
+}
 ```
 
 Added in v2.0.0

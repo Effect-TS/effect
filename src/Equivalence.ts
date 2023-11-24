@@ -110,7 +110,7 @@ export const combineAll = <A>(collection: Iterable<Equivalence<A>>): Equivalence
   combineMany(isAlwaysEquivalent, collection)
 
 /**
- * @category combinators
+ * @category mapping
  * @since 2.0.0
  */
 export const mapInput: {

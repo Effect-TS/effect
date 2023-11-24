@@ -554,7 +554,7 @@ export const getOrThrow: <A>(self: Option<A>) => A = getOrThrowWith(() => new Er
  * @param self - An `Option` to map
  * @param f - The function to map over the value of the `Option`
  *
- * @category transforming
+ * @category mapping
  * @since 2.0.0
  */
 export const map: {
@@ -568,7 +568,7 @@ export const map: {
 /**
  * Maps the `Some` value of this `Option` to the specified constant value.
  *
- * @category transforming
+ * @category mapping
  * @since 2.0.0
  */
 export const as: {
@@ -580,7 +580,7 @@ export const as: {
  *
  * This is useful when the value of the `Option` is not needed, but the presence or absence of the value is important.
  *
- * @category transforming
+ * @category mapping
  * @since 2.0.0
  */
 export const asUnit: <_>(self: Option<_>) => Option<void> = as(undefined)
@@ -593,7 +593,7 @@ export const unit: Option<void> = some(undefined)
 /**
  * Applies a function to the value of an `Option` and flattens the result, if the input is `Some`.
  *
- * @category transforming
+ * @category sequencing
  * @since 2.0.0
  */
 export const flatMap: {
@@ -658,7 +658,7 @@ export const andThen: {
  *   none()
  * )
  *
- * @category transforming
+ * @category sequencing
  * @since 2.0.0
  */
 export const flatMapNullable: {
@@ -671,13 +671,13 @@ export const flatMapNullable: {
 )
 
 /**
- * @category transforming
+ * @category sequencing
  * @since 2.0.0
  */
 export const flatten: <A>(self: Option<Option<A>>) => Option<A> = flatMap(identity)
 
 /**
- * @category transforming
+ * @category zipping
  * @since 2.0.0
  */
 export const zipRight: {
@@ -686,7 +686,7 @@ export const zipRight: {
 } = dual(2, <_, B>(self: Option<_>, that: Option<B>): Option<B> => flatMap(self, () => that))
 
 /**
- * @category transforming
+ * @category sequencing
  * @since 2.0.0
  */
 export const composeK: {
@@ -702,7 +702,7 @@ export const composeK: {
  * @param that - The `Option` that will be ignored in the chain and discarded
  * @param self - The `Option` we care about
  *
- * @category transforming
+ * @category zipping
  * @since 2.0.0
  */
 export const zipLeft: {
@@ -728,7 +728,7 @@ export const zipLeft: {
  * assert.deepStrictEqual(O.tap(O.some(1), getInteger), O.some(1))
  * assert.deepStrictEqual(O.tap(O.some(1.14), getInteger), O.none())
  *
- * @category transforming
+ * @category sequencing
  * @since 2.0.0
  */
 export const tap: {
@@ -836,7 +836,7 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
  *
  * assert.deepStrictEqual(O.zipWith(O.some(1), complex)(O.some(2)), O.some([2, 1]))
  *
- * @category combining
+ * @category zipping
  * @since 2.0.0
  */
 export const zipWith: {

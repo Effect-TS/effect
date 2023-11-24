@@ -14,8 +14,6 @@ Added in v2.0.0
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [combining](#combining)
-  - [flatMapNullable](#flatmapnullable)
 - [concatenating](#concatenating)
   - [append](#append)
   - [appendAll](#appendall)
@@ -118,6 +116,7 @@ Added in v2.0.0
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
   - [flatMapNonEmpty](#flatmapnonempty)
+  - [flatMapNullable](#flatmapnullable)
   - [flatten](#flatten)
   - [flattenNonEmpty](#flattennonempty)
 - [sorting](#sorting)
@@ -170,27 +169,13 @@ Added in v2.0.0
   - [unionWith](#unionwith)
   - [unzip](#unzip)
   - [unzipNonEmpty](#unzipnonempty)
+- [zipping](#zipping)
   - [zip](#zip)
   - [zipNonEmpty](#zipnonempty)
   - [zipNonEmptyWith](#zipnonemptywith)
   - [zipWith](#zipwith)
 
 ---
-
-# combining
-
-## flatMapNullable
-
-**Signature**
-
-```ts
-export declare const flatMapNullable: {
-  <A, B>(f: (a: A) => B | null | undefined): (self: readonly A[]) => NonNullable<B>[]
-  <A, B>(self: readonly A[], f: (a: A) => B | null | undefined): NonNullable<B>[]
-}
-```
-
-Added in v2.0.0
 
 # concatenating
 
@@ -1488,6 +1473,19 @@ export declare const flatMapNonEmpty: {
 
 Added in v2.0.0
 
+## flatMapNullable
+
+**Signature**
+
+```ts
+export declare const flatMapNullable: {
+  <A, B>(f: (a: A) => B | null | undefined): (self: readonly A[]) => NonNullable<B>[]
+  <A, B>(self: readonly A[], f: (a: A) => B | null | undefined): NonNullable<B>[]
+}
+```
+
+Added in v2.0.0
+
 ## flatten
 
 **Signature**
@@ -2153,6 +2151,8 @@ export declare const unzipNonEmpty: <A, B>(
 ```
 
 Added in v2.0.0
+
+# zipping
 
 ## zip
 

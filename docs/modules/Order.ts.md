@@ -14,7 +14,6 @@ Added in v2.0.0
 
 - [combinators](#combinators)
   - [array](#array)
-  - [mapInput](#mapinput)
   - [struct](#struct)
   - [tuple](#tuple)
 - [combining](#combining)
@@ -32,6 +31,8 @@ Added in v2.0.0
   - [boolean](#boolean)
   - [number](#number)
   - [string](#string)
+- [mapping](#mapping)
+  - [mapInput](#mapinput)
 - [type class](#type-class)
   - [Order (interface)](#order-interface)
 - [type lambdas](#type-lambdas)
@@ -63,19 +64,6 @@ It is useful when you need to compare two arrays of the same type and you have a
 
 ```ts
 export declare const array: <A>(O: Order<A>) => Order<readonly A[]>
-```
-
-Added in v2.0.0
-
-## mapInput
-
-**Signature**
-
-```ts
-export declare const mapInput: {
-  <B, A>(f: (b: B) => A): (self: Order<A>) => Order<B>
-  <A, B>(self: Order<A>, f: (b: B) => A): Order<B>
-}
 ```
 
 Added in v2.0.0
@@ -252,6 +240,21 @@ Added in v2.0.0
 
 ```ts
 export declare const string: Order<string>
+```
+
+Added in v2.0.0
+
+# mapping
+
+## mapInput
+
+**Signature**
+
+```ts
+export declare const mapInput: {
+  <B, A>(f: (b: B) => A): (self: Order<A>) => Order<B>
+  <A, B>(self: Order<A>, f: (b: B) => A): Order<B>
+}
 ```
 
 Added in v2.0.0
