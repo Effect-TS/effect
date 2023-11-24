@@ -40,7 +40,7 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["ITEMS", "value"]],
-        ConfigError.InvalidData(["ITEMS"], "Expected a boolean value, but received value")
+        ConfigError.InvalidData(["ITEMS"], "Expected a boolean value but received value")
       )
     })
 
@@ -59,7 +59,7 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["BOOL", "value"]],
-        ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
+        ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
       )
     })
   })
@@ -71,7 +71,7 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["ITEMS", "value"]],
-        ConfigError.InvalidData(["ITEMS"], "Expected an number value but received value")
+        ConfigError.InvalidData(["ITEMS"], "Expected a number value but received value")
       )
     })
 
@@ -88,7 +88,7 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["NUMBER", "value"]],
-        ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
+        ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
       )
     })
   })
@@ -100,7 +100,7 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["", "value"]],
-        ConfigError.InvalidData([], "Expected a date value but received value")
+        ConfigError.InvalidData([], "Expected a Date value but received value")
       )
     })
 
@@ -112,7 +112,7 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["DATE", "value"]],
-        ConfigError.InvalidData(["DATE"], "Expected a date value but received value")
+        ConfigError.InvalidData(["DATE"], "Expected a Date value but received value")
       )
     })
   })
@@ -152,7 +152,7 @@ describe.concurrent("Config", () => {
       const config = Config.logLevel()
       assertSuccess(config, [["", "DEBUG"]], LogLevel.Debug)
 
-      assertFailure(config, [["", "-"]], ConfigError.InvalidData([], "Expected a log level, but found: -"))
+      assertFailure(config, [["", "-"]], ConfigError.InvalidData([], "Expected a log level but received -"))
     })
 
     it("name != undefined", () => {
@@ -162,7 +162,7 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["LOG_LEVEL", "-"]],
-        ConfigError.InvalidData(["LOG_LEVEL"], "Expected a log level, but found: -")
+        ConfigError.InvalidData(["LOG_LEVEL"], "Expected a log level but received -")
       )
     })
   })
@@ -386,12 +386,12 @@ describe.concurrent("Config", () => {
         assertFailure(
           config,
           [["NUMBER", "value"], ["BOOL", "true"]],
-          ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
+          ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
         )
         assertFailure(
           config,
           [["NUMBER", "1"], ["BOOL", "value"]],
-          ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
+          ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
         )
       })
     })
@@ -403,12 +403,12 @@ describe.concurrent("Config", () => {
       assertFailure(
         config,
         [["NUMBER", "value"], ["BOOL", "true"]],
-        ConfigError.InvalidData(["NUMBER"], "Expected an number value but received value")
+        ConfigError.InvalidData(["NUMBER"], "Expected a number value but received value")
       )
       assertFailure(
         config,
         [["NUMBER", "1"], ["BOOL", "value"]],
-        ConfigError.InvalidData(["BOOL"], "Expected a boolean value, but received value")
+        ConfigError.InvalidData(["BOOL"], "Expected a boolean value but received value")
       )
     })
   })
