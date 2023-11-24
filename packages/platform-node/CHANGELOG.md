@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.32.2
+
+### Patch Changes
+
+- [#295](https://github.com/Effect-TS/platform/pull/295) [`2f1ca0c`](https://github.com/Effect-TS/platform/commit/2f1ca0cd6d39062fef5717f322cec6767f243def) Thanks [@tim-smart](https://github.com/tim-smart)! - expose node channel apis
+
 ## 0.32.1
 
 ### Patch Changes
