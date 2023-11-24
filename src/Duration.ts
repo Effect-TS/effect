@@ -6,7 +6,7 @@ import type * as equivalence from "./Equivalence.js"
 import { dual } from "./Function.js"
 import * as Hash from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
-import { NodeInspectSymbol, toString } from "./Inspectable.js"
+import { NodeInspectSymbol } from "./Inspectable.js"
 import * as Option from "./Option.js"
 import * as order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -123,7 +123,7 @@ const DurationProto: Omit<Duration, "value"> = {
     return isDuration(that) && equals(this, that)
   },
   toString(this: Duration) {
-    return toString(this.toJSON())
+    return toString(this)
   },
   toJSON(this: Duration) {
     switch (this.value._tag) {
@@ -588,3 +588,55 @@ export const equals: {
   (that: DurationInput): (self: DurationInput) => boolean
   (self: DurationInput, that: DurationInput): boolean
 } = dual(2, (self: DurationInput, that: DurationInput): boolean => Equivalence(decode(self), decode(that)))
+
+/**
+ * Converts a `Duration` to a human readable string.
+ * @since 2.0.0
+ *
+ * @example
+ * import * as Duration from "effect/Duration"
+ *
+ * Duration.toString(Duration.millis(1000)) // "1s"
+ * Duration.toString(Duration.millis(1001)) // "1s 1ms"
+ */
+export const toString = (self: DurationInput): string => {
+  const duration = decode(self)
+  const parts = []
+
+  if (duration.value._tag === "Infinity") {
+    return "Infinity"
+  }
+
+  const nanos = unsafeToNanos(duration)
+
+  if (nanos % 1000000n) {
+    parts.push(`${nanos % 1000000n}ns`)
+  }
+
+  const ms = nanos / 1000000n
+  if (ms % 1000n !== 0n) { // ms
+    parts.push(`${ms % 1000n}ms`)
+  }
+
+  const sec = ms / 1000n
+  if (sec % 60n !== 0n) { // ms
+    parts.push(`${sec % 60n}s`)
+  }
+
+  const min = sec / 60n
+  if (min % 60n !== 0n) { // ms
+    parts.push(`${min % 60n}m`)
+  }
+
+  const hr = min / 60n
+  if (hr % 24n !== 0n) { // ms
+    parts.push(`${hr % 24n}h`)
+  }
+
+  const days = hr / 24n
+  if (days !== 0n) { // ms
+    parts.push(`${days}d`)
+  }
+
+  return parts.reverse().join(" ")
+}

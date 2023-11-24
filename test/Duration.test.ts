@@ -201,23 +201,19 @@ describe.concurrent("Duration", () => {
   })
 
   it("toString", () => {
-    expect(String(Duration.seconds(2))).toEqual(`{
-  "_id": "Duration",
-  "_tag": "Millis",
-  "millis": 2000
-}`)
-    expect(String(Duration.nanos(10n))).toEqual(`{
-  "_id": "Duration",
-  "_tag": "Nanos",
-  "hrtime": [
-    0,
-    10
-  ]
-}`)
-    expect(String(Duration.millis(Infinity))).toEqual(`{
-  "_id": "Duration",
-  "_tag": "Infinity"
-}`)
+    expect(String(Duration.infinity)).toEqual(`Infinity`)
+    expect(String(Duration.nanos(10n))).toEqual(`10ns`)
+    expect(String(Duration.millis(2))).toEqual(`2ms`)
+    expect(String(Duration.millis(2.125))).toEqual(`2ms 125000ns`)
+    expect(String(Duration.seconds(2))).toEqual(`2s`)
+    expect(String(Duration.seconds(2.5))).toEqual(`2s 500ms`)
+    expect(String(Duration.minutes(5))).toEqual(`5m`)
+    expect(String(Duration.minutes(5.325))).toEqual(`5m 19s 500ms`)
+    expect(String(Duration.hours(3))).toEqual(`3h`)
+    expect(String(Duration.hours(3.11125))).toEqual(`3h 6m 40s 500ms`)
+    expect(String(Duration.days(2))).toEqual(`2d`)
+    expect(String(Duration.days(2.25))).toEqual(`2d 6h`)
+    expect(String(Duration.weeks(1))).toEqual(`7d`)
   })
 
   it("toJSON", () => {

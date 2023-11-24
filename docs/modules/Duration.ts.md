@@ -59,6 +59,7 @@ Added in v2.0.0
   - [decode](#decode)
   - [max](#max)
   - [min](#min)
+  - [toString](#tostring)
 
 ---
 
@@ -524,6 +525,27 @@ export declare const min: {
   (that: DurationInput): (self: DurationInput) => Duration
   (self: DurationInput, that: DurationInput): Duration
 }
+```
+
+Added in v2.0.0
+
+## toString
+
+Converts a `Duration` to a human readable string.
+
+**Signature**
+
+```ts
+export declare const toString: (self: DurationInput) => string
+```
+
+**Example**
+
+```ts
+import * as Duration from "effect/Duration"
+
+Duration.toString(Duration.millis(1000)) // "1s"
+Duration.toString(Duration.millis(1001)) // "1s 1ms"
 ```
 
 Added in v2.0.0
