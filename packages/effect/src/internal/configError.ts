@@ -166,10 +166,10 @@ export const prefixed: {
 >(2, (self, prefix) => {
   switch (self._tag) {
     case OpCodes.OP_AND: {
-      return And(prefixed(prefix)(self.left), prefixed(prefix)(self.right))
+      return And(prefixed(self.left, prefix), prefixed(self.right, prefix))
     }
     case OpCodes.OP_OR: {
-      return Or(prefixed(prefix)(self.left), prefixed(prefix)(self.right))
+      return Or(prefixed(self.left, prefix), prefixed(self.right, prefix))
     }
     case OpCodes.OP_INVALID_DATA: {
       return InvalidData([...prefix, ...self.path], self.message)
