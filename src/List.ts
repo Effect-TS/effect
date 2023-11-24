@@ -728,7 +728,7 @@ export declare namespace List {
  * Applies the specified mapping function to each element of the list.
  *
  * @since 2.0.0
- * @category combinators
+ * @category mapping
  */
 export const map: {
   <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>

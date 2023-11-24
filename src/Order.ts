@@ -108,7 +108,7 @@ export const empty = <A>(): Order<A> => make(() => 0)
 export const combineAll = <A>(collection: Iterable<Order<A>>): Order<A> => combineMany(empty(), collection)
 
 /**
- * @category combinators
+ * @category mapping
  * @since 2.0.0
  */
 export const mapInput: {

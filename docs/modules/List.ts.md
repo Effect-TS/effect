@@ -27,7 +27,6 @@ Added in v2.0.0
   - [filter](#filter)
   - [filterMap](#filtermap)
   - [forEach](#foreach)
-  - [map](#map)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [splitAt](#splitat)
@@ -65,6 +64,8 @@ Added in v2.0.0
   - [last](#last)
   - [size](#size)
   - [tail](#tail)
+- [mapping](#mapping)
+  - [map](#map)
 - [models](#models)
   - [Cons (interface)](#cons-interface)
   - [List (type alias)](#list-type-alias)
@@ -160,21 +161,6 @@ Applies the specified function to each element of the `List`.
 export declare const forEach: {
   <A, B>(f: (a: A) => B): (self: List<A>) => void
   <A, B>(self: List<A>, f: (a: A) => B): void
-}
-```
-
-Added in v2.0.0
-
-## map
-
-Applies the specified mapping function to each element of the list.
-
-**Signature**
-
-```ts
-export declare const map: {
-  <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
-  <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
 }
 ```
 
@@ -614,6 +600,23 @@ Returns the tail of the specified list, or `None` if the list is empty.
 
 ```ts
 export declare const tail: <A>(self: List<A>) => Option.Option<List<A>>
+```
+
+Added in v2.0.0
+
+# mapping
+
+## map
+
+Applies the specified mapping function to each element of the list.
+
+**Signature**
+
+```ts
+export declare const map: {
+  <T extends List<any>, B>(f: (a: List.Infer<T>, i: number) => B): (self: T) => List.With<T, B>
+  <T extends List<any>, B>(self: T, f: (a: List.Infer<T>, i: number) => B): List.With<T, B>
+}
 ```
 
 Added in v2.0.0

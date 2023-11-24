@@ -63,8 +63,6 @@ Added in v2.0.0
   - [takeWhile](#takewhile)
   - [union](#union)
   - [unzip](#unzip)
-  - [zip](#zip)
-  - [zipWith](#zipwith)
 - [equivalence](#equivalence)
   - [getEquivalence](#getequivalence)
 - [filtering](#filtering)
@@ -115,6 +113,9 @@ Added in v2.0.0
   - [replace](#replace)
   - [replaceOption](#replaceoption)
   - [take](#take)
+- [zipping](#zipping)
+  - [zip](#zip)
+  - [zipWith](#zipwith)
 
 ---
 
@@ -765,36 +766,6 @@ export declare const unzip: <A, B>(self: Chunk<readonly [A, B]>) => [Chunk<A>, C
 
 Added in v2.0.0
 
-## zip
-
-Zips this chunk pointwise with the specified chunk.
-
-**Signature**
-
-```ts
-export declare const zip: {
-  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<[A, B]>
-  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<[A, B]>
-}
-```
-
-Added in v2.0.0
-
-## zipWith
-
-Zips this chunk pointwise with the specified chunk using the specified combiner.
-
-**Signature**
-
-```ts
-export declare const zipWith: {
-  <A, B, C>(that: Chunk<B>, f: (a: A, b: B) => C): (self: Chunk<A>) => Chunk<C>
-  <A, B, C>(self: Chunk<A>, that: Chunk<B>, f: (a: A, b: B) => C): Chunk<C>
-}
-```
-
-Added in v2.0.0
-
 # equivalence
 
 ## getEquivalence
@@ -1332,6 +1303,38 @@ Takes the first up to `n` elements from the chunk
 
 ```ts
 export declare const take: { (n: number): <A>(self: Chunk<A>) => Chunk<A>; <A>(self: Chunk<A>, n: number): Chunk<A> }
+```
+
+Added in v2.0.0
+
+# zipping
+
+## zip
+
+Zips this chunk pointwise with the specified chunk.
+
+**Signature**
+
+```ts
+export declare const zip: {
+  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<[A, B]>
+  <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<[A, B]>
+}
+```
+
+Added in v2.0.0
+
+## zipWith
+
+Zips this chunk pointwise with the specified chunk using the specified combiner.
+
+**Signature**
+
+```ts
+export declare const zipWith: {
+  <A, B, C>(that: Chunk<B>, f: (a: A, b: B) => C): (self: Chunk<A>) => Chunk<C>
+  <A, B, C>(self: Chunk<A>, that: Chunk<B>, f: (a: A, b: B) => C): Chunk<C>
+}
 ```
 
 Added in v2.0.0

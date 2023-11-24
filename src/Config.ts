@@ -183,7 +183,7 @@ export const isConfig: (u: unknown) => u is Config<unknown> = internal.isConfig
  * a different value, constructed using the specified function.
  *
  * @since 2.0.0
- * @category utils
+ * @category mapping
  */
 export const map: {
   <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
@@ -427,7 +427,7 @@ export const withDescription: {
  * config.
  *
  * @since 2.0.0
- * @category utils
+ * @category zipping
  */
 export const zip: {
   <B>(that: Config<B>): <A>(self: Config<A>) => Config<[A, B]>
@@ -439,7 +439,7 @@ export const zip: {
  * using the provided function.
  *
  * @since 2.0.0
- * @category utils
+ * @category zipping
  */
 export const zipWith: {
   <B, A, C>(that: Config<B>, f: (a: A, b: B) => C): (self: Config<A>) => Config<C>
