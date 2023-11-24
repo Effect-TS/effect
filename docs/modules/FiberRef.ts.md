@@ -23,6 +23,7 @@ Added in v2.0.0
   - [unsafeMakePatch](#unsafemakepatch)
   - [unsafeMakeSupervisor](#unsafemakesupervisor)
 - [fiberRefs](#fiberrefs)
+  - [currentConcurrency](#currentconcurrency)
   - [currentContext](#currentcontext)
   - [currentLogAnnotations](#currentlogannotations)
   - [currentLogLevel](#currentloglevel)
@@ -188,6 +189,16 @@ export declare const unsafeMakeSupervisor: (initial: Supervisor.Supervisor<any>)
 Added in v2.0.0
 
 # fiberRefs
+
+## currentConcurrency
+
+**Signature**
+
+```ts
+export declare const currentConcurrency: FiberRef<number | "unbounded">
+```
+
+Added in v2.0.0
 
 ## currentContext
 
