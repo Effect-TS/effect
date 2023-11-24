@@ -11,12 +11,12 @@ describe("BigDecimal/lessThanBigDecimal", () => {
     await Util.expectParseFailure(
       schema,
       "5",
-      "Expected a BigDecimal less than 5, actual {\"_id\":\"BigDecimal\",\"value\":\"5\",\"scale\":0}"
+      "Expected a BigDecimal less than 5, actual 5"
     )
     await Util.expectParseFailure(
       schema,
       "6",
-      "Expected a BigDecimal less than 5, actual {\"_id\":\"BigDecimal\",\"value\":\"6\",\"scale\":0}"
+      "Expected a BigDecimal less than 5, actual 6"
     )
   })
 

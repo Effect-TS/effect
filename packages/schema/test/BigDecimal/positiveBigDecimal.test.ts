@@ -10,12 +10,12 @@ describe("BigDecimal/positiveBigDecimal", () => {
     await Util.expectParseFailure(
       schema,
       BigDecimal.make(0n, 0),
-      "Expected a positive BigDecimal, actual {\"_id\":\"BigDecimal\",\"value\":\"0\",\"scale\":0}"
+      "Expected a positive BigDecimal, actual 0"
     )
     await Util.expectParseFailure(
       schema,
       BigDecimal.make(-2n, 0),
-      "Expected a positive BigDecimal, actual {\"_id\":\"BigDecimal\",\"value\":\"-2\",\"scale\":0}"
+      "Expected a positive BigDecimal, actual -2"
     )
     await Util.expectParseSuccess(
       schema,

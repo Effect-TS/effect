@@ -16,7 +16,7 @@ describe("BigDecimal/lessThanOrEqualToBigDecimal", () => {
     await Util.expectParseFailure(
       schema,
       "6",
-      "Expected a BigDecimal less than or equal to 5, actual {\"_id\":\"BigDecimal\",\"value\":\"6\",\"scale\":0}"
+      "Expected a BigDecimal less than or equal to 5, actual 6"
     )
   })
 

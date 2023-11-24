@@ -99,4 +99,17 @@ describe("formatActual", () => {
     circular.a = circular
     expect(_.formatActual(circular)).toEqual("[object Object]")
   })
+
+  it("should detect data types with a custom `toString` implementation", () => {
+    const noToString = { a: 1 }
+    expect(_.formatActual(noToString)).toEqual(`{"a":1}`)
+    const ToString = Object.create({
+      toString() {
+        return "toString custom implementation"
+      }
+    })
+    expect(_.formatActual(ToString)).toEqual("toString custom implementation")
+    // should not detect arrays
+    expect(_.formatActual([1, 2, 3])).toEqual("[1,2,3]")
+  })
 })

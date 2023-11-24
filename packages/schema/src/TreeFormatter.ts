@@ -3,6 +3,7 @@
  */
 
 import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 import * as AST from "./AST.js"
 import type { ParseErrors, Type } from "./ParseResult.js"
@@ -43,14 +44,25 @@ const draw = (indentation: string, forest: Forest<string>): string => {
 
 /** @internal */
 export const formatActual = (actual: unknown): string => {
-  if (
-    actual === undefined || actual === null || typeof actual === "number" ||
-    typeof actual === "symbol" || actual instanceof Date
+  if (Predicate.isString(actual)) {
+    return JSON.stringify(actual)
+  } else if (
+    Predicate.isNumber(actual)
+    || actual == null
+    || Predicate.isBoolean(actual)
+    || Predicate.isSymbol(actual)
+    || Predicate.isDate(actual)
   ) {
     return String(actual)
-  }
-  if (typeof actual === "bigint") {
+  } else if (Predicate.isBigInt(actual)) {
     return String(actual) + "n"
+  } else if (
+    !Array.isArray(actual)
+    && Predicate.hasProperty(actual, "toString")
+    && Predicate.isFunction(actual["toString"])
+    && actual["toString"] !== Object.prototype.toString
+  ) {
+    return actual["toString"]()
   }
   try {
     return JSON.stringify(actual)

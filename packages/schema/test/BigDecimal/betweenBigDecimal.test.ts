@@ -12,7 +12,7 @@ describe("BigDecimal/between", () => {
     await Util.expectParseFailure(
       schema,
       "2",
-      `Expected a BigDecimal between -1 and 1, actual {"_id":"BigDecimal","value":"2","scale":0}`
+      `Expected a BigDecimal between -1 and 1, actual 2`
     )
     await Util.expectParseSuccess(schema, "0", BigDecimal.make(0n, 0))
     await Util.expectParseSuccess(
