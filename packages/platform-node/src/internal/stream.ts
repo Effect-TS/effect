@@ -21,7 +21,7 @@ export const fromReadable = <E, A = Uint8Array>(
   { chunkSize }: FromReadableOptions = {}
 ): Stream.Stream<never, E, A> =>
   Stream.fromChannel(
-    readChannel<E, A>(evaluate, onError, chunkSize ? Number(chunkSize) : undefined)
+    fromReadableChannel<E, A>(evaluate, onError, chunkSize ? Number(chunkSize) : undefined)
   )
 
 /** @internal */
@@ -189,7 +189,8 @@ export const pipeThroughSimple = dual<
     )
 )
 
-const readChannel = <E, A = Uint8Array>(
+/** @internal */
+export const fromReadableChannel = <E, A = Uint8Array>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   chunkSize: number | undefined

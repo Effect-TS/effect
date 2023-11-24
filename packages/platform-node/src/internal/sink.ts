@@ -13,17 +13,20 @@ export const fromWritable = <E, A = Uint8Array | string>(
   evaluate: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => E,
   options: FromWritableOptions = {}
-): Sink.Sink<never, E, A, never, void> =>
-  Sink.suspend(() => Sink.fromChannel(writeChannel(evaluate(), onError, options)))
+): Sink.Sink<never, E, A, never, void> => Sink.fromChannel(fromWritableChannel(evaluate, onError, options))
 
-const writeChannel = <IE, OE, A>(
-  writable: Writable | NodeJS.WritableStream,
+/** @internal */
+export const fromWritableChannel = <IE, OE, A>(
+  writable: LazyArg<Writable | NodeJS.WritableStream>,
   onError: (error: unknown) => OE,
   options: FromWritableOptions = {}
 ): Channel.Channel<never, IE, Chunk.Chunk<A>, unknown, IE | OE, Chunk.Chunk<never>, void> =>
   Channel.flatMap(
-    Deferred.make<IE | OE, void>(),
-    (deferred) =>
+    Effect.zip(
+      Effect.sync(() => writable()),
+      Deferred.make<IE | OE, void>()
+    ),
+    ([writable, deferred]) =>
       Channel.embedInput(
         writableOutput(writable, deferred, onError),
         writeInput<IE, A>(
