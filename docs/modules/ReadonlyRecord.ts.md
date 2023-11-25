@@ -23,8 +23,10 @@ Added in v2.0.0
   - [fromIterable](#fromiterable)
   - [toEntries](#toentries)
 - [filtering](#filtering)
-  - [compact](#compact)
   - [filter](#filter)
+  - [filterLeft](#filterleft)
+  - [filterRight](#filterright)
+  - [filterSome](#filtersome)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
@@ -208,27 +210,6 @@ Added in v2.0.0
 
 # filtering
 
-## compact
-
-Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
-
-**Signature**
-
-```ts
-export declare const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
-```
-
-**Example**
-
-```ts
-import { compact } from "effect/ReadonlyRecord"
-import { some, none } from "effect/Option"
-
-assert.deepStrictEqual(compact({ a: some(1), b: none(), c: some(2) }), { a: 1, c: 2 })
-```
-
-Added in v2.0.0
-
 ## filter
 
 Selects properties from a record whose values match the given predicate.
@@ -256,6 +237,47 @@ assert.deepStrictEqual(
   filter(x, (n) => n > 2),
   { c: 3, d: 4 }
 )
+```
+
+Added in v2.0.0
+
+## filterLeft
+
+**Signature**
+
+```ts
+export declare const filterLeft: <E>(self: ReadonlyRecord<Either<E, any>>) => Record<string, E>
+```
+
+Added in v2.0.0
+
+## filterRight
+
+**Signature**
+
+```ts
+export declare const filterRight: <A>(self: ReadonlyRecord<Either<any, A>>) => Record<string, A>
+```
+
+Added in v2.0.0
+
+## filterSome
+
+Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
+
+**Signature**
+
+```ts
+export declare const filterSome: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
+```
+
+**Example**
+
+```ts
+import { filterSome } from "effect/ReadonlyRecord"
+import { some, none } from "effect/Option"
+
+assert.deepStrictEqual(filterSome({ a: some(1), b: none(), c: some(2) }), { a: 1, c: 2 })
 ```
 
 Added in v2.0.0

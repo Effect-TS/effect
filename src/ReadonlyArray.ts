@@ -1649,7 +1649,37 @@ export const partitionMap: {
  * @category filtering
  * @since 2.0.0
  */
-export const compact: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(identity)
+export const filterSome: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(identity)
+
+/**
+ * @category filtering
+ * @since 2.0.0
+ */
+export const filterLeft = <E>(self: Iterable<Either<E, any>>): Array<E> => {
+  const out: Array<E> = []
+  for (const a of self) {
+    if (E.isLeft(a)) {
+      out.push(a.left)
+    }
+  }
+
+  return out
+}
+
+/**
+ * @category filtering
+ * @since 2.0.0
+ */
+export const filterRight = <A>(self: Iterable<Either<any, A>>): Array<A> => {
+  const out: Array<A> = []
+  for (const a of self) {
+    if (E.isRight(a)) {
+      out.push(a.right)
+    }
+  }
+
+  return out
+}
 
 /**
  * @category filtering

@@ -465,20 +465,52 @@ export const filter: {
  * @param self - A record with `Option` values.
  *
  * @example
- * import { compact } from "effect/ReadonlyRecord"
+ * import { filterSome } from "effect/ReadonlyRecord"
  * import { some, none } from 'effect/Option'
  *
  * assert.deepStrictEqual(
- *   compact({ a: some(1), b: none(), c: some(2) }),
+ *   filterSome({ a: some(1), b: none(), c: some(2) }),
  *   { a: 1, c: 2 }
  * )
  *
  * @category filtering
  * @since 2.0.0
  */
-export const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A> = filterMap(
+export const filterSome: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A> = filterMap(
   identity
 )
+
+/**
+ * @category filtering
+ * @since 2.0.0
+ */
+export const filterLeft = <E>(self: ReadonlyRecord<Either<E, any>>): Record<string, E> => {
+  const out: Record<string, E> = {}
+  for (const key of Object.keys(self)) {
+    const value = self[key]
+    if (E.isLeft(value)) {
+      out[key] = value.left
+    }
+  }
+
+  return out
+}
+
+/**
+ * @category filtering
+ * @since 2.0.0
+ */
+export const filterRight = <A>(self: ReadonlyRecord<Either<any, A>>): Record<string, A> => {
+  const out: Record<string, A> = {}
+  for (const key of Object.keys(self)) {
+    const value = self[key]
+    if (E.isRight(value)) {
+      out[key] = value.right
+    }
+  }
+
+  return out
+}
 
 /**
  * Partitions the elements of a record into two groups: those that match a predicate, and those that don't.

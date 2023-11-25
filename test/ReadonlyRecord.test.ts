@@ -89,7 +89,7 @@ describe.concurrent("ReadonlyRecord", () => {
 
   it("compact", () => {
     const x = { a: Option.some(1), b: Option.none(), c: Option.some(2) }
-    assert.deepStrictEqual(RR.compact(x), { a: 1, c: 2 })
+    assert.deepStrictEqual(RR.filterSome(x), { a: 1, c: 2 })
   })
 
   it("filter", () => {

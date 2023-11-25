@@ -49,10 +49,12 @@ Added in v2.0.0
   - [some](#some)
   - [sortWith](#sortwith)
 - [filtering](#filtering)
-  - [compact](#compact)
   - [filter](#filter)
+  - [filterLeft](#filterleft)
   - [filterMap](#filtermap)
   - [filterMapWhile](#filtermapwhile)
+  - [filterRight](#filterright)
+  - [filterSome](#filtersome)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
@@ -630,16 +632,6 @@ Added in v2.0.0
 
 # filtering
 
-## compact
-
-**Signature**
-
-```ts
-export declare const compact: <A>(self: Iterable<Option<A>>) => A[]
-```
-
-Added in v2.0.0
-
 ## filter
 
 **Signature**
@@ -651,6 +643,16 @@ export declare const filter: {
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): B[]
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): A[]
 }
+```
+
+Added in v2.0.0
+
+## filterLeft
+
+**Signature**
+
+```ts
+export declare const filterLeft: <E>(self: Iterable<Either<E, any>>) => E[]
 ```
 
 Added in v2.0.0
@@ -679,6 +681,26 @@ export declare const filterMapWhile: {
   <A, B>(f: (a: A) => Option<B>): (self: Iterable<A>) => B[]
   <A, B>(self: Iterable<A>, f: (a: A) => Option<B>): B[]
 }
+```
+
+Added in v2.0.0
+
+## filterRight
+
+**Signature**
+
+```ts
+export declare const filterRight: <A>(self: Iterable<Either<any, A>>) => A[]
+```
+
+Added in v2.0.0
+
+## filterSome
+
+**Signature**
+
+```ts
+export declare const filterSome: <A>(self: Iterable<Option<A>>) => A[]
 ```
 
 Added in v2.0.0

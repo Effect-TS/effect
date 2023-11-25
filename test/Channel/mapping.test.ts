@@ -229,7 +229,7 @@ describe.concurrent("Channel", () => {
           })
         ),
         Channel.runCollect,
-        Effect.map(([chunk]) => pipe(Array.from(chunk), ReadonlyArray.compact))
+        Effect.map(([chunk]) => pipe(Array.from(chunk), ReadonlyArray.filterSome))
       )
       assert.deepStrictEqual(result, [
         [1, 1] as const,
@@ -275,7 +275,7 @@ describe.concurrent("Channel", () => {
           })
         ),
         Channel.runCollect,
-        Effect.map(([chunk]) => pipe(Array.from(chunk), ReadonlyArray.compact))
+        Effect.map(([chunk]) => pipe(Array.from(chunk), ReadonlyArray.filterSome))
       )
       assert.deepStrictEqual(result, [
         [1, 1] as const,

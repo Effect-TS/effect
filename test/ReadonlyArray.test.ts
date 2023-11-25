@@ -709,13 +709,13 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("compact", () => {
-    assert.deepStrictEqual(RA.compact([]), [])
-    assert.deepStrictEqual(RA.compact([O.some(1), O.some(2), O.some(3)]), [
+    assert.deepStrictEqual(RA.filterSome([]), [])
+    assert.deepStrictEqual(RA.filterSome([O.some(1), O.some(2), O.some(3)]), [
       1,
       2,
       3
     ])
-    assert.deepStrictEqual(RA.compact([O.some(1), O.none(), O.some(3)]), [
+    assert.deepStrictEqual(RA.filterSome([O.some(1), O.none(), O.some(3)]), [
       1,
       3
     ])
