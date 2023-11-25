@@ -4909,9 +4909,22 @@ export const flatMapStep: <R, E, A, R1, E1, B>(
  * @category requests & batching
  */
 export const request: {
+  <A extends Request.Request<any, any>>(
+    request: A
+  ): <
+    Ds extends
+      | RequestResolver<A, never>
+      | Effect<any, any, RequestResolver<A, never>>
+  >(dataSource: Ds) => Effect<
+    [Ds] extends [Effect<any, any, any>] ? Context.Context<Ds> : never,
+    Request.Request.Error<A>,
+    Request.Request.Success<A>
+  >
   <
     A extends Request.Request<any, any>,
-    Ds extends RequestResolver<A, never> | Effect<any, any, RequestResolver<A, never>>
+    Ds extends
+      | RequestResolver<A, never>
+      | Effect<any, any, RequestResolver<A, never>>
   >(
     request: A,
     dataSource: Ds

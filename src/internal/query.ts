@@ -39,19 +39,37 @@ export const currentCacheEnabled = globalValue(
 )
 
 /** @internal */
-export const fromRequest = <
+export const fromRequest: {
+  <A extends Request.Request<any, any>>(
+    request: A
+  ): <
+    Ds extends
+      | RequestResolver.RequestResolver<A, never>
+      | Effect.Effect<any, any, RequestResolver.RequestResolver<A, never>>
+  >(dataSource: Ds) => Effect.Effect<
+    [Ds] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Ds> : never,
+    Request.Request.Error<A>,
+    Request.Request.Success<A>
+  >
+  <
+    A extends Request.Request<any, any>,
+    Ds extends
+      | RequestResolver.RequestResolver<A, never>
+      | Effect.Effect<any, any, RequestResolver.RequestResolver<A, never>>
+  >(
+    request: A,
+    dataSource: Ds
+  ): Effect.Effect<
+    [Ds] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Ds> : never,
+    Request.Request.Error<A>,
+    Request.Request.Success<A>
+  >
+} = dual(2, <
   A extends Request.Request<any, any>,
   Ds extends
     | RequestResolver.RequestResolver<A, never>
     | Effect.Effect<any, any, RequestResolver.RequestResolver<A, never>>
->(
-  request: A,
-  dataSource: Ds
-): Effect.Effect<
-  [Ds] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Ds> : never,
-  Request.Request.Error<A>,
-  Request.Request.Success<A>
-> =>
+>(request: A, dataSource: Ds) =>
   core.flatMap(
     (core.isEffect(dataSource) ? dataSource : core.succeed(dataSource)) as Effect.Effect<
       never,
@@ -139,7 +157,7 @@ export const fromRequest = <
           )
         })
       })
-  )
+  ))
 
 /** @internal */
 export const cacheRequest = <A extends Request.Request<any, any>>(
