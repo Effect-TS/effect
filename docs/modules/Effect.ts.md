@@ -4654,17 +4654,28 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const request: <
-  A extends Request.Request<any, any>,
-  Ds extends RequestResolver<A, never> | Effect<any, any, RequestResolver<A, never>>
->(
-  request: A,
-  dataSource: Ds
-) => Effect<
-  [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never,
-  Request.Request.Error<A>,
-  Request.Request.Success<A>
->
+export declare const request: {
+  <A extends Request.Request<any, any>>(
+    request: A
+  ): <Ds extends RequestResolver<A, never> | Effect<any, any, RequestResolver<A, never>>>(
+    dataSource: Ds
+  ) => Effect<
+    [Ds] extends [Effect<any, any, any>] ? Context.Context<Ds> : never,
+    Request.Request.Error<A>,
+    Request.Request.Success<A>
+  >
+  <
+    A extends Request.Request<any, any>,
+    Ds extends RequestResolver<A, never> | Effect<any, any, RequestResolver<A, never>>
+  >(
+    request: A,
+    dataSource: Ds
+  ): Effect<
+    [Ds] extends [Effect<any, any, any>] ? Effect.Context<Ds> : never,
+    Request.Request.Error<A>,
+    Request.Request.Success<A>
+  >
+}
 ```
 
 Added in v2.0.0
