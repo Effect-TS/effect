@@ -9,10 +9,9 @@ import { hasProperty } from "../Predicate.js"
 import type * as Request from "../Request.js"
 import type * as RequestBlock from "../RequestBlock.js"
 import type * as RequestResolver from "../RequestResolver.js"
-import type * as Types from "../Types.js"
 
 /** @internal */
-export const empty: RequestBlock.RequestBlock<never> = {
+export const empty: RequestBlock.RequestBlock = {
   _tag: "Empty"
 }
 
@@ -22,10 +21,10 @@ export const empty: RequestBlock.RequestBlock<never> = {
  *
  * @internal
  */
-export const par = <R, R2>(
-  self: RequestBlock.RequestBlock<R>,
-  that: RequestBlock.RequestBlock<R2>
-): RequestBlock.RequestBlock<R | R2> => ({
+export const par = (
+  self: RequestBlock.RequestBlock,
+  that: RequestBlock.RequestBlock
+): RequestBlock.RequestBlock => ({
   _tag: "Par",
   left: self,
   right: that
@@ -37,10 +36,10 @@ export const par = <R, R2>(
  *
  * @internal
  */
-export const seq = <R, R2>(
-  self: RequestBlock.RequestBlock<R>,
-  that: RequestBlock.RequestBlock<R2>
-): RequestBlock.RequestBlock<R | R2> => ({
+export const seq = (
+  self: RequestBlock.RequestBlock,
+  that: RequestBlock.RequestBlock
+): RequestBlock.RequestBlock => ({
   _tag: "Seq",
   left: self,
   right: that
@@ -52,19 +51,19 @@ export const seq = <R, R2>(
  *
  * @internal
  */
-export const single = <R, A>(
-  dataSource: RequestResolver.RequestResolver<A, R>,
+export const single = <A>(
+  dataSource: RequestResolver.RequestResolver<A>,
   blockedRequest: Request.Entry<A>
-): RequestBlock.RequestBlock<R> => ({
+): RequestBlock.RequestBlock => ({
   _tag: "Single",
   dataSource: dataSource as any,
   blockedRequest
 })
 
 /** @internal */
-export const MapRequestResolversReducer = <R, A, R2>(
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
-): RequestBlock.RequestBlock.Reducer<R, RequestBlock.RequestBlock<R | R2>> => ({
+export const MapRequestResolversReducer = <A>(
+  f: (dataSource: RequestResolver.RequestResolver<A>) => RequestResolver.RequestResolver<A>
+): RequestBlock.RequestBlock.Reducer<RequestBlock.RequestBlock> => ({
   emptyCase: () => empty,
   parCase: (left, right) => par(left, right),
   seqCase: (left, right) => seq(left, right),
@@ -88,10 +87,10 @@ interface SeqCase {
  *
  * @internal
  */
-export const mapRequestResolvers = <R, A, R2>(
-  self: RequestBlock.RequestBlock<R>,
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
-): RequestBlock.RequestBlock<R | R2> => reduce(self, MapRequestResolversReducer(f))
+export const mapRequestResolvers = <A>(
+  self: RequestBlock.RequestBlock,
+  f: (dataSource: RequestResolver.RequestResolver<A>) => RequestResolver.RequestResolver<A>
+): RequestBlock.RequestBlock => reduce(self, MapRequestResolversReducer(f))
 
 /**
  * Folds over the cases of this collection of blocked requests with the
@@ -99,14 +98,14 @@ export const mapRequestResolvers = <R, A, R2>(
  *
  * @internal
  */
-export const reduce = <R, Z>(
-  self: RequestBlock.RequestBlock<R>,
-  reducer: RequestBlock.RequestBlock.Reducer<R, Z>
+export const reduce = <Z>(
+  self: RequestBlock.RequestBlock,
+  reducer: RequestBlock.RequestBlock.Reducer<Z>
 ): Z => {
-  let input: List.List<RequestBlock.RequestBlock<R>> = List.of(self)
+  let input: List.List<RequestBlock.RequestBlock> = List.of(self)
   let output = List.empty<Either.Either<BlockedRequestsCase, Z>>()
   while (List.isCons(input)) {
-    const current: RequestBlock.RequestBlock<R> = input.head
+    const current: RequestBlock.RequestBlock = input.head
     switch (current._tag) {
       case "Empty": {
         output = List.cons(Either.right(reducer.emptyCase()), output)
@@ -165,16 +164,16 @@ export const reduce = <R, Z>(
  *
  * @internal
  */
-export const flatten = <R>(
-  self: RequestBlock.RequestBlock<R>
-): List.List<SequentialCollection<R>> => {
+export const flatten = (
+  self: RequestBlock.RequestBlock
+): List.List<SequentialCollection> => {
   let current = List.of(self)
-  let updated = List.empty<SequentialCollection<R>>()
+  let updated = List.empty<SequentialCollection>()
   // eslint-disable-next-line no-constant-condition
   while (1) {
     const [parallel, sequential] = List.reduce(
       current,
-      [parallelCollectionEmpty<R>(), List.empty<RequestBlock.RequestBlock<R>>()] as const,
+      [parallelCollectionEmpty(), List.empty<RequestBlock.RequestBlock>()] as const,
       ([parallel, sequential], blockedRequest) => {
         const [par, seq] = step(blockedRequest)
         return [
@@ -200,13 +199,13 @@ export const flatten = <R>(
  * of blocked requests that must be performed sequentially after those
  * requests.
  */
-const step = <R>(
-  requests: RequestBlock.RequestBlock<R>
-): [ParallelCollection<R>, List.List<RequestBlock.RequestBlock<R>>] => {
-  let current: RequestBlock.RequestBlock<R> = requests
-  let parallel = parallelCollectionEmpty<R>()
-  let stack = List.empty<RequestBlock.RequestBlock<R>>()
-  let sequential = List.empty<RequestBlock.RequestBlock<R>>()
+const step = (
+  requests: RequestBlock.RequestBlock
+): [ParallelCollection, List.List<RequestBlock.RequestBlock>] => {
+  let current: RequestBlock.RequestBlock = requests
+  let parallel = parallelCollectionEmpty()
+  let stack = List.empty<RequestBlock.RequestBlock>()
+  let sequential = List.empty<RequestBlock.RequestBlock>()
   // eslint-disable-next-line no-constant-condition
   while (1) {
     switch (current._tag) {
@@ -276,10 +275,10 @@ const step = <R>(
  * are both from the same single data source then the requests can be
  * pipelined while preserving ordering guarantees.
  */
-const merge = <R>(
-  sequential: List.List<SequentialCollection<R>>,
-  parallel: ParallelCollection<R>
-): List.List<SequentialCollection<R>> => {
+const merge = (
+  sequential: List.List<SequentialCollection>,
+  parallel: ParallelCollection
+): List.List<SequentialCollection> => {
   if (List.isNil(sequential)) {
     return List.of(parallelCollectionToSequentialCollection(parallel))
   }
@@ -356,7 +355,7 @@ const parallelVariance = {
   _R: (_: never) => _
 }
 
-class ParallelImpl<out R> implements ParallelCollection<R> {
+class ParallelImpl implements ParallelCollection {
   readonly [RequestBlockParallelTypeId] = parallelVariance
   constructor(
     readonly map: HashMap.HashMap<
@@ -367,19 +366,19 @@ class ParallelImpl<out R> implements ParallelCollection<R> {
 }
 
 /** @internal */
-export const parallelCollectionEmpty = <R>(): ParallelCollection<R> => new ParallelImpl(HashMap.empty())
+export const parallelCollectionEmpty = (): ParallelCollection => new ParallelImpl(HashMap.empty())
 
 /** @internal */
-export const parallelCollectionMake = <R, A>(
-  dataSource: RequestResolver.RequestResolver<A, R>,
+export const parallelCollectionMake = <A>(
+  dataSource: RequestResolver.RequestResolver<A>,
   blockedRequest: Request.Entry<A>
-): ParallelCollection<R> => new ParallelImpl(HashMap.make([dataSource, Array.of(blockedRequest)]) as any)
+): ParallelCollection => new ParallelImpl(HashMap.make([dataSource, Array.of(blockedRequest)]) as any)
 
 /** @internal */
-export const parallelCollectionCombine = <R, R2>(
-  self: ParallelCollection<R>,
-  that: ParallelCollection<R2>
-): ParallelCollection<R | R2> =>
+export const parallelCollectionCombine = (
+  self: ParallelCollection,
+  that: ParallelCollection
+): ParallelCollection =>
   new ParallelImpl(HashMap.reduce(self.map, that.map, (map, value, key) =>
     HashMap.set(
       map,
@@ -391,17 +390,17 @@ export const parallelCollectionCombine = <R, R2>(
     )))
 
 /** @internal */
-export const parallelCollectionIsEmpty = <R>(self: ParallelCollection<R>): boolean => HashMap.isEmpty(self.map)
+export const parallelCollectionIsEmpty = (self: ParallelCollection): boolean => HashMap.isEmpty(self.map)
 
 /** @internal */
-export const parallelCollectionKeys = <R>(
-  self: ParallelCollection<R>
-): Array<RequestResolver.RequestResolver<unknown, R>> => Array.from(HashMap.keys(self.map)) as any
+export const parallelCollectionKeys = (
+  self: ParallelCollection
+): Array<RequestResolver.RequestResolver<unknown>> => Array.from(HashMap.keys(self.map)) as any
 
 /** @internal */
-export const parallelCollectionToSequentialCollection = <R>(
-  self: ParallelCollection<R>
-): SequentialCollection<R> => sequentialCollectionMake(HashMap.map(self.map, (x) => Array.of(x)) as any)
+export const parallelCollectionToSequentialCollection = (
+  self: ParallelCollection
+): SequentialCollection => sequentialCollectionMake(HashMap.map(self.map, (x) => Array.of(x)) as any)
 
 // TODO
 // /** @internal */
@@ -419,7 +418,7 @@ const sequentialVariance = {
   _R: (_: never) => _
 }
 
-class SequentialImpl<out R> implements SequentialCollection<R> {
+class SequentialImpl implements SequentialCollection {
   readonly [SequentialCollectionTypeId] = sequentialVariance
   constructor(
     readonly map: HashMap.HashMap<
@@ -435,13 +434,13 @@ export const sequentialCollectionMake = <R, A>(
     RequestResolver.RequestResolver<A, R>,
     Array<Array<Request.Entry<A>>>
   >
-): SequentialCollection<R> => new SequentialImpl(map as any)
+): SequentialCollection => new SequentialImpl(map as any)
 
 /** @internal */
-export const sequentialCollectionCombine = <R, R2>(
-  self: SequentialCollection<R>,
-  that: SequentialCollection<R2>
-): SequentialCollection<R | R2> =>
+export const sequentialCollectionCombine = (
+  self: SequentialCollection,
+  that: SequentialCollection
+): SequentialCollection =>
   new SequentialImpl(HashMap.reduce(that.map, self.map, (map, value, key) =>
     HashMap.set(
       map,
@@ -453,24 +452,24 @@ export const sequentialCollectionCombine = <R, R2>(
     )))
 
 /** @internal */
-export const sequentialCollectionIsEmpty = <R>(self: SequentialCollection<R>): boolean => HashMap.isEmpty(self.map)
+export const sequentialCollectionIsEmpty = (self: SequentialCollection): boolean => HashMap.isEmpty(self.map)
 
 /** @internal */
-export const sequentialCollectionKeys = <R>(
-  self: SequentialCollection<R>
-): Array<RequestResolver.RequestResolver<unknown, R>> => Array.from(HashMap.keys(self.map)) as any
+export const sequentialCollectionKeys = (
+  self: SequentialCollection
+): Array<RequestResolver.RequestResolver<unknown>> => Array.from(HashMap.keys(self.map)) as any
 
 /** @internal */
-export const sequentialCollectionToChunk = <R>(
-  self: SequentialCollection<R>
-): Array<[RequestResolver.RequestResolver<unknown, R>, Array<Array<Request.Entry<unknown>>>]> =>
+export const sequentialCollectionToChunk = (
+  self: SequentialCollection
+): Array<[RequestResolver.RequestResolver<unknown>, Array<Array<Request.Entry<unknown>>>]> =>
   Array.from(self.map) as any
 
 /** @internal */
 export type RequestBlockParallelTypeId = typeof RequestBlockParallelTypeId
 
 /** @internal */
-export interface ParallelCollection<out R> extends ParallelCollection.Variance<R> {
+export interface ParallelCollection extends ParallelCollection.Variance {
   readonly map: HashMap.HashMap<
     RequestResolver.RequestResolver<unknown, unknown>,
     Array<Request.Entry<unknown>>
@@ -480,10 +479,8 @@ export interface ParallelCollection<out R> extends ParallelCollection.Variance<R
 /** @internal */
 export declare namespace ParallelCollection {
   /** @internal */
-  export interface Variance<out R> {
-    readonly [RequestBlockParallelTypeId]: {
-      readonly _R: Types.Covariant<R>
-    }
+  export interface Variance {
+    readonly [RequestBlockParallelTypeId]: {}
   }
 }
 
@@ -491,7 +488,7 @@ export declare namespace ParallelCollection {
 export type SequentialCollectionTypeId = typeof SequentialCollectionTypeId
 
 /** @internal */
-export interface SequentialCollection<out R> extends SequentialCollection.Variance<R> {
+export interface SequentialCollection extends SequentialCollection.Variance {
   readonly map: HashMap.HashMap<
     RequestResolver.RequestResolver<unknown, unknown>,
     Array<Array<Request.Entry<unknown>>>
@@ -501,9 +498,7 @@ export interface SequentialCollection<out R> extends SequentialCollection.Varian
 /** @internal */
 export declare namespace SequentialCollection {
   /** @internal */
-  export interface Variance<out R> {
-    readonly [SequentialCollectionTypeId]: {
-      readonly _R: Types.Covariant<R>
-    }
+  export interface Variance {
+    readonly [SequentialCollectionTypeId]: {}
   }
 }

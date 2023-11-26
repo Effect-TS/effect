@@ -27,9 +27,6 @@ Added in v2.0.0
     - [Reducer (interface)](#reducer-interface)
   - [Seq (interface)](#seq-interface)
   - [Single (interface)](#single-interface)
-- [utils](#utils)
-  - [locally](#locally)
-  - [mapInputContext](#mapinputcontext)
 
 ---
 
@@ -40,7 +37,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const empty: RequestBlock<never>
+export declare const empty: RequestBlock
 ```
 
 Added in v2.0.0
@@ -50,10 +47,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const mapRequestResolvers: <R, A, R2>(
-  self: RequestBlock<R>,
-  f: (dataSource: RequestResolver.RequestResolver<A, R>) => RequestResolver.RequestResolver<A, R2>
-) => RequestBlock<R | R2>
+export declare const mapRequestResolvers: <A>(
+  self: RequestBlock,
+  f: (dataSource: RequestResolver.RequestResolver<A, never>) => RequestResolver.RequestResolver<A, never>
+) => RequestBlock
 ```
 
 Added in v2.0.0
@@ -63,7 +60,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const parallel: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2>
+export declare const parallel: (self: RequestBlock, that: RequestBlock) => RequestBlock
 ```
 
 Added in v2.0.0
@@ -73,7 +70,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const reduce: <R, Z>(self: RequestBlock<R>, reducer: RequestBlock.Reducer<R, Z>) => Z
+export declare const reduce: <Z>(self: RequestBlock, reducer: RequestBlock.Reducer<Z>) => Z
 ```
 
 Added in v2.0.0
@@ -83,7 +80,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const sequential: <R, R2>(self: RequestBlock<R>, that: RequestBlock<R2>) => RequestBlock<R | R2>
+export declare const sequential: (self: RequestBlock, that: RequestBlock) => RequestBlock
 ```
 
 Added in v2.0.0
@@ -93,10 +90,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const single: <R, A>(
-  dataSource: RequestResolver.RequestResolver<A, R>,
+export declare const single: <A>(
+  dataSource: RequestResolver.RequestResolver<A, never>,
   blockedRequest: Request.Entry<A>
-) => RequestBlock<R>
+) => RequestBlock
 ```
 
 Added in v2.0.0
@@ -120,10 +117,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Par<out R> {
+export interface Par {
   readonly _tag: "Par"
-  readonly left: RequestBlock<R>
-  readonly right: RequestBlock<R>
+  readonly left: RequestBlock
+  readonly right: RequestBlock
 }
 ```
 
@@ -140,7 +137,7 @@ preserving ordering guarantees.
 **Signature**
 
 ```ts
-export type RequestBlock<R> = Empty | Par<R> | Seq<R> | Single<R>
+export type RequestBlock = Empty | Par | Seq | Single
 ```
 
 Added in v2.0.0
@@ -154,10 +151,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Reducer<in R, in out Z> {
+export interface Reducer<in out Z> {
   emptyCase(): Z
   parCase(left: Z, right: Z): Z
-  singleCase(dataSource: RequestResolver.RequestResolver<unknown, R>, blockedRequest: Request.Entry<unknown>): Z
+  singleCase(dataSource: RequestResolver.RequestResolver<unknown, never>, blockedRequest: Request.Entry<unknown>): Z
   seqCase(left: Z, right: Z): Z
 }
 ```
@@ -169,10 +166,10 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Seq<out R> {
+export interface Seq {
   readonly _tag: "Seq"
-  readonly left: RequestBlock<R>
-  readonly right: RequestBlock<R>
+  readonly left: RequestBlock
+  readonly right: RequestBlock
 }
 ```
 
@@ -183,40 +180,11 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export interface Single<out R> {
+export interface Single {
   readonly _tag: "Single"
-  readonly dataSource: RequestResolver.RequestResolver<unknown, R>
+  readonly dataSource: RequestResolver.RequestResolver<unknown, never>
   readonly blockedRequest: Request.Entry<unknown>
 }
-```
-
-Added in v2.0.0
-
-# utils
-
-## locally
-
-Provides each data source with a fiber ref value.
-
-**Signature**
-
-```ts
-export declare const locally: <R, A>(self: RequestBlock<R>, ref: FiberRef<A>, value: A) => RequestBlock<R>
-```
-
-Added in v2.0.0
-
-## mapInputContext
-
-Provides each data source with part of its required environment.
-
-**Signature**
-
-```ts
-export declare const mapInputContext: <R0, R>(
-  self: RequestBlock<R>,
-  f: (context: Context.Context<R0>) => Context.Context<R>
-) => RequestBlock<R0>
 ```
 
 Added in v2.0.0
