@@ -27,6 +27,14 @@
     "algebraic-data-types",
     "functional-programming"
   ],
+  "effect": {
+    "generateExports": {
+      "include": [
+        "*.ts",
+        "Socket/*.ts"
+      ]
+    }
+  },
   "scripts": {
     "build": "pnpm build-esm && pnpm build-cjs && pnpm build-annotate && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
@@ -45,6 +53,7 @@
   },
   "packageManager": "pnpm@8.6.10",
   "peerDependencies": {
+    "@effect/platform-node": "^0.32.1",
     "@effect/schema": "^0.49.4",
     "effect": "2.0.0-next.56"
   },
@@ -57,12 +66,13 @@
     "@changesets/cli": "^2.26.2",
     "@effect/build-utils": "^0.5.0",
     "@effect/docgen": "^0.3.5",
-    "@effect/dtslint": "^0.0.3",
+    "@effect/dtslint": "^0.0.4",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
+    "@effect/platform-node": "^0.32.2",
     "@effect/schema": "^0.49.4",
-    "@types/chai": "^4.3.10",
-    "@types/node": "^20.9.2",
+    "@types/chai": "^4.3.11",
+    "@types/node": "^20.9.5",
     "@typescript-eslint/eslint-plugin": "^6.12.0",
     "@typescript-eslint/parser": "^6.12.0",
     "@vitejs/plugin-react": "^4.2.0",
@@ -73,7 +83,7 @@
     "error-stack-parser": "^2.1.4",
     "eslint": "^8.54.0",
     "eslint-import-resolver-typescript": "^3.6.1",
-    "eslint-plugin-codegen": "0.18.1",
+    "eslint-plugin-codegen": "0.21.0",
     "eslint-plugin-deprecation": "^2.0.0",
     "eslint-plugin-import": "^2.29.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
@@ -82,8 +92,11 @@
     "madge": "^6.1.0",
     "prettier": "^3.1.0",
     "rimraf": "^5.0.5",
-    "tsx": "^4.1.4",
+    "tsx": "^4.4.0",
     "typescript": "^5.3.2",
     "vitest": "0.34.6"
+  },
+  "dependencies": {
+    "msgpackr": "^1.9.9"
   }
 }

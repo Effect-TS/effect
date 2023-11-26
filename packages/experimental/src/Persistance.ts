@@ -75,7 +75,7 @@ export interface BackingPersistance {
  * @category tags
  */
 export const BackingPersistance: Context.Tag<BackingPersistance, BackingPersistance> = Context.Tag<BackingPersistance>(
-  "@effect/experimental/BackingPersistance"
+  BackingPersistanceTypeId
 )
 
 /**
@@ -104,7 +104,7 @@ export interface SchemaPersistance {
  * @category tags
  */
 export const SchemaPersistance: Context.Tag<SchemaPersistance, SchemaPersistance> = Context.Tag<SchemaPersistance>(
-  "@effect/experimental/SchemaPersistance"
+  SchemaPersistanceTypeId
 )
 
 /**
