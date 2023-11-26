@@ -12,7 +12,6 @@ import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalArgs from "./internal/args.js"
 import type { Primitive } from "./Primitive.js"
-import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
 
@@ -328,15 +327,6 @@ export const repeated: <A>(self: Args<A>) => Args<ReadonlyArray<A>> = InternalAr
  * @category constructors
  */
 export const text: (config?: Args.BaseArgsConfig) => Args<string> = InternalArgs.text
-
-/**
- * Returns a `RegularLanguage` whose accepted language is equivalent to the language accepted by the provided `Args`.
- *
- * @since 1.0.0
- * @category combinators
- */
-export const toRegularLanguage: <A>(self: Args<A>) => RegularLanguage =
-  InternalArgs.toRegularLanguage
 
 /**
  * @since 1.0.0

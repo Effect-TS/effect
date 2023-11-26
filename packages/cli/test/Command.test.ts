@@ -79,7 +79,7 @@ describe("Command", () => {
     it("should handle alternative commands", () =>
       Effect.gen(function*(_) {
         const args = ReadonlyArray.of("log")
-        const command = Command.standard("remote").pipe(Command.orElse(Command.standard("log")))
+        const command = Command.make("remote").pipe(Command.orElse(Command.make("log")))
         const result = yield* _(Command.parse(command, args, CliConfig.defaultConfig))
         const expected = { name: "log", options: void 0, args: void 0 }
         expect(result).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected))
@@ -118,9 +118,9 @@ describe("Command", () => {
   describe("Subcommands without Options or Arguments", () => {
     const options = Options.boolean("verbose").pipe(Options.withAlias("v"))
 
-    const git = Command.standard("git", { options }).pipe(Command.withSubcommands([
-      Command.standard("remote"),
-      Command.standard("log")
+    const git = Command.make("git", { options }).pipe(Command.withSubcommands([
+      Command.make("remote"),
+      Command.make("log")
     ]))
 
     it("should match the top-level command if no subcommands are specified", () =>
@@ -188,8 +188,8 @@ describe("Command", () => {
 
     const args = Args.all([Args.text(), Args.text()])
 
-    const git = Command.standard("git").pipe(Command.withSubcommands([
-      Command.standard("rebase", { options, args })
+    const git = Command.make("git").pipe(Command.withSubcommands([
+      Command.make("rebase", { options, args })
     ]))
 
     it("should parse a subcommand with required options and arguments", () =>
@@ -236,9 +236,9 @@ describe("Command", () => {
   })
 
   describe("Nested Subcommands", () => {
-    const command = Command.standard("command").pipe(Command.withSubcommands([
-      Command.standard("sub").pipe(Command.withSubcommands([
-        Command.standard("subsub", { options: Options.boolean("i"), args: Args.text() })
+    const command = Command.make("command").pipe(Command.withSubcommands([
+      Command.make("sub").pipe(Command.withSubcommands([
+        Command.make("subsub", { options: Options.boolean("i"), args: Args.text() })
       ]))
     ]))
 
@@ -268,7 +268,7 @@ describe("Command", () => {
   describe("Help Documentation", () => {
     it("should allow adding help documentation to a command", () =>
       Effect.gen(function*(_) {
-        const cmd = Command.standard("tldr").pipe(Command.withDescription("this is some help"))
+        const cmd = Command.make("tldr").pipe(Command.withDescription("this is some help"))
         const args = ReadonlyArray.of("tldr")
         const result = yield* _(Command.parse(cmd, args, CliConfig.defaultConfig))
         const expectedValue = { name: "tldr", options: void 0, args: void 0 }
@@ -281,24 +281,24 @@ describe("Command", () => {
       }).pipe(runEffect))
 
     it("should allow adding help documentation to subcommands", () => {
-      const cmd = Command.standard("command").pipe(Command.withSubcommands([
-        Command.standard("sub").pipe(Command.withDescription("this is some help"))
+      const cmd = Command.make("command").pipe(Command.withSubcommands([
+        Command.make("sub").pipe(Command.withDescription("this is some help"))
       ]))
       const expected = HelpDoc.sequence(HelpDoc.h1("DESCRIPTION"), HelpDoc.p("this is some help"))
       expect(Command.getHelp(cmd)).not.toEqual(expected)
     })
 
     it("should correctly display help documentation for a command", () => {
-      const child3 = Command.standard("child3").pipe(Command.withDescription("help 3"))
-      const child2 = Command.standard("child2").pipe(
+      const child3 = Command.make("child3").pipe(Command.withDescription("help 3"))
+      const child2 = Command.make("child2").pipe(
         Command.withDescription("help 2"),
         Command.orElse(child3)
       )
-      const child1 = Command.standard("child1").pipe(
+      const child1 = Command.make("child1").pipe(
         Command.withSubcommands([child2]),
         Command.withDescription("help 1")
       )
-      const parent = Command.standard("parent").pipe(Command.withSubcommands([child1]))
+      const parent = Command.make("parent").pipe(Command.withSubcommands([child1]))
       const result = Render.prettyDefault(
         Doc.unAnnotate(HelpDoc.toAnsiDoc(Command.getHelp(parent)))
       )
@@ -316,17 +316,11 @@ describe("Command", () => {
   })
 
   describe("Built-In Options Processing", () => {
-    const command = Command.standard("command", { options: Options.text("a") })
+    const command = Command.make("command", { options: Options.text("a") })
     const params1 = ReadonlyArray.make("command", "--help")
     const params2 = ReadonlyArray.make("command", "-h")
     const params3 = ReadonlyArray.make("command", "--wizard")
-    const params4 = ReadonlyArray.make(
-      "command",
-      "--shell-completion-index",
-      "1",
-      "--shell-type",
-      "sh"
-    )
+    const params4 = ReadonlyArray.make("command", "--completions", "sh")
     const params5 = ReadonlyArray.make("command", "-a", "--help")
     const params6 = ReadonlyArray.make("command", "--help", "--wizard", "-b")
     const params7 = ReadonlyArray.make("command", "-hdf", "--help")
@@ -342,9 +336,6 @@ describe("Command", () => {
         }
         if (BuiltInOptions.isShowCompletions(directive.option)) {
           return "completions"
-        }
-        if (BuiltInOptions.isShowCompletionScript(directive.option)) {
-          return "script"
         }
       }
       return "user"
@@ -385,12 +376,13 @@ describe("Command", () => {
 
     it("should trigger help even if not alone", () =>
       Effect.gen(function*(_) {
+        const config = CliConfig.make({ finalCheckBuiltIn: true })
         const result1 = yield* _(
-          Command.parse(command, params6, CliConfig.defaultConfig),
+          Command.parse(command, params6, config),
           Effect.map(directiveType)
         )
         const result2 = yield* _(
-          Command.parse(command, params7, CliConfig.defaultConfig),
+          Command.parse(command, params7, config),
           Effect.map(directiveType)
         )
         expect(result1).toBe("help")
@@ -399,8 +391,9 @@ describe("Command", () => {
 
     it("should trigger wizard even if not alone", () =>
       Effect.gen(function*(_) {
+        const config = CliConfig.make({ finalCheckBuiltIn: true })
         const result = yield* _(
-          Command.parse(command, params8, CliConfig.defaultConfig),
+          Command.parse(command, params8, config),
           Effect.map(directiveType)
         )
         expect(result).toBe("wizard")
@@ -408,7 +401,7 @@ describe("Command", () => {
   })
 
   describe("End of Command Options Symbol", () => {
-    const command = Command.standard("cmd", {
+    const command = Command.make("cmd", {
       options: Options.all([
         Options.optional(Options.text("something")),
         Options.boolean("verbose").pipe(Options.withAlias("v"))
@@ -442,6 +435,46 @@ describe("Command", () => {
         expect(result1).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected1))
         expect(result2).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected2))
         expect(result3).toEqual(CommandDirective.userDefined(ReadonlyArray.empty(), expected3))
+      }).pipe(runEffect))
+  })
+
+  describe("Completions", () => {
+    const command = Command.make("forge").pipe(Command.withSubcommands([
+      Command.make("cache", {
+        options: Options.boolean("verbose").pipe(
+          Options.withDescription("Output in verbose mode")
+        )
+      }).pipe(
+        Command.withDescription("The cache command does cache things"),
+        Command.withSubcommands([
+          Command.make("clean"),
+          Command.make("ls")
+        ])
+      )
+    ]))
+
+    it("should create completions for the bash shell", () =>
+      Effect.gen(function*(_) {
+        const result = yield* _(Command.getBashCompletions(command, "forge"))
+        yield* _(
+          Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/bash-completions"))
+        )
+      }).pipe(runEffect))
+
+    it("should create completions for the zsh shell", () =>
+      Effect.gen(function*(_) {
+        const result = yield* _(Command.getZshCompletions(command, "forge"))
+        yield* _(
+          Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/zsh-completions"))
+        )
+      }).pipe(runEffect))
+
+    it("should create completions for the fish shell", () =>
+      Effect.gen(function*(_) {
+        const result = yield* _(Command.getFishCompletions(command, "forge"))
+        yield* _(
+          Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/fish-completions"))
+        )
       }).pipe(runEffect))
   })
 })

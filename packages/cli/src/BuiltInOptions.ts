@@ -7,7 +7,6 @@ import type { Command } from "./Command.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalBuiltInOptions from "./internal/builtInOptions.js"
 import type { Options } from "./Options.js"
-import type { ShellType } from "./ShellType.js"
 import type { Usage } from "./Usage.js"
 
 /**
@@ -16,7 +15,6 @@ import type { Usage } from "./Usage.js"
  */
 export type BuiltInOptions =
   | ShowHelp
-  | ShowCompletionScript
   | ShowCompletions
   | ShowWizard
   | ShowVersion
@@ -35,20 +33,9 @@ export interface ShowHelp {
  * @since 1.0.0
  * @category models
  */
-export interface ShowCompletionScript {
-  readonly _tag: "ShowCompletionScript"
-  readonly pathToExecutable: string
-  readonly shellType: ShellType
-}
-
-/**
- * @since 1.0.0
- * @category models
- */
 export interface ShowCompletions {
   readonly _tag: "ShowCompletions"
-  readonly index: number
-  readonly shellType: ShellType
+  readonly shellType: BuiltInOptions.ShellType
 }
 
 /**
@@ -70,6 +57,17 @@ export interface ShowVersion {
 
 /**
  * @since 1.0.0
+ */
+export declare namespace BuiltInOptions {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ShellType = "bash" | "fish" | "zsh"
+}
+
+/**
+ * @since 1.0.0
  * @category options
  */
 export const builtInOptions: <A>(
@@ -77,13 +75,6 @@ export const builtInOptions: <A>(
   usage: Usage,
   helpDoc: HelpDoc
 ) => Options<Option<BuiltInOptions>> = InternalBuiltInOptions.builtInOptions
-
-/**
- * @since 1.0.0
- * @category refinements
- */
-export const isShowCompletionScript: (self: BuiltInOptions) => self is ShowCompletionScript =
-  InternalBuiltInOptions.isShowCompletionScript
 
 /**
  * @since 1.0.0
@@ -117,17 +108,8 @@ export const isShowVersion: (self: BuiltInOptions) => self is ShowVersion =
  * @since 1.0.0
  * @category constructors
  */
-export const showCompletions: (index: number, shellType: ShellType) => BuiltInOptions =
+export const showCompletions: (shellType: BuiltInOptions.ShellType) => BuiltInOptions =
   InternalBuiltInOptions.showCompletions
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const showCompletionScript: (
-  pathToExecutable: string,
-  shellType: ShellType
-) => BuiltInOptions = InternalBuiltInOptions.showCompletionScript
 
 /**
  * @since 1.0.0

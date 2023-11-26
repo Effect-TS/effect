@@ -12,7 +12,6 @@ import type * as Args from "../Args.js"
 import type * as CliConfig from "../CliConfig.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Primitive from "../Primitive.js"
-import type * as RegularLanguage from "../RegularLanguage.js"
 import type * as Usage from "../Usage.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalHelpDoc from "./helpDoc.js"
@@ -20,7 +19,6 @@ import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalPrimitive from "./primitive.js"
 import * as InternalNumberPrompt from "./prompt/number.js"
 import * as InternalSelectPrompt from "./prompt/select.js"
-import * as InternalRegularLanguage from "./regularLanguage.js"
 import * as InternalUsage from "./usage.js"
 import * as InternalValidationError from "./validationError.js"
 
@@ -307,11 +305,6 @@ export const optional = <A>(self: Args.Args<A>): Args.Args<Option.Option<A>> =>
 /** @internal */
 export const repeated = <A>(self: Args.Args<A>): Args.Args<ReadonlyArray<A>> =>
   makeVariadic(self, Option.none(), Option.none())
-
-/** @internal */
-export const toRegularLanguage = <A>(
-  self: Args.Args<A>
-): RegularLanguage.RegularLanguage => toRegularLanguageInternal(self as Instruction)
 
 /** @internal */
 export const validate = dual<
@@ -602,37 +595,6 @@ const makeVariadic = <A>(
   return op
 }
 
-const toRegularLanguageInternal = (self: Instruction): RegularLanguage.RegularLanguage => {
-  switch (self._tag) {
-    case "Empty": {
-      return InternalRegularLanguage.epsilon
-    }
-    case "Single": {
-      return InternalRegularLanguage.primitive(self.primitiveType)
-    }
-    case "Map": {
-      return toRegularLanguageInternal(self.args as Instruction)
-    }
-    case "Both": {
-      return InternalRegularLanguage.concat(
-        toRegularLanguageInternal(self.left as Instruction),
-        toRegularLanguageInternal(self.right as Instruction)
-      )
-    }
-    case "Variadic": {
-      return InternalRegularLanguage.repeated(toRegularLanguageInternal(self.args as Instruction), {
-        min: Option.getOrUndefined(self.min),
-        max: Option.getOrUndefined(self.max)
-      })
-    }
-    case "WithDefault": {
-      return InternalRegularLanguage.optional(
-        toRegularLanguageInternal(self.args as Instruction)
-      )
-    }
-  }
-}
-
 const validateInternal = (
   self: Instruction,
   args: ReadonlyArray<string>,
@@ -858,6 +820,62 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
             : wizardInternal(self.args as Instruction, config)
         )
       )
+    }
+  }
+}
+
+// =============================================================================
+// Completion Internals
+// =============================================================================
+
+const getShortDescription = (self: Instruction): string => {
+  switch (self._tag) {
+    case "Empty":
+    case "Both": {
+      return ""
+    }
+    case "Single": {
+      return InternalSpan.getText(InternalHelpDoc.getSpan(self.description))
+    }
+    case "Map":
+    case "Variadic":
+    case "WithDefault": {
+      return getShortDescription(self.args as Instruction)
+    }
+  }
+}
+
+/** @internal */
+export const getFishCompletions = (self: Instruction): ReadonlyArray<string> => {
+  switch (self._tag) {
+    case "Empty": {
+      return ReadonlyArray.empty()
+    }
+    case "Single": {
+      const description = getShortDescription(self)
+      return pipe(
+        InternalPrimitive.getFishCompletions(
+          self.primitiveType as InternalPrimitive.Instruction
+        ),
+        ReadonlyArray.appendAll(
+          description.length === 0
+            ? ReadonlyArray.empty()
+            : ReadonlyArray.of(`-d '${description}'`)
+        ),
+        ReadonlyArray.join(" "),
+        ReadonlyArray.of
+      )
+    }
+    case "Both": {
+      return pipe(
+        getFishCompletions(self.left as Instruction),
+        ReadonlyArray.appendAll(getFishCompletions(self.right as Instruction))
+      )
+    }
+    case "Map":
+    case "Variadic":
+    case "WithDefault": {
+      return getFishCompletions(self.args as Instruction)
     }
   }
 }

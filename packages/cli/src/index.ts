@@ -36,16 +36,6 @@ export * as CommandDirective from "./CommandDirective.js"
 /**
  * @since 1.0.0
  */
-export * as Compgen from "./Compgen.js"
-
-/**
- * @since 1.0.0
- */
-export * as Completion from "./Completion.js"
-
-/**
- * @since 1.0.0
- */
 export * as HelpDoc from "./HelpDoc.js"
 
 /**
@@ -72,16 +62,6 @@ export * as Prompt from "./Prompt.js"
  * @since 1.0.0
  */
 export * as Action from "./Prompt/Action.js"
-
-/**
- * @since 1.0.0
- */
-export * as RegularLanguage from "./RegularLanguage.js"
-
-/**
- * @since 1.0.0
- */
-export * as ShellType from "./ShellType.js"
 
 /**
  * @since 1.0.0

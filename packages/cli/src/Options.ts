@@ -13,7 +13,6 @@ import type { CliConfig } from "./CliConfig.js"
 import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalOptions from "./internal/options.js"
 import type { Primitive } from "./Primitive.js"
-import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
 
@@ -397,16 +396,6 @@ export const parse: {
  * @category combinators
  */
 export const repeated: <A>(self: Options<A>) => Options<ReadonlyArray<A>> = InternalOptions.repeated
-
-/**
- * Returns a `RegularLanguage` whose accepted language is equivalent to the
- * language accepted by the provided `Options`.
- *
- * @since 1.0.0
- * @category combinators
- */
-export const toRegularLanguage: <A>(self: Options<A>) => RegularLanguage =
-  InternalOptions.toRegularLanguage
 
 /**
  * Parses the provided command-line arguments looking for the specified options,

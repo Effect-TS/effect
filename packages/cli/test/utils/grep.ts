@@ -15,4 +15,4 @@ export const command: Command.Command<{
   readonly name: "grep"
   readonly options: [number, number]
   readonly args: string
-}> = Command.standard("grep", { options, args })
+}> = Command.make("grep", { options, args })

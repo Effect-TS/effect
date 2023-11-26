@@ -19,4 +19,4 @@ export const command: Command.Command<{
   readonly name: "wc"
   readonly options: [boolean, boolean, boolean, boolean]
   readonly args: ReadonlyArray<string>
-}> = Command.standard("wc", { options, args })
+}> = Command.make("wc", { options, args })

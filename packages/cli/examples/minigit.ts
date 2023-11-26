@@ -38,11 +38,11 @@ const CloneSubcommand = Data.tagged<CloneSubcommand>("CloneSubcommand")
 
 // minigit [--version] [-h | --help] [-c <name>=<value>]
 const minigitOptions = Options.keyValueMap("c").pipe(Options.optional)
-const minigit = Command.standard("minigit", { options: minigitOptions })
+const minigit = Command.make("minigit", { options: minigitOptions })
 
 // minigit add   [-v | --verbose] [--] [<pathspec>...]
 const minigitAddOptions = Options.boolean("verbose").pipe(Options.withAlias("v"))
-const minigitAdd = Command.standard("add", { options: minigitAddOptions }).pipe(
+const minigitAdd = Command.make("add", { options: minigitAddOptions }).pipe(
   Command.map((parsed) => AddSubcommand({ verbose: parsed.options }))
 )
 
@@ -52,7 +52,7 @@ const minigitCloneArgs = Args.all([
   Args.directory().pipe(Args.optional)
 ])
 const minigitCloneOptions = Options.integer("depth").pipe(Options.optional)
-const minigitClone = Command.standard("clone", {
+const minigitClone = Command.make("clone", {
   options: minigitCloneOptions,
   args: minigitCloneArgs
 }).pipe(Command.map((parsed) =>

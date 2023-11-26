@@ -4,22 +4,17 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as Order from "effect/Order"
 import { pipeArguments } from "effect/Pipeable"
 import * as ReadonlyArray from "effect/ReadonlyArray"
-import * as ReadonlyRecord from "effect/ReadonlyRecord"
 import type * as BuiltInOptions from "../BuiltInOptions.js"
 import type * as CliApp from "../CliApp.js"
 import type * as CliConfig from "../CliConfig.js"
 import type * as Command from "../Command.js"
-import type * as Compgen from "../Compgen.js"
 import type * as HelpDoc from "../HelpDoc.js"
 import type * as Span from "../HelpDoc/Span.js"
 import type * as ValidationError from "../ValidationError.js"
 import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalCommand from "./command.js"
-import * as InternalCompgen from "./compgen.js"
-import * as InternalCompletion from "./completion.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalUsage from "./usage.js"
@@ -103,16 +98,11 @@ export const run = dual<
         }
       })
     })
-  }).pipe(Effect.provideServiceEffect(InternalCompgen.Tag, InternalCompgen.make(Option.none()))))
+  }))
 
 // =============================================================================
 // Internals
 // =============================================================================
-
-const getEnv = () =>
-  typeof process !== "undefined" && "env" in process && typeof process.env === "object"
-    ? process.env
-    : {}
 
 const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<never, never, void> =>
   Console.log(InternalHelpDoc.toAnsiText(error))
@@ -122,7 +112,7 @@ const handleBuiltInOption = <A>(
   builtIn: BuiltInOptions.BuiltInOptions,
   config: CliConfig.CliConfig
 ): Effect.Effect<
-  CliApp.CliApp.Environment | Compgen.Compgen | Terminal.Terminal,
+  CliApp.CliApp.Environment | Terminal.Terminal,
   ValidationError.ValidationError,
   void
 > => {
@@ -162,47 +152,30 @@ const handleBuiltInOption = <A>(
       )
       return Console.log(InternalHelpDoc.toAnsiText(helpDoc))
     }
-    case "ShowCompletionScript": {
-      const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
-      const programNames = ReadonlyArray.isNonEmptyReadonlyArray(commandNames)
-        ? commandNames
-        : ReadonlyArray.of(self.name)
-      const script = InternalCompletion.getCompletionScript(
-        builtIn.pathToExecutable,
-        programNames,
-        builtIn.shellType
-      )
-      return Console.log(script)
-    }
     case "ShowCompletions": {
-      return Effect.all([
-        InternalCompgen.Tag,
-        Effect.sync(getEnv)
-      ]).pipe(Effect.flatMap(([compgen, env]) => {
-        const tupleOrder = Order.mapInput(Order.number, (tuple: [number, string]) => tuple[0])
-        const compWords = pipe(
-          env,
-          ReadonlyRecord.collect((key, value) =>
-            key.startsWith("COMP_WORD_") && value !== undefined
-              ? Option.some<[number, string]>([key.replace("COMP_WORD_", "").length, value])
-              : Option.none()
-          ),
-          ReadonlyArray.compact,
-          ReadonlyArray.sortBy(tupleOrder),
-          ReadonlyArray.map(([, value]) => value)
-        )
-        return InternalCompletion.getCompletions(
-          compWords,
-          builtIn.index,
-          self.command,
-          config,
-          compgen
-        ).pipe(
-          Effect.flatMap((completions) =>
-            Effect.forEach(completions, (word) => Console.log(word), { discard: true })
-          )
-        )
-      }))
+      const commandNames = ReadonlyArray.fromIterable(InternalCommand.getNames(self.command))
+      if (ReadonlyArray.isNonEmptyReadonlyArray(commandNames)) {
+        const programName = ReadonlyArray.headNonEmpty(commandNames)
+        switch (builtIn.shellType) {
+          case "bash": {
+            return InternalCommand.getBashCompletions(self.command, programName).pipe(
+              Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
+            )
+          }
+          case "fish": {
+            return InternalCommand.getFishCompletions(self.command, programName).pipe(
+              Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
+            )
+          }
+          case "zsh":
+            return InternalCommand.getZshCompletions(self.command, programName).pipe(
+              Effect.flatMap((completions) => Console.log(ReadonlyArray.join(completions, "\n")))
+            )
+        }
+      }
+      throw new Error(
+        "[BUG]: BuiltInOptions.showCompletions - received empty list of command names"
+      )
     }
     case "ShowWizard": {
       const summary = InternalSpan.isEmpty(self.summary)

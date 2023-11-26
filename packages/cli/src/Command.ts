@@ -17,7 +17,6 @@ import type { HelpDoc } from "./HelpDoc.js"
 import * as InternalCommand from "./internal/command.js"
 import type { Options } from "./Options.js"
 import type { Prompt } from "./Prompt.js"
-import type { RegularLanguage } from "./RegularLanguage.js"
 import type { Usage } from "./Usage.js"
 import type { ValidationError } from "./ValidationError.js"
 
@@ -125,6 +124,33 @@ export const getHelp: <A>(self: Command<A>) => HelpDoc = InternalCommand.getHelp
  * @since 1.0.0
  * @category combinators
  */
+export const getBashCompletions: <A>(
+  self: Command<A>,
+  programName: string
+) => Effect<never, never, ReadonlyArray<string>> = InternalCommand.getBashCompletions
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getFishCompletions: <A>(
+  self: Command<A>,
+  programName: string
+) => Effect<never, never, ReadonlyArray<string>> = InternalCommand.getFishCompletions
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const getZshCompletions: <A>(
+  self: Command<A>,
+  programName: string
+) => Effect<never, never, ReadonlyArray<string>> = InternalCommand.getZshCompletions
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const getNames: <A>(self: Command<A>) => HashSet<string> = InternalCommand.getNames
 
 /**
@@ -207,23 +233,11 @@ export const prompt: <Name extends string, A>(
  * @since 1.0.0
  * @category constructors
  */
-export const standard: <Name extends string, OptionsType = void, ArgsType = void>(
+export const make: <Name extends string, OptionsType = void, ArgsType = void>(
   name: Name,
   config?: Command.ConstructorConfig<OptionsType, ArgsType>
 ) => Command<{ readonly name: Name; readonly options: OptionsType; readonly args: ArgsType }> =
-  InternalCommand.standard
-
-/**
- * Returns a `RegularLanguage` whose accepted language is equivalent to the
- * language accepted by the provided `Command`.
- *
- * @since 1.0.0
- * @category combinators
- */
-export const toRegularLanguage: {
-  (allowAlias: boolean): <A>(self: Command<A>) => RegularLanguage
-  <A>(self: Command<A>, allowAlias: boolean): RegularLanguage
-} = InternalCommand.toRegularLanguage
+  InternalCommand.make
 
 /**
  * @since 1.0.0
