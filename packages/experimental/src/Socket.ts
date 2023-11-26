@@ -5,6 +5,11 @@ import type { Channel } from "effect/Channel"
 import type { Chunk } from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import * as Effect from "effect/Effect"
+import type { Option } from "effect/Option"
+import * as Queue from "effect/Queue"
+import type { Scope } from "effect/Scope"
+import * as Stream from "effect/Stream"
 
 /**
  * @since 1.0.0
@@ -72,3 +77,33 @@ export const SocketPlatform: Context.Tag<SocketPlatform, SocketPlatform> = Conte
  * @category combinators
  */
 export const withInputError = <IE>(self: Socket): Socket<IE> => self as any
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface SocketPull<E, I, O> {
+  readonly write: (element: I) => Effect.Effect<never, never, void>
+  readonly pull: Effect.Effect<never, Option<E>, Chunk<O>>
+}
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const toPull = <E, I, O>(
+  self: Channel<never, never, Chunk<I>, unknown, E, Chunk<O>, unknown>
+): Effect.Effect<Scope, never, SocketPull<E, I, O>> =>
+  Effect.gen(function*(_) {
+    const queue = yield* _(Effect.acquireRelease(
+      Queue.unbounded<I>(),
+      Queue.shutdown
+    ))
+    const write = (element: I) => Queue.offer(queue, element)
+    const pull = yield* _(
+      Stream.fromQueue(queue),
+      Stream.pipeThroughChannel(self),
+      Stream.toPull
+    )
+    return { write, pull }
+  })
