@@ -124,8 +124,6 @@ Added in v2.0.0
   - [provideMerge](#providemerge)
   - [unwrapEffect](#unwrapeffect)
   - [unwrapScoped](#unwrapscoped)
-  - [use](#use)
-  - [useMerge](#usemerge)
 - [zipping](#zipping)
   - [mergeAll](#mergeall)
   - [zipWithPar](#zipwithpar)
@@ -1277,13 +1275,13 @@ well as any leftover inputs, and the outputs of the specified builder.
 
 ```ts
 export declare const provide: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
+  <RIn2, E2, ROut2, RIn, E, ROut>(
+    that: Layer<RIn2, E2, ROut2>,
+    self: Layer<RIn, E, ROut>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
 }
 ```
 
@@ -1299,13 +1297,13 @@ outputs of both layers.
 
 ```ts
 export declare const provideMerge: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
+  <RIn2, E2, ROut2, RIn, E, ROut>(
+    that: Layer<RIn2, E2, ROut2>,
+    self: Layer<RIn, E, ROut>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
 }
 ```
 
@@ -1331,50 +1329,6 @@ Added in v2.0.0
 export declare const unwrapScoped: <R, E, R1, E1, A>(
   self: Effect.Effect<R, E, Layer<R1, E1, A>>
 ) => Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A>
-```
-
-Added in v2.0.0
-
-## use
-
-Feeds the output services of this builder into the input of the specified
-builder, resulting in a new builder with the inputs of this builder as
-well as any leftover inputs, and the outputs of the specified builder.
-
-**Signature**
-
-```ts
-export declare const use: {
-  <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
-  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
-  <RIn2, E2, ROut2, RIn, E, ROut>(
-    that: Layer<RIn2, E2, ROut2>,
-    self: Layer<RIn, E, ROut>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
-}
-```
-
-Added in v2.0.0
-
-## useMerge
-
-Feeds the output services of this layer into the input of the specified
-layer, resulting in a new layer with the inputs of this layer, and the
-outputs of both layers.
-
-**Signature**
-
-```ts
-export declare const useMerge: {
-  <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
-  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
-  <RIn2, E2, ROut2, RIn, E, ROut>(
-    that: Layer<RIn2, E2, ROut2>,
-    self: Layer<RIn, E, ROut>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
-}
 ```
 
 Added in v2.0.0
