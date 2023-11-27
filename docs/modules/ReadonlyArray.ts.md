@@ -1749,7 +1749,7 @@ Added in v2.0.0
 
 ## difference
 
-Creates a `Array` of values not included in the other given `Iterable` using the provided `isEquivalent` function.
+Creates a `Array` of values not included in the other given `Iterable`.
 The order and references of result values are determined by the first `Iterable`.
 
 **Signature**
