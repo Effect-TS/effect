@@ -126,7 +126,7 @@ Added in v2.0.0
   - [unwrapScoped](#unwrapscoped)
 - [zipping](#zipping)
   - [mergeAll](#mergeall)
-  - [zipWithPar](#zipwithpar)
+  - [zipWith](#zipwith)
 
 ---
 
@@ -1353,7 +1353,7 @@ export declare const mergeAll: <Layers extends [Layer<any, any, never>, ...Layer
 
 Added in v2.0.0
 
-## zipWithPar
+## zipWith
 
 Combines this layer the specified layer, producing a new layer that has the
 inputs of both, and the outputs of both combined using the specified
@@ -1362,7 +1362,7 @@ function.
 **Signature**
 
 ```ts
-export declare const zipWithPar: {
+export declare const zipWith: {
   <R2, E2, B, A, C>(
     that: Layer<R2, E2, B>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
