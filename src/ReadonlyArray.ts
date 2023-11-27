@@ -1649,13 +1649,13 @@ export const partitionMap: {
  * @category filtering
  * @since 2.0.0
  */
-export const getSome: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(identity)
+export const getSomes: <A>(self: Iterable<Option<A>>) => Array<A> = filterMap(identity)
 
 /**
  * @category filtering
  * @since 2.0.0
  */
-export const getLeft = <E, A>(self: Iterable<Either<E, A>>): Array<E> => {
+export const getLefts = <E, A>(self: Iterable<Either<E, A>>): Array<E> => {
   const out: Array<E> = []
   for (const a of self) {
     if (E.isLeft(a)) {
@@ -1670,7 +1670,7 @@ export const getLeft = <E, A>(self: Iterable<Either<E, A>>): Array<E> => {
  * @category filtering
  * @since 2.0.0
  */
-export const getRight = <E, A>(self: Iterable<Either<E, A>>): Array<A> => {
+export const getRights = <E, A>(self: Iterable<Either<E, A>>): Array<A> => {
   const out: Array<A> = []
   for (const a of self) {
     if (E.isRight(a)) {

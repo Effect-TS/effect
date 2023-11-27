@@ -203,12 +203,12 @@ describe.concurrent("Stream", () => {
         ),
         Stream.withSpan("span"),
         Stream.runCollect,
-        Effect.map(ReadonlyArray.getSome)
+        Effect.map(ReadonlyArray.getSomes)
       )
       expect(spans.length).toEqual(3)
       expect(pipe(
         ReadonlyArray.map(spans, (s) => s.parent),
-        ReadonlyArray.getSome,
+        ReadonlyArray.getSomes,
         ReadonlyArray.filter((s): s is Tracer.Span => s._tag === "Span"),
         ReadonlyArray.map((s) => s.name)
       )).toEqual(["span", "span", "span"])

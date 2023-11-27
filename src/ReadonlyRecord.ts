@@ -465,18 +465,18 @@ export const filter: {
  * @param self - A record with `Option` values.
  *
  * @example
- * import { getSome } from "effect/ReadonlyRecord"
+ * import { getSomes } from "effect/ReadonlyRecord"
  * import { some, none } from 'effect/Option'
  *
  * assert.deepStrictEqual(
- *   getSome({ a: some(1), b: none(), c: some(2) }),
+ *   getSomes({ a: some(1), b: none(), c: some(2) }),
  *   { a: 1, c: 2 }
  * )
  *
  * @category filtering
  * @since 2.0.0
  */
-export const getSome: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A> = filterMap(
+export const getSomes: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A> = filterMap(
   identity
 )
 
@@ -484,7 +484,7 @@ export const getSome: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<stri
  * @category filtering
  * @since 2.0.0
  */
-export const getLeft = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, E> => {
+export const getLefts = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, E> => {
   const out: Record<string, E> = {}
   for (const key of Object.keys(self)) {
     const value = self[key]
@@ -500,7 +500,7 @@ export const getLeft = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string
  * @category filtering
  * @since 2.0.0
  */
-export const getRight = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, A> => {
+export const getRights = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, A> => {
   const out: Record<string, A> = {}
   for (const key of Object.keys(self)) {
     const value = self[key]

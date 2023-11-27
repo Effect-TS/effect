@@ -52,9 +52,9 @@ Added in v2.0.0
   - [filter](#filter)
   - [filterMap](#filtermap)
   - [filterMapWhile](#filtermapwhile)
-  - [getLeft](#getleft)
-  - [getRight](#getright)
-  - [getSome](#getsome)
+  - [getLefts](#getlefts)
+  - [getRights](#getrights)
+  - [getSomes](#getsomes)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
@@ -675,32 +675,32 @@ export declare const filterMapWhile: {
 
 Added in v2.0.0
 
-## getLeft
+## getLefts
 
 **Signature**
 
 ```ts
-export declare const getLeft: <E, A>(self: Iterable<Either<E, A>>) => E[]
+export declare const getLefts: <E, A>(self: Iterable<Either<E, A>>) => E[]
 ```
 
 Added in v2.0.0
 
-## getRight
+## getRights
 
 **Signature**
 
 ```ts
-export declare const getRight: <E, A>(self: Iterable<Either<E, A>>) => A[]
+export declare const getRights: <E, A>(self: Iterable<Either<E, A>>) => A[]
 ```
 
 Added in v2.0.0
 
-## getSome
+## getSomes
 
 **Signature**
 
 ```ts
-export declare const getSome: <A>(self: Iterable<Option<A>>) => A[]
+export declare const getSomes: <A>(self: Iterable<Option<A>>) => A[]
 ```
 
 Added in v2.0.0

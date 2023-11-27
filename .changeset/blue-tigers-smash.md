@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Added `.getLeft` and `.getRight`
+Added `.getLefts` and `.getRights`
