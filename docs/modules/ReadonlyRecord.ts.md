@@ -243,15 +243,28 @@ Added in v2.0.0
 
 ## getLefts
 
+Given a record with `Either` values, returns a new record containing only the `Left` values, preserving the original keys.
+
 **Signature**
 
 ```ts
 export declare const getLefts: <E, A>(self: ReadonlyRecord<Either<E, A>>) => Record<string, E>
 ```
 
+**Example**
+
+```ts
+import { getLefts } from "effect/ReadonlyRecord"
+import { right, left } from "effect/Either"
+
+assert.deepStrictEqual(getLefts({ a: right(1), b: left("err"), c: right(2) }), { b: "err" })
+```
+
 Added in v2.0.0
 
 ## getRights
+
+Given a record with `Either` values, returns a new record containing only the `Right` values, preserving the original keys.
 
 **Signature**
 
@@ -259,11 +272,20 @@ Added in v2.0.0
 export declare const getRights: <E, A>(self: ReadonlyRecord<Either<E, A>>) => Record<string, A>
 ```
 
+**Example**
+
+```ts
+import { getRights } from "effect/ReadonlyRecord"
+import { right, left } from "effect/Either"
+
+assert.deepStrictEqual(getRights({ a: right(1), b: left("err"), c: right(2) }), { a: 1, c: 2 })
+```
+
 Added in v2.0.0
 
 ## getSomes
 
-Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
+Given a record with `Option` values, returns a new record containing only the `Some` values, preserving the original keys.
 
 **Signature**
 
