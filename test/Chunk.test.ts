@@ -373,15 +373,15 @@ describe.concurrent("Chunk", () => {
     )
   })
 
-  it("prependAllNonEmpty", () => {
-    expect(pipe(Chunk.empty(), Chunk.prependAllNonEmpty(Chunk.make(1)))).toEqual(Chunk.make(1))
-    expect(pipe(Chunk.make(1), Chunk.prependAllNonEmpty(Chunk.empty()))).toEqual(Chunk.make(1))
+  it("prependAll", () => {
+    expect(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1)))).toEqual(Chunk.make(1))
+    expect(pipe(Chunk.make(1), Chunk.prependAll(Chunk.empty()))).toEqual(Chunk.make(1))
 
-    expect(pipe(Chunk.empty(), Chunk.prependAllNonEmpty(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2))
-    expect(pipe(Chunk.make(1, 2), Chunk.prependAllNonEmpty(Chunk.empty()))).toEqual(Chunk.make(1, 2))
+    expect(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2))
+    expect(pipe(Chunk.make(1, 2), Chunk.prependAll(Chunk.empty()))).toEqual(Chunk.make(1, 2))
 
-    expect(pipe(Chunk.make(2, 3), Chunk.prependAllNonEmpty(Chunk.make(1)))).toEqual(Chunk.make(1, 2, 3))
-    expect(pipe(Chunk.make(3), Chunk.prependAllNonEmpty(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2, 3))
+    expect(pipe(Chunk.make(2, 3), Chunk.prependAll(Chunk.make(1)))).toEqual(Chunk.make(1, 2, 3))
+    expect(pipe(Chunk.make(3), Chunk.prependAll(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2, 3))
   })
 
   it("prepend", () => {

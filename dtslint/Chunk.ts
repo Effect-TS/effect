@@ -7,7 +7,6 @@ declare const strings: Chunk.Chunk<string>
 declare const nonEmptyNumbers: Chunk.NonEmptyChunk<number>
 declare const nonEmptyStrings: Chunk.NonEmptyChunk<string>
 declare const numbersOrStrings: Chunk.Chunk<number | string>
-declare const nonEmptyNumbersOrStrings: Chunk.NonEmptyChunk<number | string>
 
 declare const predicateNumbersOrStrings: Predicate.Predicate<number | string>
 
@@ -83,22 +82,6 @@ Chunk.append(numbersOrStrings, true)
 Chunk.append(true)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
-// appendAllNonEmpty
-// -------------------------------------------------------------------------------------
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.appendAllNonEmpty(numbersOrStrings, nonEmptyNumbersOrStrings)
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.appendAllNonEmpty(numbersOrStrings)(nonEmptyNumbersOrStrings)
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.appendAllNonEmpty(nonEmptyNumbersOrStrings, numbersOrStrings)
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.appendAllNonEmpty(nonEmptyNumbersOrStrings)(numbersOrStrings)
-
-// -------------------------------------------------------------------------------------
 // prepend
 // -------------------------------------------------------------------------------------
 
@@ -113,16 +96,26 @@ Chunk.prepend(true)(numbersOrStrings)
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Chunk<number>
-Chunk.map(numbers, (n) => n + 1)
+Chunk.map(numbers, (n, _i // $ExpectType Chunk<number>
+) => n + 1)
 
 // $ExpectType Chunk<number>
-pipe(numbers, Chunk.map((n) => n + 1))
+pipe(
+  numbers,
+  Chunk.map((n, _i // $ExpectType Chunk<number>
+  ) => n + 1)
+)
 
 // $ExpectType NonEmptyChunk<number>
-Chunk.map(nonEmptyNumbers, (n) => n + 1)
+Chunk.map(nonEmptyNumbers, (n, _i // $ExpectType Chunk<number>
+) => n + 1)
 
 // $ExpectType NonEmptyChunk<number>
-pipe(nonEmptyNumbers, Chunk.map((n) => n + 1))
+pipe(
+  nonEmptyNumbers,
+  Chunk.map((n, _i // $ExpectType Chunk<number>
+  ) => n + 1)
+)
 
 // -------------------------------------------------------------------------------------
 // filter
@@ -325,3 +318,31 @@ Chunk.prependAll(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType NonEmptyChunk<string | number>
 pipe(nonEmptyStrings, Chunk.prependAll(nonEmptyNumbers))
+
+// -------------------------------------------------------------------------------------
+// appendAll
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Chunk<string | number>
+Chunk.appendAll(strings, numbers)
+
+// $ExpectType Chunk<string | number>
+pipe(strings, Chunk.appendAll(numbers))
+
+// $ExpectType NonEmptyChunk<string | number>
+Chunk.appendAll(nonEmptyStrings, numbers)
+
+// $ExpectType NonEmptyChunk<string | number>
+pipe(nonEmptyStrings, Chunk.appendAll(numbers))
+
+// $ExpectType NonEmptyChunk<string | number>
+Chunk.appendAll(strings, nonEmptyNumbers)
+
+// $ExpectType NonEmptyChunk<string | number>
+pipe(strings, Chunk.appendAll(nonEmptyNumbers))
+
+// $ExpectType NonEmptyChunk<string | number>
+Chunk.appendAll(nonEmptyStrings, nonEmptyNumbers)
+
+// $ExpectType NonEmptyChunk<string | number>
+pipe(nonEmptyStrings, Chunk.appendAll(nonEmptyNumbers))
