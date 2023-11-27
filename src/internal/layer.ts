@@ -678,17 +678,17 @@ export const memoize = <RIn, E, ROut>(
 export const merge = dual<
   <RIn2, E2, ROut2>(
     that: Layer.Layer<RIn2, E2, ROut2>
-  ) => <RIn, E, ROut>(self: Layer.Layer<RIn, E, ROut>) => Layer.Layer<
+  ) => <RIn, E1, ROut>(self: Layer.Layer<RIn, E1, ROut>) => Layer.Layer<
     RIn | RIn2,
-    E | E2,
+    E1 | E2,
     ROut | ROut2
   >,
-  <RIn, E, ROut, RIn2, E2, ROut2>(self: Layer.Layer<RIn, E, ROut>, that: Layer.Layer<RIn2, E2, ROut2>) => Layer.Layer<
+  <RIn, E1, ROut, RIn2, E2, ROut2>(self: Layer.Layer<RIn, E1, ROut>, that: Layer.Layer<RIn2, E2, ROut2>) => Layer.Layer<
     RIn | RIn2,
-    E | E2,
+    E1 | E2,
     ROut | ROut2
   >
->(2, (self, that) => zipWith(self, that, (a, b) => pipe(a, Context.merge(b))))
+>(2, (self, that) => zipWith(self, that, (a, b) => Context.merge(a, b)))
 
 /** @internal */
 export const mergeAll = <Layers extends [Layer.Layer<any, any, never>, ...Array<Layer.Layer<any, any, never>>]>(
@@ -700,7 +700,7 @@ export const mergeAll = <Layers extends [Layer.Layer<any, any, never>, ...Array<
 > => {
   let final = layers[0]
   for (let i = 1; i < layers.length; i++) {
-    final = merge(layers[i])(final)
+    final = merge(final, layers[i])
   }
   return final as any
 }
