@@ -120,7 +120,10 @@ export const getChildren = (id: number) => Effect.request(GetParentChildren({ id
 export const getChildInfo = (id: number) => Effect.request(GetChildInfo({ id }), AllResolver)
 export const getChildExtra = (id: number) => Effect.request(GetChildExtra({ id }), AllResolver)
 
-const EnvLive = Layer.provideMerge(
+const EnvLive = Layer.mergeAll(
+  Layer.sync(Counter, () => ({ count: 0 })),
+  Layer.sync(Requests, () => ({ count: 0 }))
+).pipe(Layer.provideMerge(
   Layer.mergeAll(
     Layer.setRequestCache(Request.makeCache({
       capacity: 100,
@@ -128,12 +131,8 @@ const EnvLive = Layer.provideMerge(
     })),
     Layer.setRequestCaching(true),
     Layer.setRequestBatching(true)
-  ),
-  Layer.mergeAll(
-    Layer.sync(Counter, () => ({ count: 0 })),
-    Layer.sync(Requests, () => ({ count: 0 }))
   )
-)
+))
 
 describe.concurrent("Effect", () => {
   it.effect("nested queries are batched", () =>

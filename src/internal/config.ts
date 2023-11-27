@@ -164,7 +164,7 @@ export const boolean = (name?: string): Config.Config<boolean> => {
         default: {
           const error = configError.InvalidData(
             [],
-            `Expected a boolean value, but received ${text}`
+            `Expected a boolean value but received ${text}`
           )
           return Either.left(error)
         }
@@ -194,7 +194,7 @@ export const date = (name?: string): Config.Config<Date> => {
         return Either.left(
           configError.InvalidData(
             [],
-            `Expected a date value but received ${text}`
+            `Expected a Date value but received ${text}`
           )
         )
       }
@@ -223,7 +223,7 @@ export const number = (name?: string): Config.Config<number> => {
         return Either.left(
           configError.InvalidData(
             [],
-            `Expected an number value but received ${text}`
+            `Expected a number value but received ${text}`
           )
         )
       }
@@ -259,7 +259,7 @@ export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
     const label = value.toUpperCase()
     const level = core.allLogLevels.find((level) => level.label === label)
     return level === undefined
-      ? Either.left(configError.InvalidData([], `Expected a log level, but found: ${value}`))
+      ? Either.left(configError.InvalidData([], `Expected a log level but received ${value}`))
       : Either.right(level)
   })
   return name === undefined ? config : nested(config, name)

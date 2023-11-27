@@ -914,6 +914,7 @@ export const sortByNonEmpty = <B>(
  * If one input `Iterable` is short, excess elements of the
  * longer `Iterable` are discarded.
  *
+ * @category zipping
  * @since 2.0.0
  */
 export const zip: {
@@ -928,6 +929,7 @@ export const zip: {
  * Apply a function to pairs of elements at the same index in two `Iterable`s, collecting the results in a new `Array`. If one
  * input `Iterable` is short, excess elements of the longer `Iterable` are discarded.
  *
+ * @category zipping
  * @since 2.0.0
  */
 export const zipWith: {
@@ -940,6 +942,7 @@ export const zipWith: {
 })
 
 /**
+ * @category zipping
  * @since 2.0.0
  */
 export const zipNonEmpty: {
@@ -952,6 +955,7 @@ export const zipNonEmpty: {
 )
 
 /**
+ * @category zipping
  * @since 2.0.0
  */
 export const zipNonEmptyWith: {
@@ -1477,7 +1481,7 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
 }
 
 /**
- * Creates a `Array` of values not included in the other given `Iterable` using the provided `isEquivalent` function.
+ * Creates a `Array` of values not included in the other given `Iterable`.
  * The order and references of result values are determined by the first `Iterable`.
  *
  * @since 2.0.0
@@ -1773,7 +1777,7 @@ export const liftNullable = <A extends Array<unknown>, B>(
 (...a) => fromNullable(f(...a))
 
 /**
- * @category combining
+ * @category sequencing
  * @since 2.0.0
  */
 export const flatMapNullable: {

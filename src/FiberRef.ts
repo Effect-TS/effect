@@ -275,6 +275,12 @@ export const updateSomeAndGet: {
  * @since 2.0.0
  * @category fiberRefs
  */
+export const currentConcurrency: FiberRef<number | "unbounded"> = core.currentConcurrency
+
+/**
+ * @since 2.0.0
+ * @category fiberRefs
+ */
 export const currentRequestBatchingEnabled: FiberRef<boolean> = core.currentRequestBatching
 
 /**

@@ -482,7 +482,8 @@ export const taggedWithLabels: {
  * @category constructors
  */
 export const timer: (
-  name: string
+  name: string,
+  description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram> =
   internal.timer
 
@@ -497,7 +498,8 @@ export const timer: (
  */
 export const timerWithBoundaries: (
   name: string,
-  boundaries: Chunk.Chunk<number>
+  boundaries: Chunk.Chunk<number>,
+  description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram> =
   internal.timerWithBoundaries
 

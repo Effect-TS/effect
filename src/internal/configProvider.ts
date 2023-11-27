@@ -610,8 +610,10 @@ const parsePrimitive = <A>(
   if (!split) {
     return pipe(
       primitive.parse(text),
-      core.map(RA.of),
-      core.mapError(configError.prefixed(path))
+      core.mapBoth({
+        onFailure: configError.prefixed(path),
+        onSuccess: RA.of
+      })
     )
   }
   return pipe(

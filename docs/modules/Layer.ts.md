@@ -117,18 +117,16 @@ Added in v2.0.0
   - [locallyScoped](#locallyscoped)
   - [locallyWith](#locallywith)
   - [memoize](#memoize)
-  - [merge](#merge)
   - [passthrough](#passthrough)
   - [project](#project)
   - [provide](#provide)
   - [provideMerge](#providemerge)
   - [unwrapEffect](#unwrapeffect)
   - [unwrapScoped](#unwrapscoped)
-  - [use](#use)
-  - [useMerge](#usemerge)
 - [zipping](#zipping)
+  - [merge](#merge)
   - [mergeAll](#mergeall)
-  - [zipWithPar](#zipwithpar)
+  - [zipWith](#zipwith)
 
 ---
 
@@ -1208,27 +1206,6 @@ export declare const memoize: <RIn, E, ROut>(
 
 Added in v2.0.0
 
-## merge
-
-Combines this layer with the specified layer, producing a new layer that
-has the inputs and outputs of both.
-
-**Signature**
-
-```ts
-export declare const merge: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | RIn2, E | E2, ROut | ROut2>
-}
-```
-
-Added in v2.0.0
-
 ## passthrough
 
 Returns a new layer that produces the outputs of this layer but also
@@ -1277,13 +1254,13 @@ well as any leftover inputs, and the outputs of the specified builder.
 
 ```ts
 export declare const provide: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
+  <RIn2, E2, ROut2, RIn, E, ROut>(
+    that: Layer<RIn2, E2, ROut2>,
+    self: Layer<RIn, E, ROut>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
 }
 ```
 
@@ -1299,13 +1276,13 @@ outputs of both layers.
 
 ```ts
 export declare const provideMerge: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
+  <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
+  <RIn2, E2, ROut2, RIn, E, ROut>(
+    that: Layer<RIn2, E2, ROut2>,
+    self: Layer<RIn, E, ROut>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
 }
 ```
 
@@ -1335,55 +1312,31 @@ export declare const unwrapScoped: <R, E, R1, E1, A>(
 
 Added in v2.0.0
 
-## use
-
-Feeds the output services of this builder into the input of the specified
-builder, resulting in a new builder with the inputs of this builder as
-well as any leftover inputs, and the outputs of the specified builder.
-
-**Signature**
-
-```ts
-export declare const use: {
-  <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
-  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
-  <RIn2, E2, ROut2, RIn, E, ROut>(
-    that: Layer<RIn2, E2, ROut2>,
-    self: Layer<RIn, E, ROut>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
-}
-```
-
-Added in v2.0.0
-
-## useMerge
-
-Feeds the output services of this layer into the input of the specified
-layer, resulting in a new layer with the inputs of this layer, and the
-outputs of both layers.
-
-**Signature**
-
-```ts
-export declare const useMerge: {
-  <RIn, E, ROut>(
-    self: Layer<RIn, E, ROut>
-  ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
-  <RIn2, E2, ROut2, RIn, E, ROut>(
-    that: Layer<RIn2, E2, ROut2>,
-    self: Layer<RIn, E, ROut>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
-}
-```
-
-Added in v2.0.0
-
 # zipping
+
+## merge
+
+Merges this layer with the specified layer concurrently, producing a new layer with combined input and output types.
+
+**Signature**
+
+```ts
+export declare const merge: {
+  <RIn2, E2, ROut2>(
+    that: Layer<RIn2, E2, ROut2>
+  ): <RIn, E1, ROut>(self: Layer<RIn, E1, ROut>) => Layer<RIn2 | RIn, E2 | E1, ROut2 | ROut>
+  <RIn, E1, ROut, RIn2, E2, ROut2>(
+    self: Layer<RIn, E1, ROut>,
+    that: Layer<RIn2, E2, ROut2>
+  ): Layer<RIn | RIn2, E1 | E2, ROut | ROut2>
+}
+```
+
+Added in v2.0.0
 
 ## mergeAll
 
-Merges all the layers together in parallel.
+Combines all the provided layers concurrently, creating a new layer with merged input, error, and output types.
 
 **Signature**
 
@@ -1399,16 +1352,15 @@ export declare const mergeAll: <Layers extends [Layer<any, any, never>, ...Layer
 
 Added in v2.0.0
 
-## zipWithPar
+## zipWith
 
-Combines this layer the specified layer, producing a new layer that has the
-inputs of both, and the outputs of both combined using the specified
-function.
+Combines this layer with the specified layer concurrently, creating a new layer with merged input types and
+combined output types using the provided function.
 
 **Signature**
 
 ```ts
-export declare const zipWithPar: {
+export declare const zipWith: {
   <R2, E2, B, A, C>(
     that: Layer<R2, E2, B>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>

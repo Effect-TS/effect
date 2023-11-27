@@ -31,6 +31,8 @@ Added in v2.0.0
   - [suspend](#suspend)
   - [sync](#sync)
   - [unwrap](#unwrap)
+- [mapping](#mapping)
+  - [map](#map)
 - [models](#models)
   - [Config (interface)](#config-interface)
 - [refinements](#refinements)
@@ -43,7 +45,6 @@ Added in v2.0.0
     - [Primitive (interface)](#primitive-interface)
     - [Variance (interface)](#variance-interface)
     - [Wrap (type alias)](#wrap-type-alias)
-  - [map](#map)
   - [mapAttempt](#mapattempt)
   - [mapOrFail](#maporfail)
   - [nested](#nested)
@@ -54,6 +55,7 @@ Added in v2.0.0
   - [validate](#validate)
   - [withDefault](#withdefault)
   - [withDescription](#withdescription)
+- [zipping](#zipping)
   - [zip](#zip)
   - [zipWith](#zipwith)
 
@@ -300,6 +302,24 @@ export declare const unwrap: <A>(wrapped: Config.Wrap<A>) => Config<A>
 
 Added in v2.0.0
 
+# mapping
+
+## map
+
+Returns a config whose structure is the same as this one, but which produces
+a different value, constructed using the specified function.
+
+**Signature**
+
+```ts
+export declare const map: {
+  <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
+}
+```
+
+Added in v2.0.0
+
 # models
 
 ## Config (interface)
@@ -407,22 +427,6 @@ export type Wrap<A> =
         }
       : never)
   | Config<A>
-```
-
-Added in v2.0.0
-
-## map
-
-Returns a config whose structure is the same as this one, but which produces
-a different value, constructed using the specified function.
-
-**Signature**
-
-```ts
-export declare const map: {
-  <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
-  <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
-}
 ```
 
 Added in v2.0.0
@@ -597,6 +601,8 @@ export declare const withDescription: {
 ```
 
 Added in v2.0.0
+
+# zipping
 
 ## zip
 

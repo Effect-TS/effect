@@ -582,8 +582,8 @@ export const andThen: {
 )
 
 /**
+ * @category zipping
  * @since 2.0.0
- * @category combining
  */
 export const zipWith: {
   <E2, A2, A, B>(

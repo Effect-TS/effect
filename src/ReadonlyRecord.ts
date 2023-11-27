@@ -370,6 +370,7 @@ export const pop: {
  *
  * assert.deepStrictEqual(map({ a: 3, b: 5 }, g), { a: "A-3", b: "B-5" })
  *
+ * @category mapping
  * @since 2.0.0
  */
 export const map: {

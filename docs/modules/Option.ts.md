@@ -17,7 +17,6 @@ Added in v2.0.0
   - [ap](#ap)
   - [product](#product)
   - [productMany](#productmany)
-  - [zipWith](#zipwith)
 - [constructors](#constructors)
   - [none](#none)
   - [some](#some)
@@ -65,6 +64,10 @@ Added in v2.0.0
 - [lifting](#lifting)
   - [lift2](#lift2)
   - [liftPredicate](#liftpredicate)
+- [mapping](#mapping)
+  - [as](#as)
+  - [asUnit](#asunit)
+  - [map](#map)
 - [models](#models)
   - [None (interface)](#none-interface)
   - [Option (type alias)](#option-type-alias)
@@ -73,27 +76,27 @@ Added in v2.0.0
   - [Some (interface)](#some-interface)
 - [pattern matching](#pattern-matching)
   - [match](#match)
+- [sequencing](#sequencing)
+  - [andThen](#andthen)
+  - [composeK](#composek)
+  - [flatMap](#flatmap)
+  - [flatMapNullable](#flatmapnullable)
+  - [flatten](#flatten)
+  - [tap](#tap)
 - [sorting](#sorting)
   - [getOrder](#getorder)
 - [symbols](#symbols)
   - [TypeId](#typeid)
   - [TypeId (type alias)](#typeid-type-alias)
-- [transforming](#transforming)
-  - [as](#as)
-  - [asUnit](#asunit)
-  - [composeK](#composek)
-  - [flatMap](#flatmap)
-  - [flatMapNullable](#flatmapnullable)
-  - [flatten](#flatten)
-  - [map](#map)
-  - [tap](#tap)
-  - [zipLeft](#zipleft)
-  - [zipRight](#zipright)
 - [type lambdas](#type-lambdas)
   - [OptionTypeLambda (interface)](#optiontypelambda-interface)
 - [utils](#utils)
   - [exists](#exists)
   - [unit](#unit)
+- [zipping](#zipping)
+  - [zipLeft](#zipleft)
+  - [zipRight](#zipright)
+  - [zipWith](#zipwith)
 
 ---
 
@@ -160,38 +163,6 @@ Added in v2.0.0
 
 ```ts
 export declare const productMany: <A>(self: Option<A>, collection: Iterable<Option<A>>) => Option<[A, ...A[]]>
-```
-
-Added in v2.0.0
-
-## zipWith
-
-Zips two `Option` values together using a provided function, returning a new `Option` of the result.
-
-**Signature**
-
-```ts
-export declare const zipWith: {
-  <B, A, C>(that: Option<B>, f: (a: A, b: B) => C): (self: Option<A>) => Option<C>
-  <A, B, C>(self: Option<A>, that: Option<B>, f: (a: A, b: B) => C): Option<C>
-}
-```
-
-**Example**
-
-```ts
-import * as O from "effect/Option"
-
-type Complex = [real: number, imaginary: number]
-
-const complex = (real: number, imaginary: number): Complex => [real, imaginary]
-
-assert.deepStrictEqual(O.zipWith(O.none(), O.none(), complex), O.none())
-assert.deepStrictEqual(O.zipWith(O.some(1), O.none(), complex), O.none())
-assert.deepStrictEqual(O.zipWith(O.none(), O.some(1), complex), O.none())
-assert.deepStrictEqual(O.zipWith(O.some(1), O.some(2), complex), O.some([1, 2]))
-
-assert.deepStrictEqual(O.zipWith(O.some(1), complex)(O.some(2)), O.some([2, 1]))
 ```
 
 Added in v2.0.0
@@ -1013,6 +984,49 @@ assert.deepStrictEqual(getOption(1), O.some(1))
 
 Added in v2.0.0
 
+# mapping
+
+## as
+
+Maps the `Some` value of this `Option` to the specified constant value.
+
+**Signature**
+
+```ts
+export declare const as: <B>(b: B) => <_>(self: Option<_>) => Option<B>
+```
+
+Added in v2.0.0
+
+## asUnit
+
+Maps the `Some` value of this `Option` to the `void` constant value.
+
+This is useful when the value of the `Option` is not needed, but the presence or absence of the value is important.
+
+**Signature**
+
+```ts
+export declare const asUnit: <_>(self: Option<_>) => Option<void>
+```
+
+Added in v2.0.0
+
+## map
+
+Maps the `Some` side of an `Option` value to a new `Option` value.
+
+**Signature**
+
+```ts
+export declare const map: {
+  <A, B>(f: (a: A) => B): (self: Option<A>) => Option<B>
+  <A, B>(self: Option<A>, f: (a: A) => B): Option<B>
+}
+```
+
+Added in v2.0.0
+
 # models
 
 ## None (interface)
@@ -1121,85 +1135,21 @@ assert.deepStrictEqual(
 
 Added in v2.0.0
 
-# sorting
+# sequencing
 
-## getOrder
+## andThen
 
-The `Order` instance allows `Option` values to be compared with
-`compare`, whenever there is an `Order` instance for
-the type the `Option` contains.
-
-`None` is considered to be less than any `Some` value.
+Executes a sequence of two `Option`s. The second `Option` can be dependent on the result of the first `Option`.
 
 **Signature**
 
 ```ts
-export declare const getOrder: <A>(O: Order<A>) => Order<Option<A>>
-```
-
-**Example**
-
-```ts
-import { none, some, getOrder } from "effect/Option"
-import * as N from "effect/Number"
-import { pipe } from "effect/Function"
-
-const O = getOrder(N.Order)
-assert.deepStrictEqual(O(none(), none()), 0)
-assert.deepStrictEqual(O(none(), some(1)), -1)
-assert.deepStrictEqual(O(some(1), none()), 1)
-assert.deepStrictEqual(O(some(1), some(2)), -1)
-assert.deepStrictEqual(O(some(1), some(1)), 0)
-```
-
-Added in v2.0.0
-
-# symbols
-
-## TypeId
-
-**Signature**
-
-```ts
-export declare const TypeId: typeof TypeId
-```
-
-Added in v2.0.0
-
-## TypeId (type alias)
-
-**Signature**
-
-```ts
-export type TypeId = typeof TypeId
-```
-
-Added in v2.0.0
-
-# transforming
-
-## as
-
-Maps the `Some` value of this `Option` to the specified constant value.
-
-**Signature**
-
-```ts
-export declare const as: <B>(b: B) => <_>(self: Option<_>) => Option<B>
-```
-
-Added in v2.0.0
-
-## asUnit
-
-Maps the `Some` value of this `Option` to the `void` constant value.
-
-This is useful when the value of the `Option` is not needed, but the presence or absence of the value is important.
-
-**Signature**
-
-```ts
-export declare const asUnit: <_>(self: Option<_>) => Option<void>
+export declare const andThen: {
+  <A, B>(f: (a: A) => Option<B>): (self: Option<A>) => Option<B>
+  <B>(f: Option<B>): <A>(self: Option<A>) => Option<B>
+  <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B>
+  <A, B>(self: Option<A>, f: Option<B>): Option<B>
+}
 ```
 
 Added in v2.0.0
@@ -1294,21 +1244,6 @@ export declare const flatten: <A>(self: Option<Option<A>>) => Option<A>
 
 Added in v2.0.0
 
-## map
-
-Maps the `Some` side of an `Option` value to a new `Option` value.
-
-**Signature**
-
-```ts
-export declare const map: {
-  <A, B>(f: (a: A) => B): (self: Option<A>) => Option<B>
-  <A, B>(self: Option<A>, f: (a: A) => B): Option<B>
-}
-```
-
-Added in v2.0.0
-
 ## tap
 
 Applies the provided function `f` to the value of the `Option` if it is `Some` and returns the original `Option`
@@ -1339,32 +1274,57 @@ assert.deepStrictEqual(O.tap(O.some(1.14), getInteger), O.none())
 
 Added in v2.0.0
 
-## zipLeft
+# sorting
 
-Sequences the specified `that` `Option` but ignores its value.
+## getOrder
 
-It is useful when we want to chain multiple operations, but only care about the result of `self`.
+The `Order` instance allows `Option` values to be compared with
+`compare`, whenever there is an `Order` instance for
+the type the `Option` contains.
+
+`None` is considered to be less than any `Some` value.
 
 **Signature**
 
 ```ts
-export declare const zipLeft: {
-  <_>(that: Option<_>): <A>(self: Option<A>) => Option<A>
-  <A, _>(self: Option<A>, that: Option<_>): Option<A>
-}
+export declare const getOrder: <A>(O: Order<A>) => Order<Option<A>>
+```
+
+**Example**
+
+```ts
+import { none, some, getOrder } from "effect/Option"
+import * as N from "effect/Number"
+import { pipe } from "effect/Function"
+
+const O = getOrder(N.Order)
+assert.deepStrictEqual(O(none(), none()), 0)
+assert.deepStrictEqual(O(none(), some(1)), -1)
+assert.deepStrictEqual(O(some(1), none()), 1)
+assert.deepStrictEqual(O(some(1), some(2)), -1)
+assert.deepStrictEqual(O(some(1), some(1)), 0)
 ```
 
 Added in v2.0.0
 
-## zipRight
+# symbols
+
+## TypeId
 
 **Signature**
 
 ```ts
-export declare const zipRight: {
-  <B>(that: Option<B>): <_>(self: Option<_>) => Option<B>
-  <_, B>(self: Option<_>, that: Option<B>): Option<B>
-}
+export declare const TypeId: typeof TypeId
+```
+
+Added in v2.0.0
+
+## TypeId (type alias)
+
+**Signature**
+
+```ts
+export type TypeId = typeof TypeId
 ```
 
 Added in v2.0.0
@@ -1421,6 +1381,70 @@ Added in v2.0.0
 
 ```ts
 export declare const unit: Option<void>
+```
+
+Added in v2.0.0
+
+# zipping
+
+## zipLeft
+
+Sequences the specified `that` `Option` but ignores its value.
+
+It is useful when we want to chain multiple operations, but only care about the result of `self`.
+
+**Signature**
+
+```ts
+export declare const zipLeft: {
+  <_>(that: Option<_>): <A>(self: Option<A>) => Option<A>
+  <A, _>(self: Option<A>, that: Option<_>): Option<A>
+}
+```
+
+Added in v2.0.0
+
+## zipRight
+
+**Signature**
+
+```ts
+export declare const zipRight: {
+  <B>(that: Option<B>): <_>(self: Option<_>) => Option<B>
+  <_, B>(self: Option<_>, that: Option<B>): Option<B>
+}
+```
+
+Added in v2.0.0
+
+## zipWith
+
+Zips two `Option` values together using a provided function, returning a new `Option` of the result.
+
+**Signature**
+
+```ts
+export declare const zipWith: {
+  <B, A, C>(that: Option<B>, f: (a: A, b: B) => C): (self: Option<A>) => Option<C>
+  <A, B, C>(self: Option<A>, that: Option<B>, f: (a: A, b: B) => C): Option<C>
+}
+```
+
+**Example**
+
+```ts
+import * as O from "effect/Option"
+
+type Complex = [real: number, imaginary: number]
+
+const complex = (real: number, imaginary: number): Complex => [real, imaginary]
+
+assert.deepStrictEqual(O.zipWith(O.none(), O.none(), complex), O.none())
+assert.deepStrictEqual(O.zipWith(O.some(1), O.none(), complex), O.none())
+assert.deepStrictEqual(O.zipWith(O.none(), O.some(1), complex), O.none())
+assert.deepStrictEqual(O.zipWith(O.some(1), O.some(2), complex), O.some([1, 2]))
+
+assert.deepStrictEqual(O.zipWith(O.some(1), complex)(O.some(2)), O.some([2, 1]))
 ```
 
 Added in v2.0.0
