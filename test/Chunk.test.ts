@@ -818,10 +818,6 @@ describe.concurrent("Chunk", () => {
     expect(Chunk.flatten(Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3)))).toEqual(Chunk.make(1, 2, 3))
   })
 
-  it("flattenNonEmpty", () => {
-    expect(Chunk.flattenNonEmpty(Chunk.make(Chunk.make(1, 2), Chunk.make(3, 4)))).toEqual(Chunk.make(1, 2, 3, 4))
-  })
-
   it("makeBy", () => {
     expect(Chunk.makeBy(5, (n) => n * 2)).toEqual(Chunk.make(0, 2, 4, 6, 8))
     expect(Chunk.makeBy(2.2, (n) => n * 2)).toEqual(Chunk.make(0, 2))

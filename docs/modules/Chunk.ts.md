@@ -86,7 +86,6 @@ Added in v2.0.0
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
   - [flatten](#flatten)
-  - [flattenNonEmpty](#flattennonempty)
 - [symbol](#symbol)
   - [TypeId (type alias)](#typeid-type-alias)
 - [type lambdas](#type-lambdas)
@@ -1048,17 +1047,10 @@ Flattens a chunk of chunks into a single chunk by concatenating all chunks.
 **Signature**
 
 ```ts
-export declare const flatten: <A>(self: Chunk<Chunk<A>>) => Chunk<A>
-```
-
-Added in v2.0.0
-
-## flattenNonEmpty
-
-**Signature**
-
-```ts
-export declare const flattenNonEmpty: <A>(self: NonEmptyChunk<NonEmptyChunk<A>>) => NonEmptyChunk<A>
+export declare const flatten: {
+  <A>(self: NonEmptyChunk<NonEmptyChunk<A>>): NonEmptyChunk<A>
+  <A>(self: Chunk<Chunk<A>>): Chunk<A>
+}
 ```
 
 Added in v2.0.0

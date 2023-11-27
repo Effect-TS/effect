@@ -720,15 +720,10 @@ export const forEach: {
  * @since 2.0.0
  * @category sequencing
  */
-export const flatten: <A>(self: Chunk<Chunk<A>>) => Chunk<A> = flatMap(identity)
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flattenNonEmpty: <A>(
-  self: NonEmptyChunk<NonEmptyChunk<A>>
-) => NonEmptyChunk<A> = flatMap(identity)
+export const flatten: {
+  <A>(self: NonEmptyChunk<NonEmptyChunk<A>>): NonEmptyChunk<A>
+  <A>(self: Chunk<Chunk<A>>): Chunk<A>
+} = flatMap(identity) as any
 
 /**
  * Groups elements in chunks of up to `n` elements.

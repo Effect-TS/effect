@@ -1,5 +1,5 @@
 import * as Chunk from "effect/Chunk"
-import { pipe } from "effect/Function"
+import { hole, pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 
 declare const numbers: Chunk.Chunk<number>
@@ -382,3 +382,19 @@ Chunk.flatMap(nonEmptyStrings, (
   s,
   _i // $ExpectType number
 ) => Chunk.of(s.length))
+
+// -------------------------------------------------------------------------------------
+// flatten
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Chunk<number>
+Chunk.flatten(hole<Chunk.Chunk<Chunk.Chunk<number>>>())
+
+// $ExpectType Chunk<number>
+Chunk.flatten(hole<Chunk.Chunk<Chunk.NonEmptyChunk<number>>>())
+
+// $ExpectType Chunk<number>
+Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.Chunk<number>>>())
+
+// $ExpectType NonEmptyChunk<number>
+Chunk.flatten(hole<Chunk.NonEmptyChunk<Chunk.NonEmptyChunk<number>>>())
