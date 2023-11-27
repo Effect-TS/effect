@@ -96,24 +96,32 @@ Chunk.prepend(true)(numbersOrStrings)
 // -------------------------------------------------------------------------------------
 
 // $ExpectType Chunk<number>
-Chunk.map(numbers, (n, _i // $ExpectType Chunk<number>
+Chunk.map(numbers, (
+  n,
+  _i // $ExpectType number
 ) => n + 1)
 
 // $ExpectType Chunk<number>
 pipe(
   numbers,
-  Chunk.map((n, _i // $ExpectType Chunk<number>
+  Chunk.map((
+    n,
+    _i // $ExpectType number
   ) => n + 1)
 )
 
 // $ExpectType NonEmptyChunk<number>
-Chunk.map(nonEmptyNumbers, (n, _i // $ExpectType Chunk<number>
+Chunk.map(nonEmptyNumbers, (
+  n,
+  _i // $ExpectType number
 ) => n + 1)
 
 // $ExpectType NonEmptyChunk<number>
 pipe(
   nonEmptyNumbers,
-  Chunk.map((n, _i // $ExpectType Chunk<number>
+  Chunk.map((
+    n,
+    _i // $ExpectType number
   ) => n + 1)
 )
 
