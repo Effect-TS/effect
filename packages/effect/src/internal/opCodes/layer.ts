@@ -35,19 +35,19 @@ export const OP_SUSPEND = "Suspend" as const
 export type OP_SUSPEND = typeof OP_SUSPEND
 
 /** @internal */
-export const OP_PROVIDE_TO = "ProvideTo" as const
+export const OP_PROVIDE = "Provide" as const
 
 /** @internal */
-export type OP_PROVIDE_TO = typeof OP_PROVIDE_TO
+export type OP_PROVIDE = typeof OP_PROVIDE
+
+/** @internal */
+export const OP_PROVIDE_MERGE = "ProvideMerge" as const
+
+/** @internal */
+export type OP_PROVIDE_MERGE = typeof OP_PROVIDE_MERGE
 
 /** @internal */
 export const OP_ZIP_WITH = "ZipWith" as const
 
 /** @internal */
 export type OP_ZIP_WITH = typeof OP_ZIP_WITH
-
-/** @internal */
-export const OP_ZIP_WITH_PAR = "ZipWithPar" as const
-
-/** @internal */
-export type OP_ZIP_WITH_PAR = typeof OP_ZIP_WITH_PAR
