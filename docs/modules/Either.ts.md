@@ -310,7 +310,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in vTODO(horban): add since
+Added in v2.0.0
 
 # generators
 
