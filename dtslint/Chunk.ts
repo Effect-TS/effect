@@ -354,3 +354,31 @@ Chunk.appendAll(nonEmptyStrings, nonEmptyNumbers)
 
 // $ExpectType NonEmptyChunk<string | number>
 pipe(nonEmptyStrings, Chunk.appendAll(nonEmptyNumbers))
+
+// -------------------------------------------------------------------------------------
+// flatMap
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Chunk<number>
+Chunk.flatMap(strings, (
+  _,
+  _i // $ExpectType number
+) => Chunk.empty<number>())
+
+// $ExpectType Chunk<number>
+Chunk.flatMap(strings, (
+  s,
+  _i // $ExpectType number
+) => Chunk.of(s.length))
+
+// $ExpectType Chunk<number>
+Chunk.flatMap(nonEmptyStrings, (
+  _s,
+  _i // $ExpectType number
+) => Chunk.empty<number>())
+
+// $ExpectType NonEmptyChunk<number>
+Chunk.flatMap(nonEmptyStrings, (
+  s,
+  _i // $ExpectType number
+) => Chunk.of(s.length))

@@ -85,7 +85,6 @@ Added in v2.0.0
   - [Chunk (interface)](#chunk-interface)
 - [sequencing](#sequencing)
   - [flatMap](#flatmap)
-  - [flatMapNonEmpty](#flatmapnonempty)
   - [flatten](#flatten)
   - [flattenNonEmpty](#flattennonempty)
 - [symbol](#symbol)
@@ -1032,21 +1031,11 @@ Returns a chunk with the elements mapped by the specified function.
 
 ```ts
 export declare const flatMap: {
-  <A, B>(f: (a: A, i: number) => Chunk<B>): (self: Chunk<A>) => Chunk<B>
-  <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>): Chunk<B>
-}
-```
-
-Added in v2.0.0
-
-## flatMapNonEmpty
-
-**Signature**
-
-```ts
-export declare const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => NonEmptyChunk<B>): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
+  <S extends Chunk<any>, T extends Chunk<any>>(
+    f: (a: Chunk.Infer<S>, i: number) => T
+  ): (self: S) => Chunk.With2<S, T, Chunk.Infer<T>>
   <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => NonEmptyChunk<B>): NonEmptyChunk<B>
+  <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>): Chunk<B>
 }
 ```
 

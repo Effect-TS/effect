@@ -686,7 +686,10 @@ export const compact = <A>(self: Chunk<Option<A>>): Chunk<A> => filterMap(self, 
  * @category sequencing
  */
 export const flatMap: {
-  <A, B>(f: (a: A, i: number) => Chunk<B>): (self: Chunk<A>) => Chunk<B>
+  <S extends Chunk<any>, T extends Chunk<any>>(
+    f: (a: Chunk.Infer<S>, i: number) => T
+  ): (self: S) => Chunk.With2<S, T, Chunk.Infer<T>>
+  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => NonEmptyChunk<B>): NonEmptyChunk<B>
   <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>): Chunk<B>
 } = dual(2, <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>) => {
   if (self.backing._tag === "ISingleton") {
@@ -699,15 +702,6 @@ export const flatMap: {
   }
   return out
 })
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => NonEmptyChunk<B>): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
-  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => NonEmptyChunk<B>): NonEmptyChunk<B>
-} = flatMap as any
 
 /**
  * Applies the specified function to each element of the `List`.
@@ -734,7 +728,7 @@ export const flatten: <A>(self: Chunk<Chunk<A>>) => Chunk<A> = flatMap(identity)
  */
 export const flattenNonEmpty: <A>(
   self: NonEmptyChunk<NonEmptyChunk<A>>
-) => NonEmptyChunk<A> = flatMapNonEmpty(identity)
+) => NonEmptyChunk<A> = flatMap(identity)
 
 /**
  * Groups elements in chunks of up to `n` elements.
