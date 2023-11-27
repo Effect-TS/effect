@@ -416,24 +416,23 @@ export const memoize: <RIn, E, ROut>(
 ) => Effect.Effect<Scope.Scope, never, Layer<RIn, E, ROut>> = internal.memoize
 
 /**
- * Combines this layer with the specified layer, producing a new layer that
- * has the inputs and outputs of both.
+ * Merges this layer with the specified layer concurrently, producing a new layer with combined input and output types.
  *
  * @since 2.0.0
- * @category utils
+ * @category zipping
  */
 export const merge: {
   <RIn2, E2, ROut2>(
     that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
+  ): <RIn, E1, ROut>(self: Layer<RIn, E1, ROut>) => Layer<RIn2 | RIn, E2 | E1, ROut2 | ROut>
+  <RIn, E1, ROut, RIn2, E2, ROut2>(
+    self: Layer<RIn, E1, ROut>,
     that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | RIn2, E | E2, ROut | ROut2>
+  ): Layer<RIn | RIn2, E1 | E2, ROut | ROut2>
 } = internal.merge
 
 /**
- * Merges all the layers together in parallel.
+ * Combines all the provided layers concurrently, creating a new layer with merged input, error, and output types.
  *
  * @since 2.0.0
  * @category zipping
@@ -781,9 +780,8 @@ export const provideMerge: {
 } = internal.provideMerge
 
 /**
- * Combines this layer the specified layer, producing a new layer that has the
- * inputs of both, and the outputs of both combined using the specified
- * function.
+ * Combines this layer with the specified layer concurrently, creating a new layer with merged input types and
+ * combined output types using the provided function.
  *
  * @since 2.0.0
  * @category zipping
