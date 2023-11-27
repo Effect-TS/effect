@@ -20,7 +20,6 @@ Added in v2.0.0
   - [appendAllNonEmpty](#appendallnonempty)
   - [prepend](#prepend)
   - [prependAll](#prependall)
-  - [prependAllNonEmpty](#prependallnonempty)
 - [constructors](#constructors)
   - [empty](#empty)
   - [isChunk](#ischunk)
@@ -104,6 +103,7 @@ Added in v2.0.0
   - [Chunk (namespace)](#chunk-namespace)
     - [Infer (type alias)](#infer-type-alias)
     - [With (type alias)](#with-type-alias)
+    - [With2 (type alias)](#with2-type-alias)
   - [drop](#drop)
   - [dropRight](#dropright)
   - [dropWhile](#dropwhile)
@@ -200,28 +200,26 @@ Added in v2.0.0
 
 ## prependAll
 
+Concatenates two chunks, combining their elements.
+If either chunk is non-empty, the result is also a non-empty chunk.
+
 **Signature**
 
 ```ts
 export declare const prependAll: {
-  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<B | A>
+  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.With2<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
+  <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
+  <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B>
 }
 ```
 
-Added in v2.0.0
-
-## prependAllNonEmpty
-
-**Signature**
+**Example**
 
 ```ts
-export declare const prependAllNonEmpty: {
-  <B>(that: NonEmptyChunk<B>): <A>(self: Chunk<A>) => NonEmptyChunk<B | A>
-  <B>(that: Chunk<B>): <A>(self: NonEmptyChunk<A>) => NonEmptyChunk<B | A>
-  <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
-  <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
-}
+import * as Chunk from "effect/Chunk"
+
+assert.deepStrictEqual(Chunk.make(1, 2).pipe(Chunk.prependAll(Chunk.make("a", "b")), Chunk.toArray), ["a", "b", 1, 2])
 ```
 
 Added in v2.0.0
@@ -966,15 +964,28 @@ Added in v2.0.0
 
 ## map
 
-Returns a chunk with the elements mapped by the specified f function.
+Transforms the elements of a chunk using the specified mapping function.
+If the input chunk is non-empty, the resulting chunk will also be non-empty.
 
 **Signature**
 
 ```ts
 export declare const map: {
-  <T extends Chunk<any>, B>(f: (a: Chunk.Infer<T>, i: number) => B): (self: T) => Chunk.With<T, B>
-  <T extends Chunk<any>, B>(self: T, f: (a: Chunk.Infer<T>, i: number) => B): Chunk.With<T, B>
+  <S extends Chunk<any>, B>(f: (a: Chunk.Infer<S>, i: number) => B): (self: S) => Chunk.With<S, B>
+  <A, B>(self: NonEmptyChunk<A>, f: (a: A) => B): NonEmptyChunk<B>
+  <A, B>(self: Chunk<A>, f: (a: A) => B): Chunk<B>
 }
+```
+
+**Example**
+
+```ts
+import * as Chunk from "effect/Chunk"
+
+assert.deepStrictEqual(
+  Chunk.map(Chunk.make(1, 2), (n) => n + 1),
+  Chunk.make(2, 3)
+)
 ```
 
 Added in v2.0.0
@@ -1167,7 +1178,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type Infer<T extends Chunk<any>> = T extends Chunk<infer A> ? A : never
+export type Infer<S extends Chunk<any>> = S extends Chunk<infer A> ? A : never
 ```
 
 Added in v2.0.0
@@ -1177,7 +1188,21 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export type With<T extends Chunk<any>, A> = T extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
+export type With<S extends Chunk<any>, A> = S extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
+```
+
+Added in v2.0.0
+
+### With2 (type alias)
+
+**Signature**
+
+```ts
+export type With2<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any>
+  ? NonEmptyChunk<A>
+  : T extends NonEmptyChunk<any>
+    ? NonEmptyChunk<A>
+    : Chunk<A>
 ```
 
 Added in v2.0.0

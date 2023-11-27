@@ -3,7 +3,9 @@ import { pipe } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 
 declare const numbers: Chunk.Chunk<number>
+declare const strings: Chunk.Chunk<string>
 declare const nonEmptyNumbers: Chunk.NonEmptyChunk<number>
+declare const nonEmptyStrings: Chunk.NonEmptyChunk<string>
 declare const numbersOrStrings: Chunk.Chunk<number | string>
 declare const nonEmptyNumbersOrStrings: Chunk.NonEmptyChunk<number | string>
 
@@ -105,22 +107,6 @@ Chunk.prepend(numbersOrStrings, true)
 
 // $ExpectType NonEmptyChunk<string | number | boolean>
 Chunk.prepend(true)(numbersOrStrings)
-
-// -------------------------------------------------------------------------------------
-// prependAllNonEmpty
-// -------------------------------------------------------------------------------------
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.prependAllNonEmpty(numbersOrStrings, nonEmptyNumbersOrStrings)
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.prependAllNonEmpty(numbersOrStrings)(nonEmptyNumbersOrStrings)
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.prependAllNonEmpty(nonEmptyNumbersOrStrings, numbersOrStrings)
-
-// $ExpectType NonEmptyChunk<string | number>
-Chunk.prependAllNonEmpty(nonEmptyNumbersOrStrings)(numbersOrStrings)
 
 // -------------------------------------------------------------------------------------
 // map
@@ -311,3 +297,31 @@ Chunk.splitWhere(numbersOrStrings, Predicate.isNumber)
 
 // $ExpectType [beforeMatch: Chunk<string | number>, fromMatch: Chunk<string | number>]
 pipe(numbersOrStrings, Chunk.splitWhere(Predicate.isNumber))
+
+// -------------------------------------------------------------------------------------
+// prependAll
+// -------------------------------------------------------------------------------------
+
+// $ExpectType Chunk<string | number>
+Chunk.prependAll(strings, numbers)
+
+// $ExpectType Chunk<string | number>
+pipe(strings, Chunk.prependAll(numbers))
+
+// $ExpectType NonEmptyChunk<string | number>
+Chunk.prependAll(nonEmptyStrings, numbers)
+
+// $ExpectType NonEmptyChunk<string | number>
+pipe(nonEmptyStrings, Chunk.prependAll(numbers))
+
+// $ExpectType NonEmptyChunk<string | number>
+Chunk.prependAll(strings, nonEmptyNumbers)
+
+// $ExpectType NonEmptyChunk<string | number>
+pipe(strings, Chunk.prependAll(nonEmptyNumbers))
+
+// $ExpectType NonEmptyChunk<string | number>
+Chunk.prependAll(nonEmptyStrings, nonEmptyNumbers)
+
+// $ExpectType NonEmptyChunk<string | number>
+pipe(nonEmptyStrings, Chunk.prependAll(nonEmptyNumbers))
