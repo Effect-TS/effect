@@ -401,7 +401,7 @@ export const match: {
  *   E.left("0 is not positive")
  * )
  *
- * @since TODO(horban): add since
+ * @since 2.0.0
  * @category filtering & conditionals
  */
 export const filterOrLeft: {
