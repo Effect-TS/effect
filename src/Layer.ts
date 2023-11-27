@@ -788,7 +788,7 @@ export const provideMerge: {
  * @since 2.0.0
  * @category zipping
  */
-export const zipWithPar: {
+export const zipWith: {
   <R2, E2, B, A, C>(
     that: Layer<R2, E2, B>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
@@ -798,7 +798,7 @@ export const zipWithPar: {
     that: Layer<R2, E2, B>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
   ): Layer<R | R2, E | E2, C>
-} = internal.zipWithPar
+} = internal.zipWith
 
 /**
  * @since 2.0.0
