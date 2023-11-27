@@ -283,7 +283,7 @@ export const taggedWithLabels = dual<
 })
 
 /** @internal */
-export const timer = (name: string): Metric.Metric<
+export const timer = (name: string, description?: string): Metric.Metric<
   MetricKeyType.MetricKeyType.Histogram,
   Duration.Duration,
   MetricState.MetricState.Histogram
@@ -293,21 +293,22 @@ export const timer = (name: string): Metric.Metric<
     factor: 2,
     count: 100
   })
-  const base = pipe(histogram(name, boundaries), tagged("time_unit", "milliseconds"))
+  const base = pipe(histogram(name, boundaries, description), tagged("time_unit", "milliseconds"))
   return mapInput(base, Duration.toMillis)
 }
 
 /** @internal */
 export const timerWithBoundaries = (
   name: string,
-  boundaries: Chunk.Chunk<number>
+  boundaries: Chunk.Chunk<number>,
+  description?: string
 ): Metric.Metric<
   MetricKeyType.MetricKeyType.Histogram,
   Duration.Duration,
   MetricState.MetricState.Histogram
 > => {
   const base = pipe(
-    histogram(name, metricBoundaries.fromChunk(boundaries)),
+    histogram(name, metricBoundaries.fromChunk(boundaries), description),
     tagged("time_unit", "milliseconds")
   )
   return mapInput(base, Duration.toMillis)
