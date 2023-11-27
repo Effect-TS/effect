@@ -117,7 +117,6 @@ Added in v2.0.0
   - [locallyScoped](#locallyscoped)
   - [locallyWith](#locallywith)
   - [memoize](#memoize)
-  - [merge](#merge)
   - [passthrough](#passthrough)
   - [project](#project)
   - [provide](#provide)
@@ -125,6 +124,7 @@ Added in v2.0.0
   - [unwrapEffect](#unwrapeffect)
   - [unwrapScoped](#unwrapscoped)
 - [zipping](#zipping)
+  - [merge](#merge)
   - [mergeAll](#mergeall)
   - [zipWith](#zipwith)
 
@@ -1206,27 +1206,6 @@ export declare const memoize: <RIn, E, ROut>(
 
 Added in v2.0.0
 
-## merge
-
-Combines this layer with the specified layer, producing a new layer that
-has the inputs and outputs of both.
-
-**Signature**
-
-```ts
-export declare const merge: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | RIn2, E | E2, ROut | ROut2>
-}
-```
-
-Added in v2.0.0
-
 ## passthrough
 
 Returns a new layer that produces the outputs of this layer but also
@@ -1335,9 +1314,29 @@ Added in v2.0.0
 
 # zipping
 
+## merge
+
+Merges this layer with the specified layer concurrently, producing a new layer with combined input and output types.
+
+**Signature**
+
+```ts
+export declare const merge: {
+  <RIn2, E2, ROut2>(
+    that: Layer<RIn2, E2, ROut2>
+  ): <RIn, E1, ROut>(self: Layer<RIn, E1, ROut>) => Layer<RIn2 | RIn, E2 | E1, ROut2 | ROut>
+  <RIn, E1, ROut, RIn2, E2, ROut2>(
+    self: Layer<RIn, E1, ROut>,
+    that: Layer<RIn2, E2, ROut2>
+  ): Layer<RIn | RIn2, E1 | E2, ROut | ROut2>
+}
+```
+
+Added in v2.0.0
+
 ## mergeAll
 
-Merges all the layers together in parallel.
+Combines all the provided layers concurrently, creating a new layer with merged input, error, and output types.
 
 **Signature**
 
@@ -1355,9 +1354,8 @@ Added in v2.0.0
 
 ## zipWith
 
-Combines this layer the specified layer, producing a new layer that has the
-inputs of both, and the outputs of both combined using the specified
-function.
+Combines this layer with the specified layer concurrently, creating a new layer with merged input types and
+combined output types using the provided function.
 
 **Signature**
 
