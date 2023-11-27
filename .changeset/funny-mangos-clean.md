@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Renamed `ReadonlyArray.compact` and `ReadonlyRecord.compact` to `.filterSome`
+Renamed `ReadonlyArray.compact` and `ReadonlyRecord.compact` to `.getSome`

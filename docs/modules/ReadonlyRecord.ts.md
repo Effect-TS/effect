@@ -24,9 +24,9 @@ Added in v2.0.0
   - [toEntries](#toentries)
 - [filtering](#filtering)
   - [filter](#filter)
-  - [filterLeft](#filterleft)
-  - [filterRight](#filterright)
-  - [filterSome](#filtersome)
+  - [getLeft](#getleft)
+  - [getRight](#getright)
+  - [getSome](#getsome)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
@@ -241,43 +241,43 @@ assert.deepStrictEqual(
 
 Added in v2.0.0
 
-## filterLeft
+## getLeft
 
 **Signature**
 
 ```ts
-export declare const filterLeft: <E>(self: ReadonlyRecord<Either<E, any>>) => Record<string, E>
+export declare const getLeft: <E, A>(self: ReadonlyRecord<Either<E, A>>) => Record<string, E>
 ```
 
 Added in v2.0.0
 
-## filterRight
+## getRight
 
 **Signature**
 
 ```ts
-export declare const filterRight: <A>(self: ReadonlyRecord<Either<any, A>>) => Record<string, A>
+export declare const getRight: <E, A>(self: ReadonlyRecord<Either<E, A>>) => Record<string, A>
 ```
 
 Added in v2.0.0
 
-## filterSome
+## getSome
 
 Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
 
 **Signature**
 
 ```ts
-export declare const filterSome: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
+export declare const getSome: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
 ```
 
 **Example**
 
 ```ts
-import { filterSome } from "effect/ReadonlyRecord"
+import { getSome } from "effect/ReadonlyRecord"
 import { some, none } from "effect/Option"
 
-assert.deepStrictEqual(filterSome({ a: some(1), b: none(), c: some(2) }), { a: 1, c: 2 })
+assert.deepStrictEqual(getSome({ a: some(1), b: none(), c: some(2) }), { a: 1, c: 2 })
 ```
 
 Added in v2.0.0

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Added `.filterLeft` and `.filterRight`
+Added `.getLeft` and `.getRight`

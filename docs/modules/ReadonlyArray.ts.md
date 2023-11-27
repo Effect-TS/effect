@@ -50,11 +50,11 @@ Added in v2.0.0
   - [sortWith](#sortwith)
 - [filtering](#filtering)
   - [filter](#filter)
-  - [filterLeft](#filterleft)
   - [filterMap](#filtermap)
   - [filterMapWhile](#filtermapwhile)
-  - [filterRight](#filterright)
-  - [filterSome](#filtersome)
+  - [getLeft](#getleft)
+  - [getRight](#getright)
+  - [getSome](#getsome)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
@@ -647,16 +647,6 @@ export declare const filter: {
 
 Added in v2.0.0
 
-## filterLeft
-
-**Signature**
-
-```ts
-export declare const filterLeft: <E>(self: Iterable<Either<E, any>>) => E[]
-```
-
-Added in v2.0.0
-
 ## filterMap
 
 **Signature**
@@ -685,22 +675,32 @@ export declare const filterMapWhile: {
 
 Added in v2.0.0
 
-## filterRight
+## getLeft
 
 **Signature**
 
 ```ts
-export declare const filterRight: <A>(self: Iterable<Either<any, A>>) => A[]
+export declare const getLeft: <E, A>(self: Iterable<Either<E, A>>) => E[]
 ```
 
 Added in v2.0.0
 
-## filterSome
+## getRight
 
 **Signature**
 
 ```ts
-export declare const filterSome: <A>(self: Iterable<Option<A>>) => A[]
+export declare const getRight: <E, A>(self: Iterable<Either<E, A>>) => A[]
+```
+
+Added in v2.0.0
+
+## getSome
+
+**Signature**
+
+```ts
+export declare const getSome: <A>(self: Iterable<Option<A>>) => A[]
 ```
 
 Added in v2.0.0
