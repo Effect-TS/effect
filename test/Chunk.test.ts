@@ -373,15 +373,15 @@ describe.concurrent("Chunk", () => {
     )
   })
 
-  it("prependAllNonEmpty", () => {
-    expect(pipe(Chunk.empty(), Chunk.prependAllNonEmpty(Chunk.make(1)))).toEqual(Chunk.make(1))
-    expect(pipe(Chunk.make(1), Chunk.prependAllNonEmpty(Chunk.empty()))).toEqual(Chunk.make(1))
+  it("prependAll", () => {
+    expect(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1)))).toEqual(Chunk.make(1))
+    expect(pipe(Chunk.make(1), Chunk.prependAll(Chunk.empty()))).toEqual(Chunk.make(1))
 
-    expect(pipe(Chunk.empty(), Chunk.prependAllNonEmpty(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2))
-    expect(pipe(Chunk.make(1, 2), Chunk.prependAllNonEmpty(Chunk.empty()))).toEqual(Chunk.make(1, 2))
+    expect(pipe(Chunk.empty(), Chunk.prependAll(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2))
+    expect(pipe(Chunk.make(1, 2), Chunk.prependAll(Chunk.empty()))).toEqual(Chunk.make(1, 2))
 
-    expect(pipe(Chunk.make(2, 3), Chunk.prependAllNonEmpty(Chunk.make(1)))).toEqual(Chunk.make(1, 2, 3))
-    expect(pipe(Chunk.make(3), Chunk.prependAllNonEmpty(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2, 3))
+    expect(pipe(Chunk.make(2, 3), Chunk.prependAll(Chunk.make(1)))).toEqual(Chunk.make(1, 2, 3))
+    expect(pipe(Chunk.make(3), Chunk.prependAll(Chunk.make(1, 2)))).toEqual(Chunk.make(1, 2, 3))
   })
 
   it("prepend", () => {
@@ -814,17 +814,8 @@ describe.concurrent("Chunk", () => {
     expect(Chunk.reverse(Chunk.take(Chunk.make(1, 2, 3, 4), 3))).toEqual(Chunk.make(3, 2, 1))
   })
 
-  it("flatMapNonEmpty", () => {
-    expect(Chunk.flatMapNonEmpty(Chunk.make(1, 2), (a) => Chunk.make(a, 4))).toEqual(Chunk.make(1, 4, 2, 4))
-    expect(Chunk.flatMapNonEmpty(Chunk.make(1, 2), (a, i) => Chunk.make(a + i, 4))).toEqual(Chunk.make(1, 4, 3, 4))
-  })
-
   it("flatten", () => {
     expect(Chunk.flatten(Chunk.make(Chunk.make(1), Chunk.make(2), Chunk.make(3)))).toEqual(Chunk.make(1, 2, 3))
-  })
-
-  it("flattenNonEmpty", () => {
-    expect(Chunk.flattenNonEmpty(Chunk.make(Chunk.make(1, 2), Chunk.make(3, 4)))).toEqual(Chunk.make(1, 2, 3, 4))
   })
 
   it("makeBy", () => {

@@ -3175,7 +3175,7 @@ export const groupAdjacentBy = dual<
             if (!Equal.equals(key, updatedKey)) {
               const previousChunk = tuple[1]
               const additionalChunk = Chunk.unsafeFromArray(Array.from(chunk).slice(from, until))
-              const group = Chunk.appendAllNonEmpty(previousChunk, additionalChunk)
+              const group = Chunk.appendAll(previousChunk, additionalChunk)
               builder.push([key, group])
               key = updatedKey
               from = until

@@ -414,7 +414,7 @@ export const unsafeGet: {
 export const append: {
   <A2>(a: A2): <A>(self: Chunk<A>) => NonEmptyChunk<A2 | A>
   <A, A2>(self: Chunk<A>, a: A2): NonEmptyChunk<A | A2>
-} = dual(2, <A, A2>(self: Chunk<A>, a: A2): NonEmptyChunk<A | A2> => appendAllNonEmpty(self, of(a)))
+} = dual(2, <A, A2>(self: Chunk<A>, a: A2): NonEmptyChunk<A | A2> => appendAll(self, of(a)))
 
 /**
  * Prepend an element to the front of a `Chunk`, creating a new `NonEmptyChunk`.
@@ -425,7 +425,7 @@ export const append: {
 export const prepend: {
   <B>(elem: B): <A>(self: Chunk<A>) => NonEmptyChunk<B | A>
   <A, B>(self: Chunk<A>, elem: B): NonEmptyChunk<A | B>
-} = dual(2, <A, B>(self: Chunk<A>, elem: B): NonEmptyChunk<A | B> => appendAllNonEmpty(of(elem), self))
+} = dual(2, <A, B>(self: Chunk<A>, elem: B): NonEmptyChunk<A | B> => appendAll(of(elem), self))
 
 /**
  * Takes the first up to `n` elements from the chunk
@@ -547,33 +547,46 @@ export const dropWhile: {
 })
 
 /**
+ * Concatenates two chunks, combining their elements.
+ * If either chunk is non-empty, the result is also a non-empty chunk.
+ *
+ * @example
+ * import * as Chunk from "effect/Chunk"
+ *
+ * assert.deepStrictEqual(
+ *   Chunk.make(1, 2).pipe(Chunk.prependAll(Chunk.make("a", "b")), Chunk.toArray),
+ *   ["a", "b", 1, 2]
+ * )
+ *
  * @category concatenating
  * @since 2.0.0
  */
 export const prependAll: {
-  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<B | A>
+  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.With2<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
+  <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
+  <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B>
 } = dual(2, <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): Chunk<A | B> => appendAll(that, self))
 
 /**
- * @category concatenating
- * @since 2.0.0
- */
-export const prependAllNonEmpty: {
-  <B>(that: NonEmptyChunk<B>): <A>(self: Chunk<A>) => NonEmptyChunk<B | A>
-  <B>(that: Chunk<B>): <A>(self: NonEmptyChunk<A>) => NonEmptyChunk<B | A>
-  <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
-  <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
-} = dual(2, <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B> => prependAll(self, that) as any)
-
-/**
- * Concatenates the two chunks
+ * Concatenates two chunks, combining their elements.
+ * If either chunk is non-empty, the result is also a non-empty chunk.
+ *
+ * @example
+ * import * as Chunk from "effect/Chunk"
+ *
+ * assert.deepStrictEqual(
+ *   Chunk.make(1, 2).pipe(Chunk.appendAll(Chunk.make("a", "b")), Chunk.toArray),
+ *   [1, 2, "a", "b"]
+ * )
  *
  * @category concatenating
  * @since 2.0.0
  */
 export const appendAll: {
-  <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<B | A>
+  <S extends Chunk<any>, T extends Chunk<any>>(that: T): (self: S) => Chunk.With2<S, T, Chunk.Infer<S> | Chunk.Infer<T>>
+  <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
+  <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
   <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B>
 } = dual(2, <A, B>(self: Chunk<A>, that: Chunk<B>): Chunk<A | B> => {
   if (self.backing._tag === "IEmpty") {
@@ -615,17 +628,6 @@ export const appendAll: {
     }
   }
 })
-
-/**
- * @category concatenating
- * @since 2.0.0
- */
-export const appendAllNonEmpty: {
-  <B>(that: NonEmptyChunk<B>): <A>(self: Chunk<A>) => NonEmptyChunk<B | A>
-  <B>(that: Chunk<B>): <A>(self: NonEmptyChunk<A>) => NonEmptyChunk<B | A>
-  <A, B>(self: Chunk<A>, that: NonEmptyChunk<B>): NonEmptyChunk<A | B>
-  <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B>
-} = dual(2, <A, B>(self: NonEmptyChunk<A>, that: Chunk<B>): NonEmptyChunk<A | B> => appendAll(self, that) as any)
 
 /**
  * Returns a filtered and mapped subset of the elements.
@@ -684,7 +686,10 @@ export const compact = <A>(self: Chunk<Option<A>>): Chunk<A> => filterMap(self, 
  * @category sequencing
  */
 export const flatMap: {
-  <A, B>(f: (a: A, i: number) => Chunk<B>): (self: Chunk<A>) => Chunk<B>
+  <S extends Chunk<any>, T extends Chunk<any>>(
+    f: (a: Chunk.Infer<S>, i: number) => T
+  ): (self: S) => Chunk.With2<S, T, Chunk.Infer<T>>
+  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => NonEmptyChunk<B>): NonEmptyChunk<B>
   <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>): Chunk<B>
 } = dual(2, <A, B>(self: Chunk<A>, f: (a: A, i: number) => Chunk<B>) => {
   if (self.backing._tag === "ISingleton") {
@@ -697,15 +702,6 @@ export const flatMap: {
   }
   return out
 })
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flatMapNonEmpty: {
-  <A, B>(f: (a: A, i: number) => NonEmptyChunk<B>): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
-  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => NonEmptyChunk<B>): NonEmptyChunk<B>
-} = flatMap as any
 
 /**
  * Applies the specified function to each element of the `List`.
@@ -724,15 +720,10 @@ export const forEach: {
  * @since 2.0.0
  * @category sequencing
  */
-export const flatten: <A>(self: Chunk<Chunk<A>>) => Chunk<A> = flatMap(identity)
-
-/**
- * @category sequencing
- * @since 2.0.0
- */
-export const flattenNonEmpty: <A>(
-  self: NonEmptyChunk<NonEmptyChunk<A>>
-) => NonEmptyChunk<A> = flatMapNonEmpty(identity)
+export const flatten: {
+  <A>(self: NonEmptyChunk<NonEmptyChunk<A>>): NonEmptyChunk<A>
+  <A>(self: Chunk<Chunk<A>>): Chunk<A>
+} = flatMap(identity) as any
 
 /**
  * Groups elements in chunks of up to `n` elements.
@@ -839,23 +830,40 @@ export declare namespace Chunk {
   /**
    * @since 2.0.0
    */
-  export type Infer<T extends Chunk<any>> = T extends Chunk<infer A> ? A : never
+  export type Infer<S extends Chunk<any>> = S extends Chunk<infer A> ? A : never
 
   /**
    * @since 2.0.0
    */
-  export type With<T extends Chunk<any>, A> = T extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
+  export type With<S extends Chunk<any>, A> = S extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
+
+  /**
+   * @since 2.0.0
+   */
+  export type With2<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ? NonEmptyChunk<A>
+    : T extends NonEmptyChunk<any> ? NonEmptyChunk<A>
+    : Chunk<A>
 }
 
 /**
- * Returns a chunk with the elements mapped by the specified f function.
+ * Transforms the elements of a chunk using the specified mapping function.
+ * If the input chunk is non-empty, the resulting chunk will also be non-empty.
+ *
+ * @example
+ * import * as Chunk from "effect/Chunk"
+ *
+ * assert.deepStrictEqual(
+ *   Chunk.map(Chunk.make(1, 2), (n) => n + 1),
+ *   Chunk.make(2, 3)
+ * )
  *
  * @since 2.0.0
  * @category mapping
  */
 export const map: {
-  <T extends Chunk<any>, B>(f: (a: Chunk.Infer<T>, i: number) => B): (self: T) => Chunk.With<T, B>
-  <T extends Chunk<any>, B>(self: T, f: (a: Chunk.Infer<T>, i: number) => B): Chunk.With<T, B>
+  <S extends Chunk<any>, B>(f: (a: Chunk.Infer<S>, i: number) => B): (self: S) => Chunk.With<S, B>
+  <A, B>(self: NonEmptyChunk<A>, f: (a: A, i: number) => B): NonEmptyChunk<B>
+  <A, B>(self: Chunk<A>, f: (a: A, i: number) => B): Chunk<B>
 } = dual(2, <A, B>(self: Chunk<A>, f: (a: A, i: number) => B): Chunk<B> =>
   self.backing._tag === "ISingleton" ?
     of(f(self.backing.a, 0)) :
