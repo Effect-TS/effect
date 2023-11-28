@@ -563,7 +563,8 @@ the metric as a tag (i.e. `"time_unit: milliseconds"`).
 
 ```ts
 export declare const timer: (
-  name: string
+  name: string,
+  description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
 ```
 
@@ -581,7 +582,8 @@ will automatically be added to the metric as a tag (i.e.
 ```ts
 export declare const timerWithBoundaries: (
   name: string,
-  boundaries: Chunk.Chunk<number>
+  boundaries: Chunk.Chunk<number>,
+  description?: string
 ) => Metric<MetricKeyType.MetricKeyType.Histogram, Duration.Duration, MetricState.MetricState.Histogram>
 ```
 

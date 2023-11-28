@@ -416,24 +416,23 @@ export const memoize: <RIn, E, ROut>(
 ) => Effect.Effect<Scope.Scope, never, Layer<RIn, E, ROut>> = internal.memoize
 
 /**
- * Combines this layer with the specified layer, producing a new layer that
- * has the inputs and outputs of both.
+ * Merges this layer with the specified layer concurrently, producing a new layer with combined input and output types.
  *
  * @since 2.0.0
- * @category utils
+ * @category zipping
  */
 export const merge: {
   <RIn2, E2, ROut2>(
     that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn2 | RIn, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
+  ): <RIn, E1, ROut>(self: Layer<RIn, E1, ROut>) => Layer<RIn2 | RIn, E2 | E1, ROut2 | ROut>
+  <RIn, E1, ROut, RIn2, E2, ROut2>(
+    self: Layer<RIn, E1, ROut>,
     that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | RIn2, E | E2, ROut | ROut2>
+  ): Layer<RIn | RIn2, E1 | E2, ROut | ROut2>
 } = internal.merge
 
 /**
- * Merges all the layers together in parallel.
+ * Combines all the provided layers concurrently, creating a new layer with merged input, error, and output types.
  *
  * @since 2.0.0
  * @category zipping
@@ -498,24 +497,6 @@ export const project: {
 } = internal.project
 
 /**
- * Feeds the output services of this builder into the input of the specified
- * builder, resulting in a new builder with the inputs of this builder as
- * well as any leftover inputs, and the outputs of the specified builder.
- *
- * @since 2.0.0
- * @category utils
- */
-export const provide: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
-} = internal.provide
-
-/**
  * @since 2.0.0
  * @category utils
  */
@@ -567,24 +548,6 @@ export const locallyScoped: <A>(self: FiberRef<A>, value: A) => Layer<never, nev
  */
 export const fiberRefLocallyScopedWith: <A>(self: FiberRef<A>, value: (_: A) => A) => Layer<never, never, never> =
   internal.fiberRefLocallyScopedWith
-
-/**
- * Feeds the output services of this layer into the input of the specified
- * layer, resulting in a new layer with the inputs of this layer, and the
- * outputs of both layers.
- *
- * @since 2.0.0
- * @category utils
- */
-export const provideMerge: {
-  <RIn2, E2, ROut2>(
-    that: Layer<RIn2, E2, ROut2>
-  ): <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer<RIn, E, ROut>,
-    that: Layer<RIn2, E2, ROut2>
-  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
-} = internal.provideMerge
 
 /**
  * Retries constructing this layer according to the specified schedule.
@@ -788,7 +751,7 @@ export const toRuntime: <RIn, E, ROut>(
  * @since 2.0.0
  * @category utils
  */
-export const use: {
+export const provide: {
   <RIn, E, ROut>(
     self: Layer<RIn, E, ROut>
   ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
@@ -796,7 +759,7 @@ export const use: {
     that: Layer<RIn2, E2, ROut2>,
     self: Layer<RIn, E, ROut>
   ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2>
-} = internal.use
+} = internal.provide
 
 /**
  * Feeds the output services of this layer into the input of the specified
@@ -806,7 +769,7 @@ export const use: {
  * @since 2.0.0
  * @category utils
  */
-export const useMerge: {
+export const provideMerge: {
   <RIn, E, ROut>(
     self: Layer<RIn, E, ROut>
   ): <RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) => Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut | ROut2>
@@ -814,17 +777,16 @@ export const useMerge: {
     that: Layer<RIn2, E2, ROut2>,
     self: Layer<RIn, E, ROut>
   ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut2 | ROut>
-} = internal.useMerge
+} = internal.provideMerge
 
 /**
- * Combines this layer the specified layer, producing a new layer that has the
- * inputs of both, and the outputs of both combined using the specified
- * function.
+ * Combines this layer with the specified layer concurrently, creating a new layer with merged input types and
+ * combined output types using the provided function.
  *
  * @since 2.0.0
  * @category zipping
  */
-export const zipWithPar: {
+export const zipWith: {
   <R2, E2, B, A, C>(
     that: Layer<R2, E2, B>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
@@ -834,7 +796,7 @@ export const zipWithPar: {
     that: Layer<R2, E2, B>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
   ): Layer<R | R2, E | E2, C>
-} = internal.zipWithPar
+} = internal.zipWith
 
 /**
  * @since 2.0.0

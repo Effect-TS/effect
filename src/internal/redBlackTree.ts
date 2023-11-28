@@ -2,7 +2,7 @@ import * as Chunk from "../Chunk.js"
 import * as Equal from "../Equal.js"
 import { dual, pipe } from "../Function.js"
 import * as Hash from "../Hash.js"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import type * as Order from "../Order.js"
 import type * as Ordering from "../Ordering.js"
@@ -63,7 +63,7 @@ const RedBlackTreeProto: RBT.RedBlackTree<unknown, unknown> = {
     return new RedBlackTreeIterator(this, stack, Direction.Forward)
   },
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON() {
     return {

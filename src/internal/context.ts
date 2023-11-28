@@ -3,7 +3,7 @@ import * as Equal from "../Equal.js"
 import { dual } from "../Function.js"
 import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as O from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
@@ -33,7 +33,7 @@ export const TagProto: C.Tag<unknown, unknown> = {
     _Identifier: (_: unknown) => _
   },
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON<I, A>(this: C.Tag<I, A>) {
     return {
@@ -108,7 +108,7 @@ export const ContextProto: Omit<C.Context<unknown>, "unsafeMap"> = {
     return pipeArguments(this, arguments)
   },
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON<A>(this: C.Context<A>) {
     return {

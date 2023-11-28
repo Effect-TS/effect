@@ -23,8 +23,10 @@ Added in v2.0.0
   - [fromIterable](#fromiterable)
   - [toEntries](#toentries)
 - [filtering](#filtering)
-  - [compact](#compact)
   - [filter](#filter)
+  - [getLefts](#getlefts)
+  - [getRights](#getrights)
+  - [getSomes](#getsomes)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
@@ -208,27 +210,6 @@ Added in v2.0.0
 
 # filtering
 
-## compact
-
-Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
-
-**Signature**
-
-```ts
-export declare const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
-```
-
-**Example**
-
-```ts
-import { compact } from "effect/ReadonlyRecord"
-import { some, none } from "effect/Option"
-
-assert.deepStrictEqual(compact({ a: some(1), b: none(), c: some(2) }), { a: 1, c: 2 })
-```
-
-Added in v2.0.0
-
 ## filter
 
 Selects properties from a record whose values match the given predicate.
@@ -256,6 +237,69 @@ assert.deepStrictEqual(
   filter(x, (n) => n > 2),
   { c: 3, d: 4 }
 )
+```
+
+Added in v2.0.0
+
+## getLefts
+
+Given a record with `Either` values, returns a new record containing only the `Left` values, preserving the original keys.
+
+**Signature**
+
+```ts
+export declare const getLefts: <E, A>(self: ReadonlyRecord<Either<E, A>>) => Record<string, E>
+```
+
+**Example**
+
+```ts
+import { getLefts } from "effect/ReadonlyRecord"
+import { right, left } from "effect/Either"
+
+assert.deepStrictEqual(getLefts({ a: right(1), b: left("err"), c: right(2) }), { b: "err" })
+```
+
+Added in v2.0.0
+
+## getRights
+
+Given a record with `Either` values, returns a new record containing only the `Right` values, preserving the original keys.
+
+**Signature**
+
+```ts
+export declare const getRights: <E, A>(self: ReadonlyRecord<Either<E, A>>) => Record<string, A>
+```
+
+**Example**
+
+```ts
+import { getRights } from "effect/ReadonlyRecord"
+import { right, left } from "effect/Either"
+
+assert.deepStrictEqual(getRights({ a: right(1), b: left("err"), c: right(2) }), { a: 1, c: 2 })
+```
+
+Added in v2.0.0
+
+## getSomes
+
+Given a record with `Option` values, returns a new record containing only the `Some` values, preserving the original keys.
+
+**Signature**
+
+```ts
+export declare const getSomes: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A>
+```
+
+**Example**
+
+```ts
+import { getSomes } from "effect/ReadonlyRecord"
+import { some, none } from "effect/Option"
+
+assert.deepStrictEqual(getSomes({ a: some(1), b: none(), c: some(2) }), { a: 1, c: 2 })
 ```
 
 Added in v2.0.0

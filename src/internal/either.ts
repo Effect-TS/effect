@@ -6,7 +6,7 @@ import type * as Either from "../Either.js"
 import * as Equal from "../Equal.js"
 import { dual } from "../Function.js"
 import * as Hash from "../Hash.js"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type { Option } from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 import { EffectPrototype } from "./effectable.js"
@@ -26,7 +26,7 @@ const CommonProto = {
     return this.toJSON()
   },
   toString<E, A>(this: Either.Left<E, A>) {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
 }
 

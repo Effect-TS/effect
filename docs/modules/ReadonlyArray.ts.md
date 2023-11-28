@@ -49,10 +49,12 @@ Added in v2.0.0
   - [some](#some)
   - [sortWith](#sortwith)
 - [filtering](#filtering)
-  - [compact](#compact)
   - [filter](#filter)
   - [filterMap](#filtermap)
   - [filterMapWhile](#filtermapwhile)
+  - [getLefts](#getlefts)
+  - [getRights](#getrights)
+  - [getSomes](#getsomes)
   - [partition](#partition)
   - [partitionMap](#partitionmap)
   - [separate](#separate)
@@ -630,16 +632,6 @@ Added in v2.0.0
 
 # filtering
 
-## compact
-
-**Signature**
-
-```ts
-export declare const compact: <A>(self: Iterable<Option<A>>) => A[]
-```
-
-Added in v2.0.0
-
 ## filter
 
 **Signature**
@@ -679,6 +671,69 @@ export declare const filterMapWhile: {
   <A, B>(f: (a: A) => Option<B>): (self: Iterable<A>) => B[]
   <A, B>(self: Iterable<A>, f: (a: A) => Option<B>): B[]
 }
+```
+
+Added in v2.0.0
+
+## getLefts
+
+Retrieves the `Left` values from an `Iterable` of `Either`s, collecting them into an array.
+
+**Signature**
+
+```ts
+export declare const getLefts: <E, A>(self: Iterable<Either<E, A>>) => E[]
+```
+
+**Example**
+
+```ts
+import { getLefts } from "effect/ReadonlyArray"
+import { right, left } from "effect/Either"
+
+assert.deepStrictEqual(getLefts([right(1), left("err"), right(2)]), ["err"])
+```
+
+Added in v2.0.0
+
+## getRights
+
+Retrieves the `Right` values from an `Iterable` of `Either`s, collecting them into an array.
+
+**Signature**
+
+```ts
+export declare const getRights: <E, A>(self: Iterable<Either<E, A>>) => A[]
+```
+
+**Example**
+
+```ts
+import { getRights } from "effect/ReadonlyArray"
+import { right, left } from "effect/Either"
+
+assert.deepStrictEqual(getRights([right(1), left("err"), right(2)]), [1, 2])
+```
+
+Added in v2.0.0
+
+## getSomes
+
+Retrieves the `Some` values from an `Iterable` of `Option`s, collecting them into an array.
+
+**Signature**
+
+```ts
+export declare const getSomes: <A>(self: Iterable<Option<A>>) => A[]
+```
+
+**Example**
+
+```ts
+import { getSomes } from "effect/ReadonlyArray"
+import { some, none } from "effect/Option"
+
+assert.deepStrictEqual(getSomes([some(1), none(), some(2)]), [1, 2])
 ```
 
 Added in v2.0.0
@@ -1749,7 +1804,7 @@ Added in v2.0.0
 
 ## difference
 
-Creates a `Array` of values not included in the other given `Iterable` using the provided `isEquivalent` function.
+Creates a `Array` of values not included in the other given `Iterable`.
 The order and references of result values are determined by the first `Iterable`.
 
 **Signature**

@@ -27,7 +27,7 @@ import * as Equal from "./Equal.js"
 import * as Equivalence from "./Equivalence.js"
 import { dual, identity, unsafeCoerce } from "./Function.js"
 import * as Hash from "./Hash.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -99,7 +99,7 @@ const ConsProto: Omit<Cons<unknown>, "head" | "tail"> = {
   [TypeId]: TypeId,
   _tag: "Cons",
   toString(this: Cons<unknown>) {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON(this: Cons<unknown>) {
     return {
@@ -165,7 +165,7 @@ const NilProto: Nil<unknown> = {
   [TypeId]: TypeId,
   _tag: "Nil",
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON() {
     return {

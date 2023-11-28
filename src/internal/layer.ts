@@ -127,7 +127,7 @@ export interface Locally extends
 
 /** @internal */
 export interface ProvideTo extends
-  Op<OpCodes.OP_PROVIDE_TO, {
+  Op<OpCodes.OP_PROVIDE, {
     readonly first: Layer.Layer<never, never, unknown>
     readonly second: Layer.Layer<never, never, unknown>
   }>
@@ -135,7 +135,7 @@ export interface ProvideTo extends
 
 /** @internal */
 export interface ZipWith extends
-  Op<OpCodes.OP_ZIP_WITH, {
+  Op<OpCodes.OP_PROVIDE_MERGE, {
     readonly first: Layer.Layer<never, never, unknown>
     readonly second: Layer.Layer<never, never, unknown>
     zipK(left: Context.Context<unknown>, right: Context.Context<unknown>): Context.Context<unknown>
@@ -144,7 +144,7 @@ export interface ZipWith extends
 
 /** @internal */
 export interface ZipWithPar extends
-  Op<OpCodes.OP_ZIP_WITH_PAR, {
+  Op<OpCodes.OP_ZIP_WITH, {
     readonly first: Layer.Layer<never, never, unknown>
     readonly second: Layer.Layer<never, never, unknown>
     zipK(left: Context.Context<unknown>, right: Context.Context<unknown>): Context.Context<unknown>
@@ -353,7 +353,7 @@ const withScope = <RIn, E, ROut>(
     case "FromEffect": {
       return core.sync(() => (_: MemoMap) => op.effect as Effect.Effect<RIn, E, Context.Context<ROut>>)
     }
-    case "ProvideTo": {
+    case "Provide": {
       return core.sync(() => (memoMap: MemoMap) =>
         pipe(
           memoMap.getOrElseMemoize(op.first, scope),
@@ -382,7 +382,7 @@ const withScope = <RIn, E, ROut>(
         )
       )
     }
-    case "ZipWith": {
+    case "ProvideMerge": {
       return core.sync(() => (memoMap: MemoMap) =>
         pipe(
           memoMap.getOrElseMemoize(op.first, scope),
@@ -393,7 +393,7 @@ const withScope = <RIn, E, ROut>(
         )
       )
     }
-    case "ZipWithPar": {
+    case "ZipWith": {
       return core.sync(() => (memoMap: MemoMap) =>
         pipe(
           memoMap.getOrElseMemoize(op.first, scope),
@@ -678,17 +678,17 @@ export const memoize = <RIn, E, ROut>(
 export const merge = dual<
   <RIn2, E2, ROut2>(
     that: Layer.Layer<RIn2, E2, ROut2>
-  ) => <RIn, E, ROut>(self: Layer.Layer<RIn, E, ROut>) => Layer.Layer<
+  ) => <RIn, E1, ROut>(self: Layer.Layer<RIn, E1, ROut>) => Layer.Layer<
     RIn | RIn2,
-    E | E2,
+    E1 | E2,
     ROut | ROut2
   >,
-  <RIn, E, ROut, RIn2, E2, ROut2>(self: Layer.Layer<RIn, E, ROut>, that: Layer.Layer<RIn2, E2, ROut2>) => Layer.Layer<
+  <RIn, E1, ROut, RIn2, E2, ROut2>(self: Layer.Layer<RIn, E1, ROut>, that: Layer.Layer<RIn2, E2, ROut2>) => Layer.Layer<
     RIn | RIn2,
-    E | E2,
+    E1 | E2,
     ROut | ROut2
   >
->(2, (self, that) => zipWithPar(self, that, (a, b) => pipe(a, Context.merge(b))))
+>(2, (self, that) => zipWith(self, that, (a, b) => Context.merge(a, b)))
 
 /** @internal */
 export const mergeAll = <Layers extends [Layer.Layer<any, any, never>, ...Array<Layer.Layer<any, any, never>>]>(
@@ -700,7 +700,7 @@ export const mergeAll = <Layers extends [Layer.Layer<any, any, never>, ...Array<
 > => {
   let final = layers[0]
   for (let i = 1; i < layers.length; i++) {
-    final = merge(layers[i])(final)
+    final = merge(final, layers[i])
   }
   return final as any
 }
@@ -738,56 +738,6 @@ export const project = dual<
     f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>
   ) => Layer.Layer<RIn, E, Context.Tag.Identifier<B>>
 >(4, (self, tagA, tagB, f) => map(self, (context) => Context.make(tagB, f(Context.unsafeGet(context, tagA)))))
-
-/** @internal */
-export const provide = dual<
-  <RIn2, E2, ROut2>(
-    that: Layer.Layer<RIn2, E2, ROut2>
-  ) => <RIn, E, ROut>(
-    self: Layer.Layer<RIn, E, ROut>
-  ) => Layer.Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>,
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer.Layer<RIn, E, ROut>,
-    that: Layer.Layer<RIn2, E2, ROut2>
-  ) => Layer.Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2>
->(2, <RIn, E, ROut, RIn2, E2, ROut2>(
-  self: Layer.Layer<RIn, E, ROut>,
-  that: Layer.Layer<RIn2, E2, ROut2>
-) =>
-  suspend(() => {
-    const provideTo = Object.create(proto)
-    provideTo._tag = OpCodes.OP_PROVIDE_TO
-    provideTo.first = Object.create(proto, {
-      _tag: { value: OpCodes.OP_ZIP_WITH, enumerable: true },
-      first: { value: context<Exclude<RIn2, ROut>>(), enumerable: true },
-      second: { value: self },
-      zipK: { value: (a: Context.Context<ROut>, b: Context.Context<ROut2>) => Context.merge(a, b) }
-    })
-    provideTo.second = that
-    return provideTo
-  }))
-
-/** @internal */
-export const provideMerge = dual<
-  <RIn2, E2, ROut2>(that: Layer.Layer<RIn2, E2, ROut2>) => <RIn, E, ROut>(
-    self: Layer.Layer<RIn, E, ROut>
-  ) => Layer.Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut | ROut2>,
-  <RIn, E, ROut, RIn2, E2, ROut2>(
-    self: Layer.Layer<RIn, E, ROut>,
-    that: Layer.Layer<RIn2, E2, ROut2>
-  ) => Layer.Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut | ROut2>
->(2, <RIn, E, ROut, RIn2, E2, ROut2>(
-  self: Layer.Layer<RIn, E, ROut>,
-  that: Layer.Layer<RIn2, E2, ROut2>
-) => {
-  const zipWith = Object.create(proto)
-  zipWith._tag = OpCodes.OP_ZIP_WITH
-  zipWith.first = self
-  zipWith.second = pipe(self, provide(that))
-  zipWith.zipK = (a: Context.Context<ROut>, b: Context.Context<ROut2>): Context.Context<ROut | ROut2> =>
-    Context.merge(a, b)
-  return zipWith
-})
 
 /** @internal */
 export const retry = dual<
@@ -1025,7 +975,7 @@ export const toRuntime = <RIn, E, ROut>(
 }
 
 /** @internal */
-export const use = dual<
+export const provide = dual<
   <RIn, E, ROut>(
     self: Layer.Layer<RIn, E, ROut>
   ) => <RIn2, E2, ROut2>(
@@ -1041,9 +991,9 @@ export const use = dual<
 ) =>
   suspend(() => {
     const provideTo = Object.create(proto)
-    provideTo._tag = OpCodes.OP_PROVIDE_TO
+    provideTo._tag = OpCodes.OP_PROVIDE
     provideTo.first = Object.create(proto, {
-      _tag: { value: OpCodes.OP_ZIP_WITH, enumerable: true },
+      _tag: { value: OpCodes.OP_PROVIDE_MERGE, enumerable: true },
       first: { value: context<Exclude<RIn2, ROut>>(), enumerable: true },
       second: { value: self },
       zipK: { value: (a: Context.Context<ROut>, b: Context.Context<ROut2>) => pipe(a, Context.merge(b)) }
@@ -1053,7 +1003,7 @@ export const use = dual<
   }))
 
 /** @internal */
-export const useMerge = dual<
+export const provideMerge = dual<
   <RIn, E, ROut>(
     self: Layer.Layer<RIn, E, ROut>
   ) => <RIn2, E2, ROut2>(
@@ -1065,9 +1015,9 @@ export const useMerge = dual<
   ) => Layer.Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut | ROut2>
 >(2, <RIn2, E2, ROut2, RIn, E, ROut>(that: Layer.Layer<RIn2, E2, ROut2>, self: Layer.Layer<RIn, E, ROut>) => {
   const zipWith = Object.create(proto)
-  zipWith._tag = OpCodes.OP_ZIP_WITH
+  zipWith._tag = OpCodes.OP_PROVIDE_MERGE
   zipWith.first = self
-  zipWith.second = pipe(self, provide(that))
+  zipWith.second = provide(that, self)
   zipWith.zipK = (a: Context.Context<ROut>, b: Context.Context<ROut2>): Context.Context<ROut | ROut2> => {
     return pipe(a, Context.merge(b))
   }
@@ -1075,7 +1025,7 @@ export const useMerge = dual<
 })
 
 /** @internal */
-export const zipWithPar = dual<
+export const zipWith = dual<
   <R2, E2, B, A, C>(
     that: Layer.Layer<R2, E2, B>,
     f: (a: Context.Context<A>, b: Context.Context<B>) => Context.Context<C>
@@ -1087,12 +1037,12 @@ export const zipWithPar = dual<
   ) => Layer.Layer<R | R2, E | E2, C>
 >(3, (self, that, f) =>
   suspend(() => {
-    const zipWithPar = Object.create(proto)
-    zipWithPar._tag = OpCodes.OP_ZIP_WITH_PAR
-    zipWithPar.first = self
-    zipWithPar.second = that
-    zipWithPar.zipK = f
-    return zipWithPar
+    const zipWith = Object.create(proto)
+    zipWith._tag = OpCodes.OP_ZIP_WITH
+    zipWith.first = self
+    zipWith.second = that
+    zipWith.zipK = f
+    return zipWith
   }))
 
 /** @internal */
@@ -1156,7 +1106,7 @@ export const withParentSpan = dual<
     span: Tracer.ParentSpan
   ) => <R, E, A>(self: Layer.Layer<R, E, A>) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>,
   <R, E, A>(self: Layer.Layer<R, E, A>, span: Tracer.ParentSpan) => Layer.Layer<Exclude<R, Tracer.ParentSpan>, E, A>
->(2, (self, span) => provide(succeedContext(Context.make(tracer.spanTag, span)), self))
+>(2, (self, span) => provide(self, succeedContext(Context.make(tracer.spanTag, span))))
 
 // circular with Effect
 

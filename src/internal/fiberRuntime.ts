@@ -1622,7 +1622,7 @@ export const filter = dual<
             (a, i) => core.map(predicate(a, i), (b) => (b ? Option.some(a) : Option.none())),
             options
           ),
-          RA.compact
+          RA.getSomes
         )
     )
   }
