@@ -430,8 +430,8 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
     struct({}),
     () => (input, _, ast) =>
       input instanceof constructor
-        ? ParseResult.success(input)
-        : ParseResult.failure(ParseResult.type(ast, input)),
+        ? ParseResult.succeed(input)
+        : ParseResult.fail(ParseResult.type(ast, input)),
     {
       [AST.TypeAnnotationId]: InstanceOfTypeId,
       [InstanceOfTypeId]: { constructor },
@@ -2321,23 +2321,23 @@ export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schem
     number,
     (s, _, ast) => {
       if (s === "NaN") {
-        return ParseResult.success(NaN)
+        return ParseResult.succeed(NaN)
       }
       if (s === "Infinity") {
-        return ParseResult.success(Infinity)
+        return ParseResult.succeed(Infinity)
       }
       if (s === "-Infinity") {
-        return ParseResult.success(-Infinity)
+        return ParseResult.succeed(-Infinity)
       }
       if (s.trim() === "") {
-        return ParseResult.failure(ParseResult.type(ast, s))
+        return ParseResult.fail(ParseResult.type(ast, s))
       }
       const n = Number(s)
       return Number.isNaN(n)
-        ? ParseResult.failure(ParseResult.type(ast, s))
-        : ParseResult.success(n)
+        ? ParseResult.fail(ParseResult.type(ast, s))
+        : ParseResult.succeed(n)
     },
-    (n) => ParseResult.success(String(n)),
+    (n) => ParseResult.succeed(String(n)),
     { strict: false }
   )
 }
@@ -2689,7 +2689,7 @@ export const bigintFromString = <I, A extends string>(self: Schema<I, A>): Schem
     bigintFromSelf,
     (s, _, ast) => {
       if (s.trim() === "") {
-        return ParseResult.failure(ParseResult.type(ast, s))
+        return ParseResult.fail(ParseResult.type(ast, s))
       }
 
       return ParseResult.try({
@@ -2697,7 +2697,7 @@ export const bigintFromString = <I, A extends string>(self: Schema<I, A>): Schem
         catch: () => ParseResult.parseError([ParseResult.type(ast, s)])
       })
     },
-    (n) => ParseResult.success(String(n)),
+    (n) => ParseResult.succeed(String(n)),
     { strict: false }
   )
 }
@@ -2723,10 +2723,10 @@ export const bigintFromNumber = <I, A extends number>(self: Schema<I, A>): Schem
       }),
     (b, _, ast) => {
       if (b > Internal.maxSafeInteger || b < Internal.minSafeInteger) {
-        return ParseResult.failure(ParseResult.type(ast, b))
+        return ParseResult.fail(ParseResult.type(ast, b))
       }
 
-      return ParseResult.success(Number(b))
+      return ParseResult.succeed(Number(b))
     },
     { strict: false }
   )
@@ -2825,8 +2825,8 @@ export const DurationFromSelf: Schema<Duration.Duration> = declare(
   struct({}),
   () => (u, _, ast) =>
     !Duration.isDuration(u)
-      ? ParseResult.failure(ParseResult.type(ast, u))
-      : ParseResult.success(u),
+      ? ParseResult.fail(ParseResult.type(ast, u))
+      : ParseResult.succeed(u),
   {
     [AST.IdentifierAnnotationId]: "Duration",
     [Internal.PrettyHookId]: (): Pretty<Duration.Duration> =>
@@ -2910,8 +2910,8 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   struct({}),
   () => (u, _, ast) =>
     !Predicate.isUint8Array(u)
-      ? ParseResult.failure(ParseResult.type(ast, u))
-      : ParseResult.success(u),
+      ? ParseResult.fail(ParseResult.type(ast, u))
+      : ParseResult.succeed(u),
   {
     [AST.IdentifierAnnotationId]: "Uint8Array",
     [Internal.PrettyHookId]: (): Pretty<Uint8Array> => (u8arr) =>
@@ -2983,7 +2983,7 @@ const makeEncodingTransform = <A extends string>(
         (decodeException) =>
           ParseResult.parseError([ParseResult.type(ast, s, decodeException.message)])
       ),
-    (u) => ParseResult.success(encode(u)),
+    (u) => ParseResult.succeed(encode(u)),
     { strict: false }
   ).pipe(annotations({
     [AST.IdentifierAnnotationId]: id,
@@ -3175,7 +3175,7 @@ export const DateFromSelf: Schema<Date> = declare(
   [],
   struct({}),
   () => (u, _, ast) =>
-    !Predicate.isDate(u) ? ParseResult.failure(ParseResult.type(ast, u)) : ParseResult.success(u),
+    !Predicate.isDate(u) ? ParseResult.fail(ParseResult.type(ast, u)) : ParseResult.succeed(u),
   {
     [AST.IdentifierAnnotationId]: "Date",
     [Internal.PrettyHookId]: datePretty,
@@ -3269,9 +3269,9 @@ export const optionFromSelf = <I, A>(
       const parse = isDecoding ? Parser.parse(value) : Parser.encode(value)
       return (u, options, ast) =>
         !Option.isOption(u) ?
-          ParseResult.failure(ParseResult.type(ast, u)) :
+          ParseResult.fail(ParseResult.type(ast, u)) :
           Option.isNone(u) ?
-          ParseResult.success(Option.none()) :
+          ParseResult.succeed(Option.none()) :
           ParseResult.map(parse(u.value, options), Option.some)
     },
     {
@@ -3356,7 +3356,7 @@ export const eitherFromSelf = <IE, E, IA, A>(
       const parseRight = isDecoding ? Parser.parse(right) : Parser.encode(right)
       return (u, options, ast) =>
         !Either.isEither(u) ?
-          ParseResult.failure(ParseResult.type(ast, u)) :
+          ParseResult.fail(ParseResult.type(ast, u)) :
           Either.isLeft(u) ?
           ParseResult.map(parseLeft(u.left, options), Either.left) :
           ParseResult.map(parseRight(u.right, options), Either.right)
@@ -3444,7 +3444,7 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
         : Parser.encode(array(tuple(key, value)))
       return (u, options, ast) =>
         !isMap(u) ?
-          ParseResult.failure(ParseResult.type(ast, u)) :
+          ParseResult.fail(ParseResult.type(ast, u)) :
           ParseResult.map(parse(Array.from(u.entries()), options), (as) => new Map(as))
     },
     {
@@ -3508,7 +3508,7 @@ export const readonlySetFromSelf = <I, A>(
       const parse = isDecoding ? Parser.parse(array(item)) : Parser.encode(array(item))
       return (u, options, ast) =>
         !isSet(u) ?
-          ParseResult.failure(ParseResult.type(ast, u)) :
+          ParseResult.fail(ParseResult.type(ast, u)) :
           ParseResult.map(parse(Array.from(u.values()), options), (as) => new Set(as))
     },
     {
@@ -3551,8 +3551,8 @@ export const BigDecimalFromSelf: Schema<BigDecimal.BigDecimal> = declare(
   struct({}),
   () => (u, _, ast) =>
     !BigDecimal.isBigDecimal(u)
-      ? ParseResult.failure(ParseResult.type(ast, u))
-      : ParseResult.success(u),
+      ? ParseResult.fail(ParseResult.type(ast, u))
+      : ParseResult.succeed(u),
   {
     [AST.IdentifierAnnotationId]: "BigDecimal",
     [Internal.PrettyHookId]: bigDecimalPretty,
@@ -3574,8 +3574,8 @@ export const bigDecimalFromNumber = <I, A extends number>(
   transformOrFail(
     self,
     BigDecimalFromSelf,
-    (num) => ParseResult.success(BigDecimal.fromNumber(num)),
-    (val) => ParseResult.success(BigDecimal.unsafeToNumber(val)),
+    (num) => ParseResult.succeed(BigDecimal.fromNumber(num)),
+    (val) => ParseResult.succeed(BigDecimal.unsafeToNumber(val)),
     { strict: false }
   )
 
@@ -3593,10 +3593,10 @@ export const bigDecimalFromString = <I, A extends string>(
     BigDecimalFromSelf,
     (num, _, ast) =>
       BigDecimal.fromString(num).pipe(Option.match({
-        onNone: () => ParseResult.failure(ParseResult.type(ast, num)),
-        onSome: (val) => ParseResult.success(BigDecimal.normalize(val))
+        onNone: () => ParseResult.fail(ParseResult.type(ast, num)),
+        onSome: (val) => ParseResult.succeed(BigDecimal.normalize(val))
       })),
-    (val) => ParseResult.success(BigDecimal.toString(BigDecimal.normalize(val))),
+    (val) => ParseResult.succeed(BigDecimal.toString(BigDecimal.normalize(val))),
     { strict: false }
   )
 
@@ -3899,10 +3899,10 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
       return (u, options, ast) => {
         if (Chunk.isChunk(u)) {
           return Chunk.isEmpty(u)
-            ? ParseResult.success(u)
+            ? ParseResult.succeed(u)
             : ParseResult.map(parse(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
         }
-        return ParseResult.failure(ParseResult.type(ast, u))
+        return ParseResult.fail(ParseResult.type(ast, u))
       }
     },
     {
@@ -3960,7 +3960,7 @@ export const dataFromSelf = <
       const parse = isDecoding ? Parser.parse(item) : Parser.encode(item)
       return (u, options, ast) =>
         !Equal.isEqual(u) ?
-          ParseResult.failure(ParseResult.type(ast, u)) :
+          ParseResult.fail(ParseResult.type(ast, u)) :
           ParseResult.map(parse(u, options), toData)
     },
     {
@@ -4211,8 +4211,8 @@ const makeClass = <I, A>(
         selfSchema,
         declare([toSchema], toSchema, () => (input, _, ast) =>
           input instanceof this
-            ? ParseResult.success(input)
-            : ParseResult.failure(ParseResult.type(ast, input)), {
+            ? ParseResult.succeed(input)
+            : ParseResult.fail(ParseResult.type(ast, input)), {
           [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
           [Internal.ArbitraryHookId]: (struct: any) => (fc: any) =>
             struct(fc).map((props: any) => new this(props))

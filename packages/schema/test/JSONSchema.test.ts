@@ -60,7 +60,7 @@ describe("JSONSchema", () => {
     })
 
     it("should return the provided JSON Schema when an annotation exists", () => {
-      const schema = S.declare([], S.struct({}), () => (input) => ParseResult.success(input), {
+      const schema = S.declare([], S.struct({}), () => (input) => ParseResult.succeed(input), {
         [AST.JSONSchemaAnnotationId]: { type: "string" },
         [A.ArbitraryHookId]: (): A.Arbitrary<string> => (fc) => fc.string()
       })

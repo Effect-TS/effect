@@ -53,13 +53,13 @@ class PersonWithTransform extends Person.transform<PersonWithTransform>()(
     thing: S.optional(S.struct({ id: S.number })).toOption()
   },
   (input) =>
-    PR.success({
+    PR.succeed({
       ...input,
       id: input.id.toString(),
       thing: O.some({ id: 123 })
     }),
   (input) =>
-    PR.success({
+    PR.succeed({
       ...input,
       id: Number(input.id)
     })
@@ -71,13 +71,13 @@ class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFr
     thing: S.optional(S.struct({ id: S.number })).toOption()
   },
   (input) =>
-    PR.success({
+    PR.succeed({
       ...input,
       id: input.id.toString(),
       thing: { id: 123 }
     }),
   (input) =>
-    PR.success({
+    PR.succeed({
       ...input,
       id: Number(input.id)
     })

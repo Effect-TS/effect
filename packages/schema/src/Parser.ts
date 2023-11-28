@@ -282,7 +282,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 Option.match(
                   ast.filter(a, options ?? defaultParseOption, ast),
                   {
-                    onNone: () => ParseResult.success(a),
+                    onNone: () => ParseResult.succeed(a),
                     onSome: ParseResult.fail
                   }
                 )
@@ -331,7 +331,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       return fromRefinement(ast, Predicate.isNever)
     case "UnknownKeyword":
     case "AnyKeyword":
-      return ParseResult.success
+      return ParseResult.succeed
     case "StringKeyword":
       return fromRefinement(ast, Predicate.isString)
     case "NumberKeyword":
@@ -359,7 +359,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       }
       return (input: unknown, options) => {
         if (!Array.isArray(input)) {
-          return ParseResult.failure(ParseResult.type(ast, input))
+          return ParseResult.fail(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.ParseErrors]> = []
@@ -374,7 +374,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             es.push([stepKey++, e])
             continue
           } else {
-            return ParseResult.failure(e)
+            return ParseResult.fail(e)
           }
         }
 
@@ -388,7 +388,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
               es.push([stepKey++, e])
               continue
             } else {
-              return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+              return ParseResult.fail(mutableAppend(sortByIndex(es), e))
             }
           }
         }
@@ -424,7 +424,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                  return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                 }
               }
               output.push([stepKey++, eu.right])
@@ -443,7 +443,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                       es.push([nk, e])
                       return Effect.unit
                     } else {
-                      return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                      return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                     }
                   }
                   output.push([nk, t.right])
@@ -468,7 +468,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                  return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                 }
               } else {
                 output.push([stepKey++, eu.right])
@@ -488,7 +488,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                        return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                       }
                     } else {
                       output.push([nk, t.right])
@@ -516,7 +516,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                    return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                   }
                 }
                 output.push([stepKey++, eu.right])
@@ -536,7 +536,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                           es.push([nk, e])
                           return Effect.unit
                         } else {
-                          return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                          return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                         }
                       }
                       output.push([nk, t.right])
@@ -553,8 +553,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            ParseResult.failures(sortByIndex(es)) :
-            ParseResult.success(sortByIndex(output))
+            ParseResult.fail(sortByIndex(es)) :
+            ParseResult.succeed(sortByIndex(output))
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
@@ -600,7 +600,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
 
       return (input: unknown, options) => {
         if (!Predicate.isRecord(input)) {
-          return ParseResult.failure(ParseResult.type(ast, input))
+          return ParseResult.fail(ParseResult.type(ast, input))
         }
         const allErrors = options?.errors === "all"
         const es: Array<[number, ParseResult.ParseErrors]> = []
@@ -619,7 +619,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                return ParseResult.fail(mutableAppend(sortByIndex(es), e))
               }
             }
           }
@@ -652,7 +652,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   es.push([stepKey++, e])
                   continue
                 } else {
-                  return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                  return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                 }
               }
               output[name] = eu.right
@@ -672,7 +672,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                         es.push([nk, e])
                         return Effect.unit
                       } else {
-                        return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                        return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                       }
                     }
                     output[index] = t.right
@@ -690,7 +690,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                 es.push([stepKey++, e])
                 continue
               } else {
-                return ParseResult.failure(e)
+                return ParseResult.fail(e)
               }
             }
           }
@@ -722,7 +722,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                     es.push([stepKey++, e])
                     continue
                   } else {
-                    return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                    return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                   }
                 } else {
                   if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -746,7 +746,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                             es.push([nk, e])
                             return Effect.unit
                           } else {
-                            return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                            return ParseResult.fail(mutableAppend(sortByIndex(es), e))
                           }
                         } else {
                           if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
@@ -766,8 +766,8 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = ({ es, output }: State) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            ParseResult.failures(sortByIndex(es)) :
-            ParseResult.success(output)
+            ParseResult.fail(sortByIndex(es)) :
+            ParseResult.succeed(output)
         if (queue && queue.length > 0) {
           const cqueue = queue
           return Effect.suspend(() => {
@@ -850,7 +850,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           const eu = !queue || queue.length === 0 ? ParseResult.eitherOrUndefined(pr) : undefined
           if (eu) {
             if (Either.isRight(eu)) {
-              return ParseResult.success(eu.right)
+              return ParseResult.succeed(eu.right)
             } else {
               es.push([stepKey++, ParseResult.unionMember(eu.left.errors)])
             }
@@ -867,7 +867,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
                   } else {
                     return Effect.flatMap(Effect.either(pr), (t) => {
                       if (Either.isRight(t)) {
-                        state.finalResult = ParseResult.success(t.right)
+                        state.finalResult = ParseResult.succeed(t.right)
                       } else {
                         state.es.push([nk, ParseResult.unionMember(t.left.errors)])
                       }
@@ -884,9 +884,9 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
         // ---------------------------------------------
         const computeResult = (es: State["es"]) =>
           ReadonlyArray.isNonEmptyArray(es) ?
-            ParseResult.failures(sortByIndex(es)) :
+            ParseResult.fail(sortByIndex(es)) :
             // this should never happen
-            ParseResult.failure(ParseResult.type(AST.neverKeyword, input))
+            ParseResult.fail(ParseResult.type(AST.neverKeyword, input))
 
         if (queue && queue.length > 0) {
           const cqueue = queue
@@ -918,7 +918,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
 
 const fromRefinement =
   <A>(ast: AST.AST, refinement: (u: unknown) => u is A): Parser<unknown, A> => (u) =>
-    refinement(u) ? ParseResult.success(u) : ParseResult.failure(ParseResult.type(ast, u))
+    refinement(u) ? ParseResult.succeed(u) : ParseResult.fail(ParseResult.type(ast, u))
 
 /** @internal */
 export const getLiterals = (
@@ -1020,7 +1020,7 @@ const handleForbidden = <A>(
     ? eu
     : options?.isEffectAllowed === true
     ? conditional
-    : ParseResult.failure(ParseResult.forbidden)
+    : ParseResult.fail(ParseResult.forbidden)
 }
 
 const mutableAppend = <A>(self: Array<A>, a: A): ReadonlyArray.NonEmptyReadonlyArray<A> => {
@@ -1074,7 +1074,7 @@ export const getFinalTransformation = (
     case "FinalTransformation":
       return isDecoding ? transformation.decode : transformation.encode
     case "ComposeTransformation":
-      return ParseResult.success
+      return ParseResult.succeed
     case "TypeLiteralTransformation":
       return (input) => {
         let out: ParseResult.ParseResult<any> = Either.right(input)

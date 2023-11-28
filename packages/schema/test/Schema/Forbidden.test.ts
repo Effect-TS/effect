@@ -66,8 +66,8 @@ describe("Schema/Forbidden", () => {
       S.transformOrFail(
         S.string,
         S.string,
-        (s) => PR.flatMap(Util.sleep, () => PR.success(s)),
-        (s) => PR.flatMap(Util.sleep, () => PR.success(s))
+        (s) => PR.flatMap(Util.sleep, () => PR.succeed(s)),
+        (s) => PR.flatMap(Util.sleep, () => PR.succeed(s))
       ),
       E.right,
       E.right

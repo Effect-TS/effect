@@ -667,8 +667,8 @@ S.string.pipe(S.transform(S.number, (s) => s.length, (n) => n))
 S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.success(s.length),
-    (n) => ParseResult.success(String(n))
+    (s) => ParseResult.succeed(s.length),
+    (n) => ParseResult.succeed(String(n))
   )
 )
 
@@ -676,20 +676,20 @@ S.string.pipe(
 S.string.pipe(
   S.transformOrFail(
     S.number,
-    (s) => ParseResult.success(s),
-    (n) => ParseResult.success(String(n)),
+    (s) => ParseResult.succeed(s),
+    (n) => ParseResult.succeed(String(n)),
     { strict: false }
   )
 )
 
 S.string.pipe(
   // @ts-expect-error
-  S.transformOrFail(S.number, (s) => ParseResult.success(s), (n) => ParseResult.success(String(n)))
+  S.transformOrFail(S.number, (s) => ParseResult.succeed(s), (n) => ParseResult.succeed(String(n)))
 )
 
 S.string.pipe(
   // @ts-expect-error
-  S.transformOrFail(S.number, (s) => ParseResult.success(s.length), (n) => ParseResult.success(n))
+  S.transformOrFail(S.number, (s) => ParseResult.succeed(s.length), (n) => ParseResult.succeed(n))
 )
 
 // ---------------------------------------------
