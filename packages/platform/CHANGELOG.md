@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.31.2
+
+### Patch Changes
+
+- [#298](https://github.com/Effect-TS/platform/pull/298) [`7a46ec6`](https://github.com/Effect-TS/platform/commit/7a46ec679e2d4718919c407d0c6c5f0fdc35e62d) Thanks [@tim-smart](https://github.com/tim-smart)! - add .toWebHandler\* to Http/App
+
 ## 0.31.1
 
 ### Patch Changes
