@@ -311,6 +311,9 @@ export const createLiteral = (
  */
 export const isLiteral = (ast: AST): ast is Literal => ast._tag === "Literal"
 
+/** @internal */
+export const _null = createLiteral(null)
+
 /**
  * @category model
  * @since 1.0.0

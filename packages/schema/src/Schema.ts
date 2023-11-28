@@ -449,7 +449,7 @@ const _undefined: Schema<undefined> = make(AST.undefinedKeyword)
 
 const _void: Schema<void> = make(AST.voidKeyword)
 
-const _null: Schema<null> = make(AST.createLiteral(null))
+const _null: Schema<null> = make(AST._null)
 
 export {
   /**
