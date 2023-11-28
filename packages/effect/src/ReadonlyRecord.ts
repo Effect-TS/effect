@@ -460,25 +460,79 @@ export const filter: {
 )
 
 /**
- * Given a record with `Option` values, returns a record with only the `Some` values, with the same keys.
+ * Given a record with `Option` values, returns a new record containing only the `Some` values, preserving the original keys.
  *
  * @param self - A record with `Option` values.
  *
  * @example
- * import { compact } from "effect/ReadonlyRecord"
- * import { some, none } from 'effect/Option'
+ * import { getSomes } from "effect/ReadonlyRecord"
+ * import { some, none } from "effect/Option"
  *
  * assert.deepStrictEqual(
- *   compact({ a: some(1), b: none(), c: some(2) }),
+ *   getSomes({ a: some(1), b: none(), c: some(2) }),
  *   { a: 1, c: 2 }
  * )
  *
  * @category filtering
  * @since 2.0.0
  */
-export const compact: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A> = filterMap(
+export const getSomes: <A>(self: ReadonlyRecord<Option.Option<A>>) => Record<string, A> = filterMap(
   identity
 )
+
+/**
+ * Given a record with `Either` values, returns a new record containing only the `Left` values, preserving the original keys.
+ *
+ * @example
+ * import { getLefts } from "effect/ReadonlyRecord"
+ * import { right, left } from "effect/Either"
+ *
+ * assert.deepStrictEqual(
+ *   getLefts({ a: right(1), b: left("err"), c: right(2) }),
+ *   { b: "err" }
+ * )
+ *
+ * @category filtering
+ * @since 2.0.0
+ */
+export const getLefts = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, E> => {
+  const out: Record<string, E> = {}
+  for (const key of Object.keys(self)) {
+    const value = self[key]
+    if (E.isLeft(value)) {
+      out[key] = value.left
+    }
+  }
+
+  return out
+}
+
+/**
+ * Given a record with `Either` values, returns a new record containing only the `Right` values, preserving the original keys.
+ *
+ * @example
+ * import { getRights } from "effect/ReadonlyRecord"
+ * import { right, left } from "effect/Either"
+ *
+ * assert.deepStrictEqual(
+ *   getRights({ a: right(1), b: left("err"), c: right(2) }),
+ *   { a: 1, c: 2 }
+ * )
+ *
+ * @category filtering
+ * @since 2.0.0
+ */
+export const getRights = <E, A>(self: ReadonlyRecord<Either<E, A>>): Record<string, A> => {
+  const out: Record<string, A> = {}
+  for (const key of Object.keys(self)) {
+    const value = self[key]
+    if (E.isRight(value)) {
+      out[key] = value.right
+    }
+  }
+
+  return out
+}
 
 /**
  * Partitions the elements of a record into two groups: those that match a predicate, and those that don't.
