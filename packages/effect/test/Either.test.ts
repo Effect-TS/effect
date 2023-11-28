@@ -160,6 +160,12 @@ describe.concurrent("Either", () => {
     Util.deepStrictEqual(Either.flip(Either.left("b")), Either.right("b"))
   })
 
+  it("filterOrLeft", () => {
+    Util.deepStrictEqual(Either.filterOrLeft(Either.right(1), (n) => n > 0, () => "a"), Either.right(1))
+    Util.deepStrictEqual(Either.filterOrLeft(Either.right(1), (n) => n > 1, () => "a"), Either.left("a"))
+    Util.deepStrictEqual(Either.filterOrLeft(Either.left(1), (n) => n > 0, () => "a"), Either.left(1))
+  })
+
   it("merge", () => {
     Util.deepStrictEqual(Either.merge(Either.right(1)), 1)
     Util.deepStrictEqual(Either.merge(Either.left("a")), "a")
