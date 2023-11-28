@@ -3,7 +3,7 @@
  */
 import * as Dual from "./Function.js"
 import * as HashMap from "./HashMap.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import * as MutableRef from "./MutableRef.js"
 import * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
@@ -34,7 +34,7 @@ const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backingMap"> 
     return this.backingMap.current[Symbol.iterator]()
   },
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON() {
     return {

@@ -7,7 +7,7 @@ import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
 import { pipe } from "../Function.js"
-import { NodeInspectSymbol, toString } from "../Inspectable.js"
+import { format, NodeInspectSymbol } from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
@@ -177,7 +177,7 @@ export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => 
     }
   }
   error.toString = () => {
-    return toString(error.toJSON())
+    return format(error.toJSON())
   }
   error[NodeInspectSymbol] = () => {
     return error.toJSON()

@@ -18,7 +18,7 @@ import { globalValue } from "../GlobalValue.js"
 import * as Hash from "../Hash.js"
 import * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import * as List from "../List.js"
 import type * as LogLevel from "../LogLevel.js"
 import type * as LogSpan from "../LogSpan.js"
@@ -172,7 +172,7 @@ class EffectPrimitive {
     }
   }
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -210,7 +210,7 @@ class EffectPrimitiveFailure {
     }
   }
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
   [NodeInspectSymbol]() {
     return this.toJSON()
@@ -248,7 +248,7 @@ class EffectPrimitiveSuccess {
     }
   }
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
   [NodeInspectSymbol]() {
     return this.toJSON()

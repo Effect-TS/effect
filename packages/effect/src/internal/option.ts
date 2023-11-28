@@ -4,7 +4,7 @@
 
 import * as Equal from "../Equal.js"
 import * as Hash from "../Hash.js"
-import { NodeInspectSymbol, toJSON, toString } from "../Inspectable.js"
+import { format, NodeInspectSymbol, toJSON } from "../Inspectable.js"
 import type * as Option from "../Option.js"
 import { hasProperty } from "../Predicate.js"
 import { EffectPrototype } from "./effectable.js"
@@ -20,7 +20,7 @@ const CommonProto = {
     return this.toJSON()
   },
   toString<A>(this: Option.Option<A>) {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   }
 }
 

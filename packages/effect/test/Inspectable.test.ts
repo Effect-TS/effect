@@ -4,42 +4,42 @@ import { describe, expect, it } from "vitest"
 describe.concurrent("Inspectable", () => {
   describe.concurrent("toString", () => {
     it("primitives", () => {
-      expect(Inspectable.toString(null)).toEqual("null")
-      expect(Inspectable.toString(undefined)).toEqual(undefined)
-      expect(Inspectable.toString(1)).toEqual("1")
-      expect(Inspectable.toString("a")).toEqual(`"a"`)
-      expect(Inspectable.toString(true)).toEqual("true")
+      expect(Inspectable.format(null)).toEqual("null")
+      expect(Inspectable.format(undefined)).toEqual(undefined)
+      expect(Inspectable.format(1)).toEqual("1")
+      expect(Inspectable.format("a")).toEqual(`"a"`)
+      expect(Inspectable.format(true)).toEqual("true")
     })
 
     it("empty collections", () => {
-      expect(Inspectable.toString({})).toEqual("{}")
-      expect(Inspectable.toString([])).toEqual("[]")
+      expect(Inspectable.format({})).toEqual("{}")
+      expect(Inspectable.format([])).toEqual("[]")
     })
 
     it("objects", () => {
-      expect(Inspectable.toString({ a: 1 })).toEqual(`{
+      expect(Inspectable.format({ a: 1 })).toEqual(`{
   "a": 1
 }`)
-      expect(Inspectable.toString({ a: 1, b: 2 })).toEqual(`{
+      expect(Inspectable.format({ a: 1, b: 2 })).toEqual(`{
   "a": 1,
   "b": 2
 }`)
-      expect(Inspectable.toString({ a: 1, b: { c: 2 } })).toEqual(`{
+      expect(Inspectable.format({ a: 1, b: { c: 2 } })).toEqual(`{
   "a": 1,
   "b": {
     "c": 2
   }
 }`)
-      expect(Inspectable.toString({ a: undefined })).toEqual("{}")
+      expect(Inspectable.format({ a: undefined })).toEqual("{}")
     })
 
     it("arrays", () => {
-      expect(Inspectable.toString([1, 2, 3])).toEqual(`[
+      expect(Inspectable.format([1, 2, 3])).toEqual(`[
   1,
   2,
   3
 ]`)
-      expect(Inspectable.toString([1, [2, 3], 4])).toEqual(`[
+      expect(Inspectable.format([1, [2, 3], 4])).toEqual(`[
   1,
   [
     2,
@@ -50,10 +50,10 @@ describe.concurrent("Inspectable", () => {
     })
 
     it("mixed", () => {
-      expect(Inspectable.toString({ "a": [] })).toEqual(`{
+      expect(Inspectable.format({ "a": [] })).toEqual(`{
   "a": []
 }`)
-      expect(Inspectable.toString({
+      expect(Inspectable.format({
         "_id": "Cause",
         "_tag": "Fail",
         "errors": [
