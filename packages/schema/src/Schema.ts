@@ -3142,7 +3142,7 @@ export const itemsCount = <A>(
 export const ValidDateTypeId = Symbol.for("@effect/schema/TypeId/ValidDate")
 
 /**
- * A filter excluding invalid dates (e.g. `new Date("fail")`).
+ * A filter that **excludes invalid** dates (e.g., `new Date("Invalid Date")` is rejected).
  *
  * @category Date filters
  * @since 1.0.0
@@ -3166,6 +3166,8 @@ const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date({ noInvalidDate: fa
 const datePretty = (): Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
 
 /**
+ * Represents a schema for handling potentially **invalid** `Date` instances (e.g., `new Date("Invalid Date")` is not rejected).
+ *
  * @category Date constructors
  * @since 1.0.0
  */
@@ -3183,7 +3185,7 @@ export const DateFromSelf: Schema<Date> = declare(
 )
 
 /**
- * A schema representing valid dates, e.g. `new Date("fail")` is excluded, even though it is an instance of `Date`.
+ * Represents a schema for handling only **valid** dates. For example, `new Date("Invalid Date")` is rejected, even though it is an instance of `Date`.
  *
  * @category Date constructors
  * @since 1.0.0
@@ -3195,7 +3197,7 @@ export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(validDate())
 // ---------------------------------------------
 
 /**
- * A combinator that transforms a `string` into a valid `Date`.
+ * A combinator that converts a `string` into a potentially **invalid** `Date` (e.g., `new Date("Invalid Date")` is not rejected).
  *
  * @category Date transformations
  * @since 1.0.0
@@ -3203,25 +3205,25 @@ export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(validDate())
 export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> =>
   transform(
     self,
-    ValidDateFromSelf,
+    DateFromSelf,
     (s) => new Date(s),
     (n) => n.toISOString(),
     { strict: false }
   )
 
-const _Date: Schema<string, Date> = dateFromString(string)
-
 /**
- * A schema representing valid dates, e.g. `new Date("fail")` is excluded, even though it is an instance of `Date`.
+ * Represents a schema that converts a `string` into a (potentially invalid) `Date` (e.g., `new Date("Invalid Date")` is not rejected).
  *
  * @category Date constructors
  * @since 1.0.0
  */
-export const ValidDate: Schema<string, Date> = _Date.pipe(validDate())
+export const DateFromString: Schema<string, Date> = dateFromString(string)
+
+const _Date: Schema<string, Date> = DateFromString.pipe(validDate())
 
 export {
   /**
-   * A schema that transforms a `string` into a valid `Date`.
+   * A schema that transforms a `string` into a **valid** `Date`, ensuring that invalid dates, such as `new Date("Invalid Date")`, are rejected.
    *
    * @category Date constructors
    * @since 1.0.0
