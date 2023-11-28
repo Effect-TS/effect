@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 import * as Dual from "./Function.js"
-import { type Inspectable, NodeInspectSymbol, toJSON, toString } from "./Inspectable.js"
+import { format, type Inspectable, NodeInspectSymbol, toJSON } from "./Inspectable.js"
 import * as MutableHashMap from "./MutableHashMap.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
@@ -32,7 +32,7 @@ const MutableHashSetProto: Omit<MutableHashSet<unknown>, "keyMap"> = {
     return Array.from(this.keyMap).map(([_]) => _)[Symbol.iterator]()
   },
   toString() {
-    return toString(this.toJSON())
+    return format(this.toJSON())
   },
   toJSON() {
     return {

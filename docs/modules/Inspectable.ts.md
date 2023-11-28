@@ -19,7 +19,6 @@ Added in v2.0.0
   - [NodeInspectSymbol (type alias)](#nodeinspectsymbol-type-alias)
 - [utils](#utils)
   - [toJSON](#tojson)
-  - [toString](#tostring)
 
 ---
 
@@ -69,16 +68,6 @@ Added in v2.0.0
 
 ```ts
 export declare const toJSON: (x: unknown) => unknown
-```
-
-Added in v2.0.0
-
-## toString
-
-**Signature**
-
-```ts
-export declare const toString: (x: unknown) => string
 ```
 
 Added in v2.0.0

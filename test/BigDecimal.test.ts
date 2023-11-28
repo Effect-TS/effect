@@ -262,18 +262,18 @@ describe.concurrent("BigDecimal", () => {
     deepStrictEqual(BigDecimal.fromString("1E5"), Option.none())
   })
 
-  it("toString", () => {
-    deepStrictEqual(BigDecimal.toString(_("2")), "2")
-    deepStrictEqual(BigDecimal.toString(_("-2")), "-2")
-    deepStrictEqual(BigDecimal.toString(_("0.123")), "0.123")
-    deepStrictEqual(BigDecimal.toString(_("200")), "200")
-    deepStrictEqual(BigDecimal.toString(_("20000000")), "20000000")
-    deepStrictEqual(BigDecimal.toString(_("-20000000")), "-20000000")
-    deepStrictEqual(BigDecimal.toString(_("2.00")), "2.00")
-    deepStrictEqual(BigDecimal.toString(_("0.200")), "0.200")
-    deepStrictEqual(BigDecimal.toString(_("0.123000")), "0.123000")
-    deepStrictEqual(BigDecimal.toString(_("-456.123")), "-456.123")
-    deepStrictEqual(BigDecimal.toString(BigDecimal.make(10n, -1)), "100")
+  it("format", () => {
+    deepStrictEqual(BigDecimal.format(_("2")), "2")
+    deepStrictEqual(BigDecimal.format(_("-2")), "-2")
+    deepStrictEqual(BigDecimal.format(_("0.123")), "0.123")
+    deepStrictEqual(BigDecimal.format(_("200")), "200")
+    deepStrictEqual(BigDecimal.format(_("20000000")), "20000000")
+    deepStrictEqual(BigDecimal.format(_("-20000000")), "-20000000")
+    deepStrictEqual(BigDecimal.format(_("2.00")), "2.00")
+    deepStrictEqual(BigDecimal.format(_("0.200")), "0.200")
+    deepStrictEqual(BigDecimal.format(_("0.123000")), "0.123000")
+    deepStrictEqual(BigDecimal.format(_("-456.123")), "-456.123")
+    deepStrictEqual(BigDecimal.format(BigDecimal.make(10n, -1)), "100")
   })
 
   it("toJSON()", () => {
