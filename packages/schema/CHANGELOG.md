@@ -1,5 +1,34 @@
 # @effect/schema
 
+## 0.50.0
+
+### Minor Changes
+
+- [#593](https://github.com/Effect-TS/schema/pull/593) [`cbc2e3f`](https://github.com/Effect-TS/schema/commit/cbc2e3f8d3657d545fbe41d791049f5e6dfb57c6) Thanks [@gcanti](https://github.com/gcanti)! - ParseResult: merge failure APIs into `fail`
+
+- [#607](https://github.com/Effect-TS/schema/pull/607) [`e85aefb`](https://github.com/Effect-TS/schema/commit/e85aefb7cb0f5ea7532fc2a0abb13595d3330140) Thanks [@gcanti](https://github.com/gcanti)! - Bug Fix: align index signature behaviour to TypeScript
+
+- [#589](https://github.com/Effect-TS/schema/pull/589) [`3b99569`](https://github.com/Effect-TS/schema/commit/3b99569c8bd3f6fa748ae0d81f7992e8899f8ef6) Thanks [@gcanti](https://github.com/gcanti)! - - remove `ValidDate` (which is just an alias of `Date`)
+
+  - add `DateFromString` (decodes from string, output: possibly invalid Date)
+
+- [#593](https://github.com/Effect-TS/schema/pull/593) [`cbc2e3f`](https://github.com/Effect-TS/schema/commit/cbc2e3f8d3657d545fbe41d791049f5e6dfb57c6) Thanks [@gcanti](https://github.com/gcanti)! - ParseResult: rename `success` to `succeed` (standard naming)
+
+### Patch Changes
+
+- [#597](https://github.com/Effect-TS/schema/pull/597) [`caeed29`](https://github.com/Effect-TS/schema/commit/caeed29b9c3cef804009046347777d6041d5a47e) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added BigDecimal
+
+- [#585](https://github.com/Effect-TS/schema/pull/585) [`5b27f03`](https://github.com/Effect-TS/schema/commit/5b27f03d490d6da2583562189e82d8ed70460a27) Thanks [@gcanti](https://github.com/gcanti)! - improve JSON Schema output:
+
+  - rename `dependencies` to `$defs`
+  - remove `"type"` from const schemas
+  - use `"oneOf"` for enums and add `"title"`s
+  - add support for `record(pattern, number)`
+  - add `"$id"` and `"$comment"` properties
+  - literals should be converted to `enum` instead of `anyOf`, closes #579
+
+- [#603](https://github.com/Effect-TS/schema/pull/603) [`8e21d7e`](https://github.com/Effect-TS/schema/commit/8e21d7ec6acf7a16c17dd57e52c5720391c6a954) Thanks [@gcanti](https://github.com/gcanti)! - TreeFormatter: enhance `formatActual` for data types with a custom `toString` implementation, closes #600
+
 ## 0.49.4
 
 ### Patch Changes
