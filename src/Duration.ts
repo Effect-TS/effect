@@ -614,27 +614,27 @@ export const toString = (self: DurationInput): string => {
   }
 
   const ms = nanos / 1000000n
-  if (ms % 1000n !== 0n) { // ms
+  if (ms % 1000n !== 0n) {
     parts.push(`${ms % 1000n}ms`)
   }
 
   const sec = ms / 1000n
-  if (sec % 60n !== 0n) { // ms
+  if (sec % 60n !== 0n) {
     parts.push(`${sec % 60n}s`)
   }
 
   const min = sec / 60n
-  if (min % 60n !== 0n) { // ms
+  if (min % 60n !== 0n) {
     parts.push(`${min % 60n}m`)
   }
 
   const hr = min / 60n
-  if (hr % 24n !== 0n) { // ms
+  if (hr % 24n !== 0n) {
     parts.push(`${hr % 24n}h`)
   }
 
   const days = hr / 24n
-  if (days !== 0n) { // ms
+  if (days !== 0n) {
     parts.push(`${days}d`)
   }
 
